@@ -1,325 +1,297 @@
-# Camera — Photo Frame Webapp
+# Frame-It-Now (Camera)
+
+**Product**: Frame-It-Now — mobile-first selfie PWA for events and public engagement.  
+**Repository / UI strings**: The codebase and some pages still label the app **“Camera”**; operationally this is the same product.
 
 **Version**: 2.7.0  
-**Last Updated**: 2025-11-09T20:30:00.000Z  
-**Status**: Production-ready with enhanced admin UX
+**Last Updated**: 2026-03-30  
+**Status**: Production-ready
 
-A Next.js photo frame web application allowing users to capture photos and automatically apply decorative frames, built with comprehensive refactoring for maintainability and scalability.
+A Next.js application: users capture photos, apply branding frames, upload to a CDN, store metadata in MongoDB, share via public links, and display submissions on event slideshows with fair rotation and aspect-aware layouts.
 
 ---
 
 ## Quick Start
 
 ```bash
-# Install dependencies
 npm install
-
-# Run development server
-npm run dev
-
-# Build for production
+npm run dev          # http://localhost:3000
 npm run build
-
-# Start production server
 npm start
 ```
 
-Open http://localhost:3000 to view the application.
+---
+
+## Technology Stack
+
+| Area | Choice |
+|------|--------|
+| Framework | Next.js (App Router) |
+| Language | TypeScript (strict) |
+| Database | MongoDB |
+| Auth | SSO (OAuth2/OIDC + PKCE), encrypted session cookie |
+| Image hosting | imgbb.com |
+| Styling | Tailwind CSS |
+| Email | Resend (where used) |
 
 ---
 
-## Architecture Overview (v2.0.0)
+## 1. System Model
 
-### Technology Stack
-- **Framework**: Next.js 16.0.1 (App Router)
-- **Language**: TypeScript 5.9.3 (strict mode, ES Modules)
-- **Database**: MongoDB 6.8.0 (Atlas)
-- **Authentication**: Custom SSO (OAuth2/OIDC with PKCE)
-- **Styling**: Tailwind CSS 4.0
-- **Image CDN**: imgbb.com
-- **Email**: Resend
-- **Hosting**: Vercel
+### End-to-end flow
 
-### Key Features (v2.0.0)
+1. Participant opens **`/capture/[eventId]`** (event) or **`/capture`** (legacy global capture).
+2. Optional **custom pages**: who-are-you, accept, CTA — then frame selection (if multiple frames), **camera** (`getUserMedia`) or **file upload** (legacy page).
+3. **Client-side compositing**: Canvas draws the photo (cropped to frame aspect ratio on the event path), then the frame asset; output is a JPEG (quality ~0.85, longest side capped around 2048px).
+4. **POST `/api/submissions`**: sends base64 image data + event UUID + optional `userInfo` / `consents`.
+5. **Server** uploads to **imgbb**, inserts a **submission** document in MongoDB.
+6. **Share**: `/share/[id]` uses the submission’s MongoDB `_id` and **`imageUrl`** for OG tags and display.
+7. **Slideshow**: `/slideshow/[slideshowId]` fetches playlist JSON, renders 16:9 single or mosaic slides, **POSTs play counts** so least-played items surface more often.
 
-**User Management System** (v2.5.0):
-- 4 user types: Administrator, Real User, Pseudo User, Anonymous
-- Role management: Promote/demote users to admin
-- Status control: Activate/deactivate users
-- User merging: Link pseudo users with real accounts
-- Visual status badges and management actions
-- SSO database integration for role/status persistence
+### Major components
 
-**Custom Pages System** (v2.0.0):
-- Onboarding pages before photo capture (data collection, terms acceptance)
-- Thank you pages after sharing (CTAs, additional engagement)
-- Drag-and-drop page ordering in admin UI
-- Templates: Who Are You (name/email), Accept (checkbox consent), CTA (call-to-action)
-- Full GDPR compliance with timestamped consent tracking
+| Layer | Responsibility |
+|--------|------------------|
+| Browser | Camera, canvas compositing, share/download UX, slideshow player (triple-buffer playlists, preload). |
+| Next.js API routes | Events, frames, logos, submissions, slideshows, auth, admin CRUD. |
+| MongoDB | Partners, events, frames, logos, submissions, slideshows; optional user cache; SSO DB reads for inactive-user filtering in playlists. |
+| imgbb | Stores composed and admin-uploaded rasters; returns public URLs and delete URLs. |
 
-**Reusable API Layer** (`lib/api/`):
-- Centralized authentication middleware (`requireAuth`, `requireAdmin`)
-- Standardized response helpers (`apiSuccess`, `apiError`, `apiPaginated`)
-- Error boundary wrapper (`withErrorHandler`)
-- Rate limiting with token bucket algorithm
-- Input sanitization utilities
+### Data flow (camera → slideshow)
 
-**Shared Component Library** (`components/shared/`):
-- `Button` - 4 variants, 3 sizes
-- `Card` - Flexible container with padding options
-- `Badge` - Status indicators with 5 variants
-- `LoadingSpinner` - 3 sizes with animations
+**Video → canvas snapshot** (JPEG, frame aspect) → **second canvas** (photo + frame bitmap) → **JSON POST** → **imgbb** → **MongoDB insert** → **slideshow aggregate** (match by event UUID, sort by `playCount` / `createdAt`) → **`generatePlaylist`** → client display → **`/played`** increments counts.
 
-**Security & Performance**:
-- Content Security Policy (CSP) headers
-- Rate limiting (5-100 req/min depending on endpoint)
-- Input sanitization (XSS, SQL injection, prototype pollution)
-- Static asset caching (1 year)
-- HSTS, X-Frame-Options, X-Content-Type-Options
+---
+
+## 2. Feature Breakdown
+
+### Camera capture (`components/camera/CameraCapture.tsx`)
+
+- **Behavior**: `getUserMedia` with high ideal resolution; front/back switch; Safari-oriented readiness (metadata, `canplay`, delays, double `requestAnimationFrame`); crop to target aspect ratio; front-camera mirror fix on draw; black-frame retry.
+- **Assumptions**: Permissions granted; device exposes a working video track.
+- **Failure modes**: Permission denied, no camera, busy device, over-constrained constraints — user-facing errors and retry.
+
+### Overlay / frame during live preview
+
+- **Component support**: `CameraCapture` can show a full-bleed **`<img>`** overlay when `frameOverlay` is set (frame URL from CDN).
+- **Event capture (`/capture/[eventId]`)**: **`frameOverlay` is intentionally unset** (avoids canvas/CORS issues); alignment is **aspect-ratio viewport + WYSIWYG crop**, not a live SVG mask.
+- **Legacy `/capture`**: passes **`frameOverlay={selectedFrame.imageUrl}`** so users see the frame while framing.
+
+### Image compositing (`app/capture/[eventId]/page.tsx`, legacy `app/capture/page.tsx`)
+
+- **Behavior**: Load photo + frame as images (`crossOrigin = 'anonymous'`), draw photo then frame; frameless events crop toward 16:9 and downscale.
+- **Assumptions**: Frame URL allows canvas use (CORS).
+- **Failure**: Load or draw errors → configurable error message (`errorFrameMessage`).
+
+### Upload pipeline (`lib/imgbb/upload.ts`, `POST /api/submissions`)
+
+- **Behavior**: Base64 to imgbb via multipart API; retries with backoff; 30s timeout; avoids retry on most 4xx (except 429).
+- **Limits**: imgbb free tier documented in code as **32 MB** per image; client compression reduces payload size.
+- **Failure**: Network, quota, validation — surfaces as save failure to the user.
+
+### Database storage
+
+- **Behavior**: One composed image per submission; **`imageUrl`** (and related fields) stored for CDN delivery and slideshows.
+- **Guest events**: `optionalAuth` allows **`userId` / `userEmail`** defaults like anonymous when no SSO session.
+
+### Slideshow (`lib/slideshow/playlist.ts`, `app/slideshow/[slideshowId]/page.tsx`, APIs under `/api/slideshows/...`)
+
+- **Behavior**: 16:9 stage; **single** landscape slides or **mosaics** (e.g. 3× portrait strip, 3×2 square grid); **A/B/C playlist rotation** with exclusion lists to reduce back-to-back repeats; image preload; **fire-and-forget** play-count updates.
+- **Freshness**: New photos appear after **playlist rebuilds** (buffer rotation), not via WebSockets — **near real-time** in the operational sense of “next buffer cycle,” not sub-second.
+
+---
+
+## 3. User Flows
+
+### First-time participant (typical event)
+
+1. Load event → loading UI (optional loading-capture logo).
+2. If custom pages exist before `take-photo` → onboarding (who-are-you, accept, CTA).
+3. Frame selection if multiple frames; otherwise skip to camera.
+4. Capture → compositing overlay → preview → save → share URL / social / copy → NEXT → thank-you pages or flow restart.
+
+### Returning / SSO resume
+
+- Query params like **`?resume=true&page=N`**: session fetch may pre-fill `userInfo` and advance the page index.
+
+### Slideshow viewer
+
+- Open `/slideshow/[slideshowId]` → load settings + playlist → timed advance → on slide show, POST `/played` → rotate buffers and refetch with exclusions when a buffer ends.
+
+### Admin (frames / events)
+
+- **`/admin/*`**: partners, events, frames, logos, slideshows, custom pages. Changes apply to **new** sessions; open capture clients keep prior fetched config until reload.
+
+### Edge cases
+
+- Camera denied, slow networks, imgbb timeouts, empty slideshow, invalid `frameId` on submit (404), clipboard failures for share link.
+
+---
+
+## 4. Data Model
+
+### What the system relies on (submissions)
+
+| Field / pattern | Role |
+|-----------------|------|
+| `imageUrl` | Slideshow, share page, Open Graph — **required** for display. |
+| `eventId` (UUID) or `eventIds[]` | Playlist filter — must match the event’s **`eventId`** UUID (slideshow API resolves slideshow → event document). |
+| `metadata.finalWidth` / `finalHeight` | Aspect detection; missing values **fall back to 1920×1080** in playlist code and can **mis-classify** aspect ratio. |
+| `playCount`, `createdAt` | Fair rotation (least played, then oldest). |
+| `isArchived`, `hiddenFromEvents` | Excluded from slideshow when set. |
+| `userEmail` / `userId` | Slideshow may filter out **inactive SSO** users; anonymous path must remain valid. |
+| Optional: `userInfo`, `consents`, `deleteUrl`, `slideshowPlays`, partner fields | GDPR, analytics, per-slideshow play stats. |
+
+### Schema documentation vs runtime
+
+**`lib/db/schemas.ts`** describes a rich **`Submission`** shape (e.g. `submissionId`, `originalImageUrl`, `finalImageUrl`, `eventIds`). **`POST /api/submissions`** currently persists a **different** document shape (`imageUrl`, singular `eventId`, `userName`, etc.). Slideshow and playlist code often accept **`imageUrl || finalImageUrl`**. **Treat schema drift as operational risk**: new code should align types, persistence, and consumers or keep explicit compatibility shims.
+
+---
+
+## 5. Performance & Constraints
+
+- **Camera**: High ideal resolution increases startup cost; Safari workarounds add latency before first capture.
+- **Canvas**: Two-stage compositing + large bitmaps; mobile memory and thermal limits matter at busy events.
+- **Upload**: Large JSON bodies (base64); server and client CPU for encode/decode.
+- **Slideshow**: Playlist route can **aggregate many submissions** per request; initial load may **fetch and preload multiple full buffers** — burst network and DB load.
+- **Rate limiting**: `lib/api/rateLimiter.ts` defines presets; **`checkRateLimit` is not wired to `POST /api/submissions`** in the current codebase — uploads are not IP-throttled by that helper until integrated.
+
+---
+
+## 6. Failure Modes (summary)
+
+| Area | Detection | Mitigation / UX |
+|------|-----------|------------------|
+| Camera | API errors, black-frame check | Messages, retry, switch camera |
+| Compositing | Thrown errors | User alert |
+| imgbb / network | Axios errors, timeouts | Retries where configured; user retry save |
+| MongoDB | Route errors | `withErrorHandler` → 5xx |
+| Empty slideshow | Empty playlist | “No submissions yet” UI |
+| Play count API | Non-OK response | Logged; playback continues |
+| Inactive-user filter (`getInactiveUserEmails`) | DB/SSO failure | Playlist route may 500 — see code paths |
+
+---
+
+## 7. Scalability
+
+| Scale | Notes |
+|-------|--------|
+| Low tens | Typical single-instance + Mongo + imgbb is fine. |
+| ~100 concurrent | imgbb quotas, Mongo write rate, playlist aggregate cost, CDN egress become visible. |
+| 1k+ | Unbounded aggregation per playlist request is a **memory/CPU** hotspot; triple-buffer refetch amplifies reads. |
+| 10k+ | imgbb as single vendor, write amplification on `/played`, lack of edge caching on API reads — likely need **object storage + CDN**, **bounded queries**, **Redis** (limits, sessions, queues), and **observability**. |
+
+---
+
+## 8. Code & Architecture Quality
+
+- **Strengths**: Clear split between UI (`app/`, `components/`), **`lib/`** (db, imgbb, slideshow, auth), centralized **`withErrorHandler`**, playlist logic isolated in **`lib/slideshow/playlist.ts`**.
+- **Coupling**: Event capture page is a large orchestrator (many `useState` branches); API response shapes sometimes support both wrapped and flat payloads defensively.
+- **Observability**: Heavy **`console.log`** in slideshow/playlist/imgbb paths; no structured logging or metrics in-repo — plan for production tracing.
+- **Docs vs code**: Verify claims such as “rate limiting on all endpoints” against **actual** `checkRateLimit` usage per route.
+
+---
+
+## 9. Security & Privacy
+
+- **Public images**: imgbb URLs and **`/share/[id]`** are world-fetchable if the id is known; OG tags expose the same URL.
+- **Abuse**: Anonymous submit path — consider **rate limits**, **CAPTCHA**, **content moderation**, and **non-guessable share tokens** if requirements tighten.
+- **PII**: `userInfo` and consents on submissions — align with **retention, export, and deletion** policy.
+- **Secrets**: `IMGBB_API_KEY`, Mongo URI, SSO — environment-only; imgbb **delete URLs** are sensitive if logged or leaked.
+
+---
+
+## 10. Roadmap (suggested)
+
+**Short-term**: Wire **`checkRateLimit`** to submission POST (and optionally heavy GETs); reconcile **submission** schema vs DB writes; reduce production console noise; document **event id** semantics (Mongo `_id` on slideshow document vs UUID on submissions).
+
+**Mid-term**: Cap or paginate playlist sourcing; optional **original + final** image storage; unify legacy vs event capture behavior where product allows; moderation / hold queue before slideshow.
+
+**Long-term**: First-party object storage + CDN + signed URLs; multi-tenant quotas; real-time slideshow channel if required; formal privacy tooling.
 
 ---
 
 ## Project Structure
 
 ```
-camera/
-├── app/                    # Next.js App Router
-│   ├── api/               # API routes (24 endpoints)
-│   ├── admin/             # Admin pages
-│   ├── capture/           # Photo capture with custom pages (v2.0.0)
-│   └── profile/           # User profile
+├── app/
+│   ├── api/                 # REST handlers
+│   ├── admin/               # Admin UI
+│   ├── capture/             # /capture + /capture/[eventId]
+│   ├── slideshow/[id]/      # Slideshow player
+│   ├── share/[id]/          # Public share + metadata
+│   └── profile/
 ├── components/
-│   ├── capture/           # Custom page components (v2.0.0)
-│   ├── shared/            # Reusable UI components
-│   └── admin/             # Admin-specific components (v2.0.0)
+│   ├── camera/              # CameraCapture, FileUpload
+│   ├── capture/             # Custom page steps
+│   ├── shared/
+│   └── admin/
 ├── lib/
-│   ├── api/               # API utilities (v2.0.0)
-│   ├── auth/              # Authentication (SSO)
-│   ├── db/                # MongoDB connection & schemas (v2.0.0)
-│   ├── imgbb/             # Image upload to CDN
-│   ├── security/          # Input sanitization
-│   └── slideshow/         # Slideshow playlist logic
-├── docs/                   # Technical documentation
-│   ├── ARCHITECTURE.md    # System architecture (v2.0.0)
-│   ├── TECH_STACK.md      # Technology decisions
-│   ├── NAMING_GUIDE.md    # Code conventions
-│   └── CODE_AUDIT.md      # Refactoring report
-├── TASKLIST.md            # Active tasks
-├── ROADMAP.md             # Future plans
-├── RELEASE_NOTES.md       # Version history
-└── LEARNINGS.md           # Development insights
+│   ├── api/                 # withErrorHandler, responses, rateLimiter
+│   ├── auth/
+│   ├── db/                  # mongodb, schemas, sso helpers
+│   ├── imgbb/
+│   ├── security/
+│   └── slideshow/           # playlist generation
+├── ARCHITECTURE.md          # Deeper architecture (repo root)
+├── TECH_STACK.md
+├── NAMING_GUIDE.md
+└── docs/                    # SLIDESHOW_LOGIC.md, MONGODB_CONVENTIONS.md, …
 ```
 
 ---
 
 ## Documentation Index
 
-### Core Documentation
-1. **README.md** (this file) - Project overview and quick start
-2. **ARCHITECTURE.md** - Complete system architecture and design decisions
-3. **TECH_STACK.md** - Technology choices with justifications
-4. **NAMING_GUIDE.md** - Code naming conventions and patterns
-5. **CODE_AUDIT.md** - v1.7.1 refactoring report
-
-### Development
-6. **TASKLIST.md** - Current tasks and execution plan
-7. **ROADMAP.md** - Future development plans (Q1 2026+)
-8. **RELEASE_NOTES.md** - Version history and changelog
-9. **LEARNINGS.md** - Issues encountered and solutions
-
-### Technical Guides
-10. **docs/MONGODB_CONVENTIONS.md** - Database reference patterns
+| Doc | Purpose |
+|-----|---------|
+| **README.md** | This file — product + system model + ops |
+| **ARCHITECTURE.md** | Deeper architecture |
+| **TECH_STACK.md** | Technology decisions |
+| **NAMING_GUIDE.md** | Conventions |
+| **docs/SLIDESHOW_LOGIC.md** | Slideshow behavior detail |
+| **docs/MONGODB_CONVENTIONS.md** | DB patterns |
+| **RELEASE_NOTES.md** | Changelog |
+| **TASKLIST.md** / **ROADMAP.md** | Planning |
 
 ---
 
-## v2.0.0 Release Summary
+## API Overview
 
-### Implementation Complete ✅
+**Auth**: `GET /api/auth/login`, `GET /api/auth/callback`, `POST /api/auth/logout`, `GET /api/auth/session`
 
-Successfully implemented a comprehensive **Custom Pages System** for the Camera webapp, enabling event organizers to add onboarding pages (before photo capture) and thank you pages (after sharing). This is a **MAJOR release** due to schema changes.
+**Core**: partners, events, frames, logos, submissions (`GET` authenticated list; `POST` create), slideshows `.../playlist`, `.../played`
 
-### What Was Accomplished
-
-**Phase 1: Database & API Layer** ✅
-- Extended Event schema with `customPages: CustomPage[]`
-- Extended Submission schema with `userInfo` and `consents` fields
-- Added `CustomPageType` enum (who-are-you, accept, cta, take-photo)
-- Created PATCH `/api/events/[eventId]` endpoint with full validation
-- Updated POST endpoints to initialize/handle new fields
-
-**Phase 2: Custom Page Components** ✅
-- `WhoAreYouPage.tsx` (214 lines) - Name/email data collection
-- `AcceptPage.tsx` (154 lines) - Terms acceptance with blue theme
-- `CTAPage.tsx` (154 lines) - Call-to-action with purple theme
-- All with dark mode, accessibility, keyboard navigation
-
-**Phase 3: Capture Flow Refactoring** ✅
-- Refactored `app/capture/[eventId]/page.tsx` for multi-step flow
-- Flow: Onboarding → Frame Select → Capture → Preview → Sharing + NEXT → Thank You → Restart
-- State management for page navigation, collected data, consents
-- Required field validation and checkbox validation
-
-**Phase 4: Admin UI** ✅
-- `CustomPagesManager.tsx` (468 lines) - Complete page management system
-- Add/Edit/Delete pages with modal editor
-- Reordering with ▲▼ buttons (no external dependencies)
-- Integrated into event edit page between "Event Details" and "Event is active"
-
-**Phase 5: Testing & Documentation** ✅
-- Fixed JSX className escaped quotes in CustomPagesManager
-- Fixed Next.js 15 route handler type compatibility in withErrorHandler
-- Build passes: TypeScript 0 errors, all 27 pages generated
-- Dev server starts successfully
-- All documentation updated to v2.0.0
-
-### Technical Issues Resolved
-
-1. **JSX Compilation Error**: Escaped quotes in className attributes causing Turbopack failure
-   - Fixed by removing backslashes from all className strings
-
-2. **TypeScript Route Handler Type Mismatch**: withErrorHandler incompatible with Next.js 15
-   - Updated RouteHandler type to use `context?: any` for flexibility
-   - Documented in LEARNINGS.md as [BACK-002]
-
-### Files Modified/Created
-
-**New Components** (4 files, ~990 lines):
-- `components/capture/WhoAreYouPage.tsx`
-- `components/capture/AcceptPage.tsx`
-- `components/capture/CTAPage.tsx`
-- `components/admin/CustomPagesManager.tsx`
-
-**Modified Files** (8 files):
-- `lib/db/schemas.ts` - Schema extensions (v2.0.0)
-- `lib/api/withErrorHandler.ts` - Fixed type compatibility (v2.0.0)
-- `app/api/events/route.ts` - Initialize customPages
-- `app/api/events/[eventId]/route.ts` - Added PATCH endpoint
-- `app/api/submissions/route.ts` - Accept userInfo/consents
-- `app/capture/[eventId]/page.tsx` - Multi-step flow refactor
-- `app/admin/events/[id]/edit/page.tsx` - Integrated CustomPagesManager
-- `package.json` - Version 1.7.2 → 2.0.0
-
-**Documentation Updated** (7 files):
-- `README.md` - v2.0.0 overview with custom pages features
-- `RELEASE_NOTES.md` - Comprehensive v2.0.0 entry (225 lines)
-- `ARCHITECTURE.md` - Version updated to 2.0.0
-- `TASKLIST.md` - Added completion entry for v2.0.0
-- `ROADMAP.md` - Version updated to 2.0.0
-- `LEARNINGS.md` - Added Next.js 15 type compatibility issue
-- `package.json` - Version synchronized
-
-### Impact
-
-**Lines Added/Modified**: ~1,540 lines
-
-**Capabilities Unlocked**:
-- Event organizers can collect user data before photo capture
-- Legal compliance with timestamped consent tracking
-- Post-sharing engagement with thank you pages
-- Flexible flow customization per event
-- Foundation for future page types (video, quiz, survey)
-
----
-
-## Key Improvements from v1.7.1
-
-### Code Quality
-
-### Code Quality
-- ✅ Eliminated ~3,200 lines of duplicated code
-- ✅ Created 1,304 lines of reusable abstractions
-- ✅ Refactored all 24 API routes to use centralized patterns
-- ✅ Fixed all TypeScript compilation errors
-- ✅ Resolved all TODO comments
-
-### Security
-- ✅ Rate limiting on all endpoints
-- ✅ Input sanitization (9 utility functions)
-- ✅ CSP headers configured
-- ✅ Admin role-based access control
-- ✅ XSS, SQL injection, prototype pollution protection
-
-### Documentation
-- ✅ Created 4 mandatory documentation files (2,295 lines)
-- ✅ Synchronized all versions to 1.7.1
-- ✅ Updated all timestamps to ISO 8601 format
-
-### Performance
-- ✅ Static asset caching (1 year immutable)
-- ✅ Optimized database queries
-- ✅ Reduced route complexity by 50%
-
----
-
-## API Endpoints
-
-### Authentication
-- `GET /api/auth/login` - Initiate SSO login
-- `GET /api/auth/callback` - OAuth callback
-- `POST /api/auth/logout` - End session
-
-### Partners & Events
-- `GET /api/partners` - List partners
-- `GET /api/events` - List events
-- `POST /api/events` - Create event (admin)
-
-### Frames
-- `GET /api/frames` - List frames
-- `POST /api/frames` - Upload frame (admin)
-- `PATCH /api/frames/[id]` - Update frame (admin)
-
-### Submissions
-- `GET /api/submissions` - List user submissions
-- `POST /api/submissions` - Create submission
-- `DELETE /api/submissions/[id]` - Delete submission
-
-### Slideshows
-- `GET /api/slideshows/[id]/playlist` - Get slideshow buffer
-- `POST /api/slideshows/[id]/played` - Track play count
-
-See **ARCHITECTURE.md** for complete API documentation.
+See **`ARCHITECTURE.md`** and route files under **`app/api/`** for the full set.
 
 ---
 
 ## Development Guidelines
 
-### Code Standards
-- Use reusable API utilities from `lib/api`
-- Use shared UI components from `components/shared`
-- Follow naming conventions in **NAMING_GUIDE.md**
-- Add "what and why" comments to all code
-- Never commit secrets in plain text
+- Prefer **`lib/api`** helpers and **`withErrorHandler`** for new routes.
+- Follow **`NAMING_GUIDE.md`**.
+- Before release: **`npm run build`** passes; secrets only in env; avoid logging delete URLs or PII.
 
-### Before Committing
-1. Run `npm run build` - Must pass
-2. Increment version (PATCH before dev, MINOR before commit)
-3. Update all documentation files
-4. Verify timestamps in ISO 8601 format
-5. Check Definition of Done criteria
+### Version protocol (from team practice)
 
-### Version Protocol
-- **PATCH** (1.7.X) - Before `npm run dev`
-- **MINOR** (1.X.0) - Before `git commit`
-- **MAJOR** (X.0.0) - Only when explicitly instructed
+- **PATCH** before local dev iteration
+- **MINOR** before commit when appropriate
+- **MAJOR** only when explicitly required
 
 ---
 
 ## Environment Variables
 
 ```bash
-# MongoDB
 MONGODB_URI=mongodb+srv://...
 
-# SSO Authentication
-SSO_BASE_URL=https://sso.doneisbetter.com
-SSO_CLIENT_ID=your_client_id
+SSO_BASE_URL=https://...
+SSO_CLIENT_ID=...
 SSO_REDIRECT_URI=http://localhost:3000/api/auth/callback
 
-# imgbb.com CDN
-IMGBB_API_KEY=your_api_key
+IMGBB_API_KEY=...
 
-# Email (Resend)
-RESEND_API_KEY=your_api_key
+RESEND_API_KEY=...
 RESEND_FROM_EMAIL=noreply@yourdomain.com
 ```
 
@@ -327,17 +299,14 @@ RESEND_FROM_EMAIL=noreply@yourdomain.com
 
 ## License
 
-Proprietary - All rights reserved
+Proprietary — all rights reserved.
 
 ---
 
 ## Support
 
-For issues or questions, refer to:
-- **ARCHITECTURE.md** - System design and patterns
-- **LEARNINGS.md** - Common issues and solutions
-- **TASKLIST.md** - Current development status
+- **ARCHITECTURE.md** — design detail  
+- **LEARNINGS.md** — incidents and fixes  
+- **TASKLIST.md** — active work  
 
----
-
-**v2.0.0** | 🔐 Authentication via SSO | ☁️ Powered by MongoDB Atlas | 📧 Email delivery with Resend
+SSO · MongoDB Atlas · imgbb · Resend
