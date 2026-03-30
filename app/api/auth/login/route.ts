@@ -13,7 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { generatePKCEPair, generateState, getAuthorizationUrl } from '@/lib/auth/sso';
-import { storePendingSession } from '@/lib/auth/session';
+import { setPendingSessionCookie } from '@/lib/auth/session';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,13 +23,6 @@ export async function GET(request: NextRequest) {
     // Generate state for CSRF protection
     const state = generateState();
 
-    // Store PKCE verifier and state in temporary cookie
-    // Will be used in callback to verify the response
-    await storePendingSession({
-      codeVerifier,
-      state,
-    });
-    
     // Check if user just logged out (from query param or referer)
     const { searchParams } = new URL(request.url);
     const fromLogout = searchParams.get('from_logout') === 'true';
@@ -42,8 +35,11 @@ export async function GET(request: NextRequest) {
 
     console.log(`✓ Initiating OAuth flow${fromLogout ? ' (force re-auth after logout)' : ''}, redirecting to SSO`);
 
-    // Redirect user to SSO for authentication
-    return NextResponse.redirect(authUrl);
+    // Set pending cookie on the same response as the redirect so Set-Cookie is not dropped
+    // (cookies().set + NextResponse.redirect is unreliable in App Router route handlers)
+    const response = NextResponse.redirect(authUrl);
+    setPendingSessionCookie(response, { codeVerifier, state });
+    return response;
     
   } catch (error) {
     console.error('✗ Login initiation failed:', error);

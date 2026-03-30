@@ -44,12 +44,8 @@ export async function GET(request: NextRequest) {
     scope: 'openid profile email',
   };
 
-  // Create session
-  await createSession(mockUser, mockTokens);
-
-  // Redirect to homepage using request origin
   const origin = request.nextUrl.origin;
   const response = NextResponse.redirect(new URL('/', origin));
-
+  await createSession(mockUser, mockTokens, undefined, response);
   return response;
 }

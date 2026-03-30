@@ -19,7 +19,10 @@
  */
 
 import { cookies } from 'next/headers';
+import type { NextResponse } from 'next/server';
 import { SSOUser, TokenResponse, refreshAccessToken } from './sso';
+
+const PENDING_SESSION_COOKIE_NAME = 'camera_pending_session';
 
 const SESSION_COOKIE_NAME = 'camera_session';
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
@@ -55,12 +58,14 @@ export interface PendingSession {
  * @param user - User information from SSO
  * @param tokens - Access and refresh tokens
  * @param appPermission - App-specific permission from SSO (optional)
+ * @param response - If provided, Set-Cookie is applied to this response (required for redirects in Route Handlers)
  * @returns Created session
  */
 export async function createSession(
   user: SSOUser,
   tokens: TokenResponse,
-  appPermission?: { appRole?: 'none' | 'user' | 'admin' | 'superadmin'; appAccess?: boolean }
+  appPermission?: { appRole?: 'none' | 'user' | 'admin' | 'superadmin'; appAccess?: boolean },
+  response?: NextResponse
 ): Promise<Session> {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_MAX_AGE * 1000);
@@ -77,14 +82,21 @@ export async function createSession(
     appAccess: appPermission?.appAccess,
   };
 
-  // Store session in HttpOnly cookie
-  (await cookies()).set(SESSION_COOKIE_NAME, JSON.stringify(session), {
+  const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'lax' as const,
     maxAge: SESSION_MAX_AGE,
     path: '/',
-  });
+  };
+
+  const payload = JSON.stringify(session);
+
+  if (response) {
+    response.cookies.set(SESSION_COOKIE_NAME, payload, cookieOptions);
+  } else {
+    (await cookies()).set(SESSION_COOKIE_NAME, payload, cookieOptions);
+  }
 
   console.log('✓ Session created for user:', user.email);
   return session;
@@ -135,12 +147,15 @@ export async function clearSession(): Promise<void> {
 }
 
 /**
- * Store pending session data during OAuth flow
- * Used to verify state and code_verifier in callback
- * 
- * @param data - PKCE verifier and state
+ * Attach pending OAuth session (PKCE + state) to a redirect response.
+ * In App Router route handlers, cookies().set() is not reliably merged with
+ * NextResponse.redirect(); setting on the response ensures the browser receives
+ * camera_pending_session before the user is sent to the IdP.
  */
-export async function storePendingSession(data: Omit<PendingSession, 'createdAt' | 'expiresAt'>): Promise<void> {
+export function setPendingSessionCookie(
+  response: NextResponse,
+  data: Omit<PendingSession, 'createdAt' | 'expiresAt'>
+): void {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes
 
@@ -150,11 +165,11 @@ export async function storePendingSession(data: Omit<PendingSession, 'createdAt'
     expiresAt: expiresAt.toISOString(),
   };
 
-  (await cookies()).set('camera_pending_session', JSON.stringify(pendingSession), {
+  response.cookies.set(PENDING_SESSION_COOKIE_NAME, JSON.stringify(pendingSession), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 15 * 60, // 15 minutes
+    maxAge: 15 * 60,
     path: '/',
   });
 }
@@ -167,14 +182,14 @@ export async function storePendingSession(data: Omit<PendingSession, 'createdAt'
  */
 export async function consumePendingSession(): Promise<PendingSession | null> {
   const cookieStore = await cookies();
-  const pendingCookie = cookieStore.get('camera_pending_session');
+  const pendingCookie = cookieStore.get(PENDING_SESSION_COOKIE_NAME);
 
   if (!pendingCookie) {
     return null;
   }
 
   // Clear the cookie immediately (one-time use)
-  cookieStore.delete('camera_pending_session');
+  cookieStore.delete(PENDING_SESSION_COOKIE_NAME);
 
   try {
     const pending: PendingSession = JSON.parse(pendingCookie.value);

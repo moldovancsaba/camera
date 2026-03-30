@@ -54,7 +54,10 @@ export async function GET(request: NextRequest) {
 
     // Verify state matches (CSRF protection)
     if (pendingSession.state !== state) {
-      console.error('✗ State mismatch - possible CSRF attack');
+      console.error('✗ State mismatch (e.g. second login tab overwrote cookie, or stale redirect)', {
+        cookieStateLen: pendingSession.state.length,
+        queryStateLen: state.length,
+      });
       return NextResponse.redirect(
         new URL('/?error=invalid_state&message=Invalid state parameter', request.url)
       );
@@ -137,11 +140,6 @@ export async function GET(request: NextRequest) {
       // Continue with default (no access) - user will see access denied page
     }
 
-    // Create session with user, tokens, and app permission
-    await createSession(user, tokens, { appRole, appAccess });
-
-    console.log('✓ Session created');
-
     // Check for capture flow resume (v2.9.0: SSO in capture flow)
     const captureEventId = request.cookies.get('captureEventId')?.value;
     const capturePageIndex = request.cookies.get('capturePageIndex')?.value;
@@ -156,22 +154,21 @@ export async function GET(request: NextRequest) {
         resumeUrl.searchParams.set('page', capturePageIndex);
       }
       
-      // Create response with redirect
       const response = NextResponse.redirect(resumeUrl);
-      
-      // Clear capture cookies on the response
       response.cookies.delete('captureEventId');
       response.cookies.delete('capturePageIndex');
-      
+
+      await createSession(user, tokens, { appRole, appAccess }, response);
+      console.log('✓ Session created');
       return response;
     }
 
     console.log('✓ Redirecting to homepage');
 
-    // Redirect to homepage
-    // Note: Future enhancement - redirect to /profile or "where you left off" page
-    // See ROADMAP.md Q1 2026 - User Experience Improvements
-    return NextResponse.redirect(new URL('/', request.url));
+    const homeResponse = NextResponse.redirect(new URL('/', request.url));
+    await createSession(user, tokens, { appRole, appAccess }, homeResponse);
+    console.log('✓ Session created');
+    return homeResponse;
     
   } catch (error) {
     console.error('✗ OAuth callback failed:', error);
