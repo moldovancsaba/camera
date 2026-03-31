@@ -161,6 +161,18 @@
       margin-bottom: 10px;
     }
 
+    p.note.section-intro {
+      max-width: 920px;
+      margin: -4px 0 14px;
+    }
+
+    .step .workshop-meta {
+      font-size: 12px;
+      color: #64748b;
+      margin: -4px 0 10px;
+      line-height: 1.45;
+    }
+
     .ui {
       border: 1px dashed var(--line);
       border-radius: 10px;
@@ -1136,10 +1148,47 @@
       padding: 14px;
     }
 
+    .notes-box h3 {
+      margin: 0 0 6px;
+      font-size: 16px;
+      color: #422006;
+    }
+
+    .notes-box h4 {
+      margin: 18px 0 6px;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #713f12;
+    }
+
+    .notes-box h4:first-of-type {
+      margin-top: 0;
+    }
+
+    .notes-box p.notes-lead {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: #713f12;
+      line-height: 1.45;
+    }
+
     .notes-box ul {
-      margin: 8px 0 0 18px;
+      margin: 6px 0 0 18px;
       padding: 0;
       color: #5f4a00;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .notes-box ul ul {
+      margin-top: 4px;
+      margin-bottom: 4px;
+    }
+
+    .notes-box li {
+      margin-bottom: 4px;
     }
 
     .result-card {
@@ -1864,11 +1913,12 @@
     </div>
 
     <h2 class="section-title">Workflow Map (Detailed)</h2>
+    <p class="note section-intro">Aligned to the interactive stamps (0–9) and consent substeps (4a–c). Use this grid for workshop scope, instrumentation, and hand-offs — the phones column is the canonical UX reference.</p>
     <section class="flow-grid">
       <article class="step mobile">
         <div class="index">0</div>
-        <h2>Entry Point (Browser Start)</h2>
-        <p class="note">Journey starts outside app: scan QR with default camera, open direct social link, or type URL in browser.</p>
+        <h2>Entry · Browser-only start</h2>
+        <p class="note">No app install: QR opens the default camera or a deep link lands in the in-browser experience. First paint must carry tenant/event branding and trust cues.</p>
         <div class="ui">
           <button class="btn">Scan QR (default camera app)</button>
           <button class="btn">Tap FB / Instagram link</button>
@@ -1877,16 +1927,17 @@
           <div class="line short"></div>
         </div>
         <div class="kpi">
-          <span>QR-to-open success%</span>
-          <span>social link open%</span>
-          <span>browser load success%</span>
+          <span>QR → landing success%</span>
+          <span>deep link open%</span>
+          <span>time-to-interactive</span>
+          <span>bounce by channel</span>
         </div>
       </article>
 
       <article class="step mobile">
         <div class="index">1</div>
-        <h2>Step 1: Language Selection</h2>
-        <p class="note">After browser landing, choose language first and continue to capture flow.</p>
+        <h2>Language · Locale before capture</h2>
+        <p class="note">Copy, date/number formats, and downstream email templates inherit the selection. Decide whether locale is sticky per device or per session.</p>
         <div class="ui">
           <select class="field" aria-label="Language selector">
             <option selected>English</option>
@@ -1899,266 +1950,351 @@
           <div class="line short"></div>
         </div>
         <div class="kpi">
-          <span>landing to continue%</span>
-          <span>language change%</span>
-          <span>step1 completion rate</span>
+          <span>continue without change%</span>
+          <span>switch rate</span>
+          <span>drop-off before camera</span>
         </div>
       </article>
 
       <article class="step mobile">
         <div class="index">2</div>
-        <h2>Step 2: Instant Capture</h2>
-        <p class="note">Camera opens immediately with safe-area guide; back camera preferred.</p>
+        <h2>Capture · Creative + safe area</h2>
+        <p class="note">Orientation and safe zone come from creative config, not device rotation alone. Permission denial, gallery upload, and retake are first-class paths with analytics.</p>
         <div class="ui">
           <button class="btn primary">Back Camera</button>
-          <button class="btn secondary">Show branded frame safe area</button>
+          <button class="btn secondary">Branded frame / safe area</button>
           <button class="btn">Upload from Gallery</button>
           <button class="btn">Retake</button>
           <div class="line mid"></div>
         </div>
         <div class="kpi">
-          <span>camera permission accept%</span>
-          <span>retake ratio</span>
+          <span>permission grant%</span>
+          <span>retake / abandon ratio</span>
+          <span>upload vs live capture split</span>
         </div>
       </article>
 
       <article class="step break mobile">
         <div class="index">3</div>
-        <h2>Step 3: Get Photo + Offer</h2>
-        <p class="note">After upload success, guest chooses how to continue: email verification or social login. Both paths lead to the same consent + policy gate before auth completes.</p>
+        <h2>Offer · Post-upload branch</h2>
+        <p class="note">Guest sees success state, optional sponsor CTA, and routes into Step 4 (consent + auth). Workshop: define whether contact capture always precedes result preview or only on certain tenant tiers.</p>
         <div class="ui">
-          <button class="btn success">Photo Uploaded Successfully</button>
-          <button class="btn">Continue with Email</button>
-          <button class="btn">Continue with Social Login</button>
+          <button class="btn success">Upload complete</button>
+          <button class="btn warning">Sponsor CTA (optional)</button>
+          <button class="btn primary">Continue to consent / login</button>
+          <button class="btn">Inline policy review link</button>
           <div class="line"></div>
         </div>
         <div class="kpi">
-          <span>upload success%</span>
-          <span>guest-to-login start%</span>
-          <span>email vs social split</span>
+          <span>upload → continue%</span>
+          <span>sponsor CTA click%</span>
+          <span>time on success card</span>
         </div>
       </article>
 
       <article class="step break mobile">
-        <div class="index">4A</div>
-        <h2>Step 4A: Email + Required Consents + Policy Links</h2>
-        <p class="note">User enters email (magic link or OTP). Privacy Policy, Marketing Consent, and Terms must be accepted, with link-out pages for each, before verify or inbox CTA can fire.</p>
+        <div class="index">4</div>
+        <h2>Consent gate · Auth disabled until valid</h2>
+        <p class="note">Matches the main Step 4 screen: required checkboxes (e.g. privacy + marketing) and policy link-outs. Login CTA stays disabled until rules pass — same pattern for email or social path after substeps 4a–c.</p>
         <div class="ui">
-          <button class="btn">Email field + send verify</button>
           <button class="btn">Required consent checkboxes</button>
-          <button class="btn">Open policy landing pages</button>
-          <button class="btn success">Continue after verify + all accepted</button>
+          <button class="btn">Open policy / terms (new tab)</button>
+          <button class="btn primary" disabled type="button">Login (gated)</button>
+          <div class="line"></div>
         </div>
         <div class="kpi">
-          <span>email verify start%</span>
-          <span>all-consents acceptance%</span>
-          <span>policy page open%</span>
+          <span>gate completion%</span>
+          <span>policy link opens per user</span>
+          <span>abandon at gate</span>
         </div>
       </article>
 
       <article class="step mobile">
-        <div class="index">4B</div>
-        <h2>Step 4B: Social Login + Required Consents + Policy Links</h2>
-        <p class="note">User picks Google / Apple / Facebook. Same required consents and policy links as 4A; OAuth only continues after every required box is checked.</p>
+        <div class="index">4a</div>
+        <h2>Sub · Privacy policy</h2>
+        <p class="note">Dedicated surface for Privacy acceptance and version tracking. Workshop: which jurisdictions need explicit scroll-to-end vs checkbox-only?</p>
         <div class="ui">
-          <button class="btn">Social login providers</button>
-          <button class="btn">Required consent checkboxes</button>
-          <button class="btn">Open policy landing pages</button>
-          <button class="btn success">Continue after all accepted</button>
+          <button class="btn">Privacy policy (hosted)</button>
+          <button class="btn success">Accept + return</button>
+          <div class="line short"></div>
         </div>
         <div class="kpi">
-          <span>all-consents acceptance%</span>
-          <span>policy page open%</span>
-          <span>social auth start%</span>
+          <span>policy version seen</span>
+          <span>return-to-app success%</span>
         </div>
       </article>
 
       <article class="step mobile">
-        <div class="index">5A</div>
-        <h2>Step 5A: Email Login → Branded Result + Share</h2>
-        <p class="note">After Step 4A completes, user sees branded image with event + logo, then shares.</p>
+        <div class="index">4b</div>
+        <h2>Sub · Marketing consent</h2>
+        <p class="note">Separate record from privacy; drives comms opt-in. Clarify double opt-in where required and how it ties to email capture.</p>
         <div class="ui">
-          <button class="btn">Email Field + Verify</button>
-          <button class="btn success">Return Branded Image</button>
-          <button class="btn">Share Facebook / Instagram / WhatsApp</button>
-          <button class="btn">Copy Link</button>
+          <button class="btn">Marketing consent copy</button>
+          <button class="btn">Channel preferences (future)</button>
+          <div class="line short"></div>
         </div>
         <div class="kpi">
-          <span>email auth success%</span>
-          <span>branded result view%</span>
-          <span>share rate</span>
+          <span>marketing opt-in rate</span>
+          <span>correlation with completion</span>
         </div>
       </article>
 
       <article class="step mobile">
-        <div class="index">5B</div>
-        <h2>Step 5B: Social Login → Branded Result + Share</h2>
-        <p class="note">After Step 4B completes, user sees branded image with event + logo, then shares.</p>
+        <div class="index">4c</div>
+        <h2>Sub · Terms + unlock</h2>
+        <p class="note">Final legal ack before OAuth or email verify. Capture timestamp + policy bundle id for audit exports (see Platform card C).</p>
         <div class="ui">
-          <button class="btn">Google / Apple / Facebook</button>
-          <button class="btn success">Return Branded Image</button>
-          <button class="btn">Share Facebook / Instagram / WhatsApp</button>
-          <button class="btn">Copy Link</button>
+          <button class="btn">Terms &amp; Conditions</button>
+          <button class="btn success">All set — enable login</button>
+          <div class="line short"></div>
         </div>
         <div class="kpi">
-          <span>social auth success%</span>
-          <span>branded result view%</span>
-          <span>share rate</span>
+          <span>terms acceptance%</span>
+          <span>funnel 4a→4c drop</span>
+        </div>
+      </article>
+
+      <article class="step mobile">
+        <div class="index">5</div>
+        <h2>Branded result · Mailbox + share</h2>
+        <p class="note">Single outcome after auth (email or social): branded hero, “Check your mailbox” for Step 6 handoff, Share → public Step 7 URL. Workshop: social proof copy and share channel priority per tenant.</p>
+        <div class="ui">
+          <button class="btn success">Branded result</button>
+          <button class="btn">Check your mailbox</button>
+          <button class="btn">Share (social / copy link)</button>
+          <div class="line"></div>
+        </div>
+        <div class="kpi">
+          <span>result engagement time</span>
+          <span>share initiation%</span>
+          <span>mailbox CTA click%</span>
         </div>
       </article>
 
       <article class="step mobile">
         <div class="index">6</div>
-        <h2>Step 6: Email Delivery from Fancam</h2>
-        <p class="note">After login success, user gets an email from Fancam with event banner, branded photo, and sponsor CTA.</p>
+        <h2>Email · Fancam-delivered package</h2>
+        <p class="note">Transactional send: banner, narrative, CTA ordering (sponsor vs photo), deliverability (SPF/DKIM), and deep links back into Step 7/8/9 destinations.</p>
         <div class="ui">
-          <button class="btn">New email in mobile inbox</button>
-          <button class="btn">Body: thank you + your photo message</button>
-          <button class="btn success">CTA then photo</button>
-          <button class="btn warning">Sponsor CTA in email</button>
+          <button class="btn">Inbox: Fancam sender</button>
+          <button class="btn">Hero + body + CTA stack</button>
+          <button class="btn warning">Sponsor CTA</button>
+          <button class="btn">Event meta strip</button>
           <div class="line"></div>
         </div>
         <div class="kpi">
-          <span>email delivery%</span>
-          <span>email open%</span>
-          <span>email CTA click%</span>
+          <span>delivery%</span>
+          <span>open / click%</span>
+          <span>CTA attribution by position</span>
         </div>
       </article>
 
       <article class="step mobile">
         <div class="index">7</div>
-        <h2>Step 7: Shared Photo Landing Page</h2>
-        <p class="note">Each captured photo gets its own share URL page with event info, branded image, and sponsor CTA.</p>
+        <h2>Share URL · Public photopage</h2>
+        <p class="note">Stable URL per capture; SEO/social cards; sponsor CTA visible to visitors who never went through capture. Abuse / takedown workflow ties to Platform ops.</p>
         <div class="ui">
-          <button class="btn">Open unique photo URL</button>
-          <button class="btn success">View branded photo</button>
-          <button class="btn warning">Sponsor CTA button</button>
+          <button class="btn">Unique /p/… URL</button>
+          <button class="btn success">Branded layout</button>
+          <button class="btn warning">Sponsor CTA</button>
           <div class="line"></div>
         </div>
         <div class="kpi">
-          <span>share page open%</span>
-          <span>branded photo view%</span>
-          <span>sponsor CTA click%</span>
+          <span>visitor vs owner views</span>
+          <span>CTR on public page</span>
+          <span>viral depth (# hops)</span>
         </div>
       </article>
 
       <article class="step mobile">
         <div class="index">8</div>
-        <h2>Step 8: Sponsor CTA Landing Page</h2>
-        <p class="note">CTA buttons and sponsor logo clicks redirect to the sponsor landing page using the same CTA color theme.</p>
+        <h2>Sponsor landing · Partner-owned</h2>
+        <p class="note">Off-platform conversion; UTM + event id pass-through. Workshop: SLA for broken links, seasonal swaps, and who edits copy without redeploying capture app.</p>
         <div class="ui">
-          <button class="btn warning">CTA Redirect Target</button>
-          <button class="btn">Sponsor Offer Content</button>
-          <button class="btn">Conversion Action</button>
+          <button class="btn warning">Sponsor destination</button>
+          <button class="btn">Offer / promo content</button>
+          <button class="btn">Conversion pixel (if allowed)</button>
           <div class="line"></div>
         </div>
         <div class="kpi">
-          <span>CTA redirect success%</span>
-          <span>sponsor page dwell time</span>
-          <span>landing conversion rate</span>
+          <span>handoff success%</span>
+          <span>sponsor funnel conversion</span>
+          <span>revenue / lead proxy</span>
         </div>
       </article>
 
       <article class="step mobile">
         <div class="index">9</div>
-        <h2>Step 9: Event Landing Page</h2>
-        <p class="note">Same landing-page structure as Step 8, but managed by the Event for event-specific content and CTAs.</p>
+        <h2>Event landing · Organizer-owned</h2>
+        <p class="note">Parallel to sponsor: event brand, agenda, tickets, or secondary CTAs. Entry from banner meta, forward from email, or in-flow tiles — keep analytics separate from sponsor KPIs.</p>
         <div class="ui">
-          <button class="btn warning">Event Landing Target</button>
-          <button class="btn">Event Content Block</button>
-          <button class="btn">Event Conversion Action</button>
+          <button class="btn warning">Event destination</button>
+          <button class="btn">Event content modules</button>
+          <button class="btn">Secondary CTA</button>
           <div class="line"></div>
         </div>
         <div class="kpi">
-          <span>event landing open%</span>
-          <span>event page dwell time</span>
-          <span>event conversion rate</span>
+          <span>event landing CTR</span>
+          <span>dwell + scroll depth</span>
+          <span>cross-sell to sponsor%</span>
         </div>
       </article>
 
     </section>
 
     <h2 class="section-title">Platform / Business Layer</h2>
+    <p class="note section-intro">What sits behind the phones: who configures it, what ships in MVP vs later, and which dependencies block the journey above. Pair each card with owners in your RACI.</p>
     <section class="flow-grid">
       <article class="step end">
         <div class="index">A</div>
         <h2>White label &amp; tenant branding</h2>
-        <p class="note">Each partner or event gets isolated brand tokens, locales, and optional journey tweaks without forked code.</p>
+        <p class="note">Isolated brand tokens, locales, and journey variants per tenant without forking the capture app. Creative orientation and safe-area rules propagate from here into Step 2 and share surfaces (7).</p>
+        <p class="workshop-meta"><strong>MVP:</strong> domain/logo/colors, one locale pack, default journey. <strong>Later:</strong> per-event overrides, A/B copy slots, self-serve brand QA. <strong>Owners:</strong> product + design systems; <strong>depends on:</strong> CDN asset pipeline, OG/social crawler behavior.</p>
         <div class="ui">
           <button class="btn">Tenant / vanity domain</button>
           <button class="btn">Logo, favicon, OG image</button>
           <button class="btn">Color + typography tokens</button>
           <button class="btn">Copy packs per language</button>
           <button class="btn">Journey variant (email-first / social-first)</button>
+          <button class="btn">Creative manifest (orientation, safe area)</button>
         </div>
         <div class="kpi">
-          <span>median partner setup time</span>
-          <span>brand QA pass rate</span>
-          <span>locales live per tenant</span>
+          <span>median tenant go-live (days)</span>
+          <span>brand QA first-pass %</span>
+          <span>locales × active tenants</span>
+          <span>journey misconfig incidents</span>
         </div>
       </article>
 
       <article class="step end">
         <div class="index">B</div>
         <h2>Event &amp; sponsor console</h2>
-        <p class="note">Commercial layer: who funds the experience, which CTAs fire, and how creatives (frames, safe areas) roll out by campaign.</p>
+        <p class="note">Commercial control plane: campaign dates, sponsor tier, which CTAs appear in Step 3/5/6/7, and where Steps 8–9 deep-link. Frame uploads and URL swaps should not require an app release.</p>
+        <p class="workshop-meta"><strong>MVP:</strong> event CRUD, one sponsor slot, static landing URLs. <strong>Later:</strong> multi-sponsor rotation, scheduled CTA changes, partner self-service. <strong>Owners:</strong> CS + partnerships; <strong>depends on:</strong> analytics taxonomy, legal approval on sponsor copy.</p>
         <div class="ui">
-          <button class="btn">Create / archive event</button>
+          <button class="btn">Create / archive / clone event</button>
           <button class="btn">Attach sponsor tier &amp; assets</button>
-          <button class="btn">Configure sponsor + event landing URLs</button>
-          <button class="btn">Upload frame + safe-area presets</button>
-          <button class="btn">Export analytics pack (CSV)</button>
+          <button class="btn">Sponsor + event landing URLs + UTM templates</button>
+          <button class="btn">Frame + safe-area presets per event</button>
+          <button class="btn">Role-based access (org / sponsor / read-only)</button>
+          <button class="btn">Export analytics pack (CSV / API)</button>
         </div>
         <div class="kpi">
-          <span>active events</span>
-          <span>sponsor attach rate</span>
-          <span>rollup CTA CTR</span>
+          <span>events with sponsor attached %</span>
+          <span>broken CTA / 404 rate</span>
+          <span>rollup CTR by placement (3 vs 6 vs 7)</span>
+          <span>time-to-update sponsor URL</span>
         </div>
       </article>
 
       <article class="step end">
         <div class="index">C</div>
         <h2>Consent, privacy &amp; data governance</h2>
-        <p class="note">Maps end-user Steps 4A/4B to enforceable records: policy versions, consent proof, retention, and regional rules.</p>
+        <p class="note">Maps Steps 4 and 4a–c to enforceable records: which policy version was shown, when checkboxes were accepted, and how marketing vs transactional bases differ. Feeds DSAR, breach response, and sponsor data-sharing agreements.</p>
+        <p class="workshop-meta"><strong>MVP:</strong> versioned Pp / Mk / T&amp;C, consent timestamp + user id, export for legal. <strong>Later:</strong> geo rules engine, automated retention jobs, partner subprocessors register. <strong>Owners:</strong> legal + DPO + eng; <strong>depends on:</strong> identity model, email vs OAuth identifier stability.</p>
         <div class="ui">
-          <button class="btn">Policy version map (Pp / Mk / T&amp;C)</button>
-          <button class="btn">Consent audit log export</button>
-          <button class="btn">Retention &amp; deletion windows</button>
-          <button class="btn">Region / DPA routing</button>
-          <button class="btn">DSAR intake queue</button>
+          <button class="btn">Policy bundle per tenant / region</button>
+          <button class="btn">Consent audit log + immutable append</button>
+          <button class="btn">Retention &amp; deletion windows per data class</button>
+          <button class="btn">Region / DPA / subprocessors map</button>
+          <button class="btn">DSAR intake → fulfillment SLA</button>
+          <button class="btn">Sponsor data-use addendum flags</button>
         </div>
         <div class="kpi">
-          <span>consent coverage %</span>
-          <span>policy drift incidents</span>
+          <span>consent coverage % (complete gate)</span>
+          <span>policy version drift / incidents</span>
           <span>DSAR SLA hit rate</span>
+          <span>deletion request cycle time</span>
         </div>
       </article>
 
       <article class="step end">
         <div class="index">D</div>
         <h2>Platform ops &amp; delivery</h2>
-        <p class="note">Engineering backbone: Vercel-first deploys, secrets, observability, and release safety nets for the capture + delivery stack.</p>
+        <p class="note">Runtime for capture, image processing, transactional email (6), and public photopages (7). Workshop topics: cold starts, queue backlogs during peaks, and kill switches for consent or sponsor CTAs.</p>
+        <p class="workshop-meta"><strong>MVP:</strong> prod + staging, secrets, basic uptime alerts, rollback. <strong>Later:</strong> multi-region, chaos drills, cost guardrails per tenant. <strong>Owners:</strong> platform eng + SRE; <strong>depends on:</strong> ESP contract, object storage lifecycle, WAF rules.</p>
         <div class="ui">
           <button class="btn">Production + preview pipelines</button>
           <button class="btn">Secrets &amp; environment matrix</button>
-          <button class="btn">Uptime / API SLO dashboard</button>
-          <button class="btn">Error budget + alerting</button>
-          <button class="btn">Feature flags &amp; kill switches</button>
+          <button class="btn">Uptime / API SLO + RUM</button>
+          <button class="btn">Error budget + paging policy</button>
+          <button class="btn">Feature flags &amp; kill switches (CTA, capture)</button>
+          <button class="btn">Image pipeline quotas &amp; abuse throttles</button>
         </div>
         <div class="kpi">
-          <span>deploy frequency</span>
-          <span>MTTR (P1)</span>
-          <span>p95 edge latency</span>
+          <span>deploy frequency &amp; lead time</span>
+          <span>MTTR (P1) / change failure rate</span>
+          <span>p95 edge TTFB + API latency</span>
+          <span>email deferral / bounce rate</span>
         </div>
       </article>
     </section>
 
     <section class="notes-box">
       <h3>Iteration Checklist (Next Workshop)</h3>
+      <p class="notes-lead">Work the list top-down in the room: capture decisions, assign owners and dates, then park non-blocking ideas. Duplicate bullets into your issue tracker with step numbers (0–9, 4a–c) in the title.</p>
+
+      <h4>Decisions &amp; scope (blockers)</h4>
       <ul>
-        <li>Should we collect contact data before or after result preview?</li>
-        <li>Which Android conditions should activate popup login?</li>
-        <li>Which fields should be mandatory in white-label mode?</li>
+        <li>Contact capture <strong>before</strong> vs <strong>after</strong> branded result preview — legal, conversion, and sponsor narrative implications.</li>
+        <li>Single auth path vs maintaining <strong>email + social</strong> in parallel; deprecation plan if one wins.</li>
+        <li>Which <strong>consent combinations</strong> are mandatory per region (privacy-only vs privacy + marketing + terms) and how 4a–c map to live checkboxes.</li>
+        <li><strong>Android / in-app browser</strong> rules: when to force full browser, popup login, or custom tabs; exact user-agent and WebView detection policy.</li>
+        <li><strong>White-label</strong>: mandatory fields (address, company, VAT) vs optional; who validates and stores them.</li>
+        <li><strong>Sponsor vs event</strong> CTA precedence when both appear on the same screen (3, 5, 6, 7).</li>
+      </ul>
+
+      <h4>Product &amp; UX</h4>
+      <ul>
+        <li>Step 2: retake limits, gallery-only events, and messaging when camera permission is denied.</li>
+        <li>Step 3: copy and layout for optional sponsor tile; “continue” vs “skip” semantics.</li>
+        <li>Step 4 gate: inline error copy when login is tapped early; loading states during OAuth return.</li>
+        <li>Step 5: primary action hierarchy — mailbox vs share vs save image.</li>
+        <li>Steps 7–9: empty states, expired events, and takedown UX for public URLs.</li>
+        <li>Accessibility pass on consent checkboxes, policy links, and focus order after tab return.</li>
+      </ul>
+
+      <h4>Legal &amp; consent</h4>
+      <ul>
+        <li>Policy hosting URLs, version numbering, and <strong>what “accept”</strong> means for each checkbox.</li>
+        <li>Marketing opt-in vs transactional email — separate proof points in the audit log.</li>
+        <li>Minors / parental flows if relevant to your verticals.</li>
+        <li>Data retention defaults per asset type (raw photo, composite, metadata, consents).</li>
+        <li>Sponsor access to PII: contract checklist and technical enforcement (no leakage in Step 7 analytics).</li>
+      </ul>
+
+      <h4>Commercial &amp; go-to-market</h4>
+      <ul>
+        <li>Sponsor package definitions tied to UI placements (email, share page, capture interstitial).</li>
+        <li>Reporting package for partners: which KPIs from the workflow map are contractually committed.</li>
+        <li>Co-marketing: OG images, UTM conventions, and post-event recap data cuts.</li>
+      </ul>
+
+      <h4>Data &amp; analytics</h4>
+      <ul>
+        <li>Event naming schema across funnel, email, and landings; single guest id across steps.</li>
+        <li>Dashboards: funnel 0→9, drop at 4/4a–c, share virality (7), sponsor CTR (8).</li>
+        <li>Sampling vs full capture of policy link opens; GDPR-friendly retention for behavioral logs.</li>
+      </ul>
+
+      <h4>Engineering &amp; integrations</h4>
+      <ul>
+        <li>ESP templates for Step 6: localization, dynamic modules, link tracking limits.</li>
+        <li>OAuth provider set (Google / Apple / Facebook) and fallback when provider is down.</li>
+        <li>Rate limits and CAPTCHA triggers on auth and share URL creation.</li>
+        <li>CDN cache rules for photopages and policy static pages.</li>
+      </ul>
+
+      <h4>Prep before the workshop</h4>
+      <ul>
+        <li>Current funnel numbers or a dry-run recording of the interactive journey on iOS + Android.</li>
+        <li>Print or PDF of this map + platform cards for annotating in the room.</li>
+        <li>List of open incidents (broken CTAs, consent bugs, email delays) to sanity-check against the map.</li>
+      </ul>
+
+      <h4>Parking lot (non-goals for this session)</h4>
+      <ul>
+        <li>Items moved here explicitly — revisit in backlog grooming, not in the core workshop timebox.</li>
       </ul>
     </section>
   </main>
@@ -2190,16 +2326,16 @@
         },
         "3": {
           title: "Step 3: Get Photo + Offer",
-          summary: "After upload, user picks email or social; both paths require the same consent + policy step before branded unlock.",
-          trigger: "Continue with Email or Social Login.",
-          outcome: "User enters Step 4A (email) or 4B (social) with required consents.",
+          summary: "After upload, user continues toward auth; optional sponsor CTA. Email and social paths share the same Step 4 consent gate and 4a–c policy surfaces before unlock.",
+          trigger: "Continue to consent / login (and optional sponsor CTA).",
+          outcome: "User reaches Step 4 with required consents and substeps 4a–c before branded result.",
           owner: "Fancam capture flow"
         },
         "4": {
-          title: "Step 4: Social Login + Required Consents",
-          summary: "User must accept all required checkboxes first; only then social login can continue.",
-          trigger: "Open policy links and return to login; enable Login to continue when Privacy + Marketing are accepted.",
-          outcome: "After all required consents, proceed to branded result.",
+          title: "Step 4: Consent gate + login",
+          summary: "Required checkboxes (e.g. privacy + marketing) and policy link-outs; login stays disabled until rules pass — same pattern after 4a–c drill-downs in the demo.",
+          trigger: "Accept policies and check required boxes; then Login.",
+          outcome: "After all required consents, proceed to Step 5 branded result.",
           owner: "Fancam capture flow"
         },
         "5": {
