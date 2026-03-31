@@ -729,8 +729,9 @@
       }
 
       .phones .screen .email-body {
-        padding: 12px;
+        padding: 12px 18px 12px 12px;
         gap: 10px;
+        scrollbar-gutter: stable;
       }
 
       .phones .screen .email-copy {
@@ -1040,8 +1041,9 @@
     .safe-label {
       position: absolute;
       left: 50%;
-      bottom: 8px;
-      transform: translateX(-50%);
+      top: 50%;
+      bottom: auto;
+      transform: translate(-50%, -50%);
       background: rgba(15, 23, 42, 0.85);
       color: #f8fafc;
       border-radius: 999px;
@@ -1049,6 +1051,7 @@
       line-height: 1;
       padding: 4px 8px;
       letter-spacing: 0.01em;
+      z-index: 1;
     }
 
     .branch-section {
@@ -1171,18 +1174,19 @@
     .email-body {
       display: grid;
       gap: 8px;
-      padding: 8px;
+      padding: 8px 14px 8px 8px;
       max-height: 190px;
       overflow-y: auto;
       overflow-x: hidden;
       min-width: 0;
       scrollbar-width: thin;
+      scrollbar-gutter: stable;
       scrollbar-color: #cbd5e1 transparent;
-      padding-right: 6px;
+      box-sizing: border-box;
     }
 
     .email-body::-webkit-scrollbar {
-      width: 6px;
+      width: 8px;
     }
 
     .email-body::-webkit-scrollbar-track {
@@ -1196,7 +1200,7 @@
 
     /* Step 6: inbox preview grows with the screen; scroll inside body only if content overflows. */
     .phones .phone[data-step="6"] .screen {
-      grid-template-rows: auto auto auto 1fr auto;
+      grid-template-rows: auto auto auto 1fr auto auto;
       align-content: stretch;
     }
 
@@ -1212,6 +1216,32 @@
       min-height: 0;
       max-height: none;
       overflow-y: auto;
+      padding: 10px 22px 10px 10px;
+      gap: 9px;
+      scrollbar-gutter: stable;
+    }
+
+    .phones .phone[data-step="6"] .email-body .btn.cta-tile-1x1 {
+      width: 100%;
+      max-width: 100%;
+      padding: 10px 8px;
+      font-size: 0.9rem;
+      line-height: 1.25;
+    }
+
+    @media (max-width: 1099px) {
+      .phones .phone[data-step="6"] .email-body {
+        padding: 12px 24px 12px 12px;
+      }
+
+      .phones .phone[data-step="6"] .email-body .btn.cta-tile-1x1 {
+        font-size: 0.875rem;
+        padding: 10px 8px;
+      }
+    }
+
+    .phones .phone[data-step="6"] .email-body .brand-banner {
+      padding: 8px 10px;
     }
 
     .email-copy {
@@ -1565,6 +1595,7 @@
               </div>
             </div>
           </div>
+          <button class="btn secondary" type="button" data-activate-step="2">Capture another moment</button>
         </div>
       </article>
 
@@ -2087,10 +2118,10 @@
           owner: "Fancam capture flow"
         },
         "4": {
-          title: "Step 4: Auth + required consents (Email 4A or Social 4B)",
-          summary: "Parallel paths after Step 3: (4A) email capture with verify, or (4B) social OAuth. Both require Privacy Policy, Marketing Consent, and Terms with link-out policy pages before auth can finish.",
-          trigger: "Complete checkboxes, open policies as needed, then email verify or social login.",
-          outcome: "Successful auth unlocks branded result and share (Step 5A or 5B).",
+          title: "Step 4: Social Login + Required Consents",
+          summary: "User must accept all required checkboxes first; only then social login can continue.",
+          trigger: "Open policy links and return to social login; enable Login to continue when Privacy + Marketing are accepted.",
+          outcome: "After all required consents, proceed to branded result.",
           owner: "Fancam capture flow"
         },
         "5": {
@@ -2181,7 +2212,7 @@
 
         /* Inline display would override mobile CSS; sidecard is desktop-only (consent steps hidden there). */
         if (workflowSidecard) {
-          const isConsentStage = stepId === "4" || stepId === "4a" || stepId === "4b" || stepId === "4c";
+          const isConsentStage = stepId === "4a" || stepId === "4b" || stepId === "4c";
           const isDesktopDemo = window.matchMedia("(min-width: 1100px)").matches;
           if (isDesktopDemo) {
             workflowSidecard.style.display = isConsentStage ? "none" : "grid";
