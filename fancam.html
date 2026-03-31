@@ -1959,31 +1959,73 @@
     <section class="flow-grid">
       <article class="step end">
         <div class="index">A</div>
-        <h2>White Label Mode</h2>
-        <p class="note">Partner branding: logo, colors, copy, and journey variants.</p>
+        <h2>White label &amp; tenant branding</h2>
+        <p class="note">Each partner or event gets isolated brand tokens, locales, and optional journey tweaks without forked code.</p>
         <div class="ui">
-          <button class="btn">Upload Logo</button>
-          <button class="btn">Set Brand Colors</button>
-          <button class="btn">Edit Journey Copy</button>
+          <button class="btn">Tenant / vanity domain</button>
+          <button class="btn">Logo, favicon, OG image</button>
+          <button class="btn">Color + typography tokens</button>
+          <button class="btn">Copy packs per language</button>
+          <button class="btn">Journey variant (email-first / social-first)</button>
         </div>
         <div class="kpi">
-          <span>setup time / partner</span>
-          <span>brand completion%</span>
+          <span>median partner setup time</span>
+          <span>brand QA pass rate</span>
+          <span>locales live per tenant</span>
         </div>
       </article>
 
       <article class="step end">
         <div class="index">B</div>
-        <h2>Deployment Direction</h2>
-        <p class="note">Based on notes: build on the existing Vercel development path.</p>
+        <h2>Event &amp; sponsor console</h2>
+        <p class="note">Commercial layer: who funds the experience, which CTAs fire, and how creatives (frames, safe areas) roll out by campaign.</p>
         <div class="ui">
-          <div class="line"></div>
-          <div class="line mid"></div>
-          <div class="line short"></div>
+          <button class="btn">Create / archive event</button>
+          <button class="btn">Attach sponsor tier &amp; assets</button>
+          <button class="btn">Configure sponsor + event landing URLs</button>
+          <button class="btn">Upload frame + safe-area presets</button>
+          <button class="btn">Export analytics pack (CSV)</button>
         </div>
         <div class="kpi">
-          <span>release frequency</span>
-          <span>hotfix lead time</span>
+          <span>active events</span>
+          <span>sponsor attach rate</span>
+          <span>rollup CTA CTR</span>
+        </div>
+      </article>
+
+      <article class="step end">
+        <div class="index">C</div>
+        <h2>Consent, privacy &amp; data governance</h2>
+        <p class="note">Maps end-user Steps 4A/4B to enforceable records: policy versions, consent proof, retention, and regional rules.</p>
+        <div class="ui">
+          <button class="btn">Policy version map (Pp / Mk / T&amp;C)</button>
+          <button class="btn">Consent audit log export</button>
+          <button class="btn">Retention &amp; deletion windows</button>
+          <button class="btn">Region / DPA routing</button>
+          <button class="btn">DSAR intake queue</button>
+        </div>
+        <div class="kpi">
+          <span>consent coverage %</span>
+          <span>policy drift incidents</span>
+          <span>DSAR SLA hit rate</span>
+        </div>
+      </article>
+
+      <article class="step end">
+        <div class="index">D</div>
+        <h2>Platform ops &amp; delivery</h2>
+        <p class="note">Engineering backbone: Vercel-first deploys, secrets, observability, and release safety nets for the capture + delivery stack.</p>
+        <div class="ui">
+          <button class="btn">Production + preview pipelines</button>
+          <button class="btn">Secrets &amp; environment matrix</button>
+          <button class="btn">Uptime / API SLO dashboard</button>
+          <button class="btn">Error budget + alerting</button>
+          <button class="btn">Feature flags &amp; kill switches</button>
+        </div>
+        <div class="kpi">
+          <span>deploy frequency</span>
+          <span>MTTR (P1)</span>
+          <span>p95 edge latency</span>
         </div>
       </article>
     </section>
