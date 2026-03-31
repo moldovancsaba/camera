@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>fancam_userjourney_refactoring</title>
   <style>
     :root {
@@ -19,18 +21,45 @@
 
     * { box-sizing: border-box; }
 
+    html {
+      overflow-x: hidden;
+      max-width: 100%;
+    }
+
     body {
       margin: 0;
       font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
       background: var(--bg);
       color: var(--ink);
       line-height: 1.45;
+      overflow-x: hidden;
+      max-width: 100%;
+    }
+
+    img,
+    picture,
+    svg,
+    video {
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* Sticky columns need a non-hidden horizontal scrollport on ancestors; clamp width with max-width instead. */
+    @media (min-width: 1100px) {
+      html {
+        overflow-x: visible;
+      }
+
+      body {
+        overflow-x: visible;
+      }
     }
 
     .wrap {
       max-width: 1320px;
       margin: 0 auto;
       padding: 24px;
+      /* overflow-x here breaks position:sticky for columns; html/body clamp horizontal scroll */
     }
 
     h1, h2, h3, p { margin: 0; }
@@ -148,6 +177,8 @@
       font-size: 13px;
       text-align: left;
       cursor: pointer;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     .field {
@@ -186,6 +217,19 @@
       background: var(--violet);
       color: white;
       border-color: var(--violet);
+    }
+
+    /* Full-width sponsor/event CTA tile (class name kept for markup compatibility). */
+    .btn.cta-tile-1x1 {
+      aspect-ratio: 5 / 3;
+      width: 100%;
+      max-width: none;
+      margin-inline: 0;
+      justify-content: center;
+      text-align: center;
+      padding: 10px 12px;
+      box-sizing: border-box;
+      align-self: stretch;
     }
 
     .line {
@@ -253,8 +297,10 @@
         display: grid;
         gap: 8px;
         align-content: start;
+        align-self: start;
         position: sticky;
-        top: 16px;
+        top: 20px;
+        z-index: 2;
       }
     }
 
@@ -324,20 +370,65 @@
 
     @media (min-width: 1100px) {
       .workflow-sidecard {
+        align-self: start;
         position: sticky;
-        top: 16px;
+        top: 20px;
+        z-index: 2;
       }
     }
 
-    .workflow-sidecard h3 {
-      font-size: 18px;
-      line-height: 1.25;
+    .workflow-sidecard-brand {
+      border: 2px dashed var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      background: var(--card);
+      margin-bottom: 4px;
     }
 
-    .workflow-sidecard p {
+    .workflow-sidecard-brand-title {
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin: 0 0 8px;
+      color: var(--ink);
+      text-align: center;
+    }
+
+    .workflow-sidecard-brand-name {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 0 0 6px;
+      line-height: 1.25;
+      text-align: center;
+      color: var(--ink);
+    }
+
+    .workflow-sidecard-brand-lead {
+      font-size: 14px;
+      color: var(--muted);
+      margin: 0 0 10px;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .workflow-sidecard-brand .legend {
+      margin-top: 0;
+    }
+
+    .workflow-sidecard-step h3 {
+      font-size: 18px;
+      line-height: 1.25;
+      margin: 0;
+    }
+
+    .workflow-sidecard-step > p {
       font-size: 13px;
       color: #475569;
-      margin: 0;
+      margin: 8px 0 0;
+    }
+
+    .workflow-sidecard-step .workflow-points {
+      margin-top: 10px;
     }
 
     .workflow-points {
@@ -371,11 +462,37 @@
     }
 
     @media (max-width: 1099px) {
+      html {
+        height: 100%;
+        overflow: hidden;
+        overflow-x: hidden;
+        overscroll-behavior: none;
+        overscroll-behavior-x: none;
+      }
+
+      /* Single-screen shell: no document scroll; only .screen.scrollable (and nested panels) may scroll. */
+      body {
+        height: 100%;
+        overflow: hidden;
+        overflow-x: hidden;
+        overscroll-behavior: none;
+        overscroll-behavior-x: none;
+        touch-action: manipulation;
+        -webkit-text-size-adjust: 100%;
+      }
+
       .wrap {
         max-width: none;
         width: 100%;
         margin: 0;
         padding: 0;
+        height: 100%;
+        max-height: 100vh;
+        max-height: 100dvh;
+        overflow: hidden;
+        overflow-x: hidden;
+        display: flex;
+        flex-direction: column;
       }
 
       .topbar,
@@ -383,16 +500,32 @@
       .flow-grid,
       .notes-box,
       .section-title,
+      #workflow-sidecard,
       .workflow-sidecard {
-        display: none;
+        display: none !important;
       }
 
       .journey-stage {
-        display: block;
+        flex: 1 1 0;
+        min-height: 0;
+        overflow: hidden;
+        overflow-x: hidden;
+        display: flex;
+        flex-direction: column;
       }
 
       .phones {
-        display: block;
+        flex: 1 1 0;
+        min-height: 0;
+        overflow: hidden;
+        overflow-x: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Unwrap policy sub-steps so the active phone can fill the flex column */
+      .phones .policy-row {
+        display: contents;
       }
 
       .phones .phone {
@@ -412,6 +545,12 @@
 
       .phones .phone.is-active {
         display: flex;
+        flex: 1 1 0;
+        min-height: 0;
+        max-height: 100%;
+        flex-direction: column;
+        overflow: hidden;
+        overflow-x: hidden;
         border: none;
         background: transparent;
         box-shadow: none;
@@ -422,15 +561,10 @@
         display: none;
       }
 
-      .phones .screen {
-        border-radius: 0;
-        height: auto;
-        min-height: 100vh;
-      }
-
       .mobile-back-btn {
-        display: block;
+        display: flex;
         margin-top: auto;
+        flex-shrink: 0;
         width: 100%;
         border: 1px solid #cbd5e1;
         border-radius: 9px;
@@ -440,6 +574,232 @@
         font-weight: 600;
         padding: 9px 10px;
         cursor: pointer;
+      }
+
+      /* Handheld viewport: readable body copy (~16px), ~48px touch targets, safe-area insets.
+         Scoped to .phones .screen so the ~320px desktop mockup sizing stays unchanged. */
+      .phones .screen {
+        border-radius: 0;
+        flex: 1 1 0;
+        min-height: 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        overflow-x: hidden;
+        align-content: unset;
+        padding:
+          max(20px, calc(env(safe-area-inset-top, 0px) + 10px))
+          max(20px, env(safe-area-inset-right, 0px))
+          max(28px, env(safe-area-inset-bottom, 0px))
+          max(20px, env(safe-area-inset-left, 0px));
+        gap: 14px;
+      }
+
+      .phones .screen.scrollable {
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        overscroll-behavior-x: none;
+        touch-action: pan-y;
+      }
+
+      .phones .screen h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        line-height: 1.25;
+        letter-spacing: -0.02em;
+      }
+
+      .phones .screen p {
+        font-size: 1rem;
+        line-height: 1.5;
+      }
+
+      .phones .screen .ui {
+        gap: 12px;
+        padding: 14px;
+        border-radius: 14px;
+      }
+
+      .phones .screen .btn,
+      .phones .screen .mobile-back-btn {
+        min-height: 48px;
+        padding: 14px 16px;
+        font-size: 1rem;
+        line-height: 1.25;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        touch-action: manipulation;
+      }
+
+      .phones .screen .field,
+      .phones .screen select.field {
+        min-height: 48px;
+        padding: 12px 14px;
+        font-size: 16px;
+        border-radius: 12px;
+      }
+
+      .phones .screen .kpi {
+        margin-top: 14px;
+        padding-top: 12px;
+        gap: 8px;
+      }
+
+      .phones .screen .kpi span {
+        font-size: 0.8125rem;
+        padding: 8px 12px;
+      }
+
+      .phones .screen .brand-banner {
+        padding: 12px 14px;
+        border-radius: 14px;
+        gap: 12px;
+      }
+
+      .phones .screen .brand-banner-label {
+        font-size: 0.6875rem;
+      }
+
+      .phones .screen .brand-banner-title {
+        font-size: 1rem;
+      }
+
+      .phones .screen .brand-banner-logo {
+        width: 48px;
+        height: 48px;
+      }
+
+      .phones .screen .capture-preview {
+        height: 148px;
+        border-radius: 12px;
+      }
+
+      .phones .screen .capture-scenarios {
+        gap: 12px;
+      }
+
+      .phones .screen .capture-scenario-label {
+        font-size: 0.75rem;
+        padding: 6px 8px;
+      }
+
+      .phones .screen .safe-label {
+        font-size: 0.75rem;
+        padding: 6px 10px;
+      }
+
+      .phones .screen .result-card {
+        padding: 12px;
+        gap: 10px;
+        border-radius: 12px;
+      }
+
+      .phones .screen .result-image {
+        height: 168px;
+        border-radius: 12px;
+      }
+
+      .phones .screen .result-badge {
+        font-size: 0.75rem;
+        padding: 6px 10px;
+      }
+
+      .phones .screen .result-share {
+        gap: 10px;
+      }
+
+      .phones .screen .email-client {
+        border-radius: 14px;
+      }
+
+      .phones .screen .email-header {
+        padding: 12px 14px;
+      }
+
+      .phones .screen .email-subject {
+        font-size: 0.8125rem;
+      }
+
+      .phones .screen .email-from {
+        font-size: 0.75rem;
+      }
+
+      .phones .screen .email-body {
+        padding: 12px;
+        gap: 10px;
+      }
+
+      .phones .screen .email-copy {
+        font-size: 0.9375rem;
+        line-height: 1.45;
+      }
+
+      .phones .screen .cta-landing {
+        font-size: 0.9375rem;
+        padding: 16px;
+        border-radius: 12px;
+      }
+
+      .phones .screen .caution-note {
+        font-size: 0.875rem;
+        padding: 12px 14px;
+        line-height: 1.45;
+      }
+
+      .phones .screen .feedback-badge {
+        font-size: 1rem;
+        padding: 12px 14px;
+        border-radius: 12px;
+      }
+
+      .phones .screen .auth-info {
+        font-size: 1rem;
+        padding: 12px 14px;
+        border-radius: 12px;
+      }
+
+      .phones .screen .consent-check {
+        min-height: 48px;
+        padding: 12px 14px;
+        font-size: 1rem;
+        gap: 12px;
+        border-radius: 12px;
+      }
+
+      .phones .screen .consent-check input {
+        width: 22px;
+        height: 22px;
+      }
+
+      .phones .screen .consent-link {
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 1rem;
+        min-height: 48px;
+        padding: 12px 4px 12px 0;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        text-align: left;
+        touch-action: manipulation;
+      }
+
+      .phones .screen .consent-link-stack .consent-link {
+        min-height: 0;
+        padding: 6px 4px 6px 0;
+      }
+
+      .phones .screen .btn.cta-tile-1x1 {
+        min-height: unset;
+      }
+
+      .phones .screen .line {
+        height: 12px;
+        border-radius: 6px;
       }
     }
 
@@ -485,14 +845,17 @@
       padding: 12px;
       flex: 1;
       min-height: 0;
+      min-width: 0;
       display: grid;
       gap: 9px;
       align-content: start;
       overflow: hidden;
+      overflow-x: hidden;
     }
 
     .screen.scrollable {
       overflow-y: auto;
+      overflow-x: hidden;
       scrollbar-width: thin;
       scrollbar-color: #cbd5e1 transparent;
     }
@@ -579,8 +942,9 @@
 
     .capture-scenarios {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
+      min-width: 0;
     }
 
     .capture-scenario {
@@ -781,6 +1145,8 @@
       border-radius: 10px;
       background: #ffffff;
       overflow: hidden;
+      overflow-x: hidden;
+      min-width: 0;
     }
 
     .email-header {
@@ -808,6 +1174,8 @@
       padding: 8px;
       max-height: 190px;
       overflow-y: auto;
+      overflow-x: hidden;
+      min-width: 0;
       scrollbar-width: thin;
       scrollbar-color: #cbd5e1 transparent;
       padding-right: 6px;
@@ -826,10 +1194,31 @@
       border-radius: 999px;
     }
 
+    /* Step 6: inbox preview grows with the screen; scroll inside body only if content overflows. */
+    .phones .phone[data-step="6"] .screen {
+      grid-template-rows: auto auto auto 1fr auto;
+      align-content: stretch;
+    }
+
+    .phones .phone[data-step="6"] .email-client {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .phones .phone[data-step="6"] .email-body {
+      flex: 1 1 0;
+      min-height: 0;
+      max-height: none;
+      overflow-y: auto;
+    }
+
     .email-copy {
       font-size: 11px;
       color: #334155;
       margin: 0;
+      overflow-wrap: anywhere;
     }
 
     .cta-landing {
@@ -911,23 +1300,21 @@
       color: #0550ae;
     }
 
+    .consent-link-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      align-items: stretch;
+    }
+
+    .consent-link-stack .consent-link {
+      width: 100%;
+    }
+
   </style>
 </head>
 <body>
   <main class="wrap">
-    <section class="topbar">
-      <h1>fancam_userjourney_refactoring</h1>
-      <p>Interactive, mobile-first workflow draft for team alignment and iteration.</p>
-      <div class="legend">
-        <span class="tag">Guest-first flow</span>
-        <span class="tag">QR / direct link entry</span>
-        <span class="tag">Back camera priority</span>
-        <span class="tag">Contact gate before photo + offer</span>
-        <span class="tag">White-label ready</span>
-      </div>
-    </section>
-
-    <h2 class="section-title">Mobile Screen Wireframe (Team Demo View)</h2>
     <div class="journey-stage">
     <nav class="step-stamps" aria-label="Journey step shortcuts">
       <button class="step-stamp is-active" data-step-shortcut="0"><span class="num">0</span><span class="lbl">Entry</span></button>
@@ -951,11 +1338,6 @@
           <button class="btn secondary" data-activate-step="1">Open Direct Link (FB / Instagram)</button>
           <button class="btn secondary" data-activate-step="1">Type URL in Browser</button>
           <button class="btn primary" data-activate-step="1">Open Web App</button>
-          <div class="kpi">
-            <span>KPI: QR to landing success</span>
-            <span>KPI: social link open rate</span>
-            <span>KPI: browser load success</span>
-          </div>
         </div>
       </article>
 
@@ -980,11 +1362,6 @@
             <option>Romanian</option>
           </select>
           <button class="btn primary" data-activate-step="2">Continue</button>
-          <div class="kpi">
-            <span>KPI: landing → capture CTR</span>
-            <span>KPI: language selection rate</span>
-            <span>KPI: QR success rate</span>
-          </div>
         </div>
       </article>
 
@@ -1019,10 +1396,6 @@
           <button class="btn primary" data-activate-step="3">Take Photo</button>
           <button class="btn secondary" data-activate-step="3">Submit Photo</button>
           <button class="btn secondary" data-activate-step="2">Retake</button>
-          <div class="kpi">
-            <span>KPI: camera open success</span>
-            <span>KPI: upload completion</span>
-          </div>
         </div>
       </article>
 
@@ -1041,13 +1414,9 @@
             </span>
           </div>
           <div class="feedback-badge">Guest Upload Complete</div>
-          <button class="btn warning" data-activate-step="8">Sponsor CTA: Visit Partner Offer</button>
+          <button class="btn warning cta-tile-1x1" data-activate-step="8">Sponsor CTA: Visit Partner Offer</button>
           <button class="btn violet" data-activate-step="4">Continue</button>
           <button class="btn secondary" data-activate-step="4">Review Privacy / Marketing / Terms</button>
-          <div class="kpi">
-            <span>KPI: guest → lead conversion</span>
-            <span>KPI: offer open rate</span>
-          </div>
         </div>
       </article>
 
@@ -1078,14 +1447,12 @@
             <input type="checkbox" id="consent-terms" />
             <span>I accept Terms and Conditions</span>
           </label>
-          <button class="consent-link" data-activate-step="4a">Open Privacy Policy</button>
-          <button class="consent-link" data-activate-step="4b">Open Marketing Consent</button>
-          <button class="consent-link" data-activate-step="4c">Open Terms and Conditions</button>
-          <button class="btn success" id="step4-login-btn" data-activate-step="5" disabled>Login to continue</button>
-          <div class="kpi">
-            <span>KPI: all-consents acceptance rate</span>
-            <span>KPI: policy page open rate</span>
+          <div class="consent-link-stack">
+            <button type="button" class="consent-link" data-activate-step="4a">Open Privacy Policy</button>
+            <button type="button" class="consent-link" data-activate-step="4b">Open Marketing Consent</button>
+            <button type="button" class="consent-link" data-activate-step="4c">Open Terms and Conditions</button>
           </div>
+          <button class="btn success" id="step4-login-btn" data-activate-step="5" disabled>Login to continue</button>
         </div>
       </article>
 
@@ -1156,10 +1523,6 @@
               <button class="btn secondary" data-activate-step="6">Copy Link</button>
             </div>
           </div>
-          <div class="kpi">
-            <span>KPI: branded result view rate</span>
-            <span>KPI: social share rate</span>
-          </div>
         </div>
       </article>
 
@@ -1183,7 +1546,7 @@
               <span class="email-from">From: Fancam</span>
             </div>
             <div class="email-body">
-              <button class="btn warning" data-activate-step="8">Sponsor CTA: Visit Partner Offer</button>
+              <button class="btn warning cta-tile-1x1" data-activate-step="8">Sponsor CTA: Visit Partner Offer</button>
               <p class="email-copy">We are happy to have you at the event, and thank you for sharing your memories. Here is your photo.</p>
               <div class="result-image">
                 <div class="result-badge">
@@ -1201,11 +1564,6 @@
                 </span>
               </div>
             </div>
-          </div>
-          <div class="kpi">
-            <span>KPI: email open rate</span>
-            <span>KPI: photo click-through rate</span>
-            <span>KPI: sponsor CTA click rate</span>
           </div>
         </div>
       </article>
@@ -1232,11 +1590,7 @@
               </div>
             </div>
             <button class="btn secondary">Unique URL: /share/photo-id</button>
-            <button class="btn warning" data-activate-step="8">Sponsor CTA: Visit Partner Offer</button>
-          </div>
-          <div class="kpi">
-            <span>KPI: share page open rate</span>
-            <span>KPI: sponsor CTA click rate</span>
+            <button class="btn warning cta-tile-1x1" data-activate-step="8">Sponsor CTA: Visit Partner Offer</button>
           </div>
         </div>
       </article>
@@ -1247,9 +1601,6 @@
           <h3>Step 8: Sponsor CTA Landing Page</h3>
           <p>This is the destination page where CTA clicks and sponsor logo clicks redirect users.</p>
           <p class="caution-note">This landing page is created and managed by the Sponsor/Partner.</p>
-          <div class="cta-landing">
-            CTA Landing Page
-          </div>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
               <span class="brand-banner-label">Event</span>
@@ -1260,12 +1611,8 @@
             </span>
           </div>
           <div class="result-card">
-            <button class="btn warning">Partner Offer / Sponsor Content</button>
+            <button class="btn warning cta-tile-1x1">Partner Offer / Sponsor Content</button>
             <button class="btn secondary" data-activate-step="9">Go to Event Landing Page</button>
-          </div>
-          <div class="kpi">
-            <span>KPI: CTA redirect success rate</span>
-            <span>KPI: sponsor page engagement</span>
           </div>
         </div>
       </article>
@@ -1276,9 +1623,6 @@
           <h3>Step 9: Event Landing Page</h3>
           <p>This landing page uses the same structure as Sponsor landing, but it is event-owned.</p>
           <p class="caution-note">This landing page is created and managed by the Event.</p>
-          <div class="cta-landing">
-            Event Landing Page
-          </div>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
               <span class="brand-banner-label">Event</span>
@@ -1289,31 +1633,41 @@
             </span>
           </div>
           <div class="result-card">
-            <button class="btn warning">Event Offer / Event Content</button>
+            <button class="btn warning cta-tile-1x1">Event Offer / Event Content</button>
             <button class="btn secondary">Event Details</button>
-          </div>
-          <div class="kpi">
-            <span>KPI: event landing page opens</span>
-            <span>KPI: event CTA engagement</span>
           </div>
         </div>
       </article>
     </section>
     <aside class="workflow-sidecard" id="workflow-sidecard" aria-live="polite">
-      <h3 id="workflow-sidecard-title">Step 0: Entry Point (Browser Only)</h3>
-      <p id="workflow-sidecard-summary">Users enter via QR scan, direct social links, or typed URL, and always land in-browser.</p>
-      <div class="workflow-points">
-        <div class="workflow-point">
-          <strong>Trigger</strong>
-          <span id="workflow-sidecard-trigger">Scan QR, tap social link, or type URL.</span>
+      <header class="workflow-sidecard-brand" aria-label="Demo document header">
+        <h2 class="workflow-sidecard-brand-title">Mobile Screen Wireframe (Team Demo View)</h2>
+        <p class="workflow-sidecard-brand-name">fancam_userjourney_refactoring</p>
+        <p class="workflow-sidecard-brand-lead">Interactive, mobile-first workflow draft for team alignment and iteration.</p>
+        <div class="legend">
+          <span class="tag">Guest-first flow</span>
+          <span class="tag">QR / direct link entry</span>
+          <span class="tag">Back camera priority</span>
+          <span class="tag">Contact gate before photo + offer</span>
+          <span class="tag">White-label ready</span>
         </div>
-        <div class="workflow-point">
-          <strong>Outcome</strong>
-          <span id="workflow-sidecard-outcome">Open web app and continue to language selection.</span>
-        </div>
-        <div class="workflow-point">
-          <strong>Owner</strong>
-          <span id="workflow-sidecard-owner">Fancam capture flow</span>
+      </header>
+      <div class="workflow-sidecard-step">
+        <h3 id="workflow-sidecard-title">Step 0: Entry Point (Browser Only)</h3>
+        <p id="workflow-sidecard-summary">Users enter via QR scan, direct social links, or typed URL, and always land in-browser.</p>
+        <div class="workflow-points">
+          <div class="workflow-point">
+            <strong>Trigger</strong>
+            <span id="workflow-sidecard-trigger">Scan QR, tap social link, or type URL.</span>
+          </div>
+          <div class="workflow-point">
+            <strong>Outcome</strong>
+            <span id="workflow-sidecard-outcome">Open web app and continue to language selection.</span>
+          </div>
+          <div class="workflow-point">
+            <strong>Owner</strong>
+            <span id="workflow-sidecard-owner">Fancam capture flow</span>
+          </div>
         </div>
       </div>
     </aside>
@@ -1448,7 +1802,7 @@
       <article class="step break mobile">
         <div class="index">3</div>
         <h2>Step 3: Get Photo + Offer</h2>
-        <p class="note">After upload success, ask for email or social login to return and share branded image.</p>
+        <p class="note">After upload success, guest chooses how to continue: email verification or social login. Both paths lead to the same consent + policy gate before auth completes.</p>
         <div class="ui">
           <button class="btn success">Photo Uploaded Successfully</button>
           <button class="btn">Continue with Email</button>
@@ -1462,10 +1816,27 @@
         </div>
       </article>
 
+      <article class="step break mobile">
+        <div class="index">4A</div>
+        <h2>Step 4A: Email + Required Consents + Policy Links</h2>
+        <p class="note">User enters email (magic link or OTP). Privacy Policy, Marketing Consent, and Terms must be accepted, with link-out pages for each, before verify or inbox CTA can fire.</p>
+        <div class="ui">
+          <button class="btn">Email field + send verify</button>
+          <button class="btn">Required consent checkboxes</button>
+          <button class="btn">Open policy landing pages</button>
+          <button class="btn success">Continue after verify + all accepted</button>
+        </div>
+        <div class="kpi">
+          <span>email verify start%</span>
+          <span>all-consents acceptance%</span>
+          <span>policy page open%</span>
+        </div>
+      </article>
+
       <article class="step mobile">
-        <div class="index">4</div>
-        <h2>Step 4: Social Login + Consents + Policy Links</h2>
-        <p class="note">Before social login proceeds, user accepts Privacy Policy, Marketing Consent, and Terms and Conditions with links to each policy page.</p>
+        <div class="index">4B</div>
+        <h2>Step 4B: Social Login + Required Consents + Policy Links</h2>
+        <p class="note">User picks Google / Apple / Facebook. Same required consents and policy links as 4A; OAuth only continues after every required box is checked.</p>
         <div class="ui">
           <button class="btn">Social login providers</button>
           <button class="btn">Required consent checkboxes</button>
@@ -1475,14 +1846,14 @@
         <div class="kpi">
           <span>all-consents acceptance%</span>
           <span>policy page open%</span>
-          <span>consent completion%</span>
+          <span>social auth start%</span>
         </div>
       </article>
 
       <article class="step mobile">
-        <div class="index">5</div>
+        <div class="index">5A</div>
         <h2>Step 5A: Email Login → Branded Result + Share</h2>
-        <p class="note">User logs in with email, receives branded image with event + logo, then shares.</p>
+        <p class="note">After Step 4A completes, user sees branded image with event + logo, then shares.</p>
         <div class="ui">
           <button class="btn">Email Field + Verify</button>
           <button class="btn success">Return Branded Image</button>
@@ -1499,7 +1870,7 @@
       <article class="step mobile">
         <div class="index">5B</div>
         <h2>Step 5B: Social Login → Branded Result + Share</h2>
-        <p class="note">User logs in with social provider, receives branded image with event + logo, then shares.</p>
+        <p class="note">After Step 4B completes, user sees branded image with event + logo, then shares.</p>
         <div class="ui">
           <button class="btn">Google / Apple / Facebook</button>
           <button class="btn success">Return Branded Image</button>
@@ -1668,23 +2039,23 @@
         },
         "3": {
           title: "Step 3: Get Photo + Offer",
-          summary: "After first value moment, user chooses email or social login.",
+          summary: "After upload, user picks email or social; both paths require the same consent + policy step before branded unlock.",
           trigger: "Continue with Email or Social Login.",
-          outcome: "User enters auth path to unlock branded result.",
+          outcome: "User enters Step 4A (email) or 4B (social) with required consents.",
           owner: "Fancam capture flow"
         },
         "4": {
-          title: "Step 4: Social Login + Required Consents",
-          summary: "User must accept Privacy Policy, Marketing Consent, and Terms and Conditions before continuing.",
-          trigger: "Open policy links and return to social login.",
-          outcome: "After all required consents, proceed to branded result.",
+          title: "Step 4: Auth + required consents (Email 4A or Social 4B)",
+          summary: "Parallel paths after Step 3: (4A) email capture with verify, or (4B) social OAuth. Both require Privacy Policy, Marketing Consent, and Terms with link-out policy pages before auth can finish.",
+          trigger: "Complete checkboxes, open policies as needed, then email verify or social login.",
+          outcome: "Successful auth unlocks branded result and share (Step 5A or 5B).",
           owner: "Fancam capture flow"
         },
         "5": {
-          title: "Step 5: Return Branded Image + Share",
-          summary: "Successful auth returns branded image and enables sharing options.",
-          trigger: "View result or share actions.",
-          outcome: "User proceeds to email delivery.",
+          title: "Step 5: Branded result + share (5A email / 5B social)",
+          summary: "After 4A or 4B, user sees the branded image and can share to socials or copy link.",
+          trigger: "View result or tap share actions.",
+          outcome: "User continues to follow-up email delivery and share landing (Steps 6–7).",
           owner: "Fancam capture flow"
         },
         "6": {
@@ -1734,6 +2105,9 @@
 
       function setActivePhone(stepId) {
         let activePhone = null;
+        const wasAlreadyActive = journeyPhones.some(function (phone) {
+          return phone.classList.contains("is-active") && phone.getAttribute("data-step") === stepId;
+        });
 
         journeyPhones.forEach(function (phone) {
           const isActive = phone.getAttribute("data-step") === stepId;
@@ -1746,7 +2120,7 @@
           stamp.classList.toggle("is-active", isActive);
         });
 
-        if (activePhone) {
+        if (activePhone && !window.matchMedia("(max-width: 1099px)").matches && !wasAlreadyActive) {
           activePhone.scrollIntoView({
             behavior: "smooth",
             block: "center",
@@ -1763,9 +2137,15 @@
           sidecardOwner.textContent = details.owner;
         }
 
+        /* Inline display would override mobile CSS; sidecard is desktop-only (consent steps hidden there). */
         if (workflowSidecard) {
           const isConsentStage = stepId === "4" || stepId === "4a" || stepId === "4b" || stepId === "4c";
-          workflowSidecard.style.display = isConsentStage ? "none" : "grid";
+          const isDesktopDemo = window.matchMedia("(min-width: 1100px)").matches;
+          if (isDesktopDemo) {
+            workflowSidecard.style.display = isConsentStage ? "none" : "grid";
+          } else {
+            workflowSidecard.style.removeProperty("display");
+          }
         }
       }
 
@@ -1833,6 +2213,12 @@
         consentMarketing.addEventListener("change", updateStep4LoginState);
       }
       updateStep4LoginState();
+
+      window.addEventListener("resize", function () {
+        const active = document.querySelector(".phones .phone.is-active[data-step]");
+        const sid = active && active.getAttribute("data-step");
+        if (sid) setActivePhone(sid);
+      });
     })();
   </script>
 </body>
