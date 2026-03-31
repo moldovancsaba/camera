@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Fancam Workflow Wireframe v1</title>
+  <title>fancam_userjourney_refactoring</title>
   <style>
     :root {
       --bg: #f4f5f7;
@@ -46,6 +46,7 @@
     .topbar h1 {
       font-size: 24px;
       margin-bottom: 6px;
+      text-align: center;
     }
 
     .topbar p {
@@ -227,8 +228,129 @@
 
     @media (min-width: 1020px) {
       .phones {
-        grid-template-columns: repeat(3, minmax(220px, 1fr));
+        grid-template-columns: 1fr;
       }
+    }
+
+    .journey-stage {
+      display: grid;
+      gap: 16px;
+      align-items: start;
+    }
+
+    @media (min-width: 1100px) {
+      .journey-stage {
+        grid-template-columns: 96px minmax(360px, 420px) minmax(320px, 1fr);
+      }
+    }
+
+    .step-stamps {
+      display: none;
+    }
+
+    @media (min-width: 1100px) {
+      .step-stamps {
+        display: grid;
+        gap: 8px;
+        align-content: start;
+        position: sticky;
+        top: 16px;
+      }
+    }
+
+    .step-stamp {
+      width: 84px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 8px 6px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 180ms ease;
+    }
+
+    .step-stamp .num {
+      display: block;
+      font-size: 16px;
+      font-weight: 700;
+      color: #1e293b;
+      line-height: 1.1;
+    }
+
+    .step-stamp .lbl {
+      display: block;
+      margin-top: 3px;
+      font-size: 10px;
+      color: #64748b;
+      line-height: 1.2;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .step-stamp.is-active {
+      border-color: transparent;
+      background:
+        linear-gradient(#ffffff, #ffffff) padding-box,
+        linear-gradient(135deg, #a855f7, #ec4899, #3b82f6) border-box;
+      box-shadow: 0 0 14px rgba(168, 85, 247, 0.28);
+      transform: translateX(2px);
+    }
+
+    .phones {
+      justify-items: center;
+    }
+
+    .workflow-sidecard {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #ffffff;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    @media (min-width: 1100px) {
+      .workflow-sidecard {
+        position: sticky;
+        top: 16px;
+      }
+    }
+
+    .workflow-sidecard h3 {
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .workflow-sidecard p {
+      font-size: 13px;
+      color: #475569;
+      margin: 0;
+    }
+
+    .workflow-points {
+      display: grid;
+      gap: 8px;
+    }
+
+    .workflow-point {
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: #f8fafc;
+    }
+
+    .workflow-point strong {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #64748b;
+      letter-spacing: 0.04em;
+      margin-bottom: 2px;
+    }
+
+    .workflow-point span {
+      font-size: 13px;
+      color: #0f172a;
     }
 
     .phone {
@@ -245,6 +367,17 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      transition: transform 180ms ease, box-shadow 220ms ease, background 220ms ease, border-color 220ms ease;
+      position: relative;
+    }
+
+    .phone.is-active {
+      border-color: transparent;
+      background:
+        linear-gradient(#111827, #111827) padding-box,
+        linear-gradient(135deg, #a855f7, #ec4899, #3b82f6) border-box;
+      box-shadow: 0 0 22px rgba(168, 85, 247, 0.45), 0 0 38px rgba(59, 130, 246, 0.35);
+      transform: translateY(-2px);
     }
 
     .phone-top {
@@ -327,13 +460,6 @@
       height: 100%;
       object-fit: cover;
       display: block;
-    }
-
-    .mock-image {
-      height: 90px;
-      border: 1px dashed #94a3b8;
-      border-radius: 10px;
-      background: linear-gradient(135deg, #e2e8f0, #f1f5f9);
     }
 
     .capture-preview {
@@ -544,12 +670,91 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 6px;
     }
+
+    .email-client {
+      border: 1px solid #d6dee8;
+      border-radius: 10px;
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    .email-header {
+      display: grid;
+      gap: 2px;
+      background: #eef2ff;
+      border-bottom: 1px solid #d6dee8;
+      padding: 8px 10px;
+    }
+
+    .email-subject {
+      font-size: 11px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .email-from {
+      font-size: 10px;
+      color: #475569;
+    }
+
+    .email-body {
+      display: grid;
+      gap: 8px;
+      padding: 8px;
+      max-height: 190px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 transparent;
+      padding-right: 6px;
+    }
+
+    .email-body::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .email-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .email-body::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px;
+    }
+
+    .email-copy {
+      font-size: 11px;
+      color: #334155;
+      margin: 0;
+    }
+
+    .cta-landing {
+      border: 1px solid #cda748;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #fff6dd, #ffefbf);
+      color: #5f4a00;
+      padding: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .caution-note {
+      margin: 0;
+      padding: 7px 9px;
+      border: 1px dashed #f87171;
+      border-radius: 8px;
+      background: #fef2f2;
+      color: #991b1b;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
   </style>
 </head>
 <body>
   <main class="wrap">
     <section class="topbar">
-      <h1>Fancam Wireframe (v1)</h1>
+      <h1>fancam_userjourney_refactoring</h1>
       <p>Interactive, mobile-first workflow draft for team alignment and iteration.</p>
       <div class="legend">
         <span class="tag">Guest-first flow</span>
@@ -561,17 +766,28 @@
     </section>
 
     <h2 class="section-title">Mobile Screen Wireframe (Team Demo View)</h2>
+    <div class="journey-stage">
+    <nav class="step-stamps" aria-label="Journey step shortcuts">
+      <button class="step-stamp is-active" data-step-shortcut="0"><span class="num">0</span><span class="lbl">Entry</span></button>
+      <button class="step-stamp" data-step-shortcut="1"><span class="num">1</span><span class="lbl">Language</span></button>
+      <button class="step-stamp" data-step-shortcut="2"><span class="num">2</span><span class="lbl">Capture</span></button>
+      <button class="step-stamp" data-step-shortcut="3"><span class="num">3</span><span class="lbl">Offer</span></button>
+      <button class="step-stamp" data-step-shortcut="4"><span class="num">4</span><span class="lbl">Result</span></button>
+      <button class="step-stamp" data-step-shortcut="5"><span class="num">5</span><span class="lbl">Email</span></button>
+      <button class="step-stamp" data-step-shortcut="6"><span class="num">6</span><span class="lbl">Share</span></button>
+      <button class="step-stamp" data-step-shortcut="7"><span class="num">7</span><span class="lbl">Sponsor</span></button>
+      <button class="step-stamp" data-step-shortcut="8"><span class="num">8</span><span class="lbl">Event</span></button>
+    </nav>
     <section class="phones">
-      <article class="phone">
+      <article class="phone is-active" data-step="0">
         <div class="phone-top"></div>
         <div class="screen">
           <h3>Step 0: Entry Point (Browser Only)</h3>
           <p>Users always start in a browser: scan QR with default camera app, tap social link, or type URL.</p>
-          <div class="mock-image"></div>
-          <button class="btn secondary">Scan QR with Camera App</button>
-          <button class="btn secondary">Open Direct Link (FB / Instagram)</button>
-          <button class="btn secondary">Type URL in Browser</button>
-          <button class="btn primary">Open Web App</button>
+          <button class="btn secondary" data-activate-step="1">Scan QR with Camera App</button>
+          <button class="btn secondary" data-activate-step="1">Open Direct Link (FB / Instagram)</button>
+          <button class="btn secondary" data-activate-step="1">Type URL in Browser</button>
+          <button class="btn primary" data-activate-step="1">Open Web App</button>
           <div class="kpi">
             <span>KPI: QR to landing success</span>
             <span>KPI: social link open rate</span>
@@ -580,7 +796,7 @@
         </div>
       </article>
 
-      <article class="phone">
+      <article class="phone" data-step="1">
         <div class="phone-top"></div>
         <div class="screen">
           <h3>Step 1: Language Selection</h3>
@@ -594,14 +810,13 @@
               <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
             </span>
           </div>
-          <div class="mock-image"></div>
           <select class="field" aria-label="Select language">
             <option selected>English</option>
             <option>Hungarian</option>
             <option>German</option>
             <option>Romanian</option>
           </select>
-          <button class="btn primary">Continue</button>
+          <button class="btn primary" data-activate-step="2">Continue</button>
           <div class="kpi">
             <span>KPI: landing → capture CTR</span>
             <span>KPI: language selection rate</span>
@@ -610,7 +825,7 @@
         </div>
       </article>
 
-      <article class="phone">
+      <article class="phone" data-step="2">
         <div class="phone-top"></div>
         <div class="screen">
           <h3>Step 2: Instant Capture</h3>
@@ -625,22 +840,22 @@
             </span>
           </div>
           <div class="capture-scenarios">
-            <div class="capture-scenario">
+            <div class="capture-scenario" data-activate-step="2">
               <span class="capture-scenario-label">Landscape frame selected</span>
               <div class="capture-preview landscape-safe" aria-label="Landscape frame preview area">
                 <span class="safe-label">Safe: center band</span>
               </div>
             </div>
-            <div class="capture-scenario">
+            <div class="capture-scenario" data-activate-step="2">
               <span class="capture-scenario-label">Portrait frame selected</span>
               <div class="capture-preview portrait-safe" aria-label="Portrait frame preview area">
                 <span class="safe-label">Safe: center column</span>
               </div>
             </div>
           </div>
-          <button class="btn primary">Take Photo</button>
-          <button class="btn secondary">Submit Photo</button>
-          <button class="btn secondary">Retake</button>
+          <button class="btn primary" data-activate-step="3">Take Photo</button>
+          <button class="btn secondary" data-activate-step="3">Submit Photo</button>
+          <button class="btn secondary" data-activate-step="2">Retake</button>
           <div class="kpi">
             <span>KPI: camera open success</span>
             <span>KPI: upload completion</span>
@@ -648,7 +863,7 @@
         </div>
       </article>
 
-      <article class="phone">
+      <article class="phone" data-step="3">
         <div class="phone-top"></div>
         <div class="screen">
           <h3>Step 3: Get Photo + Offer</h3>
@@ -662,10 +877,9 @@
               <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
             </span>
           </div>
-          <div class="mock-image"></div>
-          <button class="btn success">Guest Upload Complete</button>
-          <button class="btn violet" data-branch-btn="email">Continue with Email</button>
-          <button class="btn violet" data-branch-btn="social">Continue with Social Login</button>
+          <button class="btn success" data-activate-step="4">Guest Upload Complete</button>
+          <button class="btn violet" data-branch-btn="email" data-activate-step="4">Continue with Email</button>
+          <button class="btn violet" data-branch-btn="social" data-activate-step="4">Continue with Social Login</button>
           <div class="kpi">
             <span>KPI: guest → lead conversion</span>
             <span>KPI: offer open rate</span>
@@ -673,7 +887,7 @@
         </div>
       </article>
 
-      <article class="phone">
+      <article class="phone" data-step="4">
         <div class="phone-top"></div>
         <div class="screen">
           <h3>Step 4: Return Branded Image + Share</h3>
@@ -694,12 +908,12 @@
                 <span>CONSTRUMA</span>
               </div>
             </div>
-            <button class="btn success">View Branded Image</button>
+            <button class="btn success" data-activate-step="5">View Branded Image</button>
             <div class="result-share">
-              <button class="btn secondary">Facebook</button>
-              <button class="btn secondary">Instagram</button>
-              <button class="btn secondary">WhatsApp</button>
-              <button class="btn secondary">Copy Link</button>
+              <button class="btn secondary" data-activate-step="5">Facebook</button>
+              <button class="btn secondary" data-activate-step="5">Instagram</button>
+              <button class="btn secondary" data-activate-step="5">WhatsApp</button>
+              <button class="btn secondary" data-activate-step="5">Copy Link</button>
             </div>
           </div>
           <div class="kpi">
@@ -709,10 +923,57 @@
         </div>
       </article>
 
-      <article class="phone">
+      <article class="phone" data-step="5">
         <div class="phone-top"></div>
         <div class="screen">
-          <h3>Step 5: Shared Photo Landing Page</h3>
+          <h3>Step 5: Email Delivery from Fancam</h3>
+          <p>After Step 4, the user receives a new email from Fancam with the branded photo and sponsor CTA.</p>
+          <div class="brand-banner" aria-label="Event branding banner">
+            <div class="brand-banner-meta">
+              <span class="brand-banner-label">Event</span>
+              <span class="brand-banner-title">CONSTRUMA</span>
+            </div>
+            <span class="brand-banner-logo">
+              <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+            </span>
+          </div>
+          <div class="email-client">
+            <div class="email-header">
+              <span class="email-subject">Your CONSTRUMA Photo Is Ready</span>
+              <span class="email-from">From: Fancam</span>
+            </div>
+            <div class="email-body">
+              <button class="btn warning" data-activate-step="7">Sponsor CTA: Visit Partner Offer</button>
+              <p class="email-copy">We are happy to have you at the event, and thank you for sharing your memories. Here is your photo.</p>
+              <div class="result-image">
+                <div class="result-badge">
+                  <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+                  <span>CONSTRUMA</span>
+                </div>
+              </div>
+              <div class="brand-banner" aria-label="Event branding banner">
+                <div class="brand-banner-meta">
+                  <span class="brand-banner-label">Event</span>
+                  <span class="brand-banner-title">CONSTRUMA</span>
+                </div>
+                <span class="brand-banner-logo">
+                  <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="kpi">
+            <span>KPI: email open rate</span>
+            <span>KPI: photo click-through rate</span>
+            <span>KPI: sponsor CTA click rate</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="phone" data-step="6">
+        <div class="phone-top"></div>
+        <div class="screen">
+          <h3>Step 6: Shared Photo Landing Page</h3>
           <p>Every captured photo has its own shareable webpage with event branding, final image, and sponsor CTA.</p>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
@@ -731,7 +992,7 @@
               </div>
             </div>
             <button class="btn secondary">Unique URL: /share/photo-id</button>
-            <button class="btn warning">Sponsor CTA: Visit Partner Offer</button>
+            <button class="btn warning" data-activate-step="7">Sponsor CTA: Visit Partner Offer</button>
           </div>
           <div class="kpi">
             <span>KPI: share page open rate</span>
@@ -739,7 +1000,84 @@
           </div>
         </div>
       </article>
+
+      <article class="phone" data-step="7">
+        <div class="phone-top"></div>
+        <div class="screen">
+          <h3>Step 7: Sponsor CTA Landing Page</h3>
+          <p>This is the destination page where CTA clicks and sponsor logo clicks redirect users.</p>
+          <p class="caution-note">This landing page is created and managed by the Sponsor/Partner.</p>
+          <div class="cta-landing">
+            CTA Landing Page
+          </div>
+          <div class="brand-banner" aria-label="Event branding banner">
+            <div class="brand-banner-meta">
+              <span class="brand-banner-label">Event</span>
+              <span class="brand-banner-title">CONSTRUMA</span>
+            </div>
+            <span class="brand-banner-logo">
+              <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+            </span>
+          </div>
+          <div class="result-card">
+            <button class="btn warning">Partner Offer / Sponsor Content</button>
+            <button class="btn secondary" data-activate-step="8">Go to Event Landing Page</button>
+          </div>
+          <div class="kpi">
+            <span>KPI: CTA redirect success rate</span>
+            <span>KPI: sponsor page engagement</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="phone" data-step="8">
+        <div class="phone-top"></div>
+        <div class="screen">
+          <h3>Step 8: Event Landing Page</h3>
+          <p>This landing page uses the same structure as Sponsor landing, but it is event-owned.</p>
+          <p class="caution-note">This landing page is created and managed by the Event.</p>
+          <div class="cta-landing">
+            Event Landing Page
+          </div>
+          <div class="brand-banner" aria-label="Event branding banner">
+            <div class="brand-banner-meta">
+              <span class="brand-banner-label">Event</span>
+              <span class="brand-banner-title">CONSTRUMA</span>
+            </div>
+            <span class="brand-banner-logo">
+              <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+            </span>
+          </div>
+          <div class="result-card">
+            <button class="btn warning">Event Offer / Event Content</button>
+            <button class="btn secondary">Event Details</button>
+          </div>
+          <div class="kpi">
+            <span>KPI: event landing page opens</span>
+            <span>KPI: event CTA engagement</span>
+          </div>
+        </div>
+      </article>
     </section>
+    <aside class="workflow-sidecard" id="workflow-sidecard" aria-live="polite">
+      <h3 id="workflow-sidecard-title">Step 0: Entry Point (Browser Only)</h3>
+      <p id="workflow-sidecard-summary">Users enter via QR scan, direct social links, or typed URL, and always land in-browser.</p>
+      <div class="workflow-points">
+        <div class="workflow-point">
+          <strong>Trigger</strong>
+          <span id="workflow-sidecard-trigger">Scan QR, tap social link, or type URL.</span>
+        </div>
+        <div class="workflow-point">
+          <strong>Outcome</strong>
+          <span id="workflow-sidecard-outcome">Open web app and continue to language selection.</span>
+        </div>
+        <div class="workflow-point">
+          <strong>Owner</strong>
+          <span id="workflow-sidecard-owner">Fancam capture flow</span>
+        </div>
+      </div>
+    </aside>
+    </div>
 
     <section class="branch-section">
       <h2>Email vs Social Branch (Clickable)</h2>
@@ -920,7 +1258,24 @@
 
       <article class="step mobile">
         <div class="index">5</div>
-        <h2>Step 5: Shared Photo Landing Page</h2>
+        <h2>Step 5: Email Delivery from Fancam</h2>
+        <p class="note">After login success, user gets an email from Fancam with event banner, branded photo, and sponsor CTA.</p>
+        <div class="ui">
+          <button class="btn">New email in mobile inbox</button>
+          <button class="btn">Body: thank you + your photo message</button>
+          <button class="btn success">Banner then photo</button>
+          <button class="btn warning">Sponsor CTA in email</button>
+        </div>
+        <div class="kpi">
+          <span>email delivery%</span>
+          <span>email open%</span>
+          <span>email CTA click%</span>
+        </div>
+      </article>
+
+      <article class="step mobile">
+        <div class="index">6</div>
+        <h2>Step 6: Shared Photo Landing Page</h2>
         <p class="note">Each captured photo gets its own share URL page with event info, branded image, and sponsor CTA.</p>
         <div class="ui">
           <button class="btn">Open unique photo URL</button>
@@ -934,6 +1289,41 @@
           <span>sponsor CTA click%</span>
         </div>
       </article>
+
+      <article class="step mobile">
+        <div class="index">7</div>
+        <h2>Step 7: Sponsor CTA Landing Page</h2>
+        <p class="note">CTA buttons and sponsor logo clicks redirect to the sponsor landing page using the same CTA color theme.</p>
+        <div class="ui">
+          <button class="btn warning">CTA Redirect Target</button>
+          <button class="btn">Sponsor Offer Content</button>
+          <button class="btn">Conversion Action</button>
+          <div class="line"></div>
+        </div>
+        <div class="kpi">
+          <span>CTA redirect success%</span>
+          <span>sponsor page dwell time</span>
+          <span>landing conversion rate</span>
+        </div>
+      </article>
+
+      <article class="step mobile">
+        <div class="index">8</div>
+        <h2>Step 8: Event Landing Page</h2>
+        <p class="note">Same landing-page structure as Step 7, but managed by the Event for event-specific content and CTAs.</p>
+        <div class="ui">
+          <button class="btn warning">Event Landing Target</button>
+          <button class="btn">Event Content Block</button>
+          <button class="btn">Event Conversion Action</button>
+          <div class="line"></div>
+        </div>
+        <div class="kpi">
+          <span>event landing open%</span>
+          <span>event page dwell time</span>
+          <span>event conversion rate</span>
+        </div>
+      </article>
+
     </section>
 
     <h2 class="section-title">Platform / Business Layer</h2>
@@ -994,9 +1384,156 @@
         });
       }
 
+      const journeyPhones = Array.from(document.querySelectorAll(".phones .phone[data-step]"));
+      const stepStamps = Array.from(document.querySelectorAll(".step-stamp[data-step-shortcut]"));
+      const workflowDetails = {
+        "0": {
+          title: "Step 0: Entry Point (Browser Only)",
+          summary: "Users enter via QR scan, direct social links, or typed URL, and always land in-browser.",
+          trigger: "Scan QR, tap social link, or type URL.",
+          outcome: "Open web app and continue to language selection.",
+          owner: "Fancam capture flow"
+        },
+        "1": {
+          title: "Step 1: Language Selection",
+          summary: "User picks language before starting the branded capture journey.",
+          trigger: "Tap Continue after selecting language.",
+          outcome: "Move to creative-aware camera capture.",
+          owner: "Fancam capture flow"
+        },
+        "2": {
+          title: "Step 2: Instant Capture",
+          summary: "Camera view is constrained by creative orientation and safe area.",
+          trigger: "Take Photo / Submit Photo.",
+          outcome: "Photo is captured for branded delivery flow.",
+          owner: "Fancam capture flow"
+        },
+        "3": {
+          title: "Step 3: Get Photo + Offer",
+          summary: "After first value moment, user chooses email or social login.",
+          trigger: "Continue with Email or Social Login.",
+          outcome: "User enters auth path to unlock branded result.",
+          owner: "Fancam capture flow"
+        },
+        "4": {
+          title: "Step 4: Return Branded Image + Share",
+          summary: "Successful auth returns branded image and enables sharing options.",
+          trigger: "View result or share actions.",
+          outcome: "User proceeds to email delivery.",
+          owner: "Fancam capture flow"
+        },
+        "5": {
+          title: "Step 5: Email Delivery from Fancam",
+          summary: "Fancam sends a branded email with CTA, message, photo, and event banner.",
+          trigger: "User opens delivered email.",
+          outcome: "CTA or logo click can continue to landing destinations.",
+          owner: "Fancam delivery flow"
+        },
+        "6": {
+          title: "Step 6: Shared Photo Landing Page",
+          summary: "Every photo has its own share page with branding and sponsor CTA.",
+          trigger: "Open unique share URL.",
+          outcome: "User can continue via sponsor CTA.",
+          owner: "Fancam share experience"
+        },
+        "7": {
+          title: "Step 7: Sponsor CTA Landing Page",
+          summary: "Destination page for sponsor CTA and sponsor logo clicks.",
+          trigger: "Click sponsor CTA or sponsor logo.",
+          outcome: "User lands on partner-managed sponsor page.",
+          owner: "Sponsor/Partner"
+        },
+        "8": {
+          title: "Step 8: Event Landing Page",
+          summary: "Parallel destination for event-oriented landing content.",
+          trigger: "Click event label/meta or step-7 forward action.",
+          outcome: "User lands on event-managed page.",
+          owner: "Event"
+        }
+      };
+
+      const sidecardTitle = document.getElementById("workflow-sidecard-title");
+      const sidecardSummary = document.getElementById("workflow-sidecard-summary");
+      const sidecardTrigger = document.getElementById("workflow-sidecard-trigger");
+      const sidecardOutcome = document.getElementById("workflow-sidecard-outcome");
+      const sidecardOwner = document.getElementById("workflow-sidecard-owner");
+
+      function setActivePhone(stepId) {
+        let activePhone = null;
+
+        journeyPhones.forEach(function (phone) {
+          const isActive = phone.getAttribute("data-step") === stepId;
+          phone.classList.toggle("is-active", isActive);
+          if (isActive) activePhone = phone;
+        });
+
+        stepStamps.forEach(function (stamp) {
+          const isActive = stamp.getAttribute("data-step-shortcut") === stepId;
+          stamp.classList.toggle("is-active", isActive);
+        });
+
+        if (activePhone) {
+          activePhone.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+            inline: "center"
+          });
+        }
+
+        const details = workflowDetails[stepId];
+        if (details && sidecardTitle && sidecardSummary && sidecardTrigger && sidecardOutcome && sidecardOwner) {
+          sidecardTitle.textContent = details.title;
+          sidecardSummary.textContent = details.summary;
+          sidecardTrigger.textContent = details.trigger;
+          sidecardOutcome.textContent = details.outcome;
+          sidecardOwner.textContent = details.owner;
+        }
+      }
+
       branchButtons.forEach(function (btn) {
         btn.addEventListener("click", function () {
           showBranch(btn.getAttribute("data-branch-btn"));
+          setActivePhone("4");
+        });
+      });
+
+      const phoneJourney = document.querySelector(".phones");
+      if (phoneJourney) {
+        phoneJourney.addEventListener("click", function (event) {
+          const target = event.target;
+          if (!(target instanceof Element)) return;
+
+          const eventMeta = target.closest(".brand-banner-meta");
+          if (eventMeta) {
+            setActivePhone("8");
+            return;
+          }
+
+          const sponsorLogo = target.closest(".brand-banner-logo");
+          if (sponsorLogo) {
+            setActivePhone("7");
+            return;
+          }
+
+          const activateTrigger = target.closest("[data-activate-step]");
+          if (activateTrigger) {
+            const nextStep = activateTrigger.getAttribute("data-activate-step");
+            if (nextStep) setActivePhone(nextStep);
+            return;
+          }
+
+          const phoneCard = target.closest(".phone[data-step]");
+          if (phoneCard) {
+            const stepId = phoneCard.getAttribute("data-step");
+            if (stepId) setActivePhone(stepId);
+          }
+        });
+      }
+
+      stepStamps.forEach(function (stamp) {
+        stamp.addEventListener("click", function () {
+          const stepId = stamp.getAttribute("data-step-shortcut");
+          if (stepId) setActivePhone(stepId);
         });
       });
     })();
