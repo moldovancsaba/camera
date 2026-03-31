@@ -17,6 +17,7 @@
       --ok: #1f883d;
       --warn: #9a6700;
       --violet: #8250df;
+      --capture-sample-h: 128px;
     }
 
     * { box-sizing: border-box; }
@@ -191,10 +192,43 @@
       color: var(--ink);
     }
 
+    select.field {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      padding: 10px 40px 10px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      background-color: #ffffff;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 24 24'%3E%3Cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 16px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+      cursor: pointer;
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    select.field:hover {
+      border-color: #94a3b8;
+    }
+
+    select.field:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.2);
+    }
+
     .btn.primary {
       background: var(--accent);
       color: white;
       border-color: var(--accent);
+    }
+
+    .btn.primary:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
     }
 
     .btn.success {
@@ -669,12 +703,16 @@
       }
 
       .phones .screen .brand-banner-logo {
-        width: 48px;
-        height: 48px;
+        width: 72px;
+        aspect-ratio: 3 / 2;
+        height: auto;
+      }
+
+      .phones .screen {
+        --capture-sample-h: 144px;
       }
 
       .phones .screen .capture-preview {
-        height: 148px;
         border-radius: 12px;
       }
 
@@ -690,6 +728,7 @@
       .phones .screen .safe-label {
         font-size: 0.75rem;
         padding: 6px 10px;
+        text-align: center;
       }
 
       .phones .screen .result-card {
@@ -699,7 +738,6 @@
       }
 
       .phones .screen .result-image {
-        height: 168px;
         border-radius: 12px;
       }
 
@@ -755,6 +793,10 @@
         font-size: 1rem;
         padding: 12px 14px;
         border-radius: 12px;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .phones .screen .auth-info {
@@ -792,6 +834,15 @@
       .phones .screen .consent-link-stack .consent-link {
         min-height: 0;
         padding: 6px 4px 6px 0;
+      }
+
+      .phones .screen .consent-link--inline {
+        width: fit-content;
+        min-height: 0;
+        padding: 0;
+        display: inline-block;
+        font-size: 1rem;
+        line-height: 1.5;
       }
 
       .phones .screen .btn.cta-tile-1x1 {
@@ -916,9 +967,11 @@
 
     .brand-banner-logo {
       flex-shrink: 0;
-      width: 42px;
-      height: 42px;
-      border-radius: 999px;
+      display: block;
+      width: 63px;
+      aspect-ratio: 3 / 2;
+      height: auto;
+      border-radius: 8px;
       border: 1px dashed #94a3b8;
       background: #ffffff;
       overflow: hidden;
@@ -933,12 +986,27 @@
 
     .capture-preview {
       position: relative;
-      height: 118px;
       border: 1px dashed #94a3b8;
       border-radius: 10px;
       background:
         radial-gradient(circle at 20% 20%, #f8fafc 0%, #dbe3ed 35%, #c9d6e6 100%);
       overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    /* Same height at full size: landscape 3:2 (wider), portrait 2:3 (narrower). */
+    .capture-preview.landscape-safe {
+      width: min(100%, calc(var(--capture-sample-h) * 3 / 2));
+      aspect-ratio: 3 / 2;
+      height: auto;
+      max-width: 100%;
+    }
+
+    .capture-preview.portrait-safe {
+      width: min(100%, calc(var(--capture-sample-h) * 2 / 3));
+      aspect-ratio: 2 / 3;
+      height: auto;
+      max-width: 100%;
     }
 
     .capture-scenarios {
@@ -946,11 +1014,13 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
       min-width: 0;
+      align-items: start;
     }
 
     .capture-scenario {
       display: grid;
       gap: 4px;
+      justify-items: center;
     }
 
     .capture-scenario-label {
@@ -964,7 +1034,9 @@
       padding: 3px 6px;
     }
 
-    .capture-preview.landscape-safe::before {
+    /* Thick top/bottom “not safe” bands, thin sides — same logic for both previews; frame outer shape differs via aspect-ratio. */
+    .capture-preview.landscape-safe::before,
+    .capture-preview.portrait-safe::before {
       content: "";
       position: absolute;
       inset: 0;
@@ -974,36 +1046,14 @@
       pointer-events: none;
     }
 
-    .capture-preview.landscape-safe::after {
+    .capture-preview.landscape-safe::after,
+    .capture-preview.portrait-safe::after {
       content: "";
       position: absolute;
       top: 24%;
       bottom: 24%;
       left: 6%;
       right: 6%;
-      border: 2px dashed #0f172a;
-      border-radius: 8px;
-      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7) inset;
-      pointer-events: none;
-    }
-
-    .capture-preview.portrait-safe::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(to top, rgba(15, 23, 42, 0.3) 0 10%, transparent 10% 90%, rgba(15, 23, 42, 0.3) 90% 100%),
-        linear-gradient(to right, rgba(15, 23, 42, 0.3) 0 24%, transparent 24% 76%, rgba(15, 23, 42, 0.3) 76% 100%);
-      pointer-events: none;
-    }
-
-    .capture-preview.portrait-safe::after {
-      content: "";
-      position: absolute;
-      top: 10%;
-      bottom: 10%;
-      left: 24%;
-      right: 24%;
       border: 2px dashed #0f172a;
       border-radius: 8px;
       box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7) inset;
@@ -1052,6 +1102,7 @@
       padding: 4px 8px;
       letter-spacing: 0.01em;
       z-index: 1;
+      text-align: center;
     }
 
     .branch-section {
@@ -1106,11 +1157,22 @@
 
     .result-image {
       position: relative;
-      height: 150px;
+      width: 100%;
+      aspect-ratio: 3 / 2;
+      height: auto;
       border-radius: 10px;
       overflow: hidden;
       border: 1px dashed #94a3b8;
       background: linear-gradient(135deg, #dbe7ff, #eef2ff 45%, #f8fafc 100%);
+    }
+
+    .result-image > img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }
 
     .result-badge {
@@ -1198,20 +1260,23 @@
       border-radius: 999px;
     }
 
-    /* Step 6: inbox preview grows with the screen; scroll inside body only if content overflows. */
-    .phones .phone[data-step="6"] .screen {
-      grid-template-rows: auto auto auto 1fr auto auto;
+    /* Steps 6–7: inbox / photopage preview grows with the screen; scroll inside body only if content overflows. */
+    .phones .phone[data-step="6"] .screen,
+    .phones .phone[data-step="7"] .screen {
+      grid-template-rows: auto auto auto 1fr auto;
       align-content: stretch;
     }
 
-    .phones .phone[data-step="6"] .email-client {
+    .phones .phone[data-step="6"] .email-client,
+    .phones .phone[data-step="7"] .email-client {
       flex: 1 1 0;
       min-height: 0;
       display: flex;
       flex-direction: column;
     }
 
-    .phones .phone[data-step="6"] .email-body {
+    .phones .phone[data-step="6"] .email-body,
+    .phones .phone[data-step="7"] .email-body {
       flex: 1 1 0;
       min-height: 0;
       max-height: none;
@@ -1221,7 +1286,8 @@
       scrollbar-gutter: stable;
     }
 
-    .phones .phone[data-step="6"] .email-body .btn.cta-tile-1x1 {
+    .phones .phone[data-step="6"] .email-body .btn.cta-tile-1x1,
+    .phones .phone[data-step="7"] .email-body .btn.cta-tile-1x1 {
       width: 100%;
       max-width: 100%;
       padding: 10px 8px;
@@ -1230,17 +1296,24 @@
     }
 
     @media (max-width: 1099px) {
-      .phones .phone[data-step="6"] .email-body {
+      .phones .phone[data-step="6"] .email-body,
+      .phones .phone[data-step="7"] .email-body {
         padding: 12px 24px 12px 12px;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        overscroll-behavior-x: none;
+        touch-action: pan-y;
       }
 
-      .phones .phone[data-step="6"] .email-body .btn.cta-tile-1x1 {
+      .phones .phone[data-step="6"] .email-body .btn.cta-tile-1x1,
+      .phones .phone[data-step="7"] .email-body .btn.cta-tile-1x1 {
         font-size: 0.875rem;
         padding: 10px 8px;
       }
     }
 
-    .phones .phone[data-step="6"] .email-body .brand-banner {
+    .phones .phone[data-step="6"] .email-body .brand-banner,
+    .phones .phone[data-step="7"] .email-body .brand-banner {
       padding: 8px 10px;
     }
 
@@ -1282,6 +1355,49 @@
       font-size: 13px;
       font-weight: 600;
       text-align: center;
+    }
+
+    button.feedback-badge {
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      margin: 0;
+      font: inherit;
+      display: block;
+      touch-action: manipulation;
+    }
+
+    .consent-link--inline {
+      width: fit-content;
+      max-width: 100%;
+      min-height: 0;
+      padding: 0;
+      margin: 0;
+      text-align: left;
+      font-weight: 400;
+      line-height: 1.5;
+      display: inline-block;
+    }
+
+    .phones .phone[data-step="6"] .journey-step-back,
+    .phones .phone[data-step="7"] .journey-step-back {
+      flex-shrink: 0;
+      width: 100%;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-weight: 600;
+      touch-action: manipulation;
+    }
+
+    @media (min-width: 1100px) {
+      .phones .phone[data-step="6"] .journey-step-back,
+      .phones .phone[data-step="7"] .journey-step-back {
+        margin-top: auto;
+      }
     }
 
     .auth-info {
@@ -1362,20 +1478,6 @@
       <article class="phone is-active" data-step="0">
         <div class="phone-top"></div>
         <div class="screen">
-          <h3>Step 0: Entry Point (Browser Only)</h3>
-          <p>Users always start in a browser: scan QR with default camera app, tap social link, or type URL.</p>
-          <button class="btn secondary" data-activate-step="1">Scan QR with Camera App</button>
-          <button class="btn secondary" data-activate-step="1">Open Direct Link (FB / Instagram)</button>
-          <button class="btn secondary" data-activate-step="1">Type URL in Browser</button>
-          <button class="btn primary" data-activate-step="1">Open Web App</button>
-        </div>
-      </article>
-
-      <article class="phone" data-step="1">
-        <div class="phone-top"></div>
-        <div class="screen">
-          <h3>Step 1: Language Selection</h3>
-          <p>After browser entry, user selects language and continues without an event-card step.</p>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
               <span class="brand-banner-label">Event</span>
@@ -1385,6 +1487,29 @@
               <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
             </span>
           </div>
+          <h3>Step 0: Entry Point (Browser Only)</h3>
+          <p>Users always start in a browser: scan QR with default camera app, tap social link, or type URL.</p>
+          <div class="feedback-badge">Scan QR with Camera App</div>
+          <div class="feedback-badge">Open Direct Link (FB / Instagram)</div>
+          <div class="feedback-badge">Type URL in Browser</div>
+          <button type="button" class="btn primary" data-activate-step="1">Open Web App</button>
+        </div>
+      </article>
+
+      <article class="phone" data-step="1">
+        <div class="phone-top"></div>
+        <div class="screen">
+          <div class="brand-banner" aria-label="Event branding banner">
+            <div class="brand-banner-meta">
+              <span class="brand-banner-label">Event</span>
+              <span class="brand-banner-title">CONSTRUMA</span>
+            </div>
+            <span class="brand-banner-logo">
+              <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+            </span>
+          </div>
+          <h3>Step 1: Language Selection</h3>
+          <p>After browser entry, user selects language and continues without an event-card step.</p>
           <select class="field" aria-label="Select language">
             <option selected>English</option>
             <option>Hungarian</option>
@@ -1398,8 +1523,6 @@
       <article class="phone" data-step="2">
         <div class="phone-top"></div>
         <div class="screen">
-          <h3>Step 2: Instant Capture</h3>
-          <p>Creative orientation defines camera crop + safe area (independent of how phone is held).</p>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
               <span class="brand-banner-label">Event</span>
@@ -1409,31 +1532,31 @@
               <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
             </span>
           </div>
+          <h3>Step 2: Instant Capture</h3>
+          <p>Creative orientation defines camera crop + safe area (independent of how phone is held).</p>
           <div class="capture-scenarios">
             <div class="capture-scenario" data-activate-step="2">
-              <span class="capture-scenario-label">Landscape frame selected</span>
+              <span class="capture-scenario-label">Landscape<br />frame</span>
               <div class="capture-preview landscape-safe" aria-label="Landscape frame preview area">
-                <span class="safe-label">Safe: center band</span>
+                <span class="safe-label">Safety Zone</span>
               </div>
             </div>
             <div class="capture-scenario" data-activate-step="2">
-              <span class="capture-scenario-label">Portrait frame selected</span>
+              <span class="capture-scenario-label">Portrait<br />frame</span>
               <div class="capture-preview portrait-safe" aria-label="Portrait frame preview area">
-                <span class="safe-label">Safe: center column</span>
+                <span class="safe-label">Safety Zone</span>
               </div>
             </div>
           </div>
-          <button class="btn primary" data-activate-step="3">Take Photo</button>
-          <button class="btn secondary" data-activate-step="3">Submit Photo</button>
-          <button class="btn secondary" data-activate-step="2">Retake</button>
+          <div class="feedback-badge">Take Photo</div>
+          <button type="button" class="btn primary" data-activate-step="3">Submit Photo</button>
+          <button type="button" class="btn secondary">Retake</button>
         </div>
       </article>
 
       <article class="phone" data-step="3">
         <div class="phone-top"></div>
         <div class="screen">
-          <h3>Step 3: Get Photo + Offer</h3>
-          <p>After upload success, move users to required consent checks before any login action.</p>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
               <span class="brand-banner-label">Event</span>
@@ -1443,18 +1566,18 @@
               <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
             </span>
           </div>
+          <h3>Step 3: Get Photo + Offer</h3>
+          <p>After upload success, move users to required consent checks before any login action.</p>
           <div class="feedback-badge">Guest Upload Complete</div>
-          <button class="btn warning cta-tile-1x1" data-activate-step="8">Sponsor CTA: Visit Partner Offer</button>
-          <button class="btn violet" data-activate-step="4">Continue</button>
-          <button class="btn secondary" data-activate-step="4">Review Privacy / Marketing / Terms</button>
+          <button type="button" class="btn warning cta-tile-1x1" data-activate-step="8">Sponsor CTA: Visit Partner Offer</button>
+          <button type="button" class="btn primary" data-activate-step="4">Continue</button>
+          <button type="button" class="consent-link consent-link--inline" data-activate-step="4a">Review Privacy / Marketing / Terms</button>
         </div>
       </article>
 
       <article class="phone" data-step="4">
         <div class="phone-top"></div>
         <div class="screen scrollable">
-          <h3>Step 4: Social Login + Required Consents</h3>
-          <p>User must accept all required checkboxes first; only then social login can continue.</p>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
               <span class="brand-banner-label">Event</span>
@@ -1464,6 +1587,8 @@
               <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
             </span>
           </div>
+          <h3>Step 4: Social Login + Required Consents</h3>
+          <p>User must accept all required checkboxes first; only then social login can continue.</p>
           <div class="auth-info">Google / Apple / Facebook</div>
           <label class="consent-check">
             <input type="checkbox" id="consent-privacy" />
@@ -1482,7 +1607,7 @@
             <button type="button" class="consent-link" data-activate-step="4b">Open Marketing Consent</button>
             <button type="button" class="consent-link" data-activate-step="4c">Open Terms and Conditions</button>
           </div>
-          <button class="btn success" id="step4-login-btn" data-activate-step="5" disabled>Login to continue</button>
+          <button type="button" class="btn primary" id="step4-login-btn" data-activate-step="5" disabled>Login to continue</button>
         </div>
       </article>
 
@@ -1490,36 +1615,63 @@
       <article class="phone" data-step="4a">
         <div class="phone-top"></div>
         <div class="screen">
+          <div class="brand-banner" aria-label="Event branding banner">
+            <div class="brand-banner-meta">
+              <span class="brand-banner-label">Event</span>
+              <span class="brand-banner-title">CONSTRUMA</span>
+            </div>
+            <span class="brand-banner-logo">
+              <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+            </span>
+          </div>
           <h3>Step 4a: Privacy Policy</h3>
           <p>Policy landing page linked from social login consent stage.</p>
           <div class="line"></div>
           <div class="line"></div>
           <div class="line short"></div>
-          <button class="btn primary" data-activate-step="4">Back to Social Login</button>
+          <button type="button" class="btn primary" data-activate-step="4">Back to Login</button>
         </div>
       </article>
 
       <article class="phone" data-step="4b">
         <div class="phone-top"></div>
         <div class="screen">
+          <div class="brand-banner" aria-label="Event branding banner">
+            <div class="brand-banner-meta">
+              <span class="brand-banner-label">Event</span>
+              <span class="brand-banner-title">CONSTRUMA</span>
+            </div>
+            <span class="brand-banner-logo">
+              <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+            </span>
+          </div>
           <h3>Step 4b: Marketing Consent</h3>
           <p>Policy landing page linked from social login consent stage.</p>
           <div class="line"></div>
           <div class="line"></div>
           <div class="line short"></div>
-          <button class="btn primary" data-activate-step="4">Back to Social Login</button>
+          <button type="button" class="btn primary" data-activate-step="4">Back to Login</button>
         </div>
       </article>
 
       <article class="phone" data-step="4c">
         <div class="phone-top"></div>
         <div class="screen">
+          <div class="brand-banner" aria-label="Event branding banner">
+            <div class="brand-banner-meta">
+              <span class="brand-banner-label">Event</span>
+              <span class="brand-banner-title">CONSTRUMA</span>
+            </div>
+            <span class="brand-banner-logo">
+              <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+            </span>
+          </div>
           <h3>Step 4c: Terms and Conditions</h3>
           <p>Policy landing page linked from social login consent stage.</p>
           <div class="line"></div>
           <div class="line"></div>
           <div class="line short"></div>
-          <button class="btn primary" data-activate-step="4">Back to Social Login</button>
+          <button type="button" class="btn primary" data-activate-step="4">Back to Login</button>
         </div>
       </article>
       </div>
@@ -1527,8 +1679,6 @@
       <article class="phone" data-step="5">
         <div class="phone-top"></div>
         <div class="screen">
-          <h3>Step 5: Return Branded Image + Share</h3>
-          <p>After successful email or social login, return branded result and allow social sharing.</p>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
               <span class="brand-banner-label">Event</span>
@@ -1538,6 +1688,8 @@
               <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
             </span>
           </div>
+          <h3>Step 5: Return Branded Image + Share</h3>
+          <p>After successful email or social login, return branded result and allow social sharing.</p>
           <div class="result-card">
             <div class="result-image">
               <div class="result-badge">
@@ -1545,13 +1697,8 @@
                 <span>CONSTRUMA</span>
               </div>
             </div>
-            <button class="btn success" data-activate-step="6">View Branded Image</button>
-            <div class="result-share">
-              <button class="btn secondary" data-activate-step="6">Facebook</button>
-              <button class="btn secondary" data-activate-step="6">Instagram</button>
-              <button class="btn secondary" data-activate-step="6">WhatsApp</button>
-              <button class="btn secondary" data-activate-step="6">Copy Link</button>
-            </div>
+            <button type="button" class="btn primary" data-activate-step="6">Check your mailbox</button>
+            <button type="button" class="btn primary" data-activate-step="7">Share</button>
           </div>
         </div>
       </article>
@@ -1559,8 +1706,6 @@
       <article class="phone" data-step="6">
         <div class="phone-top"></div>
         <div class="screen">
-          <h3>Step 6: Email Delivery from Fancam</h3>
-          <p>After Step 5, the user receives a new email from Fancam with the branded photo and sponsor CTA.</p>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
               <span class="brand-banner-label">Event</span>
@@ -1570,6 +1715,8 @@
               <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
             </span>
           </div>
+          <h3>Step 6: Email Delivery from Fancam</h3>
+          <p>After Step 5, the user receives a new email from Fancam with the branded photo and sponsor CTA.</p>
           <div class="email-client">
             <div class="email-header">
               <span class="email-subject">Your CONSTRUMA Photo Is Ready</span>
@@ -1595,15 +1742,13 @@
               </div>
             </div>
           </div>
-          <button class="btn secondary" type="button" data-activate-step="2">Capture another moment</button>
+          <button type="button" class="btn primary journey-step-back" data-activate-step="5">Back</button>
         </div>
       </article>
 
       <article class="phone" data-step="7">
         <div class="phone-top"></div>
         <div class="screen">
-          <h3>Step 7: Shared Photo Landing Page</h3>
-          <p>Every captured photo has its own shareable webpage with event branding, final image, and sponsor CTA.</p>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
               <span class="brand-banner-label">Event</span>
@@ -1613,25 +1758,40 @@
               <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
             </span>
           </div>
-          <div class="result-card">
-            <div class="result-image">
-              <div class="result-badge">
-                <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
-                <span>CONSTRUMA</span>
+          <h3>Step 7: Shared Photo Landing Page</h3>
+          <p>Every captured photo has its own shareable webpage with event branding, final image, and sponsor CTA.</p>
+          <div class="email-client">
+            <div class="email-header">
+              <span class="email-subject">Your personal Photopage</span>
+              <span class="email-from">https://your.photo</span>
+            </div>
+            <div class="email-body">
+              <button type="button" class="btn warning cta-tile-1x1" data-activate-step="8">Sponsor CTA: Visit Partner Offer</button>
+              <p class="email-copy">Time to share your memories! Show your happy moment with your friends and family!</p>
+              <div class="result-image">
+                <div class="result-badge">
+                  <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+                  <span>CONSTRUMA</span>
+                </div>
+              </div>
+              <div class="brand-banner" aria-label="Event branding banner">
+                <div class="brand-banner-meta">
+                  <span class="brand-banner-label">Event</span>
+                  <span class="brand-banner-title">CONSTRUMA</span>
+                </div>
+                <span class="brand-banner-logo">
+                  <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+                </span>
               </div>
             </div>
-            <button class="btn secondary">Unique URL: /share/photo-id</button>
-            <button class="btn warning cta-tile-1x1" data-activate-step="8">Sponsor CTA: Visit Partner Offer</button>
           </div>
+          <button type="button" class="btn primary journey-step-back" data-activate-step="5">Back</button>
         </div>
       </article>
 
       <article class="phone" data-step="8">
         <div class="phone-top"></div>
         <div class="screen">
-          <h3>Step 8: Sponsor CTA Landing Page</h3>
-          <p>This is the destination page where CTA clicks and sponsor logo clicks redirect users.</p>
-          <p class="caution-note">This landing page is created and managed by the Sponsor/Partner.</p>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
               <span class="brand-banner-label">Event</span>
@@ -1641,6 +1801,9 @@
               <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
             </span>
           </div>
+          <h3>Step 8: Sponsor CTA Landing Page</h3>
+          <p>This is the destination page where CTA clicks and sponsor logo clicks redirect users.</p>
+          <p class="caution-note">This landing page is created and managed by the Sponsor/Partner.</p>
           <div class="result-card">
             <button class="btn warning cta-tile-1x1">Partner Offer / Sponsor Content</button>
             <button class="btn secondary" data-activate-step="9">Go to Event Landing Page</button>
@@ -1651,9 +1814,6 @@
       <article class="phone" data-step="9">
         <div class="phone-top"></div>
         <div class="screen">
-          <h3>Step 9: Event Landing Page</h3>
-          <p>This landing page uses the same structure as Sponsor landing, but it is event-owned.</p>
-          <p class="caution-note">This landing page is created and managed by the Event.</p>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
               <span class="brand-banner-label">Event</span>
@@ -1663,6 +1823,9 @@
               <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
             </span>
           </div>
+          <h3>Step 9: Event Landing Page</h3>
+          <p>This landing page uses the same structure as Sponsor landing, but it is event-owned.</p>
+          <p class="caution-note">This landing page is created and managed by the Event.</p>
           <div class="result-card">
             <button class="btn warning cta-tile-1x1">Event Offer / Event Content</button>
             <button class="btn secondary">Event Details</button>
@@ -2120,15 +2283,15 @@
         "4": {
           title: "Step 4: Social Login + Required Consents",
           summary: "User must accept all required checkboxes first; only then social login can continue.",
-          trigger: "Open policy links and return to social login; enable Login to continue when Privacy + Marketing are accepted.",
+          trigger: "Open policy links and return to login; enable Login to continue when Privacy + Marketing are accepted.",
           outcome: "After all required consents, proceed to branded result.",
           owner: "Fancam capture flow"
         },
         "5": {
-          title: "Step 5: Branded result + share (5A email / 5B social)",
-          summary: "After 4A or 4B, user sees the branded image and can share to socials or copy link.",
-          trigger: "View result or tap share actions.",
-          outcome: "User continues to follow-up email delivery and share landing (Steps 6–7).",
+          title: "Step 5: Return Branded Image + Share",
+          summary: "Branded result with Check your mailbox (email handoff) and a single Share control to the public landing page.",
+          trigger: "Check your mailbox or Share.",
+          outcome: "Mailbox CTA leads to Step 6 email; Share leads to Step 7 landing.",
           owner: "Fancam capture flow"
         },
         "6": {
@@ -2271,6 +2434,9 @@
 
       const allScreens = Array.from(document.querySelectorAll(".phones .screen"));
       allScreens.forEach(function (screen) {
+        const phone = screen.closest(".phone[data-step]");
+        const stepId = phone && phone.getAttribute("data-step");
+        if (stepId !== "8" && stepId !== "9") return;
         if (screen.querySelector(".mobile-back-btn")) return;
         const btn = document.createElement("button");
         btn.className = "mobile-back-btn";
