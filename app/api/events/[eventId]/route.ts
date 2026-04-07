@@ -11,7 +11,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp, CustomPageType } from '@/lib/db/schemas';
 import { ObjectId } from 'mongodb';
-import { withErrorHandler, requireAdmin, apiSuccess, apiNotFound, apiBadRequest, validateRequiredFields } from '@/lib/api';
+import {
+  withErrorHandler,
+  requireAdmin,
+  apiSuccess,
+  apiNotFound,
+  apiBadRequest,
+  validateRequiredFields,
+  checkRateLimit,
+  RATE_LIMITS,
+} from '@/lib/api';
 
 /**
  * GET /api/events/[eventId]
@@ -21,6 +30,8 @@ export const GET = withErrorHandler(async (
   request: NextRequest,
   context: { params: Promise<{ eventId: string }> }
 ) => {
+  await checkRateLimit(request, RATE_LIMITS.READ);
+
   const { eventId } = await context.params;
 
   // Validate ObjectId format
