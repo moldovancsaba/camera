@@ -7,11 +7,12 @@
 
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import Link from 'next/link';
 
 export default async function PartnersPage() {
   let partners: any[] = [];
-  let dbError = null;
+  let dbError: unknown = null;
 
   try {
     const db = await connectToDatabase();
@@ -40,7 +41,7 @@ export default async function PartnersPage() {
     }
   } catch (error) {
     console.error('Error fetching partners:', error);
-    dbError = error instanceof Error ? error.message : 'Unknown error';
+    dbError = error;
   }
 
   return (
@@ -59,12 +60,7 @@ export default async function PartnersPage() {
         </Link>
       </div>
 
-      {dbError && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-800 dark:text-red-200 font-medium">Database Connection Error</p>
-          <p className="text-red-600 dark:text-red-300 text-sm mt-1">{dbError}</p>
-        </div>
-      )}
+      {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
 
       {!dbError && partners.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">

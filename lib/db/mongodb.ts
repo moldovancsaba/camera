@@ -12,30 +12,49 @@
  * - Singleton pattern ensures one connection pool per Node.js process
  */
 
-import { MongoClient, Db } from 'mongodb';
+import { MongoClient, Db, type MongoClientOptions } from 'mongodb';
+import { assertValidMongoUriScheme } from '@/lib/db/mongo-errors';
 
-// Environment variables validation
-if (!process.env.MONGODB_URI) {
-  throw new Error('MONGODB_URI environment variable is not defined');
+function getMongoConfig(): { uri: string; dbName: string } {
+  const uri = process.env.MONGODB_URI?.trim();
+  const dbName = process.env.MONGODB_DB?.trim();
+  if (!uri) {
+    throw new Error('MONGODB_URI environment variable is not defined');
+  }
+  assertValidMongoUriScheme(uri);
+  if (!dbName) {
+    throw new Error('MONGODB_DB environment variable is not defined');
+  }
+  return { uri, dbName };
 }
 
-if (!process.env.MONGODB_DB) {
-  throw new Error('MONGODB_DB environment variable is not defined');
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  if (value === undefined || value === '') {
+    return fallback;
+  }
+  const n = parseInt(value, 10);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
 }
 
-const MONGODB_URI = process.env.MONGODB_URI;
-const MONGODB_DB = process.env.MONGODB_DB;
+/**
+ * Driver options tuned for Atlas + serverless (Vercel).
+ * Override with MONGODB_MAX_POOL_SIZE / MONGODB_MIN_POOL_SIZE if needed.
+ */
+function getMongoClientOptions(): MongoClientOptions {
+  const maxPoolSize = parsePositiveInt(process.env.MONGODB_MAX_POOL_SIZE, 10);
+  const minPoolSize = parsePositiveInt(process.env.MONGODB_MIN_POOL_SIZE, 0);
 
-// Connection options for optimal performance and reliability
-// Increased timeouts for Vercel serverless cold starts
-const options = {
-  maxPoolSize: 10, // Maximum number of connections in the pool
-  minPoolSize: 2, // Minimum number of connections to maintain
-  maxIdleTimeMS: 60000, // Close idle connections after 60 seconds
-  serverSelectionTimeoutMS: 10000, // Timeout after 10 seconds (increased for cold starts)
-  socketTimeoutMS: 45000, // Close socket after 45 seconds of inactivity
-  connectTimeoutMS: 10000, // Initial connection timeout (increased for cold starts)
-};
+  return {
+    maxPoolSize,
+    minPoolSize,
+    maxIdleTimeMS: 60000,
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+    connectTimeoutMS: 10000,
+    retryReads: true,
+    retryWrites: true,
+  };
+}
 
 // Global variable to cache the connection (persists across serverless invocations)
 interface CachedConnection {
@@ -80,9 +99,12 @@ export async function connectToDatabase(): Promise<Db> {
     return db;
   }
 
+  const { uri, dbName } = getMongoConfig();
+  const clientOptions = getMongoClientOptions();
+
   // Create new connection
-  cached.promise = MongoClient.connect(MONGODB_URI, options).then((client) => {
-    const db = client.db(MONGODB_DB);
+  cached.promise = MongoClient.connect(uri, clientOptions).then((client) => {
+    const db = client.db(dbName);
     return { client, db };
   });
 
@@ -93,7 +115,7 @@ export async function connectToDatabase(): Promise<Db> {
     cached.client = client;
     cached.db = db;
 
-    console.log(`✓ Connected to MongoDB database: ${MONGODB_DB}`);
+    console.log(`✓ Connected to MongoDB database: ${db.databaseName}`);
     
     return db;
   } catch (error) {

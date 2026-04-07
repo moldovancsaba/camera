@@ -21,6 +21,8 @@ import {
   apiCreated,
   apiNotFound,
   apiBadRequest,
+  checkRateLimit,
+  RATE_LIMITS,
 } from '@/lib/api';
 
 /**
@@ -32,6 +34,8 @@ import {
  * - consents: Array of {pageId, pageType, checkboxText, accepted, acceptedAt} from 'accept'/'cta' pages
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
+  await checkRateLimit(request, RATE_LIMITS.UPLOAD);
+
   // Check authentication (optional for event submissions)
   const session = await optionalAuth();
 
@@ -126,6 +130,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       partnerId: partnerId || null,
       partnerName: partnerName || null,
       eventId: eventId || null,
+      // Normalize for slideshow + queries: always mirror event UUID into eventIds when present
+      ...(eventId ? { eventIds: [eventId] } : { eventIds: [] }),
       eventName: eventName || null,
       imageUrl: uploadResult.imageUrl,
       deleteUrl: uploadResult.deleteUrl,

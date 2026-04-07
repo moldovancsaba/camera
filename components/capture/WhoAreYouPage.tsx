@@ -13,7 +13,9 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+
+import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 
 export interface WhoAreYouPageConfig {
   title: string;
@@ -61,23 +63,12 @@ export default function WhoAreYouPage({ config, onNext, onBack, logoUrl, brandCo
   // Default to both enabled if not specified (backward compatibility)
   const enableSSOLogin = config.enableSSOLogin ?? false;
   const enablePseudoReg = config.enablePseudoReg ?? true;
-  const ssoButtonText = config.ssoButtonText || 'Sign in with Social Media';
+  const socialHeading = config.ssoButtonText || 'Sign in with Google or Facebook';
   const pseudoFormTitle = config.pseudoFormTitle || 'Or enter your details';
 
-  /**
-   * Handle SSO login button click
-   * Saves capture state to cookies and redirects to SSO login
-   * Why cookies: Need to persist across redirect and be accessible in API routes
-   */
-  const handleSSOLogin = () => {
-    // Save capture flow state to resume after authentication
-    // Use cookies so they're accessible in auth callback API route
-    document.cookie = `captureEventId=${eventId}; path=/; max-age=600; SameSite=Lax`; // 10 min
+  const beforeSocialNavigate = () => {
+    document.cookie = `captureEventId=${eventId}; path=/; max-age=600; SameSite=Lax`;
     document.cookie = `capturePageIndex=${pageIndex}; path=/; max-age=600; SameSite=Lax`;
-    
-    // Redirect to SSO login page with prompt=login to force login screen
-    // This ensures SSO shows login form even if user has existing session
-    window.location.href = '/api/auth/login?from_logout=true';
   };
 
   /**
@@ -155,20 +146,16 @@ export default function WhoAreYouPage({ config, onNext, onBack, logoUrl, brandCo
             </p>
           )}
 
-          {/* SSO Login Button */}
           {enableSSOLogin && (
-            <div className="mb-6">
-              <button
-                onClick={handleSSOLogin}
-                style={{ backgroundColor: brandColor }}
-                className="w-full px-6 py-3 text-white rounded-lg font-semibold transition-all hover:opacity-90 flex items-center justify-center gap-2"
-                aria-label={ssoButtonText}
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                </svg>
-                {ssoButtonText}
-              </button>
+            <div className="mb-6 space-y-3">
+              <p className="text-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                {socialHeading}
+              </p>
+              <SocialLoginButtons
+                variant="capture"
+                fromLogout
+                beforeNavigate={beforeSocialNavigate}
+              />
             </div>
           )}
 

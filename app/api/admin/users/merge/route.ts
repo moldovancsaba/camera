@@ -26,8 +26,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/session';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { MongoClient } from 'mongodb';
-
-const SSO_MONGODB_URI = 'mongodb+srv://thanperfect:CuW54NNNFKnGQtt6@doneisbetter.49s2z.mongodb.net/?retryWrites=true&w=majority&appName=doneisbetter';
+import { getSsoMongoUri } from '@/lib/db/sso';
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Fetch real user from SSO database to get their UUID
-    const ssoClient = new MongoClient(SSO_MONGODB_URI);
+    const ssoClient = new MongoClient(getSsoMongoUri());
     await ssoClient.connect();
     
     let realUser;

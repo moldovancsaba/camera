@@ -136,9 +136,9 @@ export interface CustomPage {
     description: string;       // Explanatory text shown above form/content
     buttonText: string;        // Next/Continue button label
     // For 'who-are-you' type only (v2.9.0: SSO integration)
-    enableSSOLogin?: boolean;     // Show "Login with SSO" button (default: false)
+    enableSSOLogin?: boolean;     // Show Google + Facebook login via SSO (default: false)
     enablePseudoReg?: boolean;    // Show name/email form for guest registration (default: true)
-    ssoButtonText?: string;       // Custom text for SSO button (default: "Login with SSO")
+    ssoButtonText?: string;       // Heading above Google/Facebook buttons on who-are-you page
     pseudoFormTitle?: string;     // Optional title above name/email form (e.g., "Or continue as guest")
     nameLabel?: string;        // Label for name input (e.g., "Your Name")
     emailLabel?: string;       // Label for email input (e.g., "Your Email")

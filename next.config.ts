@@ -73,7 +73,8 @@ const nextConfig: NextConfig = {
           // Permissions Policy (formerly Feature-Policy)
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()'
+            value:
+              'camera=(self), microphone=(self), geolocation=(), interest-cohort=()',
           },
           // Content Security Policy
           {

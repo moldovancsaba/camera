@@ -301,7 +301,8 @@ export default function SlideshowPlayerV2({
         console.warn(`[PlayCount] API returned ${response.status}`);
       } else {
         const data = await response.json();
-        console.log(`[PlayCount] ✓ ${data.updatedCount} images incremented`);
+        const count = data.updatedCount ?? data.data?.updatedCount;
+        console.log(`[PlayCount] ✓ ${count} images incremented`);
       }
     } catch (err) {
       console.error('[PlayCount] ERROR:', err);

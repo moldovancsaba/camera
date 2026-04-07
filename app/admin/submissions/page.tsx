@@ -6,12 +6,13 @@
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
+import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import Image from 'next/image';
 import Link from 'next/link';
 
 export default async function AdminSubmissionsPage() {
   let submissions: any[] = [];
-  let error = null;
+  let error: unknown = null;
 
   try {
     const db = await connectToDatabase();
@@ -24,7 +25,7 @@ export default async function AdminSubmissionsPage() {
       .toArray();
   } catch (err) {
     console.error('Error fetching submissions:', err);
-    error = err instanceof Error ? err.message : 'Unknown error';
+    error = err;
   }
 
   return (
@@ -34,12 +35,7 @@ export default async function AdminSubmissionsPage() {
         <p className="text-gray-600 dark:text-gray-400 mt-2">All user photo submissions</p>
       </div>
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-800 dark:text-red-200 font-medium">Database Connection Error</p>
-          <p className="text-red-600 dark:text-red-300 text-sm mt-1">{error}</p>
-        </div>
-      )}
+      {error != null ? <DatabaseConnectionAlert error={error} /> : null}
 
       {!error && submissions.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">

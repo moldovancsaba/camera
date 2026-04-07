@@ -89,7 +89,6 @@ Camera is a professional web application that allows users to capture or upload 
 
 ### External Services
 - **imgbb.com**: Image CDN (upload via API, 32MB limit per image)
-- **Resend 4.0.0**: Email delivery service
 - **Axios 1.7.0**: HTTP client for external API calls
 
 ### Development Tools
@@ -126,7 +125,6 @@ Camera is a professional web application that allows users to capture or upload 
 │  • Authentication (lib/auth/*)                              │
 │  • Image Processing (Canvas API, imgbb upload)            │
 │  • Slideshow Playlist (lib/slideshow/playlist.ts)         │
-│  • Email Sending (lib/email/sender.ts)                    │
 └─────────────────────────────────────────────────────────────┘
                              ↕
 ┌─────────────────────────────────────────────────────────────┐
@@ -141,7 +139,6 @@ Camera is a professional web application that allows users to capture or upload 
 │  • MongoDB Atlas (database)                                 │
 │  • imgbb.com (image CDN)                                   │
 │  • SSO Service (authentication)                            │
-│  • Resend (email delivery)                                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -563,11 +560,8 @@ import { Button, Card, Badge, LoadingSpinner } from '@/components/shared';
 - **Scopes**: openid, profile, email
 - **Session**: Managed externally, tokens provided to app
 
-### Resend Email Service
-- **Purpose**: Send final composed images to users
-- **API**: REST API with API key
-- **Usage**: Triggered after successful submission
-- **Templates**: HTML email with embedded image URL
+### Transactional email
+- **Current state**: No outbound email is sent from API routes. SSO handles login only; it is not a substitute for an email provider. See `docs/AUTHORIZATION.md` (Transactional email vs SSO).
 
 ---
 
@@ -639,9 +633,8 @@ SSO_USERINFO_URL=https://sso.doneisbetter.com/userinfo
 # Image Upload
 IMGBB_API_KEY=...
 
-# Email
-RESEND_API_KEY=...
-RESEND_FROM_EMAIL=noreply@domain.com
+# Public URL (emails / links if you add mail later)
+NEXT_PUBLIC_APP_URL=https://your-deployment.example
 
 # Development
 NODE_ENV=production

@@ -32,7 +32,7 @@ npm start
 | Auth | SSO (OAuth2/OIDC + PKCE), encrypted session cookie |
 | Image hosting | imgbb.com |
 | Styling | Tailwind CSS |
-| Email | Resend (where used) |
+| Transactional email | Not wired (SSO does not send app mail; see docs/AUTHORIZATION.md) |
 
 ---
 
@@ -251,6 +251,7 @@ npm start
 | **NAMING_GUIDE.md** | Conventions |
 | **docs/SLIDESHOW_LOGIC.md** | Slideshow behavior detail |
 | **docs/MONGODB_CONVENTIONS.md** | DB patterns |
+| **docs/MONGODB_ATLAS.md** | Atlas setup, `npm run db:verify-uri`, `npm run db:ensure-indexes` |
 | **RELEASE_NOTES.md** | Changelog |
 | **TASKLIST.md** / **ROADMAP.md** | Planning |
 
@@ -258,7 +259,7 @@ npm start
 
 ## API Overview
 
-**Auth**: `GET /api/auth/login`, `GET /api/auth/callback`, `POST /api/auth/logout`, `GET /api/auth/session`
+**Auth**: `GET /api/auth/login?provider=google|facebook` (optional), `GET /api/auth/callback`, `POST /api/auth/logout`, `GET /api/auth/session`
 
 **Core**: partners, events, frames, logos, submissions (`GET` authenticated list; `POST` create), slideshows `.../playlist`, `.../played`
 
@@ -282,17 +283,20 @@ See **`ARCHITECTURE.md`** and route files under **`app/api/`** for the full set.
 
 ## Environment Variables
 
+Copy **`.env.example`** to **`.env`** / **`.env.local`** and fill in values. Check DNS with **`npm run db:verify-uri`**; optional **`npm run env:verify`** exercises Mongo, SSO Mongo (if set), SSO discovery, and ImgBB.
+
 ```bash
 MONGODB_URI=mongodb+srv://...
+MONGODB_DB=camera
 
+SSO_MONGODB_URI=mongodb+srv://...
 SSO_BASE_URL=https://...
 SSO_CLIENT_ID=...
 SSO_REDIRECT_URI=http://localhost:3000/api/auth/callback
 
 IMGBB_API_KEY=...
 
-RESEND_API_KEY=...
-RESEND_FROM_EMAIL=noreply@yourdomain.com
+NEXT_PUBLIC_APP_URL=https://fancamera.vercel.app
 ```
 
 ---
@@ -309,4 +313,4 @@ Proprietary — all rights reserved.
 - **LEARNINGS.md** — incidents and fixes  
 - **TASKLIST.md** — active work  
 
-SSO · MongoDB Atlas · imgbb · Resend
+SSO · MongoDB Atlas · imgbb

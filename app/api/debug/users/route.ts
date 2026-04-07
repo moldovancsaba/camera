@@ -5,8 +5,14 @@
 
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { NextResponse } from 'next/server';
+import { blockDangerousApiInProduction } from '@/lib/api/production-guard';
 
 export async function GET() {
+  const blocked = blockDangerousApiInProduction();
+  if (blocked) {
+    return blocked;
+  }
+
   try {
     const db = await connectToDatabase();
     

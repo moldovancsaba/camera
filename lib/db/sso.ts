@@ -7,8 +7,19 @@
 
 import { MongoClient } from 'mongodb';
 
-const SSO_URI = 'mongodb+srv://thanperfect:CuW54NNNFKnGQtt6@doneisbetter.49s2z.mongodb.net';
 const SSO_DB_NAME = 'sso';
+
+/**
+ * SSO MongoDB connection string (Atlas).
+ * Set SSO_MONGODB_URI in .env — never commit credentials.
+ */
+export function getSsoMongoUri(): string {
+  const uri = process.env.SSO_MONGODB_URI?.trim();
+  if (!uri) {
+    throw new Error('SSO_MONGODB_URI environment variable is not defined');
+  }
+  return uri;
+}
 const SSO_COLLECTION_NAME = 'publicUsers';
 
 // Cache connection to avoid reconnecting on every request
@@ -26,7 +37,7 @@ export async function connectToSSODatabase() {
     };
   }
 
-  const client = new MongoClient(SSO_URI);
+  const client = new MongoClient(getSsoMongoUri());
   await client.connect();
   cachedSsoClient = client;
 

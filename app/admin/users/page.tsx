@@ -23,8 +23,8 @@ import { getSession } from '@/lib/auth/session';
 import { MongoClient } from 'mongodb';
 import Link from 'next/link';
 import UserManagementActions from '@/components/admin/UserManagementActions';
-
-const SSO_MONGODB_URI = 'mongodb+srv://thanperfect:CuW54NNNFKnGQtt6@doneisbetter.49s2z.mongodb.net/?retryWrites=true&w=majority&appName=doneisbetter';
+import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
+import { getSsoMongoUri } from '@/lib/db/sso';
 
 // Force dynamic rendering (uses cookies for session)
 export const dynamic = 'force-dynamic';
@@ -39,7 +39,7 @@ function sanitizeUsername(name: string): string {
 
 export default async function AdminUsersPage() {
   let users: any[] = [];
-  let error = null;
+  let error: unknown = null;
   let currentUserEmail = '';
 
   try {
@@ -61,7 +61,7 @@ export default async function AdminUsersPage() {
       .toArray();
 
     // Fetch SSO users to get roles and status
-    const ssoClient = new MongoClient(SSO_MONGODB_URI);
+    const ssoClient = new MongoClient(getSsoMongoUri());
     await ssoClient.connect();
     let ssoUsers: any[] = [];
     try {
@@ -164,7 +164,7 @@ export default async function AdminUsersPage() {
 
   } catch (err) {
     console.error('Error fetching users:', err);
-    error = err instanceof Error ? err.message : 'Unknown error';
+    error = err;
   }
 
   return (
@@ -174,12 +174,7 @@ export default async function AdminUsersPage() {
         <p className="text-gray-600 dark:text-gray-400 mt-2">Compact list with core info</p>
       </div>
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-800 dark:text-red-200 font-medium">Database Connection Error</p>
-          <p className="text-red-600 dark:text-red-300 text-sm mt-1">{error}</p>
-        </div>
-      )}
+      {error != null ? <DatabaseConnectionAlert error={error} /> : null}
 
       {!error && users.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">

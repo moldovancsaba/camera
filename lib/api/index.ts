@@ -61,3 +61,5 @@ export {
   resetRateLimit,
   type RateLimitConfig,
 } from './rateLimiter';
+
+export { blockDangerousApiInProduction } from './production-guard';

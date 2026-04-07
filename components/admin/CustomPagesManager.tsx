@@ -356,7 +356,9 @@ function PageEditModal({
   // Who-are-you SSO options (v2.9.0)
   const [enableSSOLogin, setEnableSSOLogin] = useState(page.config.enableSSOLogin || false);
   const [enablePseudoReg, setEnablePseudoReg] = useState(page.config.enablePseudoReg !== false); // Default true
-  const [ssoButtonText, setSsoButtonText] = useState(page.config.ssoButtonText || 'Login with SSO');
+  const [ssoButtonText, setSsoButtonText] = useState(
+    page.config.ssoButtonText || 'Sign in with Google or Facebook'
+  );
   const [pseudoFormTitle, setPseudoFormTitle] = useState(page.config.pseudoFormTitle || '');
   const [nameLabel, setNameLabel] = useState(page.config.nameLabel || 'Your Name');
   const [emailLabel, setEmailLabel] = useState(page.config.emailLabel || 'Your Email');
@@ -485,24 +487,24 @@ function PageEditModal({
                       onChange={(e) => setEnableSSOLogin(e.target.checked)}
                       className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
                     />
-                    Enable SSO Login
+                    Enable Google / Facebook login
                   </label>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Allow users to authenticate with Facebook/Google SSO
+                    Shows Continue with Google and Continue with Facebook (central SSO)
                   </p>
                 </div>
 
                 {enableSSOLogin && (
                   <div>
                     <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                      SSO Button Text
+                      Heading above social buttons
                     </label>
                     <input
                       type="text"
                       value={ssoButtonText}
                       onChange={(e) => setSsoButtonText(e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="e.g., Sign in with Social Media"
+                      placeholder="e.g., Sign in with Google or Facebook"
                     />
                   </div>
                 )}

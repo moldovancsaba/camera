@@ -12,8 +12,14 @@ import { NextResponse } from 'next/server';
 import { NextRequest } from 'next/server';
 import { createSession } from '@/lib/auth/session';
 import type { TokenResponse } from '@/lib/auth/sso';
+import { blockDangerousApiInProduction } from '@/lib/api/production-guard';
 
 export async function GET(request: NextRequest) {
+  const blocked = blockDangerousApiInProduction();
+  if (blocked) {
+    return blocked;
+  }
+
   // Create a mock user session for development
   const mockUser = {
     id: 'dev-user-001',

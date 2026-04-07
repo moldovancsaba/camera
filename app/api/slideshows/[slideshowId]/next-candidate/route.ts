@@ -14,6 +14,7 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { generatePlaylist } from '@/lib/slideshow/playlist';
+import { findEventForSlideshow } from '@/lib/slideshow/resolve-event';
 
 /**
  * GET /api/slideshows/[slideshowId]/next-candidate?excludeIds=id1,id2,...
@@ -42,17 +43,14 @@ export async function GET(
       return NextResponse.json({ error: 'Slideshow not found' }, { status: 404 });
     }
 
-    // Get event to convert MongoDB _id to UUID
-    const event = await db
-      .collection(COLLECTIONS.EVENTS)
-      .findOne({ _id: new ObjectId(slideshow.eventId) });
-    
+    const event = await findEventForSlideshow(db, String(slideshow.eventId));
+
     if (!event) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
-    
+
     const eventUuid = event.eventId;
-    console.log(`[NextCandidate] Slideshow eventId (MongoDB _id): ${slideshow.eventId}`);
+    console.log(`[NextCandidate] Slideshow stored event ref: ${slideshow.eventId}`);
     console.log(`[NextCandidate] Event UUID (event.eventId): ${eventUuid}`);
 
     // Get submissions for the event, sorted by playCount (least played first)

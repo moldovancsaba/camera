@@ -4,6 +4,8 @@
 
 ## Overview
 
+**Atlas setup, indexes, and connection tuning**: see [MONGODB_ATLAS.md](./MONGODB_ATLAS.md).
+
 This document defines the **mandatory conventions** for referencing MongoDB documents across the entire codebase. Following these conventions ensures consistency, prevents reference bugs, and makes the system maintainable.
 
 ---

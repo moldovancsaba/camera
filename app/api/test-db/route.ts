@@ -8,8 +8,14 @@
 
 import { NextResponse } from 'next/server';
 import { testConnection } from '@/lib/db/mongodb';
+import { blockDangerousApiInProduction } from '@/lib/api/production-guard';
 
 export async function GET() {
+  const blocked = blockDangerousApiInProduction();
+  if (blocked) {
+    return blocked;
+  }
+
   try {
     const isConnected = await testConnection();
     

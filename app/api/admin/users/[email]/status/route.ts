@@ -25,8 +25,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/session';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { MongoClient } from 'mongodb';
-
-const SSO_MONGODB_URI = 'mongodb+srv://thanperfect:CuW54NNNFKnGQtt6@doneisbetter.49s2z.mongodb.net/?retryWrites=true&w=majority&appName=doneisbetter';
+import { getSsoMongoUri } from '@/lib/db/sso';
 
 export async function PATCH(
   request: NextRequest,
@@ -71,7 +70,7 @@ export async function PATCH(
     
     // Handle real users and administrators (stored in SSO database)
     if (userType === 'real' || userType === 'administrator') {
-      const client = new MongoClient(SSO_MONGODB_URI);
+      const client = new MongoClient(getSsoMongoUri());
       await client.connect();
       
       try {

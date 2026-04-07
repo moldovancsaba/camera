@@ -1,97 +1,78 @@
 /**
  * Slideshow Play Count Tracking API
- * Version: 1.0.0
- * 
+ * Version: 1.1.0
+ *
  * POST: Update play counts for submissions that were displayed
- * Increments playCount and updates lastPlayedAt timestamp
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
+import {
+  withErrorHandler,
+  checkRateLimit,
+  RATE_LIMITS,
+  apiSuccess,
+  apiBadRequest,
+  apiNotFound,
+} from '@/lib/api';
 
 /**
  * POST /api/slideshows/[slideshowId]/played
- * Update play counts for displayed submissions
- * 
  * Body: { submissionIds: string[] }
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ slideshowId: string }> }
-) {
-  try {
+export const POST = withErrorHandler(
+  async (
+    request: NextRequest,
+    { params }: { params: Promise<{ slideshowId: string }> }
+  ) => {
+    await checkRateLimit(request, RATE_LIMITS.SLIDESHOW_PLAYED);
+
     const { slideshowId } = await params;
     const body = await request.json();
     const { submissionIds } = body;
 
     if (!Array.isArray(submissionIds) || submissionIds.length === 0) {
-      return NextResponse.json(
-        { error: 'submissionIds array is required' },
-        { status: 400 }
-      );
+      throw apiBadRequest('submissionIds array is required');
     }
 
     const db = await connectToDatabase();
 
-    // Verify slideshow exists
     const slideshow = await db
       .collection(COLLECTIONS.SLIDESHOWS)
       .findOne({ slideshowId });
 
     if (!slideshow) {
-      return NextResponse.json({ error: 'Slideshow not found' }, { status: 404 });
+      throw apiNotFound('Slideshow not found');
     }
 
-    // Convert string IDs to ObjectId
     const objectIds = submissionIds
-      .filter(id => ObjectId.isValid(id))
-      .map(id => new ObjectId(id));
+      .filter((id: string) => ObjectId.isValid(id))
+      .map((id: string) => new ObjectId(id));
 
     if (objectIds.length === 0) {
-      return NextResponse.json(
-        { error: 'No valid submission IDs provided' },
-        { status: 400 }
-      );
+      throw apiBadRequest('No valid submission IDs provided');
     }
 
     const now = generateTimestamp();
-    
-    console.log(`[PlayCount] Incrementing playCount for ${objectIds.length} images...`);
-    objectIds.forEach((id, i) => {
-      console.log(`  ${i+1}. ${id.toString().slice(-6)}`);
-    });
-    
-    // Update play counts for all displayed submissions
-    // Track both per-slideshow and global counts
-    const result = await db
-      .collection(COLLECTIONS.SUBMISSIONS)
-      .updateMany(
-        { _id: { $in: objectIds } },
-        {
-          $inc: { 
-            playCount: 1,
-            [`slideshowPlays.${slideshowId}.count`]: 1,
-          },
-          $set: { 
-            lastPlayedAt: now,
-            [`slideshowPlays.${slideshowId}.lastPlayedAt`]: now,
-          },
-        }
-      );
 
-    console.log(`[PlayCount] ✓ Updated ${result.modifiedCount} images`);
+    const result = await db.collection(COLLECTIONS.SUBMISSIONS).updateMany(
+      { _id: { $in: objectIds } },
+      {
+        $inc: {
+          playCount: 1,
+          [`slideshowPlays.${slideshowId}.count`]: 1,
+        },
+        $set: {
+          lastPlayedAt: now,
+          [`slideshowPlays.${slideshowId}.lastPlayedAt`]: now,
+        },
+      }
+    );
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       updatedCount: result.modifiedCount,
     });
-  } catch (error) {
-    console.error('Error updating play counts:', error);
-    return NextResponse.json(
-      { error: 'Failed to update play counts' },
-      { status: 500 }
-    );
   }
-}
+);

@@ -160,6 +160,8 @@ export function getAuthorizationUrl(
   state: string,
   options?: {
     prompt?: 'login' | 'consent' | 'none' | 'select_account';
+    /** Routes user straight to Google or Facebook at the SSO layer (sso.doneisbetter.com). */
+    provider?: 'google' | 'facebook';
   }
 ): string {
   const config = SSO_CONFIG();
@@ -179,6 +181,10 @@ export function getAuthorizationUrl(
   // prompt=login forces re-authentication even if user has SSO session
   if (options?.prompt) {
     params.set('prompt', options.prompt);
+  }
+
+  if (options?.provider) {
+    params.set('provider', options.provider);
   }
 
   return `${endpoints.authorize}?${params.toString()}`;

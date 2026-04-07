@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generatePKCEPair, generateState, getAuthorizationUrl } from '@/lib/auth/sso';
 import { setPendingSessionCookie } from '@/lib/auth/session';
+import { parseLoginProvider } from '@/lib/auth/social-login';
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,14 +27,18 @@ export async function GET(request: NextRequest) {
     // Check if user just logged out (from query param or referer)
     const { searchParams } = new URL(request.url);
     const fromLogout = searchParams.get('from_logout') === 'true';
-    
+    const provider = parseLoginProvider(searchParams.get('provider'));
+
     // Build authorization URL with PKCE challenge
     // If user just logged out, force re-authentication with prompt=login
     const authUrl = getAuthorizationUrl(codeChallenge, state, {
       prompt: fromLogout ? 'login' : undefined,
+      provider,
     });
 
-    console.log(`✓ Initiating OAuth flow${fromLogout ? ' (force re-auth after logout)' : ''}, redirecting to SSO`);
+    console.log(
+      `✓ Initiating OAuth flow${fromLogout ? ' (force re-auth after logout)' : ''}${provider ? ` (provider=${provider})` : ''}, redirecting to SSO`
+    );
 
     // Set pending cookie on the same response as the redirect so Set-Cookie is not dropped
     // (cookies().set + NextResponse.redirect is unreliable in App Router route handlers)

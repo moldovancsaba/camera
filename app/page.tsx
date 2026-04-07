@@ -7,6 +7,7 @@
  */
 
 import { getSession } from '@/lib/auth/session';
+import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 
 // This page uses cookies, so it must be dynamic
 export const dynamic = 'force-dynamic';
@@ -72,19 +73,12 @@ export default async function Home({
               </a>
             </>
           ) : (
-            // Not logged in - show login button
-            // If user just logged out, add from_logout param to force re-authentication
-            <a
-              href={justLoggedOut ? "/api/auth/login?from_logout=true" : "/api/auth/login"}
-              className="px-8 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg"
-            >
-              🔐 Login with SSO
-            </a>
+            <SocialLoginButtons fromLogout={justLoggedOut} variant="home" />
           )}
         </div>
 
         <div className="mt-12 text-sm text-gray-500 dark:text-gray-400">
-          <p>🔐 Authentication via SSO | ☁️ Powered by MongoDB Atlas | 📧 Email delivery with Resend</p>
+          <p>🔐 Google / Facebook via SSO | ☁️ MongoDB Atlas | 🖼️ imgbb</p>
         </div>
       </main>
     </div>

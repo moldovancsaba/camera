@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { exchangeCodeForToken, decodeIdToken } from '@/lib/auth/sso';
 import { consumePendingSession, createSession } from '@/lib/auth/session';
 import { getAppPermission, hasAppAccess, isAppAdmin } from '@/lib/auth/sso-permissions';
+import { getSsoMongoUri } from '@/lib/db/sso';
 
 export async function GET(request: NextRequest) {
   try {
@@ -82,8 +83,7 @@ export async function GET(request: NextRequest) {
       console.log('⚠ Email is SSO service email, querying database for real user email');
       try {
         const { MongoClient } = await import('mongodb');
-        const SSO_URI = 'mongodb+srv://thanperfect:CuW54NNNFKnGQtt6@doneisbetter.49s2z.mongodb.net';
-        const client = new MongoClient(SSO_URI);
+        const client = new MongoClient(getSsoMongoUri());
         await client.connect();
         
         try {

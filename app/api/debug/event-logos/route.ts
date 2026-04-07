@@ -2,8 +2,14 @@ import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { ObjectId } from 'mongodb';
 import { NextResponse } from 'next/server';
+import { blockDangerousApiInProduction } from '@/lib/api/production-guard';
 
 export async function GET(request: NextRequest) {
+  const blocked = blockDangerousApiInProduction();
+  if (blocked) {
+    return blocked;
+  }
+
   const { searchParams } = request.nextUrl;
   const eventId = searchParams.get('eventId');
   

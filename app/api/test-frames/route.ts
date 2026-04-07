@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
+import { blockDangerousApiInProduction } from '@/lib/api/production-guard';
 
 export async function GET() {
+  const blocked = blockDangerousApiInProduction();
+  if (blocked) {
+    return blocked;
+  }
+
   const db = await connectToDatabase();
   const frames = await db.collection('frames').find({ isActive: true }).toArray();
   

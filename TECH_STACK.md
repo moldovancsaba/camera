@@ -204,22 +204,8 @@ const response = await uploadImage(base64Data, { name: 'photo' });
 
 ---
 
-### Resend 4.0.0
-**Type**: Email delivery service  
-**Why Chosen**:
-- Modern API design
-- Excellent TypeScript support
-- Reliable delivery rates
-- Simple pricing
-- Good documentation
-- Proven in SSO project (v5.16.0)
-
-**Usage**: Send final composed images to users after submission
-
-**Alternatives Considered**:
-- SendGrid: More complex API
-- Mailgun: Older design
-- AWS SES: Complex setup
+### Transactional email
+**Current state**: Not integrated in this app’s API routes. SSO handles login only; outbound product email would use a separate provider (e.g. Resend) if added later. See `docs/AUTHORIZATION.md`.
 
 ---
 

@@ -9,9 +9,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { generatePlaylist } from '@/lib/slideshow/playlist';
+import { findEventForSlideshow } from '@/lib/slideshow/resolve-event';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 
 /**
@@ -47,18 +49,15 @@ export async function GET(
     // Determine how many slides to generate
     const limit = limitParam ? parseInt(limitParam) : (slideshow.bufferSize || 10);
 
-    // CRITICAL: slideshow.eventId is MongoDB _id, need to get event's UUID
-    const { ObjectId } = await import('mongodb');
-    const event = await db
-      .collection(COLLECTIONS.EVENTS)
-      .findOne({ _id: new ObjectId(slideshow.eventId) });
-    
+    const event = await findEventForSlideshow(db, String(slideshow.eventId));
+
     if (!event) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
-    
-    const eventUuid = event.eventId; // This is the UUID stored in submissions
-    console.log(`[Playlist] Slideshow eventId (MongoDB _id): ${slideshow.eventId}`);
+
+    const eventUuid = event.eventId;
+    const eventMongoId = event._id!.toString();
+    console.log(`[Playlist] Slideshow stored event ref: ${slideshow.eventId}`);
     console.log(`[Playlist] Event UUID (event.eventId): ${eventUuid}`);
     console.log(`[Playlist] Event Name: ${event.name}`);
 
@@ -154,7 +153,8 @@ export async function GET(
       return NextResponse.json({
         slideshow: {
           _id: slideshow._id,
-          eventId: slideshow.eventId,  // MongoDB _id of event (for logo fetching)
+          eventId: eventMongoId,
+          eventUuid,
           name: slideshow.name,
           eventName: slideshow.eventName,
         },
@@ -169,7 +169,8 @@ export async function GET(
     return NextResponse.json({
       slideshow: {
         _id: slideshow._id,
-        eventId: slideshow.eventId,  // MongoDB _id of event (for logo fetching)
+        eventId: eventMongoId,
+        eventUuid,
         name: slideshow.name,
         eventName: slideshow.eventName,
         transitionDurationMs: slideshow.transitionDurationMs,

@@ -6,12 +6,13 @@
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
+import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import Link from 'next/link';
 import Image from 'next/image';
 
 export default async function FramesPage() {
   let frames: any[] = [];
-  let dbError = null;
+  let dbError: unknown = null;
 
   try {
     const db = await connectToDatabase();
@@ -23,7 +24,7 @@ export default async function FramesPage() {
       .toArray();
   } catch (error) {
     console.error('Error fetching frames:', error);
-    dbError = error instanceof Error ? error.message : 'Unknown error';
+    dbError = error;
   }
 
   return (
@@ -42,12 +43,7 @@ export default async function FramesPage() {
         </Link>
       </div>
 
-      {dbError && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-800 dark:text-red-200 font-medium">Database Connection Error</p>
-          <p className="text-red-600 dark:text-red-300 text-sm mt-1">{dbError}</p>
-        </div>
-      )}
+      {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
 
       {!dbError && frames.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">

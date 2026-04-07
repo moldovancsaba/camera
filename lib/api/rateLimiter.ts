@@ -82,6 +82,9 @@ export const RATE_LIMITS = {
   
   // Admin operations (moderate)
   ADMIN: { max: 50, windowMs: 60 * 1000 }, // 50 requests per minute
+
+  // Slideshow play-count bumps (public; generous for multi-slide batches)
+  SLIDESHOW_PLAYED: { max: 200, windowMs: 60 * 1000 },
 } as const;
 
 /**

@@ -262,6 +262,22 @@ All authorization checks have been updated to use `session.appRole`:
 
 ---
 
+## Social login (Google / Facebook)
+
+The Camera app starts OAuth at **`GET /api/auth/login`** with optional **`provider=google`** or **`provider=facebook`**. Those values are forwarded to the SSO authorize URL (same pattern as the Amanoba project: `…/login?provider=google`). The SSO service ([sso.doneisbetter.com](https://sso.doneisbetter.com)) must accept that `provider` query parameter for your OAuth client.
+
+---
+
+## Transactional email vs SSO
+
+**SSO ([sso.doneisbetter.com](https://sso.doneisbetter.com))** handles **authentication** (OAuth2/OIDC, tokens, app permissions). It is **not** a transactional email API for this app: it does not send “your photo is ready” or welcome messages on behalf of Camera.
+
+If you need outbound mail later, use a mail provider (e.g. Resend, SendGrid) from **this app’s server code**, or whatever mechanism your IdP offers **separately** from the login protocol. Replacing Resend with “SSO” is only possible if the IdP exposes a documented **send-email** API you integrate explicitly—OIDC discovery alone does not provide that.
+
+This repository **does not** currently send email from any API route; there is no dependency on Resend for runtime behavior.
+
+---
+
 ## References
 
 - **SSO Service**: https://sso.doneisbetter.com
