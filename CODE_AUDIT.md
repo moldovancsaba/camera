@@ -24,7 +24,7 @@ User requested full code audit with mandate to unify reusable elements and docum
 | Documentation Gaps | 4 files missing | Critical | ✅ Resolved |
 | Version Mismatches | 5 files | Critical | ✅ Resolved |
 | TypeScript Errors | 3 files | High | ✅ Resolved |
-| TODO/FIXME Comments | 7 instances | Medium | 🔄 Pending Phase 6 |
+| TODO/FIXME Comments | 2 in `logos/route.ts` | Low | 🔄 Optional Phase 6 |
 | Security Patterns | Inconsistent | Medium | 🔄 Pending Phase 7 |
 | Performance | Not optimized | Low | 🔄 Pending Phase 7 |
 
@@ -723,28 +723,28 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
 ### Phase 6: Resolve All TODOs and Technical Debt 🔄
 
-**Status**: Pending  
-**TODO Comments Found**: 7 instances
+**Status**: Mostly complete (2026-04-07)  
+**TODO comments in `*.ts` / `*.tsx`**: 2 instances in `app/api/logos/route.ts` (optional image width/height extraction — feature debt, not a defect).
 
-**Action Required**: Scan codebase and either implement, document in ROADMAP.md, or remove each TODO.
+**Action**: Keep or implement dimension extraction when product needs it; remove `TODO` labels when addressed.
 
 ---
 
 ### Phase 7: Implement Security and Performance Enhancements 🔄
 
-**Status**: Pending
+**Status**: Partially complete (2026-04-07)
 
-**Security Tasks**:
-- Add rate limiting middleware
-- Implement input sanitization
-- Configure security headers
-- Add CSRF protection
+**Done / in place**:
+- Security headers: HSTS, CSP, `X-Frame-Options`, `no-store` on `/api/*` — see `next.config.ts`
+- Rate limiting: `checkRateLimit` used on `POST /api/submissions` and slideshow `played` endpoint (`lib/api/rateLimiter.ts`)
+- OAuth PKCE + `state`; session cookies `HttpOnly`, `SameSite=Lax` (see `lib/auth/session.ts`)
 
-**Performance Tasks**:
-- Add HTTP caching headers
-- Implement response compression
-- Optimize database queries
-- Configure Next.js optimizations
+**Still open**:
+- Broaden rate limits to other abuse-prone public GETs if needed
+- Stay current on **Next.js** patches (`npm audit` often flags `next`; evaluate minor upgrades on a schedule)
+- Run `npm audit` / `npm audit fix` in CI; transitive deps (axios, minimatch, etc.) until resolved upstream
+
+**Performance** (unchanged from original list): caching heavy read paths, query tuning, compression where not handled by the host
 
 ---
 
@@ -769,6 +769,23 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 - Prepare versioned commit message
 - Push to GitHub main branch
 - Verify Definition of Done criteria
+
+---
+
+## Audit continuation (2026-04-07)
+
+**Scope**: Security / auth consistency pass after OAuth capture-flow fixes.
+
+| Area | Finding | Action taken |
+|------|---------|--------------|
+| `/api/hashtags` | User `q` passed into MongoDB `$regex` unescaped (pattern injection / ReDoS risk) | Escape regex metacharacters; clamp `limit` to 1–200 |
+| Admin user API | `requireAdmin` imported from `lib/auth/session` threw `Error`; catch blocks returned **500** for auth failures | Use `requireAdmin` from `@/lib/api`; rethrow `NextResponse` as HTTP response (401/403) |
+| Slideshow playlist | Comment referred to “SSO database” for inactive users | Comment updated: inactive emails come from **submission mirror** (`cameraAccountDisabled`), not SSO MongoDB |
+| Dangerous routes | `dev-login`, `migrate/*`, `debug/*`, `test-*` | Already gated by `blockDangerousApiInProduction()`; never set `ALLOW_DANGEROUS_DEV_ROUTES=true` on public production |
+| Public APIs | Slideshow playlist / next-candidate, `GET /api/events/[id]`, hashtags | Intentionally public; slideshow IDs and event IDs are capability URLs — treat as secrets in UI |
+| `npm audit` | 8 issues (incl. `next`, transitive packages) | Documented; run `npm audit fix` / plan Next patch upgrades |
+
+**Duplicate `requireAdmin`**: `lib/auth/session.ts` still exports `requireAdmin`/`requireAuth` throwing `Error` (for Server Components / non-API use). **API routes** should prefer `@/lib/api` middleware so failures are `NextResponse` with correct status codes.
 
 ---
 
@@ -808,7 +825,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
 ### Immediate (Phase 6-9)
 
-1. **Resolve TODOs** - Address 7 remaining TODO comments
+1. **Resolve TODOs** - Address remaining TODOs in `app/api/logos/route.ts` (optional dimensions) or remove labels
 2. **Security Hardening** - Implement rate limiting and input sanitization
 3. **Performance Optimization** - Add caching headers and compression
 4. **Final Documentation** - Update README and RELEASE_NOTES
@@ -873,7 +890,7 @@ This comprehensive audit and refactoring initiative successfully transformed a c
 - ✅ Achieved 100% AI rule compliance
 
 **Remaining Work** (Phases 6-9):
-- 🔄 Resolve 7 TODO comments
+- 🔄 Resolve optional logo dimension TODOs (or document as future work)
 - 🔄 Implement security enhancements
 - 🔄 Optimize performance
 - 🔄 Final documentation updates

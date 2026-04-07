@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth/session';
+import { requireAdmin } from '@/lib/api';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { setCameraAccountDisabledForEmail } from '@/lib/sso/submission-account';
@@ -116,6 +116,9 @@ export async function PATCH(
 
     return NextResponse.json({ error: 'Unsupported userType' }, { status: 400 });
   } catch (error) {
+    if (error instanceof NextResponse) {
+      return error;
+    }
     console.error('Error updating user status:', error);
     return NextResponse.json(
       {

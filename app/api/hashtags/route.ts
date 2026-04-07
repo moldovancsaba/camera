@@ -10,6 +10,11 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { withErrorHandler, apiSuccess } from '@/lib/api';
 
+/** Escape user input for safe use inside MongoDB `$regex` (avoid ReDoS / broken patterns). */
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * GET /api/hashtags
  * Get all unique hashtags with optional search
@@ -23,7 +28,8 @@ import { withErrorHandler, apiSuccess } from '@/lib/api';
 export const GET = withErrorHandler(async (request: NextRequest) => {
     const { searchParams } = request.nextUrl;
     const query = searchParams.get('q');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const rawLimit = parseInt(searchParams.get('limit') || '50', 10);
+    const limit = Math.min(200, Math.max(1, Number.isFinite(rawLimit) ? rawLimit : 50));
 
     const db = await connectToDatabase();
     
@@ -42,11 +48,11 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
     // Add search filter if query provided
     if (query && query.trim() !== '') {
-      // Case-insensitive regex search for hashtags containing the query
+      const safe = escapeRegex(query.trim());
       pipeline.splice(1, 0, {
         $match: {
-          hashtags: { $regex: query.trim(), $options: 'i' }
-        }
+          hashtags: { $regex: safe, $options: 'i' },
+        },
       });
     }
 

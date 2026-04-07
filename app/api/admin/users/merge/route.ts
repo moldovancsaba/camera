@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth/session';
+import { requireAdmin } from '@/lib/api';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { resolveSsoUserIdByEmail } from '@/lib/sso/submission-account';
@@ -97,6 +97,9 @@ export async function POST(request: NextRequest) {
       mergedAt: now,
     });
   } catch (error) {
+    if (error instanceof NextResponse) {
+      return error;
+    }
     console.error('Error merging users:', error);
     return NextResponse.json(
       {

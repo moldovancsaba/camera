@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth/session';
+import { requireAdmin } from '@/lib/api';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { resolveSsoUserIdByEmail } from '@/lib/sso/submission-account';
 import { updateUserAppRoleViaSso } from '@/lib/sso/update-app-permission';
@@ -78,6 +78,9 @@ export async function PATCH(
       role,
     });
   } catch (error) {
+    if (error instanceof NextResponse) {
+      return error;
+    }
     console.error('Error updating user role:', error);
     return NextResponse.json(
       {

@@ -94,7 +94,7 @@ On the SSO side, permissions are still typically backed by data like **app permi
 
 ### Pattern 1: Require Admin (Recommended)
 
-Use the `requireAdmin()` middleware from `lib/api/middleware.ts`:
+Use the `requireAdmin()` middleware from `lib/api/middleware.ts` (import via `@/lib/api`). Do **not** use `requireAdmin` from `@/lib/auth/session` in API route handlers: that variant throws plain `Error` and tends to produce **500** responses if a generic `catch` swallows it. The `@/lib/api` version throws `NextResponse` with **401/403**.
 
 ```typescript
 import { requireAdmin } from '@/lib/api';

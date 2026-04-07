@@ -61,8 +61,7 @@ export async function GET(
     console.log(`[Playlist] Event UUID (event.eventId): ${eventUuid}`);
     console.log(`[Playlist] Event Name: ${event.name}`);
 
-    // Get inactive user emails from SSO database
-    // These users' submissions will be filtered out from the playlist
+    // Emails mirrored as inactive on submissions (cameraAccountDisabled); not SSO MongoDB
     const inactiveEmails = await getInactiveUserEmails();
     console.log(`[Playlist] Filtering out ${inactiveEmails.size} inactive users`);
 
