@@ -12,10 +12,21 @@ import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 // This page uses cookies, so it must be dynamic
 export const dynamic = 'force-dynamic';
 
+function oauthErrorHint(code: string | undefined): string | null {
+  if (!code) return null;
+  if (code === 'session_expired') {
+    return 'Use a single browser tab for sign-in, or try again from the capture page.';
+  }
+  if (code === 'invalid_state') {
+    return 'If you had multiple login tabs open, close the extras and start sign-in once.';
+  }
+  return null;
+}
+
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ logout?: string }>;
+  searchParams: Promise<{ logout?: string; error?: string; message?: string }>;
 }) {
   // Get current session to show user info
   const session = await getSession();
@@ -25,10 +36,34 @@ export default async function Home({
   
   // Check if user just logged out
   const justLoggedOut = params.logout === 'success';
+
+  const oauthError = params.error;
+  let oauthMessage: string | null = null;
+  if (params.message) {
+    try {
+      oauthMessage = decodeURIComponent(params.message);
+    } catch {
+      oauthMessage = params.message;
+    }
+  }
+  const oauthHint = oauthErrorHint(oauthError);
   
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <main className="flex flex-col items-center justify-center px-8 py-16 text-center">
+        {oauthError && !session && (
+          <div
+            className="mb-6 max-w-lg rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100"
+            role="alert"
+          >
+            <p className="font-semibold">Sign-in did not complete</p>
+            {oauthMessage && <p className="mt-2">{oauthMessage}</p>}
+            {!oauthMessage && (
+              <p className="mt-2 capitalize">{oauthError.replace(/_/g, ' ')}</p>
+            )}
+            {oauthHint && <p className="mt-2 text-red-800 dark:text-red-200">{oauthHint}</p>}
+          </div>
+        )}
         <div className="mb-8">
           <div className="flex items-center justify-center gap-4 mb-4">
             <img 

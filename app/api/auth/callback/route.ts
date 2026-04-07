@@ -21,6 +21,26 @@ import {
 import { consumePendingSession, createSession } from '@/lib/auth/session';
 import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
 
+/** Prefer capture URL when capture resume cookies exist so users see a clear error in context. */
+function redirectOAuthFailure(
+  request: NextRequest,
+  errorCode: string,
+  message: string
+): NextResponse {
+  const captureEventId = request.cookies.get('captureEventId')?.value;
+
+  if (captureEventId) {
+    const url = new URL(`/capture/${captureEventId}`, request.url);
+    url.searchParams.set('error', errorCode);
+    url.searchParams.set('message', encodeURIComponent(message));
+    return NextResponse.redirect(url);
+  }
+
+  return NextResponse.redirect(
+    new URL(`/?error=${errorCode}&message=${encodeURIComponent(message)}`, request.url)
+  );
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -33,17 +53,17 @@ export async function GET(request: NextRequest) {
       console.error('✗ OAuth error from SSO:', error);
       const errorDescription = searchParams.get('error_description');
       
-      return NextResponse.redirect(
-        new URL(`/?error=${error}&message=${encodeURIComponent(errorDescription || 'Authentication failed')}`, request.url)
+      return redirectOAuthFailure(
+        request,
+        error,
+        errorDescription || 'Authentication failed'
       );
     }
 
     // Validate required parameters
     if (!code || !state) {
       console.error('✗ Missing code or state parameter');
-      return NextResponse.redirect(
-        new URL('/?error=invalid_request&message=Missing required parameters', request.url)
-      );
+      return redirectOAuthFailure(request, 'invalid_request', 'Missing required parameters');
     }
 
     // Get and verify pending session (CSRF protection)
@@ -51,8 +71,10 @@ export async function GET(request: NextRequest) {
     
     if (!pendingSession) {
       console.error('✗ No pending session found or expired');
-      return NextResponse.redirect(
-        new URL('/?error=session_expired&message=Login session expired, please try again', request.url)
+      return redirectOAuthFailure(
+        request,
+        'session_expired',
+        'Login session expired, please try again'
       );
     }
 
@@ -62,9 +84,7 @@ export async function GET(request: NextRequest) {
         cookieStateLen: pendingSession.state.length,
         queryStateLen: state.length,
       });
-      return NextResponse.redirect(
-        new URL('/?error=invalid_state&message=Invalid state parameter', request.url)
-      );
+      return redirectOAuthFailure(request, 'invalid_state', 'Invalid state parameter');
     }
 
     console.log('✓ State verified, exchanging code for tokens');
@@ -158,13 +178,10 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('✗ OAuth callback failed:', error);
     
-    return NextResponse.redirect(
-      new URL(
-        `/?error=auth_failed&message=${encodeURIComponent(
-          error instanceof Error ? error.message : 'Authentication failed'
-        )}`,
-        request.url
-      )
+    return redirectOAuthFailure(
+      request,
+      'auth_failed',
+      error instanceof Error ? error.message : 'Authentication failed'
     );
   }
 }

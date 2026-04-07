@@ -82,6 +82,7 @@ export default function EventCapturePage({
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [collectedData, setCollectedData] = useState<CollectedData>({ consents: [] });
   const [flowPhase, setFlowPhase] = useState<'onboarding' | 'capture' | 'thankyou'>('onboarding');
+  const [signInError, setSignInError] = useState<{ code: string; message: string } | null>(null);
   
   // Get take-photo page config for button texts and messages
   const takePhotoPage = customPages.find(p => p.pageType === 'take-photo');
@@ -145,6 +146,33 @@ export default function EventCapturePage({
       }
     }
   }, []); // Empty deps array - only run once on mount
+
+  // OAuth / SSO sign-in failed (callback redirected here with ?error=&message=)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const err = urlParams.get('error');
+    if (!err) return;
+
+    const rawMsg = urlParams.get('message');
+    let message = rawMsg || err.replace(/_/g, ' ');
+    if (rawMsg) {
+      try {
+        message = decodeURIComponent(rawMsg);
+      } catch {
+        /* keep raw */
+      }
+    }
+    setSignInError({ code: err, message });
+
+    urlParams.delete('error');
+    urlParams.delete('message');
+    const qs = urlParams.toString();
+    window.history.replaceState(
+      {},
+      '',
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname
+    );
+  }, []);
 
   // Fetch event and frames
   useEffect(() => {
@@ -779,6 +807,32 @@ export default function EventCapturePage({
 
   return (
     <div className="fixed inset-0 flex flex-col landscape:flex-row bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      {signInError && (
+        <div
+          className="flex-shrink-0 z-50 mx-3 mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900 shadow-md dark:border-red-800 dark:bg-red-950/90 dark:text-red-100 landscape:mx-2 landscape:mt-2"
+          role="alert"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="font-semibold">Sign-in did not complete</p>
+              <p className="mt-1">{signInError.message}</p>
+              {signInError.code === 'session_expired' && (
+                <p className="mt-1 text-red-800 dark:text-red-200">
+                  Use one browser tab for sign-in, or try again.
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setSignInError(null)}
+              className="shrink-0 rounded px-2 py-0.5 text-red-700 hover:bg-red-100 dark:text-red-200 dark:hover:bg-red-900/50"
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
       {/* Combined Header and Progress Steps - Hide after save */}
       {!shareUrl && (
         <div className="flex-shrink-0 px-4 py-3 landscape:w-auto landscape:h-full landscape:py-4 landscape:px-2">

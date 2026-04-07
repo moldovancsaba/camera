@@ -151,9 +151,9 @@ export default function WhoAreYouPage({ config, onNext, onBack, logoUrl, brandCo
               <p className="text-center text-sm font-medium text-gray-700 dark:text-gray-300">
                 {socialHeading}
               </p>
+              {/* fromLogout → prompt=login on SSO; keep it only after real logout (homepage). */}
               <SocialLoginButtons
                 variant="capture"
-                fromLogout
                 beforeNavigate={beforeSocialNavigate}
               />
             </div>
