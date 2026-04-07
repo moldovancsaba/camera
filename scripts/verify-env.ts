@@ -4,9 +4,10 @@
  * Usage (repo root):
  *   npx tsx scripts/verify-env.ts
  *
- * Tests: MongoDB (Camera), SSO OAuth discovery, ImgBB API.
+ * Tests: MongoDB (Camera), SSO OAuth discovery, ImgBB API, optional Upstash Redis (rate limits).
  */
 
+import { Redis } from '@upstash/redis';
 import { MongoClient } from 'mongodb';
 
 import { loadEnvFromFiles } from './load-env-from-files';
@@ -80,6 +81,23 @@ async function testImgBB(apiKey: string): Promise<boolean> {
   }
 }
 
+async function testUpstashRedis(url: string, token: string): Promise<boolean> {
+  try {
+    const redis = new Redis({ url, token });
+    const pong = await redis.ping();
+    if (pong === 'PONG') {
+      console.log('✓ Upstash Redis: PING ok (distributed rate limits will work)');
+      return true;
+    }
+    console.log(`✗ Upstash Redis: unexpected PING reply: ${String(pong)}`);
+    return false;
+  } catch (e) {
+    const err = e as Error;
+    console.log(`✗ Upstash Redis: ${err.message}`);
+    return false;
+  }
+}
+
 async function main() {
   loadEnvFromFiles();
   console.log('Environment credential verification\n');
@@ -111,6 +129,17 @@ async function main() {
   } else {
     console.log('○ IMGBB_API_KEY: not set');
     results.push({ name: 'IMGBB_API_KEY', pass: false });
+  }
+
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL?.trim();
+  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+  if (upstashUrl && upstashToken) {
+    const ok = await testUpstashRedis(upstashUrl, upstashToken);
+    results.push({ name: 'UPSTASH_REDIS', pass: ok });
+  } else {
+    console.log(
+      '○ UPSTASH_REDIS_*: not set (optional — API rate limits stay in-memory per instance)'
+    );
   }
 
   const passed = results.filter((r) => r.pass).length;

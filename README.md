@@ -154,7 +154,7 @@ npm start
 - **Canvas**: Two-stage compositing + large bitmaps; mobile memory and thermal limits matter at busy events.
 - **Upload**: Large JSON bodies (base64); server and client CPU for encode/decode.
 - **Slideshow**: Playlist route can **aggregate many submissions** per request; initial load may **fetch and preload multiple full buffers** — burst network and DB load.
-- **Rate limiting**: `lib/api/rateLimiter.ts` defines presets; **`checkRateLimit` is not wired to `POST /api/submissions`** in the current codebase — uploads are not IP-throttled by that helper until integrated.
+- **Rate limiting**: `lib/api/rateLimiter.ts` + **`RATE_LIMITS`**; **`checkRateLimit`** is used on **`POST /api/submissions`**, auth login, hashtags, event GET, slideshow routes, etc. With **`UPSTASH_REDIS_*`** env vars, limits are **shared across Vercel instances**; otherwise buckets are **in-memory** per instance.
 
 ---
 
@@ -203,7 +203,7 @@ npm start
 
 ## 10. Roadmap (suggested)
 
-**Short-term**: Wire **`checkRateLimit`** to submission POST (and optionally heavy GETs); reconcile **submission** schema vs DB writes; reduce production console noise; document **event id** semantics (Mongo `_id` on slideshow document vs UUID on submissions).
+**Short-term**: Reconcile **submission** schema vs DB writes; reduce production console noise where still noisy; document **event id** semantics (Mongo `_id` on slideshow document vs UUID on submissions).
 
 **Mid-term**: Cap or paginate playlist sourcing; optional **original + final** image storage; unify legacy vs event capture behavior where product allows; moderation / hold queue before slideshow.
 
@@ -283,7 +283,7 @@ See **`ARCHITECTURE.md`** and route files under **`app/api/`** for the full set.
 
 ## Environment Variables
 
-Copy **`.env.example`** to **`.env`** / **`.env.local`** and fill in values. Check DNS with **`npm run db:verify-uri`**; optional **`npm run env:verify`** exercises Mongo, SSO Mongo (if set), SSO discovery, and ImgBB.
+Copy **`.env.example`** to **`.env`** / **`.env.local`** and fill in values. Check DNS with **`npm run db:verify-uri`**; **`npm run env:verify`** exercises Mongo, SSO discovery, ImgBB, and **Upstash Redis** when configured.
 
 ```bash
 MONGODB_URI=mongodb+srv://...
@@ -297,6 +297,16 @@ IMGBB_API_KEY=...
 
 NEXT_PUBLIC_APP_URL=https://fancamera.vercel.app
 ```
+
+### Upstash Redis (optional, recommended on Vercel)
+
+API rate limits use **Upstash** when both variables are set; otherwise limits are **per serverless instance** only.
+
+1. In [Upstash Console](https://console.upstash.com/), create a **Redis** database (global region is fine).
+2. Open the database → **REST API** → copy **`UPSTASH_REDIS_REST_URL`** and **`UPSTASH_REDIS_REST_TOKEN`**.
+3. In [Vercel](https://vercel.com/) → your project → **Settings** → **Environment Variables** → add both for **Production** (and **Preview** if you want the same behavior there).
+4. **Redeploy** the project (Deployments → ⋮ → Redeploy).
+5. Locally: add the same keys to **`.env.local`**, then run **`npm run env:verify`** — you should see **`✓ Upstash Redis: PING ok`**.
 
 ---
 
