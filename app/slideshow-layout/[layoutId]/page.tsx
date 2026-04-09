@@ -113,8 +113,6 @@ export default function SlideshowLayoutPage({
           ...a,
           objectFit: a.objectFit === 'cover' ? ('cover' as const) : ('contain' as const),
         }));
-        const viewportScale: ViewportScaleMode =
-          L.viewportScale === 'fill' ? 'fill' : 'fit';
         if (!cancelled) {
           setLayout({
             layoutId: String(L.layoutId ?? ''),
@@ -124,7 +122,8 @@ export default function SlideshowLayoutPage({
             cols: Math.max(1, Math.floor(Number(L.cols)) || 1),
             areas,
             background: typeof L.background === 'string' ? L.background : '',
-            viewportScale,
+            /* Composite layout: always scale entire grid to fit viewport (no crop). */
+            viewportScale: 'fit' satisfies ViewportScaleMode,
             alignVertical: normalizeLayoutAlignVertical(L.alignVertical),
             alignHorizontal: normalizeLayoutAlignHorizontal(L.alignHorizontal),
             safetyPrimaryColor:
@@ -163,7 +162,7 @@ export default function SlideshowLayoutPage({
       vh,
       compactGrid.effectiveCols,
       compactGrid.effectiveRows,
-      layout.viewportScale
+      'fit'
     );
   }, [layout, compactGrid, vw, vh]);
 
@@ -214,8 +213,6 @@ export default function SlideshowLayoutPage({
     compactGrid.effectiveCols,
     compactGrid.effectiveRows
   );
-  const letterboxFit = layout.viewportScale !== 'fill';
-
   return (
     <div
       className={`relative min-h-0 min-w-0 w-screen h-screen overflow-hidden flex ${alignClass}`}
@@ -240,23 +237,14 @@ export default function SlideshowLayoutPage({
       ) : null}
 
       <div
-        className={
-          letterboxFit
-            ? 'relative z-10 min-h-0 min-w-0 overflow-hidden shadow-2xl'
-            : 'relative z-10 overflow-hidden shadow-2xl'
-        }
+        className="relative z-10 min-h-0 min-w-0 overflow-hidden shadow-2xl"
         style={{
           aspectRatio: rigidAspect,
           width: stage.width > 0 ? `${stage.width}px` : '100%',
           height: 'auto',
           boxSizing: 'border-box',
-          ...(letterboxFit
-            ? {
-                /* Viewport caps: % alone inside flex can fail in Safari landscape */
-                maxWidth: 'min(100vw, 100%)',
-                maxHeight: 'min(100vh, 100%)',
-              }
-            : {}),
+          maxWidth: 'min(100vw, 100%)',
+          maxHeight: 'min(100vh, 100%)',
         }}
       >
         <div

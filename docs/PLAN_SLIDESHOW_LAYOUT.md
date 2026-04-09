@@ -86,7 +86,7 @@ All playlist logic, fairness, play counts, and timing *per slideshow* stay in **
   ],
 
   background?: string,       // optional: multiline CSS background-* only (CardMass-style), v1 optional
-  viewportScale?: "fit" | "fill", // whole cols×rows grid vs browser viewport (implemented)
+  viewportScale?: "fit" | "fill", // stored for compatibility; public page always fits whole grid (contain)
 
   isActive: boolean,
   createdBy, createdAt, updatedAt

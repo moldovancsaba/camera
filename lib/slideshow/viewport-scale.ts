@@ -52,6 +52,11 @@ export function layoutGridAspectRatioCss(cols: number, rows: number): string {
   return `${cols * 16} / ${rows * 9}`;
 }
 
+/**
+ * Pixel size of the cols×rows videowall block inside a viewport rectangle.
+ * `fit` = contain entire grid (public `/slideshow-layout/...` always uses this).
+ * `fill` = cover viewport (may crop the grid); unused by the public composite player.
+ */
 export function layoutGridStageDimensions(
   viewportW: number,
   viewportH: number,

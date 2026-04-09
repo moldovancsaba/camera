@@ -63,7 +63,8 @@ export async function GET(
         cols: layout.cols,
         areas,
         background: layout.background || '',
-        viewportScale: layout.viewportScale === 'fill' ? 'fill' : 'fit',
+        /* Outer grid always scale-to-fit on the public player; field kept for admin/DB compat */
+        viewportScale: 'fit',
         alignVertical: normalizeLayoutAlignVertical(raw.alignVertical),
         alignHorizontal: normalizeLayoutAlignHorizontal(raw.alignHorizontal),
         safetyPrimaryColor: normalizeStoredSafetyColor(raw.safetyPrimaryColor),

@@ -61,11 +61,6 @@ export default async function EditSlideshowLayoutPage({
         initialCols={layout.cols as number}
         initialAreas={JSON.parse(JSON.stringify(layout.areas || []))}
         initialBackground={(layout.background as string) || ''}
-        initialViewportScale={
-          (layout as { viewportScale?: string }).viewportScale === 'fill'
-            ? 'fill'
-            : 'fit'
-        }
         initialAlignVertical={normalizeLayoutAlignVertical(
           layoutRaw.alignVertical
         )}

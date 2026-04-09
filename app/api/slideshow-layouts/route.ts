@@ -114,8 +114,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const layoutViewportScale = body.viewportScale === 'fill' ? 'fill' : 'fit';
-
     const sp = parseSafetyColorInput(body.safetyPrimaryColor);
     const sa = parseSafetyColorInput(body.safetyAccentColor);
     if (!sp.ok) {
@@ -134,7 +132,7 @@ export async function POST(request: NextRequest) {
       cols: c,
       areas: layoutAreas,
       background: typeof body.background === 'string' ? body.background : '',
-      viewportScale: layoutViewportScale,
+      viewportScale: 'fit',
       alignVertical: normalizeLayoutAlignVertical(body.alignVertical),
       alignHorizontal: normalizeLayoutAlignHorizontal(body.alignHorizontal),
       safetyPrimaryColor: sp.value,
@@ -239,7 +237,8 @@ export async function PATCH(request: NextRequest) {
           { status: 400 }
         );
       }
-      updates.viewportScale = body.viewportScale;
+      /* Public player always scale-to-fits; normalize stored value */
+      updates.viewportScale = 'fit';
     }
 
     if (body.alignVertical !== undefined) {

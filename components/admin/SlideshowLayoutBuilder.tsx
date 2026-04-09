@@ -68,7 +68,6 @@ interface Props {
   initialCols: number;
   initialAreas: SlideshowLayoutArea[];
   initialBackground?: string;
-  initialViewportScale?: 'fit' | 'fill';
   initialAlignVertical?: LayoutAlignVertical;
   initialAlignHorizontal?: LayoutAlignHorizontal;
   initialSafetyPrimaryColor?: string;
@@ -84,7 +83,6 @@ export default function SlideshowLayoutBuilder({
   initialCols,
   initialAreas,
   initialBackground = '',
-  initialViewportScale = 'fit',
   initialAlignVertical = 'middle',
   initialAlignHorizontal = 'center',
   initialSafetyPrimaryColor = '',
@@ -96,9 +94,6 @@ export default function SlideshowLayoutBuilder({
   const [cols, setCols] = useState(initialCols);
   const [areas, setAreas] = useState<SlideshowLayoutArea[]>(initialAreas);
   const [background, setBackground] = useState(initialBackground || '');
-  const [viewportScale, setViewportScale] = useState<'fit' | 'fill'>(
-    initialViewportScale === 'fill' ? 'fill' : 'fit'
-  );
   const [alignVertical, setAlignVertical] = useState<LayoutAlignVertical>(
     initialAlignVertical === 'top' || initialAlignVertical === 'bottom'
       ? initialAlignVertical
@@ -206,13 +201,12 @@ export default function SlideshowLayoutBuilder({
       if (!el || cols <= 0 || rows <= 0) return;
       const availW = el.clientWidth;
       const availH = el.clientHeight;
-      const mode = viewportScale === 'fill' ? 'fill' : 'fit';
       const { width, height } = layoutGridStageDimensions(
         availW,
         availH,
         cols,
         rows,
-        mode
+        'fit'
       );
       setGridStage({ width, height });
     }
@@ -228,7 +222,7 @@ export default function SlideshowLayoutBuilder({
       }
       window.removeEventListener('resize', recompute);
     };
-  }, [rows, cols, viewportScale]);
+  }, [rows, cols]);
 
   const commitSelectionAsArea = useCallback(() => {
     const tiles = Array.from(selection);
@@ -314,7 +308,7 @@ export default function SlideshowLayoutBuilder({
           cols,
           areas,
           background,
-          viewportScale,
+          viewportScale: 'fit',
           alignVertical,
           alignHorizontal,
           safetyPrimaryColor,
@@ -403,8 +397,8 @@ export default function SlideshowLayoutBuilder({
             <strong className="font-semibold">(columns × 16) : (rows × 9)</strong> (e.g. 3×3 → outer frame
             16:9 with nine 16:9 tiles; 3×1 → very wide). Use{' '}
             <strong className="font-semibold">Photo scaling</strong> for Fit vs Fill of the stage inside a
-            region; <strong className="font-semibold">Grid in browser</strong> fits or crops that entire
-            block in the viewport.
+            region only. The <strong className="font-semibold">whole videowall</strong> always scales to fit
+            the browser (no cropping of the grid).
           </p>
 
           <div>
@@ -412,31 +406,9 @@ export default function SlideshowLayoutBuilder({
               Grid in browser
             </span>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-              The row×column grid is scaled as one rigid block (cells share edges). Fit keeps the full
-              grid visible; Fill crops overflow like a cover photo.
+              The row×column grid is one rigid block (cells share edges). On the public page it{' '}
+              <strong className="font-semibold">always</strong> scales so the <strong className="font-semibold">entire</strong> grid stays visible—no horizontal or vertical clipping (letterboxing margins when needed).
             </p>
-            <div className="flex flex-wrap gap-6">
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-800 dark:text-gray-200">
-                <input
-                  type="radio"
-                  name="layoutViewportScale"
-                  className="accent-indigo-600"
-                  checked={viewportScale === 'fit'}
-                  onChange={() => setViewportScale('fit')}
-                />
-                Fit (letterbox)
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-800 dark:text-gray-200">
-                <input
-                  type="radio"
-                  name="layoutViewportScale"
-                  className="accent-indigo-600"
-                  checked={viewportScale === 'fill'}
-                  onChange={() => setViewportScale('fill')}
-                />
-                Fill (crop)
-              </label>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
@@ -481,7 +453,7 @@ export default function SlideshowLayoutBuilder({
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2 max-w-xl">
             Positions the videowall in the browser (same flex classes as the public page). Does not change
-            Fit/Fill math — only where the block sits in the viewport.
+            scale-to-fit sizing — only where the block sits in the viewport.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">

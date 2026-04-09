@@ -698,7 +698,10 @@ export interface SlideshowLayout {
   areas: SlideshowLayoutArea[];
   /** Optional outer frame CSS (background-* only), same idea as CardMass boards */
   background?: string;
-  /** Letterbox full grid in browser vs crop to cover; grid keeps cols:rows as one rigid unit */
+  /**
+   * Public `/slideshow-layout/...` always scales the whole grid to fit (contain). API save normalizes to `fit`.
+   * Type allows legacy `fill` in old documents; not used for the composite player.
+   */
   viewportScale?: 'fit' | 'fill';
   /** Flex alignment of rigid grid in viewport (Tailwind items- / justify- utilities on public page) */
   alignVertical?: 'top' | 'middle' | 'bottom';
