@@ -7,6 +7,19 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
 
+function normalizeDelayMs(raw: unknown): number {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return Math.max(0, Math.min(600_000, Math.floor(raw)));
+  }
+  if (typeof raw === 'string') {
+    const n = parseInt(raw.trim(), 10);
+    if (Number.isFinite(n)) {
+      return Math.max(0, Math.min(600_000, n));
+    }
+  }
+  return 0;
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ layoutId: string }> }
@@ -28,6 +41,12 @@ export async function GET(
       return NextResponse.json({ error: 'Layout not found' }, { status: 404 });
     }
 
+    const rawAreas = Array.isArray(layout.areas) ? layout.areas : [];
+    const areas = rawAreas.map((a: Record<string, unknown>) => ({
+      ...a,
+      delayMs: normalizeDelayMs(a.delayMs),
+    }));
+
     return NextResponse.json({
       layout: {
         layoutId: layout.layoutId,
@@ -35,8 +54,9 @@ export async function GET(
         eventName: layout.eventName,
         rows: layout.rows,
         cols: layout.cols,
-        areas: layout.areas,
+        areas,
         background: layout.background || '',
+        viewportScale: layout.viewportScale === 'fill' ? 'fill' : 'fit',
       },
     });
   } catch (error) {

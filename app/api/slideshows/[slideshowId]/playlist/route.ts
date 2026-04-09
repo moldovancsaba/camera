@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { generatePlaylist } from '@/lib/slideshow/playlist';
+import { generatePlaylist, shuffleInPlace, expandPlaylistToLength } from '@/lib/slideshow/playlist';
 import { findEventForSlideshow } from '@/lib/slideshow/resolve-event';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
@@ -73,85 +73,108 @@ export async function GET(
       console.log(`[Playlist] Filtering out ${inactiveEmails.size} inactive users`);
     }
 
-    // Build match filter: event + exclude IDs in other playlists + archived/hidden check + active users only
-    // BACKWARD COMPATIBILITY: Support both eventId (singular) and eventIds (array)
-    const matchFilter: any = {
-      $and: [
+    const excludeObjectIds =
+      excludeIds.length > 0
+        ? excludeIds.filter((id) => ObjectId.isValid(id)).map((id) => new ObjectId(id))
+        : [];
+
+    if (dbg && excludeObjectIds.length > 0) {
+      console.log(
+        `[Playlist] Excluding ${excludeObjectIds.length} images currently in other playlists`
+      );
+    }
+
+    // Build match filter: event + optional exclude + archived/hidden + active users only
+    const buildMatchFilter = (excludeOids: ObjectId[]) => {
+      const and: object[] = [
         {
           $or: [
-            { eventId: eventUuid },              // OLD: singular eventId field
-            { eventIds: { $in: [eventUuid] } }   // NEW: eventIds array
-          ]
+            { eventId: eventUuid },
+            { eventIds: { $in: [eventUuid] } },
+          ],
         },
-        { isArchived: { $ne: true } },           // Exclude archived
+        { isArchived: { $ne: true } },
         {
           $or: [
-            { hiddenFromEvents: { $exists: false } },     // Field doesn't exist (old data)
-            { hiddenFromEvents: { $nin: [eventUuid] } }  // Not hidden from this event
-          ]
+            { hiddenFromEvents: { $exists: false } },
+            { hiddenFromEvents: { $nin: [eventUuid] } },
+          ],
         },
-        // Exclude submissions from inactive SSO users (real users)
-        // Also exclude pseudo users who have been marked inactive
         {
           $and: [
-            // Filter out inactive real users (SSO authenticated)
             {
               $or: [
-                // Real users: check userEmail against inactive list
                 { userEmail: { $nin: Array.from(inactiveEmails) } },
-                // Pseudo users: userId='anonymous' is always kept (not real SSO user)
-                { userId: 'anonymous' }
-              ]
+                { userId: 'anonymous' },
+              ],
             },
-            // Filter out inactive pseudo users (userInfo.isActive = false)
             {
               $or: [
-                { 'userInfo.isActive': { $ne: false } },  // Not inactive pseudo
-                { userInfo: { $exists: false } }          // Not a pseudo user
-              ]
-            }
-          ]
-        }
-      ]
-    };
-    if (excludeIds.length > 0) {
-      // Convert string IDs to ObjectId for MongoDB comparison
-      const excludeObjectIds = excludeIds
-        .filter(id => ObjectId.isValid(id))
-        .map(id => new ObjectId(id));
-      
-      if (excludeObjectIds.length > 0) {
-        // Add _id exclusion to the $and array
-        matchFilter.$and.push({ _id: { $nin: excludeObjectIds } });
-        if (dbg) {
-          console.log(
-            `[Playlist] Excluding ${excludeObjectIds.length} images currently in other playlists`
-          );
-        }
-      }
-    }
-    
-    // Get submissions for the event, sorted by playCount (least played first)
-    // CRITICAL: Handle undefined/null playCount by treating as 0
-    // Then by createdAt (OLDEST first) to ensure fair rotation - older images get priority
-    const submissions = await db
-      .collection(COLLECTIONS.SUBMISSIONS)
-      .aggregate([
-        { $match: matchFilter },
-        {
-          $addFields: {
-            // Ensure playCount is always a number (default 0 if undefined/null)
-            normalizedPlayCount: { $ifNull: ['$playCount', 0] }
-          }
+                { 'userInfo.isActive': { $ne: false } },
+                { userInfo: { $exists: false } },
+              ],
+            },
+          ],
         },
-        { $sort: { normalizedPlayCount: 1, createdAt: 1 } } // ASCENDING for both (lowest first, oldest first)
-      ])
-      .toArray();
+      ];
+      if (excludeOids.length > 0) {
+        and.push({ _id: { $nin: excludeOids } });
+      }
+      return { $and: and };
+    };
+
+    const fetchSubmissionsSorted = async (excludeOids: ObjectId[]) => {
+      const matchFilter = buildMatchFilter(excludeOids);
+      return db
+        .collection(COLLECTIONS.SUBMISSIONS)
+        .aggregate([
+          { $match: matchFilter },
+          {
+            $addFields: {
+              normalizedPlayCount: { $ifNull: ['$playCount', 0] },
+            },
+          },
+          { $sort: { normalizedPlayCount: 1, createdAt: 1 } },
+        ])
+        .toArray();
+    };
+
+    let submissions = await fetchSubmissionsSorted(excludeObjectIds);
+    // Small pool: excluding every ID already on screen can yield zero rows — fall back so buffers stay non-empty.
+    if (submissions.length === 0 && excludeObjectIds.length > 0) {
+      if (dbg) {
+        console.log('[Playlist] Exclude exhausted pool; refetching without exclude');
+      }
+      submissions = await fetchSubmissionsSorted([]);
+    }
+
+    const orderMode = slideshow.orderMode === 'random' ? 'random' : 'fixed';
+    if (orderMode === 'random' && submissions.length > 1) {
+      shuffleInPlace(submissions);
+    }
+
+    const playMode = slideshow.playMode === 'once' ? 'once' : 'loop';
+
+    const bgPrimary =
+      typeof slideshow.backgroundPrimaryColor === 'string' && slideshow.backgroundPrimaryColor
+        ? slideshow.backgroundPrimaryColor
+        : '#312e81';
+    const bgAccent =
+      typeof slideshow.backgroundAccentColor === 'string' && slideshow.backgroundAccentColor
+        ? slideshow.backgroundAccentColor
+        : '#0f172a';
+    const bgImage =
+      typeof slideshow.backgroundImageUrl === 'string' && slideshow.backgroundImageUrl.trim()
+        ? slideshow.backgroundImageUrl.trim()
+        : null;
+    const viewportScale = slideshow.viewportScale === 'fill' ? 'fill' : 'fit';
     
     if (dbg) {
       console.log(`[Playlist] Total submissions available (after filtering): ${submissions.length}`);
-      console.log(`[Playlist] Match filter:`, JSON.stringify(matchFilter, null, 2));
-      console.log('[Playlist] First 15 submissions by playCount (least played first):');
+      console.log(
+        `[Playlist] excludeObjectIds: ${excludeObjectIds.length}, orderMode: ${orderMode}, playMode: ${playMode}`
+      );
+      console.log('[Playlist] First 15 submissions (order may be shuffled when random):');
       submissions.slice(0, 15).forEach((sub, i) => {
         const width = sub.metadata?.finalWidth || sub.metadata?.originalWidth || '?';
         const height = sub.metadata?.finalHeight || sub.metadata?.originalHeight || '?';
@@ -172,6 +195,16 @@ export async function GET(
           eventUuid,
           name: slideshow.name,
           eventName: slideshow.eventName,
+          transitionDurationMs: slideshow.transitionDurationMs,
+          fadeDurationMs: slideshow.fadeDurationMs,
+          bufferSize: slideshow.bufferSize || 10,
+          refreshStrategy: slideshow.refreshStrategy || 'continuous',
+          playMode,
+          orderMode,
+          backgroundPrimaryColor: bgPrimary,
+          backgroundAccentColor: bgAccent,
+          backgroundImageUrl: bgImage,
+          viewportScale,
         },
         playlist: [],
         message: 'No submissions available for this event',
@@ -179,7 +212,11 @@ export async function GET(
     }
 
     // Generate playlist with mosaic logic
-    const playlist = generatePlaylist(submissions, limit);
+    const rawPlaylist = generatePlaylist(submissions, limit);
+    const playlist =
+      playMode === 'loop' && rawPlaylist.length > 0
+        ? expandPlaylistToLength(rawPlaylist, limit)
+        : rawPlaylist;
 
     return NextResponse.json({
       slideshow: {
@@ -192,6 +229,12 @@ export async function GET(
         fadeDurationMs: slideshow.fadeDurationMs,
         bufferSize: slideshow.bufferSize || 10,
         refreshStrategy: slideshow.refreshStrategy || 'continuous',
+        playMode,
+        orderMode,
+        backgroundPrimaryColor: bgPrimary,
+        backgroundAccentColor: bgAccent,
+        backgroundImageUrl: bgImage,
+        viewportScale,
       },
       playlist,
       totalSubmissions: submissions.length,

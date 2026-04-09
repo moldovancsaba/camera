@@ -15,6 +15,35 @@
 
 import { Submission } from '@/lib/db/schemas';
 
+/** Fisher–Yates shuffle (mutates array). */
+export function shuffleInPlace<T>(arr: T[]): void {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+function cloneSlide(s: Slide): Slide {
+  return {
+    type: s.type,
+    aspectRatio: s.aspectRatio,
+    submissions: s.submissions.map((sub) => ({ ...sub })),
+  };
+}
+
+/**
+ * Repeat a base playlist cyclically until it has exactly targetLen slides (deep-cloned entries).
+ * Used to keep a full prefetch queue when the event has very few distinct slides.
+ */
+export function expandPlaylistToLength(base: Slide[], targetLen: number): Slide[] {
+  if (base.length === 0 || targetLen <= 0) return [];
+  const out: Slide[] = [];
+  for (let i = 0; i < targetLen; i++) {
+    out.push(cloneSlide(base[i % base.length]));
+  }
+  return out;
+}
+
 /**
  * Aspect Ratio Categories
  */

@@ -1,10 +1,25 @@
 'use client';
 
 /**
- * Shared slideshow playback (rolling A/B/C buffers). Used by full-page player and layout cells.
+ * Slideshow playback: FIFO queue of slides (bufferSize), prefetched next slide,
+ * offline rotation over the queue so a single cached image never yields a black frame.
  */
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useLayoutEffect,
+  type CSSProperties,
+} from 'react';
+import {
+  slideshowStageDimensions,
+  type ViewportScaleMode,
+} from '@/lib/slideshow/viewport-scale';
+
+const DEFAULT_BG_PRIMARY = '#312e81';
+const DEFAULT_BG_ACCENT = '#0f172a';
 
 interface Submission {
   _id: string;
@@ -27,57 +42,73 @@ interface SlideshowSettings {
   fadeDurationMs: number;
   bufferSize: number;
   refreshStrategy: 'continuous' | 'batch';
+  playMode?: 'once' | 'loop';
+  orderMode?: 'fixed' | 'random';
+  backgroundPrimaryColor?: string;
+  backgroundAccentColor?: string;
+  backgroundImageUrl?: string | null;
+  viewportScale?: ViewportScaleMode;
 }
 
 export interface SlideshowPlayerCoreProps {
   slideshowId: string;
-  /** FIT = contain (letterbox), FILL = cover (crop); aspect always preserved */
   objectFit?: 'contain' | 'cover';
-  /** Extra ms before the first transition from slide 0 → 1 (stagger duplicate slideshows) */
-  delayMs?: number;
+  /** Stagger first transition (ms); API/layout may send string from JSON */
+  delayMs?: number | string;
   variant?: 'fullscreen' | 'embedded';
   className?: string;
+}
+
+function slideKey(slide: Slide): string {
+  return slide.submissions.map((s) => s._id).join('-');
+}
+
+function normalizeDelayMs(raw: number | string | undefined): number {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return Math.max(0, Math.min(600_000, Math.floor(raw)));
+  }
+  if (typeof raw === 'string') {
+    const n = parseInt(raw.trim(), 10);
+    if (Number.isFinite(n)) {
+      return Math.max(0, Math.min(600_000, n));
+    }
+  }
+  return 0;
 }
 
 export function SlideshowPlayerCore({
   slideshowId,
   objectFit = 'contain',
-  delayMs = 0,
+  delayMs: delayMsProp = 0,
   variant = 'fullscreen',
   className = '',
 }: SlideshowPlayerCoreProps) {
+  const delayMs = normalizeDelayMs(delayMsProp);
   const [settings, setSettings] = useState<SlideshowSettings | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [playlistA, setPlaylistA] = useState<Slide[]>([]);
-  const [playlistB, setPlaylistB] = useState<Slide[]>([]);
-  const [playlistC, setPlaylistC] = useState<Slide[]>([]);
-  const [activePlaylist, setActivePlaylist] = useState<'A' | 'B' | 'C'>('A');
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [slideQueue, setSlideQueue] = useState<Slide[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const getCurrentPlaylist = () => {
-    switch (activePlaylist) {
-      case 'A':
-        return playlistA;
-      case 'B':
-        return playlistB;
-      case 'C':
-        return playlistC;
-    }
-  };
-
-  const buffer = getCurrentPlaylist();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [playbackEnded, setPlaybackEnded] = useState(false);
+  const [displayEpoch, setDisplayEpoch] = useState(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const hideControlsTimeout = useRef<NodeJS.Timeout | null>(null);
   const preloadedImages = useRef<Map<string, HTMLImageElement>>(new Map());
-  const isFetchingCandidate = useRef(false);
   const pendingInitialDelayRef = useRef(delayMs > 0);
+  const nextPreparedRef = useRef<Slide | null>(null);
+  const prefetchBusyRef = useRef(false);
+  const onceInitialRef = useRef<Slide[] | null>(null);
+  const settingsRef = useRef<SlideshowSettings | null>(null);
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   useEffect(() => {
     pendingInitialDelayRef.current = delayMs > 0;
@@ -119,58 +150,42 @@ export function SlideshowPlayerCore({
     [preloadImage]
   );
 
-  const fetchAndBuildPlaylistWithExclusions = useCallback(
-    async (targetPlaylist: 'A' | 'B' | 'C', excludeIds: string[] = []): Promise<Slide[]> => {
-      if (isFetchingCandidate.current) return [];
+  const fetchOneSlide = useCallback(async (): Promise<Slide | null> => {
+    try {
+      const response = await fetch(`/api/slideshows/${slideshowId}/playlist?limit=1`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      const slide = data.playlist?.[0] as Slide | undefined;
+      return slide ?? null;
+    } catch {
+      return null;
+    }
+  }, [slideshowId]);
 
-      isFetchingCandidate.current = true;
-
-      try {
-        const url =
-          excludeIds.length > 0
-            ? `/api/slideshows/${slideshowId}/playlist?exclude=${excludeIds.join(',')}`
-            : `/api/slideshows/${slideshowId}/playlist`;
-
-        const response = await fetch(url);
-        if (!response.ok) {
-          console.warn(`Failed to fetch playlist ${targetPlaylist}:`, response.status);
-          return [];
-        }
-
-        const data = await response.json();
-        if (!data.playlist || data.playlist.length === 0) {
-          return [];
-        }
-
-        await Promise.all(data.playlist.map(preloadSlide));
-
-        switch (targetPlaylist) {
-          case 'A':
-            setPlaylistA(data.playlist);
-            break;
-          case 'B':
-            setPlaylistB(data.playlist);
-            break;
-          case 'C':
-            setPlaylistC(data.playlist);
-            break;
-        }
-
-        return data.playlist;
-      } catch (err) {
-        console.error(`Error building playlist ${targetPlaylist}:`, err);
-        return [];
-      } finally {
-        isFetchingCandidate.current = false;
+  const prefetchNext = useCallback(async () => {
+    const s = settingsRef.current;
+    if (!s || s.playMode === 'once') return;
+    if (prefetchBusyRef.current) return;
+    prefetchBusyRef.current = true;
+    try {
+      const slide = await fetchOneSlide();
+      nextPreparedRef.current = slide;
+      if (slide) {
+        await preloadSlide(slide);
       }
-    },
-    [slideshowId, preloadSlide]
-  );
+    } finally {
+      prefetchBusyRef.current = false;
+    }
+  }, [fetchOneSlide, preloadSlide]);
 
   const loadInitialBuffer = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
+      setPlaybackEnded(false);
+      pendingInitialDelayRef.current = delayMs > 0;
+      onceInitialRef.current = null;
+      nextPreparedRef.current = null;
 
       const response = await fetch(`/api/slideshows/${slideshowId}/playlist`);
       if (!response.ok) {
@@ -204,25 +219,21 @@ export function SlideshowPlayerCore({
         }
       }
 
-      if (data.playlist.length > 0) {
-        await Promise.all(data.playlist.map(preloadSlide));
-        setPlaylistA(data.playlist);
-
-        const idsInA: string[] = [];
-        data.playlist.forEach((slide: Slide) => {
-          slide.submissions.forEach((sub) => idsInA.push(sub._id));
-        });
-
-        const playlistBData = await fetchAndBuildPlaylistWithExclusions('B', idsInA);
-
-        const idsInB: string[] = [];
-        playlistBData.forEach((slide: Slide) => {
-          slide.submissions.forEach((sub) => idsInB.push(sub._id));
-        });
-        const excludeForC = [...idsInA, ...idsInB];
-
-        await fetchAndBuildPlaylistWithExclusions('C', excludeForC);
-        setActivePlaylist('A');
+      const playlist = (data.playlist || []) as Slide[];
+      if (playlist.length > 0) {
+        await Promise.all(playlist.map(preloadSlide));
+        setDisplayEpoch(0);
+        setSlideQueue(playlist);
+        if (data.slideshow.playMode === 'once') {
+          onceInitialRef.current = playlist.map((sl) => ({
+            ...sl,
+            submissions: sl.submissions.map((s) => ({ ...s })),
+          }));
+        }
+        void prefetchNext();
+      } else {
+        setDisplayEpoch(0);
+        setSlideQueue([]);
       }
 
       setIsLoading(false);
@@ -231,11 +242,42 @@ export function SlideshowPlayerCore({
       setError(err instanceof Error ? err.message : 'Failed to load slideshow');
       setIsLoading(false);
     }
-  }, [slideshowId, preloadSlide, fetchAndBuildPlaylistWithExclusions]);
+  }, [slideshowId, preloadSlide, prefetchNext, delayMs]);
+
+  useLayoutEffect(() => {
+    if (!settings) return;
+    const mode: ViewportScaleMode =
+      settings.viewportScale === 'fill' ? 'fill' : 'fit';
+
+    if (variant === 'fullscreen') {
+      const measure = () => {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        setStageSize(slideshowStageDimensions(w, h, mode));
+      };
+      measure();
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    }
+
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      setStageSize(slideshowStageDimensions(r.width, r.height, mode));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [variant, settings?.viewportScale, slideshowId]);
 
   useEffect(() => {
     loadInitialBuffer();
   }, [loadInitialBuffer]);
+
+  useEffect(() => {
+    if (slideQueue.length === 0) return;
+    void Promise.all(slideQueue.map((s) => preloadSlide(s)));
+  }, [slideQueue, preloadSlide]);
 
   const updatePlayCounts = useCallback(
     async (slide: Slide) => {
@@ -256,82 +298,74 @@ export function SlideshowPlayerCore({
     [slideshowId]
   );
 
+  const headSlide = slideQueue[0];
+  const queueLen = slideQueue.length;
+
   useEffect(() => {
-    if (!settings || !isPlaying || buffer.length === 0) return;
+    if (!settings || !isPlaying || !headSlide) return;
 
-    const currentSlide = buffer[currentIndex];
+    updatePlayCounts(headSlide);
 
-    if (currentSlide) {
-      updatePlayCounts(currentSlide);
-    }
-
-    const delayExtra =
-      pendingInitialDelayRef.current && currentIndex === 0 ? delayMs : 0;
+    const applyInitialStagger =
+      displayEpoch === 0 && pendingInitialDelayRef.current && delayMs > 0;
+    const delayExtra = applyInitialStagger ? delayMs : 0;
 
     const advanceTimer = setTimeout(() => {
-      if (pendingInitialDelayRef.current && currentIndex === 0) {
+      if (applyInitialStagger) {
         pendingInitialDelayRef.current = false;
       }
 
-      const nextIndex = currentIndex + 1;
+      const playMode = settings.playMode === 'once' ? 'once' : 'loop';
 
-      if (nextIndex >= buffer.length) {
-        let nextPlaylist: 'A' | 'B' | 'C';
-        let playlistToRebuild: 'A' | 'B' | 'C';
-
-        switch (activePlaylist) {
-          case 'A':
-            nextPlaylist = 'B';
-            playlistToRebuild = 'A';
-            break;
-          case 'B':
-            nextPlaylist = 'C';
-            playlistToRebuild = 'B';
-            break;
-          case 'C':
-            nextPlaylist = 'A';
-            playlistToRebuild = 'C';
-            break;
+      if (playMode === 'once') {
+        let advanced = false;
+        let ended = false;
+        setSlideQueue((q) => {
+          if (q.length <= 1) {
+            ended = true;
+            return q;
+          }
+          advanced = true;
+          return q.slice(1);
+        });
+        if (ended) {
+          setPlaybackEnded(true);
+          setIsPlaying(false);
         }
-
-        setActivePlaylist(nextPlaylist);
-        setCurrentIndex(0);
-
-        if (settings.refreshStrategy === 'continuous') {
-          const excludeIds: string[] = [];
-          const remainingPlaylists = ['A', 'B', 'C'].filter(
-            (p) => p !== playlistToRebuild
-          ) as ('A' | 'B' | 'C')[];
-          remainingPlaylists.forEach((p) => {
-            const playlist = p === 'A' ? playlistA : p === 'B' ? playlistB : playlistC;
-            playlist.forEach((slide) => {
-              slide.submissions.forEach((sub) => excludeIds.push(sub._id));
-            });
-          });
-          fetchAndBuildPlaylistWithExclusions(playlistToRebuild, excludeIds);
-        }
-      } else {
-        setCurrentIndex(nextIndex);
+        if (advanced) setDisplayEpoch((e) => e + 1);
+        return;
       }
+
+      const incoming = nextPreparedRef.current;
+      nextPreparedRef.current = null;
+
+      let advanced = false;
+      setSlideQueue((q) => {
+        if (q.length === 0) return q;
+        const tail = q.slice(1);
+        let nextQ: Slide[];
+        if (incoming) {
+          nextQ = [...tail, incoming];
+        } else {
+          nextQ = [...tail, q[0]];
+        }
+        advanced = true;
+        return nextQ;
+      });
+      if (advanced) setDisplayEpoch((e) => e + 1);
+      void prefetchNext();
     }, settings.transitionDurationMs + delayExtra);
 
     return () => {
       clearTimeout(advanceTimer);
     };
-  }, [
-    settings,
-    currentIndex,
-    isPlaying,
-    buffer,
-    activePlaylist,
-    playlistA,
-    playlistB,
-    playlistC,
-    slideshowId,
-    delayMs,
-    updatePlayCounts,
-    fetchAndBuildPlaylistWithExclusions,
-  ]);
+  }, [settings, headSlide, queueLen, isPlaying, slideshowId, delayMs, displayEpoch, updatePlayCounts, prefetchNext]);
+
+  useEffect(() => {
+    const s = settingsRef.current;
+    if (!s || s.playMode === 'once' || !headSlide) return;
+    void prefetchNext();
+  }, [headSlide, prefetchNext, settings?.playMode]);
 
   const toggleFullscreen = () => {
     if (variant !== 'fullscreen' || !containerRef.current) return;
@@ -361,6 +395,48 @@ export function SlideshowPlayerCore({
     }, 3000);
   };
 
+  const manualAdvance = useCallback(() => {
+    pendingInitialDelayRef.current = false;
+    const s = settingsRef.current;
+    const playMode = s?.playMode === 'once' ? 'once' : 'loop';
+    setPlaybackEnded(false);
+
+    if (playMode === 'once') {
+      let advanced = false;
+      setSlideQueue((q) => {
+        if (q.length <= 1) return q;
+        advanced = true;
+        return q.slice(1);
+      });
+      if (advanced) setDisplayEpoch((e) => e + 1);
+      return;
+    }
+
+    const incoming = nextPreparedRef.current;
+    nextPreparedRef.current = null;
+    let advanced = false;
+    setSlideQueue((q) => {
+      if (q.length === 0) return q;
+      const tail = q.slice(1);
+      advanced = true;
+      if (incoming) return [...tail, incoming];
+      return [...tail, q[0]];
+    });
+    if (advanced) setDisplayEpoch((e) => e + 1);
+    void prefetchNext();
+  }, []);
+
+  const manualBack = useCallback(() => {
+    pendingInitialDelayRef.current = false;
+    setPlaybackEnded(false);
+    setSlideQueue((q) => {
+      if (q.length < 2) return q;
+      const last = q[q.length - 1];
+      return [last, ...q.slice(0, -1)];
+    });
+    setDisplayEpoch((e) => e + 1);
+  }, []);
+
   useEffect(() => {
     if (variant !== 'fullscreen') return;
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -369,15 +445,23 @@ export function SlideshowPlayerCore({
       } else if (e.key === ' ') {
         e.preventDefault();
         setIsPlaying((prev) => !prev);
-      } else if (e.key === 'ArrowRight' && buffer.length > 0) {
-        setCurrentIndex((prev) => (prev + 1) % buffer.length);
-      } else if (e.key === 'ArrowLeft' && buffer.length > 0) {
-        setCurrentIndex((prev) => (prev - 1 + buffer.length) % buffer.length);
+      } else if (e.key === 'ArrowRight' && slideQueue.length > 0) {
+        manualAdvance();
+      } else if (e.key === 'ArrowLeft' && slideQueue.length > 0) {
+        manualBack();
       }
     };
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [variant, buffer.length]);
+  }, [variant, slideQueue.length, manualAdvance, manualBack]);
+
+  const primary = settings?.backgroundPrimaryColor?.trim() || DEFAULT_BG_PRIMARY;
+  const accent = settings?.backgroundAccentColor?.trim() || DEFAULT_BG_ACCENT;
+  const bgImageUrl = settings?.backgroundImageUrl?.trim() || '';
+
+  const failoverBackgroundStyle: CSSProperties = {
+    background: `linear-gradient(to bottom left, ${primary}, ${accent})`,
+  };
 
   const outerStateClass =
     variant === 'fullscreen' ? 'w-screen h-screen' : 'w-full h-full min-h-0 min-w-0';
@@ -385,16 +469,17 @@ export function SlideshowPlayerCore({
   if (isLoading) {
     return (
       <div
-        className={`${outerStateClass} flex flex-col items-center justify-center bg-black ${className}`}
+        className={`${outerStateClass} flex flex-col items-center justify-center overflow-hidden ${className}`}
+        style={failoverBackgroundStyle}
       >
         {logoUrl && (
           <img
             src={logoUrl}
             alt="Event logo"
-            className="max-w-md max-h-64 mb-8 object-contain"
+            className="max-w-md max-h-64 mb-8 object-contain z-10 relative"
           />
         )}
-        <div className="text-white text-sm md:text-2xl">Loading slideshow...</div>
+        <div className="text-white text-sm md:text-2xl z-10 relative">Loading slideshow...</div>
       </div>
     );
   }
@@ -402,33 +487,20 @@ export function SlideshowPlayerCore({
   if (error || !settings) {
     return (
       <div
-        className={`${outerStateClass} flex items-center justify-center bg-black p-2 ${className}`}
+        className={`${outerStateClass} flex items-center justify-center p-2 overflow-hidden ${className}`}
+        style={failoverBackgroundStyle}
       >
-        <div className="text-red-500 text-center text-sm md:text-xl">
+        <div className="text-red-200 text-center text-sm md:text-xl z-10 relative px-2">
           {error || 'Slideshow not found'}
         </div>
       </div>
     );
   }
 
-  if (buffer.length === 0) {
-    return (
-      <div
-        className={`${outerStateClass} flex items-center justify-center bg-black ${className}`}
-      >
-        <div className="text-white text-center px-2">
-          <div className="text-2xl md:text-4xl mb-2 md:mb-4">📸</div>
-          <div className="text-lg md:text-2xl">{settings.name}</div>
-          <div className="text-gray-400 mt-1 md:mt-2 text-xs md:text-base">No submissions yet</div>
-        </div>
-      </div>
-    );
-  }
-
-  const currentSlide = buffer[currentIndex];
+  const currentSlide = headSlide;
   const currentSlideKey = currentSlide
-    ? currentSlide.submissions.map((s) => s._id).join('-')
-    : 'loading';
+    ? `${displayEpoch}-${slideKey(currentSlide)}`
+    : 'empty';
 
   const fit = objectFit;
 
@@ -515,42 +587,89 @@ export function SlideshowPlayerCore({
     );
   };
 
+  const sw = stageSize.width;
+  const sh = stageSize.height;
+  const hasStage = sw > 0 && sh > 0;
+
   const canvasInner = (
     <div
       className={
         variant === 'fullscreen'
-          ? 'relative bg-black'
-          : 'relative bg-black w-full max-h-full max-w-full aspect-video'
+          ? 'relative overflow-hidden'
+          : hasStage
+            ? 'relative overflow-hidden'
+            : 'relative overflow-hidden w-full max-h-full max-w-full aspect-video'
       }
       style={
         variant === 'fullscreen'
-          ? {
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: '100vw',
-              height: '56.25vw',
-              maxWidth: '177.78vh',
-              maxHeight: '100vh',
-              backgroundColor: 'black',
-            }
-          : { backgroundColor: 'black' }
+          ? hasStage
+            ? {
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: sw,
+                height: sh,
+              }
+            : {
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '100vw',
+                height: '56.25vw',
+                maxWidth: '177.78vh',
+                maxHeight: '100vh',
+              }
+          : hasStage
+            ? {
+                width: sw,
+                height: sh,
+                maxWidth: '100%',
+                maxHeight: '100%',
+              }
+            : {}
       }
     >
-      <div
-        key={currentSlideKey}
-        style={{
-          width: '100%',
-          height: '100%',
-          position: 'relative',
-        }}
-      >
-        {renderSlide(currentSlide)}
+      <div className="absolute inset-0 z-0" style={failoverBackgroundStyle} aria-hidden />
+      {bgImageUrl ? (
+        <img
+          src={bgImageUrl}
+          alt=""
+          className="absolute inset-0 z-[1] w-full h-full object-cover pointer-events-none"
+        />
+      ) : null}
+
+      <div className="absolute inset-0 z-[2] flex items-center justify-center">
+        {currentSlide ? (
+          <div
+            key={currentSlideKey}
+            style={{
+              width: '100%',
+              height: '100%',
+              position: 'relative',
+            }}
+          >
+            {renderSlide(currentSlide)}
+          </div>
+        ) : (
+          <div className="text-white text-center px-4 max-w-lg">
+            <div className="text-2xl md:text-4xl mb-2 md:mb-4">📸</div>
+            <div className="text-lg md:text-2xl">{settings.name}</div>
+            <div className="text-white/80 mt-1 md:mt-2 text-xs md:text-base">No submissions yet</div>
+          </div>
+        )}
       </div>
 
+      {playbackEnded && currentSlide && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 text-white px-4 text-center">
+          <p className="text-lg md:text-2xl font-semibold">Playback complete</p>
+          <p className="text-sm text-gray-300 mt-2">Press play to start again</p>
+        </div>
+      )}
+
       {variant === 'fullscreen' && (!isFullscreen || showControls) && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 transition-opacity">
+        <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 to-transparent p-6 transition-opacity">
           <div className="max-w-7xl mx-auto">
             <div className="mb-4">
               <h1 className="text-white text-2xl font-bold">{settings.name}</h1>
@@ -559,7 +678,22 @@ export function SlideshowPlayerCore({
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={() => setIsPlaying(!isPlaying)}
+                onClick={() => {
+                  if (playbackEnded && onceInitialRef.current?.length) {
+                    pendingInitialDelayRef.current = delayMs > 0;
+                    setSlideQueue(
+                      onceInitialRef.current.map((sl) => ({
+                        ...sl,
+                        submissions: sl.submissions.map((s) => ({ ...s })),
+                      }))
+                    );
+                    setPlaybackEnded(false);
+                    setIsPlaying(true);
+                    setDisplayEpoch(0);
+                    return;
+                  }
+                  setIsPlaying(!isPlaying);
+                }}
                 className="text-white hover:text-gray-300 transition-colors"
                 title={isPlaying ? 'Pause' : 'Play'}
               >
@@ -574,7 +708,7 @@ export function SlideshowPlayerCore({
                 )}
               </button>
               <div className="flex-1 text-white text-sm">
-                Slide {currentIndex + 1} of {buffer.length} • Buffer: {settings.bufferSize}
+                Queue {queueLen > 0 ? `1 / ${queueLen}` : '0'} • Prefetch {settings.bufferSize}
               </div>
               <button
                 type="button"
@@ -602,13 +736,14 @@ export function SlideshowPlayerCore({
   return (
     <div
       ref={containerRef}
-      className={`${outerStateClass} bg-black overflow-hidden flex items-center justify-center relative ${className}`}
+      className={`${outerStateClass} overflow-hidden flex items-center justify-center relative ${className}`}
+      style={failoverBackgroundStyle}
       onMouseMove={handleMouseMove}
     >
       {variant === 'fullscreen' ? (
         canvasInner
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-black">
+        <div className="absolute inset-0 flex items-center justify-center" style={failoverBackgroundStyle}>
           {canvasInner}
         </div>
       )}

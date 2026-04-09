@@ -51,3 +51,43 @@ export function areaToPercentBox(
     height: ((maxR - minR + 1) / rows) * 100,
   };
 }
+
+export interface GridPlacement {
+  gridRow: string;
+  gridColumn: string;
+}
+
+/**
+ * CSS Grid placement for an area (1-based line indices; end exclusive).
+ * Keeps row/column lines contiguous so cells share edges with no gap.
+ */
+export function areaToGridPlacement(
+  tiles: string[],
+  rows: number,
+  cols: number
+): GridPlacement | null {
+  const boxTiles = tiles;
+  if (rows < 1 || cols < 1 || boxTiles.length === 0) return null;
+
+  let minR = Infinity;
+  let maxR = -Infinity;
+  let minC = Infinity;
+  let maxC = -Infinity;
+
+  for (const t of boxTiles) {
+    const p = parseTile(t);
+    if (!p) return null;
+    if (p.r < 0 || p.r >= rows || p.c < 0 || p.c >= cols) return null;
+    minR = Math.min(minR, p.r);
+    maxR = Math.max(maxR, p.r);
+    minC = Math.min(minC, p.c);
+    maxC = Math.max(maxC, p.c);
+  }
+
+  if (!Number.isFinite(minR)) return null;
+
+  return {
+    gridRow: `${minR + 1} / ${maxR + 2}`,
+    gridColumn: `${minC + 1} / ${maxC + 2}`,
+  };
+}

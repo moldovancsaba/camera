@@ -109,6 +109,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const layoutViewportScale = body.viewportScale === 'fill' ? 'fill' : 'fit';
+
     const doc = {
       layoutId: generateId(),
       eventId: event.eventId,
@@ -118,6 +120,7 @@ export async function POST(request: NextRequest) {
       cols: c,
       areas: layoutAreas,
       background: typeof body.background === 'string' ? body.background : '',
+      viewportScale: layoutViewportScale,
       isActive: true,
       createdBy: session.user.id,
       createdAt: generateTimestamp(),
@@ -211,6 +214,15 @@ export async function PATCH(request: NextRequest) {
     if (body.name !== undefined) updates.name = String(body.name).trim();
     if (body.isActive !== undefined) updates.isActive = Boolean(body.isActive);
     if (body.background !== undefined) updates.background = String(body.background ?? '');
+    if (body.viewportScale !== undefined) {
+      if (body.viewportScale !== 'fit' && body.viewportScale !== 'fill') {
+        return NextResponse.json(
+          { error: 'viewportScale must be "fit" or "fill"' },
+          { status: 400 }
+        );
+      }
+      updates.viewportScale = body.viewportScale;
+    }
 
     let nextRows = existing.rows as number;
     let nextCols = existing.cols as number;

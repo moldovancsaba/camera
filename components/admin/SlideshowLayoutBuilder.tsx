@@ -60,6 +60,7 @@ interface Props {
   initialCols: number;
   initialAreas: SlideshowLayoutArea[];
   initialBackground?: string;
+  initialViewportScale?: 'fit' | 'fill';
 }
 
 export default function SlideshowLayoutBuilder({
@@ -71,6 +72,7 @@ export default function SlideshowLayoutBuilder({
   initialCols,
   initialAreas,
   initialBackground = '',
+  initialViewportScale = 'fit',
 }: Props) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
@@ -78,6 +80,9 @@ export default function SlideshowLayoutBuilder({
   const [cols, setCols] = useState(initialCols);
   const [areas, setAreas] = useState<SlideshowLayoutArea[]>(initialAreas);
   const [background, setBackground] = useState(initialBackground || '');
+  const [viewportScale, setViewportScale] = useState<'fit' | 'fill'>(
+    initialViewportScale === 'fill' ? 'fill' : 'fit'
+  );
   const [slideshows, setSlideshows] = useState<SlideshowOpt[]>([]);
   const [saving, setSaving] = useState(false);
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(
@@ -261,6 +266,7 @@ export default function SlideshowLayoutBuilder({
           cols,
           areas,
           background,
+          viewportScale,
         }),
       });
       if (!res.ok) {
@@ -337,6 +343,38 @@ export default function SlideshowLayoutBuilder({
             >
               Apply grid & reset cells
             </button>
+          </div>
+
+          <div>
+            <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Grid in browser
+            </span>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+              The row×column grid is scaled as one rigid block (cells share edges). Fit keeps the full
+              grid visible; Fill crops overflow like a cover photo.
+            </p>
+            <div className="flex flex-wrap gap-6">
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-800 dark:text-gray-200">
+                <input
+                  type="radio"
+                  name="layoutViewportScale"
+                  className="accent-indigo-600"
+                  checked={viewportScale === 'fit'}
+                  onChange={() => setViewportScale('fit')}
+                />
+                Fit (letterbox)
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-800 dark:text-gray-200">
+                <input
+                  type="radio"
+                  name="layoutViewportScale"
+                  className="accent-indigo-600"
+                  checked={viewportScale === 'fill'}
+                  onChange={() => setViewportScale('fill')}
+                />
+                Fill (crop)
+              </label>
+            </div>
           </div>
 
           <p className="text-xs text-gray-500 dark:text-gray-400">

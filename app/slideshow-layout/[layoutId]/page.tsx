@@ -1,12 +1,17 @@
 'use client';
 
 /**
- * Public composite layout: each region runs an independent slideshow.
+ * Public composite layout: one CSS grid (rows×cols) scaled as a single rigid unit;
+ * each region runs an independent slideshow.
  */
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useMemo, useState } from 'react';
 import { SlideshowPlayerCore } from '@/components/slideshow/SlideshowPlayerCore';
-import { areaToPercentBox } from '@/lib/slideshow/layout-geometry';
+import { areaToGridPlacement } from '@/lib/slideshow/layout-geometry';
+import {
+  layoutGridStageDimensions,
+  type ViewportScaleMode,
+} from '@/lib/slideshow/viewport-scale';
 import type { SlideshowLayoutArea } from '@/lib/db/schemas';
 
 interface LayoutPayload {
@@ -17,6 +22,24 @@ interface LayoutPayload {
   cols: number;
   areas: SlideshowLayoutArea[];
   background: string;
+  viewportScale: ViewportScaleMode;
+}
+
+function useViewportSize() {
+  const [size, setSize] = useState(() =>
+    typeof window !== 'undefined'
+      ? { w: window.innerWidth, h: window.innerHeight }
+      : { w: 0, h: 0 }
+  );
+
+  useEffect(() => {
+    const set = () => setSize({ w: window.innerWidth, h: window.innerHeight });
+    set();
+    window.addEventListener('resize', set);
+    return () => window.removeEventListener('resize', set);
+  }, []);
+
+  return size;
 }
 
 export default function SlideshowLayoutPage({
@@ -27,6 +50,7 @@ export default function SlideshowLayoutPage({
   const { layoutId } = use(params);
   const [layout, setLayout] = useState<LayoutPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { w: vw, h: vh } = useViewportSize();
 
   useEffect(() => {
     let cancelled = false;
@@ -38,17 +62,14 @@ export default function SlideshowLayoutPage({
           throw new Error(data.error || 'Layout not found');
         }
         const L = data.layout as LayoutPayload;
-        const areas = (L.areas || []).map((a) => {
-          const objectFit: 'contain' | 'cover' =
-            a.objectFit === 'cover' ? 'cover' : 'contain';
-          return {
-            ...a,
-            objectFit,
-            delayMs: typeof a.delayMs === 'number' ? a.delayMs : 0,
-          };
-        });
+        const areas = (L.areas || []).map((a) => ({
+          ...a,
+          objectFit: a.objectFit === 'cover' ? ('cover' as const) : ('contain' as const),
+        }));
+        const viewportScale: ViewportScaleMode =
+          L.viewportScale === 'fill' ? 'fill' : 'fit';
         if (!cancelled) {
-          setLayout({ ...L, areas });
+          setLayout({ ...L, areas, viewportScale });
         }
       } catch (e) {
         if (!cancelled) {
@@ -60,6 +81,19 @@ export default function SlideshowLayoutPage({
       cancelled = true;
     };
   }, [layoutId]);
+
+  const stage = useMemo(() => {
+    if (!layout || vw <= 0 || vh <= 0) {
+      return { width: 0, height: 0 };
+    }
+    return layoutGridStageDimensions(
+      vw,
+      vh,
+      layout.cols,
+      layout.rows,
+      layout.viewportScale
+    );
+  }, [layout, vw, vh]);
 
   if (error) {
     return (
@@ -80,7 +114,7 @@ export default function SlideshowLayoutPage({
   const bg = layout.background?.trim();
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-black">
+    <div className="relative w-screen h-screen overflow-hidden bg-black flex items-center justify-center">
       {bg ? (
         <>
           <style
@@ -94,37 +128,53 @@ export default function SlideshowLayoutPage({
           />
         </>
       ) : null}
-      <div className="absolute inset-0 z-10">
-        {layout.areas.map((area) => {
-          const box = areaToPercentBox(area.tiles, layout.rows, layout.cols);
-          if (!box) return null;
-          return (
-            <div
-              key={area.id}
-              className="absolute overflow-hidden bg-black"
-              style={{
-                left: `${box.left}%`,
-                top: `${box.top}%`,
-                width: `${box.width}%`,
-                height: `${box.height}%`,
-              }}
-            >
-              {area.slideshowId ? (
-                <SlideshowPlayerCore
-                  slideshowId={area.slideshowId}
-                  objectFit={area.objectFit === 'cover' ? 'cover' : 'contain'}
-                  delayMs={area.delayMs || 0}
-                  variant="embedded"
-                  className="absolute inset-0"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs md:text-sm px-2 text-center">
-                  No slideshow assigned
-                </div>
-              )}
-            </div>
-          );
-        })}
+
+      <div
+        className="relative z-10 overflow-hidden shadow-2xl"
+        style={{
+          width: stage.width > 0 ? `${stage.width}px` : '100%',
+          height: stage.height > 0 ? `${stage.height}px` : '100%',
+          maxWidth: '100%',
+          maxHeight: '100%',
+        }}
+      >
+        <div
+          className="grid w-full h-full bg-transparent"
+          style={{
+            gridTemplateColumns: `repeat(${layout.cols}, minmax(0, 1fr))`,
+            gridTemplateRows: `repeat(${layout.rows}, minmax(0, 1fr))`,
+            gap: 0,
+          }}
+        >
+          {layout.areas.map((area) => {
+            const placement = areaToGridPlacement(
+              area.tiles,
+              layout.rows,
+              layout.cols
+            );
+            if (!placement) return null;
+            return (
+              <div
+                key={area.id}
+                className="relative min-h-0 min-w-0 overflow-hidden bg-transparent"
+                style={{
+                  gridRow: placement.gridRow,
+                  gridColumn: placement.gridColumn,
+                }}
+              >
+                {area.slideshowId ? (
+                  <SlideshowPlayerCore
+                    slideshowId={area.slideshowId}
+                    objectFit={area.objectFit === 'cover' ? 'cover' : 'contain'}
+                    delayMs={area.delayMs ?? 0}
+                    variant="embedded"
+                    className="absolute inset-0"
+                  />
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

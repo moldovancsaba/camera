@@ -643,6 +643,18 @@ export interface Slideshow {
   // Rolling buffer settings for infinite smooth playback
   bufferSize: number;                // Number of slides to maintain in buffer (default: 10)
   refreshStrategy: 'continuous' | 'batch'; // How to refresh playlist (default: 'continuous')
+  /** Stop after one pass through the buffer, or rotate indefinitely (default: loop) */
+  playMode?: 'once' | 'loop';
+  /** Submission order before mosaic grouping (default: fixed = least-played sort) */
+  orderMode?: 'fixed' | 'random';
+
+  /** Failover gradient (top-right → bottom-left): CSS hex colors */
+  backgroundPrimaryColor?: string;
+  backgroundAccentColor?: string;
+  /** Optional image between gradient and slides (uploaded by admin) */
+  backgroundImageUrl?: string | null;
+  /** Letterbox 16:9 stage in container vs crop to cover (browser or layout cell) */
+  viewportScale?: 'fit' | 'fill';
   
   // Admin tracking
   createdBy: string;                 // Admin user ID from SSO who created this slideshow
@@ -685,6 +697,8 @@ export interface SlideshowLayout {
   areas: SlideshowLayoutArea[];
   /** Optional outer frame CSS (background-* only), same idea as CardMass boards */
   background?: string;
+  /** Letterbox full grid in browser vs crop to cover; grid keeps cols:rows as one rigid unit */
+  viewportScale?: 'fit' | 'fill';
   isActive: boolean;
   createdBy: string;
   createdAt: string;

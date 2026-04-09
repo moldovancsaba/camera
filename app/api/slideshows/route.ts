@@ -39,8 +39,26 @@ export async function POST(request: NextRequest) {
       transitionDurationMs = 5000, 
       fadeDurationMs = 1000,
       bufferSize = 10,
-      refreshStrategy = 'continuous'
+      refreshStrategy = 'continuous',
+      playMode: bodyPlayMode,
+      orderMode: bodyOrderMode,
     } = body;
+
+    const playMode = bodyPlayMode === 'once' ? 'once' : 'loop';
+    const orderMode = bodyOrderMode === 'random' ? 'random' : 'fixed';
+    const backgroundPrimaryColor =
+      typeof body.backgroundPrimaryColor === 'string' && body.backgroundPrimaryColor.trim()
+        ? body.backgroundPrimaryColor.trim()
+        : '#312e81';
+    const backgroundAccentColor =
+      typeof body.backgroundAccentColor === 'string' && body.backgroundAccentColor.trim()
+        ? body.backgroundAccentColor.trim()
+        : '#0f172a';
+    const backgroundImageUrl =
+      typeof body.backgroundImageUrl === 'string' && body.backgroundImageUrl.trim()
+        ? body.backgroundImageUrl.trim()
+        : null;
+    const viewportScale = body.viewportScale === 'fill' ? 'fill' : 'fit';
 
     if (!eventId || !name) {
       return NextResponse.json(
@@ -73,6 +91,12 @@ export async function POST(request: NextRequest) {
       fadeDurationMs,
       bufferSize,
       refreshStrategy,
+      playMode,
+      orderMode,
+      backgroundPrimaryColor,
+      backgroundAccentColor,
+      backgroundImageUrl,
+      viewportScale,
       createdBy: session.user.id,
       createdAt: generateTimestamp(),
       updatedAt: generateTimestamp(),
@@ -150,7 +174,23 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, bufferSize, transitionDurationMs, fadeDurationMs, refreshStrategy, isActive } = body;
+    const {
+      name,
+      bufferSize,
+      transitionDurationMs,
+      fadeDurationMs,
+      refreshStrategy,
+      isActive,
+      playMode,
+      orderMode,
+      backgroundPrimaryColor,
+      backgroundAccentColor,
+      backgroundImageUrl,
+      viewportScale,
+    } = body;
+
+    const hexOk = (s: string) =>
+      /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(s.trim());
 
     // Build update object
     const updates: any = {
@@ -163,6 +203,56 @@ export async function PATCH(request: NextRequest) {
     if (fadeDurationMs !== undefined) updates.fadeDurationMs = Math.max(0, parseInt(fadeDurationMs));
     if (refreshStrategy !== undefined) updates.refreshStrategy = refreshStrategy;
     if (isActive !== undefined) updates.isActive = Boolean(isActive);
+    if (playMode !== undefined) {
+      if (playMode !== 'once' && playMode !== 'loop') {
+        return NextResponse.json({ error: 'playMode must be "once" or "loop"' }, { status: 400 });
+      }
+      updates.playMode = playMode;
+    }
+    if (orderMode !== undefined) {
+      if (orderMode !== 'fixed' && orderMode !== 'random') {
+        return NextResponse.json({ error: 'orderMode must be "fixed" or "random"' }, { status: 400 });
+      }
+      updates.orderMode = orderMode;
+    }
+    if (backgroundPrimaryColor !== undefined) {
+      const v = String(backgroundPrimaryColor).trim();
+      if (!hexOk(v)) {
+        return NextResponse.json(
+          { error: 'backgroundPrimaryColor must be a #RGB or #RRGGBB hex value' },
+          { status: 400 }
+        );
+      }
+      updates.backgroundPrimaryColor = v;
+    }
+    if (backgroundAccentColor !== undefined) {
+      const v = String(backgroundAccentColor).trim();
+      if (!hexOk(v)) {
+        return NextResponse.json(
+          { error: 'backgroundAccentColor must be a #RGB or #RRGGBB hex value' },
+          { status: 400 }
+        );
+      }
+      updates.backgroundAccentColor = v;
+    }
+    if (backgroundImageUrl !== undefined) {
+      if (backgroundImageUrl === null || backgroundImageUrl === '') {
+        updates.backgroundImageUrl = null;
+      } else if (typeof backgroundImageUrl === 'string' && backgroundImageUrl.trim()) {
+        updates.backgroundImageUrl = backgroundImageUrl.trim();
+      } else {
+        return NextResponse.json({ error: 'backgroundImageUrl must be a non-empty string or null' }, { status: 400 });
+      }
+    }
+    if (viewportScale !== undefined) {
+      if (viewportScale !== 'fit' && viewportScale !== 'fill') {
+        return NextResponse.json(
+          { error: 'viewportScale must be "fit" or "fill"' },
+          { status: 400 }
+        );
+      }
+      updates.viewportScale = viewportScale;
+    }
 
     const db = await connectToDatabase();
 
