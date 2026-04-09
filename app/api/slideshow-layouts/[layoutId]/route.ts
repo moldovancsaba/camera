@@ -6,6 +6,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
+import {
+  normalizeLayoutAlignHorizontal,
+  normalizeLayoutAlignVertical,
+  normalizeStoredSafetyColor,
+} from '@/lib/slideshow/layout-presentation';
 
 function normalizeDelayMs(raw: unknown): number {
   if (typeof raw === 'number' && Number.isFinite(raw)) {
@@ -47,6 +52,8 @@ export async function GET(
       delayMs: normalizeDelayMs(a.delayMs),
     }));
 
+    const raw = layout as Record<string, unknown>;
+
     return NextResponse.json({
       layout: {
         layoutId: layout.layoutId,
@@ -57,6 +64,10 @@ export async function GET(
         areas,
         background: layout.background || '',
         viewportScale: layout.viewportScale === 'fill' ? 'fill' : 'fit',
+        alignVertical: normalizeLayoutAlignVertical(raw.alignVertical),
+        alignHorizontal: normalizeLayoutAlignHorizontal(raw.alignHorizontal),
+        safetyPrimaryColor: normalizeStoredSafetyColor(raw.safetyPrimaryColor),
+        safetyAccentColor: normalizeStoredSafetyColor(raw.safetyAccentColor),
       },
     });
   } catch (error) {

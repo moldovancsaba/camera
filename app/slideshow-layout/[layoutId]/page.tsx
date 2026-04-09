@@ -13,6 +13,15 @@ import {
   layoutGridStageDimensions,
   type ViewportScaleMode,
 } from '@/lib/slideshow/viewport-scale';
+import {
+  layoutAlignmentFlexClasses,
+  normalizeLayoutAlignHorizontal,
+  normalizeLayoutAlignVertical,
+  resolvedSafetyGradientColors,
+  safetyGradientCss,
+  type LayoutAlignHorizontal,
+  type LayoutAlignVertical,
+} from '@/lib/slideshow/layout-presentation';
 import type { SlideshowLayoutArea } from '@/lib/db/schemas';
 
 interface LayoutPayload {
@@ -24,6 +33,10 @@ interface LayoutPayload {
   areas: SlideshowLayoutArea[];
   background: string;
   viewportScale: ViewportScaleMode;
+  alignVertical: LayoutAlignVertical;
+  alignHorizontal: LayoutAlignHorizontal;
+  safetyPrimaryColor: string;
+  safetyAccentColor: string;
 }
 
 function useViewportSize() {
@@ -62,7 +75,10 @@ export default function SlideshowLayoutPage({
         if (!res.ok) {
           throw new Error(data.error || 'Layout not found');
         }
-        const L = data.layout as LayoutPayload;
+        const L = data.layout as Record<string, unknown> & {
+          areas?: SlideshowLayoutArea[];
+          viewportScale?: string;
+        };
         const areas = (L.areas || []).map((a) => ({
           ...a,
           objectFit: a.objectFit === 'cover' ? ('cover' as const) : ('contain' as const),
@@ -70,7 +86,22 @@ export default function SlideshowLayoutPage({
         const viewportScale: ViewportScaleMode =
           L.viewportScale === 'fill' ? 'fill' : 'fit';
         if (!cancelled) {
-          setLayout({ ...L, areas, viewportScale });
+          setLayout({
+            layoutId: String(L.layoutId ?? ''),
+            name: String(L.name ?? ''),
+            eventName: String(L.eventName ?? ''),
+            rows: Math.max(1, Math.floor(Number(L.rows)) || 1),
+            cols: Math.max(1, Math.floor(Number(L.cols)) || 1),
+            areas,
+            background: typeof L.background === 'string' ? L.background : '',
+            viewportScale,
+            alignVertical: normalizeLayoutAlignVertical(L.alignVertical),
+            alignHorizontal: normalizeLayoutAlignHorizontal(L.alignHorizontal),
+            safetyPrimaryColor:
+              typeof L.safetyPrimaryColor === 'string' ? L.safetyPrimaryColor : '',
+            safetyAccentColor:
+              typeof L.safetyAccentColor === 'string' ? L.safetyAccentColor : '',
+          });
         }
       } catch (e) {
         if (!cancelled) {
@@ -106,10 +137,29 @@ export default function SlideshowLayoutPage({
     );
   }, [layout, compactGrid, vw, vh]);
 
+  const alignClass = layoutAlignmentFlexClasses(
+    layout ? layout.alignVertical : 'middle',
+    layout ? layout.alignHorizontal : 'center'
+  );
+  const safetyResolved = resolvedSafetyGradientColors(
+    layout?.safetyPrimaryColor ?? '',
+    layout?.safetyAccentColor ?? ''
+  );
+  const safetyLayerStyle = {
+    background: safetyGradientCss(safetyResolved.primary, safetyResolved.accent),
+  };
+
   if (error) {
     return (
-      <div className="w-screen h-screen bg-black flex items-center justify-center text-red-400">
-        {error}
+      <div
+        className={`relative w-screen h-screen overflow-hidden flex ${alignClass} text-red-300`}
+      >
+        <div
+          className="absolute inset-0 z-0 pointer-events-none"
+          style={safetyLayerStyle}
+          aria-hidden
+        />
+        <div className="relative z-10 px-4 text-center">{error}</div>
       </div>
     );
   }
@@ -117,9 +167,15 @@ export default function SlideshowLayoutPage({
   if (!layout) {
     return (
       <div
-        className="h-screen w-screen bg-black"
+        className={`relative h-screen w-screen overflow-hidden flex ${alignClass}`}
         aria-busy="true"
-      />
+      >
+        <div
+          className="absolute inset-0 z-0 pointer-events-none"
+          style={safetyLayerStyle}
+          aria-hidden
+        />
+      </div>
     );
   }
 
@@ -131,7 +187,14 @@ export default function SlideshowLayoutPage({
   const letterboxFit = layout.viewportScale !== 'fill';
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-black flex items-center justify-center">
+    <div
+      className={`relative w-screen h-screen overflow-hidden flex ${alignClass}`}
+    >
+      <div
+        className="absolute inset-0 z-0 pointer-events-none"
+        style={safetyLayerStyle}
+        aria-hidden
+      />
       {bg ? (
         <>
           <style
@@ -140,7 +203,7 @@ export default function SlideshowLayoutPage({
             }}
           />
           <div
-            className="slideshow-layout-root-bg absolute inset-0 z-0 pointer-events-none"
+            className="slideshow-layout-root-bg absolute inset-0 z-[1] pointer-events-none"
             aria-hidden
           />
         </>
