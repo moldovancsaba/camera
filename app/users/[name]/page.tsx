@@ -1,10 +1,12 @@
 /**
  * User Profile Page
- * Version: 36.1.0
- * 
+ * Version: 36.2.0
+ *
  * Displays detailed user profile with all submissions, consents, and event participation.
  * Accessible at /users/[name] - shows full history and photo gallery.
- * 
+ *
+ * v36.2.0: Admins with app access see user management (role / active / merge) on this page.
+ *
  * Note: Usernames in URLs are sanitized (spaces/special chars → underscores)
  * We search for matching names by converting both to sanitized format
  */
@@ -12,6 +14,11 @@
 import { connectToDatabase } from '@/lib/db/mongodb';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getSession } from '@/lib/auth/session';
+import { buildUserManagementPropsFromSubmissions } from '@/lib/admin/build-user-management-props';
+import UserManagementActions from '@/components/admin/UserManagementActions';
+
+export const dynamic = 'force-dynamic';
 
 /**
  * Sanitize username for comparison
@@ -30,8 +37,16 @@ interface PageProps {
 export default async function UserProfilePage({ params }: PageProps) {
   const { name } = await params;
   const sanitizedUrlName = name;  // Already sanitized in URL (spaces → underscores)
+  const session = await getSession();
+  const viewerCanManageUsers =
+    (session?.appRole === 'admin' || session?.appRole === 'superadmin') &&
+    session.appAccess !== false;
+
   let user: any = null;
   let error = null;
+  let managementProps: Awaited<
+    ReturnType<typeof buildUserManagementPropsFromSubmissions>
+  > = null;
 
   try {
     const db = await connectToDatabase();
@@ -87,6 +102,13 @@ export default async function UserProfilePage({ params }: PageProps) {
       );
       console.log('Available sanitized names:', Array.from(uniqueNames).slice(0, 10));
       notFound();
+    }
+
+    if (viewerCanManageUsers) {
+      managementProps = await buildUserManagementPropsFromSubmissions(
+        submissions,
+        session?.accessToken
+      );
     }
 
     // Build user profile from submissions
@@ -157,15 +179,47 @@ export default async function UserProfilePage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto p-8">
-        {/* Back to Admin Button */}
+        {/* Navigation */}
         <div className="mb-6">
-          <Link
-            href="/admin/users"
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-          >
-            ← Back to Users List
-          </Link>
+          {viewerCanManageUsers ? (
+            <Link
+              href="/admin/users"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              ← Back to Users List
+            </Link>
+          ) : (
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              ← Back to home
+            </Link>
+          )}
         </div>
+
+        {viewerCanManageUsers && managementProps ? (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+              User management
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Assign or revoke admin rights, activate or deactivate this account, or merge a
+              pseudo user with a real SSO user.
+            </p>
+            <UserManagementActions
+              user={{
+                email: managementProps.email,
+                name: managementProps.name,
+                type: managementProps.type,
+                role: managementProps.role,
+                isActive: managementProps.isActive,
+                mergedWith: managementProps.mergedWith,
+              }}
+              currentUserEmail={session?.user.email ?? ''}
+            />
+          </div>
+        ) : null}
 
         {/* User Header */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8 mb-6">
@@ -221,7 +275,11 @@ export default async function UserProfilePage({ params }: PageProps) {
                   className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
                 >
                   <Link
-                    href={`/admin/events/${event.eventId}`}
+                    href={
+                      viewerCanManageUsers
+                        ? `/admin/events/${event.eventId}`
+                        : `/capture/${event.eventId}`
+                    }
                     className="text-lg font-semibold text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     {event.eventName}

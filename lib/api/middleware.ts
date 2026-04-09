@@ -78,7 +78,11 @@ export async function requireAdmin(request?: NextRequest): Promise<Session> {
   if (session.appRole !== 'admin' && session.appRole !== 'superadmin') {
     throw apiForbidden('Admin access required for this app');
   }
-  
+
+  if (session.appAccess === false) {
+    throw apiForbidden('No access to this app');
+  }
+
   return session;
 }
 

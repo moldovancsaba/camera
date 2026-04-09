@@ -105,9 +105,10 @@ export default function SlideshowLayoutPage({
 
   if (!layout) {
     return (
-      <div className="w-screen h-screen bg-black flex items-center justify-center text-white">
-        Loading layout…
-      </div>
+      <div
+        className="h-screen w-screen bg-black"
+        aria-busy="true"
+      />
     );
   }
 

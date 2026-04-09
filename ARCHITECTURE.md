@@ -310,8 +310,8 @@ All timestamps use ISO 8601 format with milliseconds UTC: `YYYY-MM-DDTHH:MM:SS.s
   eventName: string,            // Cached
   name: string,                 // e.g., "Main Screen", "VIP Lounge"
   isActive: boolean,
-  transitionDurationMs: number, // Default: 5000
-  fadeDurationMs: number,       // Default: 1000
+  transitionDurationMs: number, // ms — default 5000
+  fadeDurationMs: number,       // ms — default 1000
   bufferSize: number,           // Default: 10 slides
   refreshStrategy: 'continuous' | 'batch',
   createdBy: string,
@@ -337,7 +337,7 @@ All timestamps use ISO 8601 format with milliseconds UTC: `YYYY-MM-DDTHH:MM:SS.s
     label: string,
     tiles: string[],            // "r-c" tile ids (non-overlapping)
     slideshowId: string | null,
-    delayMs: number,            // First-slide phase offset per cell
+    delayMs: number,            // ms — stagger before first auto-advance in this cell
     objectFit: 'contain' | 'cover',
     color?: string              // Admin builder preview only
   }>,

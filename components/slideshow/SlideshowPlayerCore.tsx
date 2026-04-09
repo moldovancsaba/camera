@@ -76,6 +76,22 @@ function normalizeDelayMs(raw: number | string | undefined): number {
   return 0;
 }
 
+/**
+ * Fullscreen: use slideshow.viewportScale (fit letterbox vs fill crop in browser).
+ * Embedded (layout tile): use region Photo scaling — cover = 16:9 stage fills the cell (crop overflow),
+ * contain = full stage visible in cell. Slideshow viewportScale is ignored in tiles so layout wins.
+ */
+function viewportModeForStage(
+  variant: 'fullscreen' | 'embedded',
+  objectFit: 'contain' | 'cover',
+  slideshowViewportScale: ViewportScaleMode | undefined
+): ViewportScaleMode {
+  if (variant === 'embedded') {
+    return objectFit === 'cover' ? 'fill' : 'fit';
+  }
+  return slideshowViewportScale === 'fill' ? 'fill' : 'fit';
+}
+
 export function SlideshowPlayerCore({
   slideshowId,
   objectFit = 'contain',
@@ -105,6 +121,8 @@ export function SlideshowPlayerCore({
   const onceInitialRef = useRef<Slide[] | null>(null);
   const settingsRef = useRef<SlideshowSettings | null>(null);
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
+  /** Black stage floor until configured failover background image is preloaded / painted */
+  const [failoverBgImageReady, setFailoverBgImageReady] = useState(true);
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -219,6 +237,17 @@ export function SlideshowPlayerCore({
         }
       }
 
+      const failoverBgUrl = (data.slideshow.backgroundImageUrl || '').trim();
+      setFailoverBgImageReady(!failoverBgUrl);
+      if (failoverBgUrl) {
+        try {
+          await preloadImage(failoverBgUrl);
+        } catch {
+          /* show gradient fallback below image layer */
+        }
+        setFailoverBgImageReady(true);
+      }
+
       const playlist = (data.playlist || []) as Slide[];
       if (playlist.length > 0) {
         await Promise.all(playlist.map(preloadSlide));
@@ -246,8 +275,11 @@ export function SlideshowPlayerCore({
 
   useLayoutEffect(() => {
     if (!settings) return;
-    const mode: ViewportScaleMode =
-      settings.viewportScale === 'fill' ? 'fill' : 'fit';
+    const mode = viewportModeForStage(
+      variant,
+      objectFit,
+      settings.viewportScale
+    );
 
     if (variant === 'fullscreen') {
       const measure = () => {
@@ -268,7 +300,7 @@ export function SlideshowPlayerCore({
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [variant, settings?.viewportScale, slideshowId]);
+  }, [variant, objectFit, settings, slideshowId]);
 
   useEffect(() => {
     loadInitialBuffer();
@@ -463,23 +495,27 @@ export function SlideshowPlayerCore({
     background: `linear-gradient(to bottom left, ${primary}, ${accent})`,
   };
 
+  const stageBackdropStyle: CSSProperties =
+    bgImageUrl && !failoverBgImageReady
+      ? { background: '#000000' }
+      : failoverBackgroundStyle;
+
   const outerStateClass =
     variant === 'fullscreen' ? 'w-screen h-screen' : 'w-full h-full min-h-0 min-w-0';
 
   if (isLoading) {
     return (
       <div
-        className={`${outerStateClass} flex flex-col items-center justify-center overflow-hidden ${className}`}
-        style={failoverBackgroundStyle}
+        className={`${outerStateClass} flex flex-col items-center justify-center overflow-hidden bg-black ${className}`}
+        aria-busy="true"
       >
-        {logoUrl && (
+        {logoUrl ? (
           <img
             src={logoUrl}
-            alt="Event logo"
-            className="max-w-md max-h-64 mb-8 object-contain z-10 relative"
+            alt=""
+            className="relative z-10 max-h-64 max-w-md object-contain"
           />
-        )}
-        <div className="text-white text-sm md:text-2xl z-10 relative">Loading slideshow...</div>
+        ) : null}
       </div>
     );
   }
@@ -487,8 +523,7 @@ export function SlideshowPlayerCore({
   if (error || !settings) {
     return (
       <div
-        className={`${outerStateClass} flex items-center justify-center p-2 overflow-hidden ${className}`}
-        style={failoverBackgroundStyle}
+        className={`${outerStateClass} flex items-center justify-center overflow-hidden bg-black p-2 ${className}`}
       >
         <div className="text-red-200 text-center text-sm md:text-xl z-10 relative px-2">
           {error || 'Slideshow not found'}
@@ -623,20 +658,24 @@ export function SlideshowPlayerCore({
               }
           : hasStage
             ? {
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
                 width: sw,
                 height: sh,
-                maxWidth: '100%',
-                maxHeight: '100%',
               }
             : {}
       }
     >
-      <div className="absolute inset-0 z-0" style={failoverBackgroundStyle} aria-hidden />
+      <div className="absolute inset-0 z-0" style={stageBackdropStyle} aria-hidden />
       {bgImageUrl ? (
         <img
           src={bgImageUrl}
           alt=""
-          className="absolute inset-0 z-[1] w-full h-full object-cover pointer-events-none"
+          className="absolute inset-0 z-[1] h-full w-full object-cover pointer-events-none"
+          onLoad={() => setFailoverBgImageReady(true)}
+          onError={() => setFailoverBgImageReady(true)}
         />
       ) : null}
 

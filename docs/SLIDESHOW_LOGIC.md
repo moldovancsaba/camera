@@ -52,8 +52,8 @@ Typical fields (see `ARCHITECTURE.md` / `lib/db/schemas.ts` for full schema):
 | `slideshowId` | Public identifier used in URLs |
 | `eventId` | **Event UUID** (`event.eventId`) on new rows; older rows may store event Mongo `_id` — resolved via `findEventForSlideshow` |
 | `name`, `eventName` | Display labels in the player UI |
-| `transitionDurationMs` | Time each slide stays on screen |
-| `fadeDurationMs` | Stored for compatibility; **v2 player uses instant cuts** (no cross-fade) |
+| `transitionDurationMs` | Time each slide stays on screen (**milliseconds**; admin UI uses ms) |
+| `fadeDurationMs` | **Milliseconds**; stored for compatibility — **v2 player uses instant cuts** (no cross-fade) |
 | `bufferSize` | Default number of slides per playlist fetch (often 10) |
 | `refreshStrategy` | `continuous` (default): rebuild finished buffer in background while others play |
 | `isActive` | Managed via admin PATCH |

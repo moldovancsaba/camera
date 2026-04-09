@@ -255,15 +255,34 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
         </div>
       )}
 
-      {/* Settings Dialog */}
+      {/* Settings Dialog — scrollable body + pinned actions so short viewports can still save */}
       {editingSlideshow && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-              Slideshow Settings
-            </h3>
-            
-            <div className="space-y-4">
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto bg-black/50 p-4"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setEditingSlideshow(null);
+          }}
+        >
+          <div className="flex min-h-[100dvh] items-center justify-center py-8">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="slideshow-settings-title"
+              className="flex max-h-[min(90dvh,100dvh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="shrink-0 border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                <h3
+                  id="slideshow-settings-title"
+                  className="text-xl font-bold text-gray-900 dark:text-white"
+                >
+                  Slideshow Settings
+                </h3>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
+                <div className="space-y-4">
               {/* Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -285,6 +304,13 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                   Fit keeps the full 16:9 stage visible (letterbox). Fill scales the stage to cover the
                   area (may crop). Applies on the public slideshow page and inside layout regions.
+                </p>
+                <p className="text-xs text-amber-800 dark:text-amber-200/90 mb-2 rounded-md bg-amber-50 dark:bg-amber-950/40 px-2 py-1.5 border border-amber-200/80 dark:border-amber-800/60">
+                  <strong className="font-semibold">Aspect ratio:</strong> the slideshow stage is{' '}
+                  <strong className="font-semibold">always 16:9</strong>. There is no separate setting to
+                  switch to 4:3 or 9:16 for the stage—only <em>Fit</em> vs <em>Fill</em> below. Photo
+                  shapes (landscape / square / portrait) still come from each image; the player may show
+                  mosaics for non-wide shots.
                 </p>
                 <div className="flex flex-wrap gap-6">
                   <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-800 dark:text-gray-200">
@@ -430,35 +456,60 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
                 ) : null}
               </div>
 
-              {/* Transition Duration */}
+              {/* Transition duration (stored as ms everywhere: API, DB, player) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Slide Duration (seconds)
+                  Slide duration (ms)
                 </label>
                 <input
                   type="number"
-                  min="1"
-                  max="60"
-                  value={(editingSlideshow.transitionDurationMs || 5000) / 1000}
-                  onChange={(e) => setEditingSlideshow({ ...editingSlideshow, transitionDurationMs: parseInt(e.target.value) * 1000 })}
+                  min={1000}
+                  max={600000}
+                  step={100}
+                  value={editingSlideshow.transitionDurationMs ?? 5000}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    const ms = Number.isFinite(v)
+                      ? Math.max(1000, Math.min(600_000, v))
+                      : 5000;
+                    setEditingSlideshow({
+                      ...editingSlideshow,
+                      transitionDurationMs: ms,
+                    });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  How long each slide stays visible (1000–600000 ms).
+                </p>
               </div>
 
-              {/* Fade Duration */}
+              {/* Fade duration (ms); stored for future cross-fade — player may use instant cuts today */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Fade Duration (seconds)
+                  Fade duration (ms)
                 </label>
                 <input
                   type="number"
-                  min="0"
-                  max="5"
-                  step="0.1"
-                  value={(editingSlideshow.fadeDurationMs || 1000) / 1000}
-                  onChange={(e) => setEditingSlideshow({ ...editingSlideshow, fadeDurationMs: parseFloat(e.target.value) * 1000 })}
+                  min={0}
+                  max={60000}
+                  step={50}
+                  value={editingSlideshow.fadeDurationMs ?? 1000}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    const ms = Number.isFinite(v)
+                      ? Math.max(0, Math.min(60_000, v))
+                      : 0;
+                    setEditingSlideshow({
+                      ...editingSlideshow,
+                      fadeDurationMs: ms,
+                    });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Reserved for transitions (0–60000 ms). Public player may still cut instantly.
+                </p>
               </div>
 
               {/* Refresh Strategy */}
@@ -541,22 +592,27 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
                   </label>
                 </div>
               </div>
-            </div>
+                </div>
+              </div>
 
-            {/* Actions */}
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => handleEditSlideshow(editingSlideshow)}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-              >
-                Save Changes
-              </button>
-              <button
-                onClick={() => setEditingSlideshow(null)}
-                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
+              <div className="shrink-0 border-t border-gray-200 bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-800">
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleEditSlideshow(editingSlideshow)}
+                    className="flex-1 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-blue-700"
+                  >
+                    Save Changes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingSlideshow(null)}
+                    className="flex-1 rounded-lg bg-gray-200 px-4 py-2 font-semibold text-gray-900 transition-colors hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -10,7 +10,6 @@
 
 import { getSession } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import CollapsibleSidebar from '@/components/admin/CollapsibleSidebar';
 
 export default async function AdminLayout({
@@ -29,6 +28,10 @@ export default async function AdminLayout({
   // WHY: SSO v5.24.0 introduced multi-app permissions - each app has its own roles
   // HOW: Use session.appRole which was queried from SSO during login callback
   if (session.appRole !== 'admin' && session.appRole !== 'superadmin') {
+    redirect('/');
+  }
+
+  if (session.appAccess === false) {
     redirect('/');
   }
 

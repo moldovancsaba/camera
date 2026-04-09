@@ -344,6 +344,15 @@ export default function SlideshowLayoutBuilder({
               Apply grid & reset cells
             </button>
           </div>
+          <p className="text-xs text-amber-800 dark:text-amber-200/90 rounded-md bg-amber-50 dark:bg-amber-950/40 px-2 py-1.5 border border-amber-200/80 dark:border-amber-800/60 max-w-3xl">
+            <strong className="font-semibold">Layout “aspect ratio”:</strong> the overall shape of the
+            videowall follows <strong className="font-semibold">columns ÷ rows</strong> (e.g. 3 cols × 1
+            row → wide strip). Each region still plays a slideshow whose{' '}
+            <strong className="font-semibold">stage is 16:9</strong>. Use{' '}
+            <strong className="font-semibold">Photo scaling</strong> on a selected region for Fit vs Fill{' '}
+            inside that cell; use <strong className="font-semibold">Grid in browser</strong> below for the
+            whole grid vs the screen.
+          </p>
 
           <div>
             <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -525,20 +534,35 @@ export default function SlideshowLayoutBuilder({
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-500">Delay (ms)</label>
+                <label className="text-xs text-gray-500">
+                  Stagger delay (ms)
+                </label>
                 <input
                   type="number"
                   min={0}
                   max={600000}
+                  step={100}
                   value={selectedArea.delayMs}
-                  onChange={(e) =>
-                    updateSelectedArea({ delayMs: Number(e.target.value) || 0 })
-                  }
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    const ms = Number.isFinite(v)
+                      ? Math.max(0, Math.min(600_000, v))
+                      : 0;
+                    updateSelectedArea({ delayMs: ms });
+                  }}
                   className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-900"
                 />
+                <p className="text-[10px] text-gray-500 mt-0.5">
+                  Extra wait before the first auto-advance in this cell (0–600000 ms).
+                </p>
               </div>
               <div>
                 <label className="text-xs text-gray-500">Photo scaling</label>
+                <p className="text-[10px] text-gray-500 mt-0.5 mb-1">
+                  Controls how the <strong className="font-semibold">16:9 slideshow stage</strong> fits{' '}
+                  <em>this tile</em>: Fit = whole stage visible; Fill = stage scales to cover the tile
+                  (edges cropped).
+                </p>
                 <select
                   value={selectedArea.objectFit}
                   onChange={(e) =>
@@ -548,8 +572,8 @@ export default function SlideshowLayoutBuilder({
                   }
                   className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-900"
                 >
-                  <option value="contain">Fit (letterbox)</option>
-                  <option value="cover">Fill (crop)</option>
+                  <option value="contain">Fit tile (letterbox stage)</option>
+                  <option value="cover">Fill tile (crop stage)</option>
                 </select>
               </div>
               <button
