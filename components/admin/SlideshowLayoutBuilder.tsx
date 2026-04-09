@@ -565,7 +565,9 @@ export default function SlideshowLayoutBuilder({
                   className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-900"
                 />
                 <p className="text-[10px] text-gray-500 mt-0.5">
-                  Extra wait before the first auto-advance in this cell (0–600000 ms).
+                  Extra ms added to <strong className="font-semibold">each</strong> slide&apos;s display
+                  time in this cell (hold = transition duration + this value). Use different values per
+                  region to keep the same slideshow out of sync across tiles (0–600000 ms).
                 </p>
               </div>
               <div>

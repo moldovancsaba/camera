@@ -167,7 +167,7 @@ The player calls this **when a slide becomes visible**, asynchronously (errors m
 ### Playback
 
 - **Queue:** React state `slideQueue` — head is the visible slide.
-- **Advance (loop):** after **`transitionDurationMs`** (+ optional layout `delayMs` on the first tick only), **pop** the head, then **refill** the tail toward `bufferSize`. Timer duration is **not** reset by queue refills.
+- **Advance (loop):** after **`transitionDurationMs`** (+ embedded layout **`delayMs` on every tick**; fullscreen optional **`delayMs` on the first tick only**), **pop** the head, then **refill** the tail toward `bufferSize`. Timer duration is **not** reset by queue refills.
 - **Advance (once):** pop head until one slide left; then stop and show end UI.
 - **Transitions:** if **`fadeDurationMs` > 0**, an **opacity ease** runs on the slide layer between advances (first slide skips fade). If **0**, the cut is instant.
 
@@ -281,7 +281,7 @@ A **layout** combines several **existing slideshows** on one screen. Each **regi
 | **Gaps** | Public grid uses **`gap: 0`** (one rigid videowall); admin builder preview also uses **no gap** so WYSIWYG. |
 | **Unused tracks** | On **`/slideshow-layout/...`**, rows/columns that contain **no tiles** from any area are **collapsed** (`computeCompactGridSpec` in `layout-geometry.ts`), so checkerboard-style definitions (e.g. images on rows 0,2,4 of a 6-row logical grid) render as **contiguous** image bands without blank “stripe” rows showing only the outer background. |
 
-**Delay:** On each embedded player, `delayMs` extends the **first** slide duration only, so two cells using the same slideshow start their rotation out of phase.
+**Delay:** On each embedded player, `delayMs` is added to **every** auto-advance interval (`transitionDurationMs` + `delayMs`), so regions with **different** values stay out of phase across slide changes; regions with the **same** value stay aligned but each slide is held longer by that amount.
 
 **Random order:** With **`orderMode: 'random'`**, each region’s **`instanceKey`** forces a **separate** shuffle from other regions (including those pointing at the same `slideshowId`), so tiles are expected to show **different** images, not mirror the same permutation.
 

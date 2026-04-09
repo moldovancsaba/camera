@@ -55,7 +55,10 @@ export interface SlideshowPlayerCoreProps {
   /** When set (e.g. layout region id), random-order playlists shuffle independently per instance */
   instanceKey?: string;
   objectFit?: 'contain' | 'cover';
-  /** Stagger first transition (ms); API/layout may send string from JSON */
+  /**
+   * Layout / embedded: extra ms added to **every** auto-advance hold (`transitionDurationMs` + delay).
+   * Fullscreen: optional extra ms on the **first** auto-advance only (replay resets). JSON may send string.
+   */
   delayMs?: number | string;
   variant?: 'fullscreen' | 'embedded';
   className?: string;
@@ -394,13 +397,18 @@ export function SlideshowPlayerCore({
 
     updatePlayCounts(headSlide);
 
-    const applyInitialStagger =
-      displayEpoch === 0 && pendingInitialDelayRef.current && delayMs > 0;
-    const delayExtra = applyInitialStagger ? delayMs : 0;
+    const useEmbeddedStagger = variant === 'embedded' && delayMs > 0;
+    const useFullscreenInitialStagger =
+      variant === 'fullscreen' &&
+      displayEpoch === 0 &&
+      pendingInitialDelayRef.current &&
+      delayMs > 0;
+    const delayExtra =
+      useEmbeddedStagger || useFullscreenInitialStagger ? delayMs : 0;
     const holdMs = transitionMsRef.current + delayExtra;
 
     const advanceTimer = setTimeout(() => {
-      if (applyInitialStagger) {
+      if (useFullscreenInitialStagger) {
         pendingInitialDelayRef.current = false;
       }
 
@@ -445,6 +453,7 @@ export function SlideshowPlayerCore({
     isPlaying,
     delayMs,
     displayEpoch,
+    variant,
     updatePlayCounts,
     maintainLoopBuffer,
   ]);
