@@ -1,10 +1,10 @@
 # ARCHITECTURE.md
 
 **Project**: Camera — Photo Frame Webapp  
-**Current Version**: 2.0.1  
-**Last Updated**: 2025-11-08T17:53:00.000Z
+**Current Version**: 2.9.0 (canonical: root `package.json` → `"version"`)  
+**Last Updated**: 2026-04-09
 
-**Latest Changes (v2.0.1)**: Safari camera initialization fixes for iOS and desktop
+**Doc sync:** When behavior changes, update this file and **`docs/DOCUMENTATION.md`** / **`docs/SLIDESHOW_LOGIC.md`** in the same change.
 
 This document describes the complete system architecture, technical decisions, and implementation patterns for the Camera photo frame application.
 
@@ -54,7 +54,7 @@ Camera is a professional web application that allows users to capture or upload 
 ## Technology Stack
 
 ### Core Framework
-- **Next.js 16.0.1** (App Router)
+- **Next.js 16.0.x** (App Router; exact version in `package.json` → `"next"`)
   - Why: SSR, API routes, file-based routing, built-in optimizations
   - Module system: ES Modules (`type: "module"` in package.json)
   - Node.js: 18.x, 20.x, or 22.x
@@ -82,9 +82,9 @@ Camera is a professional web application that allows users to capture or upload 
   - Collections: partners, events, frames, submissions, slideshows, slideshow_layouts, users_cache
 
 ### Authentication
-- **Custom SSO Integration** (sso.doneisbetter.com v5.16.0)
+- **Custom SSO Integration** (e.g. sso.doneisbetter.com; **multi-app permissions from SSO v5.24+**)
   - Protocol: OAuth2/OIDC with PKCE flow
-  - Session: 30-day sliding expiration in HTTP-only cookies
+  - Session: 30-day sliding expiration in HTTP-only cookies (`camera_session`); includes **`appRole`** and **`appAccess`** for **this** app (not the global SSO `user.role`)
   - Tokens: Access token + refresh token with rotation
 
 ### External Services
@@ -115,7 +115,8 @@ Camera is a professional web application that allows users to capture or upload 
 ┌─────────────────────────────────────────────────────────────┐
 │                        API LAYER                            │
 │  • Route Handlers (app/api/*/route.ts)                     │
-│  • Middleware (lib/api/middleware.ts)                      │
+│  • Next.js middleware (root middleware.ts — /admin/* gate) │
+│  • API helpers (lib/api/middleware.ts — requireAuth, etc.)   │
 │  • Response Helpers (lib/api/responses.ts)                 │
 │  • Error Handling (lib/api/withErrorHandler.ts)           │
 └─────────────────────────────────────────────────────────────┘
@@ -306,7 +307,7 @@ All timestamps use ISO 8601 format with milliseconds UTC: `YYYY-MM-DDTHH:MM:SS.s
 {
   _id: ObjectId,
   slideshowId: string,          // UUID (used in public URLs)
-  eventId: string,              // Reference to event._id (as string)
+  eventId: string,              // Event UUID (preferred) or legacy Mongo event _id string — resolved in `findEventForSlideshow`
   eventName: string,            // Cached
   name: string,                 // e.g., "Main Screen", "VIP Lounge"
   isActive: boolean,
@@ -314,6 +315,12 @@ All timestamps use ISO 8601 format with milliseconds UTC: `YYYY-MM-DDTHH:MM:SS.s
   fadeDurationMs: number,       // ms — default 1000
   bufferSize: number,           // Default: 10 slides
   refreshStrategy: 'continuous' | 'batch',
+  playMode?: 'once' | 'loop',
+  orderMode?: 'fixed' | 'random',
+  backgroundPrimaryColor?: string,
+  backgroundAccentColor?: string,
+  backgroundImageUrl?: string | null,
+  viewportScale?: 'fit' | 'fill',
   createdBy: string,
   createdAt: string,
   updatedAt: string
@@ -342,6 +349,7 @@ All timestamps use ISO 8601 format with milliseconds UTC: `YYYY-MM-DDTHH:MM:SS.s
     color?: string              // Admin builder preview only
   }>,
   background?: string,          // Optional CSS background-* for outer frame
+  viewportScale?: 'fit' | 'fill', // Whole grid vs browser viewport
   isActive: boolean,
   createdBy: string,
   createdAt: string,
@@ -362,44 +370,47 @@ All timestamps use ISO 8601 format with milliseconds UTC: `YYYY-MM-DDTHH:MM:SS.s
 4. **Error-Safe**: Centralized error handling via `withErrorHandler`
 
 ### API Structure
+
+**Source of truth:** every `app/api/**/route.ts` file. The tree below is a **summary**; names and methods may grow over time.
+
 ```
-/api
-├── /auth
-│   ├── /login        POST   Start OAuth2 flow
-│   ├── /callback     GET    OAuth2 callback handler
-│   ├── /logout       POST   Clear session
-│   └── /dev-login    POST   Development-only login
-├── /partners
-│   ├── /             GET    List partners, POST Create partner
-│   ├── /[id]         GET    Get partner, PATCH Update, DELETE Delete
-│   └── /[id]/toggle  PATCH  Toggle active status
-├── /events
-│   ├── /             GET    List events, POST Create event
-│   └── /[id]         GET    Get event details
-├── /frames
-│   ├── /             GET    List frames, POST Create frame
-│   └── /[id]         GET    Get frame, PATCH Update, DELETE Delete
-├── /submissions
-│   ├── /             GET    List user submissions, POST Create submission
-│   └── /[id]         GET    Get submission details
-├── /slideshows
-│   ├── /             GET    List slideshows, POST Create, PATCH Update
-│   ├── /[id]/playlist       GET    Get slideshow playlist
-│   ├── /[id]/next-candidate GET    Get next slide (rolling buffer)
-│   └── /[id]/played         POST   Update play counts
-├── /slideshow-layouts
-│   ├── /                    GET    List layouts by eventId, POST Create, PATCH Update, DELETE
-│   └── /[layoutId]          GET    Public layout JSON (composite player)
-└── /hashtags         GET    Get unique hashtags for filtering
+/api/auth
+  GET  /login          Start OAuth2 flow (redirect to IdP)
+  GET  /callback       OAuth2 callback
+  POST /logout         Clear session
+  GET  /session        Current session JSON (used by clients)
+  POST /dev-login      Development-only (guarded in code)
+
+/api/partners, /api/events, /api/frames, /api/logos, /api/submissions
+  Resource CRUD + event-scoped sub-routes (frames, logos, submissions, reset-style, …)
+
+/api/slideshows
+  GET/POST/PATCH/DELETE (collection + ?id= for patch/delete on Mongo _id)
+  GET  /[slideshowId]/playlist        Playlist JSON (?limit, ?exclude)
+  POST /[slideshowId]/played           Increment play counts
+  GET  /[slideshowId]/next-candidate   Single next slide (alternate client)
+  POST /[slideshowId]/background-image Failover image upload (admin)
+
+/api/slideshow-layouts
+  GET/POST/PATCH/DELETE (admin; ?eventId= / ?id=)
+  GET  /[layoutId]     Public layout JSON for /slideshow-layout/[layoutId]
+
+/api/admin/...        Users, merges, submission archive/restore, event gallery upload, migrate helpers
+/api/hashtags         GET filter support
 ```
 
-### Middleware Architecture (v1.7.1)
+### Request middleware vs API helpers
 
-**Centralized Utilities** (`lib/api/`):
-- `middleware.ts`: Auth checks (`requireAuth`, `requireAdmin`, `requireRole`)
-- `responses.ts`: Standardized responses (`apiSuccess`, `apiError`, `apiCreated`, etc.)
-- `withErrorHandler.ts`: Error boundary wrapper for all routes
-- `index.ts`: Unified exports
+**Next.js Edge (`middleware.ts` at repo root):**
+- Matcher: `/admin/:path*`
+- Requires `camera_session` cookie, valid expiry, **`appRole`** `admin` or `superadmin`, and **`appAccess !== false`**
+- Unauthenticated → redirect `/api/auth/login`; forbidden → `/`
+
+**Route-handler helpers (`lib/api/`):**
+- `middleware.ts`: `requireAuth`, `requireAdmin`, `optionalAuth`, … — **`requireAdmin`** uses **`session.appRole`** (`admin` \| `superadmin`) and rejects **`session.appAccess === false`** (403)
+- `responses.ts`: standardized JSON helpers
+- `withErrorHandler.ts`: wraps route handlers
+- `index.ts`: re-exports
 
 **Usage Pattern**:
 ```typescript
@@ -480,7 +491,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 ### Session Management
 - **Storage**: HTTP-only cookie (`camera_session`)
 - **Duration**: 30 days sliding expiration
-- **Contents**: User info, access token, refresh token, expiration times
+- **Contents**: SSO user claims, access/refresh tokens, expiries, plus **`appRole`** (`none` \| `user` \| `admin` \| `superadmin`) and **`appAccess`** for this app (from SSO permission endpoint at login)
 - **Security**: Secure flag in production, SameSite=Lax, HttpOnly
 
 ### Token Refresh
@@ -490,15 +501,14 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 - Refresh token rotation (new refresh token with each refresh)
 
 ### Authorization Levels
-- **Public**: No authentication required (e.g., event capture pages)
-- **User**: Authenticated user (profile, submissions)
-- **Admin**: User with role='admin' or role='super-admin'
+- **Public**: No authentication required (e.g., event capture pages, public slideshow URLs)
+- **User**: Authenticated SSO user (`requireAuth`) — not the same as **`appRole: 'user'`** (that is app permission from SSO)
+- **Admin UI / admin APIs**: **`session.appRole`** is **`admin`** or **`superadmin`** and **`appAccess !== false`**. Do **not** use global `user.role` from the IdP for app authorization (multi-app SSO).
 
-### Middleware Helpers
+### API helper quick reference
 ```typescript
 requireAuth()      // Throws 401 if not authenticated
-requireAdmin()     // Throws 401 if not authenticated, 403 if not admin
-requireRole(roles) // Throws 403 if user doesn't have one of specified roles
+requireAdmin()     // 401 unauthenticated; 403 if not app admin / no app access
 optionalAuth()     // Returns session or null, no error
 ```
 
@@ -555,21 +565,17 @@ import { Button, Card, Badge, LoadingSpinner } from '@/components/shared';
 
 ### Slideshow Playlist Algorithm
 
-**Full detail:** `docs/SLIDESHOW_LOGIC.md` (player v2, APIs, A/B/C buffers, filters).
+**Full detail:** `docs/SLIDESHOW_LOGIC.md` (playlist API, `SlideshowPlayerCore`, layouts).
 
 ```
 1. Resolve event from slideshow (UUID or legacy Mongo event _id)
-2. Query submissions for event (archived/hidden/inactive filters; optional exclude ids for A/B/C buffers)
-3. Sort by playCount ASC, then createdAt ASC (least-played, oldest first)
-4. generatePlaylist: bucket by aspect ratio, then round-robin:
-   - Add 1 landscape (single image) if available
-   - Add 1 portrait mosaic if 3+ portrait images available
-   - Add 1 square mosaic if 6+ square images available
-   - Repeat until limit (bufferSize / request limit)
-5. GET /api/slideshows/[id]/playlist returns slides + settings
-6. Player preloads images; rotates playlists A → B → C; rebuilds finished buffer with exclude= when refreshStrategy is continuous
-7. On each slide shown, POST /api/slideshows/[id]/played (fire-and-forget) increments playCount / per-slideshow stats
-8. Public UI uses instant cuts (fadeDurationMs stored but not cross-fading in v2 player)
+2. Query submissions for event (archived/hidden/inactive filters; optional exclude ids on playlist GET)
+3. Optional: shuffle submission list when slideshow.orderMode === 'random'
+4. Sort by playCount ASC, then createdAt ASC (least-played, oldest first)
+5. generatePlaylist: bucket by aspect ratio, then round-robin landscape / portrait mosaic / square mosaic until limit
+6. GET /api/slideshows/[id]/playlist returns slides + settings
+7. SlideshowPlayerCore: FIFO queue from first fetch; loop mode prefetches GET …/playlist?limit=1; POST /played on visible slide
+8. Public UI uses instant cuts (fadeDurationMs stored but not used as cross-fade)
 ```
 
 ---
@@ -584,8 +590,8 @@ import { Button, Card, Badge, LoadingSpinner } from '@/components/shared';
 - **Storage**: Unlimited free tier, 32MB per image limit
 - **URLs**: Permanent, no expiration
 
-### SSO Service (sso.doneisbetter.com)
-- **Version**: 5.23.1
+### SSO Service (e.g. sso.doneisbetter.com)
+- **Notes**: App permission / multi-app roles (**v5.24+**) — see `app/api/auth/callback/route.ts` and `lib/auth/sso-permissions.ts`
 - **Protocol**: OAuth2/OIDC with PKCE
 - **Endpoints**: /authorize, /token, /userinfo
 - **Scopes**: openid, profile, email
@@ -605,12 +611,13 @@ import { Button, Card, Badge, LoadingSpinner } from '@/components/shared';
 - ✅ Secure flag in production (HTTPS only)
 - ✅ Input validation via `validateRequiredFields` middleware
 - ✅ MongoDB ObjectId validation before queries
-- ✅ Role-based access control (admin vs user)
+- ✅ App-scoped admin checks (`appRole`, `appAccess`) + `/admin` edge middleware
 - ✅ Session expiration (30 days sliding)
 - ✅ Token refresh rotation
+- ✅ API rate limiting on many routes (`checkRateLimit`, `RATE_LIMITS`; optional Upstash Redis)
 
 ### Recommended Additions (Phase 7)
-- ⏳ Rate limiting on API endpoints
+- ⏳ Expand rate limiting coverage on any new public write endpoints
 - ⏳ Input sanitization (XSS prevention)
 - ⏳ CSRF tokens for state-changing operations
 - ⏳ Security headers (CSP, X-Frame-Options, etc.)
@@ -706,6 +713,7 @@ See `docs/MONGODB_CONVENTIONS.md` for complete reference guide.
 
 ## Version History
 
+- **Docs sync** (2026-04-09): Aligned architecture/README/slideshow docs with **`SlideshowPlayerCore`** FIFO player, **`middleware.ts`** `/admin` gate, app **`appRole`/`appAccess`**, and expanded slideshow/layout schema fields. See **`docs/DOCUMENTATION.md`**.
 - **v2.0.1** (2025-11-08): Safari camera initialization fixes - comprehensive video readiness validation
 - **v2.0.0** (2025-11-07): Custom pages system implementation - onboarding/thank you pages
 - **v1.7.1** (2025-11-06): Comprehensive refactoring - added middleware, shared components, fixed TypeScript errors
@@ -714,4 +722,4 @@ See `docs/MONGODB_CONVENTIONS.md` for complete reference guide.
 
 ---
 
-**Document Maintenance**: This document must be updated whenever architectural decisions are made or significant changes are implemented. All team members should review before making system-wide changes.
+**Document maintenance:** Update this file when architecture or public contracts change. Follow **`docs/DOCUMENTATION.md`** so version numbers and player behavior stay aligned with `package.json` and `SlideshowPlayerCore`.

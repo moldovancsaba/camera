@@ -1,11 +1,13 @@
 # Event slideshow — architecture and behavior
 
-**Version:** 2.1.0  
+**Version:** 2.3.0  
 **Last updated:** 2026-04-09
 
 This document describes how event slideshows are **created**, how **playlists** are built on the server, and how the **public player** runs in the browser. Use it when changing fairness rules, layouts, timing, or APIs.
 
-**Canonical code references:** `lib/slideshow/playlist.ts`, `app/api/slideshows/`, `app/slideshow/[slideshowId]/page.tsx`, `components/slideshow/SlideshowPlayerCore.tsx`, `components/admin/SlideshowManager.tsx`, `app/api/slideshow-layouts/`, `app/slideshow-layout/[layoutId]/page.tsx`.
+**Canonical code references:** `lib/slideshow/playlist.ts`, `app/api/slideshows/`, **`components/slideshow/SlideshowPlayerCore.tsx`** (player implementation), thin wrapper `app/slideshow/[slideshowId]/page.tsx`, `components/admin/SlideshowManager.tsx`, `app/api/slideshow-layouts/`, `app/slideshow-layout/[layoutId]/page.tsx`.
+
+**Doc maintenance:** See `docs/DOCUMENTATION.md` for how to keep this file aligned with code.
 
 ---
 
@@ -17,7 +19,7 @@ This document describes how event slideshows are **created**, how **playlists** 
 4. [Playlist API (`GET …/playlist`)](#4-playlist-api-get-playlist)
 5. [Playlist generation (`generatePlaylist`)](#5-playlist-generation-generateplaylist)
 6. [Play count API (`POST …/played`)](#6-play-count-api-post-played)
-7. [Public player (Slideshow v2)](#7-public-player-slideshow-v2)
+7. [Public player (`SlideshowPlayerCore`)](#7-public-player-slideshowplayercore)
 8. [Alternate API: `next-candidate`](#8-alternate-api-next-candidate)
 9. [Rate limits](#9-rate-limits)
 10. [End-to-end flow](#10-end-to-end-flow)
@@ -31,9 +33,9 @@ This document describes how event slideshows are **created**, how **playlists** 
 
 The slideshow shows event submissions on a large screen with:
 
-- **Fair rotation** via `playCount` (least played first), then `createdAt` (oldest first).
+- **Fair rotation** via `playCount` (least played first), then `createdAt` (oldest first). With **`orderMode: 'random'`** on the slideshow, the server **shuffles** the submission list before `generatePlaylist` when there is more than one submission (`playlist/route.ts`): **unkeyed** clients use `Math.random()` (Fisher–Yates); clients that pass **`instanceKey`** (layout regions use each area’s `id`) use a **seeded** shuffle (`hash(instanceKey) XOR` per-request salt) so **two regions with the same `slideshowId` get independent orderings**, not one shared permutation.
 - **Aspect-aware layouts**: full-frame landscape, or **mosaics** for portrait (3-up) and square (6-up) inside a fixed **16:9** stage.
-- A **triple-buffer** player (**A / B / C**) that refetches playlists with **`exclude`** lists so the same image is not duplicated across buffers while one buffer is playing and others are rebuilt.
+- A **FIFO slide queue** in the browser (`SlideshowPlayerCore`): initial **`GET …/playlist`** returns up to `bufferSize` slides; playback pops the head and appends the next slide. In **loop** mode, the client prefetches **one** candidate via **`GET …/playlist?limit=1`** (no `exclude` today). If prefetch is slow, the current head may repeat so the queue never goes empty. **`playMode: 'once'`** drains the queue without prefetch rotation.
 
 ---
 
@@ -53,9 +55,14 @@ Typical fields (see `ARCHITECTURE.md` / `lib/db/schemas.ts` for full schema):
 | `eventId` | **Event UUID** (`event.eventId`) on new rows; older rows may store event Mongo `_id` — resolved via `findEventForSlideshow` |
 | `name`, `eventName` | Display labels in the player UI |
 | `transitionDurationMs` | Time each slide stays on screen (**milliseconds**; admin UI uses ms) |
-| `fadeDurationMs` | **Milliseconds**; stored for compatibility — **v2 player uses instant cuts** (no cross-fade) |
-| `bufferSize` | Default number of slides per playlist fetch (often 10) |
-| `refreshStrategy` | `continuous` (default): rebuild finished buffer in background while others play |
+| `fadeDurationMs` | **Milliseconds**; stored for compatibility — **player uses instant cuts** (no cross-fade) |
+| `bufferSize` | Default number of slides returned by **`GET …/playlist`** without `limit` (often 10); seeds the client queue |
+| `refreshStrategy` | `continuous` \| `batch` — stored on the document; **current `SlideshowPlayerCore` does not branch on this** (legacy / future use) |
+| `playMode` | `loop` (default) \| `once` — stop after one pass through the initial queue |
+| `orderMode` | `fixed` (default) \| `random` — server-side shuffle of matched submissions before mosaic grouping |
+| `backgroundPrimaryColor`, `backgroundAccentColor` | Failover gradient (hex); see player for black-until-ready behavior with optional `backgroundImageUrl` |
+| `backgroundImageUrl` | Optional imgbb URL; preload before first paint when possible |
+| `viewportScale` | `fit` \| `fill` — how the **16:9 stage** fits the **fullscreen** viewport only; **ignored for stage-in-cell sizing in layouts** (see §13) |
 | `isActive` | Managed via admin PATCH |
 
 ---
@@ -65,7 +72,8 @@ Typical fields (see `ARCHITECTURE.md` / `lib/db/schemas.ts` for full schema):
 - **UI:** `components/admin/SlideshowManager.tsx` on the event detail page (`app/admin/events/[id]/page.tsx`).
 - **Create:** `POST /api/slideshows` (admin session required). Body includes `eventId` (Mongo event `_id`) and `name`. Server stores **`eventId` as the event UUID** for submission matching.
 - **List:** `GET /api/slideshows?eventId={uuid}` — `eventId` here is the **event UUID**, not the Mongo `_id`.
-- **Update:** `PATCH /api/slideshows?id={mongoId}` — name, buffer size, timings, `refreshStrategy`, `isActive`.
+- **Update:** `PATCH /api/slideshows?id={mongoId}` — name, buffer size, timings, `refreshStrategy`, `isActive`, `playMode`, `orderMode`, gradient colors, `backgroundImageUrl`, `viewportScale` (see `app/api/slideshows/route.ts`).
+- **Failover image upload (admin):** `POST /api/slideshows/{slideshowId}/background-image` (multipart) — returns URL suitable for `backgroundImageUrl` on the slideshow document.
 - **Delete:** `DELETE /api/slideshows?id={mongoId}`.
 
 Operators copy the player link as **`{origin}/slideshow/{slideshowId}`**.
@@ -81,7 +89,8 @@ Operators copy the player link as **`{origin}/slideshow/{slideshowId}`**.
 | Param | Purpose |
 |--------|---------|
 | `limit` | Max slides to return; default `slideshow.bufferSize` or 10 |
-| `exclude` | Comma-separated **submission `_id`** strings to omit (used so A/B/C buffers do not overlap) |
+| `exclude` | Comma-separated **submission `_id`** strings to omit from the aggregate `$match` (for alternate clients or experiments; **`SlideshowPlayerCore` prefetch does not pass `exclude` today**) |
+| `instanceKey` | Optional string (trimmed, max 256 chars). When **`orderMode` is `random`**, the playlist shuffles submissions with a **seed derived from this key** (XOR with a per-request 32-bit salt) so different keys produce **different** random orderings—used by **composite layouts** so duplicate `slideshowId` regions do not share the same shuffle. Omit on `/slideshow/{id}` fullscreen (unchanged behavior). |
 
 ### Steps
 
@@ -95,7 +104,8 @@ Operators copy the player link as **`{origin}/slideshow/{slideshowId}`**.
    - **Inactive users:** exclude SSO emails in the inactive set; keep anonymous pseudo users; exclude pseudo users with `userInfo.isActive === false` when applicable.
 5. If `exclude` is present, add `_id: { $nin: [ObjectId…] }` for valid ids.
 6. **Sort:** `normalizedPlayCount` ascending (`$ifNull(playCount, 0)`), then **`createdAt` ascending**.
-7. **`generatePlaylist(submissions, limit)`** → JSON: `slideshow` (settings + ids for client), `playlist`, `totalSubmissions`.
+7. If **`orderMode` is `random`** and there is more than one submission: **shuffle** the array in place—**seeded** (`shuffleInPlaceSeeded` in `lib/slideshow/playlist.ts`) when `instanceKey` is present, otherwise **`shuffleInPlace`** (`Math.random()`).
+8. **`generatePlaylist(submissions, limit)`** → JSON: `slideshow` (settings + ids for client), `playlist`, `totalSubmissions`.
 
 ---
 
@@ -143,32 +153,36 @@ The player calls this **when a slide becomes visible**, asynchronously (errors m
 
 ---
 
-## 7. Public player (Slideshow v2)
+## 7. Public player (`SlideshowPlayerCore`)
 
-**Route:** `app/slideshow/[slideshowId]/page.tsx` (client component).
+**Route:** `app/slideshow/[slideshowId]/page.tsx` imports **`SlideshowPlayerCore`** with `variant="fullscreen"` (client component).
 
 ### Startup
 
-1. `GET /api/slideshows/{id}/playlist` → first playlist → **playlist A**; preload images.
-2. Fetch **B** with `?exclude=` all submission ids in A.
-3. Fetch **C** with `?exclude=` ids in **A ∪ B**.
-4. Optional **loading branding:** if slideshow has `eventId` (Mongo id in response), `GET /api/events/{eventId}/logos` and use the active logo in slot **`loading-slideshow`**.
+1. Black full-viewport shell (no loading copy); optional **loading-slideshow** logo from `GET /api/events/{eventId}/logos` when `eventId` is present on the slideshow payload.
+2. `GET /api/slideshows/{id}/playlist` (optional `instanceKey` for layout cells) → `slideshow` settings + `playlist` array (length ≤ `bufferSize` unless `limit` query overrides).
+3. Preload all slide images and optional **`backgroundImageUrl`** before hiding the loading shell.
+4. In **loop** mode, fire **`prefetchNext`**: `GET /api/slideshows/{id}/playlist?limit=1` (same `instanceKey` when embedded) to populate a one-slide “next” slot (not wired with `exclude` in this client).
 
 ### Playback
 
-- **Active buffer:** one of A / B / C; **`currentIndex`** walks that buffer.
-- **Advance:** `setTimeout(transitionDurationMs)` then next index or **rotate** to the next playlist at end.
-- **Rotation:** A → B → C → A. When a buffer ends, the next buffer becomes active; if `refreshStrategy === 'continuous'`, the **finished** buffer is rebuilt via `GET …/playlist?exclude=` (ids from the **two** buffers that are not being rebuilt).
-- **Transitions:** **Instant cut** between slides (comments in code; `fadeDurationMs` is not applied as a cross-fade in this version).
+- **Queue:** React state `slideQueue` — head is the visible slide.
+- **Advance (loop):** after `transitionDurationMs` (+ optional layout `delayMs` on first tick), pop head, append prefetched slide if any else **re-append previous head** so playback never stalls empty.
+- **Advance (once):** pop head until one slide left; then stop and show end UI.
+- **Transitions:** **Instant cut**; `fadeDurationMs` is not used as a cross-fade.
 
-### Layout
+### Layout (fullscreen)
 
-- Viewport: **centered 16:9** box (`vw`/`vh` with max constraints) on black.
-- **Single:** one image, `object-fit: contain`.
+- **16:9 stage** sized with `slideshowStageDimensions` from `lib/slideshow/viewport-scale.ts` using slideshow **`viewportScale`** (`fit` = letterbox stage in window, `fill` = cover).
+- **Single:** one `<img>` filling the stage; `object-fit` follows component default **`contain`** for fullscreen.
 - **Square mosaic:** six cells in a 3×2 grid (absolute positioning).
 - **Portrait mosaic:** three columns, full height.
 
-### Controls
+### Embedded (layouts)
+
+- Same component with `variant="embedded"`, per-region **`instanceKey`** (the layout area `id`, for independent random queues), and per-region **`objectFit`** (`contain` \| `cover`). **Stage-in-cell** fit/fill is driven by this prop (not by slideshow `viewportScale`). See §13.
+
+### Controls (fullscreen only)
 
 - Play/pause, fullscreen (**F**), **Space** toggles play, arrow keys step slides; overlay auto-hides in fullscreen after mouse idle.
 
@@ -178,7 +192,7 @@ The player calls this **when a slide becomes visible**, asynchronously (errors m
 
 **Route:** `app/api/slideshows/[slideshowId]/next-candidate/route.ts`
 
-Returns a **single** next slide using similar filtering and `generatePlaylist` with a limit of 1, with optional `excludeIds`. The **v2 player** primarily uses **full playlist** fetches with `exclude`, not this endpoint; keep in mind if you build a different client.
+Returns a **single** next slide using similar filtering and `generatePlaylist` with a limit of 1, with optional `excludeIds`. **`SlideshowPlayerCore` uses `…/playlist?limit=1` for prefetch**, not this route—keep both when evolving server logic.
 
 ---
 
@@ -204,6 +218,7 @@ flowchart LR
   PL --> SUB[(Mongo submissions)]
   PL --> GEN[generatePlaylist]
   GEN --> Player
+  Player -->|GET playlist limit=1| PL
   Player -->|POST played| PC[Played route]
   PC --> SUB
 ```
@@ -215,10 +230,11 @@ flowchart LR
 | Goal | Where to change |
 |------|------------------|
 | Who appears in the pool | `$match` in `playlist/route.ts` (archived, hidden, inactive users) |
-| Fairness ordering | Aggregate `$sort` in playlist route + per-bucket sort in `playlist.ts` |
+| Fairness ordering | Aggregate `$sort` in playlist route + per-bucket sort in `playlist.ts`; **`orderMode: random`** shuffles before `generatePlaylist` |
 | Mosaic sizes / order of landscape vs mosaics | `generatePlaylist` loop in `playlist.ts` |
 | Slide duration / buffer size | Slideshow document + `SlideshowManager` PATCH |
-| Visual layout / 16:9 box | `renderSlide` and container styles in `page.tsx` |
+| Visual layout / 16:9 stage / fullscreen fit vs fill | `SlideshowPlayerCore.tsx` + `lib/slideshow/viewport-scale.ts` |
+| Client queue / prefetch | `SlideshowPlayerCore.tsx` (`slideQueue`, `prefetchNext`, `fetchOneSlide`) |
 | API throttling | `RATE_LIMITS` in `lib/api` |
 
 ---
@@ -235,7 +251,7 @@ Check archived flag, `hiddenFromEvents`, higher `playCount` (it will surface lat
 
 ### Does the player fade between slides?
 
-**Current v2 behavior:** **no** cross-fade; cuts are instant. `fadeDurationMs` remains in the model for potential future use or other clients.
+**Current player behavior:** **no** cross-fade; cuts are instant. `fadeDurationMs` remains in the model for potential future use or other clients.
 
 ### How does the playlist stay fresh?
 
@@ -250,7 +266,7 @@ Each playlist request re-queries Mongo with current `playCount`, so after `playe
 
 ## 13. Slideshow layouts (composite videowall)
 
-A **layout** combines several **existing slideshows** on one screen. Each **region** (group of grid tiles) references one `slideshowId` and optional **delay** / **object-fit** (`contain` = scale to fit, `cover` = scale to fill; aspect ratio is always preserved).
+A **layout** combines several **existing slideshows** on one screen. Each **region** (group of grid tiles) references one `slideshowId` and optional **delay** / **`objectFit`** (`contain` = fit **16:9 stage** inside tile, `cover` = stage **covers** tile with overflow clipped). Implemented in **`SlideshowPlayerCore`** (`variant="embedded"`); this is **not** the same as slideshow **`viewportScale`** (fullscreen only).
 
 | Item | Detail |
 |------|--------|
@@ -259,9 +275,12 @@ A **layout** combines several **existing slideshows** on one screen. Each **regi
 | **Public API** | `GET /api/slideshow-layouts/[layoutId]` (rate limit `SLIDESHOW_LAYOUT_GET`) |
 | **Admin API** | `POST` / `GET ?eventId=` / `PATCH ?id=` / `DELETE ?id=` on `/api/slideshow-layouts` |
 | **Admin UI** | Event page → **Event Slideshow Layouts**; edit → `/admin/events/[id]/layouts/[layoutMongoId]` (grid builder) |
-| **Player** | `SlideshowPlayerCore` with `variant="embedded"` per region; shared logic with single `/slideshow/[slideshowId]` |
+| **Player** | `SlideshowPlayerCore` with `variant="embedded"` and **`instanceKey={area.id}`** per region; shared logic with single `/slideshow/[slideshowId]` (fullscreen omits `instanceKey`) |
+| **Grid outer size** | `layoutGridStageDimensions`: viewport box aspect **(columns × 16) : (rows × 9)** so each **equal** grid cell is **16:9** (N×N is no longer square tiles). |
 
 **Delay:** On each embedded player, `delayMs` extends the **first** slide duration only, so two cells using the same slideshow start their rotation out of phase.
+
+**Random order:** With **`orderMode: 'random'`**, each region’s **`instanceKey`** forces a **separate** shuffle from other regions (including those pointing at the same `slideshowId`), so tiles are expected to show **different** images, not mirror the same permutation.
 
 **Indexes:** Run `npm run db:ensure-indexes` for `layoutId` (unique) and `eventId + createdAt`.
 

@@ -3,8 +3,8 @@
 **Product**: Frame-It-Now — mobile-first selfie PWA for events and public engagement.  
 **Repository / UI strings**: The codebase and some pages still label the app **“Camera”**; operationally this is the same product.
 
-**Version**: 2.7.0  
-**Last Updated**: 2026-03-30  
+**Version**: 2.9.0 (canonical: `package.json` → `"version"`)  
+**Last Updated**: 2026-04-09  
 **Status**: Production-ready
 
 A Next.js application: users capture photos, apply branding frames, upload to a CDN, store metadata in MongoDB, share via public links, and display submissions on event slideshows with fair rotation and aspect-aware layouts.
@@ -52,7 +52,7 @@ npm start
 
 | Layer | Responsibility |
 |--------|------------------|
-| Browser | Camera, canvas compositing, share/download UX, slideshow player (triple-buffer playlists, preload). |
+| Browser | Camera, canvas compositing, share/download UX, slideshow player (FIFO queue + preload, see `docs/SLIDESHOW_LOGIC.md`). |
 | Next.js API routes | Events, frames, logos, submissions, slideshows, auth, admin CRUD. |
 | MongoDB | Partners, events, frames, logos, submissions, slideshows; optional user cache; SSO DB reads for inactive-user filtering in playlists. |
 | imgbb | Stores composed and admin-uploaded rasters; returns public URLs and delete URLs. |
@@ -96,7 +96,7 @@ npm start
 
 ### Slideshow (`lib/slideshow/playlist.ts`, `app/slideshow/[slideshowId]/page.tsx`, APIs under `/api/slideshows/...`)
 
-- **Behavior**: 16:9 stage; **single** landscape slides or **mosaics** (e.g. 3× portrait strip, 3×2 square grid); **A/B/C playlist rotation** with exclusion lists to reduce back-to-back repeats; image preload; **fire-and-forget** play-count updates.
+- **Behavior**: 16:9 stage; **single** landscape slides or **mosaics** (e.g. 3× portrait strip, 3×2 square grid); client **FIFO queue** seeded from `GET …/playlist` with optional **`?limit=1`** prefetch in loop mode; image preload; **fire-and-forget** play-count updates. Server supports `exclude` on playlist for other clients; details in **`docs/SLIDESHOW_LOGIC.md`**.
 - **Freshness**: New photos appear after **playlist rebuilds** (buffer rotation), not via WebSockets — **near real-time** in the operational sense of “next buffer cycle,” not sub-second.
 
 ---
@@ -105,7 +105,7 @@ npm start
 
 ### First-time participant (typical event)
 
-1. Load event → loading UI (optional loading-capture logo).
+1. Load event → optional loading-capture logo (no mandatory loading copy).
 2. If custom pages exist before `take-photo` → onboarding (who-are-you, accept, CTA).
 3. Frame selection if multiple frames; otherwise skip to camera.
 4. Capture → compositing overlay → preview → save → share URL / social / copy → NEXT → thank-you pages or flow restart.
@@ -116,11 +116,11 @@ npm start
 
 ### Slideshow viewer
 
-- Open `/slideshow/[slideshowId]` → load settings + playlist → timed advance → on slide show, POST `/played` → rotate buffers and refetch with exclusions when a buffer ends.
+- Open **`/slideshow/[slideshowId]`** → `SlideshowPlayerCore` loads settings + playlist → timed advance → POST **`/played`** on visible slide. Composite videowall: **`/slideshow-layout/[layoutId]`**.
 
 ### Admin (frames / events)
 
-- **`/admin/*`**: partners, events, frames, logos, slideshows, custom pages. Changes apply to **new** sessions; open capture clients keep prior fetched config until reload.
+- **`/admin/*`**: gated by **root `middleware.ts`** (session cookie, `appRole` admin/superadmin, `appAccess !== false`) and **`app/admin/layout.tsx`**. Partners, events, frames, logos, slideshows, slideshow layouts, custom pages. **`/api/admin/*`** uses **`requireAdmin()`** in route handlers (also enforces `appAccess`). Changes apply to **new** sessions; open capture clients keep prior fetched config until reload.
 
 ### Edge cases
 
@@ -178,7 +178,7 @@ npm start
 |-------|--------|
 | Low tens | Typical single-instance + Mongo + imgbb is fine. |
 | ~100 concurrent | imgbb quotas, Mongo write rate, playlist aggregate cost, CDN egress become visible. |
-| 1k+ | Unbounded aggregation per playlist request is a **memory/CPU** hotspot; triple-buffer refetch amplifies reads. |
+| 1k+ | Unbounded aggregation per playlist request is a **memory/CPU** hotspot; frequent **`playlist?limit=1`** prefetch adds read load. |
 | 10k+ | imgbb as single vendor, write amplification on `/played`, lack of edge caching on API reads — likely need **object storage + CDN**, **bounded queries**, **Redis** (limits, sessions, queues), and **observability**. |
 
 ---
@@ -218,21 +218,24 @@ npm start
 │   ├── api/                 # REST handlers
 │   ├── admin/               # Admin UI
 │   ├── capture/             # /capture + /capture/[eventId]
-│   ├── slideshow/[id]/      # Slideshow player
+│   ├── slideshow/[slideshowId]/   # Fullscreen player (wraps SlideshowPlayerCore)
+│   ├── slideshow-layout/[layoutId]/  # Composite layout player
 │   ├── share/[id]/          # Public share + metadata
-│   └── profile/
+│   └── users/[name]/        # Public user profile (admin actions when permitted)
+├── middleware.ts            # Edge: /admin/* gate (cookie + appRole + appAccess)
 ├── components/
 │   ├── camera/              # CameraCapture, FileUpload
 │   ├── capture/             # Custom page steps
 │   ├── shared/
 │   └── admin/
 ├── lib/
+│   ├── admin/               # Shared admin helpers (e.g. user-management props)
 │   ├── api/                 # withErrorHandler, responses, rateLimiter
 │   ├── auth/
 │   ├── db/                  # mongodb, schemas, sso helpers
 │   ├── imgbb/
 │   ├── security/
-│   └── slideshow/           # playlist generation
+│   └── slideshow/           # playlist generation, viewport-scale
 ├── ARCHITECTURE.md          # Deeper architecture (repo root)
 ├── TECH_STACK.md
 ├── NAMING_GUIDE.md
@@ -250,6 +253,7 @@ npm start
 | **TECH_STACK.md** | Technology decisions |
 | **NAMING_GUIDE.md** | Conventions |
 | **docs/SLIDESHOW_LOGIC.md** | Slideshow behavior detail |
+| **docs/DOCUMENTATION.md** | How to keep docs aligned with code |
 | **docs/MONGODB_CONVENTIONS.md** | DB patterns |
 | **docs/MONGODB_ATLAS.md** | Atlas setup, `npm run db:verify-uri`, `npm run db:ensure-indexes` |
 | **RELEASE_NOTES.md** | Changelog |
@@ -259,9 +263,9 @@ npm start
 
 ## API Overview
 
-**Auth**: `GET /api/auth/login?provider=google|facebook` (optional), `GET /api/auth/callback`, `POST /api/auth/logout`, `GET /api/auth/session`
+**Auth**: `GET /api/auth/login?provider=google|facebook` (optional), `GET /api/auth/callback`, `GET` or `POST /api/auth/logout`, `GET /api/auth/session`
 
-**Core**: partners, events, frames, logos, submissions (`GET` authenticated list; `POST` create), slideshows `.../playlist`, `.../played`
+**Core**: partners, events, frames, logos, submissions (`GET` authenticated list; `POST` create), slideshows (`.../playlist`, `.../played`, `.../background-image`, …), slideshow-layouts (`GET` public by `layoutId`; admin CRUD with auth)
 
 See **`ARCHITECTURE.md`** and route files under **`app/api/`** for the full set.
 

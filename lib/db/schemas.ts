@@ -670,6 +670,7 @@ export interface Slideshow {
  * One region on a grid (CardMass-style tile union). Each area plays one slideshow.
  */
 export interface SlideshowLayoutArea {
+  /** Stable region id; public layout player sends this as playlist `instanceKey` for independent random order per cell */
   id: string;
   label: string;
   /** Tile ids "r-c" covering this region; must not overlap other areas */

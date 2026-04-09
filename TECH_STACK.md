@@ -1,8 +1,8 @@
 # TECH_STACK.md
 
 **Project**: Camera — Photo Frame Webapp  
-**Current Version**: 1.7.1  
-**Last Updated**: 2025-11-06T19:05:13.000Z
+**Current Version**: 2.9.0 (see `package.json` `"version"`)  
+**Last Updated**: 2026-04-09
 
 Complete technology stack documentation with rationale for every technical decision.
 
@@ -10,7 +10,7 @@ Complete technology stack documentation with rationale for every technical decis
 
 ## Core Technologies
 
-### Next.js 16.0.1
+### Next.js 16.0.x (see `package.json` → `"next"`)
 **Type**: Full-stack React framework  
 **Why Chosen**:
 - Server-side rendering improves SEO and initial load performance
@@ -304,7 +304,7 @@ const response = await uploadImage(base64Data, { name: 'photo' });
 
 ---
 
-## Custom Architecture (v1.7.1)
+## Custom architecture (API helpers & shared UI)
 
 ### Centralized API Utilities
 **Location**: `lib/api/`  

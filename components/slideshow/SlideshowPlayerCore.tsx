@@ -52,6 +52,8 @@ interface SlideshowSettings {
 
 export interface SlideshowPlayerCoreProps {
   slideshowId: string;
+  /** When set (e.g. layout region id), random-order playlists shuffle independently per instance */
+  instanceKey?: string;
   objectFit?: 'contain' | 'cover';
   /** Stagger first transition (ms); API/layout may send string from JSON */
   delayMs?: number | string;
@@ -94,6 +96,7 @@ function viewportModeForStage(
 
 export function SlideshowPlayerCore({
   slideshowId,
+  instanceKey,
   objectFit = 'contain',
   delayMs: delayMsProp = 0,
   variant = 'fullscreen',
@@ -130,7 +133,7 @@ export function SlideshowPlayerCore({
 
   useEffect(() => {
     pendingInitialDelayRef.current = delayMs > 0;
-  }, [slideshowId, delayMs]);
+  }, [slideshowId, delayMs, instanceKey]);
 
   const preloadImage = useCallback((url: string): Promise<void> => {
     return new Promise((resolve, reject) => {
@@ -170,7 +173,13 @@ export function SlideshowPlayerCore({
 
   const fetchOneSlide = useCallback(async (): Promise<Slide | null> => {
     try {
-      const response = await fetch(`/api/slideshows/${slideshowId}/playlist?limit=1`);
+      const qs = new URLSearchParams({ limit: '1' });
+      if (instanceKey?.trim()) {
+        qs.set('instanceKey', instanceKey.trim().slice(0, 256));
+      }
+      const response = await fetch(
+        `/api/slideshows/${slideshowId}/playlist?${qs.toString()}`
+      );
       if (!response.ok) return null;
       const data = await response.json();
       const slide = data.playlist?.[0] as Slide | undefined;
@@ -178,7 +187,7 @@ export function SlideshowPlayerCore({
     } catch {
       return null;
     }
-  }, [slideshowId]);
+  }, [slideshowId, instanceKey]);
 
   const prefetchNext = useCallback(async () => {
     const s = settingsRef.current;
@@ -205,7 +214,16 @@ export function SlideshowPlayerCore({
       onceInitialRef.current = null;
       nextPreparedRef.current = null;
 
-      const response = await fetch(`/api/slideshows/${slideshowId}/playlist`);
+      const initialQs = new URLSearchParams();
+      if (instanceKey?.trim()) {
+        initialQs.set('instanceKey', instanceKey.trim().slice(0, 256));
+      }
+      const initialQuery = initialQs.toString();
+      const playlistUrl =
+        initialQuery.length > 0
+          ? `/api/slideshows/${slideshowId}/playlist?${initialQuery}`
+          : `/api/slideshows/${slideshowId}/playlist`;
+      const response = await fetch(playlistUrl);
       if (!response.ok) {
         throw new Error(`Failed to load slideshow: ${response.status}`);
       }
@@ -271,7 +289,7 @@ export function SlideshowPlayerCore({
       setError(err instanceof Error ? err.message : 'Failed to load slideshow');
       setIsLoading(false);
     }
-  }, [slideshowId, preloadSlide, prefetchNext, delayMs]);
+  }, [slideshowId, instanceKey, preloadSlide, prefetchNext, delayMs]);
 
   useLayoutEffect(() => {
     if (!settings) return;

@@ -345,13 +345,14 @@ export default function SlideshowLayoutBuilder({
             </button>
           </div>
           <p className="text-xs text-amber-800 dark:text-amber-200/90 rounded-md bg-amber-50 dark:bg-amber-950/40 px-2 py-1.5 border border-amber-200/80 dark:border-amber-800/60 max-w-3xl">
-            <strong className="font-semibold">Layout “aspect ratio”:</strong> the overall shape of the
-            videowall follows <strong className="font-semibold">columns ÷ rows</strong> (e.g. 3 cols × 1
-            row → wide strip). Each region still plays a slideshow whose{' '}
-            <strong className="font-semibold">stage is 16:9</strong>. Use{' '}
-            <strong className="font-semibold">Photo scaling</strong> on a selected region for Fit vs Fill{' '}
-            inside that cell; use <strong className="font-semibold">Grid in browser</strong> below for the
-            whole grid vs the screen.
+            <strong className="font-semibold">Cell shape on the public page:</strong> each grid cell is sized
+            as <strong className="font-semibold">16:9</strong> (same as the slideshow stage). The{' '}
+            <strong className="font-semibold">whole videowall</strong> is then{' '}
+            <strong className="font-semibold">(columns × 16) : (rows × 9)</strong> (e.g. 3×3 → outer frame
+            16:9 with nine 16:9 tiles; 3×1 → very wide). Use{' '}
+            <strong className="font-semibold">Photo scaling</strong> for Fit vs Fill of the stage inside a
+            region; <strong className="font-semibold">Grid in browser</strong> fits or crops that entire
+            block in the viewport.
           </p>
 
           <div>

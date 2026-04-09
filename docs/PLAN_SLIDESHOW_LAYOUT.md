@@ -39,8 +39,8 @@ All playlist logic, fairness, play counts, and timing *per slideshow* stay in **
 - **Layout root:** full viewport; black or configurable **background** (optional: reuse CardMass-style `background` CSS snippet for the *outer* frame only — not required for v1).
 - **Per area (cell):**
   - If **no** `slideshowId`: show empty state (black or “Unassigned” placeholder).
-  - If **slideshowId** set: run **the same playback pipeline** as the single player (playlist fetch, A/B/C buffers, `played` POSTs, preload) **inside that cell’s rectangle**.
-  - **Scale:** `fit` → `object-fit: contain`; `fill` → `object-fit: cover` (both preserve aspect ratio).
+  - If **slideshowId** set: mount **`SlideshowPlayerCore`** (`variant="embedded"`) — same playlist fetch, **FIFO queue + `?limit=1` prefetch** in loop mode, `played` POSTs, and preload as fullscreen — **inside that cell’s rectangle**.
+  - **Scale:** per-area **`objectFit`** drives how the **16:9 slideshow stage** fits the tile (`contain` = letterbox stage in cell, `cover` = stage covers cell); see `SlideshowPlayerCore` + `docs/SLIDESHOW_LOGIC.md` §13.
   - **Delay:** `delayMs` **offsets the start** of that cell’s playback loop (and/or the first advance) so duplicate references to the **same** `slideshowId` in multiple cells **do not show identical slides at the same wall-clock time** when possible.
 
 ### Admin
@@ -86,6 +86,7 @@ All playlist logic, fairness, play counts, and timing *per slideshow* stay in **
   ],
 
   background?: string,       // optional: multiline CSS background-* only (CardMass-style), v1 optional
+  viewportScale?: "fit" | "fill", // whole cols×rows grid vs browser viewport (implemented)
 
   isActive: boolean,
   createdBy, createdAt, updatedAt

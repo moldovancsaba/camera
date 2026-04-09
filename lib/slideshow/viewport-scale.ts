@@ -41,7 +41,10 @@ export function slideshowStageDimensions(
 }
 
 /**
- * Composite layout: grid has cols × rows uniform cells → overall aspect width/height = cols/rows.
+ * Composite layout: cols × rows uniform cells, each cell matches the **16:9 slideshow stage**.
+ *
+ * Outer width:height = (cols × 16) : (rows × 9), so (W/cols)/(H/rows) = 16/9.
+ * (Using cols:rows here made square cells for N×N grids — e.g. 3×3 → 1:1 tiles.)
  */
 export function layoutGridStageDimensions(
   viewportW: number,
@@ -53,7 +56,7 @@ export function layoutGridStageDimensions(
   if (viewportW <= 0 || viewportH <= 0 || cols < 1 || rows < 1) {
     return { width: 0, height: 0 };
   }
-  const ar = cols / rows;
+  const ar = (cols * SLIDESHOW_STAGE_ASPECT) / rows;
   const car = viewportW / viewportH;
   if (mode === 'fit') {
     if (car > ar) {

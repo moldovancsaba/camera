@@ -8,11 +8,18 @@
  * v2.0.0: Filters inactive users (pseudo: userInfo.isActive; SSO: cameraAccountDisabled mirror on submissions)
  */
 
+import { randomBytes } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { generatePlaylist, shuffleInPlace, expandPlaylistToLength } from '@/lib/slideshow/playlist';
+import {
+  fnv1a32,
+  generatePlaylist,
+  shuffleInPlace,
+  shuffleInPlaceSeeded,
+  expandPlaylistToLength,
+} from '@/lib/slideshow/playlist';
 import { findEventForSlideshow } from '@/lib/slideshow/resolve-event';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
@@ -24,6 +31,8 @@ import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
  * Query params:
  * - limit: Number of slides to return (default: slideshow.bufferSize or 10)
  * - exclude: Comma-separated list of submission IDs to exclude (images in other active playlists)
+ * - instanceKey: Optional stable id (e.g. layout region). With orderMode random, each key gets an
+ *   independent shuffle per request (seed = hash(key) XOR per-request salt) so duplicate slideshows in a layout differ.
  */
 export async function GET(
   request: NextRequest,
@@ -37,6 +46,9 @@ export async function GET(
     const limitParam = searchParams.get('limit');
     const excludeParam = searchParams.get('exclude');
     const excludeIds = excludeParam ? excludeParam.split(',').filter(id => id.trim()) : [];
+    const rawInstanceKey = searchParams.get('instanceKey')?.trim() ?? '';
+    const instanceKey =
+      rawInstanceKey.length > 256 ? rawInstanceKey.slice(0, 256) : rawInstanceKey;
 
     const db = await connectToDatabase();
 
@@ -150,7 +162,13 @@ export async function GET(
 
     const orderMode = slideshow.orderMode === 'random' ? 'random' : 'fixed';
     if (orderMode === 'random' && submissions.length > 1) {
-      shuffleInPlace(submissions);
+      if (instanceKey) {
+        const randomSalt = randomBytes(4).readUInt32BE(0);
+        const seed = (fnv1a32(instanceKey) ^ randomSalt) >>> 0;
+        shuffleInPlaceSeeded(submissions, seed);
+      } else {
+        shuffleInPlace(submissions);
+      }
     }
 
     const playMode = slideshow.playMode === 'once' ? 'once' : 'loop';
