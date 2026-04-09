@@ -7,6 +7,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import type { SlideshowLayoutArea } from '@/lib/db/schemas';
+import { layoutGridStageDimensions } from '@/lib/slideshow/viewport-scale';
 
 type TileId = string;
 
@@ -96,7 +97,8 @@ export default function SlideshowLayoutBuilder({
   const [newAreaLabel, setNewAreaLabel] = useState('');
 
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [cellPx, setCellPx] = useState({ w: 28, h: 28 });
+  /** Pixel size of the whole cols×rows block; each cell is 16:9 (same as public layout page). */
+  const [gridStage, setGridStage] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     (async () => {
@@ -170,12 +172,17 @@ export default function SlideshowLayoutBuilder({
     function recompute() {
       const el = wrapRef.current;
       if (!el || cols <= 0 || rows <= 0) return;
-      const gap = 1;
       const availW = el.clientWidth;
       const availH = el.clientHeight;
-      const cw = Math.max(8, Math.floor((availW - (cols - 1) * gap) / cols));
-      const ch = Math.max(8, Math.floor((availH - (rows - 1) * gap) / rows));
-      setCellPx({ w: cw, h: ch });
+      const mode = viewportScale === 'fill' ? 'fill' : 'fit';
+      const { width, height } = layoutGridStageDimensions(
+        availW,
+        availH,
+        cols,
+        rows,
+        mode
+      );
+      setGridStage({ width, height });
     }
     recompute();
     const ro = new ResizeObserver(recompute);
@@ -189,7 +196,7 @@ export default function SlideshowLayoutBuilder({
       }
       window.removeEventListener('resize', recompute);
     };
-  }, [rows, cols]);
+  }, [rows, cols, viewportScale]);
 
   const commitSelectionAsArea = useCallback(() => {
     const tiles = Array.from(selection);
@@ -394,14 +401,18 @@ export default function SlideshowLayoutBuilder({
 
           <div
             ref={wrapRef}
-            className="border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-gray-100 dark:bg-gray-900"
+            className="border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden"
             style={{ height: 'min(60vh, 520px)' }}
           >
             <div
-              className="grid h-full w-full"
+              className="grid shrink-0"
               style={{
-                gridTemplateColumns: `repeat(${cols}, ${cellPx.w}px)`,
-                gridTemplateRows: `repeat(${rows}, ${cellPx.h}px)`,
+                width:
+                  gridStage.width > 0 ? `${gridStage.width}px` : undefined,
+                height:
+                  gridStage.height > 0 ? `${gridStage.height}px` : undefined,
+                gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+                gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
                 gap: 1,
               }}
             >
