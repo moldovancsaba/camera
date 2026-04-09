@@ -184,10 +184,13 @@ export default function SlideshowLayoutPage({
     compactGrid.effectiveRows
   );
   const letterboxFit = layout.viewportScale !== 'fill';
+  /** Width : height of the rigid grid (matches layoutGridAspectRatioCss). */
+  const arNum = compactGrid.effectiveCols * 16;
+  const arDen = compactGrid.effectiveRows * 9;
 
   return (
     <div
-      className="relative w-screen h-screen overflow-hidden"
+      className="relative w-screen h-screen min-h-0 min-w-0 overflow-hidden"
       style={{ ...rootFlex, background: safetyBg }}
     >
       {bg ? (
@@ -205,16 +208,28 @@ export default function SlideshowLayoutPage({
       ) : null}
 
       <div
-        className="relative z-10 shrink-0 overflow-hidden shadow-2xl"
-        style={{
-          aspectRatio: rigidAspect,
-          width: stage.width > 0 ? `${stage.width}px` : '100%',
-          height: 'auto',
-          boxSizing: 'border-box',
-          ...(letterboxFit
-            ? { maxWidth: '100%', maxHeight: '100%' }
-            : {}),
-        }}
+        className={`relative z-10 overflow-hidden shadow-2xl ${
+          letterboxFit ? 'min-h-0 min-w-0 max-h-full max-w-full' : ''
+        }`}
+        style={
+          letterboxFit
+            ? {
+                flexShrink: 1,
+                aspectRatio: rigidAspect,
+                boxSizing: 'border-box',
+                width: `min(100vw, calc(100vh * ${arNum} / ${arDen}))`,
+                height: 'auto',
+                maxWidth: '100%',
+                maxHeight: '100%',
+              }
+            : {
+                flexShrink: 0,
+                aspectRatio: rigidAspect,
+                width: stage.width > 0 ? `${stage.width}px` : '100vw',
+                height: stage.height > 0 ? `${stage.height}px` : 'auto',
+                boxSizing: 'border-box',
+              }
+        }
       >
         <div
           className="grid w-full h-full bg-transparent"

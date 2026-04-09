@@ -7,7 +7,10 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import type { SlideshowLayoutArea } from '@/lib/db/schemas';
-import { layoutGridStageDimensions } from '@/lib/slideshow/viewport-scale';
+import {
+  layoutGridAspectRatioCss,
+  layoutGridStageDimensions,
+} from '@/lib/slideshow/viewport-scale';
 import {
   layoutRootFlexStyle,
   resolvedSafetyGradientColors,
@@ -525,6 +528,7 @@ export default function SlideshowLayoutBuilder({
             className="border border-gray-200 dark:border-gray-600 rounded-lg p-2 overflow-hidden relative"
             style={{
               height: 'min(60vh, 520px)',
+              containerType: 'size',
               ...layoutRootFlexStyle(alignVertical, alignHorizontal),
               background: previewSafetyBg,
             }}
@@ -543,12 +547,31 @@ export default function SlideshowLayoutBuilder({
               </>
             ) : null}
             <div
-              className="grid shrink-0 relative z-10"
+              className={`grid relative z-10 ${
+                viewportScale === 'fit'
+                  ? 'min-h-0 min-w-0 max-h-full max-w-full'
+                  : 'shrink-0'
+              }`}
               style={{
-                width:
-                  gridStage.width > 0 ? `${gridStage.width}px` : undefined,
-                height:
-                  gridStage.height > 0 ? `${gridStage.height}px` : undefined,
+                ...(viewportScale === 'fit'
+                  ? {
+                      flexShrink: 1,
+                      aspectRatio: layoutGridAspectRatioCss(cols, rows),
+                      width: `min(100cqw, calc(100cqh * ${cols * 16} / ${rows * 9}))`,
+                      height: 'auto',
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      boxSizing: 'border-box',
+                    }
+                  : {
+                      flexShrink: 0,
+                      width:
+                        gridStage.width > 0 ? `${gridStage.width}px` : undefined,
+                      height:
+                        gridStage.height > 0
+                          ? `${gridStage.height}px`
+                          : undefined,
+                    }),
                 gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
                 gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
                 gap: 0,
