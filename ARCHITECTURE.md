@@ -348,12 +348,8 @@ All timestamps use ISO 8601 format with milliseconds UTC: `YYYY-MM-DDTHH:MM:SS.s
     objectFit: 'contain' | 'cover',
     color?: string              // Admin builder preview only
   }>,
-  background?: string,          // Optional CSS background-* for outer frame (over safety gradient)
+  background?: string,          // Optional CSS background-* for outer frame
   viewportScale?: 'fit' | 'fill', // Whole grid vs browser viewport
-  alignVertical?: 'top' | 'middle' | 'bottom',
-  alignHorizontal?: 'left' | 'center' | 'right',
-  safetyPrimaryColor?: string,  // #RRGGBB or empty → default indigo
-  safetyAccentColor?: string,   // #RRGGBB or empty → default slate
   isActive: boolean,
   createdBy: string,
   createdAt: string,

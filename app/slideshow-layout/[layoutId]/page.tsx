@@ -13,15 +13,6 @@ import {
   layoutGridStageDimensions,
   type ViewportScaleMode,
 } from '@/lib/slideshow/viewport-scale';
-import {
-  layoutRootFlexStyle,
-  normalizeLayoutAlignHorizontal,
-  normalizeLayoutAlignVertical,
-  resolvedSafetyGradientColors,
-  safetyGradientCss,
-  type LayoutAlignHorizontal,
-  type LayoutAlignVertical,
-} from '@/lib/slideshow/layout-presentation';
 import type { SlideshowLayoutArea } from '@/lib/db/schemas';
 
 interface LayoutPayload {
@@ -33,10 +24,6 @@ interface LayoutPayload {
   areas: SlideshowLayoutArea[];
   background: string;
   viewportScale: ViewportScaleMode;
-  alignVertical: LayoutAlignVertical;
-  alignHorizontal: LayoutAlignHorizontal;
-  safetyPrimaryColor: string;
-  safetyAccentColor: string;
 }
 
 function useViewportSize() {
@@ -75,37 +62,15 @@ export default function SlideshowLayoutPage({
         if (!res.ok) {
           throw new Error(data.error || 'Layout not found');
         }
-        const L = data.layout as Record<string, unknown> & {
-          areas?: SlideshowLayoutArea[];
-          viewportScale?: string;
-        };
+        const L = data.layout as LayoutPayload;
         const areas = (L.areas || []).map((a) => ({
           ...a,
           objectFit: a.objectFit === 'cover' ? ('cover' as const) : ('contain' as const),
         }));
         const viewportScale: ViewportScaleMode =
           L.viewportScale === 'fill' ? 'fill' : 'fit';
-        const alignVertical = normalizeLayoutAlignVertical(L.alignVertical);
-        const alignHorizontal = normalizeLayoutAlignHorizontal(L.alignHorizontal);
-        const safetyPrimaryColor =
-          typeof L.safetyPrimaryColor === 'string' ? L.safetyPrimaryColor : '';
-        const safetyAccentColor =
-          typeof L.safetyAccentColor === 'string' ? L.safetyAccentColor : '';
         if (!cancelled) {
-          setLayout({
-            layoutId: String(L.layoutId ?? ''),
-            name: String(L.name ?? ''),
-            eventName: String(L.eventName ?? ''),
-            rows: Math.max(1, Math.floor(Number(L.rows)) || 1),
-            cols: Math.max(1, Math.floor(Number(L.cols)) || 1),
-            areas,
-            background: typeof L.background === 'string' ? L.background : '',
-            viewportScale,
-            alignVertical,
-            alignHorizontal,
-            safetyPrimaryColor,
-            safetyAccentColor,
-          });
+          setLayout({ ...L, areas, viewportScale });
         }
       } catch (e) {
         if (!cancelled) {
@@ -141,29 +106,10 @@ export default function SlideshowLayoutPage({
     );
   }, [layout, compactGrid, vw, vh]);
 
-  const safetyResolved =
-    layout != null
-      ? resolvedSafetyGradientColors(
-          layout.safetyPrimaryColor,
-          layout.safetyAccentColor
-        )
-      : resolvedSafetyGradientColors('', '');
-  const safetyBg = safetyGradientCss(
-    safetyResolved.primary,
-    safetyResolved.accent
-  );
-  const rootFlex =
-    layout != null
-      ? layoutRootFlexStyle(layout.alignVertical, layout.alignHorizontal)
-      : layoutRootFlexStyle('middle', 'center');
-
   if (error) {
     return (
-      <div
-        className="relative w-screen h-screen overflow-hidden text-red-300"
-        style={{ ...rootFlex, background: safetyBg }}
-      >
-        <div className="relative z-10 px-4 text-center">{error}</div>
+      <div className="w-screen h-screen bg-black flex items-center justify-center text-red-400">
+        {error}
       </div>
     );
   }
@@ -171,8 +117,7 @@ export default function SlideshowLayoutPage({
   if (!layout) {
     return (
       <div
-        className="relative h-screen w-screen overflow-hidden"
-        style={{ ...rootFlex, background: safetyBg }}
+        className="h-screen w-screen bg-black"
         aria-busy="true"
       />
     );
@@ -184,15 +129,9 @@ export default function SlideshowLayoutPage({
     compactGrid.effectiveRows
   );
   const letterboxFit = layout.viewportScale !== 'fill';
-  /** Width : height of the rigid grid (matches layoutGridAspectRatioCss). */
-  const arNum = compactGrid.effectiveCols * 16;
-  const arDen = compactGrid.effectiveRows * 9;
 
   return (
-    <div
-      className="relative w-screen h-screen min-h-0 min-w-0 overflow-hidden"
-      style={{ ...rootFlex, background: safetyBg }}
-    >
+    <div className="relative w-screen h-screen overflow-hidden bg-black flex items-center justify-center">
       {bg ? (
         <>
           <style
@@ -201,35 +140,23 @@ export default function SlideshowLayoutPage({
             }}
           />
           <div
-            className="slideshow-layout-root-bg absolute inset-0 z-[1] pointer-events-none"
+            className="slideshow-layout-root-bg absolute inset-0 z-0 pointer-events-none"
             aria-hidden
           />
         </>
       ) : null}
 
       <div
-        className={`relative z-10 overflow-hidden shadow-2xl ${
-          letterboxFit ? 'min-h-0 min-w-0 max-h-full max-w-full' : ''
-        }`}
-        style={
-          letterboxFit
-            ? {
-                flexShrink: 1,
-                aspectRatio: rigidAspect,
-                boxSizing: 'border-box',
-                width: `min(100vw, calc(100vh * ${arNum} / ${arDen}))`,
-                height: 'auto',
-                maxWidth: '100%',
-                maxHeight: '100%',
-              }
-            : {
-                flexShrink: 0,
-                aspectRatio: rigidAspect,
-                width: stage.width > 0 ? `${stage.width}px` : '100vw',
-                height: stage.height > 0 ? `${stage.height}px` : 'auto',
-                boxSizing: 'border-box',
-              }
-        }
+        className="relative z-10 overflow-hidden shadow-2xl"
+        style={{
+          aspectRatio: rigidAspect,
+          width: stage.width > 0 ? `${stage.width}px` : '100%',
+          height: 'auto',
+          boxSizing: 'border-box',
+          ...(letterboxFit
+            ? { maxWidth: '100%', maxHeight: '100%' }
+            : {}),
+        }}
       >
         <div
           className="grid w-full h-full bg-transparent"
