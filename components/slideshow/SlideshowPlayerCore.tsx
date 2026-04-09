@@ -335,13 +335,13 @@ export function SlideshowPlayerCore({
 
   useLayoutEffect(() => {
     if (!settings) return;
-    const mode = viewportModeForStage(
-      variant,
-      objectFit,
-      settings.viewportScale
-    );
 
     if (variant === 'fullscreen') {
+      const mode = viewportModeForStage(
+        variant,
+        objectFit,
+        settings.viewportScale
+      );
       const measure = () => {
         const w = window.innerWidth;
         const h = window.innerHeight;
@@ -352,14 +352,10 @@ export function SlideshowPlayerCore({
       return () => window.removeEventListener('resize', measure);
     }
 
-    const el = containerRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      const r = el.getBoundingClientRect();
-      setStageSize(slideshowStageDimensions(r.width, r.height, mode));
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
+    // Embedded: grid cell size is authoritative (rigid (span×16):(span×9) from layout).
+    // Canvas uses CSS 100%×100%; no ResizeObserver, no 16:9 letterboxing inside the cell.
+    setStageSize({ width: 0, height: 0 });
+    return undefined;
   }, [variant, objectFit, settings, slideshowId]);
 
   useEffect(() => {
@@ -717,40 +713,31 @@ export function SlideshowPlayerCore({
       className={
         variant === 'fullscreen'
           ? 'relative overflow-hidden'
-          : hasStage
-            ? 'relative overflow-hidden'
-            : 'relative overflow-hidden w-full max-h-full max-w-full aspect-video'
+          : 'relative h-full w-full overflow-hidden'
       }
       style={
-        variant === 'fullscreen'
-          ? hasStage
-            ? {
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: sw,
-                height: sh,
-              }
-            : {
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '100vw',
-                height: '56.25vw',
-                maxWidth: '177.78vh',
-                maxHeight: '100vh',
-              }
-          : hasStage
-            ? {
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: sw,
-                height: sh,
-              }
+        variant === 'embedded'
+          ? { position: 'relative', width: '100%', height: '100%' }
+          : variant === 'fullscreen'
+            ? hasStage
+              ? {
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: sw,
+                  height: sh,
+                }
+              : {
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '100vw',
+                  height: '56.25vw',
+                  maxWidth: '177.78vh',
+                  maxHeight: '100vh',
+                }
             : {}
       }
     >
@@ -866,14 +853,16 @@ export function SlideshowPlayerCore({
   return (
     <div
       ref={containerRef}
-      className={`${outerStateClass} overflow-hidden flex items-center justify-center relative ${className}`}
+      className={`${outerStateClass} overflow-hidden relative ${className}${
+        variant === 'fullscreen' ? ' flex items-center justify-center' : ''
+      }`}
       style={failoverBackgroundStyle}
       onMouseMove={handleMouseMove}
     >
       {variant === 'fullscreen' ? (
         canvasInner
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center" style={failoverBackgroundStyle}>
+        <div className="absolute inset-0" style={failoverBackgroundStyle}>
           {canvasInner}
         </div>
       )}

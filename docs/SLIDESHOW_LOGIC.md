@@ -276,7 +276,8 @@ A **layout** combines several **existing slideshows** on one screen. Each **regi
 | **Admin API** | `POST` / `GET ?eventId=` / `PATCH ?id=` / `DELETE ?id=` on `/api/slideshow-layouts` |
 | **Admin UI** | Event page → **Event Slideshow Layouts**; edit → `/admin/events/[id]/layouts/[layoutMongoId]` (grid builder) |
 | **Player** | `SlideshowPlayerCore` with `variant="embedded"` and **`instanceKey={area.id}`** per region; shared logic with single `/slideshow/[slideshowId]` (fullscreen omits `instanceKey`) |
-| **Grid outer size** | `layoutGridStageDimensions`: viewport box aspect **(columns × 16) : (rows × 9)** so each **equal** grid cell is **16:9** (N×N is no longer square tiles). |
+| **Grid outer size** | `layoutGridStageDimensions` picks pixel size to fit the viewport; the stage wrapper also sets CSS **`aspect-ratio: (cols×16)/(rows×9)`** (`layoutGridAspectRatioCss`) so letterbox **fit** cannot squash the videowall if `max-*` clamps one side. **Fill** omits `max-width`/`max-height` so overflow can crop as intended. |
+| **Embedded player** | `SlideshowPlayerCore` **fills each grid cell** (`100%`×`100%`); it does **not** force an inner 16:9 letterbox inside the cell, so a **spanned** region keeps **(spanCols×16):(spanRows×9)** (e.g. 2×1 → 32:9). |
 | **Gaps** | Public grid uses **`gap: 0`** (one rigid videowall); admin builder preview also uses **no gap** so WYSIWYG. |
 | **Unused tracks** | On **`/slideshow-layout/...`**, rows/columns that contain **no tiles** from any area are **collapsed** (`computeCompactGridSpec` in `layout-geometry.ts`), so checkerboard-style definitions (e.g. images on rows 0,2,4 of a 6-row logical grid) render as **contiguous** image bands without blank “stripe” rows showing only the outer background. |
 

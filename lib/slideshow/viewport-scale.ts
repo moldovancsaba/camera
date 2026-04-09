@@ -46,6 +46,12 @@ export function slideshowStageDimensions(
  * Outer width:height = (cols × 16) : (rows × 9), so (W/cols)/(H/rows) = 16/9.
  * (Using cols:rows here made square cells for N×N grids — e.g. 3×3 → 1:1 tiles.)
  */
+/** Rigid videowall aspect for CSS `aspect-ratio`: (cols×16) : (rows×9). */
+export function layoutGridAspectRatioCss(cols: number, rows: number): string {
+  if (cols < 1 || rows < 1) return '16 / 9';
+  return `${cols * 16} / ${rows * 9}`;
+}
+
 export function layoutGridStageDimensions(
   viewportW: number,
   viewportH: number,

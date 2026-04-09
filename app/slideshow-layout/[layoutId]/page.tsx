@@ -9,6 +9,7 @@ import { use, useEffect, useMemo, useState } from 'react';
 import { SlideshowPlayerCore } from '@/components/slideshow/SlideshowPlayerCore';
 import { computeCompactGridSpec } from '@/lib/slideshow/layout-geometry';
 import {
+  layoutGridAspectRatioCss,
   layoutGridStageDimensions,
   type ViewportScaleMode,
 } from '@/lib/slideshow/viewport-scale';
@@ -123,6 +124,11 @@ export default function SlideshowLayoutPage({
   }
 
   const bg = layout.background?.trim();
+  const rigidAspect = layoutGridAspectRatioCss(
+    compactGrid.effectiveCols,
+    compactGrid.effectiveRows
+  );
+  const letterboxFit = layout.viewportScale !== 'fill';
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black flex items-center justify-center">
@@ -143,10 +149,13 @@ export default function SlideshowLayoutPage({
       <div
         className="relative z-10 overflow-hidden shadow-2xl"
         style={{
+          aspectRatio: rigidAspect,
           width: stage.width > 0 ? `${stage.width}px` : '100%',
-          height: stage.height > 0 ? `${stage.height}px` : '100%',
-          maxWidth: '100%',
-          maxHeight: '100%',
+          height: 'auto',
+          boxSizing: 'border-box',
+          ...(letterboxFit
+            ? { maxWidth: '100%', maxHeight: '100%' }
+            : {}),
         }}
       >
         <div
