@@ -2,7 +2,6 @@ import type { NextConfig } from "next";
 
 /**
  * Next.js configuration for Camera webapp
- * Version: 1.7.1
  * 
  * Key configurations:
  * - Image domains for imgbb.com CDN

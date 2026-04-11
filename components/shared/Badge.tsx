@@ -1,6 +1,5 @@
 /**
  * Badge Component
- * Version: 1.7.1
  * 
  * Reusable badge component for status indicators, labels, and tags.
  * 

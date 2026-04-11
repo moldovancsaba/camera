@@ -1,6 +1,5 @@
 /**
  * Admin Frames Listing
- * Version: 1.1.0
  * 
  * List all frames with search, filter, and pagination.
  */

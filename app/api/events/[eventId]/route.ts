@@ -1,6 +1,5 @@
 /**
  * Event Detail API
- * Version: 2.8.0
  * 
  * GET: Retrieve single event details with assigned frames and custom pages
  * PATCH: Update event details including customPages array (v2.0.0)
@@ -259,7 +258,6 @@ export const PATCH = withErrorHandler(async (
  * Delete an event
  * 
  * Admin only
- * Version: 2.8.0
  */
 export const DELETE = withErrorHandler(async (
   request: NextRequest,

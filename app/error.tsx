@@ -1,6 +1,5 @@
 /**
  * Global Error Boundary
- * Version: 1.1.2
  * 
  * Catches and displays errors in a user-friendly way.
  */

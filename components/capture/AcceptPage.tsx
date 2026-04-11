@@ -1,6 +1,5 @@
 /**
  * Accept Page Component
- * Version: 2.0.0
  * 
  * Displays consent/terms acceptance page with required checkbox
  * Part of the custom event page flow system

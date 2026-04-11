@@ -1,6 +1,5 @@
 /**
  * File Upload Component
- * Version: 1.0.0
  * 
  * Alternative to camera capture - allows users to upload images from their device.
  * Supports drag-and-drop and click-to-select.

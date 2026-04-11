@@ -1,6 +1,5 @@
 /**
  * Admin Events Listing
- * Version: 1.1.0
  * 
  * List all events with search, filter by partner, and pagination
  */

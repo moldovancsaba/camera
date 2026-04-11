@@ -1,6 +1,5 @@
 /**
  * Edit Event Page
- * Version: 2.0.0
  * 
  * Form to edit event details and manage custom page flows
  * v2.0.0: Added custom pages management with reordering

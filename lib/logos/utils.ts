@@ -1,6 +1,5 @@
 /**
  * Logo Utilities
- * Version: 1.0.0
  * 
  * Helper functions for logo selection and display
  */

@@ -1,6 +1,5 @@
 /**
  * Camera Capture Component
- * Version: 1.0.0
  * 
  * Handles live camera capture using getUserMedia API.
  * Supports both mobile (iOS Safari, Android Chrome) and desktop webcams.

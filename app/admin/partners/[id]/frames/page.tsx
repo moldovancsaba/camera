@@ -1,6 +1,5 @@
 /**
  * Partner Default Frames Management Page
- * Version: 2.8.0
  * 
  * Manage default frame assignments for a partner
  * These defaults cascade to all child events

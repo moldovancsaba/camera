@@ -1,6 +1,5 @@
 /**
  * Event Logo Management API Endpoint
- * Version: 1.0.0
  * 
  * DELETE: Remove logo from event
  * PATCH: Toggle logo active status or update order

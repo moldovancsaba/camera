@@ -1,6 +1,5 @@
 /**
  * Development Mock Login
- * Version: 1.0.1
  * 
  * Temporary bypass for SSO authentication during development.
  * This creates a mock session without requiring SSO.

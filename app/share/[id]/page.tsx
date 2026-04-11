@@ -1,6 +1,5 @@
 /**
  * Public Share Page
- * Version: 1.3.0
  * 
  * Displays shared photo submissions with Open Graph meta tags.
  */

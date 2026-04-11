@@ -1,6 +1,5 @@
 /**
  * Button Component
- * Version: 1.7.1
  * 
  * Reusable button component with consistent styling and variants.
  * 

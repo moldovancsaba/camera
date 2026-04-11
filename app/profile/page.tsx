@@ -1,6 +1,5 @@
 /**
  * User Profile Page
- * Version: 1.3.3
  * 
  * Displays user's photo submission history in a gallery view.
  */

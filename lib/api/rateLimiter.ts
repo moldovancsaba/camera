@@ -1,6 +1,5 @@
 /**
  * Rate Limiting Middleware
- * Version: 1.7.1
  * 
  * Implements token bucket algorithm for API rate limiting.
  * 

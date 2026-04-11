@@ -1,6 +1,5 @@
 /**
  * Add New Event Page
- * Version: 1.1.0
  * 
  * Form to create a new event with partner selection
  */

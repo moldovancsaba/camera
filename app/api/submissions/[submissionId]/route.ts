@@ -1,6 +1,5 @@
 /**
  * Permanent Delete Submission API
- * Version: 1.0.0
  * 
  * DELETE /api/submissions/[submissionId]
  * 

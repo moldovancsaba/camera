@@ -1,6 +1,5 @@
 /**
  * Remove Submission Button Component
- * Version: 1.0.0
  * 
  * Reusable client component for removing submissions at different levels:
  * - Event level: Remove from specific event

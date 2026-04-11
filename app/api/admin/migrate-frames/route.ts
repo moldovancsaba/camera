@@ -1,6 +1,5 @@
 /**
  * Migration API: Add frameId to Existing Frames
- * Version: 1.0.0
  * 
  * POST /api/admin/migrate-frames
  * Adds frameId to any frames that don't have one

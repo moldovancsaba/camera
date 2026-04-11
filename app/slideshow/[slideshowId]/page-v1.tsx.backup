@@ -2,8 +2,7 @@
 
 /**
  * Slideshow Player Page
- * Version: 1.0.0
- * 
+ *
  * Public slideshow player for event submissions
  * - 16:9 canvas at 1920x1080px (scales to fit screen)
  * - Smart playlist with least-played algorithm

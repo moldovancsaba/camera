@@ -1,6 +1,5 @@
 /**
  * SSO App Permissions Client
- * Version: 1.0.0
  * 
  * Queries SSO for user's app-specific permissions.
  * SSO is the single source of truth for user roles within each app.

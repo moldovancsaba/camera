@@ -1,6 +1,5 @@
 /**
  * Admin Dashboard
- * Version: 1.1.0
  * 
  * Overview dashboard showing key metrics and recent activity.
  */

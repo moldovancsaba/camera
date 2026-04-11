@@ -1,6 +1,5 @@
 /**
  * Partner Detail Page
- * Version: 2.8.0
  * 
  * Display partner details with list of events and frames
  * v2.8.0: Added default styles display for child event inheritance

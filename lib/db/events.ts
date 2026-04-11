@@ -1,6 +1,5 @@
 /**
  * Event Database Helpers
- * Version: 2.8.0
  * 
  * Helper functions for event-related database operations, including
  * style inheritance cascade from partner defaults to child events.

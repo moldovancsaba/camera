@@ -1,6 +1,5 @@
 /**
  * Frames API - List and Create
- * Version: 1.7.1
  * 
  * GET: List all frames with pagination
  * POST: Create new frame (admin only)

@@ -1,6 +1,5 @@
 /**
  * Edit Logo Page
- * Version: 1.0.0
  * 
  * Full CRUD - Update logo details and toggle active status.
  */

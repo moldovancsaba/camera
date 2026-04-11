@@ -1,6 +1,5 @@
 /**
  * Hashtag Input Component
- * Version: 1.1.0
  * 
  * Multi-select hashtag input with autocomplete
  * - Fetch existing hashtags from API as user types

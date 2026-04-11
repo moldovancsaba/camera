@@ -1,6 +1,5 @@
 /**
  * Admin Partners Listing
- * Version: 1.1.0
  * 
  * List all partners with search, filter, pagination, and quick toggle
  */

@@ -1,6 +1,5 @@
 /**
  * Session API Route
- * Version: 1.0.0
  * 
  * Returns current user session information
  * Used by capture flow to resume after SSO authentication

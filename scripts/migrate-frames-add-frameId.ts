@@ -1,6 +1,5 @@
 /**
  * Migration Script: Add frameId to Existing Frames
- * Version: 1.0.0
  * 
  * This script adds a frameId (UUID) to any existing frames in the database
  * that don't have one. All new frames are created with frameId, but older

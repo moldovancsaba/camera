@@ -1,6 +1,5 @@
 /**
  * User Management Actions Component
- * Version: 2.5.0
  * 
  * Client component for user management actions in admin users page.
  * Provides buttons to toggle roles, activate/deactivate, and merge users.

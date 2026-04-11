@@ -1,6 +1,5 @@
 /**
  * Logos Admin Page
- * Version: 1.0.0
  * 
  * List all uploaded logos with grid view
  */

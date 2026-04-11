@@ -1,6 +1,5 @@
 /**
  * Logos API - List and Create
- * Version: 1.0.0
  * 
  * GET: List all logos with pagination
  * POST: Create new logo (admin only)

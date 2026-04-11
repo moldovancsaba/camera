@@ -1,6 +1,5 @@
 /**
  * Event Frames API Endpoint
- * Version: 2.8.0
  * 
  * Manages frame assignments for events
  * POST: Assign a frame to an event (sets framesOverridden flag)

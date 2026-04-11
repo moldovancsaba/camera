@@ -1,6 +1,5 @@
 /**
  * Partner API - Quick Toggle Active Status
- * Version: 1.1.0
  * 
  * PATCH: Toggle partner active/inactive status
  * Used for quick status changes from listing page without full update form

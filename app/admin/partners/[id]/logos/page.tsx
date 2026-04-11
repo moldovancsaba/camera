@@ -1,6 +1,5 @@
 /**
  * Partner Default Logos Management Page
- * Version: 2.8.0
  * 
  * Manage default logo assignments for a partner
  * These defaults cascade to all child events

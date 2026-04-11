@@ -1,6 +1,5 @@
 /**
  * Card Component
- * Version: 1.7.1
  * 
  * Reusable card container with consistent styling.
  * 

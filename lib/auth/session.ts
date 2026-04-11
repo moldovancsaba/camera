@@ -1,6 +1,5 @@
 /**
  * Session Management
- * Version: 1.0.0
  * 
  * Manages user sessions with 30-day sliding expiration.
  * Sessions are stored in encrypted cookies for security.

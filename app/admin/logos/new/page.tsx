@@ -1,6 +1,5 @@
 /**
  * Add New Logo Page
- * Version: 1.0.0
  * 
  * Upload and configure new logos for event scenarios
  */

@@ -1,6 +1,5 @@
 /**
  * Remove Submission from Event API
- * Version: 1.0.0
  * 
  * DELETE /api/events/[eventId]/submissions/[submissionId]
  * 

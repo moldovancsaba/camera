@@ -1,6 +1,5 @@
 /**
  * Photo Capture Page
- * Version: 1.2.0
  * 
  * Main page for capturing photos with frame overlays.
  * Users select a frame, take/upload photo, and save result.

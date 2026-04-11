@@ -1,6 +1,5 @@
 /**
  * Loading Spinner Component
- * Version: 1.7.1
  * 
  * Reusable loading indicator with consistent styling.
  * 

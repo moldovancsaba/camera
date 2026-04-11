@@ -1,6 +1,5 @@
 /**
  * Submissions API
- * Version: 2.0.0
  * 
  * POST: Save photo submission with frame to imgbb and MongoDB
  *       v2.0.0: Accepts userInfo and consents from custom event pages

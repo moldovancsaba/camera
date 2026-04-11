@@ -1,6 +1,5 @@
 /**
  * Test Database Connection API Route
- * Version: 1.0.0
  * 
  * Simple endpoint to verify MongoDB Atlas connection is working.
  * This route can be removed after successful testing.

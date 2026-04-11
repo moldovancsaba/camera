@@ -1,6 +1,5 @@
 /**
  * Edit Frame Page
- * Version: 1.4.0
  * 
  * Full CRUD - Update frame details and toggle active status.
  */

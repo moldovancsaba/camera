@@ -1,6 +1,5 @@
 /**
  * Logo Upload API
- * Version: 1.0.0
  * 
  * POST: Upload event/partner logo to imgbb
  * 

@@ -1,26 +1,11 @@
 /**
- * SSO Client for OAuth2/OIDC Authentication
- * Version: 1.0.0
- * 
- * Integrates with sso.doneisbetter.com for user authentication.
- * Implements Authorization Code Flow with PKCE (required for public clients).
- * 
- * SSO Service: https://sso.doneisbetter.com (v5.23.1)
- * 
- * Why PKCE:
- * - Camera is a public client (browser-based SPA)
- * - PKCE provides security without client secret exposure
- * - Required by sso.doneisbetter.com for public clients
- * 
- * Flow:
- * 1. Generate PKCE code verifier and challenge
- * 2. Redirect user to SSO authorization endpoint
- * 3. User authenticates and approves
- * 4. SSO redirects back with authorization code
- * 5. Exchange code for access token + refresh token
- * 6. Store tokens in session
- * 7. Use access token for API calls
- * 8. Refresh token when expired
+ * SSO client: OAuth2/OIDC authorization code + PKCE against the configured SSO base URL
+ * (production: https://sso.doneisbetter.com).
+ *
+ * `redirect_uri` is built per request from the public host (`x-forwarded-host` / `host`)
+ * so custom domains match the OAuth client allowlist; `SSO_REDIRECT_URI` is not used.
+ *
+ * PKCE: public browser client; no client secret in the browser; verifier proves token exchange.
  */
 
 import crypto from 'crypto';

@@ -1,6 +1,5 @@
 /**
  * Event Frame Toggle API Endpoint
- * Version: 1.0.0
  * 
  * PATCH: Toggle frame active/inactive status for an event
  */

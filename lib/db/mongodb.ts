@@ -1,6 +1,5 @@
 /**
  * MongoDB Connection Manager
- * Version: 1.0.0
  * 
  * Handles MongoDB Atlas connection with connection pooling for optimal performance.
  * Implements singleton pattern to reuse connections across serverless function invocations.

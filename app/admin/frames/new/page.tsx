@@ -1,6 +1,5 @@
 /**
  * Add New Frame Page
- * Version: 1.1.0
  * 
  * Upload and configure new photo frames.
  */

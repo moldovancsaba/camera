@@ -1,6 +1,5 @@
 /**
  * Partner Search Dropdown Component
- * Version: 1.0.0
  * 
  * Searchable dropdown for partner selection with predictive search
  */

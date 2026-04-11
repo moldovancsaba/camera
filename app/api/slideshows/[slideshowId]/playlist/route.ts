@@ -1,6 +1,5 @@
 /**
  * Slideshow Playlist API
- * Version: 2.0.0
  * 
  * GET: Generate next 5 slides for a slideshow with smart playlist logic
  * Returns slides with mosaic layouts for 1:1 and 9:16 images

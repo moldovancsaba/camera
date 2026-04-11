@@ -1,6 +1,5 @@
 /**
  * Event Logos Management Page
- * Version: 1.0.0
  * 
  * Manage logo assignments for event scenarios
  * Organized by 4 scenarios with random selection support

@@ -1,6 +1,5 @@
 /**
  * Custom Pages Manager Component
- * Version: 2.0.0
  * 
  * Manages custom page flows for events (onboarding and thank you pages)
  * Includes add/edit/delete/reorder functionality

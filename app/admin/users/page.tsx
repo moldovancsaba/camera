@@ -1,6 +1,5 @@
 /**
  * Admin Users Page
- * Version: 2.5.0
  * 
  * Comprehensive user management interface.
  * 

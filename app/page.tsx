@@ -1,6 +1,5 @@
 /**
  * Camera Webapp - Homepage
- * Version: 1.0.0
  * 
  * Main landing page for photo capture with frames.
  * Shows login status and provides authentication controls.

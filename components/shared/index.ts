@@ -1,6 +1,5 @@
 /**
  * Shared Components Index
- * Version: 1.7.1
  * 
  * Centralized export of all shared/reusable components.
  * 

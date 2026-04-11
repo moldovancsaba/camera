@@ -1,6 +1,5 @@
 /**
  * Admin Loading State
- * Version: 1.1.2
  * 
  * Loading skeleton for admin pages.
  */

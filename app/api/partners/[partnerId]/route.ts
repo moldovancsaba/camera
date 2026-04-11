@@ -1,6 +1,5 @@
 /**
  * Partner API - Individual Operations
- * Version: 2.8.0
  * 
  * GET: Get single partner details
  * PATCH: Update partner (includes cascade to child events for default styles)

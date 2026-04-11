@@ -1,6 +1,5 @@
 /**
  * Event Detail Page
- * Version: 2.8.0
  * 
  * Display event details with partner info, assigned frames, and slideshows
  * v2.0.0: Filters inactive users (pseudo + cameraAccountDisabled mirror)

@@ -2,7 +2,6 @@
 
 /**
  * Style Inheritance Indicator Component
- * Version: 2.8.0
  * 
  * Shows inheritance status (child/orphan) with emoji indicators
  * Provides reset button for orphaned styles

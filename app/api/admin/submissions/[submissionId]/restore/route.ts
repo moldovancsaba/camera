@@ -1,6 +1,5 @@
 /**
  * Restore Archived Submission API
- * Version: 1.0.0
  * 
  * POST /api/admin/submissions/[submissionId]/restore
  * 

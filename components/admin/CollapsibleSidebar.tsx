@@ -1,9 +1,5 @@
 /**
- * Collapsible Sidebar Component
- * Version: 1.0.0
- * 
- * Admin sidebar navigation with collapse/expand functionality
- * and version display at the bottom.
+ * Admin sidebar (collapse/expand). Footer shows `APP_VERSION` from `@/lib/app-version` (package.json).
  */
 
 'use client';

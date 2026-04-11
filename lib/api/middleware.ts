@@ -1,6 +1,5 @@
 /**
  * API Middleware
- * Version: 1.7.1
  * 
  * Reusable middleware functions for API routes.
  * 

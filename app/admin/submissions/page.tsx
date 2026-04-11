@@ -1,6 +1,5 @@
 /**
  * Admin Submissions Page
- * Version: 1.3.4
  * 
  * View all photo submissions from all users.
  */

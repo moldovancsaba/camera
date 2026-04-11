@@ -1,6 +1,5 @@
 /**
  * Event Reset Style API
- * Version: 2.8.0
  * 
  * POST: Reset specific style field to partner default (admin only)
  */

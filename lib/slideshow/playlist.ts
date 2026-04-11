@@ -1,6 +1,5 @@
 /**
  * Slideshow Playlist Generation
- * Version: 1.0.0
  * 
  * Generates smart playlists for event slideshows with aspect ratio detection
  * and mosaic layouts for non-16:9 images.

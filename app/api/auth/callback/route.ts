@@ -1,6 +1,5 @@
 /**
  * OAuth Callback API Route
- * Version: 1.0.0
  * 
  * Handles OAuth2 callback from SSO after user authentication.
  * 

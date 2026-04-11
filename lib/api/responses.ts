@@ -1,6 +1,5 @@
 /**
  * API Response Helpers
- * Version: 1.7.1
  * 
  * Centralized response utilities for consistent API responses across all endpoints.
  * 

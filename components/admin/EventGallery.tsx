@@ -1,6 +1,5 @@
 /**
  * Event Gallery Client Component
- * Version: 1.0.0
  * 
  * Client-side wrapper for event submission gallery with remove functionality.
  * Enables removing submissions from events without full page reload.

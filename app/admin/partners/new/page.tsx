@@ -1,6 +1,5 @@
 /**
  * Add New Partner Page
- * Version: 1.1.0
  * 
  * Form to create a new partner organization
  */

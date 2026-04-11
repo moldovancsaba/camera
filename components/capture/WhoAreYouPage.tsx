@@ -1,6 +1,5 @@
 /**
  * Who Are You Page Component
- * Version: 2.0.0
  * 
  * Collects user information (name and email) before photo capture
  * Part of the custom event page flow system

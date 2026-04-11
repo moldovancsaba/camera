@@ -1,6 +1,5 @@
 /**
  * Edit Partner Page
- * Version: 2.8.0
  * 
  * Form to edit partner details
  * v2.8.0: Added default style settings for child events

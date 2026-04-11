@@ -1,6 +1,5 @@
 /**
  * Database Schemas and TypeScript Types
- * Version: 2.0.0
  * 
  * Defines the structure of all MongoDB collections and their TypeScript interfaces.
  * All dates stored as ISO 8601 strings with milliseconds in UTC: YYYY-MM-DDTHH:MM:SS.sssZ

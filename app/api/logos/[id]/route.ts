@@ -1,6 +1,5 @@
 /**
  * Single Logo API - Get, Update, Delete
- * Version: 1.0.0
  * 
  * GET: Fetch single logo by MongoDB _id
  * PUT: Update logo details (admin only)

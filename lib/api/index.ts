@@ -1,6 +1,5 @@
 /**
  * API Utilities Index
- * Version: 1.7.1
  * 
  * Centralized export of all API utilities for easy importing.
  * 
@@ -52,7 +51,7 @@ export {
   dbOperation,
 } from './withErrorHandler';
 
-// Rate limiting (v1.7.1 - Phase 7)
+// Rate limiting (Upstash when configured; in-memory fallback per instance)
 export {
   checkRateLimit,
   RATE_LIMITS,

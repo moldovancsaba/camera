@@ -1,6 +1,5 @@
 /**
  * Events API - List and Create
- * Version: 2.8.0
  * 
  * GET: List all events with pagination, search, and partner filtering
  * POST: Create new event (admin only, requires partnerId, inherits partner defaults)

@@ -1,6 +1,5 @@
 /**
  * Event Frame Management Page
- * Version: 1.1.0
  * 
  * Manage frame assignments for an event
  * - Show currently assigned frames

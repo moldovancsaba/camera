@@ -1,6 +1,5 @@
 /**
  * Slideshow Next Candidate API
- * Version: 1.0.0
  * 
  * GET: Returns single best next slide for rolling buffer
  * Used for continuous background refresh without interrupting playback

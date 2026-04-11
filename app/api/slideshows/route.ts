@@ -1,6 +1,5 @@
 /**
  * Slideshows API
- * Version: 1.0.0
  * 
  * POST: Create new slideshow for an event
  * GET: List all slideshows for an event (query param: eventId)

@@ -258,9 +258,9 @@ export * from './withErrorHandler';
 ```typescript
 /**
  * Brief description
- * Version: 1.7.1
- * 
+ *
  * Detailed explanation of what this file does and why it exists.
+ * (Released app semver lives in `package.json`; use `@/lib/app-version` in UI when needed.)
  * 
  * Usage:
  * ```typescript

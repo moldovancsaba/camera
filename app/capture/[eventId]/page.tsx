@@ -1,6 +1,5 @@
 /**
  * Event-Specific Capture Page
- * Version: 2.0.0
  * 
  * Public page for capturing photos at events
  * Full interactive capture flow with camera/upload support

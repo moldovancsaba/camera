@@ -1,11 +1,10 @@
 /**
  * CTA (Call To Action) Page Component
- * Version: 3.0.0
  * 
  * Displays call-to-action page that can redirect to a URL
  * Part of the custom event page flow system
  * 
- * v3.0.0 changes:
+ * CTA behavior (custom page flow):
  * - checkboxText repurposed as URL to visit
  * - Button is optional (hasButton config)
  * - If hasButton=false, this becomes an end page that auto-redirects

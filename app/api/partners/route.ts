@@ -1,6 +1,5 @@
 /**
  * Partners API - List and Create
- * Version: 1.7.1
  * 
  * GET: List all partners with pagination, search, and filtering
  * POST: Create new partner (admin only)

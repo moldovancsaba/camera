@@ -1,11 +1,7 @@
 /**
- * Admin Layout
- * Version: 2.0.0
- * 
- * Layout for admin pages with sidebar navigation.
- * Only accessible to users with 'admin' or 'super-admin' role.
- * 
- * v2.0.0: Added collapsible sidebar and version display
+ * Admin layout: sidebar + main content.
+ * Access: middleware requires a valid session with appRole `admin` or `superadmin`
+ * (see `middleware.ts`); layout additionally requires any logged-in session.
  */
 
 import { getSession } from '@/lib/auth/session';

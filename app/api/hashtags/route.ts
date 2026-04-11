@@ -1,6 +1,5 @@
 /**
  * Hashtags API
- * Version: 1.7.1
  * 
  * GET: Get all unique hashtags from frames (for filtering)
  */

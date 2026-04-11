@@ -1,6 +1,5 @@
 /**
  * Remove Submission from Partner API
- * Version: 1.0.0
  * 
  * DELETE /api/partners/[partnerId]/submissions/[submissionId]
  * 

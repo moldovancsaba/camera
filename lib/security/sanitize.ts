@@ -1,6 +1,5 @@
 /**
  * Input Sanitization Utilities
- * Version: 1.7.1
  * 
  * Security utilities for sanitizing and validating user inputs.
  * 

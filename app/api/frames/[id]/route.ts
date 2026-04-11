@@ -1,6 +1,5 @@
 /**
  * Frame API - Individual Frame Operations
- * Version: 1.4.0
  * 
  * GET: Get single frame by ID
  * PUT: Update frame

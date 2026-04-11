@@ -1,6 +1,5 @@
 /**
  * Delete Partner Button Component
- * Version: 1.0.0
  * 
  * Client component for deleting partners with confirmation dialog
  */

@@ -1,6 +1,5 @@
 /**
  * Style Sections Component
- * Version: 2.8.0
  * 
  * Unified display component for Brand Colors, Assigned Frames, and Event Logos
  * Used on both partner detail and event detail pages

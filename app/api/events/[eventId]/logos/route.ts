@@ -1,6 +1,5 @@
 /**
  * Event Logos API Endpoint
- * Version: 2.8.0
  * 
  * Manages logo assignments for events with scenario support
  * POST: Assign a logo to an event scenario (sets logosOverridden flag)

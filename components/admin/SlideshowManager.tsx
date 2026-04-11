@@ -2,7 +2,6 @@
 
 /**
  * Slideshow Manager Component
- * Version: 1.0.0
  * 
  * Client component for managing event slideshows from admin event detail page
  */

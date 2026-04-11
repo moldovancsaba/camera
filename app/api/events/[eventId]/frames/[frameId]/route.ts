@@ -1,6 +1,5 @@
 /**
  * Event Frame Management API Endpoint
- * Version: 1.0.0
  * 
  * DELETE: Remove a frame from an event
  */

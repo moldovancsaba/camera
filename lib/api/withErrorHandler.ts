@@ -1,6 +1,5 @@
 /**
  * Error Handling Wrapper for API Routes
- * Version: 2.0.0
  * 
  * Higher-order function that wraps API route handlers with consistent error handling.
  * 

@@ -1,6 +1,5 @@
 /**
  * Slideshow Play Count Tracking API
- * Version: 1.1.0
  *
  * POST: Update play counts for submissions that were displayed
  */

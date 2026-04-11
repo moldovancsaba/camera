@@ -1,6 +1,5 @@
 /**
  * imgbb.com Image Upload Integration
- * Version: 1.0.0
  * 
  * Handles image uploads to imgbb.com CDN with retry logic and error handling.
  * 

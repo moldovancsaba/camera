@@ -1,11 +1,10 @@
 /**
  * User Profile Page
- * Version: 36.2.0
  *
  * Displays detailed user profile with all submissions, consents, and event participation.
  * Accessible at /users/[name] - shows full history and photo gallery.
  *
- * v36.2.0: Admins with app access see user management (role / active / merge) on this page.
+ * Admins with Camera app access (`admin` / `superadmin`) see user management (role / active / merge) on this page.
  *
  * Note: Usernames in URLs are sanitized (spaces/special chars → underscores)
  * We search for matching names by converting both to sanitized format
