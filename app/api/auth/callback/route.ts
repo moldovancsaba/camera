@@ -17,6 +17,7 @@ import {
   decodeIdToken,
   getUserInfo,
   getOAuthCallbackRedirectUri,
+  useConfidentialOAuth,
 } from '@/lib/auth/sso';
 import {
   clearPendingSessionCookieOnResponse,
@@ -80,32 +81,53 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const signingKey = getOAuthPkceStateSigningKey();
-    let codeVerifier: string | null =
-      signingKey && state.includes('.') ? decodeSignedOAuthPkceState(signingKey, state) : null;
+    const confidential = useConfidentialOAuth();
+    const redirectUri = getOAuthCallbackRedirectUri(request);
 
-    if (!codeVerifier) {
+    let codeVerifier: string | undefined;
+
+    if (confidential) {
       const pendingSession = readPendingSessionFromRequest(request);
-      if (pendingSession?.state === state) {
-        codeVerifier = pendingSession.codeVerifier;
+      if (!pendingSession || pendingSession.state !== state) {
+        console.error('✗ OAuth state mismatch or pending cookie missing (confidential flow)');
+        return redirectOAuthFailure(
+          request,
+          'session_expired',
+          'Login session expired, please try again',
+          { clearPendingSession: true }
+        );
       }
-    }
+    } else {
+      const signingKey = getOAuthPkceStateSigningKey();
+      let verifier: string | null =
+        signingKey && state.includes('.') ? decodeSignedOAuthPkceState(signingKey, state) : null;
 
-    if (!codeVerifier) {
-      console.error('✗ No PKCE verifier (signed state invalid/expired or pending cookie missing)');
-      return redirectOAuthFailure(
-        request,
-        'session_expired',
-        'Login session expired, please try again',
-        { clearPendingSession: true }
-      );
+      if (!verifier) {
+        const pendingSession = readPendingSessionFromRequest(request);
+        if (pendingSession?.state === state && pendingSession.codeVerifier) {
+          verifier = pendingSession.codeVerifier;
+        }
+      }
+
+      if (!verifier) {
+        console.error('✗ No PKCE verifier (signed state invalid/expired or pending cookie missing)');
+        return redirectOAuthFailure(
+          request,
+          'session_expired',
+          'Login session expired, please try again',
+          { clearPendingSession: true }
+        );
+      }
+      codeVerifier = verifier;
     }
 
     console.log('✓ State verified, exchanging code for tokens');
 
-    // Exchange authorization code for tokens using PKCE verifier
-    const redirectUri = getOAuthCallbackRedirectUri(request);
-    const tokens = await exchangeCodeForToken(code, codeVerifier, redirectUri);
+    const tokens = await exchangeCodeForToken(
+      code,
+      redirectUri,
+      confidential ? undefined : codeVerifier
+    );
     
     console.log('✓ Tokens obtained, extracting user info from ID token');
 

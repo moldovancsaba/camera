@@ -83,11 +83,11 @@ export interface Session {
 }
 
 /**
- * Temporary session data stored during OAuth flow
- * Includes PKCE verifier and state for verification
+ * Temporary data during OAuth (pending cookie).
+ * PKCE: include `codeVerifier`. Confidential (no PKCE): `state` only; token exchange uses `SSO_CLIENT_SECRET`.
  */
 export interface PendingSession {
-  codeVerifier: string;
+  codeVerifier?: string;
   state: string;
   createdAt: string;
   expiresAt: string;  // Short expiration (15 minutes)
@@ -299,14 +299,17 @@ export async function clearSession(): Promise<void> {
 }
 
 /**
- * Read PKCE pending cookie from the incoming request (OAuth callback route handlers).
+ * Read OAuth pending cookie from the incoming request (callback route).
  */
 export function readPendingSessionFromRequest(request: NextRequest): PendingSession | null {
   const raw = request.cookies.get(PENDING_SESSION_COOKIE_NAME)?.value;
   if (!raw) return null;
   try {
     const pending = JSON.parse(raw) as PendingSession;
-    if (typeof pending.codeVerifier !== 'string' || typeof pending.state !== 'string') {
+    if (typeof pending.state !== 'string') {
+      return null;
+    }
+    if (pending.codeVerifier !== undefined && typeof pending.codeVerifier !== 'string') {
       return null;
     }
     const now = new Date();

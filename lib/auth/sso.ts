@@ -5,7 +5,8 @@
  * `redirect_uri` is built per request from the public host (`x-forwarded-host` / `host`)
  * so custom domains match the OAuth client allowlist; `SSO_REDIRECT_URI` is not used.
  *
- * PKCE: public browser client; no client secret in the browser; verifier proves token exchange.
+ * PKCE: used when no `SSO_CLIENT_SECRET` or when `SSO_USE_PKCE=1`.
+ * Confidential: when `SSO_CLIENT_SECRET` is set and `SSO_USE_PKCE` is not `1`, omit PKCE (matches SSO optional-PKCE + Amanoba-style exchange).
  */
 
 import crypto from 'crypto';
@@ -96,6 +97,13 @@ function getSSOEndpoints() {
 export const SSO_CONFIG = getSSoConfig;
 export const SSO_ENDPOINTS = getSSOEndpoints;
 
+/** Use authorization code + client_secret (no PKCE). Set `SSO_USE_PKCE=1` to force PKCE even if a secret is configured. */
+export function useConfidentialOAuth(): boolean {
+  const forcePkce = process.env.SSO_USE_PKCE === '1' || process.env.SSO_USE_PKCE === 'true';
+  if (forcePkce) return false;
+  return Boolean(process.env.SSO_CLIENT_SECRET?.trim());
+}
+
 /**
  * User information from SSO
  */
@@ -176,14 +184,14 @@ export function generatePKCEPair(): PKCEPair {
  * Generate authorization URL for SSO login
  * Includes PKCE challenge and state for CSRF protection
  * 
- * @param codeChallenge - PKCE code challenge
+ * @param codeChallenge - PKCE code challenge, or `null` to omit PKCE (confidential client)
  * @param state - Random state string for CSRF protection
  * @param options - Optional parameters
  * @param options.prompt - OIDC prompt parameter ('login', 'consent', 'none')
  * @returns Authorization URL to redirect user to
  */
 export function getAuthorizationUrl(
-  codeChallenge: string,
+  codeChallenge: string | null,
   state: string,
   options: {
     redirectUri: string;
@@ -201,9 +209,12 @@ export function getAuthorizationUrl(
     response_type: 'code',
     scope: config.scopes.join(' '),
     state,
-    code_challenge: codeChallenge,
-    code_challenge_method: 'S256',
   });
+
+  if (codeChallenge) {
+    params.set('code_challenge', codeChallenge);
+    params.set('code_challenge_method', 'S256');
+  }
   
   // Add prompt parameter if provided (OIDC standard)
   // prompt=login forces re-authentication even if user has SSO session
@@ -219,17 +230,13 @@ export function getAuthorizationUrl(
 }
 
 /**
- * Exchange authorization code for access token
- * Uses PKCE code verifier for security
- * 
- * @param code - Authorization code from SSO
- * @param codeVerifier - PKCE code verifier
- * @returns Token response with access_token and refresh_token
+ * Exchange authorization code for access token.
+ * Pass `codeVerifier` for PKCE; omit it (or empty) and set `SSO_CLIENT_SECRET` for confidential exchange.
  */
 export async function exchangeCodeForToken(
   code: string,
-  codeVerifier: string,
-  redirectUri: string
+  redirectUri: string,
+  codeVerifier?: string
 ): Promise<TokenResponse> {
   const config = SSO_CONFIG();
   const endpoints = SSO_ENDPOINTS();
@@ -239,8 +246,18 @@ export async function exchangeCodeForToken(
     code,
     redirect_uri: redirectUri,
     client_id: config.clientId,
-    code_verifier: codeVerifier,
   });
+
+  const verifier = codeVerifier?.trim();
+  if (verifier) {
+    params.set('code_verifier', verifier);
+  } else {
+    const secret = process.env.SSO_CLIENT_SECRET?.trim();
+    if (!secret) {
+      throw new Error('SSO_CLIENT_SECRET is required for token exchange without PKCE code_verifier');
+    }
+    params.set('client_secret', secret);
+  }
 
   const response = await fetch(endpoints.token, {
     method: 'POST',
@@ -276,6 +293,11 @@ export async function refreshAccessToken(
     refresh_token: refreshToken,
     client_id: config.clientId,
   });
+
+  const secret = process.env.SSO_CLIENT_SECRET?.trim();
+  if (secret && useConfidentialOAuth()) {
+    params.set('client_secret', secret);
+  }
 
   const response = await fetch(endpoints.token, {
     method: 'POST',
