@@ -157,32 +157,39 @@ export default function FunFitFanLogWizard() {
   }
 
   if (step === 'selfie' && ctx) {
+    // Same pattern as `app/capture/[eventId]/page.tsx` capture-photo: fullscreen shell + flex-1/min-h-0
+    // stage so CameraCapture gets a real viewport; aspect from frame dimensions only (no live overlay —
+    // frame is composited in `compositeFramedSelfieWithText`, like Camera's post-capture composite).
     return (
-      <div className="mx-auto max-w-lg px-4 py-8">
-        <h1 className="text-2xl font-semibold">Selfie</h1>
-        <p className="mt-2 text-sm text-slate-400">
-          Your coach&apos;s frame <span className="text-emerald-300">({ctx.frame.name})</span> is applied
-          automatically. Next, add your activity and result.
-        </p>
-        <div className="mt-6 w-full">
+      <div className="fixed inset-0 z-50 flex flex-col bg-black text-white">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-white/10 px-4 py-3">
+          <div className="min-w-0 pr-2">
+            <h1 className="text-lg font-semibold leading-tight">Selfie</h1>
+            <p className="mt-1 text-xs text-slate-400">
+              Frame <span className="text-emerald-300">({ctx.frame.name})</span> is added after capture (same
+              as Camera event capture).
+            </p>
+          </div>
+          <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
+            Cancel
+          </AppButton>
+        </div>
+        <div className="flex min-h-0 flex-1 items-center justify-center p-4">
           <CameraCapture
             initialFacingMode="user"
-            frameOverlay={ctx.frame.fileUrl}
+            frameOverlay={undefined}
             frameWidth={ctx.frame.width}
             frameHeight={ctx.frame.height}
+            captureButtonColor="#10b981"
+            captureButtonBorderColor="#059669"
             promptTitle="FunFitFan check-in"
-            promptDescription="Take a clear selfie. The team frame is added for you on the next step."
+            promptDescription="Fill the frame area; your team border is applied on the next step."
             onCapture={(_blob, dataUrl) => {
               setSelfieDataUrl(dataUrl);
               setStep('details');
             }}
-            className="overflow-hidden rounded-2xl border border-slate-700"
+            className="overflow-hidden rounded-2xl border border-white/10"
           />
-        </div>
-        <div className="app-btn-stack app-btn-stack--wizard">
-          <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
-            Cancel
-          </AppButton>
         </div>
       </div>
     );

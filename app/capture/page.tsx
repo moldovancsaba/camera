@@ -20,6 +20,18 @@ interface Frame {
   category: string;
   imageUrl: string;
   isActive: boolean;
+  /** From DB `frames` collection — drives CameraCapture aspect (same as event capture). */
+  width?: number;
+  height?: number;
+}
+
+function framePixelDimensions(frame: Frame): { width: number; height: number } {
+  const w = Number(frame.width);
+  const h = Number(frame.height);
+  if (w > 0 && h > 0) {
+    return { width: w, height: h };
+  }
+  return { width: 1920, height: 1080 };
 }
 
 export default function CapturePage() {
@@ -277,6 +289,39 @@ export default function CapturePage() {
     );
   }
 
+  if (step === 'capture-photo' && selectedFrame) {
+    const { width: frameW, height: frameH } = framePixelDimensions(selectedFrame);
+    return (
+      <div className="fixed inset-0 z-40 flex flex-col bg-black text-white">
+        <div className="absolute right-4 top-4 z-50">
+          <button
+            type="button"
+            onClick={() => setStep('select-frame')}
+            className="rounded-lg bg-white/90 px-3 py-2 text-sm font-medium text-gray-900 shadow-lg"
+          >
+            Change frame
+          </button>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col pt-16 md:flex-row md:pt-4">
+          <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center p-4">
+            <CameraCapture
+              onCapture={handlePhotoCapture}
+              frameOverlay={undefined}
+              frameWidth={frameW}
+              frameHeight={frameH}
+              promptTitle="Capture your photo"
+              promptDescription="Fill the preview; your frame is composited after capture (same as event capture)."
+            />
+          </div>
+          <aside className="shrink-0 border-t border-white/15 bg-black/70 p-4 md:flex md:w-80 md:flex-col md:border-l md:border-t-0">
+            <h3 className="mb-3 text-sm font-semibold text-white/90">Or upload image</h3>
+            <FileUpload onUpload={handlePhotoCapture} />
+          </aside>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-6xl mx-auto px-4">
@@ -351,38 +396,7 @@ export default function CapturePage() {
           </div>
         )}
 
-        {/* Step 2: Photo Capture */}
-        {step === 'capture-photo' && selectedFrame && (
-          <div>
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Capture Your Photo
-                </h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Selected frame: <span className="font-medium">{selectedFrame.name}</span>
-                </p>
-              </div>
-              <button
-                onClick={() => setStep('select-frame')}
-                className="px-4 py-2 text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                Change Frame
-              </button>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-medium text-gray-900 dark:text-white mb-3">Take Photo</h3>
-                <CameraCapture onCapture={handlePhotoCapture} frameOverlay={selectedFrame.imageUrl} />
-              </div>
-              <div>
-                <h3 className="font-medium text-gray-900 dark:text-white mb-3">Or Upload Image</h3>
-                <FileUpload onUpload={handlePhotoCapture} />
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Step 2: Photo Capture — fullscreen UI (early return above when active) */}
 
         {/* Step 3: Preview */}
         {step === 'preview' && compositeImage && (
