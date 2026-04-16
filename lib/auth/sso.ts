@@ -5,8 +5,8 @@
  * `redirect_uri` is built per request from the public host (`x-forwarded-host` / `host`)
  * so custom domains match the OAuth client allowlist; `SSO_REDIRECT_URI` is not used.
  *
- * PKCE: used when no `SSO_CLIENT_SECRET` or when `SSO_USE_PKCE=1`.
- * Confidential: when `SSO_CLIENT_SECRET` is set and `SSO_USE_PKCE` is not `1`, omit PKCE (matches SSO optional-PKCE + Amanoba-style exchange).
+ * PKCE: default for all clients (SSO public clients require `code_verifier` on token exchange).
+ * Confidential (no PKCE): only when `SSO_CLIENT_SECRET` is set and `SSO_CONFIDENTIAL_OAUTH=1` (and `SSO_USE_PKCE` is not forcing PKCE). Use only if SSO registers this OAuth client as confidential.
  */
 
 import crypto from 'crypto';
@@ -97,10 +97,18 @@ function getSSOEndpoints() {
 export const SSO_CONFIG = getSSoConfig;
 export const SSO_ENDPOINTS = getSSOEndpoints;
 
-/** Use authorization code + client_secret (no PKCE). Set `SSO_USE_PKCE=1` to force PKCE even if a secret is configured. */
+/**
+ * Authorization code + client_secret without PKCE (authorize omits code_challenge).
+ * Opt-in only: SSO public clients still require PKCE even if you store a secret locally.
+ * Set `SSO_CONFIDENTIAL_OAUTH=1` (or `true`) when the OAuth client is confidential on SSO.
+ * `SSO_USE_PKCE=1` or `true` forces PKCE and disables this path.
+ */
 export function useConfidentialOAuth(): boolean {
   const forcePkce = process.env.SSO_USE_PKCE === '1' || process.env.SSO_USE_PKCE === 'true';
   if (forcePkce) return false;
+  const optIn =
+    process.env.SSO_CONFIDENTIAL_OAUTH === '1' || process.env.SSO_CONFIDENTIAL_OAUTH === 'true';
+  if (!optIn) return false;
   return Boolean(process.env.SSO_CLIENT_SECRET?.trim());
 }
 
