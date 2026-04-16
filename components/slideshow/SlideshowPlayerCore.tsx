@@ -38,6 +38,8 @@ interface SlideshowSettings {
   _id: string;
   name: string;
   eventName: string;
+  /** Stage width ÷ height (e.g. 9/16 for FunFitFan personal reels). Defaults to 16/9 when omitted. */
+  stageAspect?: number;
   transitionDurationMs: number;
   fadeDurationMs: number;
   bufferSize: number;
@@ -348,7 +350,13 @@ export function SlideshowPlayerCore({
       const measure = () => {
         const w = window.innerWidth;
         const h = window.innerHeight;
-        setStageSize(slideshowStageDimensions(w, h, mode));
+        const ar =
+          typeof settings.stageAspect === 'number' &&
+          Number.isFinite(settings.stageAspect) &&
+          settings.stageAspect > 0
+            ? settings.stageAspect
+            : 16 / 9;
+        setStageSize(slideshowStageDimensions(w, h, mode, ar));
       };
       measure();
       window.addEventListener('resize', measure);

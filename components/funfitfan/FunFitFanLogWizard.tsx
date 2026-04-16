@@ -157,33 +157,26 @@ export default function FunFitFanLogWizard() {
   }
 
   if (step === 'selfie' && ctx) {
-    // Same pattern as `app/capture/[eventId]/page.tsx` capture-photo: fullscreen shell + flex-1/min-h-0
-    // stage so CameraCapture gets a real viewport; aspect from frame dimensions only (no live overlay —
-    // frame is composited in `compositeFramedSelfieWithText`, like Camera's post-capture composite).
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-black text-white">
-        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-white/10 px-4 py-3">
-          <div className="min-w-0 pr-2">
-            <h1 className="text-lg font-semibold leading-tight">Selfie</h1>
-            <p className="mt-1 text-xs text-slate-400">
-              Frame <span className="text-emerald-300">({ctx.frame.name})</span> is added after capture (same
-              as Camera event capture).
-            </p>
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[60] flex justify-end p-3">
+          <div className="pointer-events-auto">
+            <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
+              Cancel
+            </AppButton>
           </div>
-          <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
-            Cancel
-          </AppButton>
         </div>
-        <div className="flex min-h-0 flex-1 items-center justify-center p-4">
+        <div className="flex min-h-0 flex-1 items-center justify-center p-4 pt-14">
           <CameraCapture
             initialFacingMode="user"
             frameOverlay={undefined}
             frameWidth={ctx.frame.width}
             frameHeight={ctx.frame.height}
+            previewAspectWidthOverHeight={9 / 16}
             captureButtonColor="#10b981"
             captureButtonBorderColor="#059669"
             promptTitle="FunFitFan check-in"
-            promptDescription="Fill the frame area; your team border is applied on the next step."
+            promptDescription="Tap to start the camera, then capture."
             onCapture={(_blob, dataUrl) => {
               setSelfieDataUrl(dataUrl);
               setStep('details');

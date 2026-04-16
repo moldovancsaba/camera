@@ -34,6 +34,11 @@ export interface CameraCaptureProps {
   promptDescription?: string; // Custom description for camera start prompt
   /** Default camera facing (e.g. `user` for gym selfie). */
   initialFacingMode?: 'user' | 'environment';
+  /**
+   * When set (e.g. `9/16` for FunFitFan), drives preview sizing, getUserMedia aspect, and capture output
+   * even if `frameWidth`/`frameHeight` from the DB are wrong (e.g. legacy 1920×1080 defaults).
+   */
+  previewAspectWidthOverHeight?: number;
 }
 
 export default function CameraCapture({ 
@@ -48,6 +53,7 @@ export default function CameraCapture({
   promptTitle = 'Ready to capture?',
   promptDescription = 'Click to start your camera and take a photo',
   initialFacingMode = 'environment',
+  previewAspectWidthOverHeight,
 }: CameraCaptureProps) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +70,14 @@ export default function CameraCapture({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const getTargetAspectRatio = () => {
+    if (
+      previewAspectWidthOverHeight != null &&
+      Number.isFinite(previewAspectWidthOverHeight) &&
+      previewAspectWidthOverHeight > 0
+    ) {
+      return previewAspectWidthOverHeight;
+    }
+
     if (frameWidth && frameHeight && frameWidth > 0 && frameHeight > 0) {
       return frameWidth / frameHeight;
     }
@@ -73,6 +87,35 @@ export default function CameraCapture({
     }
 
     return 16 / 9;
+  };
+
+  const getCaptureOutputPixelSize = () => {
+    const forced = previewAspectWidthOverHeight;
+    const fromFrameW = frameWidth && frameWidth > 0 ? frameWidth : 0;
+    const fromFrameH = frameHeight && frameHeight > 0 ? frameHeight : 0;
+    const fromImgW = frameImage && frameImage.width > 0 ? frameImage.width : 0;
+    const fromImgH = frameImage && frameImage.height > 0 ? frameImage.height : 0;
+
+    if (forced != null && Number.isFinite(forced) && forced > 0) {
+      let w = fromFrameW || fromImgW || 1080;
+      let h = fromFrameH || fromImgH || 1920;
+      const r = w / h;
+      if (Math.abs(r - forced) > 0.02) {
+        if (forced < 1) {
+          h = Math.max(h, w > 0 ? Math.round(w / forced) : 1920, 1920);
+          w = Math.round(h * forced);
+        } else {
+          w = Math.max(w, 1920);
+          h = Math.round(w / forced);
+        }
+      }
+      return { width: w, height: h };
+    }
+
+    return {
+      width: fromFrameW || fromImgW || 1920,
+      height: fromFrameH || fromImgH || 1080,
+    };
   };
 
   /**
@@ -371,10 +414,8 @@ export default function CameraCapture({
         //   - Draw full 3000x4000 scaled to 1500x2000 (matches width)
         //   - Canvas clips to 1500x1000, showing all 3 people
         
-        // Set canvas to frame dimensions
-        const frameTargetWidth = frameWidth || (frameImage ? frameImage.width : 1920);
-        const frameTargetHeight = frameHeight || (frameImage ? frameImage.height : 1080);
-        
+        const { width: frameTargetWidth, height: frameTargetHeight } = getCaptureOutputPixelSize();
+
         canvas.width = frameTargetWidth;
         canvas.height = frameTargetHeight;
         
@@ -536,7 +577,7 @@ export default function CameraCapture({
       window.removeEventListener('orientationchange', calculateSize);
       resizeObserver?.disconnect();
     };
-  }, [frameWidth, frameHeight, frameImage]);
+  }, [frameWidth, frameHeight, frameImage, previewAspectWidthOverHeight]);
 
   /**
    * Cleanup on unmount

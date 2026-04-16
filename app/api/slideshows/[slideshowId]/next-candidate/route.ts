@@ -14,6 +14,8 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { generatePlaylist } from '@/lib/slideshow/playlist';
 import { findEventForSlideshow } from '@/lib/slideshow/resolve-event';
+import { submissionEventIdKeys } from '@/lib/slideshow/submission-event-keys';
+import type { Event } from '@/lib/db/schemas';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
 
 /**
@@ -52,6 +54,7 @@ export async function GET(
     }
 
     const eventUuid = event.eventId;
+    const eventIdKeys = submissionEventIdKeys(event as Event);
     if (process.env.NODE_ENV !== 'production') {
       console.log(`[NextCandidate] Slideshow stored event ref: ${slideshow.eventId}`);
       console.log(`[NextCandidate] Event UUID (event.eventId): ${eventUuid}`);
@@ -66,16 +69,16 @@ export async function GET(
         $and: [
           {
             $or: [
-              { eventId: eventUuid },                    // Old schema: singular eventId field
-              { eventIds: { $in: [eventUuid] } }         // New schema: eventIds array
-            ]
+              { eventId: { $in: eventIdKeys } },
+              { eventIds: { $in: eventIdKeys } },
+            ],
           },
           { _id: { $nin: excludeIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id)) } },
           { isArchived: { $ne: true } },                 // Exclude archived submissions
           {
             $or: [
               { hiddenFromEvents: { $exists: false } },  // Field doesn't exist yet (old data)
-              { hiddenFromEvents: { $nin: [eventUuid] } } // Field exists and event not in it - USE UUID!
+              { hiddenFromEvents: { $nin: eventIdKeys } },
             ]
           }
         ]

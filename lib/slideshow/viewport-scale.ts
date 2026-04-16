@@ -5,20 +5,25 @@
 
 export type ViewportScaleMode = 'fit' | 'fill';
 
-const SLIDESHOW_STAGE_ASPECT = 16 / 9;
+const SLIDESHOW_STAGE_ASPECT_DEFAULT = 16 / 9;
 
 /**
- * 16:9 slideshow stage size inside a rectangular container (layout cell or window).
+ * Slideshow stage size inside a rectangular container (layout cell or window).
+ * @param stageAspectWidthOverHeight width ÷ height of the stage (e.g. 16/9 landscape, 9/16 portrait for FunFitFan).
  */
 export function slideshowStageDimensions(
   containerW: number,
   containerH: number,
-  mode: ViewportScaleMode
+  mode: ViewportScaleMode,
+  stageAspectWidthOverHeight: number = SLIDESHOW_STAGE_ASPECT_DEFAULT
 ): { width: number; height: number } {
   if (containerW <= 0 || containerH <= 0) {
     return { width: 0, height: 0 };
   }
-  const ar = SLIDESHOW_STAGE_ASPECT;
+  const ar =
+    Number.isFinite(stageAspectWidthOverHeight) && stageAspectWidthOverHeight > 0
+      ? stageAspectWidthOverHeight
+      : SLIDESHOW_STAGE_ASPECT_DEFAULT;
   const car = containerW / containerH;
   if (mode === 'fit') {
     if (car > ar) {
@@ -67,7 +72,7 @@ export function layoutGridStageDimensions(
   if (viewportW <= 0 || viewportH <= 0 || cols < 1 || rows < 1) {
     return { width: 0, height: 0 };
   }
-  const ar = (cols * SLIDESHOW_STAGE_ASPECT) / rows;
+  const ar = (cols * SLIDESHOW_STAGE_ASPECT_DEFAULT) / rows;
   const car = viewportW / viewportH;
   if (mode === 'fit') {
     let width: number;

@@ -21,8 +21,15 @@ import {
   expandPlaylistToLength,
 } from '@/lib/slideshow/playlist';
 import { findEventForSlideshow } from '@/lib/slideshow/resolve-event';
+import { submissionEventIdKeys } from '@/lib/slideshow/submission-event-keys';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
+import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
+import type { Event } from '@/lib/db/schemas';
+
+function slideshowStageAspectWidthOverHeight(event: Event): number {
+  return String(event.partnerId) === FUNFITFAN_PARTNER_ID ? 9 / 16 : 16 / 9;
+}
 
 /** Playlist is personalized (random / instanceKey); never cache across clients or layout cells. */
 export const dynamic = 'force-dynamic';
@@ -103,20 +110,22 @@ export async function GET(
       );
     }
 
+    const eventIdKeys = submissionEventIdKeys(event as Event);
+
     // Build match filter: event + optional exclude + archived/hidden + active users only
     const buildMatchFilter = (excludeOids: ObjectId[]) => {
       const and: object[] = [
         {
           $or: [
-            { eventId: eventUuid },
-            { eventIds: { $in: [eventUuid] } },
+            { eventId: { $in: eventIdKeys } },
+            { eventIds: { $in: eventIdKeys } },
           ],
         },
         { isArchived: { $ne: true } },
         {
           $or: [
             { hiddenFromEvents: { $exists: false } },
-            { hiddenFromEvents: { $nin: [eventUuid] } },
+            { hiddenFromEvents: { $nin: eventIdKeys } },
           ],
         },
         {
@@ -196,7 +205,8 @@ export async function GET(
         ? slideshow.backgroundImageUrl.trim()
         : null;
     const viewportScale = slideshow.viewportScale === 'fill' ? 'fill' : 'fit';
-    
+    const stageAspect = slideshowStageAspectWidthOverHeight(event as Event);
+
     if (dbg) {
       console.log(`[Playlist] Total submissions available (after filtering): ${submissions.length}`);
       console.log(
@@ -222,6 +232,7 @@ export async function GET(
           _id: slideshow._id,
           eventId: eventMongoId,
           eventUuid,
+          stageAspect,
           name: slideshow.name,
           eventName: slideshow.eventName,
           transitionDurationMs: slideshow.transitionDurationMs,
@@ -255,6 +266,7 @@ export async function GET(
         _id: slideshow._id,
         eventId: eventMongoId,
         eventUuid,
+        stageAspect,
         name: slideshow.name,
         eventName: slideshow.eventName,
         transitionDurationMs: slideshow.transitionDurationMs,

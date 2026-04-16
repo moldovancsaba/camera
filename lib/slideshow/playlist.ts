@@ -295,7 +295,31 @@ export function generatePlaylist(submissions: any[], limit: number = 10): Slide[
       break;
     }
   }
-  
+
+  // Few portrait (or square) images cannot form a full mosaic — still show them as singles (FFF reels, small pools).
+  if (playlist.length === 0 && submissions.length > 0) {
+    let i = 0;
+    while (playlist.length < limit && i < submissions.length) {
+      const sub = submissions[i++];
+      const width = Number(sub.metadata?.finalWidth || sub.metadata?.originalWidth || 1920);
+      const height = Number(sub.metadata?.finalHeight || sub.metadata?.originalHeight || 1080);
+      const aspectRatio = detectAspectRatio(width, height);
+      playlist.push({
+        type: 'single',
+        aspectRatio:
+          aspectRatio === AspectRatio.UNKNOWN ? AspectRatio.LANDSCAPE : aspectRatio,
+        submissions: [
+          {
+            _id: sub._id.toString(),
+            imageUrl: sub.imageUrl || sub.finalImageUrl,
+            width,
+            height,
+          },
+        ],
+      });
+    }
+  }
+
   return playlist;
 }
 
