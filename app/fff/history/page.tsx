@@ -127,8 +127,8 @@ export default async function FffHistoryPage() {
         <div>
           <h1 className="fff-app-page-title">History</h1>
           <p className="fff-app-page-lede">
-            Your reel moments and gym workouts — only you — newest first. Open a row for details and sharing, or delete
-            it from the list.
+            Your reel moments and workouts — only you — newest first. Open a row for details and sharing, or delete it
+            from the list.
           </p>
         </div>
         <HistoryPlayReelButton slideshowId={slideshowId} />
@@ -138,7 +138,7 @@ export default async function FffHistoryPage() {
 
       {rows.length === 0 ? (
         <p className="mt-10 text-center fff-app-muted">
-          Nothing here yet. Use <strong>I DO IT</strong> or <strong>IN THE GYM</strong> to add entries.
+          Nothing here yet. Use <strong>I DO IT</strong> to add reel check-ins and workout entries.
         </p>
       ) : (
         <ul className="fff-history-list mt-8">

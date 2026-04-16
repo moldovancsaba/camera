@@ -1081,41 +1081,6 @@ body {
     font-size: 0.8125rem;
   }
 
-  /* Gym chrome on FunFitFan-style shell (layout uses .fff-app-shell + .fff-app-inner) */
-  .fff-gym-header-shell {
-    border-bottom: 1px solid var(--fff-app-border);
-    background: var(--fff-app-surface);
-    backdrop-filter: blur(12px);
-  }
-
-  .fff-gym-header-inner {
-    margin-inline: auto;
-    display: flex;
-    max-width: var(--fff-landing-content-max);
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.75rem var(--fff-landing-content-pad-x);
-  }
-
-  .fff-gym-header-nav {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .fff-gym-header-brand.app-btn--ghost {
-    padding: 0.25rem 0.5rem;
-    font-size: 1.125rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--fff-landing-fg);
-  }
-
-  .fff-gym-header-brand.app-btn--ghost:hover:not(:disabled) {
-    color: var(--fff-landing-fg);
-  }
-
   .fff-gym-lesson-steps {
     margin-top: 2rem;
     margin-bottom: 0;

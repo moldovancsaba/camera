@@ -7,7 +7,11 @@ import FunFitFanCheckinSelfieReelFlow, {
 } from '@/components/funfitfan/FunFitFanCheckinSelfieReelFlow';
 import { AppButton } from '@/components/ui/AppButton';
 import { readFffLogWorkoutDraft, clearFffLogWorkoutDraft } from '@/lib/funfitfan/log-workout-draft';
-import { gymLessonsListHref } from '@/lib/gym/gym-lessons-href';
+import { workoutListUrl } from '@/lib/workout/workout-href';
+import {
+  clearWorkoutActivityCookieClient,
+  setWorkoutActivityCookieClient,
+} from '@/lib/workout/activity-cookie-client';
 
 export default function GymSelfieClient({
   sessionId,
@@ -80,6 +84,7 @@ export default function GymSelfieClient({
       );
     }
     clearFffLogWorkoutDraft();
+    clearWorkoutActivityCookieClient();
   }
 
   if (error && !ctx) {
@@ -112,7 +117,11 @@ export default function GymSelfieClient({
       ctx={ctx}
       activity={activity}
       feelSoTags={feelSoTags}
-      onCancel={() => router.push(gymLessonsListHref(activity.trim() || null))}
+      onCancel={() => {
+        const a = activity.trim();
+        if (a) setWorkoutActivityCookieClient(a);
+        router.push(workoutListUrl());
+      }}
       onAfterSubmissionSaved={onAfterSubmissionSaved}
     />
   );

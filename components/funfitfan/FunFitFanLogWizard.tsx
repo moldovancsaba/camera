@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation';
 import { AppButton } from '@/components/ui/AppButton';
 import FeelSoHashtagInput from '@/components/funfitfan/FeelSoHashtagInput';
 import { writeFffLogWorkoutDraft } from '@/lib/funfitfan/log-workout-draft';
+import {
+  clearWorkoutActivityCookieClient,
+  setWorkoutActivityCookieClient,
+} from '@/lib/workout/activity-cookie-client';
 
 type BootstrapCtx = {
   eventUuid: string;
@@ -145,7 +149,9 @@ export default function FunFitFanLogWizard() {
     }
     setError(null);
     writeFffLogWorkoutDraft({ activity: act, feelSoTags });
-    router.push(`/gym?sport=${encodeURIComponent(act)}`);
+    clearWorkoutActivityCookieClient();
+    setWorkoutActivityCookieClient(act);
+    router.push('/workout');
   }
 
   if (step === 'load') {

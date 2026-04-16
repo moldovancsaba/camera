@@ -1,5 +1,5 @@
 /**
- * Admin: Sport module hub (lessons feed the member /gym experience).
+ * Admin: Sport module hub (lessons feed the member /workout experience).
  */
 
 import Link from 'next/link';

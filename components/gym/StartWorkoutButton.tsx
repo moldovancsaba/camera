@@ -28,7 +28,9 @@ export default function StartWorkoutButton({ lessonId }: { lessonId: string }) {
       if (sessionId) {
         const steps = Array.isArray(sess?.lessonSteps) ? sess.lessonSteps : [];
         router.push(
-          steps.length > 0 ? `/gym/session/${sessionId}/step/0` : `/gym/session/${sessionId}`
+          steps.length > 0
+            ? `/workout/session/${sessionId}/step/0`
+            : `/workout/session/${sessionId}`
         );
         router.refresh();
       } else {

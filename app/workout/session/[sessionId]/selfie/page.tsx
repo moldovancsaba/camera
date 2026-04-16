@@ -1,5 +1,5 @@
 /**
- * Gym selfie: same FunFitFan check-in → Save to reel flow as /fff/log (composite + submission), then complete session.
+ * Workout selfie: same FunFitFan check-in → Save to reel flow as /fff/log, then complete session.
  */
 
 import { getSession } from '@/lib/auth/session';
@@ -11,7 +11,7 @@ import GymSelfieClient from '@/components/gym/GymSelfieClient';
 
 export const dynamic = 'force-dynamic';
 
-export default async function GymSelfiePage({ params }: { params: Promise<{ sessionId: string }> }) {
+export default async function WorkoutSelfiePage({ params }: { params: Promise<{ sessionId: string }> }) {
   const session = await getSession();
   if (!session) {
     redirect(await authEntryPathForCurrentHost());

@@ -70,7 +70,7 @@ export default async function HistoryGymDetailPage({
       </p>
 
       <p className="mt-4">
-        <Link href={`/gym/session/${sessionId}`} className="fff-app-link">
+        <Link href={`/workout/session/${sessionId}`} className="fff-app-link">
           Open full workout in Gym →
         </Link>
       </p>

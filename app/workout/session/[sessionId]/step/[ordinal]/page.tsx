@@ -1,5 +1,5 @@
 /**
- * One lesson step per screen: Skip or Mark done, then advance (gym workout flow).
+ * One lesson step per screen: Skip or Mark done, then advance (workout flow).
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -11,11 +11,11 @@ import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert'
 import { normalizeLessonStepsFromUnknown } from '@/lib/gym/normalize-lesson-steps';
 import { sortedLessonSteps } from '@/lib/gym/session-workout-path';
 import GymSessionStepPanel from '@/components/gym/GymSessionStepPanel';
-import { gymLessonsListHrefForLessonId } from '@/lib/gym/gym-lessons-href';
+import { workoutListUrl, workoutListUrlWithSportQueryForLessonId } from '@/lib/workout/workout-href';
 
 export const dynamic = 'force-dynamic';
 
-export default async function GymSessionStepPage({
+export default async function WorkoutSessionStepPage({
   params,
 }: {
   params: Promise<{ sessionId: string; ordinal: string }>;
@@ -68,9 +68,9 @@ export default async function GymSessionStepPage({
   if (status !== 'in_progress') {
     try {
       const db = await connectToDatabase();
-      redirect(await gymLessonsListHrefForLessonId(db, row.lessonId));
+      redirect(await workoutListUrlWithSportQueryForLessonId(db, row.lessonId));
     } catch {
-      redirect('/gym');
+      redirect(workoutListUrl());
     }
   }
 

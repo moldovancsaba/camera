@@ -16,11 +16,14 @@ import {
   sortedLessonSteps,
 } from '@/lib/gym/session-workout-path';
 import GymSessionWorkoutFooter from '@/components/gym/GymSessionWorkoutFooter';
-import { gymLessonsListHref, gymLessonsListHrefForLessonId } from '@/lib/gym/gym-lessons-href';
+import {
+  workoutListUrlWithSportQuery,
+  workoutListUrlWithSportQueryForLessonId,
+} from '@/lib/workout/workout-href';
 
 export const dynamic = 'force-dynamic';
 
-export default async function GymSessionPage({ params }: { params: Promise<{ sessionId: string }> }) {
+export default async function WorkoutSessionPage({ params }: { params: Promise<{ sessionId: string }> }) {
   const session = await getSession();
   if (!session) {
     redirect(await authEntryPathForCurrentHost());
@@ -78,9 +81,9 @@ export default async function GymSessionPage({ params }: { params: Promise<{ ses
   if (status === 'completed' || status === 'cancelled') {
     try {
       const db = await connectToDatabase();
-      redirect(await gymLessonsListHrefForLessonId(db, row.lessonId));
+      redirect(await workoutListUrlWithSportQueryForLessonId(db, row.lessonId));
     } catch {
-      redirect(gymLessonsListHref(lessonSport || null));
+      redirect(workoutListUrlWithSportQuery(lessonSport || null));
     }
   }
 
@@ -98,12 +101,12 @@ export default async function GymSessionPage({ params }: { params: Promise<{ ses
   return (
     <div>
       <p>
-        <Link href={gymLessonsListHref(lessonSport || null)} className="fff-app-link">
-          ← Back to gym
+        <Link href={workoutListUrlWithSportQuery(lessonSport || null)} className="fff-app-link text-sm">
+          ← Workouts
         </Link>
       </p>
-      <h1 className="mt-4 fff-app-page-title">{String(row.lessonTitle)}</h1>
-      <p className="mt-1 fff-app-page-lede">
+      <h1 className="gym-step-title mt-4">{String(row.lessonTitle)}</h1>
+      <p className="mt-2 text-sm fff-app-muted">
         Started {new Date(String(row.startedAt)).toLocaleString()} · {status}
       </p>
 
@@ -121,14 +124,14 @@ export default async function GymSessionPage({ params }: { params: Promise<{ ses
 
       {sorted.length > 0 ? (
         <div className="mt-8">
-          <h2 className="gym-session-section-title">Progress</h2>
+          <h2 className="text-base font-semibold fff-app-muted">Progress</h2>
           <ul className="fff-history-list mt-3">
             {sorted.map((s, i) => {
               const entry = stepLog.find((e) => e.stepOrder === s.order);
               const label = entry ? (entry.notes === GYM_STEP_SKIP_NOTE ? 'Skipped' : 'Done') : '—';
               return (
                 <li key={`${s.order}-${i}`} className="fff-history-row">
-                  <Link href={`/gym/session/${sessionId}/step/${i}`} className="fff-history-row-link">
+                  <Link href={`/workout/session/${sessionId}/step/${i}`} className="fff-history-row-link">
                     <div className="fff-history-thumb">
                       <div className="fff-history-thumb-placeholder" aria-hidden>
                         {entry ? (entry.notes === GYM_STEP_SKIP_NOTE ? '⏭' : '✓') : '○'}

@@ -14,7 +14,7 @@ export function visitedStepOrders(stepLog: GymSessionStepLogEntry[]): Set<number
 }
 
 /**
- * Where to send the user when opening `/gym/session/:id` during an in-progress workout.
+ * Where to send the user when opening `/workout/session/:id` during an in-progress workout.
  * Returns `null` when the overview page should render (no auto-redirect).
  */
 export function gymSessionLandingRedirect(opts: {
@@ -29,10 +29,10 @@ export function gymSessionLandingRedirect(opts: {
   const visited = visitedStepOrders(stepLog);
   for (let i = 0; i < sortedSteps.length; i++) {
     if (!visited.has(sortedSteps[i].order)) {
-      return `/gym/session/${sessionId}/step/${i}`;
+      return `/workout/session/${sessionId}/step/${i}`;
     }
   }
-  if (!hasSelfie) return `/gym/session/${sessionId}/selfie`;
+  if (!hasSelfie) return `/workout/session/${sessionId}/selfie`;
   return null;
 }
 
@@ -45,9 +45,9 @@ export function nextGymStepPath(opts: {
   status: string;
 }): string {
   const { sessionId, sortedSteps, ordinal, hasSelfie, status } = opts;
-  if (status !== 'in_progress') return `/gym/session/${sessionId}`;
+  if (status !== 'in_progress') return `/workout/session/${sessionId}`;
   const nextOrd = ordinal + 1;
-  if (nextOrd < sortedSteps.length) return `/gym/session/${sessionId}/step/${nextOrd}`;
-  if (!hasSelfie) return `/gym/session/${sessionId}/selfie`;
-  return `/gym/session/${sessionId}`;
+  if (nextOrd < sortedSteps.length) return `/workout/session/${sessionId}/step/${nextOrd}`;
+  if (!hasSelfie) return `/workout/session/${sessionId}/selfie`;
+  return `/workout/session/${sessionId}`;
 }

@@ -127,7 +127,7 @@ export default function AdminEditLessonForm({
       </div>
       <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
         <input type="checkbox" checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} />
-        Published (visible on /gym)
+        Published (visible on /workout)
       </label>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <div className="flex flex-wrap items-center gap-3">

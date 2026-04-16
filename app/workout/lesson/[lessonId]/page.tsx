@@ -10,7 +10,7 @@ import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert'
 
 export const dynamic = 'force-dynamic';
 
-export default async function GymLessonPage({ params }: { params: Promise<{ lessonId: string }> }) {
+export default async function WorkoutLessonPage({ params }: { params: Promise<{ lessonId: string }> }) {
   const { lessonId } = await params;
   let lesson: Record<string, unknown> | null = null;
   let dbError: unknown = null;
@@ -41,9 +41,9 @@ export default async function GymLessonPage({ params }: { params: Promise<{ less
 
   return (
     <div>
-      <h1 className="fff-app-page-title">{String(lesson.title)}</h1>
+      <h1 className="gym-step-title mt-2">{String(lesson.title)}</h1>
       {lesson.description ? (
-        <p className="mt-3 fff-app-muted">{String(lesson.description)}</p>
+        <p className="mt-3 text-sm leading-relaxed fff-app-muted">{String(lesson.description)}</p>
       ) : null}
 
       <div className="mt-6">

@@ -69,7 +69,11 @@ export default function GymSessionWorkoutFooter({
             Add your gym selfie, then tap <strong>Complete workout</strong> below.
           </p>
           <div className="gym-session-footer-actions">
-            <AppButton type="button" variant="secondary" onClick={() => router.push(`/gym/session/${sessionId}/selfie`)}>
+            <AppButton
+              type="button"
+              variant="secondary"
+              onClick={() => router.push(`/workout/session/${sessionId}/selfie`)}
+            >
               Take selfie
             </AppButton>
           </div>

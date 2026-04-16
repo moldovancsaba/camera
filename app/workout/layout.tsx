@@ -1,13 +1,12 @@
 /**
- * Gym module layout: FunFitFan shell (same gradient + content column as /fff/log), SSO + appAccess.
+ * Workout (member): FunFitFan shell — same column as /fff/log, no extra chrome header.
  */
 
 import { getSession } from '@/lib/auth/session';
 import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { redirect } from 'next/navigation';
-import GymHeaderBar from '@/components/gym/GymHeaderBar';
 
-export default async function GymLayout({ children }: { children: React.ReactNode }) {
+export default async function WorkoutLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session) {
     redirect(await authEntryPathForCurrentHost());
@@ -18,7 +17,6 @@ export default async function GymLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="fff-app-shell">
-      <GymHeaderBar />
       <div className="fff-app-inner">{children}</div>
     </div>
   );

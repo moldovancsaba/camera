@@ -10,6 +10,13 @@ import type { NextConfig } from "next";
  * - TypeScript strict mode enforcement
  */
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      { source: '/gym', destination: '/workout', permanent: true },
+      { source: '/gym/:path*', destination: '/workout/:path*', permanent: true },
+    ];
+  },
+
   // Image configuration for imgbb.com CDN
   images: {
     remotePatterns: [
