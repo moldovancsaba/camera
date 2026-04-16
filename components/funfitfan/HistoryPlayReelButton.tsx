@@ -1,6 +1,7 @@
 'use client';
 
 import { AppButton } from '@/components/ui/AppButton';
+import { openSlideshowInNewTab } from '@/lib/slideshow/open-slideshow';
 
 export default function HistoryPlayReelButton({ slideshowId }: { slideshowId: string | null }) {
   if (!slideshowId) {
@@ -14,7 +15,7 @@ export default function HistoryPlayReelButton({ slideshowId }: { slideshowId: st
     <AppButton
       type="button"
       variant="primary"
-      onClick={() => window.open(`/slideshow/${slideshowId}`, '_blank', 'noopener,noreferrer')}
+      onClick={() => openSlideshowInNewTab(slideshowId)}
     >
       Watch my reel
     </AppButton>

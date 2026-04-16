@@ -2,17 +2,24 @@
  * FunFitFan landing (PWA install uses manifest under /fff on this origin).
  */
 
+import { DynaPuff } from 'next/font/google';
 import { getSession } from '@/lib/auth/session';
 import FunFitFanLandingActions from '@/components/funfitfan/FunFitFanLandingActions';
 
 export const dynamic = 'force-dynamic';
+
+const fffTitleFont = DynaPuff({
+  subsets: ['latin'],
+  weight: ['700'],
+  display: 'swap',
+});
 
 export default async function FunFitFanLandingPage() {
   const session = await getSession();
 
   return (
     <div className="fff-app-inner">
-      <h1 className="fff-landing-brand-line">
+      <h1 className={`fff-landing-brand-line ${fffTitleFont.className}`}>
         <span className="fff-landing-brand-fff">FFF</span>
         <span className="fff-landing-brand-sep" aria-hidden="true">
           {' '}

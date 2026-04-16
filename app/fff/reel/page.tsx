@@ -1,5 +1,6 @@
 /**
- * Redirect to the user's FunFitFan slideshow (Camera slideshow player, 3s transitions from bootstrap).
+ * FunFitFan reel: open the user's slideshow in a **new browser tab** (never in-place).
+ * Installed PWA uses Camera origin when configured so playback opens in the full browser.
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -8,6 +9,7 @@ import { getSession } from '@/lib/auth/session';
 import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { redirect } from 'next/navigation';
 import ReelEmptyCTA from '@/components/funfitfan/ReelEmptyCTA';
+import FffReelAutoOpen from '@/components/funfitfan/FffReelAutoOpen';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,5 +38,5 @@ export default async function FffReelRedirectPage() {
     );
   }
 
-  redirect(`/slideshow/${profile.slideshowId}`);
+  return <FffReelAutoOpen slideshowId={String(profile.slideshowId)} />;
 }

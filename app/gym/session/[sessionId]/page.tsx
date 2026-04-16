@@ -60,6 +60,10 @@ export default async function GymSessionPage({ params }: { params: Promise<{ ses
   const hasSelfie = Boolean(selfieUrl?.trim());
   const status = String(row.status);
 
+  if (status === 'completed' || status === 'cancelled') {
+    redirect('/gym');
+  }
+
   const landing = gymSessionLandingRedirect({
     sessionId,
     sortedSteps: sorted,

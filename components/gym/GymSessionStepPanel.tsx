@@ -40,6 +40,7 @@ export default function GymSessionStepPanel({
   async function patchStepLog(nextLog: GymSessionStepLogEntry[]) {
     setLoading(true);
     setError(null);
+    let leaveForNextRoute = false;
     try {
       const res = await fetch(`/api/gym/sessions/${sessionId}`, {
         method: 'PATCH',
@@ -52,21 +53,25 @@ export default function GymSessionStepPanel({
         return;
       }
       const s = data.data?.session;
-      if (Array.isArray(s?.stepLog)) setStepLog(s.stepLog);
+      const nextStatus = typeof s?.status === 'string' ? s.status : status;
+      // Do not merge server stepLog into state here: that marks this step "handled" and
+      // briefly shows the Continue UI before `router.push` runs. Go straight to the next screen.
+      leaveForNextRoute = true;
       router.push(
         nextGymStepPath({
           sessionId,
           sortedSteps,
           ordinal,
           hasSelfie,
-          status: typeof s?.status === 'string' ? s.status : status,
+          status: nextStatus,
         })
       );
-      router.refresh();
     } catch {
       setError('Network error');
     } finally {
-      setLoading(false);
+      if (!leaveForNextRoute) {
+        setLoading(false);
+      }
     }
   }
 
@@ -130,12 +135,6 @@ export default function GymSessionStepPanel({
       ) : (
         <p className="gym-session-footer-note">This workout is {status}.</p>
       )}
-
-      <p className="gym-step-back">
-        <AppButton type="button" variant="ghost" compact onClick={() => router.push(`/gym/session/${sessionId}`)}>
-          ← Session overview
-        </AppButton>
-      </p>
     </div>
   );
 }

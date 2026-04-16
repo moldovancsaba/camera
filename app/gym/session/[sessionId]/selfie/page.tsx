@@ -9,7 +9,6 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import GymSelfieClient from '@/components/gym/GymSelfieClient';
 import { frameOverlayImageUrl, readFunFitFanDefaultFrameId } from '@/lib/funfitfan/bootstrap';
-import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,16 +43,5 @@ export default async function GymSelfiePage({ params }: { params: Promise<{ sess
     }
   }
 
-  return (
-    <div>
-      <p className="text-sm text-slate-500 dark:text-slate-400">
-        <Link href={`/gym/session/${sessionId}`} className="text-blue-600 hover:underline dark:text-blue-400">
-          ← Back to session
-        </Link>
-      </p>
-      <div className="mt-4">
-        <GymSelfieClient sessionId={sessionId} guideFrame={guideFrame} />
-      </div>
-    </div>
-  );
+  return <GymSelfieClient sessionId={sessionId} guideFrame={guideFrame} />;
 }

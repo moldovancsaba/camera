@@ -8,6 +8,7 @@ import { compositeFramedSelfieWithText } from '@/components/funfitfan/composite-
 import FeelSoHashtagInput from '@/components/funfitfan/FeelSoHashtagInput';
 import { FUNFITFAN_PARTNER_ID, FUNFITFAN_PARTNER_NAME } from '@/lib/funfitfan/constants';
 import { formatFeelSoLine } from '@/lib/funfitfan/feel-so-tags';
+import { openSlideshowInNewTab } from '@/lib/slideshow/open-slideshow';
 
 type BootstrapCtx = {
   eventUuid: string;
@@ -348,7 +349,7 @@ export default function FunFitFanLogWizard() {
           <AppButton
             type="button"
             variant="primary"
-            onClick={() => router.push(`/slideshow/${ctx.slideshowId}`)}
+            onClick={() => openSlideshowInNewTab(ctx.slideshowId)}
           >
             Open my reel
           </AppButton>

@@ -65,7 +65,7 @@ export default async function GymSessionStepPage({
 
   const status = String(row.status);
   if (status !== 'in_progress') {
-    redirect(`/gym/session/${sessionId}`);
+    redirect('/gym');
   }
 
   const step = sorted[ordinal]!;
