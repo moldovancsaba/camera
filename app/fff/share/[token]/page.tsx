@@ -2,7 +2,6 @@
  * Public view for a signed share link (submission image or gym workout).
  */
 
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -48,8 +47,16 @@ export default async function FffPublicSharePage({
 
     return (
       <div className="fff-app-inner fff-app-text-center">
-        <p className="fff-share-kicker">FunFitFan · Shared</p>
-        <h1 className="mt-3 fff-app-page-title">{heading}</h1>
+        <div className="flex justify-center">
+          <a
+            href="https://fff.messmass.com"
+            className="app-btn app-btn--primary fff-share-get-cta"
+            rel="noopener noreferrer"
+          >
+            GET FUNFITFAN
+          </a>
+        </div>
+        <h1 className="mt-6 fff-app-page-title">{heading}</h1>
         {resultLine ? <p className="mt-2 text-sm fff-app-muted">{resultLine}</p> : null}
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -57,11 +64,6 @@ export default async function FffPublicSharePage({
         ) : (
           <p className="mt-8 fff-app-footnote">Image unavailable.</p>
         )}
-        <p className="mt-10 fff-app-footnote">
-          <Link href="/fff" className="fff-app-link">
-            FunFitFan home
-          </Link>
-        </p>
       </div>
     );
   }
@@ -78,8 +80,16 @@ export default async function FffPublicSharePage({
 
     return (
       <div className="fff-app-inner fff-app-text-center">
-        <p className="fff-share-kicker">FunFitFan · Shared workout</p>
-        <h1 className="mt-3 fff-app-page-title">{lessonTitle}</h1>
+        <div className="flex justify-center">
+          <a
+            href="https://fff.messmass.com"
+            className="app-btn app-btn--primary fff-share-get-cta"
+            rel="noopener noreferrer"
+          >
+            GET FUNFITFAN
+          </a>
+        </div>
+        <h1 className="mt-6 fff-app-page-title">{lessonTitle}</h1>
         <p className="mt-2 text-sm fff-app-muted">
           {status}
           {startedAt ? ` · ${new Date(startedAt).toLocaleString()}` : ''}
@@ -90,11 +100,6 @@ export default async function FffPublicSharePage({
         ) : (
           <p className="mt-8 fff-app-footnote">No selfie for this session.</p>
         )}
-        <p className="mt-10 fff-app-footnote">
-          <Link href="/fff" className="fff-app-link">
-            FunFitFan home
-          </Link>
-        </p>
       </div>
     );
   }

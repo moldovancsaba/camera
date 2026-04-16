@@ -841,12 +841,8 @@ body {
     gap: 0.5rem;
   }
 
-  .fff-share-kicker {
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--fff-landing-subtitle);
+  a.app-btn.fff-share-get-cta {
+    text-decoration: none;
   }
 
   .fff-share-actions-msg {

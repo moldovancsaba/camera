@@ -51,14 +51,7 @@ export default async function GymSelfiePage({ params }: { params: Promise<{ sess
           ← Back to session
         </Link>
       </p>
-      <h1 className="mt-4 text-xl font-bold text-slate-900 dark:text-white">Gym selfie</h1>
-      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-        Uses the same in-browser camera as photo capture; image is stored on imgbb and linked to this workout.
-        {guideFrame
-          ? ' Preview matches your team default frame aspect (Admin → Gym → FunFitFan).'
-          : null}
-      </p>
-      <div className="mt-6">
+      <div className="mt-4">
         <GymSelfieClient sessionId={sessionId} guideFrame={guideFrame} />
       </div>
     </div>
