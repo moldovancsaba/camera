@@ -69,6 +69,7 @@ export default async function GymSessionPage({ params }: { params: Promise<{ ses
         <SessionActions
           sessionId={sessionId}
           steps={lessonSteps}
+          hasSelfie={Boolean(selfieUrl)}
           initialStatus={String(row.status)}
           initialStepLog={(row.stepLog as { stepOrder: number; completedAt: string; notes?: string }[]) ?? []}
         />

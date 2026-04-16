@@ -15,11 +15,14 @@ type StepLogEntry = { stepOrder: number; completedAt: string; notes?: string };
 export default function SessionActions({
   sessionId,
   steps,
+  hasSelfie,
   initialStatus,
   initialStepLog,
 }: {
   sessionId: string;
   steps: Step[];
+  /** Required before "Complete workout" is offered (and enforced by API). */
+  hasSelfie: boolean;
   initialStatus: string;
   initialStepLog: StepLogEntry[];
 }) {
@@ -94,25 +97,43 @@ export default function SessionActions({
               ) : null}
             </li>
           ))}
+
+          <li className="flex items-center justify-between rounded border border-slate-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+            <span className="text-slate-800 dark:text-slate-200">Add gym selfie</span>
+            {status === 'in_progress' ? (
+              hasSelfie ? (
+                <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Done</span>
+              ) : (
+                <Link
+                  href={`/gym/session/${sessionId}/selfie`}
+                  className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  Take selfie
+                </Link>
+              )
+            ) : hasSelfie ? (
+              <span className="text-sm text-slate-500 dark:text-slate-400">Added</span>
+            ) : null}
+          </li>
         </ul>
       </div>
 
       {status === 'in_progress' ? (
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href={`/gym/session/${sessionId}/selfie`}
-            className="inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 dark:border-gray-600 dark:text-slate-200 dark:hover:bg-gray-800"
-          >
-            Add gym selfie
-          </Link>
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => void completeWorkout()}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-          >
-            {loading ? 'Saving…' : 'Complete workout'}
-          </button>
+        <div className="flex flex-wrap items-center gap-3">
+          {hasSelfie ? (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => void completeWorkout()}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {loading ? 'Saving…' : 'Complete workout'}
+            </button>
+          ) : (
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Complete the <strong>Add gym selfie</strong> step above, then you can finish your workout.
+            </p>
+          )}
         </div>
       ) : (
         <p className="text-sm text-slate-600 dark:text-slate-400">Session {status}.</p>

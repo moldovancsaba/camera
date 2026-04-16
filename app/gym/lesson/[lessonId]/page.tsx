@@ -46,6 +46,10 @@ export default async function GymLessonPage({ params }: { params: Promise<{ less
         <p className="mt-3 text-slate-600 dark:text-slate-400">{String(lesson.description)}</p>
       ) : null}
 
+      <div className="mt-6">
+        <StartWorkoutButton lessonId={lessonId} />
+      </div>
+
       <ol className="mt-8 list-decimal space-y-3 pl-5 text-slate-800 dark:text-slate-200">
         {steps
           .slice()

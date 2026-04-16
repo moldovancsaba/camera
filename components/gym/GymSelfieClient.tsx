@@ -4,7 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import CameraCapture from '@/components/camera/CameraCapture';
 
-export default function GymSelfieClient({ sessionId }: { sessionId: string }) {
+export default function GymSelfieClient({
+  sessionId,
+  guideFrame,
+}: {
+  sessionId: string;
+  guideFrame: { frameOverlay: string; frameWidth?: number; frameHeight?: number } | null;
+}) {
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -45,6 +51,9 @@ export default function GymSelfieClient({ sessionId }: { sessionId: string }) {
         promptDescription="Front camera by default; you can flip if your device supports it."
         onCapture={onCapture}
         className="rounded-xl border border-slate-200 dark:border-gray-700"
+        frameOverlay={guideFrame?.frameOverlay}
+        frameWidth={guideFrame?.frameWidth}
+        frameHeight={guideFrame?.frameHeight}
       />
     </div>
   );

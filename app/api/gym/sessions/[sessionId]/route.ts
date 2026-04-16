@@ -62,6 +62,12 @@ export const PATCH = withErrorHandler(
       if (!['in_progress', 'completed', 'cancelled'].includes(s)) {
         throw apiBadRequest('Invalid status');
       }
+      if (s === 'completed') {
+        const selfie = row.selfieImageUrl;
+        if (typeof selfie !== 'string' || !selfie.trim()) {
+          throw apiBadRequest('Add a gym selfie before you can complete this workout.');
+        }
+      }
       $set.status = s as GymWorkoutSessionStatus;
       if (s === 'completed' || s === 'cancelled') {
         $set.completedAt = generateTimestamp();

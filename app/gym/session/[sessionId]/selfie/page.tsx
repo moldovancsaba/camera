@@ -8,6 +8,7 @@ import { redirect, notFound } from 'next/navigation';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import GymSelfieClient from '@/components/gym/GymSelfieClient';
+import { frameOverlayImageUrl, readFunFitFanDefaultFrameId } from '@/lib/funfitfan/bootstrap';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,24 @@ export default async function GymSelfiePage({ params }: { params: Promise<{ sess
     notFound();
   }
 
+  let guideFrame: { frameOverlay: string; frameWidth?: number; frameHeight?: number } | null = null;
+  const defaultFrameId = await readFunFitFanDefaultFrameId(db);
+  if (defaultFrameId) {
+    const frameDoc =
+      (await db.collection(COLLECTIONS.FRAMES).findOne({ frameId: defaultFrameId, isActive: true })) ??
+      (await db.collection(COLLECTIONS.FRAMES).findOne({ frameId: defaultFrameId }));
+    if (frameDoc) {
+      const rec = frameDoc as Record<string, unknown>;
+      const url = frameOverlayImageUrl(rec);
+      const w = Number(rec.width);
+      const h = Number(rec.height);
+      if (url) {
+        guideFrame =
+          w > 0 && h > 0 ? { frameOverlay: url, frameWidth: w, frameHeight: h } : { frameOverlay: url };
+      }
+    }
+  }
+
   return (
     <div>
       <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -35,9 +54,12 @@ export default async function GymSelfiePage({ params }: { params: Promise<{ sess
       <h1 className="mt-4 text-xl font-bold text-slate-900 dark:text-white">Gym selfie</h1>
       <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
         Uses the same in-browser camera as photo capture; image is stored on imgbb and linked to this workout.
+        {guideFrame
+          ? ' Preview matches your team default frame aspect (Admin → Gym → FunFitFan).'
+          : null}
       </p>
       <div className="mt-6">
-        <GymSelfieClient sessionId={sessionId} />
+        <GymSelfieClient sessionId={sessionId} guideFrame={guideFrame} />
       </div>
     </div>
   );

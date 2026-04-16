@@ -19,19 +19,20 @@ export async function generateMetadata(): Promise<Metadata> {
     const host = (await headers()).get("host");
     if (isFffHost(host)) {
       return {
-        title: { absolute: "FFF — FunFitFan" },
+        title: { absolute: "FunFitFan" },
         description:
           "FunFitFan (FFF): log activities and selfies, build your reel — fitness and health on the web.",
-        applicationName: "FFF",
+        applicationName: "FunFitFan",
       };
     }
   } catch {
     /* headers() unavailable in some prerender contexts */
   }
   return {
-    title: "Camera - Photo Frame App",
-    description: "Create and share beautiful framed photos",
-    applicationName: "Camera",
+    title: "FunFitFan",
+    description:
+      "FunFitFan: log activities and selfies, build your reel — fitness and health on the web.",
+    applicationName: "FunFitFan",
   };
 }
 

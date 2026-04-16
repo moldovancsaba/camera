@@ -5,13 +5,13 @@
 import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
-  title: { absolute: 'FFF — FunFitFan' },
+  title: { absolute: 'FunFitFan' },
   description: 'FFF (FunFitFan): activities, gym, and your personal reel.',
-  applicationName: 'FFF',
+  applicationName: 'FunFitFan',
   manifest: '/fff/manifest.webmanifest',
   appleWebApp: {
     capable: true,
-    title: 'FFF',
+    title: 'FunFitFan',
     statusBarStyle: 'default',
   },
   formatDetection: {
