@@ -1,5 +1,5 @@
 /**
- * Admin: gym lessons — list and create (same SSO admin gate as rest of Camera admin API).
+ * Admin: gym training — list and create (same SSO admin gate as rest of Camera admin API).
  */
 
 import { NextRequest } from 'next/server';
@@ -40,18 +40,22 @@ function normalizeSteps(raw: unknown): GymLessonStep[] {
 export const GET = withErrorHandler(async () => {
   await requireAdmin();
   const db = await connectToDatabase();
-  const lessons = await db
+  const rows = await db
     .collection(COLLECTIONS.GYM_LESSONS)
     .find({})
     .sort({ updatedAt: -1 })
     .limit(200)
     .toArray();
 
+  const training = rows.map((l) => ({
+    ...l,
+    _id: l._id?.toString(),
+  }));
+
   return apiSuccess({
-    lessons: lessons.map((l) => ({
-      ...l,
-      _id: l._id?.toString(),
-    })),
+    training,
+    /** @deprecated use `training` */
+    lessons: training,
   });
 });
 
@@ -94,5 +98,5 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   await db.collection(COLLECTIONS.GYM_LESSONS).insertOne(doc);
 
-  return apiCreated({ lesson: doc });
+  return apiCreated({ training: doc, lesson: doc });
 });

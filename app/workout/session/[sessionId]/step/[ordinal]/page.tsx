@@ -1,5 +1,5 @@
 /**
- * One lesson step per screen: Skip or Mark done, then advance (workout flow).
+ * One training step per screen: Skip or Next, then advance (workout flow).
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';

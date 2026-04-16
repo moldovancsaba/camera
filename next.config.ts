@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
     return [
       { source: '/gym', destination: '/workout', permanent: true },
       { source: '/gym/:path*', destination: '/workout/:path*', permanent: true },
+      { source: '/workout/lesson/:lessonId', destination: '/workout/training/:lessonId', permanent: true },
     ];
   },
 

@@ -1,5 +1,5 @@
 /**
- * Admin: update or delete a gym lesson.
+ * Admin: update or delete gym training.
  */
 
 import { NextRequest } from 'next/server';
@@ -68,11 +68,11 @@ export const PATCH = withErrorHandler(
 
     const upd = await db.collection(COLLECTIONS.GYM_LESSONS).updateOne({ lessonId }, { $set });
     if (upd.matchedCount === 0) {
-      throw apiNotFound('Lesson');
+      throw apiNotFound('Training');
     }
     const res = await db.collection(COLLECTIONS.GYM_LESSONS).findOne({ lessonId });
     if (!res) {
-      throw apiNotFound('Lesson');
+      throw apiNotFound('Training');
     }
 
     return apiSuccess({
@@ -91,7 +91,7 @@ export const DELETE = withErrorHandler(
     const db = await connectToDatabase();
     const del = await db.collection(COLLECTIONS.GYM_LESSONS).deleteOne({ lessonId });
     if (del.deletedCount === 0) {
-      throw apiNotFound('Lesson');
+      throw apiNotFound('Training');
     }
     return apiSuccess({ ok: true });
   }

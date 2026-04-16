@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import CameraCapture from '@/components/camera/CameraCapture';
 import { AppButton } from '@/components/ui/AppButton';
@@ -7,6 +8,7 @@ import { compositeFramedSelfieWithText } from '@/components/funfitfan/composite-
 import { FUNFITFAN_PARTNER_ID, FUNFITFAN_PARTNER_NAME } from '@/lib/funfitfan/constants';
 import { formatFeelSoLine } from '@/lib/funfitfan/feel-so-tags';
 import { openSlideshowInNewTab } from '@/lib/slideshow/open-slideshow';
+import { defaultFffOrigin } from '@/lib/site-hosts';
 
 export type CheckinBootstrapCtx = {
   eventUuid: string;
@@ -33,7 +35,7 @@ type Props = {
 
 /**
  * Same flow as FunFitFan log after “Take selfie”: camera → composite preview → Save to reel → Saved.
- * Used from `/fff/log` (historically) and gym workout selfie completion.
+ * Used from `/fff/log` (historically) and workout selfie completion.
  */
 export default function FunFitFanCheckinSelfieReelFlow({
   ctx,
@@ -42,6 +44,7 @@ export default function FunFitFanCheckinSelfieReelFlow({
   onCancel,
   onAfterSubmissionSaved,
 }: Props) {
+  const router = useRouter();
   const [step, setStep] = useState<'selfie' | 'preview' | 'done'>('selfie');
   const [selfieDataUrl, setSelfieDataUrl] = useState<string | null>(null);
   const [composite, setComposite] = useState<string | null>(null);
@@ -111,6 +114,17 @@ export default function FunFitFanCheckinSelfieReelFlow({
     }
   }
 
+  function goFffHomeAfterSave() {
+    const canonical = defaultFffOrigin();
+    if (typeof window === 'undefined') return;
+    const hereOrigin = `${window.location.protocol}//${window.location.host}`.replace(/\/$/, '');
+    if (hereOrigin === canonical) {
+      router.push('/');
+    } else {
+      window.location.assign(`${canonical}/`);
+    }
+  }
+
   if (step === 'selfie') {
     return (
       <div className="fff-app-fullscreen-step">
@@ -174,7 +188,7 @@ export default function FunFitFanCheckinSelfieReelFlow({
           <AppButton type="button" variant="primary" onClick={() => openSlideshowInNewTab(ctx.slideshowId)}>
             Open my reel
           </AppButton>
-          <AppButton type="button" variant="neutral" onClick={onCancel}>
+          <AppButton type="button" variant="neutral" onClick={() => goFffHomeAfterSave()}>
             Home
           </AppButton>
         </div>

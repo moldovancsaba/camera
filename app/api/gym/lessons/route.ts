@@ -1,5 +1,5 @@
 /**
- * Published gym lessons for signed-in members (SSO session + app access).
+ * Published gym training for signed-in members (SSO session + app access).
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -12,17 +12,21 @@ export const GET = withErrorHandler(async () => {
   assertGymAppAccess(session);
 
   const db = await connectToDatabase();
-  const lessons = await db
+  const rows = await db
     .collection(COLLECTIONS.GYM_LESSONS)
     .find({ isPublished: true })
     .sort({ updatedAt: -1 })
     .limit(100)
     .toArray();
 
+  const training = rows.map((l) => ({
+    ...l,
+    _id: l._id?.toString(),
+  }));
+
   return apiSuccess({
-    lessons: lessons.map((l) => ({
-      ...l,
-      _id: l._id?.toString(),
-    })),
+    training,
+    /** @deprecated use `training` */
+    lessons: training,
   });
 });

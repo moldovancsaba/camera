@@ -1,5 +1,5 @@
 /**
- * Admin: list sport lessons (member /workout).
+ * Admin: list sport training (member /workout).
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -28,8 +28,8 @@ export default async function AdminGymLessonsPage() {
     <div className="p-8">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Sport lessons</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">Published lessons appear on /workout for members.</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Sport training</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Published training appears on /workout for members.</p>
         </div>
         <div className="flex gap-2">
           <Link href="/admin/gym" className="text-sm text-gray-600 hover:underline dark:text-gray-400">
@@ -39,7 +39,7 @@ export default async function AdminGymLessonsPage() {
             href="/admin/gym/lessons/new"
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >
-            New lesson
+            New training
           </Link>
         </div>
       </div>
@@ -47,7 +47,7 @@ export default async function AdminGymLessonsPage() {
       {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
 
       {!dbError && lessons.length === 0 ? (
-        <p className="text-gray-600 dark:text-gray-400">No lessons yet. Create one to get started.</p>
+        <p className="text-gray-600 dark:text-gray-400">No training yet. Create one to get started.</p>
       ) : null}
 
       {!dbError && lessons.length > 0 ? (

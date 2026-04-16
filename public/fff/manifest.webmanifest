@@ -1,7 +1,7 @@
 {
   "name": "FunFitFan",
   "short_name": "FunFitFan",
-  "description": "FunFitFan — fitness, lessons, and gym check-ins.",
+  "description": "FunFitFan — fitness, training, and check-ins.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

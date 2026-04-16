@@ -34,8 +34,8 @@ export default function FunFitFanLogWizard() {
   const [activity, setActivity] = useState('');
   const [feelSoTags, setFeelSoTags] = useState<string[]>([]);
   const [hashtagSuggestions, setHashtagSuggestions] = useState<string[]>([]);
-  const [lessonSports, setLessonSports] = useState<string[]>([]);
-  const [lessonSportsError, setLessonSportsError] = useState<string | null>(null);
+  const [trainingSports, setTrainingSports] = useState<string[]>([]);
+  const [trainingSportsError, setTrainingSportsError] = useState<string | null>(null);
 
   const loadBootstrap = useCallback(async () => {
     setStep('load');
@@ -103,22 +103,22 @@ export default function FunFitFanLogWizard() {
     if (step !== 'details') return;
     let cancelled = false;
     (async () => {
-      setLessonSportsError(null);
+      setTrainingSportsError(null);
       try {
         const res = await fetch('/api/gym/lessons');
         const json = await res.json().catch(() => ({}));
         if (!res.ok || cancelled) {
           if (!cancelled) {
-            setLessonSports([]);
-            setLessonSportsError(
-              typeof json.error === 'string' ? json.error : 'Could not load sport lessons.'
+            setTrainingSports([]);
+            setTrainingSportsError(
+              typeof json.error === 'string' ? json.error : 'Could not load sport training.'
             );
           }
           return;
         }
-        const list = json.data?.lessons;
+        const list = json.data?.training ?? json.data?.lessons;
         if (!Array.isArray(list)) {
-          setLessonSports([]);
+          setTrainingSports([]);
           return;
         }
         const sports = [
@@ -128,11 +128,11 @@ export default function FunFitFanLogWizard() {
               .filter((s: string) => s.length > 0)
           ),
         ].sort((a, b) => a.localeCompare(b));
-        if (!cancelled) setLessonSports(sports);
+        if (!cancelled) setTrainingSports(sports);
       } catch {
         if (!cancelled) {
-          setLessonSports([]);
-          setLessonSportsError('Could not load sport lessons.');
+          setTrainingSports([]);
+          setTrainingSportsError('Could not load sport training.');
         }
       }
     })();
@@ -141,10 +141,10 @@ export default function FunFitFanLogWizard() {
     };
   }, [step]);
 
-  function continueToLessons() {
+  function continueToTraining() {
     const act = activity.trim();
-    if (!act || !lessonSports.includes(act)) {
-      setError('Choose a sport that has at least one published lesson.');
+    if (!act || !trainingSports.includes(act)) {
+      setError('Choose a sport that has at least one published training.');
       return;
     }
     setError(null);
@@ -193,16 +193,16 @@ export default function FunFitFanLogWizard() {
           onChange={(e) => setActivity(e.target.value)}
         >
           <option value="">— Choose an activity —</option>
-          {lessonSports.map((a) => (
+          {trainingSports.map((a) => (
             <option key={a} value={a}>
               {a}
             </option>
           ))}
         </select>
-        {lessonSportsError ? <p className="mt-2 text-sm fff-app-error">{lessonSportsError}</p> : null}
-        {lessonSports.length === 0 && !lessonSportsError ? (
+        {trainingSportsError ? <p className="mt-2 text-sm fff-app-error">{trainingSportsError}</p> : null}
+        {trainingSports.length === 0 && !trainingSportsError ? (
           <p className="mt-2 text-sm fff-app-muted">
-            No published sport lessons yet. Add lessons under Admin → Sport before you can continue.
+            No published sport training yet. Add training under Admin → Sport before you can continue.
           </p>
         ) : null}
         <label className="fff-field-label" htmlFor="fff-feelso-input">
@@ -223,8 +223,8 @@ export default function FunFitFanLogWizard() {
             type="button"
             variant="primary"
             compact
-            disabled={lessonSports.length === 0}
-            onClick={() => continueToLessons()}
+            disabled={trainingSports.length === 0}
+            onClick={() => continueToTraining()}
           >
             Continue
           </AppButton>

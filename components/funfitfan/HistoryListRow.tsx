@@ -42,7 +42,7 @@ export default function HistoryListRow({
             <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
           ) : (
             <div className="fff-history-thumb-placeholder">
-              {kind === 'gym' ? '🏋️' : '📷'}
+              {kind === 'gym' ? '⭐' : '📷'}
             </div>
           )}
         </div>

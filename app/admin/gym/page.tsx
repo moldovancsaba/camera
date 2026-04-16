@@ -1,5 +1,5 @@
 /**
- * Admin: Sport module hub (lessons feed the member /workout experience).
+ * Admin: Sport module hub (training feeds the member /workout experience).
  */
 
 import Link from 'next/link';
@@ -9,7 +9,7 @@ export default function AdminGymHubPage() {
     <div className="p-8">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Sport module</h1>
       <p className="mt-2 text-gray-600 dark:text-gray-400">
-        Manage lesson content and FunFitFan settings. Members use the same SSO session, app roles, and imgbb
+        Manage training content and FunFitFan settings. Members use the same SSO session, app roles, and imgbb
         uploads as the rest of Camera.
       </p>
       <div className="mt-8 flex flex-wrap gap-4">
@@ -23,7 +23,7 @@ export default function AdminGymHubPage() {
           href="/admin/gym/lessons"
           className="rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700"
         >
-          Lessons
+          Training
         </Link>
       </div>
     </div>

@@ -1,5 +1,5 @@
 /**
- * Workout lessons list: filtered by sport from I DO IT (cookie) or ?sport= (redirects / deep links).
+ * Workout training list: filtered by sport from I DO IT (cookie) or ?sport= (redirects / deep links).
  */
 
 import { cookies } from 'next/headers';
@@ -70,11 +70,8 @@ export default async function WorkoutHomePage({
       {!dbError && !hasSportContext ? (
         <section className="mt-8">
           <p className="fff-app-muted">
-            Choose your activity on{' '}
-            <Link href="/fff/log" className="fff-app-link">
-              I DO IT
-            </Link>{' '}
-            to see your workouts here.
+            Your training list opens here after you finish <strong>I DO IT</strong> (sport and Feel so) and tap
+            Continue — use the FunFitFan home screen to open I DO IT.
           </p>
         </section>
       ) : null}
@@ -84,17 +81,17 @@ export default async function WorkoutHomePage({
           {filtered.length === 0 ? (
             <p className="mt-2 fff-app-muted">
               {typed.length === 0
-                ? 'No published lessons yet.'
-                : `No published lessons for “${sportFilter}”.`}
+                ? 'No published training yet.'
+                : `No published training for “${sportFilter}”.`}
             </p>
           ) : (
             <ul className="fff-history-list mt-2">
               {filtered.map((l) => (
                 <li key={l.lessonId} className="fff-history-row">
-                  <Link href={`/workout/lesson/${l.lessonId}`} className="fff-history-row-link">
+                  <Link href={`/workout/training/${l.lessonId}`} className="fff-history-row-link">
                     <div className="fff-history-thumb">
                       <div className="fff-history-thumb-placeholder" aria-hidden>
-                        🏋️
+                        ⭐
                       </div>
                     </div>
                     <div className="fff-history-body">

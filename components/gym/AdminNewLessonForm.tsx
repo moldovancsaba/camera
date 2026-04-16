@@ -114,7 +114,7 @@ export default function AdminNewLessonForm({ sportOptions }: { sportOptions: str
         disabled={loading || sportOptions.length === 0}
         className="rounded-lg bg-blue-600 px-6 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
       >
-        {loading ? 'Saving…' : 'Create lesson'}
+        {loading ? 'Saving…' : 'Create training'}
       </button>
     </form>
   );

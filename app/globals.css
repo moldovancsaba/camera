@@ -1081,7 +1081,7 @@ body {
     font-size: 0.8125rem;
   }
 
-  .fff-gym-lesson-steps {
+  .fff-gym-training-steps {
     margin-top: 2rem;
     margin-bottom: 0;
     padding-left: 1.125rem;
@@ -1091,16 +1091,16 @@ body {
     color: var(--fff-landing-body);
   }
 
-  .fff-gym-lesson-steps > li + li {
+  .fff-gym-training-steps > li + li {
     margin-top: 0.75rem;
   }
 
-  .fff-gym-lesson-step-name {
+  .fff-gym-training-step-name {
     font-weight: 600;
     color: var(--fff-landing-fg);
   }
 
-  .fff-gym-lesson-step-detail {
+  .fff-gym-training-step-detail {
     margin-top: 0.25rem;
     font-size: 0.875rem;
     line-height: 1.5;

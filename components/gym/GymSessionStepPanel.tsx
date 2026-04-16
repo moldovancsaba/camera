@@ -129,7 +129,7 @@ export default function GymSessionStepPanel({
             Skip
           </AppButton>
           <AppButton type="button" variant="primary" disabled={loading} onClick={() => void onMarkDone()}>
-            {loading ? 'Saving…' : 'Mark done'}
+            {loading ? 'Saving…' : 'NEXT'}
           </AppButton>
         </div>
       ) : (

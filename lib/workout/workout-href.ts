@@ -1,7 +1,7 @@
 import type { Db } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 
-/** Member workout hub (lessons list). No query — use activity cookie from I DO IT when needed. */
+/** Member workout hub (training list). No query — use activity cookie from I DO IT when needed. */
 export function workoutListUrl(): string {
   return '/workout';
 }

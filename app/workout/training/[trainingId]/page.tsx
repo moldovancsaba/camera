@@ -1,5 +1,5 @@
 /**
- * Lesson detail and start workout (creates gym_workout_session).
+ * Training detail and start workout (creates gym_workout_session).
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -10,8 +10,13 @@ import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert'
 
 export const dynamic = 'force-dynamic';
 
-export default async function WorkoutLessonPage({ params }: { params: Promise<{ lessonId: string }> }) {
-  const { lessonId } = await params;
+export default async function WorkoutTrainingPage({
+  params,
+}: {
+  params: Promise<{ trainingId: string }>;
+}) {
+  const { trainingId } = await params;
+  const lessonId = trainingId;
   let lesson: Record<string, unknown> | null = null;
   let dbError: unknown = null;
 
@@ -50,14 +55,14 @@ export default async function WorkoutLessonPage({ params }: { params: Promise<{ 
         <StartWorkoutButton lessonId={lessonId} />
       </div>
 
-      <ol className="fff-gym-lesson-steps">
+      <ol className="fff-gym-training-steps">
         {steps
           .slice()
           .sort((a, b) => a.order - b.order)
           .map((step) => (
             <li key={step.order}>
-              <span className="fff-gym-lesson-step-name">{step.title}</span>
-              {step.detail ? <p className="fff-gym-lesson-step-detail">{step.detail}</p> : null}
+              <span className="fff-gym-training-step-name">{step.title}</span>
+              {step.detail ? <p className="fff-gym-training-step-detail">{step.detail}</p> : null}
             </li>
           ))}
       </ol>

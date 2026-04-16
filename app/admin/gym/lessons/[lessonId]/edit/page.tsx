@@ -1,5 +1,5 @@
 /**
- * Admin: edit gym lesson (PATCH + delete via /api/admin/gym/lessons/[lessonId]).
+ * Admin: edit gym training (PATCH + delete via /api/admin/gym/lessons/[lessonId]).
  */
 
 import Link from 'next/link';
@@ -38,9 +38,9 @@ export default async function AdminEditGymLessonPage({
     return (
       <div className="p-8">
         <Link href="/admin/gym/lessons" className="text-sm text-gray-600 hover:underline dark:text-gray-400">
-          ← Sport lessons
+          ← Sport training
         </Link>
-        <h1 className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">Edit lesson</h1>
+        <h1 className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">Edit training</h1>
         <div className="mt-6">
           <DatabaseConnectionAlert error={dbError} />
         </div>
@@ -61,11 +61,11 @@ export default async function AdminEditGymLessonPage({
   return (
     <div className="p-8">
       <Link href="/admin/gym/lessons" className="text-sm text-gray-600 hover:underline dark:text-gray-400">
-        ← Sport lessons
+        ← Sport training
       </Link>
-      <h1 className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">Edit lesson</h1>
+      <h1 className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">Edit training</h1>
       <p className="mt-2 max-w-xl text-gray-600 dark:text-gray-400">
-        Lesson ID <code className="rounded bg-gray-100 px-1 text-xs dark:bg-gray-800">{lesson.lessonId}</code>
+        Training ID <code className="rounded bg-gray-100 px-1 text-xs dark:bg-gray-800">{lesson.lessonId}</code>
       </p>
       <div className="mt-8 max-w-xl">
         <AdminEditLessonForm

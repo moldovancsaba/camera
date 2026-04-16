@@ -1,5 +1,5 @@
 /**
- * Gym workout sessions: list current user's sessions, start a new session from a lesson.
+ * Gym workout sessions: list current user's sessions, start a new session from published training.
  */
 
 import { NextRequest } from 'next/server';
@@ -57,7 +57,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     isPublished: true,
   });
   if (!lesson) {
-    throw apiNotFound('Lesson');
+    throw apiNotFound('Training');
   }
 
   const now = generateTimestamp();

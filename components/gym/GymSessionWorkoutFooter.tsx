@@ -66,7 +66,7 @@ export default function GymSessionWorkoutFooter({
       ) : (
         <>
           <p className="fff-app-muted">
-            Add your gym selfie, then tap <strong>Complete workout</strong> below.
+            Add your workout selfie, then tap <strong>Complete workout</strong> below.
           </p>
           <div className="gym-session-footer-actions">
             <AppButton

@@ -19,7 +19,7 @@ export default function AdminDeleteLessonButton({
   const [loading, setLoading] = useState(false);
 
   async function onDelete() {
-    if (!window.confirm(`Delete lesson “${title}”? This cannot be undone.`)) {
+    if (!window.confirm(`Delete training “${title}”? This cannot be undone.`)) {
       return;
     }
     setLoading(true);

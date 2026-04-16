@@ -36,7 +36,7 @@ export function gymSessionLandingRedirect(opts: {
   return null;
 }
 
-/** Next route after SKIP or MARK DONE on step at `ordinal`. */
+/** Next route after SKIP or NEXT on step at `ordinal`. */
 export function nextGymStepPath(opts: {
   sessionId: string;
   sortedSteps: GymLessonStepLite[];
