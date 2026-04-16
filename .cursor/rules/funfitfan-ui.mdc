@@ -7,6 +7,6 @@ alwaysApply: false
 # FunFitFan navigation and controls
 
 - On **FunFitFan** (`/fff` routes and `components/funfitfan/**`), **do not use `<Link>` or `<a>` for in-app navigation** (e.g. home, back, opening a history row to its detail page). Use **`AppButton`** with **`useRouter().push()`** from `next/navigation` in a small `'use client'` component when the page is a server component.
-- Prefer the shared stack pattern: **`app-btn-stack`** plus a spacing modifier defined in `app/globals.css` (e.g. `app-btn-stack--fff-history-home`), aligned with other FFF screens (login back button, landing actions).
+- Prefer the shared stack pattern: **`app-btn-stack`** plus Tailwind spacing on the wrapper (e.g. `className="mt-6"`), aligned with other FFF screens (login back button, landing actions).
 - For **full-row or card-shaped navigation** that is not a primary CTA, a **`<button type="button">`** with the same layout classes as the former link (e.g. `fff-history-row-link` + `fff-history-row-nav-btn`) plus an explicit **`aria-label`** is appropriate.
 - **Exceptions**: external URLs, `mailto:` / `tel:`, legal or marketing copy, and **public share views** where a plain URL or anchor is required for semantics or copy/paste.

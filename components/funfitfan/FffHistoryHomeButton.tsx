@@ -3,12 +3,18 @@
 import { useRouter } from 'next/navigation';
 import { AppButton } from '@/components/ui/AppButton';
 
-export default function FffHistoryHomeButton() {
+type Props = {
+  /** Spacing above the stack (Tailwind), e.g. `mt-6` */
+  className?: string;
+};
+
+/** Full-width BACK control — same `app-btn` sizing as other FFF stacks (landing, log wizard). */
+export default function FffHistoryHomeButton({ className }: Props) {
   const router = useRouter();
   return (
-    <div className="app-btn-stack app-btn-stack--fff-history-home">
-      <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
-        Home
+    <div className={['app-btn-stack', className].filter(Boolean).join(' ')}>
+      <AppButton type="button" variant="secondary" onClick={() => router.push('/fff')}>
+        BACK
       </AppButton>
     </div>
   );

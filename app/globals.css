@@ -83,8 +83,6 @@
   --fff-reel-empty-margin-top: 1.5rem;
   --fff-wizard-stack-margin-top: 1.5rem;
   --fff-wizard-stack-margin-top-lg: 2rem;
-  --fff-history-home-margin-top: 1.5rem;
-
   /* —— FunFitFan app-wide (all /fff routes; tokens only — no ad-hoc hex in TSX) —— */
   --fff-app-accent: #34d399;
   --fff-app-accent-soft: #6ee7b7;
@@ -330,12 +328,6 @@ body {
 
   .app-btn-stack--fff-reel-empty {
     margin-top: var(--fff-reel-empty-margin-top);
-  }
-
-  .app-btn-stack--fff-history-home {
-    margin-top: var(--fff-history-home-margin-top);
-    align-items: flex-start;
-    width: auto;
   }
 
   .app-btn-stack--wizard {

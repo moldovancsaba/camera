@@ -134,7 +134,7 @@ export default async function FffHistoryPage() {
         <HistoryPlayReelButton slideshowId={slideshowId} />
       </div>
 
-      <FffHistoryHomeButton />
+      <FffHistoryHomeButton className="mt-6" />
 
       {rows.length === 0 ? (
         <p className="mt-10 text-center fff-app-muted">
@@ -159,6 +159,8 @@ export default async function FffHistoryPage() {
           ))}
         </ul>
       )}
+
+      <FffHistoryHomeButton className={rows.length === 0 ? 'mt-8' : 'mt-10'} />
     </div>
   );
 }
