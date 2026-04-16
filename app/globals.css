@@ -31,8 +31,11 @@
 
   --app-btn-ghost-fg: #94a3b8;
   --app-btn-ghost-fg-hover: #f8fafc;
-  --app-btn-ghost-bg: transparent;
-  --app-btn-ghost-border: transparent;
+  /* Ghost = low-emphasis but still clearly a button (border + tint), not bare text */
+  --app-btn-ghost-bg: rgb(148 163 184 / 0.14);
+  --app-btn-ghost-bg-hover: rgb(148 163 184 / 0.26);
+  --app-btn-ghost-border: rgb(100 116 139 / 0.55);
+  --app-btn-ghost-border-hover: rgb(148 163 184 / 0.85);
 
   /* Gym member shell */
   --gym-app-bg-from: #f8fafc;
@@ -217,6 +220,8 @@ body {
 
   .app-btn--ghost:hover:not(:disabled) {
     color: var(--app-btn-ghost-fg-hover);
+    background-color: var(--app-btn-ghost-bg-hover);
+    border-color: var(--app-btn-ghost-border-hover);
   }
 
   .app-btn--compact {
@@ -988,11 +993,26 @@ body {
     font-size: 1.125rem;
     font-weight: 600;
     padding: 0.25rem 0.5rem;
+    /* Slightly stronger chip on light header so the outline reads as a control */
+    background-color: rgb(255 255 255 / 0.65);
+    border-color: var(--gym-header-border);
+  }
+
+  .gym-header-brand.app-btn--ghost:hover:not(:disabled) {
+    background-color: rgb(248 250 252 / 0.95);
+    border-color: var(--gym-step-detail);
   }
 
   @media (prefers-color-scheme: dark) {
     .gym-header-brand.app-btn--ghost {
       color: var(--gym-header-brand-fg-dark);
+      background-color: rgb(17 24 39 / 0.55);
+      border-color: var(--gym-header-border-dark);
+    }
+
+    .gym-header-brand.app-btn--ghost:hover:not(:disabled) {
+      background-color: rgb(31 41 55 / 0.85);
+      border-color: rgb(71 85 105 / 0.9);
     }
   }
 

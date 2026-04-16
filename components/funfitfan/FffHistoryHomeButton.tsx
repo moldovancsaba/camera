@@ -8,7 +8,7 @@ export default function FffHistoryHomeButton() {
   return (
     <div className="app-btn-stack app-btn-stack--fff-history-home">
       <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
-        ← Home
+        Home
       </AppButton>
     </div>
   );

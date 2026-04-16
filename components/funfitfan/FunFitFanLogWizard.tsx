@@ -199,7 +199,7 @@ export default function FunFitFanLogWizard() {
             Try again
           </AppButton>
           <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
-            ← Back
+            Back
           </AppButton>
         </div>
       </div>
@@ -257,7 +257,7 @@ export default function FunFitFanLogWizard() {
           ) : (
             <>
               <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
-                ← Cancel
+                Cancel
               </AppButton>
               <AppButton type="button" variant="primary" compact onClick={() => goToSelfieStep()}>
                 Take selfie
