@@ -5,6 +5,7 @@
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
+import AdminDeleteLessonButton from '@/components/gym/AdminDeleteLessonButton';
 import Link from 'next/link';
 
 export default async function AdminGymLessonsPage() {
@@ -55,15 +56,24 @@ export default async function AdminGymLessonsPage() {
             (l) => (
               <li
                 key={l.lessonId}
-                className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
               >
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="font-medium text-gray-900 dark:text-white">{l.title}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {l.isPublished ? 'Published' : 'Draft'} · {l.lessonId}
                   </p>
                 </div>
-                <span className="text-xs text-gray-400">{new Date(l.updatedAt).toLocaleString()}</span>
+                <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
+                  <Link
+                    href={`/admin/gym/lessons/${encodeURIComponent(l.lessonId)}/edit`}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                  >
+                    Edit
+                  </Link>
+                  <AdminDeleteLessonButton lessonId={l.lessonId} title={l.title} />
+                  <span className="text-xs text-gray-400">{new Date(l.updatedAt).toLocaleString()}</span>
+                </div>
               </li>
             )
           )}

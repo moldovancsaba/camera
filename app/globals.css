@@ -805,6 +805,20 @@ body {
     padding: 0.5rem var(--fff-landing-content-pad-x);
   }
 
+  .fff-app-preview-body--flush-top {
+    padding-top: 0.75rem;
+  }
+
+  .fff-app-preview-actions {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+  }
+
   .fff-app-preview-img {
     max-height: 100%;
     width: 100%;
@@ -1090,12 +1104,6 @@ body {
   .gym-step-page {
     margin-inline: auto;
     max-width: 36rem;
-  }
-
-  .gym-step-breadcrumb {
-    margin-bottom: 0.25rem;
-    font-size: 0.875rem;
-    color: var(--gym-step-meta);
   }
 
   .gym-step-kicker {

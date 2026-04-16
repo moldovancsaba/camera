@@ -19,7 +19,7 @@
 
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { AppButton } from '@/components/ui/AppButton';
 
 /** Supports hex (#rgb) or CSS `var(--token)` for FunFitFan-branded capture UI. */
@@ -56,6 +56,11 @@ export interface CameraCaptureProps {
   controlBar?: 'default' | 'fff-bottom-triple';
   /** Used with `controlBar="fff-bottom-triple"` for the left Cancel action. */
   onCancel?: () => void;
+  /**
+   * Optional row above Cancel / Take / Change camera in the FunFitFan bottom bar (e.g. back to activity step).
+   * Shown whenever the triple bar wrapper is visible before a captured still is held locally.
+   */
+  tripleBarExtra?: ReactNode;
 }
 
 export default function CameraCapture({ 
@@ -73,6 +78,7 @@ export default function CameraCapture({
   previewAspectWidthOverHeight,
   controlBar = 'default',
   onCancel,
+  tripleBarExtra,
 }: CameraCaptureProps) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -718,36 +724,41 @@ export default function CameraCapture({
       </div>
       </div>
 
-      {/* FunFitFan check-in: fixed bottom row — Cancel | Take | Change camera (AppButtons) */}
-      {useTripleBar && stream && !capturedImage && (
+      {/* FunFitFan check-in: fixed bottom — optional extra row, then Cancel | Take | Change camera */}
+      {useTripleBar && !capturedImage && (tripleBarExtra != null || stream) ? (
         <div className="fff-camera-triple-bar">
-          <div className="fff-camera-triple-bar-inner">
-            <div className="justify-self-start">
-              {onCancel ? (
-                <AppButton type="button" variant="neutral" compact onClick={onCancel}>
-                  Cancel
+          {tripleBarExtra != null ? (
+            <div className="fff-camera-triple-bar-extra mb-3 flex justify-center">{tripleBarExtra}</div>
+          ) : null}
+          {stream ? (
+            <div className="fff-camera-triple-bar-inner">
+              <div className="justify-self-start">
+                {onCancel ? (
+                  <AppButton type="button" variant="neutral" compact onClick={onCancel}>
+                    Cancel
+                  </AppButton>
+                ) : (
+                  <span />
+                )}
+              </div>
+              <div className="justify-self-center">
+                <AppButton type="button" variant="primary" compact onClick={() => capturePhoto()}>
+                  Take
                 </AppButton>
-              ) : (
-                <span />
-              )}
+              </div>
+              <div className="justify-self-end">
+                {hasMultipleCameras ? (
+                  <AppButton type="button" variant="secondary" compact onClick={() => switchCamera()}>
+                    Change camera
+                  </AppButton>
+                ) : (
+                  <span />
+                )}
+              </div>
             </div>
-            <div className="justify-self-center">
-              <AppButton type="button" variant="primary" compact onClick={() => capturePhoto()}>
-                Take
-              </AppButton>
-            </div>
-            <div className="justify-self-end">
-              {hasMultipleCameras ? (
-                <AppButton type="button" variant="secondary" compact onClick={() => switchCamera()}>
-                  Change camera
-                </AppButton>
-              ) : (
-                <span />
-              )}
-            </div>
-          </div>
+          ) : null}
         </div>
-      )}
+      ) : null}
 
       {useTripleBar && capturedImage && (
         <div className="fff-camera-triple-bar">

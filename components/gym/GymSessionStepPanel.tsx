@@ -12,7 +12,6 @@ import {
 
 export default function GymSessionStepPanel({
   sessionId,
-  lessonTitle,
   sortedSteps,
   ordinal,
   step,
@@ -21,7 +20,6 @@ export default function GymSessionStepPanel({
   status,
 }: {
   sessionId: string;
-  lessonTitle: string;
   sortedSteps: GymLessonStepLite[];
   ordinal: number;
   step: GymLessonStepLite;
@@ -103,7 +101,6 @@ export default function GymSessionStepPanel({
 
   return (
     <div className="gym-step-page">
-      <p className="gym-step-breadcrumb">{lessonTitle}</p>
       <p className="gym-step-kicker">{stepLabel}</p>
       <h1 className="gym-step-title">{step.title}</h1>
       {step.detail ? <p className="gym-step-detail">{step.detail}</p> : null}

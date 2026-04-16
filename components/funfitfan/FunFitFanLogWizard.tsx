@@ -272,23 +272,8 @@ export default function FunFitFanLogWizard() {
   if (step === 'selfie' && ctx) {
     return (
       <div className="fff-app-fullscreen-step">
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-[60] flex justify-start p-3">
-          <div className="pointer-events-auto">
-            <AppButton
-              type="button"
-              variant="ghost"
-              compact
-              onClick={() => {
-                setError(null);
-                setStep('details');
-              }}
-            >
-              ← Edit activity
-            </AppButton>
-          </div>
-        </div>
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 items-center justify-center px-4 pt-12 pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))]">
+          <div className="flex min-h-0 flex-1 items-center justify-center px-4 pt-4 pb-[calc(8.5rem+env(safe-area-inset-bottom,0px))]">
             <CameraCapture
               initialFacingMode="user"
               frameOverlay={undefined}
@@ -300,6 +285,19 @@ export default function FunFitFanLogWizard() {
               promptTitle="FunFitFan check-in"
               promptDescription="After your activity, capture your check-in photo."
               controlBar="fff-bottom-triple"
+              tripleBarExtra={
+                <AppButton
+                  type="button"
+                  variant="secondary"
+                  compact
+                  onClick={() => {
+                    setError(null);
+                    setStep('details');
+                  }}
+                >
+                  Edit activity
+                </AppButton>
+              }
               onCancel={() => router.push('/fff')}
               onCapture={(_blob, dataUrl) => {
                 setSelfieDataUrl(dataUrl);
@@ -321,17 +319,13 @@ export default function FunFitFanLogWizard() {
     return (
       <div className="fff-app-fullscreen-step">
         <div className="fff-app-preview-frame">
-          <header className="fff-app-preview-header">
-            <h1 className="fff-app-page-title fff-app-page-title--lg">Your card</h1>
-            <p className="fff-app-page-lede">Save to add it to your personal reel slideshow.</p>
-          </header>
-          <div className="fff-app-preview-body">
+          <div className="fff-app-preview-body fff-app-preview-body--flush-top">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={composite} alt="Preview" className="fff-app-preview-img" />
           </div>
           <footer className="fff-app-preview-footer">
-            {error ? <p className="fff-app-error">{error}</p> : null}
-            <div className="app-btn-stack app-btn-stack--wizard-lg">
+            {error ? <p className="mb-2 text-center fff-app-error">{error}</p> : null}
+            <div className="fff-app-preview-actions">
               <AppButton type="button" variant="secondary" compact onClick={() => setStep('details')}>
                 Edit text
               </AppButton>
@@ -357,9 +351,6 @@ export default function FunFitFanLogWizard() {
             onClick={() => router.push(`/slideshow/${ctx.slideshowId}`)}
           >
             Open my reel
-          </AppButton>
-          <AppButton type="button" variant="secondary" onClick={() => router.push('/fff/log')}>
-            Log another
           </AppButton>
           <AppButton type="button" variant="neutral" onClick={() => router.push('/fff')}>
             Home

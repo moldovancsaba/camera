@@ -75,7 +75,6 @@ export default async function GymSessionStepPage({
   return (
     <GymSessionStepPanel
       sessionId={sessionId}
-      lessonTitle={String(row.lessonTitle)}
       sortedSteps={sorted}
       ordinal={ordinal}
       step={step}
