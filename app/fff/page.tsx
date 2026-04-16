@@ -16,6 +16,7 @@ const fffTitleFont = DynaPuff({
 
 export default async function FunFitFanLandingPage() {
   const session = await getSession();
+  const signedIn = session != null && session.appAccess !== false;
 
   return (
     <div className="fff-app-inner">
@@ -32,7 +33,7 @@ export default async function FunFitFanLandingPage() {
         share the memories.
       </p>
 
-      <FunFitFanLandingActions signedIn={Boolean(session)} />
+      <FunFitFanLandingActions signedIn={signedIn} />
 
       <p className="fff-landing-footnote">
         Add to Home Screen: use your browser menu on mobile to install FFF as an app (PWA). Shared cookies for{' '}

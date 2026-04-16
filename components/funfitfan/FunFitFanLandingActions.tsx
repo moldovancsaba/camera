@@ -1,26 +1,24 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { AppButton } from '@/components/ui/AppButton';
 
 export default function FunFitFanLandingActions({ signedIn }: { signedIn: boolean }) {
-  const router = useRouter();
-
   return (
     <div className="app-btn-stack app-btn-stack--fff-landing">
       {!signedIn ? (
-        <AppButton variant="secondary" onClick={() => router.push('/fff/login')}>
+        <Link href="/fff/login" prefetch={false} className="app-btn app-btn--secondary">
           Sign in/sign up
-        </AppButton>
+        </Link>
       ) : null}
       {signedIn ? (
         <>
-          <AppButton variant="primary" onClick={() => router.push('/fff/log')}>
+          <Link href="/fff/log" prefetch={false} className="app-btn app-btn--primary">
             I DO IT
-          </AppButton>
-          <AppButton variant="secondary" onClick={() => router.push('/fff/history')}>
+          </Link>
+          <Link href="/fff/history" prefetch={false} className="app-btn app-btn--secondary">
             HISTORY
-          </AppButton>
+          </Link>
           <a href="/api/auth/logout" className="app-btn app-btn--neutral">
             Log out
           </a>
