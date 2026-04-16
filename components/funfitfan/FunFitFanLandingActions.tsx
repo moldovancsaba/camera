@@ -10,19 +10,21 @@ export default function FunFitFanLandingActions({ signedIn }: { signedIn: boolea
     <div className="app-btn-stack app-btn-stack--fff-landing">
       {!signedIn ? (
         <AppButton variant="secondary" onClick={() => router.push('/fff/login')}>
-          Sign in to FunFitFan
+          Sign in/sign up
         </AppButton>
       ) : null}
-      <AppButton variant="primary" onClick={() => router.push('/fff/log')}>
-        I DO IT
-      </AppButton>
-      <AppButton variant="secondary" onClick={() => router.push('/fff/history')}>
-        HISTORY
-      </AppButton>
       {signedIn ? (
-        <a href="/api/auth/logout" className="app-btn app-btn--neutral">
-          Log out
-        </a>
+        <>
+          <AppButton variant="primary" onClick={() => router.push('/fff/log')}>
+            I DO IT
+          </AppButton>
+          <AppButton variant="secondary" onClick={() => router.push('/fff/history')}>
+            HISTORY
+          </AppButton>
+          <a href="/api/auth/logout" className="app-btn app-btn--neutral">
+            Log out
+          </a>
+        </>
       ) : null}
     </div>
   );

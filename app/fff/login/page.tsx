@@ -18,7 +18,7 @@ export default async function FffLoginPage({
   return (
     <div className="fff-app-inner fff-app-inner--centered">
       <p className="fff-login-kicker">FFF</p>
-      <h1 className="fff-login-title">Sign in to FunFitFan</h1>
+      <h1 className="fff-login-title">Sign in/sign up</h1>
       <p className="fff-login-lede">
         Continue with Google or Facebook. You will use the same account as on our other apps when your organization
         allows it.
