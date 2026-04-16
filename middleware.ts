@@ -1,10 +1,13 @@
 /**
- * Edge middleware: restrict /admin UI to authenticated users with app admin role.
- * API routes under /api/admin/* remain guarded by requireAdmin() in each handler.
+ * Edge middleware:
+ * - /admin: require authenticated app admin (unchanged).
+ * - FunFitFan host: rewrite `/` → `/fff` (landing + PWA scope on fff.*).
+ * - Camera host: optional redirect `/fff` → canonical FFF origin (avoid duplicate URL).
  */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { isCameraHost, isFffHost, defaultFffOrigin } from '@/lib/site-hosts';
 
 const SESSION_COOKIE_NAME = 'camera_session';
 
@@ -43,6 +46,21 @@ function parseAdminGate(
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const host = request.headers.get('host');
+
+  if (isFffHost(host) && (pathname === '/' || pathname === '')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/fff';
+    return NextResponse.rewrite(url);
+  }
+
+  if (isFffHost(host) && pathname === '/fff') {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  if (isCameraHost(host) && pathname === '/fff') {
+    return NextResponse.redirect(new URL('/', defaultFffOrigin()));
+  }
 
   if (!pathname.startsWith('/admin')) {
     return NextResponse.next();
@@ -63,5 +81,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|webmanifest)$).*)',
+  ],
 };

@@ -157,5 +157,53 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       .createIndex({ eventId: 1, createdAt: -1 }, { name: 'slideshow_layouts_eventId_createdAt' })
   );
 
+  // --- gym module ---
+  await track(COLLECTIONS.GYM_LESSONS, () =>
+    db.collection(COLLECTIONS.GYM_LESSONS).createIndex(
+      { lessonId: 1 },
+      {
+        unique: true,
+        name: 'gym_lessons_lessonId_unique',
+        partialFilterExpression: { lessonId: { $type: 'string' } },
+      }
+    )
+  );
+  await track(COLLECTIONS.GYM_LESSONS, () =>
+    db
+      .collection(COLLECTIONS.GYM_LESSONS)
+      .createIndex({ isPublished: 1, updatedAt: -1 }, { name: 'gym_lessons_published_updatedAt' })
+  );
+  await track(COLLECTIONS.GYM_WORKOUT_SESSIONS, () =>
+    db.collection(COLLECTIONS.GYM_WORKOUT_SESSIONS).createIndex(
+      { sessionId: 1 },
+      {
+        unique: true,
+        name: 'gym_workout_sessions_sessionId_unique',
+        partialFilterExpression: { sessionId: { $type: 'string' } },
+      }
+    )
+  );
+  await track(COLLECTIONS.GYM_WORKOUT_SESSIONS, () =>
+    db
+      .collection(COLLECTIONS.GYM_WORKOUT_SESSIONS)
+      .createIndex({ userId: 1, startedAt: -1 }, { name: 'gym_workout_sessions_userId_startedAt' })
+  );
+  await track(COLLECTIONS.GYM_WORKOUT_SESSIONS, () =>
+    db
+      .collection(COLLECTIONS.GYM_WORKOUT_SESSIONS)
+      .createIndex({ lessonId: 1, startedAt: -1 }, { name: 'gym_workout_sessions_lessonId_startedAt' })
+  );
+
+  await track(COLLECTIONS.FFF_SETTINGS, () =>
+    db
+      .collection(COLLECTIONS.FFF_SETTINGS)
+      .createIndex({ settingsKey: 1 }, { unique: true, name: 'fff_settings_settingsKey_unique' })
+  );
+  await track(COLLECTIONS.FFF_USER_PROFILES, () =>
+    db
+      .collection(COLLECTIONS.FFF_USER_PROFILES)
+      .createIndex({ userId: 1 }, { unique: true, name: 'fff_user_profiles_userId_unique' })
+  );
+
   return results;
 }

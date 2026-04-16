@@ -20,9 +20,11 @@ import {
   apiCreated,
   apiNotFound,
   apiBadRequest,
+  apiUnauthorized,
   checkRateLimit,
   RATE_LIMITS,
 } from '@/lib/api';
+import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
 
 /**
  * POST /api/submissions
@@ -52,11 +54,17 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       // v2.0.0: Custom page data
       userInfo,
       consents,
+      funfitfanActivity,
+      funfitfanResult,
     } = body;
 
   // frameId can be null if event has no frames (v2.8.0)
   if (!imageData) {
     throw apiBadRequest('Image data is required');
+  }
+
+  if (partnerId && String(partnerId).trim() === FUNFITFAN_PARTNER_ID && !session?.user?.id) {
+    throw apiUnauthorized('Sign in required for FunFitFan submissions');
   }
 
     // Convert base64 to buffer and upload to imgbb
@@ -148,6 +156,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         // Image dimensions for slideshow aspect ratio detection (default 16:9 if no frame)
         finalWidth: imageWidth || frame?.width || 1920,
         finalHeight: imageHeight || frame?.height || 1080,
+        ...(typeof funfitfanActivity === 'string' && funfitfanActivity.trim()
+          ? { funfitfanActivity: funfitfanActivity.trim() }
+          : {}),
+        ...(typeof funfitfanResult === 'string' && funfitfanResult.trim()
+          ? { funfitfanResult: funfitfanResult.trim() }
+          : {}),
       },
       createdAt: new Date().toISOString(),
     };

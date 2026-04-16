@@ -1,0 +1,18 @@
+{
+  "name": "FunFitFan",
+  "short_name": "FFF",
+  "description": "FunFitFan — fitness, lessons, and gym check-ins.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#022c22",
+  "theme_color": "#059669",
+  "icons": [
+    {
+      "src": "https://i.ibb.co/zTG7ztxC/camera-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

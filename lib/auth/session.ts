@@ -27,6 +27,15 @@ const SESSION_COOKIE_NAME = 'camera_session';
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 
 /**
+ * Optional cookie domain (e.g. `.messmass.com`) so `camera.*` and `fff.*` share `camera_session`.
+ * Leave unset for host-only cookies (default). Set only for trusted sibling subdomains.
+ */
+function sessionCookieDomain(): string | undefined {
+  return process.env.SESSION_COOKIE_DOMAIN?.trim() || undefined;
+}
+
+
+/**
  * Session data stored in cookie
  */
 export interface Session {
@@ -81,12 +90,14 @@ export async function createSession(
     appAccess: appPermission?.appAccess,
   };
 
+  const domain = sessionCookieDomain();
   const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax' as const,
     maxAge: SESSION_MAX_AGE,
-    path: '/',
+    path: '/' as const,
+    ...(domain ? { domain } : {}),
   };
 
   const payload = JSON.stringify(session);
@@ -141,7 +152,20 @@ export async function getSession(): Promise<Session | null> {
  * Clear current session (logout)
  */
 export async function clearSession(): Promise<void> {
-  (await cookies()).delete(SESSION_COOKIE_NAME);
+  const store = await cookies();
+  const domain = sessionCookieDomain();
+  if (domain) {
+    store.set(SESSION_COOKIE_NAME, '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+      domain,
+    });
+  } else {
+    store.delete(SESSION_COOKIE_NAME);
+  }
   console.log('✓ Session cleared');
 }
 
@@ -164,12 +188,14 @@ export function setPendingSessionCookie(
     expiresAt: expiresAt.toISOString(),
   };
 
+  const pendingDomain = sessionCookieDomain();
   response.cookies.set(PENDING_SESSION_COOKIE_NAME, JSON.stringify(pendingSession), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 15 * 60,
     path: '/',
+    ...(pendingDomain ? { domain: pendingDomain } : {}),
   });
 }
 
@@ -188,7 +214,19 @@ export async function consumePendingSession(): Promise<PendingSession | null> {
   }
 
   // Clear the cookie immediately (one-time use)
-  cookieStore.delete(PENDING_SESSION_COOKIE_NAME);
+  const pd = sessionCookieDomain();
+  if (pd) {
+    cookieStore.set(PENDING_SESSION_COOKIE_NAME, '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+      domain: pd,
+    });
+  } else {
+    cookieStore.delete(PENDING_SESSION_COOKIE_NAME);
+  }
 
   try {
     const pending: PendingSession = JSON.parse(pendingCookie.value);

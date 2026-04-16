@@ -32,6 +32,8 @@ export interface CameraCaptureProps {
   captureButtonBorderColor?: string; // Hex color for capture button border (default: #3B82F6)
   promptTitle?: string;  // Custom title for camera start prompt
   promptDescription?: string; // Custom description for camera start prompt
+  /** Default camera facing (e.g. `user` for gym selfie). */
+  initialFacingMode?: 'user' | 'environment';
 }
 
 export default function CameraCapture({ 
@@ -44,12 +46,13 @@ export default function CameraCapture({
   captureButtonColor = '#3B82F6',
   captureButtonBorderColor = '#3B82F6',
   promptTitle = 'Ready to capture?',
-  promptDescription = 'Click to start your camera and take a photo'
+  promptDescription = 'Click to start your camera and take a photo',
+  initialFacingMode = 'environment',
 }: CameraCaptureProps) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>(initialFacingMode);
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [frameImage, setFrameImage] = useState<HTMLImageElement | null>(null);

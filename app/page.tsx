@@ -99,6 +99,15 @@ export default async function Home({
                   Admin Panel
                 </a>
               )}
+
+              {session.appAccess !== false && (
+                <a
+                  href="/gym"
+                  className="px-8 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-colors shadow-lg"
+                >
+                  Gym
+                </a>
+              )}
               
               <a
                 href="/api/auth/logout"

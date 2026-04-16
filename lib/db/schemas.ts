@@ -10,6 +10,8 @@
  * - frames: Pre-designed frame templates with three-tier ownership (global/partner/event)
  * - submissions: User photo submissions with comprehensive metadata and onboarding data
  * - users_cache: Optional cache of SSO user data for performance
+ * - gym_lessons, gym_workout_sessions: Sport module (lessons + logged workouts; gym selfies use imgbb like submissions)
+ * - fff_settings, fff_user_profiles: FunFitFan — admin default frame + per-user virtual event + slideshow id
  * 
  * Frame Visibility Hierarchy:
  * - Global frames: Available to all partners/events, can be deactivated per partner/event
@@ -38,6 +40,12 @@ export const COLLECTIONS = {
   USERS_CACHE: 'users_cache',
   SLIDESHOWS: 'slideshows',
   SLIDESHOW_LAYOUTS: 'slideshow_layouts',
+  /** Gym / sport module: lesson templates and logged workouts (same SSO + Atlas as Camera) */
+  GYM_LESSONS: 'gym_lessons',
+  GYM_WORKOUT_SESSIONS: 'gym_workout_sessions',
+  /** FunFitFan: singleton app settings + per-user virtual event / slideshow */
+  FFF_SETTINGS: 'fff_settings',
+  FFF_USER_PROFILES: 'fff_user_profiles',
 } as const;
 
 // ============================================================================
@@ -751,6 +759,90 @@ export interface UserCache {
 }
 
 // ============================================================================
+// GYM MODULE (lessons + workout sessions + gym selfie URL on imgbb)
+// ============================================================================
+
+/**
+ * One step inside a lesson (e.g. warm-up, set block, stretch).
+ */
+export interface GymLessonStep {
+  order: number;
+  title: string;
+  detail?: string;
+}
+
+/**
+ * Published lesson managed in admin; members start a workout session from it.
+ */
+export interface GymLesson {
+  _id?: ObjectId;
+  lessonId: string;
+  title: string;
+  description?: string;
+  steps: GymLessonStep[];
+  isPublished: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type GymWorkoutSessionStatus = 'in_progress' | 'completed' | 'cancelled';
+
+/**
+ * Singleton FunFitFan app settings (admin-managed default frame for all FFF flows).
+ */
+export interface FffSettings {
+  _id?: ObjectId | string;
+  /** Exactly one document; used for upserts */
+  settingsKey: 'default';
+  /** Frame UUID from `frames` — used for partner defaults and new personal events */
+  defaultFrameId: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+/**
+ * Links an SSO user to their personal FunFitFan "event" (Camera event) and history slideshow.
+ */
+export interface FffUserProfile {
+  _id?: ObjectId;
+  userId: string;
+  userEmail: string;
+  /** MongoDB ObjectId string of the `events` document (used in /capture/[id] URLs) */
+  eventMongoId: string;
+  /** `events.eventId` UUID (submissions + slideshows reference this) */
+  eventUuid: string;
+  slideshowId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Logged workout for a user; optional selfie uses same imgbb pipeline as submissions.
+ */
+export interface GymWorkoutSession {
+  _id?: ObjectId;
+  sessionId: string;
+  userId: string;
+  userEmail: string;
+  lessonId: string;
+  lessonTitle: string;
+  status: GymWorkoutSessionStatus;
+  startedAt: string;
+  completedAt?: string;
+  /** Per-step completion or notes (flexible for future RPE/reps fields) */
+  stepLog: Array<{
+    stepOrder: number;
+    completedAt: string;
+    notes?: string;
+  }>;
+  selfieImageUrl?: string;
+  selfieUploadedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================================
 // HELPER TYPES AND UTILITIES
 // ============================================================================
 
@@ -763,6 +855,8 @@ export type NewFrame = Omit<Frame, '_id'>;
 export type NewSubmission = Omit<Submission, '_id'>;
 export type NewUserCache = Omit<UserCache, '_id'>;
 export type NewSlideshow = Omit<Slideshow, '_id'>;
+export type NewGymLesson = Omit<GymLesson, '_id'>;
+export type NewGymWorkoutSession = Omit<GymWorkoutSession, '_id'>;
 
 /**
  * Generate ISO 8601 timestamp with milliseconds in UTC

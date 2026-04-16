@@ -31,6 +31,8 @@ export default function CollapsibleSidebar({ session }: CollapsibleSidebarProps)
     { href: '/admin/frames', icon: '🖼️', label: 'Frames' },
     { href: '/admin/logos', icon: '🎨', label: 'Logos' },
     { href: '/admin/submissions', icon: '📷', label: 'Submissions' },
+    { href: '/admin/gym', icon: '💪', label: 'Gym' },
+    { href: '/admin/gym/funfitfan', icon: '🏃', label: 'FunFitFan' },
     { href: '/admin/users', icon: '👥', label: 'Users' },
   ];
 
