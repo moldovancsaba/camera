@@ -8,8 +8,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isCameraHost, isFffHost, defaultFffOrigin } from '@/lib/site-hosts';
-
-const SESSION_COOKIE_NAME = 'camera_session';
+import { readSerializedSessionFromCookieGet } from '@/lib/auth/session-cookie-chunks';
 
 function parseAdminGate(
   raw: string
@@ -68,12 +67,12 @@ export function middleware(request: NextRequest) {
 
   const loginPath = isFffHost(host) ? '/fff/login' : '/api/auth/login';
 
-  const cookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  if (!cookie) {
+  const serialized = readSerializedSessionFromCookieGet((name) => request.cookies.get(name)?.value);
+  if (!serialized) {
     return NextResponse.redirect(new URL(loginPath, request.url));
   }
 
-  const gate = parseAdminGate(cookie);
+  const gate = parseAdminGate(serialized);
   if (!gate.allow) {
     const target = gate.toLogin ? loginPath : '/';
     return NextResponse.redirect(new URL(target, request.url));

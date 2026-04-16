@@ -19,11 +19,15 @@
 
 import { cookies } from 'next/headers';
 import type { NextRequest, NextResponse } from 'next/server';
+import { Buffer } from 'node:buffer';
 import { SSOUser, TokenResponse, refreshAccessToken } from './sso';
+import {
+  SESSION_COOKIE_NAME,
+  chunkCookieSuffixesToClear,
+  readSerializedSessionFromCookieGet,
+} from './session-cookie-chunks';
 
 const PENDING_SESSION_COOKIE_NAME = 'camera_pending_session';
-
-const SESSION_COOKIE_NAME = 'camera_session';
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 
 /**
@@ -123,11 +127,65 @@ export async function createSession(
   };
 
   const payload = JSON.stringify(session);
+  /** Chrome rejects ~>4096 bytes per cookie; Safari is looser — split when needed. */
+  const SINGLE_COOKIE_MAX_CHARS = 3600;
 
-  if (response) {
-    response.cookies.set(SESSION_COOKIE_NAME, payload, cookieOptions);
+  const clearChunks = (target: 'response' | 'store', res?: NextResponse, store?: Awaited<ReturnType<typeof cookies>>) => {
+    for (const name of chunkCookieSuffixesToClear()) {
+      if (target === 'response' && res) {
+        res.cookies.set(name, '', { ...cookieOptions, maxAge: 0 });
+      } else if (store) {
+        const domain = sessionCookieDomain();
+        if (domain) {
+          store.set(name, '', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 0,
+            path: '/',
+            domain,
+          });
+        } else {
+          store.delete(name);
+        }
+      }
+    }
+  };
+
+  if (payload.length <= SINGLE_COOKIE_MAX_CHARS) {
+    if (response) {
+      clearChunks('response', response);
+      response.cookies.set(SESSION_COOKIE_NAME, payload, cookieOptions);
+    } else {
+      const store = await cookies();
+      clearChunks('store', undefined, store);
+      store.set(SESSION_COOKIE_NAME, payload, cookieOptions);
+    }
   } else {
-    (await cookies()).set(SESSION_COOKIE_NAME, payload, cookieOptions);
+    const b64 = Buffer.from(payload, 'utf8').toString('base64url');
+    const CHUNK = 3100;
+    const parts: string[] = [];
+    for (let i = 0; i < b64.length; i += CHUNK) {
+      parts.push(b64.slice(i, i + CHUNK));
+    }
+    const primaryValue = `SPLIT1:${parts.length}:${parts[0]}`;
+    console.warn(
+      `✓ Session cookie split into ${parts.length} parts (session JSON ~${payload.length} chars; browser per-cookie limit)`
+    );
+    if (response) {
+      clearChunks('response', response);
+      response.cookies.set(SESSION_COOKIE_NAME, primaryValue, cookieOptions);
+      for (let i = 1; i < parts.length; i++) {
+        response.cookies.set(`${SESSION_COOKIE_NAME}_${i}`, parts[i], cookieOptions);
+      }
+    } else {
+      const store = await cookies();
+      clearChunks('store', undefined, store);
+      store.set(SESSION_COOKIE_NAME, primaryValue, cookieOptions);
+      for (let i = 1; i < parts.length; i++) {
+        store.set(`${SESSION_COOKIE_NAME}_${i}`, parts[i], cookieOptions);
+      }
+    }
   }
 
   console.log('✓ Session created for user:', user.email);
@@ -142,14 +200,14 @@ export async function createSession(
  */
 export async function getSession(): Promise<Session | null> {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME);
+  const merged = readSerializedSessionFromCookieGet((name) => cookieStore.get(name)?.value);
 
-  if (!sessionCookie) {
+  if (!merged) {
     return null;
   }
 
   try {
-    const session: Session = JSON.parse(sessionCookie.value);
+    const session: Session = JSON.parse(merged);
 
     // Check if session expired (30 days)
     const now = new Date();
@@ -176,17 +234,17 @@ export async function getSession(): Promise<Session | null> {
 export async function clearSession(): Promise<void> {
   const store = await cookies();
   const domain = sessionCookieDomain();
-  if (domain) {
-    store.set(SESSION_COOKIE_NAME, '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/',
-      domain,
-    });
-  } else {
-    store.delete(SESSION_COOKIE_NAME);
+  const secure = process.env.NODE_ENV === 'production';
+  const blank = { httpOnly: true, secure, sameSite: 'lax' as const, maxAge: 0, path: '/' as const };
+
+  for (const name of [SESSION_COOKIE_NAME, ...chunkCookieSuffixesToClear()]) {
+    if (domain) {
+      store.set(name, '', { ...blank, domain });
+    } else if (name === SESSION_COOKIE_NAME) {
+      store.delete(SESSION_COOKIE_NAME);
+    } else {
+      store.delete(name);
+    }
   }
   console.log('✓ Session cleared');
 }
