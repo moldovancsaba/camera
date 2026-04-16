@@ -18,27 +18,37 @@ import {
   getUserInfo,
   getOAuthCallbackRedirectUri,
 } from '@/lib/auth/sso';
-import { consumePendingSession, createSession } from '@/lib/auth/session';
+import {
+  clearPendingSessionCookieOnResponse,
+  createSession,
+  readPendingSessionFromRequest,
+} from '@/lib/auth/session';
 import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
 
 /** Prefer capture URL when capture resume cookies exist so users see a clear error in context. */
 function redirectOAuthFailure(
   request: NextRequest,
   errorCode: string,
-  message: string
+  message: string,
+  options?: { clearPendingSession?: boolean }
 ): NextResponse {
   const captureEventId = request.cookies.get('captureEventId')?.value;
 
+  let res: NextResponse;
   if (captureEventId) {
     const url = new URL(`/capture/${captureEventId}`, request.url);
     url.searchParams.set('error', errorCode);
     url.searchParams.set('message', encodeURIComponent(message));
-    return NextResponse.redirect(url);
+    res = NextResponse.redirect(url);
+  } else {
+    res = NextResponse.redirect(
+      new URL(`/?error=${errorCode}&message=${encodeURIComponent(message)}`, request.url)
+    );
   }
-
-  return NextResponse.redirect(
-    new URL(`/?error=${errorCode}&message=${encodeURIComponent(message)}`, request.url)
-  );
+  if (options?.clearPendingSession) {
+    clearPendingSessionCookieOnResponse(res);
+  }
+  return res;
 }
 
 export async function GET(request: NextRequest) {
@@ -56,25 +66,28 @@ export async function GET(request: NextRequest) {
       return redirectOAuthFailure(
         request,
         error,
-        errorDescription || 'Authentication failed'
+        errorDescription || 'Authentication failed',
+        { clearPendingSession: true }
       );
     }
 
     // Validate required parameters
     if (!code || !state) {
       console.error('✗ Missing code or state parameter');
-      return redirectOAuthFailure(request, 'invalid_request', 'Missing required parameters');
+      return redirectOAuthFailure(request, 'invalid_request', 'Missing required parameters', {
+        clearPendingSession: true,
+      });
     }
 
-    // Get and verify pending session (CSRF protection)
-    const pendingSession = await consumePendingSession();
-    
+    const pendingSession = readPendingSessionFromRequest(request);
+
     if (!pendingSession) {
       console.error('✗ No pending session found or expired');
       return redirectOAuthFailure(
         request,
         'session_expired',
-        'Login session expired, please try again'
+        'Login session expired, please try again',
+        { clearPendingSession: true }
       );
     }
 
@@ -84,7 +97,9 @@ export async function GET(request: NextRequest) {
         cookieStateLen: pendingSession.state.length,
         queryStateLen: state.length,
       });
-      return redirectOAuthFailure(request, 'invalid_state', 'Invalid state parameter');
+      return redirectOAuthFailure(request, 'invalid_state', 'Invalid state parameter', {
+        clearPendingSession: true,
+      });
     }
 
     console.log('✓ State verified, exchanging code for tokens');
@@ -167,6 +182,7 @@ export async function GET(request: NextRequest) {
       const response = NextResponse.redirect(resumeUrl);
       response.cookies.delete('captureEventId');
       response.cookies.delete('capturePageIndex');
+      clearPendingSessionCookieOnResponse(response);
 
       await createSession(user, tokens, { appRole, appAccess }, response);
       console.log('✓ Session created');
@@ -176,6 +192,7 @@ export async function GET(request: NextRequest) {
     console.log('✓ Redirecting to homepage');
 
     const homeResponse = NextResponse.redirect(new URL('/', request.url));
+    clearPendingSessionCookieOnResponse(homeResponse);
     await createSession(user, tokens, { appRole, appAccess }, homeResponse);
     console.log('✓ Session created');
     return homeResponse;
@@ -186,7 +203,8 @@ export async function GET(request: NextRequest) {
     return redirectOAuthFailure(
       request,
       'auth_failed',
-      error instanceof Error ? error.message : 'Authentication failed'
+      error instanceof Error ? error.message : 'Authentication failed',
+      { clearPendingSession: true }
     );
   }
 }

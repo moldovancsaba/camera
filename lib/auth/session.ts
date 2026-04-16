@@ -18,7 +18,7 @@
  */
 
 import { cookies } from 'next/headers';
-import type { NextResponse } from 'next/server';
+import type { NextRequest, NextResponse } from 'next/server';
 import { SSOUser, TokenResponse, refreshAccessToken } from './sso';
 
 const PENDING_SESSION_COOKIE_NAME = 'camera_pending_session';
@@ -32,6 +32,28 @@ const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
  */
 function sessionCookieDomain(): string | undefined {
   return process.env.SESSION_COOKIE_DOMAIN?.trim() || undefined;
+}
+
+/**
+ * OAuth PKCE pending cookie: must survive the cross-site round-trip from our origin → IdP → `/api/auth/callback`.
+ * Chrome (incl. strict tracking / third-party cookie modes) is pickier than Safari about `SameSite=Lax` on that hop;
+ * `SameSite=None` + `Secure` is the standard pattern for short-lived OAuth handoff cookies (prod is always HTTPS).
+ */
+function oauthPendingCookieAttrs(): {
+  httpOnly: true;
+  secure: boolean;
+  sameSite: 'lax' | 'none';
+  path: '/';
+} & { domain?: string } {
+  const domain = sessionCookieDomain();
+  const isProd = process.env.NODE_ENV === 'production';
+  return {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+    path: '/',
+    ...(domain ? { domain } : {}),
+  };
 }
 
 
@@ -170,11 +192,35 @@ export async function clearSession(): Promise<void> {
 }
 
 /**
- * Attach pending OAuth session (PKCE + state) to a redirect response.
- * In App Router route handlers, cookies().set() is not reliably merged with
- * NextResponse.redirect(); setting on the response ensures the browser receives
- * camera_pending_session before the user is sent to the IdP.
+ * Read PKCE pending cookie from the incoming request (OAuth callback route handlers).
  */
+export function readPendingSessionFromRequest(request: NextRequest): PendingSession | null {
+  const raw = request.cookies.get(PENDING_SESSION_COOKIE_NAME)?.value;
+  if (!raw) return null;
+  try {
+    const pending = JSON.parse(raw) as PendingSession;
+    if (typeof pending.codeVerifier !== 'string' || typeof pending.state !== 'string') {
+      return null;
+    }
+    const now = new Date();
+    const expiresAt = new Date(pending.expiresAt);
+    if (!Number.isFinite(expiresAt.getTime()) || now >= expiresAt) {
+      return null;
+    }
+    return pending;
+  } catch {
+    return null;
+  }
+}
+
+/** Clear pending OAuth cookie on an outgoing redirect response (must match attributes from set). */
+export function clearPendingSessionCookieOnResponse(response: NextResponse): void {
+  response.cookies.set(PENDING_SESSION_COOKIE_NAME, '', {
+    ...oauthPendingCookieAttrs(),
+    maxAge: 0,
+  });
+}
+
 export function setPendingSessionCookie(
   response: NextResponse,
   data: Omit<PendingSession, 'createdAt' | 'expiresAt'>
@@ -188,64 +234,10 @@ export function setPendingSessionCookie(
     expiresAt: expiresAt.toISOString(),
   };
 
-  const pendingDomain = sessionCookieDomain();
   response.cookies.set(PENDING_SESSION_COOKIE_NAME, JSON.stringify(pendingSession), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    ...oauthPendingCookieAttrs(),
     maxAge: 15 * 60,
-    path: '/',
-    ...(pendingDomain ? { domain: pendingDomain } : {}),
   });
-}
-
-/**
- * Get and clear pending session data
- * Used in OAuth callback to verify state and get code verifier
- * 
- * @returns Pending session if valid, null if expired or not found
- */
-export async function consumePendingSession(): Promise<PendingSession | null> {
-  const cookieStore = await cookies();
-  const pendingCookie = cookieStore.get(PENDING_SESSION_COOKIE_NAME);
-
-  if (!pendingCookie) {
-    return null;
-  }
-
-  // Clear the cookie immediately (one-time use)
-  const pd = sessionCookieDomain();
-  if (pd) {
-    cookieStore.set(PENDING_SESSION_COOKIE_NAME, '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/',
-      domain: pd,
-    });
-  } else {
-    cookieStore.delete(PENDING_SESSION_COOKIE_NAME);
-  }
-
-  try {
-    const pending: PendingSession = JSON.parse(pendingCookie.value);
-
-    // Check if expired
-    const now = new Date();
-    const expiresAt = new Date(pending.expiresAt);
-    
-    if (now >= expiresAt) {
-      console.log('Pending session expired');
-      return null;
-    }
-
-    return pending;
-    
-  } catch (error) {
-    console.error('Error parsing pending session:', error);
-    return null;
-  }
 }
 
 /**
