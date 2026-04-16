@@ -269,20 +269,32 @@ export default function FunFitFanLogWizard() {
 
   if (step === 'preview' && composite) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-8">
-        <h1 className="text-2xl font-semibold">Your card</h1>
-        <p className="mt-2 text-sm text-slate-400">Save to add it to your personal reel slideshow.</p>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={composite} alt="Preview" className="mt-6 w-full rounded-xl border border-slate-700" />
-        {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
-        <div className="app-btn-stack app-btn-stack--wizard-lg">
-          <AppButton type="button" variant="secondary" compact onClick={() => setStep('details')}>
-            Edit text
-          </AppButton>
-          <AppButton type="button" variant="primary" compact disabled={saving} onClick={() => void submit()}>
-            {saving ? 'Saving…' : 'Save to reel'}
-          </AppButton>
+      <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-slate-950 text-white">
+        <header className="mx-auto w-full max-w-lg shrink-0 px-4 pt-4 pb-2">
+          <h1 className="text-xl font-semibold sm:text-2xl">Your card</h1>
+          <p className="mt-1 text-xs text-slate-400 sm:text-sm">
+            Save to add it to your personal reel slideshow.
+          </p>
+        </header>
+        <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center justify-center px-4 py-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={composite}
+            alt="Preview"
+            className="max-h-full w-full max-w-full object-contain rounded-xl border border-slate-700 shadow-lg"
+          />
         </div>
+        <footer className="mx-auto w-full max-w-lg shrink-0 space-y-2 px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
+          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          <div className="app-btn-stack app-btn-stack--wizard-lg">
+            <AppButton type="button" variant="secondary" compact onClick={() => setStep('details')}>
+              Edit text
+            </AppButton>
+            <AppButton type="button" variant="primary" compact disabled={saving} onClick={() => void submit()}>
+              {saving ? 'Saving…' : 'Save to reel'}
+            </AppButton>
+          </div>
+        </footer>
       </div>
     );
   }
