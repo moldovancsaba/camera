@@ -260,7 +260,7 @@ export default function FunFitFanLogWizard() {
           <AppButton type="button" variant="secondary" onClick={() => router.push('/fff/log')}>
             Log another
           </AppButton>
-          <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
+          <AppButton type="button" variant="neutral" onClick={() => router.push('/fff')}>
             Home
           </AppButton>
         </div>

@@ -398,7 +398,6 @@ export function SlideshowPlayerCore({
   );
 
   const headSlide = slideQueue[0];
-  const queueLen = slideQueue.length;
 
   useEffect(() => {
     if (!settings || !isPlaying || !headSlide) return;
@@ -788,7 +787,6 @@ export function SlideshowPlayerCore({
         ) : (
           <div className="text-white text-center px-4 max-w-lg">
             <div className="text-2xl md:text-4xl mb-2 md:mb-4">📸</div>
-            <div className="text-lg md:text-2xl">{settings.name}</div>
             <div className="text-white/80 mt-1 md:mt-2 text-xs md:text-base">No submissions yet</div>
           </div>
         )}
@@ -803,64 +801,54 @@ export function SlideshowPlayerCore({
 
       {variant === 'fullscreen' && (!isFullscreen || showControls) && (
         <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 to-transparent p-6 transition-opacity">
-          <div className="max-w-7xl mx-auto">
-            <div className="mb-4">
-              <h1 className="text-white text-2xl font-bold">{settings.name}</h1>
-              <p className="text-gray-300 text-sm">{settings.eventName}</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => {
-                  if (playbackEnded && onceInitialRef.current?.length) {
-                    pendingInitialDelayRef.current = delayMs > 0;
-                    setSlideQueue(
-                      onceInitialRef.current.map((sl) => ({
-                        ...sl,
-                        submissions: sl.submissions.map((s) => ({ ...s })),
-                      }))
-                    );
-                    setPlaybackEnded(false);
-                    setIsPlaying(true);
-                    setDisplayEpoch(0);
-                    return;
-                  }
-                  setIsPlaying(!isPlaying);
-                }}
-                className="text-white hover:text-gray-300 transition-colors"
-                title={isPlaying ? 'Pause' : 'Play'}
-              >
-                {isPlaying ? (
-                  <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                  </svg>
-                ) : (
-                  <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                )}
-              </button>
-              <div className="flex-1 text-white text-sm">
-                Queue {queueLen > 0 ? `1 / ${queueLen}` : '0'} • Buffer depth{' '}
-                {settings.bufferSize}
-              </div>
-              <button
-                type="button"
-                onClick={toggleFullscreen}
-                className="text-white hover:text-gray-300 transition-colors"
-                title="Fullscreen (F)"
-              >
-                {isFullscreen ? (
-                  <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
-                  </svg>
-                ) : (
-                  <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
-                  </svg>
-                )}
-              </button>
-            </div>
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-6">
+            <button
+              type="button"
+              onClick={() => {
+                if (playbackEnded && onceInitialRef.current?.length) {
+                  pendingInitialDelayRef.current = delayMs > 0;
+                  setSlideQueue(
+                    onceInitialRef.current.map((sl) => ({
+                      ...sl,
+                      submissions: sl.submissions.map((s) => ({ ...s })),
+                    }))
+                  );
+                  setPlaybackEnded(false);
+                  setIsPlaying(true);
+                  setDisplayEpoch(0);
+                  return;
+                }
+                setIsPlaying(!isPlaying);
+              }}
+              className="text-white hover:text-gray-300 transition-colors"
+              title={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? (
+                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                </svg>
+              ) : (
+                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="text-white hover:text-gray-300 transition-colors"
+              title="Fullscreen (F)"
+            >
+              {isFullscreen ? (
+                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
+                </svg>
+              ) : (
+                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
       )}

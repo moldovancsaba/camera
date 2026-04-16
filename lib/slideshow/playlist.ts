@@ -1,18 +1,7 @@
 /**
- * Slideshow Playlist Generation
- * 
- * Generates smart playlists for event slideshows with aspect ratio detection
- * and mosaic layouts for non-16:9 images.
- * 
- * Playlist Logic:
- * - Always select the 5 least-played submissions (sorted by playCount ASC, createdAt ASC)
- * - Detect aspect ratio from image dimensions
- * - Group by aspect ratio: 16:9, 1:1, 9:16
- * - Create mosaics: 1:1 → 2x1 layout, 9:16 → 3x1 layout
- * - Skip 1:1 and 9:16 if insufficient images for complete mosaic
+ * Slideshow playlist: one submission per slide (`type: 'single'`), aspect ratio from dimensions.
+ * Fairness / ordering is decided by the playlist route before calling `generatePlaylist`.
  */
-
-import { Submission } from '@/lib/db/schemas';
 
 /** Fisher–Yates shuffle (mutates array). */
 export function shuffleInPlace<T>(arr: T[]): void {
@@ -150,7 +139,7 @@ export function detectAspectRatio(width: number, height: number): AspectRatio {
 }
 
 /**
- * Generate playlist of next N slides from submissions
+ * Generate playlist of next N slides from submissions — one image per slide (no mosaics).
  *
  * @param submissions - Caller-defined order (playlist route: fairness sort, then optional shuffle / rotate per `instanceKey`). Re-sorting here would break independent layout cells.
  * @param limit - Maximum number of slides to generate (default: 10)
@@ -158,168 +147,27 @@ export function detectAspectRatio(width: number, height: number): AspectRatio {
  */
 export function generatePlaylist(submissions: any[], limit: number = 10): Slide[] {
   const playlist: Slide[] = [];
-  
-  // Group by aspect ratio while preserving order within each bucket (see @param).
-  const landscape: any[] = [];
-  const square: any[] = [];
-  const portrait: any[] = [];
-  
-  // First pass: Categorize by aspect ratio
-  for (const submission of submissions) {
-    const width = submission.metadata?.finalWidth || submission.metadata?.originalWidth || 1920;
-    const height = submission.metadata?.finalHeight || submission.metadata?.originalHeight || 1080;
+  let n = 0;
+  for (const sub of submissions) {
+    if (n >= limit) break;
+    const width = Number(sub.metadata?.finalWidth || sub.metadata?.originalWidth || 1920);
+    const height = Number(sub.metadata?.finalHeight || sub.metadata?.originalHeight || 1080);
     const aspectRatio = detectAspectRatio(width, height);
-    
-    console.log(`[Playlist] ${submission._id}: ${width}x${height} → ${aspectRatio} (ratio: ${(width/height).toFixed(3)})`);
-    
-    switch (aspectRatio) {
-      case AspectRatio.LANDSCAPE:
-        landscape.push(submission);
-        break;
-      case AspectRatio.SQUARE:
-        square.push(submission);
-        break;
-      case AspectRatio.PORTRAIT:
-        portrait.push(submission);
-        break;
-      default:
-        console.warn(`[Playlist] Skipping submission ${submission._id}: unknown aspect ratio ${aspectRatio}`);
-        break;
-    }
-  }
-  
-  // Build playlist: prioritize 16:9, then mosaics
-  // Generate up to limit slides
-  console.log(`[Playlist] Building playlist from: ${landscape.length} landscape, ${square.length} square, ${portrait.length} portrait`);
-  
-  let slideCount = 0;
-  let landscapeIdx = 0;
-  let squareIdx = 0;
-  let portraitIdx = 0;
-  
-  // Build playlist by Round-robin: prioritize least-played regardless of aspect ratio
-  // This ensures mosaics are properly interleaved with landscape images
-  while (slideCount < limit) {
-    let added = false;
-    
-    // Determine what types are still available
-    const hasLandscape = landscapeIdx < landscape.length;
-    const hasSquareMosaic = squareIdx + 5 < square.length; // Need 6 images for 3×2 grid
-    const hasPortraitMosaic = portraitIdx + 2 < portrait.length;
-    
-    // Strategy: Add one of each type in rotation, skipping unavailable types
-    // This ensures fair distribution and proper mosaic creation
-    
-    // 1. Try landscape first (if available)
-    if (hasLandscape && slideCount < limit) {
-      const sub = landscape[landscapeIdx];
-      playlist.push({
-        type: 'single',
-        aspectRatio: AspectRatio.LANDSCAPE,
-        submissions: [{
+    playlist.push({
+      type: 'single',
+      aspectRatio: aspectRatio === AspectRatio.UNKNOWN ? AspectRatio.LANDSCAPE : aspectRatio,
+      submissions: [
+        {
           _id: sub._id.toString(),
           imageUrl: sub.imageUrl || sub.finalImageUrl,
-          width: sub.metadata?.finalWidth || sub.metadata?.originalWidth || 1920,
-          height: sub.metadata?.finalHeight || sub.metadata?.originalHeight || 1080,
-        }],
-      });
-      landscapeIdx++;
-      slideCount++;
-      added = true;
-      console.log(`[Playlist] Added landscape slide (${slideCount}/${limit})`);
-    }
-    
-    // 2. Try portrait mosaic (if available and space remaining)
-    if (hasPortraitMosaic && slideCount < limit) {
-      const sub1 = portrait[portraitIdx];
-      const sub2 = portrait[portraitIdx + 1];
-      const sub3 = portrait[portraitIdx + 2];
-      playlist.push({
-        type: 'mosaic',
-        aspectRatio: AspectRatio.PORTRAIT,
-        submissions: [
-          {
-            _id: sub1._id.toString(),
-            imageUrl: sub1.imageUrl || sub1.finalImageUrl,
-            width: sub1.metadata?.finalWidth || sub1.metadata?.originalWidth || 540,
-            height: sub1.metadata?.finalHeight || sub1.metadata?.originalHeight || 960,
-          },
-          {
-            _id: sub2._id.toString(),
-            imageUrl: sub2.imageUrl || sub2.finalImageUrl,
-            width: sub2.metadata?.finalWidth || sub2.metadata?.originalWidth || 540,
-            height: sub2.metadata?.finalHeight || sub2.metadata?.originalHeight || 960,
-          },
-          {
-            _id: sub3._id.toString(),
-            imageUrl: sub3.imageUrl || sub3.finalImageUrl,
-            width: sub3.metadata?.finalWidth || sub3.metadata?.originalWidth || 540,
-            height: sub3.metadata?.finalHeight || sub3.metadata?.originalHeight || 960,
-          },
-        ],
-      });
-      portraitIdx += 3;
-      slideCount++;
-      added = true;
-      console.log(`[Playlist] Added portrait mosaic (${slideCount}/${limit})`);
-    }
-    
-    // 3. Try square mosaic (if available and space remaining)
-    if (hasSquareMosaic && slideCount < limit) {
-      // 3×2 grid requires 6 square images
-      const submissions = [];
-      for (let i = 0; i < 6; i++) {
-        const sub = square[squareIdx + i];
-        submissions.push({
-          _id: sub._id.toString(),
-          imageUrl: sub.imageUrl || sub.finalImageUrl,
-          width: sub.metadata?.finalWidth || sub.metadata?.originalWidth || 540,
-          height: sub.metadata?.finalHeight || sub.metadata?.originalHeight || 540,
-        });
-      }
-      
-      playlist.push({
-        type: 'mosaic',
-        aspectRatio: AspectRatio.SQUARE,
-        submissions,
-      });
-      squareIdx += 6;
-      slideCount++;
-      added = true;
-      console.log(`[Playlist] Added square mosaic 3×2 (${slideCount}/${limit})`);
-    }
-    
-    // If nothing was added this iteration, we've exhausted all options
-    if (!added) {
-      console.log(`[Playlist] No more slides available, stopping at ${slideCount}/${limit}`);
-      break;
-    }
+          width,
+          height,
+        },
+      ],
+    });
+    n++;
+    console.log(`[Playlist] Single-image slide ${n}/${limit} (${sub._id})`);
   }
-
-  // Few portrait (or square) images cannot form a full mosaic — still show them as singles (FFF reels, small pools).
-  if (playlist.length === 0 && submissions.length > 0) {
-    let i = 0;
-    while (playlist.length < limit && i < submissions.length) {
-      const sub = submissions[i++];
-      const width = Number(sub.metadata?.finalWidth || sub.metadata?.originalWidth || 1920);
-      const height = Number(sub.metadata?.finalHeight || sub.metadata?.originalHeight || 1080);
-      const aspectRatio = detectAspectRatio(width, height);
-      playlist.push({
-        type: 'single',
-        aspectRatio:
-          aspectRatio === AspectRatio.UNKNOWN ? AspectRatio.LANDSCAPE : aspectRatio,
-        submissions: [
-          {
-            _id: sub._id.toString(),
-            imageUrl: sub.imageUrl || sub.finalImageUrl,
-            width,
-            height,
-          },
-        ],
-      });
-    }
-  }
-
   return playlist;
 }
 
