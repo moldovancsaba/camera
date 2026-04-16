@@ -49,6 +49,12 @@
   --gym-main-max: 48rem;
   --gym-main-pad-x: 1rem;
   --gym-main-pad-y: 2rem;
+  --gym-step-card-bg: #ffffff;
+  --gym-step-card-border: #e2e8f0;
+  --gym-step-title: #0f172a;
+  --gym-step-detail: #475569;
+  --gym-step-meta: #64748b;
+  --gym-step-error: #b91c1c;
 
   /* —— FunFitFan landing (FFF home) —— */
   --fff-landing-bg-start: #022c22;
@@ -116,6 +122,12 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --gym-step-card-bg: rgb(31 41 55 / 0.96);
+    --gym-step-card-border: #374151;
+    --gym-step-title: #f8fafc;
+    --gym-step-detail: #cbd5e1;
+    --gym-step-meta: #94a3b8;
+    --gym-step-error: #fca5a5;
   }
 }
 
@@ -808,10 +820,25 @@ body {
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   }
 
-  .fff-app-camera-frame {
-    overflow: hidden;
-    border-radius: 1rem;
-    border: 1px solid rgb(255 255 255 / 0.12);
+  .fff-camera-triple-bar {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 55;
+    padding-top: 1.25rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+    padding-inline: 1rem;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.78), rgb(0 0 0 / 0));
+    pointer-events: auto;
+  }
+
+  .fff-camera-triple-bar-inner {
+    margin-inline: auto;
+    display: grid;
+    max-width: 42rem;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .fff-share-kicker {
@@ -853,19 +880,34 @@ body {
     margin-top: 1.5rem;
   }
 
-  .fff-landing-title {
-    font-size: clamp(2.75rem, 9vw, 3.25rem);
+  /* One-line hero: FFF (white) | FunFitFan (green), same display size */
+  .fff-landing-brand-line {
+    display: inline-flex;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    align-items: baseline;
+    gap: 0.28em;
+    font-size: clamp(2.25rem, 8.5vw, 3.25rem);
     font-weight: 900;
     letter-spacing: -0.03em;
     line-height: 1.05;
-    color: var(--fff-landing-fg);
     text-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
   }
 
-  .fff-landing-subtitle {
-    margin-top: 0.5rem;
-    font-size: 1.25rem;
-    font-weight: 600;
+  .fff-landing-brand-fff {
+    flex-shrink: 0;
+    color: var(--fff-landing-fg);
+  }
+
+  .fff-landing-brand-sep {
+    flex-shrink: 0;
+    color: var(--fff-landing-fg);
+    font-weight: 700;
+    opacity: 0.45;
+  }
+
+  .fff-landing-brand-name {
+    min-width: 0;
     color: var(--fff-landing-subtitle);
   }
 
@@ -948,5 +990,182 @@ body {
     margin-inline: auto;
     max-width: var(--gym-main-max);
     padding: var(--gym-main-pad-y) var(--gym-main-pad-x);
+  }
+
+  .gym-session-section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--gym-step-title);
+  }
+
+  .gym-session-step-list {
+    margin: 0.75rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .gym-session-step-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--gym-step-card-border);
+    background: var(--gym-step-card-bg);
+    padding: 0.75rem 1rem;
+  }
+
+  .gym-session-step-body {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .gym-session-step-title {
+    font-weight: 500;
+    color: var(--gym-step-title);
+  }
+
+  .gym-session-step-detail {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--gym-step-detail);
+  }
+
+  .gym-session-step-actions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+  }
+
+  .gym-session-empty-steps {
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px dashed var(--gym-step-card-border);
+    background: var(--gym-step-card-bg);
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--gym-step-meta);
+  }
+
+  .gym-session-error {
+    font-size: 0.875rem;
+    color: var(--gym-step-error);
+  }
+
+  .gym-session-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .gym-session-footer-note {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--gym-step-detail);
+  }
+
+  .gym-session-done-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--app-btn-primary-bg-from);
+  }
+
+  .gym-session-meta-text {
+    font-size: 0.875rem;
+    color: var(--gym-step-meta);
+  }
+
+  .gym-session-step-title-link {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .gym-session-step-title-link:hover .gym-session-step-title {
+    text-decoration: underline;
+  }
+
+  .gym-step-page {
+    margin-inline: auto;
+    max-width: 36rem;
+  }
+
+  .gym-step-breadcrumb {
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--gym-step-meta);
+  }
+
+  .gym-step-kicker {
+    margin-bottom: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gym-step-detail);
+  }
+
+  .gym-step-title {
+    font-size: clamp(1.5rem, 4vw, 1.875rem);
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--gym-step-title);
+  }
+
+  .gym-step-detail {
+    margin-top: 1rem;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--gym-step-detail);
+  }
+
+  .gym-step-dual-actions {
+    margin-top: 2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .gym-step-dual-actions .app-btn {
+    width: 100%;
+    max-width: none;
+  }
+
+  .gym-step-back {
+    margin-top: 2rem;
+  }
+
+  .gym-step-error {
+    margin-top: 1rem;
+  }
+
+  .gym-step-handled {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .gym-step-handled-msg {
+    font-size: 0.9375rem;
+    color: var(--gym-step-detail);
+  }
+
+  .gym-session-footer-block {
+    margin-top: 1.5rem;
+  }
+
+  .gym-session-footer-actions {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 }

@@ -27,7 +27,9 @@ export default async function FffReelRedirectPage() {
       <div className="fff-app-inner">
         <div className="fff-app-empty-hero">
           <p className="fff-reel-empty-title">No FunFitFan reel yet.</p>
-          <p className="fff-reel-empty-lede">Log an activity first, then your slideshow will appear here.</p>
+          <p className="fff-reel-empty-lede">
+          Log an activity or add a gym selfie first — your slideshow will play both here in order.
+        </p>
           <ReelEmptyCTA />
         </div>
       </div>

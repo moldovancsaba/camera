@@ -10,6 +10,7 @@ import {
   generateTimestamp,
   type GymWorkoutSessionStatus,
 } from '@/lib/db/schemas';
+import { normalizeLessonStepsFromUnknown } from '@/lib/gym/normalize-lesson-steps';
 import {
   withErrorHandler,
   requireAuth,
@@ -61,12 +62,14 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   const now = generateTimestamp();
   const sessionId = generateId();
+  const lessonSteps = normalizeLessonStepsFromUnknown(lesson.steps);
   const doc = {
     sessionId,
     userId: session.user.id,
     userEmail: session.user.email,
     lessonId: lesson.lessonId as string,
     lessonTitle: lesson.title as string,
+    lessonSteps,
     status: 'in_progress' as GymWorkoutSessionStatus,
     startedAt: now,
     stepLog: [] as { stepOrder: number; completedAt: string; notes?: string }[],

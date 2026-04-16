@@ -22,9 +22,13 @@ export default function StartWorkoutButton({ lessonId }: { lessonId: string }) {
         setError(data.error || `Failed (${res.status})`);
         return;
       }
-      const sessionId = data.data?.session?.sessionId;
+      const sess = data.data?.session as { sessionId?: string; lessonSteps?: unknown[] } | undefined;
+      const sessionId = sess?.sessionId;
       if (sessionId) {
-        router.push(`/gym/session/${sessionId}`);
+        const steps = Array.isArray(sess?.lessonSteps) ? sess.lessonSteps : [];
+        router.push(
+          steps.length > 0 ? `/gym/session/${sessionId}/step/0` : `/gym/session/${sessionId}`
+        );
         router.refresh();
       } else {
         setError('Unexpected response');

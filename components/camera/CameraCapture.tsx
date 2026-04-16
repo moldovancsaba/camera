@@ -20,6 +20,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { AppButton } from '@/components/ui/AppButton';
 
 /** Supports hex (#rgb) or CSS `var(--token)` for FunFitFan-branded capture UI. */
 function capturePromptBackground(fill: string): string {
@@ -48,6 +49,13 @@ export interface CameraCaptureProps {
    * even if `frameWidth`/`frameHeight` from the DB are wrong (e.g. legacy 1920×1080 defaults).
    */
   previewAspectWidthOverHeight?: number;
+  /**
+   * FunFitFan-style bottom bar: Cancel (left), Take (center), Change camera (right) — all `AppButton`s.
+   * When set, ignores orientation-based floating capture/switch positions.
+   */
+  controlBar?: 'default' | 'fff-bottom-triple';
+  /** Used with `controlBar="fff-bottom-triple"` for the left Cancel action. */
+  onCancel?: () => void;
 }
 
 export default function CameraCapture({ 
@@ -63,6 +71,8 @@ export default function CameraCapture({
   promptDescription = 'Click to start your camera and take a photo',
   initialFacingMode = 'environment',
   previewAspectWidthOverHeight,
+  controlBar = 'default',
+  onCancel,
 }: CameraCaptureProps) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -597,8 +607,20 @@ export default function CameraCapture({
     };
   }, []);
 
+  const useTripleBar = controlBar === 'fff-bottom-triple';
+
   return (
-    <div ref={containerRef} className={`relative flex items-center justify-center w-full h-full ${className}`}>
+    <div
+      ref={containerRef}
+      className={`relative w-full h-full ${useTripleBar ? 'flex min-h-0 flex-col' : 'flex items-center justify-center'} ${className}`}
+    >
+      <div
+        className={
+          useTripleBar
+            ? 'flex min-h-0 w-full flex-1 flex-col items-center justify-center'
+            : 'flex h-full w-full items-center justify-center'
+        }
+      >
       {/* Camera view with calculated dimensions to fit viewport */}
       <div 
         className="relative bg-gray-900 overflow-hidden"
@@ -694,72 +716,125 @@ export default function CameraCapture({
           </>
         )}
       </div>
+      </div>
 
-      {/* Camera Controls - Outside frame, positioned based on orientation */}
-      {/* Portrait: bottom center | Landscape-right (rotated left): right side | Landscape-left (rotated right): left side */}
-      {stream && !capturedImage && (
+      {/* FunFitFan check-in: fixed bottom row — Cancel | Take | Change camera (AppButtons) */}
+      {useTripleBar && stream && !capturedImage && (
+        <div className="fff-camera-triple-bar">
+          <div className="fff-camera-triple-bar-inner">
+            <div className="justify-self-start">
+              {onCancel ? (
+                <AppButton type="button" variant="neutral" compact onClick={onCancel}>
+                  Cancel
+                </AppButton>
+              ) : (
+                <span />
+              )}
+            </div>
+            <div className="justify-self-center">
+              <AppButton type="button" variant="primary" compact onClick={() => capturePhoto()}>
+                Take
+              </AppButton>
+            </div>
+            <div className="justify-self-end">
+              {hasMultipleCameras ? (
+                <AppButton type="button" variant="secondary" compact onClick={() => switchCamera()}>
+                  Change camera
+                </AppButton>
+              ) : (
+                <span />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {useTripleBar && capturedImage && (
+        <div className="fff-camera-triple-bar">
+          <div className="fff-camera-triple-bar-inner">
+            <div className="justify-self-start">
+              {onCancel ? (
+                <AppButton type="button" variant="neutral" compact onClick={onCancel}>
+                  Cancel
+                </AppButton>
+              ) : (
+                <span />
+              )}
+            </div>
+            <div className="justify-self-center">
+              <AppButton type="button" variant="secondary" compact onClick={() => retake()}>
+                Retake
+              </AppButton>
+            </div>
+            <div />
+          </div>
+        </div>
+      )}
+
+      {/* Camera Controls - Outside frame, positioned based on orientation (default layout) */}
+      {!useTripleBar && stream && !capturedImage && (
         <>
-          {/* Capture Button */}
           <button
             onClick={capturePhoto}
-            className={`fixed w-16 h-16 rounded-full bg-white transition-all shadow-lg z-50 ${
+            className={`fixed z-50 h-16 w-16 rounded-full bg-white shadow-lg transition-all ${
               orientation === 'portrait'
                 ? 'bottom-4 left-1/2 -translate-x-1/2'
                 : orientation === 'landscape-right'
-                ? 'right-4 top-1/2 -translate-y-1/2'
-                : 'left-4 top-1/2 -translate-y-1/2'
+                  ? 'right-4 top-1/2 -translate-y-1/2'
+                  : 'left-4 top-1/2 -translate-y-1/2'
             }`}
             style={{
               borderWidth: '4px',
               borderStyle: 'solid',
-              borderColor: captureButtonBorderColor
+              borderColor: captureButtonBorderColor,
             }}
             aria-label="Capture photo"
           >
-            <div 
-              className="w-full h-full rounded-full"
-              style={{ backgroundColor: captureButtonColor }}
-            ></div>
+            <div className="h-full w-full rounded-full" style={{ backgroundColor: captureButtonColor }} />
           </button>
 
-          {/* Switch Camera Button - Positioned near capture button */}
           {hasMultipleCameras && (
             <button
+              type="button"
               onClick={switchCamera}
-              className={`fixed w-12 h-12 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-lg z-50 ${
+              className={`fixed z-50 flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-lg hover:bg-white ${
                 orientation === 'portrait'
                   ? 'bottom-4 right-4'
                   : orientation === 'landscape-right'
-                  ? 'right-4 bottom-4'
-                  : 'left-4 bottom-4'
+                    ? 'bottom-4 right-4'
+                    : 'bottom-4 left-4'
               }`}
               aria-label="Switch camera"
             >
-              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              <svg className="h-6 w-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
               </svg>
             </button>
           )}
         </>
       )}
 
-      {/* Retake Button - Same position as capture button */}
-      {capturedImage && (
+      {!useTripleBar && capturedImage && (
         <button
+          type="button"
           onClick={retake}
-          className={`fixed px-6 py-3 bg-white text-gray-900 rounded-lg font-semibold hover:bg-gray-100 transition-all shadow-lg z-50 ${
+          className={`fixed z-50 rounded-lg bg-white px-6 py-3 font-semibold text-gray-900 shadow-lg transition-all hover:bg-gray-100 ${
             orientation === 'portrait'
               ? 'bottom-4 left-1/2 -translate-x-1/2'
               : orientation === 'landscape-right'
-              ? 'right-4 top-1/2 -translate-y-1/2'
-              : 'left-4 top-1/2 -translate-y-1/2'
+                ? 'right-4 top-1/2 -translate-y-1/2'
+                : 'left-4 top-1/2 -translate-y-1/2'
           }`}
         >
           Retake Photo
         </button>
       )}
 
-      {/* Hidden Canvas for Image Capture */}
       <canvas ref={canvasRef} className="hidden" />
     </div>
   );

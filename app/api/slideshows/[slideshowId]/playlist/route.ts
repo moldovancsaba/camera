@@ -25,6 +25,7 @@ import { submissionEventIdKeys } from '@/lib/slideshow/submission-event-keys';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
 import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
+import { fetchPersonalFffReelRows } from '@/lib/slideshow/personal-fff-reel';
 import type { Event } from '@/lib/db/schemas';
 
 function slideshowStageAspectWidthOverHeight(event: Event): number {
@@ -167,27 +168,49 @@ export async function GET(
         .toArray();
     };
 
-    let submissions = await fetchSubmissionsSorted(excludeObjectIds);
-    // Small pool: excluding every ID already on screen can yield zero rows — fall back so buffers stay non-empty.
-    if (submissions.length === 0 && excludeObjectIds.length > 0) {
-      if (dbg) {
-        console.log('[Playlist] Exclude exhausted pool; refetching without exclude');
+    const personalProfile = await db
+      .collection(COLLECTIONS.FFF_USER_PROFILES)
+      .findOne({ slideshowId: String(slideshow.slideshowId) });
+    const personalUserId =
+      personalProfile && typeof personalProfile.userId === 'string' ? personalProfile.userId : null;
+    const isPersonalFffReel = Boolean(personalUserId);
+
+    let submissions: Awaited<ReturnType<typeof fetchSubmissionsSorted>>;
+
+    if (isPersonalFffReel && personalUserId) {
+      submissions = await fetchPersonalFffReelRows(db, personalUserId, buildMatchFilter, excludeObjectIds);
+      if (submissions.length === 0 && excludeObjectIds.length > 0) {
+        if (dbg) {
+          console.log('[Playlist] Personal reel: exclude exhausted; refetching without exclude');
+        }
+        submissions = await fetchPersonalFffReelRows(db, personalUserId, buildMatchFilter, []);
       }
-      submissions = await fetchSubmissionsSorted([]);
+    } else {
+      submissions = await fetchSubmissionsSorted(excludeObjectIds);
+      if (submissions.length === 0 && excludeObjectIds.length > 0) {
+        if (dbg) {
+          console.log('[Playlist] Exclude exhausted pool; refetching without exclude');
+        }
+        submissions = await fetchSubmissionsSorted([]);
+      }
     }
 
     const orderMode = slideshow.orderMode === 'random' ? 'random' : 'fixed';
-    if (orderMode === 'random' && submissions.length > 1) {
-      if (instanceKey) {
-        const randomSalt = randomBytes(4).readUInt32BE(0);
-        const seed = (fnv1a32(instanceKey) ^ randomSalt) >>> 0;
-        shuffleInPlaceSeeded(submissions, seed);
-      } else {
-        shuffleInPlace(submissions);
+    if (!isPersonalFffReel) {
+      if (orderMode === 'random' && submissions.length > 1) {
+        if (instanceKey) {
+          const randomSalt = randomBytes(4).readUInt32BE(0);
+          const seed = (fnv1a32(instanceKey) ^ randomSalt) >>> 0;
+          shuffleInPlaceSeeded(submissions, seed);
+        } else {
+          shuffleInPlace(submissions);
+        }
+      } else if (instanceKey && submissions.length > 1) {
+        // Fixed fairness order: without this, every layout cell starts at the same head → identical tiles.
+        rotateLeftBy(submissions, fnv1a32(instanceKey) % submissions.length);
       }
-    } else if (instanceKey && submissions.length > 1) {
-      // Fixed fairness order: without this, every layout cell starts at the same head → identical tiles.
-      rotateLeftBy(submissions, fnv1a32(instanceKey) % submissions.length);
+    } else if (dbg) {
+      console.log('[Playlist] Personal FunFitFan reel: chronological merge (submissions + gym); no shuffle/rotate');
     }
 
     const playMode = slideshow.playMode === 'once' ? 'once' : 'loop';

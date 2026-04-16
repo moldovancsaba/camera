@@ -12,8 +12,14 @@ export default async function FunFitFanLandingPage() {
 
   return (
     <div className="fff-app-inner">
-      <h1 className="fff-landing-title">FFF</h1>
-      <p className="fff-landing-subtitle">FunFitFan</p>
+      <h1 className="fff-landing-brand-line">
+        <span className="fff-landing-brand-fff">FFF</span>
+        <span className="fff-landing-brand-sep" aria-hidden="true">
+          {' '}
+          |{' '}
+        </span>
+        <span className="fff-landing-brand-name">FunFitFan</span>
+      </h1>
       <p className="fff-landing-lede">
         Your fitness home: log a framed activity card (your team&apos;s frame), browse your reel, and open gym
         lessons — all under FFF.

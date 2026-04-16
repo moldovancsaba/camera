@@ -50,8 +50,9 @@ export const POST = withErrorHandler(
       .filter((id: string) => ObjectId.isValid(id))
       .map((id: string) => new ObjectId(id));
 
+    /** Personal reel may include synthetic `gym:*` ids — skip DB updates for those. */
     if (objectIds.length === 0) {
-      throw apiBadRequest('No valid submission IDs provided');
+      return apiSuccess({ updatedCount: 0 });
     }
 
     const now = generateTimestamp();

@@ -73,7 +73,7 @@ export default function FunFitFanLogWizard() {
           fileUrl: overlay,
         },
       });
-      setStep('selfie');
+      setStep('details');
     } catch {
       setError('Network error');
       setStep('error');
@@ -105,8 +105,21 @@ export default function FunFitFanLogWizard() {
     };
   }, [step]);
 
-  async function buildPreview() {
-    if (!selfieDataUrl || !ctx) return;
+  function goToSelfieStep() {
+    if (!ctx) return;
+    const act = activity.trim();
+    if (!act || !ctx.sportActivities.includes(act)) {
+      setError('Choose a sport activity from the list.');
+      return;
+    }
+    setError(null);
+    setStep('selfie');
+  }
+
+  /** Pass `selfieOverride` right after capture so preview does not rely on async `setSelfieDataUrl`. */
+  async function buildPreview(selfieOverride?: string) {
+    const pic = selfieOverride ?? selfieDataUrl;
+    if (!pic || !ctx) return;
     const act = activity.trim();
     if (!act || !ctx.sportActivities.includes(act)) {
       setError('Choose a sport activity from the list.');
@@ -115,7 +128,7 @@ export default function FunFitFanLogWizard() {
     setError(null);
     try {
       const line2 = formatFeelSoLine(feelSoTags);
-      const out = await compositeFramedSelfieWithText(selfieDataUrl, ctx.frame.fileUrl, act, line2);
+      const out = await compositeFramedSelfieWithText(pic, ctx.frame.fileUrl, act, line2);
       setComposite(out);
       setStep('preview');
     } catch (e) {
@@ -193,38 +206,6 @@ export default function FunFitFanLogWizard() {
     );
   }
 
-  if (step === 'selfie' && ctx) {
-    return (
-      <div className="fff-app-fullscreen-step">
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-[60] flex justify-end p-3">
-          <div className="pointer-events-auto">
-            <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
-              Cancel
-            </AppButton>
-          </div>
-        </div>
-        <div className="flex min-h-0 flex-1 items-center justify-center p-4 pt-14">
-          <CameraCapture
-            initialFacingMode="user"
-            frameOverlay={undefined}
-            frameWidth={ctx.frame.width}
-            frameHeight={ctx.frame.height}
-            previewAspectWidthOverHeight={9 / 16}
-            captureButtonColor="var(--fff-app-capture-accent)"
-            captureButtonBorderColor="var(--fff-app-capture-accent-ring)"
-            promptTitle="FunFitFan check-in"
-            promptDescription="Tap to start the camera, then capture."
-            onCapture={(_blob, dataUrl) => {
-              setSelfieDataUrl(dataUrl);
-              setStep('details');
-            }}
-            className="fff-app-camera-frame"
-          />
-        </div>
-      </div>
-    );
-  }
-
   if (step === 'details' && ctx) {
     return (
       <div className="py-8">
@@ -256,12 +237,81 @@ export default function FunFitFanLogWizard() {
         />
         {error ? <p className="mt-3 fff-app-error">{error}</p> : null}
         <div className="app-btn-stack app-btn-stack--wizard-lg">
-          <AppButton type="button" variant="secondary" compact onClick={() => setStep('selfie')}>
-            Retake
-          </AppButton>
-          <AppButton type="button" variant="primary" compact onClick={() => void buildPreview()}>
-            Preview card
-          </AppButton>
+          {selfieDataUrl ? (
+            <>
+              <AppButton
+                type="button"
+                variant="secondary"
+                compact
+                onClick={() => {
+                  setError(null);
+                  setStep('selfie');
+                }}
+              >
+                Retake selfie
+              </AppButton>
+              <AppButton type="button" variant="primary" compact onClick={() => void buildPreview()}>
+                Preview card
+              </AppButton>
+            </>
+          ) : (
+            <>
+              <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
+                ← Cancel
+              </AppButton>
+              <AppButton type="button" variant="primary" compact onClick={() => goToSelfieStep()}>
+                Take selfie
+              </AppButton>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'selfie' && ctx) {
+    return (
+      <div className="fff-app-fullscreen-step">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[60] flex justify-start p-3">
+          <div className="pointer-events-auto">
+            <AppButton
+              type="button"
+              variant="ghost"
+              compact
+              onClick={() => {
+                setError(null);
+                setStep('details');
+              }}
+            >
+              ← Edit activity
+            </AppButton>
+          </div>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 items-center justify-center px-4 pt-12 pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))]">
+            <CameraCapture
+              initialFacingMode="user"
+              frameOverlay={undefined}
+              frameWidth={ctx.frame.width}
+              frameHeight={ctx.frame.height}
+              previewAspectWidthOverHeight={9 / 16}
+              captureButtonColor="var(--fff-app-capture-accent)"
+              captureButtonBorderColor="var(--fff-app-capture-accent-ring)"
+              promptTitle="FunFitFan check-in"
+              promptDescription="After your activity, capture your check-in photo."
+              controlBar="fff-bottom-triple"
+              onCancel={() => router.push('/fff')}
+              onCapture={(_blob, dataUrl) => {
+                setSelfieDataUrl(dataUrl);
+                void buildPreview(dataUrl);
+              }}
+            />
+          </div>
+          {error ? (
+            <div className="shrink-0 px-4 pb-2 text-center">
+              <p className="fff-app-error">{error}</p>
+            </div>
+          ) : null}
         </div>
       </div>
     );

@@ -829,6 +829,8 @@ export interface GymWorkoutSession {
   userEmail: string;
   lessonId: string;
   lessonTitle: string;
+  /** Snapshot of lesson steps at session start (fallback: load from `gym_lessons`). */
+  lessonSteps?: GymLessonStep[];
   status: GymWorkoutSessionStatus;
   startedAt: string;
   completedAt?: string;

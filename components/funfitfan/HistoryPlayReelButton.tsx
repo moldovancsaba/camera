@@ -6,7 +6,7 @@ export default function HistoryPlayReelButton({ slideshowId }: { slideshowId: st
   if (!slideshowId) {
     return (
       <p className="fff-app-footnote">
-        Log a FunFitFan activity to create your reel — then you can watch it here.
+        Log an activity or complete a gym selfie to build your reel — then you can watch it here.
       </p>
     );
   }
