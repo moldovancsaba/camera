@@ -1,5 +1,5 @@
 /**
- * Workout (member): FunFitFan shell — same column as /fff/log, no extra chrome header.
+ * Workout (member): FunFitFan shell — same column as `/log` on FFF hosts, no extra chrome header.
  */
 
 import { getSession } from '@/lib/auth/session';

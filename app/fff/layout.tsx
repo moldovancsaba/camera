@@ -1,5 +1,6 @@
 /**
- * FunFitFan (FFF) segment: served at URL `/fff` and exposed as `/` on FFF hostnames (see middleware).
+ * FunFitFan (FFF) App Router segment (`app/fff/*`). On FFF hostnames, middleware serves public paths
+ * like `/`, `/login`, `/log` without `/fff` in the browser (see `lib/funfitfan/fff-browser-urls.ts`).
  */
 
 import type { Metadata, Viewport } from 'next';

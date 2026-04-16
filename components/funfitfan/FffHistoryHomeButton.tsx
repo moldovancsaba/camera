@@ -13,7 +13,7 @@ export default function FffHistoryHomeButton({ className }: Props) {
   const router = useRouter();
   return (
     <div className={['app-btn-stack', className].filter(Boolean).join(' ')}>
-      <AppButton type="button" variant="secondary" onClick={() => router.push('/fff')}>
+      <AppButton type="button" variant="secondary" onClick={() => router.push('/')}>
         BACK
       </AppButton>
     </div>

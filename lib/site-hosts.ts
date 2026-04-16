@@ -11,7 +11,7 @@ function parseHostList(envVal: string | undefined, fallbacks: string[]): string[
   return raw?.length ? raw : fallbacks;
 }
 
-/** Hostnames that show the FunFitFan (FFF) landing at `/` (rewritten internally to `/fff`). */
+/** Hostnames where `/` is the FunFitFan landing (middleware rewrites internally to `app/fff/page`). */
 export const FFF_HOSTNAMES = parseHostList(process.env.FFF_HOSTNAMES, [
   'fff.messmass.com',
   'www.fff.messmass.com',

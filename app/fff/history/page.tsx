@@ -12,6 +12,7 @@ import { personalHistorySubmissionMongoFilter } from '@/lib/funfitfan/history-sc
 import HistoryPlayReelButton from '@/components/funfitfan/HistoryPlayReelButton';
 import HistoryListRow from '@/components/funfitfan/HistoryListRow';
 import FffHistoryHomeButton from '@/components/funfitfan/FffHistoryHomeButton';
+import { fffBrowser } from '@/lib/funfitfan/fff-browser-urls';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,7 +89,7 @@ export default async function FffHistoryPage() {
       title,
       subtitle,
       thumbUrl,
-      href: `/fff/history/submission/${id}`,
+      href: fffBrowser.historySubmission(id),
       badge,
       submissionId: id,
     });
@@ -110,7 +111,7 @@ export default async function FffHistoryPage() {
       title: lessonTitle,
       subtitle: `${status}${startedAt ? ` · ${new Date(startedAt).toLocaleString()}` : ''}`,
       thumbUrl: selfie,
-      href: `/fff/history/gym/${sessionId}`,
+      href: fffBrowser.historyGym(sessionId),
       badge: 'Gym',
       sessionId,
       lessonTitle,

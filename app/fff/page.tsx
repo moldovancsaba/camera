@@ -1,5 +1,5 @@
 /**
- * FunFitFan landing (PWA install uses manifest under /fff on this origin).
+ * FunFitFan landing (PWA manifest URL still under `/fff/manifest.webmanifest`; browser paths omit `/fff`).
  */
 
 import { DynaPuff } from 'next/font/google';

@@ -83,7 +83,7 @@
   --fff-reel-empty-margin-top: 1.5rem;
   --fff-wizard-stack-margin-top: 1.5rem;
   --fff-wizard-stack-margin-top-lg: 2rem;
-  /* —— FunFitFan app-wide (all /fff routes; tokens only — no ad-hoc hex in TSX) —— */
+  /* —— FunFitFan app-wide (`app/fff` + funfitfan components; tokens only — no ad-hoc hex in TSX) —— */
   --fff-app-accent: #34d399;
   --fff-app-accent-soft: #6ee7b7;
   --fff-app-capture-accent: #10b981;

@@ -35,7 +35,7 @@ type Props = {
 
 /**
  * Same flow as FunFitFan log after “Take selfie”: camera → composite preview → Save to reel → Saved.
- * Used from `/fff/log` (historically) and workout selfie completion.
+ * Used from FunFitFan `/log` (FFF host) and workout selfie completion.
  */
 export default function FunFitFanCheckinSelfieReelFlow({
   ctx,

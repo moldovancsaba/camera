@@ -7,5 +7,5 @@ import { isFffHost } from '@/lib/site-hosts';
 
 export async function authEntryPathForCurrentHost(): Promise<string> {
   const h = (await headers()).get('host');
-  return isFffHost(h) ? '/fff/login' : '/api/auth/login';
+  return isFffHost(h) ? '/login' : '/api/auth/login';
 }

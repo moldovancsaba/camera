@@ -13,6 +13,7 @@ import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
 import { submissionIsPersonalFffHistory } from '@/lib/funfitfan/history-scope';
 import { signFffSharePayload } from '@/lib/fff-share-token';
 import { getSiteUrlFromRequest } from '@/lib/site-url';
+import { fffBrowser, fffShareAbsoluteUrl } from '@/lib/funfitfan/fff-browser-urls';
 import ShareLinkActions from '@/components/funfitfan/ShareLinkActions';
 import HistoryDeleteSubmissionButton from '@/components/funfitfan/HistoryDeleteSubmissionButton';
 
@@ -61,7 +62,7 @@ export default async function HistorySubmissionDetailPage({
   const exp = Date.now() + SHARE_TTL_MS;
   const token = signFffSharePayload({ k: 'sub', id: submissionId, exp });
   const site = await getSiteUrlFromRequest();
-  const shareUrl = `${site}/fff/share/${encodeURIComponent(token)}`;
+  const shareUrl = fffShareAbsoluteUrl(site, token);
 
   const title =
     partnerId === FUNFITFAN_PARTNER_ID && activity
@@ -71,7 +72,7 @@ export default async function HistorySubmissionDetailPage({
   return (
     <div className="fff-app-inner">
       <p>
-        <Link href="/fff/history" className="fff-app-link">
+        <Link href={fffBrowser.history} className="fff-app-link">
           ← History
         </Link>
       </p>
@@ -90,7 +91,7 @@ export default async function HistorySubmissionDetailPage({
         <HistoryDeleteSubmissionButton
           submissionId={submissionId}
           label={title}
-          redirectAfterDelete="/fff/history"
+          redirectAfterDelete={fffBrowser.history}
         />
       </div>
 

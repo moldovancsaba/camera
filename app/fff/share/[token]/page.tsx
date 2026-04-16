@@ -7,6 +7,7 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { verifyFffShareToken } from '@/lib/fff-share-token';
+import { defaultFffOrigin } from '@/lib/site-hosts';
 import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
@@ -49,7 +50,7 @@ export default async function FffPublicSharePage({
       <div className="fff-app-inner fff-app-text-center">
         <div className="flex justify-center">
           <a
-            href="https://fff.messmass.com"
+            href={defaultFffOrigin()}
             className="app-btn app-btn--primary fff-share-get-cta"
             rel="noopener noreferrer"
           >
@@ -82,7 +83,7 @@ export default async function FffPublicSharePage({
       <div className="fff-app-inner fff-app-text-center">
         <div className="flex justify-center">
           <a
-            href="https://fff.messmass.com"
+            href={defaultFffOrigin()}
             className="app-btn app-btn--primary fff-share-get-cta"
             rel="noopener noreferrer"
           >

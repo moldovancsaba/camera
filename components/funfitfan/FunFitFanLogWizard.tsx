@@ -171,7 +171,7 @@ export default function FunFitFanLogWizard() {
           <AppButton type="button" variant="primary" onClick={() => void loadBootstrap()}>
             Try again
           </AppButton>
-          <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
+          <AppButton type="button" variant="ghost" compact onClick={() => router.push('/')}>
             Back
           </AppButton>
         </div>
@@ -216,7 +216,7 @@ export default function FunFitFanLogWizard() {
         />
         {error ? <p className="mt-3 fff-app-error">{error}</p> : null}
         <div className="fff-log-details-actions">
-          <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
+          <AppButton type="button" variant="ghost" compact onClick={() => router.push('/')}>
             BACK
           </AppButton>
           <AppButton

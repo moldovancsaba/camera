@@ -12,7 +12,7 @@ export default function FffReelAutoOpen({ slideshowId }: { slideshowId: string }
   useEffect(() => {
     const win = openSlideshowInNewTab(slideshowId);
     if (win) {
-      router.replace('/fff');
+      router.replace('/');
     } else {
       setBlocked(true);
     }
@@ -39,7 +39,7 @@ export default function FffReelAutoOpen({ slideshowId }: { slideshowId: string }
         >
           Open reel in new tab
         </AppButton>
-        <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
+        <AppButton type="button" variant="ghost" compact onClick={() => router.push('/')}>
           Home
         </AppButton>
       </div>

@@ -10,6 +10,7 @@ import { getSession } from '@/lib/auth/session';
 import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { signFffSharePayload } from '@/lib/fff-share-token';
 import { getSiteUrlFromRequest } from '@/lib/site-url';
+import { fffBrowser, fffShareAbsoluteUrl } from '@/lib/funfitfan/fff-browser-urls';
 import ShareLinkActions from '@/components/funfitfan/ShareLinkActions';
 import DeleteGymSessionButton from '@/components/gym/DeleteGymSessionButton';
 
@@ -52,14 +53,14 @@ export default async function HistoryGymDetailPage({
   const exp = Date.now() + SHARE_TTL_MS;
   const token = signFffSharePayload({ k: 'gym', id: sessionId, exp });
   const site = await getSiteUrlFromRequest();
-  const shareUrl = `${site}/fff/share/${encodeURIComponent(token)}`;
+  const shareUrl = fffShareAbsoluteUrl(site, token);
 
   const title = `${lessonTitle} · Gym`;
 
   return (
     <div className="fff-app-inner">
       <p>
-        <Link href="/fff/history" className="fff-app-link">
+        <Link href={fffBrowser.history} className="fff-app-link">
           ← History
         </Link>
       </p>
@@ -86,7 +87,7 @@ export default async function HistoryGymDetailPage({
         <DeleteGymSessionButton
           sessionId={sessionId}
           lessonTitle={lessonTitle}
-          redirectAfterDelete="/fff/history"
+          redirectAfterDelete={fffBrowser.history}
           appearance="fffHistory"
         />
       </div>

@@ -1,5 +1,5 @@
 /**
- * Persists activity + feel-so tags between /fff/log (Continue) and gym workout selfie (same tab).
+ * Persists activity + feel-so tags between FunFitFan `/log` (Continue) and gym workout selfie (same tab).
  */
 
 const STORAGE_KEY = 'fff_log_workout_draft_v1';

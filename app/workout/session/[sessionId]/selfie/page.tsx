@@ -1,5 +1,5 @@
 /**
- * Workout selfie: same FunFitFan check-in → Save to reel flow as /fff/log, then complete session.
+ * Workout selfie: same FunFitFan check-in → Save to reel flow as `/log` on FFF hosts, then complete session.
  */
 
 import { getSession } from '@/lib/auth/session';
