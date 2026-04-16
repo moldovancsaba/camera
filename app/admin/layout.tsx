@@ -5,6 +5,7 @@
  */
 
 import { getSession } from '@/lib/auth/session';
+import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { redirect } from 'next/navigation';
 import CollapsibleSidebar from '@/components/admin/CollapsibleSidebar';
 
@@ -17,7 +18,7 @@ export default async function AdminLayout({
   const session = await getSession();
   
   if (!session) {
-    redirect('/api/auth/login');
+    redirect(await authEntryPathForCurrentHost());
   }
   
   // WHAT: Check app-specific role (appRole), NOT SSO-level role (user.role)

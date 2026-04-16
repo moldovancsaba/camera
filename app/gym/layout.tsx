@@ -3,13 +3,14 @@
  */
 
 import { getSession } from '@/lib/auth/session';
+import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
 export default async function GymLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session) {
-    redirect('/api/auth/login');
+    redirect(await authEntryPathForCurrentHost());
   }
   if (session.appAccess === false) {
     redirect('/');

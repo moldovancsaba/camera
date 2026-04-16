@@ -12,7 +12,14 @@ type BootstrapCtx = {
   slideshowId: string;
   partnerId: string;
   partnerName: string;
-  frame: { frameId: string; name: string; fileUrl: string; width: number; height: number };
+  frame: {
+    frameId: string;
+    name: string;
+    fileUrl: string;
+    imageUrl?: string;
+    width: number;
+    height: number;
+  };
 };
 
 export default function FunFitFanLogWizard() {
@@ -37,8 +44,11 @@ export default function FunFitFanLogWizard() {
         return;
       }
       const d = json.data;
-      if (!d?.frame?.fileUrl) {
-        setError('Missing frame configuration.');
+      const overlay =
+        d?.frame?.fileUrl ||
+        (typeof d?.frame?.imageUrl === 'string' ? d.frame.imageUrl : '');
+      if (!d?.frame?.frameId || !overlay) {
+        setError(json.error || 'Could not load your FunFitFan frame. Ask an admin to set the default frame.');
         setStep('error');
         return;
       }
@@ -48,7 +58,10 @@ export default function FunFitFanLogWizard() {
         slideshowId: d.slideshowId,
         partnerId: d.partnerId,
         partnerName: d.partnerName,
-        frame: d.frame,
+        frame: {
+          ...d.frame,
+          fileUrl: overlay,
+        },
       });
       setStep('selfie');
     } catch {
@@ -148,14 +161,14 @@ export default function FunFitFanLogWizard() {
       <div className="mx-auto max-w-lg px-4 py-8">
         <h1 className="text-2xl font-semibold">Selfie</h1>
         <p className="mt-2 text-sm text-slate-400">
-          Frame: <span className="text-emerald-300">{ctx.frame.name}</span> — then you will add your activity
-          and result text.
+          Your coach&apos;s frame <span className="text-emerald-300">({ctx.frame.name})</span> is applied
+          automatically. Next, add your activity and result.
         </p>
         <div className="mt-6">
           <CameraCapture
             initialFacingMode="user"
             promptTitle="FunFitFan check-in"
-            promptDescription="Take a clear selfie. Your branded frame is applied in the next step."
+            promptDescription="Take a clear selfie. The team frame is added for you on the next step."
             onCapture={(_blob, dataUrl) => {
               setSelfieDataUrl(dataUrl);
               setStep('details');

@@ -66,14 +66,16 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const loginPath = isFffHost(host) ? '/fff/login' : '/api/auth/login';
+
   const cookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   if (!cookie) {
-    return NextResponse.redirect(new URL('/api/auth/login', request.url));
+    return NextResponse.redirect(new URL(loginPath, request.url));
   }
 
   const gate = parseAdminGate(cookie);
   if (!gate.allow) {
-    const target = gate.toLogin ? '/api/auth/login' : '/';
+    const target = gate.toLogin ? loginPath : '/';
     return NextResponse.redirect(new URL(target, request.url));
   }
 

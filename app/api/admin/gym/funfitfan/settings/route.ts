@@ -19,6 +19,7 @@ import {
   FUNFITFAN_PARTNER_NAME,
   FFF_SETTINGS_KEY,
 } from '@/lib/funfitfan/constants';
+import { readFunFitFanDefaultFrameId } from '@/lib/funfitfan/bootstrap';
 
 async function ensurePartnerRow(db: Db, adminUserId: string) {
   const col = db.collection(COLLECTIONS.PARTNERS);
@@ -41,8 +42,9 @@ export const GET = withErrorHandler(async () => {
   await requireAdmin();
   const db = await connectToDatabase();
   const settings = await db.collection(COLLECTIONS.FFF_SETTINGS).findOne({ settingsKey: FFF_SETTINGS_KEY });
+  const effectiveId = (await readFunFitFanDefaultFrameId(db)) ?? '';
   return apiSuccess({
-    defaultFrameId: settings?.defaultFrameId ?? '',
+    defaultFrameId: effectiveId,
     updatedAt: settings?.updatedAt ?? null,
   });
 });
@@ -58,7 +60,10 @@ export const PATCH = withErrorHandler(async (request: NextRequest) => {
   const db = await connectToDatabase();
   await ensurePartnerRow(db, session.user.id);
 
-  const frame = await db.collection(COLLECTIONS.FRAMES).findOne({ frameId: defaultFrameId, isActive: true });
+  let frame = await db.collection(COLLECTIONS.FRAMES).findOne({ frameId: defaultFrameId, isActive: true });
+  if (!frame) {
+    frame = await db.collection(COLLECTIONS.FRAMES).findOne({ frameId: defaultFrameId });
+  }
   if (!frame) {
     throw apiNotFound('Frame');
   }

@@ -5,6 +5,7 @@
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { FFF_SETTINGS_KEY } from '@/lib/funfitfan/constants';
+import { readFunFitFanDefaultFrameId } from '@/lib/funfitfan/bootstrap';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import Link from 'next/link';
 import AdminFffFrameForm from '@/components/funfitfan/AdminFffFrameForm';
@@ -17,7 +18,7 @@ export default async function AdminFunFitFanPage() {
   try {
     const db = await connectToDatabase();
     const settings = await db.collection(COLLECTIONS.FFF_SETTINGS).findOne({ settingsKey: FFF_SETTINGS_KEY });
-    currentFrameId = typeof settings?.defaultFrameId === 'string' ? settings.defaultFrameId : '';
+    currentFrameId = (await readFunFitFanDefaultFrameId(db)) ?? '';
 
     const list = await db
       .collection(COLLECTIONS.FRAMES)

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { isFffHost } from "@/lib/site-hosts";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,10 +14,26 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Camera - Photo Frame App",
-  description: "Create and share beautiful framed photos",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const host = (await headers()).get("host");
+    if (isFffHost(host)) {
+      return {
+        title: { absolute: "FFF — FunFitFan" },
+        description:
+          "FunFitFan (FFF): log activities and selfies, build your reel — fitness and health on the web.",
+        applicationName: "FFF",
+      };
+    }
+  } catch {
+    /* headers() unavailable in some prerender contexts */
+  }
+  return {
+    title: "Camera - Photo Frame App",
+    description: "Create and share beautiful framed photos",
+    applicationName: "Camera",
+  };
+}
 
 export default function RootLayout({
   children,

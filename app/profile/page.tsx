@@ -5,6 +5,7 @@
  */
 
 import { getSession } from '@/lib/auth/session';
+import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
@@ -18,7 +19,7 @@ export default async function ProfilePage() {
   const session = await getSession();
   
   if (!session) {
-    redirect('/api/auth/login');
+    redirect(await authEntryPathForCurrentHost());
   }
 
   // Fetch user's submissions

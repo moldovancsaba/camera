@@ -5,9 +5,9 @@
 import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
-  title: 'FunFitFan — FFF',
-  description: 'Fitness and health: lessons, workouts, and gym check-ins.',
-  applicationName: 'FunFitFan',
+  title: { absolute: 'FFF — FunFitFan' },
+  description: 'FFF (FunFitFan): activities, gym, and your personal reel.',
+  applicationName: 'FFF',
   manifest: '/fff/manifest.webmanifest',
   appleWebApp: {
     capable: true,

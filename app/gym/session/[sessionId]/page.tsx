@@ -5,6 +5,7 @@
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
+import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { notFound, redirect } from 'next/navigation';
 import SessionActions from '@/components/gym/SessionActions';
 import Link from 'next/link';
@@ -15,7 +16,7 @@ export const dynamic = 'force-dynamic';
 export default async function GymSessionPage({ params }: { params: Promise<{ sessionId: string }> }) {
   const session = await getSession();
   if (!session) {
-    redirect('/api/auth/login');
+    redirect(await authEntryPathForCurrentHost());
   }
 
   const { sessionId } = await params;

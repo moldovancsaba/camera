@@ -56,6 +56,54 @@ export async function getFffDefaultFrameId(db: Db): Promise<string | null> {
 }
 
 /**
+ * Read-only: `fff_settings` first, else FunFitFan partner `defaultFrames[0]`.
+ */
+export async function readFunFitFanDefaultFrameId(db: Db): Promise<string | null> {
+  const fromSettings = await getFffDefaultFrameId(db);
+  if (fromSettings) return fromSettings;
+  const partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: FUNFITFAN_PARTNER_ID });
+  const fromPartner = partner?.defaultFrames?.[0];
+  if (typeof fromPartner === 'string' && fromPartner.trim()) return fromPartner.trim();
+  return null;
+}
+
+/**
+ * Same as {@link readFunFitFanDefaultFrameId}, then mirrors partner-only config into `fff_settings` when missing.
+ */
+export async function resolveFunFitFanDefaultFrameId(db: Db): Promise<string | null> {
+  const id = await readFunFitFanDefaultFrameId(db);
+  if (!id) return null;
+  const row = await db.collection(COLLECTIONS.FFF_SETTINGS).findOne({ settingsKey: FFF_SETTINGS_KEY });
+  const stored = typeof row?.defaultFrameId === 'string' ? row.defaultFrameId.trim() : '';
+  if (stored !== id) {
+    const now = generateTimestamp();
+    await db.collection(COLLECTIONS.FFF_SETTINGS).updateOne(
+      { settingsKey: FFF_SETTINGS_KEY },
+      {
+        $set: {
+          settingsKey: FFF_SETTINGS_KEY,
+          defaultFrameId: id,
+          updatedAt: now,
+          updatedBy: 'system-sync-from-partner',
+        },
+      },
+      { upsert: true }
+    );
+  }
+  return id;
+}
+
+/** Stored frames may use `fileUrl` (schema) or `imageUrl` (legacy / frames API insert). */
+export function frameOverlayImageUrl(frame: Record<string, unknown> | null | undefined): string {
+  if (!frame) return '';
+  const a = frame.fileUrl;
+  const b = frame.imageUrl;
+  if (typeof a === 'string' && a.trim()) return a.trim();
+  if (typeof b === 'string' && b.trim()) return b.trim();
+  return '';
+}
+
+/**
  * Idempotent: creates partner (if missing), personal event + slideshow + profile for this user.
  */
 export async function ensureFunFitFanUserContext(
@@ -79,7 +127,7 @@ export async function ensureFunFitFanUserContext(
 }> {
   await ensureFunFitFanPartner(db, session.user.id);
 
-  const defaultFrameId = await getFffDefaultFrameId(db);
+  const defaultFrameId = await resolveFunFitFanDefaultFrameId(db);
   if (!defaultFrameId) {
     throw new FffBootstrapError(
       'FunFitFan is not ready yet: an admin must choose the default frame in Admin → Gym → FunFitFan.',
@@ -87,12 +135,20 @@ export async function ensureFunFitFanUserContext(
     );
   }
 
-  const frame = await db.collection(COLLECTIONS.FRAMES).findOne({
+  let frame = await db.collection(COLLECTIONS.FRAMES).findOne({
     frameId: defaultFrameId,
     isActive: true,
   });
   if (!frame) {
-    throw new FffBootstrapError('Configured FunFitFan frame was not found or is inactive.', 503);
+    frame = await db.collection(COLLECTIONS.FRAMES).findOne({ frameId: defaultFrameId });
+  }
+  if (!frame) {
+    throw new FffBootstrapError('Configured FunFitFan frame was not found.', 503);
+  }
+
+  const overlayUrl = frameOverlayImageUrl(frame as Record<string, unknown>);
+  if (!overlayUrl) {
+    throw new FffBootstrapError('Configured FunFitFan frame has no image URL.', 503);
   }
 
   const syncNow = generateTimestamp();
@@ -119,9 +175,9 @@ export async function ensureFunFitFanUserContext(
         frame: {
           frameId: frame.frameId as string,
           name: frame.name as string,
-          fileUrl: frame.fileUrl as string,
-          width: frame.width as number,
-          height: frame.height as number,
+          fileUrl: overlayUrl,
+          width: (frame.width as number) || 1920,
+          height: (frame.height as number) || 1080,
         },
       };
     }
@@ -191,9 +247,9 @@ export async function ensureFunFitFanUserContext(
     frame: {
       frameId: frame.frameId as string,
       name: frame.name as string,
-      fileUrl: frame.fileUrl as string,
-      width: frame.width as number,
-      height: frame.height as number,
+      fileUrl: overlayUrl,
+      width: (frame.width as number) || 1920,
+      height: (frame.height as number) || 1080,
     },
   };
 }

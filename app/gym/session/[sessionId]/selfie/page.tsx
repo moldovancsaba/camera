@@ -3,6 +3,7 @@
  */
 
 import { getSession } from '@/lib/auth/session';
+import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { redirect, notFound } from 'next/navigation';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic';
 export default async function GymSelfiePage({ params }: { params: Promise<{ sessionId: string }> }) {
   const session = await getSession();
   if (!session) {
-    redirect('/api/auth/login');
+    redirect(await authEntryPathForCurrentHost());
   }
 
   const { sessionId } = await params;

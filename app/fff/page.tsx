@@ -3,22 +3,33 @@
  */
 
 import Link from 'next/link';
-import { defaultCameraOrigin } from '@/lib/site-hosts';
+import { getSession } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
 
-export default function FunFitFanLandingPage() {
-  const cameraUrl = defaultCameraOrigin();
+export default async function FunFitFanLandingPage() {
+  const session = await getSession();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-950 via-slate-900 to-slate-950 text-white">
       <div className="mx-auto flex max-w-lg flex-col px-6 py-16">
-        <p className="text-sm font-medium uppercase tracking-[0.2em] text-emerald-400">FFF</p>
-        <h1 className="mt-2 text-4xl font-bold tracking-tight">FunFitFan</h1>
-        <p className="mt-4 text-lg text-slate-300">
-          Your workouts and gym check-ins on the same account as our Camera experiences when you need a
-          framed photo.
+        <h1 className="text-5xl font-black tracking-tight text-white drop-shadow-sm">FFF</h1>
+        <p className="mt-2 text-xl font-semibold text-emerald-400">FunFitFan</p>
+        <p className="mt-6 text-lg leading-relaxed text-slate-300">
+          Your fitness home: log a framed activity card (your team&apos;s frame), browse your reel, and open
+          gym lessons — all under FFF.
         </p>
+
+        {!session ? (
+          <p className="mt-6">
+            <Link
+              href="/fff/login"
+              className="font-semibold text-emerald-400 underline decoration-emerald-600/50 underline-offset-4 hover:text-emerald-300"
+            >
+              Sign in to FunFitFan
+            </Link>
+          </p>
+        ) : null}
 
         <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <Link
@@ -39,18 +50,12 @@ export default function FunFitFanLandingPage() {
           >
             Gym lessons
           </Link>
-          <a
-            href={cameraUrl}
-            className="inline-flex items-center justify-center rounded-xl border border-slate-600 px-6 py-3 text-center font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800/50"
-          >
-            Camera frames →
-          </a>
         </div>
 
         <p className="mt-12 text-sm text-slate-500">
-          Add to Home Screen: use your browser menu on mobile to install this site as an app (PWA). Use the
-          same sign-in on this host as on Camera if your team enabled shared session cookies for
-          <code className="mx-1 rounded bg-slate-800 px-1">*.messmass.com</code>.
+          Add to Home Screen: use your browser menu on mobile to install FFF as an app (PWA). Shared cookies
+          for <code className="mx-1 rounded bg-slate-800 px-1">*.messmass.com</code> keep you signed in across
+          subdomains when your team enables that.
         </p>
       </div>
     </div>
