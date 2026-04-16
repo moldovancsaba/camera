@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import CameraCapture from '@/components/camera/CameraCapture';
+import { AppButton } from '@/components/ui/AppButton';
 import { compositeFramedSelfieWithText } from '@/components/funfitfan/composite-framed-selfie';
 import { FUNFITFAN_PARTNER_ID, FUNFITFAN_PARTNER_NAME } from '@/lib/funfitfan/constants';
 
@@ -23,6 +24,7 @@ type BootstrapCtx = {
 };
 
 export default function FunFitFanLogWizard() {
+  const router = useRouter();
   const [step, setStep] = useState<'load' | 'selfie' | 'details' | 'preview' | 'done' | 'error'>('load');
   const [error, setError] = useState<string | null>(null);
   const [ctx, setCtx] = useState<BootstrapCtx | null>(null);
@@ -142,16 +144,14 @@ export default function FunFitFanLogWizard() {
     return (
       <div className="mx-auto max-w-md px-4 py-12 text-center">
         <p className="text-red-400">{error}</p>
-        <button
-          type="button"
-          onClick={() => void loadBootstrap()}
-          className="mt-6 rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-500"
-        >
-          Try again
-        </button>
-        <Link href="/fff" className="mt-4 block text-sm text-slate-400 hover:text-white">
-          ← Back
-        </Link>
+        <div className="app-btn-stack app-btn-stack--wizard">
+          <AppButton type="button" variant="primary" onClick={() => void loadBootstrap()}>
+            Try again
+          </AppButton>
+          <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
+            ← Back
+          </AppButton>
+        </div>
       </div>
     );
   }
@@ -164,9 +164,12 @@ export default function FunFitFanLogWizard() {
           Your coach&apos;s frame <span className="text-emerald-300">({ctx.frame.name})</span> is applied
           automatically. Next, add your activity and result.
         </p>
-        <div className="mt-6">
+        <div className="mt-6 w-full">
           <CameraCapture
             initialFacingMode="user"
+            frameOverlay={ctx.frame.fileUrl}
+            frameWidth={ctx.frame.width}
+            frameHeight={ctx.frame.height}
             promptTitle="FunFitFan check-in"
             promptDescription="Take a clear selfie. The team frame is added for you on the next step."
             onCapture={(_blob, dataUrl) => {
@@ -176,9 +179,11 @@ export default function FunFitFanLogWizard() {
             className="overflow-hidden rounded-2xl border border-slate-700"
           />
         </div>
-        <Link href="/fff" className="mt-6 inline-block text-sm text-slate-500 hover:text-slate-300">
-          Cancel
-        </Link>
+        <div className="app-btn-stack app-btn-stack--wizard">
+          <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
+            Cancel
+          </AppButton>
+        </div>
       </div>
     );
   }
@@ -207,21 +212,13 @@ export default function FunFitFanLogWizard() {
           />
         </label>
         {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
-        <div className="mt-8 flex gap-3">
-          <button
-            type="button"
-            onClick={() => setStep('selfie')}
-            className="rounded-lg border border-slate-600 px-4 py-2 text-slate-300 hover:bg-slate-800"
-          >
+        <div className="app-btn-stack app-btn-stack--wizard-lg">
+          <AppButton type="button" variant="secondary" compact onClick={() => setStep('selfie')}>
             Retake
-          </button>
-          <button
-            type="button"
-            onClick={() => void buildPreview()}
-            className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-500"
-          >
+          </AppButton>
+          <AppButton type="button" variant="primary" compact onClick={() => void buildPreview()}>
             Preview card
-          </button>
+          </AppButton>
         </div>
       </div>
     );
@@ -235,22 +232,13 @@ export default function FunFitFanLogWizard() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={composite} alt="Preview" className="mt-6 w-full rounded-xl border border-slate-700" />
         {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
-        <div className="mt-8 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => setStep('details')}
-            className="rounded-lg border border-slate-600 px-4 py-2 text-slate-300 hover:bg-slate-800"
-          >
+        <div className="app-btn-stack app-btn-stack--wizard-lg">
+          <AppButton type="button" variant="secondary" compact onClick={() => setStep('details')}>
             Edit text
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => void submit()}
-            className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
-          >
+          </AppButton>
+          <AppButton type="button" variant="primary" compact disabled={saving} onClick={() => void submit()}>
             {saving ? 'Saving…' : 'Save to reel'}
-          </button>
+          </AppButton>
         </div>
       </div>
     );
@@ -261,20 +249,21 @@ export default function FunFitFanLogWizard() {
       <div className="mx-auto max-w-lg px-4 py-12 text-center">
         <p className="text-xl font-semibold text-emerald-400">Saved</p>
         <p className="mt-2 text-slate-400">Your card is in your FunFitFan event and slideshow history.</p>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Link
-            href={`/slideshow/${ctx.slideshowId}`}
-            className="rounded-lg bg-emerald-600 px-6 py-3 font-semibold text-white hover:bg-emerald-500"
+        <div className="app-btn-stack app-btn-stack--wizard-lg">
+          <AppButton
+            type="button"
+            variant="primary"
+            onClick={() => router.push(`/slideshow/${ctx.slideshowId}`)}
           >
             Open my reel
-          </Link>
-          <Link href="/fff/log" className="rounded-lg border border-slate-600 px-6 py-3 text-slate-200 hover:bg-slate-800">
+          </AppButton>
+          <AppButton type="button" variant="secondary" onClick={() => router.push('/fff/log')}>
             Log another
-          </Link>
+          </AppButton>
+          <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
+            Home
+          </AppButton>
         </div>
-        <Link href="/fff" className="mt-8 inline-block text-sm text-slate-500 hover:text-slate-300">
-          Home
-        </Link>
       </div>
     );
   }

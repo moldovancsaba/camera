@@ -12,6 +12,8 @@ import {
   apiBadRequest,
   apiNotFound,
   apiForbidden,
+  checkRateLimit,
+  RATE_LIMITS,
 } from '@/lib/api';
 import { assertGymAppAccess } from '@/lib/gym/access';
 
@@ -100,5 +102,31 @@ export const PATCH = withErrorHandler(
         _id: next?._id?.toString(),
       },
     });
+  }
+);
+
+export const DELETE = withErrorHandler(
+  async (request: NextRequest, context: { params: Promise<{ sessionId: string }> }) => {
+    await checkRateLimit(request, RATE_LIMITS.WRITE);
+
+    const session = await requireAuth();
+    assertGymAppAccess(session);
+    const { sessionId } = await context.params;
+
+    const db = await connectToDatabase();
+    const row = await db.collection(COLLECTIONS.GYM_WORKOUT_SESSIONS).findOne({ sessionId });
+    if (!row) {
+      throw apiNotFound('Session');
+    }
+    if (row.userId !== session.user.id) {
+      throw apiForbidden('Not your session');
+    }
+
+    const result = await db.collection(COLLECTIONS.GYM_WORKOUT_SESSIONS).deleteOne({ sessionId });
+    if (result.deletedCount === 0) {
+      throw apiNotFound('Session');
+    }
+
+    return apiSuccess({ deleted: true });
   }
 );

@@ -7,6 +7,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
 import Link from 'next/link';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
+import DeleteGymSessionButton from '@/components/gym/DeleteGymSessionButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,12 +90,15 @@ export default async function GymHomePage() {
                     selfieImageUrl?: string;
                   }[]
                 ).map((s) => (
-                  <li key={s.sessionId}>
+                  <li
+                    key={s.sessionId}
+                    className="flex items-stretch gap-0 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-gray-700 dark:bg-gray-800"
+                  >
                     <Link
                       href={`/gym/session/${s.sessionId}`}
-                      className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800"
+                      className="flex min-w-0 flex-1 items-center justify-between gap-3 p-3 transition hover:bg-slate-50 dark:hover:bg-gray-800/80"
                     >
-                      <div>
+                      <div className="min-w-0">
                         <p className="font-medium text-slate-900 dark:text-white">{s.lessonTitle}</p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           {s.status} · {new Date(s.startedAt).toLocaleString()}
@@ -102,9 +106,12 @@ export default async function GymHomePage() {
                       </div>
                       {s.selfieImageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={s.selfieImageUrl} alt="" className="h-12 w-12 rounded object-cover" />
+                        <img src={s.selfieImageUrl} alt="" className="h-12 w-12 shrink-0 rounded object-cover" />
                       ) : null}
                     </Link>
+                    <div className="flex items-center border-l border-slate-200 dark:border-gray-700">
+                      <DeleteGymSessionButton sessionId={s.sessionId} lessonTitle={s.lessonTitle} />
+                    </div>
                   </li>
                 ))}
               </ul>

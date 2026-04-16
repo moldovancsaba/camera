@@ -482,35 +482,59 @@ export default function CameraCapture({
       
       const availableWidth = parent.clientWidth;
       const availableHeight = parent.clientHeight;
-      
+
       // Calculate target aspect ratio (frame or default 16:9)
       const targetAspect = getTargetAspectRatio();
-      
+
+      if (availableWidth <= 0) {
+        return;
+      }
+
+      let width: number;
+      let height: number;
+
+      // Parent often has no usable height until the preview lays out (flex column + h-full chain).
+      // Size from width so portrait frames (e.g. 9:16) get a tall preview instead of falling back to 100%×100%.
+      if (availableHeight <= 0) {
+        width = availableWidth;
+        height = width / targetAspect;
+        setContainerSize({ width, height });
+        return;
+      }
+
       // Fit maximum size at target aspect ratio within available space
       const containerAspectRatio = availableWidth / availableHeight;
-      
-      let width, height;
-      
+
       if (containerAspectRatio > targetAspect) {
-        // Height is the constraint
         height = availableHeight;
         width = height * targetAspect;
       } else {
-        // Width is the constraint
         width = availableWidth;
         height = width / targetAspect;
       }
-      
+
       setContainerSize({ width, height });
     };
-    
+
     calculateSize();
     window.addEventListener('resize', calculateSize);
     window.addEventListener('orientationchange', calculateSize);
-    
+
+    const parentEl = containerRef.current?.parentElement;
+    const resizeObserver =
+      parentEl && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+            calculateSize();
+          })
+        : null;
+    if (resizeObserver && parentEl) {
+      resizeObserver.observe(parentEl);
+    }
+
     return () => {
       window.removeEventListener('resize', calculateSize);
       window.removeEventListener('orientationchange', calculateSize);
+      resizeObserver?.disconnect();
     };
   }, [frameWidth, frameHeight, frameImage]);
 
