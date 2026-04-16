@@ -32,10 +32,20 @@ export const GET = withErrorHandler(
       throw apiForbidden('Not your session');
     }
 
+    let lessonSport: string | null = null;
+    const lid = typeof row.lessonId === 'string' ? row.lessonId.trim() : '';
+    if (lid) {
+      const lesson = await db.collection(COLLECTIONS.GYM_LESSONS).findOne({ lessonId: lid });
+      const rec = lesson as unknown as { sport?: string } | null;
+      const s = rec && typeof rec.sport === 'string' ? rec.sport.trim() : '';
+      lessonSport = s || null;
+    }
+
     return apiSuccess({
       session: {
         ...row,
         _id: row._id?.toString(),
+        lessonSport,
       },
     });
   }
@@ -65,8 +75,16 @@ export const PATCH = withErrorHandler(
         throw apiBadRequest('Invalid status');
       }
       if (s === 'completed') {
-        const selfie = row.selfieImageUrl;
-        if (typeof selfie !== 'string' || !selfie.trim()) {
+        const incomingSelfie =
+          typeof body.selfieImageUrl === 'string' ? String(body.selfieImageUrl).trim() : '';
+        const existingSelfie =
+          typeof row.selfieImageUrl === 'string' ? String(row.selfieImageUrl).trim() : '';
+        if (incomingSelfie) {
+          $set.selfieImageUrl = incomingSelfie;
+          $set.selfieUploadedAt = generateTimestamp();
+        }
+        const effectiveSelfie = incomingSelfie || existingSelfie;
+        if (!effectiveSelfie) {
           throw apiBadRequest('Add a gym selfie before you can complete this workout.');
         }
       }

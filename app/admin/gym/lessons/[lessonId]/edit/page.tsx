@@ -8,6 +8,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import AdminEditLessonForm from '@/components/gym/AdminEditLessonForm';
+import { readFunFitFanSportActivities } from '@/lib/funfitfan/bootstrap';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,8 +21,11 @@ export default async function AdminEditGymLessonPage({
   let lesson: Record<string, unknown> | null = null;
   let dbError: unknown = null;
 
+  let sportOptions: string[] = [];
+
   try {
     const db = await connectToDatabase();
+    sportOptions = await readFunFitFanSportActivities(db);
     lesson = (await db.collection(COLLECTIONS.GYM_LESSONS).findOne({ lessonId })) as Record<
       string,
       unknown
@@ -34,7 +38,7 @@ export default async function AdminEditGymLessonPage({
     return (
       <div className="p-8">
         <Link href="/admin/gym/lessons" className="text-sm text-gray-600 hover:underline dark:text-gray-400">
-          ← Lessons
+          ← Sport lessons
         </Link>
         <h1 className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">Edit lesson</h1>
         <div className="mt-6">
@@ -57,7 +61,7 @@ export default async function AdminEditGymLessonPage({
   return (
     <div className="p-8">
       <Link href="/admin/gym/lessons" className="text-sm text-gray-600 hover:underline dark:text-gray-400">
-        ← Lessons
+        ← Sport lessons
       </Link>
       <h1 className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">Edit lesson</h1>
       <p className="mt-2 max-w-xl text-gray-600 dark:text-gray-400">
@@ -66,6 +70,8 @@ export default async function AdminEditGymLessonPage({
       <div className="mt-8 max-w-xl">
         <AdminEditLessonForm
           lessonId={lesson.lessonId}
+          sportOptions={sportOptions}
+          initialSport={typeof lesson.sport === 'string' ? lesson.sport : ''}
           initialTitle={lesson.title}
           initialDescription={typeof lesson.description === 'string' ? lesson.description : ''}
           initialStepsJson={initialStepsJson}

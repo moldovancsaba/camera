@@ -1,5 +1,6 @@
 /**
- * Attach a gym workout selfie: same imgbb upload path as photo submissions (no frame composite).
+ * Attach a gym workout selfie: same imgbb upload path as photo submissions.
+ * The client sends a JPEG data URL that already includes the FunFitFan default frame when configured.
  */
 
 import { NextRequest } from 'next/server';

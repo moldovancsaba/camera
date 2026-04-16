@@ -1,5 +1,5 @@
 /**
- * Admin: list gym lessons.
+ * Admin: list sport lessons (member /gym).
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -28,12 +28,12 @@ export default async function AdminGymLessonsPage() {
     <div className="p-8">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gym lessons</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Sport lessons</h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">Published lessons appear on /gym for members.</p>
         </div>
         <div className="flex gap-2">
           <Link href="/admin/gym" className="text-sm text-gray-600 hover:underline dark:text-gray-400">
-            ← Gym hub
+            ← Sport hub
           </Link>
           <Link
             href="/admin/gym/lessons/new"
@@ -52,8 +52,15 @@ export default async function AdminGymLessonsPage() {
 
       {!dbError && lessons.length > 0 ? (
         <ul className="space-y-2">
-          {(lessons as { lessonId: string; title: string; isPublished: boolean; updatedAt: string }[]).map(
-            (l) => (
+          {(
+            lessons as {
+              lessonId: string;
+              title: string;
+              sport?: string;
+              isPublished: boolean;
+              updatedAt: string;
+            }[]
+          ).map((l) => (
               <li
                 key={l.lessonId}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
@@ -61,6 +68,12 @@ export default async function AdminGymLessonsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-gray-900 dark:text-white">{l.title}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {typeof l.sport === 'string' && l.sport.trim() ? (
+                      <>
+                        <span className="font-medium text-gray-700 dark:text-gray-300">{l.sport}</span>
+                        {' · '}
+                      </>
+                    ) : null}
                     {l.isPublished ? 'Published' : 'Draft'} · {l.lessonId}
                   </p>
                 </div>
@@ -75,8 +88,7 @@ export default async function AdminGymLessonsPage() {
                   <span className="text-xs text-gray-400">{new Date(l.updatedAt).toLocaleString()}</span>
                 </div>
               </li>
-            )
-          )}
+            ))}
         </ul>
       ) : null}
     </div>

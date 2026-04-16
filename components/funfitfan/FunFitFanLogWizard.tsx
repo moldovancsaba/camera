@@ -2,13 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import CameraCapture from '@/components/camera/CameraCapture';
 import { AppButton } from '@/components/ui/AppButton';
-import { compositeFramedSelfieWithText } from '@/components/funfitfan/composite-framed-selfie';
 import FeelSoHashtagInput from '@/components/funfitfan/FeelSoHashtagInput';
-import { FUNFITFAN_PARTNER_ID, FUNFITFAN_PARTNER_NAME } from '@/lib/funfitfan/constants';
-import { formatFeelSoLine } from '@/lib/funfitfan/feel-so-tags';
-import { openSlideshowInNewTab } from '@/lib/slideshow/open-slideshow';
+import { writeFffLogWorkoutDraft } from '@/lib/funfitfan/log-workout-draft';
 
 type BootstrapCtx = {
   eventUuid: string;
@@ -16,7 +12,6 @@ type BootstrapCtx = {
   slideshowId: string;
   partnerId: string;
   partnerName: string;
-  sportActivities: string[];
   frame: {
     frameId: string;
     name: string;
@@ -29,15 +24,14 @@ type BootstrapCtx = {
 
 export default function FunFitFanLogWizard() {
   const router = useRouter();
-  const [step, setStep] = useState<'load' | 'selfie' | 'details' | 'preview' | 'done' | 'error'>('load');
+  const [step, setStep] = useState<'load' | 'details' | 'error'>('load');
   const [error, setError] = useState<string | null>(null);
   const [ctx, setCtx] = useState<BootstrapCtx | null>(null);
-  const [selfieDataUrl, setSelfieDataUrl] = useState<string | null>(null);
   const [activity, setActivity] = useState('');
   const [feelSoTags, setFeelSoTags] = useState<string[]>([]);
   const [hashtagSuggestions, setHashtagSuggestions] = useState<string[]>([]);
-  const [composite, setComposite] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [lessonSports, setLessonSports] = useState<string[]>([]);
+  const [lessonSportsError, setLessonSportsError] = useState<string | null>(null);
 
   const loadBootstrap = useCallback(async () => {
     setStep('load');
@@ -52,23 +46,18 @@ export default function FunFitFanLogWizard() {
       }
       const d = json.data;
       const overlay =
-        d?.frame?.fileUrl ||
-        (typeof d?.frame?.imageUrl === 'string' ? d.frame.imageUrl : '');
+        d?.frame?.fileUrl || (typeof d?.frame?.imageUrl === 'string' ? d.frame.imageUrl : '');
       if (!d?.frame?.frameId || !overlay) {
         setError(json.error || 'Could not load your FunFitFan frame. Ask an admin to set the default frame.');
         setStep('error');
         return;
       }
-      const sportActivities = Array.isArray(d?.sportActivities)
-        ? (d.sportActivities as unknown[]).filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
-        : [];
       setCtx({
         eventUuid: d.eventUuid,
         eventName: d.eventName,
         slideshowId: d.slideshowId,
         partnerId: d.partnerId,
         partnerName: d.partnerName,
-        sportActivities,
         frame: {
           ...d.frame,
           fileUrl: overlay,
@@ -106,79 +95,60 @@ export default function FunFitFanLogWizard() {
     };
   }, [step]);
 
-  function goToSelfieStep() {
-    if (!ctx) return;
-    const act = activity.trim();
-    if (!act || !ctx.sportActivities.includes(act)) {
-      setError('Choose a sport activity from the list.');
-      return;
-    }
-    setError(null);
-    setStep('selfie');
-  }
-
-  /** Pass `selfieOverride` right after capture so preview does not rely on async `setSelfieDataUrl`. */
-  async function buildPreview(selfieOverride?: string) {
-    const pic = selfieOverride ?? selfieDataUrl;
-    if (!pic || !ctx) return;
-    const act = activity.trim();
-    if (!act || !ctx.sportActivities.includes(act)) {
-      setError('Choose a sport activity from the list.');
-      return;
-    }
-    setError(null);
-    try {
-      const line2 = formatFeelSoLine(feelSoTags);
-      const out = await compositeFramedSelfieWithText(pic, ctx.frame.fileUrl, act, line2);
-      setComposite(out);
-      setStep('preview');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not build image');
-    }
-  }
-
-  async function submit() {
-    if (!composite || !ctx) return;
-    const act = activity.trim();
-    if (!act || !ctx.sportActivities.includes(act)) {
-      setError('Choose a sport activity from the list.');
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      const img = new window.Image();
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error('decode'));
-        img.src = composite;
-      });
-      const res = await fetch('/api/submissions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageData: composite,
-          frameId: ctx.frame.frameId,
-          eventId: ctx.eventUuid,
-          eventName: ctx.eventName,
-          partnerId: FUNFITFAN_PARTNER_ID,
-          partnerName: FUNFITFAN_PARTNER_NAME,
-          imageWidth: img.width,
-          imageHeight: img.height,
-          funfitfanActivity: act,
-          funfitfanFeelSoTags: feelSoTags,
-        }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(json.error || `Save failed (${res.status})`);
-        return;
+  useEffect(() => {
+    if (step !== 'details') return;
+    let cancelled = false;
+    (async () => {
+      setLessonSportsError(null);
+      try {
+        const res = await fetch('/api/gym/lessons');
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || cancelled) {
+          if (!cancelled) {
+            setLessonSports([]);
+            setLessonSportsError(
+              typeof json.error === 'string' ? json.error : 'Could not load sport lessons.'
+            );
+          }
+          return;
+        }
+        const list = json.data?.lessons;
+        if (!Array.isArray(list)) {
+          setLessonSports([]);
+          return;
+        }
+        const sports = [
+          ...new Set(
+            list
+              .map((row: { sport?: string }) => (typeof row.sport === 'string' ? row.sport.trim() : ''))
+              .filter((s: string) => s.length > 0)
+          ),
+        ].sort((a, b) => a.localeCompare(b));
+        if (!cancelled) setLessonSports(sports);
+      } catch {
+        if (!cancelled) {
+          setLessonSports([]);
+          setLessonSportsError('Could not load sport lessons.');
+        }
       }
-      setStep('done');
-    } catch {
-      setError('Network error');
-    } finally {
-      setSaving(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [step]);
+
+  function continueToLessons() {
+    const act = activity.trim();
+    if (!act || !lessonSports.includes(act)) {
+      setError('Choose a sport that has at least one published lesson.');
+      return;
+    }
+    setError(null);
+    writeFffLogWorkoutDraft({ activity: act, feelSoTags });
+    if (act.toLowerCase() === 'gym') {
+      router.push('/gym');
+    } else {
+      router.push(`/gym?sport=${encodeURIComponent(act)}`);
     }
   }
 
@@ -221,12 +191,18 @@ export default function FunFitFanLogWizard() {
           onChange={(e) => setActivity(e.target.value)}
         >
           <option value="">— Choose an activity —</option>
-          {ctx.sportActivities.map((a) => (
+          {lessonSports.map((a) => (
             <option key={a} value={a}>
               {a}
             </option>
           ))}
         </select>
+        {lessonSportsError ? <p className="mt-2 text-sm fff-app-error">{lessonSportsError}</p> : null}
+        {lessonSports.length === 0 && !lessonSportsError ? (
+          <p className="mt-2 text-sm fff-app-muted">
+            No published sport lessons yet. Add lessons under Admin → Sport before you can continue.
+          </p>
+        ) : null}
         <label className="fff-field-label" htmlFor="fff-feelso-input">
           Feel so
         </label>
@@ -237,109 +213,18 @@ export default function FunFitFanLogWizard() {
           suggestions={hashtagSuggestions}
         />
         {error ? <p className="mt-3 fff-app-error">{error}</p> : null}
-        {selfieDataUrl ? (
-          <div className="app-btn-stack app-btn-stack--wizard-lg">
-            <AppButton
-              type="button"
-              variant="secondary"
-              compact
-              onClick={() => {
-                setError(null);
-                setStep('selfie');
-              }}
-            >
-              Retake selfie
-            </AppButton>
-            <AppButton type="button" variant="primary" compact onClick={() => void buildPreview()}>
-              Preview card
-            </AppButton>
-          </div>
-        ) : (
-          <div className="fff-log-details-actions">
-            <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
-              BACK
-            </AppButton>
-            <AppButton type="button" variant="primary" compact onClick={() => goToSelfieStep()}>
-              Take selfie
-            </AppButton>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (step === 'selfie' && ctx) {
-    return (
-      <div className="fff-app-fullscreen-step">
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 items-center justify-center px-4 pt-4 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]">
-            <CameraCapture
-              initialFacingMode="user"
-              frameOverlay={undefined}
-              frameWidth={ctx.frame.width}
-              frameHeight={ctx.frame.height}
-              previewAspectWidthOverHeight={9 / 16}
-              captureButtonColor="var(--fff-app-capture-accent)"
-              captureButtonBorderColor="var(--fff-app-capture-accent-ring)"
-              promptTitle="FunFitFan check-in"
-              promptDescription="After your activity, capture your check-in photo."
-              controlBar="fff-bottom-triple"
-              onCancel={() => router.push('/fff')}
-              onCapture={(_blob, dataUrl) => {
-                setSelfieDataUrl(dataUrl);
-                void buildPreview(dataUrl);
-              }}
-            />
-          </div>
-          {error ? (
-            <div className="shrink-0 px-4 pb-2 text-center">
-              <p className="fff-app-error">{error}</p>
-            </div>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'preview' && composite) {
-    return (
-      <div className="fff-app-fullscreen-step">
-        <div className="fff-app-preview-frame">
-          <div className="fff-app-preview-body fff-app-preview-body--flush-top">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={composite} alt="Preview" className="fff-app-preview-img" />
-          </div>
-          <footer className="fff-app-preview-footer">
-            {error ? <p className="mb-2 text-center fff-app-error">{error}</p> : null}
-            <div className="fff-app-preview-actions">
-              <AppButton type="button" variant="secondary" compact onClick={() => setStep('details')}>
-                Edit text
-              </AppButton>
-              <AppButton type="button" variant="primary" compact disabled={saving} onClick={() => void submit()}>
-                {saving ? 'Saving…' : 'Save to reel'}
-              </AppButton>
-            </div>
-          </footer>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'done' && ctx) {
-    return (
-      <div className="py-12 fff-app-text-center">
-        <p className="fff-app-success">Saved</p>
-        <p className="mt-2 fff-app-muted">Your card is in your FunFitFan event and slideshow history.</p>
-        <div className="app-btn-stack app-btn-stack--wizard-lg fff-app-done-stack">
+        <div className="fff-log-details-actions">
+          <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
+            BACK
+          </AppButton>
           <AppButton
             type="button"
             variant="primary"
-            onClick={() => openSlideshowInNewTab(ctx.slideshowId)}
+            compact
+            disabled={lessonSports.length === 0}
+            onClick={() => continueToLessons()}
           >
-            Open my reel
-          </AppButton>
-          <AppButton type="button" variant="neutral" onClick={() => router.push('/fff')}>
-            Home
+            Continue
           </AppButton>
         </div>
       </div>

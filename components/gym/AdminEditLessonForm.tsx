@@ -6,6 +6,8 @@ import AdminDeleteLessonButton from '@/components/gym/AdminDeleteLessonButton';
 
 type AdminEditLessonFormProps = {
   lessonId: string;
+  sportOptions: string[];
+  initialSport: string;
   initialTitle: string;
   initialDescription: string;
   initialStepsJson: string;
@@ -14,12 +16,19 @@ type AdminEditLessonFormProps = {
 
 export default function AdminEditLessonForm({
   lessonId,
+  sportOptions,
+  initialSport,
   initialTitle,
   initialDescription,
   initialStepsJson,
   initialIsPublished,
 }: AdminEditLessonFormProps) {
   const router = useRouter();
+  const [sport, setSport] = useState(() => {
+    if (!initialSport.trim()) return '';
+    const found = sportOptions.find((s) => s.toLowerCase() === initialSport.trim().toLowerCase());
+    return found ?? initialSport.trim();
+  });
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [stepsJson, setStepsJson] = useState(initialStepsJson);
@@ -31,6 +40,11 @@ export default function AdminEditLessonForm({
     e.preventDefault();
     setLoading(true);
     setError(null);
+    if (!sport.trim()) {
+      setError('Select a sport from the list.');
+      setLoading(false);
+      return;
+    }
     let steps: unknown;
     try {
       steps = JSON.parse(stepsJson);
@@ -44,7 +58,7 @@ export default function AdminEditLessonForm({
       const res = await fetch(`/api/admin/gym/lessons/${encodeURIComponent(lessonId)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, steps, isPublished }),
+        body: JSON.stringify({ title, description, steps, isPublished, sport }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -62,6 +76,27 @@ export default function AdminEditLessonForm({
 
   return (
     <form onSubmit={submit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Sport</label>
+        <select
+          className="mt-1 w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+          value={sport}
+          onChange={(e) => setSport(e.target.value)}
+          required
+        >
+          <option value="">— Select sport —</option>
+          {sportOptions.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        {sportOptions.length === 0 ? (
+          <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+            No sports configured. Add activities under Admin → Sport → FunFitFan settings first.
+          </p>
+        ) : null}
+      </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
         <input
@@ -98,7 +133,7 @@ export default function AdminEditLessonForm({
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || sportOptions.length === 0}
           className="rounded-lg bg-blue-600 px-6 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
         >
           {loading ? 'Saving…' : 'Save changes'}

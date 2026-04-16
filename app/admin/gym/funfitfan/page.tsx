@@ -38,7 +38,7 @@ export default async function AdminFunFitFanPage() {
   return (
     <div className="app-panel-shell">
       <Link href="/admin/gym" className="app-panel-back">
-        ← Gym hub
+        ← Sport hub
       </Link>
       <h1 className="app-panel-title">FunFitFan (FFF)</h1>
       <p className="app-panel-lede">

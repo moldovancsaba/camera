@@ -12,6 +12,8 @@ import {
   apiBadRequest,
   apiNotFound,
 } from '@/lib/api';
+import { readFunFitFanSportActivities } from '@/lib/funfitfan/bootstrap';
+import { resolveLessonSportFromAllowlist } from '@/lib/gym/lesson-sport';
 
 function normalizeSteps(raw: unknown): GymLessonStep[] | undefined {
   if (raw === undefined) return undefined;
@@ -36,7 +38,7 @@ export const PATCH = withErrorHandler(
     await requireAdmin();
     const { lessonId } = await context.params;
     const body = await request.json();
-    const { title, description, steps, isPublished } = body;
+    const { title, description, steps, isPublished, sport } = body;
 
     const $set: Record<string, unknown> = { updatedAt: generateTimestamp() };
     if (typeof title === 'string' && title.trim()) $set.title = title.trim();
@@ -45,12 +47,25 @@ export const PATCH = withErrorHandler(
     if (steps !== undefined) {
       $set.steps = normalizeSteps(steps);
     }
+    const db = await connectToDatabase();
+    if (sport !== undefined) {
+      if (typeof sport !== 'string' || !sport.trim()) {
+        throw apiBadRequest('sport must be a non-empty string when provided');
+      }
+      const allowedSports = await readFunFitFanSportActivities(db);
+      const canonicalSport = resolveLessonSportFromAllowlist(sport, allowedSports);
+      if (!canonicalSport) {
+        throw apiBadRequest(
+          'sport must be one of the activities configured under Admin → Sport → FunFitFan settings'
+        );
+      }
+      $set.sport = canonicalSport;
+    }
 
     if (Object.keys($set).length <= 1) {
       throw apiBadRequest('No valid fields to update');
     }
 
-    const db = await connectToDatabase();
     const upd = await db.collection(COLLECTIONS.GYM_LESSONS).updateOne({ lessonId }, { $set });
     if (upd.matchedCount === 0) {
       throw apiNotFound('Lesson');

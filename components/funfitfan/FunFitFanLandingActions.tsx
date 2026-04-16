@@ -16,9 +16,6 @@ export default function FunFitFanLandingActions({ signedIn }: { signedIn: boolea
       <AppButton variant="primary" onClick={() => router.push('/fff/log')}>
         I DO IT
       </AppButton>
-      <AppButton variant="neutral" onClick={() => router.push('/gym')}>
-        IN THE GYM
-      </AppButton>
       <AppButton variant="secondary" onClick={() => router.push('/fff/history')}>
         HISTORY
       </AppButton>

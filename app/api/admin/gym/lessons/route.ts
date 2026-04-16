@@ -17,6 +17,8 @@ import {
   apiCreated,
   apiBadRequest,
 } from '@/lib/api';
+import { readFunFitFanSportActivities } from '@/lib/funfitfan/bootstrap';
+import { resolveLessonSportFromAllowlist } from '@/lib/gym/lesson-sport';
 
 function normalizeSteps(raw: unknown): GymLessonStep[] {
   if (!Array.isArray(raw) || raw.length === 0) {
@@ -56,10 +58,22 @@ export const GET = withErrorHandler(async () => {
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const session = await requireAdmin();
   const body = await request.json();
-  const { title, description, steps, isPublished } = body;
+  const { title, description, steps, isPublished, sport } = body;
 
   if (!title || typeof title !== 'string' || !title.trim()) {
     throw apiBadRequest('title is required');
+  }
+  if (typeof sport !== 'string' || !sport.trim()) {
+    throw apiBadRequest('sport is required (must match FunFitFan sport activities)');
+  }
+
+  const db = await connectToDatabase();
+  const allowedSports = await readFunFitFanSportActivities(db);
+  const canonicalSport = resolveLessonSportFromAllowlist(sport, allowedSports);
+  if (!canonicalSport) {
+    throw apiBadRequest(
+      'sport must be one of the activities configured under Admin → Sport → FunFitFan settings (sport activities list)'
+    );
   }
 
   const normalizedSteps = normalizeSteps(steps);
@@ -68,6 +82,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   const doc = {
     lessonId,
+    sport: canonicalSport,
     title: title.trim(),
     description: typeof description === 'string' ? description.trim() : undefined,
     steps: normalizedSteps,
@@ -77,7 +92,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     updatedAt: now,
   };
 
-  const db = await connectToDatabase();
   await db.collection(COLLECTIONS.GYM_LESSONS).insertOne(doc);
 
   return apiCreated({ lesson: doc });

@@ -777,6 +777,8 @@ export interface GymLessonStep {
 export interface GymLesson {
   _id?: ObjectId;
   lessonId: string;
+  /** Display + filtering; must match an entry in FunFitFan `sportActivities` when set. */
+  sport?: string;
   title: string;
   description?: string;
   steps: GymLessonStep[];

@@ -1,5 +1,5 @@
 /**
- * Gym selfie: reuses CameraCapture + imgbb via /api/gym/sessions/:id/selfie
+ * Gym selfie: same FunFitFan check-in → Save to reel flow as /fff/log (composite + submission), then complete session.
  */
 
 import { getSession } from '@/lib/auth/session';
@@ -8,7 +8,6 @@ import { redirect, notFound } from 'next/navigation';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import GymSelfieClient from '@/components/gym/GymSelfieClient';
-import { frameOverlayImageUrl, readFunFitFanDefaultFrameId } from '@/lib/funfitfan/bootstrap';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,23 +24,14 @@ export default async function GymSelfiePage({ params }: { params: Promise<{ sess
     notFound();
   }
 
-  let guideFrame: { frameOverlay: string; frameWidth?: number; frameHeight?: number } | null = null;
-  const defaultFrameId = await readFunFitFanDefaultFrameId(db);
-  if (defaultFrameId) {
-    const frameDoc =
-      (await db.collection(COLLECTIONS.FRAMES).findOne({ frameId: defaultFrameId, isActive: true })) ??
-      (await db.collection(COLLECTIONS.FRAMES).findOne({ frameId: defaultFrameId }));
-    if (frameDoc) {
-      const rec = frameDoc as Record<string, unknown>;
-      const url = frameOverlayImageUrl(rec);
-      const w = Number(rec.width);
-      const h = Number(rec.height);
-      if (url) {
-        guideFrame =
-          w > 0 && h > 0 ? { frameOverlay: url, frameWidth: w, frameHeight: h } : { frameOverlay: url };
-      }
-    }
+  const lessonId = typeof row.lessonId === 'string' ? row.lessonId.trim() : '';
+  let fallbackActivity = '';
+  if (lessonId) {
+    const lesson = await db.collection(COLLECTIONS.GYM_LESSONS).findOne({ lessonId });
+    const rec = lesson as unknown as { sport?: string } | null;
+    const s = rec && typeof rec.sport === 'string' ? rec.sport : '';
+    fallbackActivity = s.trim();
   }
 
-  return <GymSelfieClient sessionId={sessionId} guideFrame={guideFrame} />;
+  return <GymSelfieClient sessionId={sessionId} fallbackActivity={fallbackActivity} />;
 }

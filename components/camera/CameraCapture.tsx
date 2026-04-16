@@ -61,6 +61,10 @@ export interface CameraCaptureProps {
    * Shown whenever the triple bar wrapper is visible before a captured still is held locally.
    */
   tripleBarExtra?: ReactNode;
+  /**
+   * After capture, show “Retake” in the triple bar (default true). Gym check-in disables this so one shot uploads immediately.
+   */
+  showRetake?: boolean;
 }
 
 export default function CameraCapture({ 
@@ -79,6 +83,7 @@ export default function CameraCapture({
   controlBar = 'default',
   onCancel,
   tripleBarExtra,
+  showRetake = true,
 }: CameraCaptureProps) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -153,6 +158,8 @@ export default function CameraCapture({
       img.onload = () => setFrameImage(img);
       img.onerror = (err) => console.error('Failed to load frame overlay:', err);
       img.src = frameOverlay;
+    } else {
+      setFrameImage(null);
     }
   }, [frameOverlay]);
 
@@ -467,6 +474,12 @@ export default function CameraCapture({
           return;
         }
 
+        if (frameOverlay && !frameImage) {
+          console.warn('Frame overlay not loaded yet; retrying capture.');
+          setTimeout(() => capturePhoto(), 150);
+          return;
+        }
+
         // Safari fix: Fill with white background first
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -499,6 +512,10 @@ export default function CameraCapture({
             console.warn('Captured black frame, retrying...');
             setTimeout(() => capturePhoto(), 100);
             return;
+          }
+
+          if (frameImage) {
+            ctx.drawImage(frameImage, 0, 0, canvas.width, canvas.height);
           }
 
           // Convert canvas to blob and data URL
@@ -773,9 +790,13 @@ export default function CameraCapture({
               )}
             </div>
             <div className="justify-self-center">
-              <AppButton type="button" variant="secondary" compact onClick={() => retake()}>
-                Retake
-              </AppButton>
+              {showRetake ? (
+                <AppButton type="button" variant="secondary" compact onClick={() => retake()}>
+                  Retake
+                </AppButton>
+              ) : (
+                <span />
+              )}
             </div>
             <div />
           </div>
@@ -830,7 +851,7 @@ export default function CameraCapture({
         </>
       )}
 
-      {!useTripleBar && capturedImage && (
+      {!useTripleBar && capturedImage && showRetake ? (
         <button
           type="button"
           onClick={retake}
@@ -844,7 +865,7 @@ export default function CameraCapture({
         >
           Retake Photo
         </button>
-      )}
+      ) : null}
 
       <canvas ref={canvasRef} className="hidden" />
     </div>
