@@ -9,39 +9,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isCameraHost, isFffHost, defaultFffOrigin } from '@/lib/site-hosts';
 import { readSerializedSessionFromCookieGet } from '@/lib/auth/session-cookie-chunks';
-
-function parseAdminGate(
-  raw: string
-): { allow: true } | { allow: false; toLogin: boolean } {
-  try {
-    const session = JSON.parse(raw) as {
-      expiresAt?: string;
-      appRole?: string;
-      appAccess?: boolean;
-    };
-
-    if (session.expiresAt) {
-      const now = new Date();
-      const expiresAt = new Date(session.expiresAt);
-      if (now >= expiresAt) {
-        return { allow: false, toLogin: true };
-      }
-    }
-
-    if (session.appAccess === false) {
-      return { allow: false, toLogin: false };
-    }
-
-    const role = session.appRole;
-    if (role !== 'admin' && role !== 'superadmin') {
-      return { allow: false, toLogin: false };
-    }
-
-    return { allow: true };
-  } catch {
-    return { allow: false, toLogin: true };
-  }
-}
+import { parseMiddlewareAuthGate } from '@/lib/auth/middleware-session-gate';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -72,7 +40,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(loginPath, request.url));
   }
 
-  const gate = parseAdminGate(serialized);
+  const gate = parseMiddlewareAuthGate(serialized);
   if (!gate.allow) {
     const target = gate.toLogin ? loginPath : '/';
     return NextResponse.redirect(new URL(target, request.url));

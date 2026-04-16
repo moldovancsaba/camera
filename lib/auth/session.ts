@@ -26,6 +26,13 @@ import {
   chunkCookieSuffixesToClear,
   readSerializedSessionFromCookieGet,
 } from './session-cookie-chunks';
+import {
+  isWebSessionPointer,
+  loadWebSessionDocument,
+  removeWebSessionDocument,
+  saveWebSessionDocument,
+  useMongoWebSessions,
+} from './web-session-db';
 
 const PENDING_SESSION_COOKIE_NAME = 'camera_pending_session';
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
@@ -127,6 +134,7 @@ export async function createSession(
   };
 
   const payload = JSON.stringify(session);
+
   /** Chrome rejects ~>4096 bytes per cookie; Safari is looser — split when needed. */
   const SINGLE_COOKIE_MAX_CHARS = 3600;
 
@@ -151,6 +159,25 @@ export async function createSession(
       }
     }
   };
+
+  if (useMongoWebSessions()) {
+    try {
+      const pointer = await saveWebSessionDocument(session);
+      const pointerJson = JSON.stringify(pointer);
+      if (response) {
+        clearChunks('response', response);
+        response.cookies.set(SESSION_COOKIE_NAME, pointerJson, cookieOptions);
+      } else {
+        const store = await cookies();
+        clearChunks('store', undefined, store);
+        store.set(SESSION_COOKIE_NAME, pointerJson, cookieOptions);
+      }
+      console.log('✓ Session created for user (Mongo web session):', user.email);
+      return session;
+    } catch (e) {
+      console.error('✗ Mongo web session save failed; falling back to cookie storage:', e);
+    }
+  }
 
   if (payload.length <= SINGLE_COOKIE_MAX_CHARS) {
     if (response) {
@@ -207,7 +234,17 @@ export async function getSession(): Promise<Session | null> {
   }
 
   try {
-    const session: Session = JSON.parse(merged);
+    const parsed: unknown = JSON.parse(merged);
+    if (isWebSessionPointer(parsed)) {
+      if (!useMongoWebSessions()) {
+        return null;
+      }
+      const full = await loadWebSessionDocument(parsed.sid);
+      if (!full) return null;
+      return full as Session;
+    }
+
+    const session = parsed as Session;
 
     // Check if session expired (30 days)
     const now = new Date();
@@ -233,6 +270,18 @@ export async function getSession(): Promise<Session | null> {
  */
 export async function clearSession(): Promise<void> {
   const store = await cookies();
+  const primary = store.get(SESSION_COOKIE_NAME)?.value;
+  if (primary && !primary.startsWith('SPLIT1:')) {
+    try {
+      const o: unknown = JSON.parse(primary);
+      if (isWebSessionPointer(o)) {
+        await removeWebSessionDocument(o.sid);
+      }
+    } catch {
+      /* not JSON or not pointer */
+    }
+  }
+
   const domain = sessionCookieDomain();
   const secure = process.env.NODE_ENV === 'production';
   const blank = { httpOnly: true, secure, sameSite: 'lax' as const, maxAge: 0, path: '/' as const };

@@ -46,6 +46,8 @@ export const COLLECTIONS = {
   /** FunFitFan: singleton app settings + per-user virtual event / slideshow */
   FFF_SETTINGS: 'fff_settings',
   FFF_USER_PROFILES: 'fff_user_profiles',
+  /** Server-side OAuth/session payload; browser holds only a small pointer cookie (`v:2`). */
+  WEB_SESSIONS: 'web_sessions',
 } as const;
 
 // ============================================================================

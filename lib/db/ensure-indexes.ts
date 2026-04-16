@@ -205,5 +205,14 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       .createIndex({ userId: 1 }, { unique: true, name: 'fff_user_profiles_userId_unique' })
   );
 
+  await track(COLLECTIONS.WEB_SESSIONS, () =>
+    db.collection(COLLECTIONS.WEB_SESSIONS).createIndex({ sid: 1 }, { unique: true, name: 'web_sessions_sid_unique' })
+  );
+  await track(COLLECTIONS.WEB_SESSIONS, () =>
+    db
+      .collection(COLLECTIONS.WEB_SESSIONS)
+      .createIndex({ expireAt: 1 }, { expireAfterSeconds: 0, name: 'web_sessions_expireAt_ttl' })
+  );
+
   return results;
 }
