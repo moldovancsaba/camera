@@ -24,10 +24,12 @@ export default async function FffReelRedirectPage() {
   const profile = await db.collection(COLLECTIONS.FFF_USER_PROFILES).findOne({ userId: session.user.id });
   if (!profile?.slideshowId) {
     return (
-      <div className="fff-reel-empty">
-        <p className="fff-reel-empty-title">No FunFitFan reel yet.</p>
-        <p className="fff-reel-empty-lede">Log an activity first, then your slideshow will appear here.</p>
-        <ReelEmptyCTA />
+      <div className="fff-app-inner">
+        <div className="fff-app-empty-hero">
+          <p className="fff-reel-empty-title">No FunFitFan reel yet.</p>
+          <p className="fff-reel-empty-lede">Log an activity first, then your slideshow will appear here.</p>
+          <ReelEmptyCTA />
+        </div>
       </div>
     );
   }

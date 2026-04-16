@@ -24,5 +24,5 @@ export const viewport: Viewport = {
 };
 
 export default function FunFitFanLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return <div className="fff-app-shell">{children}</div>;
 }

@@ -31,8 +31,8 @@ export default function ShareLinkActions({ shareUrl, title }: { shareUrl: string
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
+    <div className="fff-share-actions">
+      <div className="fff-share-actions-row">
         <AppButton type="button" variant="secondary" compact onClick={() => void nativeShare()}>
           Share…
         </AppButton>
@@ -40,8 +40,8 @@ export default function ShareLinkActions({ shareUrl, title }: { shareUrl: string
           Copy link
         </AppButton>
       </div>
-      {message ? <p className="text-sm text-emerald-400/90">{message}</p> : null}
-      <p className="break-all text-xs text-slate-500">{shareUrl}</p>
+      {message ? <p className="text-sm fff-share-actions-msg">{message}</p> : null}
+      <p className="fff-share-url">{shareUrl}</p>
     </div>
   );
 }

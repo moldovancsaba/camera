@@ -3,9 +3,6 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-const btnClass =
-  'rounded-md border border-red-900/60 px-2.5 py-1 text-xs font-medium text-red-300 transition hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-50';
-
 export default function HistoryDeleteSubmissionButton({
   submissionId,
   label,
@@ -49,11 +46,11 @@ export default function HistoryDeleteSubmissionButton({
   }
 
   return (
-    <div className="flex shrink-0 flex-col items-center justify-center gap-1 px-1">
-      <button type="button" onClick={() => void onDelete()} disabled={busy} className={btnClass}>
+    <div className="fff-history-delete-actions">
+      <button type="button" onClick={() => void onDelete()} disabled={busy} className="fff-btn-danger-ghost">
         {busy ? '…' : 'Delete'}
       </button>
-      {error ? <p className="max-w-[6rem] text-center text-[10px] text-red-400">{error}</p> : null}
+      {error ? <p className="fff-history-delete-error">{error}</p> : null}
     </div>
   );
 }

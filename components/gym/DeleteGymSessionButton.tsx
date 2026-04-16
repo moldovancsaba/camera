@@ -48,7 +48,7 @@ export default function DeleteGymSessionButton({
 
   const btnClass =
     appearance === 'fffHistory'
-      ? 'rounded-md border border-red-900/60 px-2.5 py-1 text-xs font-medium text-red-300 transition hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-50'
+      ? 'fff-btn-danger-ghost'
       : 'rounded-md border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/80 dark:text-red-400 dark:hover:bg-red-950/40';
 
   return (

@@ -57,17 +57,14 @@ export default function FeelSoHashtagInput({ value, onChange, suggestions, id }:
   }
 
   return (
-    <div ref={rootRef} className="relative">
-      <div className="mt-1 flex min-h-[42px] flex-wrap gap-2 rounded-lg border border-slate-700 bg-slate-900 px-2 py-2">
+    <div ref={rootRef} className="fff-feelso-shell">
+      <div className="fff-feelso-input-wrap">
         {value.map((tag) => (
-          <span
-            key={tag}
-            className="inline-flex items-center gap-1 rounded-full bg-emerald-900/50 px-2 py-0.5 text-sm text-emerald-100"
-          >
+          <span key={tag} className="fff-feelso-chip">
             #{tag}
             <button
               type="button"
-              className="rounded p-0.5 text-emerald-300 hover:bg-emerald-800/60"
+              className="fff-feelso-chip-remove"
               aria-label={`Remove ${tag}`}
               onClick={() => onChange(value.filter((t) => t !== tag))}
             >
@@ -79,7 +76,7 @@ export default function FeelSoHashtagInput({ value, onChange, suggestions, id }:
           ref={inputRef}
           id={id}
           type="text"
-          className="min-w-[8rem] flex-1 bg-transparent py-1 text-white outline-none placeholder:text-slate-500"
+          className="fff-feelso-text-input"
           placeholder="Type a hashtag, pick below, or comma-separate"
           value={draft}
           onChange={(e) => {
@@ -98,15 +95,12 @@ export default function FeelSoHashtagInput({ value, onChange, suggestions, id }:
         />
       </div>
       {open && filtered.length > 0 ? (
-        <ul
-          className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-slate-600 bg-slate-900 py-1 shadow-lg"
-          role="listbox"
-        >
+        <ul className="fff-feelso-suggest-list" role="listbox">
           {filtered.map((s) => (
             <li key={s}>
               <button
                 type="button"
-                className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
+                className="fff-feelso-suggest-btn"
                 onMouseDown={(ev) => ev.preventDefault()}
                 onClick={() => addTag(s)}
               >

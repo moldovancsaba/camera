@@ -2,7 +2,6 @@
  * Unified member history: FunFitFan + event submissions + gym workouts.
  */
 
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -12,6 +11,7 @@ import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { personalHistorySubmissionMongoFilter } from '@/lib/funfitfan/history-scope';
 import HistoryPlayReelButton from '@/components/funfitfan/HistoryPlayReelButton';
 import HistoryListRow from '@/components/funfitfan/HistoryListRow';
+import FffHistoryHomeButton from '@/components/funfitfan/FffHistoryHomeButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,49 +122,43 @@ export default async function FffHistoryPage() {
   const slideshowId = profile && typeof profile.slideshowId === 'string' ? profile.slideshowId : null;
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-8 text-white">
-      <div className="mx-auto max-w-lg">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">History</h1>
-            <p className="mt-1 text-sm text-slate-400">
-              Your reel moments and gym workouts — only you — newest first. Open a row for details and sharing, or
-              delete it from the list.
-            </p>
-          </div>
-          <HistoryPlayReelButton slideshowId={slideshowId} />
-        </div>
-
-        <p className="mt-6">
-          <Link href="/fff" className="text-sm text-emerald-400 hover:underline">
-            ← Home
-          </Link>
-        </p>
-
-        {rows.length === 0 ? (
-          <p className="mt-10 text-center text-slate-400">
-            Nothing here yet. Use <strong>I DID IT</strong> or <strong>IN THE GYM</strong> to add entries.
+    <div className="fff-app-inner">
+      <div className="fff-app-toolbar">
+        <div>
+          <h1 className="fff-app-page-title">History</h1>
+          <p className="fff-app-page-lede">
+            Your reel moments and gym workouts — only you — newest first. Open a row for details and sharing, or delete
+            it from the list.
           </p>
-        ) : (
-          <ul className="mt-8 space-y-2">
-            {rows.map((row) => (
-              <li key={row.key}>
-                <HistoryListRow
-                  href={row.href}
-                  title={row.title}
-                  subtitle={row.subtitle}
-                  thumbUrl={row.thumbUrl}
-                  badge={row.badge}
-                  kind={row.kind}
-                  submissionId={row.submissionId}
-                  sessionId={row.sessionId}
-                  lessonTitle={row.lessonTitle}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
+        </div>
+        <HistoryPlayReelButton slideshowId={slideshowId} />
       </div>
+
+      <FffHistoryHomeButton />
+
+      {rows.length === 0 ? (
+        <p className="mt-10 text-center fff-app-muted">
+          Nothing here yet. Use <strong>I DID IT</strong> or <strong>IN THE GYM</strong> to add entries.
+        </p>
+      ) : (
+        <ul className="fff-history-list mt-8">
+          {rows.map((row) => (
+            <li key={row.key}>
+              <HistoryListRow
+                href={row.href}
+                title={row.title}
+                subtitle={row.subtitle}
+                thumbUrl={row.thumbUrl}
+                badge={row.badge}
+                kind={row.kind}
+                submissionId={row.submissionId}
+                sessionId={row.sessionId}
+                lessonTitle={row.lessonTitle}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

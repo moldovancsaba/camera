@@ -170,17 +170,17 @@ export default function FunFitFanLogWizard() {
 
   if (step === 'load') {
     return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center px-4">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
-        <p className="mt-4 text-slate-400">Preparing your FunFitFan session…</p>
+      <div className="fff-app-center-block">
+        <div className="fff-app-spinner" aria-hidden />
+        <p className="mt-4 fff-app-muted">Preparing your FunFitFan session…</p>
       </div>
     );
   }
 
   if (step === 'error') {
     return (
-      <div className="mx-auto max-w-md px-4 py-12 text-center">
-        <p className="text-red-400">{error}</p>
+      <div className="py-12 text-center">
+        <p className="fff-app-error">{error}</p>
         <div className="app-btn-stack app-btn-stack--wizard">
           <AppButton type="button" variant="primary" onClick={() => void loadBootstrap()}>
             Try again
@@ -195,7 +195,7 @@ export default function FunFitFanLogWizard() {
 
   if (step === 'selfie' && ctx) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-black text-white">
+      <div className="fff-app-fullscreen-step">
         <div className="pointer-events-none absolute inset-x-0 top-0 z-[60] flex justify-end p-3">
           <div className="pointer-events-auto">
             <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
@@ -210,15 +210,15 @@ export default function FunFitFanLogWizard() {
             frameWidth={ctx.frame.width}
             frameHeight={ctx.frame.height}
             previewAspectWidthOverHeight={9 / 16}
-            captureButtonColor="#10b981"
-            captureButtonBorderColor="#059669"
+            captureButtonColor="var(--fff-app-capture-accent)"
+            captureButtonBorderColor="var(--fff-app-capture-accent-ring)"
             promptTitle="FunFitFan check-in"
             promptDescription="Tap to start the camera, then capture."
             onCapture={(_blob, dataUrl) => {
               setSelfieDataUrl(dataUrl);
               setStep('details');
             }}
-            className="overflow-hidden rounded-2xl border border-white/10"
+            className="fff-app-camera-frame"
           />
         </div>
       </div>
@@ -227,14 +227,14 @@ export default function FunFitFanLogWizard() {
 
   if (step === 'details' && ctx) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-8">
-        <h1 className="text-2xl font-semibold">What did you do?</h1>
-        <label className="mt-6 block text-sm text-slate-400" htmlFor="fff-activity">
+      <div className="py-8">
+        <h1 className="fff-app-page-title">What did you do?</h1>
+        <label className="fff-field-label" htmlFor="fff-activity">
           Activity
         </label>
         <select
           id="fff-activity"
-          className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+          className="fff-field-select"
           value={activity}
           onChange={(e) => setActivity(e.target.value)}
         >
@@ -245,7 +245,7 @@ export default function FunFitFanLogWizard() {
             </option>
           ))}
         </select>
-        <label className="mt-4 block text-sm text-slate-400" htmlFor="fff-feelso-input">
+        <label className="fff-field-label" htmlFor="fff-feelso-input">
           Feel so
         </label>
         <FeelSoHashtagInput
@@ -254,7 +254,7 @@ export default function FunFitFanLogWizard() {
           onChange={setFeelSoTags}
           suggestions={hashtagSuggestions}
         />
-        {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
+        {error ? <p className="mt-3 fff-app-error">{error}</p> : null}
         <div className="app-btn-stack app-btn-stack--wizard-lg">
           <AppButton type="button" variant="secondary" compact onClick={() => setStep('selfie')}>
             Retake
@@ -269,42 +269,38 @@ export default function FunFitFanLogWizard() {
 
   if (step === 'preview' && composite) {
     return (
-      <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-slate-950 text-white">
-        <header className="mx-auto w-full max-w-lg shrink-0 px-4 pt-4 pb-2">
-          <h1 className="text-xl font-semibold sm:text-2xl">Your card</h1>
-          <p className="mt-1 text-xs text-slate-400 sm:text-sm">
-            Save to add it to your personal reel slideshow.
-          </p>
-        </header>
-        <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col items-center justify-center px-4 py-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={composite}
-            alt="Preview"
-            className="max-h-full w-full max-w-full object-contain rounded-xl border border-slate-700 shadow-lg"
-          />
-        </div>
-        <footer className="mx-auto w-full max-w-lg shrink-0 space-y-2 px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
-          {error ? <p className="text-sm text-red-400">{error}</p> : null}
-          <div className="app-btn-stack app-btn-stack--wizard-lg">
-            <AppButton type="button" variant="secondary" compact onClick={() => setStep('details')}>
-              Edit text
-            </AppButton>
-            <AppButton type="button" variant="primary" compact disabled={saving} onClick={() => void submit()}>
-              {saving ? 'Saving…' : 'Save to reel'}
-            </AppButton>
+      <div className="fff-app-fullscreen-step">
+        <div className="fff-app-preview-frame">
+          <header className="fff-app-preview-header">
+            <h1 className="fff-app-page-title fff-app-page-title--lg">Your card</h1>
+            <p className="fff-app-page-lede">Save to add it to your personal reel slideshow.</p>
+          </header>
+          <div className="fff-app-preview-body">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={composite} alt="Preview" className="fff-app-preview-img" />
           </div>
-        </footer>
+          <footer className="fff-app-preview-footer">
+            {error ? <p className="fff-app-error">{error}</p> : null}
+            <div className="app-btn-stack app-btn-stack--wizard-lg">
+              <AppButton type="button" variant="secondary" compact onClick={() => setStep('details')}>
+                Edit text
+              </AppButton>
+              <AppButton type="button" variant="primary" compact disabled={saving} onClick={() => void submit()}>
+                {saving ? 'Saving…' : 'Save to reel'}
+              </AppButton>
+            </div>
+          </footer>
+        </div>
       </div>
     );
   }
 
   if (step === 'done' && ctx) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-12 text-center">
-        <p className="text-xl font-semibold text-emerald-400">Saved</p>
-        <p className="mt-2 text-slate-400">Your card is in your FunFitFan event and slideshow history.</p>
-        <div className="app-btn-stack app-btn-stack--wizard-lg">
+      <div className="py-12 fff-app-text-center">
+        <p className="fff-app-success">Saved</p>
+        <p className="mt-2 fff-app-muted">Your card is in your FunFitFan event and slideshow history.</p>
+        <div className="app-btn-stack app-btn-stack--wizard-lg fff-app-done-stack">
           <AppButton
             type="button"
             variant="primary"

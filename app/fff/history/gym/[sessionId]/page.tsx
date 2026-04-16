@@ -57,51 +57,49 @@ export default async function HistoryGymDetailPage({
   const title = `${lessonTitle} · Gym`;
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-8 text-white">
-      <div className="mx-auto max-w-lg">
-        <p>
-          <Link href="/fff/history" className="text-sm text-emerald-400 hover:underline">
-            ← History
-          </Link>
-        </p>
-        <h1 className="mt-4 text-2xl font-semibold">{lessonTitle}</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          {status}
-          {startedAt ? ` · ${new Date(startedAt).toLocaleString()}` : ''}
-        </p>
+    <div className="fff-app-inner">
+      <p>
+        <Link href="/fff/history" className="fff-app-link">
+          ← History
+        </Link>
+      </p>
+      <h1 className="mt-6 fff-app-page-title">{lessonTitle}</h1>
+      <p className="mt-1 text-sm fff-app-muted">
+        {status}
+        {startedAt ? ` · ${new Date(startedAt).toLocaleString()}` : ''}
+      </p>
 
-        <p className="mt-4">
-          <Link href={`/gym/session/${sessionId}`} className="text-sm text-sky-400 hover:underline">
-            Open full workout in Gym →
-          </Link>
-        </p>
+      <p className="mt-4">
+        <Link href={`/gym/session/${sessionId}`} className="fff-app-link">
+          Open full workout in Gym →
+        </Link>
+      </p>
 
-        {selfieImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={selfieImageUrl} alt="" className="mt-6 w-full rounded-xl border border-slate-800" />
-        ) : (
-          <p className="mt-6 text-slate-500">No gym selfie for this session.</p>
-        )}
+      {selfieImageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={selfieImageUrl} alt="" className="fff-app-media" />
+      ) : (
+        <p className="mt-6 fff-app-footnote">No gym selfie for this session.</p>
+      )}
 
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          <DeleteGymSessionButton
-            sessionId={sessionId}
-            lessonTitle={lessonTitle}
-            redirectAfterDelete="/fff/history"
-            appearance="fffHistory"
-          />
-        </div>
-
-        <section className="mt-10 rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-          <h2 className="text-sm font-semibold text-slate-200">Share with friends</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Anyone with the link can view this workout summary (no sign-in). Links expire after about one year.
-          </p>
-          <div className="mt-4">
-            <ShareLinkActions shareUrl={shareUrl} title={title} />
-          </div>
-        </section>
+      <div className="mt-8 flex flex-wrap items-center gap-3">
+        <DeleteGymSessionButton
+          sessionId={sessionId}
+          lessonTitle={lessonTitle}
+          redirectAfterDelete="/fff/history"
+          appearance="fffHistory"
+        />
       </div>
+
+      <section className="fff-app-panel">
+        <h2 className="fff-app-panel-title">Share with friends</h2>
+        <p className="fff-app-panel-lede">
+          Anyone with the link can view this workout summary (no sign-in). Links expire after about one year.
+        </p>
+        <div className="mt-4">
+          <ShareLinkActions shareUrl={shareUrl} title={title} />
+        </div>
+      </section>
     </div>
   );
 }

@@ -47,23 +47,21 @@ export default async function FffPublicSharePage({
     const heading = activity || eventName;
 
     return (
-      <div className="min-h-screen bg-slate-950 px-4 py-10 text-white">
-        <div className="mx-auto max-w-lg text-center">
-          <p className="text-xs uppercase tracking-widest text-emerald-400/90">FunFitFan · Shared</p>
-          <h1 className="mt-2 text-xl font-semibold">{heading}</h1>
-          {resultLine ? <p className="mt-2 text-sm text-slate-400">{resultLine}</p> : null}
-          {imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={imageUrl} alt="" className="mx-auto mt-8 w-full max-w-md rounded-xl border border-slate-800 shadow-lg" />
-          ) : (
-            <p className="mt-8 text-slate-500">Image unavailable.</p>
-          )}
-          <p className="mt-10 text-sm text-slate-500">
-            <Link href="/fff" className="text-emerald-400 hover:underline">
-              FunFitFan home
-            </Link>
-          </p>
-        </div>
+      <div className="fff-app-inner fff-app-text-center">
+        <p className="fff-share-kicker">FunFitFan · Shared</p>
+        <h1 className="mt-3 fff-app-page-title">{heading}</h1>
+        {resultLine ? <p className="mt-2 text-sm fff-app-muted">{resultLine}</p> : null}
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl} alt="" className="fff-app-media--hero" />
+        ) : (
+          <p className="mt-8 fff-app-footnote">Image unavailable.</p>
+        )}
+        <p className="mt-10 fff-app-footnote">
+          <Link href="/fff" className="fff-app-link">
+            FunFitFan home
+          </Link>
+        </p>
       </div>
     );
   }
@@ -79,26 +77,24 @@ export default async function FffPublicSharePage({
     const selfieImageUrl = typeof doc.selfieImageUrl === 'string' ? doc.selfieImageUrl : '';
 
     return (
-      <div className="min-h-screen bg-slate-950 px-4 py-10 text-white">
-        <div className="mx-auto max-w-lg text-center">
-          <p className="text-xs uppercase tracking-widest text-emerald-400/90">FunFitFan · Shared workout</p>
-          <h1 className="mt-2 text-xl font-semibold">{lessonTitle}</h1>
-          <p className="mt-2 text-sm text-slate-400">
-            {status}
-            {startedAt ? ` · ${new Date(startedAt).toLocaleString()}` : ''}
-          </p>
-          {selfieImageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={selfieImageUrl} alt="" className="mx-auto mt-8 w-full max-w-md rounded-xl border border-slate-800 shadow-lg" />
-          ) : (
-            <p className="mt-8 text-slate-500">No selfie for this session.</p>
-          )}
-          <p className="mt-10 text-sm text-slate-500">
-            <Link href="/fff" className="text-emerald-400 hover:underline">
-              FunFitFan home
-            </Link>
-          </p>
-        </div>
+      <div className="fff-app-inner fff-app-text-center">
+        <p className="fff-share-kicker">FunFitFan · Shared workout</p>
+        <h1 className="mt-3 fff-app-page-title">{lessonTitle}</h1>
+        <p className="mt-2 text-sm fff-app-muted">
+          {status}
+          {startedAt ? ` · ${new Date(startedAt).toLocaleString()}` : ''}
+        </p>
+        {selfieImageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={selfieImageUrl} alt="" className="fff-app-media--hero" />
+        ) : (
+          <p className="mt-8 fff-app-footnote">No selfie for this session.</p>
+        )}
+        <p className="mt-10 fff-app-footnote">
+          <Link href="/fff" className="fff-app-link">
+            FunFitFan home
+          </Link>
+        </p>
       </div>
     );
   }

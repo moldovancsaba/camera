@@ -5,7 +5,7 @@ import { AppButton } from '@/components/ui/AppButton';
 export default function HistoryPlayReelButton({ slideshowId }: { slideshowId: string | null }) {
   if (!slideshowId) {
     return (
-      <p className="text-sm text-slate-500">
+      <p className="fff-app-footnote">
         Log a FunFitFan activity to create your reel — then you can watch it here.
       </p>
     );

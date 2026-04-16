@@ -21,6 +21,15 @@
 
 import { useState, useRef, useEffect } from 'react';
 
+/** Supports hex (#rgb) or CSS `var(--token)` for FunFitFan-branded capture UI. */
+function capturePromptBackground(fill: string): string {
+  const t = fill.trim();
+  if (t.startsWith('var(')) {
+    return `linear-gradient(to bottom right, color-mix(in srgb, ${t} 85%, var(--fff-landing-bg-start)), color-mix(in srgb, ${t} 58%, var(--fff-landing-bg-end)))`;
+  }
+  return `linear-gradient(to bottom right, ${t}dd, ${t}aa)`;
+}
+
 export interface CameraCaptureProps {
   onCapture: (blob: Blob, dataUrl: string) => void;
   onError?: (error: Error) => void;
@@ -28,8 +37,8 @@ export interface CameraCaptureProps {
   frameOverlay?: string; // URL of frame image to overlay
   frameWidth?: number;   // Frame width in pixels (for aspect ratio)
   frameHeight?: number;  // Frame height in pixels (for aspect ratio)
-  captureButtonColor?: string; // Hex color for capture button fill (default: #3B82F6)
-  captureButtonBorderColor?: string; // Hex color for capture button border (default: #3B82F6)
+  captureButtonColor?: string; // Hex or CSS `var(--token)` for capture button fill (default: #3B82F6)
+  captureButtonBorderColor?: string; // Hex or CSS `var(--token)` for capture button border
   promptTitle?: string;  // Custom title for camera start prompt
   promptDescription?: string; // Custom description for camera start prompt
   /** Default camera facing (e.g. `user` for gym selfie). */
@@ -658,7 +667,7 @@ export default function CameraCapture({
                 onClick={() => startCamera(facingMode)}
                 className="absolute inset-0 flex items-center justify-center p-3 md:p-4 w-full h-full cursor-pointer transition-all z-30"
                 style={{
-                  background: `linear-gradient(to bottom right, ${captureButtonColor}dd, ${captureButtonColor}aa)`,
+                  background: capturePromptBackground(captureButtonColor),
                 }}
               >
                 <div className="text-white text-center max-w-xs md:max-w-md">

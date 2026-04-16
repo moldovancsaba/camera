@@ -69,44 +69,40 @@ export default async function HistorySubmissionDetailPage({
       : eventName;
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-8 text-white">
-      <div className="mx-auto max-w-lg">
-        <p>
-          <Link href="/fff/history" className="text-sm text-emerald-400 hover:underline">
-            ← History
-          </Link>
-        </p>
-        <h1 className="mt-4 text-2xl font-semibold">{title}</h1>
-        {createdAt ? (
-          <p className="mt-1 text-sm text-slate-400">{new Date(createdAt).toLocaleString()}</p>
-        ) : null}
-        {resultLine ? <p className="mt-3 text-sm text-slate-300">{resultLine}</p> : null}
+    <div className="fff-app-inner">
+      <p>
+        <Link href="/fff/history" className="fff-app-link">
+          ← History
+        </Link>
+      </p>
+      <h1 className="mt-6 fff-app-page-title">{title}</h1>
+      {createdAt ? <p className="mt-1 text-sm fff-app-muted">{new Date(createdAt).toLocaleString()}</p> : null}
+      {resultLine ? <p className="mt-3 text-sm fff-app-muted">{resultLine}</p> : null}
 
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt="" className="mt-6 w-full rounded-xl border border-slate-800" />
-        ) : (
-          <p className="mt-6 text-slate-500">No image URL on file.</p>
-        )}
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={imageUrl} alt="" className="fff-app-media" />
+      ) : (
+        <p className="mt-6 fff-app-footnote">No image URL on file.</p>
+      )}
 
-        <div className="mt-8">
-          <HistoryDeleteSubmissionButton
-            submissionId={submissionId}
-            label={title}
-            redirectAfterDelete="/fff/history"
-          />
-        </div>
-
-        <section className="mt-10 rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-          <h2 className="text-sm font-semibold text-slate-200">Share with friends</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Anyone with the link can view this image (no sign-in). Links expire after about one year.
-          </p>
-          <div className="mt-4">
-            <ShareLinkActions shareUrl={shareUrl} title={title} />
-          </div>
-        </section>
+      <div className="mt-8">
+        <HistoryDeleteSubmissionButton
+          submissionId={submissionId}
+          label={title}
+          redirectAfterDelete="/fff/history"
+        />
       </div>
+
+      <section className="fff-app-panel">
+        <h2 className="fff-app-panel-title">Share with friends</h2>
+        <p className="fff-app-panel-lede">
+          Anyone with the link can view this image (no sign-in). Links expire after about one year.
+        </p>
+        <div className="mt-4">
+          <ShareLinkActions shareUrl={shareUrl} title={title} />
+        </div>
+      </section>
     </div>
   );
 }
