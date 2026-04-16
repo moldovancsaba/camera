@@ -145,11 +145,7 @@ export default function FunFitFanLogWizard() {
     }
     setError(null);
     writeFffLogWorkoutDraft({ activity: act, feelSoTags });
-    if (act.toLowerCase() === 'gym') {
-      router.push('/gym');
-    } else {
-      router.push(`/gym?sport=${encodeURIComponent(act)}`);
-    }
+    router.push(`/gym?sport=${encodeURIComponent(act)}`);
   }
 
   if (step === 'load') {

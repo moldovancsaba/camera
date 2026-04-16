@@ -16,6 +16,7 @@ import {
   sortedLessonSteps,
 } from '@/lib/gym/session-workout-path';
 import GymSessionWorkoutFooter from '@/components/gym/GymSessionWorkoutFooter';
+import { gymLessonsListHref, gymLessonsListHrefForLessonId } from '@/lib/gym/gym-lessons-href';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,18 +29,32 @@ export default async function GymSessionPage({ params }: { params: Promise<{ ses
   const { sessionId } = await params;
   let row: Record<string, unknown> | null = null;
   let lessonSteps: { order: number; title: string; detail?: string }[] = [];
+  let lessonSport = '';
   let dbError: unknown = null;
 
   try {
     const db = await connectToDatabase();
     row = await db.collection(COLLECTIONS.GYM_WORKOUT_SESSIONS).findOne({ sessionId });
     if (row && row.userId === session.user.id) {
+      const lessonId = row.lessonId;
+      let lessonDoc: unknown = null;
       const fromSession = normalizeLessonStepsFromUnknown(row.lessonSteps);
       if (fromSession.length > 0) {
         lessonSteps = fromSession;
       } else {
-        const lesson = await db.collection(COLLECTIONS.GYM_LESSONS).findOne({ lessonId: row.lessonId });
-        lessonSteps = normalizeLessonStepsFromUnknown(lesson?.steps);
+        const lid = typeof lessonId === 'string' ? lessonId.trim() : '';
+        const lesson = lid ? await db.collection(COLLECTIONS.GYM_LESSONS).findOne({ lessonId: lid }) : null;
+        lessonDoc = lesson;
+        lessonSteps = normalizeLessonStepsFromUnknown(
+          (lessonDoc as { steps?: unknown } | null)?.steps
+        );
+      }
+      if (typeof lessonId === 'string' && lessonId.trim()) {
+        const le =
+          lessonDoc ??
+          (await db.collection(COLLECTIONS.GYM_LESSONS).findOne({ lessonId: lessonId.trim() }));
+        const rec = le as unknown as { sport?: string } | null;
+        if (rec && typeof rec.sport === 'string') lessonSport = rec.sport.trim();
       }
     }
   } catch (e) {
@@ -61,7 +76,12 @@ export default async function GymSessionPage({ params }: { params: Promise<{ ses
   const status = String(row.status);
 
   if (status === 'completed' || status === 'cancelled') {
-    redirect('/gym');
+    try {
+      const db = await connectToDatabase();
+      redirect(await gymLessonsListHrefForLessonId(db, row.lessonId));
+    } catch {
+      redirect(gymLessonsListHref(lessonSport || null));
+    }
   }
 
   const landing = gymSessionLandingRedirect({
@@ -78,7 +98,7 @@ export default async function GymSessionPage({ params }: { params: Promise<{ ses
   return (
     <div>
       <p>
-        <Link href="/gym" className="fff-app-link">
+        <Link href={gymLessonsListHref(lessonSport || null)} className="fff-app-link">
           ← Back to gym
         </Link>
       </p>

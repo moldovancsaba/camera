@@ -7,6 +7,7 @@ import FunFitFanCheckinSelfieReelFlow, {
 } from '@/components/funfitfan/FunFitFanCheckinSelfieReelFlow';
 import { AppButton } from '@/components/ui/AppButton';
 import { readFffLogWorkoutDraft, clearFffLogWorkoutDraft } from '@/lib/funfitfan/log-workout-draft';
+import { gymLessonsListHref } from '@/lib/gym/gym-lessons-href';
 
 export default function GymSelfieClient({
   sessionId,
@@ -111,7 +112,7 @@ export default function GymSelfieClient({
       ctx={ctx}
       activity={activity}
       feelSoTags={feelSoTags}
-      onCancel={() => router.push('/gym')}
+      onCancel={() => router.push(gymLessonsListHref(activity.trim() || null))}
       onAfterSubmissionSaved={onAfterSubmissionSaved}
     />
   );

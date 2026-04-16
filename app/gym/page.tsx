@@ -1,5 +1,5 @@
 /**
- * Gym home: published lessons (optional ?sport= filter). Past workouts: FunFitFan History.
+ * Gym home: published lessons; optional ?sport= filters to one sport (case-insensitive match).
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -34,9 +34,13 @@ export default async function GymHomePage({
   }
 
   const typed = lessons as { lessonId: string; title: string; description?: string; sport?: string }[];
+  const sportKey = sportFilter.length > 0 ? sportFilter.toLowerCase() : '';
   const filtered =
-    sportFilter.length > 0
-      ? typed.filter((l) => (typeof l.sport === 'string' ? l.sport.trim() : '') === sportFilter)
+    sportKey.length > 0
+      ? typed.filter(
+          (l) =>
+            (typeof l.sport === 'string' ? l.sport.trim().toLowerCase() : '') === sportKey
+        )
       : typed;
 
   return (
@@ -52,8 +56,8 @@ export default async function GymHomePage({
           <div className="flex flex-wrap items-end justify-between gap-3">
             <h2 className="fff-app-page-title">Lessons</h2>
             {sportFilter ? (
-              <Link href="/gym" className="fff-app-link text-sm">
-                Show all sports
+              <Link href="/fff/log" className="fff-app-link text-sm">
+                Change activity
               </Link>
             ) : null}
           </div>

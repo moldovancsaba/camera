@@ -11,6 +11,7 @@ import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert'
 import { normalizeLessonStepsFromUnknown } from '@/lib/gym/normalize-lesson-steps';
 import { sortedLessonSteps } from '@/lib/gym/session-workout-path';
 import GymSessionStepPanel from '@/components/gym/GymSessionStepPanel';
+import { gymLessonsListHrefForLessonId } from '@/lib/gym/gym-lessons-href';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,7 +66,12 @@ export default async function GymSessionStepPage({
 
   const status = String(row.status);
   if (status !== 'in_progress') {
-    redirect('/gym');
+    try {
+      const db = await connectToDatabase();
+      redirect(await gymLessonsListHrefForLessonId(db, row.lessonId));
+    } catch {
+      redirect('/gym');
+    }
   }
 
   const step = sorted[ordinal]!;
