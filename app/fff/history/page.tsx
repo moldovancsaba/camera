@@ -9,8 +9,9 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
 import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
-import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
+import { personalHistorySubmissionMongoFilter } from '@/lib/funfitfan/history-scope';
 import HistoryPlayReelButton from '@/components/funfitfan/HistoryPlayReelButton';
+import HistoryListRow from '@/components/funfitfan/HistoryListRow';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,9 @@ export type HistoryListItem = {
   thumbUrl: string | null;
   href: string;
   badge: string;
+  submissionId?: string;
+  sessionId?: string;
+  lessonTitle?: string;
 };
 
 function parseTimeMs(iso: string | undefined | null): number {
@@ -41,10 +45,15 @@ export default async function FffHistoryPage() {
   }
 
   const db = await connectToDatabase();
-  const [submissions, gymSessions, profile] = await Promise.all([
+  const profile = await db.collection(COLLECTIONS.FFF_USER_PROFILES).findOne({ userId: session.user.id });
+  const eventUuid = typeof profile?.eventUuid === 'string' ? profile.eventUuid.trim() : '';
+
+  const submissionFilter = personalHistorySubmissionMongoFilter(session.user.id, eventUuid || null);
+
+  const [submissions, gymSessions] = await Promise.all([
     db
       .collection(COLLECTIONS.SUBMISSIONS)
-      .find({ userId: session.user.id })
+      .find(submissionFilter)
       .sort({ createdAt: -1 })
       .limit(200)
       .toArray(),
@@ -54,7 +63,6 @@ export default async function FffHistoryPage() {
       .sort({ startedAt: -1 })
       .limit(200)
       .toArray(),
-    db.collection(COLLECTIONS.FFF_USER_PROFILES).findOne({ userId: session.user.id }),
   ]);
 
   const rows: HistoryListItem[] = [];
@@ -65,8 +73,7 @@ export default async function FffHistoryPage() {
     const activity = typeof meta.funfitfanActivity === 'string' ? meta.funfitfanActivity : '';
     const createdAt = typeof doc.createdAt === 'string' ? doc.createdAt : '';
     const eventName = typeof doc.eventName === 'string' ? doc.eventName : 'Photo';
-    const partnerId = typeof doc.partnerId === 'string' ? doc.partnerId : '';
-    const badge = partnerId === FUNFITFAN_PARTNER_ID ? 'FunFitFan' : 'Camera';
+    const badge = 'FunFitFan';
     const title =
       activity ||
       (typeof doc.frameName === 'string' && doc.frameName ? doc.frameName : eventName);
@@ -83,6 +90,7 @@ export default async function FffHistoryPage() {
       thumbUrl,
       href: `/fff/history/submission/${id}`,
       badge,
+      submissionId: id,
     });
   }
 
@@ -104,6 +112,8 @@ export default async function FffHistoryPage() {
       thumbUrl: selfie,
       href: `/fff/history/gym/${sessionId}`,
       badge: 'Gym',
+      sessionId,
+      lessonTitle,
     });
   }
 
@@ -118,7 +128,8 @@ export default async function FffHistoryPage() {
           <div>
             <h1 className="text-2xl font-semibold">History</h1>
             <p className="mt-1 text-sm text-slate-400">
-              Your reel, gym logs, and other saved photos — newest first.
+              Your reel moments and gym workouts — only you — newest first. Open a row for details and sharing, or
+              delete it from the list.
             </p>
           </div>
           <HistoryPlayReelButton slideshowId={slideshowId} />
@@ -138,30 +149,17 @@ export default async function FffHistoryPage() {
           <ul className="mt-8 space-y-2">
             {rows.map((row) => (
               <li key={row.key}>
-                <Link
+                <HistoryListRow
                   href={row.href}
-                  className="flex items-stretch gap-3 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/80 p-3 transition hover:border-emerald-700/60 hover:bg-slate-900"
-                >
-                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-800">
-                    {row.thumbUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={row.thumbUrl} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-2xl text-slate-600">
-                        {row.kind === 'gym' ? '🏋️' : '📷'}
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate font-medium text-white">{row.title}</span>
-                      <span className="shrink-0 rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300">
-                        {row.badge}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{row.subtitle}</p>
-                  </div>
-                </Link>
+                  title={row.title}
+                  subtitle={row.subtitle}
+                  thumbUrl={row.thumbUrl}
+                  badge={row.badge}
+                  kind={row.kind}
+                  submissionId={row.submissionId}
+                  sessionId={row.sessionId}
+                  lessonTitle={row.lessonTitle}
+                />
               </li>
             ))}
           </ul>

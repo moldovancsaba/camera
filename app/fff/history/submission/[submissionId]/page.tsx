@@ -10,9 +10,11 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
 import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
+import { submissionIsPersonalFffHistory } from '@/lib/funfitfan/history-scope';
 import { signFffSharePayload } from '@/lib/fff-share-token';
 import { getSiteUrlFromRequest } from '@/lib/site-url';
 import ShareLinkActions from '@/components/funfitfan/ShareLinkActions';
+import HistoryDeleteSubmissionButton from '@/components/funfitfan/HistoryDeleteSubmissionButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,11 +39,14 @@ export default async function HistorySubmissionDetailPage({
   }
 
   const db = await connectToDatabase();
+  const profile = await db.collection(COLLECTIONS.FFF_USER_PROFILES).findOne({ userId: session.user.id });
+  const eventUuid = typeof profile?.eventUuid === 'string' ? profile.eventUuid.trim() : null;
+
   const doc = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({
     _id: new ObjectId(submissionId),
     userId: session.user.id,
   });
-  if (!doc) {
+  if (!doc || !submissionIsPersonalFffHistory(doc as Record<string, unknown>, eventUuid)) {
     notFound();
   }
 
@@ -83,6 +88,14 @@ export default async function HistorySubmissionDetailPage({
         ) : (
           <p className="mt-6 text-slate-500">No image URL on file.</p>
         )}
+
+        <div className="mt-8">
+          <HistoryDeleteSubmissionButton
+            submissionId={submissionId}
+            label={title}
+            redirectAfterDelete="/fff/history"
+          />
+        </div>
 
         <section className="mt-10 rounded-xl border border-slate-800 bg-slate-900/50 p-4">
           <h2 className="text-sm font-semibold text-slate-200">Share with friends</h2>

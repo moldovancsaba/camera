@@ -11,6 +11,7 @@ import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { signFffSharePayload } from '@/lib/fff-share-token';
 import { getSiteUrlFromRequest } from '@/lib/site-url';
 import ShareLinkActions from '@/components/funfitfan/ShareLinkActions';
+import DeleteGymSessionButton from '@/components/gym/DeleteGymSessionButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,6 +82,15 @@ export default async function HistoryGymDetailPage({
         ) : (
           <p className="mt-6 text-slate-500">No gym selfie for this session.</p>
         )}
+
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          <DeleteGymSessionButton
+            sessionId={sessionId}
+            lessonTitle={lessonTitle}
+            redirectAfterDelete="/fff/history"
+            appearance="fffHistory"
+          />
+        </div>
 
         <section className="mt-10 rounded-xl border border-slate-800 bg-slate-900/50 p-4">
           <h2 className="text-sm font-semibold text-slate-200">Share with friends</h2>

@@ -6,9 +6,14 @@ import { useState } from 'react';
 export default function DeleteGymSessionButton({
   sessionId,
   lessonTitle,
+  /** After delete, go here instead of refreshing the current page */
+  redirectAfterDelete,
+  appearance = 'gymCard',
 }: {
   sessionId: string;
   lessonTitle: string;
+  redirectAfterDelete?: string;
+  appearance?: 'gymCard' | 'fffHistory';
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -29,7 +34,11 @@ export default function DeleteGymSessionButton({
         setError(data.error || `Delete failed (${res.status})`);
         return;
       }
-      router.refresh();
+      if (redirectAfterDelete) {
+        router.push(redirectAfterDelete);
+      } else {
+        router.refresh();
+      }
     } catch {
       setError('Network error');
     } finally {
@@ -37,17 +46,33 @@ export default function DeleteGymSessionButton({
     }
   }
 
+  const btnClass =
+    appearance === 'fffHistory'
+      ? 'rounded-md border border-red-900/60 px-2.5 py-1 text-xs font-medium text-red-300 transition hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-50'
+      : 'rounded-md border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/80 dark:text-red-400 dark:hover:bg-red-950/40';
+
   return (
-    <div className="flex shrink-0 flex-col items-end gap-1 pr-2">
-      <button
-        type="button"
-        onClick={() => void onDelete()}
-        disabled={busy}
-        className="rounded-md border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/80 dark:text-red-400 dark:hover:bg-red-950/40"
-      >
-        {busy ? 'Deleting…' : 'Delete'}
+    <div
+      className={
+        appearance === 'fffHistory'
+          ? 'flex shrink-0 flex-col items-center justify-center gap-1 px-1'
+          : 'flex shrink-0 flex-col items-end gap-1 pr-2'
+      }
+    >
+      <button type="button" onClick={() => void onDelete()} disabled={busy} className={btnClass}>
+        {busy ? (appearance === 'fffHistory' ? '…' : 'Deleting…') : 'Delete'}
       </button>
-      {error ? <p className="max-w-[10rem] text-right text-xs text-red-600 dark:text-red-400">{error}</p> : null}
+      {error ? (
+        <p
+          className={
+            appearance === 'fffHistory'
+              ? 'max-w-[6rem] text-center text-[10px] text-red-400'
+              : 'max-w-[10rem] text-right text-xs text-red-600 dark:text-red-400'
+          }
+        >
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -1,20 +1,16 @@
 /**
- * Gym home: published lessons and recent workout sessions.
+ * Gym home: published lessons. Past workouts are listed under FunFitFan History.
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { getSession } from '@/lib/auth/session';
 import Link from 'next/link';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
-import DeleteGymSessionButton from '@/components/gym/DeleteGymSessionButton';
 
 export const dynamic = 'force-dynamic';
 
 export default async function GymHomePage() {
-  const session = await getSession();
   let lessons: unknown[] = [];
-  let recentSessions: unknown[] = [];
   let dbError: unknown = null;
 
   try {
@@ -25,15 +21,6 @@ export default async function GymHomePage() {
       .sort({ updatedAt: -1 })
       .limit(50)
       .toArray();
-
-    if (session) {
-      recentSessions = await db
-        .collection(COLLECTIONS.GYM_WORKOUT_SESSIONS)
-        .find({ userId: session.user.id })
-        .sort({ startedAt: -1 })
-        .limit(10)
-        .toArray();
-    }
   } catch (e) {
     dbError = e;
   }
@@ -43,7 +30,11 @@ export default async function GymHomePage() {
       <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Your gym</h1>
       <p className="mt-2 text-slate-600 dark:text-slate-400">
         Lessons are managed in admin. Log a workout and optionally add a selfie (same camera + hosting as
-        Camera).
+        Camera). Your past workouts and FunFitFan reel cards live together in{' '}
+        <Link href="/fff/history" className="font-medium text-emerald-600 underline hover:text-emerald-500 dark:text-emerald-400">
+          History
+        </Link>
+        .
       </p>
 
       {dbError != null ? <div className="mt-6"><DatabaseConnectionAlert error={dbError} /></div> : null}
@@ -69,49 +60,6 @@ export default async function GymHomePage() {
                         </p>
                       ) : null}
                     </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className="mt-10">
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Recent workouts</h2>
-            {recentSessions.length === 0 ? (
-              <p className="mt-3 text-slate-500 dark:text-slate-400">Start a lesson to log a session.</p>
-            ) : (
-              <ul className="mt-4 space-y-2">
-                {(
-                  recentSessions as {
-                    sessionId: string;
-                    lessonTitle: string;
-                    status: string;
-                    startedAt: string;
-                    selfieImageUrl?: string;
-                  }[]
-                ).map((s) => (
-                  <li
-                    key={s.sessionId}
-                    className="flex items-stretch gap-0 overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-gray-700 dark:bg-gray-800"
-                  >
-                    <Link
-                      href={`/gym/session/${s.sessionId}`}
-                      className="flex min-w-0 flex-1 items-center justify-between gap-3 p-3 transition hover:bg-slate-50 dark:hover:bg-gray-800/80"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-medium text-slate-900 dark:text-white">{s.lessonTitle}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {s.status} · {new Date(s.startedAt).toLocaleString()}
-                        </p>
-                      </div>
-                      {s.selfieImageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={s.selfieImageUrl} alt="" className="h-12 w-12 shrink-0 rounded object-cover" />
-                      ) : null}
-                    </Link>
-                    <div className="flex items-center border-l border-slate-200 dark:border-gray-700">
-                      <DeleteGymSessionButton sessionId={s.sessionId} lessonTitle={s.lessonTitle} />
-                    </div>
                   </li>
                 ))}
               </ul>

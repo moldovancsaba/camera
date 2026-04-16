@@ -6,7 +6,7 @@ export default function HistoryPlayReelButton({ slideshowId }: { slideshowId: st
   if (!slideshowId) {
     return (
       <p className="text-sm text-slate-500">
-        Log a FunFitFan activity to create your reel — then you can play the slideshow here.
+        Log a FunFitFan activity to create your reel — then you can watch it here.
       </p>
     );
   }
@@ -16,7 +16,7 @@ export default function HistoryPlayReelButton({ slideshowId }: { slideshowId: st
       variant="primary"
       onClick={() => window.open(`/slideshow/${slideshowId}`, '_blank', 'noopener,noreferrer')}
     >
-      Play it
+      Watch my reel
     </AppButton>
   );
 }
