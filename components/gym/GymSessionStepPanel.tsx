@@ -110,7 +110,7 @@ export default function GymSessionStepPanel({
       <h1 className="gym-step-title">{step.title}</h1>
       {step.detail ? <p className="gym-step-detail">{step.detail}</p> : null}
 
-      {error ? <p className="gym-session-error gym-step-error">{error}</p> : null}
+      {error ? <p className="gym-step-error text-sm fff-app-error">{error}</p> : null}
 
       {alreadyHandled ? (
         <div className="gym-step-handled">
@@ -133,7 +133,7 @@ export default function GymSessionStepPanel({
           </AppButton>
         </div>
       ) : (
-        <p className="gym-session-footer-note">This workout is {status}.</p>
+        <p className="fff-app-muted">This workout is {status}.</p>
       )}
     </div>
   );

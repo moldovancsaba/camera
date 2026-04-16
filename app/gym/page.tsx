@@ -30,32 +30,34 @@ export default async function GymHomePage() {
       {dbError != null ? <div className="mt-6"><DatabaseConnectionAlert error={dbError} /></div> : null}
 
       {!dbError && (
-        <>
-          <section className="mt-10">
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Lessons</h2>
-            {lessons.length === 0 ? (
-              <p className="mt-3 text-slate-500 dark:text-slate-400">No published lessons yet.</p>
-            ) : (
-              <ul className="mt-4 space-y-2">
-                {(lessons as { lessonId: string; title: string; description?: string }[]).map((l) => (
-                  <li key={l.lessonId}>
-                    <Link
-                      href={`/gym/lesson/${l.lessonId}`}
-                      className="block rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-blue-600"
-                    >
-                      <span className="font-medium text-slate-900 dark:text-white">{l.title}</span>
+        <section className="mt-10">
+          <h2 className="fff-app-page-title">Lessons</h2>
+          {lessons.length === 0 ? (
+            <p className="mt-3 fff-app-muted">No published lessons yet.</p>
+          ) : (
+            <ul className="fff-history-list mt-4">
+              {(lessons as { lessonId: string; title: string; description?: string }[]).map((l) => (
+                <li key={l.lessonId} className="fff-history-row">
+                  <Link href={`/gym/lesson/${l.lessonId}`} className="fff-history-row-link">
+                    <div className="fff-history-thumb">
+                      <div className="fff-history-thumb-placeholder" aria-hidden>
+                        🏋️
+                      </div>
+                    </div>
+                    <div className="fff-history-body">
+                      <div className="fff-history-title-row">
+                        <span className="fff-history-title">{l.title}</span>
+                      </div>
                       {l.description ? (
-                        <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-400">
-                          {l.description}
-                        </p>
+                        <p className="fff-history-subtitle line-clamp-2">{l.description}</p>
                       ) : null}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
     </div>
   );

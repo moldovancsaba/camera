@@ -41,23 +41,23 @@ export default async function GymLessonPage({ params }: { params: Promise<{ less
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{String(lesson.title)}</h1>
+      <h1 className="fff-app-page-title">{String(lesson.title)}</h1>
       {lesson.description ? (
-        <p className="mt-3 text-slate-600 dark:text-slate-400">{String(lesson.description)}</p>
+        <p className="mt-3 fff-app-muted">{String(lesson.description)}</p>
       ) : null}
 
       <div className="mt-6">
         <StartWorkoutButton lessonId={lessonId} />
       </div>
 
-      <ol className="mt-8 list-decimal space-y-3 pl-5 text-slate-800 dark:text-slate-200">
+      <ol className="fff-gym-lesson-steps">
         {steps
           .slice()
           .sort((a, b) => a.order - b.order)
           .map((step) => (
             <li key={step.order}>
-              <span className="font-medium">{step.title}</span>
-              {step.detail ? <p className="text-sm text-slate-600 dark:text-slate-400">{step.detail}</p> : null}
+              <span className="fff-gym-lesson-step-name">{step.title}</span>
+              {step.detail ? <p className="fff-gym-lesson-step-detail">{step.detail}</p> : null}
             </li>
           ))}
       </ol>

@@ -1,5 +1,5 @@
 /**
- * Gym module layout: same SSO session as Camera; respects app-level access (appAccess).
+ * Gym module layout: FunFitFan shell (same gradient + content column as /fff/log), SSO + appAccess.
  */
 
 import { getSession } from '@/lib/auth/session';
@@ -17,9 +17,9 @@ export default async function GymLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="gym-app-shell">
+    <div className="fff-app-shell">
       <GymHeaderBar />
-      <div className="gym-app-main">{children}</div>
+      <div className="fff-app-inner">{children}</div>
     </div>
   );
 }

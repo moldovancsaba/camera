@@ -7,17 +7,17 @@ export default function GymHeaderBar() {
   const router = useRouter();
 
   return (
-    <header className="gym-header-shell">
-      <div className="gym-header-inner">
+    <header className="fff-gym-header-shell">
+      <div className="fff-gym-header-inner">
         <AppButton
           type="button"
           variant="ghost"
-          className="gym-header-brand"
+          className="fff-gym-header-brand"
           onClick={() => router.push('/gym')}
         >
           Gym
         </AppButton>
-        <nav className="gym-header-nav" aria-label="Gym navigation">
+        <nav className="fff-gym-header-nav" aria-label="Gym navigation">
           <AppButton type="button" variant="secondary" compact onClick={() => router.push('/gym')}>
             Lessons
           </AppButton>

@@ -52,12 +52,13 @@
   --gym-main-max: 48rem;
   --gym-main-pad-x: 1rem;
   --gym-main-pad-y: 2rem;
-  --gym-step-card-bg: #ffffff;
-  --gym-step-card-border: #e2e8f0;
-  --gym-step-title: #0f172a;
-  --gym-step-detail: #475569;
+  /* Gym member flows use the FunFitFan dark shell; align step/session UI with FFF tokens */
+  --gym-step-card-bg: rgb(15 23 42 / 0.42);
+  --gym-step-card-border: rgb(51 65 85 / 0.55);
+  --gym-step-title: #ffffff;
+  --gym-step-detail: #cbd5e1;
   --gym-step-meta: #64748b;
-  --gym-step-error: #b91c1c;
+  --gym-step-error: #fca5a5;
 
   /* —— FunFitFan landing (FFF home) —— */
   --fff-landing-bg-start: #022c22;
@@ -125,12 +126,6 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
-    --gym-step-card-bg: rgb(31 41 55 / 0.96);
-    --gym-step-card-border: #374151;
-    --gym-step-title: #f8fafc;
-    --gym-step-detail: #cbd5e1;
-    --gym-step-meta: #94a3b8;
-    --gym-step-error: #fca5a5;
   }
 }
 
@@ -477,13 +472,53 @@ body {
   }
 
   .fff-field-select {
+    box-sizing: border-box;
     margin-top: 0.25rem;
+    display: block;
     width: 100%;
-    border-radius: 0.5rem;
+    min-height: 3.25rem;
+    border-radius: 0.75rem;
     border: 1px solid var(--fff-app-input-border);
-    background: var(--fff-app-input-bg);
-    padding: 0.5rem 0.75rem;
+    background-color: var(--fff-app-input-bg);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1.125rem;
+    padding: 0.625rem 2.75rem 0.625rem 1rem;
     font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.45;
+    color: var(--fff-landing-fg);
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+
+  .fff-field-select:hover {
+    border-color: var(--fff-app-border-hover);
+  }
+
+  .fff-field-select:focus {
+    outline: none;
+    border-color: var(--fff-app-accent);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.05),
+      0 0 0 2px rgb(52 211 153 / 0.28);
+  }
+
+  .fff-field-select:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .fff-field-select option {
+    padding: 0.5rem 0.75rem;
+    font-weight: 500;
+    background-color: var(--fff-app-dropdown-bg);
     color: var(--fff-landing-fg);
   }
 
@@ -492,15 +527,26 @@ body {
   }
 
   .fff-feelso-input-wrap {
+    box-sizing: border-box;
     margin-top: 0.25rem;
     display: flex;
-    min-height: 2.625rem;
+    min-height: 3.25rem;
     flex-wrap: wrap;
+    align-items: center;
     gap: 0.5rem;
-    border-radius: 0.5rem;
+    border-radius: 0.75rem;
     border: 1px solid var(--fff-app-input-border);
     background: var(--fff-app-input-bg);
-    padding: 0.5rem;
+    padding: 0.625rem 1rem;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+    transition: border-color 0.15s ease;
+  }
+
+  .fff-feelso-input-wrap:focus-within {
+    border-color: var(--fff-app-accent);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.05),
+      0 0 0 2px rgb(52 211 153 / 0.28);
   }
 
   .fff-feelso-chip {
@@ -949,83 +995,72 @@ body {
     font-size: 0.8125rem;
   }
 
-  .gym-app-shell {
-    min-height: 100vh;
-    background: linear-gradient(to bottom, var(--gym-app-bg-from), var(--gym-app-bg-to));
+  /* Gym chrome on FunFitFan-style shell (layout uses .fff-app-shell + .fff-app-inner) */
+  .fff-gym-header-shell {
+    border-bottom: 1px solid var(--fff-app-border);
+    background: var(--fff-app-surface);
+    backdrop-filter: blur(12px);
   }
 
-  @media (prefers-color-scheme: dark) {
-    .gym-app-shell {
-      background: linear-gradient(to bottom, var(--gym-app-bg-from-dark), var(--gym-app-bg-to-dark));
-    }
-  }
-
-  .gym-header-shell {
-    border-bottom: 1px solid var(--gym-header-border);
-    background: var(--gym-header-bg);
-    backdrop-filter: blur(8px);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .gym-header-shell {
-      border-bottom-color: var(--gym-header-border-dark);
-      background: var(--gym-header-bg-dark);
-    }
-  }
-
-  .gym-header-inner {
+  .fff-gym-header-inner {
     margin-inline: auto;
     display: flex;
-    max-width: var(--gym-main-max);
+    max-width: var(--fff-landing-content-max);
     align-items: center;
     justify-content: space-between;
-    gap: var(--gym-header-nav-gap);
-    padding: 0.75rem var(--gym-main-pad-x);
+    gap: 0.75rem;
+    padding: 0.75rem var(--fff-landing-content-pad-x);
   }
 
-  .gym-header-nav {
+  .fff-gym-header-nav {
     display: flex;
     align-items: center;
-    gap: var(--gym-header-nav-gap);
+    gap: 0.5rem;
   }
 
-  .gym-header-brand.app-btn--ghost {
-    color: var(--gym-header-brand-fg);
+  .fff-gym-header-brand.app-btn--ghost {
+    padding: 0.25rem 0.5rem;
     font-size: 1.125rem;
     font-weight: 600;
-    padding: 0.25rem 0.5rem;
-    /* Slightly stronger chip on light header so the outline reads as a control */
-    background-color: rgb(255 255 255 / 0.65);
-    border-color: var(--gym-header-border);
+    letter-spacing: 0.02em;
+    color: var(--fff-landing-fg);
   }
 
-  .gym-header-brand.app-btn--ghost:hover:not(:disabled) {
-    background-color: rgb(248 250 252 / 0.95);
-    border-color: var(--gym-step-detail);
+  .fff-gym-header-brand.app-btn--ghost:hover:not(:disabled) {
+    color: var(--fff-landing-fg);
   }
 
-  @media (prefers-color-scheme: dark) {
-    .gym-header-brand.app-btn--ghost {
-      color: var(--gym-header-brand-fg-dark);
-      background-color: rgb(17 24 39 / 0.55);
-      border-color: var(--gym-header-border-dark);
-    }
-
-    .gym-header-brand.app-btn--ghost:hover:not(:disabled) {
-      background-color: rgb(31 41 55 / 0.85);
-      border-color: rgb(71 85 105 / 0.9);
-    }
+  .fff-gym-lesson-steps {
+    margin-top: 2rem;
+    margin-bottom: 0;
+    padding-left: 1.125rem;
+    list-style-type: decimal;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--fff-landing-body);
   }
 
-  .gym-app-main {
-    margin-inline: auto;
-    max-width: var(--gym-main-max);
-    padding: var(--gym-main-pad-y) var(--gym-main-pad-x);
+  .fff-gym-lesson-steps > li + li {
+    margin-top: 0.75rem;
+  }
+
+  .fff-gym-lesson-step-name {
+    font-weight: 600;
+    color: var(--fff-landing-fg);
+  }
+
+  .fff-gym-lesson-step-detail {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--fff-landing-footnote);
   }
 
   .gym-session-section-title {
-    font-size: 1.125rem;
+    font-size: clamp(1.25rem, 3.2vw, 1.5rem);
     font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
     color: var(--gym-step-title);
   }
 
@@ -1124,7 +1159,7 @@ body {
 
   .gym-step-page {
     margin-inline: auto;
-    max-width: 36rem;
+    max-width: var(--fff-landing-content-max);
   }
 
   .gym-step-kicker {

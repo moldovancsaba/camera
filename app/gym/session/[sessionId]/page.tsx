@@ -77,24 +77,24 @@ export default async function GymSessionPage({ params }: { params: Promise<{ ses
 
   return (
     <div>
-      <p className="text-sm text-slate-500 dark:text-slate-400">
-        <Link href="/gym" className="text-blue-600 hover:underline dark:text-blue-400">
+      <p>
+        <Link href="/gym" className="fff-app-link">
           ← Back to gym
         </Link>
       </p>
-      <h1 className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">{String(row.lessonTitle)}</h1>
-      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+      <h1 className="mt-4 fff-app-page-title">{String(row.lessonTitle)}</h1>
+      <p className="mt-1 fff-app-page-lede">
         Started {new Date(String(row.startedAt)).toLocaleString()} · {status}
       </p>
 
       {selfieUrl ? (
         <div className="mt-6">
-          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Selfie</p>
+          <p className="text-sm font-medium fff-app-muted">Selfie</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={selfieUrl}
             alt="Workout selfie"
-            className="mt-2 max-h-64 rounded-lg border border-slate-200 dark:border-gray-700"
+            className="mt-2 max-h-64 w-full max-w-md rounded-lg border border-[color:var(--fff-app-border)] object-cover"
           />
         </div>
       ) : null}
@@ -102,20 +102,25 @@ export default async function GymSessionPage({ params }: { params: Promise<{ ses
       {sorted.length > 0 ? (
         <div className="mt-8">
           <h2 className="gym-session-section-title">Progress</h2>
-          <ul className="gym-session-step-list">
+          <ul className="fff-history-list mt-3">
             {sorted.map((s, i) => {
               const entry = stepLog.find((e) => e.stepOrder === s.order);
               const label = entry ? (entry.notes === GYM_STEP_SKIP_NOTE ? 'Skipped' : 'Done') : '—';
               return (
-                <li key={`${s.order}-${i}`} className="gym-session-step-row">
-                  <div className="gym-session-step-body">
-                    <Link href={`/gym/session/${sessionId}/step/${i}`} className="gym-session-step-title-link">
-                      <div className="gym-session-step-title">{s.title}</div>
-                    </Link>
-                  </div>
-                  <div className="gym-session-step-actions">
-                    <span className="gym-session-meta-text">{label}</span>
-                  </div>
+                <li key={`${s.order}-${i}`} className="fff-history-row">
+                  <Link href={`/gym/session/${sessionId}/step/${i}`} className="fff-history-row-link">
+                    <div className="fff-history-thumb">
+                      <div className="fff-history-thumb-placeholder" aria-hidden>
+                        {entry ? (entry.notes === GYM_STEP_SKIP_NOTE ? '⏭' : '✓') : '○'}
+                      </div>
+                    </div>
+                    <div className="fff-history-body">
+                      <div className="fff-history-title-row">
+                        <span className="fff-history-title">{s.title}</span>
+                        <span className="fff-history-badge">{label}</span>
+                      </div>
+                    </div>
+                  </Link>
                 </li>
               );
             })}

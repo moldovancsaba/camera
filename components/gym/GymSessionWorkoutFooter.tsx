@@ -54,7 +54,7 @@ export default function GymSessionWorkoutFooter({
   }
 
   if (status !== 'in_progress') {
-    return <p className="gym-session-footer-note">Session {status}.</p>;
+    return <p className="fff-app-muted">Session {status}.</p>;
   }
 
   return (
@@ -65,7 +65,7 @@ export default function GymSessionWorkoutFooter({
         </AppButton>
       ) : (
         <>
-          <p className="gym-session-footer-note">
+          <p className="fff-app-muted">
             Add your gym selfie, then tap <strong>Complete workout</strong> below.
           </p>
           <div className="gym-session-footer-actions">
@@ -75,7 +75,7 @@ export default function GymSessionWorkoutFooter({
           </div>
         </>
       )}
-      {error ? <p className="gym-session-error">{error}</p> : null}
+      {error ? <p className="mt-2 text-sm fff-app-error">{error}</p> : null}
     </div>
   );
 }

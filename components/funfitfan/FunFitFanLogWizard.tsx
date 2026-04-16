@@ -274,7 +274,7 @@ export default function FunFitFanLogWizard() {
     return (
       <div className="fff-app-fullscreen-step">
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 items-center justify-center px-4 pt-4 pb-[calc(8.5rem+env(safe-area-inset-bottom,0px))]">
+          <div className="flex min-h-0 flex-1 items-center justify-center px-4 pt-4 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]">
             <CameraCapture
               initialFacingMode="user"
               frameOverlay={undefined}
@@ -286,19 +286,6 @@ export default function FunFitFanLogWizard() {
               promptTitle="FunFitFan check-in"
               promptDescription="After your activity, capture your check-in photo."
               controlBar="fff-bottom-triple"
-              tripleBarExtra={
-                <AppButton
-                  type="button"
-                  variant="secondary"
-                  compact
-                  onClick={() => {
-                    setError(null);
-                    setStep('details');
-                  }}
-                >
-                  Edit activity
-                </AppButton>
-              }
               onCancel={() => router.push('/fff')}
               onCapture={(_blob, dataUrl) => {
                 setSelfieDataUrl(dataUrl);

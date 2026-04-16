@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { AppButton } from '@/components/ui/AppButton';
 
 export default function StartWorkoutButton({ lessonId }: { lessonId: string }) {
   const router = useRouter();
@@ -42,15 +43,10 @@ export default function StartWorkoutButton({ lessonId }: { lessonId: string }) {
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={start}
-        disabled={loading}
-        className="rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-      >
+      <AppButton type="button" variant="primary" disabled={loading} onClick={() => void start()}>
         {loading ? 'Starting…' : 'Start workout'}
-      </button>
-      {error ? <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+      </AppButton>
+      {error ? <p className="mt-2 text-sm fff-app-error">{error}</p> : null}
     </div>
   );
 }
