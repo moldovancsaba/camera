@@ -796,7 +796,9 @@ export interface FffSettings {
   /** Exactly one document; used for upserts */
   settingsKey: 'default';
   /** Frame UUID from `frames` — used for partner defaults and new personal events */
-  defaultFrameId: string;
+  defaultFrameId?: string;
+  /** FunFitFan log wizard sport dropdown (max 20); seeded in MongoDB when missing */
+  sportActivities?: string[];
   updatedAt: string;
   updatedBy: string;
 }

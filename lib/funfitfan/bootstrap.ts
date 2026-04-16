@@ -19,6 +19,10 @@ import {
   FFF_SLIDESHOW_FADE_MS,
   FFF_SLIDESHOW_TRANSITION_MS,
 } from '@/lib/funfitfan/constants';
+import {
+  SEED_FUNFITFAN_SPORT_ACTIVITIES,
+  normalizeSportActivitiesList,
+} from '@/lib/funfitfan/sport-activities';
 
 export class FffBootstrapError extends Error {
   constructor(
@@ -65,6 +69,38 @@ export async function readFunFitFanDefaultFrameId(db: Db): Promise<string | null
   const fromPartner = partner?.defaultFrames?.[0];
   if (typeof fromPartner === 'string' && fromPartner.trim()) return fromPartner.trim();
   return null;
+}
+
+/**
+ * If `fff_settings.sportActivities` is missing or normalizes to empty, upserts the seed list into MongoDB.
+ * Safe to call on every deploy / `db:ensure-indexes` / first member bootstrap.
+ */
+export async function ensureFunFitFanSportActivitiesInDatabase(db: Db): Promise<void> {
+  const col = db.collection(COLLECTIONS.FFF_SETTINGS);
+  const row = await col.findOne({ settingsKey: FFF_SETTINGS_KEY });
+  const existing = normalizeSportActivitiesList(row?.sportActivities);
+  if (existing.length > 0) return;
+
+  const now = generateTimestamp();
+  await col.updateOne(
+    { settingsKey: FFF_SETTINGS_KEY },
+    {
+      $set: {
+        settingsKey: FFF_SETTINGS_KEY,
+        sportActivities: [...SEED_FUNFITFAN_SPORT_ACTIVITIES],
+        updatedAt: now,
+        updatedBy: 'system:seed-initial-sport-activities',
+      },
+    },
+    { upsert: true }
+  );
+}
+
+/** Sport dropdown list — always from MongoDB after {@link ensureFunFitFanSportActivitiesInDatabase}. */
+export async function readFunFitFanSportActivities(db: Db): Promise<string[]> {
+  await ensureFunFitFanSportActivitiesInDatabase(db);
+  const row = await db.collection(COLLECTIONS.FFF_SETTINGS).findOne({ settingsKey: FFF_SETTINGS_KEY });
+  return normalizeSportActivitiesList(row?.sportActivities);
 }
 
 /**
@@ -117,6 +153,7 @@ export async function ensureFunFitFanUserContext(
   partnerId: string;
   partnerName: string;
   defaultFrameId: string | null;
+  sportActivities: string[];
   frame: {
     frameId: string;
     name: string;
@@ -127,6 +164,7 @@ export async function ensureFunFitFanUserContext(
 }> {
   await ensureFunFitFanPartner(db, session.user.id);
 
+  const sportActivities = await readFunFitFanSportActivities(db);
   const defaultFrameId = await resolveFunFitFanDefaultFrameId(db);
   if (!defaultFrameId) {
     throw new FffBootstrapError(
@@ -172,6 +210,7 @@ export async function ensureFunFitFanUserContext(
         partnerId: FUNFITFAN_PARTNER_ID,
         partnerName: FUNFITFAN_PARTNER_NAME,
         defaultFrameId,
+        sportActivities,
         frame: {
           frameId: frame.frameId as string,
           name: frame.name as string,
@@ -244,6 +283,7 @@ export async function ensureFunFitFanUserContext(
     partnerId: FUNFITFAN_PARTNER_ID,
     partnerName: FUNFITFAN_PARTNER_NAME,
     defaultFrameId,
+    sportActivities,
     frame: {
       frameId: frame.frameId as string,
       name: frame.name as string,

@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import CameraCapture from '@/components/camera/CameraCapture';
 import { AppButton } from '@/components/ui/AppButton';
 import { compositeFramedSelfieWithText } from '@/components/funfitfan/composite-framed-selfie';
+import FeelSoHashtagInput from '@/components/funfitfan/FeelSoHashtagInput';
 import { FUNFITFAN_PARTNER_ID, FUNFITFAN_PARTNER_NAME } from '@/lib/funfitfan/constants';
+import { formatFeelSoLine } from '@/lib/funfitfan/feel-so-tags';
 
 type BootstrapCtx = {
   eventUuid: string;
@@ -13,6 +15,7 @@ type BootstrapCtx = {
   slideshowId: string;
   partnerId: string;
   partnerName: string;
+  sportActivities: string[];
   frame: {
     frameId: string;
     name: string;
@@ -30,7 +33,8 @@ export default function FunFitFanLogWizard() {
   const [ctx, setCtx] = useState<BootstrapCtx | null>(null);
   const [selfieDataUrl, setSelfieDataUrl] = useState<string | null>(null);
   const [activity, setActivity] = useState('');
-  const [resultText, setResultText] = useState('');
+  const [feelSoTags, setFeelSoTags] = useState<string[]>([]);
+  const [hashtagSuggestions, setHashtagSuggestions] = useState<string[]>([]);
   const [composite, setComposite] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -54,12 +58,16 @@ export default function FunFitFanLogWizard() {
         setStep('error');
         return;
       }
+      const sportActivities = Array.isArray(d?.sportActivities)
+        ? (d.sportActivities as unknown[]).filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+        : [];
       setCtx({
         eventUuid: d.eventUuid,
         eventName: d.eventName,
         slideshowId: d.slideshowId,
         partnerId: d.partnerId,
         partnerName: d.partnerName,
+        sportActivities,
         frame: {
           ...d.frame,
           fileUrl: overlay,
@@ -76,14 +84,38 @@ export default function FunFitFanLogWizard() {
     void loadBootstrap();
   }, [loadBootstrap]);
 
+  useEffect(() => {
+    if (step !== 'details') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/fff/hashtags');
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || cancelled) return;
+        const list = json.data?.hashtags;
+        if (Array.isArray(list)) {
+          setHashtagSuggestions(list.filter((x: unknown): x is string => typeof x === 'string'));
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [step]);
+
   async function buildPreview() {
     if (!selfieDataUrl || !ctx) return;
+    const act = activity.trim();
+    if (!act || !ctx.sportActivities.includes(act)) {
+      setError('Choose a sport activity from the list.');
+      return;
+    }
     setError(null);
     try {
-      const out = await compositeFramedSelfieWithText(selfieDataUrl, ctx.frame.fileUrl, [
-        activity.trim() || 'Activity',
-        resultText.trim() || '',
-      ]);
+      const line2 = formatFeelSoLine(feelSoTags);
+      const out = await compositeFramedSelfieWithText(selfieDataUrl, ctx.frame.fileUrl, act, line2);
       setComposite(out);
       setStep('preview');
     } catch (e) {
@@ -93,6 +125,11 @@ export default function FunFitFanLogWizard() {
 
   async function submit() {
     if (!composite || !ctx) return;
+    const act = activity.trim();
+    if (!act || !ctx.sportActivities.includes(act)) {
+      setError('Choose a sport activity from the list.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -114,8 +151,8 @@ export default function FunFitFanLogWizard() {
           partnerName: FUNFITFAN_PARTNER_NAME,
           imageWidth: img.width,
           imageHeight: img.height,
-          funfitfanActivity: activity.trim(),
-          funfitfanResult: resultText.trim(),
+          funfitfanActivity: act,
+          funfitfanFeelSoTags: feelSoTags,
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -188,29 +225,35 @@ export default function FunFitFanLogWizard() {
     );
   }
 
-  if (step === 'details') {
+  if (step === 'details' && ctx) {
     return (
       <div className="mx-auto max-w-lg px-4 py-8">
         <h1 className="text-2xl font-semibold">What did you do?</h1>
-        <label className="mt-6 block text-sm text-slate-400">
+        <label className="mt-6 block text-sm text-slate-400" htmlFor="fff-activity">
           Activity
-          <input
-            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
-            placeholder="e.g. Running"
-            value={activity}
-            onChange={(e) => setActivity(e.target.value)}
-          />
         </label>
-        <label className="mt-4 block text-sm text-slate-400">
-          Result
-          <textarea
-            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
-            rows={3}
-            placeholder="e.g. 5 km in 32 minutes"
-            value={resultText}
-            onChange={(e) => setResultText(e.target.value)}
-          />
+        <select
+          id="fff-activity"
+          className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+          value={activity}
+          onChange={(e) => setActivity(e.target.value)}
+        >
+          <option value="">— Choose an activity —</option>
+          {ctx.sportActivities.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
+        </select>
+        <label className="mt-4 block text-sm text-slate-400" htmlFor="fff-feelso-input">
+          Feel so
         </label>
+        <FeelSoHashtagInput
+          id="fff-feelso-input"
+          value={feelSoTags}
+          onChange={setFeelSoTags}
+          suggestions={hashtagSuggestions}
+        />
         {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
         <div className="app-btn-stack app-btn-stack--wizard-lg">
           <AppButton type="button" variant="secondary" compact onClick={() => setStep('selfie')}>

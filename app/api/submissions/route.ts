@@ -9,6 +9,7 @@
 import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
+import { readFunFitFanSportActivities } from '@/lib/funfitfan/bootstrap';
 import { uploadImage } from '@/lib/imgbb/upload';
 import {
   withErrorHandler,
@@ -25,6 +26,7 @@ import {
   RATE_LIMITS,
 } from '@/lib/api';
 import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
+import { formatFeelSoLine, normalizeFeelSoTagsList } from '@/lib/funfitfan/feel-so-tags';
 
 /**
  * POST /api/submissions
@@ -56,6 +58,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       consents,
       funfitfanActivity,
       funfitfanResult,
+      funfitfanFeelSoTags,
     } = body;
 
   // frameId can be null if event has no frames (v2.8.0)
@@ -124,6 +127,18 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       }
     }
 
+    const isFff = partnerId && String(partnerId).trim() === FUNFITFAN_PARTNER_ID;
+    const feelSoTags = isFff ? normalizeFeelSoTagsList(funfitfanFeelSoTags) : [];
+    const feelSoLine = feelSoTags.length > 0 ? formatFeelSoLine(feelSoTags) : '';
+
+    if (isFff) {
+      const act = typeof funfitfanActivity === 'string' ? funfitfanActivity.trim() : '';
+      const allowed = await readFunFitFanSportActivities(db);
+      if (!act || !allowed.includes(act)) {
+        throw apiBadRequest('Choose a valid sport activity for FunFitFan.');
+      }
+    }
+
     // Save submission to database
     const submission = {
       userId: session?.user?.id || 'anonymous',
@@ -159,9 +174,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         ...(typeof funfitfanActivity === 'string' && funfitfanActivity.trim()
           ? { funfitfanActivity: funfitfanActivity.trim() }
           : {}),
-        ...(typeof funfitfanResult === 'string' && funfitfanResult.trim()
-          ? { funfitfanResult: funfitfanResult.trim() }
-          : {}),
+        ...(feelSoTags.length > 0 ? { funfitfanFeelSoTags: feelSoTags } : {}),
+        ...(feelSoLine
+          ? { funfitfanResult: feelSoLine }
+          : typeof funfitfanResult === 'string' && funfitfanResult.trim()
+            ? { funfitfanResult: funfitfanResult.trim() }
+            : {}),
       },
       createdAt: new Date().toISOString(),
     };

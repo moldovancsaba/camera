@@ -10,6 +10,9 @@ export default function ReelEmptyCTA() {
       <AppButton type="button" variant="primary" onClick={() => router.push('/fff/log')}>
         I DID IT
       </AppButton>
+      <AppButton type="button" variant="secondary" onClick={() => router.push('/fff/history')}>
+        History
+      </AppButton>
     </div>
   );
 }

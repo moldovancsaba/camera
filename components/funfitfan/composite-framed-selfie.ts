@@ -44,14 +44,14 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 /**
- * @param selfieDataUrl camera result (e.g. image/jpeg from canvas / getUserMedia)
- * @param frameImageUrl frame asset URL (imgbb, same-origin or CORS-enabled)
- * @param lines first line usually activity (e.g. "Running"), second result text — rendered as one centered line
+ * @param line1 Sport / activity (first line, top)
+ * @param line2 "Feel so #tag, …" or empty (second line below)
  */
 export async function compositeFramedSelfieWithText(
   selfieDataUrl: string,
   frameImageUrl: string,
-  lines: string[]
+  line1: string,
+  line2: string
 ): Promise<string> {
   await ensureDynaPuffLoaded();
 
@@ -75,15 +75,15 @@ export async function compositeFramedSelfieWithText(
   ctx.drawImage(photoImg, 0, 0, canvas.width, canvas.height);
   ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
 
-  const parts = lines.map((l) => (typeof l === 'string' ? l.trim() : '')).filter(Boolean);
-  const text = parts.join(' \u2014 ');
+  const l1 = typeof line1 === 'string' ? line1.trim() : '';
+  const l2 = typeof line2 === 'string' ? line2.trim() : '';
 
-  if (text) {
+  if (l1 || l2) {
     const padX = Math.round(canvas.width * 0.04);
     const padY = Math.round(canvas.height * 0.028);
     const maxTextWidth = canvas.width - padX * 2;
 
-    let fontSize = Math.min(Math.floor(canvas.height * 0.13), Math.floor(canvas.width * 0.09));
+    let fontSize = Math.min(Math.floor(canvas.height * 0.11), Math.floor(canvas.width * 0.08));
     const minFont = 10;
     const fontFamily = 'DynaPuff, cursive, system-ui, sans-serif';
 
@@ -92,13 +92,17 @@ export async function compositeFramedSelfieWithText(
     };
 
     setFont(fontSize);
-    while (fontSize > minFont && ctx.measureText(text).width > maxTextWidth) {
+    while (fontSize > minFont) {
+      const w1 = l1 ? ctx.measureText(l1).width : 0;
+      const w2 = l2 ? ctx.measureText(l2).width : 0;
+      const tooWide = (l1 && w1 > maxTextWidth) || (l2 && w2 > maxTextWidth);
+      if (!tooWide) break;
       fontSize -= 1;
       setFont(fontSize);
     }
 
     const x = canvas.width / 2;
-    const y = padY;
+    let y = padY;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
@@ -106,10 +110,22 @@ export async function compositeFramedSelfieWithText(
     ctx.miterLimit = 2;
     ctx.strokeStyle = 'rgba(0,0,0,0.35)';
     ctx.lineWidth = Math.max(1, Math.ceil(fontSize * 0.07));
-    ctx.strokeText(text, x, y);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(text, x, y);
+    const drawLine = (text: string) => {
+      ctx.strokeText(text, x, y);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(text, x, y);
+    };
+
+    if (l1) {
+      drawLine(l1);
+    }
+    if (l2) {
+      const lineGap = Math.max(4, Math.round(fontSize * 0.2));
+      const lineHeight = fontSize * 1.2;
+      y += (l1 ? lineHeight + lineGap : 0);
+      drawLine(l2);
+    }
   }
 
   return canvas.toDataURL('image/jpeg', 0.88);
