@@ -23,6 +23,7 @@ import {
   createSession,
   readPendingSessionFromRequest,
 } from '@/lib/auth/session';
+import { decodeSignedOAuthPkceState, getOAuthPkceStateSigningKey } from '@/lib/auth/oauth-pkce-state';
 import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
 
 /** Prefer capture URL when capture resume cookies exist so users see a clear error in context. */
@@ -79,10 +80,19 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const pendingSession = readPendingSessionFromRequest(request);
+    const signingKey = getOAuthPkceStateSigningKey();
+    let codeVerifier: string | null =
+      signingKey && state.includes('.') ? decodeSignedOAuthPkceState(signingKey, state) : null;
 
-    if (!pendingSession) {
-      console.error('✗ No pending session found or expired');
+    if (!codeVerifier) {
+      const pendingSession = readPendingSessionFromRequest(request);
+      if (pendingSession?.state === state) {
+        codeVerifier = pendingSession.codeVerifier;
+      }
+    }
+
+    if (!codeVerifier) {
+      console.error('✗ No PKCE verifier (signed state invalid/expired or pending cookie missing)');
       return redirectOAuthFailure(
         request,
         'session_expired',
@@ -91,26 +101,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify state matches (CSRF protection)
-    if (pendingSession.state !== state) {
-      console.error('✗ State mismatch (e.g. second login tab overwrote cookie, or stale redirect)', {
-        cookieStateLen: pendingSession.state.length,
-        queryStateLen: state.length,
-      });
-      return redirectOAuthFailure(request, 'invalid_state', 'Invalid state parameter', {
-        clearPendingSession: true,
-      });
-    }
-
     console.log('✓ State verified, exchanging code for tokens');
 
     // Exchange authorization code for tokens using PKCE verifier
     const redirectUri = getOAuthCallbackRedirectUri(request);
-    const tokens = await exchangeCodeForToken(
-      code,
-      pendingSession.codeVerifier,
-      redirectUri
-    );
+    const tokens = await exchangeCodeForToken(code, codeVerifier, redirectUri);
     
     console.log('✓ Tokens obtained, extracting user info from ID token');
 
