@@ -27,14 +27,15 @@ export const SEED_FUNFITFAN_SPORT_ACTIVITIES: readonly string[] = [
   'Other',
 ];
 
-const MAX_ACTIVITIES = 20;
+/** Upper bound after trim + case-insensitive dedupe (keeps MongoDB document size reasonable). */
+export const MAX_SPORT_ACTIVITIES = 100_000;
 
 export function normalizeSportActivitiesList(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   const out: string[] = [];
   const seen = new Set<string>();
   for (const item of raw) {
-    if (out.length >= MAX_ACTIVITIES) break;
+    if (out.length >= MAX_SPORT_ACTIVITIES) break;
     if (typeof item !== 'string') continue;
     const s = item.trim();
     if (!s) continue;

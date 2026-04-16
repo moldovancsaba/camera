@@ -771,7 +771,7 @@ export default function EventCapturePage({
   
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black">
+      <div className="flex min-h-screen items-center justify-center bg-transparent">
         <div className="text-center">
           {loadingLogoUrl ? (
             <img
@@ -790,13 +790,13 @@ export default function EventCapturePage({
 
   if (!event) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="flex min-h-screen items-center justify-center bg-transparent p-4">
         <div className="text-center max-w-md">
           <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          <h2 className="text-2xl font-bold text-white mb-2">
             Event Not Found
           </h2>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-slate-300">
             This event could not be loaded.
           </p>
         </div>
@@ -805,7 +805,7 @@ export default function EventCapturePage({
   }
 
   return (
-    <div className="fixed inset-0 flex flex-col landscape:flex-row bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="fixed inset-0 flex flex-col landscape:flex-row bg-transparent">
       {signInError && (
         <div
           className="flex-shrink-0 z-50 mx-3 mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900 shadow-md dark:border-red-800 dark:bg-red-950/90 dark:text-red-100 landscape:mx-2 landscape:mt-2"

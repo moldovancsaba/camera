@@ -210,7 +210,7 @@ export default function FunFitFanLogWizard() {
   if (step === 'details' && ctx) {
     return (
       <div className="py-8">
-        <h1 className="fff-app-page-title">What did you do?</h1>
+        <h1 className="fff-app-page-title">What do you do?</h1>
         <label className="fff-field-label" htmlFor="fff-activity">
           Activity
         </label>
@@ -237,35 +237,33 @@ export default function FunFitFanLogWizard() {
           suggestions={hashtagSuggestions}
         />
         {error ? <p className="mt-3 fff-app-error">{error}</p> : null}
-        <div className="app-btn-stack app-btn-stack--wizard-lg">
-          {selfieDataUrl ? (
-            <>
-              <AppButton
-                type="button"
-                variant="secondary"
-                compact
-                onClick={() => {
-                  setError(null);
-                  setStep('selfie');
-                }}
-              >
-                Retake selfie
-              </AppButton>
-              <AppButton type="button" variant="primary" compact onClick={() => void buildPreview()}>
-                Preview card
-              </AppButton>
-            </>
-          ) : (
-            <>
-              <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
-                Cancel
-              </AppButton>
-              <AppButton type="button" variant="primary" compact onClick={() => goToSelfieStep()}>
-                Take selfie
-              </AppButton>
-            </>
-          )}
-        </div>
+        {selfieDataUrl ? (
+          <div className="app-btn-stack app-btn-stack--wizard-lg">
+            <AppButton
+              type="button"
+              variant="secondary"
+              compact
+              onClick={() => {
+                setError(null);
+                setStep('selfie');
+              }}
+            >
+              Retake selfie
+            </AppButton>
+            <AppButton type="button" variant="primary" compact onClick={() => void buildPreview()}>
+              Preview card
+            </AppButton>
+          </div>
+        ) : (
+          <div className="fff-log-details-actions">
+            <AppButton type="button" variant="ghost" compact onClick={() => router.push('/fff')}>
+              BACK
+            </AppButton>
+            <AppButton type="button" variant="primary" compact onClick={() => goToSelfieStep()}>
+              Take selfie
+            </AppButton>
+          </div>
+        )}
       </div>
     );
   }

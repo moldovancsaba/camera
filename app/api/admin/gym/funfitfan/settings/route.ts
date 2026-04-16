@@ -20,7 +20,10 @@ import {
   FFF_SETTINGS_KEY,
 } from '@/lib/funfitfan/constants';
 import { readFunFitFanDefaultFrameId, readFunFitFanSportActivities } from '@/lib/funfitfan/bootstrap';
-import { normalizeSportActivitiesList } from '@/lib/funfitfan/sport-activities';
+import {
+  MAX_SPORT_ACTIVITIES,
+  normalizeSportActivitiesList,
+} from '@/lib/funfitfan/sport-activities';
 
 async function ensurePartnerRow(db: Db, adminUserId: string) {
   const col = db.collection(COLLECTIONS.PARTNERS);
@@ -63,7 +66,9 @@ export const PATCH = withErrorHandler(async (request: NextRequest) => {
     throw apiBadRequest('Provide defaultFrameId and/or sportActivities');
   }
   if (hasActivities && (!sportActivities || sportActivities.length === 0)) {
-    throw apiBadRequest('sportActivities must be a non-empty array of strings (max 20)');
+    throw apiBadRequest(
+      `sportActivities must be a non-empty array of strings (at most ${MAX_SPORT_ACTIVITIES} unique entries after normalization)`
+    );
   }
 
   const db = await connectToDatabase();

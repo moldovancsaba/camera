@@ -2,8 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-
-const MAX = 20;
+import { MAX_SPORT_ACTIVITIES } from '@/lib/funfitfan/sport-activities';
+import { AppButton } from '@/components/ui/AppButton';
 
 export default function AdminFffActivitiesForm({ initialLines }: { initialLines: string[] }) {
   const router = useRouter();
@@ -19,7 +19,7 @@ export default function AdminFffActivitiesForm({ initialLines }: { initialLines:
       .split('\n')
       .map((s) => s.trim())
       .filter(Boolean)
-      .slice(0, MAX);
+      .slice(0, MAX_SPORT_ACTIVITIES);
     if (sportActivities.length === 0) {
       setMessage('Add at least one activity (one per line).');
       setLoading(false);
@@ -38,7 +38,12 @@ export default function AdminFffActivitiesForm({ initialLines }: { initialLines:
       }
       const saved: string[] = data.data?.sportActivities ?? sportActivities;
       setText(saved.join('\n'));
-      setMessage(`Saved (${saved.length} activities, max ${MAX}).`);
+      const n = saved.length;
+      setMessage(
+        n >= MAX_SPORT_ACTIVITIES
+          ? `Saved ${n} activities (list trimmed to ${MAX_SPORT_ACTIVITIES} unique entries).`
+          : `Saved ${n} activit${n === 1 ? 'y' : 'ies'}.`
+      );
       router.refresh();
     } catch {
       setMessage('Network error');
@@ -48,30 +53,27 @@ export default function AdminFffActivitiesForm({ initialLines }: { initialLines:
   }
 
   return (
-    <form onSubmit={save} className="max-w-xl space-y-4">
+    <form onSubmit={save} className="app-form-stack">
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="fff-activities">
+        <label className="app-form-label" htmlFor="fff-activities">
           Sport activities (dropdown in member log)
         </label>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          One per line, up to {MAX} entries. Shown in order in the FunFitFan log wizard.
+        <p className="app-form-hint">
+          One per line. Shown in order in the FunFitFan log wizard. Duplicate lines (ignoring case) are removed when
+          you save. Very long lists are capped at {MAX_SPORT_ACTIVITIES.toLocaleString()} unique entries.
         </p>
         <textarea
           id="fff-activities"
           rows={12}
-          className="mt-2 w-full rounded border border-gray-300 px-3 py-2 font-mono text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+          className="app-form-control app-form-textarea"
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
       </div>
-      {message ? <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p> : null}
-      <button
-        type="submit"
-        disabled={loading}
-        className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-      >
+      {message ? <p className="app-form-status">{message}</p> : null}
+      <AppButton type="submit" variant="primary" compact disabled={loading}>
         {loading ? 'Saving…' : 'Save activities'}
-      </button>
+      </AppButton>
     </form>
   );
 }

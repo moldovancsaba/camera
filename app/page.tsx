@@ -49,8 +49,8 @@ export default async function Home({
   const oauthHint = oauthErrorHint(oauthError);
   
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <main className="flex flex-col items-center justify-center px-8 py-16 text-center">
+    <div className="flex min-h-screen items-center justify-center bg-transparent">
+      <main className="flex flex-col items-center justify-center px-8 py-16 text-center text-slate-100">
         {oauthError && !session && (
           <div
             className="mb-6 max-w-lg rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100"
@@ -71,7 +71,7 @@ export default async function Home({
               alt="Camera Logo" 
               className="h-16 w-auto"
             />
-            <h1 className="text-6xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-6xl font-bold text-white">
               Camera
             </h1>
           </div>
@@ -92,27 +92,18 @@ export default async function Home({
             <>
               {/* Check appRole from SSO app permissions (not user.role from ID token) */}
               {(session.appRole === 'admin' || session.appRole === 'superadmin') && (
-                <a
-                  href="/admin"
-                  className="px-8 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors shadow-lg"
-                >
+                <a href="/admin" className="app-btn app-btn--primary app-btn--inline app-btn--lg">
                   Admin Panel
                 </a>
               )}
 
               {session.appAccess !== false && (
-                <a
-                  href="/gym"
-                  className="px-8 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition-colors shadow-lg"
-                >
+                <a href="/gym" className="app-btn app-btn--primary app-btn--inline app-btn--lg">
                   Gym
                 </a>
               )}
-              
-              <a
-                href="/api/auth/logout"
-                className="px-8 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors shadow-lg"
-              >
+
+              <a href="/api/auth/logout" className="app-btn app-btn--neutral app-btn--inline app-btn--lg">
                 Logout
               </a>
             </>
@@ -121,9 +112,9 @@ export default async function Home({
           )}
         </div>
 
-        <div className="mt-12 text-center text-sm text-gray-500 dark:text-gray-400">
+        <div className="mt-12 text-center text-sm text-slate-400">
           <p>🔐 Google / Facebook via SSO | ☁️ MongoDB Atlas | 🖼️ imgbb</p>
-          <p className="mt-2 text-xs font-mono text-gray-400 dark:text-gray-500">
+          <p className="mt-2 text-xs font-mono text-slate-500">
             v{APP_VERSION}
           </p>
         </div>

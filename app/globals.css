@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Canvas is the global fixed gradient (see `body`); surfaces use explicit colors */
+  --background: transparent;
+  --foreground: #f1f5f9;
 
   /* —— App button system (single source for CTA / nav buttons) —— */
   --app-btn-radius: 0.75rem;
@@ -113,6 +114,22 @@
   --fff-app-spinner-border: var(--fff-app-accent);
   --fff-app-link-hover: var(--fff-app-accent-soft);
   --fff-app-inner-pad-y: var(--fff-landing-content-pad-y);
+
+  /* Light panels + admin forms (frosted admin shell, capture/profile cards) */
+  --app-panel-title: #0f172a;
+  --app-panel-body: #475569;
+  --app-panel-muted: #64748b;
+  --app-panel-border: #cbd5e1;
+  --app-panel-input-bg: #ffffff;
+  --app-panel-input-fg: #0f172a;
+  --app-panel-link: #475569;
+  --app-panel-link-hover: #0f172a;
+  --app-panel-strong: #0f172a;
+  --app-thumb-bg: #f1f5f9;
+
+  --app-btn-danger-bg: #dc2626;
+  --app-btn-danger-bg-hover: #b91c1c;
+  --app-btn-danger-fg: #ffffff;
 }
 
 @theme inline {
@@ -124,14 +141,42 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --foreground: #f8fafc;
+    --app-panel-title: #f8fafc;
+    --app-panel-body: #cbd5e1;
+    --app-panel-muted: #94a3b8;
+    --app-panel-border: #475569;
+    --app-panel-input-bg: rgb(15 23 42 / 0.92);
+    --app-panel-input-fg: #f8fafc;
+    --app-panel-link: #94a3b8;
+    --app-panel-link-hover: #f8fafc;
+    --app-panel-strong: #f1f5f9;
+    --app-thumb-bg: #334155;
   }
 }
 
+html {
+  min-height: 100%;
+}
+
+/**
+ * One fixed FunFitFan gradient for the whole app (does not scroll with content).
+ * Route shells (`.fff-app-shell`, etc.) stay transparent so this is the only paint.
+ */
 body {
-  background: var(--background);
+  min-height: 100dvh;
+  margin: 0;
   color: var(--foreground);
+  background-color: var(--fff-landing-bg-end);
+  background-image: linear-gradient(
+    to bottom,
+    var(--fff-landing-bg-start),
+    var(--fff-landing-bg-mid),
+    var(--fff-landing-bg-end)
+  );
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-size: cover;
   font-family: Arial, Helvetica, sans-serif;
 }
 
@@ -168,6 +213,10 @@ body {
   .app-btn:disabled {
     opacity: 0.55;
     cursor: not-allowed;
+  }
+
+  a.app-btn {
+    text-decoration: none;
   }
 
   .app-btn--primary {
@@ -217,6 +266,35 @@ body {
     color: var(--app-btn-ghost-fg-hover);
     background-color: var(--app-btn-ghost-bg-hover);
     border-color: var(--app-btn-ghost-border-hover);
+  }
+
+  .app-btn--danger {
+    border-color: transparent;
+    color: var(--app-btn-danger-fg);
+    background-color: var(--app-btn-danger-bg);
+    box-shadow: none;
+  }
+
+  .app-btn--danger:hover:not(:disabled) {
+    background-color: var(--app-btn-danger-bg-hover);
+  }
+
+  .app-btn--inline {
+    width: auto;
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  .app-btn--sm {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+    letter-spacing: 0.04em;
+    box-shadow: none;
+  }
+
+  .app-btn--lg {
+    padding: 0.875rem 1.75rem;
+    font-size: 1rem;
   }
 
   .app-btn--compact {
@@ -347,12 +425,7 @@ body {
   .fff-app-shell,
   .fff-landing-shell {
     min-height: 100dvh;
-    background: linear-gradient(
-      to bottom,
-      var(--fff-landing-bg-start),
-      var(--fff-landing-bg-mid),
-      var(--fff-landing-bg-end)
-    );
+    background: transparent;
     color: var(--fff-landing-fg);
   }
 
@@ -362,12 +435,7 @@ body {
     z-index: 50;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(
-      to bottom,
-      var(--fff-landing-bg-start),
-      var(--fff-landing-bg-mid),
-      var(--fff-landing-bg-end)
-    );
+    background: transparent;
     color: var(--fff-landing-fg);
   }
 
@@ -941,12 +1009,30 @@ body {
     margin-top: 1.5rem;
   }
 
+  /* FunFitFan log details: BACK + Take selfie on one row (wrap on narrow screens) */
+  .fff-log-details-actions {
+    margin-top: var(--fff-wizard-stack-margin-top-lg);
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+  }
+
+  .fff-log-details-actions .app-btn {
+    flex: 0 1 auto;
+  }
+
   /* One-line hero: FFF (white) | FunFitFan (green), same display size */
   .fff-landing-brand-line {
-    display: inline-flex;
+    display: flex;
+    width: 100%;
     max-width: 100%;
     flex-wrap: nowrap;
     align-items: baseline;
+    justify-content: center;
     gap: 0.28em;
     font-size: clamp(2.25rem, 8.5vw, 3.25rem);
     /* Matches DynaPuff 700 (next/font on landing h1) */
@@ -1223,5 +1309,323 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+  }
+
+  /* —— App-wide admin + generic forms (use instead of ad-hoc gray/blue Tailwind) —— */
+  .app-form-stack {
+    max-width: 36rem;
+  }
+
+  .app-form-stack > * + * {
+    margin-top: 1rem;
+  }
+
+  .app-form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--app-panel-body);
+  }
+
+  .app-form-hint {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--app-panel-muted);
+  }
+
+  .app-form-label + .app-form-control,
+  .app-form-hint + .app-form-control {
+    margin-top: 0.25rem;
+  }
+
+  .app-form-control {
+    box-sizing: border-box;
+    margin-top: 0.25rem;
+    display: block;
+    width: 100%;
+    border-radius: 0.25rem;
+    border: 1px solid var(--app-panel-border);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--app-panel-input-fg);
+    background-color: var(--app-panel-input-bg);
+  }
+
+  .app-form-control:focus {
+    outline: 2px solid var(--app-btn-focus-ring);
+    outline-offset: 1px;
+  }
+
+  .app-form-textarea {
+    min-height: 12rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    resize: vertical;
+  }
+
+  .app-form-status {
+    font-size: 0.875rem;
+    color: var(--app-panel-muted);
+  }
+
+  .app-panel-shell {
+    padding: 2rem;
+  }
+
+  .app-panel-back {
+    font-size: 0.875rem;
+    color: var(--app-panel-link);
+    text-decoration: none;
+  }
+
+  .app-panel-back:hover {
+    color: var(--app-panel-link-hover);
+    text-decoration: underline;
+  }
+
+  .app-panel-title {
+    margin-top: 1rem;
+    font-size: 1.875rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--app-panel-title);
+  }
+
+  .app-panel-lede {
+    margin-top: 0.5rem;
+    max-width: 42rem;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--app-panel-body);
+  }
+
+  .app-panel-lede strong {
+    color: var(--app-panel-strong);
+    font-weight: 600;
+  }
+
+  .app-panel-lede code {
+    color: var(--app-panel-strong);
+    font-weight: 500;
+    font-size: 0.75rem;
+  }
+
+  .app-panel-stack {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+  }
+
+  .app-panel-section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--app-panel-title);
+  }
+
+  .app-panel-section-lede {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--app-panel-body);
+  }
+
+  .app-panel-block {
+    margin-top: 1rem;
+  }
+
+  /* Public routes on the global fixed gradient (capture, profile, …) */
+  .app-canvas-page-title {
+    font-size: 1.875rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--fff-landing-fg);
+  }
+
+  .app-canvas-back {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    color: var(--fff-landing-body);
+    text-decoration: none;
+  }
+
+  .app-canvas-back:hover {
+    color: var(--fff-landing-fg);
+  }
+
+  .app-canvas-subtitle {
+    margin-top: 0.5rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--fff-landing-body);
+  }
+
+  .app-surface-card {
+    border-radius: 0.5rem;
+    border: 1px solid var(--app-panel-border);
+    background-color: var(--app-panel-input-bg);
+    color: var(--app-panel-input-fg);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.07);
+  }
+
+  .app-alert-error {
+    margin-bottom: 1.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgb(248 113 113 / 0.45);
+    background: rgb(127 29 29 / 0.12);
+    padding: 1rem;
+    font-size: 0.875rem;
+    color: var(--fff-app-error);
+  }
+
+  .app-alert-error-title {
+    font-weight: 600;
+    color: var(--fff-app-error);
+  }
+
+  .app-alert-error-detail {
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
+    color: var(--fff-app-error-muted);
+  }
+
+  .app-surface-card-pad-lg {
+    padding: 3rem;
+    text-align: center;
+  }
+
+  .app-surface-card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--app-panel-title);
+  }
+
+  .app-surface-card-lede {
+    margin-top: 0.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.9375rem;
+    color: var(--app-panel-body);
+  }
+
+  .app-surface-card-pad-sm {
+    padding: 0.75rem;
+  }
+
+  .app-surface-card-row-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--app-panel-title);
+  }
+
+  .app-surface-meta {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--app-panel-muted);
+  }
+
+  .app-thumb-placeholder {
+    position: relative;
+    background-color: var(--app-thumb-bg);
+  }
+
+  .app-canvas-count {
+    font-size: 0.875rem;
+    color: var(--fff-landing-body);
+  }
+
+  .app-canvas-section-title {
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--fff-landing-fg);
+  }
+
+  .app-surface-card-tile {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+    appearance: none;
+    border-radius: 0.5rem;
+    border: 2px solid var(--app-panel-border);
+    background-color: var(--app-panel-input-bg);
+    color: var(--app-panel-input-fg);
+    overflow: hidden;
+    transition: border-color 0.15s ease;
+  }
+
+  .app-surface-card-tile:hover {
+    border-color: var(--fff-app-accent);
+  }
+
+  .app-surface-panel {
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    background-color: var(--app-panel-input-bg);
+    color: var(--app-panel-input-fg);
+    box-shadow: 0 10px 40px rgb(0 0 0 / 0.12);
+  }
+
+  .app-banner-success {
+    flex: 1 1 0%;
+    min-width: 0;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    text-align: center;
+    font-weight: 600;
+    background: rgb(6 78 59 / 0.35);
+    color: var(--fff-app-success-message);
+    border: 1px solid var(--fff-app-border);
+  }
+
+  .app-btn--block {
+    width: 100%;
+    max-width: none;
+  }
+
+  .app-inline-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .app-inline-actions .app-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .app-raised-dialog {
+    max-width: 28rem;
+    width: 100%;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    text-align: center;
+    background-color: var(--app-panel-input-bg);
+    color: var(--app-panel-input-fg);
+    box-shadow: 0 20px 50px rgb(0 0 0 / 0.22);
+  }
+
+  .app-raised-dialog-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--app-panel-title);
+    margin-bottom: 1rem;
+  }
+
+  .app-raised-dialog-body {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--app-panel-body);
+    margin-bottom: 1.5rem;
+  }
+
+  .app-raised-dialog-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 }

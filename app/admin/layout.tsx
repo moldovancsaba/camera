@@ -33,7 +33,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex min-h-screen bg-white/75 backdrop-blur-md dark:bg-gray-950/75">
       <CollapsibleSidebar session={session} />
       
       {/* Main Content */}

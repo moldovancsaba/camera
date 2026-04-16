@@ -1,6 +1,6 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
 
-export type AppButtonVariant = 'primary' | 'secondary' | 'neutral' | 'ghost';
+export type AppButtonVariant = 'primary' | 'secondary' | 'neutral' | 'ghost' | 'danger';
 
 export type AppButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: AppButtonVariant;
@@ -19,7 +19,9 @@ export const AppButton = forwardRef<HTMLButtonElement, AppButtonProps>(function 
         ? 'app-btn--secondary'
         : variant === 'neutral'
           ? 'app-btn--neutral'
-          : 'app-btn--ghost';
+          : variant === 'danger'
+            ? 'app-btn--danger'
+            : 'app-btn--ghost';
   const compactClass = compact ? 'app-btn--compact' : '';
   return (
     <button

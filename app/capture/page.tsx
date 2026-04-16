@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import CameraCapture from '@/components/camera/CameraCapture';
 import FileUpload from '@/components/camera/FileUpload';
+import { AppButton } from '@/components/ui/AppButton';
 
 
 interface Frame {
@@ -260,10 +261,10 @@ export default function CapturePage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-transparent">
         <div className="text-center">
           <div className="text-6xl mb-4">📸</div>
-          <p className="text-gray-600 dark:text-gray-400">Loading frames...</p>
+          <p className="text-slate-300">Loading frames...</p>
         </div>
       </div>
     );
@@ -271,17 +272,14 @@ export default function CapturePage() {
 
   if (frames.length === 0) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="flex min-h-screen items-center justify-center bg-transparent p-4">
         <div className="text-center max-w-md">
           <div className="text-6xl mb-4">🖼️</div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">No Frames Available</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
+          <h2 className="app-canvas-section-title">No Frames Available</h2>
+          <p className="text-slate-300 mb-6">
             There are no frames available yet. Please check back later!
           </p>
-          <a
-            href="/"
-            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-          >
+          <a href="/" className="app-btn app-btn--primary app-btn--inline">
             Go Home
           </a>
         </div>
@@ -323,40 +321,35 @@ export default function CapturePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div className="min-h-screen bg-transparent py-8">
       <div className="max-w-6xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              📸 Take a Photo
-            </h1>
-            <a
-              href="/"
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-            >
+            <h1 className="app-canvas-page-title">📸 Take a Photo</h1>
+            <a href="/" className="app-canvas-back">
               ← Back
             </a>
           </div>
 
           {/* Progress Steps */}
           <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-2 ${step === 'select-frame' ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'select-frame' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>
+            <div className={`flex items-center gap-2 ${step === 'select-frame' ? 'text-emerald-400' : 'text-slate-500'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'select-frame' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-600 text-slate-300'}`}>
                 1
               </div>
               <span className="font-medium">Select Frame</span>
             </div>
-            <div className="flex-1 h-px bg-gray-300 dark:bg-gray-700"></div>
-            <div className={`flex items-center gap-2 ${step === 'capture-photo' ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'capture-photo' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>
+            <div className="flex-1 h-px bg-slate-600"></div>
+            <div className={`flex items-center gap-2 ${step === 'capture-photo' ? 'text-emerald-400' : 'text-slate-500'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'capture-photo' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-600 text-slate-300'}`}>
                 2
               </div>
               <span className="font-medium">Capture Photo</span>
             </div>
-            <div className="flex-1 h-px bg-gray-300 dark:bg-gray-700"></div>
-            <div className={`flex items-center gap-2 ${step === 'preview' ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'preview' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>
+            <div className="flex-1 h-px bg-slate-600"></div>
+            <div className={`flex items-center gap-2 ${step === 'preview' ? 'text-emerald-400' : 'text-slate-500'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'preview' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-600 text-slate-300'}`}>
                 3
               </div>
               <span className="font-medium">Preview & Save</span>
@@ -367,17 +360,16 @@ export default function CapturePage() {
         {/* Step 1: Frame Selection */}
         {step === 'select-frame' && (
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Choose a Frame
-            </h2>
+            <h2 className="app-canvas-section-title">Choose a Frame</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {frames.map((frame) => (
                 <button
                   key={frame._id}
+                  type="button"
                   onClick={() => handleFrameSelect(frame)}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border-2 border-gray-200 dark:border-gray-700 hover:border-blue-600 dark:hover:border-blue-500 transition-colors overflow-hidden"
+                  className="app-surface-card-tile"
                 >
-                  <div className="aspect-square relative bg-gray-100 dark:bg-gray-700">
+                  <div className="aspect-square relative app-thumb-placeholder">
                     <Image
                       src={frame.imageUrl}
                       alt={frame.name}
@@ -386,9 +378,9 @@ export default function CapturePage() {
                       unoptimized
                     />
                   </div>
-                  <div className="p-3">
-                    <p className="font-medium text-gray-900 dark:text-white text-sm">{frame.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{frame.category}</p>
+                  <div className="app-surface-card-pad-sm">
+                    <p className="app-surface-card-row-title">{frame.name}</p>
+                    <p className="app-surface-meta capitalize">{frame.category}</p>
                   </div>
                 </button>
               ))}
@@ -401,12 +393,10 @@ export default function CapturePage() {
         {/* Step 3: Preview */}
         {step === 'preview' && compositeImage && (
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Preview Your Photo
-            </h2>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <h2 className="app-canvas-section-title">Preview Your Photo</h2>
+            <div className="app-surface-panel">
               <div className="max-w-2xl mx-auto">
-                <div className="relative aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden mb-6">
+                <div className="relative aspect-square app-thumb-placeholder rounded-lg overflow-hidden mb-6">
                   <Image
                     src={compositeImage}
                     alt="Final result"
@@ -419,80 +409,88 @@ export default function CapturePage() {
                 <div className="space-y-4">
                   <div className="flex flex-col sm:flex-row gap-4">
                     {!submissionId ? (
-                      <button
+                      <AppButton
+                        type="button"
+                        variant="primary"
+                        className="app-btn--inline min-w-0 flex-1"
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
                       >
                         {isSaving ? '💾 Saving...' : '💾 Save & Share'}
-                      </button>
+                      </AppButton>
                     ) : (
-                      <div className="flex-1 px-6 py-3 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 rounded-lg font-semibold text-center">
-                        ✓ Saved!
-                      </div>
+                      <div className="app-banner-success">✓ Saved!</div>
                     )}
-                    <button
+                    <AppButton
+                      type="button"
+                      variant="secondary"
+                      className="app-btn--inline min-w-0 flex-1"
                       onClick={handleDownload}
-                      className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
                     >
                       💾 Download
-                    </button>
+                    </AppButton>
                   </div>
 
                   {shareUrl && (
-                    <div className="border-t pt-4">
-                      <h3 className="font-medium text-gray-900 dark:text-white mb-3">Share Your Photo</h3>
+                    <div className="border-t border-[var(--app-panel-border)] pt-4">
+                      <h3 className="app-surface-card-row-title mb-3">Share Your Photo</h3>
                       <div className="flex flex-col gap-3">
                         <div className="flex gap-2">
                           <input
                             type="text"
                             value={shareUrl}
                             readOnly
-                            className="flex-1 px-4 py-2 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                            className="app-form-control flex-1 text-sm"
                           />
-                          <button
-                            onClick={handleCopyLink}
-                            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                          >
+                          <AppButton type="button" variant="ghost" compact onClick={handleCopyLink}>
                             📋 Copy
-                          </button>
+                          </AppButton>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                          <button
+                          <AppButton
+                            type="button"
+                            variant="secondary"
+                            compact
+                            className="app-btn--inline w-full min-w-0"
                             onClick={() => handleShareSocial('facebook')}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                           >
                             Facebook
-                          </button>
-                          <button
+                          </AppButton>
+                          <AppButton
+                            type="button"
+                            variant="secondary"
+                            compact
+                            className="app-btn--inline w-full min-w-0"
                             onClick={() => handleShareSocial('twitter')}
-                            className="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors text-sm"
                           >
                             Twitter
-                          </button>
-                          <button
+                          </AppButton>
+                          <AppButton
+                            type="button"
+                            variant="secondary"
+                            compact
+                            className="app-btn--inline w-full min-w-0"
                             onClick={() => handleShareSocial('linkedin')}
-                            className="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors text-sm"
                           >
                             LinkedIn
-                          </button>
-                          <button
+                          </AppButton>
+                          <AppButton
+                            type="button"
+                            variant="secondary"
+                            compact
+                            className="app-btn--inline w-full min-w-0"
                             onClick={() => handleShareSocial('whatsapp')}
-                            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
                           >
                             WhatsApp
-                          </button>
+                          </AppButton>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  <button
-                    onClick={handleReset}
-                    className="w-full px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                  >
+                  <AppButton type="button" variant="neutral" className="app-btn--block" onClick={handleReset}>
                     📸 Take Another Photo
-                  </button>
+                  </AppButton>
                 </div>
               </div>
             </div>
@@ -501,12 +499,10 @@ export default function CapturePage() {
 
         {/* Processing Overlay */}
         {isProcessing && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-8 text-center">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="app-surface-card p-8 text-center">
               <div className="text-6xl mb-4 animate-pulse">✨</div>
-              <p className="text-gray-900 dark:text-white font-medium">
-                Applying frame...
-              </p>
+              <p className="app-surface-card-row-title">Applying frame...</p>
             </div>
           </div>
         )}

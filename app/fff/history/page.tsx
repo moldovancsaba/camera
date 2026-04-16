@@ -138,7 +138,7 @@ export default async function FffHistoryPage() {
 
       {rows.length === 0 ? (
         <p className="mt-10 text-center fff-app-muted">
-          Nothing here yet. Use <strong>I DID IT</strong> or <strong>IN THE GYM</strong> to add entries.
+          Nothing here yet. Use <strong>I DO IT</strong> or <strong>IN THE GYM</strong> to add entries.
         </p>
       ) : (
         <ul className="fff-history-list mt-8">

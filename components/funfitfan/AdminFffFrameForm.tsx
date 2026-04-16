@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { AppButton } from '@/components/ui/AppButton';
 
 export default function AdminFffFrameForm({
   frames,
@@ -40,11 +41,14 @@ export default function AdminFffFrameForm({
   }
 
   return (
-    <form onSubmit={save} className="max-w-xl space-y-4">
+    <form onSubmit={save} className="app-form-stack">
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Default frame</label>
+        <label className="app-form-label" htmlFor="fff-default-frame">
+          Default frame
+        </label>
         <select
-          className="mt-1 w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+          id="fff-default-frame"
+          className="app-form-control"
           value={frameId}
           onChange={(e) => setFrameId(e.target.value)}
           required
@@ -57,14 +61,10 @@ export default function AdminFffFrameForm({
           ))}
         </select>
       </div>
-      {message ? <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p> : null}
-      <button
-        type="submit"
-        disabled={loading || !frameId}
-        className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-      >
+      {message ? <p className="app-form-status">{message}</p> : null}
+      <AppButton type="submit" variant="primary" compact disabled={loading || !frameId}>
         {loading ? 'Saving…' : 'Save'}
-      </button>
+      </AppButton>
     </form>
   );
 }

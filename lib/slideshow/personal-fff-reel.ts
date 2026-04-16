@@ -6,7 +6,7 @@ type MatchFilter = { $and: object[] };
 
 /**
  * FunFitFan “My reel” slideshow (`fff_user_profiles.slideshowId`): one stream of
- * I DID IT submissions + gym selfies for the same user, oldest → newest.
+ * “I DO IT” log submissions + gym selfies for the same user, oldest → newest.
  */
 export async function fetchPersonalFffReelRows(
   db: Db,

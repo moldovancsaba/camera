@@ -36,39 +36,39 @@ export default async function AdminFunFitFanPage() {
   }
 
   return (
-    <div className="p-8">
-      <Link href="/admin/gym" className="text-sm text-gray-600 hover:underline dark:text-gray-400">
+    <div className="app-panel-shell">
+      <Link href="/admin/gym" className="app-panel-back">
         ← Gym hub
       </Link>
-      <h1 className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">FunFitFan (FFF)</h1>
-      <p className="mt-2 max-w-2xl text-gray-600 dark:text-gray-400">
-        Members get a virtual Camera <strong>event</strong> under the <code className="text-xs">FunFitFan</code>{' '}
-        partner. Each log is a <strong>submission</strong> to that event with a framed selfie and activity text.
-        Their <strong>slideshow</strong> uses the standard player (default loop, {3000 / 1000}s slide timing from
+      <h1 className="app-panel-title">FunFitFan (FFF)</h1>
+      <p className="app-panel-lede">
+        Members get a virtual Camera <strong>event</strong> under the <code>FunFitFan</code> partner. Each log is a{' '}
+        <strong>submission</strong> to that event with a framed selfie and activity text. Their{' '}
+        <strong>slideshow</strong> uses the standard player (default loop, {3000 / 1000}s slide timing from
         bootstrap).
       </p>
 
       {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
 
       {!dbError && (
-        <div className="mt-8 space-y-12">
+        <div className="app-panel-stack">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Default frame</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            <h2 className="app-panel-section-title">Default frame</h2>
+            <p className="app-panel-section-lede">
               This frame is synced to the FunFitFan partner defaults and rolled out to child events that inherit
               frames.
             </p>
-            <div className="mt-4">
+            <div className="app-panel-block">
               <AdminFffFrameForm frames={frames} currentFrameId={currentFrameId} />
             </div>
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Sport activities</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            <h2 className="app-panel-section-title">Sport activities</h2>
+            <p className="app-panel-section-lede">
               Members pick one activity from this list when logging a check-in. The list is stored in MongoDB
               (`fff_settings.sportActivities`); an initial set is written automatically when the field is empty.
             </p>
-            <div className="mt-4">
+            <div className="app-panel-block">
               <AdminFffActivitiesForm initialLines={sportActivities} />
             </div>
           </div>
