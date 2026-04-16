@@ -27,16 +27,6 @@ export default async function GymHomePage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Your gym</h1>
-      <p className="mt-2 text-slate-600 dark:text-slate-400">
-        Lessons are managed in admin. Log a workout and optionally add a selfie (same camera + hosting as
-        Camera). Your past workouts and FunFitFan reel cards live together in{' '}
-        <Link href="/fff/history" className="font-medium text-emerald-600 underline hover:text-emerald-500 dark:text-emerald-400">
-          History
-        </Link>
-        .
-      </p>
-
       {dbError != null ? <div className="mt-6"><DatabaseConnectionAlert error={dbError} /></div> : null}
 
       {!dbError && (

@@ -21,8 +21,8 @@ export default async function FunFitFanLandingPage() {
         <span className="fff-landing-brand-name">FunFitFan</span>
       </h1>
       <p className="fff-landing-lede">
-        Your fitness home: log a framed activity card (your team&apos;s frame), browse your reel, and open gym
-        lessons — all under FFF.
+        we help you to workout better, in the GYM, on the run, under the water, over the top. capture the moments and
+        share the memories.
       </p>
 
       <FunFitFanLandingActions signedIn={Boolean(session)} />
