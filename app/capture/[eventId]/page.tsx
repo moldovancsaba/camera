@@ -19,6 +19,7 @@ import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoA
 import AcceptPage, { type AcceptPageData } from '@/components/capture/AcceptPage';
 import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
 import { type CustomPage } from '@/lib/db/schemas';
+import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 
 interface Frame {
   frameId: string;
@@ -75,7 +76,9 @@ export default function EventCapturePage({
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [step, setStep] = useState<'select-frame' | 'capture-photo' | 'preview'>('select-frame');
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
-  
+  /** Intrinsic frame bitmap aspect (w/h); preview matches composite like FunFitFan `previewAspectWidthOverHeight`. */
+  const [frameIntrinsicAspect, setFrameIntrinsicAspect] = useState<number | null>(null);
+
   // v2.0.0: Custom page flow state
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
@@ -292,6 +295,25 @@ export default function EventCapturePage({
 
     fetchData();
   }, [eventId]);
+
+  useEffect(() => {
+    if (!selectedFrame?.imageUrl) {
+      setFrameIntrinsicAspect(null);
+      return;
+    }
+    let cancelled = false;
+    void loadImageAspectRatio(selectedFrame.imageUrl).then(
+      (aspect) => {
+        if (!cancelled) setFrameIntrinsicAspect(aspect);
+      },
+      () => {
+        if (!cancelled) setFrameIntrinsicAspect(null);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFrame?.frameId, selectedFrame?.imageUrl]);
 
   // Composite image with frame when photo is captured (or just use photo if no frame)
   useEffect(() => {
@@ -939,13 +961,21 @@ export default function EventCapturePage({
               </div>
             )}
             <div className="flex-1 flex items-center justify-center p-4 min-h-0">
-              <CameraCapture 
+              <CameraCapture
                 onCapture={handlePhotoCapture}
                 // CRITICAL: No frame overlay during capture to prevent canvas issues
                 // Frame will be composited AFTER capture in compositeImageWithFrame()
                 frameOverlay={undefined}
                 frameWidth={selectedFrame?.width || 1920}
                 frameHeight={selectedFrame?.height || 1080}
+                previewAspectWidthOverHeight={
+                  selectedFrame
+                    ? frameIntrinsicAspect ??
+                      (selectedFrame.width > 0 && selectedFrame.height > 0
+                        ? selectedFrame.width / selectedFrame.height
+                        : 16 / 9)
+                    : undefined
+                }
                 captureButtonColor={event?.brandColor || '#3B82F6'}
                 captureButtonBorderColor={event?.brandBorderColor || '#3B82F6'}
                 promptTitle={cameraPromptTitle}

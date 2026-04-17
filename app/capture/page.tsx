@@ -12,6 +12,7 @@ import Image from 'next/image';
 import CameraCapture from '@/components/camera/CameraCapture';
 import FileUpload from '@/components/camera/FileUpload';
 import { AppButton } from '@/components/ui/AppButton';
+import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 
 
 interface Frame {
@@ -46,6 +47,7 @@ export default function CapturePage() {
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [step, setStep] = useState<'select-frame' | 'capture-photo' | 'preview'>('select-frame');
+  const [frameIntrinsicAspect, setFrameIntrinsicAspect] = useState<number | null>(null);
 
   // Fetch active frames
   useEffect(() => {
@@ -77,6 +79,25 @@ export default function CapturePage() {
 
     fetchFrames();
   }, []);
+
+  useEffect(() => {
+    if (!selectedFrame?.imageUrl) {
+      setFrameIntrinsicAspect(null);
+      return;
+    }
+    let cancelled = false;
+    void loadImageAspectRatio(selectedFrame.imageUrl).then(
+      (aspect) => {
+        if (!cancelled) setFrameIntrinsicAspect(aspect);
+      },
+      () => {
+        if (!cancelled) setFrameIntrinsicAspect(null);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFrame?._id, selectedFrame?.imageUrl]);
 
   // Composite image with frame when photo is captured
   useEffect(() => {
@@ -289,6 +310,8 @@ export default function CapturePage() {
 
   if (step === 'capture-photo' && selectedFrame) {
     const { width: frameW, height: frameH } = framePixelDimensions(selectedFrame);
+    const previewAspect =
+      frameIntrinsicAspect ?? (frameW > 0 && frameH > 0 ? frameW / frameH : 16 / 9);
     return (
       <div className="fixed inset-0 z-40 flex flex-col bg-black text-white">
         <div className="absolute right-4 top-4 z-50">
@@ -307,6 +330,7 @@ export default function CapturePage() {
               frameOverlay={undefined}
               frameWidth={frameW}
               frameHeight={frameH}
+              previewAspectWidthOverHeight={previewAspect}
               promptTitle="Capture your photo"
               promptDescription="Fill the preview; your frame is composited after capture (same as event capture)."
             />
