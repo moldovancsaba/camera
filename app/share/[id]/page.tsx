@@ -5,6 +5,7 @@
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
+import { COLLECTIONS } from '@/lib/db/schemas';
 import { ObjectId } from 'mongodb';
 import Image from 'next/image';
 import { Metadata } from 'next';
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { id } = await params;
     const db = await connectToDatabase();
     const submission = await db
-      .collection('submissions')
+      .collection(COLLECTIONS.SUBMISSIONS)
       .findOne({ _id: new ObjectId(id) });
 
     if (!submission) {
@@ -66,7 +67,7 @@ export default async function SharePage({ params }: Props) {
     const { id } = await params;
     const db = await connectToDatabase();
     submission = await db
-      .collection('submissions')
+      .collection(COLLECTIONS.SUBMISSIONS)
       .findOne({ _id: new ObjectId(id) });
   } catch (error) {
     console.error('Error fetching submission:', error);
@@ -74,6 +75,26 @@ export default async function SharePage({ params }: Props) {
 
   if (!submission) {
     notFound();
+  }
+
+  const db = await connectToDatabase();
+
+  // `/capture/[eventId]` expects the event document Mongo `_id`, while submissions often store public `eventId` UUID in `eventIds` / `eventId`.
+  let createYourOwnHref = '/capture';
+  const eventLookupKey =
+    (Array.isArray(submission.eventIds) && submission.eventIds[0]) || submission.eventId || null;
+  if (eventLookupKey && String(eventLookupKey).trim()) {
+    const key = String(eventLookupKey).trim();
+    const orClauses: Record<string, unknown>[] = [{ eventId: key }];
+    if (ObjectId.isValid(key)) {
+      orClauses.push({ _id: new ObjectId(key) });
+    }
+    const eventDoc = await db
+      .collection(COLLECTIONS.EVENTS)
+      .findOne({ $or: orClauses });
+    if (eventDoc?._id) {
+      createYourOwnHref = `/capture/${eventDoc._id.toString()}`;
+    }
   }
 
   return (
@@ -123,7 +144,7 @@ export default async function SharePage({ params }: Props) {
               💾 Download
             </a>
             <a
-              href="/"
+              href={createYourOwnHref}
               className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors text-center"
             >
               📸 Create Your Own
