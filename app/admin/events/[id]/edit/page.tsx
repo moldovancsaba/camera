@@ -543,8 +543,14 @@ export default function EditEventPage({
             });
             
             if (!response.ok) {
-              const result = await response.json();
-              throw new Error(result.error || 'Failed to save pages');
+              let message = 'Failed to save pages';
+              try {
+                const result = await response.json();
+                message = result.error || message;
+              } catch {
+                message = `Save failed (HTTP ${response.status})`;
+              }
+              throw new Error(message);
             }
             
             // Reload event data to get updated customPages from server

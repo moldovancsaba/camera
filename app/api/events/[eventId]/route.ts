@@ -178,16 +178,25 @@ export const PATCH = withErrorHandler(async (
     for (const page of customPages) {
       // Required fields
       validateRequiredFields(page, ['pageId', 'pageType', 'order', 'isActive', 'config']);
-      
+
+      // Mongo / JSON may deserialize `order` as string — capture flow only accepts numbers
+      if (typeof page.order !== 'number') {
+        const n = Number(page.order);
+        if (!Number.isFinite(n)) {
+          throw apiBadRequest('page.order must be a number');
+        }
+        page.order = n;
+      }
+
       // Validate pageType first
       const validTypes = Object.values(CustomPageType);
       if (!validTypes.includes(page.pageType)) {
         throw apiBadRequest(`Invalid pageType: ${page.pageType}. Must be one of: ${validTypes.join(', ')}`);
       }
 
-      // Validate config fields (take-photo type can have empty strings)
+      // Non–take-photo: title + primary button required; description is optional in the admin UI
       if (page.pageType !== 'take-photo') {
-        validateRequiredFields(page.config, ['title', 'description', 'buttonText']);
+        validateRequiredFields(page.config, ['title', 'buttonText']);
       } else {
         // take-photo only needs config object to exist
         if (!page.config || typeof page.config !== 'object') {
@@ -212,11 +221,6 @@ export const PATCH = withErrorHandler(async (
       
       // CTA pages: checkboxText is optional (used as URL to visit)
       // No validation needed as it's an optional field
-
-      // Validate order is a number
-      if (typeof page.order !== 'number') {
-        throw apiBadRequest('page.order must be a number');
-      }
 
       // Ensure timestamps exist
       if (!page.createdAt) {

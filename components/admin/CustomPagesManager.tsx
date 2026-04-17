@@ -92,20 +92,30 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
     // Find the highest order to add at the end
     const maxOrder = pages.length > 0 ? Math.max(...pages.map(p => p.order)) : 0;
     
+    const defaultTitle =
+      type === CustomPageType.WHO_ARE_YOU
+        ? 'Who are you?'
+        : type === CustomPageType.ACCEPT
+          ? 'Please accept'
+          : 'Next step';
+
     const newPage: CustomPage = {
       pageId: generateId(),
       pageType: type,
       order: maxOrder + 1,  // Add at end
       isActive: true,
       config: {
-        title: '',
+        title: defaultTitle,
         description: '',
         buttonText: 'Next',
         ...(type === CustomPageType.WHO_ARE_YOU && {
           nameLabel: 'Your Name',
           emailLabel: 'Your Email',
         }),
-        ...(type !== CustomPageType.WHO_ARE_YOU && {
+        ...(type === CustomPageType.ACCEPT && {
+          checkboxText: 'I have read and agree to the terms above.',
+        }),
+        ...(type === CustomPageType.CTA && {
           checkboxText: '',
         }),
       },
@@ -195,10 +205,15 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
     try {
       // Ensure [Take Photo] placeholder exists
       const pagesWithPlaceholder = ensureTakePhotoPlaceholder(pages);
-      await onSave(pagesWithPlaceholder);
+      const pagesToSave = pagesWithPlaceholder.map((p) => ({
+        ...p,
+        order: typeof p.order === 'number' && Number.isFinite(p.order) ? p.order : Number(p.order),
+      }));
+      await onSave(pagesToSave);
     } catch (error) {
       console.error('Failed to save pages:', error);
-      alert('Failed to save pages. Please try again.');
+      const msg = error instanceof Error ? error.message : 'Failed to save pages. Please try again.';
+      alert(msg);
     } finally {
       setIsSaving(false);
     }
