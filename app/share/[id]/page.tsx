@@ -171,15 +171,6 @@ export default async function SharePage({ params }: Props) {
             </a>
           </div>
         </div>
-
-        <div className="text-center">
-          <a
-            href="/"
-            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-          >
-            ← Back to Camera
-          </a>
-        </div>
       </div>
     </div>
   );
