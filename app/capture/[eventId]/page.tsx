@@ -504,7 +504,16 @@ export default function EventCapturePage({
       const data = await response.json();
       const origin = window.location.origin;
       // Response is wrapped in { success: true, data: { submission: {...} } }
-      const submissionId = data.data?.submission?._id || data.submission?._id;
+      const rawId = data.data?.submission?._id ?? data.submission?._id;
+      const submissionId =
+        typeof rawId === 'string' && rawId.trim()
+          ? rawId.trim()
+          : rawId != null
+            ? String(rawId)
+            : '';
+      if (!submissionId) {
+        throw new Error('Save succeeded but no submission id was returned');
+      }
       setShareUrl(`${origin}/share/${submissionId}`);
       
       alert(successMessage);
@@ -537,13 +546,18 @@ export default function EventCapturePage({
     }
   };
 
+  const shareCaptionForSocial =
+    event?.name?.trim() != null && event.name.trim().length > 0
+      ? `Check out my photo from ${event.name.trim()}!`
+      : 'Check out my photo!';
+
   const handleShareSocial = (platform: string) => {
     if (!shareUrl) {
       alert(saveFirstMessage);
       return;
     }
 
-    const text = `Check out my photo from ${event?.name || 'this event'}!`;
+    const text = shareCaptionForSocial;
     let url = '';
 
     switch (platform) {
@@ -1056,6 +1070,20 @@ export default function EventCapturePage({
                         <span className="font-medium">Copy</span>
                       </button>
                     </div>
+
+                    <a
+                      href={shareUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full text-center px-4 py-3 rounded-lg font-semibold bg-white text-gray-900 border border-white/80 hover:bg-white/95 transition-colors shadow-lg"
+                    >
+                      View your photo (opens share link)
+                    </a>
+
+                    <p className="text-xs text-white/75 text-center leading-relaxed">
+                      Suggested message for apps below:{' '}
+                      <span className="font-medium text-white">{shareCaptionForSocial}</span>
+                    </p>
                     
                     {/* Social Share Buttons */}
                     <div className="grid grid-cols-2 gap-3">

@@ -20,7 +20,11 @@ export default function ShareLinkActions({ shareUrl, title }: { shareUrl: string
     setMessage(null);
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
-        await navigator.share({ title, text: title, url: shareUrl });
+        await navigator.share({
+        title,
+        text: `${title} ${shareUrl}`,
+        url: shareUrl,
+      });
         setMessage('Shared.');
         return;
       } catch (e) {
@@ -33,6 +37,14 @@ export default function ShareLinkActions({ shareUrl, title }: { shareUrl: string
   return (
     <div className="fff-share-actions">
       <div className="fff-share-actions-row">
+        <a
+          href={shareUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="app-btn app-btn--primary app-btn--compact"
+        >
+          View share page
+        </a>
         <AppButton type="button" variant="secondary" compact onClick={() => void nativeShare()}>
           Share…
         </AppButton>

@@ -27,6 +27,10 @@ import {
 } from '@/lib/api';
 import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
 import { formatFeelSoLine, normalizeFeelSoTagsList } from '@/lib/funfitfan/feel-so-tags';
+import { signFffSharePayload } from '@/lib/fff-share-token';
+import { fffShareAbsoluteUrl } from '@/lib/funfitfan/fff-browser-urls';
+
+const FFF_SHARE_LINK_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 
 /**
  * POST /api/submissions
@@ -186,12 +190,22 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     const result = await db.collection('submissions').insertOne(submission);
 
-  return apiCreated({
-    submission: {
-      _id: result.insertedId,
-      ...submission,
-    },
-  });
+    const insertedIdStr = result.insertedId.toString();
+    const created = {
+      submission: {
+        _id: result.insertedId,
+        ...submission,
+      },
+    };
+
+    if (isFff) {
+      const exp = Date.now() + FFF_SHARE_LINK_TTL_MS;
+      const token = signFffSharePayload({ k: 'sub', id: insertedIdStr, exp });
+      const fffShareUrl = fffShareAbsoluteUrl(request.nextUrl.origin, token);
+      return apiCreated({ ...created, fffShareUrl });
+    }
+
+    return apiCreated(created);
 });
 
 /**

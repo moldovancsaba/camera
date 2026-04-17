@@ -242,13 +242,15 @@ export default function CapturePage() {
     }
   };
 
+  const shareCaptionForSocial = 'Check out my photo created with Camera!';
+
   const handleShareSocial = (platform: string) => {
     if (!shareUrl) {
       alert('Please save the photo first to get a shareable link.');
       return;
     }
 
-    const text = 'Check out my photo created with Camera!';
+    const text = shareCaptionForSocial;
     let url = '';
 
     switch (platform) {
@@ -470,6 +472,18 @@ export default function CapturePage() {
                             📋 Copy
                           </AppButton>
                         </div>
+                        <a
+                          href={shareUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="app-btn app-btn--primary app-btn--inline text-center"
+                        >
+                          View your photo (opens share link)
+                        </a>
+                        <p className="text-xs text-[var(--app-muted-fg)]">
+                          Suggested message:{' '}
+                          <span className="font-medium text-[var(--app-fg)]">{shareCaptionForSocial}</span>
+                        </p>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           <AppButton
                             type="button"

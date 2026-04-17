@@ -50,6 +50,8 @@ export default function FunFitFanCheckinSelfieReelFlow({
   const [composite, setComposite] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Public friend share URL (signed token); only set for successful FunFitFan saves. */
+  const [fffShareUrl, setFffShareUrl] = useState<string | null>(null);
 
   async function buildPreview(selfieOverride?: string) {
     const pic = selfieOverride ?? selfieDataUrl;
@@ -92,11 +94,17 @@ export default function FunFitFanCheckinSelfieReelFlow({
           funfitfanFeelSoTags: feelSoTags,
         }),
       });
-      const json = await res.json().catch(() => ({}));
+      const json = (await res.json().catch(() => ({}))) as {
+        data?: { submission?: { imageUrl?: string }; fffShareUrl?: string };
+        error?: string;
+      };
       if (!res.ok) {
         setError(json.error || `Save failed (${res.status})`);
         return;
       }
+      const share =
+        typeof json.data?.fffShareUrl === 'string' ? json.data.fffShareUrl.trim() : '';
+      if (share) setFffShareUrl(share);
       const imageUrl = json.data?.submission?.imageUrl;
       if (typeof imageUrl === 'string' && imageUrl.trim() && onAfterSubmissionSaved) {
         try {
@@ -180,10 +188,44 @@ export default function FunFitFanCheckinSelfieReelFlow({
   }
 
   if (step === 'done') {
+    const shareLine = `My ${activity} check-in on FunFitFan — take a look!`;
     return (
       <div className="py-12 fff-app-text-center">
         <p className="fff-app-success">Saved</p>
         <p className="mt-2 fff-app-muted">Your card is in your FunFitFan event and slideshow history.</p>
+        {fffShareUrl ? (
+          <div className="mt-6 mx-auto max-w-md text-left space-y-3">
+            <a
+              href={fffShareUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="app-btn app-btn--secondary app-btn--block"
+            >
+              View selfie (opens share page)
+            </a>
+            <p className="text-xs fff-app-muted">Suggested message when sharing:</p>
+            <p className="text-sm rounded-md border border-[var(--fff-app-border)] bg-[var(--fff-app-surface-2)] px-3 py-2 font-medium fff-app-text">
+              {shareLine}
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                value={fffShareUrl}
+                className="app-form-control flex-1 min-w-0 text-xs font-mono"
+                aria-label="Share link"
+              />
+              <AppButton
+                type="button"
+                variant="ghost"
+                compact
+                onClick={() => void navigator.clipboard.writeText(fffShareUrl)}
+              >
+                Copy link
+              </AppButton>
+            </div>
+          </div>
+        ) : null}
         <div className="app-btn-stack app-btn-stack--wizard-lg fff-app-done-stack">
           <AppButton type="button" variant="primary" onClick={() => openSlideshowInNewTab(ctx.slideshowId)}>
             Open my reel
