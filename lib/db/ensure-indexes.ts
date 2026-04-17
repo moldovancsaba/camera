@@ -83,6 +83,16 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
   await track(COLLECTIONS.EVENTS, () =>
     db.collection(COLLECTIONS.EVENTS).createIndex({ isActive: 1, partnerId: 1 }, { name: 'events_isActive_partnerId' })
   );
+  await track(COLLECTIONS.EVENTS, () =>
+    db.collection(COLLECTIONS.EVENTS).createIndex(
+      { shortUrlSlug: 1 },
+      {
+        unique: true,
+        sparse: true,
+        name: 'events_shortUrlSlug_unique_sparse',
+      }
+    )
+  );
 
   // --- frames ---
   await track(COLLECTIONS.FRAMES, () =>

@@ -103,6 +103,26 @@ export default function EventCapturePage({
   const linkCopiedMessage = takePhotoPage?.config.linkCopiedMessage || 'Link copied to clipboard!';
   const copyErrorMessage = takePhotoPage?.config.copyErrorMessage || 'Failed to copy link. Please copy it manually.';
   const saveFirstMessage = takePhotoPage?.config.saveFirstMessage || 'Please save the photo first to get a shareable link.';
+  const shareScreenTitle =
+    takePhotoPage?.config.shareScreenTitle?.trim() || 'Share Your Photo';
+  const shareCopyLinkButtonText =
+    takePhotoPage?.config.shareCopyLinkButtonText?.trim() || 'Copy';
+  const shareViewPhotoButtonText =
+    takePhotoPage?.config.shareViewPhotoButtonText?.trim() ||
+    'View your photo (opens share link)';
+  const shareSuggestedMessageLabel =
+    takePhotoPage?.config.shareSuggestedMessageLabel?.trim() ||
+    'Suggested message for apps below:';
+  const shareSocialCaptionTemplateRaw =
+    takePhotoPage?.config.shareSocialCaptionTemplate?.trim();
+  const shareCaptionForSocial = shareSocialCaptionTemplateRaw
+    ? shareSocialCaptionTemplateRaw.replace(
+        /\{event\}/gi,
+        () => event?.name?.trim() || ''
+      )
+    : event?.name?.trim()
+      ? `Check out my photo from ${event.name.trim()}!`
+      : 'Check out my photo!';
 
   // Check for SSO resume after authentication
   useEffect(() => {
@@ -545,11 +565,6 @@ export default function EventCapturePage({
       alert(copyErrorMessage);
     }
   };
-
-  const shareCaptionForSocial =
-    event?.name?.trim() != null && event.name.trim().length > 0
-      ? `Check out my photo from ${event.name.trim()}!`
-      : 'Check out my photo!';
 
   const handleShareSocial = (platform: string) => {
     if (!shareUrl) {
@@ -1050,8 +1065,10 @@ export default function EventCapturePage({
                 <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
                   <div className="w-full max-w-md bg-black/70 rounded-2xl p-6 space-y-4 backdrop-blur-md">
                     <h3 className="text-2xl font-bold text-white text-center flex items-center justify-center gap-2">
-                      <span className="text-3xl">📤</span>
-                      Share Your Photo
+                      <span className="text-3xl" aria-hidden>
+                        📤
+                      </span>
+                      {shareScreenTitle}
                     </h3>
                     
                     {/* Share URL */}
@@ -1066,8 +1083,10 @@ export default function EventCapturePage({
                         onClick={handleCopyLink}
                         className="px-4 py-3 bg-white/30 text-white rounded-lg hover:bg-white/40 transition-colors flex items-center gap-2 backdrop-blur"
                       >
-                        <span className="text-xl">📋</span>
-                        <span className="font-medium">Copy</span>
+                        <span className="text-xl" aria-hidden>
+                          📋
+                        </span>
+                        <span className="font-medium">{shareCopyLinkButtonText}</span>
                       </button>
                     </div>
 
@@ -1077,11 +1096,11 @@ export default function EventCapturePage({
                       rel="noopener noreferrer"
                       className="block w-full text-center px-4 py-3 rounded-lg font-semibold bg-white text-gray-900 border border-white/80 hover:bg-white/95 transition-colors shadow-lg"
                     >
-                      View your photo (opens share link)
+                      {shareViewPhotoButtonText}
                     </a>
 
                     <p className="text-xs text-white/75 text-center leading-relaxed">
-                      Suggested message for apps below:{' '}
+                      {shareSuggestedMessageLabel}{' '}
                       <span className="font-medium text-white">{shareCaptionForSocial}</span>
                     </p>
                     

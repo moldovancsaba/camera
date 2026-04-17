@@ -17,6 +17,7 @@ import EventGallery from '@/components/admin/EventGallery';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 import StyleInheritanceIndicator from '@/components/admin/StyleInheritanceIndicator';
 import DeleteEventButton from '@/components/admin/DeleteEventButton';
+import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
 
 export default async function EventDetailPage({
   params,
@@ -276,7 +277,7 @@ export default async function EventDetailPage({
             </p>
             <div className="bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 p-3 mb-3">
               <code className="text-xs text-gray-900 dark:text-white break-all">
-                {typeof window !== 'undefined' ? window.location.origin : ''}/capture/{id}
+                {defaultCameraOrigin()}/capture/{id}
               </code>
             </div>
             <Link
@@ -285,6 +286,33 @@ export default async function EventDetailPage({
             >
               Open Capture Page →
             </Link>
+            {typeof event.shortUrlSlug === 'string' && event.shortUrlSlug.trim() ? (
+              <div className="mt-4 pt-4 border-t border-blue-200 dark:border-blue-800">
+                <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Short link</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                  Redirects to the capture URL above (configure host on{' '}
+                  <span className="font-mono">GO_SHORT_HOSTNAMES</span>).
+                </p>
+                <div className="bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 p-3 mb-2">
+                  <code className="text-xs text-gray-900 dark:text-white break-all">
+                    {defaultGoShortOrigin()}/{event.shortUrlSlug.trim()}
+                  </code>
+                </div>
+                <a
+                  href={`${defaultGoShortOrigin()}/${event.shortUrlSlug.trim()}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors text-center"
+                >
+                  Open short link →
+                </a>
+              </div>
+            ) : (
+              <p className="mt-3 text-xs text-gray-600 dark:text-gray-400">
+                Optional: set a short link slug under <strong>Edit Event</strong> for{' '}
+                <span className="font-mono">{defaultGoShortOrigin()}/…</span>.
+              </p>
+            )}
           </div>
 
           {/* Statistics Card */}

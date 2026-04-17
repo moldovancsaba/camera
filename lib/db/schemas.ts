@@ -166,6 +166,16 @@ export interface CustomPage {
     captureButtonText?: string;  // Label for main capture/save button (e.g., "LOVE IT")
     retryButtonText?: string;    // Label for retry button (e.g., "TRY AGAIN")
     shareNextButtonText?: string; // Label for next button on share screen (e.g., "NEXT")
+    /** Share overlay heading (i18n) */
+    shareScreenTitle?: string;
+    /** Label beside copy icon on share overlay URL row */
+    shareCopyLinkButtonText?: string;
+    /** Opens public /share/… page in a new tab */
+    shareViewPhotoButtonText?: string;
+    /** Line above the suggested caption (i18n) */
+    shareSuggestedMessageLabel?: string;
+    /** Caption for Twitter/WhatsApp etc.; use `{event}` for the event name */
+    shareSocialCaptionTemplate?: string;
     changeButtonText?: string;   // Label for change frame button (e.g., "Change")
     successMessage?: string;     // Message shown after successful save (e.g., "Photo saved successfully! You can now share it.")
     showSharePage?: boolean;     // If false, skip share page and show thank you message instead
@@ -202,7 +212,12 @@ export interface Event {
   eventId: string;                   // Unique event identifier (UUID)
   name: string;                      // Event name (e.g., "Serie A - AC Milan x AS Roma")
   description?: string;              // Optional event description
-  
+  /**
+   * Optional path slug on GO_SHORT_HOSTNAMES (e.g. `selfie` → https://go…/selfie → `/capture/{_id}`).
+   * Lowercase; unique when set.
+   */
+  shortUrlSlug?: string | null;
+
   // Partner relationship
   partnerId: string;                 // Reference to parent partner
   partnerName: string;               // Cached partner name for display and filtering

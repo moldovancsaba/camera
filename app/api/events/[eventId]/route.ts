@@ -20,6 +20,7 @@ import {
   checkRateLimit,
   RATE_LIMITS,
 } from '@/lib/api';
+import { normalizeGoShortSlugInput } from '@/lib/go-short-url';
 
 /**
  * GET /api/events/[eventId]
@@ -126,7 +127,20 @@ export const PATCH = withErrorHandler(async (
 
   // Parse request body
   const body = await request.json();
-  const { name, description, eventDate, location, loadingText, isActive, logoUrl, showLogo, brandColor, brandBorderColor, customPages } = body;
+  const {
+    name,
+    description,
+    eventDate,
+    location,
+    loadingText,
+    isActive,
+    logoUrl,
+    showLogo,
+    brandColor,
+    brandBorderColor,
+    customPages,
+    shortUrlSlug,
+  } = body;
 
   // Build update object with only provided fields
   const updateFields: any = {
@@ -165,6 +179,23 @@ export const PATCH = withErrorHandler(async (
   }
   if (isActive !== undefined) {
     updateFields.isActive = Boolean(isActive);
+  }
+
+  if (shortUrlSlug !== undefined) {
+    const norm = normalizeGoShortSlugInput(shortUrlSlug);
+    if (!norm.ok) {
+      throw apiBadRequest(norm.error);
+    }
+    if (norm.slug) {
+      const dup = await db.collection(COLLECTIONS.EVENTS).findOne({
+        shortUrlSlug: norm.slug,
+        _id: { $ne: new ObjectId(eventId) },
+      });
+      if (dup) {
+        throw apiBadRequest('This short URL is already used by another event.');
+      }
+    }
+    updateFields.shortUrlSlug = norm.slug;
   }
 
   // Handle customPages array (v2.0.0)

@@ -9,6 +9,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import PartnerSearchDropdown from '@/components/admin/PartnerSearchDropdown';
+import { defaultGoShortOrigin } from '@/lib/site-hosts';
 
 export default function NewEventPage() {
   const router = useRouter();
@@ -122,6 +123,7 @@ export default function NewEventPage() {
       description: formData.get('description') as string,
       eventDate: formData.get('eventDate') as string,
       location: formData.get('location') as string,
+      shortUrlSlug: (formData.get('shortUrlSlug') as string) ?? '',
       isActive: formData.get('isActive') === 'on',
       logoUrl: logoUrl,
       showLogo: formData.get('showLogo') === 'on',
@@ -256,6 +258,28 @@ export default function NewEventPage() {
                 placeholder="e.g., San Siro, Milan"
               />
             </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="shortUrlSlug"
+              className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
+            >
+              Short link slug (optional)
+            </label>
+            <input
+              type="text"
+              id="shortUrlSlug"
+              name="shortUrlSlug"
+              autoComplete="off"
+              spellCheck={false}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="e.g. selfie"
+            />
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              When set, <span className="font-mono">{defaultGoShortOrigin()}/your-slug</span> redirects to this
+              event’s capture page after you save. Same rules as edit: lowercase, 2–63 chars, no reserved words.
+            </p>
           </div>
         </div>
 

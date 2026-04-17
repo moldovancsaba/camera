@@ -9,6 +9,7 @@ import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { inheritPartnerDefaults } from '@/lib/db/events';
+import { normalizeGoShortSlugInput } from '@/lib/go-short-url';
 import {
   withErrorHandler,
   requireAdmin,
@@ -102,7 +103,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   // Parse request body
   const body = await request.json();
-  const { name, partnerId, description, eventDate, location, isActive, logoUrl, showLogo } = body;
+  const { name, partnerId, description, eventDate, location, isActive, logoUrl, showLogo, shortUrlSlug } =
+    body;
 
   // Validate required fields
   validateRequiredFields(body, ['name', 'partnerId']);
@@ -123,6 +125,23 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   // New events automatically get partner's default styles (brand colors, frames, logos)
   // Override flags are set to false (child behavior)
   const inheritedDefaults = await inheritPartnerDefaults(partner.partnerId);
+
+  let resolvedShortSlug: string | null | undefined;
+  if (shortUrlSlug !== undefined && shortUrlSlug !== null) {
+    const norm = normalizeGoShortSlugInput(shortUrlSlug);
+    if (!norm.ok) {
+      throw apiBadRequest(norm.error);
+    }
+    if (norm.slug) {
+      const dup = await db.collection(COLLECTIONS.EVENTS).findOne({ shortUrlSlug: norm.slug });
+      if (dup) {
+        throw apiBadRequest('This short URL is already used by another event.');
+      }
+      resolvedShortSlug = norm.slug;
+    } else {
+      resolvedShortSlug = null;
+    }
+  }
 
   // Create event document
   // eventId is a UUID for consistent identification
@@ -150,6 +169,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     logos: inheritedDefaults.logos || [],
     logosOverridden: inheritedDefaults.logosOverridden,
     customPages: [],  // v2.0.0: Empty array = default flow (straight to photo capture)
+    ...(resolvedShortSlug !== undefined ? { shortUrlSlug: resolvedShortSlug } : {}),
     submissionCount: 0,
     createdBy: session.user.id,
     createdAt: now,

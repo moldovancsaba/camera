@@ -387,6 +387,21 @@ function PageEditModal({
   const [captureButtonText, setCaptureButtonText] = useState(page.config.captureButtonText || 'LOVE IT');
   const [retryButtonText, setRetryButtonText] = useState(page.config.retryButtonText || 'TRY AGAIN');
   const [shareNextButtonText, setShareNextButtonText] = useState(page.config.shareNextButtonText || 'NEXT');
+  const [shareScreenTitle, setShareScreenTitle] = useState(
+    page.config.shareScreenTitle || 'Share Your Photo'
+  );
+  const [shareCopyLinkButtonText, setShareCopyLinkButtonText] = useState(
+    page.config.shareCopyLinkButtonText || 'Copy'
+  );
+  const [shareViewPhotoButtonText, setShareViewPhotoButtonText] = useState(
+    page.config.shareViewPhotoButtonText || 'View your photo (opens share link)'
+  );
+  const [shareSuggestedMessageLabel, setShareSuggestedMessageLabel] = useState(
+    page.config.shareSuggestedMessageLabel || 'Suggested message for apps below:'
+  );
+  const [shareSocialCaptionTemplate, setShareSocialCaptionTemplate] = useState(
+    page.config.shareSocialCaptionTemplate || ''
+  );
   const [changeButtonText, setChangeButtonText] = useState(page.config.changeButtonText || 'Change');
   const [successMessage, setSuccessMessage] = useState(page.config.successMessage || 'Photo saved successfully! You can now share it.');
   const [showSharePage, setShowSharePage] = useState(page.config.showSharePage !== false);
@@ -434,6 +449,11 @@ function PageEditModal({
           captureButtonText,
           retryButtonText,
           shareNextButtonText,
+          shareScreenTitle,
+          shareCopyLinkButtonText,
+          shareViewPhotoButtonText,
+          shareSuggestedMessageLabel,
+          shareSocialCaptionTemplate: shareSocialCaptionTemplate.trim() || undefined,
           changeButtonText,
           successMessage,
           showSharePage,
@@ -725,6 +745,75 @@ function PageEditModal({
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="e.g., NEXT"
                 />
+              </div>
+              <div className="border-t border-gray-200 dark:border-gray-600 pt-4 space-y-4">
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                  Share screen (language)
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Shown after save when &quot;Show Share Page&quot; is on. Leave caption template empty to use the
+                  English default with the event name.
+                </p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                    Share screen title
+                  </label>
+                  <input
+                    type="text"
+                    value={shareScreenTitle}
+                    onChange={(e) => setShareScreenTitle(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Share Your Photo"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                    Copy link button label
+                  </label>
+                  <input
+                    type="text"
+                    value={shareCopyLinkButtonText}
+                    onChange={(e) => setShareCopyLinkButtonText(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Copy"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                    View share page button label
+                  </label>
+                  <input
+                    type="text"
+                    value={shareViewPhotoButtonText}
+                    onChange={(e) => setShareViewPhotoButtonText(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="View your photo (opens share link)"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                    Suggested message label
+                  </label>
+                  <input
+                    type="text"
+                    value={shareSuggestedMessageLabel}
+                    onChange={(e) => setShareSuggestedMessageLabel(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Suggested message for apps below:"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                    Social caption template
+                  </label>
+                  <textarea
+                    value={shareSocialCaptionTemplate}
+                    onChange={(e) => setShareSocialCaptionTemplate(e.target.value)}
+                    rows={2}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder='e.g. Check out my photo from {event}! — use {event} for the event name'
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">

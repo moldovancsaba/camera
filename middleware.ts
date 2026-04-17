@@ -7,11 +7,14 @@
  * - FunFitFan host: bare `/fff` → `/` (preserve query — OAuth `?code=&state=` must not be dropped).
  * - OAuth: if IdP returns to a non-callback path with `code`+`state` (or `error`+`state`), forward to `/api/auth/callback`.
  * - Camera host: optional redirect `/fff` → canonical FFF origin (avoid duplicate URL).
+ * - GO short host (`GO_SHORT_HOSTNAMES`, e.g. go.messmass.com): single-segment paths like `/selfie` rewrite to
+ *   `/api/go-short/selfie`, which 302-redirects to `NEXT_PUBLIC_CAMERA_ORIGIN/capture/{eventMongoId}`.
  */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { isCameraHost, isFffHost, defaultFffOrigin } from '@/lib/site-hosts';
+import { isCameraHost, isFffHost, isGoShortHost, defaultFffOrigin } from '@/lib/site-hosts';
+import { goShortSlugFromPathname } from '@/lib/go-short-url';
 import { readSerializedSessionFromCookieGet } from '@/lib/auth/session-cookie-chunks';
 import { parseMiddlewareAuthGate } from '@/lib/auth/middleware-session-gate';
 import {
@@ -56,6 +59,15 @@ export function middleware(request: NextRequest) {
   const oauthRescue = oauthCallbackRescueIfNeeded(request);
   if (oauthRescue) {
     return oauthRescue;
+  }
+
+  if (isGoShortHost(host)) {
+    const slug = goShortSlugFromPathname(pathname);
+    if (slug) {
+      const u = request.nextUrl.clone();
+      u.pathname = `/api/go-short/${slug}`;
+      return NextResponse.rewrite(u);
+    }
   }
 
   if (isFffHost(host)) {

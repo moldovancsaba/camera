@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { type CustomPage } from '@/lib/db/schemas';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
+import { defaultGoShortOrigin } from '@/lib/site-hosts';
 
 export default function EditEventPage({
   params,
@@ -153,6 +154,7 @@ export default function EditEventPage({
       showLogo: formData.get('showLogo') === 'on',
       brandColor: formData.get('brandColor') as string || undefined,
       brandBorderColor: formData.get('brandBorderColor') as string || undefined,
+      shortUrlSlug: (formData.get('shortUrlSlug') as string) ?? '',
     };
 
     try {
@@ -313,6 +315,31 @@ export default function EditEventPage({
                 placeholder="e.g., San Siro, Milan"
               />
             </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="shortUrlSlug"
+              className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
+            >
+              Short link slug (optional)
+            </label>
+            <input
+              type="text"
+              id="shortUrlSlug"
+              name="shortUrlSlug"
+              defaultValue={event?.shortUrlSlug || ''}
+              autoComplete="off"
+              spellCheck={false}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="e.g. selfie"
+            />
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Lowercase letters, digits, and hyphens (2–63 chars). Leave empty to remove. When set,{' '}
+              <span className="font-mono">{defaultGoShortOrigin()}/your-slug</span> redirects to this event’s
+              capture page. Hostnames: set <span className="font-mono">GO_SHORT_HOSTNAMES</span> (default includes
+              go.messmass.com).
+            </p>
           </div>
         </div>
 
