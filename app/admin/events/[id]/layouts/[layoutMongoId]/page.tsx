@@ -12,6 +12,7 @@ import {
   normalizeLayoutAlignVertical,
   normalizeStoredSafetyColor,
 } from '@/lib/slideshow/layout-presentation';
+import { normalizeSlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
 
 export default async function EditSlideshowLayoutPage({
   params,
@@ -72,6 +73,9 @@ export default async function EditSlideshowLayoutPage({
         )}
         initialSafetyAccentColor={normalizeStoredSafetyColor(
           layoutRaw.safetyAccentColor
+        )}
+        initialCellAspect={normalizeSlideshowLayoutCellAspect(
+          layoutRaw.cellAspect
         )}
       />
     </div>

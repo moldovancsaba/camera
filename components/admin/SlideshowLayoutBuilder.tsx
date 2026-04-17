@@ -7,7 +7,11 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import type { SlideshowLayoutArea } from '@/lib/db/schemas';
-import { layoutGridStageDimensions } from '@/lib/slideshow/viewport-scale';
+import {
+  layoutGridCellUnits,
+  layoutGridStageDimensions,
+  type SlideshowLayoutCellAspect,
+} from '@/lib/slideshow/viewport-scale';
 import {
   layoutAlignmentFlexClasses,
   resolvedSafetyGradientColors,
@@ -72,6 +76,7 @@ interface Props {
   initialAlignHorizontal?: LayoutAlignHorizontal;
   initialSafetyPrimaryColor?: string;
   initialSafetyAccentColor?: string;
+  initialCellAspect?: SlideshowLayoutCellAspect;
 }
 
 export default function SlideshowLayoutBuilder({
@@ -87,6 +92,7 @@ export default function SlideshowLayoutBuilder({
   initialAlignHorizontal = 'center',
   initialSafetyPrimaryColor = '',
   initialSafetyAccentColor = '',
+  initialCellAspect = '16:9',
 }: Props) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
@@ -111,6 +117,9 @@ export default function SlideshowLayoutBuilder({
   const [safetyAccentColor, setSafetyAccentColor] = useState(
     initialSafetyAccentColor || ''
   );
+  const [cellAspect, setCellAspect] = useState<SlideshowLayoutCellAspect>(
+    initialCellAspect === '9:16' ? '9:16' : '16:9'
+  );
   const [slideshows, setSlideshows] = useState<SlideshowOpt[]>([]);
   const [saving, setSaving] = useState(false);
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(
@@ -124,7 +133,7 @@ export default function SlideshowLayoutBuilder({
   const [newAreaLabel, setNewAreaLabel] = useState('');
 
   const wrapRef = useRef<HTMLDivElement>(null);
-  /** Pixel size of the whole cols×rows block; each cell is 16:9 (same as public layout page). */
+  /** Pixel size of the whole cols×rows block; cell shape matches public layout (cellAspect). */
   const [gridStage, setGridStage] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
@@ -206,7 +215,8 @@ export default function SlideshowLayoutBuilder({
         availH,
         cols,
         rows,
-        'fit'
+        'fit',
+        cellAspect
       );
       setGridStage({ width, height });
     }
@@ -222,7 +232,7 @@ export default function SlideshowLayoutBuilder({
       }
       window.removeEventListener('resize', recompute);
     };
-  }, [rows, cols]);
+  }, [rows, cols, cellAspect]);
 
   const commitSelectionAsArea = useCallback(() => {
     const tiles = Array.from(selection);
@@ -288,6 +298,7 @@ export default function SlideshowLayoutBuilder({
     alignVertical,
     alignHorizontal
   );
+  const { uw: cellUw, uh: cellUh } = layoutGridCellUnits(cellAspect);
 
   const updateSelectedArea = (patch: Partial<SlideshowLayoutArea>) => {
     if (!selectedAreaId) return;
@@ -313,6 +324,7 @@ export default function SlideshowLayoutBuilder({
           alignHorizontal,
           safetyPrimaryColor,
           safetyAccentColor,
+          cellAspect,
         }),
       });
       if (!res.ok) {
@@ -382,6 +394,20 @@ export default function SlideshowLayoutBuilder({
                 className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-20 bg-white dark:bg-gray-800"
               />
             </label>
+            <label className="flex flex-col text-sm min-w-[140px]">
+              <span className="text-gray-600 dark:text-gray-400">Cell shape</span>
+              <select
+                value={cellAspect}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === '16:9' || v === '9:16') setCellAspect(v);
+                }}
+                className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800"
+              >
+                <option value="16:9">16:9 (landscape)</option>
+                <option value="9:16">9:16 (portrait)</option>
+              </select>
+            </label>
             <button
               type="button"
               onClick={applyGridReset}
@@ -391,14 +417,16 @@ export default function SlideshowLayoutBuilder({
             </button>
           </div>
           <p className="text-xs text-amber-800 dark:text-amber-200/90 rounded-md bg-amber-50 dark:bg-amber-950/40 px-2 py-1.5 border border-amber-200/80 dark:border-amber-800/60 max-w-3xl">
-            <strong className="font-semibold">Cell shape on the public page:</strong> each grid cell is sized
-            as <strong className="font-semibold">16:9</strong> (same as the slideshow stage). The{' '}
-            <strong className="font-semibold">whole videowall</strong> is then{' '}
-            <strong className="font-semibold">(columns × 16) : (rows × 9)</strong> (e.g. 3×3 → outer frame
-            16:9 with nine 16:9 tiles; 3×1 → very wide). Use{' '}
-            <strong className="font-semibold">Photo scaling</strong> for Fit vs Fill of the stage inside a
-            region only. The <strong className="font-semibold">whole videowall</strong> always scales to fit
-            the browser (no cropping of the grid).
+            <strong className="font-semibold">Cell shape on the public page:</strong> each grid cell matches
+            the selected <strong className="font-semibold">{cellAspect}</strong> stage (width:height{' '}
+            {cellUw}:{cellUh}). The <strong className="font-semibold">whole videowall</strong> is then{' '}
+            <strong className="font-semibold">
+              (columns × {cellUw}) : (rows × {cellUh})
+            </strong>{' '}
+            (e.g. 3×1 with 9:16 cells → 27:16). Use <strong className="font-semibold">Photo scaling</strong>{' '}
+            for Fit vs Fill of each slideshow inside a region only. The{' '}
+            <strong className="font-semibold">whole videowall</strong> always scales to fit the browser (no
+            cropping of the grid).
           </p>
 
           <div>

@@ -11,6 +11,8 @@ import { computeCompactGridSpec } from '@/lib/slideshow/layout-geometry';
 import {
   layoutGridAspectRatioCss,
   layoutGridStageDimensions,
+  normalizeSlideshowLayoutCellAspect,
+  type SlideshowLayoutCellAspect,
   type ViewportScaleMode,
 } from '@/lib/slideshow/viewport-scale';
 import {
@@ -37,6 +39,7 @@ interface LayoutPayload {
   alignHorizontal: LayoutAlignHorizontal;
   safetyPrimaryColor: string;
   safetyAccentColor: string;
+  cellAspect: SlideshowLayoutCellAspect;
 }
 
 /**
@@ -130,6 +133,7 @@ export default function SlideshowLayoutPage({
               typeof L.safetyPrimaryColor === 'string' ? L.safetyPrimaryColor : '',
             safetyAccentColor:
               typeof L.safetyAccentColor === 'string' ? L.safetyAccentColor : '',
+            cellAspect: normalizeSlideshowLayoutCellAspect(L.cellAspect),
           });
         }
       } catch (e) {
@@ -162,7 +166,8 @@ export default function SlideshowLayoutPage({
       vh,
       compactGrid.effectiveCols,
       compactGrid.effectiveRows,
-      'fit'
+      'fit',
+      layout.cellAspect
     );
   }, [layout, compactGrid, vw, vh]);
 
@@ -211,7 +216,8 @@ export default function SlideshowLayoutPage({
   const bg = layout.background?.trim();
   const rigidAspect = layoutGridAspectRatioCss(
     compactGrid.effectiveCols,
-    compactGrid.effectiveRows
+    compactGrid.effectiveRows,
+    layout.cellAspect
   );
   return (
     <div

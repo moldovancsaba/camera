@@ -45,16 +45,35 @@ export function slideshowStageDimensions(
   return { width, height };
 }
 
+/** Cell shape for composite layout geometry (each grid unit is uw:uh). */
+export type SlideshowLayoutCellAspect = '16:9' | '9:16';
+
+export function normalizeSlideshowLayoutCellAspect(
+  raw: unknown
+): SlideshowLayoutCellAspect {
+  return raw === '9:16' ? '9:16' : '16:9';
+}
+
+/** Integer width:height of one layout cell (e.g. 16:9 → 16, 9). */
+export function layoutGridCellUnits(
+  cellAspect: SlideshowLayoutCellAspect
+): { uw: number; uh: number } {
+  return cellAspect === '9:16' ? { uw: 9, uh: 16 } : { uw: 16, uh: 9 };
+}
+
 /**
- * Composite layout: cols × rows uniform cells, each cell matches the **16:9 slideshow stage**.
+ * Composite layout: cols × rows uniform cells, each cell uw:uh (default 16:9 stage).
  *
- * Outer width:height = (cols × 16) : (rows × 9), so (W/cols)/(H/rows) = 16/9.
- * (Using cols:rows here made square cells for N×N grids — e.g. 3×3 → 1:1 tiles.)
+ * Outer width:height = (cols × uw) : (rows × uh) (e.g. 3×1 with 9:16 cells → 27:16).
  */
-/** Rigid videowall aspect for CSS `aspect-ratio`: (cols×16) : (rows×9). */
-export function layoutGridAspectRatioCss(cols: number, rows: number): string {
-  if (cols < 1 || rows < 1) return '16 / 9';
-  return `${cols * 16} / ${rows * 9}`;
+export function layoutGridAspectRatioCss(
+  cols: number,
+  rows: number,
+  cellAspect: SlideshowLayoutCellAspect = '16:9'
+): string {
+  const { uw, uh } = layoutGridCellUnits(cellAspect);
+  if (cols < 1 || rows < 1) return `${uw} / ${uh}`;
+  return `${cols * uw} / ${rows * uh}`;
 }
 
 /**
@@ -67,12 +86,14 @@ export function layoutGridStageDimensions(
   viewportH: number,
   cols: number,
   rows: number,
-  mode: ViewportScaleMode
+  mode: ViewportScaleMode,
+  cellAspect: SlideshowLayoutCellAspect = '16:9'
 ): { width: number; height: number } {
   if (viewportW <= 0 || viewportH <= 0 || cols < 1 || rows < 1) {
     return { width: 0, height: 0 };
   }
-  const ar = (cols * SLIDESHOW_STAGE_ASPECT_DEFAULT) / rows;
+  const { uw, uh } = layoutGridCellUnits(cellAspect);
+  const ar = (cols * uw) / (rows * uh);
   const car = viewportW / viewportH;
   if (mode === 'fit') {
     let width: number;

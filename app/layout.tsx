@@ -29,10 +29,10 @@ export async function generateMetadata(): Promise<Metadata> {
     /* headers() unavailable in some prerender contexts */
   }
   return {
-    title: "FunFitFan",
+    title: "Camera",
     description:
-      "FunFitFan: log activities and selfies, build your reel — fitness and health on the web.",
-    applicationName: "FunFitFan",
+      "Capture and share photos at your events with branded frames and flows.",
+    applicationName: "Camera",
   };
 }
 

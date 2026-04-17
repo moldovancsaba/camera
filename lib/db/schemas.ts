@@ -26,6 +26,7 @@
  */
 
 import { ObjectId } from 'mongodb';
+import type { SlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
 
 /**
  * Collection Names
@@ -704,6 +705,8 @@ export interface SlideshowLayout {
   name: string;
   rows: number;
   cols: number;
+  /** Each grid cell is uw:uh (default 16:9); outer videowall = (cols×uw):(rows×uh) */
+  cellAspect?: SlideshowLayoutCellAspect;
   areas: SlideshowLayoutArea[];
   /** Optional outer frame CSS (background-* only), same idea as CardMass boards */
   background?: string;

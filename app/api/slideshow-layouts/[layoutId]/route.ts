@@ -11,6 +11,7 @@ import {
   normalizeLayoutAlignVertical,
   normalizeStoredSafetyColor,
 } from '@/lib/slideshow/layout-presentation';
+import { normalizeSlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
 
 function normalizeDelayMs(raw: unknown): number {
   if (typeof raw === 'number' && Number.isFinite(raw)) {
@@ -69,6 +70,7 @@ export async function GET(
         alignHorizontal: normalizeLayoutAlignHorizontal(raw.alignHorizontal),
         safetyPrimaryColor: normalizeStoredSafetyColor(raw.safetyPrimaryColor),
         safetyAccentColor: normalizeStoredSafetyColor(raw.safetyAccentColor),
+        cellAspect: normalizeSlideshowLayoutCellAspect(raw.cellAspect),
       },
     });
   } catch (error) {

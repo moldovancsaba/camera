@@ -18,6 +18,7 @@ import {
   normalizeLayoutAlignVertical,
   parseSafetyColorInput,
 } from '@/lib/slideshow/layout-presentation';
+import { normalizeSlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
 
 const DEFAULT_ROWS = 2;
 const DEFAULT_COLS = 2;
@@ -114,6 +115,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const cellAspect = normalizeSlideshowLayoutCellAspect(body.cellAspect);
+
     const sp = parseSafetyColorInput(body.safetyPrimaryColor);
     const sa = parseSafetyColorInput(body.safetyAccentColor);
     if (!sp.ok) {
@@ -130,6 +133,7 @@ export async function POST(request: NextRequest) {
       name: String(name).trim(),
       rows: r,
       cols: c,
+      cellAspect,
       areas: layoutAreas,
       background: typeof body.background === 'string' ? body.background : '',
       viewportScale: 'fit',
@@ -274,6 +278,17 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ error: a.error }, { status: 400 });
       }
       updates.safetyAccentColor = a.value;
+    }
+
+    if (body.cellAspect !== undefined) {
+      const ca = body.cellAspect;
+      if (ca !== '16:9' && ca !== '9:16') {
+        return NextResponse.json(
+          { error: 'cellAspect must be "16:9" or "9:16"' },
+          { status: 400 }
+        );
+      }
+      updates.cellAspect = ca;
     }
 
     let nextRows = existing.rows as number;

@@ -7,12 +7,38 @@
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { ObjectId } from 'mongodb';
+import type { Db } from 'mongodb';
 import Image from 'next/image';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+async function resolveEventForSubmission(
+  db: Db,
+  submission: Record<string, unknown>
+): Promise<{ mongoId: string; name: string } | null> {
+  const eventLookupKey =
+    (Array.isArray(submission.eventIds) && submission.eventIds[0]) ||
+    submission.eventId ||
+    null;
+  if (!eventLookupKey || !String(eventLookupKey).trim()) return null;
+  const key = String(eventLookupKey).trim();
+  const orClauses: Record<string, unknown>[] = [{ eventId: key }];
+  if (ObjectId.isValid(key)) {
+    orClauses.push({ _id: new ObjectId(key) });
+  }
+  const eventDoc = await db
+    .collection(COLLECTIONS.EVENTS)
+    .findOne({ $or: orClauses });
+  if (!eventDoc?._id) return null;
+  const name =
+    typeof eventDoc.name === 'string' && eventDoc.name.trim()
+      ? eventDoc.name.trim()
+      : 'Event';
+  return { mongoId: eventDoc._id.toString(), name };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -29,33 +55,38 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       };
     }
 
+    const event = await resolveEventForSubmission(db, submission);
+    const eventLabel = event?.name ?? 'Shared photo';
+    const userName =
+      typeof submission.userName === 'string' ? submission.userName : 'Guest';
+
     return {
-      title: `Photo by ${submission.userName} - Camera`,
-      description: `Check out this photo created with ${submission.frameName} frame on Camera`,
+      title: `Photo by ${userName} — ${eventLabel}`,
+      description: `Photo from ${eventLabel}`,
       openGraph: {
-        title: `Photo by ${submission.userName}`,
-        description: `Created with ${submission.frameName} frame`,
+        title: `Photo by ${userName}`,
+        description: `From ${eventLabel}`,
         images: [
           {
             url: submission.imageUrl,
             width: 1200,
             height: 1200,
-            alt: `Photo by ${submission.userName}`,
+            alt: `Photo by ${userName}`,
           },
         ],
         type: 'website',
       },
       twitter: {
         card: 'summary_large_image',
-        title: `Photo by ${submission.userName}`,
-        description: `Created with ${submission.frameName} frame`,
+        title: `Photo by ${userName}`,
+        description: `From ${eventLabel}`,
         images: [submission.imageUrl],
       },
     };
   } catch (error) {
     console.error('Error generating metadata:', error);
     return {
-      title: 'Photo - Camera',
+      title: 'Photo',
     };
   }
 }
@@ -78,34 +109,24 @@ export default async function SharePage({ params }: Props) {
   }
 
   const db = await connectToDatabase();
+  const event = await resolveEventForSubmission(db, submission);
 
   // `/capture/[eventId]` expects the event document Mongo `_id`, while submissions often store public `eventId` UUID in `eventIds` / `eventId`.
   let createYourOwnHref = '/capture';
-  const eventLookupKey =
-    (Array.isArray(submission.eventIds) && submission.eventIds[0]) || submission.eventId || null;
-  if (eventLookupKey && String(eventLookupKey).trim()) {
-    const key = String(eventLookupKey).trim();
-    const orClauses: Record<string, unknown>[] = [{ eventId: key }];
-    if (ObjectId.isValid(key)) {
-      orClauses.push({ _id: new ObjectId(key) });
-    }
-    const eventDoc = await db
-      .collection(COLLECTIONS.EVENTS)
-      .findOne({ $or: orClauses });
-    if (eventDoc?._id) {
-      createYourOwnHref = `/capture/${eventDoc._id.toString()}`;
-    }
+  if (event?.mongoId) {
+    createYourOwnHref = `/capture/${event.mongoId}`;
   }
+
+  const headline = event?.name ?? 'Shared photo';
 
   return (
     <div className="min-h-screen bg-transparent py-12">
       <div className="max-w-4xl mx-auto px-4">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">
-            📸 Camera
-          </h1>
+          <h1 className="text-4xl font-bold text-white mb-2">{headline}</h1>
           <p className="text-slate-300">
-            Photo by <span className="font-semibold">{submission.userName}</span>
+            Photo by{' '}
+            <span className="font-semibold">{submission.userName}</span>
           </p>
         </div>
 
@@ -128,8 +149,7 @@ export default async function SharePage({ params }: Props) {
             />
           </div>
 
-          <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-6">
-            <span>Frame: <span className="font-medium">{submission.frameName}</span></span>
+          <div className="flex items-center justify-end text-sm text-gray-600 dark:text-gray-400 mb-6">
             <span>{new Date(submission.createdAt).toLocaleDateString()}</span>
           </div>
 
