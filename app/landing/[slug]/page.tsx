@@ -1,14 +1,30 @@
 import { notFound } from 'next/navigation';
 import LandingPageCookieConsent from '@/components/landing/LandingPageCookieConsent';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { COLLECTIONS, type Event, type SlideshowLayoutArea } from '@/lib/db/schemas';
+import { COLLECTIONS, type SlideshowLayoutArea } from '@/lib/db/schemas';
+import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
 import { getActiveLandingPageBySlug } from '@/lib/landing-pages';
 import { computeCompactGridSpec } from '@/lib/slideshow/layout-geometry';
-import { resolveSlideshowStageAspect } from '@/lib/slideshow/stage-aspect';
 import {
   layoutGridCellUnits,
   normalizeSlideshowLayoutCellAspect,
 } from '@/lib/slideshow/viewport-scale';
+
+function resolveCommittedSlideshowStageAspect(
+  slideshow: { stageAspect?: number | null },
+  event: { partnerId?: string | null }
+): number {
+  const raw = slideshow.stageAspect;
+  if (
+    typeof raw === 'number' &&
+    Number.isFinite(raw) &&
+    raw >= 0.25 &&
+    raw <= 4
+  ) {
+    return raw;
+  }
+  return String(event.partnerId) === FUNFITFAN_PARTNER_ID ? 9 / 16 : 16 / 9;
+}
 
 async function resolveTargetAspectRatio(
   landingPage: Awaited<ReturnType<typeof getActiveLandingPageBySlug>>
@@ -46,9 +62,9 @@ async function resolveTargetAspectRatio(
   ]);
 
   if (!slideshow || !event) return 16 / 9;
-  return resolveSlideshowStageAspect(
+  return resolveCommittedSlideshowStageAspect(
     slideshow as { stageAspect?: number | null },
-    event as Event
+    event as { partnerId?: string | null }
   );
 }
 
