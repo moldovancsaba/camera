@@ -245,43 +245,64 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
 
 @media (min-aspect-ratio: 1 / 1) {
   .sihf-background .landing-page-shell {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
+    position: relative;
+    display: block;
   }
 
   .sihf-background .landing-page-header {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: calc(100% - var(--landing-sidebar-width) - var(--landing-gap));
+    height: var(--landing-title-height);
   }
 
   .sihf-background .landing-page-copy {
+    width: 100%;
+    height: 100%;
     align-items: flex-start;
     text-align: left;
   }
 
   .sihf-background .landing-page-title {
-    height: var(--landing-title-height);
+    width: 100%;
+    height: 100%;
     font-size: clamp(2rem, 4vw, 4.3rem);
   }
 
   .sihf-background .landing-page-main--with-sidebar {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) var(--landing-sidebar-width);
-    align-items: stretch;
+    position: static;
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 
-  .sihf-background .landing-page-media-column,
+  .sihf-background .landing-page-media-column {
+    position: absolute;
+    top: calc(var(--landing-title-height) + var(--landing-gap));
+    left: 0;
+    bottom: 0;
+    width: calc(100% - var(--landing-sidebar-width) - var(--landing-gap));
+    min-height: 0;
+  }
+
   .sihf-background .landing-page-media-fit,
-  .sihf-background .landing-page-media-frame {
+  .sihf-background .landing-page-media-frame,
+  .sihf-background .landing-page-media-iframe {
+    width: 100%;
     height: 100%;
+    min-height: 0;
   }
 
   .sihf-background .landing-page-sidebar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--landing-sidebar-width);
     display: grid;
     grid-template-rows: minmax(0, 1fr) minmax(50px, var(--landing-button-height)) minmax(50px, var(--landing-logo-height));
-    height: 100%;
+    height: auto;
     gap: var(--landing-gap);
     overflow: hidden;
   }
