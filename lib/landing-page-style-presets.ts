@@ -298,11 +298,10 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
     position: absolute;
     top: 0;
     right: 0;
-    bottom: 0;
     width: var(--landing-sidebar-width);
+    height: calc(var(--landing-title-height) + var(--landing-gap) + var(--landing-media-fitted-height, 0px));
     display: grid;
     grid-template-rows: minmax(0, 1fr) minmax(50px, var(--landing-button-height)) minmax(50px, var(--landing-logo-height));
-    height: auto;
     gap: var(--landing-gap);
     overflow: hidden;
   }

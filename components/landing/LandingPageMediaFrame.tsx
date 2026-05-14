@@ -41,7 +41,13 @@ export default function LandingPageMediaFrame({
 
     const update = () => {
       const rect = node.getBoundingClientRect();
-      setSize(fitBox(rect.width, rect.height, aspectRatio));
+      const nextSize = fitBox(rect.width, rect.height, aspectRatio);
+      setSize(nextSize);
+      const shell = node.closest('.landing-page-shell');
+      if (shell instanceof HTMLElement) {
+        shell.style.setProperty('--landing-media-fitted-width', `${nextSize.width}px`);
+        shell.style.setProperty('--landing-media-fitted-height', `${nextSize.height}px`);
+      }
     };
 
     update();
@@ -52,6 +58,11 @@ export default function LandingPageMediaFrame({
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', update);
+      const shell = node.closest('.landing-page-shell');
+      if (shell instanceof HTMLElement) {
+        shell.style.removeProperty('--landing-media-fitted-width');
+        shell.style.removeProperty('--landing-media-fitted-height');
+      }
     };
   }, [aspectRatio]);
 
