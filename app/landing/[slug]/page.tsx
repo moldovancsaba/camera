@@ -95,6 +95,8 @@ export default async function PublicLandingPage({
   const hasSidebar = Boolean(landingPage.qrCodeImageUrl || landingPage.termsMarkdown || landingPage.privacyMarkdown);
   const hasCallToAction = Boolean(landingPage.url) || landingPage.cookieConsentEnabled === true;
   const shouldMoveCallToActionToSidebar = hasSidebar && hasCallToAction;
+  const hasLogo = Boolean(landingPage.logoUrl);
+  const shouldMoveLogoToSidebar = hasSidebar && hasLogo;
   const landingPageClassName = [
     'landing-page-root',
     typeof landingPage.customCssClassName === 'string' ? landingPage.customCssClassName.trim() : '',
@@ -118,12 +120,24 @@ export default async function PublicLandingPage({
   display: none;
 }
 
+.landing-page-logo-landscape {
+  display: none;
+}
+
 @media (min-aspect-ratio: 1 / 1) {
   .landing-page-cta-portrait {
     display: none !important;
   }
 
   .landing-page-cta-landscape {
+    display: block !important;
+  }
+
+  .landing-page-logo-portrait {
+    display: none !important;
+  }
+
+  .landing-page-logo-landscape {
     display: block !important;
   }
 }
@@ -141,7 +155,9 @@ export default async function PublicLandingPage({
             <img
               src={String(landingPage.logoUrl)}
               alt={landingPage.title ? `${landingPage.title} logo` : `${landingPage.eventName} logo`}
-              className="landing-page-logo max-h-12 w-auto object-contain sm:max-h-16"
+              className={`landing-page-logo max-h-12 w-auto object-contain sm:max-h-16 ${
+                shouldMoveLogoToSidebar ? 'landing-page-logo-portrait' : ''
+              }`}
             />
           ) : null}
 
@@ -228,6 +244,16 @@ export default async function PublicLandingPage({
                       typeof landingPage.buttonTextColor === 'string' ? landingPage.buttonTextColor : null
                     }
                     bodyColor={typeof landingPage.cookiesBodyColor === 'string' ? landingPage.cookiesBodyColor : null}
+                  />
+                </section>
+              ) : null}
+
+              {shouldMoveLogoToSidebar ? (
+                <section className="landing-page-logo-landscape flex min-h-0 flex-col items-start">
+                  <img
+                    src={String(landingPage.logoUrl)}
+                    alt={landingPage.title ? `${landingPage.title} logo` : `${landingPage.eventName} logo`}
+                    className="landing-page-logo w-auto object-contain"
                   />
                 </section>
               ) : null}
