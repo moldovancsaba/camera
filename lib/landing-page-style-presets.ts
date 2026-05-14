@@ -92,7 +92,7 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   --landing-title-height: clamp(42px, 6vh, 68px);
   --landing-button-height: clamp(50px, 5.5vh, 68px);
   --landing-logo-height: clamp(50px, 9vh, 96px);
-  --landing-border: 2px solid rgba(255,255,255,0.92);
+  --landing-border: 0 solid transparent;
   --landing-panel-bg: rgba(30, 12, 12, 0.18);
   --landing-shadow: 0 18px 28px rgba(0,0,0,0.26);
   font-family: var(--landing-display-font), Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
@@ -337,6 +337,7 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   .sihf-background .landing-page-shell {
     display: flex;
     flex-direction: column;
+    justify-content: flex-start;
   }
 
   .sihf-background .landing-page-header,
@@ -347,6 +348,7 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   .sihf-background .landing-page-copy {
     align-items: stretch;
     text-align: left;
+    justify-content: flex-start;
   }
 
   .sihf-background .landing-page-main--with-sidebar {
@@ -355,6 +357,7 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
     display: grid;
     grid-template-rows: minmax(0, 1fr) auto;
     gap: var(--landing-gap);
+    align-content: start;
   }
 
   .sihf-background .landing-page-media-column,
@@ -373,6 +376,7 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
     grid-template-rows: minmax(110px, 22vh) minmax(50px, var(--landing-button-height));
     gap: var(--landing-gap);
     align-items: stretch;
+    align-content: start;
   }
 
   .sihf-background .landing-page-sidebar-qr {
