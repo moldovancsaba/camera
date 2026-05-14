@@ -24,13 +24,12 @@ import { findEventForSlideshow } from '@/lib/slideshow/resolve-event';
 import { submissionEventIdKeys } from '@/lib/slideshow/submission-event-keys';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
-import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
 import { fetchPersonalFffReelRows } from '@/lib/slideshow/personal-fff-reel';
 import type { Event } from '@/lib/db/schemas';
-
-function slideshowStageAspectWidthOverHeight(event: Event): number {
-  return String(event.partnerId) === FUNFITFAN_PARTNER_ID ? 9 / 16 : 16 / 9;
-}
+import {
+  resolveSlideshowStageAspect,
+  type SlideshowStageSource,
+} from '@/lib/slideshow/stage-aspect';
 
 /** Playlist is personalized (random / instanceKey); never cache across clients or layout cells. */
 export const dynamic = 'force-dynamic';
@@ -44,7 +43,7 @@ const PLAYLIST_NO_CACHE_HEADERS = {
  * Generate slides with least-played logic
  * 
  * Query params:
- * - limit: Number of slides to return (default: slideshow.bufferSize or 10)
+ * - limit: Number of slides to return (default: bufferSize + 1 — current on screen plus that many upcoming)
  * - exclude: Comma-separated list of submission IDs to exclude (images in other active playlists)
  * - instanceKey: Optional stable id (e.g. layout region). With orderMode random, each key gets an
  *   independent shuffle per request (seed = hash(key) XOR per-request salt) so duplicate slideshows in a layout differ.
@@ -76,8 +75,20 @@ export async function GET(
       return NextResponse.json({ error: 'Slideshow not found' }, { status: 404 });
     }
 
-    // Determine how many slides to generate
-    const limit = limitParam ? parseInt(limitParam) : (slideshow.bufferSize || 10);
+    // `bufferSize` = upcoming slides behind the current; total pipeline slots = upcoming + 1
+    const upcomingSlots = Math.max(
+      1,
+      Math.min(50, Math.floor(Number(slideshow.bufferSize) || 10))
+    );
+    const isOnceMode = slideshow.playMode === 'once';
+    /** Loop: current + N upcoming. Once: initial pass length (no +1 — no separate prefetch tail). */
+    const defaultLimit = Math.min(
+      100,
+      isOnceMode ? upcomingSlots : upcomingSlots + 1
+    );
+    const limit = limitParam
+      ? Math.max(1, Math.min(100, parseInt(limitParam, 10) || defaultLimit))
+      : defaultLimit;
 
     const event = await findEventForSlideshow(db, String(slideshow.eventId));
 
@@ -228,7 +239,10 @@ export async function GET(
         ? slideshow.backgroundImageUrl.trim()
         : null;
     const viewportScale = slideshow.viewportScale === 'fill' ? 'fill' : 'fit';
-    const stageAspect = slideshowStageAspectWidthOverHeight(event as Event);
+    const stageAspect = resolveSlideshowStageAspect(
+      slideshow as SlideshowStageSource,
+      event as Event
+    );
 
     if (dbg) {
       console.log(`[Playlist] Total submissions available (after filtering): ${submissions.length}`);

@@ -11,6 +11,7 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
+import { normalizeStageAspectInput } from '@/lib/slideshow/stage-aspect';
 
 /**
  * POST /api/slideshows
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
       refreshStrategy = 'continuous',
       playMode: bodyPlayMode,
       orderMode: bodyOrderMode,
+      stageAspect: bodyStageAspect,
     } = body;
 
     const playMode = bodyPlayMode === 'once' ? 'once' : 'loop';
@@ -58,6 +60,7 @@ export async function POST(request: NextRequest) {
         ? body.backgroundImageUrl.trim()
         : null;
     const viewportScale = body.viewportScale === 'fill' ? 'fill' : 'fit';
+    const stageAspectNorm = normalizeStageAspectInput(bodyStageAspect);
 
     if (!eventId || !name) {
       return NextResponse.json(
@@ -80,7 +83,7 @@ export async function POST(request: NextRequest) {
     // Create slideshow document
     // IMPORTANT: Store event UUID (event.eventId), not MongoDB _id
     // This matches how submissions store events and allows direct filtering
-    const slideshow = {
+    const slideshow: Record<string, unknown> = {
       slideshowId: generateId(),
       eventId: event.eventId,  // UUID, not MongoDB _id
       eventName: event.name,
@@ -100,6 +103,9 @@ export async function POST(request: NextRequest) {
       createdAt: generateTimestamp(),
       updatedAt: generateTimestamp(),
     };
+    if (stageAspectNorm !== undefined && stageAspectNorm !== null) {
+      slideshow.stageAspect = stageAspectNorm;
+    }
 
     const result = await db.collection(COLLECTIONS.SLIDESHOWS).insertOne(slideshow);
 
@@ -186,6 +192,7 @@ export async function PATCH(request: NextRequest) {
       backgroundAccentColor,
       backgroundImageUrl,
       viewportScale,
+      stageAspect: bodyStageAspectPatch,
     } = body;
 
     const hexOk = (s: string) =>
@@ -251,6 +258,23 @@ export async function PATCH(request: NextRequest) {
         );
       }
       updates.viewportScale = viewportScale;
+    }
+    if (bodyStageAspectPatch !== undefined) {
+      if (bodyStageAspectPatch === null) {
+        updates.stageAspect = null;
+      } else {
+        const n = normalizeStageAspectInput(bodyStageAspectPatch);
+        if (n === undefined || n === null) {
+          return NextResponse.json(
+            {
+              error:
+                'stageAspect must be a finite number (0.25–4 width÷height) or null for event default',
+            },
+            { status: 400 }
+          );
+        }
+        updates.stageAspect = n;
+      }
     }
 
     const db = await connectToDatabase();

@@ -1,8 +1,10 @@
 'use client';
 
 /**
- * Slideshow playback: FIFO queue whose target depth is `bufferSize` (prefetch / smoothness only).
- * Loop mode never treats buffer length as “end of show”; we top the queue up asynchronously.
+ * Slideshow playback: FIFO queue `[current, …upcoming]`.
+ * `bufferSize` (settings) = how many slides to keep **behind** the one on screen → total slots = bufferSize + 1.
+ * Loop mode tops up asynchronously; at full depth we still try to pull one more unique slide in the
+ * background so the next advance does not wait on a burst fetch.
  */
 
 import {
@@ -17,6 +19,18 @@ import {
   slideshowStageDimensions,
   type ViewportScaleMode,
 } from '@/lib/slideshow/viewport-scale';
+import {
+  expandPlaylistToLength,
+  type Slide as PlaylistSlide,
+} from '@/lib/slideshow/playlist';
+
+/** Bridge playlist `Slide` (AspectRatio enum) to player `Slide` (string literals); same runtime values. */
+function expandPlayerPlaylist(base: Slide[], targetLen: number): Slide[] {
+  return expandPlaylistToLength(
+    base as unknown as PlaylistSlide[],
+    targetLen
+  ) as unknown as Slide[];
+}
 
 const DEFAULT_BG_PRIMARY = '#312e81';
 const DEFAULT_BG_ACCENT = '#0f172a';
@@ -68,6 +82,33 @@ export interface SlideshowPlayerCoreProps {
 
 function slideKey(slide: Slide): string {
   return slide.submissions.map((s) => s._id).join('-');
+}
+
+function cloneSlide(slide: Slide): Slide {
+  return {
+    type: slide.type,
+    aspectRatio: slide.aspectRatio,
+    submissions: slide.submissions.map((s) => ({ ...s })),
+  };
+}
+
+/** Extend offline loop seed with slides we have not seen yet (by submission ids). */
+function mergeSeedSlides(existing: Slide[] | null, chunk: Slide[]): Slide[] {
+  const base = existing?.length ? [...existing] : [];
+  const keys = new Set(base.map(slideKey));
+  for (const sl of chunk) {
+    if (!keys.has(slideKey(sl))) {
+      keys.add(slideKey(sl));
+      base.push(cloneSlide(sl));
+    }
+  }
+  return base;
+}
+
+/** Admin `bufferSize` = upcoming prefetches; cap matches PATCH API (1–50). */
+function totalQueueSlotsFromBufferSize(bufferSize: unknown): number {
+  const upcoming = Math.max(1, Math.min(50, Math.floor(Number(bufferSize) || 10)));
+  return upcoming + 1;
 }
 
 function normalizeDelayMs(raw: number | string | undefined): number {
@@ -137,6 +178,8 @@ export function SlideshowPlayerCore({
   const fadeMsRef = useRef(0);
   const bufferTargetRef = useRef(10);
   const slideQueueRef = useRef<Slide[]>([]);
+  /** Slides we can repeat from when the network is down or playlist fetch returns empty (loop mode). */
+  const loopSeedSlidesRef = useRef<Slide[] | null>(null);
   const refillBusyRef = useRef(false);
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   /** Black stage floor until configured failover background image is preloaded / painted */
@@ -151,15 +194,26 @@ export function SlideshowPlayerCore({
       600_000
     );
     fadeMsRef.current = clampTimingMs(settings.fadeDurationMs, 0, 60_000);
-    bufferTargetRef.current = Math.max(
-      1,
-      Math.min(100, Math.floor(Number(settings.bufferSize) || 10))
-    );
+    bufferTargetRef.current = totalQueueSlotsFromBufferSize(settings.bufferSize);
   }, [settings]);
 
   useEffect(() => {
     slideQueueRef.current = slideQueue;
   }, [slideQueue]);
+
+  /** Loop mode: never drain to [] on a single slide; restore from seed when offline. */
+  const computeNextLoopQueue = useCallback((q: Slide[]): Slide[] => {
+    const seed = loopSeedSlidesRef.current;
+    const target = bufferTargetRef.current;
+    if (q.length === 0) {
+      if (!seed?.length) return q;
+      return expandPlayerPlaylist(seed, Math.max(target, seed.length));
+    }
+    if (q.length === 1) {
+      return expandPlayerPlaylist(q, 2).slice(1);
+    }
+    return q.slice(1);
+  }, []);
 
   useEffect(() => {
     pendingInitialDelayRef.current = delayMs > 0;
@@ -223,7 +277,7 @@ export function SlideshowPlayerCore({
     [slideshowId, instanceKey]
   );
 
-  /** Keep loop queue near `bufferSize`; does not define how long the show runs. */
+  /** Keep loop queue at target depth; optionally prefetch +1 when already full (continuous pull). */
   const maintainLoopBuffer = useCallback(async () => {
     const s = settingsRef.current;
     if (!s || s.playMode === 'once') return;
@@ -231,19 +285,57 @@ export function SlideshowPlayerCore({
     refillBusyRef.current = true;
     try {
       const target = bufferTargetRef.current;
-      for (let round = 0; round < 8; round++) {
+
+      /** When queue is exactly at target, pull one more unique slide in the background (not batch-on-dip-only). */
+      const tryPrefetchOnePastTarget = async () => {
+        if (slideQueueRef.current.length !== target) return;
+        const chunk = await fetchPlaylistChunk(1);
+        if (chunk.length === 0) return;
+        const fresh = chunk[0];
+        const keys = new Set(slideQueueRef.current.map(slideKey));
+        if (keys.has(slideKey(fresh))) return;
+        loopSeedSlidesRef.current = mergeSeedSlides(loopSeedSlidesRef.current, chunk);
+        await preloadSlide(fresh);
+        setSlideQueue((curr) => {
+          if (curr.length !== target) return curr;
+          if (curr.some((sl) => slideKey(sl) === slideKey(fresh))) return curr;
+          return [...curr, fresh];
+        });
+        await new Promise((r) => setTimeout(r, 0));
+      };
+
+      await tryPrefetchOnePastTarget();
+
+      const refillFromSeed = async (need: number) => {
+        const seed = loopSeedSlidesRef.current;
+        if (!seed?.length || need <= 0) return;
+        const filler = expandPlayerPlaylist(seed, Math.min(Math.max(need, 1), 50));
+        if (filler.length === 0) return;
+        await Promise.allSettled(filler.map((sl) => preloadSlide(sl)));
+        setSlideQueue((curr) => {
+          if (curr.length >= target) return curr;
+          const stillNeed = target - curr.length;
+          return [...curr, ...filler.slice(0, stillNeed)];
+        });
+      };
+
+      for (let round = 0; round < 12; round++) {
         const len = slideQueueRef.current.length;
         if (len >= target) break;
         const need = target - len;
         const chunk = await fetchPlaylistChunk(Math.min(need, 25));
-        if (chunk.length === 0) break;
-        await Promise.all(chunk.map((sl) => preloadSlide(sl)));
-        setSlideQueue((curr) => {
-          if (curr.length >= target) return curr;
-          const stillNeed = target - curr.length;
-          const take = chunk.slice(0, Math.max(stillNeed, 1));
-          return [...curr, ...take];
-        });
+        if (chunk.length > 0) {
+          loopSeedSlidesRef.current = mergeSeedSlides(loopSeedSlidesRef.current, chunk);
+          await Promise.allSettled(chunk.map((sl) => preloadSlide(sl)));
+          setSlideQueue((curr) => {
+            if (curr.length >= target) return curr;
+            const stillNeed = target - curr.length;
+            const take = chunk.slice(0, Math.max(stillNeed, 1));
+            return [...curr, ...take];
+          });
+        } else {
+          await refillFromSeed(need);
+        }
         await new Promise((r) => setTimeout(r, 0));
       }
     } finally {
@@ -279,6 +371,7 @@ export function SlideshowPlayerCore({
         throw new Error('Invalid slideshow data');
       }
 
+      bufferTargetRef.current = totalQueueSlotsFromBufferSize(data.slideshow.bufferSize);
       setSettings(data.slideshow);
 
       if (data.slideshow.eventId) {
@@ -317,15 +410,17 @@ export function SlideshowPlayerCore({
         setDisplayEpoch(0);
         setSlideQueue(playlist);
         if (data.slideshow.playMode === 'once') {
+          loopSeedSlidesRef.current = null;
           onceInitialRef.current = playlist.map((sl) => ({
             ...sl,
             submissions: sl.submissions.map((s) => ({ ...s })),
           }));
-        }
-        if (data.slideshow.playMode !== 'once') {
+        } else {
+          loopSeedSlidesRef.current = mergeSeedSlides(null, playlist);
           void maintainLoopBuffer();
         }
       } else {
+        loopSeedSlidesRef.current = null;
         setDisplayEpoch(0);
         setSlideQueue([]);
       }
@@ -443,9 +538,10 @@ export function SlideshowPlayerCore({
 
       let advanced = false;
       setSlideQueue((q) => {
-        if (q.length === 0) return q;
+        const next = computeNextLoopQueue(q);
+        if (next === q) return q;
         advanced = true;
-        return q.slice(1);
+        return next;
       });
       if (advanced) setDisplayEpoch((e) => e + 1);
       void maintainLoopBuffer();
@@ -463,6 +559,7 @@ export function SlideshowPlayerCore({
     variant,
     updatePlayCounts,
     maintainLoopBuffer,
+    computeNextLoopQueue,
   ]);
 
   useEffect(() => {
@@ -472,6 +569,24 @@ export function SlideshowPlayerCore({
     }, 2500);
     return () => clearInterval(id);
   }, [settings, isPlaying, maintainLoopBuffer, slideshowId]);
+
+  /** If the queue drained (e.g. race) while looping, restore from seed so auto-advance can resume. */
+  useEffect(() => {
+    if (!settings || settings.playMode === 'once' || !isPlaying) return;
+    if (slideQueue.length > 0) return;
+    const seed = loopSeedSlidesRef.current;
+    if (!seed?.length) return;
+    const target = bufferTargetRef.current;
+    setSlideQueue(expandPlayerPlaylist(seed, Math.max(target, seed.length)));
+    void maintainLoopBuffer();
+  }, [settings, isPlaying, slideQueue.length, maintainLoopBuffer]);
+
+  useEffect(() => {
+    if (!settings || settings.playMode === 'once' || !isPlaying) return;
+    const onOnline = () => void maintainLoopBuffer();
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [settings, isPlaying, maintainLoopBuffer]);
 
   const fadeMsForUi =
     settings == null
@@ -547,13 +662,14 @@ export function SlideshowPlayerCore({
 
     let advanced = false;
     setSlideQueue((q) => {
-      if (q.length === 0) return q;
+      const next = computeNextLoopQueue(q);
+      if (next === q) return q;
       advanced = true;
-      return q.slice(1);
+      return next;
     });
     if (advanced) setDisplayEpoch((e) => e + 1);
     void maintainLoopBuffer();
-  }, [maintainLoopBuffer]);
+  }, [maintainLoopBuffer, computeNextLoopQueue]);
 
   const manualBack = useCallback(() => {
     pendingInitialDelayRef.current = false;

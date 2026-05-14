@@ -9,6 +9,23 @@
 import { useState, useRef, type ChangeEvent } from 'react';
 import Link from 'next/link';
 
+const STAGE_ASPECT_PRESETS = [
+  { id: 'auto', label: 'Auto (event default)', ratio: null as number | null },
+  { id: '16:9', label: '16:9 (landscape)', ratio: 16 / 9 },
+  { id: '4:3', label: '4:3', ratio: 4 / 3 },
+  { id: '1:1', label: '1:1 (square stage)', ratio: 1 },
+  { id: '9:16', label: '9:16 (portrait stage)', ratio: 9 / 16 },
+] as const;
+
+function stageAspectToSelectId(stageAspect?: number | null): string {
+  if (stageAspect == null || !Number.isFinite(stageAspect)) return 'auto';
+  for (const p of STAGE_ASPECT_PRESETS) {
+    if (p.ratio === null) continue;
+    if (Math.abs(stageAspect - p.ratio) < 0.02) return p.id;
+  }
+  return 'custom';
+}
+
 interface Slideshow {
   _id: string;
   slideshowId: string;
@@ -25,6 +42,8 @@ interface Slideshow {
   backgroundAccentColor?: string;
   backgroundImageUrl?: string | null;
   viewportScale?: 'fit' | 'fill';
+  /** width ÷ height; omit or null = event default (16:9, or 9:16 for FunFitFan) */
+  stageAspect?: number | null;
 }
 
 interface Props {
@@ -146,6 +165,7 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
               ? undefined
               : updated.backgroundImageUrl || null,
           viewportScale: updated.viewportScale ?? 'fit',
+          stageAspect: updated.stageAspect ?? null,
         }),
       });
       
@@ -295,21 +315,90 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
                 />
               </div>
 
-              {/* 16:9 stage vs window / layout cell */}
+              {/* Stage aspect + fit/fill */}
               <div>
+                <label
+                  htmlFor="slideshow-stage-aspect"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  Stage aspect ratio
+                </label>
+                <select
+                  id="slideshow-stage-aspect"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mb-2"
+                  value={stageAspectToSelectId(editingSlideshow.stageAspect)}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    if (id === 'auto') {
+                      setEditingSlideshow({ ...editingSlideshow, stageAspect: null });
+                      return;
+                    }
+                    if (id === 'custom') {
+                      const current = editingSlideshow.stageAspect;
+                      setEditingSlideshow({
+                        ...editingSlideshow,
+                        stageAspect:
+                          typeof current === 'number' &&
+                          Number.isFinite(current) &&
+                          stageAspectToSelectId(current) === 'custom'
+                            ? current
+                            : 16 / 9,
+                      });
+                      return;
+                    }
+                    const preset = STAGE_ASPECT_PRESETS.find((p) => p.id === id);
+                    setEditingSlideshow({
+                      ...editingSlideshow,
+                      stageAspect: preset?.ratio ?? null,
+                    });
+                  }}
+                >
+                  {STAGE_ASPECT_PRESETS.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                    </option>
+                  ))}
+                  <option value="custom">Custom width ÷ height…</option>
+                </select>
+                {stageAspectToSelectId(editingSlideshow.stageAspect) === 'custom' ? (
+                  <div className="mb-2">
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                      Custom ratio (width ÷ height, 0.25–4)
+                    </label>
+                    <input
+                      type="number"
+                      min={0.25}
+                      max={4}
+                      step={0.01}
+                      value={
+                        typeof editingSlideshow.stageAspect === 'number' &&
+                        Number.isFinite(editingSlideshow.stageAspect)
+                          ? editingSlideshow.stageAspect
+                          : ''
+                      }
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        setEditingSlideshow({
+                          ...editingSlideshow,
+                          stageAspect: Number.isFinite(v) ? v : undefined,
+                        });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                ) : null}
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Sets the shape of the playback canvas (fullscreen and metadata for the player).
+                  <strong className="font-semibold"> Auto</strong> uses 16:9 for most events and 9:16 for
+                  FunFitFan unless you override here. Per-image shapes (landscape / square / portrait)
+                  still come from each photo; the player may use mosaics for non-wide shots.
+                </p>
                 <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  16:9 stage in window or layout cell
+                  Fit vs fill in window or layout cell
                 </span>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                  Fit keeps the full 16:9 stage visible (letterbox). Fill scales the stage to cover the
-                  area (may crop). Applies on the public slideshow page and inside layout regions.
-                </p>
-                <p className="text-xs text-amber-800 dark:text-amber-200/90 mb-2 rounded-md bg-amber-50 dark:bg-amber-950/40 px-2 py-1.5 border border-amber-200/80 dark:border-amber-800/60">
-                  <strong className="font-semibold">Aspect ratio:</strong> the slideshow stage is{' '}
-                  <strong className="font-semibold">always 16:9</strong>. There is no separate setting to
-                  switch to 4:3 or 9:16 for the stage—only <em>Fit</em> vs <em>Fill</em> below. Photo
-                  shapes (landscape / square / portrait) still come from each image; the player may show
-                  mosaics for non-wide shots.
+                  Fit keeps the full stage visible (letterbox). Fill scales the stage to cover the area
+                  (may crop). Applies on the public slideshow page and inside layout regions.
                 </p>
                 <div className="flex flex-wrap gap-6">
                   <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-800 dark:text-gray-200">
@@ -342,7 +431,7 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
               {/* Buffer Size */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Buffer Size (slides in memory)
+                  Buffer (slides ahead of current)
                 </label>
                 <input
                   type="number"
@@ -353,9 +442,11 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Number of upcoming slides kept preloaded in a FIFO queue. If the network drops,
-                  playback rotates through this queue so the screen stays filled (one image can repeat
-                  to fill the queue).
+                  How many slides to hold <strong className="font-semibold">behind</strong> the one on
+                  screen (the visible slide is extra, so total in memory is this value + 1). The player
+                  refills one-at-a-time as slides advance and also tries to pull the next slide in the
+                  background while the queue is full, so it is not “wait for 10 then fetch 10 again.” If
+                  the network fails, slides already in the queue stay; loop mode can repeat from cache.
                 </p>
               </div>
 

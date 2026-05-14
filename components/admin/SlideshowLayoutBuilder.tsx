@@ -717,9 +717,9 @@ export default function SlideshowLayoutBuilder({
               <div>
                 <label className="text-xs text-gray-500">Photo scaling</label>
                 <p className="text-[10px] text-gray-500 mt-0.5 mb-1">
-                  Controls how the <strong className="font-semibold">16:9 slideshow stage</strong> fits{' '}
-                  <em>this tile</em>: Fit = whole stage visible; Fill = stage scales to cover the tile
-                  (edges cropped).
+                  Controls how the <strong className="font-semibold">slideshow stage</strong> (aspect from
+                  slideshow settings) fits <em>this tile</em>: Fit = whole stage visible; Fill = stage
+                  scales to cover the tile (edges cropped).
                 </p>
                 <select
                   value={selectedArea.objectFit}

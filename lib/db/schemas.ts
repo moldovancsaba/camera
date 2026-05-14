@@ -667,7 +667,8 @@ export interface Slideshow {
   fadeDurationMs: number;            // Duration of fade transition (milliseconds, default: 1000)
   
   // Rolling buffer settings for infinite smooth playback
-  bufferSize: number;                // Number of slides to maintain in buffer (default: 10)
+  /** Upcoming slides prefetched behind the one on screen (default: 10 → 11 FIFO slots with current). */
+  bufferSize: number;
   refreshStrategy: 'continuous' | 'batch'; // How to refresh playlist (default: 'continuous')
   /** Stop after one pass through the buffer, or rotate indefinitely (default: loop) */
   playMode?: 'once' | 'loop';
@@ -679,8 +680,13 @@ export interface Slideshow {
   backgroundAccentColor?: string;
   /** Optional image between gradient and slides (uploaded by admin) */
   backgroundImageUrl?: string | null;
-  /** Letterbox 16:9 stage in container vs crop to cover (browser or layout cell) */
+  /** Letterbox stage in container vs crop to cover (browser or layout cell) */
   viewportScale?: 'fit' | 'fill';
+  /**
+   * Stage width ÷ height (e.g. 16/9, 4/3, 1, 9/16). When omitted or null, event default applies
+   * (16:9 for most events; FunFitFan uses 9/16 unless overridden here).
+   */
+  stageAspect?: number | null;
   
   // Admin tracking
   createdBy: string;                 // Admin user ID from SSO who created this slideshow
