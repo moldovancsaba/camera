@@ -95,10 +95,10 @@ export default async function PublicLandingPage({
     typeof landingPage.customCss === 'string' ? landingPage.customCss.trim() : '';
 
   return (
-    <main className={`${landingPageClassName} min-h-screen text-slate-900`}>
+    <main className={`${landingPageClassName} relative min-h-screen text-slate-900`}>
       <style>{landingPageFallbackCss}</style>
       {landingPageCustomCss ? <style>{landingPageCustomCss}</style> : null}
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
         <div className="space-y-6">
           <section className="rounded-[28px] border border-slate-200 bg-white/90 p-5 shadow-xl shadow-slate-300/30 backdrop-blur sm:p-8">
             <div>

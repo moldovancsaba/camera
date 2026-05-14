@@ -72,7 +72,7 @@ export default function LandingPageCookieConsent({
             type="button"
             onClick={handleAccept}
             disabled={accepted || !checked}
-            className="w-full rounded-xl px-4 py-3 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-xl px-5 py-4 text-base font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
             style={{
               backgroundColor: buttonColor ?? '#059669',
               color: buttonTextColor ?? '#ffffff',
@@ -81,11 +81,7 @@ export default function LandingPageCookieConsent({
             {accepted ? 'Accepted' : 'Accept cookies'}
           </button>
         </div>
-      ) : (
-        <p className="mt-3 text-sm" style={{ color: bodyColor ?? '#475569' }}>
-          Cookie acceptance is not required for this landing page.
-        </p>
-      )}
+      ) : null}
 
       {url ? (
         <a
@@ -93,7 +89,7 @@ export default function LandingPageCookieConsent({
           target="_blank"
           rel="noopener noreferrer"
           aria-disabled={!canOpenUrl}
-          className={`mt-4 block w-full rounded-xl px-4 py-3 text-center text-sm font-semibold transition-colors ${
+          className={`mt-4 block w-full rounded-xl px-5 py-4 text-center text-base font-semibold transition-colors ${
             canOpenUrl
               ? ''
               : 'bg-slate-200 text-slate-500 cursor-not-allowed'
