@@ -49,14 +49,14 @@ export default function LandingPageCookieConsent({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div>
       <h2 className="text-lg font-semibold" style={{ color: titleColor ?? '#0f172a' }}>
         Cookies and actions
       </h2>
 
       {enabled ? (
         <div className="mt-4 space-y-4">
-          <label className="flex items-start gap-3 rounded-xl border border-slate-200 p-4">
+          <label className="flex items-start gap-3 rounded-xl border border-slate-200/70 bg-white/20 p-4 backdrop-blur-sm">
             <input
               type="checkbox"
               checked={checked}

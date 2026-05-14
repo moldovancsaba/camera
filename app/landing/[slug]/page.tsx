@@ -100,7 +100,7 @@ export default async function PublicLandingPage({
       {landingPageCustomCss ? <style>{landingPageCustomCss}</style> : null}
       <div className="relative z-10 mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
         <div className="space-y-6">
-          <section className="rounded-[28px] border border-slate-200 bg-white/90 p-5 shadow-xl shadow-slate-300/30 backdrop-blur sm:p-8">
+          <section className="p-1 sm:p-2">
             <div>
               {landingPage.logoUrl ? (
                 <img
@@ -153,7 +153,7 @@ export default async function PublicLandingPage({
               />
             </div>
 
-            <div className="mt-6 overflow-hidden rounded-[24px] border border-slate-200">
+            <div className="mt-6 overflow-hidden rounded-[28px] border border-slate-200 bg-white/90 shadow-xl shadow-slate-300/30 backdrop-blur">
               <div
                 className="relative w-full overflow-hidden bg-black"
                 style={{ aspectRatio: String(targetAspectRatio) }}
@@ -170,14 +170,14 @@ export default async function PublicLandingPage({
           {(landingPage.qrCodeImageUrl || landingPage.termsMarkdown || landingPage.privacyMarkdown) ? (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               {landingPage.qrCodeImageUrl ? (
-                <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                <section className="p-1">
                   <h2
                     className="text-lg font-semibold"
                     style={{ color: landingPage.qrTitleColor || '#0f172a' }}
                   >
                     QR code
                   </h2>
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="mt-4 p-2">
                     <img
                       src={String(landingPage.qrCodeImageUrl)}
                       alt="Landing page QR code"
@@ -188,7 +188,7 @@ export default async function PublicLandingPage({
               ) : null}
 
               {(landingPage.termsMarkdown || landingPage.privacyMarkdown) ? (
-                <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                <section className="p-1">
                   <h2
                     className="text-lg font-semibold"
                     style={{ color: landingPage.legalTitleColor || '#0f172a' }}
