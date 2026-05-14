@@ -128,11 +128,23 @@ export default async function PublicLandingPage({
   padding-left: 0.5rem;
   padding-right: 0.5rem;
   gap: 0.5rem;
+  align-items: center;
+  text-align: center;
 }
 
 .landing-page-cta-container {
   max-width: none !important;
   width: 100%;
+}
+
+.landing-page-title {
+  width: 100%;
+  max-width: none !important;
+}
+
+.landing-page-title-portrait {
+  width: 100%;
+  text-align: center;
 }
 
 .landing-page-cta-container .landing-page-url-button,
@@ -172,6 +184,8 @@ export default async function PublicLandingPage({
   .landing-page-copy {
     padding-left: 0.25rem;
     padding-right: 0.25rem;
+    align-items: flex-start;
+    text-align: left;
   }
 
   .landing-page-cta-container {
@@ -193,6 +207,10 @@ export default async function PublicLandingPage({
 
   .landing-page-logo-landscape {
     display: block !important;
+  }
+
+  .landing-page-title-portrait {
+    text-align: left;
   }
 
   .landing-page-sidebar {
@@ -244,14 +262,14 @@ export default async function PublicLandingPage({
 
           {landingPage.title ? (
             <h1
-              className="landing-page-title max-w-5xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl"
+              className="landing-page-title landing-page-title-portrait text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl"
               style={{ color: landingPage.titleColor || '#0f172a' }}
             >
               {String(landingPage.title)}
             </h1>
           ) : (
             <h1
-              className="landing-page-title max-w-5xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl"
+              className="landing-page-title landing-page-title-portrait text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl"
               style={{ color: landingPage.titleColor || '#0f172a' }}
             >
               {String(landingPage.eventName)}
