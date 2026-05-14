@@ -150,6 +150,13 @@ export default async function PublicLandingPage({
   display: none;
 }
 
+.landing-page-sidebar {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
 @media (min-aspect-ratio: 1 / 1) {
   .landing-page-shell {
     max-width: 80rem !important;
@@ -181,6 +188,33 @@ export default async function PublicLandingPage({
 
   .landing-page-logo-landscape {
     display: block !important;
+  }
+
+  .landing-page-sidebar {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    gap: 0.75rem;
+  }
+
+  .landing-page-sidebar-qr {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .landing-page-sidebar-cta {
+    flex: 0 0 auto;
+    min-height: 50px;
+  }
+
+  .landing-page-sidebar-logo {
+    flex: 0 0 auto;
+    min-height: 50px;
+  }
+
+  .landing-page-sidebar-legal {
+    flex: 0 0 auto;
   }
 }
 `.trim();
@@ -261,9 +295,9 @@ export default async function PublicLandingPage({
           </div>
 
           {hasSidebar ? (
-            <div className="grid min-h-0 auto-rows-fr grid-cols-1 gap-3">
+            <div className="landing-page-sidebar">
               {landingPage.qrCodeImageUrl ? (
-                <section className="flex min-h-0 flex-col">
+                <section className="landing-page-sidebar-qr flex min-h-0 flex-col">
                   <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-1">
                     <img
                       src={String(landingPage.qrCodeImageUrl)}
@@ -275,7 +309,7 @@ export default async function PublicLandingPage({
               ) : null}
 
               {shouldMoveCallToActionToSidebar ? (
-                <section className="landing-page-cta-landscape flex min-h-0 flex-col">
+                <section className="landing-page-cta-landscape landing-page-sidebar-cta flex min-h-0 flex-col">
                   <LandingPageCookieConsent
                     slug={slug}
                     enabled={landingPage.cookieConsentEnabled === true}
@@ -291,7 +325,7 @@ export default async function PublicLandingPage({
               ) : null}
 
               {shouldMoveLogoToSidebar ? (
-                <section className="landing-page-logo-landscape flex min-h-0 flex-col items-start">
+                <section className="landing-page-logo-landscape landing-page-sidebar-logo flex min-h-0 flex-col items-start justify-end">
                   <img
                     src={String(landingPage.logoUrl)}
                     alt={landingPage.title ? `${landingPage.title} logo` : `${landingPage.eventName} logo`}
@@ -301,7 +335,7 @@ export default async function PublicLandingPage({
               ) : null}
 
               {(landingPage.termsMarkdown || landingPage.privacyMarkdown) ? (
-                <section className="flex min-h-0 flex-col">
+                <section className="landing-page-sidebar-legal flex min-h-0 flex-col">
                   <h2
                     className="shrink-0 text-base font-semibold"
                     style={{ color: landingPage.legalTitleColor || '#0f172a' }}

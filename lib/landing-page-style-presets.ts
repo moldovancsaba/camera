@@ -118,6 +118,7 @@ export const LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   padding: 1.2rem 1.7rem;
   box-shadow: 10px 10px 0 #000000 !important;
   white-space: nowrap;
+  min-height: 50px;
 }
 
 .sihf-background .landing-page-cookie-button {
@@ -152,9 +153,31 @@ export const LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
 }
 
 @media (min-aspect-ratio: 1 / 1) {
+  .sihf-background .landing-page-sidebar-qr img {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  .sihf-background .landing-page-sidebar-cta .landing-page-url-button,
+  .sihf-background .landing-page-sidebar-cta .landing-page-cookie-button {
+    min-height: 50px;
+  }
+
+  .sihf-background .landing-page-sidebar-logo {
+    min-height: 50px;
+  }
+
   .sihf-background .landing-page-logo-landscape {
     align-self: flex-start;
     margin-top: auto;
+    width: 100%;
+  }
+
+  .sihf-background .landing-page-logo-landscape .landing-page-logo {
+    max-height: max(50px, 9vh);
   }
 }`,
   },
