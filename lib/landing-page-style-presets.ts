@@ -92,13 +92,16 @@ export const LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   font-family: var(--landing-display-font);
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  font-weight: 400 !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
 }
 
 .sihf-background .landing-page-title {
   font-size: clamp(2.75rem, 5vw, 5rem);
   line-height: 0.95;
   color: #ffffff !important;
-  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.18);
   text-align: left;
 }
 
@@ -124,6 +127,20 @@ export const LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
 .sihf-background .landing-page-cookie-consent {
   max-width: 42rem;
   text-align: left;
+  font-weight: 400 !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+}
+
+.sihf-background h2,
+.sihf-background p,
+.sihf-background a,
+.sihf-background label,
+.sihf-background span {
+  font-weight: 400 !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+  filter: none !important;
 }`,
   },
 ];
