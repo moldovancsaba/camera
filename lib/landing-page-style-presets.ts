@@ -370,10 +370,10 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   }
 
   .sihf-background .landing-page-main--with-sidebar {
-    flex: 1 1 auto;
-    min-height: 0;
+    flex: 0 0 auto;
+    min-height: auto;
     display: grid;
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: var(--landing-media-fitted-height, auto) auto;
     gap: var(--landing-gap);
     align-content: start;
   }
@@ -381,17 +381,17 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   .sihf-background .landing-page-media-column,
   .sihf-background .landing-page-media-fit,
   .sihf-background .landing-page-media-frame {
-    height: 100%;
-    min-height: 0;
+    height: var(--landing-media-fitted-height, auto);
+    min-height: auto;
   }
 
   .sihf-background .landing-page-sidebar {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
-      "qr logo"
-      "cta cta";
-    grid-template-rows: minmax(110px, 22vh) minmax(50px, var(--landing-button-height));
+      "cta cta"
+      "qr logo";
+    grid-template-rows: minmax(50px, var(--landing-button-height)) minmax(110px, 22vh);
     gap: var(--landing-gap);
     align-items: stretch;
     align-content: start;
