@@ -68,6 +68,16 @@ interface ColorFieldProps {
   onChange: (value: string) => void;
 }
 
+const QR_ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+]);
+
+const QR_ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp']);
+
 async function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -84,6 +94,45 @@ async function fileToText(file: File): Promise<string> {
     reader.onerror = reject;
     reader.readAsText(file);
   });
+}
+
+async function loadImageElement(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Failed to load QR image preview.'));
+    image.src = src;
+  });
+}
+
+function getFileExtension(fileName: string): string {
+  const parts = fileName.toLowerCase().split('.');
+  return parts.length > 1 ? parts.at(-1) ?? '' : '';
+}
+
+function isSvgFile(file: File): boolean {
+  return file.type === 'image/svg+xml' || getFileExtension(file.name) === 'svg';
+}
+
+function isSupportedRasterFile(file: File): boolean {
+  return QR_ALLOWED_MIME_TYPES.has(file.type) || QR_ALLOWED_EXTENSIONS.has(getFileExtension(file.name));
+}
+
+async function svgFileToPngDataUrl(file: File): Promise<string> {
+  const svgDataUrl = await fileToDataUrl(file);
+  const image = await loadImageElement(svgDataUrl);
+  const width = Math.max(1, image.naturalWidth || 1024);
+  const height = Math.max(1, image.naturalHeight || 1024);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('Failed to prepare QR image conversion.');
+  }
+  context.clearRect(0, 0, width, height);
+  context.drawImage(image, 0, 0, width, height);
+  return canvas.toDataURL('image/png');
 }
 
 function ColorField({
@@ -217,13 +266,28 @@ export default function LandingPageEditor({
     setError(null);
     setQrStatus(null);
     try {
-      const imageData = await fileToDataUrl(file);
+      let imageData: string;
+      let uploadFileName = `landing-qr-${Date.now()}`;
+
+      if (isSvgFile(file)) {
+        imageData = await svgFileToPngDataUrl(file);
+        uploadFileName += '.png';
+      } else if (isSupportedRasterFile(file)) {
+        imageData = await fileToDataUrl(file);
+        const extension = getFileExtension(file.name);
+        if (extension) {
+          uploadFileName += `.${extension}`;
+        }
+      } else {
+        throw new Error('QR code images must be PNG, JPG, GIF, WebP, or SVG.');
+      }
+
       const res = await fetch('/api/upload-logo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageData,
-          name: `landing-qr-${Date.now()}`,
+          name: uploadFileName,
         }),
       });
       const data = await res.json();
@@ -235,8 +299,12 @@ export default function LandingPageEditor({
       await persistQrCodeImageUrl(nextQrCodeImageUrl);
       setQrStatus(
         mode === 'edit'
-          ? 'QR code uploaded and saved.'
-          : 'QR code uploaded. Save the landing page to persist it.'
+          ? isSvgFile(file)
+            ? 'QR code converted to PNG, uploaded, and saved.'
+            : 'QR code uploaded and saved.'
+          : isSvgFile(file)
+            ? 'QR code converted to PNG and uploaded. Save the landing page to persist it.'
+            : 'QR code uploaded. Save the landing page to persist it.'
       );
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Failed to upload QR code image');

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { Anton } from 'next/font/google';
+import { Bebas_Neue } from 'next/font/google';
 import LandingPageCookieConsent from '@/components/landing/LandingPageCookieConsent';
 import LandingPageMediaFrame from '@/components/landing/LandingPageMediaFrame';
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -12,7 +12,7 @@ import {
   normalizeSlideshowLayoutCellAspect,
 } from '@/lib/slideshow/viewport-scale';
 
-const landingDisplayFont = Anton({
+const landingDisplayFont = Bebas_Neue({
   weight: '400',
   subsets: ['latin'],
   display: 'swap',

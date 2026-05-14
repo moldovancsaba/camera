@@ -110,9 +110,9 @@ export const LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   max-width: 100%;
   min-width: 0;
   border-radius: 0 !important;
-  font-size: clamp(1.6rem, 2.35vw, 2.8rem);
+  font-size: clamp(1.95rem, 2.8vw, 3.4rem);
   line-height: 1;
-  padding: 1.15rem 1.5rem;
+  padding: 1.2rem 1.7rem;
   box-shadow: 10px 10px 0 #000000 !important;
 }
 
