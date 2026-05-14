@@ -88,10 +88,10 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
 
 .sihf-background {
   --landing-gap: clamp(10px, 1.1vw, 18px);
-  --landing-sidebar-width: clamp(220px, 22vw, 320px);
-  --landing-title-height: clamp(54px, 8vh, 92px);
-  --landing-button-height: clamp(52px, 6vh, 84px);
-  --landing-logo-height: clamp(60px, 12vh, 120px);
+  --landing-sidebar-width: clamp(220px, 20vw, 300px);
+  --landing-title-height: clamp(42px, 6vh, 68px);
+  --landing-button-height: clamp(50px, 5.5vh, 68px);
+  --landing-logo-height: clamp(50px, 9vh, 96px);
   --landing-border: 2px solid rgba(255,255,255,0.92);
   --landing-panel-bg: rgba(30, 12, 12, 0.18);
   --landing-shadow: 0 18px 28px rgba(0,0,0,0.26);
@@ -110,7 +110,9 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
 .sihf-background .landing-page-shell {
   width: 100%;
   max-width: 1400px;
-  padding: clamp(12px, 1.4vw, 22px);
+  height: 100%;
+  min-height: 0;
+  padding: clamp(10px, 1.2vw, 18px);
   gap: var(--landing-gap);
 }
 
@@ -132,7 +134,7 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   white-space: nowrap;
   overflow: hidden;
   text-align: left;
-  font-size: clamp(2.2rem, 5.2vw, 5.2rem);
+  font-size: clamp(2rem, 4.3vw, 4.6rem);
 }
 
 .sihf-background .landing-page-description {
@@ -245,6 +247,7 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   .sihf-background .landing-page-shell {
     display: flex;
     flex-direction: column;
+    justify-content: flex-start;
   }
 
   .sihf-background .landing-page-header {
@@ -258,7 +261,7 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
 
   .sihf-background .landing-page-title {
     height: var(--landing-title-height);
-    font-size: clamp(2.2rem, 4.5vw, 5.1rem);
+    font-size: clamp(2rem, 4vw, 4.3rem);
   }
 
   .sihf-background .landing-page-main--with-sidebar {
@@ -277,9 +280,10 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
 
   .sihf-background .landing-page-sidebar {
     display: grid;
-    grid-template-rows: minmax(0, 1fr) var(--landing-button-height) var(--landing-logo-height);
+    grid-template-rows: minmax(0, 1fr) minmax(50px, var(--landing-button-height)) minmax(50px, var(--landing-logo-height));
     height: 100%;
     gap: var(--landing-gap);
+    overflow: hidden;
   }
 
   .sihf-background .landing-page-sidebar-qr {
@@ -300,6 +304,12 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   .sihf-background .landing-page-sidebar-logo {
     align-items: center;
     justify-content: center;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .sihf-background .landing-page-sidebar-logo .landing-page-logo {
+    max-height: min(120px, 100%);
   }
 }
 
@@ -340,7 +350,7 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
     grid-template-areas:
       "qr logo"
       "cta cta";
-    grid-template-rows: minmax(120px, 24vh) var(--landing-button-height);
+    grid-template-rows: minmax(110px, 22vh) minmax(50px, var(--landing-button-height));
     gap: var(--landing-gap);
     align-items: stretch;
   }
