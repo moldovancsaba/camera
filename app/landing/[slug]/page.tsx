@@ -120,11 +120,14 @@ export default async function PublicLandingPage({
   max-width: none !important;
   padding-left: 0 !important;
   padding-right: 0 !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
 }
 
 .landing-page-copy {
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  gap: 0.5rem;
 }
 
 .landing-page-cta-container {
@@ -154,19 +157,21 @@ export default async function PublicLandingPage({
   display: grid;
   min-height: 0;
   grid-template-columns: 1fr;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 @media (min-aspect-ratio: 1 / 1) {
   .landing-page-shell {
-    max-width: 80rem !important;
-    padding-left: 2rem !important;
-    padding-right: 2rem !important;
+    max-width: none !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
   }
 
   .landing-page-copy {
-    padding-left: 0;
-    padding-right: 0;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
   }
 
   .landing-page-cta-container {
@@ -195,7 +200,7 @@ export default async function PublicLandingPage({
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 
   .landing-page-sidebar-qr {
