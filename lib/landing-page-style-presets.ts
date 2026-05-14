@@ -99,25 +99,31 @@ export const LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   line-height: 0.95;
   color: #ffffff !important;
   text-shadow: 0 3px 0 rgba(0, 0, 0, 0.18);
+  text-align: left;
 }
 
 .sihf-background .landing-page-url-button {
-  border-radius: 0;
-  font-size: clamp(1.35rem, 2vw, 2.5rem);
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: auto !important;
+  max-width: 100%;
+  min-width: 0;
+  border-radius: 0 !important;
+  font-size: clamp(1.6rem, 2.35vw, 2.8rem);
   line-height: 1;
-  padding: 1.1rem 1.4rem;
-  width: fit-content;
-  min-width: min(100%, 34rem);
-  box-shadow: 12px 12px 0 rgba(74, 0, 0, 0.6);
+  padding: 1.15rem 1.5rem;
+  box-shadow: 10px 10px 0 #000000 !important;
 }
 
 .sihf-background .landing-page-cookie-button {
-  border-radius: 0;
+  border-radius: 0 !important;
   font-size: 1.1rem;
 }
 
 .sihf-background .landing-page-cookie-consent {
   max-width: 42rem;
+  text-align: left;
 }`,
   },
 ];

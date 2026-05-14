@@ -58,7 +58,7 @@ export default function LandingPageMediaFrame({
   return (
     <div
       ref={containerRef}
-      className="flex h-full min-h-0 w-full items-center justify-center overflow-hidden"
+      className="flex h-full min-h-0 w-full items-start justify-start overflow-hidden"
     >
       <div
         className="relative overflow-hidden border border-slate-200 bg-white/90 shadow-xl shadow-slate-300/30 backdrop-blur"
