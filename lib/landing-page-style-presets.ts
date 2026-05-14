@@ -14,10 +14,6 @@ export const LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   position: relative;
   min-height: 100vh;
   overflow: hidden;
-  font-family:
-    "Inter",
-    "Helvetica Neue",
-    sans-serif;
   background:
     linear-gradient(
       115deg,
@@ -88,6 +84,40 @@ export const LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
       rgba(255,255,255,0.02),
       rgba(0,0,0,0.18)
     );
+}
+
+.sihf-background .landing-page-title,
+.sihf-background .landing-page-url-button,
+.sihf-background .landing-page-cookie-button {
+  font-family: var(--landing-display-font);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.sihf-background .landing-page-title {
+  font-size: clamp(2.75rem, 5vw, 5rem);
+  line-height: 0.95;
+  color: #ffffff !important;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.18);
+}
+
+.sihf-background .landing-page-url-button {
+  border-radius: 0;
+  font-size: clamp(1.35rem, 2vw, 2.5rem);
+  line-height: 1;
+  padding: 1.1rem 1.4rem;
+  width: fit-content;
+  min-width: min(100%, 34rem);
+  box-shadow: 12px 12px 0 rgba(74, 0, 0, 0.6);
+}
+
+.sihf-background .landing-page-cookie-button {
+  border-radius: 0;
+  font-size: 1.1rem;
+}
+
+.sihf-background .landing-page-cookie-consent {
+  max-width: 42rem;
 }`,
   },
 ];

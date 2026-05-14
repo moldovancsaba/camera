@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { Anton } from 'next/font/google';
 import LandingPageCookieConsent from '@/components/landing/LandingPageCookieConsent';
 import LandingPageMediaFrame from '@/components/landing/LandingPageMediaFrame';
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -10,6 +11,12 @@ import {
   layoutGridCellUnits,
   normalizeSlideshowLayoutCellAspect,
 } from '@/lib/slideshow/viewport-scale';
+
+const landingDisplayFont = Anton({
+  weight: '400',
+  subsets: ['latin'],
+  display: 'swap',
+});
 
 function resolveCommittedSlideshowStageAspect(
   slideshow: { stageAspect?: number | null },
@@ -95,10 +102,12 @@ export default async function PublicLandingPage({
   const landingPageFallbackCss = `.landing-page-root { background: ${landingPage.backgroundColor || '#f8fafc'}; }`;
   const landingPageCustomCss =
     typeof landingPage.customCss === 'string' ? landingPage.customCss.trim() : '';
+  const landingPageFontCss = `.landing-page-root { --landing-display-font: ${landingDisplayFont.style.fontFamily}, Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; }`;
 
   return (
-    <main className={`${landingPageClassName} relative h-[100dvh] overflow-hidden text-slate-900`}>
+    <main className={`${landingPageClassName} ${landingDisplayFont.className} relative h-[100dvh] overflow-hidden text-slate-900`}>
       <style>{landingPageFallbackCss}</style>
+      <style>{landingPageFontCss}</style>
       {landingPageCustomCss ? <style>{landingPageCustomCss}</style> : null}
       <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col gap-3 px-3 py-3 sm:gap-4 sm:px-5 sm:py-5 lg:px-8 lg:py-6">
         <section className="shrink-0 space-y-3">
@@ -112,14 +121,14 @@ export default async function PublicLandingPage({
 
           {landingPage.title ? (
             <h1
-              className="max-w-5xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl"
+              className="landing-page-title max-w-5xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl"
               style={{ color: landingPage.titleColor || '#0f172a' }}
             >
               {String(landingPage.title)}
             </h1>
           ) : (
             <h1
-              className="max-w-5xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl"
+              className="landing-page-title max-w-5xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl"
               style={{ color: landingPage.titleColor || '#0f172a' }}
             >
               {String(landingPage.eventName)}

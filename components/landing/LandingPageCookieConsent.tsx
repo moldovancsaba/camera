@@ -49,7 +49,7 @@ export default function LandingPageCookieConsent({
   return (
     <div>
       {enabled ? (
-        <div className="mt-4 space-y-4">
+        <div className="landing-page-cookie-consent mt-4 space-y-4">
           <label className="flex items-start gap-3 rounded-xl border border-slate-200/70 bg-white/20 p-4 backdrop-blur-sm">
             <input
               type="checkbox"
@@ -66,7 +66,7 @@ export default function LandingPageCookieConsent({
             type="button"
             onClick={handleAccept}
             disabled={accepted || !checked}
-            className="w-full rounded-xl px-5 py-4 text-base font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+            className="landing-page-cookie-button w-full rounded-xl px-5 py-4 text-base font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
             style={{
               backgroundColor: buttonColor ?? '#059669',
               color: buttonTextColor ?? '#ffffff',
@@ -83,7 +83,7 @@ export default function LandingPageCookieConsent({
           target="_blank"
           rel="noopener noreferrer"
           aria-disabled={!canOpenUrl}
-          className={`mt-4 block w-full rounded-xl px-5 py-4 text-center text-base font-semibold transition-colors ${
+          className={`landing-page-url-button mt-4 block w-full rounded-xl px-5 py-4 text-center text-base font-semibold transition-colors ${
             canOpenUrl
               ? ''
               : 'bg-slate-200 text-slate-500 cursor-not-allowed'
