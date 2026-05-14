@@ -16,10 +16,14 @@ import {
   apiBadRequest,
   apiNotFound,
   checkRateLimit,
-  RATE_LIMITS,
 } from '@/lib/api';
 
 const MAX_BYTES = 32 * 1024 * 1024; // imgbb limit
+const ADMIN_GALLERY_UPLOAD_RATE_LIMIT = {
+  max: 60,
+  windowMs: 60 * 1000,
+  message: 'Too many gallery uploads. Please wait a minute and try again.',
+};
 
 export const POST = withErrorHandler(
   async (
@@ -27,7 +31,7 @@ export const POST = withErrorHandler(
     context?: { params?: Promise<{ id: string }> }
   ) => {
     const session = await requireAdmin(request);
-    await checkRateLimit(request, RATE_LIMITS.UPLOAD);
+    await checkRateLimit(request, ADMIN_GALLERY_UPLOAD_RATE_LIMIT);
 
     const { id: eventMongoId } = await context!.params!;
 
