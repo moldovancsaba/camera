@@ -100,8 +100,8 @@ export default async function PublicLandingPage({
       {landingPageCustomCss ? <style>{landingPageCustomCss}</style> : null}
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
         <div className="space-y-6">
-          <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white/90 shadow-xl shadow-slate-300/30 backdrop-blur">
-            <div className="border-b border-slate-200 px-5 py-5 sm:px-8">
+          <section className="rounded-[28px] border border-slate-200 bg-white/90 p-5 shadow-xl shadow-slate-300/30 backdrop-blur sm:p-8">
+            <div>
               {landingPage.logoUrl ? (
                 <img
                   src={String(landingPage.logoUrl)}
@@ -136,20 +136,7 @@ export default async function PublicLandingPage({
               ) : null}
             </div>
 
-            <div className="border-b border-slate-200">
-              <div
-                className="relative w-full overflow-hidden bg-black"
-                style={{ aspectRatio: String(targetAspectRatio) }}
-              >
-                <iframe
-                  src={targetUrl}
-                  title={String(landingPage.targetName || landingPage.eventName)}
-                  className="absolute inset-0 h-full w-full"
-                />
-              </div>
-            </div>
-
-            <div className="p-5 sm:p-6">
+            <div className="mt-6">
               <LandingPageCookieConsent
                 slug={slug}
                 enabled={landingPage.cookieConsentEnabled === true}
@@ -164,6 +151,19 @@ export default async function PublicLandingPage({
                 }
                 bodyColor={typeof landingPage.cookiesBodyColor === 'string' ? landingPage.cookiesBodyColor : null}
               />
+            </div>
+
+            <div className="mt-6 overflow-hidden rounded-[24px] border border-slate-200">
+              <div
+                className="relative w-full overflow-hidden bg-black"
+                style={{ aspectRatio: String(targetAspectRatio) }}
+              >
+                <iframe
+                  src={targetUrl}
+                  title={String(landingPage.targetName || landingPage.eventName)}
+                  className="absolute inset-0 h-full w-full"
+                />
+              </div>
             </div>
           </section>
 
