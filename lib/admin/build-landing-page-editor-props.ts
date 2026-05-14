@@ -21,10 +21,21 @@ export interface LandingPageEditorInitialValue {
   logoId?: string | null;
   qrCodeImageUrl?: string | null;
   url?: string | null;
+  urlButtonText?: string | null;
   termsMarkdown?: string | null;
   termsFileName?: string | null;
   privacyMarkdown?: string | null;
   privacyFileName?: string | null;
+  backgroundColor?: string | null;
+  titleColor?: string | null;
+  descriptionColor?: string | null;
+  qrTitleColor?: string | null;
+  cookiesTitleColor?: string | null;
+  cookiesBodyColor?: string | null;
+  legalTitleColor?: string | null;
+  legalLinkTextColor?: string | null;
+  buttonColor?: string | null;
+  buttonTextColor?: string | null;
   cookieConsentEnabled: boolean;
   targetType: 'slideshow' | 'layout';
   targetId: string;
@@ -102,10 +113,21 @@ export async function buildLandingPageEditorProps(
           logoId: (landingPage.logoId as string | null | undefined) ?? '',
           qrCodeImageUrl: (landingPage.qrCodeImageUrl as string | null | undefined) ?? '',
           url: (landingPage.url as string | null | undefined) ?? '',
+          urlButtonText: (landingPage.urlButtonText as string | null | undefined) ?? '',
           termsMarkdown: (landingPage.termsMarkdown as string | null | undefined) ?? '',
           termsFileName: (landingPage.termsFileName as string | null | undefined) ?? '',
           privacyMarkdown: (landingPage.privacyMarkdown as string | null | undefined) ?? '',
           privacyFileName: (landingPage.privacyFileName as string | null | undefined) ?? '',
+          backgroundColor: (landingPage.backgroundColor as string | null | undefined) ?? '#f8fafc',
+          titleColor: (landingPage.titleColor as string | null | undefined) ?? '#0f172a',
+          descriptionColor: (landingPage.descriptionColor as string | null | undefined) ?? '#475569',
+          qrTitleColor: (landingPage.qrTitleColor as string | null | undefined) ?? '#0f172a',
+          cookiesTitleColor: (landingPage.cookiesTitleColor as string | null | undefined) ?? '#0f172a',
+          cookiesBodyColor: (landingPage.cookiesBodyColor as string | null | undefined) ?? '#475569',
+          legalTitleColor: (landingPage.legalTitleColor as string | null | undefined) ?? '#0f172a',
+          legalLinkTextColor: (landingPage.legalLinkTextColor as string | null | undefined) ?? '#1e293b',
+          buttonColor: (landingPage.buttonColor as string | null | undefined) ?? '#059669',
+          buttonTextColor: (landingPage.buttonTextColor as string | null | undefined) ?? '#ffffff',
           cookieConsentEnabled: landingPage.cookieConsentEnabled !== false,
           targetType: landingPage.targetType === 'layout' ? 'layout' : 'slideshow',
           targetId: String(landingPage.targetId),

@@ -13,10 +13,20 @@ import {
 } from '@/lib/api';
 
 const MAX_MARKDOWN_CHARS = 100_000;
+const HEX_COLOR_RE = /^#([0-9a-fA-F]{6})$/;
 
 function textOrNull(value: unknown): string | null {
   const trimmed = String(value ?? '').trim();
   return trimmed ? trimmed : null;
+}
+
+function colorOrNull(value: unknown, label: string): string | null {
+  const text = textOrNull(value);
+  if (!text) return null;
+  if (!HEX_COLOR_RE.test(text)) {
+    throw apiBadRequest(`${label} must be a #RRGGBB value.`);
+  }
+  return text;
 }
 
 function optionalMarkdown(value: unknown, label: string): string | null {
@@ -146,10 +156,21 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     logoUrl,
     qrCodeImageUrl: textOrNull(body.qrCodeImageUrl),
     url: textOrNull(body.url),
+    urlButtonText: textOrNull(body.urlButtonText),
     termsMarkdown: optionalMarkdown(body.termsMarkdown, 'Terms and conditions'),
     termsFileName: textOrNull(body.termsFileName),
     privacyMarkdown: optionalMarkdown(body.privacyMarkdown, 'Privacy policy'),
     privacyFileName: textOrNull(body.privacyFileName),
+    backgroundColor: colorOrNull(body.backgroundColor, 'Background color'),
+    titleColor: colorOrNull(body.titleColor, 'Title color'),
+    descriptionColor: colorOrNull(body.descriptionColor, 'Description color'),
+    qrTitleColor: colorOrNull(body.qrTitleColor, 'QR title color'),
+    cookiesTitleColor: colorOrNull(body.cookiesTitleColor, 'Cookies title color'),
+    cookiesBodyColor: colorOrNull(body.cookiesBodyColor, 'Cookies body color'),
+    legalTitleColor: colorOrNull(body.legalTitleColor, 'Legal title color'),
+    legalLinkTextColor: colorOrNull(body.legalLinkTextColor, 'Legal link text color'),
+    buttonColor: colorOrNull(body.buttonColor, 'Button color'),
+    buttonTextColor: colorOrNull(body.buttonTextColor, 'Button text color'),
     cookieConsentEnabled: Boolean(body.cookieConsentEnabled),
     targetType,
     targetId: target.targetId,

@@ -6,6 +6,11 @@ interface Props {
   slug: string;
   enabled: boolean;
   url: string | null;
+  buttonText?: string | null;
+  buttonColor?: string | null;
+  buttonTextColor?: string | null;
+  titleColor?: string | null;
+  bodyColor?: string | null;
 }
 
 function storageKey(slug: string): string {
@@ -16,6 +21,11 @@ export default function LandingPageCookieConsent({
   slug,
   enabled,
   url,
+  buttonText,
+  buttonColor,
+  buttonTextColor,
+  titleColor,
+  bodyColor,
 }: Props) {
   const [accepted, setAccepted] = useState(() => {
     if (typeof window === 'undefined' || !enabled) return false;
@@ -40,7 +50,7 @@ export default function LandingPageCookieConsent({
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-900">
+      <h2 className="text-lg font-semibold" style={{ color: titleColor ?? '#0f172a' }}>
         Cookies and actions
       </h2>
 
@@ -53,7 +63,7 @@ export default function LandingPageCookieConsent({
               onChange={(e) => setChecked(e.target.checked)}
               className="mt-1 h-4 w-4"
             />
-            <span className="text-sm leading-6 text-slate-700">
+            <span className="text-sm leading-6" style={{ color: bodyColor ?? '#475569' }}>
               I accept cookies for this landing page and want to continue.
             </span>
           </label>
@@ -62,13 +72,17 @@ export default function LandingPageCookieConsent({
             type="button"
             onClick={handleAccept}
             disabled={accepted || !checked}
-            className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-xl px-4 py-3 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+            style={{
+              backgroundColor: buttonColor ?? '#059669',
+              color: buttonTextColor ?? '#ffffff',
+            }}
           >
             {accepted ? 'Accepted' : 'Accept cookies'}
           </button>
         </div>
       ) : (
-        <p className="mt-3 text-sm text-slate-600">
+        <p className="mt-3 text-sm" style={{ color: bodyColor ?? '#475569' }}>
           Cookie acceptance is not required for this landing page.
         </p>
       )}
@@ -81,11 +95,19 @@ export default function LandingPageCookieConsent({
           aria-disabled={!canOpenUrl}
           className={`mt-4 block w-full rounded-xl px-4 py-3 text-center text-sm font-semibold transition-colors ${
             canOpenUrl
-              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+              ? ''
               : 'bg-slate-200 text-slate-500 cursor-not-allowed'
           }`}
+          style={
+            canOpenUrl
+              ? {
+                  backgroundColor: buttonColor ?? '#059669',
+                  color: buttonTextColor ?? '#ffffff',
+                }
+              : undefined
+          }
         >
-          Open URL
+          {buttonText?.trim() || 'Open URL'}
         </a>
       ) : null}
     </div>

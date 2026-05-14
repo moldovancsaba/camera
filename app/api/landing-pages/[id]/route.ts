@@ -13,6 +13,7 @@ import {
 } from '@/lib/api';
 
 const MAX_MARKDOWN_CHARS = 100_000;
+const HEX_COLOR_RE = /^#([0-9a-fA-F]{6})$/;
 
 function serializeLandingPage(doc: Record<string, unknown>) {
   return {
@@ -31,6 +32,15 @@ function optionalMarkdown(value: unknown, label: string): string | null {
   if (!text) return null;
   if (text.length > MAX_MARKDOWN_CHARS) {
     throw apiBadRequest(`${label} is too large.`);
+  }
+  return text;
+}
+
+function colorOrNull(value: unknown, label: string): string | null {
+  const text = textOrNull(value);
+  if (!text) return null;
+  if (!HEX_COLOR_RE.test(text)) {
+    throw apiBadRequest(`${label} must be a #RRGGBB value.`);
   }
   return text;
 }
@@ -135,10 +145,21 @@ export const PATCH = withErrorHandler(async (
   if (body.description !== undefined) updates.description = textOrNull(body.description);
   if (body.qrCodeImageUrl !== undefined) updates.qrCodeImageUrl = textOrNull(body.qrCodeImageUrl);
   if (body.url !== undefined) updates.url = textOrNull(body.url);
+  if (body.urlButtonText !== undefined) updates.urlButtonText = textOrNull(body.urlButtonText);
   if (body.termsMarkdown !== undefined) updates.termsMarkdown = optionalMarkdown(body.termsMarkdown, 'Terms and conditions');
   if (body.termsFileName !== undefined) updates.termsFileName = textOrNull(body.termsFileName);
   if (body.privacyMarkdown !== undefined) updates.privacyMarkdown = optionalMarkdown(body.privacyMarkdown, 'Privacy policy');
   if (body.privacyFileName !== undefined) updates.privacyFileName = textOrNull(body.privacyFileName);
+  if (body.backgroundColor !== undefined) updates.backgroundColor = colorOrNull(body.backgroundColor, 'Background color');
+  if (body.titleColor !== undefined) updates.titleColor = colorOrNull(body.titleColor, 'Title color');
+  if (body.descriptionColor !== undefined) updates.descriptionColor = colorOrNull(body.descriptionColor, 'Description color');
+  if (body.qrTitleColor !== undefined) updates.qrTitleColor = colorOrNull(body.qrTitleColor, 'QR title color');
+  if (body.cookiesTitleColor !== undefined) updates.cookiesTitleColor = colorOrNull(body.cookiesTitleColor, 'Cookies title color');
+  if (body.cookiesBodyColor !== undefined) updates.cookiesBodyColor = colorOrNull(body.cookiesBodyColor, 'Cookies body color');
+  if (body.legalTitleColor !== undefined) updates.legalTitleColor = colorOrNull(body.legalTitleColor, 'Legal title color');
+  if (body.legalLinkTextColor !== undefined) updates.legalLinkTextColor = colorOrNull(body.legalLinkTextColor, 'Legal link text color');
+  if (body.buttonColor !== undefined) updates.buttonColor = colorOrNull(body.buttonColor, 'Button color');
+  if (body.buttonTextColor !== undefined) updates.buttonTextColor = colorOrNull(body.buttonTextColor, 'Button text color');
   if (body.cookieConsentEnabled !== undefined) updates.cookieConsentEnabled = Boolean(body.cookieConsentEnabled);
   if (body.isActive !== undefined) updates.isActive = Boolean(body.isActive);
 

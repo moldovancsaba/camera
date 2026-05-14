@@ -23,6 +23,7 @@ interface LandingPageValue {
   logoId?: string | null;
   qrCodeImageUrl?: string | null;
   url?: string | null;
+  urlButtonText?: string | null;
   termsMarkdown?: string | null;
   termsFileName?: string | null;
   privacyMarkdown?: string | null;
@@ -31,6 +32,16 @@ interface LandingPageValue {
   targetType: 'slideshow' | 'layout';
   targetId: string;
   isActive: boolean;
+  backgroundColor?: string | null;
+  titleColor?: string | null;
+  descriptionColor?: string | null;
+  qrTitleColor?: string | null;
+  cookiesTitleColor?: string | null;
+  cookiesBodyColor?: string | null;
+  legalTitleColor?: string | null;
+  legalLinkTextColor?: string | null;
+  buttonColor?: string | null;
+  buttonTextColor?: string | null;
 }
 
 interface Props {
@@ -41,6 +52,13 @@ interface Props {
   slideshows: TargetOption[];
   layouts: TargetOption[];
   logos: LogoOption[];
+}
+
+interface ColorFieldProps {
+  label: string;
+  helper?: string;
+  value: string;
+  onChange: (value: string) => void;
 }
 
 async function fileToDataUrl(file: File): Promise<string> {
@@ -61,6 +79,42 @@ async function fileToText(file: File): Promise<string> {
   });
 }
 
+function ColorField({
+  label,
+  helper,
+  value,
+  onChange,
+}: ColorFieldProps) {
+  const colorValue = /^#[0-9A-Fa-f]{6}$/.test(value) ? value : '#000000';
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {label}
+      </label>
+      <div className="flex gap-2 items-center">
+        <input
+          type="color"
+          value={colorValue}
+          className="h-10 w-16 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <input
+          type="text"
+          value={value}
+          pattern="^#[0-9A-Fa-f]{6}$"
+          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-mono text-sm"
+          placeholder="#000000"
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </div>
+      {helper ? (
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{helper}</p>
+      ) : null}
+    </div>
+  );
+}
+
 export default function LandingPageEditor({
   mode,
   eventMongoId,
@@ -77,6 +131,7 @@ export default function LandingPageEditor({
   const [logoId, setLogoId] = useState(initialLandingPage?.logoId ?? '');
   const [qrCodeImageUrl, setQrCodeImageUrl] = useState(initialLandingPage?.qrCodeImageUrl ?? '');
   const [url, setUrl] = useState(initialLandingPage?.url ?? '');
+  const [urlButtonText, setUrlButtonText] = useState(initialLandingPage?.urlButtonText ?? '');
   const [termsMarkdown, setTermsMarkdown] = useState(initialLandingPage?.termsMarkdown ?? '');
   const [termsFileName, setTermsFileName] = useState(initialLandingPage?.termsFileName ?? '');
   const [privacyMarkdown, setPrivacyMarkdown] = useState(initialLandingPage?.privacyMarkdown ?? '');
@@ -89,6 +144,22 @@ export default function LandingPageEditor({
   );
   const [targetId, setTargetId] = useState(initialLandingPage?.targetId ?? '');
   const [isActive, setIsActive] = useState(initialLandingPage?.isActive ?? true);
+  const [backgroundColor, setBackgroundColor] = useState(initialLandingPage?.backgroundColor ?? '#f8fafc');
+  const [titleColor, setTitleColor] = useState(initialLandingPage?.titleColor ?? '#0f172a');
+  const [descriptionColor, setDescriptionColor] = useState(initialLandingPage?.descriptionColor ?? '#475569');
+  const [qrTitleColor, setQrTitleColor] = useState(initialLandingPage?.qrTitleColor ?? '#0f172a');
+  const [cookiesTitleColor, setCookiesTitleColor] = useState(
+    initialLandingPage?.cookiesTitleColor ?? '#0f172a'
+  );
+  const [cookiesBodyColor, setCookiesBodyColor] = useState(
+    initialLandingPage?.cookiesBodyColor ?? '#475569'
+  );
+  const [legalTitleColor, setLegalTitleColor] = useState(initialLandingPage?.legalTitleColor ?? '#0f172a');
+  const [legalLinkTextColor, setLegalLinkTextColor] = useState(
+    initialLandingPage?.legalLinkTextColor ?? '#1e293b'
+  );
+  const [buttonColor, setButtonColor] = useState(initialLandingPage?.buttonColor ?? '#059669');
+  const [buttonTextColor, setButtonTextColor] = useState(initialLandingPage?.buttonTextColor ?? '#ffffff');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingQr, setIsUploadingQr] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -166,6 +237,7 @@ export default function LandingPageEditor({
       logoId,
       qrCodeImageUrl,
       url,
+      urlButtonText,
       termsMarkdown,
       termsFileName,
       privacyMarkdown,
@@ -174,6 +246,16 @@ export default function LandingPageEditor({
       targetType,
       targetId,
       isActive,
+      backgroundColor,
+      titleColor,
+      descriptionColor,
+      qrTitleColor,
+      cookiesTitleColor,
+      cookiesBodyColor,
+      legalTitleColor,
+      legalLinkTextColor,
+      buttonColor,
+      buttonTextColor,
     };
 
     try {
@@ -420,15 +502,101 @@ export default function LandingPageEditor({
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              URL
-            </label>
-            <input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://example.com"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                URL
+              </label>
+              <input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://example.com"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                URL button text
+              </label>
+              <input
+                value={urlButtonText}
+                onChange={(e) => setUrlButtonText(e.target.value)}
+                placeholder="Open URL"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Used for the call-to-action button under the slideshow or layout.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Page Colors
+          </h2>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <ColorField
+              label="Background color"
+              helper="Applied to the landing page background."
+              value={backgroundColor}
+              onChange={setBackgroundColor}
+            />
+            <ColorField
+              label="Title color"
+              helper="Used for the landing page title."
+              value={titleColor}
+              onChange={setTitleColor}
+            />
+            <ColorField
+              label="Description color"
+              helper="Used for the landing page description text."
+              value={descriptionColor}
+              onChange={setDescriptionColor}
+            />
+            <ColorField
+              label="QR title color"
+              helper="Used for the QR section title."
+              value={qrTitleColor}
+              onChange={setQrTitleColor}
+            />
+            <ColorField
+              label="Cookies title color"
+              helper="Used for the cookies and actions heading."
+              value={cookiesTitleColor}
+              onChange={setCookiesTitleColor}
+            />
+            <ColorField
+              label="Cookies text color"
+              helper="Used for the cookie acceptance copy."
+              value={cookiesBodyColor}
+              onChange={setCookiesBodyColor}
+            />
+            <ColorField
+              label="Legal title color"
+              helper="Used for the legal section title."
+              value={legalTitleColor}
+              onChange={setLegalTitleColor}
+            />
+            <ColorField
+              label="Legal link text color"
+              helper="Used for the legal action button text."
+              value={legalLinkTextColor}
+              onChange={setLegalLinkTextColor}
+            />
+            <ColorField
+              label="Button color"
+              helper="Used for the main action button background."
+              value={buttonColor}
+              onChange={setButtonColor}
+            />
+            <ColorField
+              label="Button text color"
+              helper="Used for action button text."
+              value={buttonTextColor}
+              onChange={setButtonTextColor}
             />
           </div>
         </div>
