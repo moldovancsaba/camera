@@ -116,6 +116,32 @@ export default async function PublicLandingPage({
   -webkit-text-stroke: 0 !important;
 }
 
+.landing-page-shell {
+  max-width: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.landing-page-copy {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+.landing-page-cta-container {
+  max-width: none !important;
+  width: 100%;
+}
+
+.landing-page-cta-container .landing-page-url-button,
+.landing-page-cta-container .landing-page-cookie-button {
+  width: 100% !important;
+}
+
+.landing-page-logo-portrait {
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .landing-page-cta-landscape {
   display: none;
 }
@@ -125,6 +151,22 @@ export default async function PublicLandingPage({
 }
 
 @media (min-aspect-ratio: 1 / 1) {
+  .landing-page-shell {
+    max-width: 80rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+  }
+
+  .landing-page-copy {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .landing-page-cta-container {
+    max-width: 48rem;
+    width: 100%;
+  }
+
   .landing-page-cta-portrait {
     display: none !important;
   }
@@ -149,8 +191,8 @@ export default async function PublicLandingPage({
       <style>{landingPageFontCss}</style>
       {landingPageCustomCss ? <style>{landingPageCustomCss}</style> : null}
       <style>{landingPageTextResetCss}</style>
-      <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col gap-3 px-3 py-3 sm:gap-4 sm:px-5 sm:py-5 lg:px-8 lg:py-6">
-        <section className="shrink-0 space-y-3">
+      <div className="landing-page-shell relative z-10 mx-auto flex h-full max-w-7xl flex-col gap-3 py-3 sm:gap-4 sm:py-5 lg:py-6">
+        <section className="landing-page-copy shrink-0 space-y-3">
           {landingPage.logoUrl ? (
             <img
               src={String(landingPage.logoUrl)}
@@ -187,7 +229,7 @@ export default async function PublicLandingPage({
           ) : null}
 
           {hasCallToAction ? (
-            <div className={`max-w-3xl ${shouldMoveCallToActionToSidebar ? 'landing-page-cta-portrait' : ''}`}>
+            <div className={`landing-page-cta-container ${shouldMoveCallToActionToSidebar ? 'landing-page-cta-portrait' : ''}`}>
               <LandingPageCookieConsent
                 slug={slug}
                 enabled={landingPage.cookieConsentEnabled === true}
@@ -210,7 +252,7 @@ export default async function PublicLandingPage({
               : 'grid-cols-1'
           }`}
         >
-          <div className="min-h-0 overflow-hidden">
+          <div className="landing-page-media-column min-h-0 overflow-hidden">
             <LandingPageMediaFrame
               aspectRatio={targetAspectRatio}
               src={targetUrl}
