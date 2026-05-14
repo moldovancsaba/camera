@@ -141,6 +141,21 @@ export const LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   text-shadow: none !important;
   -webkit-text-stroke: 0 !important;
   filter: none !important;
+}
+
+.sihf-background .landing-page-logo {
+  display: block;
+}
+
+@media (min-aspect-ratio: 1 / 1) {
+  .sihf-background .landing-page-logo {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    max-height: clamp(4.5rem, 11vh, 8.5rem);
+    width: auto;
+    object-fit: contain;
+  }
 }`,
   },
 ];

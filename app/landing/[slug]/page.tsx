@@ -93,6 +93,8 @@ export default async function PublicLandingPage({
       : `/slideshow/${landingPage.targetId}`;
   const targetAspectRatio = await resolveTargetAspectRatio(landingPage);
   const hasSidebar = Boolean(landingPage.qrCodeImageUrl || landingPage.termsMarkdown || landingPage.privacyMarkdown);
+  const hasCallToAction = Boolean(landingPage.url) || landingPage.cookieConsentEnabled === true;
+  const shouldMoveCallToActionToSidebar = hasSidebar && hasCallToAction;
   const landingPageClassName = [
     'landing-page-root',
     typeof landingPage.customCssClassName === 'string' ? landingPage.customCssClassName.trim() : '',
@@ -103,19 +105,43 @@ export default async function PublicLandingPage({
   const landingPageCustomCss =
     typeof landingPage.customCss === 'string' ? landingPage.customCss.trim() : '';
   const landingPageFontCss = `.landing-page-root { --landing-display-font: ${landingDisplayFont.style.fontFamily}, Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; }`;
+  const landingPageTextResetCss = `
+.landing-page-root,
+.landing-page-root *,
+.landing-page-root *::before,
+.landing-page-root *::after {
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+}
+
+.landing-page-cta-landscape {
+  display: none;
+}
+
+@media (min-aspect-ratio: 1 / 1) {
+  .landing-page-cta-portrait {
+    display: none !important;
+  }
+
+  .landing-page-cta-landscape {
+    display: block !important;
+  }
+}
+`.trim();
 
   return (
     <main className={`${landingPageClassName} ${landingDisplayFont.className} relative h-[100dvh] overflow-hidden text-slate-900`}>
       <style>{landingPageFallbackCss}</style>
       <style>{landingPageFontCss}</style>
       {landingPageCustomCss ? <style>{landingPageCustomCss}</style> : null}
+      <style>{landingPageTextResetCss}</style>
       <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col gap-3 px-3 py-3 sm:gap-4 sm:px-5 sm:py-5 lg:px-8 lg:py-6">
         <section className="shrink-0 space-y-3">
           {landingPage.logoUrl ? (
             <img
               src={String(landingPage.logoUrl)}
               alt={landingPage.title ? `${landingPage.title} logo` : `${landingPage.eventName} logo`}
-              className="max-h-12 w-auto object-contain sm:max-h-16"
+              className="landing-page-logo max-h-12 w-auto object-contain sm:max-h-16"
             />
           ) : null}
 
@@ -144,19 +170,21 @@ export default async function PublicLandingPage({
             </p>
           ) : null}
 
-          <div className="max-w-3xl">
-            <LandingPageCookieConsent
-              slug={slug}
-              enabled={landingPage.cookieConsentEnabled === true}
-              url={typeof landingPage.url === 'string' ? landingPage.url : null}
-              buttonText={typeof landingPage.urlButtonText === 'string' ? landingPage.urlButtonText : null}
-              buttonColor={typeof landingPage.buttonColor === 'string' ? landingPage.buttonColor : null}
-              buttonTextColor={
-                typeof landingPage.buttonTextColor === 'string' ? landingPage.buttonTextColor : null
-              }
-              bodyColor={typeof landingPage.cookiesBodyColor === 'string' ? landingPage.cookiesBodyColor : null}
-            />
-          </div>
+          {hasCallToAction ? (
+            <div className={`max-w-3xl ${shouldMoveCallToActionToSidebar ? 'landing-page-cta-portrait' : ''}`}>
+              <LandingPageCookieConsent
+                slug={slug}
+                enabled={landingPage.cookieConsentEnabled === true}
+                url={typeof landingPage.url === 'string' ? landingPage.url : null}
+                buttonText={typeof landingPage.urlButtonText === 'string' ? landingPage.urlButtonText : null}
+                buttonColor={typeof landingPage.buttonColor === 'string' ? landingPage.buttonColor : null}
+                buttonTextColor={
+                  typeof landingPage.buttonTextColor === 'string' ? landingPage.buttonTextColor : null
+                }
+                bodyColor={typeof landingPage.cookiesBodyColor === 'string' ? landingPage.cookiesBodyColor : null}
+              />
+            </div>
+          ) : null}
         </section>
 
         <section
@@ -175,22 +203,32 @@ export default async function PublicLandingPage({
           </div>
 
           {hasSidebar ? (
-            <div className="grid min-h-0 auto-rows-fr grid-cols-2 gap-3 lg:grid-cols-1">
+            <div className="grid min-h-0 auto-rows-fr grid-cols-1 gap-3">
               {landingPage.qrCodeImageUrl ? (
                 <section className="flex min-h-0 flex-col">
-                  <h2
-                    className="shrink-0 text-base font-semibold"
-                    style={{ color: landingPage.qrTitleColor || '#0f172a' }}
-                  >
-                    QR code
-                  </h2>
-                  <div className="mt-2 flex min-h-0 flex-1 items-center justify-center overflow-hidden p-1">
+                  <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-1">
                     <img
                       src={String(landingPage.qrCodeImageUrl)}
                       alt="Landing page QR code"
                       className="max-h-full max-w-full object-contain"
                     />
                   </div>
+                </section>
+              ) : null}
+
+              {shouldMoveCallToActionToSidebar ? (
+                <section className="landing-page-cta-landscape flex min-h-0 flex-col">
+                  <LandingPageCookieConsent
+                    slug={slug}
+                    enabled={landingPage.cookieConsentEnabled === true}
+                    url={typeof landingPage.url === 'string' ? landingPage.url : null}
+                    buttonText={typeof landingPage.urlButtonText === 'string' ? landingPage.urlButtonText : null}
+                    buttonColor={typeof landingPage.buttonColor === 'string' ? landingPage.buttonColor : null}
+                    buttonTextColor={
+                      typeof landingPage.buttonTextColor === 'string' ? landingPage.buttonTextColor : null
+                    }
+                    bodyColor={typeof landingPage.cookiesBodyColor === 'string' ? landingPage.cookiesBodyColor : null}
+                  />
                 </section>
               ) : null}
 
