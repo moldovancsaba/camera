@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp, type LandingPageTargetType } from '@/lib/db/schemas';
 import { normalizeLandingPageSlugInput } from '@/lib/landing-pages';
+import { getLandingPageStylePreset } from '@/lib/landing-page-style-presets';
 import {
   withErrorHandler,
   requireAdmin,
@@ -13,7 +14,9 @@ import {
 } from '@/lib/api';
 
 const MAX_MARKDOWN_CHARS = 100_000;
+const MAX_CUSTOM_CSS_CHARS = 40_000;
 const HEX_COLOR_RE = /^#([0-9a-fA-F]{6})$/;
+const CSS_CLASS_RE = /^[A-Za-z_-][A-Za-z0-9_-]*(?:\s+[A-Za-z_-][A-Za-z0-9_-]*)*$/;
 
 function serializeLandingPage(doc: Record<string, unknown>) {
   return {
@@ -41,6 +44,25 @@ function colorOrNull(value: unknown, label: string): string | null {
   if (!text) return null;
   if (!HEX_COLOR_RE.test(text)) {
     throw apiBadRequest(`${label} must be a #RRGGBB value.`);
+  }
+  return text;
+}
+
+function optionalCustomCss(value: unknown): string | null {
+  const text = String(value ?? '');
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  if (trimmed.length > MAX_CUSTOM_CSS_CHARS) {
+    throw apiBadRequest('Custom CSS is too large.');
+  }
+  return trimmed;
+}
+
+function optionalCssClassName(value: unknown): string | null {
+  const text = textOrNull(value);
+  if (!text) return null;
+  if (!CSS_CLASS_RE.test(text)) {
+    throw apiBadRequest('Custom CSS class name may only contain letters, numbers, hyphens, underscores, and spaces.');
   }
   return text;
 }
@@ -162,6 +184,28 @@ export const PATCH = withErrorHandler(async (
   if (body.buttonTextColor !== undefined) updates.buttonTextColor = colorOrNull(body.buttonTextColor, 'Button text color');
   if (body.cookieConsentEnabled !== undefined) updates.cookieConsentEnabled = Boolean(body.cookieConsentEnabled);
   if (body.isActive !== undefined) updates.isActive = Boolean(body.isActive);
+
+  if (
+    body.customCssPresetId !== undefined ||
+    body.customCssClassName !== undefined ||
+    body.customCss !== undefined
+  ) {
+    const presetId =
+      body.customCssPresetId !== undefined
+        ? textOrNull(body.customCssPresetId)
+        : textOrNull(existing.customCssPresetId);
+    const preset = presetId ? getLandingPageStylePreset(presetId) : null;
+    if (presetId && !preset) {
+      throw apiBadRequest('Selected CSS preset was not found.');
+    }
+    updates.customCssPresetId = presetId;
+    updates.customCssClassName = optionalCssClassName(
+      body.customCssClassName !== undefined ? body.customCssClassName : preset?.className ?? existing.customCssClassName
+    );
+    updates.customCss = optionalCustomCss(
+      body.customCss !== undefined ? body.customCss : preset?.css ?? existing.customCss
+    );
+  }
 
   if (body.logoId !== undefined) {
     const logoId = textOrNull(body.logoId);

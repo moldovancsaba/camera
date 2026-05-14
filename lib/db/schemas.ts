@@ -782,6 +782,9 @@ export interface LandingPage {
   legalLinkTextColor?: string | null;
   buttonColor?: string | null;
   buttonTextColor?: string | null;
+  customCssPresetId?: string | null;
+  customCssClassName?: string | null;
+  customCss?: string | null;
   cookieConsentEnabled: boolean;
   targetType: LandingPageTargetType;
   targetId: string;

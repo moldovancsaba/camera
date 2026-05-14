@@ -3,6 +3,10 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import {
+  LANDING_PAGE_STYLE_PRESETS,
+  getLandingPageStylePreset,
+} from '@/lib/landing-page-style-presets';
 
 interface TargetOption {
   id: string;
@@ -42,6 +46,9 @@ interface LandingPageValue {
   legalLinkTextColor?: string | null;
   buttonColor?: string | null;
   buttonTextColor?: string | null;
+  customCssPresetId?: string | null;
+  customCssClassName?: string | null;
+  customCss?: string | null;
 }
 
 interface Props {
@@ -160,6 +167,9 @@ export default function LandingPageEditor({
   );
   const [buttonColor, setButtonColor] = useState(initialLandingPage?.buttonColor ?? '#059669');
   const [buttonTextColor, setButtonTextColor] = useState(initialLandingPage?.buttonTextColor ?? '#ffffff');
+  const [customCssPresetId, setCustomCssPresetId] = useState(initialLandingPage?.customCssPresetId ?? '');
+  const [customCssClassName, setCustomCssClassName] = useState(initialLandingPage?.customCssClassName ?? '');
+  const [customCss, setCustomCss] = useState(initialLandingPage?.customCss ?? '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingQr, setIsUploadingQr] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -172,6 +182,10 @@ export default function LandingPageEditor({
   const selectedLogo = useMemo(
     () => logos.find((logo) => logo.logoId === logoId) ?? null,
     [logoId, logos]
+  );
+  const selectedCssPreset = useMemo(
+    () => getLandingPageStylePreset(customCssPresetId),
+    [customCssPresetId]
   );
 
   const handleQrUpload = async (file: File | null) => {
@@ -256,6 +270,9 @@ export default function LandingPageEditor({
       legalLinkTextColor,
       buttonColor,
       buttonTextColor,
+      customCssPresetId,
+      customCssClassName,
+      customCss,
     };
 
     try {
@@ -658,6 +675,79 @@ export default function LandingPageEditor({
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-mono text-sm"
               />
             </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Optional CSS
+          </h2>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                CSS preset
+              </label>
+              <select
+                value={customCssPresetId}
+                onChange={(e) => {
+                  const nextPresetId = e.target.value;
+                  setCustomCssPresetId(nextPresetId);
+                  const preset = getLandingPageStylePreset(nextPresetId);
+                  if (preset) {
+                    setCustomCssClassName(preset.className);
+                    setCustomCss(preset.css);
+                  }
+                }}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+              >
+                <option value="">No preset</option>
+                {LANDING_PAGE_STYLE_PRESETS.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                First preset record included: SIHF Red Ice.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Root CSS class name
+              </label>
+              <input
+                value={customCssClassName}
+                onChange={(e) => setCustomCssClassName(e.target.value)}
+                placeholder="landing-page-theme"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Applied to the landing page wrapper. <span className="font-mono">landing-page-root</span> is always present.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Custom CSS
+            </label>
+            <textarea
+              value={customCss}
+              onChange={(e) => setCustomCss(e.target.value)}
+              rows={18}
+              placeholder=".landing-page-root { background: #000; }"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-mono text-sm"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Use this for page-level styling only. Preset selection can prefill the class name and CSS.
+            </p>
+            {selectedCssPreset ? (
+              <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">
+                Preset loaded: {selectedCssPreset.name}
+              </p>
+            ) : null}
           </div>
         </div>
 

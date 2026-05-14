@@ -68,12 +68,20 @@ export default async function PublicLandingPage({
       ? `/slideshow-layout/${landingPage.targetId}`
       : `/slideshow/${landingPage.targetId}`;
   const targetAspectRatio = await resolveTargetAspectRatio(landingPage);
+  const landingPageClassName = [
+    'landing-page-root',
+    typeof landingPage.customCssClassName === 'string' ? landingPage.customCssClassName.trim() : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const landingPageFallbackCss = `.landing-page-root { background: ${landingPage.backgroundColor || '#f8fafc'}; }`;
+  const landingPageCustomCss =
+    typeof landingPage.customCss === 'string' ? landingPage.customCss.trim() : '';
 
   return (
-    <main
-      className="min-h-screen text-slate-900"
-      style={{ backgroundColor: landingPage.backgroundColor || '#f8fafc' }}
-    >
+    <main className={`${landingPageClassName} min-h-screen text-slate-900`}>
+      <style>{landingPageFallbackCss}</style>
+      {landingPageCustomCss ? <style>{landingPageCustomCss}</style> : null}
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
         <div className="space-y-6">
           <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white/90 shadow-xl shadow-slate-300/30 backdrop-blur">

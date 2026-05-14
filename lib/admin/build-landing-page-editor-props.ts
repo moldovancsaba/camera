@@ -36,6 +36,9 @@ export interface LandingPageEditorInitialValue {
   legalLinkTextColor?: string | null;
   buttonColor?: string | null;
   buttonTextColor?: string | null;
+  customCssPresetId?: string | null;
+  customCssClassName?: string | null;
+  customCss?: string | null;
   cookieConsentEnabled: boolean;
   targetType: 'slideshow' | 'layout';
   targetId: string;
@@ -128,6 +131,9 @@ export async function buildLandingPageEditorProps(
           legalLinkTextColor: (landingPage.legalLinkTextColor as string | null | undefined) ?? '#1e293b',
           buttonColor: (landingPage.buttonColor as string | null | undefined) ?? '#059669',
           buttonTextColor: (landingPage.buttonTextColor as string | null | undefined) ?? '#ffffff',
+          customCssPresetId: (landingPage.customCssPresetId as string | null | undefined) ?? '',
+          customCssClassName: (landingPage.customCssClassName as string | null | undefined) ?? '',
+          customCss: (landingPage.customCss as string | null | undefined) ?? '',
           cookieConsentEnabled: landingPage.cookieConsentEnabled !== false,
           targetType: landingPage.targetType === 'layout' ? 'layout' : 'slideshow',
           targetId: String(landingPage.targetId),
