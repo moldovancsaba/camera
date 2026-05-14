@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import SlideshowManager from '@/components/admin/SlideshowManager';
 import SlideshowLayoutManager from '@/components/admin/SlideshowLayoutManager';
+import LandingPageManager from '@/components/admin/LandingPageManager';
 import EventGallery from '@/components/admin/EventGallery';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 import StyleInheritanceIndicator from '@/components/admin/StyleInheritanceIndicator';
@@ -36,6 +37,7 @@ export default async function EventDetailPage({
   let submissions: any[] = [];
   let slideshows: any[] = [];
   let slideshowLayouts: any[] = [];
+  let landingPages: any[] = [];
   let dbError = null;
 
   try {
@@ -120,6 +122,12 @@ export default async function EventDetailPage({
     slideshowLayouts = await db
       .collection(COLLECTIONS.SLIDESHOW_LAYOUTS)
       .find({ eventId: event.eventId })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    landingPages = await db
+      .collection(COLLECTIONS.LANDING_PAGES)
+      .find({ eventMongoId: id })
       .sort({ createdAt: -1 })
       .toArray();
 
@@ -623,6 +631,21 @@ export default async function EventDetailPage({
             name: l.name,
             isActive: l.isActive !== false,
             createdAt: l.createdAt,
+          }))}
+        />
+      </div>
+
+      <div id="landing-pages" className="mt-8">
+        <LandingPageManager
+          eventMongoId={id}
+          initialLandingPages={landingPages.map((page) => ({
+            _id: page._id!.toString(),
+            slug: page.slug,
+            title: page.title ?? null,
+            targetType: page.targetType === 'layout' ? 'layout' : 'slideshow',
+            targetName: page.targetName,
+            isActive: page.isActive !== false,
+            createdAt: page.createdAt,
           }))}
         />
       </div>

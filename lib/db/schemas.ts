@@ -41,6 +41,7 @@ export const COLLECTIONS = {
   USERS_CACHE: 'users_cache',
   SLIDESHOWS: 'slideshows',
   SLIDESHOW_LAYOUTS: 'slideshow_layouts',
+  LANDING_PAGES: 'landing_pages',
   /** Gym / sport module: lesson templates and logged workouts (same SSO + Atlas as Camera) */
   GYM_LESSONS: 'gym_lessons',
   GYM_WORKOUT_SESSIONS: 'gym_workout_sessions',
@@ -743,6 +744,42 @@ export interface SlideshowLayout {
 }
 
 export type NewSlideshowLayout = Omit<SlideshowLayout, '_id'>;
+
+// ============================================================================
+// LANDING PAGES COLLECTION
+// ============================================================================
+
+export type LandingPageTargetType = 'slideshow' | 'layout';
+
+/**
+ * Public event landing page that can embed either one slideshow or one slideshow layout.
+ */
+export interface LandingPage {
+  _id?: ObjectId;
+  landingPageId: string;
+  eventMongoId: string;
+  eventId: string;
+  eventName: string;
+  slug: string;
+  title?: string | null;
+  description?: string | null;
+  logoId?: string | null;
+  logoUrl?: string | null;
+  qrCodeImageUrl?: string | null;
+  url?: string | null;
+  termsMarkdown?: string | null;
+  termsFileName?: string | null;
+  privacyMarkdown?: string | null;
+  privacyFileName?: string | null;
+  cookieConsentEnabled: boolean;
+  targetType: LandingPageTargetType;
+  targetId: string;
+  targetName: string;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 // ============================================================================
 // USERS CACHE COLLECTION (Optional)

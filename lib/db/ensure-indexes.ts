@@ -167,6 +167,23 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       .createIndex({ eventId: 1, createdAt: -1 }, { name: 'slideshow_layouts_eventId_createdAt' })
   );
 
+  // --- landing pages ---
+  await track(COLLECTIONS.LANDING_PAGES, () =>
+    db
+      .collection(COLLECTIONS.LANDING_PAGES)
+      .createIndex({ landingPageId: 1 }, { unique: true, name: 'landing_pages_landingPageId_unique' })
+  );
+  await track(COLLECTIONS.LANDING_PAGES, () =>
+    db
+      .collection(COLLECTIONS.LANDING_PAGES)
+      .createIndex({ slug: 1 }, { unique: true, name: 'landing_pages_slug_unique' })
+  );
+  await track(COLLECTIONS.LANDING_PAGES, () =>
+    db
+      .collection(COLLECTIONS.LANDING_PAGES)
+      .createIndex({ eventMongoId: 1, createdAt: -1 }, { name: 'landing_pages_eventMongoId_createdAt' })
+  );
+
   // --- gym module ---
   await track(COLLECTIONS.GYM_LESSONS, () =>
     db.collection(COLLECTIONS.GYM_LESSONS).createIndex(
