@@ -92,230 +92,352 @@ export default async function PublicLandingPage({
       ? `/slideshow-layout/${landingPage.targetId}`
       : `/slideshow/${landingPage.targetId}`;
   const targetAspectRatio = await resolveTargetAspectRatio(landingPage);
-  const hasSidebar = Boolean(landingPage.qrCodeImageUrl || landingPage.termsMarkdown || landingPage.privacyMarkdown);
   const hasCallToAction = Boolean(landingPage.url) || landingPage.cookieConsentEnabled === true;
-  const shouldMoveCallToActionToSidebar = hasSidebar && hasCallToAction;
   const hasLogo = Boolean(landingPage.logoUrl);
-  const shouldMoveLogoToSidebar = hasSidebar && hasLogo;
+  const hasDescription = Boolean(landingPage.description);
+  const hasQr = Boolean(landingPage.qrCodeImageUrl);
+  const hasLegal = Boolean(landingPage.termsMarkdown || landingPage.privacyMarkdown);
+  const hasUtility = hasQr || hasLegal || hasLogo || hasCallToAction;
   const landingPageClassName = [
     'landing-page-root',
+    hasUtility ? 'landing-page--has-sidebar' : 'landing-page--no-sidebar',
+    hasCallToAction ? 'landing-page--has-cta' : 'landing-page--no-cta',
+    hasLogo ? 'landing-page--has-logo' : 'landing-page--no-logo',
+    hasDescription ? 'landing-page--has-description' : 'landing-page--no-description',
+    hasQr ? 'landing-page--has-qr' : 'landing-page--no-qr',
+    hasLegal ? 'landing-page--has-legal' : 'landing-page--no-legal',
+    landingPage.targetType === 'layout'
+      ? 'landing-page--target-layout'
+      : 'landing-page--target-slideshow',
     typeof landingPage.customCssClassName === 'string' ? landingPage.customCssClassName.trim() : '',
   ]
     .filter(Boolean)
     .join(' ');
-  const landingPageFallbackCss = `
+  const landingPageBaseCss = `
 .landing-page-root {
+  position: relative;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
   background: #f8fafc;
   color: #0f172a;
-}
-
-.landing-page-root .landing-page-description,
-.landing-page-root .landing-page-cookie-copy {
-  color: #475569;
-}
-
-.landing-page-root .landing-page-cookie-button,
-.landing-page-root .landing-page-url-button {
-  background: #059669;
-  color: #ffffff;
-}
-
-.landing-page-root .landing-page-legal-link {
-  color: #1e293b;
-}
-  `.trim();
-  const landingPageCustomCss =
-    typeof landingPage.customCss === 'string' ? landingPage.customCss.trim() : '';
-  const landingPageFontCss = `.landing-page-root { --landing-display-font: ${landingDisplayFont.style.fontFamily}, Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; }`;
-  const landingPageTextResetCss = `
-.landing-page-root,
-.landing-page-root *,
-.landing-page-root *::before,
-.landing-page-root *::after {
-  text-shadow: none !important;
-  -webkit-text-stroke: 0 !important;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 .landing-page-shell {
-  max-width: none !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  padding-top: 0.5rem !important;
-  padding-bottom: 0.5rem !important;
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: min(100%, 112rem);
+  height: 100%;
+  margin: 0 auto;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.landing-page-header {
+  flex: 0 0 auto;
 }
 
 .landing-page-copy {
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
-  gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
   align-items: center;
   text-align: center;
 }
 
-.landing-page-cta-container {
-  max-width: none !important;
-  width: 100%;
+.landing-page-logo {
+  display: block;
+  max-width: 100%;
+  width: auto;
+  object-fit: contain;
 }
 
-.landing-page-title {
-  width: 100%;
-  max-width: none !important;
-}
-
-.landing-page-title-portrait {
-  width: 100%;
-  text-align: center;
-}
-
-.landing-page-cta-container .landing-page-url-button,
-.landing-page-cta-container .landing-page-cookie-button {
-  width: 100% !important;
-}
-
-.landing-page-logo-portrait {
+.landing-page-logo--portrait-placement {
+  display: block;
   margin-left: auto;
   margin-right: auto;
 }
 
-.landing-page-cta-landscape {
+.landing-page-logo--sidebar-placement {
   display: none;
 }
 
-.landing-page-logo-landscape {
+.landing-page-title {
+  width: 100%;
+  margin: 0;
+}
+
+.landing-page-description {
+  width: 100%;
+  max-width: 64rem;
+  margin: 0;
+}
+
+.landing-page-cta-container {
+  width: 100%;
+}
+
+.landing-page-cta-container--portrait-placement {
+  display: block;
+}
+
+.landing-page-cta-container--sidebar-placement {
   display: none;
+}
+
+.landing-page-actions {
+  width: 100%;
+}
+
+.landing-page-cookie-consent {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.landing-page-cookie-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.landing-page-cookie-checkbox {
+  flex: 0 0 auto;
+  margin-top: 0.2rem;
+}
+
+.landing-page-cookie-copy {
+  margin: 0;
+}
+
+.landing-page-cookie-button,
+.landing-page-url-button {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-align: center;
+  text-decoration: none;
+}
+
+.landing-page-url-button--disabled {
+  pointer-events: none;
+}
+
+.landing-page-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.landing-page-main--with-sidebar {
+  grid-template-columns: 1fr;
+}
+
+.landing-page-media-column {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.landing-page-media-fit {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  align-items: flex-start;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+.landing-page-media-frame {
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-page-media-iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
 }
 
 .landing-page-sidebar {
-  display: grid;
   min-height: 0;
+  display: grid;
   grid-template-columns: 1fr;
   gap: 0.5rem;
 }
 
+.landing-page-sidebar-qr,
+.landing-page-sidebar-cta,
+.landing-page-sidebar-logo,
+.landing-page-sidebar-legal {
+  min-width: 0;
+}
+
+.landing-page-sidebar-qr {
+  min-height: 0;
+}
+
+.landing-page-sidebar-qr-frame {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.landing-page-sidebar-qr-image {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.landing-page-sidebar-cta {
+  min-height: 50px;
+}
+
+.landing-page-sidebar-logo {
+  min-height: 50px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.landing-page-sidebar-logo .landing-page-logo {
+  max-height: 120px;
+}
+
+.landing-page-sidebar-legal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.landing-page-legal-title {
+  margin: 0;
+}
+
+.landing-page-legal-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.landing-page-legal-link {
+  display: block;
+  text-decoration: none;
+}
+
 @media (min-aspect-ratio: 1 / 1) {
   .landing-page-shell {
-    max-width: none !important;
-    padding-left: 0.75rem !important;
-    padding-right: 0.75rem !important;
-    padding-top: 0.75rem !important;
-    padding-bottom: 0.75rem !important;
+    padding: 0.75rem;
   }
 
   .landing-page-copy {
-    padding-left: 0.25rem;
-    padding-right: 0.25rem;
     align-items: flex-start;
     text-align: left;
   }
 
-  .landing-page-cta-container {
-    max-width: 48rem;
-    width: 100%;
-  }
-
-  .landing-page-cta-portrait {
-    display: none !important;
-  }
-
-  .landing-page-cta-landscape {
-    display: block !important;
-  }
-
-  .landing-page-logo-portrait {
-    display: none !important;
-  }
-
-  .landing-page-logo-landscape {
-    display: block !important;
-  }
-
-  .landing-page-title-portrait {
+  .landing-page-title {
     text-align: left;
+  }
+
+  .landing-page-main--with-sidebar {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 260px);
+  }
+
+  .landing-page-cta-container--portrait-placement {
+    display: none;
+  }
+
+  .landing-page-cta-container--sidebar-placement {
+    display: block;
+  }
+
+  .landing-page-logo--portrait-placement {
+    display: none;
+  }
+
+  .landing-page-logo--sidebar-placement {
+    display: block;
+    width: 100%;
   }
 
   .landing-page-sidebar {
     display: flex;
     flex-direction: column;
     height: 100%;
-    min-height: 0;
-    gap: 0.375rem;
+    gap: 0.5rem;
   }
 
   .landing-page-sidebar-qr {
     flex: 1 1 auto;
-    min-height: 0;
   }
 
   .landing-page-sidebar-cta {
     flex: 0 0 auto;
-    min-height: 50px;
   }
 
   .landing-page-sidebar-logo {
     flex: 0 0 auto;
-    min-height: 50px;
   }
 
   .landing-page-sidebar-legal {
     flex: 0 0 auto;
   }
 }
-`.trim();
+  `.trim();
+  const landingPageCustomCss =
+    typeof landingPage.customCss === 'string' ? landingPage.customCss.trim() : '';
+  const landingPageFontCss = `.landing-page-root { --landing-display-font: ${landingDisplayFont.style.fontFamily}, Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; }`;
 
   return (
-    <main className={`${landingPageClassName} ${landingDisplayFont.className} relative h-[100dvh] overflow-hidden text-slate-900`}>
-      <style>{landingPageFallbackCss}</style>
+    <main className={`${landingPageClassName} ${landingDisplayFont.className}`}>
       <style>{landingPageFontCss}</style>
+      <style>{landingPageBaseCss}</style>
       {landingPageCustomCss ? <style>{landingPageCustomCss}</style> : null}
-      <style>{landingPageTextResetCss}</style>
-      <div className="landing-page-shell relative z-10 mx-auto flex h-full max-w-7xl flex-col gap-3 py-3 sm:gap-4 sm:py-5 lg:py-6">
-        <section className="landing-page-copy shrink-0 space-y-3">
-          {landingPage.logoUrl ? (
-            <img
-              src={String(landingPage.logoUrl)}
-              alt={landingPage.title ? `${landingPage.title} logo` : `${landingPage.eventName} logo`}
-              className={`landing-page-logo max-h-12 w-auto object-contain sm:max-h-16 ${
-                shouldMoveLogoToSidebar ? 'landing-page-logo-portrait' : ''
-              }`}
-            />
-          ) : null}
-
+      <div className="landing-page-shell">
+        <header className="landing-page-header">
+          <section className="landing-page-copy">
           {landingPage.title ? (
-            <h1 className="landing-page-title landing-page-title-portrait text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl">
+            <h1 className="landing-page-title">
               {String(landingPage.title)}
             </h1>
           ) : (
-            <h1 className="landing-page-title landing-page-title-portrait text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl">
+            <h1 className="landing-page-title">
               {String(landingPage.eventName)}
             </h1>
           )}
 
           {landingPage.description ? (
-            <p className="landing-page-description max-w-4xl overflow-hidden text-xs leading-5 sm:text-sm sm:leading-6 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">
+            <p className="landing-page-description">
               {String(landingPage.description)}
             </p>
           ) : null}
-
-          {hasCallToAction ? (
-            <div className={`landing-page-cta-container ${shouldMoveCallToActionToSidebar ? 'landing-page-cta-portrait' : ''}`}>
-              <LandingPageCookieConsent
-                slug={slug}
-                enabled={landingPage.cookieConsentEnabled === true}
-                url={typeof landingPage.url === 'string' ? landingPage.url : null}
-                buttonText={typeof landingPage.urlButtonText === 'string' ? landingPage.urlButtonText : null}
-              />
-            </div>
-          ) : null}
-        </section>
+          </section>
+        </header>
 
         <section
-          className={`grid min-h-0 flex-1 gap-3 ${
-            hasSidebar
-              ? 'grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(220px,260px)]'
-              : 'grid-cols-1'
+          className={`landing-page-main ${
+            hasUtility
+              ? 'landing-page-main--with-sidebar'
+              : 'landing-page-main--without-sidebar'
           }`}
         >
-          <div className="landing-page-media-column min-h-0 overflow-hidden">
+          <div className="landing-page-media-column">
             <LandingPageMediaFrame
               aspectRatio={targetAspectRatio}
               src={targetUrl}
@@ -323,22 +445,22 @@ export default async function PublicLandingPage({
             />
           </div>
 
-          {hasSidebar ? (
-            <div className="landing-page-sidebar">
-              {landingPage.qrCodeImageUrl ? (
-                <section className="landing-page-sidebar-qr flex min-h-0 flex-col">
-                  <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-1">
+          {hasUtility ? (
+            <aside className="landing-page-sidebar">
+              {hasQr ? (
+                <section className="landing-page-sidebar-qr">
+                  <div className="landing-page-sidebar-qr-frame">
                     <img
                       src={String(landingPage.qrCodeImageUrl)}
                       alt="Landing page QR code"
-                      className="max-h-full max-w-full object-contain"
+                      className="landing-page-sidebar-qr-image"
                     />
                   </div>
                 </section>
               ) : null}
 
-              {shouldMoveCallToActionToSidebar ? (
-                <section className="landing-page-cta-landscape landing-page-sidebar-cta flex min-h-0 flex-col">
+              {hasCallToAction ? (
+                <section className="landing-page-sidebar-cta">
                   <LandingPageCookieConsent
                     slug={slug}
                     enabled={landingPage.cookieConsentEnabled === true}
@@ -348,28 +470,28 @@ export default async function PublicLandingPage({
                 </section>
               ) : null}
 
-              {shouldMoveLogoToSidebar ? (
-                <section className="landing-page-logo-landscape landing-page-sidebar-logo flex min-h-0 flex-col items-start justify-end">
+              {hasLogo ? (
+                <section className="landing-page-sidebar-logo">
                   <img
                     src={String(landingPage.logoUrl)}
                     alt={landingPage.title ? `${landingPage.title} logo` : `${landingPage.eventName} logo`}
-                    className="landing-page-logo w-auto object-contain"
+                    className="landing-page-logo"
                   />
                 </section>
               ) : null}
 
-              {(landingPage.termsMarkdown || landingPage.privacyMarkdown) ? (
-                <section className="landing-page-sidebar-legal flex min-h-0 flex-col">
-                  <h2 className="shrink-0 text-base font-semibold">
+              {hasLegal ? (
+                <section className="landing-page-sidebar-legal">
+                  <h2 className="landing-page-legal-title">
                     Legal
                   </h2>
-                  <div className="mt-2 flex flex-col gap-2">
+                  <div className="landing-page-legal-links">
                     {landingPage.termsMarkdown ? (
                       <a
                         href={`/landing/${slug}/terms`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="landing-page-legal-link rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold transition-colors hover:bg-slate-50"
+                        className="landing-page-legal-link landing-page-legal-link--terms"
                       >
                         Open terms and conditions
                       </a>
@@ -379,7 +501,7 @@ export default async function PublicLandingPage({
                         href={`/landing/${slug}/privacy`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="landing-page-legal-link rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold transition-colors hover:bg-slate-50"
+                        className="landing-page-legal-link landing-page-legal-link--privacy"
                       >
                         Open privacy policy
                       </a>
@@ -387,7 +509,7 @@ export default async function PublicLandingPage({
                   </div>
                 </section>
               ) : null}
-            </div>
+            </aside>
           ) : null}
         </section>
       </div>

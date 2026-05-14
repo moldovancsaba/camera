@@ -58,10 +58,10 @@ export default function LandingPageMediaFrame({
   return (
     <div
       ref={containerRef}
-      className="flex h-full min-h-0 w-full items-start justify-start overflow-hidden"
+      className="landing-page-media-fit"
     >
       <div
-        className="relative overflow-hidden border border-slate-200 bg-white/90 shadow-xl shadow-slate-300/30 backdrop-blur"
+        className="landing-page-media-frame"
         style={{
           width: size.width > 0 ? `${size.width}px` : '100%',
           height: size.height > 0 ? `${size.height}px` : '100%',
@@ -70,7 +70,7 @@ export default function LandingPageMediaFrame({
         <iframe
           src={src}
           title={title}
-          className="absolute inset-0 h-full w-full"
+          className="landing-page-media-iframe"
         />
       </div>
     </div>

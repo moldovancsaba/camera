@@ -41,15 +41,15 @@ export default function LandingPageCookieConsent({
   };
 
   return (
-    <div>
+    <div className="landing-page-actions">
       {enabled ? (
-        <div className="landing-page-cookie-consent mt-4 space-y-4">
-          <label className="flex items-start gap-3 rounded-xl border border-slate-200/70 bg-white/20 p-4 backdrop-blur-sm">
+        <div className="landing-page-cookie-consent">
+          <label className="landing-page-cookie-row">
             <input
               type="checkbox"
               checked={checked}
               onChange={(e) => setChecked(e.target.checked)}
-              className="mt-1 h-4 w-4"
+              className="landing-page-cookie-checkbox"
             />
             <span className="landing-page-cookie-copy text-sm leading-6">
               I accept cookies for this landing page and want to continue.
@@ -60,7 +60,7 @@ export default function LandingPageCookieConsent({
             type="button"
             onClick={handleAccept}
             disabled={accepted || !checked}
-            className="landing-page-cookie-button w-full rounded-xl px-5 py-4 text-base font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+            className="landing-page-cookie-button"
           >
             {accepted ? 'Accepted' : 'Accept cookies'}
           </button>
@@ -73,10 +73,10 @@ export default function LandingPageCookieConsent({
           target="_blank"
           rel="noopener noreferrer"
           aria-disabled={!canOpenUrl}
-          className={`landing-page-url-button mt-4 block w-full rounded-xl px-5 py-4 text-center text-base font-semibold transition-colors ${
+          className={`landing-page-url-button ${
             canOpenUrl
               ? ''
-              : 'bg-slate-200 text-slate-500 cursor-not-allowed'
+              : 'landing-page-url-button--disabled'
           }`}
         >
           {buttonText?.trim() || 'Open URL'}
