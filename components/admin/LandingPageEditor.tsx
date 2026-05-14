@@ -173,6 +173,7 @@ export default function LandingPageEditor({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingQr, setIsUploadingQr] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [qrStatus, setQrStatus] = useState<string | null>(null);
 
   const targetOptions = useMemo(
     () => (targetType === 'layout' ? layouts : slideshows),
@@ -188,10 +189,33 @@ export default function LandingPageEditor({
     [customCssPresetId]
   );
 
+  const persistQrCodeImageUrl = async (nextQrCodeImageUrl: string) => {
+    if (mode !== 'edit' || !initialLandingPage?._id) return;
+
+    const res = await fetch(`/api/landing-pages/${initialLandingPage._id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        qrCodeImageUrl: nextQrCodeImageUrl,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(
+        typeof data.error === 'string'
+          ? data.error
+          : typeof data.message === 'string'
+            ? data.message
+            : 'Failed to persist QR code image'
+      );
+    }
+  };
+
   const handleQrUpload = async (file: File | null) => {
     if (!file) return;
     setIsUploadingQr(true);
     setError(null);
+    setQrStatus(null);
     try {
       const imageData = await fileToDataUrl(file);
       const res = await fetch('/api/upload-logo', {
@@ -206,11 +230,34 @@ export default function LandingPageEditor({
       if (!res.ok) {
         throw new Error(data.error || 'Failed to upload QR code image');
       }
-      setQrCodeImageUrl(String(data.imageUrl ?? ''));
+      const nextQrCodeImageUrl = String(data.imageUrl ?? '');
+      setQrCodeImageUrl(nextQrCodeImageUrl);
+      await persistQrCodeImageUrl(nextQrCodeImageUrl);
+      setQrStatus(
+        mode === 'edit'
+          ? 'QR code uploaded and saved.'
+          : 'QR code uploaded. Save the landing page to persist it.'
+      );
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Failed to upload QR code image');
     } finally {
       setIsUploadingQr(false);
+    }
+  };
+
+  const handleRemoveQrCode = async () => {
+    setError(null);
+    setQrStatus(null);
+    try {
+      setQrCodeImageUrl('');
+      await persistQrCodeImageUrl('');
+      setQrStatus(
+        mode === 'edit'
+          ? 'QR code removed and saved.'
+          : 'QR code removed. Save the landing page to persist the removal.'
+      );
+    } catch (removeError) {
+      setError(removeError instanceof Error ? removeError.message : 'Failed to remove QR code image');
     }
   };
 
@@ -500,6 +547,11 @@ export default function LandingPageEditor({
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 {isUploadingQr ? 'Uploading QR code…' : 'Upload a QR image for the landing page.'}
               </p>
+              {qrStatus ? (
+                <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
+                  {qrStatus}
+                </p>
+              ) : null}
               {qrCodeImageUrl ? (
                 <div className="mt-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
                   <img
@@ -509,7 +561,7 @@ export default function LandingPageEditor({
                   />
                   <button
                     type="button"
-                    onClick={() => setQrCodeImageUrl('')}
+                    onClick={() => void handleRemoveQrCode()}
                     className="mt-3 px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     Remove QR code
