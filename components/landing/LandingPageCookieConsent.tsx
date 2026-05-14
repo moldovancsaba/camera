@@ -9,7 +9,6 @@ interface Props {
   buttonText?: string | null;
   buttonColor?: string | null;
   buttonTextColor?: string | null;
-  titleColor?: string | null;
   bodyColor?: string | null;
 }
 
@@ -24,7 +23,6 @@ export default function LandingPageCookieConsent({
   buttonText,
   buttonColor,
   buttonTextColor,
-  titleColor,
   bodyColor,
 }: Props) {
   const [accepted, setAccepted] = useState(() => {

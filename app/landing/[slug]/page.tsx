@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import LandingPageCookieConsent from '@/components/landing/LandingPageCookieConsent';
+import LandingPageMediaFrame from '@/components/landing/LandingPageMediaFrame';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, type SlideshowLayoutArea } from '@/lib/db/schemas';
 import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
@@ -84,6 +85,7 @@ export default async function PublicLandingPage({
       ? `/slideshow-layout/${landingPage.targetId}`
       : `/slideshow/${landingPage.targetId}`;
   const targetAspectRatio = await resolveTargetAspectRatio(landingPage);
+  const hasSidebar = Boolean(landingPage.qrCodeImageUrl || landingPage.termsMarkdown || landingPage.privacyMarkdown);
   const landingPageClassName = [
     'landing-page-root',
     typeof landingPage.customCssClassName === 'string' ? landingPage.customCssClassName.trim() : '',
@@ -95,107 +97,103 @@ export default async function PublicLandingPage({
     typeof landingPage.customCss === 'string' ? landingPage.customCss.trim() : '';
 
   return (
-    <main className={`${landingPageClassName} relative min-h-screen text-slate-900`}>
+    <main className={`${landingPageClassName} relative h-[100dvh] overflow-hidden text-slate-900`}>
       <style>{landingPageFallbackCss}</style>
       {landingPageCustomCss ? <style>{landingPageCustomCss}</style> : null}
-      <div className="relative z-10 mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-        <div className="space-y-6">
-          <section className="p-1 sm:p-2">
-            <div>
-              {landingPage.logoUrl ? (
-                <img
-                  src={String(landingPage.logoUrl)}
-                  alt={landingPage.title ? `${landingPage.title} logo` : `${landingPage.eventName} logo`}
-                  className="mb-5 max-h-20 w-auto object-contain"
-                />
-              ) : null}
+      <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col gap-3 px-3 py-3 sm:gap-4 sm:px-5 sm:py-5 lg:px-8 lg:py-6">
+        <section className="shrink-0 space-y-3">
+          {landingPage.logoUrl ? (
+            <img
+              src={String(landingPage.logoUrl)}
+              alt={landingPage.title ? `${landingPage.title} logo` : `${landingPage.eventName} logo`}
+              className="max-h-12 w-auto object-contain sm:max-h-16"
+            />
+          ) : null}
 
-              {landingPage.title ? (
-                <h1
-                  className="text-3xl font-bold tracking-tight sm:text-4xl"
-                  style={{ color: landingPage.titleColor || '#0f172a' }}
-                >
-                  {String(landingPage.title)}
-                </h1>
-              ) : (
-                <h1
-                  className="text-3xl font-bold tracking-tight sm:text-4xl"
-                  style={{ color: landingPage.titleColor || '#0f172a' }}
-                >
-                  {String(landingPage.eventName)}
-                </h1>
-              )}
+          {landingPage.title ? (
+            <h1
+              className="max-w-5xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl"
+              style={{ color: landingPage.titleColor || '#0f172a' }}
+            >
+              {String(landingPage.title)}
+            </h1>
+          ) : (
+            <h1
+              className="max-w-5xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl"
+              style={{ color: landingPage.titleColor || '#0f172a' }}
+            >
+              {String(landingPage.eventName)}
+            </h1>
+          )}
 
-              {landingPage.description ? (
-                <p
-                  className="mt-4 max-w-3xl text-sm leading-7 sm:text-base"
-                  style={{ color: landingPage.descriptionColor || '#475569' }}
-                >
-                  {String(landingPage.description)}
-                </p>
-              ) : null}
-            </div>
+          {landingPage.description ? (
+            <p
+              className="max-w-4xl overflow-hidden text-xs leading-5 sm:text-sm sm:leading-6 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]"
+              style={{ color: landingPage.descriptionColor || '#475569' }}
+            >
+              {String(landingPage.description)}
+            </p>
+          ) : null}
 
-            <div className="mt-6">
-              <LandingPageCookieConsent
-                slug={slug}
-                enabled={landingPage.cookieConsentEnabled === true}
-                url={typeof landingPage.url === 'string' ? landingPage.url : null}
-                buttonText={typeof landingPage.urlButtonText === 'string' ? landingPage.urlButtonText : null}
-                buttonColor={typeof landingPage.buttonColor === 'string' ? landingPage.buttonColor : null}
-                buttonTextColor={
-                  typeof landingPage.buttonTextColor === 'string' ? landingPage.buttonTextColor : null
-                }
-                titleColor={
-                  typeof landingPage.cookiesTitleColor === 'string' ? landingPage.cookiesTitleColor : null
-                }
-                bodyColor={typeof landingPage.cookiesBodyColor === 'string' ? landingPage.cookiesBodyColor : null}
-              />
-            </div>
+          <div className="max-w-3xl">
+            <LandingPageCookieConsent
+              slug={slug}
+              enabled={landingPage.cookieConsentEnabled === true}
+              url={typeof landingPage.url === 'string' ? landingPage.url : null}
+              buttonText={typeof landingPage.urlButtonText === 'string' ? landingPage.urlButtonText : null}
+              buttonColor={typeof landingPage.buttonColor === 'string' ? landingPage.buttonColor : null}
+              buttonTextColor={
+                typeof landingPage.buttonTextColor === 'string' ? landingPage.buttonTextColor : null
+              }
+              bodyColor={typeof landingPage.cookiesBodyColor === 'string' ? landingPage.cookiesBodyColor : null}
+            />
+          </div>
+        </section>
 
-            <div className="mt-6 overflow-hidden rounded-[28px] border border-slate-200 bg-white/90 shadow-xl shadow-slate-300/30 backdrop-blur">
-              <div
-                className="relative w-full overflow-hidden bg-black"
-                style={{ aspectRatio: String(targetAspectRatio) }}
-              >
-                <iframe
-                  src={targetUrl}
-                  title={String(landingPage.targetName || landingPage.eventName)}
-                  className="absolute inset-0 h-full w-full"
-                />
-              </div>
-            </div>
-          </section>
+        <section
+          className={`grid min-h-0 flex-1 gap-3 ${
+            hasSidebar
+              ? 'grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(220px,260px)]'
+              : 'grid-cols-1'
+          }`}
+        >
+          <div className="min-h-0 overflow-hidden border border-slate-200 bg-white/90 shadow-xl shadow-slate-300/30 backdrop-blur">
+            <LandingPageMediaFrame
+              aspectRatio={targetAspectRatio}
+              src={targetUrl}
+              title={String(landingPage.targetName || landingPage.eventName)}
+            />
+          </div>
 
-          {(landingPage.qrCodeImageUrl || landingPage.termsMarkdown || landingPage.privacyMarkdown) ? (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {hasSidebar ? (
+            <div className="grid min-h-0 auto-rows-fr grid-cols-2 gap-3 lg:grid-cols-1">
               {landingPage.qrCodeImageUrl ? (
-                <section className="p-1">
+                <section className="flex min-h-0 flex-col">
                   <h2
-                    className="text-lg font-semibold"
+                    className="shrink-0 text-base font-semibold"
                     style={{ color: landingPage.qrTitleColor || '#0f172a' }}
                   >
                     QR code
                   </h2>
-                  <div className="mt-4 p-2">
+                  <div className="mt-2 flex min-h-0 flex-1 items-center justify-center overflow-hidden p-1">
                     <img
                       src={String(landingPage.qrCodeImageUrl)}
                       alt="Landing page QR code"
-                      className="mx-auto max-h-72 w-full object-contain"
+                      className="max-h-full max-w-full object-contain"
                     />
                   </div>
                 </section>
               ) : null}
 
               {(landingPage.termsMarkdown || landingPage.privacyMarkdown) ? (
-                <section className="p-1">
+                <section className="flex min-h-0 flex-col">
                   <h2
-                    className="text-lg font-semibold"
+                    className="shrink-0 text-base font-semibold"
                     style={{ color: landingPage.legalTitleColor || '#0f172a' }}
                   >
                     Legal
                   </h2>
-                  <div className="mt-4 flex flex-col gap-3">
+                  <div className="mt-2 flex flex-col gap-2">
                     {landingPage.termsMarkdown ? (
                       <a
                         href={`/landing/${slug}/terms`}
@@ -223,7 +221,7 @@ export default async function PublicLandingPage({
               ) : null}
             </div>
           ) : null}
-        </div>
+        </section>
       </div>
     </main>
   );
