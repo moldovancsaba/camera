@@ -156,8 +156,16 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
 .sihf-background .landing-page-sidebar-cta,
 .sihf-background .landing-page-sidebar-logo {
   border: var(--landing-border);
-  background: var(--landing-panel-bg);
   box-shadow: var(--landing-shadow);
+}
+
+.sihf-background .landing-page-sidebar-qr,
+.sihf-background .landing-page-sidebar-logo {
+  background: transparent;
+}
+
+.sihf-background .landing-page-sidebar-cta {
+  background: transparent;
 }
 
 .sihf-background .landing-page-sidebar-qr-frame,
@@ -223,11 +231,13 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   letter-spacing: 0.02em;
   line-height: 1;
   box-shadow: 10px 10px 0 #000000;
+  overflow: hidden;
+  text-overflow: clip;
 }
 
 .sihf-background .landing-page-url-button {
   white-space: nowrap;
-  font-size: clamp(1.05rem, 2.1vw, 2.15rem);
+  font-size: clamp(0.8rem, 1.4vw, 1.5rem);
 }
 
 .sihf-background .landing-page-cookie-button {
@@ -312,6 +322,7 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
 
   .sihf-background .landing-page-sidebar-cta {
     min-height: 0;
+    container-type: inline-size;
   }
 
   .sihf-background .landing-page-sidebar-cta .landing-page-actions,
@@ -319,6 +330,13 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   .sihf-background .landing-page-sidebar-cta .landing-page-cookie-button {
     height: 100%;
     min-height: 100%;
+  }
+
+  .sihf-background .landing-page-sidebar-cta .landing-page-url-button,
+  .sihf-background .landing-page-sidebar-cta .landing-page-cookie-button {
+    font-size: clamp(0.75rem, 10cqi, 1.35rem);
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
 
   .sihf-background .landing-page-sidebar-logo {
