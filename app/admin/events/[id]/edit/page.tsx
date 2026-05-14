@@ -128,8 +128,11 @@ export default function EditEventPage({
         if (!uploadResponse.ok) {
           throw new Error(uploadResult.error || 'Upload failed');
         }
-        
-        logoUrl = uploadResult.imageUrl;
+
+        logoUrl = uploadResult?.data?.imageUrl;
+        if (!logoUrl) {
+          throw new Error('Upload finished without an image URL');
+        }
       } catch (err: any) {
         console.error('Logo upload error:', err);
         setError(`Failed to upload logo: ${err.message}`);

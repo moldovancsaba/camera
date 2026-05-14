@@ -294,7 +294,10 @@ export default function LandingPageEditor({
       if (!res.ok) {
         throw new Error(data.error || 'Failed to upload QR code image');
       }
-      const nextQrCodeImageUrl = String(data.imageUrl ?? '');
+      const nextQrCodeImageUrl = String(data?.data?.imageUrl ?? '');
+      if (!nextQrCodeImageUrl) {
+        throw new Error('Upload finished without an image URL.');
+      }
       setQrCodeImageUrl(nextQrCodeImageUrl);
       await persistQrCodeImageUrl(nextQrCodeImageUrl);
       setQrStatus(
