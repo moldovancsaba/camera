@@ -7,9 +7,6 @@ interface Props {
   enabled: boolean;
   url: string | null;
   buttonText?: string | null;
-  buttonColor?: string | null;
-  buttonTextColor?: string | null;
-  bodyColor?: string | null;
 }
 
 function storageKey(slug: string): string {
@@ -21,9 +18,6 @@ export default function LandingPageCookieConsent({
   enabled,
   url,
   buttonText,
-  buttonColor,
-  buttonTextColor,
-  bodyColor,
 }: Props) {
   const [accepted, setAccepted] = useState(() => {
     if (typeof window === 'undefined' || !enabled) return false;
@@ -57,7 +51,7 @@ export default function LandingPageCookieConsent({
               onChange={(e) => setChecked(e.target.checked)}
               className="mt-1 h-4 w-4"
             />
-            <span className="text-sm leading-6" style={{ color: bodyColor ?? '#475569' }}>
+            <span className="landing-page-cookie-copy text-sm leading-6">
               I accept cookies for this landing page and want to continue.
             </span>
           </label>
@@ -67,10 +61,6 @@ export default function LandingPageCookieConsent({
             onClick={handleAccept}
             disabled={accepted || !checked}
             className="landing-page-cookie-button w-full rounded-xl px-5 py-4 text-base font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-            style={{
-              backgroundColor: buttonColor ?? '#059669',
-              color: buttonTextColor ?? '#ffffff',
-            }}
           >
             {accepted ? 'Accepted' : 'Accept cookies'}
           </button>
@@ -88,14 +78,6 @@ export default function LandingPageCookieConsent({
               ? ''
               : 'bg-slate-200 text-slate-500 cursor-not-allowed'
           }`}
-          style={
-            canOpenUrl
-              ? {
-                  backgroundColor: buttonColor ?? '#059669',
-                  color: buttonTextColor ?? '#ffffff',
-                }
-              : undefined
-          }
         >
           {buttonText?.trim() || 'Open URL'}
         </a>

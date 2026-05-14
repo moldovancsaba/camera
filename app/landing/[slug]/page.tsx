@@ -103,7 +103,27 @@ export default async function PublicLandingPage({
   ]
     .filter(Boolean)
     .join(' ');
-  const landingPageFallbackCss = `.landing-page-root { background: ${landingPage.backgroundColor || '#f8fafc'}; }`;
+  const landingPageFallbackCss = `
+.landing-page-root {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.landing-page-root .landing-page-description,
+.landing-page-root .landing-page-cookie-copy {
+  color: #475569;
+}
+
+.landing-page-root .landing-page-cookie-button,
+.landing-page-root .landing-page-url-button {
+  background: #059669;
+  color: #ffffff;
+}
+
+.landing-page-root .landing-page-legal-link {
+  color: #1e293b;
+}
+  `.trim();
   const landingPageCustomCss =
     typeof landingPage.customCss === 'string' ? landingPage.customCss.trim() : '';
   const landingPageFontCss = `.landing-page-root { --landing-display-font: ${landingDisplayFont.style.fontFamily}, Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; }`;
@@ -261,26 +281,17 @@ export default async function PublicLandingPage({
           ) : null}
 
           {landingPage.title ? (
-            <h1
-              className="landing-page-title landing-page-title-portrait text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl"
-              style={{ color: landingPage.titleColor || '#0f172a' }}
-            >
+            <h1 className="landing-page-title landing-page-title-portrait text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl">
               {String(landingPage.title)}
             </h1>
           ) : (
-            <h1
-              className="landing-page-title landing-page-title-portrait text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl"
-              style={{ color: landingPage.titleColor || '#0f172a' }}
-            >
+            <h1 className="landing-page-title landing-page-title-portrait text-2xl font-bold leading-tight tracking-tight sm:text-3xl lg:text-4xl">
               {String(landingPage.eventName)}
             </h1>
           )}
 
           {landingPage.description ? (
-            <p
-              className="max-w-4xl overflow-hidden text-xs leading-5 sm:text-sm sm:leading-6 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]"
-              style={{ color: landingPage.descriptionColor || '#475569' }}
-            >
+            <p className="landing-page-description max-w-4xl overflow-hidden text-xs leading-5 sm:text-sm sm:leading-6 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">
               {String(landingPage.description)}
             </p>
           ) : null}
@@ -292,11 +303,6 @@ export default async function PublicLandingPage({
                 enabled={landingPage.cookieConsentEnabled === true}
                 url={typeof landingPage.url === 'string' ? landingPage.url : null}
                 buttonText={typeof landingPage.urlButtonText === 'string' ? landingPage.urlButtonText : null}
-                buttonColor={typeof landingPage.buttonColor === 'string' ? landingPage.buttonColor : null}
-                buttonTextColor={
-                  typeof landingPage.buttonTextColor === 'string' ? landingPage.buttonTextColor : null
-                }
-                bodyColor={typeof landingPage.cookiesBodyColor === 'string' ? landingPage.cookiesBodyColor : null}
               />
             </div>
           ) : null}
@@ -338,11 +344,6 @@ export default async function PublicLandingPage({
                     enabled={landingPage.cookieConsentEnabled === true}
                     url={typeof landingPage.url === 'string' ? landingPage.url : null}
                     buttonText={typeof landingPage.urlButtonText === 'string' ? landingPage.urlButtonText : null}
-                    buttonColor={typeof landingPage.buttonColor === 'string' ? landingPage.buttonColor : null}
-                    buttonTextColor={
-                      typeof landingPage.buttonTextColor === 'string' ? landingPage.buttonTextColor : null
-                    }
-                    bodyColor={typeof landingPage.cookiesBodyColor === 'string' ? landingPage.cookiesBodyColor : null}
                   />
                 </section>
               ) : null}
@@ -359,10 +360,7 @@ export default async function PublicLandingPage({
 
               {(landingPage.termsMarkdown || landingPage.privacyMarkdown) ? (
                 <section className="landing-page-sidebar-legal flex min-h-0 flex-col">
-                  <h2
-                    className="shrink-0 text-base font-semibold"
-                    style={{ color: landingPage.legalTitleColor || '#0f172a' }}
-                  >
+                  <h2 className="shrink-0 text-base font-semibold">
                     Legal
                   </h2>
                   <div className="mt-2 flex flex-col gap-2">
@@ -371,8 +369,7 @@ export default async function PublicLandingPage({
                         href={`/landing/${slug}/terms`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold transition-colors hover:bg-slate-50"
-                        style={{ color: landingPage.legalLinkTextColor || '#1e293b' }}
+                        className="landing-page-legal-link rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold transition-colors hover:bg-slate-50"
                       >
                         Open terms and conditions
                       </a>
@@ -382,8 +379,7 @@ export default async function PublicLandingPage({
                         href={`/landing/${slug}/privacy`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold transition-colors hover:bg-slate-50"
-                        style={{ color: landingPage.legalLinkTextColor || '#1e293b' }}
+                        className="landing-page-legal-link rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold transition-colors hover:bg-slate-50"
                       >
                         Open privacy policy
                       </a>

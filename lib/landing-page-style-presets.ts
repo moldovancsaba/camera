@@ -5,7 +5,7 @@ export interface LandingPageStylePreset {
   css: string;
 }
 
-export const LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
+export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
   {
     id: 'sihf-red-ice',
     name: 'SIHF Red Ice',
@@ -196,5 +196,5 @@ export function getLandingPageStylePreset(
   id: string | null | undefined
 ): LandingPageStylePreset | null {
   if (!id) return null;
-  return LANDING_PAGE_STYLE_PRESETS.find((preset) => preset.id === id) ?? null;
+  return DEFAULT_LANDING_PAGE_STYLE_PRESETS.find((preset) => preset.id === id) ?? null;
 }

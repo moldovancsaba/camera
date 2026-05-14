@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp, type LandingPageTargetType } from '@/lib/db/schemas';
 import { normalizeLandingPageSlugInput } from '@/lib/landing-pages';
-import { getLandingPageStylePreset } from '@/lib/landing-page-style-presets';
+import { upsertLandingPageCssPreset } from '@/lib/landing-page-css-presets';
 import {
   withErrorHandler,
   requireAdmin,
@@ -15,7 +15,6 @@ import {
 
 const MAX_MARKDOWN_CHARS = 100_000;
 const MAX_CUSTOM_CSS_CHARS = 40_000;
-const HEX_COLOR_RE = /^#([0-9a-fA-F]{6})$/;
 const CSS_CLASS_RE = /^[A-Za-z_-][A-Za-z0-9_-]*(?:\s+[A-Za-z_-][A-Za-z0-9_-]*)*$/;
 
 function serializeLandingPage(doc: Record<string, unknown>) {
@@ -35,15 +34,6 @@ function optionalMarkdown(value: unknown, label: string): string | null {
   if (!text) return null;
   if (text.length > MAX_MARKDOWN_CHARS) {
     throw apiBadRequest(`${label} is too large.`);
-  }
-  return text;
-}
-
-function colorOrNull(value: unknown, label: string): string | null {
-  const text = textOrNull(value);
-  if (!text) return null;
-  if (!HEX_COLOR_RE.test(text)) {
-    throw apiBadRequest(`${label} must be a #RRGGBB value.`);
   }
   return text;
 }
@@ -104,7 +94,7 @@ export const GET = withErrorHandler(async (
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) => {
-  await requireAdmin();
+  const session = await requireAdmin();
   const { id } = await context.params;
   if (!ObjectId.isValid(id)) {
     throw apiBadRequest('Invalid landing page ID.');
@@ -128,7 +118,7 @@ export const PATCH = withErrorHandler(async (
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) => {
-  await requireAdmin();
+  const session = await requireAdmin();
   const { id } = await context.params;
   if (!ObjectId.isValid(id)) {
     throw apiBadRequest('Invalid landing page ID.');
@@ -172,16 +162,6 @@ export const PATCH = withErrorHandler(async (
   if (body.termsFileName !== undefined) updates.termsFileName = textOrNull(body.termsFileName);
   if (body.privacyMarkdown !== undefined) updates.privacyMarkdown = optionalMarkdown(body.privacyMarkdown, 'Privacy policy');
   if (body.privacyFileName !== undefined) updates.privacyFileName = textOrNull(body.privacyFileName);
-  if (body.backgroundColor !== undefined) updates.backgroundColor = colorOrNull(body.backgroundColor, 'Background color');
-  if (body.titleColor !== undefined) updates.titleColor = colorOrNull(body.titleColor, 'Title color');
-  if (body.descriptionColor !== undefined) updates.descriptionColor = colorOrNull(body.descriptionColor, 'Description color');
-  if (body.qrTitleColor !== undefined) updates.qrTitleColor = colorOrNull(body.qrTitleColor, 'QR title color');
-  if (body.cookiesTitleColor !== undefined) updates.cookiesTitleColor = colorOrNull(body.cookiesTitleColor, 'Cookies title color');
-  if (body.cookiesBodyColor !== undefined) updates.cookiesBodyColor = colorOrNull(body.cookiesBodyColor, 'Cookies body color');
-  if (body.legalTitleColor !== undefined) updates.legalTitleColor = colorOrNull(body.legalTitleColor, 'Legal title color');
-  if (body.legalLinkTextColor !== undefined) updates.legalLinkTextColor = colorOrNull(body.legalLinkTextColor, 'Legal link text color');
-  if (body.buttonColor !== undefined) updates.buttonColor = colorOrNull(body.buttonColor, 'Button color');
-  if (body.buttonTextColor !== undefined) updates.buttonTextColor = colorOrNull(body.buttonTextColor, 'Button text color');
   if (body.cookieConsentEnabled !== undefined) updates.cookieConsentEnabled = Boolean(body.cookieConsentEnabled);
   if (body.isActive !== undefined) updates.isActive = Boolean(body.isActive);
 
@@ -190,21 +170,31 @@ export const PATCH = withErrorHandler(async (
     body.customCssClassName !== undefined ||
     body.customCss !== undefined
   ) {
-    const presetId =
-      body.customCssPresetId !== undefined
-        ? textOrNull(body.customCssPresetId)
-        : textOrNull(existing.customCssPresetId);
-    const preset = presetId ? getLandingPageStylePreset(presetId) : null;
-    if (presetId && !preset) {
-      throw apiBadRequest('Selected CSS preset was not found.');
+    const className = optionalCssClassName(
+      body.customCssClassName !== undefined ? body.customCssClassName : existing.customCssClassName
+    );
+    const css = optionalCustomCss(
+      body.customCss !== undefined ? body.customCss : existing.customCss
+    );
+    if (className && css) {
+      const preset = await upsertLandingPageCssPreset(db, {
+        presetId:
+          body.customCssPresetId !== undefined
+            ? textOrNull(body.customCssPresetId)
+            : textOrNull(existing.customCssPresetId),
+        name: textOrNull(body.customCssPresetName),
+        className,
+        css,
+        createdBy: session.user.id,
+      });
+      updates.customCssPresetId = preset.presetId;
+      updates.customCssClassName = preset.className;
+      updates.customCss = preset.css;
+    } else {
+      updates.customCssPresetId = null;
+      updates.customCssClassName = className;
+      updates.customCss = css;
     }
-    updates.customCssPresetId = presetId;
-    updates.customCssClassName = optionalCssClassName(
-      body.customCssClassName !== undefined ? body.customCssClassName : preset?.className ?? existing.customCssClassName
-    );
-    updates.customCss = optionalCustomCss(
-      body.customCss !== undefined ? body.customCss : preset?.css ?? existing.customCss
-    );
   }
 
   if (body.logoId !== undefined) {

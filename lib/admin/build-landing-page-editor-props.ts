@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { listLandingPageCssPresets, type LandingPageCssPresetOption } from '@/lib/landing-page-css-presets';
 
 export interface LandingPageEditorOption {
   id: string;
@@ -26,16 +27,6 @@ export interface LandingPageEditorInitialValue {
   termsFileName?: string | null;
   privacyMarkdown?: string | null;
   privacyFileName?: string | null;
-  backgroundColor?: string | null;
-  titleColor?: string | null;
-  descriptionColor?: string | null;
-  qrTitleColor?: string | null;
-  cookiesTitleColor?: string | null;
-  cookiesBodyColor?: string | null;
-  legalTitleColor?: string | null;
-  legalLinkTextColor?: string | null;
-  buttonColor?: string | null;
-  buttonTextColor?: string | null;
   customCssPresetId?: string | null;
   customCssClassName?: string | null;
   customCss?: string | null;
@@ -51,6 +42,7 @@ export interface LandingPageEditorPropsData {
   slideshows: LandingPageEditorOption[];
   layouts: LandingPageEditorOption[];
   logos: LandingPageEditorLogo[];
+  cssPresets: LandingPageCssPresetOption[];
   landingPage: LandingPageEditorInitialValue | null;
 }
 
@@ -67,7 +59,7 @@ export async function buildLandingPageEditorProps(
 
   if (!event) return null;
 
-  const [slideshows, layouts, logos, landingPage] = await Promise.all([
+  const [slideshows, layouts, logos, cssPresets, landingPage] = await Promise.all([
     db
       .collection(COLLECTIONS.SLIDESHOWS)
       .find({ eventId: event.eventId })
@@ -84,6 +76,7 @@ export async function buildLandingPageEditorProps(
       .sort({ createdAt: -1 })
       .limit(100)
       .toArray(),
+    listLandingPageCssPresets(db),
     landingPageMongoId && ObjectId.isValid(landingPageMongoId)
       ? db
           .collection(COLLECTIONS.LANDING_PAGES)
@@ -107,6 +100,7 @@ export async function buildLandingPageEditorProps(
       name: String(logo.name),
       imageUrl: String(logo.imageUrl),
     })),
+    cssPresets,
     landingPage: landingPage
       ? {
           _id: String(landingPage._id),
@@ -121,16 +115,6 @@ export async function buildLandingPageEditorProps(
           termsFileName: (landingPage.termsFileName as string | null | undefined) ?? '',
           privacyMarkdown: (landingPage.privacyMarkdown as string | null | undefined) ?? '',
           privacyFileName: (landingPage.privacyFileName as string | null | undefined) ?? '',
-          backgroundColor: (landingPage.backgroundColor as string | null | undefined) ?? '#f8fafc',
-          titleColor: (landingPage.titleColor as string | null | undefined) ?? '#0f172a',
-          descriptionColor: (landingPage.descriptionColor as string | null | undefined) ?? '#475569',
-          qrTitleColor: (landingPage.qrTitleColor as string | null | undefined) ?? '#0f172a',
-          cookiesTitleColor: (landingPage.cookiesTitleColor as string | null | undefined) ?? '#0f172a',
-          cookiesBodyColor: (landingPage.cookiesBodyColor as string | null | undefined) ?? '#475569',
-          legalTitleColor: (landingPage.legalTitleColor as string | null | undefined) ?? '#0f172a',
-          legalLinkTextColor: (landingPage.legalLinkTextColor as string | null | undefined) ?? '#1e293b',
-          buttonColor: (landingPage.buttonColor as string | null | undefined) ?? '#059669',
-          buttonTextColor: (landingPage.buttonTextColor as string | null | undefined) ?? '#ffffff',
           customCssPresetId: (landingPage.customCssPresetId as string | null | undefined) ?? '',
           customCssClassName: (landingPage.customCssClassName as string | null | undefined) ?? '',
           customCss: (landingPage.customCss as string | null | undefined) ?? '',

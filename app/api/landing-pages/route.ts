@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateId, generateTimestamp, type LandingPageTargetType } from '@/lib/db/schemas';
 import { normalizeLandingPageSlugInput } from '@/lib/landing-pages';
-import { getLandingPageStylePreset } from '@/lib/landing-page-style-presets';
+import { upsertLandingPageCssPreset } from '@/lib/landing-page-css-presets';
 import {
   withErrorHandler,
   requireAdmin,
@@ -15,21 +15,11 @@ import {
 
 const MAX_MARKDOWN_CHARS = 100_000;
 const MAX_CUSTOM_CSS_CHARS = 40_000;
-const HEX_COLOR_RE = /^#([0-9a-fA-F]{6})$/;
 const CSS_CLASS_RE = /^[A-Za-z_-][A-Za-z0-9_-]*(?:\s+[A-Za-z_-][A-Za-z0-9_-]*)*$/;
 
 function textOrNull(value: unknown): string | null {
   const trimmed = String(value ?? '').trim();
   return trimmed ? trimmed : null;
-}
-
-function colorOrNull(value: unknown, label: string): string | null {
-  const text = textOrNull(value);
-  if (!text) return null;
-  if (!HEX_COLOR_RE.test(text)) {
-    throw apiBadRequest(`${label} must be a #RRGGBB value.`);
-  }
-  return text;
 }
 
 function optionalMarkdown(value: unknown, label: string): string | null {
@@ -165,11 +155,18 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     logoUrl = String(logo.imageUrl ?? '');
   }
 
-  const customCssPresetId = textOrNull(body.customCssPresetId);
-  const customCssPreset = customCssPresetId ? getLandingPageStylePreset(customCssPresetId) : null;
-  if (customCssPresetId && !customCssPreset) {
-    throw apiBadRequest('Selected CSS preset was not found.');
-  }
+  const customCssClassName = optionalCssClassName(body.customCssClassName);
+  const customCss = optionalCustomCss(body.customCss);
+  const savedCssPreset =
+    customCssClassName && customCss
+      ? await upsertLandingPageCssPreset(db, {
+          presetId: textOrNull(body.customCssPresetId),
+          name: textOrNull(body.customCssPresetName),
+          className: customCssClassName,
+          css: customCss,
+          createdBy: session.user.id,
+        })
+      : null;
 
   const now = generateTimestamp();
   const landingPage = {
@@ -189,19 +186,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     termsFileName: textOrNull(body.termsFileName),
     privacyMarkdown: optionalMarkdown(body.privacyMarkdown, 'Privacy policy'),
     privacyFileName: textOrNull(body.privacyFileName),
-    backgroundColor: colorOrNull(body.backgroundColor, 'Background color'),
-    titleColor: colorOrNull(body.titleColor, 'Title color'),
-    descriptionColor: colorOrNull(body.descriptionColor, 'Description color'),
-    qrTitleColor: colorOrNull(body.qrTitleColor, 'QR title color'),
-    cookiesTitleColor: colorOrNull(body.cookiesTitleColor, 'Cookies title color'),
-    cookiesBodyColor: colorOrNull(body.cookiesBodyColor, 'Cookies body color'),
-    legalTitleColor: colorOrNull(body.legalTitleColor, 'Legal title color'),
-    legalLinkTextColor: colorOrNull(body.legalLinkTextColor, 'Legal link text color'),
-    buttonColor: colorOrNull(body.buttonColor, 'Button color'),
-    buttonTextColor: colorOrNull(body.buttonTextColor, 'Button text color'),
-    customCssPresetId,
-    customCssClassName: optionalCssClassName(body.customCssClassName ?? customCssPreset?.className),
-    customCss: optionalCustomCss(body.customCss ?? customCssPreset?.css),
+    customCssPresetId: savedCssPreset?.presetId ?? null,
+    customCssClassName: savedCssPreset?.className ?? customCssClassName,
+    customCss: savedCssPreset?.css ?? customCss,
     cookieConsentEnabled: Boolean(body.cookieConsentEnabled),
     targetType,
     targetId: target.targetId,

@@ -42,6 +42,7 @@ export const COLLECTIONS = {
   SLIDESHOWS: 'slideshows',
   SLIDESHOW_LAYOUTS: 'slideshow_layouts',
   LANDING_PAGES: 'landing_pages',
+  LANDING_PAGE_CSS_PRESETS: 'landing_page_css_presets',
   /** Gym / sport module: lesson templates and logged workouts (same SSO + Atlas as Camera) */
   GYM_LESSONS: 'gym_lessons',
   GYM_WORKOUT_SESSIONS: 'gym_workout_sessions',
@@ -797,6 +798,18 @@ export interface LandingPage {
   targetName: string;
   isActive: boolean;
   createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LandingPageCssPreset {
+  _id?: ObjectId;
+  presetId: string;
+  name: string;
+  className: string;
+  css: string;
+  isSystem: boolean;
+  createdBy?: string | null;
   createdAt: string;
   updatedAt: string;
 }

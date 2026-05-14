@@ -21,6 +21,7 @@ export default async function EditLandingPageForEvent({
       slideshows={props.slideshows}
       layouts={props.layouts}
       logos={props.logos}
+      cssPresets={props.cssPresets}
       initialLandingPage={props.landingPage}
     />
   );
