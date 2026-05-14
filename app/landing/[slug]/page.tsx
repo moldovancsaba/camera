@@ -200,7 +200,7 @@ export default async function PublicLandingPage({
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    gap: 0.5rem;
+    gap: 0.375rem;
   }
 
   .landing-page-sidebar-qr {
