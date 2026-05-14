@@ -166,7 +166,7 @@ export default async function PublicLandingPage({
               : 'grid-cols-1'
           }`}
         >
-          <div className="min-h-0 overflow-hidden border border-slate-200 bg-white/90 shadow-xl shadow-slate-300/30 backdrop-blur">
+          <div className="min-h-0 overflow-hidden">
             <LandingPageMediaFrame
               aspectRatio={targetAspectRatio}
               src={targetUrl}
