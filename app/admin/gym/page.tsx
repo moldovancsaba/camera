@@ -14,17 +14,17 @@ export default function AdminGymHubPage() {
       </p>
       <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-6 shadow-sm dark:border-emerald-800 dark:bg-emerald-900/20">
-          <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">FunFitFan Experience</p>
+          <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Gym Settings</p>
           <p className="mt-2 text-sm text-emerald-800 dark:text-emerald-200">
-            Partner-scoped Gym experience that uses Camera events, frames, submissions, and slideshow resources under
-            the hood.
+            Configure the current Gym member experience, including default framing and activity options, using Camera
+            Core resources under the hood.
           </p>
           <div className="mt-4">
             <Link
               href="/admin/gym/funfitfan"
               className="inline-flex rounded-lg bg-emerald-600 px-6 py-3 font-semibold text-white hover:bg-emerald-700"
             >
-              Open FunFitFan
+              Open Gym Settings
             </Link>
           </div>
         </div>

@@ -20,11 +20,23 @@ interface CollapsibleSidebarProps {
   };
 }
 
+interface NavItem {
+  href: string;
+  icon: string;
+  label: string;
+  indent?: boolean;
+}
+
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
 export default function CollapsibleSidebar({ session }: CollapsibleSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
 
-  const navSections = [
+  const navSections: NavSection[] = [
     {
       title: 'Core',
       items: [
@@ -46,7 +58,6 @@ export default function CollapsibleSidebar({ session }: CollapsibleSidebarProps)
       items: [
         { href: '/admin/events', icon: '🎯', label: 'Events App' },
         { href: '/admin/gym', icon: '💪', label: 'Gym App' },
-        { href: '/admin/gym/funfitfan', icon: '🏃', label: 'FunFitFan', indent: true },
       ],
     },
   ];

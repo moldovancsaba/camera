@@ -1,5 +1,5 @@
 /**
- * FunFitFan admin: default frame for all FFF flows (partner + per-user virtual events).
+ * Gym admin settings: default frame and activity options for the current member experience.
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -10,7 +10,7 @@ import Link from 'next/link';
 import AdminFffFrameForm from '@/components/funfitfan/AdminFffFrameForm';
 import AdminFffActivitiesForm from '@/components/funfitfan/AdminFffActivitiesForm';
 
-export default async function AdminFunFitFanPage() {
+export default async function AdminGymSettingsPage() {
   let frames: { frameId: string; name: string }[] = [];
   let currentFrameId = '';
   let sportActivities: string[] = [];
@@ -40,12 +40,11 @@ export default async function AdminFunFitFanPage() {
       <Link href="/admin/gym" className="app-panel-back">
         ← Gym App
       </Link>
-      <h1 className="app-panel-title">Gym App / FunFitFan</h1>
+      <h1 className="app-panel-title">Gym Settings</h1>
       <p className="app-panel-lede">
-        FunFitFan is one Gym app experience built on Camera Core resources. Members get a virtual Camera{' '}
-        <strong>event</strong> under the <code>FunFitFan</code> partner. Each log is a <strong>submission</strong> to
-        that event with a framed selfie and activity text. Their <strong>slideshow</strong> uses the standard player
-        (default loop, {3000 / 1000}s slide timing from bootstrap).
+        The current Gym member experience runs on Camera Core resources. Members get a virtual Camera{' '}
+        <strong>event</strong>, each log becomes a <strong>submission</strong> with a framed selfie and activity text,
+        and the member history view uses the standard slideshow player.
       </p>
 
       {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
@@ -55,7 +54,7 @@ export default async function AdminFunFitFanPage() {
           <div>
             <h2 className="app-panel-section-title">Default frame</h2>
             <p className="app-panel-section-lede">
-              This frame is synced to the FunFitFan partner defaults and rolled out to child events that inherit
+              This frame is synced to the Gym partner defaults and rolled out to child events that inherit
               frames.
             </p>
             <div className="app-panel-block">
