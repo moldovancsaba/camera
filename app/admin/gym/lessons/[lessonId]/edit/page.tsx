@@ -3,12 +3,15 @@
  */
 
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth/session';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import AdminEditLessonForm from '@/components/gym/AdminEditLessonForm';
 import { readFunFitFanSportActivities } from '@/lib/funfitfan/bootstrap';
+import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
+import { getPartnerScopedAccessForPartner } from '@/lib/partners/authorization';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +21,7 @@ export default async function AdminEditGymLessonPage({
   params: Promise<{ lessonId: string }>;
 }) {
   const { lessonId } = await params;
+  const session = await getSession();
   let lesson: Record<string, unknown> | null = null;
   let dbError: unknown = null;
 
@@ -25,6 +29,10 @@ export default async function AdminEditGymLessonPage({
 
   try {
     const db = await connectToDatabase();
+    const access = await getPartnerScopedAccessForPartner(db, session!, FUNFITFAN_PARTNER_ID, 'gym', 'manager');
+    if (!access.allowed) {
+      redirect('/admin/gym/lessons');
+    }
     sportOptions = await readFunFitFanSportActivities(db);
     lesson = (await db.collection(COLLECTIONS.GYM_LESSONS).findOne({ lessonId })) as Record<
       string,

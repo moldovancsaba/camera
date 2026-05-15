@@ -5,22 +5,56 @@
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
+import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { isGlobalAdminSession, listAccessiblePartnerIds } from '@/lib/partners/authorization';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import Link from 'next/link';
 
-export default async function PartnersPage() {
-  let partners: any[] = [];
+interface PartnerListItem {
+  _id: { toString(): string };
+  partnerId: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  eventCount?: number;
+  frameCount?: number;
+  userAccessCount?: number;
+}
+
+export default async function PartnersPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ search?: string }>;
+}) {
+  let partners: PartnerListItem[] = [];
   let dbError: unknown = null;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
+  const session = await getSession();
 
   try {
     const db = await connectToDatabase();
+    const accessiblePartnerIds = await listAccessiblePartnerIds(db, session!, undefined);
+    const query = search
+      ? {
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } },
+            { partnerId: { $regex: search, $options: 'i' } },
+          ],
+        }
+      : {};
+    if (!isGlobalAdminSession(session)) {
+      Object.assign(query, { partnerId: { $in: accessiblePartnerIds } });
+    }
     partners = await db
       .collection(COLLECTIONS.PARTNERS)
-      .find({})
+      .find(query)
       .sort({ createdAt: -1 })
       .limit(50)
-      .toArray();
+      .toArray() as unknown as PartnerListItem[];
 
     // Aggregate real-time counts for each partner
     for (const partner of partners) {
@@ -37,6 +71,12 @@ export default async function PartnersPage() {
         .countDocuments({ partnerId: partner.partnerId });
       
       partner.frameCount = frameCount;
+
+      const userAccessCount = await db
+        .collection(COLLECTIONS.PARTNER_USER_ACCESS)
+        .countDocuments({ partnerId: partner.partnerId, isActive: true });
+
+      partner.userAccessCount = userAccessCount;
     }
   } catch (error) {
     console.error('Error fetching partners:', error);
@@ -58,6 +98,32 @@ export default async function PartnersPage() {
           <span>Add Partner</span>
         </Link>
       </div>
+
+      <form className="mb-6 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:flex-row">
+        <input
+          type="text"
+          name="search"
+          defaultValue={search}
+          placeholder="Search partner name, description, or partner ID"
+          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+        />
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition-colors"
+          >
+            Search
+          </button>
+          {search ? (
+            <Link
+              href="/admin/partners"
+              className="rounded-lg border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+            >
+              Clear
+            </Link>
+          ) : null}
+        </div>
+      </form>
 
       {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
 
@@ -88,6 +154,9 @@ export default async function PartnersPage() {
                   Frames
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Users
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -99,7 +168,7 @@ export default async function PartnersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {partners.map((partner: any) => (
+              {partners.map((partner) => (
                 <tr key={partner._id.toString()} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
@@ -126,6 +195,11 @@ export default async function PartnersPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm text-gray-900 dark:text-white">
                       {partner.frameCount || 0}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-sm text-gray-900 dark:text-white">
+                      {partner.userAccessCount || 0}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

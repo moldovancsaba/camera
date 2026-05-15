@@ -3,7 +3,13 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-export default function AdminNewLessonForm({ sportOptions }: { sportOptions: string[] }) {
+export default function AdminNewLessonForm({
+  sportOptions,
+  canManage = true,
+}: {
+  sportOptions: string[];
+  canManage?: boolean;
+}) {
   const router = useRouter();
   const [sport, setSport] = useState('');
   const [title, setTitle] = useState('');
@@ -61,6 +67,7 @@ export default function AdminNewLessonForm({ sportOptions }: { sportOptions: str
           className="mt-1 w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
           value={sport}
           onChange={(e) => setSport(e.target.value)}
+          disabled={!canManage}
           required
         >
           <option value="">— Select sport —</option>
@@ -82,6 +89,7 @@ export default function AdminNewLessonForm({ sportOptions }: { sportOptions: str
           className="mt-1 w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          disabled={!canManage}
           required
         />
       </div>
@@ -92,6 +100,7 @@ export default function AdminNewLessonForm({ sportOptions }: { sportOptions: str
           rows={3}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          disabled={!canManage}
         />
       </div>
       <div>
@@ -101,17 +110,23 @@ export default function AdminNewLessonForm({ sportOptions }: { sportOptions: str
           rows={8}
           value={stepsJson}
           onChange={(e) => setStepsJson(e.target.value)}
+          disabled={!canManage}
           required
         />
       </div>
       <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-        <input type="checkbox" checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={isPublished}
+          onChange={(e) => setIsPublished(e.target.checked)}
+          disabled={!canManage}
+        />
         Published (visible on /workout)
       </label>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <button
         type="submit"
-        disabled={loading || sportOptions.length === 0}
+        disabled={loading || sportOptions.length === 0 || !canManage}
         className="rounded-lg bg-blue-600 px-6 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
       >
         {loading ? 'Saving…' : 'Create training'}

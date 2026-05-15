@@ -3,21 +3,34 @@
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
+import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { readFunFitFanDefaultFrameId, readFunFitFanSportActivities } from '@/lib/funfitfan/bootstrap';
+import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
+import { getPartnerScopedAccessForPartner, isGlobalAdminSession } from '@/lib/partners/authorization';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import Link from 'next/link';
 import AdminFffFrameForm from '@/components/funfitfan/AdminFffFrameForm';
 import AdminFffActivitiesForm from '@/components/funfitfan/AdminFffActivitiesForm';
+import { redirect } from 'next/navigation';
 
 export default async function AdminGymSettingsPage() {
+  const session = await getSession();
   let frames: { frameId: string; name: string }[] = [];
   let currentFrameId = '';
   let sportActivities: string[] = [];
   let dbError: unknown = null;
+  let canManageGym = isGlobalAdminSession(session);
 
   try {
     const db = await connectToDatabase();
+    const viewerAccess = await getPartnerScopedAccessForPartner(db, session!, FUNFITFAN_PARTNER_ID, 'gym');
+    if (!viewerAccess.allowed) {
+      redirect('/admin/partners');
+    }
+    if (!canManageGym) {
+      canManageGym = (await getPartnerScopedAccessForPartner(db, session!, FUNFITFAN_PARTNER_ID, 'gym', 'manager')).allowed;
+    }
     currentFrameId = (await readFunFitFanDefaultFrameId(db)) ?? '';
     sportActivities = await readFunFitFanSportActivities(db);
 
@@ -58,7 +71,7 @@ export default async function AdminGymSettingsPage() {
               frames.
             </p>
             <div className="app-panel-block">
-              <AdminFffFrameForm frames={frames} currentFrameId={currentFrameId} />
+              <AdminFffFrameForm frames={frames} currentFrameId={currentFrameId} canManage={canManageGym} />
             </div>
           </div>
           <div>
@@ -68,7 +81,7 @@ export default async function AdminGymSettingsPage() {
               (`fff_settings.sportActivities`); an initial set is written automatically when the field is empty.
             </p>
             <div className="app-panel-block">
-              <AdminFffActivitiesForm initialLines={sportActivities} />
+              <AdminFffActivitiesForm initialLines={sportActivities} canManage={canManageGym} />
             </div>
           </div>
         </div>

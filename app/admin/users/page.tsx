@@ -18,11 +18,14 @@
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
+import { COLLECTIONS } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
+import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import Link from 'next/link';
 import UserManagementActions from '@/components/admin/UserManagementActions';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
+import { redirect } from 'next/navigation';
 
 // Force dynamic rendering (uses cookies for session)
 export const dynamic = 'force-dynamic';
@@ -53,16 +56,35 @@ interface AdminUserListItem {
   }>;
   ssoIdForPermission?: string | null;
   accountDisabledMirror?: boolean;
+  partnerAccess?: Array<{
+    accessId: string;
+    partnerId: string;
+    partnerName: string;
+    appKey: 'events' | 'gym';
+    role: 'viewer' | 'manager' | 'admin';
+    isActive: boolean;
+  }>;
 }
 
-export default async function AdminUsersPage() {
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ search?: string }>;
+}) {
+  const gateSession = await getSession();
+  if (!isGlobalAdminSession(gateSession)) {
+    redirect('/admin/partners');
+  }
+
   let users: AdminUserListItem[] = [];
   let error: unknown = null;
   let currentUserEmail = '';
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim().toLowerCase() : '';
 
   try {
     // Get current session for admin email
-    const session = await getSession();
+    const session = gateSession;
     currentUserEmail = session?.user.email || '';
     
     // Fetch camera database submissions
@@ -203,19 +225,55 @@ export default async function AdminUsersPage() {
       }
     }
 
-    users = Array.from(userMap.values());
+    const partnerAccessRows = await db
+      .collection(COLLECTIONS.PARTNER_USER_ACCESS)
+      .find({})
+      .toArray();
+    const partnerAccessByEmail = new Map<string, AdminUserListItem['partnerAccess']>();
+    for (const row of partnerAccessRows) {
+      const email = typeof row.userEmail === 'string' ? row.userEmail.trim().toLowerCase() : '';
+      if (!email) continue;
+      const bucket = partnerAccessByEmail.get(email) || [];
+      bucket.push({
+        accessId: String(row.accessId ?? ''),
+        partnerId: String(row.partnerId ?? ''),
+        partnerName: String(row.partnerName ?? ''),
+        appKey: row.appKey === 'gym' ? 'gym' : 'events',
+        role: row.role === 'viewer' || row.role === 'manager' || row.role === 'admin' ? row.role : 'viewer',
+        isActive: row.isActive !== false,
+      });
+      partnerAccessByEmail.set(email, bucket);
+    }
+
+    users = Array.from(userMap.values()).map((user) => ({
+      ...user,
+      partnerAccess: user.email ? partnerAccessByEmail.get(user.email.trim().toLowerCase()) || [] : [],
+    }));
 
   } catch (err) {
     console.error('Error fetching users:', err);
     error = err;
   }
 
-  const administrators = users.filter((user) => user.type === 'administrator');
-  const accessManagedUsers = users.filter((user) => user.type === 'administrator' || user.type === 'real');
-  const guestUsers = users.filter((user) => user.type === 'pseudo');
-  const anonymousUsers = users.filter((user) => user.type === 'anonymous');
-  const activeUsers = users.filter((user) => user.isActive !== false);
-  const representedSubmissions = users.reduce((sum, user) => sum + user.submissions.length, 0);
+  const filteredUsers = search
+    ? users.filter((user) =>
+        [
+          user.name,
+          user.email,
+          user.eventName,
+          ...(user.partnerAccess?.map((assignment) => assignment.partnerName) || []),
+        ]
+          .filter((value): value is string => typeof value === 'string')
+          .some((value) => value.toLowerCase().includes(search))
+      )
+    : users;
+
+  const administrators = filteredUsers.filter((user) => user.type === 'administrator');
+  const accessManagedUsers = filteredUsers.filter((user) => user.type === 'administrator' || user.type === 'real');
+  const guestUsers = filteredUsers.filter((user) => user.type === 'pseudo');
+  const anonymousUsers = filteredUsers.filter((user) => user.type === 'anonymous');
+  const activeUsers = filteredUsers.filter((user) => user.isActive !== false);
+  const representedSubmissions = filteredUsers.reduce((sum, user) => sum + user.submissions.length, 0);
 
   return (
     <div className="p-8">
@@ -226,9 +284,29 @@ export default async function AdminUsersPage() {
         </p>
       </div>
 
+      <form className="mb-6 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:flex-row">
+        <input
+          type="text"
+          name="search"
+          defaultValue={search}
+          placeholder="Search name, email, partner, or event"
+          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+        />
+        <div className="flex gap-3">
+          <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition-colors">
+            Search
+          </button>
+          {search ? (
+            <Link href="/admin/users" className="rounded-lg border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
+              Clear
+            </Link>
+          ) : null}
+        </div>
+      </form>
+
       {error != null ? <DatabaseConnectionAlert error={error} /> : null}
 
-      {!error && users.length === 0 ? (
+      {!error && filteredUsers.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
           <div className="text-6xl mb-4">👥</div>
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No users yet</h3>
@@ -271,7 +349,7 @@ export default async function AdminUsersPage() {
               </p>
             </div>
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {users.map((user, index: number) => {
+              {filteredUsers.map((user, index: number) => {
               const profileHref = `/users/${sanitizeUsername(user.name || 'Anonymous')}`;
               const emailDisplay = user.isAnonymous ? 'anonymous@event.com' : (user.email || 'unknown');
               const registeredAt = new Date(user.collectedAt).toLocaleString();
@@ -319,6 +397,24 @@ export default async function AdminUsersPage() {
                       <div className="space-y-1">
                         <div className="text-sm font-medium text-gray-700 dark:text-gray-300">{accessLabel}</div>
                         <div className="text-sm text-gray-600 dark:text-gray-400 truncate">📧 {emailDisplay}</div>
+                        {user.partnerAccess && user.partnerAccess.length > 0 && (
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            🔐 Partner access:{' '}
+                            {user.partnerAccess.slice(0, 2).map((assignment, idx) => (
+                              <span key={assignment.accessId}>
+                                {idx > 0 ? ', ' : ''}
+                                <Link
+                                  href={`/admin/partners?search=${encodeURIComponent(assignment.partnerName)}`}
+                                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                                >
+                                  {assignment.partnerName}
+                                </Link>{' '}
+                                ({assignment.appKey}/{assignment.role})
+                              </span>
+                            ))}
+                            {user.partnerAccess.length > 2 ? ` +${user.partnerAccess.length - 2} more` : ''}
+                          </div>
+                        )}
                         <div className="text-sm text-gray-600 dark:text-gray-400 truncate">📸 {photosCount} photos</div>
                         <div className="text-sm text-gray-600 dark:text-gray-400 truncate">🎉 Last Event: {lastEvent}</div>
                         <div className="text-sm text-gray-600 dark:text-gray-400 truncate">📅 Registered: {registeredAt}</div>

@@ -4,16 +4,19 @@
 
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { COLLECTIONS, generateTimestamp, type GymLessonStep } from '@/lib/db/schemas';
+import { COLLECTIONS, generateTimestamp, type GymLessonStep, type PartnerAccessRole } from '@/lib/db/schemas';
 import {
   withErrorHandler,
-  requireAdmin,
+  requireAuth,
   apiSuccess,
   apiBadRequest,
   apiNotFound,
+  apiForbidden,
 } from '@/lib/api';
 import { readFunFitFanSportActivities } from '@/lib/funfitfan/bootstrap';
 import { resolveLessonSportFromAllowlist } from '@/lib/gym/lesson-sport';
+import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
+import { getPartnerScopedAccessForPartner, isGlobalAdminSession } from '@/lib/partners/authorization';
 
 function normalizeSteps(raw: unknown): GymLessonStep[] | undefined {
   if (raw === undefined) return undefined;
@@ -33,9 +36,29 @@ function normalizeSteps(raw: unknown): GymLessonStep[] | undefined {
   });
 }
 
+async function assertGymAccess(
+  request: NextRequest | undefined,
+  minRole: PartnerAccessRole
+) {
+  const session = await requireAuth(request);
+  if (isGlobalAdminSession(session)) {
+    return { db: null as null };
+  }
+  const db = await connectToDatabase();
+  const access = await getPartnerScopedAccessForPartner(db, session, FUNFITFAN_PARTNER_ID, 'gym', minRole);
+  if (!access.allowed) {
+    throw apiForbidden(
+      minRole === 'viewer'
+        ? 'Partner-level gym access is required to read training content'
+        : 'Partner-level gym manager access is required to change training content'
+    );
+  }
+  return { db };
+}
+
 export const PATCH = withErrorHandler(
   async (request: NextRequest, context: { params: Promise<{ lessonId: string }> }) => {
-    await requireAdmin();
+    const { db: existingDb } = await assertGymAccess(request, 'manager');
     const { lessonId } = await context.params;
     const body = await request.json();
     const { title, description, steps, isPublished, sport } = body;
@@ -47,7 +70,7 @@ export const PATCH = withErrorHandler(
     if (steps !== undefined) {
       $set.steps = normalizeSteps(steps);
     }
-    const db = await connectToDatabase();
+    const db = existingDb ?? (await connectToDatabase());
     if (sport !== undefined) {
       if (typeof sport !== 'string' || !sport.trim()) {
         throw apiBadRequest('sport must be a non-empty string when provided');
@@ -86,9 +109,9 @@ export const PATCH = withErrorHandler(
 
 export const DELETE = withErrorHandler(
   async (_request: NextRequest, context: { params: Promise<{ lessonId: string }> }) => {
-    await requireAdmin();
+    const { db: existingDb } = await assertGymAccess(undefined, 'manager');
     const { lessonId } = await context.params;
-    const db = await connectToDatabase();
+    const db = existingDb ?? (await connectToDatabase());
     const del = await db.collection(COLLECTIONS.GYM_LESSONS).deleteOne({ lessonId });
     if (del.deletedCount === 0) {
       throw apiNotFound('Training');

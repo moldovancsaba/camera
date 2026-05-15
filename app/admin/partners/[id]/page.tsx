@@ -6,13 +6,22 @@
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
+import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { ObjectId } from 'mongodb';
+import Image from 'next/image';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import DeletePartnerButton from '@/components/admin/DeletePartnerButton';
 import StyleSections from '@/components/admin/StyleSections';
+import PartnerUserAccessManager from '@/components/admin/PartnerUserAccessManager';
 import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
+import { listPartnerUserAccess } from '@/lib/partners/access';
+import {
+  getPartnerScopedAccessForPartner,
+  isGlobalAdminSession,
+  listSessionPartnerAssignments,
+} from '@/lib/partners/authorization';
 
 interface FrameDetailsDoc {
   frameId: string;
@@ -83,6 +92,20 @@ interface SubmissionDoc {
   createdAt: string;
 }
 
+interface PartnerAccessAssignmentDoc {
+  accessId: string;
+  partnerId: string;
+  partnerName: string;
+  userId?: string | null;
+  userEmail: string;
+  userName?: string | null;
+  appKey: 'events' | 'gym';
+  role: 'viewer' | 'manager' | 'admin';
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default async function PartnerDetailPage({
   params,
 }: {
@@ -98,8 +121,13 @@ export default async function PartnerDetailPage({
   let partner: PartnerDoc | null = null;
   let events: EventDoc[] = [];
   let submissions: SubmissionDoc[] = [];
+  let partnerAccessAssignments: PartnerAccessAssignmentDoc[] = [];
   let participantCount = 0;
   let dbError = null;
+  const session = await getSession();
+  const canManagePartner = isGlobalAdminSession(session);
+  let canManageEvents = isGlobalAdminSession(session);
+  let canAccessGym = isGlobalAdminSession(session);
 
   try {
     const db = await connectToDatabase();
@@ -111,6 +139,28 @@ export default async function PartnerDetailPage({
 
     if (!partner) {
       notFound();
+    }
+
+    const workspaceAccess = await getPartnerScopedAccessForPartner(db, session!, partner.partnerId);
+    if (!workspaceAccess.allowed) {
+      redirect('/admin/partners');
+    }
+
+    const assignments = await listSessionPartnerAssignments(db, session!);
+    if (!isGlobalAdminSession(session)) {
+      canManageEvents = assignments.some(
+        (assignment) =>
+          assignment.partnerId === partner!.partnerId &&
+          assignment.appKey === 'events' &&
+          assignment.isActive &&
+          (assignment.role === 'manager' || assignment.role === 'admin')
+      );
+      canAccessGym = assignments.some(
+        (assignment) =>
+          assignment.partnerId === partner!.partnerId &&
+          assignment.appKey === 'gym' &&
+          assignment.isActive
+      );
     }
 
     // Get events for this partner
@@ -172,6 +222,7 @@ export default async function PartnerDetailPage({
       ])
       .toArray();
     participantCount = participantRows.length;
+    partnerAccessAssignments = await listPartnerUserAccess(db, partner.partnerId) as unknown as PartnerAccessAssignmentDoc[];
 
     // Populate frame details for default frames (v2.8.0)
     if (partner.defaultFrames && partner.defaultFrames.length > 0) {
@@ -249,12 +300,14 @@ export default async function PartnerDetailPage({
             )}
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href={`/admin/partners/${id}/edit`}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-            >
-              Edit Partner
-            </Link>
+            {canManagePartner ? (
+              <Link
+                href={`/admin/partners/${id}/edit`}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              >
+                Edit Partner
+              </Link>
+            ) : null}
             <span className={`inline-flex px-3 py-2 text-sm font-semibold rounded-lg ${
               partner.isActive
                 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
@@ -295,12 +348,14 @@ export default async function PartnerDetailPage({
         </Link>
 
         <Link
-          href={`/admin/events/new?partnerId=${partner.partnerId}`}
+          href={canManageEvents ? `/admin/events/new?partnerId=${partner.partnerId}` : '/admin/events'}
           className="rounded-lg border border-emerald-200 bg-emerald-50 p-5 shadow-sm transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30"
         >
           <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Events App</p>
           <p className="mt-2 text-sm text-emerald-800 dark:text-emerald-200">
-            Create and manage the event app instances that use this partner’s brand defaults and resource assignments.
+            {canManageEvents
+              ? 'Create and manage the event app instances that use this partner’s brand defaults and resource assignments.'
+              : 'Review the event app instances that use this partner’s brand defaults and resource assignments.'}
           </p>
         </Link>
 
@@ -311,12 +366,14 @@ export default async function PartnerDetailPage({
               This partner is the dedicated Gym workspace. Use the app settings entry to manage the member experience.
             </p>
             <div className="mt-4">
-              <Link
-                href="/admin/gym/funfitfan"
-                className="inline-flex rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
-              >
-                Open Gym Settings
-              </Link>
+              {canAccessGym ? (
+                <Link
+                  href="/admin/gym/funfitfan"
+                  className="inline-flex rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
+                >
+                  Open Gym Settings
+                </Link>
+              ) : null}
             </div>
           </div>
         ) : (
@@ -326,25 +383,29 @@ export default async function PartnerDetailPage({
               Gym currently uses dedicated app-scoped configuration. Keep this partner page focused on shared resources and event operations.
             </p>
             <div className="mt-4">
-              <Link
-                href="/admin/gym"
-                className="inline-flex rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
-              >
-                Open Gym App
-              </Link>
+              {canAccessGym ? (
+                <Link
+                  href="/admin/gym"
+                  className="inline-flex rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
+                >
+                  Open Gym App
+                </Link>
+              ) : null}
             </div>
           </div>
         )}
 
-        <Link
-          href="/admin/users"
-          className="rounded-lg border border-amber-200 bg-amber-50 p-5 shadow-sm transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/20 dark:hover:bg-amber-900/30"
-        >
-          <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Users</p>
-          <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">
-            View global access-managed users and submission-derived guest identities that show up in this partner’s activity.
-          </p>
-        </Link>
+        {canManagePartner ? (
+          <Link
+            href="/admin/users"
+            className="rounded-lg border border-amber-200 bg-amber-50 p-5 shadow-sm transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/20 dark:hover:bg-amber-900/30"
+          >
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Users</p>
+            <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">
+              View global access-managed users and submission-derived guest identities that show up in this partner’s activity.
+            </p>
+          </Link>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -409,6 +470,10 @@ export default async function PartnerDetailPage({
                 <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Participants</dt>
                 <dd className="text-2xl font-bold text-gray-900 dark:text-white">{participantCount}</dd>
               </div>
+              <div className="flex items-center justify-between">
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">User assignments</dt>
+                <dd className="text-2xl font-bold text-gray-900 dark:text-white">{partnerAccessAssignments.length}</dd>
+              </div>
             </dl>
             <Link
               href={`/admin/partners/${id}#gallery`}
@@ -419,19 +484,40 @@ export default async function PartnerDetailPage({
           </div>
 
           {/* Delete Partner Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Danger Zone</h2>
-            <DeletePartnerButton
-              partnerId={id}
-              partnerName={partner.name}
-              hasEvents={events.length > 0}
-              eventCount={events.length}
-            />
-          </div>
+          {canManagePartner ? (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Danger Zone</h2>
+              <DeletePartnerButton
+                partnerId={id}
+                partnerName={partner.name}
+                hasEvents={events.length > 0}
+                eventCount={events.length}
+              />
+            </div>
+          ) : null}
         </div>
 
         {/* Right Column - Resources and App Instances */}
         <div className="lg:col-span-2 space-y-6">
+          {canManagePartner ? (
+            <PartnerUserAccessManager
+              partnerMongoId={id}
+              initialAssignments={partnerAccessAssignments.map((assignment) => ({
+                accessId: assignment.accessId,
+                partnerId: assignment.partnerId,
+                partnerName: assignment.partnerName,
+                userId: assignment.userId ?? null,
+                userEmail: assignment.userEmail,
+                userName: assignment.userName ?? null,
+                appKey: assignment.appKey,
+                role: assignment.role,
+                isActive: assignment.isActive,
+                createdAt: assignment.createdAt,
+                updatedAt: assignment.updatedAt,
+              }))}
+            />
+          ) : null}
+
           {/* Default Styles Section - Using Unified StyleSections Component */}
           <StyleSections
             type="partner"
@@ -453,12 +539,14 @@ export default async function PartnerDetailPage({
                     Event app instances that inherit this partner’s defaults and can override them when needed.
                   </p>
                 </div>
-                <Link
-                  href={`/admin/events/new?partnerId=${partner.partnerId}`}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
-                >
-                  + Add Event
-                </Link>
+                {canManageEvents ? (
+                  <Link
+                    href={`/admin/events/new?partnerId=${partner.partnerId}`}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    + Add Event
+                  </Link>
+                ) : null}
               </div>
             </div>
 
@@ -469,12 +557,14 @@ export default async function PartnerDetailPage({
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
                   Create your first event for this partner
                 </p>
-                <Link
-                  href={`/admin/events/new?partnerId=${partner.partnerId}`}
-                  className="inline-flex px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
-                >
-                  Create Event
-                </Link>
+                {canManageEvents ? (
+                  <Link
+                    href={`/admin/events/new?partnerId=${partner.partnerId}`}
+                    className="inline-flex px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    Create Event
+                  </Link>
+                ) : null}
               </div>
             ) : (
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -511,12 +601,14 @@ export default async function PartnerDetailPage({
                         }`}>
                           {event.isActive ? '● Active' : '○ Inactive'}
                         </span>
-                        <Link
-                          href={`/admin/events/${event._id}/edit`}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 text-sm font-medium"
-                        >
-                          Edit
-                        </Link>
+                        {canManageEvents ? (
+                          <Link
+                            href={`/admin/events/${event._id}/edit`}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 text-sm font-medium"
+                          >
+                            Edit
+                          </Link>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -567,9 +659,12 @@ export default async function PartnerDetailPage({
                     href={`/share/${submission._id}`}
                     className="group relative bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all mb-4 break-inside-avoid block"
                   >
-                    <img
-                      src={submission.imageUrl || submission.finalImageUrl}
+                    <Image
+                      src={submission.imageUrl || submission.finalImageUrl || ''}
                       alt={`Photo by ${submission.userName || submission.userEmail}`}
+                      width={1200}
+                      height={1600}
+                      unoptimized
                       className="w-full h-auto"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">

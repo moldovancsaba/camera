@@ -12,6 +12,7 @@ type AdminEditLessonFormProps = {
   initialDescription: string;
   initialStepsJson: string;
   initialIsPublished: boolean;
+  canManage?: boolean;
 };
 
 export default function AdminEditLessonForm({
@@ -22,6 +23,7 @@ export default function AdminEditLessonForm({
   initialDescription,
   initialStepsJson,
   initialIsPublished,
+  canManage = true,
 }: AdminEditLessonFormProps) {
   const router = useRouter();
   const [sport, setSport] = useState(() => {
@@ -82,6 +84,7 @@ export default function AdminEditLessonForm({
           className="mt-1 w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
           value={sport}
           onChange={(e) => setSport(e.target.value)}
+          disabled={!canManage}
           required
         >
           <option value="">— Select sport —</option>
@@ -103,6 +106,7 @@ export default function AdminEditLessonForm({
           className="mt-1 w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          disabled={!canManage}
           required
         />
       </div>
@@ -113,6 +117,7 @@ export default function AdminEditLessonForm({
           rows={3}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          disabled={!canManage}
         />
       </div>
       <div>
@@ -122,27 +127,35 @@ export default function AdminEditLessonForm({
           rows={10}
           value={stepsJson}
           onChange={(e) => setStepsJson(e.target.value)}
+          disabled={!canManage}
           required
         />
       </div>
       <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-        <input type="checkbox" checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={isPublished}
+          onChange={(e) => setIsPublished(e.target.checked)}
+          disabled={!canManage}
+        />
         Published (visible on /workout)
       </label>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
-          disabled={loading || sportOptions.length === 0}
+          disabled={loading || sportOptions.length === 0 || !canManage}
           className="rounded-lg bg-blue-600 px-6 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
         >
           {loading ? 'Saving…' : 'Save changes'}
         </button>
-        <AdminDeleteLessonButton
-          lessonId={lessonId}
-          title={title.trim() || lessonId}
-          redirectAfterDelete="/admin/gym/lessons"
-        />
+        {canManage ? (
+          <AdminDeleteLessonButton
+            lessonId={lessonId}
+            title={title.trim() || lessonId}
+            redirectAfterDelete="/admin/gym/lessons"
+          />
+        ) : null}
       </div>
     </form>
   );

@@ -6,21 +6,44 @@
  * DELETE: Delete event (admin only, v2.8.0)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp, CustomPageType } from '@/lib/db/schemas';
 import { ObjectId } from 'mongodb';
 import {
   withErrorHandler,
-  requireAdmin,
+  requireAuth,
   apiSuccess,
   apiNotFound,
   apiBadRequest,
+  apiForbidden,
   validateRequiredFields,
   checkRateLimit,
   RATE_LIMITS,
 } from '@/lib/api';
 import { normalizeGoShortSlugInput } from '@/lib/go-short-url';
+import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
+
+interface EventFrameDetails {
+  frameId: string;
+  name?: string;
+  thumbnailUrl?: string;
+  width?: number;
+  height?: number;
+  hashtags?: string[];
+}
+
+interface EventFrameAssignment {
+  frameId: string;
+  isActive?: boolean;
+  frameDetails?: EventFrameDetails | null;
+}
+
+interface EventDoc {
+  _id: ObjectId;
+  frames?: EventFrameAssignment[];
+  [key: string]: unknown;
+}
 
 /**
  * GET /api/events/[eventId]
@@ -31,6 +54,7 @@ export const GET = withErrorHandler(async (
   context: { params: Promise<{ eventId: string }> }
 ) => {
   await checkRateLimit(request, RATE_LIMITS.READ);
+  const session = await requireAuth(request);
 
   const { eventId } = await context.params;
 
@@ -40,11 +64,15 @@ export const GET = withErrorHandler(async (
   }
 
   const db = await connectToDatabase();
+  const access = await getPartnerScopedAccessForEvent(db, eventId, session);
+  if (!access.allowed) {
+    throw apiForbidden('Partner-level access is required to read this event');
+  }
 
   // Get event details including custom pages (v2.0.0)
   const event = await db
     .collection(COLLECTIONS.EVENTS)
-    .findOne({ _id: new ObjectId(eventId) });
+    .findOne({ _id: new ObjectId(eventId) }) as EventDoc | null;
 
   if (!event) {
     throw apiNotFound('Event');
@@ -53,15 +81,15 @@ export const GET = withErrorHandler(async (
   // Populate frame details for assigned frames
   // This enriches event.frames[] with full frame data (name, thumbnailUrl, etc.)
   if (event.frames && event.frames.length > 0) {
-    const frameIds = event.frames.map((f: any) => f.frameId);
+    const frameIds = event.frames.map((frame) => frame.frameId);
     const frames = await db
       .collection(COLLECTIONS.FRAMES)
       .find({ frameId: { $in: frameIds } })
-      .toArray();
+      .toArray() as unknown as EventFrameDetails[];
     
     // Map frame details to each assignment
-    event.frames = event.frames.map((assignment: any) => {
-      const frameDetails = frames.find((f: any) => f.frameId === assignment.frameId);
+    event.frames = event.frames.map((assignment) => {
+      const frameDetails = frames.find((frame) => frame.frameId === assignment.frameId);
       return {
         ...assignment,
         frameDetails: frameDetails ? {
@@ -104,8 +132,7 @@ export const PATCH = withErrorHandler(async (
   request: NextRequest,
   context: { params: Promise<{ eventId: string }> }
 ) => {
-  // Check authentication and authorization - only admin users can update events
-  await requireAdmin();
+  const session = await requireAuth(request);
 
   const { eventId } = await context.params;
 
@@ -115,11 +142,17 @@ export const PATCH = withErrorHandler(async (
   }
 
   const db = await connectToDatabase();
+  if (!isGlobalAdminSession(session)) {
+    const access = await getPartnerScopedAccessForEvent(db, eventId, session, 'manager');
+    if (!access.allowed) {
+      throw apiForbidden('Partner-level manager access is required to update this event');
+    }
+  }
 
   // Check event exists
   const event = await db
     .collection(COLLECTIONS.EVENTS)
-    .findOne({ _id: new ObjectId(eventId) });
+    .findOne({ _id: new ObjectId(eventId) }) as EventDoc | null;
 
   if (!event) {
     throw apiNotFound('Event');
@@ -143,7 +176,7 @@ export const PATCH = withErrorHandler(async (
   } = body;
 
   // Build update object with only provided fields
-  const updateFields: any = {
+  const updateFields: Record<string, unknown> = {
     updatedAt: generateTimestamp(),
   };
 
@@ -298,8 +331,7 @@ export const DELETE = withErrorHandler(async (
   request: NextRequest,
   context: { params: Promise<{ eventId: string }> }
 ) => {
-  // Check authentication and authorization - only admin users can delete events
-  await requireAdmin();
+  const session = await requireAuth(request);
 
   const { eventId } = await context.params;
 
@@ -309,6 +341,12 @@ export const DELETE = withErrorHandler(async (
   }
 
   const db = await connectToDatabase();
+  if (!isGlobalAdminSession(session)) {
+    const access = await getPartnerScopedAccessForEvent(db, eventId, session, 'admin');
+    if (!access.allowed) {
+      throw apiForbidden('Partner-level admin access is required to delete this event');
+    }
+  }
 
   // Check event exists
   const event = await db

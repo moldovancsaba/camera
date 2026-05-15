@@ -5,6 +5,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { APP_VERSION } from '@/lib/app-version';
@@ -17,6 +18,12 @@ interface CollapsibleSidebarProps {
       role?: string;
     };
     appRole?: 'none' | 'user' | 'admin' | 'superadmin';
+  };
+  navigationAccess: {
+    isGlobalAdmin: boolean;
+    hasAnyPartnerAccess: boolean;
+    hasEventsAccess: boolean;
+    hasGymAccess: boolean;
   };
 }
 
@@ -32,35 +39,47 @@ interface NavSection {
   items: NavItem[];
 }
 
-export default function CollapsibleSidebar({ session }: CollapsibleSidebarProps) {
+export default function CollapsibleSidebar({ session, navigationAccess }: CollapsibleSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
 
-  const navSections: NavSection[] = [
-    {
-      title: 'Core',
-      items: [
-        { href: '/admin', icon: '📊', label: 'Dashboard' },
-        { href: '/admin/partners', icon: '🤝', label: 'Partners' },
-        { href: '/admin/users', icon: '👥', label: 'Users' },
-      ],
-    },
-    {
+  const navSections: NavSection[] = [];
+  const coreItems: NavItem[] = [];
+
+  if (navigationAccess.isGlobalAdmin) {
+    coreItems.push({ href: '/admin', icon: '📊', label: 'Dashboard' });
+  }
+  if (navigationAccess.hasAnyPartnerAccess) {
+    coreItems.push({ href: '/admin/partners', icon: '🤝', label: 'Partners' });
+  }
+  if (navigationAccess.isGlobalAdmin) {
+    coreItems.push({ href: '/admin/users', icon: '👥', label: 'Users' });
+  }
+  if (coreItems.length > 0) {
+    navSections.push({ title: 'Core', items: coreItems });
+  }
+
+  if (navigationAccess.isGlobalAdmin) {
+    navSections.push({
       title: 'Resource Inventory',
       items: [
         { href: '/admin/frames', icon: '🖼️', label: 'Global Frames' },
         { href: '/admin/logos', icon: '🎨', label: 'Global Logos' },
         { href: '/admin/submissions', icon: '📷', label: 'Global Galleries' },
       ],
-    },
-    {
-      title: 'Apps',
-      items: [
-        { href: '/admin/events', icon: '🎯', label: 'Events App' },
-        { href: '/admin/gym', icon: '💪', label: 'Gym App' },
-      ],
-    },
-  ];
+    });
+  }
+
+  const appItems: NavItem[] = [];
+  if (navigationAccess.hasEventsAccess) {
+    appItems.push({ href: '/admin/events', icon: '🎯', label: 'Events App' });
+  }
+  if (navigationAccess.hasGymAccess) {
+    appItems.push({ href: '/admin/gym', icon: '💪', label: 'Gym App' });
+  }
+  if (appItems.length > 0) {
+    navSections.push({ title: 'Apps', items: appItems });
+  }
 
   return (
     <>
@@ -82,9 +101,12 @@ export default function CollapsibleSidebar({ session }: CollapsibleSidebarProps)
         {/* Logo */}
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <Link href="/" className="flex items-center gap-3">
-            <img 
+            <Image
               src="https://i.ibb.co/zTG7ztxC/camera-logo.png" 
               alt="Camera Logo" 
+              width={40}
+              height={40}
+              unoptimized
               className="h-10 w-10 flex-shrink-0"
             />
             {!isCollapsed && (

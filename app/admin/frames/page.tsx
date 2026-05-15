@@ -5,10 +5,13 @@
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
+import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import Link from 'next/link';
 import Image from 'next/image';
+import { redirect } from 'next/navigation';
 
 interface FrameListItem {
   _id: { toString(): string };
@@ -46,17 +49,37 @@ function inferFrameScope(frame: FrameListItem): 'global' | 'partner' | 'event' {
   return 'global';
 }
 
-export default async function FramesPage() {
+export default async function FramesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ search?: string }>;
+}) {
+  const session = await getSession();
+  if (!isGlobalAdminSession(session)) {
+    redirect('/admin/partners');
+  }
+
   let frames: FrameListItem[] = [];
   const partnerById = new Map<string, PartnerRef>();
   const eventById = new Map<string, EventRef>();
   let dbError: unknown = null;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
 
   try {
     const db = await connectToDatabase();
+    const query = search
+      ? {
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } },
+            { category: { $regex: search, $options: 'i' } },
+          ],
+        }
+      : {};
     const frameDocs = await db
       .collection(COLLECTIONS.FRAMES)
-      .find({})
+      .find(query)
       .sort({ createdAt: -1 })
       .limit(20)
       .toArray();
@@ -118,6 +141,26 @@ export default async function FramesPage() {
             <span>Add Shared Frame</span>
           </Link>
       </div>
+
+      <form className="mb-6 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:flex-row">
+        <input
+          type="text"
+          name="search"
+          defaultValue={search}
+          placeholder="Search frame name, description, or category"
+          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+        />
+        <div className="flex gap-3">
+          <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition-colors">
+            Search
+          </button>
+          {search ? (
+            <Link href="/admin/frames" className="rounded-lg border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
+              Clear
+            </Link>
+          ) : null}
+        </div>
+      </form>
 
       {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
 

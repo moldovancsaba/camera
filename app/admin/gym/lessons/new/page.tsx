@@ -3,14 +3,23 @@
  */
 
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth/session';
 import { connectToDatabase } from '@/lib/db/mongodb';
+import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
 import AdminNewLessonForm from '@/components/gym/AdminNewLessonForm';
 import { readFunFitFanSportActivities } from '@/lib/funfitfan/bootstrap';
+import { getPartnerScopedAccessForPartner } from '@/lib/partners/authorization';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminNewGymLessonPage() {
+  const session = await getSession();
   const db = await connectToDatabase();
+  const access = await getPartnerScopedAccessForPartner(db, session!, FUNFITFAN_PARTNER_ID, 'gym', 'manager');
+  if (!access.allowed) {
+    redirect('/admin/gym/lessons');
+  }
   const sportOptions = await readFunFitFanSportActivities(db);
 
   return (

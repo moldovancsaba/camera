@@ -5,32 +5,88 @@
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
+import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import {
+  isGlobalAdminSession,
+  listAccessiblePartnerIds,
+  listSessionPartnerAssignments,
+} from '@/lib/partners/authorization';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import Link from 'next/link';
 
-export default async function EventsPage() {
-  let events: any[] = [];
-  let partners: any[] = [];
+interface EventListItem {
+  _id: { toString(): string };
+  name: string;
+  description?: string;
+  partnerName: string;
+  location?: string;
+  eventDate?: string;
+  frames?: Array<{ frameId: string }>;
+  isActive: boolean;
+}
+
+interface PartnerListItem {
+  _id: { toString(): string };
+}
+
+export default async function EventsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ search?: string; partner?: string }>;
+}) {
+  let events: EventListItem[] = [];
+  let partners: PartnerListItem[] = [];
   let dbError: unknown = null;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
+  const partnerFilter = typeof resolvedSearchParams?.partner === 'string' ? resolvedSearchParams.partner.trim() : '';
+  const session = await getSession();
+  let canCreate = isGlobalAdminSession(session);
 
   try {
     const db = await connectToDatabase();
+    const accessiblePartnerIds = await listAccessiblePartnerIds(db, session!, 'events');
+    const assignments = await listSessionPartnerAssignments(db, session!);
+    canCreate = canCreate || assignments.some(
+      (assignment) =>
+        assignment.isActive &&
+        assignment.appKey === 'events' &&
+        (assignment.role === 'manager' || assignment.role === 'admin')
+    );
+    const query: Record<string, unknown> = {};
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { location: { $regex: search, $options: 'i' } },
+      ];
+    }
+    if (partnerFilter) {
+      query.partnerName = { $regex: `^${partnerFilter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
+    }
+    if (!isGlobalAdminSession(session)) {
+      query.partnerId = { $in: accessiblePartnerIds };
+    }
     
     // Get events
     events = await db
       .collection(COLLECTIONS.EVENTS)
-      .find({})
+      .find(query)
       .sort({ eventDate: -1, createdAt: -1 })
       .limit(100)
-      .toArray();
+      .toArray() as unknown as EventListItem[];
 
     // Get partners for filtering
     partners = await db
       .collection(COLLECTIONS.PARTNERS)
-      .find({ isActive: true })
+      .find(
+        !isGlobalAdminSession(session)
+          ? { isActive: true, partnerId: { $in: accessiblePartnerIds } }
+          : { isActive: true }
+      )
       .sort({ name: 1 })
-      .toArray();
+      .toArray() as unknown as PartnerListItem[];
 
   } catch (error) {
     console.error('Error fetching events:', error);
@@ -46,13 +102,15 @@ export default async function EventsPage() {
             Manage event app instances that use partner defaults, shared resources, and gallery flows.
           </p>
         </div>
-        <Link
-          href="/admin/events/new"
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
-        >
-          <span>+</span>
-          <span>Add Event Instance</span>
-        </Link>
+        {canCreate ? (
+          <Link
+            href="/admin/events/new"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
+            <span>+</span>
+            <span>Add Event Instance</span>
+          </Link>
+        ) : null}
       </div>
 
       {!dbError && (
@@ -94,6 +152,38 @@ export default async function EventsPage() {
         </div>
       )}
 
+      <form className="mb-6 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 lg:flex-row">
+        <input
+          type="text"
+          name="search"
+          defaultValue={search}
+          placeholder="Search event name, description, or location"
+          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+        />
+        <input type="hidden" name="partner" value={partnerFilter} />
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition-colors"
+          >
+            Search
+          </button>
+          {(search || partnerFilter) ? (
+            <Link
+              href="/admin/events"
+              className="rounded-lg border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+            >
+              Clear
+            </Link>
+          ) : null}
+        </div>
+      </form>
+      {partnerFilter ? (
+        <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+          Filtering by partner: <span className="font-semibold text-gray-900 dark:text-white">{partnerFilter}</span>
+        </div>
+      ) : null}
+
       {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
 
       {!dbError && events.length === 0 ? (
@@ -103,12 +193,14 @@ export default async function EventsPage() {
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             Get started by creating the first event app instance for a partner.
           </p>
-          <Link
-            href="/admin/events/new"
-            className="inline-flex px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-          >
-            Add Your First Event Instance
-          </Link>
+          {canCreate ? (
+            <Link
+              href="/admin/events/new"
+              className="inline-flex px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            >
+              Add Your First Event Instance
+            </Link>
+          ) : null}
         </div>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -136,7 +228,7 @@ export default async function EventsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {events.map((event: any) => (
+              {events.map((event) => (
                 <tr key={event._id.toString()} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   <td className="px-6 py-4">
                     <div className="flex items-center">

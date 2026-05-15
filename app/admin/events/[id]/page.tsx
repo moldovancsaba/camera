@@ -7,10 +7,12 @@
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
+import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { ObjectId } from 'mongodb';
+import Image from 'next/image';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import SlideshowManager from '@/components/admin/SlideshowManager';
 import SlideshowLayoutManager from '@/components/admin/SlideshowLayoutManager';
 import LandingPageManager from '@/components/admin/LandingPageManager';
@@ -19,6 +21,86 @@ import { getInactiveUserEmails } from '@/lib/db/sso';
 import StyleInheritanceIndicator from '@/components/admin/StyleInheritanceIndicator';
 import DeleteEventButton from '@/components/admin/DeleteEventButton';
 import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
+import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
+
+interface EventFrameDetails {
+  frameId: string;
+  name?: string;
+  thumbnailUrl?: string;
+  width?: number;
+  height?: number;
+  hashtags?: string[];
+}
+
+interface EventFrameAssignment {
+  frameId: string;
+  isActive?: boolean;
+  frameDetails?: EventFrameDetails | null;
+}
+
+interface EventLogoAssignment {
+  scenario?: string;
+  isActive?: boolean;
+}
+
+interface EventDoc {
+  _id: ObjectId;
+  eventId: string;
+  partnerId: string;
+  partnerName: string;
+  name: string;
+  description?: string;
+  eventDate?: string;
+  location?: string;
+  createdAt: string;
+  updatedAt: string;
+  isActive?: boolean;
+  shortUrlSlug?: string;
+  brandColor?: string;
+  brandBorderColor?: string;
+  brandColorsOverridden?: boolean;
+  framesOverridden?: boolean;
+  logosOverridden?: boolean;
+  frames?: EventFrameAssignment[];
+  logos?: EventLogoAssignment[];
+}
+
+interface PartnerDoc {
+  _id: ObjectId;
+}
+
+interface SubmissionDoc {
+  _id: ObjectId;
+  imageUrl?: string;
+  finalImageUrl?: string;
+  userName?: string;
+  userEmail?: string;
+  eventName?: string;
+  createdAt: string;
+}
+
+interface SlideshowDoc {
+  _id: ObjectId;
+  [key: string]: unknown;
+}
+
+interface SlideshowLayoutDoc {
+  _id: ObjectId;
+  layoutId: string;
+  name: string;
+  isActive?: boolean;
+  createdAt: string;
+}
+
+interface LandingPageDoc {
+  _id: ObjectId;
+  slug: string;
+  title?: string | null;
+  targetType?: 'slideshow' | 'layout';
+  targetName?: string;
+  isActive?: boolean;
+  createdAt: string;
+}
 
 export default async function EventDetailPage({
   params,
@@ -32,21 +114,28 @@ export default async function EventDetailPage({
     notFound();
   }
 
-  let event: any = null;
-  let partner: any = null;
-  let submissions: any[] = [];
-  let slideshows: any[] = [];
-  let slideshowLayouts: any[] = [];
-  let landingPages: any[] = [];
-  let dbError = null;
+  let event: EventDoc | null = null;
+  let partner: PartnerDoc | null = null;
+  let submissions: SubmissionDoc[] = [];
+  let slideshows: SlideshowDoc[] = [];
+  let slideshowLayouts: SlideshowLayoutDoc[] = [];
+  let landingPages: LandingPageDoc[] = [];
+  let dbError: string | null = null;
+  const session = await getSession();
+  let canManageEvent = isGlobalAdminSession(session);
 
   try {
     const db = await connectToDatabase();
+    const eventAccess = await getPartnerScopedAccessForEvent(db, id, session!, 'manager');
+    if (!eventAccess.allowed) {
+      redirect('/admin/events');
+    }
+    canManageEvent = true;
     
     // Get event details
     event = await db
       .collection(COLLECTIONS.EVENTS)
-      .findOne({ _id: new ObjectId(id) });
+      .findOne({ _id: new ObjectId(id) }) as EventDoc | null;
 
     if (!event) {
       notFound();
@@ -55,7 +144,7 @@ export default async function EventDetailPage({
     // Get partner details
     partner = await db
       .collection(COLLECTIONS.PARTNERS)
-      .findOne({ partnerId: event.partnerId });
+      .findOne({ partnerId: event.partnerId }) as PartnerDoc | null;
 
     // Get inactive user emails from SSO database
     // These users' submissions will be filtered out
@@ -108,7 +197,7 @@ export default async function EventDetailPage({
       })
       .sort({ createdAt: -1 })
       .limit(50)
-      .toArray();
+      .toArray() as SubmissionDoc[];
 
     // Get slideshows for this event (UUID on new docs; legacy may use Mongo event id)
     slideshows = await db
@@ -117,32 +206,32 @@ export default async function EventDetailPage({
         $or: [{ eventId: event.eventId }, { eventId: id }],
       })
       .sort({ createdAt: -1 })
-      .toArray();
+      .toArray() as SlideshowDoc[];
 
     slideshowLayouts = await db
       .collection(COLLECTIONS.SLIDESHOW_LAYOUTS)
       .find({ eventId: event.eventId })
       .sort({ createdAt: -1 })
-      .toArray();
+      .toArray() as SlideshowLayoutDoc[];
 
     landingPages = await db
       .collection(COLLECTIONS.LANDING_PAGES)
       .find({ eventMongoId: id })
       .sort({ createdAt: -1 })
-      .toArray();
+      .toArray() as LandingPageDoc[];
 
     // Populate frame details for assigned frames
     // This enriches event.frames[] with full frame data (name, thumbnailUrl, etc.)
     if (event.frames && event.frames.length > 0) {
-      const frameIds = event.frames.map((f: any) => f.frameId);
+      const frameIds = event.frames.map((frame) => frame.frameId);
       const frames = await db
         .collection(COLLECTIONS.FRAMES)
         .find({ frameId: { $in: frameIds } })
-        .toArray();
+        .toArray() as unknown as EventFrameDetails[];
       
       // Map frame details to each assignment
-      event.frames = event.frames.map((assignment: any) => {
-        const frameDetails = frames.find((f: any) => f.frameId === assignment.frameId);
+      event.frames = event.frames.map((assignment) => {
+        const frameDetails = frames.find((frame) => frame.frameId === assignment.frameId);
         return {
           ...assignment,
           frameDetails: frameDetails ? {
@@ -185,13 +274,15 @@ export default async function EventDetailPage({
             )}
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href={`/admin/events/${id}/edit`}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-            >
-              Edit Event
-            </Link>
-            <DeleteEventButton eventId={id} eventName={event.name} />
+            {canManageEvent ? (
+              <Link
+                href={`/admin/events/${id}/edit`}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              >
+                Edit Event
+              </Link>
+            ) : null}
+            {canManageEvent ? <DeleteEventButton eventId={id} eventName={event.name} /> : null}
             <span className={`inline-flex px-3 py-2 text-sm font-semibold rounded-lg ${
               event.isActive
                 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
@@ -481,12 +572,12 @@ export default async function EventDetailPage({
             ) : (
               <div className="p-6">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {event.frames.map((frameAssignment: any, index: number) => {
+                  {event.frames.map((frameAssignment, index: number) => {
                     // Find frame details from frames collection
                     // Note: This requires frames to be populated on the event object
-                    const frameDetails = frameAssignment.frameDetails || frameAssignment;
-                    const thumbnailUrl = frameDetails.thumbnailUrl;
-                    const frameName = frameDetails.name || 'Unnamed Frame';
+                    const frameDetails = frameAssignment.frameDetails;
+                    const thumbnailUrl = frameDetails?.thumbnailUrl;
+                    const frameName = frameDetails?.name || 'Unnamed Frame';
                     
                     return (
                       <div
@@ -496,9 +587,12 @@ export default async function EventDetailPage({
                         <div className="text-center">
                           {thumbnailUrl ? (
                             <div className="mb-2 flex items-center justify-center">
-                              <img 
-                                src={thumbnailUrl} 
+                              <Image
+                                src={thumbnailUrl}
                                 alt={frameName}
+                                width={320}
+                                height={180}
+                                unoptimized
                                 className="max-w-full h-auto max-h-32 object-contain"
                               />
                             </div>
@@ -574,13 +668,15 @@ export default async function EventDetailPage({
             ) : (
               <div className="p-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {Object.entries([
+                  {[
                     { id: 'slideshow-transition', name: 'Slideshow Transitions', icon: '🔄' },
                     { id: 'onboarding-thankyou', name: 'Custom Pages', icon: '📝' },
                     { id: 'loading-slideshow', name: 'Loading Slideshow', icon: '⏳' },
                     { id: 'loading-capture', name: 'Loading Capture', icon: '📸' },
-                  ]).map(([key, scenario]: [string, any]) => {
-                    const count = (event.logos || []).filter((l: any) => l.scenario === scenario.id && l.isActive).length;
+                  ].map((scenario) => {
+                    const count = (event.logos || []).filter(
+                      (logo) => logo.scenario === scenario.id && logo.isActive
+                    ).length;
                     return (
                       <div
                         key={scenario.id}
@@ -643,7 +739,7 @@ export default async function EventDetailPage({
             slug: page.slug,
             title: page.title ?? null,
             targetType: page.targetType === 'layout' ? 'layout' : 'slideshow',
-            targetName: page.targetName,
+            targetName: page.targetName ?? page.slug,
             isActive: page.isActive !== false,
             createdAt: page.createdAt,
           }))}

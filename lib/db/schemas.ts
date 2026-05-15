@@ -43,6 +43,7 @@ export const COLLECTIONS = {
   SLIDESHOW_LAYOUTS: 'slideshow_layouts',
   LANDING_PAGES: 'landing_pages',
   LANDING_PAGE_CSS_PRESETS: 'landing_page_css_presets',
+  PARTNER_USER_ACCESS: 'partner_user_access',
   /** Gym / sport module: lesson templates and logged workouts (same SSO + Atlas as Camera) */
   GYM_LESSONS: 'gym_lessons',
   GYM_WORKOUT_SESSIONS: 'gym_workout_sessions',
@@ -816,6 +817,33 @@ export interface LandingPageCssPreset {
 }
 
 // ============================================================================
+// PARTNER USER ACCESS COLLECTION
+// ============================================================================
+
+export type PartnerAppKey = 'events' | 'gym';
+export type PartnerAccessRole = 'viewer' | 'manager' | 'admin';
+
+/**
+ * Partner-scoped access assignment.
+ * Identity still comes from SSO / Camera session, while this collection stores tenant-level permissions.
+ */
+export interface PartnerUserAccess {
+  _id?: ObjectId;
+  accessId: string;
+  partnerId: string;
+  partnerName: string;
+  userId?: string | null;
+  userEmail: string;
+  userName?: string | null;
+  appKey: PartnerAppKey;
+  role: PartnerAccessRole;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================================
 // USERS CACHE COLLECTION (Optional)
 // ============================================================================
 
@@ -952,6 +980,7 @@ export type NewFrame = Omit<Frame, '_id'>;
 export type NewSubmission = Omit<Submission, '_id'>;
 export type NewUserCache = Omit<UserCache, '_id'>;
 export type NewSlideshow = Omit<Slideshow, '_id'>;
+export type NewPartnerUserAccess = Omit<PartnerUserAccess, '_id'>;
 export type NewGymLesson = Omit<GymLesson, '_id'>;
 export type NewGymWorkoutSession = Omit<GymWorkoutSession, '_id'>;
 

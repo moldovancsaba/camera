@@ -5,10 +5,13 @@
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
+import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import Link from 'next/link';
 import Image from 'next/image';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
+import { redirect } from 'next/navigation';
 
 interface Logo {
   _id: { toString(): string };
@@ -37,17 +40,37 @@ interface EventLogoUsage {
   logos?: Array<{ logoId: string }>;
 }
 
-export default async function LogosPage() {
+export default async function LogosPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ search?: string }>;
+}) {
+  const session = await getSession();
+  if (!isGlobalAdminSession(session)) {
+    redirect('/admin/partners');
+  }
+
   let logos: Logo[] = [];
   const partnerUsageByLogoId = new Map<string, PartnerLogoUsage[]>();
   const eventUsageByLogoId = new Map<string, EventLogoUsage[]>();
   let error: unknown = null;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
 
   try {
     const db = await connectToDatabase();
+    const query = search
+      ? {
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } },
+            { logoId: { $regex: search, $options: 'i' } },
+          ],
+        }
+      : {};
     logos = (await db
       .collection(COLLECTIONS.LOGOS)
-      .find({})
+      .find(query)
       .sort({ createdAt: -1 })
       .limit(100)
       .toArray()) as unknown as Logo[];
@@ -96,6 +119,26 @@ export default async function LogosPage() {
           Upload Shared Logo
         </Link>
       </div>
+
+      <form className="mb-6 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:flex-row">
+        <input
+          type="text"
+          name="search"
+          defaultValue={search}
+          placeholder="Search logo name, description, or logo ID"
+          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+        />
+        <div className="flex gap-3">
+          <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition-colors">
+            Search
+          </button>
+          {search ? (
+            <Link href="/admin/logos" className="rounded-lg border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
+              Clear
+            </Link>
+          ) : null}
+        </div>
+      </form>
 
       {error != null ? <DatabaseConnectionAlert error={error} /> : null}
 

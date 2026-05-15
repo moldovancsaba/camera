@@ -22,10 +22,6 @@ export function parseMiddlewareAuthGate(raw: string): MiddlewareAuthGate {
       if (obj.appAccess === false) {
         return { allow: false, toLogin: false };
       }
-      const role = obj.appRole;
-      if (role !== 'admin' && role !== 'superadmin') {
-        return { allow: false, toLogin: false };
-      }
       return { allow: true };
     }
 
@@ -44,11 +40,6 @@ export function parseMiddlewareAuthGate(raw: string): MiddlewareAuthGate {
     }
 
     if (session.appAccess === false) {
-      return { allow: false, toLogin: false };
-    }
-
-    const role = session.appRole;
-    if (role !== 'admin' && role !== 'superadmin') {
       return { allow: false, toLogin: false };
     }
 

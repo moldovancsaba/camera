@@ -5,10 +5,18 @@
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
+import { getSession } from '@/lib/auth/session';
+import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
 export default async function AdminDashboard() {
+  const session = await getSession();
+  if (!isGlobalAdminSession(session)) {
+    redirect('/admin/partners');
+  }
+
   // Get database statistics with error handling
   let framesCount = 0;
   let submissionsCount = 0;

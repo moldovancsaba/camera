@@ -5,9 +5,13 @@
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
+import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
+import Image from 'next/image';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
 interface SubmissionGalleryItem {
   _id: { toString(): string };
@@ -35,18 +39,39 @@ interface EventRef {
   name: string;
 }
 
-export default async function AdminSubmissionsPage() {
+export default async function AdminSubmissionsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ search?: string }>;
+}) {
+  const session = await getSession();
+  if (!isGlobalAdminSession(session)) {
+    redirect('/admin/partners');
+  }
+
   let submissions: SubmissionGalleryItem[] = [];
   const partnerById = new Map<string, PartnerRef>();
   const eventById = new Map<string, EventRef>();
   let error: unknown = null;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
 
   try {
     const db = await connectToDatabase();
+    const query: Record<string, unknown> = { isArchived: false };
+    if (search) {
+      query.$or = [
+        { userName: { $regex: search, $options: 'i' } },
+        { userEmail: { $regex: search, $options: 'i' } },
+        { eventName: { $regex: search, $options: 'i' } },
+        { partnerName: { $regex: search, $options: 'i' } },
+        { frameName: { $regex: search, $options: 'i' } },
+      ];
+    }
     // NEW: Exclude archived submissions from main view
     const submissionDocs = await db
       .collection(COLLECTIONS.SUBMISSIONS)
-      .find({ isArchived: false })
+      .find(query)
       .sort({ createdAt: -1 })
       .limit(100)
       .toArray();
@@ -100,6 +125,26 @@ export default async function AdminSubmissionsPage() {
         </p>
       </div>
 
+      <form className="mb-6 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:flex-row">
+        <input
+          type="text"
+          name="search"
+          defaultValue={search}
+          placeholder="Search user, email, partner, event, or frame"
+          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+        />
+        <div className="flex gap-3">
+          <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition-colors">
+            Search
+          </button>
+          {search ? (
+            <Link href="/admin/submissions" className="rounded-lg border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
+              Clear
+            </Link>
+          ) : null}
+        </div>
+      </form>
+
       {error != null ? <DatabaseConnectionAlert error={error} /> : null}
 
       {!error && submissions.length === 0 ? (
@@ -129,9 +174,12 @@ export default async function AdminSubmissionsPage() {
                 >
                   <Link href={`/share/${submission._id}`}>
                     <div className="relative bg-gray-100 dark:bg-gray-700">
-                      <img
+                      <Image
                         src={submission.imageUrl}
                         alt={`Photo by ${submission.userName}`}
+                        width={1200}
+                        height={1600}
+                        unoptimized
                         className="w-full h-auto hover:scale-105 transition-transform"
                       />
                     </div>

@@ -5,7 +5,13 @@ import { useState } from 'react';
 import { MAX_SPORT_ACTIVITIES } from '@/lib/funfitfan/sport-activities';
 import { AppButton } from '@/components/ui/AppButton';
 
-export default function AdminFffActivitiesForm({ initialLines }: { initialLines: string[] }) {
+export default function AdminFffActivitiesForm({
+  initialLines,
+  canManage = true,
+}: {
+  initialLines: string[];
+  canManage?: boolean;
+}) {
   const router = useRouter();
   const [text, setText] = useState(initialLines.join('\n'));
   const [loading, setLoading] = useState(false);
@@ -68,10 +74,11 @@ export default function AdminFffActivitiesForm({ initialLines }: { initialLines:
           className="app-form-control app-form-textarea"
           value={text}
           onChange={(e) => setText(e.target.value)}
+          disabled={!canManage}
         />
       </div>
       {message ? <p className="app-form-status">{message}</p> : null}
-      <AppButton type="submit" variant="primary" compact disabled={loading}>
+      <AppButton type="submit" variant="primary" compact disabled={loading || !canManage}>
         {loading ? 'Saving…' : 'Save activities'}
       </AppButton>
     </form>

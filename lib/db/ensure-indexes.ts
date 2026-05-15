@@ -194,6 +194,31 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       .createIndex({ className: 1 }, { unique: true, name: 'landing_page_css_presets_className_unique' })
   );
 
+  // --- partner user access ---
+  await track(COLLECTIONS.PARTNER_USER_ACCESS, () =>
+    db
+      .collection(COLLECTIONS.PARTNER_USER_ACCESS)
+      .createIndex({ accessId: 1 }, { unique: true, name: 'partner_user_access_accessId_unique' })
+  );
+  await track(COLLECTIONS.PARTNER_USER_ACCESS, () =>
+    db
+      .collection(COLLECTIONS.PARTNER_USER_ACCESS)
+      .createIndex(
+        { partnerId: 1, userEmail: 1, appKey: 1 },
+        { unique: true, name: 'partner_user_access_partner_email_app_unique' }
+      )
+  );
+  await track(COLLECTIONS.PARTNER_USER_ACCESS, () =>
+    db
+      .collection(COLLECTIONS.PARTNER_USER_ACCESS)
+      .createIndex({ userEmail: 1, isActive: 1 }, { name: 'partner_user_access_email_active' })
+  );
+  await track(COLLECTIONS.PARTNER_USER_ACCESS, () =>
+    db
+      .collection(COLLECTIONS.PARTNER_USER_ACCESS)
+      .createIndex({ partnerId: 1, isActive: 1, appKey: 1 }, { name: 'partner_user_access_partner_active_app' })
+  );
+
   // --- gym module ---
   await track(COLLECTIONS.GYM_LESSONS, () =>
     db.collection(COLLECTIONS.GYM_LESSONS).createIndex(

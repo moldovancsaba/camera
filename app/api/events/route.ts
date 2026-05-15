@@ -12,14 +12,20 @@ import { inheritPartnerDefaults } from '@/lib/db/events';
 import { normalizeGoShortSlugInput } from '@/lib/go-short-url';
 import {
   withErrorHandler,
-  requireAdmin,
+  requireAuth,
   parsePaginationParams,
   validateRequiredFields,
   apiSuccess,
   apiCreated,
   apiNotFound,
   apiBadRequest,
+  apiForbidden,
 } from '@/lib/api';
+import {
+  getPartnerScopedAccessForPartner,
+  isGlobalAdminSession,
+  listAccessiblePartnerIds,
+} from '@/lib/partners/authorization';
 
 /**
  * GET /api/events
@@ -40,10 +46,15 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const active = searchParams.get('active');
 
   const db = await connectToDatabase();
+  const session = await requireAuth(request);
+  const accessiblePartnerIds = await listAccessiblePartnerIds(db, session, 'events');
     
     // Build query
     // Query filters narrow down events based on partner, name, or status
-    const query: any = {};
+    const query: Record<string, unknown> = {};
+    if (!isGlobalAdminSession(session)) {
+      query.partnerId = { $in: accessiblePartnerIds };
+    }
     
     // Filter by partner
     if (partnerId) {
@@ -98,8 +109,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
  * - isActive: Active status (default: true)
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
-  // Check authentication and authorization - only admin users can create events
-  const session = await requireAdmin();
+  const session = await requireAuth(request);
 
   // Parse request body
   const body = await request.json();
@@ -119,6 +129,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   if (!partner) {
     throw apiNotFound('Partner');
+  }
+  if (!isGlobalAdminSession(session)) {
+    const access = await getPartnerScopedAccessForPartner(db, session, partner.partnerId, 'events', 'manager');
+    if (!access.allowed) {
+      throw apiForbidden('Partner-level manager access is required to create events for this partner');
+    }
   }
 
   // Inherit partner defaults (v2.8.0)

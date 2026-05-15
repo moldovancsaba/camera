@@ -1,11 +1,12 @@
 /**
  * Admin layout: sidebar + main content.
- * Access: middleware requires a valid session with appRole `admin` or `superadmin`
- * (see `middleware.ts`); layout additionally requires any logged-in session.
+ * Access: middleware requires a valid session; layout resolves global or partner-scoped admin access.
  */
 
 import { getSession } from '@/lib/auth/session';
 import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
+import { connectToDatabase } from '@/lib/db/mongodb';
+import { getAdminNavigationAccess } from '@/lib/partners/authorization';
 import { redirect } from 'next/navigation';
 import CollapsibleSidebar from '@/components/admin/CollapsibleSidebar';
 
@@ -20,21 +21,20 @@ export default async function AdminLayout({
   if (!session) {
     redirect(await authEntryPathForCurrentHost());
   }
-  
-  // WHAT: Check app-specific role (appRole), NOT SSO-level role (user.role)
-  // WHY: SSO v5.24.0 introduced multi-app permissions - each app has its own roles
-  // HOW: Use session.appRole which was queried from SSO during login callback
-  if (session.appRole !== 'admin' && session.appRole !== 'superadmin') {
-    redirect('/');
-  }
 
   if (session.appAccess === false) {
     redirect('/');
   }
 
+  const db = await connectToDatabase();
+  const navigationAccess = await getAdminNavigationAccess(db, session);
+  if (!navigationAccess.isGlobalAdmin && !navigationAccess.hasAnyPartnerAccess) {
+    redirect('/');
+  }
+
   return (
     <div className="flex min-h-screen bg-white/75 backdrop-blur-md dark:bg-gray-950/75">
-      <CollapsibleSidebar session={session} />
+      <CollapsibleSidebar session={session} navigationAccess={navigationAccess} />
       
       {/* Main Content */}
       <main className="flex-1 overflow-auto">

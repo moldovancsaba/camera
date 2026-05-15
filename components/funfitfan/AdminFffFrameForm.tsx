@@ -7,9 +7,11 @@ import { AppButton } from '@/components/ui/AppButton';
 export default function AdminFffFrameForm({
   frames,
   currentFrameId,
+  canManage = true,
 }: {
   frames: { frameId: string; name: string }[];
   currentFrameId: string;
+  canManage?: boolean;
 }) {
   const router = useRouter();
   const [frameId, setFrameId] = useState(currentFrameId);
@@ -51,6 +53,7 @@ export default function AdminFffFrameForm({
           className="app-form-control"
           value={frameId}
           onChange={(e) => setFrameId(e.target.value)}
+          disabled={!canManage}
           required
         >
           <option value="">— Select —</option>
@@ -62,7 +65,7 @@ export default function AdminFffFrameForm({
         </select>
       </div>
       {message ? <p className="app-form-status">{message}</p> : null}
-      <AppButton type="submit" variant="primary" compact disabled={loading || !frameId}>
+      <AppButton type="submit" variant="primary" compact disabled={loading || !frameId || !canManage}>
         {loading ? 'Saving…' : 'Save'}
       </AppButton>
     </form>

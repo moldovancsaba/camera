@@ -9,10 +9,11 @@ import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { updateChildEventsFromPartner } from '@/lib/db/events';
 import {
   withErrorHandler,
-  requireAdmin,
+  requireAuth,
   apiSuccess,
   apiBadRequest,
   apiNotFound,
+  apiForbidden,
 } from '@/lib/api';
 import {
   FUNFITFAN_PARTNER_ID,
@@ -24,6 +25,7 @@ import {
   MAX_SPORT_ACTIVITIES,
   normalizeSportActivitiesList,
 } from '@/lib/funfitfan/sport-activities';
+import { getPartnerScopedAccessForPartner, isGlobalAdminSession } from '@/lib/partners/authorization';
 
 async function ensurePartnerRow(db: Db, adminUserId: string) {
   const col = db.collection(COLLECTIONS.PARTNERS);
@@ -43,8 +45,14 @@ async function ensurePartnerRow(db: Db, adminUserId: string) {
 }
 
 export const GET = withErrorHandler(async () => {
-  await requireAdmin();
+  const session = await requireAuth();
   const db = await connectToDatabase();
+  if (!isGlobalAdminSession(session)) {
+    const access = await getPartnerScopedAccessForPartner(db, session, FUNFITFAN_PARTNER_ID, 'gym');
+    if (!access.allowed) {
+      throw apiForbidden('Partner-level gym access is required to read gym settings');
+    }
+  }
   const settings = await db.collection(COLLECTIONS.FFF_SETTINGS).findOne({ settingsKey: FFF_SETTINGS_KEY });
   const effectiveId = (await readFunFitFanDefaultFrameId(db)) ?? '';
   const sportActivities = await readFunFitFanSportActivities(db);
@@ -56,7 +64,7 @@ export const GET = withErrorHandler(async () => {
 });
 
 export const PATCH = withErrorHandler(async (request: NextRequest) => {
-  const session = await requireAdmin();
+  const session = await requireAuth(request);
   const body = await request.json();
   const defaultFrameId = typeof body.defaultFrameId === 'string' ? body.defaultFrameId.trim() : '';
   const hasActivities = 'sportActivities' in body;
@@ -72,6 +80,12 @@ export const PATCH = withErrorHandler(async (request: NextRequest) => {
   }
 
   const db = await connectToDatabase();
+  if (!isGlobalAdminSession(session)) {
+    const access = await getPartnerScopedAccessForPartner(db, session, FUNFITFAN_PARTNER_ID, 'gym', 'manager');
+    if (!access.allowed) {
+      throw apiForbidden('Partner-level gym manager access is required to update gym settings');
+    }
+  }
   await ensurePartnerRow(db, session.user.id);
 
   const now = generateTimestamp();

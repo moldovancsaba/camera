@@ -119,6 +119,20 @@ export async function buildLandingPageEditorProps(
         url: `${defaultCameraOrigin()}/capture/${eventMongoId}`,
         buttonText: 'Send a Selfie',
       },
+      {
+        id: 'gym-workout',
+        label: 'Open Workout Library',
+        description: 'Send visitors directly into the current Gym workout flow.',
+        url: `${defaultCameraOrigin()}/workout`,
+        buttonText: 'Start Workout',
+      },
+      {
+        id: 'gym-home',
+        label: 'Open Gym Home',
+        description: 'Use the Gym / member landing experience as the next action.',
+        url: `${defaultCameraOrigin()}/`,
+        buttonText: 'Open Gym App',
+      },
       ...(typeof event.shortUrlSlug === 'string' && event.shortUrlSlug.trim()
         ? [
             {

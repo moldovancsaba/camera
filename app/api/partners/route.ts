@@ -10,12 +10,14 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateId, generateTimestamp } from '@/lib/db/schemas';
 import {
   withErrorHandler,
+  requireAuth,
   requireAdmin,
   parsePaginationParams,
   validateRequiredFields,
   apiSuccess,
   apiCreated,
 } from '@/lib/api';
+import { isGlobalAdminSession, listAccessiblePartnerIds } from '@/lib/partners/authorization';
 
 /**
  * GET /api/partners
@@ -34,10 +36,15 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const active = searchParams.get('active');
 
   const db = await connectToDatabase();
+  const session = await requireAuth(request);
+  const accessiblePartnerIds = await listAccessiblePartnerIds(db, session);
     
     // Build query
     // Query filters are used to narrow down the result set based on user input
-    const query: any = {};
+    const query: Record<string, unknown> = {};
+    if (!isGlobalAdminSession(session)) {
+      query.partnerId = { $in: accessiblePartnerIds };
+    }
     
     // Search by partner name (case-insensitive)
     if (search) {

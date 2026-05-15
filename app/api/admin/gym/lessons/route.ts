@@ -5,6 +5,7 @@
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import {
+  PartnerAccessRole,
   COLLECTIONS,
   generateId,
   generateTimestamp,
@@ -12,13 +13,16 @@ import {
 } from '@/lib/db/schemas';
 import {
   withErrorHandler,
-  requireAdmin,
+  requireAuth,
   apiSuccess,
   apiCreated,
   apiBadRequest,
+  apiForbidden,
 } from '@/lib/api';
 import { readFunFitFanSportActivities } from '@/lib/funfitfan/bootstrap';
 import { resolveLessonSportFromAllowlist } from '@/lib/gym/lesson-sport';
+import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
+import { getPartnerScopedAccessForPartner, isGlobalAdminSession } from '@/lib/partners/authorization';
 
 function normalizeSteps(raw: unknown): GymLessonStep[] {
   if (!Array.isArray(raw) || raw.length === 0) {
@@ -37,9 +41,29 @@ function normalizeSteps(raw: unknown): GymLessonStep[] {
   });
 }
 
-export const GET = withErrorHandler(async () => {
-  await requireAdmin();
+async function assertGymAccess(
+  request: NextRequest | undefined,
+  minRole: PartnerAccessRole
+) {
+  const session = await requireAuth(request);
+  if (isGlobalAdminSession(session)) {
+    return { session, db: null as null };
+  }
   const db = await connectToDatabase();
+  const access = await getPartnerScopedAccessForPartner(db, session, FUNFITFAN_PARTNER_ID, 'gym', minRole);
+  if (!access.allowed) {
+    throw apiForbidden(
+      minRole === 'viewer'
+        ? 'Partner-level gym access is required to read training content'
+        : 'Partner-level gym manager access is required to change training content'
+    );
+  }
+  return { session, db };
+}
+
+export const GET = withErrorHandler(async () => {
+  const { db: existingDb } = await assertGymAccess(undefined, 'viewer');
+  const db = existingDb ?? (await connectToDatabase());
   const rows = await db
     .collection(COLLECTIONS.GYM_LESSONS)
     .find({})
@@ -60,7 +84,7 @@ export const GET = withErrorHandler(async () => {
 });
 
 export const POST = withErrorHandler(async (request: NextRequest) => {
-  const session = await requireAdmin();
+  const { session, db: existingDb } = await assertGymAccess(request, 'manager');
   const body = await request.json();
   const { title, description, steps, isPublished, sport } = body;
 
@@ -71,7 +95,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     throw apiBadRequest('sport is required (must match FunFitFan sport activities)');
   }
 
-  const db = await connectToDatabase();
+  const db = existingDb ?? (await connectToDatabase());
   const allowedSports = await readFunFitFanSportActivities(db);
   const canonicalSport = resolveLessonSportFromAllowlist(sport, allowedSports);
   if (!canonicalSport) {

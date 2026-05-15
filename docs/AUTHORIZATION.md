@@ -1,7 +1,7 @@
 # Authorization Guide
 
-**Version**: 1.0.0  
-**Last Updated**: 2025-11-09T20:30:00.000Z
+**Version**: 1.1.0  
+**Last Updated**: 2026-05-15T00:00:00.000Z
 
 ## Critical: Always Use `session.appRole` for Authorization
 
@@ -70,6 +70,59 @@ On the SSO side, permissions are still typically backed by data like **app permi
 ```
 
 **“Deactivate” in Camera admin (SSO users):** Camera stores `cameraAccountDisabled` on **submissions** so slideshows/galleries can hide that person without a Mongo connection to SSO. That does not revoke SSO login by itself—use the SSO admin tools if login must be blocked at the IdP.
+
+---
+
+## Partner-Level Access Model
+
+Camera now has a second authorization layer for tenant-scoped UX and future runtime enforcement:
+
+- **Global app access** still comes from SSO via `session.appRole` and `session.appAccess`
+- **Partner-scoped app access** now lives in Camera in the `partner_user_access` collection
+
+This distinction matters:
+
+- SSO answers: can this identity use Camera at all, and are they a global app admin?
+- Camera answers: which partner can this identity operate, for which app surface, and at what partner role?
+
+### Current partner access fields
+
+`partner_user_access` stores records like:
+
+```typescript
+{
+  accessId: "uuid",
+  partnerId: "partner-uuid",
+  partnerName: "AC Milan",
+  userId: "optional-sso-user-id",
+  userEmail: "user@example.com",
+  userName: "User Name",
+  appKey: "events" | "gym",
+  role: "viewer" | "manager" | "admin",
+  isActive: true
+}
+```
+
+### Important current rule
+
+Partner access is now the **source of truth for partner assignments in the admin UX**, but it is **not yet enforced universally across all runtime/admin authorization paths**.
+
+That means:
+
+- partner workspaces and the global user directory can manage and display partner assignments safely
+- global app admin checks still rely on SSO app permissions
+- broad runtime enforcement for partner-scoped permissions must be rolled out deliberately to avoid breaking live operations
+
+### Recommended enforcement direction
+
+When runtime enforcement is added, the order should be:
+
+1. authenticate via SSO / session
+2. allow global `admin` / `superadmin` to bypass partner restrictions where intended
+3. resolve partner assignment from `partner_user_access`
+4. check `appKey`, `role`, and `isActive`
+
+Do not replace `session.appRole` checks with partner checks blindly. They solve different problems.
 
 ---
 
