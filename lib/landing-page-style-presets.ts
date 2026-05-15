@@ -373,16 +373,23 @@ export const DEFAULT_LANDING_PAGE_STYLE_PRESETS: LandingPageStylePreset[] = [
     flex: 0 0 auto;
     min-height: auto;
     display: grid;
-    grid-template-rows: var(--landing-media-fitted-height, auto) auto;
+    grid-template-rows: auto auto;
     gap: var(--landing-gap);
     align-content: start;
   }
 
-  .sihf-background .landing-page-media-column,
+  .sihf-background .landing-page-media-column {
+    width: 100%;
+    aspect-ratio: var(--landing-target-aspect-ratio, 1.7777778);
+    min-height: 0;
+  }
+
   .sihf-background .landing-page-media-fit,
-  .sihf-background .landing-page-media-frame {
-    height: var(--landing-media-fitted-height, auto);
-    min-height: auto;
+  .sihf-background .landing-page-media-frame,
+  .sihf-background .landing-page-media-iframe {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
   }
 
   .sihf-background .landing-page-sidebar {

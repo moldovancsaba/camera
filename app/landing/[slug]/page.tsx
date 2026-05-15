@@ -402,7 +402,7 @@ export default async function PublicLandingPage({
   `.trim();
   const landingPageCustomCss =
     typeof landingPage.customCss === 'string' ? landingPage.customCss.trim() : '';
-  const landingPageFontCss = `.landing-page-root { --landing-display-font: ${landingDisplayFont.style.fontFamily}, Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; }`;
+  const landingPageFontCss = `.landing-page-root { --landing-display-font: ${landingDisplayFont.style.fontFamily}, Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif; --landing-target-aspect-ratio: ${targetAspectRatio}; }`;
 
   return (
     <main className={`${landingPageClassName} ${landingDisplayFont.className}`}>
