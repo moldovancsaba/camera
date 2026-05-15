@@ -97,12 +97,6 @@ export default async function Home({
                 </a>
               )}
 
-              {session.appAccess !== false && (
-                <a href="/workout" className="app-btn app-btn--primary app-btn--inline app-btn--lg">
-                  Gym
-                </a>
-              )}
-
               <a href="/api/auth/logout" className="app-btn app-btn--neutral app-btn--inline app-btn--lg">
                 Logout
               </a>
