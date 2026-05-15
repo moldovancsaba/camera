@@ -46,7 +46,7 @@ export default function CollapsibleSidebar({ session }: CollapsibleSidebarProps)
       items: [
         { href: '/admin/events', icon: '🎯', label: 'Events App' },
         { href: '/admin/gym', icon: '💪', label: 'Gym App' },
-        { href: '/admin/gym/funfitfan', icon: '🏃', label: 'FunFitFan Settings', indent: true },
+        { href: '/admin/gym/funfitfan', icon: '🏃', label: 'FunFitFan', indent: true },
       ],
     },
   ];
