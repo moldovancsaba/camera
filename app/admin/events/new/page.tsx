@@ -165,8 +165,10 @@ export default function NewEventPage() {
   return (
     <div className="p-8 max-w-4xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Add New Event</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">Create a new event for a partner</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Create Event App Instance</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">
+          Create a new event runtime for a partner using shared Camera Core resources and partner defaults.
+        </p>
       </div>
 
       {error && (
@@ -200,7 +202,7 @@ export default function NewEventPage() {
               />
             )}
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              The partner organization for this event
+              The partner workspace this event app instance belongs to
             </p>
           </div>
         </div>
@@ -208,6 +210,10 @@ export default function NewEventPage() {
         {/* Event Details */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Event Details</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            This creates the base event app instance. Frames, logos, landing pages, slideshows, and gallery behavior
+            can be configured after creation.
+          </p>
           
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">

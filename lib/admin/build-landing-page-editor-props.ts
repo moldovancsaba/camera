@@ -2,6 +2,7 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { listLandingPageCssPresets, type LandingPageCssPresetOption } from '@/lib/landing-page-css-presets';
+import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
 
 export interface LandingPageEditorOption {
   id: string;
@@ -36,6 +37,14 @@ export interface LandingPageEditorInitialValue {
   isActive: boolean;
 }
 
+export interface LandingPageEditorActionPreset {
+  id: string;
+  label: string;
+  description: string;
+  url: string;
+  buttonText: string;
+}
+
 export interface LandingPageEditorPropsData {
   eventMongoId: string;
   eventName: string;
@@ -43,6 +52,7 @@ export interface LandingPageEditorPropsData {
   layouts: LandingPageEditorOption[];
   logos: LandingPageEditorLogo[];
   cssPresets: LandingPageCssPresetOption[];
+  actionPresets: LandingPageEditorActionPreset[];
   landingPage: LandingPageEditorInitialValue | null;
 }
 
@@ -101,6 +111,26 @@ export async function buildLandingPageEditorProps(
       imageUrl: String(logo.imageUrl),
     })),
     cssPresets,
+    actionPresets: [
+      {
+        id: 'event-capture',
+        label: 'Open Event Capture',
+        description: 'Prefill the call-to-action with this event’s public capture URL.',
+        url: `${defaultCameraOrigin()}/capture/${eventMongoId}`,
+        buttonText: 'Send a Selfie',
+      },
+      ...(typeof event.shortUrlSlug === 'string' && event.shortUrlSlug.trim()
+        ? [
+            {
+              id: 'event-short-link',
+              label: 'Open Short Link',
+              description: 'Use the branded short link that redirects guests into event capture.',
+              url: `${defaultGoShortOrigin()}/${event.shortUrlSlug.trim()}`,
+              buttonText: 'Open Selfie Link',
+            },
+          ]
+        : []),
+    ],
     landingPage: landingPage
       ? {
           _id: String(landingPage._id),

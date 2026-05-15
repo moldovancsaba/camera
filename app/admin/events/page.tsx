@@ -41,17 +41,58 @@ export default async function EventsPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Events</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Manage partner events and frame assignments</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Events App</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            Manage event app instances that use partner defaults, shared resources, and gallery flows.
+          </p>
         </div>
         <Link
           href="/admin/events/new"
           className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
         >
           <span>+</span>
-          <span>Add Event</span>
+          <span>Add Event Instance</span>
         </Link>
       </div>
+
+      {!dbError && (
+        <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-3">
+          <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
+              App Model
+            </p>
+            <h2 className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">Campaign / Event Runtime</h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              Each record here is an event app instance for a partner. It inherits partner resources and can override
+              them when the experience needs to diverge.
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-5 shadow-sm dark:border-blue-800 dark:bg-blue-900/20">
+            <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">Partner-first operations</p>
+            <p className="mt-2 text-sm text-blue-800 dark:text-blue-200">
+              Create new event instances from a partner workspace whenever possible so the inheritance context stays
+              explicit.
+            </p>
+            <div className="mt-4">
+              <Link
+                href="/admin/partners"
+                className="inline-flex rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+              >
+                Open Partners
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-800 dark:bg-emerald-900/20">
+            <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Current inventory</p>
+            <p className="mt-2 text-sm text-emerald-800 dark:text-emerald-200">
+              {events.length} event app instance{events.length === 1 ? '' : 's'} across {partners.length} active
+              partner{partners.length === 1 ? '' : 's'}.
+            </p>
+          </div>
+        </div>
+      )}
 
       {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
 
@@ -59,12 +100,14 @@ export default async function EventsPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
           <div className="text-6xl mb-4">🎯</div>
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No events yet</h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Get started by adding your first event</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Get started by creating the first event app instance for a partner.
+          </p>
           <Link
             href="/admin/events/new"
             className="inline-flex px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
           >
-            Add Your First Event
+            Add Your First Event Instance
           </Link>
         </div>
       ) : (
@@ -73,7 +116,7 @@ export default async function EventsPage() {
             <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Event Name
+                  Event Instance
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Partner

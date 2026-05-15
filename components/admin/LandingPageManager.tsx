@@ -53,10 +53,10 @@ export default function LandingPageManager({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              🌐 Event Landing Pages
+              🌐 Experience Landing Pages
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Responsive public pages that can feature one slideshow or one layout
+              Public experience surfaces for this event. They can embed a slideshow or layout and route visitors into app actions like capture.
             </p>
           </div>
           <Link
@@ -71,12 +71,12 @@ export default function LandingPageManager({
       {landingPages.length === 0 ? (
         <div className="p-12 text-center">
           <div className="text-5xl mb-4">🌐</div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            No landing pages yet
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400">
-            Create a landing page for this event and connect it to one slideshow or one layout
-          </p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              No landing pages yet
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              Create an experience page for this event and connect it to one slideshow or one layout
+            </p>
         </div>
       ) : (
         <div className="p-6">
@@ -116,7 +116,7 @@ export default function LandingPageManager({
 
                 <div className="space-y-2">
                   <div className="text-xs text-gray-500 dark:text-gray-400">
-                    Target: {page.targetType === 'layout' ? 'Layout' : 'Slideshow'} · {page.targetName}
+                    Embedded experience: {page.targetType === 'layout' ? 'Layout' : 'Slideshow'} · {page.targetName}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     Created {new Date(page.createdAt).toLocaleDateString()}
@@ -125,7 +125,7 @@ export default function LandingPageManager({
                     href={`/admin/events/${eventMongoId}/landing-pages/${page._id}`}
                     className="block w-full px-3 py-2 bg-emerald-600 text-white rounded text-sm font-semibold hover:bg-emerald-700 transition-colors text-center"
                   >
-                    ✏️ Edit landing page
+                    ✏️ Edit experience page
                   </Link>
                   <Link
                     href={`/landing/${page.slug}`}

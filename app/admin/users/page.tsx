@@ -35,8 +35,28 @@ function sanitizeUsername(name: string): string {
   return name.replace(/[^a-zA-Z0-9]/g, '_');
 }
 
+interface AdminUserListItem {
+  email: string;
+  name: string;
+  type: 'administrator' | 'real' | 'pseudo' | 'anonymous';
+  role?: string;
+  isActive?: boolean;
+  isAnonymous?: boolean;
+  mergedWith?: string;
+  collectedAt: string;
+  eventId?: string;
+  eventName?: string;
+  submissions: Array<{
+    _id: unknown;
+    imageUrl: string;
+    createdAt: string;
+  }>;
+  ssoIdForPermission?: string | null;
+  accountDisabledMirror?: boolean;
+}
+
 export default async function AdminUsersPage() {
-  let users: any[] = [];
+  let users: AdminUserListItem[] = [];
   let error: unknown = null;
   let currentUserEmail = '';
 
@@ -59,7 +79,7 @@ export default async function AdminUsersPage() {
       .toArray();
 
     // Group submissions by user identifier (SSO profile loaded over HTTP below)
-    const userMap = new Map<string, any>();
+      const userMap = new Map<string, AdminUserListItem>();
 
     for (const submission of submissions) {
       const hasUserInfo = submission.userInfo?.email && submission.userInfo?.name;
@@ -91,8 +111,8 @@ export default async function AdminUsersPage() {
           ssoIdForPermission = submission.userId;
         }
 
-        let userType = 'pseudo';
-        let role = 'user';
+        let userType: AdminUserListItem['type'] = 'pseudo';
+        const role = 'user';
         let isActive = true;
 
         if (isAnonymous) {
@@ -190,11 +210,20 @@ export default async function AdminUsersPage() {
     error = err;
   }
 
+  const administrators = users.filter((user) => user.type === 'administrator');
+  const accessManagedUsers = users.filter((user) => user.type === 'administrator' || user.type === 'real');
+  const guestUsers = users.filter((user) => user.type === 'pseudo');
+  const anonymousUsers = users.filter((user) => user.type === 'anonymous');
+  const activeUsers = users.filter((user) => user.isActive !== false);
+  const representedSubmissions = users.reduce((sum, user) => sum + user.submissions.length, 0);
+
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Users</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">Compact list with core info</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Global Users</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">
+          Global access management plus participation records derived from Camera submissions.
+        </p>
       </div>
 
       {error != null ? <DatabaseConnectionAlert error={error} /> : null}
@@ -206,14 +235,56 @@ export default async function AdminUsersPage() {
           <p className="text-gray-600 dark:text-gray-400">Waiting for first submissions</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {users.map((user: any, index: number) => {
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+              <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Global access-managed accounts</div>
+              <div className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{accessManagedUsers.length}</div>
+              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">{administrators.length} admin-level accounts</div>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+              <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Guest identities</div>
+              <div className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{guestUsers.length}</div>
+              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">Submission-only users collected from events</div>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+              <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Anonymous participants</div>
+              <div className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{anonymousUsers.length}</div>
+              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">Session-based users without profile details</div>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+              <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Represented submissions</div>
+              <div className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{representedSubmissions}</div>
+              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">{activeUsers.length} active identities in this directory</div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
+            This page manages global Camera access today. Partner-level permissions are not modeled separately yet, so guest and participation records below are derived from submissions rather than a dedicated partner access table.
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Directory and Participation History</h2>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                Operators can manage global roles and status here while still seeing how each identity shows up in event participation.
+              </p>
+            </div>
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {users.map((user, index: number) => {
               const profileHref = `/users/${sanitizeUsername(user.name || 'Anonymous')}`;
               const emailDisplay = user.isAnonymous ? 'anonymous@event.com' : (user.email || 'unknown');
               const registeredAt = new Date(user.collectedAt).toLocaleString();
               const photosCount = user.submissions.length;
               const lastEvent = user.eventName || 'Unknown Event';
+              const accessLabel =
+                user.type === 'administrator'
+                  ? 'Global Camera administrator'
+                  : user.type === 'real'
+                    ? 'Global Camera user'
+                    : user.type === 'pseudo'
+                      ? 'Submission-only guest identity'
+                      : 'Anonymous participation identity';
 
               return (
                 <div key={`${user.email}-${index}`} className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
@@ -246,6 +317,7 @@ export default async function AdminUsersPage() {
                       </div>
                       
                       <div className="space-y-1">
+                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300">{accessLabel}</div>
                         <div className="text-sm text-gray-600 dark:text-gray-400 truncate">📧 {emailDisplay}</div>
                         <div className="text-sm text-gray-600 dark:text-gray-400 truncate">📸 {photosCount} photos</div>
                         <div className="text-sm text-gray-600 dark:text-gray-400 truncate">🎉 Last Event: {lastEvent}</div>
@@ -270,7 +342,8 @@ export default async function AdminUsersPage() {
                   </div>
                 </div>
               );
-            })}
+              })}
+            </div>
           </div>
         </div>
       )}

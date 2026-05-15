@@ -4,6 +4,7 @@ import type { FormEvent, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import type { LandingPageEditorActionPreset } from '@/lib/admin/build-landing-page-editor-props';
 import type { LandingPageCssPresetOption } from '@/lib/landing-page-css-presets';
 
 interface TargetOption {
@@ -48,6 +49,7 @@ interface Props {
   layouts: TargetOption[];
   logos: LogoOption[];
   cssPresets: LandingPageCssPresetOption[];
+  actionPresets: LandingPageEditorActionPreset[];
 }
 
 const QR_ALLOWED_MIME_TYPES = new Set([
@@ -196,7 +198,6 @@ function DropZone({
 }
 
 export default function LandingPageEditor({
-  mode,
   eventMongoId,
   eventName,
   initialLandingPage,
@@ -204,6 +205,7 @@ export default function LandingPageEditor({
   layouts,
   logos,
   cssPresets,
+  actionPresets,
 }: Props) {
   const router = useRouter();
   const [landingPageId, setLandingPageId] = useState(initialLandingPage?._id ?? '');
@@ -232,6 +234,13 @@ export default function LandingPageEditor({
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const applyActionPreset = (preset: LandingPageEditorActionPreset) => {
+    setUrl(preset.url);
+    setUrlButtonText((currentValue) => (currentValue.trim() ? currentValue : preset.buttonText));
+    setSuccess(`Applied "${preset.label}" preset to the call-to-action.`);
+    setError(null);
+  };
 
   const targetOptions = useMemo(
     () => (targetType === 'layout' ? layouts : slideshows),
@@ -446,10 +455,10 @@ export default function LandingPageEditor({
           return [next, ...deduped];
         });
       }
-      setSuccess(landingPageId ? 'Landing page updated.' : 'Landing page saved.');
+      setSuccess(landingPageId ? 'Experience page updated.' : 'Experience page saved.');
       router.refresh();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Failed to save landing page');
+      setError(submitError instanceof Error ? submitError.message : 'Failed to save experience page');
     } finally {
       setIsSubmitting(false);
     }
@@ -462,13 +471,17 @@ export default function LandingPageEditor({
         <span>→</span>
         <Link href={`/admin/events/${eventMongoId}`} className="hover:text-gray-700 dark:hover:text-gray-200">{eventName}</Link>
         <span>→</span>
-        <span>{landingPageId ? 'Edit Landing Page' : 'New Landing Page'}</span>
+        <span>{landingPageId ? 'Edit Experience Page' : 'New Experience Page'}</span>
       </div>
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          {landingPageId ? 'Edit Landing Page' : 'Create Landing Page'}
+          {landingPageId ? 'Edit Experience Landing Page' : 'Create Experience Landing Page'}
         </h1>
+        <p className="mt-2 max-w-3xl text-gray-600 dark:text-gray-400">
+          Build a reusable public surface for <span className="font-semibold">{eventName}</span>.
+          The page can embed a slideshow or layout and also route guests into app actions like event capture.
+        </p>
       </div>
 
       {error ? (
@@ -486,7 +499,7 @@ export default function LandingPageEditor({
       ) : null}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Section title="Landing Page Basics">
+        <Section title="Experience Basics">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <Field label="Title">
               <input
@@ -515,7 +528,10 @@ export default function LandingPageEditor({
             />
           </Field>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <Field label="URL">
+            <Field
+              label="Action URL"
+              helper="Optional. Use this to send visitors into capture, workout, registration, or any other app flow."
+            >
               <input
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
@@ -523,15 +539,46 @@ export default function LandingPageEditor({
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
               />
             </Field>
-            <Field label="URL button text">
+            <Field
+              label="Action button text"
+              helper="Examples: Send a Selfie, Start Workout, Join Event, View Gallery."
+            >
               <input
                 value={urlButtonText}
                 onChange={(e) => setUrlButtonText(e.target.value)}
-                placeholder="Open URL"
+                placeholder="Open experience"
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
               />
             </Field>
           </div>
+          {actionPresets.length > 0 ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/30">
+              <div className="mb-3">
+                <h3 className="text-sm font-semibold text-emerald-900 dark:text-emerald-300">
+                  App action presets
+                </h3>
+                <p className="mt-1 text-xs text-emerald-800 dark:text-emerald-200">
+                  Prefill the action URL and button text from common Camera app flows, then fine-tune the copy if needed.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                {actionPresets.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => applyActionPreset(preset)}
+                    className="rounded-lg border border-emerald-300 bg-white px-4 py-3 text-left transition-colors hover:border-emerald-500 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-gray-900 dark:hover:bg-emerald-900/30"
+                  >
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white">{preset.label}</div>
+                    <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">{preset.description}</div>
+                    <div className="mt-2 break-all text-[11px] text-emerald-700 dark:text-emerald-300">
+                      {preset.url}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </Section>
 
         <Section title="Files and Assets">
@@ -560,7 +607,10 @@ export default function LandingPageEditor({
                 </div>
               </Field>
 
-              <Field label="QR code image">
+              <Field
+                label="QR code image"
+                helper="Useful when the landing page also needs to hand off guests into another app flow from a screen or print asset."
+              >
                 <div className="space-y-3">
                   <DropZone acceptLabel="PNG, JPG, GIF, WebP, or SVG." onFile={handleQrUpload} disabled={isUploadingQr} />
                   {qrCodeImageUrl ? (
@@ -609,9 +659,12 @@ export default function LandingPageEditor({
           </div>
         </Section>
 
-        <Section title="Display and CSS">
+        <Section title="Primary Experience and CSS">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Choose which Camera Core surface is embedded on this page today. The surrounding copy and CTA can still direct users into related app experiences.
+          </p>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <Field label="Media source type">
+            <Field label="Embedded experience type">
               <div className="flex flex-wrap gap-6">
                 <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                   <input
@@ -623,7 +676,7 @@ export default function LandingPageEditor({
                       setTargetId('');
                     }}
                   />
-                  Slideshow
+                  Slideshow experience
                 </label>
                 <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                   <input
@@ -635,11 +688,16 @@ export default function LandingPageEditor({
                       setTargetId('');
                     }}
                   />
-                  Slideshow layout
+                  Slideshow layout experience
                 </label>
               </div>
             </Field>
-            <Field label={targetType === 'layout' ? 'Slideshow layout' : 'Slideshow'}>
+            <Field
+              label={targetType === 'layout' ? 'Slideshow layout target' : 'Slideshow target'}
+              helper={targetType === 'layout'
+                ? 'Select the multi-cell layout this experience page should embed.'
+                : 'Select the slideshow this experience page should embed.'}
+            >
               <select
                 value={targetId}
                 onChange={(e) => setTargetId(e.target.value)}
@@ -720,7 +778,7 @@ export default function LandingPageEditor({
             disabled={isSubmitting || isUploadingQr || isUploadingLogo}
             className="px-5 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors"
           >
-            {isSubmitting ? 'Saving…' : landingPageId ? 'Update landing page' : 'Save landing page'}
+            {isSubmitting ? 'Saving…' : landingPageId ? 'Update experience page' : 'Save experience page'}
           </button>
         </div>
       </form>

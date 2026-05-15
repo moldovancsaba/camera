@@ -12,6 +12,76 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import DeletePartnerButton from '@/components/admin/DeletePartnerButton';
 import StyleSections from '@/components/admin/StyleSections';
+import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
+
+interface FrameDetailsDoc {
+  frameId: string;
+  name?: string;
+  thumbnailUrl?: string;
+  width?: number;
+  height?: number;
+  hashtags?: string[];
+}
+
+interface LogoAssignmentDoc {
+  logoId: string;
+  position?: string;
+  maxWidthPercent?: number;
+}
+
+interface LogoDoc {
+  logoId: string;
+  name?: string;
+  imageUrl?: string;
+  thumbnailUrl?: string;
+}
+
+interface PartnerDoc {
+  _id: ObjectId;
+  partnerId: string;
+  name: string;
+  description?: string;
+  isActive?: boolean;
+  contactName?: string;
+  contactEmail?: string;
+  createdAt: string;
+  updatedAt: string;
+  defaultBrandColors?: { primary?: string; secondary?: string };
+  defaultFrames?: string[];
+  defaultLogos?: LogoAssignmentDoc[];
+  frameCount?: number;
+  defaultFramesWithDetails?: Array<{
+    frameId: string;
+    isActive: boolean;
+    frameDetails: FrameDetailsDoc | null;
+  }>;
+  defaultLogosWithDetails?: Array<LogoAssignmentDoc & {
+    isActive: boolean;
+    name?: string;
+    imageUrl?: string;
+    thumbnailUrl?: string;
+  }>;
+}
+
+interface EventDoc {
+  _id: ObjectId;
+  name: string;
+  description?: string;
+  eventDate?: string;
+  location?: string;
+  isActive?: boolean;
+  frames?: Array<{ frameId: string }>;
+}
+
+interface SubmissionDoc {
+  _id: ObjectId;
+  imageUrl?: string;
+  finalImageUrl?: string;
+  userName?: string;
+  userEmail?: string;
+  eventName?: string;
+  createdAt: string;
+}
 
 export default async function PartnerDetailPage({
   params,
@@ -25,9 +95,10 @@ export default async function PartnerDetailPage({
     notFound();
   }
 
-  let partner: any = null;
-  let events: any[] = [];
-  let submissions: any[] = [];
+  let partner: PartnerDoc | null = null;
+  let events: EventDoc[] = [];
+  let submissions: SubmissionDoc[] = [];
+  let participantCount = 0;
   let dbError = null;
 
   try {
@@ -36,7 +107,7 @@ export default async function PartnerDetailPage({
     // Get partner details
     partner = await db
       .collection(COLLECTIONS.PARTNERS)
-      .findOne({ _id: new ObjectId(id) });
+      .findOne({ _id: new ObjectId(id) }) as unknown as PartnerDoc | null;
 
     if (!partner) {
       notFound();
@@ -48,7 +119,7 @@ export default async function PartnerDetailPage({
       .find({ partnerId: partner.partnerId })
       .sort({ createdAt: -1 })
       .limit(50)
-      .toArray();
+      .toArray() as unknown as EventDoc[];
 
     // Get submissions for all events under this partner (limit to most recent 50)
     // NEW: Updated query for new schema with archive and hidden checks
@@ -61,18 +132,57 @@ export default async function PartnerDetailPage({
       })
       .sort({ createdAt: -1 })
       .limit(50)
+      .toArray() as unknown as SubmissionDoc[];
+
+    const participantRows = await db
+      .collection(COLLECTIONS.SUBMISSIONS)
+      .aggregate([
+        {
+          $match: {
+            partnerId: partner.partnerId,
+            isArchived: false,
+            hiddenFromPartner: false,
+          },
+        },
+        {
+          $project: {
+            participantKey: {
+              $ifNull: [
+                '$userInfo.email',
+                {
+                  $ifNull: [
+                    '$userEmail',
+                    '$userId',
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        {
+          $match: {
+            participantKey: { $type: 'string', $ne: '' },
+          },
+        },
+        {
+          $group: {
+            _id: '$participantKey',
+          },
+        },
+      ])
       .toArray();
+    participantCount = participantRows.length;
 
     // Populate frame details for default frames (v2.8.0)
     if (partner.defaultFrames && partner.defaultFrames.length > 0) {
       const frames = await db
         .collection(COLLECTIONS.FRAMES)
         .find({ frameId: { $in: partner.defaultFrames } })
-        .toArray();
+        .toArray() as unknown as FrameDetailsDoc[];
       
       // Map frame details to assignments
       partner.defaultFramesWithDetails = partner.defaultFrames.map((frameId: string) => {
-        const frameDetails = frames.find((f: any) => f.frameId === frameId);
+        const frameDetails = frames.find((frame) => frame.frameId === frameId);
         return {
           frameId,
           isActive: true,
@@ -90,15 +200,15 @@ export default async function PartnerDetailPage({
 
     // Populate logo details for default logos (v2.8.0)
     if (partner.defaultLogos && partner.defaultLogos.length > 0) {
-      const logoIds = partner.defaultLogos.map((l: any) => l.logoId);
+      const logoIds = partner.defaultLogos.map((logoAssignment) => logoAssignment.logoId);
       const logos = await db
         .collection(COLLECTIONS.LOGOS)
         .find({ logoId: { $in: logoIds } })
-        .toArray();
+        .toArray() as unknown as LogoDoc[];
       
       // Merge logo details
-      partner.defaultLogosWithDetails = partner.defaultLogos.map((logoAssignment: any) => {
-        const logo = logos.find((l: any) => l.logoId === logoAssignment.logoId);
+      partner.defaultLogosWithDetails = partner.defaultLogos.map((logoAssignment) => {
+        const logo = logos.find((entry) => entry.logoId === logoAssignment.logoId);
         return {
           ...logoAssignment,
           isActive: true,
@@ -117,6 +227,8 @@ export default async function PartnerDetailPage({
   if (!partner) {
     notFound();
   }
+
+  const isFunFitFanPartner = partner.partnerId === FUNFITFAN_PARTNER_ID;
 
   return (
     <div className="p-8">
@@ -160,6 +272,80 @@ export default async function PartnerDetailPage({
           <p className="text-red-600 dark:text-red-300 text-sm mt-1">{dbError}</p>
         </div>
       )}
+
+      <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-5">
+        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
+            Workspace
+          </p>
+          <h2 className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">Partner Operations</h2>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Use this page as the operating home for this partner’s resources, app surfaces, and gallery context.
+          </p>
+        </div>
+
+        <Link
+          href={`/admin/partners/${id}/frames`}
+          className="rounded-lg border border-blue-200 bg-blue-50 p-5 shadow-sm transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/20 dark:hover:bg-blue-900/30"
+        >
+          <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">Resources</p>
+          <p className="mt-2 text-sm text-blue-800 dark:text-blue-200">
+            Manage default frames and logos in partner context instead of starting from the global inventory.
+          </p>
+        </Link>
+
+        <Link
+          href={`/admin/events/new?partnerId=${partner.partnerId}`}
+          className="rounded-lg border border-emerald-200 bg-emerald-50 p-5 shadow-sm transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30"
+        >
+          <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Events App</p>
+          <p className="mt-2 text-sm text-emerald-800 dark:text-emerald-200">
+            Create and manage the event app instances that use this partner’s brand defaults and resource assignments.
+          </p>
+        </Link>
+
+        {isFunFitFanPartner ? (
+          <div className="rounded-lg border border-violet-200 bg-violet-50 p-5 shadow-sm dark:border-violet-800 dark:bg-violet-900/20">
+            <p className="text-sm font-semibold text-violet-900 dark:text-violet-100">Gym App</p>
+            <p className="mt-2 text-sm text-violet-800 dark:text-violet-200">
+              This partner is the dedicated Gym/FunFitFan workspace. Use the app settings entry to manage the member experience.
+            </p>
+            <div className="mt-4">
+              <Link
+                href="/admin/gym/funfitfan"
+                className="inline-flex rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
+              >
+                Open FunFitFan Settings
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-violet-200 bg-violet-50 p-5 shadow-sm dark:border-violet-800 dark:bg-violet-900/20">
+            <p className="text-sm font-semibold text-violet-900 dark:text-violet-100">Gym App</p>
+            <p className="mt-2 text-sm text-violet-800 dark:text-violet-200">
+              Gym currently uses dedicated app-scoped configuration. Keep this partner page focused on shared resources and event operations.
+            </p>
+            <div className="mt-4">
+              <Link
+                href="/admin/gym"
+                className="inline-flex rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
+              >
+                Open Gym App
+              </Link>
+            </div>
+          </div>
+        )}
+
+        <Link
+          href="/admin/users"
+          className="rounded-lg border border-amber-200 bg-amber-50 p-5 shadow-sm transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/20 dark:hover:bg-amber-900/30"
+        >
+          <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Users</p>
+          <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">
+            View global access-managed users and submission-derived guest identities that show up in this partner’s activity.
+          </p>
+        </Link>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Partner Information */}
@@ -219,6 +405,10 @@ export default async function PartnerDetailPage({
                 <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Photos</dt>
                 <dd className="text-2xl font-bold text-gray-900 dark:text-white">{submissions.length}</dd>
               </div>
+              <div className="flex items-center justify-between">
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Participants</dt>
+                <dd className="text-2xl font-bold text-gray-900 dark:text-white">{participantCount}</dd>
+              </div>
             </dl>
             <Link
               href={`/admin/partners/${id}#gallery`}
@@ -240,7 +430,7 @@ export default async function PartnerDetailPage({
           </div>
         </div>
 
-        {/* Right Column - Default Styles and Events */}
+        {/* Right Column - Resources and App Instances */}
         <div className="lg:col-span-2 space-y-6">
           {/* Default Styles Section - Using Unified StyleSections Component */}
           <StyleSections
@@ -257,7 +447,12 @@ export default async function PartnerDetailPage({
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Events</h2>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Events App</h2>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                    Event app instances that inherit this partner’s defaults and can override them when needed.
+                  </p>
+                </div>
                 <Link
                   href={`/admin/events/new?partnerId=${partner.partnerId}`}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
@@ -283,7 +478,7 @@ export default async function PartnerDetailPage({
               </div>
             ) : (
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {events.map((event: any) => (
+                {events.map((event) => (
                   <div key={event._id.toString()} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -340,7 +535,7 @@ export default async function PartnerDetailPage({
               📷 Partner Gallery
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              All photos captured across {partner.name}'s events
+              All photos captured across {partner.name}&apos;s events
             </p>
           </div>
 
@@ -351,7 +546,7 @@ export default async function PartnerDetailPage({
                 No submissions yet
               </h3>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Photos captured at this partner's events will appear here
+                Photos captured at this partner&apos;s events will appear here
               </p>
               {events.length > 0 && (
                 <Link
@@ -366,7 +561,7 @@ export default async function PartnerDetailPage({
             <div className="p-6">
               {/* Pinterest-style masonry grid */}
               <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4">
-                {submissions.map((submission: any) => (
+                {submissions.map((submission) => (
                   <Link
                     key={submission._id.toString()}
                     href={`/share/${submission._id}`}

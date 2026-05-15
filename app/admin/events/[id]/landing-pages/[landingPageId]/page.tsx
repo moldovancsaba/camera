@@ -22,6 +22,7 @@ export default async function EditLandingPageForEvent({
       layouts={props.layouts}
       logos={props.logos}
       cssPresets={props.cssPresets}
+      actionPresets={props.actionPresets}
       initialLandingPage={props.landingPage}
     />
   );

@@ -759,7 +759,8 @@ export type NewSlideshowLayout = Omit<SlideshowLayout, '_id'>;
 export type LandingPageTargetType = 'slideshow' | 'layout';
 
 /**
- * Public event landing page that can embed either one slideshow or one slideshow layout.
+ * Public experience landing page for an event. Today it embeds either one slideshow or one slideshow layout,
+ * while optional CTA metadata can route users into related app flows such as capture.
  */
 export interface LandingPage {
   _id?: ObjectId;

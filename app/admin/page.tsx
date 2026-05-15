@@ -6,6 +6,7 @@
 
 import { connectToDatabase } from '@/lib/db/mongodb';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
+import Link from 'next/link';
 
 export default async function AdminDashboard() {
   // Get database statistics with error handling
@@ -29,7 +30,9 @@ export default async function AdminDashboard() {
     <div className="p-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">Overview of your Camera application</p>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">
+          Camera Core overview across partners, shared resources, and app operations.
+        </p>
       </div>
 
       {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
@@ -71,37 +74,37 @@ export default async function AdminDashboard() {
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <a
+          <Link
+            href="/admin/partners"
+            className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg transition-colors"
+          >
+            <span className="text-2xl">🤝</span>
+            <span className="font-medium text-amber-900 dark:text-amber-100">Open Partners</span>
+          </Link>
+
+          <Link
             href="/admin/frames/new"
             className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
           >
             <span className="text-2xl">➕</span>
             <span className="font-medium text-blue-900 dark:text-blue-100">Add New Frame</span>
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/admin/frames"
             className="flex items-center gap-3 p-4 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
           >
             <span className="text-2xl">🖼️</span>
-            <span className="font-medium text-purple-900 dark:text-purple-100">Manage Frames</span>
-          </a>
+            <span className="font-medium text-purple-900 dark:text-purple-100">Global Frames</span>
+          </Link>
 
-          <a
+          <Link
             href="/admin/submissions"
             className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors"
           >
             <span className="text-2xl">📷</span>
-            <span className="font-medium text-green-900 dark:text-green-100">View Submissions</span>
-          </a>
-
-          <a
-            href="/"
-            className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors"
-          >
-            <span className="text-2xl">🏠</span>
-            <span className="font-medium text-gray-900 dark:text-gray-100">Back to App</span>
-          </a>
+            <span className="font-medium text-green-900 dark:text-green-100">Global Galleries</span>
+          </Link>
         </div>
       </div>
     </div>

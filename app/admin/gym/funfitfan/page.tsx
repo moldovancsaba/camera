@@ -38,14 +38,14 @@ export default async function AdminFunFitFanPage() {
   return (
     <div className="app-panel-shell">
       <Link href="/admin/gym" className="app-panel-back">
-        ← Sport hub
+        ← Gym App
       </Link>
-      <h1 className="app-panel-title">FunFitFan (FFF)</h1>
+      <h1 className="app-panel-title">FunFitFan Settings</h1>
       <p className="app-panel-lede">
-        Members get a virtual Camera <strong>event</strong> under the <code>FunFitFan</code> partner. Each log is a{' '}
-        <strong>submission</strong> to that event with a framed selfie and activity text. Their{' '}
-        <strong>slideshow</strong> uses the standard player (default loop, {3000 / 1000}s slide timing from
-        bootstrap).
+        FunFitFan is a Gym app experience built on Camera Core resources. Members get a virtual Camera{' '}
+        <strong>event</strong> under the <code>FunFitFan</code> partner. Each log is a <strong>submission</strong> to
+        that event with a framed selfie and activity text. Their <strong>slideshow</strong> uses the standard player
+        (default loop, {3000 / 1000}s slide timing from bootstrap).
       </p>
 
       {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}

@@ -24,16 +24,31 @@ export default function CollapsibleSidebar({ session }: CollapsibleSidebarProps)
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
 
-  const navItems = [
-    { href: '/admin', icon: '📊', label: 'Dashboard' },
-    { href: '/admin/partners', icon: '🤝', label: 'Partners' },
-    { href: '/admin/events', icon: '🎯', label: 'Events' },
-    { href: '/admin/frames', icon: '🖼️', label: 'Frames' },
-    { href: '/admin/logos', icon: '🎨', label: 'Logos' },
-    { href: '/admin/submissions', icon: '📷', label: 'Submissions' },
-    { href: '/admin/gym', icon: '💪', label: 'Sport' },
-    { href: '/admin/gym/funfitfan', icon: '🏃', label: 'FunFitFan' },
-    { href: '/admin/users', icon: '👥', label: 'Users' },
+  const navSections = [
+    {
+      title: 'Core',
+      items: [
+        { href: '/admin', icon: '📊', label: 'Dashboard' },
+        { href: '/admin/partners', icon: '🤝', label: 'Partners' },
+        { href: '/admin/users', icon: '👥', label: 'Users' },
+      ],
+    },
+    {
+      title: 'Resource Inventory',
+      items: [
+        { href: '/admin/frames', icon: '🖼️', label: 'Global Frames' },
+        { href: '/admin/logos', icon: '🎨', label: 'Global Logos' },
+        { href: '/admin/submissions', icon: '📷', label: 'Global Galleries' },
+      ],
+    },
+    {
+      title: 'Apps',
+      items: [
+        { href: '/admin/events', icon: '🎯', label: 'Events App' },
+        { href: '/admin/gym', icon: '💪', label: 'Gym App' },
+        { href: '/admin/gym/funfitfan', icon: '🏃', label: 'FunFitFan Settings', indent: true },
+      ],
+    },
   ];
 
   return (
@@ -71,23 +86,38 @@ export default function CollapsibleSidebar({ session }: CollapsibleSidebarProps)
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${
-                  isActive ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : ''
-                }`}
-                title={isCollapsed ? item.label : undefined}
-              >
-                <span className="text-xl flex-shrink-0">{item.icon}</span>
-                {!isCollapsed && <span className="font-medium">{item.label}</span>}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
+          {navSections.map((section) => (
+            <div key={section.title}>
+              {!isCollapsed && (
+                <p className="px-4 pb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
+                  {section.title}
+                </p>
+              )}
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition-colors dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                        item.indent && !isCollapsed ? 'ml-4' : ''
+                      } ${
+                        isActive ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' : ''
+                      }`}
+                      title={isCollapsed ? item.label : undefined}
+                    >
+                      <span className="text-xl flex-shrink-0">{item.icon}</span>
+                      {!isCollapsed && (
+                        <span className={`font-medium ${item.indent ? 'text-sm' : ''}`}>{item.label}</span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* User Info & Version */}
