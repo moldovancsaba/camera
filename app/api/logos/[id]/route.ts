@@ -2,8 +2,8 @@
  * Single Logo API - Get, Update, Delete
  * 
  * GET: Fetch single logo by MongoDB _id
- * PUT: Update logo details (admin only)
- * DELETE: Delete logo (admin only)
+ * PUT: Update logo details (global admin only)
+ * DELETE: Delete logo (global admin only)
  */
 
 import { NextRequest } from 'next/server';
@@ -54,7 +54,7 @@ export const GET = withErrorHandler(async (request: NextRequest, context: RouteC
 
 /**
  * PUT /api/logos/[id]
- * Update logo details (admin only)
+ * Update logo details (global admin only)
  */
 export const PUT = withErrorHandler(async (request: NextRequest, context: RouteContext) => {
   // Check authentication and authorization
@@ -103,7 +103,7 @@ export const PUT = withErrorHandler(async (request: NextRequest, context: RouteC
 
 /**
  * DELETE /api/logos/[id]
- * Delete a logo (admin only)
+ * Delete a logo (global admin only)
  */
 export const DELETE = withErrorHandler(async (request: NextRequest, context: RouteContext) => {
   // Check authentication and authorization

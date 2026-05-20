@@ -1,5 +1,5 @@
 /**
- * Admin: FunFitFan default frame (drives partner.defaultFrames + child event inheritance).
+ * Admin: Gym default frame and activity settings.
  */
 
 import { NextRequest } from 'next/server';
@@ -35,7 +35,7 @@ async function ensurePartnerRow(db: Db, adminUserId: string) {
   await col.insertOne({
     partnerId: FUNFITFAN_PARTNER_ID,
     name: FUNFITFAN_PARTNER_NAME,
-    description: 'FunFitFan — personal activity reel',
+    description: 'Gym app personal activity reel',
     isActive: true,
     defaultFrames: [],
     createdBy: adminUserId,

@@ -1,5 +1,5 @@
 /**
- * Ensures FunFitFan partner, optional settings row, and per-user virtual Event + Slideshow.
+ * Ensures the Gym partner, optional settings row, and per-user virtual event plus slideshow state.
  */
 
 import type { Db } from 'mongodb';
@@ -43,7 +43,7 @@ async function ensureFunFitFanPartner(db: Db, createdByUserId: string): Promise<
   await col.insertOne({
     partnerId: FUNFITFAN_PARTNER_ID,
     name: FUNFITFAN_PARTNER_NAME,
-    description: 'FunFitFan — personal activity reel (virtual event per member)',
+    description: 'Gym app personal activity reel (virtual event per member)',
     isActive: true,
     defaultFrames: [],
     createdBy: createdByUserId,
@@ -60,7 +60,7 @@ export async function getFffDefaultFrameId(db: Db): Promise<string | null> {
 }
 
 /**
- * Read-only: `fff_settings` first, else FunFitFan partner `defaultFrames[0]`.
+ * Read-only: `fff_settings` first, else the Gym partner `defaultFrames[0]`.
  */
 export async function readFunFitFanDefaultFrameId(db: Db): Promise<string | null> {
   const fromSettings = await getFffDefaultFrameId(db);

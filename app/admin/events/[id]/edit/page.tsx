@@ -1,8 +1,7 @@
 /**
  * Edit Event Page
  * 
- * Form to edit event details and manage custom page flows
- * v2.0.0: Added custom pages management with reordering
+ * Form to edit event details and manage custom page flows.
  */
 
 'use client';
@@ -29,7 +28,7 @@ export default function EditEventPage({
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   
-  // v2.0.0: Custom pages state
+  // Custom pages state
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
 
   // Unwrap params
@@ -59,7 +58,7 @@ export default function EditEventPage({
         const eventData = data.data?.event || data.event;  // Support both structures
         console.log('Edit page - Loaded event data:', eventData);
         setEvent(eventData);
-        // v2.0.0: Load custom pages
+        // Load custom pages
         setCustomPages(eventData?.customPages || []);
         // Set existing logo preview if available
         if (eventData?.logoUrl) {
@@ -144,8 +143,8 @@ export default function EditEventPage({
       }
     }
     
-    // Build request body from form data
-    // v2.0.0: customPages are saved separately via CustomPagesManager
+    // Build request body from form data.
+    // customPages are saved separately via CustomPagesManager.
     const data = {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
@@ -558,7 +557,7 @@ export default function EditEventPage({
         </div>
       </form>
 
-      {/* v2.0.0: Custom Pages Management - Outside form to have independent save */}
+      {/* Custom pages management stays outside the form for independent saves */}
       {/* Force re-render when pages change by using length as key */}
       <CustomPagesManager
         key={customPages.length}

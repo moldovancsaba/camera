@@ -2,7 +2,7 @@
  * Submissions API
  * 
  * POST: Save photo submission with frame to imgbb and MongoDB
- *       v2.0.0: Accepts userInfo and consents from custom event pages
+ *       Accepts optional userInfo and consents from custom event pages
  * GET: List user's submissions
  */
 
@@ -36,7 +36,7 @@ const FFF_SHARE_LINK_TTL_MS = 365 * 24 * 60 * 60 * 1000;
  * POST /api/submissions
  * Save a new photo submission
  * 
- * v2.0.0 additions:
+ * Optional event-flow data:
  * - userInfo: {name, email} collected from 'who-are-you' pages
  * - consents: Array of {pageId, pageType, checkboxText, accepted, acceptedAt} from 'accept'/'cta' pages
  */
@@ -57,7 +57,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       partnerName, 
       imageWidth, 
       imageHeight,
-      // v2.0.0: Custom page data
+      // Custom page data
       userInfo,
       consents,
       funfitfanActivity,
@@ -65,7 +65,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       funfitfanFeelSoTags,
     } = body;
 
-  // frameId can be null if event has no frames (v2.8.0)
+  // frameId can be null if the event has no frames
   if (!imageData) {
     throw apiBadRequest('Image data is required');
   }
@@ -92,7 +92,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       }
     }
 
-    // Validate userInfo if provided (v2.0.0)
+    // Validate userInfo if provided
     // If userInfo is provided from 'who-are-you' page, validate structure
     let validatedUserInfo = undefined;
     if (userInfo) {
@@ -106,7 +106,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       };
     }
 
-    // Validate consents if provided (v2.0.0)
+    // Validate consents if provided
     // Each consent must have: pageId, pageType, checkboxText, accepted, acceptedAt
     let validatedConsents = [];
     if (consents && Array.isArray(consents)) {
@@ -164,9 +164,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       imageId: uploadResult.imageId,
       fileSize: uploadResult.fileSize,
       mimeType: uploadResult.mimeType,
-      // v2.0.0: User info from onboarding pages (optional)
+      // User info from onboarding pages
       ...(validatedUserInfo && { userInfo: validatedUserInfo }),
-      // v2.0.0: Consent records from accept/CTA pages
+      // Consent records from accept/CTA pages
       consents: validatedConsents,
       metadata: {
         device: request.headers.get('user-agent'),

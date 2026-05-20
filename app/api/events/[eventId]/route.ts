@@ -2,8 +2,8 @@
  * Event Detail API
  * 
  * GET: Retrieve single event details with assigned frames and custom pages
- * PATCH: Update event details including customPages array (v2.0.0)
- * DELETE: Delete event (admin only, v2.8.0)
+ * PATCH: Update event details including customPages array
+ * DELETE: Delete event with scoped partner authorization
  */
 
 import { NextRequest } from 'next/server';
@@ -69,7 +69,7 @@ export const GET = withErrorHandler(async (
     throw apiForbidden('Partner-level access is required to read this event');
   }
 
-  // Get event details including custom pages (v2.0.0)
+  // Get event details including custom pages
   const event = await db
     .collection(COLLECTIONS.EVENTS)
     .findOne({ _id: new ObjectId(eventId) }) as EventDoc | null;
@@ -105,7 +105,7 @@ export const GET = withErrorHandler(async (
   }
 
   // Return event with serialized _id
-  // customPages array will be included automatically (v2.0.0)
+  // customPages is included automatically
   return apiSuccess({
     event: {
       ...event,
@@ -124,9 +124,9 @@ export const GET = withErrorHandler(async (
  * - eventDate: Event date (ISO 8601)
  * - location: Event location
  * - isActive: Active status
- * - customPages: Array of custom page configurations (v2.0.0)
- * 
- * Admin only
+ * - customPages: Array of custom page configurations
+ *
+ * Allowed for global admins and partner-scoped Events managers
  */
 export const PATCH = withErrorHandler(async (
   request: NextRequest,
@@ -201,14 +201,14 @@ export const PATCH = withErrorHandler(async (
   if (showLogo !== undefined) {
     updateFields.showLogo = Boolean(showLogo);
   }
-  // Brand colors (v2.8.0: Set override flag when changed)
+  // Brand colors: set override flag when brand values are changed
   if (brandColor !== undefined) {
     updateFields.brandColor = brandColor?.trim() || null;
-    updateFields.brandColorsOverridden = true; // Mark as orphan
+    updateFields.brandColorsOverridden = true; // Event now uses custom brand colors
   }
   if (brandBorderColor !== undefined) {
     updateFields.brandBorderColor = brandBorderColor?.trim() || null;
-    updateFields.brandColorsOverridden = true; // Mark as orphan
+    updateFields.brandColorsOverridden = true; // Event now uses custom brand colors
   }
   if (isActive !== undefined) {
     updateFields.isActive = Boolean(isActive);
@@ -231,7 +231,7 @@ export const PATCH = withErrorHandler(async (
     updateFields.shortUrlSlug = norm.slug;
   }
 
-  // Handle customPages array (v2.0.0)
+  // Handle customPages array
   // Validates page structure and ensures proper ordering
   if (customPages !== undefined) {
     if (!Array.isArray(customPages)) {

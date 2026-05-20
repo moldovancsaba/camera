@@ -2,7 +2,7 @@
  * Frames API - List and Create
  * 
  * GET: List all frames with pagination
- * POST: Create new frame (admin only)
+ * POST: Create new frame (global admin only)
  */
 
 import { NextRequest } from 'next/server';
@@ -79,10 +79,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
 /**
  * POST /api/frames
- * Create a new frame (admin only)
+ * Create a new frame (global admin only)
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
-  // Check authentication and authorization - only admin users can create frames
+  // Check authentication and authorization - only global admins can create frames
   const session = await requireAdmin();
 
     // Parse form data

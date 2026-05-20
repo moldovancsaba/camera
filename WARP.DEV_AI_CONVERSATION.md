@@ -3,6 +3,7 @@
 **Date:** 2025-11-06  
 **Version Target:** 36.0.0  
 **Status:** Core Infrastructure Complete (5/13 steps)
+**Current Status:** Historical conversation artifact only; not a maintained product document.
 
 ---
 

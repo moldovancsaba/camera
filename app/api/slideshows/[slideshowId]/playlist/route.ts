@@ -4,7 +4,7 @@
  * GET: Generate next 5 slides for a slideshow with smart playlist logic
  * Returns slides with mosaic layouts for 1:1 and 9:16 images
  * 
- * v2.0.0: Filters inactive users (pseudo: userInfo.isActive; SSO: cameraAccountDisabled mirror on submissions)
+ * Filters inactive users from playlist generation.
  */
 
 import { randomBytes } from 'crypto';

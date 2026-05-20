@@ -1,9 +1,9 @@
 /**
  * Event Detail Page
- * 
- * Display event details with partner info, assigned frames, and slideshows
- * v2.0.0: Filters inactive users (pseudo + cameraAccountDisabled mirror)
- * v2.8.0: Style inheritance system with parent-child relationship to partners
+ *
+ * Display event details with partner info, assigned frames, and slideshows.
+ * Inactive users are filtered from gallery and slideshow-related views.
+ * Event styles inherit from partner defaults unless overridden at the event level.
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';

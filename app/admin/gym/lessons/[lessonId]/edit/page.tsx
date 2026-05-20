@@ -46,7 +46,7 @@ export default async function AdminEditGymLessonPage({
     return (
       <div className="p-8">
         <Link href="/admin/gym/lessons" className="text-sm text-gray-600 hover:underline dark:text-gray-400">
-          ← Sport training
+          ← Gym training
         </Link>
         <h1 className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">Edit training</h1>
         <div className="mt-6">
@@ -69,7 +69,7 @@ export default async function AdminEditGymLessonPage({
   return (
     <div className="p-8">
       <Link href="/admin/gym/lessons" className="text-sm text-gray-600 hover:underline dark:text-gray-400">
-        ← Sport training
+        ← Gym training
       </Link>
       <h1 className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">Edit training</h1>
       <p className="mt-2 max-w-xl text-gray-600 dark:text-gray-400">

@@ -13,7 +13,7 @@ import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 
 /**
  * PATCH /api/partners/[id]/toggle
- * Toggle partner active/inactive status (admin only)
+ * Toggle partner active/inactive status (global admin only)
  * 
  * This endpoint provides a quick way to toggle status from the listing page
  * without needing to load the full edit form, enabling better UX

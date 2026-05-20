@@ -1,351 +1,163 @@
-# Frame-It-Now (Camera)
+# Camera
 
-**Product**: Frame-It-Now — mobile-first selfie PWA for events and public engagement.  
-**Repository / UI strings**: The codebase and some pages still label the app **“Camera”**; operationally this is the same product.
+**Version**: 2.9.0  
+**Last Updated**: 2026-05-20  
+**Status**: Production system
 
-**Version**: 2.9.0 (canonical: `package.json` → `"version"`)  
-**Last Updated**: 2026-04-09  
-**Status**: Production-ready
+Camera is a Next.js platform for branded photo capture, event galleries, slideshow playback, partner operations, and Gym/FFF experiences that reuse the same identity, media, and MongoDB foundations.
 
-A Next.js application: users capture photos, apply branding frames, upload to a CDN, store metadata in MongoDB, share via public links, and display submissions on event slideshows with fair rotation and aspect-aware layouts.
+## Product model
 
----
+Camera now operates as a small platform with shared resources plus app surfaces.
 
-## Quick Start
+- **Camera Core**
+  - Partners
+  - Frames
+  - Logos
+  - Landing Pages
+  - Slideshows
+  - Slideshow Layouts
+  - Galleries / Submissions
+  - Global Users and partner-scoped access assignments
+- **Apps**
+  - Events App
+  - Gym App
+
+The admin UX is organized around that model:
+
+- global inventory and superadmin tools
+- partner workspaces for day-to-day operations
+- app-specific surfaces for Events and Gym
+
+## Public surfaces
+
+- `/` — Camera home and SSO entry
+- `/capture/[eventId]` — event capture flow
+- `/capture` — legacy global capture flow
+- `/share/[id]` — public submission share page
+- `/slideshow/[slideshowId]` — public slideshow player
+- `/slideshow-layout/[layoutId]` — public composite slideshow layout player
+- `/landing/[slug]` — public landing page surface
+- `/workout` and `/workout/**` — Gym workout flow
+- `/fff/**` internally, with host-based rewrites for the public FFF/Gym experience
+
+## Admin surfaces
+
+- `/admin` — global dashboard for global admins
+- `/admin/partners` — partner workspace index
+- `/admin/events` — Events App inventory
+- `/admin/gym` — Gym App operations
+- `/admin/frames`, `/admin/logos`, `/admin/submissions`, `/admin/users` — global inventory / audit pages
+
+## Core behavior
+
+### Capture and submissions
+
+1. User opens an event capture page.
+2. Optional custom pages collect guest data, consent, or CTA actions.
+3. Browser captures or uploads an image.
+4. Client-side compositing applies the selected frame where applicable.
+5. `POST /api/submissions` uploads the final raster to imgbb and stores metadata in MongoDB.
+6. Submission becomes available to share pages, galleries, and slideshow playlists.
+
+### Slideshows
+
+- Public slideshows are backed by `slideshows` documents and `slideshowId` URLs.
+- Playlist generation reads event-linked submissions, applies fairness via `playCount`, and builds single-image or mosaic slides.
+- Composite layouts mount multiple slideshow players in one screen using `slideshow_layouts`.
+
+### Gym / FFF
+
+- Gym uses the same SSO session, Atlas database, frames, submissions, and slideshow machinery as the rest of Camera.
+- FunFitFan bootstrap creates a dedicated partner plus per-user virtual event/slideshow context.
+- Workout content is stored in `gym_lessons`; logged workout sessions are stored in `gym_workout_sessions`.
+
+## Authorization model
+
+Camera has two authorization layers.
+
+1. **Global app access from SSO**
+   - `session.appRole`
+   - `session.appAccess`
+2. **Partner-scoped app access in Camera**
+   - `partner_user_access`
+   - `appKey`: `events` or `gym`
+   - `role`: `viewer`, `manager`, or `admin`
+
+Current operational rules:
+
+- global `admin` and `superadmin` remain full bypass
+- partner-scoped users can access only their assigned partner/app surfaces
+- global inventory pages remain global-admin-only
+
+See [docs/AUTHORIZATION.md](/Users/Shared/Projects/venturecogroup/camera/docs/AUTHORIZATION.md).
+
+## Quick start
 
 ```bash
 npm install
-npm run dev          # http://localhost:3000
-npm run build
-npm start
+npm run dev
+npm run type-check
 ```
 
----
+Default local URL:
 
-## Technology Stack
-
-| Area | Choice |
-|------|--------|
-| Framework | Next.js (App Router) |
-| Language | TypeScript (strict) |
-| Database | MongoDB |
-| Auth | SSO (OAuth2/OIDC + PKCE), encrypted session cookie |
-| Image hosting | imgbb.com |
-| Styling | Tailwind CSS |
-| Transactional email | Not wired (SSO does not send app mail; see docs/AUTHORIZATION.md) |
-
----
-
-## 1. System Model
-
-### End-to-end flow
-
-1. Participant opens **`/capture/[eventId]`** (event) or **`/capture`** (legacy global capture).
-2. Optional **custom pages**: who-are-you, accept, CTA — then frame selection (if multiple frames), **camera** (`getUserMedia`) or **file upload** (legacy page).
-3. **Client-side compositing**: Canvas draws the photo (cropped to frame aspect ratio on the event path), then the frame asset; output is a JPEG (quality ~0.85, longest side capped around 2048px).
-4. **POST `/api/submissions`**: sends base64 image data + event UUID + optional `userInfo` / `consents`.
-5. **Server** uploads to **imgbb**, inserts a **submission** document in MongoDB.
-6. **Share**: `/share/[id]` uses the submission’s MongoDB `_id` and **`imageUrl`** for OG tags and display.
-7. **Slideshow**: `/slideshow/[slideshowId]` fetches playlist JSON, renders 16:9 single or mosaic slides, **POSTs play counts** so least-played items surface more often.
-
-### Major components
-
-| Layer | Responsibility |
-|--------|------------------|
-| Browser | Camera, canvas compositing, share/download UX, slideshow player (FIFO queue + preload, see `docs/SLIDESHOW_LOGIC.md`). |
-| Next.js API routes | Events, frames, logos, submissions, slideshows, auth, admin CRUD. |
-| MongoDB | Partners, events, frames, logos, submissions, slideshows; optional user cache; SSO DB reads for inactive-user filtering in playlists. |
-| imgbb | Stores composed and admin-uploaded rasters; returns public URLs and delete URLs. |
-
-### Data flow (camera → slideshow)
-
-**Video → canvas snapshot** (JPEG, frame aspect) → **second canvas** (photo + frame bitmap) → **JSON POST** → **imgbb** → **MongoDB insert** → **slideshow aggregate** (match by event UUID, sort by `playCount` / `createdAt`) → **`generatePlaylist`** → client display → **`/played`** increments counts.
-
----
-
-## 2. Feature Breakdown
-
-### Camera capture (`components/camera/CameraCapture.tsx`)
-
-- **Behavior**: `getUserMedia` with high ideal resolution; front/back switch; Safari-oriented readiness (metadata, `canplay`, delays, double `requestAnimationFrame`); crop to target aspect ratio; front-camera mirror fix on draw; black-frame retry.
-- **Assumptions**: Permissions granted; device exposes a working video track.
-- **Failure modes**: Permission denied, no camera, busy device, over-constrained constraints — user-facing errors and retry.
-
-### Overlay / frame during live preview
-
-- **Component support**: `CameraCapture` can show a full-bleed **`<img>`** overlay when `frameOverlay` is set (frame URL from CDN).
-- **Event capture (`/capture/[eventId]`)**: **`frameOverlay` is intentionally unset** (avoids canvas/CORS issues); alignment is **aspect-ratio viewport + WYSIWYG crop**, not a live SVG mask.
-- **Legacy `/capture`**: passes **`frameOverlay={selectedFrame.imageUrl}`** so users see the frame while framing.
-
-### Image compositing (`app/capture/[eventId]/page.tsx`, legacy `app/capture/page.tsx`)
-
-- **Behavior**: Load photo + frame as images (`crossOrigin = 'anonymous'`), draw photo then frame; frameless events crop toward 16:9 and downscale.
-- **Assumptions**: Frame URL allows canvas use (CORS).
-- **Failure**: Load or draw errors → configurable error message (`errorFrameMessage`).
-
-### Upload pipeline (`lib/imgbb/upload.ts`, `POST /api/submissions`)
-
-- **Behavior**: Base64 to imgbb via multipart API; retries with backoff; 30s timeout; avoids retry on most 4xx (except 429).
-- **Limits**: imgbb free tier documented in code as **32 MB** per image; client compression reduces payload size.
-- **Failure**: Network, quota, validation — surfaces as save failure to the user.
-
-### Database storage
-
-- **Behavior**: One composed image per submission; **`imageUrl`** (and related fields) stored for CDN delivery and slideshows.
-- **Guest events**: `optionalAuth` allows **`userId` / `userEmail`** defaults like anonymous when no SSO session.
-
-### Slideshow (`lib/slideshow/playlist.ts`, `app/slideshow/[slideshowId]/page.tsx`, APIs under `/api/slideshows/...`)
-
-- **Behavior**: 16:9 stage; **single** landscape slides or **mosaics** (e.g. 3× portrait strip, 3×2 square grid); client **FIFO queue** seeded from `GET …/playlist` with optional **`?limit=1`** prefetch in loop mode; image preload; **fire-and-forget** play-count updates. Server supports `exclude` on playlist for other clients; details in **`docs/SLIDESHOW_LOGIC.md`**.
-- **Freshness**: New photos appear after **playlist rebuilds** (buffer rotation), not via WebSockets — **near real-time** in the operational sense of “next buffer cycle,” not sub-second.
-
----
-
-## 3. User Flows
-
-### First-time participant (typical event)
-
-1. Load event → optional loading-capture logo (no mandatory loading copy).
-2. If custom pages exist before `take-photo` → onboarding (who-are-you, accept, CTA).
-3. Frame selection if multiple frames; otherwise skip to camera.
-4. Capture → compositing overlay → preview → save → share URL / social / copy → NEXT → thank-you pages or flow restart.
-
-### Returning / SSO resume
-
-- Query params like **`?resume=true&page=N`**: session fetch may pre-fill `userInfo` and advance the page index.
-
-### Slideshow viewer
-
-- Open **`/slideshow/[slideshowId]`** → `SlideshowPlayerCore` loads settings + playlist → timed advance → POST **`/played`** on visible slide. Composite videowall: **`/slideshow-layout/[layoutId]`**.
-
-### Admin (frames / events)
-
-- **`/admin/*`**: gated by **root `middleware.ts`** (session cookie, `appRole` admin/superadmin, `appAccess !== false`) and **`app/admin/layout.tsx`**. Partners, events, frames, logos, slideshows, slideshow layouts, custom pages. **`/api/admin/*`** uses **`requireAdmin()`** in route handlers (also enforces `appAccess`). Changes apply to **new** sessions; open capture clients keep prior fetched config until reload.
-
-### Edge cases
-
-- Camera denied, slow networks, imgbb timeouts, empty slideshow, invalid `frameId` on submit (404), clipboard failures for share link.
-
----
-
-## 4. Data Model
-
-### What the system relies on (submissions)
-
-| Field / pattern | Role |
-|-----------------|------|
-| `imageUrl` | Slideshow, share page, Open Graph — **required** for display. |
-| `eventId` (UUID) or `eventIds[]` | Playlist filter — must match the event’s **`eventId`** UUID (slideshow API resolves slideshow → event document). |
-| `metadata.finalWidth` / `finalHeight` | Aspect detection; missing values **fall back to 1920×1080** in playlist code and can **mis-classify** aspect ratio. |
-| `playCount`, `createdAt` | Fair rotation (least played, then oldest). |
-| `isArchived`, `hiddenFromEvents` | Excluded from slideshow when set. |
-| `userEmail` / `userId` | Slideshow may filter out **inactive SSO** users; anonymous path must remain valid. |
-| Optional: `userInfo`, `consents`, `deleteUrl`, `slideshowPlays`, partner fields | GDPR, analytics, per-slideshow play stats. |
-
-### Schema documentation vs runtime
-
-**`lib/db/schemas.ts`** describes a rich **`Submission`** shape (e.g. `submissionId`, `originalImageUrl`, `finalImageUrl`, `eventIds`). **`POST /api/submissions`** currently persists a **different** document shape (`imageUrl`, singular `eventId`, `userName`, etc.). Slideshow and playlist code often accept **`imageUrl || finalImageUrl`**. **Treat schema drift as operational risk**: new code should align types, persistence, and consumers or keep explicit compatibility shims.
-
----
-
-## 5. Performance & Constraints
-
-- **Camera**: High ideal resolution increases startup cost; Safari workarounds add latency before first capture.
-- **Canvas**: Two-stage compositing + large bitmaps; mobile memory and thermal limits matter at busy events.
-- **Upload**: Large JSON bodies (base64); server and client CPU for encode/decode.
-- **Slideshow**: Playlist route can **aggregate many submissions** per request; initial load may **fetch and preload multiple full buffers** — burst network and DB load.
-- **Rate limiting**: `lib/api/rateLimiter.ts` + **`RATE_LIMITS`**; **`checkRateLimit`** is used on **`POST /api/submissions`**, auth login, hashtags, event GET, slideshow routes, etc. With **`UPSTASH_REDIS_*`** env vars, limits are **shared across Vercel instances**; otherwise buckets are **in-memory** per instance.
-
----
-
-## 6. Failure Modes (summary)
-
-| Area | Detection | Mitigation / UX |
-|------|-----------|------------------|
-| Camera | API errors, black-frame check | Messages, retry, switch camera |
-| Compositing | Thrown errors | User alert |
-| imgbb / network | Axios errors, timeouts | Retries where configured; user retry save |
-| MongoDB | Route errors | `withErrorHandler` → 5xx |
-| Empty slideshow | Empty playlist | “No submissions yet” UI |
-| Play count API | Non-OK response | Logged; playback continues |
-| Inactive-user filter (`getInactiveUserEmails`) | DB/SSO failure | Playlist route may 500 — see code paths |
-
----
-
-## 7. Scalability
-
-| Scale | Notes |
-|-------|--------|
-| Low tens | Typical single-instance + Mongo + imgbb is fine. |
-| ~100 concurrent | imgbb quotas, Mongo write rate, playlist aggregate cost, CDN egress become visible. |
-| 1k+ | Unbounded aggregation per playlist request is a **memory/CPU** hotspot; frequent **`playlist?limit=1`** prefetch adds read load. |
-| 10k+ | imgbb as single vendor, write amplification on `/played`, lack of edge caching on API reads — likely need **object storage + CDN**, **bounded queries**, **Redis** (limits, sessions, queues), and **observability**. |
-
----
-
-## 8. Code & Architecture Quality
-
-- **Strengths**: Clear split between UI (`app/`, `components/`), **`lib/`** (db, imgbb, slideshow, auth), centralized **`withErrorHandler`**, playlist logic isolated in **`lib/slideshow/playlist.ts`**.
-- **Coupling**: Event capture page is a large orchestrator (many `useState` branches); API response shapes sometimes support both wrapped and flat payloads defensively.
-- **Observability**: Heavy **`console.log`** in slideshow/playlist/imgbb paths; no structured logging or metrics in-repo — plan for production tracing.
-- **Docs vs code**: Verify claims such as “rate limiting on all endpoints” against **actual** `checkRateLimit` usage per route.
-
----
-
-## 9. Security & Privacy
-
-- **Public images**: imgbb URLs and **`/share/[id]`** are world-fetchable if the id is known; OG tags expose the same URL.
-- **Abuse**: Anonymous submit path — consider **rate limits**, **CAPTCHA**, **content moderation**, and **non-guessable share tokens** if requirements tighten.
-- **PII**: `userInfo` and consents on submissions — align with **retention, export, and deletion** policy.
-- **Secrets**: `IMGBB_API_KEY`, Mongo URI, SSO — environment-only; imgbb **delete URLs** are sensitive if logged or leaked.
-
----
-
-## 10. Roadmap (suggested)
-
-**Short-term**: Reconcile **submission** schema vs DB writes; reduce production console noise where still noisy; document **event id** semantics (Mongo `_id` on slideshow document vs UUID on submissions).
-
-**Mid-term**: Cap or paginate playlist sourcing; optional **original + final** image storage; unify legacy vs event capture behavior where product allows; moderation / hold queue before slideshow.
-
-**Long-term**: First-party object storage + CDN + signed URLs; multi-tenant quotas; real-time slideshow channel if required; formal privacy tooling.
-
----
-
-## Project Structure
-
-```
-├── app/
-│   ├── api/                 # REST handlers
-│   ├── admin/               # Admin UI
-│   ├── capture/             # /capture + /capture/[eventId]
-│   ├── slideshow/[slideshowId]/   # Fullscreen player (wraps SlideshowPlayerCore)
-│   ├── slideshow-layout/[layoutId]/  # Composite layout player
-│   ├── share/[id]/          # Public share + metadata
-│   └── users/[name]/        # Public user profile (admin actions when permitted)
-├── middleware.ts            # Edge: /admin/* gate (cookie + appRole + appAccess)
-├── components/
-│   ├── camera/              # CameraCapture, FileUpload
-│   ├── capture/             # Custom page steps
-│   ├── shared/
-│   └── admin/
-├── lib/
-│   ├── admin/               # Shared admin helpers (e.g. user-management props)
-│   ├── api/                 # withErrorHandler, responses, rateLimiter
-│   ├── auth/
-│   ├── db/                  # mongodb, schemas, sso helpers
-│   ├── imgbb/
-│   ├── security/
-│   └── slideshow/           # playlist generation, viewport-scale
-├── ARCHITECTURE.md          # Deeper architecture (repo root)
-├── TECH_STACK.md
-├── NAMING_GUIDE.md
-└── docs/                    # SLIDESHOW_LOGIC.md, MONGODB_CONVENTIONS.md, …
+```text
+http://localhost:3000
 ```
 
----
+## Runtime stack
 
-## Documentation Index
+- Next.js 16 App Router
+- React 19
+- TypeScript 5.9
+- Tailwind CSS 4
+- MongoDB Atlas
+- SSO OAuth2/OIDC + PKCE
+- imgbb for raster hosting
+- optional Upstash Redis for shared rate limits
 
-| Doc | Purpose |
-|-----|---------|
-| **README.md** | This file — product + system model + ops |
-| **ARCHITECTURE.md** | Deeper architecture |
-| **TECH_STACK.md** | Technology decisions |
-| **NAMING_GUIDE.md** | Conventions |
-| **docs/SLIDESHOW_LOGIC.md** | Slideshow behavior detail |
-| **docs/DOCUMENTATION.md** | How to keep docs aligned with code |
-| **docs/MONGODB_CONVENTIONS.md** | DB patterns |
-| **docs/MONGODB_ATLAS.md** | Atlas setup, `npm run db:verify-uri`, `npm run db:ensure-indexes` |
-| **RELEASE_NOTES.md** | Changelog |
-| **TASKLIST.md** / **ROADMAP.md** | Planning |
+See [TECH_STACK.md](/Users/Shared/Projects/venturecogroup/camera/TECH_STACK.md).
 
----
+## Data model highlights
 
-## API Overview
+- `partners` — tenant and resource ownership anchor
+- `events` — event app instances; event URLs use Mongo `_id`, slideshow matching uses event UUID `eventId`
+- `frames`, `logos` — shared and scoped visual resources
+- `submissions` — composed images and capture metadata
+- `slideshows` — public player configs
+- `slideshow_layouts` — multi-cell videowall configs
+- `landing_pages` — reusable experience surfaces
+- `partner_user_access` — partner-scoped app assignments
+- `gym_lessons`, `gym_workout_sessions`, `fff_settings`, `fff_user_profiles` — Gym/FFF domain data
 
-**Auth**: `GET /api/auth/login?provider=google|facebook` (optional), `GET /api/auth/callback`, `GET` or `POST /api/auth/logout`, `GET /api/auth/session`
+See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_CONVENTIONS.md) and [ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/ARCHITECTURE.md).
 
-**Core**: partners, events, frames, logos, submissions (`GET` authenticated list; `POST` create), slideshows (`.../playlist`, `.../played`, `.../background-image`, …), slideshow-layouts (`GET` public by `layoutId`; admin CRUD with auth)
+## Important conventions
 
-See **`ARCHITECTURE.md`** and route files under **`app/api/`** for the full set.
+- Treat `package.json` as the canonical version source.
+- Do not assume `eventId` always means the same thing everywhere.
+  - Admin URLs typically use Mongo `_id`
+  - Public slideshow/submission matching uses the event UUID field
+- App authorization must use `session.appRole`, not `session.user.role`.
+- Partner-scoped authorization must be checked deliberately; it does not replace global app-role checks.
 
----
+## Documentation map
 
-## Development Guidelines
+Canonical docs:
 
-- Prefer **`lib/api`** helpers and **`withErrorHandler`** for new routes.
-- Follow **`NAMING_GUIDE.md`**.
-- Before release: **`npm run build`** passes; secrets only in env; avoid logging delete URLs or PII.
+- [ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/ARCHITECTURE.md)
+- [TECH_STACK.md](/Users/Shared/Projects/venturecogroup/camera/TECH_STACK.md)
+- [docs/AUTHORIZATION.md](/Users/Shared/Projects/venturecogroup/camera/docs/AUTHORIZATION.md)
+- [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_CONVENTIONS.md)
+- [docs/MONGODB_ATLAS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_ATLAS.md)
+- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/venturecogroup/camera/docs/SLIDESHOW_LOGIC.md)
+- [docs/DOCUMENTATION.md](/Users/Shared/Projects/venturecogroup/camera/docs/DOCUMENTATION.md)
 
-### Version protocol (from team practice)
+Historical or planning-heavy docs should not be treated as runtime truth unless they were refreshed recently:
 
-- **PATCH** before local dev iteration
-- **MINOR** before commit when appropriate
-- **MAJOR** only when explicitly required
-
----
-
-## Environment Variables
-
-Copy **`.env.example`** to **`.env`** / **`.env.local`** and fill in values. Check DNS with **`npm run db:verify-uri`**; **`npm run env:verify`** exercises Mongo, SSO discovery, ImgBB, and **Upstash Redis** when configured.
-
-```bash
-MONGODB_URI=mongodb+srv://...
-MONGODB_DB=camera
-
-SSO_BASE_URL=https://...
-SSO_CLIENT_ID=...
-
-IMGBB_API_KEY=...
-
-# Public base URL for this deployment (emails, links — set per host in Vercel if needed).
-NEXT_PUBLIC_APP_URL=https://camera.doneisbetter.com
-```
-
-Production web entrypoints include **`https://camera.doneisbetter.com`** and **`https://camera.messmass.com`**. OAuth **`redirect_uri`** is derived from the browser’s host (`…/api/auth/callback`), so in **SSO** (e.g. [sso.doneisbetter.com](https://sso.doneisbetter.com)) your Camera OAuth client must allowlist **every** callback you use (localhost, both camera hosts, preview URLs if applicable) and you should **remove** retired hosts (for example an old **fancam**-style URL) from that client’s redirect list so tokens are not issued back to stale domains.
-
-### Upstash Redis (optional, recommended on Vercel)
-
-API rate limits use **Upstash** when both variables are set; otherwise limits are **per serverless instance** only.
-
-1. In [Upstash Console](https://console.upstash.com/), create a **Redis** database (global region is fine).
-2. Open the database → **REST API** → copy **`UPSTASH_REDIS_REST_URL`** and **`UPSTASH_REDIS_REST_TOKEN`**.
-3. In [Vercel](https://vercel.com/) → your project → **Settings** → **Environment Variables** → add both for **Production** (and **Preview** if you want the same behavior there).
-4. **Redeploy** the project (Deployments → ⋮ → Redeploy).
-5. Locally: add the same keys to **`.env.local`**, then run **`npm run env:verify`** — you should see **`✓ Upstash Redis: PING ok`**.
-
-### Vercel CLI (link + env)
-
-Install/use the CLI with **`npx vercel@latest`**. Log in once: **`vercel login`**.
-
-- **Link this repo** to the production project (team **`narimato`**, project **`camera`**):
-
-  ```bash
-  npx vercel@latest link --yes --scope narimato --project camera
-  ```
-
-  Creates **`.vercel/`** (listed in **`.gitignore`** — do not commit).
-
-- **Pull cloud env vars** into **`.env.local`** (overwrites that file — back it up first if needed):
-
-  ```bash
-  npm run vercel:env-pull
-  ```
-
-Shorthand scripts: **`npm run vercel:link`**, **`npm run vercel:env-pull`**.
-
----
-
-## License
-
-Proprietary — all rights reserved.
-
----
-
-## Support
-
-- **ARCHITECTURE.md** — design detail  
-- **LEARNINGS.md** — incidents and fixes  
-- **TASKLIST.md** — active work  
-
-SSO · MongoDB Atlas · imgbb
+- `RELEASE_NOTES.md`
+- `ROADMAP.md`
+- `TASKLIST.md`
+- `LEARNINGS.md`
+- `CODE_AUDIT.md`

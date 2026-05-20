@@ -1,294 +1,190 @@
-# MongoDB Reference Conventions
-**Version**: 1.0.0  
-**Last Updated**: 2025-01-06
+# MongoDB Conventions
 
-## Overview
+**Version**: 2.9.0  
+**Last Updated**: 2026-05-20
 
-**Atlas setup, indexes, and connection tuning**: see [MONGODB_ATLAS.md](./MONGODB_ATLAS.md).
+This repository uses a mixed identifier model. Any document claiming that every reference must use Mongo `_id` is obsolete.
 
-This document defines the **mandatory conventions** for referencing MongoDB documents across the entire codebase. Following these conventions ensures consistency, prevents reference bugs, and makes the system maintainable.
+## 1. Core rule
 
----
+Choose identifiers by domain contract, not by a single global slogan.
 
-## Core Principle
+In Camera:
 
-**Every MongoDB document has ONE primary identifier: `_id` (ObjectId)**
+- admin URLs often use Mongo `_id`
+- public URLs often use business IDs
+- submissions/slideshows use event UUID semantics for matching
+- partner references often use `partnerId`, not partner Mongo `_id`
 
-All references to that document must use the string representation of `_id`, never custom UUID fields like `eventId`, `partnerId`, etc.
+## 2. Identifier types in use
 
----
+### Mongo `_id`
 
-## Convention Rules
+Used for:
 
-### 1. Database Schema
+- admin detail/edit routes
+- direct document lookup
+- many API route params
+- share page submission lookup
 
-Each collection has:
-- **`_id`**: MongoDB ObjectId (auto-generated, primary key)
-- **`[entity]Id`**: UUID string (e.g., `eventId`, `partnerId`) - **ONLY for display/external API use**
+Examples:
 
-**Example:**
-```javascript
-{
-  _id: ObjectId("690a72d084eb48114aa84ef5"),  // Primary key
-  eventId: "uuid-generated-string",           // Display only
-  name: "AC Milan Game",
-  // ... other fields
-}
+- `/admin/events/[id]`
+- `/admin/partners/[id]`
+- `/share/[id]`
+
+### Business identifiers
+
+Used for:
+
+- `partner.partnerId`
+- `event.eventId`
+- `frame.frameId`
+- `logo.logoId`
+- `slideshows.slideshowId`
+- `slideshow_layouts.layoutId`
+
+These exist because the product needs stable identifiers separate from Mongo document addresses.
+
+## 3. Event-specific rule
+
+Events are the easiest place to get confused.
+
+### Event admin routes
+
+Admin pages and many admin APIs use the event Mongo `_id`.
+
+Examples:
+
+- `/admin/events/[id]`
+- `/api/events/[eventId]` where the param is the Mongo `_id` string
+- `/capture/[eventId]` where the route param is also the event Mongo `_id`
+
+### Event business identity
+
+The event document also has `event.eventId`, a UUID-like business identifier.
+
+This is used for:
+
+- slideshow matching
+- submission `eventId` and `eventIds`
+- slideshow documents
+
+### Practical consequence
+
+You often need both:
+
+1. resolve event by Mongo `_id`
+2. use `event.eventId` when querying submissions or slideshow-related data
+
+## 4. Partner-specific rule
+
+Partners also use two identities:
+
+- Mongo `_id` for admin routes
+- `partner.partnerId` for domain relationships
+
+Examples:
+
+- `/admin/partners/[id]` uses Mongo `_id`
+- events store `partnerId` as the partner business identifier
+- partner-scoped access rows also store `partnerId` as the business identifier
+
+## 5. Slideshow-specific rule
+
+Public slideshow URLs do not use Mongo `_id`.
+
+- `/slideshow/[slideshowId]`
+- `/slideshow-layout/[layoutId]`
+
+The public identifiers are:
+
+- `slideshows.slideshowId`
+- `slideshow_layouts.layoutId`
+
+## 6. Submission conventions
+
+Runtime submission persistence currently relies on fields like:
+
+- `eventId`
+- `eventIds`
+- `partnerId`
+- `frameId`
+- `imageUrl`
+
+Important:
+
+- submission `eventId` is the event UUID, not the event Mongo `_id`
+- submission `partnerId` is the partner business ID
+- `frameId` is the frame business ID in the hot path
+
+Do not rewrite docs or code assuming every relation is an ObjectId-string foreign key.
+
+## 7. URL conventions
+
+### Usually Mongo `_id`
+
+- `/admin/events/[id]`
+- `/admin/partners/[id]`
+- `/admin/frames/[id]/edit`
+- `/admin/logos/[id]/edit`
+- `/share/[id]`
+
+### Usually business identifier
+
+- `/slideshow/[slideshowId]`
+- `/slideshow-layout/[layoutId]`
+- `partner.partnerId`
+- `event.eventId`
+- `frame.frameId`
+- `logo.logoId`
+
+## 8. Query conventions
+
+### Event admin lookup
+
+```ts
+await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(id) });
 ```
 
-### 2. URL Parameters
+### Event submission lookup
 
-**Rule**: Always use `_id.toString()` in URLs
-
-**Format**: `/resource/[MongoDB _id as string]`
-
-**Examples:**
-- `/admin/events/690a72d084eb48114aa84ef5` ✅
-- `/capture/690a72d084eb48114aa84ef5` ✅
-- `/slideshow/abc123` ✅ (uses slideshowId UUID for public URLs)
-
-**Rationale**: 
-- URLs need stable, short identifiers
-- MongoDB `_id` is guaranteed unique
-- Easy to convert back to ObjectId for queries
-
-### 3. Database Queries
-
-#### Querying by _id (same collection)
-
-```typescript
-// ✅ CORRECT
-const event = await db.collection('events')
-  .findOne({ _id: new ObjectId(id) });
+```ts
+await db.collection(COLLECTIONS.SUBMISSIONS).find({
+  $or: [
+    { eventId: event.eventId },
+    { eventIds: { $in: [event.eventId] } },
+  ],
+});
 ```
 
-#### Referencing in other collections
+### Partner-scoped access lookup
 
-**Rule**: Store `_id.toString()` in foreign key fields
-
-```typescript
-// ✅ CORRECT - Storing reference
-const submission = {
-  eventId: event._id.toString(),  // Store as string
-  imageUrl: '...',
-  // ... other fields
-};
-
-// ✅ CORRECT - Querying by reference
-const submissions = await db.collection('submissions')
-  .find({ eventId: event._id.toString() })
-  .toArray();
+```ts
+await db.collection(COLLECTIONS.PARTNER_USER_ACCESS).find({
+  partnerId: partner.partnerId,
+  isActive: true,
+});
 ```
 
-**❌ WRONG Examples:**
-```typescript
-// ❌ Using UUID instead of _id
-const submissions = await db.collection('submissions')
-  .find({ eventId: event.eventId })  // WRONG!
-  .toArray();
+## 9. Documentation rule
 
-// ❌ Not converting _id to string
-const slideshow = {
-  eventId: event._id,  // WRONG! Will cause comparison issues
-};
-```
+When documenting a route or collection:
 
-### 4. API Endpoints
+- say explicitly whether the field is Mongo `_id` or business ID
+- do not rely on ambiguous names like `eventId` without context
 
-#### Route Parameters
+## 10. Review checklist
 
-**Pattern**: `[id]` always refers to MongoDB `_id`
+Before changing code that touches IDs:
 
-```typescript
-// ✅ CORRECT
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  const event = await db.collection('events')
-    .findOne({ _id: new ObjectId(id) });
-}
-```
+- confirm which identifier the current route expects
+- confirm what the downstream collection stores
+- confirm whether public URLs expose Mongo `_id` or a business ID
+- update docs if the meaning changed
 
-#### Request/Response Bodies
+## 11. Related docs
 
-**Rule**: Use `_id` for references, include display fields separately
-
-```typescript
-// ✅ CORRECT - Response
-{
-  _id: "690a72d084eb48114aa84ef5",
-  eventId: "uuid-display-id",
-  name: "AC Milan Game",
-  // ... other fields
-}
-
-// ✅ CORRECT - Creating related document
-const slideshow = {
-  eventId: eventMongoId.toString(),  // Reference to event._id
-  eventName: event.name,              // Cached display name
-  // ... other fields
-};
-```
-
----
-
-## Collection-Specific Rules
-
-### Events Collection
-
-**Primary Key**: `_id` (ObjectId)  
-**Display ID**: `eventId` (UUID string)
-
-**How to reference an event:**
-```typescript
-// In URLs: use _id as string
-/capture/690a72d084eb48114aa84ef5
-
-// In database: query by _id as ObjectId
-{ _id: new ObjectId("690a72d084eb48114aa84ef5") }
-
-// In submissions/slideshows: store _id.toString()
-{ eventId: "690a72d084eb48114aa84ef5" }
-```
-
-### Partners Collection
-
-**Primary Key**: `_id` (ObjectId)  
-**Display ID**: `partnerId` (UUID string)
-
-**How to reference a partner:**
-```typescript
-// In events: store partnerId UUID (not _id)
-// This is for external API compatibility
-{ partnerId: partner.partnerId }
-
-// In URLs: use _id as string
-/admin/partners/690a72d084eb48114aa84ef5
-```
-
-### Frames Collection
-
-**Primary Key**: `_id` (ObjectId)  
-**Display ID**: `frameId` (UUID string)
-
-**How to reference a frame:**
-```typescript
-// In submissions: store _id as ObjectId
-{ frameId: new ObjectId(frame._id) }
-
-// In event.frames array: store _id as string
-{
-  frames: [
-    { frameId: frame._id.toString(), isActive: true }
-  ]
-}
-```
-
-### Submissions Collection
-
-**Primary Key**: `_id` (ObjectId)  
-**Display ID**: `submissionId` (UUID string)
-
-**References:**
-- `eventId`: event `_id` as string
-- `partnerId`: partner `partnerId` UUID (not `_id`)
-- `frameId`: frame `_id` as ObjectId
-
-### Slideshows Collection
-
-**Primary Key**: `_id` (ObjectId)  
-**Display ID**: `slideshowId` (UUID string) - **used in public URLs**
-
-**References:**
-- `eventId`: event `_id` as string
-
-**Special case**: Slideshow URLs use `slideshowId` UUID for security/obfuscation
-
----
-
-## Migration Checklist
-
-When updating existing code:
-
-1. ✅ Identify all event references
-2. ✅ Check if using `_id` or custom UUID
-3. ✅ Update to use `_id.toString()` for storage
-4. ✅ Update queries to match
-5. ✅ Update URL parameters
-6. ✅ Test end-to-end flow
-7. ✅ Update related documentation
-
----
-
-## Common Mistakes to Avoid
-
-### ❌ Mistake 1: Using UUID for database references
-```typescript
-// ❌ WRONG
-const submissions = await db.collection('submissions')
-  .find({ eventId: event.eventId })  // Using UUID
-  .toArray();
-
-// ✅ CORRECT
-const submissions = await db.collection('submissions')
-  .find({ eventId: event._id.toString() })  // Using _id
-  .toArray();
-```
-
-### ❌ Mistake 2: Not converting _id to string
-```typescript
-// ❌ WRONG
-const slideshow = {
-  eventId: event._id,  // ObjectId type, causes comparison issues
-};
-
-// ✅ CORRECT
-const slideshow = {
-  eventId: event._id.toString(),  // String type
-};
-```
-
-### ❌ Mistake 3: Inconsistent URL parameters
-```typescript
-// ❌ WRONG - Mixing _id and UUID
-/capture/${event.eventId}
-
-// ✅ CORRECT - Always use _id
-/capture/${event._id.toString()}
-```
-
----
-
-## Verification Commands
-
-Check for potential issues:
-
-```bash
-# Find eventId references (should be _id.toString())
-grep -r "eventId:" app/ lib/
-
-# Find partnerId usage in foreign keys (should be UUID)
-grep -r "partnerId:" app/ lib/
-
-# Find URL constructions
-grep -r "/capture/" app/
-grep -r "/admin/events/" app/
-```
-
----
-
-## Summary
-
-| Context | Format | Example |
-|---------|--------|---------|
-| **URLs** | `_id` as string | `/capture/690a72d084eb48114aa84ef5` |
-| **Database queries (same collection)** | `_id` as ObjectId | `{ _id: new ObjectId(id) }` |
-| **Foreign key storage** | `_id` as string | `{ eventId: "690a72d084eb48114aa84ef5" }` |
-| **Display/External** | UUID string | `{ eventId: "uuid-string" }` |
-| **Public slideshow URLs** | UUID string | `/slideshow/abc-123-uuid` |
-
----
-
-**Enforcement**: All PRs must follow these conventions. Code that violates these rules will be rejected.
+- [README.md](/Users/Shared/Projects/venturecogroup/camera/README.md)
+- [ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/ARCHITECTURE.md)
+- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/venturecogroup/camera/docs/SLIDESHOW_LOGIC.md)

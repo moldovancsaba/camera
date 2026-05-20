@@ -1,95 +1,61 @@
 # Authorization Guide
 
-**Version**: 1.1.0  
-**Last Updated**: 2026-05-15T00:00:00.000Z
+**Version**: 2.9.0  
+**Last Updated**: 2026-05-20
 
-## Critical: Always Use `session.appRole` for Authorization
+This is the current authorization model for Camera.
 
-### ⚠️ Common Mistake
+## 1. Critical rule
 
-**WRONG** ❌:
-```typescript
+For app-level authorization, use `session.appRole`, not `session.user.role`.
+
+Wrong:
+
+```ts
 if (session.user.role === 'admin') {
-  // This checks SSO-level role, NOT app-level role!
+  // wrong scope
 }
 ```
 
-**CORRECT** ✅:
-```typescript
+Correct:
+
+```ts
 if (session.appRole === 'admin' || session.appRole === 'superadmin') {
-  // This checks app-specific role from SSO permissions
+  // correct app-level check
 }
 ```
 
----
+## 2. Two authorization layers
 
-## Why Two Role Fields?
+### Layer A: SSO app access
 
-### `session.user.role` (SSO-Level Role)
-- **Source**: Extracted from OIDC ID token during OAuth login
-- **Scope**: User's global role across ALL SSO-managed applications
-- **Examples**: `'super-admin'`, `'user'`, `null`
-- **Use Case**: SSO administration, NOT for app-specific authorization
+Stored on the Camera session:
 
-### `session.appRole` (App-Level Role)
-- **Source**: Queried from SSO `/api/users/{userId}/apps/{clientId}/permissions` during OAuth callback
-- **Scope**: User's role specifically for THIS application (Camera)
-- **Examples**: `'admin'`, `'user'`, `'none'`, `'superadmin'`
-- **Use Case**: **ALL app authorization checks**
+- `session.appRole`
+- `session.appAccess`
 
----
+Meaning:
 
-## SSO Multi-App Permission System
+- can this identity use Camera at all
+- is this identity a global Camera admin
 
-SSO v5.24.0+ uses a **multi-app permission model** where:
+### Layer B: partner-scoped app access
 
-1. Each application has its own client ID
-2. Users must explicitly request access to each app
-3. Admins grant app-specific roles to users
-4. Each user can have different roles in different apps
+Stored in Camera MongoDB:
 
-**Example**:
-- User A: `admin` in Camera app, `user` in Analytics app
-- User B: `user` in Camera app, `admin` in Analytics app
+- collection: `partner_user_access`
 
-### Where permissions live (conceptual)
+Meaning:
 
-Camera talks to SSO **over HTTPS** (`/api/oauth/*`, `/api/users/.../permissions`). It does **not** use `SSO_MONGODB_URI` or read the SSO service MongoDB.
+- which partner workspaces this identity may access
+- which app surface is allowed there
+- whether access is read-only or write-capable
 
-On the SSO side, permissions are still typically backed by data like **app permissions** per user and client (conceptually similar to):
+## 3. Partner-scoped access shape
 
-```javascript
-// Illustrative — actual storage is inside the SSO product, not queried by Camera
-{
-  userId: "5143beb1-9bb6-47e7-a099-e9eeb2d89e93",
-  clientId: "1e59b6a1-3c18-4141-9139-7a3dd0da62bf",  // Camera app
-  role: "admin",
-  hasAccess: true,
-  status: "approved"
-}
-```
+Typical row:
 
-**“Deactivate” in Camera admin (SSO users):** Camera stores `cameraAccountDisabled` on **submissions** so slideshows/galleries can hide that person without a Mongo connection to SSO. That does not revoke SSO login by itself—use the SSO admin tools if login must be blocked at the IdP.
-
----
-
-## Partner-Level Access Model
-
-Camera now has a second authorization layer for tenant-scoped UX and future runtime enforcement:
-
-- **Global app access** still comes from SSO via `session.appRole` and `session.appAccess`
-- **Partner-scoped app access** now lives in Camera in the `partner_user_access` collection
-
-This distinction matters:
-
-- SSO answers: can this identity use Camera at all, and are they a global app admin?
-- Camera answers: which partner can this identity operate, for which app surface, and at what partner role?
-
-### Current partner access fields
-
-`partner_user_access` stores records like:
-
-```typescript
+```ts
 {
   accessId: "uuid",
   partnerId: "partner-uuid",
@@ -99,237 +65,156 @@ This distinction matters:
   userName: "User Name",
   appKey: "events" | "gym",
   role: "viewer" | "manager" | "admin",
-  isActive: true
+  isActive: true,
+  createdAt: "...",
+  updatedAt: "..."
 }
 ```
 
-### Important current rule
+## 4. Current policy
 
-Partner access is now the **source of truth for partner assignments in the admin UX**, but it is **not yet enforced universally across all runtime/admin authorization paths**.
+This is the implemented policy as of 2026-05-20:
 
-That means:
+1. valid session with `appAccess !== false` may reach the admin shell
+2. global `admin` and `superadmin` remain full bypass
+3. non-global admins must have partner assignments to see partner/app admin surfaces
+4. global inventory pages remain global-admin-only
+5. partner/app APIs should enforce matching partner scope where implemented
 
-- partner workspaces and the global user directory can manage and display partner assignments safely
-- global app admin checks still rely on SSO app permissions
-- broad runtime enforcement for partner-scoped permissions must be rolled out deliberately to avoid breaking live operations
+## 5. Roles and intent
 
-### Recommended enforcement direction
+### Global SSO app roles
 
-When runtime enforcement is added, the order should be:
+- `superadmin`
+- `admin`
+- `user`
+- `none`
 
-1. authenticate via SSO / session
-2. allow global `admin` / `superadmin` to bypass partner restrictions where intended
-3. resolve partner assignment from `partner_user_access`
-4. check `appKey`, `role`, and `isActive`
+These come from SSO and apply to the Camera app as a whole.
 
-Do not replace `session.appRole` checks with partner checks blindly. They solve different problems.
+### Partner-scoped roles
 
----
+- `viewer`
+  - can view assigned partner/app surfaces
+- `manager`
+  - can create and update within assigned partner/app scope
+- `admin`
+  - can perform full partner/app operations inside that scope
 
-## How Roles Are Set During Login
+## 6. Route model
 
-### OAuth Callback Flow (`app/api/auth/callback/route.ts`)
+### Middleware
 
-1. **Exchange code for tokens** → Get ID token with `user.role`
-2. **Decode ID token** → Extract `session.user.role` (SSO-level)
-3. **Query SSO permissions API** → Get `appRole` for Camera app
-4. **Store both in session**:
-   ```typescript
-   await createSession(user, tokens, {
-     appRole: permission.role,  // 'admin', 'user', etc.
-     appAccess: permission.hasAccess
-   });
-   ```
+Root `middleware.ts`:
 
----
+- validates serialized session for `/admin`
+- rejects when `appAccess === false`
+- no longer requires global admin role at the edge
 
-## Authorization Patterns
+### Layout gate
 
-### Pattern 1: Require Admin (Recommended)
+`app/admin/layout.tsx`:
 
-Use the `requireAdmin()` middleware from `lib/api/middleware.ts` (import via `@/lib/api`). Do **not** use `requireAdmin` from `@/lib/auth/session` in API route handlers: that variant throws plain `Error` and tends to produce **500** responses if a generic `catch` swallows it. The `@/lib/api` version throws `NextResponse` with **401/403**.
-
-```typescript
-import { requireAdmin } from '@/lib/api';
-
-export const POST = withErrorHandler(async (request: NextRequest) => {
-  const session = await requireAdmin();  // ✅ Checks appRole
-  
-  // Admin-only logic
-});
-```
+- resolves session
+- resolves navigation access from SSO role + partner assignments
+- redirects away if the user is neither global admin nor partner-assigned
 
-**Implementation**:
-```typescript
-export async function requireAdmin(): Promise<Session> {
-  const session = await requireAuth();
-  
-  // ✅ CORRECT: Checks appRole
-  if (session.appRole !== 'admin' && session.appRole !== 'superadmin') {
-    throw apiForbidden('Admin access required for this app');
-  }
-  
-  return session;
-}
-```
+### Global-only pages
 
-### Pattern 2: Manual Check
+These remain global-admin-only:
 
-```typescript
-const session = await getSession();
+- `/admin`
+- `/admin/users`
+- `/admin/frames`
+- `/admin/logos`
+- `/admin/submissions`
 
-if (!session) {
-  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-}
+### Partner/app pages
 
-// ✅ CORRECT: Check appRole
-if (session.appRole !== 'admin' && session.appRole !== 'superadmin') {
-  return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-}
-```
+These can be partner-scoped where implemented:
 
-### Pattern 3: Owner or Admin
+- `/admin/partners`
+- `/admin/partners/[id]`
+- `/admin/events`
+- `/admin/events/[id]`
+- `/admin/gym`
+- `/admin/gym/funfitfan`
+- `/admin/gym/lessons`
 
-```typescript
-const isOwner = resource.userId === session.user.id;
-// ✅ CORRECT: Check appRole for admin
-const isAdmin = session.appRole === 'admin' || session.appRole === 'superadmin';
+## 7. Recommended check order
 
-if (!isOwner && !isAdmin) {
-  throw apiForbidden('You can only access your own resources');
-}
-```
+When writing new code:
 
-### Pattern 4: Frontend Display
+1. authenticate session
+2. reject if `appAccess === false`
+3. allow global `admin` / `superadmin` bypass where intended
+4. if the resource is partner-scoped, resolve partner assignment
+5. enforce `appKey`, `role`, and `isActive`
 
-```typescript
-// Homepage - Show admin button
-{session.appRole === 'admin' || session.appRole === 'superadmin' && (
-  <a href="/admin">Admin Panel</a>
-)}
+Do not replace all global checks with partner checks. The layers solve different problems.
 
-// Admin layout - Protect route
-if (session.appRole !== 'admin' && session.appRole !== 'superadmin') {
-  redirect('/');
-}
-```
+## 8. Preferred helpers
 
----
+### API route auth
 
-## Granting App-Level Admin Access
+Use helpers from `@/lib/api`:
 
-### Via Script
+- `requireAuth`
+- `requireAdmin`
 
-```bash
-node scripts/grant-app-permission.mjs <userId> admin
-```
+For partner-scoped checks, compose them with:
 
-**Example**:
-```bash
-node scripts/grant-app-permission.mjs 5143beb1-9bb6-47e7-a099-e9eeb2d89e93 admin
-```
+- `isGlobalAdminSession`
+- `getPartnerScopedAccessForPartner`
+- `getPartnerScopedAccessForEvent`
+- `listAccessiblePartnerIds`
+- `getAdminNavigationAccess`
 
-### Via MongoDB
+Those live in:
 
-```javascript
-// Connect to SSO database
-const db = client.db('sso');
+- [lib/partners/authorization.ts](/Users/Shared/Projects/venturecogroup/camera/lib/partners/authorization.ts)
 
-// Grant admin role
-await db.collection('appPermissions').updateOne(
-  {
-    userId: "5143beb1-9bb6-47e7-a099-e9eeb2d89e93",
-    clientId: "1e59b6a1-3c18-4141-9139-7a3dd0da62bf"
-  },
-  {
-    $set: {
-      role: "admin",
-      hasAccess: true,
-      status: "approved",
-      grantedAt: new Date().toISOString()
-    }
-  },
-  { upsert: true }
-);
-```
+### Why not use `@/lib/auth/session` `requireAdmin` in APIs
 
-**User must logout and login again for changes to take effect.**
+The `@/lib/api` middleware helpers produce proper 401/403 API responses. The session helper is fine for internal code paths but is not the preferred API-route authorization layer.
 
----
+## 9. Common mistakes
 
-## Complete Checklist
+### Mistake 1: using `session.user.role`
 
-When adding authorization to an endpoint:
+That is the IdP/global SSO role, not Camera app role.
 
-- [ ] Use `requireAdmin()` middleware OR
-- [ ] Manually check `session.appRole` (NOT `session.user.role`)
-- [ ] Check for both `'admin'` AND `'superadmin'` roles
-- [ ] Add comment: `// Check app-specific role (appRole), not SSO-level role (user.role)`
-- [ ] Test with actual admin user
-- [ ] Verify 403 response for non-admin users
+### Mistake 2: assuming partner assignments replace app role
 
----
+They do not. Partner assignments do not grant login to Camera by themselves.
 
-## Files Fixed
+### Mistake 3: using global inventory pages as partner-scoped pages
 
-All authorization checks have been updated to use `session.appRole`:
+Those pages are intentionally global-admin-only.
 
-- ✅ `lib/api/middleware.ts` - `requireAdmin()` middleware
-- ✅ `app/page.tsx` - Homepage admin button
-- ✅ `app/admin/layout.tsx` - Admin route protection
-- ✅ `components/admin/CollapsibleSidebar.tsx` - Sidebar role display
-- ✅ `app/api/partners/[partnerId]/route.ts` - PATCH and DELETE
-- ✅ `app/api/partners/[partnerId]/toggle/route.ts` - Toggle status
-- ✅ `app/api/frames/[id]/route.ts` - PUT and DELETE
-- ✅ `app/api/submissions/[submissionId]/route.ts` - DELETE
+### Mistake 4: assuming `eventId` route params imply partner scope automatically
 
----
+Resolve the event, then resolve partner-scoped authorization from the event’s partner.
 
-## Troubleshooting
+## 10. Operational notes
 
-### "Forbidden" error despite being admin in SSO
+- permission changes made in SSO generally require a fresh session to take effect
+- partner assignment changes take effect through Camera reads and do not require SSO schema changes
+- Gym access is modeled as `appKey: "gym"` on the dedicated Gym/FFF partner
 
-**Problem**: You have SSO admin role but not app-level admin role.
+## 11. Files to check when changing authorization
 
-**Solution**:
-1. Check your app permission:
-   ```bash
-   node scripts/grant-app-permission.mjs <your-user-id> admin
-   ```
-2. Logout and login again
-3. Check sidebar - should show "admin" not "user"
+- [middleware.ts](/Users/Shared/Projects/venturecogroup/camera/middleware.ts)
+- [app/admin/layout.tsx](/Users/Shared/Projects/venturecogroup/camera/app/admin/layout.tsx)
+- [lib/auth/middleware-session-gate.ts](/Users/Shared/Projects/venturecogroup/camera/lib/auth/middleware-session-gate.ts)
+- [lib/api/middleware.ts](/Users/Shared/Projects/venturecogroup/camera/lib/api/middleware.ts)
+- [lib/partners/access.ts](/Users/Shared/Projects/venturecogroup/camera/lib/partners/access.ts)
+- [lib/partners/authorization.ts](/Users/Shared/Projects/venturecogroup/camera/lib/partners/authorization.ts)
 
-### Session shows wrong role
+## 12. Review checklist
 
-**Problem**: Cached session with old role.
-
-**Solution**:
-1. Logout completely
-2. Login again
-3. Session will refresh with new `appRole`
-
----
-
-## Social login (Google / Facebook)
-
-The Camera app starts OAuth at **`GET /api/auth/login`** with optional **`provider=google`** or **`provider=facebook`**. Those values are forwarded to the SSO authorize URL (same pattern as the Amanoba project: `…/login?provider=google`). The SSO service ([sso.doneisbetter.com](https://sso.doneisbetter.com)) must accept that `provider` query parameter for your OAuth client.
-
----
-
-## Transactional email vs SSO
-
-**SSO ([sso.doneisbetter.com](https://sso.doneisbetter.com))** handles **authentication** (OAuth2/OIDC, tokens, app permissions). It is **not** a transactional email API for this app: it does not send “your photo is ready” or welcome messages on behalf of Camera.
-
-If you need outbound mail later, use a mail provider (e.g. Resend, SendGrid) from **this app’s server code**, or whatever mechanism your IdP offers **separately** from the login protocol. Replacing Resend with “SSO” is only possible if the IdP exposes a documented **send-email** API you integrate explicitly—OIDC discovery alone does not provide that.
-
-This repository **does not** currently send email from any API route; there is no dependency on Resend for runtime behavior.
-
----
-
-## References
-
-- **SSO Service**: https://sso.doneisbetter.com
-- **SSO HTTP API**: `https://sso.doneisbetter.com` (OAuth + permissions endpoints)
-- **Camera Client ID**: `1e59b6a1-3c18-4141-9139-7a3dd0da62bf`
-- **Session Interface**: `lib/auth/session.ts`
-- **OAuth Callback**: `app/api/auth/callback/route.ts`
+- use `session.appRole`, not `session.user.role`
+- confirm whether the page or API is global-only or partner-scoped
+- if partner-scoped, verify `appKey`
+- verify read vs write role threshold
+- update docs when behavior changes

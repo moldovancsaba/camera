@@ -83,14 +83,14 @@ export async function POST(
       addedBy: session.user.id,
     };
 
-    // Adding a logo marks event as having custom logo assignments (v2.8.0)
+    // Adding a logo marks the event as having custom logo assignments
     await eventsCollection.updateOne(
       { _id: new ObjectId(eventId) },
       {
         $push: { logos: logoAssignment } as any,
         $set: { 
           updatedAt: generateTimestamp(),
-          logosOverridden: true, // Mark as orphan - independent of partner defaults
+          logosOverridden: true, // Event now uses custom logo assignments instead of partner defaults
         },
       }
     );

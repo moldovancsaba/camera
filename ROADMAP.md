@@ -1,313 +1,70 @@
-# ROADMAP.md
+# Roadmap
 
-**Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.8.0
-**Last Updated**: 2025-11-10T11:18:00.000Z
+**Version Context**: 2.9.0  
+**Last Updated**: 2026-05-20
 
-**Recent Completion**: v2.8.0 Camera maximum view with frame overlay, event DELETE endpoint, frameless submissions
+This file is forward-looking only.
 
-This document contains only forward-looking development plans and milestones. No historical entries are included.
-For completed work, see RELEASE_NOTES.md. For current urgent tasks, see TASKLIST.md.
+## Near-term priorities
 
----
+### 1. Complete partner-scoped authorization rollout
 
-## Q4 2025 / Q1 2026 — Stability and Polish
+- finish enforcement on remaining admin/API paths not yet moved to the partner-aware model
+- verify viewer vs manager vs admin behavior consistently across Events and Gym
+- add regression coverage around global-admin bypass and partner scoping
 
-### Milestone: Production-Ready MVP
+### 2. Continue partner-first admin UX
 
-**Target Release Date**: 2026-01-31T18:00:00.000Z
+- deepen partner workspace operations
+- reduce remaining flat/global-first workflows where they confuse operators
+- make app enablement and partner app settings more explicit
 
-**Focus Areas**:
+### 3. Landing page generalization
 
-**Performance Optimization**:
-- Image caching and preloading
-- Frame asset optimization (WebP, AVIF formats)
-- CDN caching strategy implementation
-- Database query optimization
-- Progressive image loading
+- continue moving landing pages from event-only thinking to reusable experience surfaces
+- support app actions cleanly for capture, slideshow, and Gym flows
 
-**User Experience Enhancements**:
-- Batch photo processing
-- Recent frames quick access
-- Enhanced frame preview (zoom, details)
-- Mobile PWA features
-- Improved error handling and user feedback
+### 4. Resource ownership clarity
 
-**Admin Tools**:
-- Bulk frame operations
-- Frame usage analytics
-- User activity monitoring
-- System health dashboard
-- Advanced filtering and search
+- keep improving ownership and relationship navigation for frames, logos, landing pages, and galleries
+- tighten partner/global visibility rules in admin inventory views
 
----
+## Medium-term priorities
 
-## Q1 2026 — Enhancement Phase
+### 5. Submission model cleanup
 
-### Milestone: User Experience Improvements
+- reconcile broad TypeScript submission types with the actual persisted submission shape
+- reduce compatibility ambiguity around `imageUrl`, `finalImageUrl`, `eventId`, and `eventIds`
 
-**Target Release Date**: 2026-02-28T18:00:00.000Z
+### 6. Slideshow operational hardening
 
-**Planned Features**:
+- continue tuning playlist query cost
+- improve observability and operational diagnostics
+- review playlist fairness and layout-cell desynchronization under heavier load
 
-#### Advanced Frame Features
-- **Frame Categories**: Organize frames by category (events, holidays, sports, corporate, etc.)
-- **Frame Search**: Search frames by name, category, or tags
-- **Frame Favorites**: Allow users to favorite frames for quick access
-- **Seasonal Frames**: Automatic suggestion of seasonal/holiday-appropriate frames
-- **Frame Collections**: Grouped frame sets for specific events
+### 7. Gym / FFF productization
 
-#### Enhanced User Experience
-- **Batch Upload**: Allow users to process multiple photos at once with the same frame
-- **Recent Frames**: Quick access to recently used frames
-- **Share History**: Track share analytics (clicks, platforms used)
-- **Submission Stats**: User dashboard with submission count, most used frames
-- **Mobile App Consideration**: Evaluate PWA vs native app for better mobile UX
+- continue separating “Gym App” product language from older FFF implementation naming
+- formalize Gym-specific settings, reporting, and partner-level enablement
 
-#### Performance Optimizations
-- **Image Caching**: Client-side caching of composed images
-- **Frame Preloading**: Preload popular frames for faster composition
-- **Progressive Image Loading**: Show lower quality preview during processing
-- **CDN Optimization**: Implement CDN caching strategy for frames
-- **Compression Options**: Allow users to choose quality vs file size
+## Longer-term platform direction
 
-**Dependencies**:
-- v1.0.0 stable in production
-- User feedback from initial release
-- Performance metrics from production usage
+### 8. Camera as a platform
 
----
+Target direction:
 
-## Q2 2026 — Analytics and Administration
+- Camera Core manages partners, resources, galleries, landing pages, and user/access models
+- apps consume those resources
+- Events and Gym are the first two app surfaces
+- future app surfaces can reuse the same partner/resource model
 
-### Milestone: Admin Dashboard and Analytics
+### 9. Storage and media evolution
 
-**Target Release Date**: 2026-05-31T18:00:00.000Z
+- evaluate moving beyond imgbb if operational needs, governance, or scale require first-party storage/CDN control
 
-**Planned Features**:
+### 10. Observability and governance
 
-#### Admin Dashboard
-- **Usage Analytics**: Track submission count, popular frames, peak usage times
-- **User Management**: View registered users, activity logs, submission history
-- **Frame Analytics**: Most used frames, frame performance metrics
-- **Email Delivery Reports**: Track email success/failure rates
-- **CDN Usage Monitoring**: Track imgbb.com bandwidth and storage usage
-- **System Health Dashboard**: Monitor API response times, error rates, uptime
-
-#### Advanced Frame Management
-- **Bulk Frame Upload**: Upload multiple frames at once
-- **Frame Templates**: Save frame compositions as templates
-- **Frame Versioning**: Track frame versions and allow rollback
-- **A/B Testing**: Test different frame variations with user subset
-- **Frame Scheduling**: Schedule frame activation/deactivation dates
-
-#### Data Management
-- **Export Functionality**: Allow users to export all their submissions
-- **Data Retention Policies**: Implement automated cleanup of old submissions
-- **Backup System**: Automated MongoDB and imgbb backup system
-- **GDPR Compliance Tools**: User data deletion workflow, data export
-
-**Dependencies**:
-- Stable v1.0.0 deployment
-- Significant user base (500+ registered users)
-- Admin feedback on management needs
-
----
-
-## Q3 2026 — Social and Collaboration Features
-
-### Milestone: Community and Sharing Enhancements
-
-**Target Release Date**: 2026-08-31T18:00:00.000Z
-
-**Planned Features**:
-
-#### Social Features
-- **Public Gallery**: Optional public sharing of submissions (user consent required)
-- **Frame Contests**: Admin-created contests with user voting
-- **Featured Submissions**: Showcase outstanding user submissions
-- **User Profiles**: Public profiles with user's shared submissions
-- **Follow System**: Allow users to follow other users
-- **Comments and Likes**: Social engagement on public submissions
-
-#### Collaboration Features
-- **Team Accounts**: Organization accounts with multiple team members
-- **Brand Kits**: Custom frame sets for corporate/brand usage
-- **White-Label Deployment**: Custom branding for enterprise clients
-- **API Access**: Allow third-party integration for enterprise customers
-- **Embed Widgets**: Embeddable camera widget for external websites
-
-#### Advanced Sharing
-- **QR Codes**: Generate QR codes for quick sharing
-- **Short Links**: Custom short URL system for sharing
-- **Social Media Auto-Post**: Direct posting to social platforms (with user permission)
-- **Multi-Platform Optimization**: Platform-specific image sizes and formats
-
-**Dependencies**:
-- Strong user engagement metrics
-- Community feedback and feature requests
-- Legal review for user-generated content policies
-
----
-
-## Q4 2026 — AI and Automation
-
-### Milestone: Intelligent Features
-
-**Target Release Date**: 2026-11-30T18:00:00.000Z
-
-**Planned Features**:
-
-#### AI-Powered Features (Evaluation Phase)
-- **Smart Frame Suggestions**: AI-based frame recommendations based on photo content
-- **Auto-Cropping**: Intelligent photo cropping for optimal frame fit
-- **Background Removal**: Optional background removal before frame application
-- **Face Detection**: Center faces automatically within frames
-- **Style Transfer**: Apply artistic styles to photos before framing
-- **Image Enhancement**: Auto-adjust brightness, contrast, color balance
-
-#### Automation Features
-- **Scheduled Sharing**: Schedule future social media posts
-- **Auto-Email Campaigns**: Birthday/anniversary frame suggestions with auto-email
-- **Batch Processing**: Background batch processing for large orders
-- **Integration Webhooks**: Trigger actions on submission (integrate with external systems)
-- **API Enhancements**: GraphQL API for advanced integrations
-
-#### Advanced Customization
-- **Custom Text Overlays**: User-added text on frames (admin-approved fonts/positions)
-- **Dynamic Frames**: Frames that adapt to photo content
-- **Video Frames**: Support for short video clips with frame overlays
-- **Animated Frames**: GIF/animated frame support
-- **3D Frame Effects**: Advanced CSS 3D transformations
-
-**Dependencies**:
-- Evaluation of AI/ML service costs and feasibility
-- Technical feasibility study for video processing
-- User demand validation through surveys
-
----
-
-## Future Considerations (2027+)
-
-### Long-Term Vision
-
-**Under Evaluation**:
-- **Mobile Native Apps**: iOS and Android native applications
-- **Augmented Reality Frames**: AR frame preview using device camera
-- **Blockchain Integration**: NFT creation for unique submissions
-- **Marketplace**: User-created frames marketplace
-- **Print Service Integration**: Physical print ordering with frames
-- **Multi-Language Support**: Internationalization for global reach
-- **Offline Mode**: PWA with offline camera capture and queued uploads
-- **Voice Commands**: Accessibility via voice-controlled interface
-- **Accessibility Enhancements**: Advanced screen reader support, high contrast modes
-
-**Evaluation Criteria**:
-- Market demand validation
-- Technical feasibility and resource requirements
-- Return on investment analysis
-- Competitive landscape analysis
-- User research and feedback
-
----
-
-## Feature Request Process
-
-### How to Submit Feature Requests
-
-Users and stakeholders can submit feature requests by:
-1. Opening a GitHub issue with label "feature-request"
-2. Contacting the project maintainer directly
-3. Participating in quarterly user surveys
-
-### Feature Prioritization Criteria
-
-Features are prioritized based on:
-- **User Impact**: How many users benefit?
-- **Development Effort**: Required time and resources
-- **Strategic Alignment**: Fits long-term vision?
-- **Technical Feasibility**: Can it be implemented reliably?
-- **Business Value**: Revenue impact or cost savings
-
-### Review Cycle
-
-Feature requests are reviewed:
-- **Monthly**: Quick evaluation of new requests
-- **Quarterly**: Full roadmap review and reprioritization
-- **Annually**: Strategic planning and long-term vision alignment
-
----
-
-## Version Planning
-
-### Semantic Versioning Strategy
-
-- **MAJOR (X.0.0)**: Breaking changes, major feature releases, architectural changes
-- **MINOR (1.X.0)**: New features, backward-compatible enhancements
-- **PATCH (1.0.X)**: Bug fixes, performance improvements, minor tweaks
-
-### Expected Release Cadence
-
-- **PATCH releases**: As needed (bug fixes)
-- **MINOR releases**: Monthly (feature additions)
-- **MAJOR releases**: Quarterly or bi-annually (significant milestones)
-
----
-
-## Risk Assessment
-
-### Technical Risks
-
-**High Priority**:
-- imgbb.com API reliability and rate limits
-- MongoDB Atlas scaling for large user base
-- Browser compatibility issues with Camera API
-- Canvas API performance on older mobile devices
-
-**Mitigation Strategies**:
-- Implement fallback CDN options
-- MongoDB connection pooling and query optimization
-- Progressive enhancement for browser features
-- Performance testing on low-end devices
-
-### Business Risks
-
-**High Priority**:
-- User adoption rate lower than expected
-- SSO service availability dependency
-- imgbb.com pricing changes or service discontinuation
-- Competition from similar services
-
-**Mitigation Strategies**:
-- Marketing and user acquisition strategy
-- Service-level agreements with external dependencies
-- Prepare migration plan for alternative CDN services
-- Differentiation through unique features and UX
-
----
-
-## Success Metrics
-
-### Key Performance Indicators (KPIs)
-
-**User Metrics**:
-- Monthly Active Users (MAU) target: 1,000+ by Q2 2026
-- Submission rate per user: Average 3+ submissions/month
-- User retention: 60%+ month-over-month
-- Session duration: Average 5+ minutes
-
-**Technical Metrics**:
-- API response time: < 2 seconds (p95)
-- Image composition time: < 5 seconds (p95)
-- Uptime: 99.5%+ availability
-- Error rate: < 1% of requests
-
-**Business Metrics**:
-- User growth rate: 20%+ month-over-month
-- Social sharing rate: 40%+ of submissions shared
-- Email delivery success: 98%+ delivery rate
-- Frame library growth: 50+ frames by Q2 2026
-
----
-
-**Note**: This roadmap is subject to change based on user feedback, technical constraints, resource availability, and strategic priorities. All dates and features are estimates and may be adjusted as needed.
+- structured logs
+- health dashboards
+- clearer operational runbooks
+- tighter release/change documentation discipline

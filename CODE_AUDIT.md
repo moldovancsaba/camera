@@ -5,6 +5,7 @@
 **Version Before Audit**: 1.5.0  
 **Version After Audit**: 1.7.1  
 **Total Refactoring Scope**: 9 phases (4 completed, 5 pending)
+**Current Status**: Historical audit artifact only. Use `README.md`, `ARCHITECTURE.md`, and `docs/*` for current Camera 2.9.0 behavior.
 
 Comprehensive code quality audit and refactoring report documenting weaknesses, actions taken, and measurable improvements.
 

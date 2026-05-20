@@ -96,7 +96,7 @@ export default function AdminEditLessonForm({
         </select>
         {sportOptions.length === 0 ? (
           <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-            No sports configured. Add activities under Admin → Sport → FunFitFan settings first.
+            No sports configured. Add activities under Admin → Gym → Gym Settings first.
           </p>
         ) : null}
       </div>

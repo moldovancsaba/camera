@@ -1,5 +1,5 @@
 /**
- * Admin: create sport training (client form → /api/admin/gym/lessons).
+ * Admin: create Gym training content (client form → /api/admin/gym/lessons).
  */
 
 import Link from 'next/link';
@@ -25,7 +25,7 @@ export default async function AdminNewGymLessonPage() {
   return (
     <div className="p-8">
       <Link href="/admin/gym/lessons" className="text-sm text-gray-600 hover:underline dark:text-gray-400">
-        ← Sport training
+        ← Gym training
       </Link>
       <h1 className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">New training</h1>
       <p className="mt-2 max-w-xl text-gray-600 dark:text-gray-400">

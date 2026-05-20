@@ -182,7 +182,7 @@ export async function GET(request: NextRequest) {
       // Continue with default (no access) - user will see access denied page
     }
 
-    // Check for capture flow resume (v2.9.0: SSO in capture flow)
+    // Check whether the user needs to resume an interrupted capture flow
     const captureEventId = request.cookies.get('captureEventId')?.value;
     const capturePageIndex = request.cookies.get('capturePageIndex')?.value;
     

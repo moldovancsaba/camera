@@ -78,9 +78,7 @@ export const PATCH = withErrorHandler(
       const allowedSports = await readFunFitFanSportActivities(db);
       const canonicalSport = resolveLessonSportFromAllowlist(sport, allowedSports);
       if (!canonicalSport) {
-        throw apiBadRequest(
-          'sport must be one of the activities configured under Admin → Sport → FunFitFan settings'
-        );
+        throw apiBadRequest('sport must be one of the activities configured under Admin → Gym → Gym Settings');
       }
       $set.sport = canonicalSport;
     }

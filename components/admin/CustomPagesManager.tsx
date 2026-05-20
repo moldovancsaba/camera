@@ -367,7 +367,7 @@ function PageEditModal({
   const [title, setTitle] = useState(page.config.title);
   const [description, setDescription] = useState(page.config.description);
   const [buttonText, setButtonText] = useState(page.config.buttonText);
-  // Who-are-you SSO options (v2.9.0)
+  // Who-are-you SSO options
   const [enableSSOLogin, setEnableSSOLogin] = useState(page.config.enableSSOLogin || false);
   const [enablePseudoReg, setEnablePseudoReg] = useState(page.config.enablePseudoReg !== false); // Default true
   const [ssoButtonText, setSsoButtonText] = useState(

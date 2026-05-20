@@ -74,7 +74,7 @@ export async function GET(
 
 /**
  * PATCH /api/partners/[id]
- * Update partner details (admin only)
+ * Update partner details (global admin only)
  * 
  * Updatable fields:
  * - name
@@ -159,7 +159,7 @@ export async function PATCH(
       updates.isActive = Boolean(isActive);
     }
 
-    // Default style fields (v2.8.0)
+    // Default style fields
     // These will cascade to child events
     if (defaultBrandColors !== undefined) {
       updates.defaultBrandColors = defaultBrandColors;
@@ -203,7 +203,7 @@ export async function PATCH(
       );
     }
 
-    // Cascade style changes to child events (v2.8.0)
+    // Cascade style changes to child events
     // Only if any default style fields were updated
     let cascadeResult;
     if (defaultBrandColors !== undefined || defaultFrames !== undefined || defaultLogos !== undefined) {
@@ -241,7 +241,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/partners/[id]
- * Delete partner (admin only)
+ * Delete partner (global admin only)
  * 
  * Prevents deletion if partner has active events
  * This maintains referential integrity in the database

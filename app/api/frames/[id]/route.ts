@@ -3,7 +3,7 @@
  * 
  * GET: Get single frame by ID
  * PUT: Update frame
- * DELETE: Delete frame (admin only)
+ * DELETE: Delete frame (global admin only)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -37,7 +37,7 @@ export async function GET(
 
 /**
  * PUT /api/frames/[id]
- * Update a frame (admin only)
+ * Update a frame (global admin only)
  */
 export async function PUT(
   request: NextRequest,
@@ -87,7 +87,7 @@ export async function PUT(
 
 /**
  * DELETE /api/frames/[id]
- * Delete a frame (admin only)
+ * Delete a frame (global admin only)
  */
 export async function DELETE(
   request: NextRequest,

@@ -1,6 +1,7 @@
 /**
  * Edge middleware:
- * - /admin: require authenticated app admin (unchanged).
+ * - /admin: require a valid Camera session at the edge; layout, pages, and APIs
+ *   enforce global versus partner-scoped access.
  * - FunFitFan host: public URLs without `/fff` prefix (`/login`, `/log`, `/history`, `/share/…`, `/reel`) rewrite to `app/fff/*`.
  * - FunFitFan host: legacy `/fff/*` (except bare `/fff`) → 308 to canonical public paths.
  * - FunFitFan host: rewrite `/` → internal `/fff` (landing).

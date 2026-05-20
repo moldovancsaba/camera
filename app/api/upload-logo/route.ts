@@ -25,7 +25,7 @@ import {
  * Returns: { imageUrl, thumbnailUrl, deleteUrl, imageId }
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
-  // Require authentication (admin only)
+  // Require an authenticated Camera admin session
   await requireAuth();
 
   const body = await request.json();

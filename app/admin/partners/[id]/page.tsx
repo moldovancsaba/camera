@@ -1,8 +1,8 @@
 /**
  * Partner Detail Page
- * 
- * Display partner details with list of events and frames
- * v2.8.0: Added default styles display for child event inheritance
+ *
+ * Display partner details, related event instances, and default resources
+ * inherited by child events unless they are overridden.
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -224,7 +224,7 @@ export default async function PartnerDetailPage({
     participantCount = participantRows.length;
     partnerAccessAssignments = await listPartnerUserAccess(db, partner.partnerId) as unknown as PartnerAccessAssignmentDoc[];
 
-    // Populate frame details for default frames (v2.8.0)
+    // Populate frame details for default frames
     if (partner.defaultFrames && partner.defaultFrames.length > 0) {
       const frames = await db
         .collection(COLLECTIONS.FRAMES)
@@ -249,7 +249,7 @@ export default async function PartnerDetailPage({
       });
     }
 
-    // Populate logo details for default logos (v2.8.0)
+    // Populate logo details for default logos
     if (partner.defaultLogos && partner.defaultLogos.length > 0) {
       const logoIds = partner.defaultLogos.map((logoAssignment) => logoAssignment.logoId);
       const logos = await db

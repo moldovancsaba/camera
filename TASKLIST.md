@@ -1,266 +1,37 @@
-# TASKLIST.md
+# Tasklist
 
-Current Version: 2.9.0
-Last Updated: 2025-11-10T12:45:00.000Z
+**Version Context**: 2.9.0  
+**Last Updated**: 2026-05-20
 
-## Active Tasks (High Priority / Urgent Only)
+This file should contain only active near-term execution items. Historical delivery belongs in `RELEASE_NOTES.md`.
 
-### Documentation Update (v2.8.0) - IN PROGRESS
-- **Owner**: Development Team
-- **Expected Delivery**: 2025-11-10T18:00:00.000Z
-- **Status**: In Progress
-- **Description**: Update documentation to reflect v2.8.0 changes and move completed tasks to RELEASE_NOTES.md
-- **Actions**:
-  - ⏳ Update RELEASE_NOTES.md with v2.8.0 entry
-  - ⏳ Update README.md to v2.8.0
-  - ⏳ Update ARCHITECTURE.md with camera capture changes
-  - ⏳ Update LEARNINGS.md with object-cover insights
-  - ⏳ Sync version across all documentation files
-- **Acceptance Criteria**:
-  - All docs reference v2.8.0
-  - v2.8.0 release notes complete
-  - No version mismatches
+## Active tasks
 
-### Remove Brand Colors from Event Edit Page (v2.8.0) - PLANNED
-- **Owner**: Development Team
-- **Expected Delivery**: 2025-11-10T18:00:00.000Z
-- **Status**: Planned
-- **Description**: Remove "Brand Colors" section from event edit page since it's now displayed on event detail page
-- **Actions**:
-  - Remove brand color inputs from `app/admin/events/[id]/edit/page.tsx`
-  - Verify no broken links or references
-- **Acceptance Criteria**:
-  - Brand colors only editable from event detail page
-  - No duplicate UI elements
-  - Build passes
+### Documentation refresh
 
-### Camera UX Improvements (v2.9.0) - COMPLETE
-- **Owner**: Development Team
-- **Expected Delivery**: 2025-11-11T18:00:00.000Z
-- **Status**: Complete ✅
-- **Completed**: 2025-11-10T12:45:00.000Z
-- **Plan Document**: Camera UX Improvements Plan
-- **Description**: Three interconnected UX improvements for capture flow and event configuration
-- **Features**:
-  1. Take-Photo Button Text Config Layout - COMPLETE (cosmetic, not critical)
-  2. Left/Right Rotation Detection - COMPLETE ✅
-  3. SSO Login Option for Who-Are-You Page - COMPLETE ✅
-- **Delivered**:
-  - ✅ Feature 2: Orientation angle detection (90° = left, 270° = right)
-  - ✅ Feature 3: SSO login with pseudo registration toggle
-  - ✅ Admin UI to configure auth options per event
-  - ✅ Capture flow resume after SSO authentication
-  - ✅ Backward compatibility maintained
+- status: complete on 2026-05-20
+- outcome:
+  - canonical docs rewritten around the current Camera Core + Apps model
+  - Mongo identifier guidance corrected
+  - authorization docs aligned to the partner-scoped access model
+  - roadmap/tasklist metadata normalized
 
----
+### Partner-scoped authorization follow-through
 
----
+- status: active
+- focus:
+  - audit remaining admin and API paths for partner-aware enforcement consistency
+  - add or improve regression coverage where the role model is now more complex
+
+### Admin UX follow-through
+
+- status: active
+- focus:
+  - continue partner-first workflows
+  - reduce remaining confusing global-first operational paths
 
 ## Notes
 
-- All timestamps follow ISO 8601 format: YYYY-MM-DDTHH:MM:SS.sssZ
-- Completed tasks moved to RELEASE_NOTES.md immediately upon completion
-- Only urgent/high-priority active tasks shown here
-- For long-term planning, see ROADMAP.md
-- For completed work history, see RELEASE_NOTES.md
-
----
-
-##Planned Tasks (Lower Priority - See ROADMAP.md for details)
-
-### Phase 1: Core Infrastructure (Q4 2025)
-
-**Task 2.1: Database and External Service Configuration**
-- **Expected Delivery**: 2025-11-05T18:00:00.000Z
-- **Dependencies**: Task 1.1
-- **Description**: Set up MongoDB Atlas connection and integrate external services (imgbb, email)
-- **Acceptance Criteria**:
-  - MongoDB Atlas cluster created with "camera" database
-  - All database schemas implemented and documented
-  - imgbb.com API integration working with test upload
-  - Email service configured and tested
-  - Connection pooling implemented
-
-**Task 2.2: SSO Authentication Integration**
-- **Expected Delivery**: 2025-11-06T18:00:00.000Z
-- **Dependencies**: Task 1.1, OAuth2 client registration
-- **Description**: Implement OAuth2/OIDC authentication with sso.doneisbetter.com
-- **Acceptance Criteria**:
-  - OAuth2 client registered in SSO service
-  - PKCE flow implemented correctly
-  - Session management working (30-day sliding expiration)
-  - Token refresh rotation functional
-  - Role-based authorization (public user vs admin) working
-  - Protected routes correctly enforcing authentication
-
----
-
-### High Priority — Phase 2: Core Features (Q4 2025)
-
-**Task 3.1: Camera Capture and Image Upload Components**
-- **Expected Delivery**: 2025-11-08T18:00:00.000Z
-- **Dependencies**: Task 1.1, Task 2.2 (authentication)
-- **Description**: Build camera capture functionality with mobile and desktop support
-- **Acceptance Criteria**:
-  - Camera capture working on iOS Safari
-  - Camera capture working on Android Chrome
-  - Desktop webcam support (Chrome, Firefox, Safari)
-  - File upload alternative functional
-  - Browser permissions properly handled
-  - Image validation working (format, size limits)
-  - User feedback for all states (loading, error, success)
-
-**Task 3.2: Frame Management System (Admin Only)**
-- **Expected Delivery**: 2025-11-10T18:00:00.000Z
-- **Dependencies**: Task 2.1, Task 2.2
-- **Description**: Build admin interface for frame CRUD operations
-- **Acceptance Criteria**:
-  - Admin pages accessible only to admin users
-  - Frame listing page with pagination
-  - Frame upload supporting PNG, SVG formats
-  - Frame preview functionality working
-  - Frame metadata management complete
-  - Frames stored on imgbb.com with URLs in MongoDB
-
-**Task 3.3: Image Composition and Processing System**
-- **Expected Delivery**: 2025-11-12T18:00:00.000Z
-- **Dependencies**: Task 3.1, Task 3.2
-- **Description**: Implement Canvas-based image composition
-- **Acceptance Criteria**:
-  - Canvas API composition working correctly
-  - Automatic aspect ratio handling functional
-  - Image quality optimized for web
-  - Real-time preview before save
-  - Composition tested across different image sizes
-
-**Task 3.4: Photo Submission Workflow and Storage**
-- **Expected Delivery**: 2025-11-14T18:00:00.000Z
-- **Dependencies**: Task 3.3
-- **Description**: Complete end-to-end submission workflow
-- **Acceptance Criteria**:
-  - Full workflow functional (capture → composite → upload → store → email)
-  - Original and final images uploaded to imgbb.com
-  - Comprehensive metadata stored in MongoDB
-  - Email delivery working correctly
-  - Error handling and retry logic implemented
-  - Rate limiting active
-  - Audit logging complete
-
----
-
-### Medium Priority — Phase 3: User Experience (Q1 2026)
-
-**Task 4.1: User Profile and Image History**
-- **Expected Delivery**: 2025-11-16T18:00:00.000Z
-- **Dependencies**: Task 3.4
-- **Description**: Build user profile page with image gallery
-- **Acceptance Criteria**:
-  - Profile page displays user info from SSO
-  - Image gallery with grid layout working
-  - Pagination with "Load 20 more" pattern
-  - Filter/sort functionality operational
-  - Download and re-share features working
-  - Soft delete functionality implemented
-
-**Task 4.2: Social Sharing Features**
-- **Expected Delivery**: 2025-11-18T18:00:00.000Z
-- **Dependencies**: Task 3.4
-- **Description**: Implement social media sharing capabilities
-- **Acceptance Criteria**:
-  - Share buttons for Facebook, Twitter/X, LinkedIn, WhatsApp working
-  - Instagram sharing via download functional
-  - Shareable link pages created with Open Graph meta tags
-  - Copy-to-clipboard working
-  - All shares reference imgbb.com CDN URLs
-
----
-
-### Medium Priority — Phase 4: Quality and Deployment (Q1 2026)
-
-**Task 5.1: Security, Performance, and Accessibility**
-- **Expected Delivery**: 2025-11-20T18:00:00.000Z
-- **Dependencies**: All feature tasks
-- **Description**: Implement security measures, optimizations, and accessibility
-- **Acceptance Criteria**:
-  - CSRF protection implemented
-  - Input validation on all endpoints
-  - Rate limiting configured
-  - CSP headers added
-  - Image optimization with Next.js Image
-  - Lazy loading implemented
-  - WCAG AA compliance achieved
-  - Keyboard navigation functional
-
-**Task 5.2: GitHub Repository Setup and Initial Commit**
-- **Expected Delivery**: 2025-11-21T12:00:00.000Z
-- **Dependencies**: Task 5.1, all documentation complete
-- **Description**: Create GitHub repository and commit complete project
-- **Acceptance Criteria**:
-  - Repository created at https://github.com/moldovancsaba/camera
-  - All files committed with proper versioned message
-  - .gitignore properly configured
-  - No secrets committed
-
-**Task 5.3: Vercel Deployment and Production Configuration**
-- **Expected Delivery**: 2025-11-22T18:00:00.000Z
-- **Dependencies**: Task 5.2
-- **Description**: Deploy to Vercel with production configuration
-- **Acceptance Criteria**:
-  - GitHub repository connected to Vercel
-  - All environment variables configured
-  - Automatic deployments working
-  - Production deployment tested
-  - All integrations verified in production
-  - SSL certificate active
-
-**Task 5.4: Manual Testing and Quality Assurance**
-- **Expected Delivery**: 2025-11-24T18:00:00.000Z
-- **Dependencies**: Task 5.3
-- **Description**: Comprehensive manual testing across all workflows
-- **Acceptance Criteria**:
-  - All test scenarios completed (see task details)
-  - Issues documented in LEARNINGS.md
-  - Critical bugs fixed
-  - Tested on iOS, Android, desktop browsers
-  - Accessibility verified
-
-**Task 5.5: Final Documentation Review and Version Synchronization**
-- **Expected Delivery**: 2025-11-25T18:00:00.000Z
-- **Dependencies**: Task 5.4
-- **Description**: Final review and synchronization of all documentation
-- **Acceptance Criteria**:
-  - Version 1.0.0 verified in all locations
-  - All timestamps in ISO 8601 format with milliseconds
-  - All documentation cross-references correct
-  - RELEASE_NOTES.md updated with v1.0.0 entry
-  - Final commit and push completed
-  - Production deployment updated
-
----
-
-## Task Dependencies Graph
-
-```
-Task 1.1 (Project Init) → Task 1.2 (Documentation)
-                       ↓
-Task 2.1 (Database) ←→ Task 2.2 (SSO Auth)
-                       ↓
-Task 3.1 (Camera) → Task 3.2 (Frames) → Task 3.3 (Composition) → Task 3.4 (Submission)
-                                                                   ↓
-                                             Task 4.1 (Profile) ←┘
-                                             Task 4.2 (Sharing) ←┘
-                                                                   ↓
-Task 5.1 (Security/Performance/A11y) ← All Feature Tasks
-                       ↓
-Task 5.2 (GitHub) → Task 5.3 (Vercel) → Task 5.4 (Testing) → Task 5.5 (Final Review)
-```
-
----
-
-## Completion Tracking
-
-- **Phase 1 (Core Infrastructure)**: 0/2 tasks completed
-- **Phase 2 (Core Features)**: 0/4 tasks completed
-- **Phase 3 (User Experience)**: 0/2 tasks completed
-- **Phase 4 (Quality and Deployment)**: 0/5 tasks completed
-- **Overall Progress**: 2/15 tasks completed (13.3%)
+- `package.json` is the canonical version source
+- `README.md`, `ARCHITECTURE.md`, and `docs/*` are the canonical documentation set
+- planning beyond active execution belongs in `ROADMAP.md`

@@ -2,7 +2,7 @@
  * Partners API - List and Create
  * 
  * GET: List all partners with pagination, search, and filtering
- * POST: Create new partner (admin only)
+ * POST: Create new partner (global admin only)
  */
 
 import { NextRequest } from 'next/server';
@@ -81,7 +81,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
 /**
  * POST /api/partners
- * Create a new partner (admin only)
+ * Create a new partner (global admin only)
  * 
  * Required fields in request body:
  * - name: Partner name
@@ -94,7 +94,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
  * - isActive: Active status (default: true)
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
-  // Check authentication and authorization - only admin users can create partners
+  // Check authentication and authorization - only global admins can create partners
   const session = await requireAdmin();
 
   // Parse request body

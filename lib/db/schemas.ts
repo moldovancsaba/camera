@@ -10,15 +10,15 @@
  * - frames: Pre-designed frame templates with three-tier ownership (global/partner/event)
  * - submissions: User photo submissions with comprehensive metadata and onboarding data
  * - users_cache: Optional cache of SSO user data for performance
- * - gym_lessons, gym_workout_sessions: Sport module (lessons + logged workouts; gym selfies use imgbb like submissions)
- * - fff_settings, fff_user_profiles: FunFitFan — admin default frame + per-user virtual event + slideshow id
+ * - gym_lessons, gym_workout_sessions: Gym app lesson templates and logged workouts
+ * - fff_settings, fff_user_profiles: Gym app per-user virtual event, slideshow, and default-frame state
  * 
  * Frame Visibility Hierarchy:
  * - Global frames: Available to all partners/events, can be deactivated per partner/event
  * - Partner frames: Available only to specific partner's events, can be deactivated per event
  * - Event frames: Available only to specific event
  * 
- * Custom Page Flows (v2.0.0):
+ * Custom Page Flows:
  * - Events can have custom onboarding and thank you pages
  * - Pages are drag-and-drop reorderable including [Take Photo] step
  * - Page types: 'who-are-you' (data collection), 'accept' (consent), 'cta' (call to action), 'take-photo' (capture)
@@ -81,7 +81,7 @@ export interface Partner {
   contactName?: string;              // Partner contact person
   logoUrl?: string;                  // Partner logo URL (imgbb.com)
   
-  // Default styles for child events (v2.8.0)
+  // Default styles for child events
   // These defaults cascade to all non-orphaned events under this partner
   // Events can override these to become "orphans" (independent of partner changes)
   defaultBrandColors?: {
@@ -149,7 +149,7 @@ export interface CustomPage {
     title: string;             // Page heading displayed to user
     description: string;       // Explanatory text shown above form/content
     buttonText: string;        // Next/Continue button label
-    // For 'who-are-you' type only (v2.9.0: SSO integration)
+    // For 'who-are-you' type only
     enableSSOLogin?: boolean;     // Show Google + Facebook login via SSO (default: false)
     enablePseudoReg?: boolean;    // Show name/email form for guest registration (default: true)
     ssoButtonText?: string;       // Heading above Google/Facebook buttons on who-are-you page
@@ -206,7 +206,7 @@ export interface CustomPage {
  * - Events need their own frame collections
  * - Enables per-event customization and activation control
  * - Supports event-specific QR codes and sharing
- * - v2.0.0: Supports custom page flows for onboarding and thank you pages
+ * - Supports custom page flows for onboarding and thank you pages
  * 
  * Example: "Serie A - AC Milan x AS Roma", "Red Bull Racing - Monaco GP 2025"
  */
@@ -240,7 +240,7 @@ export interface Event {
     addedBy?: string;                // Admin user ID who added this frame
   }>;
   
-  // Logo assignments (v2.1.0)
+  // Logo assignments
   // Multiple logos can be assigned per scenario
   // If multiple logos for same scenario: random selection on each display
   // If no logos for scenario: no logo shown
@@ -253,7 +253,7 @@ export interface Event {
     addedBy?: string;                // Admin user ID who added this logo
   }>;
   
-  // Custom page flow (v2.0.0)
+  // Custom page flow
   // Defines onboarding and thank you pages shown before/after photo capture
   // Pages with order < [Take Photo] order = onboarding pages
   // Pages with order > [Take Photo] order = thank you pages
@@ -265,12 +265,12 @@ export interface Event {
   logoUrl?: string;                  // Optional event logo URL (imgbb.com) - displayed on capture pages
   showLogo: boolean;                 // Whether to display logo on event pages (default: false)
   
-  // Brand colors (v2.1.0)
+  // Brand colors
   // Used throughout the event experience for consistent branding
   brandColor?: string;               // Primary brand color (hex, e.g., "#3B82F6") - used for buttons, focus states
   brandBorderColor?: string;         // Border/accent color (hex, e.g., "#3B82F6") - used for borders, outlines
   
-  // Style inheritance from partner (v2.8.0)
+  // Style inheritance from partner
   // Override flags track whether this event uses partner defaults (child) or custom values (orphan)
   // false/undefined = child (inherits from partner, updates when partner changes)
   // true = orphan (custom values, independent of partner changes)
@@ -520,7 +520,7 @@ export interface UserConsent {
  * Submission Document Interface
  * Represents a user photo submission with complete metadata
  * 
- * v2.0.0 additions:
+ * Additional onboarding and consent data:
  * - userInfo: Name and email collected from 'who-are-you' pages
  * - consents: Array of acceptances from 'accept' and 'cta' pages
  * 
@@ -551,7 +551,7 @@ export interface Submission {
   method: SubmissionMethod;          // Camera capture or file upload
   status: SubmissionStatus;          // Processing status
   
-  // User information collected from onboarding pages (v2.0.0)
+  // User information collected from onboarding pages
   // Only present if event has 'who-are-you' pages
   // Stored here for GDPR compliance and easy data export
   userInfo?: {
@@ -560,7 +560,7 @@ export interface Submission {
     collectedAt: string;             // ISO 8601 timestamp when data was collected
   };
   
-  // Consent records from accept/CTA pages (v2.0.0)
+  // Consent records from accept/CTA pages
   // Empty array if no consent pages in event flow
   // Each consent is immutable record of what user agreed to
   consents: UserConsent[];           // Array of user consent acceptances

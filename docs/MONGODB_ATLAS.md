@@ -1,98 +1,126 @@
-# MongoDB Atlas — operational foundation
+# MongoDB Atlas
 
-**Purpose**: Stable Atlas setup, connection tuning, and indexes aligned with this app’s query patterns.
+**Last Updated**: 2026-05-20
 
-See also: [MONGODB_CONVENTIONS.md](./MONGODB_CONVENTIONS.md) (ID semantics in URLs vs UUIDs).
+Operational guide for Atlas setup, connection validation, and index maintenance.
 
----
+## 1. Environment variables
 
-## 1. Atlas project checklist
+Required:
 
-1. **Cluster**: M10+ for production if you expect sustained traffic; M0 is fine for early QA.
-2. **Database user**: Least privilege — user scoped to the Camera database only; strong password stored in secrets (Vercel env, not git).
-3. **Network Access**:
-   - Vercel: allow **`0.0.0.0/0`** only if you accept IP allowlist trade-offs, or use [Atlas Private Endpoint / VPC](https://www.mongodb.com/docs/atlas/security-vpc-peering/) when requirements tighten.
-   - Restrict to known office IPs during development when possible.
-4. **Connection string**:
-   - Use **`mongodb+srv://`** from Atlas UI.
-   - Include **`retryWrites=true&w=majority`** (driver also sets `retryWrites` / `retryReads` in code).
-5. **Env vars** (Camera app):
-   - `MONGODB_URI`
-   - `MONGODB_DB` (e.g. `camera`)
-   - Optional: `MONGODB_MAX_POOL_SIZE` (default `10`), `MONGODB_MIN_POOL_SIZE` (default `0` for serverless-friendly cold starts; increase on a dedicated Node host if you want a warm pool).
+- `MONGODB_URI`
+- `MONGODB_DB`
 
----
+Optional:
 
-## 2. Indexes (required for a solid foundation)
+- `MONGODB_MAX_POOL_SIZE`
+- `MONGODB_MIN_POOL_SIZE`
 
-Heavy paths:
-
-- **Slideshow playlist**: `submissions` filtered by `eventId` / `eventIds`, `isArchived`, sorted by `playCount` + `createdAt`.
-- **User gallery**: `submissions` by `userId` + `createdAt`.
-- **Admin lists**: partners, events, frames, logos by `isActive` + `createdAt`.
-- **Lookups**: `slideshowId`, `frameId`, `partnerId`, `eventId` (UUID).
-
-Apply indexes **once per environment** (and after major schema changes):
+## 2. Commands
 
 ```bash
+npm run db:verify-uri
 npm run db:ensure-indexes
 ```
 
-Requires `MONGODB_URI` and `MONGODB_DB` in `.env` / `.env.local` (or exported). See `.env.example`.
+## 3. What `db:ensure-indexes` covers
 
-Implementation: `lib/db/ensure-indexes.ts` (definitions) and `scripts/run-ensure-indexes.ts` (runner).
+The repo maintains indexes for the live query patterns in:
 
-**If a unique index fails**: duplicate values exist for that field. Deduplicate or fix documents in Atlas / Compass, then re-run.
+- partners
+- events
+- frames
+- logos
+- submissions
+- slideshows
+- slideshow layouts
+- landing pages
+- partner user access
+- Gym / FFF collections
+- server-side web sessions
 
----
+Index definitions live in:
 
-## 3. Data shape — `eventIds` on new submissions
+- [lib/db/ensure-indexes.ts](/Users/Shared/Projects/venturecogroup/camera/lib/db/ensure-indexes.ts)
 
-New `POST /api/submissions` writes:
+## 4. Current operational hotspots
 
-- `eventId` — event UUID (legacy singular field, still used).
-- `eventIds` — array containing the same UUID when `eventId` is present (empty array when not).
+### Submissions
 
-This keeps **slideshow** and **migration** paths aligned without a one-off DB migration for every row. Older rows can still be backfilled with `GET /api/migrate/submissions` (dev/staging only; gated in production).
+Heaviest read patterns:
 
----
+- slideshow playlist sourcing by event UUID
+- gallery views by user or partner
+- admin submission inventory
 
-## 4. Monitoring & backups
+### Events and partners
 
-- Enable **Atlas backups** (snapshot schedule) on production tiers.
-- Watch **metrics**: connections, opcounters, slow queries (Profiler / Performance Advisor).
-- **Performance Advisor** often suggests extra indexes; compare with `ensure-indexes` before accepting duplicates.
+Common filters:
 
----
+- partner-scoped event lists
+- active/inactive filters
+- search by cached names and descriptions
 
-## 5. Troubleshooting
+### Partner-scoped access
 
-### `querySrv ENOTFOUND` / `ENOTFOUND _mongodb._tcp.<cluster>.mongodb.net`
+Newer operational reads:
 
-DNS could not resolve Atlas’s **SRV records** for `mongodb+srv://`. The hostname in `MONGODB_URI` does not exist (from the internet’s DNS) or your network blocks SRV lookups.
+- `partner_user_access` lookups by `userEmail`
+- partner assignment lists by `partnerId`
+- active assignment filters by `appKey`
 
-1. In **Atlas → Database → Connect → Drivers**, copy a **new** connection string and replace `MONGODB_URI` everywhere (local `.env`, Vercel, etc.).
-2. Confirm the **cluster still exists** and the subdomain matches (typos or deleted clusters produce this exact error).
-3. Try another network or disable VPN / ad-blocking DNS (some resolvers break SRV or `mongodb.net`).
-4. Optional: use Atlas’s **standard connection string** (`mongodb://` with a host list) if your environment blocks SRV only (rare).
+## 5. Atlas setup recommendations
 
-The admin UI shows an expanded hint when this error is detected (`lib/db/mongo-errors.ts`).
+- use `mongodb+srv://`
+- keep the database user scoped to the Camera database where possible
+- store credentials only in environment variables
+- enable backups on production-grade clusters
+- monitor connection count, slow queries, and index suggestions
 
-### Authentication / timeout
+## 6. DNS and connectivity troubleshooting
 
-- **Authentication failed**: URL-encode special characters in the password; verify Database Access user and role on `MONGODB_DB`.
-- **Server selection timed out**: **Network Access** must allow your IP (or `0.0.0.0/0` for serverless hosts if policy allows).
+### `querySrv ENOTFOUND`
 
----
+Usually means:
 
-## 6. Operational commands
+- bad Atlas hostname
+- broken DNS resolution
+- network/VPN resolver issue
 
-| Task | Command |
-|------|---------|
-| Verify `MONGODB_URI` + DNS (reads `.env` / `.env.local`) | `npm run db:verify-uri` |
-| Ensure indexes | `npm run db:ensure-indexes` |
-| Typecheck | `npm run type-check` |
+Actions:
 
----
+1. recopy the Atlas driver connection string
+2. verify the cluster still exists
+3. test from another network
+4. run `npm run db:verify-uri`
 
-**Maintenance**: When you add a new high-volume query (new `$match` / `sort`), update `lib/db/ensure-indexes.ts` and re-run `db:ensure-indexes` in each environment.
+### Authentication failure
+
+Check:
+
+- username/password correctness
+- URL encoding in password
+- database user permissions
+- `MONGODB_DB` value
+
+### Server selection timeout
+
+Check:
+
+- Atlas network access rules
+- VPN/firewall restrictions
+- cluster health
+
+## 7. Important note on schema docs
+
+Atlas operations should follow:
+
+- [lib/db/schemas.ts](/Users/Shared/Projects/venturecogroup/camera/lib/db/schemas.ts)
+- actual route persistence code in `app/api/**/route.ts`
+
+Do not assume the broad TypeScript schema alone describes the hot runtime write shape.
+
+## 8. Related docs
+
+- [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_CONVENTIONS.md)
+- [ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/ARCHITECTURE.md)

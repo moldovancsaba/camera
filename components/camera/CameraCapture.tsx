@@ -164,8 +164,8 @@ export default function CameraCapture({
   }, [frameOverlay]);
 
   /**
-   * Detect device orientation angle for precise control positioning
-   * v2.9.0: Distinguishes left rotation (90°) from right rotation (270°)
+   * Detect device orientation angle for precise control positioning.
+   * Distinguishes left rotation (90°) from right rotation (270°).
    */
   useEffect(() => {
     const handleOrientation = () => {
@@ -253,8 +253,7 @@ export default function CameraCapture({
         stream.getTracks().forEach(track => track.stop());
       }
 
-      // Request camera access with MAXIMUM resolution
-      // v2.8.0: Request highest available resolution for maximum quality
+      // Request camera access with the highest practical resolution
       // For mobile: use facingMode to select front/back camera
       // For desktop: use default camera
       const targetAspect = getTargetAspectRatio();
@@ -390,9 +389,8 @@ export default function CameraCapture({
   };
 
   /**
-   * Capture photo from video stream
-   * v2.8.0: Captures exactly what's visible in the live view
-   * Crops to target aspect ratio from center of camera sensor
+   * Capture a photo from the video stream.
+   * The output matches the live view and crops to the target aspect ratio.
    */
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) {
@@ -440,7 +438,7 @@ export default function CameraCapture({
         
         const videoAspect = video.videoWidth / video.videoHeight;
         
-        // v2.8.0: Draw FULL sensor, scaled to frame size
+        // Draw the full sensor, scaled to the frame size
         // This shows maximum visible area, matching what CSS object-cover displays
         // Example: 3000x4000 sensor → 1500x1000 frame (3:2)
         //   - Draw full 3000x4000 scaled to 1500x2000 (matches width)
@@ -552,9 +550,8 @@ export default function CameraCapture({
   };
 
   /**
-   * Calculate container size to match target aspect ratio
-   * v2.8.0: Show maximum view at target aspect ratio
-   * What you see is what you capture - exact 1:1 correspondence
+   * Calculate container size to match the target aspect ratio.
+   * What you see is what you capture, with a 1:1 preview-to-output correspondence.
    */
   useEffect(() => {
     const calculateSize = () => {

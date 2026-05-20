@@ -2,7 +2,7 @@
  * Logos API - List and Create
  * 
  * GET: List all logos with pagination
- * POST: Create new logo (admin only)
+ * POST: Create new logo (global admin only)
  * 
  * Why logos exist:
  * - Separate from frames (logos are for branding, frames are for photo overlays)
@@ -69,12 +69,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
 /**
  * POST /api/logos
- * Create a new logo (admin only)
+ * Create a new logo (global admin only)
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
   console.log('=== Logo Upload API Called ===');
   
-  // Check authentication and authorization - only admin users can create logos
+  // Check authentication and authorization - only global admins can create logos
   console.log('Checking admin authentication...');
   let session;
   try {

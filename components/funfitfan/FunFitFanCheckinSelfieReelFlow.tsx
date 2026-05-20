@@ -188,7 +188,7 @@ export default function FunFitFanCheckinSelfieReelFlow({
   }
 
   if (step === 'done') {
-    const shareLine = `My ${activity} check-in on FunFitFan — take a look!`;
+    const shareLine = `My ${activity} check-in on Gym — take a look!`;
     return (
       <div className="py-12 fff-app-text-center">
         <p className="fff-app-success">Saved</p>

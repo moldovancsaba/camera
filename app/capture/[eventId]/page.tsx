@@ -4,7 +4,7 @@
  * Public page for capturing photos at events
  * Full interactive capture flow with camera/upload support
  * 
- * v2.0.0: Custom page flow system
+ * Custom page flow system
  * - Onboarding pages → Frame selection → Capture → Preview/Save → Sharing → Thank you pages
  * - Collects user data (name/email) and consents before capture
  * - Passes collected data to submission API
@@ -36,7 +36,7 @@ interface EventData {
   partnerName: string | null;
   eventDate: string | null;
   location: string | null;
-  customPages: CustomPage[];  // v2.0.0: Custom page flow
+  customPages: CustomPage[];  // Custom page flow
   loadingText?: string;  // Customizable loading text
   logoUrl?: string;  // Optional event logo URL
   showLogo: boolean;  // Whether to display logo on pages
@@ -44,7 +44,7 @@ interface EventData {
   brandBorderColor?: string;  // Border/accent color (hex)
 }
 
-// v2.0.0: Collected data from custom pages
+// Collected data from custom pages
 interface CollectedData {
   userInfo?: WhoAreYouPageData;
   consents: Array<{
@@ -79,7 +79,7 @@ export default function EventCapturePage({
   /** Intrinsic frame bitmap aspect (w/h); preview matches composite like FunFitFan `previewAspectWidthOverHeight`. */
   const [frameIntrinsicAspect, setFrameIntrinsicAspect] = useState<number | null>(null);
 
-  // v2.0.0: Custom page flow state
+  // Custom page flow state
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [collectedData, setCollectedData] = useState<CollectedData>({ consents: [] });
@@ -254,7 +254,7 @@ export default function EventCapturePage({
           console.warn('Failed to fetch logos:', err);
         }
         
-        // v2.0.0: Set up custom page flow
+        // Set up the custom page flow
         const pages = (eventData.customPages || []).filter((p: CustomPage) => p.isActive);
         if (pages.length > 0) {
           // Sort pages by order
@@ -276,7 +276,7 @@ export default function EventCapturePage({
             }
           }
         } else {
-          // No custom pages, go straight to capture (legacy behavior)
+          // No custom pages, so go straight to capture
           if (!isResume) {
             setFlowPhase('capture');
           }
@@ -342,7 +342,7 @@ export default function EventCapturePage({
         compositeImageWithFrame();
       } else {
         // No frame - use captured image, optionally resize to 16:9 aspect ratio
-        // v2.8.0: For frameless events, keep maximum camera view in 16:9
+        // For frameless events, keep the maximum camera view in 16:9
         const img = new window.Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
@@ -438,7 +438,7 @@ export default function EventCapturePage({
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Canvas not supported');
 
-      // v2.8.0: FRAME sets the canvas size, captured photo scales to fit
+      // The frame sets the canvas size and the captured photo scales to fit
       // Photo is already cropped to frame's aspect ratio by camera component
       const maxDimension = 2048;
       let targetWidth = frameImg.width;
@@ -489,7 +489,7 @@ export default function EventCapturePage({
     setIsSaving(true);
 
     try {
-      // v2.0.0: Include userInfo and consents in submission
+      // Include userInfo and consents in the submission payload
       const submissionData: any = {
         imageData: compositeImage,
         frameId: selectedFrame?.frameId || null,  // Optional frame
@@ -603,7 +603,7 @@ export default function EventCapturePage({
     setStep('capture-photo');
   };
   
-  // v2.0.0: Custom page navigation handlers
+  // Custom page navigation handlers
   
   /**
    * Handle completion of Who Are You page
@@ -731,7 +731,7 @@ export default function EventCapturePage({
     }
   };
 
-  // v2.0.0: Render custom pages (onboarding or thank you)
+  // Render custom pages for onboarding or thank-you phases
   if (!isLoading && event && (flowPhase === 'onboarding' || flowPhase === 'thankyou')) {
     const currentPage = customPages[currentPageIndex];
     

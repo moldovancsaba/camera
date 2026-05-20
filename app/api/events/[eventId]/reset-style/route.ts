@@ -1,7 +1,7 @@
 /**
  * Event Reset Style API
  * 
- * POST: Reset specific style field to partner default (admin only)
+ * POST: Reset specific style field to partner default (global admin only)
  */
 
 import { NextRequest } from 'next/server';
@@ -23,7 +23,7 @@ import { resetEventStyleToDefault } from '@/lib/db/events';
  * 
  * This endpoint:
  * 1. Clears custom values for the specified style field
- * 2. Sets override flag to false (child behavior)
+ * 2. Sets the override flag to false so the event inherits partner defaults again
  * 3. Applies partner's current default values
  * 
  * Use case: User wants to revert custom changes and re-inherit from partner

@@ -2,7 +2,9 @@
 
 **Project**: Camera — Photo Frame Webapp
 **Current Version**: 2.9.0
-**Last Updated**: 2026-04-09 (documentation aligned with implementation; see git history for code releases)
+**Last Updated**: 2026-05-20
+
+**Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
 

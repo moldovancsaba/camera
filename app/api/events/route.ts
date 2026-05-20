@@ -2,7 +2,7 @@
  * Events API - List and Create
  * 
  * GET: List all events with pagination, search, and partner filtering
- * POST: Create new event (admin only, requires partnerId, inherits partner defaults)
+ * POST: Create new event (global admin or partner-scoped Events manager, requires partnerId)
  */
 
 import { NextRequest } from 'next/server';
@@ -96,7 +96,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
 /**
  * POST /api/events
- * Create a new event (admin only)
+ * Create a new event within the caller's allowed partner scope
  * 
  * Required fields in request body:
  * - name: Event name
@@ -137,9 +137,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     }
   }
 
-  // Inherit partner defaults (v2.8.0)
-  // New events automatically get partner's default styles (brand colors, frames, logos)
-  // Override flags are set to false (child behavior)
+  // Inherit partner defaults for brand colors, frames, and logos.
+  // Override flags stay false until the event is customized explicitly.
   const inheritedDefaults = await inheritPartnerDefaults(partner.partnerId);
 
   let resolvedShortSlug: string | null | undefined;
@@ -162,8 +161,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   // Create event document
   // eventId is a UUID for consistent identification
   // partnerName is cached for efficient queries and display
-  // frames/logos inherited from partner defaults (v2.8.0)
-  // customPages array starts empty - pages can be added via PATCH (v2.0.0)
+  // frames/logos inherit from partner defaults
+  // customPages starts empty; pages can be added later via PATCH
   const now = generateTimestamp();
   const event = {
     eventId: generateId(),
@@ -176,7 +175,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     isActive: isActive !== undefined ? Boolean(isActive) : true,
     logoUrl: logoUrl?.trim() || undefined,
     showLogo: Boolean(showLogo),
-    // Inherited defaults from partner (v2.8.0)
+    // Inherited defaults from partner
     brandColor: inheritedDefaults.brandColor,
     brandBorderColor: inheritedDefaults.brandBorderColor,
     brandColorsOverridden: inheritedDefaults.brandColorsOverridden,
@@ -184,7 +183,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     framesOverridden: inheritedDefaults.framesOverridden,
     logos: inheritedDefaults.logos || [],
     logosOverridden: inheritedDefaults.logosOverridden,
-    customPages: [],  // v2.0.0: Empty array = default flow (straight to photo capture)
+    customPages: [],
     ...(resolvedShortSlug !== undefined ? { shortUrlSlug: resolvedShortSlug } : {}),
     submissionCount: 0,
     createdBy: session.user.id,

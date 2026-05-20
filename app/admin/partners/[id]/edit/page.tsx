@@ -1,8 +1,7 @@
 /**
  * Edit Partner Page
  * 
- * Form to edit partner details
- * v2.8.0: Added default style settings for child events
+ * Form to edit partner details and partner-level default event styles.
  */
 
 'use client';
@@ -73,7 +72,7 @@ export default function EditPartnerPage({
       isActive: formData.get('isActive') === 'on',
     };
 
-    // Default brand colors (v2.8.0)
+    // Default brand colors for child events
     if (primaryColor || secondaryColor) {
       data.defaultBrandColors = {
         primary: primaryColor || undefined,
@@ -232,7 +231,7 @@ export default function EditPartnerPage({
           </div>
         </div>
 
-        {/* Default Styles for Child Events (v2.8.0) */}
+        {/* Default styles for child events */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Default Styles for Events</h2>

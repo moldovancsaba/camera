@@ -3,6 +3,7 @@
 **Project**: Camera — Photo Frame Webapp
 **Current Version**: 2.0.1
 **Last Updated**: 2025-11-08T17:53:00.000Z
+**Current Status**: Historical lessons archive. The current runtime model is documented in `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document records actual issues encountered during development, their solutions, and strategic decisions made. It serves as a knowledge base to prevent repeated mistakes and guide future development.
 

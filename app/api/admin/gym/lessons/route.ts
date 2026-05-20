@@ -1,5 +1,5 @@
 /**
- * Admin: gym training — list and create (same SSO admin gate as rest of Camera admin API).
+ * Admin: gym training — list and create for global admins or partner-scoped Gym managers.
  */
 
 import { NextRequest } from 'next/server';
@@ -99,9 +99,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const allowedSports = await readFunFitFanSportActivities(db);
   const canonicalSport = resolveLessonSportFromAllowlist(sport, allowedSports);
   if (!canonicalSport) {
-    throw apiBadRequest(
-      'sport must be one of the activities configured under Admin → Sport → FunFitFan settings (sport activities list)'
-    );
+    throw apiBadRequest('sport must be one of the activities configured under Admin → Gym → Gym Settings');
   }
 
   const normalizedSteps = normalizeSteps(steps);

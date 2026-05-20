@@ -1,5 +1,5 @@
 /**
- * Admin: list sport training (member /workout).
+ * Admin: list Gym training content shown on /workout.
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -41,12 +41,12 @@ export default async function AdminGymLessonsPage() {
     <div className="p-8">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Sport training</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gym training</h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">Published training appears on /workout for members.</p>
         </div>
         <div className="flex gap-2">
           <Link href="/admin/gym" className="text-sm text-gray-600 hover:underline dark:text-gray-400">
-            ← Sport hub
+            ← Gym App
           </Link>
           {canManageGym ? (
             <Link

@@ -70,14 +70,14 @@ export async function POST(
       addedBy: session.user.id, // SSO User interface uses 'id' not 'userId'
     };
 
-    // Adding a frame marks event as having custom frame assignments (v2.8.0)
+    // Adding a frame marks the event as having custom frame assignments
     await eventsCollection.updateOne(
       { _id: new ObjectId(eventId) },
       {
         $push: { frames: frameAssignment } as any,
         $set: { 
           updatedAt: generateTimestamp(),
-          framesOverridden: true, // Mark as orphan - independent of partner defaults
+          framesOverridden: true, // Event now uses custom frame assignments instead of partner defaults
         },
       }
     );

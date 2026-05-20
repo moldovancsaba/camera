@@ -110,8 +110,8 @@ export async function updateChildEventsFromPartner(
 /**
  * Inherit Partner Defaults for New Event
  * 
- * Populates a new event with partner's default styles.
- * Sets all override flags to false (child behavior).
+ * Populates a new event with the partner's default styles.
+ * Override flags start as false so the event continues inheriting partner defaults.
  * 
  * @param partnerId - Partner ID to inherit from
  * @returns Object with inherited style values and override flags

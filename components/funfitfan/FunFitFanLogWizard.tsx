@@ -111,7 +111,7 @@ export default function FunFitFanLogWizard() {
           if (!cancelled) {
             setTrainingSports([]);
             setTrainingSportsError(
-              typeof json.error === 'string' ? json.error : 'Could not load sport training.'
+              typeof json.error === 'string' ? json.error : 'Could not load Gym training.'
             );
           }
           return;
@@ -132,7 +132,7 @@ export default function FunFitFanLogWizard() {
       } catch {
         if (!cancelled) {
           setTrainingSports([]);
-          setTrainingSportsError('Could not load sport training.');
+          setTrainingSportsError('Could not load Gym training.');
         }
       }
     })();
@@ -202,7 +202,7 @@ export default function FunFitFanLogWizard() {
         {trainingSportsError ? <p className="mt-2 text-sm fff-app-error">{trainingSportsError}</p> : null}
         {trainingSports.length === 0 && !trainingSportsError ? (
           <p className="mt-2 text-sm fff-app-muted">
-            No published sport training yet. Add training under Admin → Sport before you can continue.
+            No published Gym training yet. Add training under Admin → Gym before you can continue.
           </p>
         ) : null}
         <label className="fff-field-label" htmlFor="fff-feelso-input">
