@@ -10,6 +10,12 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { isGlobalAdminSession, listAccessiblePartnerIds } from '@/lib/partners/authorization';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import Link from 'next/link';
+import { Button, Card, Group, Stack, Text, TextInput } from '@mantine/core';
+import { IconPlus, IconSearch, IconUsers, IconBuildingStore, IconFrame } from '@tabler/icons-react';
+import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import StatsStrip from '@/components/gds/StatsStrip';
+import DataTable from '@/components/gds/DataTable';
+import StatusBadge from '@/components/gds/StatusBadge';
 
 interface PartnerListItem {
   _id: { toString(): string };
@@ -84,156 +90,138 @@ export default async function PartnersPage({
   }
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Partners</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Manage partner organizations and brands</p>
-        </div>
-        <Link
-          href="/admin/partners/new"
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
-        >
-          <span>+</span>
-          <span>Add Partner</span>
-        </Link>
-      </div>
+    <Stack gap="xl">
+      <WorkspaceHeader
+        eyebrow="Camera Core"
+        title="Partners"
+        description="Manage partner organizations, access, and app ownership from one inventory view."
+        actions={
+          <Link href="/admin/partners/new" style={{ textDecoration: 'none' }}>
+            <Button color="cameraTeal" leftSection={<IconPlus size={16} />}>
+              Add Partner
+            </Button>
+          </Link>
+        }
+      />
 
-      <form className="mb-6 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:flex-row">
-        <input
-          type="text"
-          name="search"
-          defaultValue={search}
-          placeholder="Search partner name, description, or partner ID"
-          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-        />
-        <div className="flex gap-3">
-          <button
-            type="submit"
-            className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition-colors"
-          >
-            Search
-          </button>
-          {search ? (
-            <Link
-              href="/admin/partners"
-              className="rounded-lg border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
-            >
-              Clear
-            </Link>
-          ) : null}
-        </div>
-      </form>
+      <StatsStrip
+        items={[
+          { label: 'Visible Partners', value: partners.length, icon: <IconBuildingStore size={20} /> },
+          {
+            label: 'Partner Users',
+            value: partners.reduce((sum, partner) => sum + (partner.userAccessCount || 0), 0),
+            icon: <IconUsers size={20} />,
+          },
+          {
+            label: 'Partner Frames',
+            value: partners.reduce((sum, partner) => sum + (partner.frameCount || 0), 0),
+            icon: <IconFrame size={20} />,
+          },
+        ]}
+      />
+
+      <Card>
+        <form>
+          <Group align="end">
+            <TextInput
+              name="search"
+              defaultValue={search}
+              label="Search partners"
+              placeholder="Search by name, description, or partner ID"
+              leftSection={<IconSearch size={16} />}
+              style={{ flex: 1 }}
+            />
+            <Button type="submit" color="cameraTeal">
+              Search
+            </Button>
+            {search ? (
+              <Link href="/admin/partners" style={{ textDecoration: 'none' }}>
+                <Button variant="default">Clear</Button>
+              </Link>
+            ) : null}
+          </Group>
+        </form>
+      </Card>
 
       {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
 
       {!dbError && partners.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-          <div className="text-6xl mb-4">🤝</div>
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No partners yet</h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Get started by adding your first partner</p>
-          <Link
-            href="/admin/partners/new"
-            className="inline-flex px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-          >
-            Add Your First Partner
-          </Link>
-        </div>
+        <Card p="xl">
+          <Stack align="center" gap="sm">
+            <Text fz={48}>🤝</Text>
+            <Text fw={700} fz="lg">
+              No partners yet
+            </Text>
+            <Text c="dimmed" ta="center">
+              Get started by adding your first partner workspace to Camera Core.
+            </Text>
+            <Link href="/admin/partners/new" style={{ textDecoration: 'none' }}>
+              <Button color="cameraTeal">Add Your First Partner</Button>
+            </Link>
+          </Stack>
+        </Card>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Partner Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Events
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Frames
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Users
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Created
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {partners.map((partner) => (
-                <tr key={partner._id.toString()} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      <div>
-                        <Link
-                          href={`/admin/partners/${partner._id}`}
-                          className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-                        >
-                          {partner.name}
-                        </Link>
-                        {partner.description && (
-                          <div className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1 mt-1">
-                            {partner.description}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900 dark:text-white">
-                      {partner.eventCount || 0}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900 dark:text-white">
-                      {partner.frameCount || 0}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900 dark:text-white">
-                      {partner.userAccessCount || 0}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      partner.isActive
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
-                    }`}>
-                      {partner.isActive ? '● Active' : '○ Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(partner.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <Link
-                      href={`/admin/partners/${partner._id}`}
-                      className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                    >
+        <DataTable
+          columns={[
+            { key: 'partner', title: 'Partner Name' },
+            { key: 'events', title: 'Events' },
+            { key: 'frames', title: 'Frames' },
+            { key: 'users', title: 'Users' },
+            { key: 'status', title: 'Status' },
+            { key: 'created', title: 'Created' },
+            { key: 'actions', title: 'Actions', align: 'right' },
+          ]}
+        >
+          {partners.map((partner) => (
+            <tr key={partner._id.toString()} style={{ borderTop: '1px solid var(--mantine-color-gray-2)' }}>
+              <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
+                <Stack gap={2}>
+                  <Link
+                    href={`/admin/partners/${partner._id}`}
+                    style={{ textDecoration: 'none', color: 'var(--mantine-color-blue-7)', fontWeight: 700 }}
+                  >
+                    {partner.name}
+                  </Link>
+                  {partner.description ? (
+                    <Text size="sm" c="dimmed" lineClamp={1}>
+                      {partner.description}
+                    </Text>
+                  ) : (
+                    <Text size="xs" c="dimmed">
+                      {partner.partnerId}
+                    </Text>
+                  )}
+                </Stack>
+              </td>
+              <td style={{ padding: '1rem 1.5rem' }}>{partner.eventCount || 0}</td>
+              <td style={{ padding: '1rem 1.5rem' }}>{partner.frameCount || 0}</td>
+              <td style={{ padding: '1rem 1.5rem' }}>{partner.userAccessCount || 0}</td>
+              <td style={{ padding: '1rem 1.5rem' }}>
+                <StatusBadge tone={partner.isActive ? 'active' : 'inactive'} />
+              </td>
+              <td style={{ padding: '1rem 1.5rem' }}>
+                <Text size="sm" c="dimmed">
+                  {new Date(partner.createdAt).toLocaleDateString()}
+                </Text>
+              </td>
+              <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                <Group gap="sm" justify="flex-end">
+                  <Link href={`/admin/partners/${partner._id}`} style={{ textDecoration: 'none' }}>
+                    <Button variant="subtle" size="compact-sm">
                       View
-                    </Link>
-                    <Link
-                      href={`/admin/partners/${partner._id}/edit`}
-                      className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                    >
+                    </Button>
+                  </Link>
+                  <Link href={`/admin/partners/${partner._id}/edit`} style={{ textDecoration: 'none' }}>
+                    <Button variant="subtle" size="compact-sm">
                       Edit
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    </Button>
+                  </Link>
+                </Group>
+              </td>
+            </tr>
+          ))}
+        </DataTable>
       )}
-    </div>
+    </Stack>
   );
 }

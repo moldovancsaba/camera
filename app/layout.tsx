@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
+import '@mantine/core/styles.css';
+import '@mantine/notifications/styles.css';
 import "./globals.css";
 import { isFffHost } from "@/lib/site-hosts";
+import CameraGdsProvider, { CameraColorSchemeScript } from '@/components/gds/CameraGdsProvider';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,12 +47,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <CameraColorSchemeScript />
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <CameraGdsProvider>{children}</CameraGdsProvider>
       </body>
     </html>
   );

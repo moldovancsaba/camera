@@ -10,6 +10,11 @@ import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { Button, Card, Group, Stack, Text } from '@mantine/core';
+import { IconBuildingStore, IconFrame, IconPhotoScan, IconPlus, IconWorld } from '@tabler/icons-react';
+import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import StatsStrip from '@/components/gds/StatsStrip';
+import ActionCardGrid from '@/components/gds/ActionCardGrid';
 
 export default async function AdminDashboard() {
   const session = await getSession();
@@ -35,94 +40,81 @@ export default async function AdminDashboard() {
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Camera Core overview across partners, shared resources, and app operations.
-        </p>
-      </div>
+    <Stack gap="xl">
+      <WorkspaceHeader
+        eyebrow="Camera Core"
+        title="Dashboard"
+        description="Camera Core overview across partners, shared resources, and app operations."
+        status="Global Admin"
+        actions={
+          <Link href="/admin/partners" style={{ textDecoration: 'none' }}>
+            <Button color="cameraTeal">Open Partners</Button>
+          </Link>
+        }
+      />
 
       {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total Frames</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">{framesCount}</p>
-            </div>
-            <div className="text-4xl">🖼️</div>
+      <StatsStrip
+        items={[
+          { label: 'Total Frames', value: framesCount, icon: <IconFrame size={20} /> },
+          { label: 'Total Submissions', value: submissionsCount, icon: <IconPhotoScan size={20} /> },
+          { label: 'Active Users', value: '-', icon: <IconBuildingStore size={20} />, tone: 'neutral' },
+        ]}
+      />
+
+      <Card>
+        <Stack gap="lg">
+          <div>
+            <Text fw={700} fz="lg">
+              Quick Actions
+            </Text>
+            <Text size="sm" c="dimmed">
+              Primary entry points for partner operations and shared resources.
+            </Text>
           </div>
-        </div>
+          <ActionCardGrid
+            items={[
+              {
+                href: '/admin/partners',
+                title: 'Open Partners',
+                description: 'Use partner workspaces as the operational home for daily management.',
+                icon: <IconBuildingStore size={20} />,
+              },
+              {
+                href: '/admin/frames/new',
+                title: 'Add New Frame',
+                description: 'Create a new shared frame resource for partner and event use.',
+                icon: <IconPlus size={20} />,
+              },
+              {
+                href: '/admin/frames',
+                title: 'Global Frames',
+                description: 'Audit frame ownership and manage shared inventory.',
+                icon: <IconFrame size={20} />,
+              },
+              {
+                href: '/admin/landing-pages',
+                title: 'Landing Pages',
+                description: 'Manage shared experience surfaces and connected app actions.',
+                icon: <IconWorld size={20} />,
+              },
+              {
+                href: '/admin/submissions',
+                title: 'Global Galleries',
+                description: 'Review submissions and cross-partner gallery activity.',
+                icon: <IconPhotoScan size={20} />,
+              },
+            ]}
+          />
+        </Stack>
+      </Card>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total Submissions</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">{submissionsCount}</p>
-            </div>
-            <div className="text-4xl">📷</div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Active Users</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">-</p>
-            </div>
-            <div className="text-4xl">👥</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-        <Link
-          href="/admin/partners"
-          className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg transition-colors"
-          >
-            <span className="text-2xl">🤝</span>
-            <span className="font-medium text-amber-900 dark:text-amber-100">Open Partners</span>
-          </Link>
-
-          <Link
-            href="/admin/frames/new"
-            className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-          >
-            <span className="text-2xl">➕</span>
-            <span className="font-medium text-blue-900 dark:text-blue-100">Add New Frame</span>
-          </Link>
-
-        <Link
-          href="/admin/frames"
-          className="flex items-center gap-3 p-4 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
-        >
-          <span className="text-2xl">🖼️</span>
-          <span className="font-medium text-purple-900 dark:text-purple-100">Global Frames</span>
-        </Link>
-
-        <Link
-          href="/admin/landing-pages"
-          className="flex items-center gap-3 p-4 bg-cyan-50 dark:bg-cyan-900/20 hover:bg-cyan-100 dark:hover:bg-cyan-900/30 rounded-lg transition-colors"
-        >
-          <span className="text-2xl">🌐</span>
-          <span className="font-medium text-cyan-900 dark:text-cyan-100">Landing Pages</span>
-        </Link>
-
-        <Link
-          href="/admin/submissions"
-          className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors"
-          >
-            <span className="text-2xl">📷</span>
-            <span className="font-medium text-green-900 dark:text-green-100">Global Galleries</span>
-          </Link>
-        </div>
-      </div>
-    </div>
+      <Group justify="space-between">
+        <Text size="sm" c="dimmed">
+          This dashboard is now the first Mantine-backed GDS reference surface inside Camera admin.
+        </Text>
+      </Group>
+    </Stack>
   );
 }

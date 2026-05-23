@@ -8,7 +8,7 @@ import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getAdminNavigationAccess } from '@/lib/partners/authorization';
 import { redirect } from 'next/navigation';
-import CollapsibleSidebar from '@/components/admin/CollapsibleSidebar';
+import AdminShell from '@/components/gds/AdminShell';
 
 export default async function AdminLayout({
   children,
@@ -33,13 +33,8 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-white/75 backdrop-blur-md dark:bg-gray-950/75">
-      <CollapsibleSidebar session={session} navigationAccess={navigationAccess} />
-      
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
-    </div>
+    <AdminShell session={session} navigationAccess={navigationAccess}>
+      {children}
+    </AdminShell>
   );
 }
