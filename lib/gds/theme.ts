@@ -107,5 +107,12 @@ export const cameraMantineTheme: MantineThemeOverride = createTheme({
         variant: 'light',
       },
     },
+    NavLink: {
+      styles: {
+        label: {
+          fontSize: rem(14),
+        },
+      },
+    },
   },
 });

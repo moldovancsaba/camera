@@ -4,7 +4,6 @@ export interface StatItem {
   label: string;
   value: string | number;
   icon?: React.ReactNode;
-  tone?: 'primary' | 'neutral';
 }
 
 export default function StatsStrip({ items }: { items: StatItem[] }) {
@@ -22,12 +21,7 @@ export default function StatsStrip({ items }: { items: StatItem[] }) {
               </Text>
             </Stack>
             {item.icon ? (
-              <ThemeIcon
-                color={item.tone === 'neutral' ? 'gray' : 'cameraTeal'}
-                variant="light"
-                size={44}
-                radius="xl"
-              >
+              <ThemeIcon color="cameraTeal" variant="light" size={44} radius="xl">
                 {item.icon}
               </ThemeIcon>
             ) : null}

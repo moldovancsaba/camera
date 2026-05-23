@@ -11,7 +11,7 @@ import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert'
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Button, Card, Group, Stack, Text } from '@mantine/core';
-import { IconBuildingStore, IconFrame, IconPhotoScan, IconPlus, IconWorld } from '@tabler/icons-react';
+import { IconBuildingStore, IconFrame, IconPhotoScan, IconPlus, IconUsers, IconWorld } from '@tabler/icons-react';
 import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
 import StatsStrip from '@/components/gds/StatsStrip';
 import ActionCardGrid from '@/components/gds/ActionCardGrid';
@@ -47,9 +47,9 @@ export default async function AdminDashboard() {
         description="Camera Core overview across partners, shared resources, and app operations."
         status="Global Admin"
         actions={
-          <Link href="/admin/partners" style={{ textDecoration: 'none' }}>
-            <Button color="cameraTeal">Open Partners</Button>
-          </Link>
+          <Button component={Link} href="/admin/partners" color="cameraTeal">
+            Open Partners
+          </Button>
         }
       />
 
@@ -59,7 +59,7 @@ export default async function AdminDashboard() {
         items={[
           { label: 'Total Frames', value: framesCount, icon: <IconFrame size={20} /> },
           { label: 'Total Submissions', value: submissionsCount, icon: <IconPhotoScan size={20} /> },
-          { label: 'Active Users', value: '-', icon: <IconBuildingStore size={20} />, tone: 'neutral' },
+          { label: 'Active Users', value: '—', icon: <IconUsers size={20} /> },
         ]}
       />
 
@@ -110,11 +110,6 @@ export default async function AdminDashboard() {
         </Stack>
       </Card>
 
-      <Group justify="space-between">
-        <Text size="sm" c="dimmed">
-          This dashboard is now the first Mantine-backed GDS reference surface inside Camera admin.
-        </Text>
-      </Group>
     </Stack>
   );
 }

@@ -103,6 +103,7 @@ export default function AdminShell({
   }
   return (
     <AppShell
+      data-camera-admin=""
       header={{ height: 72 }}
       navbar={{
         width: 304,
@@ -110,6 +111,11 @@ export default function AdminShell({
         collapsed: { mobile: !opened },
       }}
       padding="xl"
+      styles={{
+        root: {
+          color: 'var(--mantine-color-dark-8)',
+        },
+      }}
     >
       <AppShellHeader bg="white" withBorder>
         <Group h="100%" px="lg" justify="space-between">
@@ -209,7 +215,7 @@ function NavSection({
 
   return (
     <Stack gap="xs">
-      <Text tt="uppercase" fw={700} fz="xs" c="dimmed" style={{ letterSpacing: '0.12em' }}>
+      <Text tt="uppercase" fw={700} fz="xs" c="gray.7" style={{ letterSpacing: '0.12em' }}>
         {title}
       </Text>
       <Stack gap={6}>
@@ -224,7 +230,7 @@ function NavSection({
               active={active}
               label={item.label}
               leftSection={item.icon}
-              variant="light"
+              variant={active ? 'light' : 'subtle'}
               color="cameraTeal"
               styles={{
                 root: {
@@ -232,6 +238,14 @@ function NavSection({
                 },
                 label: {
                   fontWeight: active ? 700 : 600,
+                  color: active
+                    ? 'var(--mantine-color-cameraTeal-8)'
+                    : 'var(--mantine-color-gray-8)',
+                },
+                section: {
+                  color: active
+                    ? 'var(--mantine-color-cameraTeal-7)'
+                    : 'var(--mantine-color-gray-7)',
                 },
               }}
             />
