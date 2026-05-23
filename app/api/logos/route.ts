@@ -11,6 +11,7 @@
  */
 
 import { NextRequest } from 'next/server';
+import type { Filter } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { uploadImage } from '@/lib/imgbb/upload';
 import { generateId } from '@/lib/db/schemas';
@@ -35,7 +36,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const db = await connectToDatabase();
     
   // Build query
-  const query: any = {};
+  const query: Filter<{ isActive?: boolean }> = {};
   if (active !== null) query.isActive = active === 'true';
 
   // Get total count
@@ -80,8 +81,11 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   try {
     session = await requireAdmin();
     console.log('Admin authenticated:', session.user.email);
-  } catch (authError: any) {
-    console.error('Authentication failed:', authError.message || authError);
+  } catch (authError: unknown) {
+    console.error(
+      'Authentication failed:',
+      authError instanceof Error ? authError.message : authError
+    );
     throw authError;
   }
 

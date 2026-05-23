@@ -9,6 +9,15 @@ import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
+import type { ObjectId } from 'mongodb';
+
+interface ProfileSubmission {
+  _id: ObjectId;
+  imageUrl: string;
+  frameName?: string;
+  createdAt: string;
+}
 
 // This page uses cookies and database, so it must be dynamic
 export const dynamic = 'force-dynamic';
@@ -22,17 +31,29 @@ export default async function ProfilePage() {
   }
 
   // Fetch user's submissions
-  let submissions: any[] = [];
+  let submissions: ProfileSubmission[] = [];
   let error = null;
 
   try {
     const db = await connectToDatabase();
-    submissions = await db
+    const rawSubmissions = await db
       .collection('submissions')
       .find({ userId: session.user.id })
       .sort({ createdAt: -1 })
       .limit(50)
       .toArray();
+    submissions = rawSubmissions.flatMap((submission) =>
+      typeof submission.imageUrl === 'string' && typeof submission.createdAt === 'string'
+        ? [
+            {
+              _id: submission._id,
+              imageUrl: submission.imageUrl,
+              frameName: typeof submission.frameName === 'string' ? submission.frameName : undefined,
+              createdAt: submission.createdAt,
+            },
+          ]
+        : []
+    );
   } catch (err) {
     console.error('Error fetching submissions:', err);
     error = err instanceof Error ? err.message : 'Unknown error';
@@ -86,16 +107,19 @@ export default async function ProfilePage() {
             </div>
 
             <div className="columns-2 md:columns-3 lg:columns-4 gap-4">
-              {submissions.map((submission: any) => (
+              {submissions.map((submission) => (
                 <div
                   key={submission._id.toString()}
                   className="app-surface-card overflow-hidden transition-shadow hover:shadow-md group mb-4 break-inside-avoid"
                 >
                   <Link href={`/share/${submission._id}`}>
                     <div className="app-thumb-placeholder">
-                      <img
+                      <Image
                         src={submission.imageUrl}
                         alt={`Photo with ${submission.frameName}`}
+                        width={800}
+                        height={800}
+                        unoptimized
                         className="w-full h-auto group-hover:scale-105 transition-transform"
                       />
                     </div>

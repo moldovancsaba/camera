@@ -20,7 +20,7 @@
 import { cookies } from 'next/headers';
 import type { NextRequest, NextResponse } from 'next/server';
 import { Buffer } from 'node:buffer';
-import { SSOUser, TokenResponse, refreshAccessToken } from './sso';
+import { SSOUser, TokenResponse } from './sso';
 import {
   SESSION_COOKIE_NAME,
   chunkCookieSuffixesToClear,
@@ -31,7 +31,7 @@ import {
   loadWebSessionDocument,
   removeWebSessionDocument,
   saveWebSessionDocument,
-  useMongoWebSessions,
+  shouldUseMongoWebSessions,
 } from './web-session-db';
 
 const PENDING_SESSION_COOKIE_NAME = 'camera_pending_session';
@@ -160,7 +160,7 @@ export async function createSession(
     }
   };
 
-  if (useMongoWebSessions()) {
+  if (shouldUseMongoWebSessions()) {
     try {
       const pointer = await saveWebSessionDocument(session);
       const pointerJson = JSON.stringify(pointer);
@@ -236,7 +236,7 @@ export async function getSession(): Promise<Session | null> {
   try {
     const parsed: unknown = JSON.parse(merged);
     if (isWebSessionPointer(parsed)) {
-      if (!useMongoWebSessions()) {
+      if (!shouldUseMongoWebSessions()) {
         return null;
       }
       const full = await loadWebSessionDocument(parsed.sid);

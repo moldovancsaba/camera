@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 /**
  * Slideshow playback: FIFO queue `[current, …upcoming]`.
@@ -431,7 +432,7 @@ export function SlideshowPlayerCore({
       setError(err instanceof Error ? err.message : 'Failed to load slideshow');
       setIsLoading(false);
     }
-  }, [slideshowId, instanceKey, preloadSlide, maintainLoopBuffer, delayMs]);
+  }, [slideshowId, instanceKey, preloadImage, preloadSlide, maintainLoopBuffer, delayMs]);
 
   useLayoutEffect(() => {
     if (!settings) return;
@@ -615,14 +616,14 @@ export function SlideshowPlayerCore({
     return () => cancelAnimationFrame(raf);
   }, [headFadeKey, fadeMsForUi, displayEpoch]);
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = useCallback(() => {
     if (variant !== 'fullscreen' || !containerRef.current) return;
     if (!document.fullscreenElement) {
       containerRef.current.requestFullscreen();
     } else {
       document.exitFullscreen();
     }
-  };
+  }, [variant]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -702,7 +703,7 @@ export function SlideshowPlayerCore({
     };
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [variant, slideQueue.length, manualAdvance, manualBack]);
+  }, [variant, slideQueue.length, manualAdvance, manualBack, toggleFullscreen]);
 
   const primary = settings?.backgroundPrimaryColor?.trim() || DEFAULT_BG_PRIMARY;
   const accent = settings?.backgroundAccentColor?.trim() || DEFAULT_BG_ACCENT;

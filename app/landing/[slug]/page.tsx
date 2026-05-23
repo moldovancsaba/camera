@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { Bebas_Neue } from 'next/font/google';
+import Image from 'next/image';
 import LandingPageCookieConsent from '@/components/landing/LandingPageCookieConsent';
 import LandingPageMediaFrame from '@/components/landing/LandingPageMediaFrame';
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -450,9 +451,12 @@ export default async function PublicLandingPage({
               {hasQr ? (
                 <section className="landing-page-sidebar-qr">
                   <div className="landing-page-sidebar-qr-frame">
-                    <img
+                    <Image
                       src={String(landingPage.qrCodeImageUrl)}
                       alt="Landing page QR code"
+                      width={240}
+                      height={240}
+                      unoptimized
                       className="landing-page-sidebar-qr-image"
                     />
                   </div>
@@ -472,9 +476,12 @@ export default async function PublicLandingPage({
 
               {hasLogo ? (
                 <section className="landing-page-sidebar-logo">
-                  <img
+                  <Image
                     src={String(landingPage.logoUrl)}
                     alt={landingPage.title ? `${landingPage.title} logo` : `${landingPage.eventName} logo`}
+                    width={320}
+                    height={160}
+                    unoptimized
                     className="landing-page-logo"
                   />
                 </section>

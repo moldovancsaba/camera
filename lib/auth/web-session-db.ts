@@ -40,7 +40,7 @@ export function isWebSessionPointer(obj: unknown): obj is WebSessionPointerCooki
   );
 }
 
-export function useMongoWebSessions(): boolean {
+export function shouldUseMongoWebSessions(): boolean {
   if (process.env.COOKIE_ONLY_SESSIONS === '1') return false;
   return Boolean(process.env.MONGODB_URI?.trim() && process.env.MONGODB_DB?.trim());
 }

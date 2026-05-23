@@ -5,14 +5,17 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/run-next-with-baseline-env.mjs dev",
+    "build": "node scripts/run-next-with-baseline-env.mjs build",
     "start": "next start",
-    "lint": "eslint .",
+    "lint": "BROWSERSLIST_IGNORE_OLD_DATA=true BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA=true eslint .",
     "type-check": "tsc --noEmit",
+    "test:e2e": "BROWSERSLIST_IGNORE_OLD_DATA=true BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA=true playwright test",
+    "test:e2e:headed": "BROWSERSLIST_IGNORE_OLD_DATA=true BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA=true playwright test --headed",
     "db:ensure-indexes": "tsx scripts/run-ensure-indexes.ts",
     "db:verify-uri": "tsx scripts/verify-mongo-uri.ts",
     "env:verify": "tsx scripts/verify-env.ts",
+    "postinstall": "node scripts/patch-baseline-browser-mapping.mjs",
     "vercel:link": "npx vercel@latest link",
     "vercel:env-pull": "npx vercel@latest env pull .env.local --yes"
   },
@@ -46,10 +49,12 @@
     "react-dom": "19.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "baseline-browser-mapping": "^2.10.31",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
     "tailwindcss": "^4",

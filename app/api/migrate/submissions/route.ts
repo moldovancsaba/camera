@@ -9,12 +9,12 @@
  * - Removes isDeleted, deletedAt fields
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { blockDangerousApiInProduction } from '@/lib/api/production-guard';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const blocked = blockDangerousApiInProduction();
   if (blocked) {
     return blocked;

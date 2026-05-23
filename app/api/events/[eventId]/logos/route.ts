@@ -8,10 +8,14 @@
 
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { ObjectId } from 'mongodb';
-import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
+import { Document, ObjectId } from 'mongodb';
+import { COLLECTIONS, Event, Logo, LogoScenario, generateTimestamp } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
-import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError } from '@/lib/api/responses';
+import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError, apiForbidden } from '@/lib/api/responses';
+import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
+
+type EventLogoAssignment = Event['logos'][number];
+type GroupedEventLogos = Record<LogoScenario, Array<EventLogoAssignment & Pick<Logo, 'name' | 'imageUrl' | 'thumbnailUrl'>>>;
 
 export async function POST(
   request: NextRequest,
@@ -43,7 +47,12 @@ export async function POST(
     }
 
     // Validate scenario
-    const validScenarios = ['slideshow-transition', 'onboarding-thankyou', 'loading-slideshow', 'loading-capture'];
+    const validScenarios = [
+      LogoScenario.SLIDESHOW_TRANSITION,
+      LogoScenario.ONBOARDING_THANKYOU,
+      LogoScenario.LOADING_SLIDESHOW,
+      LogoScenario.LOADING_CAPTURE,
+    ] as const;
     if (!validScenarios.includes(scenario)) {
       return apiBadRequest(`Invalid scenario. Must be one of: ${validScenarios.join(', ')}`);
     }
@@ -51,6 +60,10 @@ export async function POST(
     const db = await connectToDatabase();
     const eventsCollection = db.collection(COLLECTIONS.EVENTS);
     const logosCollection = db.collection(COLLECTIONS.LOGOS);
+    const eventAccess = await getPartnerScopedAccessForEvent(db, eventId, session, 'manager');
+    if (!eventAccess.allowed) {
+      return apiForbidden('Partner-level Events manager access is required');
+    }
 
     // Verify event exists (using MongoDB _id)
     const event = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
@@ -65,8 +78,8 @@ export async function POST(
     }
 
     // Check if logo is already assigned to this scenario
-    const existingAssignment = (event.logos || []).find(
-      (l: any) => l.logoId === logoId && l.scenario === scenario
+    const existingAssignment = ((event.logos ?? []) as EventLogoAssignment[]).find(
+      (logoAssignment) => logoAssignment.logoId === logoId && logoAssignment.scenario === scenario
     );
 
     if (existingAssignment) {
@@ -87,7 +100,7 @@ export async function POST(
     await eventsCollection.updateOne(
       { _id: new ObjectId(eventId) },
       {
-        $push: { logos: logoAssignment } as any,
+        $push: { logos: logoAssignment } as Document,
         $set: { 
           updatedAt: generateTimestamp(),
           logosOverridden: true, // Event now uses custom logo assignments instead of partner defaults
@@ -108,9 +121,9 @@ export async function POST(
       message: 'Logo assigned successfully',
       logoAssignment,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error assigning logo:', error);
-    return apiError(error.message);
+    return apiError(error instanceof Error ? error.message : 'Failed to assign logo');
   }
 }
 
@@ -136,23 +149,16 @@ export async function GET(
       return apiNotFound('Event');
     }
 
-    console.log('Event logos array:', event.logos);
-
     // Get full logo details for assigned logos
-    const logoAssignments = event.logos || [];
-    console.log('Logo assignments:', logoAssignments);
-    const logoIds = logoAssignments.map((l: any) => l.logoId);
-    console.log('Logo IDs to fetch:', logoIds);
+    const logoAssignments = (event.logos ?? []) as EventLogoAssignment[];
+    const logoIds = logoAssignments.map((logoAssignment) => logoAssignment.logoId);
 
     const logos = await logosCollection
       .find({ logoId: { $in: logoIds } })
       .toArray();
-    
-    console.log('Found logos from collection:', logos.length);
-    console.log('Logos:', logos.map((l: any) => ({ logoId: l.logoId, name: l.name })));
 
     // Merge logo details with assignments and group by scenario
-    const groupedLogos: Record<string, any[]> = {
+    const groupedLogos: GroupedEventLogos = {
       'slideshow-transition': [],
       'onboarding-thankyou': [],
       'loading-slideshow': [],
@@ -160,7 +166,7 @@ export async function GET(
     };
 
     for (const assignment of logoAssignments) {
-      const logo = logos.find((l: any) => l.logoId === assignment.logoId);
+      const logo = logos.find((item) => item.logoId === assignment.logoId);
       if (logo) {
         groupedLogos[assignment.scenario].push({
           ...assignment,
@@ -172,19 +178,17 @@ export async function GET(
     }
 
     // Sort each scenario by order
-    for (const scenario in groupedLogos) {
+    for (const scenario of Object.values(LogoScenario)) {
       groupedLogos[scenario].sort((a, b) => a.order - b.order);
     }
-
-    console.log('Grouped logos result:', JSON.stringify(groupedLogos, null, 2));
 
     return apiSuccess({
       eventId: event._id.toString(),
       eventName: event.name,
       logos: groupedLogos,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching event logos:', error);
-    return apiError(error.message);
+    return apiError(error instanceof Error ? error.message : 'Failed to fetch event logos');
   }
 }

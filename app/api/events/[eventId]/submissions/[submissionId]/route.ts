@@ -13,7 +13,7 @@
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { ObjectId } from 'mongodb';
+import { ObjectId, type Document, type UpdateFilter } from 'mongodb';
 import { withErrorHandler, requireAdmin, apiSuccess, apiBadRequest, apiNotFound } from '@/lib/api';
 
 export const DELETE = withErrorHandler(async (
@@ -60,7 +60,12 @@ export const DELETE = withErrorHandler(async (
   // IMPORTANT: We use eventUuid (event.eventId UUID), NOT eventId (MongoDB _id)
   
   // Check if submission uses old schema (eventId) or new schema (eventIds)
-  const updateOperation: any = {
+  const updateOperation: {
+    $addToSet: { hiddenFromEvents: string };
+    $set: { updatedAt: string };
+    $pull?: { eventIds: string };
+    $unset?: { eventId: string };
+  } = {
     $addToSet: { hiddenFromEvents: eventUuid }, // Add event UUID to hidden list
     $set: { updatedAt: new Date().toISOString() }
   };
@@ -76,7 +81,7 @@ export const DELETE = withErrorHandler(async (
     .collection(COLLECTIONS.SUBMISSIONS)
     .updateOne(
       { _id: new ObjectId(submissionId) },
-      updateOperation
+      updateOperation as UpdateFilter<Document>
     );
 
   if (result.modifiedCount === 0) {

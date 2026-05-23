@@ -12,7 +12,7 @@
 
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useCallback } from 'react';
 import Image from 'next/image';
 import CameraCapture from '@/components/camera/CameraCapture';
 import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoAreYouPage';
@@ -42,6 +42,30 @@ interface EventData {
   showLogo: boolean;  // Whether to display logo on pages
   brandColor?: string;  // Primary brand color (hex)
   brandBorderColor?: string;  // Border/accent color (hex)
+  frames?: EventFrameAssignment[];
+}
+
+interface EventFrameAssignment {
+  frameId: string;
+  isActive: boolean;
+}
+
+interface EventLogo {
+  imageUrl: string;
+  isActive: boolean;
+}
+
+interface EventLogosResponse {
+  data?: {
+    logos?: Record<string, EventLogo[]>;
+  };
+  logos?: Record<string, EventLogo[]>;
+}
+
+interface EventFramesResponse {
+  data?: {
+    frames?: Frame[];
+  };
 }
 
 // Collected data from custom pages
@@ -54,6 +78,10 @@ interface CollectedData {
     accepted: boolean;
     acceptedAt: string;
   }>;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'An unexpected error occurred';
 }
 
 export default function EventCapturePage({
@@ -95,7 +123,6 @@ export default function EventCapturePage({
   const successMessage = takePhotoPage?.config.successMessage || 'Photo saved successfully! You can now share it.';
   const showSharePage = takePhotoPage?.config.showSharePage !== false;
   const skipShareMessage = takePhotoPage?.config.skipShareMessage || 'Thank you! Your photo has been saved.';
-  const showFrameOnCapture = takePhotoPage?.config.showFrameOnCapture !== false; // Default true
   const cameraPromptTitle = takePhotoPage?.config.cameraPromptTitle || 'Ready to capture?';
   const cameraPromptDescription = takePhotoPage?.config.cameraPromptDescription || 'Click to start your camera and take a photo';
   const errorFrameMessage = takePhotoPage?.config.errorFrameMessage || 'Failed to apply frame. Please try again.';
@@ -234,18 +261,18 @@ export default function EventCapturePage({
         try {
           const logoResponse = await fetch(`/api/events/${eventId}/logos`);
           if (logoResponse.ok) {
-            const logoData = await logoResponse.json();
+            const logoData: EventLogosResponse = await logoResponse.json();
             
             // Loading logo
             const loadingLogos = logoData.data?.logos?.['loading-capture'] || logoData.logos?.['loading-capture'] || [];
-            const activeLoadingLogo = loadingLogos.find((l: any) => l.isActive);
+            const activeLoadingLogo = loadingLogos.find((logo) => logo.isActive);
             if (activeLoadingLogo) {
               setLoadingLogoUrl(activeLoadingLogo.imageUrl);
             }
             
             // Onboarding/thank you logo
             const onboardingLogos = logoData.data?.logos?.['onboarding-thankyou'] || logoData.logos?.['onboarding-thankyou'] || [];
-            const activeOnboardingLogo = onboardingLogos.find((l: any) => l.isActive);
+            const activeOnboardingLogo = onboardingLogos.find((logo) => logo.isActive);
             if (activeOnboardingLogo) {
               setOnboardingLogoUrl(activeOnboardingLogo.imageUrl);
             }
@@ -283,17 +310,17 @@ export default function EventCapturePage({
         }
 
         // Get frames assigned to this event
-        const activeFrameAssignments = (eventData.frames || []).filter((f: any) => f.isActive);
-        const frameIds = activeFrameAssignments.map((f: any) => f.frameId);
+        const activeFrameAssignments = (eventData.frames || []).filter((frame: EventFrameAssignment) => frame.isActive);
+        const frameIds = activeFrameAssignments.map((frame: EventFrameAssignment) => frame.frameId);
 
         if (frameIds.length > 0) {
           // Fetch frame details
           const framesResponse = await fetch('/api/frames?active=true&limit=100');
-          const framesData = await framesResponse.json();
+          const framesData: EventFramesResponse = await framesResponse.json();
           
           // Filter to only frames assigned to this event (using frameId UUID)
-          const eventFrames = (framesData.data?.frames || []).filter((f: any) => 
-            frameIds.includes(f.frameId)
+          const eventFrames = (framesData.data?.frames || []).filter((frame) => 
+            frameIds.includes(frame.frameId)
           );
           setFrames(eventFrames);
           
@@ -335,11 +362,66 @@ export default function EventCapturePage({
     };
   }, [selectedFrame?.frameId, selectedFrame?.imageUrl]);
 
+  const compositeImageWithFrame = useCallback(async () => {
+    if (!capturedImage || !selectedFrame) return;
+
+    setIsProcessing(true);
+
+    try {
+      // Load captured photo
+      const photoImg = new window.Image();
+      photoImg.crossOrigin = 'anonymous';
+      await new Promise((resolve, reject) => {
+        photoImg.onload = resolve;
+        photoImg.onerror = reject;
+        photoImg.src = capturedImage;
+      });
+
+      // Load frame
+      const frameImg = new window.Image();
+      frameImg.crossOrigin = 'anonymous';
+      await new Promise((resolve, reject) => {
+        frameImg.onload = resolve;
+        frameImg.onerror = reject;
+        frameImg.src = selectedFrame.imageUrl;
+      });
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas not supported');
+
+      const maxDimension = 2048;
+      let targetWidth = frameImg.width;
+      let targetHeight = frameImg.height;
+      
+      if (targetWidth > maxDimension || targetHeight > maxDimension) {
+        const scale = Math.min(maxDimension / targetWidth, maxDimension / targetHeight);
+        targetWidth = Math.floor(targetWidth * scale);
+        targetHeight = Math.floor(targetHeight * scale);
+      }
+
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      setImageDimensions({ width: targetWidth, height: targetHeight });
+      ctx.drawImage(photoImg, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
+
+      const composite = canvas.toDataURL('image/jpeg', 0.85);
+      setCompositeImage(composite);
+      setStep('preview');
+    } catch (error) {
+      console.error('Error compositing image:', error);
+      alert(errorFrameMessage);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [capturedImage, errorFrameMessage, selectedFrame]);
+
   // Composite image with frame when photo is captured (or just use photo if no frame)
   useEffect(() => {
     if (capturedImage) {
       if (selectedFrame) {
-        compositeImageWithFrame();
+        void compositeImageWithFrame();
       } else {
         // No frame - use captured image, optionally resize to 16:9 aspect ratio
         // For frameless events, keep the maximum camera view in 16:9
@@ -408,78 +490,14 @@ export default function EventCapturePage({
         img.src = capturedImage;
       }
     }
-  }, [capturedImage, selectedFrame]);
-
-  const compositeImageWithFrame = async () => {
-    if (!capturedImage || !selectedFrame) return;
-
-    setIsProcessing(true);
-
-    try {
-      // Load captured photo
-      const photoImg = new window.Image();
-      photoImg.crossOrigin = 'anonymous';
-      await new Promise((resolve, reject) => {
-        photoImg.onload = resolve;
-        photoImg.onerror = reject;
-        photoImg.src = capturedImage;
-      });
-
-      // Load frame
-      const frameImg = new window.Image();
-      frameImg.crossOrigin = 'anonymous';
-      await new Promise((resolve, reject) => {
-        frameImg.onload = resolve;
-        frameImg.onerror = reject;
-        frameImg.src = selectedFrame.imageUrl;
-      });
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas not supported');
-
-      // The frame sets the canvas size and the captured photo scales to fit
-      // Photo is already cropped to frame's aspect ratio by camera component
-      const maxDimension = 2048;
-      let targetWidth = frameImg.width;
-      let targetHeight = frameImg.height;
-      
-      if (targetWidth > maxDimension || targetHeight > maxDimension) {
-        const scale = Math.min(maxDimension / targetWidth, maxDimension / targetHeight);
-        targetWidth = Math.floor(targetWidth * scale);
-        targetHeight = Math.floor(targetHeight * scale);
-      }
-
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
-      
-      // Store dimensions for submission
-      setImageDimensions({ width: targetWidth, height: targetHeight });
-
-      // Draw captured photo scaled to canvas (frame) size
-      ctx.drawImage(photoImg, 0, 0, canvas.width, canvas.height);
-      
-      // Overlay frame at exact canvas size
-      ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
-
-      // Convert to JPEG with compression to reduce file size (quality 0.85 = ~85%)
-      const composite = canvas.toDataURL('image/jpeg', 0.85);
-      setCompositeImage(composite);
-      setStep('preview');
-    } catch (error) {
-      console.error('Error compositing image:', error);
-      alert(errorFrameMessage);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  }, [capturedImage, compositeImageWithFrame, selectedFrame]);
 
   const handleFrameSelect = (frame: Frame) => {
     setSelectedFrame(frame);
     setStep('capture-photo');
   };
 
-  const handlePhotoCapture = (blob: Blob, dataUrl: string) => {
+  const handlePhotoCapture = (_blob: Blob, dataUrl: string) => {
     setCapturedImage(dataUrl);
   };
 
@@ -490,7 +508,18 @@ export default function EventCapturePage({
 
     try {
       // Include userInfo and consents in the submission payload
-      const submissionData: any = {
+      const submissionData: {
+        imageData: string;
+        frameId: string | null;
+        eventId: string;
+        eventName: string;
+        partnerId: string | null;
+        partnerName: string | null;
+        imageWidth: number;
+        imageHeight: number;
+        userInfo?: WhoAreYouPageData;
+        consents?: CollectedData['consents'];
+      } = {
         imageData: compositeImage,
         frameId: selectedFrame?.frameId || null,  // Optional frame
         eventId: event.eventId,  // Use event UUID, not URL parameter
@@ -537,21 +566,12 @@ export default function EventCapturePage({
       setShareUrl(`${origin}/share/${submissionId}`);
       
       alert(successMessage);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving submission:', error);
-      alert(`${errorSaveMessage.replace(': Please try again.', '')}: ${error.message || 'Please try again.'}`);
+      alert(`${errorSaveMessage.replace(': Please try again.', '')}: ${getErrorMessage(error)}`);
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleDownload = () => {
-    if (!compositeImage) return;
-
-    const link = document.createElement('a');
-    link.href = compositeImage;
-    link.download = `${event?.name || 'photo'}-${Date.now()}.png`;
-    link.click();
   };
 
   const handleCopyLink = async () => {
@@ -669,12 +689,6 @@ export default function EventCapturePage({
   /**
    * Navigate to previous page
    */
-  const handlePreviousPage = () => {
-    if (currentPageIndex > 0) {
-      setCurrentPageIndex(currentPageIndex - 1);
-    }
-  };
-  
   /**
    * Move from sharing to thank you pages
    * Called when user clicks NEXT button after saving
@@ -825,11 +839,15 @@ export default function EventCapturePage({
       <div className="flex min-h-screen items-center justify-center bg-transparent">
         <div className="text-center">
           {loadingLogoUrl ? (
-            <img
-              src={loadingLogoUrl}
-              alt="Event logo"
-              className="max-w-md max-h-64 mx-auto mb-8 object-contain"
-            />
+            <div className="relative mx-auto mb-8 h-64 w-full max-w-md">
+              <Image
+                src={loadingLogoUrl}
+                alt="Event logo"
+                fill
+                unoptimized
+                className="object-contain"
+              />
+            </div>
           ) : (
             <div className="text-6xl mb-4">⏳</div>
           )}
@@ -890,11 +908,15 @@ export default function EventCapturePage({
             {/* Event Info */}
             <div className="text-center mb-3 landscape:mb-6 landscape:[writing-mode:vertical-lr] landscape:rotate-180">
               {event.showLogo && event.logoUrl && (
-                <img
-                  src={event.logoUrl}
-                  alt="Event logo"
-                  className="w-16 h-16 mx-auto mb-2 object-contain"
-                />
+                <div className="relative mx-auto mb-2 h-16 w-16">
+                  <Image
+                    src={event.logoUrl}
+                    alt="Event logo"
+                    fill
+                    unoptimized
+                    className="object-contain"
+                  />
+                </div>
               )}
               {event.partnerName && (
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -963,12 +985,20 @@ export default function EventCapturePage({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-6xl">
               {frames.map((frame) => (
                 <div key={frame.frameId} className="flex items-center justify-center">
-                  <img
-                    src={frame.imageUrl}
-                    alt={frame.name}
+                  <button
+                    type="button"
                     onClick={() => handleFrameSelect(frame)}
-                    className="cursor-pointer border-2 border-gray-300 hover:border-blue-500 object-contain w-full h-auto max-h-[60vh] rounded-lg transition-all"
-                  />
+                    className="overflow-hidden rounded-lg border-2 border-gray-300 transition-all hover:border-blue-500"
+                  >
+                    <Image
+                      src={frame.imageUrl}
+                      alt={frame.name}
+                      width={800}
+                      height={800}
+                      unoptimized
+                      className="h-auto max-h-[60vh] w-full object-contain"
+                    />
+                  </button>
                 </div>
               ))}
             </div>
@@ -1019,9 +1049,12 @@ export default function EventCapturePage({
           <div className="h-full flex items-center justify-center p-4">
             {/* Image with overlay - Full screen with share overlay when saved */}
             <div className="relative max-w-full max-h-full">
-              <img
+              <Image
                 src={compositeImage}
                 alt="Final result"
+                width={1200}
+                height={1200}
+                unoptimized
                 className="max-h-[80vh] max-w-full object-contain"
               />
               
@@ -1036,10 +1069,13 @@ export default function EventCapturePage({
                     >
                       {isSaving ? (
                         event?.showLogo && event?.logoUrl ? (
-                          <img
+                          <Image
                             src={event.logoUrl}
                             alt="Event logo"
-                            className="w-8 h-8 object-contain animate-pulse"
+                            width={32}
+                            height={32}
+                            unoptimized
+                            className="animate-pulse object-contain"
                           />
                         ) : (
                           <span className="text-3xl animate-spin">⏳</span>
@@ -1173,10 +1209,13 @@ export default function EventCapturePage({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-8 text-center">
             {event?.showLogo && event?.logoUrl ? (
-              <img
+              <Image
                 src={event.logoUrl}
                 alt="Event logo"
-                className="w-24 h-24 mx-auto mb-4 object-contain animate-pulse"
+                width={96}
+                height={96}
+                unoptimized
+                className="mx-auto mb-4 animate-pulse object-contain"
               />
             ) : (
               <div className="text-6xl mb-4 animate-spin">⏳</div>

@@ -19,12 +19,25 @@ export async function GET(request: NextRequest) {
     return blocked;
   }
 
+  const searchParams = request.nextUrl.searchParams;
+  const email = searchParams.get('email')?.trim() || 'dev@camera.local';
+  const name = searchParams.get('name')?.trim() || 'Development User';
+  const roleParam = searchParams.get('role');
+  const accessParam = searchParams.get('access');
+  const redirectTo = searchParams.get('redirectTo')?.trim() || '/';
+  const userId = searchParams.get('userId')?.trim() || 'dev-user-001';
+  const appRole =
+    roleParam === 'none' || roleParam === 'user' || roleParam === 'admin' || roleParam === 'superadmin'
+      ? roleParam
+      : 'admin';
+  const appAccess = accessParam == null ? true : accessParam === 'true';
+
   // Create a mock user session for development
   const mockUser = {
-    id: 'dev-user-001',
-    email: 'dev@camera.local',
-    name: 'Development User',
-    role: 'admin' as const,
+    id: userId,
+    email,
+    name,
+    role: appRole === 'superadmin' ? ('admin' as const) : ('user' as const),
   };
 
   // Create mock tokens for development
@@ -50,7 +63,7 @@ export async function GET(request: NextRequest) {
   };
 
   const origin = request.nextUrl.origin;
-  const response = NextResponse.redirect(new URL('/', origin));
-  await createSession(mockUser, mockTokens, undefined, response);
+  const response = NextResponse.redirect(new URL(redirectTo, origin));
+  await createSession(mockUser, mockTokens, { appRole, appAccess }, response);
   return response;
 }

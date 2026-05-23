@@ -10,10 +10,32 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
+interface FrameRecord {
+  _id: string;
+  frameId?: string;
+  name: string;
+  description?: string;
+  category?: string;
+  isActive?: boolean;
+  thumbnailUrl?: string;
+  imageUrl: string;
+  width?: number;
+  height?: number;
+  fileSize?: number;
+  mimeType?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Frame request failed';
+}
+
 export default function EditFramePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
-  const [frame, setFrame] = useState<any>(null);
+  const [frame, setFrame] = useState<FrameRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -27,8 +49,8 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
         if (!response.ok) throw new Error('Frame not found');
         const data = await response.json();
         setFrame(data.frame);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
       } finally {
         setIsLoading(false);
       }
@@ -64,8 +86,8 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
 
       router.push('/admin/frames');
       router.refresh();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
       setIsSaving(false);
     }
   };
@@ -90,8 +112,8 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
 
       router.push('/admin/frames');
       router.refresh();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
       setIsDeleting(false);
     }
   };

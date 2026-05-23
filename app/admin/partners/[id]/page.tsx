@@ -15,6 +15,7 @@ import { notFound, redirect } from 'next/navigation';
 import DeletePartnerButton from '@/components/admin/DeletePartnerButton';
 import StyleSections from '@/components/admin/StyleSections';
 import PartnerUserAccessManager from '@/components/admin/PartnerUserAccessManager';
+import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
 import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
 import { listPartnerUserAccess } from '@/lib/partners/access';
 import {
@@ -128,6 +129,8 @@ export default async function PartnerDetailPage({
   const canManagePartner = isGlobalAdminSession(session);
   let canManageEvents = isGlobalAdminSession(session);
   let canAccessGym = isGlobalAdminSession(session);
+  let eventsRoleLabel = isGlobalAdminSession(session) ? 'global admin' : 'no access';
+  let gymRoleLabel = isGlobalAdminSession(session) ? 'global admin' : 'no access';
 
   try {
     const db = await connectToDatabase();
@@ -148,6 +151,14 @@ export default async function PartnerDetailPage({
 
     const assignments = await listSessionPartnerAssignments(db, session!);
     if (!isGlobalAdminSession(session)) {
+      const eventAssignment = assignments.find(
+        (assignment) => assignment.partnerId === partner!.partnerId && assignment.appKey === 'events' && assignment.isActive
+      );
+      const gymAssignment = assignments.find(
+        (assignment) => assignment.partnerId === partner!.partnerId && assignment.appKey === 'gym' && assignment.isActive
+      );
+      eventsRoleLabel = eventAssignment?.role ?? 'no access';
+      gymRoleLabel = gymAssignment?.role ?? 'no access';
       canManageEvents = assignments.some(
         (assignment) =>
           assignment.partnerId === partner!.partnerId &&
@@ -284,7 +295,7 @@ export default async function PartnerDetailPage({
   return (
     <div className="p-8">
       {/* Header */}
-      <div className="mb-8">
+      <div id="overview" className="mb-8">
         <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
           <Link href="/admin/partners" className="hover:text-gray-700 dark:hover:text-gray-200">
             Partners
@@ -317,6 +328,24 @@ export default async function PartnerDetailPage({
             </span>
           </div>
         </div>
+      </div>
+
+      <div className="mb-6 flex flex-wrap gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        {[
+          { href: '#overview', label: 'Overview' },
+          { href: '#access', label: 'Access' },
+          { href: '#resources', label: 'Resources' },
+          { href: '#events', label: 'Events App' },
+          { href: '#gallery', label: 'Gallery' },
+        ].map((item) => (
+          <a
+            key={item.href}
+            href={item.href}
+            className="rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            {item.label}
+          </a>
+        ))}
       </div>
 
       {dbError && (
@@ -483,6 +512,36 @@ export default async function PartnerDetailPage({
             </Link>
           </div>
 
+          <div id="access" className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Access Summary</h2>
+            <dl className="space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Current operator</dt>
+                <dd className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {canManagePartner ? 'Global admin' : 'Partner-scoped'}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Events App role</dt>
+                <dd className="text-sm font-semibold capitalize text-gray-900 dark:text-white">{eventsRoleLabel}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Gym App role</dt>
+                <dd className="text-sm font-semibold capitalize text-gray-900 dark:text-white">{gymRoleLabel}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Active assignments</dt>
+                <dd className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {partnerAccessAssignments.filter((assignment) => assignment.isActive).length}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+              Global inventory remains restricted to global admins. Partner-scoped roles are limited to the assigned
+              app surfaces for this partner.
+            </p>
+          </div>
+
           {/* Delete Partner Card */}
           {canManagePartner ? (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
@@ -518,19 +577,25 @@ export default async function PartnerDetailPage({
             />
           ) : null}
 
-          {/* Default Styles Section - Using Unified StyleSections Component */}
-          <StyleSections
-            type="partner"
-            id={id}
-            name={partner.name}
-            brandColor={partner.defaultBrandColors?.primary}
-            brandBorderColor={partner.defaultBrandColors?.secondary}
-            frames={partner.defaultFramesWithDetails || []}
-            logos={partner.defaultLogosWithDetails || []}
+          <AuthorizationMatrix
+            compact
+            description="This matrix reflects the current live policy for global admin access versus partner-scoped Events and Gym roles."
           />
 
+          <div id="resources">
+            {/* Default Styles Section - Using Unified StyleSections Component */}
+            <StyleSections
+              type="partner"
+              id={id}
+              brandColor={partner.defaultBrandColors?.primary}
+              brandBorderColor={partner.defaultBrandColors?.secondary}
+              frames={partner.defaultFramesWithDetails || []}
+              logos={partner.defaultLogosWithDetails || []}
+            />
+          </div>
+
           {/* Events List */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <div id="events" className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <div>

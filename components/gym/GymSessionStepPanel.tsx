@@ -28,7 +28,7 @@ export default function GymSessionStepPanel({
   status: string;
 }) {
   const router = useRouter();
-  const [stepLog, setStepLog] = useState(initialStepLog);
+  const [stepLog] = useState(initialStepLog);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

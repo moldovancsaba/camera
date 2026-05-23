@@ -14,6 +14,7 @@
 
 'use client';
 
+import Image from 'next/image';
 import { useState, useRef, DragEvent, ChangeEvent } from 'react';
 import { validateImage } from '@/lib/imgbb/upload';
 
@@ -230,9 +231,11 @@ export default function FileUpload({
         <>
           {/* Image Preview */}
           <div className="relative w-full max-w-2xl aspect-video bg-gray-900 rounded-lg overflow-hidden shadow-xl">
-            <img
+            <Image
               src={preview}
               alt="Selected image"
+              fill
+              unoptimized
               className="w-full h-full object-cover"
             />
 

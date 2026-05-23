@@ -17,7 +17,7 @@ import {
   decodeIdToken,
   getUserInfo,
   getOAuthCallbackRedirectUri,
-  useConfidentialOAuth,
+  shouldUseConfidentialOAuth,
 } from '@/lib/auth/sso';
 import {
   clearPendingSessionCookieOnResponse,
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const confidential = useConfidentialOAuth();
+    const confidential = shouldUseConfidentialOAuth();
     const redirectUri = getOAuthCallbackRedirectUri(request);
 
     let codeVerifier: string | undefined;

@@ -8,6 +8,10 @@ interface DeleteEventButtonProps {
   eventName: string;
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Failed to delete event';
+}
+
 export default function DeleteEventButton({ eventId, eventName }: DeleteEventButtonProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -29,8 +33,8 @@ export default function DeleteEventButton({ eventId, eventName }: DeleteEventBut
       // Success - redirect to events list
       router.push('/admin/events');
       router.refresh();
-    } catch (error: any) {
-      alert(`Error: ${error.message}`);
+    } catch (error: unknown) {
+      alert(`Error: ${getErrorMessage(error)}`);
       setIsDeleting(false);
       setShowConfirm(false);
     }

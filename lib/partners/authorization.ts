@@ -120,6 +120,21 @@ export async function getPartnerScopedAccessForEvent(
   return { ...access, partnerId };
 }
 
+export async function getPartnerScopedAccessForEventUuid(
+  db: Db,
+  eventUuid: string,
+  session: Session,
+  minRole: PartnerAccessRole = 'viewer'
+): Promise<{ allowed: boolean; role: PartnerAccessRole | null; partnerId: string | null }> {
+  const event = await db.collection(COLLECTIONS.EVENTS).findOne({ eventId: eventUuid });
+  const partnerId = typeof event?.partnerId === 'string' ? event.partnerId : null;
+  if (!partnerId) {
+    return { allowed: false, role: null, partnerId: null };
+  }
+  const access = await getPartnerScopedAccessForPartner(db, session, partnerId, 'events', minRole);
+  return { ...access, partnerId };
+}
+
 export async function getAdminNavigationAccess(db: Db, session: Session) {
   if (isGlobalAdminSession(session)) {
     return {

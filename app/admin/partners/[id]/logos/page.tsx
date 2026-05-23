@@ -8,8 +8,45 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+
+interface DefaultLogoAssignment {
+  logoId: string;
+  scenario: string;
+  order: number;
+}
+
+interface PartnerRecord {
+  name: string;
+  defaultLogos?: DefaultLogoAssignment[];
+}
+
+interface LogoRecord {
+  logoId: string;
+  name: string;
+  thumbnailUrl?: string;
+}
+
+interface PartnerResponse {
+  data?: {
+    partner?: PartnerRecord;
+  };
+  partner?: PartnerRecord;
+  error?: string;
+}
+
+interface LogosResponse {
+  data?: {
+    logos?: LogoRecord[];
+  };
+  error?: string;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'An unexpected error occurred';
+}
 
 export default function PartnerLogosPage({
   params,
@@ -18,9 +55,9 @@ export default function PartnerLogosPage({
 }) {
   const router = useRouter();
   const [partnerId, setPartnerId] = useState<string>('');
-  const [partner, setPartner] = useState<any>(null);
-  const [availableLogos, setAvailableLogos] = useState<any[]>([]);
-  const [defaultLogos, setDefaultLogos] = useState<any[]>([]);
+  const [partner, setPartner] = useState<PartnerRecord | null>(null);
+  const [availableLogos, setAvailableLogos] = useState<LogoRecord[]>([]);
+  const [defaultLogos, setDefaultLogos] = useState<DefaultLogoAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,18 +74,21 @@ export default function PartnerLogosPage({
         setIsLoading(true);
         
         const partnerResponse = await fetch(`/api/partners/${partnerId}`);
-        const partnerData = await partnerResponse.json();
+        const partnerData: PartnerResponse = await partnerResponse.json();
         
         if (!partnerResponse.ok) {
           throw new Error(partnerData.error || 'Failed to load partner');
         }
         
-        const partner = partnerData.partner;
+        const partner = partnerData.data?.partner || partnerData.partner;
+        if (!partner) {
+          throw new Error('Partner not found');
+        }
         setPartner(partner);
         setDefaultLogos(partner.defaultLogos || []);
 
         const logosResponse = await fetch('/api/logos?active=true&limit=100');
-        const logosData = await logosResponse.json();
+        const logosData: LogosResponse = await logosResponse.json();
         
         if (!logosResponse.ok) {
           throw new Error(logosData.error || 'Failed to load logos');
@@ -56,9 +96,9 @@ export default function PartnerLogosPage({
         
         setAvailableLogos(logosData.data?.logos || []);
         setIsLoading(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching data:', err);
-        setError(err.message);
+        setError(getErrorMessage(err));
         setIsLoading(false);
       }
     };
@@ -68,9 +108,9 @@ export default function PartnerLogosPage({
 
   const handleToggleLogo = (logoId: string, scenario: string) => {
     setDefaultLogos(prev => {
-      const exists = prev.find((l: any) => l.logoId === logoId && l.scenario === scenario);
+      const exists = prev.find((logo) => logo.logoId === logoId && logo.scenario === scenario);
       if (exists) {
-        return prev.filter((l: any) => !(l.logoId === logoId && l.scenario === scenario));
+        return prev.filter((logo) => !(logo.logoId === logoId && logo.scenario === scenario));
       } else {
         return [...prev, { logoId, scenario, order: prev.length }];
       }
@@ -78,7 +118,7 @@ export default function PartnerLogosPage({
   };
 
   const isLogoSelected = (logoId: string, scenario: string) => {
-    return defaultLogos.some((l: any) => l.logoId === logoId && l.scenario === scenario);
+    return defaultLogos.some((logo) => logo.logoId === logoId && logo.scenario === scenario);
   };
 
   const handleSave = async () => {
@@ -97,8 +137,8 @@ export default function PartnerLogosPage({
 
       router.push(`/admin/partners/${partnerId}`);
       router.refresh();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
       setIsSaving(false);
     }
   };
@@ -178,13 +218,13 @@ export default function PartnerLogosPage({
                   <span>{scenario.icon}</span>
                   <span>{scenario.name}</span>
                   <span className="text-sm font-normal text-gray-500">
-                    ({defaultLogos.filter((l: any) => l.scenario === scenario.id).length} selected)
+                    ({defaultLogos.filter((logo) => logo.scenario === scenario.id).length} selected)
                   </span>
                 </h3>
               </div>
               <div className="p-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {availableLogos.map((logo: any) => {
+                  {availableLogos.map((logo) => {
                     const isSelected = isLogoSelected(logo.logoId, scenario.id);
                     
                     return (
@@ -204,9 +244,12 @@ export default function PartnerLogosPage({
                         )}
                         <div className="text-center">
                           {logo.thumbnailUrl ? (
-                            <img 
+                            <Image
                               src={logo.thumbnailUrl} 
                               alt={logo.name}
+                              width={64}
+                              height={64}
+                              unoptimized
                               className="w-full h-16 object-contain mb-1"
                             />
                           ) : (

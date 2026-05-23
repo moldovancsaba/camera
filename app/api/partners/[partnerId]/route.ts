@@ -9,9 +9,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { getSession } from '@/lib/auth/session';
-import { COLLECTIONS, generateTimestamp, LogoScenario } from '@/lib/db/schemas';
+import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { updateChildEventsFromPartner } from '@/lib/db/events';
+import { requireAdmin } from '@/lib/api';
 
 /**
  * GET /api/partners/[id]
@@ -89,16 +89,7 @@ export async function PATCH(
   { params }: { params: Promise<{ partnerId: string }> }
 ) {
   try {
-    // Check authentication and authorization
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check app-specific role (appRole), not SSO-level role (user.role)
-    if (session.appRole !== 'admin' && session.appRole !== 'superadmin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await requireAdmin();
 
     const { partnerId } = await params;
 
@@ -125,7 +116,7 @@ export async function PATCH(
 
     // Build update object with only provided fields
     // This allows partial updates without overwriting unspecified fields
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       updatedAt: generateTimestamp(),
     };
 
@@ -207,7 +198,7 @@ export async function PATCH(
     // Only if any default style fields were updated
     let cascadeResult;
     if (defaultBrandColors !== undefined || defaultFrames !== undefined || defaultLogos !== undefined) {
-      const cascadeUpdates: any = {};
+      const cascadeUpdates: Record<string, unknown> = {};
       
       if (defaultBrandColors !== undefined) {
         cascadeUpdates.defaultBrandColors = defaultBrandColors;
@@ -251,16 +242,7 @@ export async function DELETE(
   { params }: { params: Promise<{ partnerId: string }> }
 ) {
   try {
-    // Check authentication and authorization
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check app-specific role (appRole), not SSO-level role (user.role)
-    if (session.appRole !== 'admin' && session.appRole !== 'superadmin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await requireAdmin();
 
     const { partnerId } = await params;
 

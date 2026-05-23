@@ -17,6 +17,7 @@
 
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 
 export interface CTAPageConfig {
@@ -51,12 +52,12 @@ export interface CTAPageProps {
  * If hasButton is true, shows continue button
  * If hasButton is false, auto-redirects after displaying message
  */
-export default function CTAPage({ config, pageId, onNext, onBack, logoUrl, brandColor = '#9333EA', brandBorderColor = '#9333EA' }: CTAPageProps) {
+export default function CTAPage({ config, onNext, onBack, logoUrl, brandColor = '#9333EA' }: CTAPageProps) {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const hasButton = config.hasButton !== false;  // Default to true for backward compatibility
   const urlToVisit = config.checkboxText;  // Repurposed field
   const visitButtonText = config.visitButtonText || 'Visit Now';
-  const redirectingText = config.redirectingText || 'Redirecting you shortly...';
+  void config.redirectingText;
 
   /**
    * Handle redirect to URL
@@ -98,9 +99,12 @@ export default function CTAPage({ config, pageId, onNext, onBack, logoUrl, brand
           {/* Logo */}
           {logoUrl && (
             <div className="flex justify-center mb-6">
-              <img
+              <Image
                 src={logoUrl}
                 alt="Event logo"
+                width={320}
+                height={128}
+                unoptimized
                 className="max-w-xs max-h-32 object-contain"
               />
             </div>

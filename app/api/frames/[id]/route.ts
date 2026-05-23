@@ -8,8 +8,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { getSession } from '@/lib/auth/session';
 import { ObjectId } from 'mongodb';
+import { requireAdmin } from '@/lib/api';
 
 /**
  * GET /api/frames/[id]
@@ -45,22 +45,14 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check app-specific role (appRole), not SSO-level role (user.role)
-    if (session.appRole !== 'admin' && session.appRole !== 'superadmin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await requireAdmin();
 
     const body = await request.json();
     const { name, description, category, isActive } = body;
 
     const db = await connectToDatabase();
     
-    const updateData: any = {
+    const updateData: Record<string, string | boolean> = {
       updatedAt: new Date().toISOString(),
     };
 
@@ -95,15 +87,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check app-specific role (appRole), not SSO-level role (user.role)
-    if (session.appRole !== 'admin' && session.appRole !== 'superadmin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await requireAdmin();
 
     const db = await connectToDatabase();
     const result = await db.collection('frames').deleteOne({ _id: new ObjectId(id) });

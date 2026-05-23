@@ -5,6 +5,7 @@
  */
 
 import { NextRequest } from 'next/server';
+import type { Document } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { withErrorHandler, apiSuccess, checkRateLimit, RATE_LIMITS } from '@/lib/api';
@@ -36,7 +37,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     
     // Use MongoDB aggregation to get unique hashtags from all frames
     // This extracts hashtags array, unwinds it, groups by unique values
-    const pipeline: any[] = [
+    const pipeline: Document[] = [
       // Only include frames that have hashtags
       { $match: { hashtags: { $exists: true, $ne: [] } } },
       // Unwind the hashtags array to separate documents

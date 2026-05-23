@@ -10,6 +10,35 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+interface PartnerRecord {
+  partnerId: string;
+  name: string;
+  description?: string;
+  contactEmail?: string;
+  contactName?: string;
+  isActive?: boolean;
+  defaultBrandColors?: {
+    primary?: string;
+    secondary?: string;
+  };
+}
+
+interface UpdatePartnerPayload {
+  name: string;
+  description: string;
+  contactEmail: string;
+  contactName: string;
+  isActive: boolean;
+  defaultBrandColors?: {
+    primary?: string;
+    secondary?: string;
+  };
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Partner request failed';
+}
+
 export default function EditPartnerPage({
   params,
 }: {
@@ -20,7 +49,7 @@ export default function EditPartnerPage({
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [partner, setPartner] = useState<any>(null);
+  const [partner, setPartner] = useState<PartnerRecord | null>(null);
   const [primaryColor, setPrimaryColor] = useState('#3B82F6');
   const [secondaryColor, setSecondaryColor] = useState('#3B82F6');
 
@@ -46,9 +75,9 @@ export default function EditPartnerPage({
         setPrimaryColor(data.partner.defaultBrandColors?.primary || '#3B82F6');
         setSecondaryColor(data.partner.defaultBrandColors?.secondary || '#3B82F6');
         setIsLoading(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Fetch partner error:', err);
-        setError(err.message);
+        setError(getErrorMessage(err));
         setIsLoading(false);
       }
     };
@@ -64,7 +93,7 @@ export default function EditPartnerPage({
     const formData = new FormData(e.currentTarget);
     
     // Build request body from form data
-    const data: any = {
+    const data: UpdatePartnerPayload = {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       contactEmail: formData.get('contactEmail') as string,
@@ -98,9 +127,9 @@ export default function EditPartnerPage({
       // Navigate back to partner detail page on success
       router.push(`/admin/partners/${partnerId}`);
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Update partner error:', err);
-      setError(err.message);
+      setError(getErrorMessage(err));
       setIsSubmitting(false);
     }
   };
@@ -299,7 +328,7 @@ export default function EditPartnerPage({
 
           <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              💡 <strong>Note:</strong> Changes to default styles will automatically update all child events that haven't been customized (marked with 🟢).
+              💡 <strong>Note:</strong> Changes to default styles will automatically update all child events that have not been customized (marked with 🟢).
               Events with custom styles (marked with 🔴) will keep their own values.
             </p>
           </div>
@@ -320,7 +349,7 @@ export default function EditPartnerPage({
             </label>
           </div>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Inactive partners won't be available for event creation
+            Inactive partners will not be available for event creation
           </p>
         </div>
 

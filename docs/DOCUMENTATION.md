@@ -25,7 +25,7 @@ Historical and planning docs may exist, but they are not canonical runtime docum
 | App version | `package.json` |
 | Public/admin routes | `app/**/page.tsx`, `app/**/layout.tsx` |
 | API surface | `app/api/**/route.ts` |
-| Session and auth behavior | `lib/auth/*`, `middleware.ts`, `lib/api/middleware.ts` |
+| Session and auth behavior | `lib/auth/*`, `proxy.ts`, `lib/api/middleware.ts` |
 | MongoDB shapes | `lib/db/schemas.ts` plus actual route persistence code |
 | Partner-scoped access | `lib/partners/*` and affected admin/API routes |
 | Slideshow behavior | `lib/slideshow/*`, `components/slideshow/SlideshowPlayerCore.tsx` |
@@ -104,3 +104,69 @@ cat package.json
 - admin and auth behavior match current implementation
 - Mongo identifier guidance matches the live mixed model
 - Gym / Events / Partner model matches the current UX and code
+
+## 9. GitHub tracker handover
+
+The GitHub issue tracker and GitHub Projects board must be kept aligned with the codebase and the canonical docs.
+
+Repository:
+
+- `moldovancsaba/camera`
+
+### Current issue state
+
+As of `2026-05-20` the issue tracker was synchronized to the implementation state:
+
+- Open:
+  - `#3` admin UX parent tracker
+  - `#8` landing-page generalization follow-up
+- Closed as completed:
+  - `#4`
+  - `#5`
+  - `#6`
+  - `#7`
+  - `#9`
+  - `#10`
+  - `#11`
+  - `#12`
+
+### Required GitHub Projects board state
+
+When the board is writable, the intended Projects status is:
+
+- `In Progress`:
+  - `#3`
+  - `#8`
+- `Done` / `Completed`:
+  - `#4`
+  - `#5`
+  - `#6`
+  - `#7`
+  - `#9`
+  - `#10`
+  - `#11`
+  - `#12`
+
+### Pending automation handoff
+
+A follow-up Codex heartbeat automation was created because GitHub Projects v2 mutation was blocked by GraphQL rate limiting during the sync pass.
+
+- Automation id:
+  - `sync-github-project-board-after-rate-limit-reset`
+- Intent:
+  - revisit the GitHub Projects board
+  - keep `#3` and `#8` active
+  - move `#4`, `#5`, `#6`, `#7`, `#9`, `#10`, `#11`, `#12` to completed/done
+
+### Practical follow-up steps
+
+1. Check whether the board sync automation already ran successfully.
+2. If not, update the Projects board manually or via GitHub API/CLI after GraphQL rate-limit reset.
+3. Reconfirm that issue states still match the live code and canonical docs before changing board columns.
+4. If `#8` lands later, close `#8` and then close `#3`, and move both project items to `Done`.
+
+### Do not drift again
+
+- Do not treat the board as the source of truth when it disagrees with code and docs.
+- Sync issue bodies/comments first, then sync Projects item statuses.
+- Record temporary blockers like API rate limits directly in the canonical docs when handoff is required.

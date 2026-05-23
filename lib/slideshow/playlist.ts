@@ -145,21 +145,39 @@ export function detectAspectRatio(width: number, height: number): AspectRatio {
  * @param limit - Maximum number of slides to generate (default: 10)
  * @returns Array of Slide objects ready for display
  */
-export function generatePlaylist(submissions: any[], limit: number = 10): Slide[] {
+export function generatePlaylist(
+  submissions: Array<Record<string, unknown>>,
+  limit: number = 10
+): Slide[] {
   const playlist: Slide[] = [];
   let n = 0;
   for (const sub of submissions) {
     if (n >= limit) break;
-    const width = Number(sub.metadata?.finalWidth || sub.metadata?.originalWidth || 1920);
-    const height = Number(sub.metadata?.finalHeight || sub.metadata?.originalHeight || 1080);
+    const metadata =
+      sub.metadata && typeof sub.metadata === 'object'
+        ? (sub.metadata as {
+            finalWidth?: number;
+            originalWidth?: number;
+            finalHeight?: number;
+            originalHeight?: number;
+          })
+        : undefined;
+    const width = Number(metadata?.finalWidth || metadata?.originalWidth || 1920);
+    const height = Number(metadata?.finalHeight || metadata?.originalHeight || 1080);
+    const imageUrl =
+      typeof sub.imageUrl === 'string'
+        ? sub.imageUrl
+        : typeof sub.finalImageUrl === 'string'
+          ? sub.finalImageUrl
+          : '';
     const aspectRatio = detectAspectRatio(width, height);
     playlist.push({
       type: 'single',
       aspectRatio: aspectRatio === AspectRatio.UNKNOWN ? AspectRatio.LANDSCAPE : aspectRatio,
       submissions: [
         {
-          _id: sub._id.toString(),
-          imageUrl: sub.imageUrl || sub.finalImageUrl,
+          _id: String(sub._id),
+          imageUrl,
           width,
           height,
         },

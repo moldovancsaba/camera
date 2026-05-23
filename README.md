@@ -100,6 +100,17 @@ npm run dev
 npm run type-check
 ```
 
+Optional smoke coverage:
+
+```bash
+npm run test:e2e
+```
+
+Notes:
+
+- Playwright smoke tests use development-only bootstrap/login routes.
+- Set `PLAYWRIGHT_START_WEB_SERVER=true` if you want the test runner to launch `next dev` automatically.
+
 Default local URL:
 
 ```text
@@ -153,6 +164,10 @@ Canonical docs:
 - [docs/MONGODB_ATLAS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_ATLAS.md)
 - [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/venturecogroup/camera/docs/SLIDESHOW_LOGIC.md)
 - [docs/DOCUMENTATION.md](/Users/Shared/Projects/venturecogroup/camera/docs/DOCUMENTATION.md)
+
+Tracker handover:
+
+- GitHub issue and Projects-board handoff status is documented in [docs/DOCUMENTATION.md](/Users/Shared/Projects/venturecogroup/camera/docs/DOCUMENTATION.md) under `GitHub tracker handover`.
 
 Historical or planning-heavy docs should not be treated as runtime truth unless they were refreshed recently:
 

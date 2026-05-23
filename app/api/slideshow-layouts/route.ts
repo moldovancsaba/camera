@@ -19,6 +19,11 @@ import {
   parseSafetyColorInput,
 } from '@/lib/slideshow/layout-presentation';
 import { normalizeSlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
+import {
+  getPartnerScopedAccessForEvent,
+  getPartnerScopedAccessForEventUuid,
+  isGlobalAdminSession,
+} from '@/lib/partners/authorization';
 
 const DEFAULT_ROWS = 2;
 const DEFAULT_COLS = 2;
@@ -71,12 +76,6 @@ export async function POST(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (session.appRole !== 'admin' && session.appRole !== 'superadmin') {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Admin access required' },
-        { status: 403 }
-      );
-    }
 
     const body = await request.json();
     const { eventId, name, rows = DEFAULT_ROWS, cols = DEFAULT_COLS, areas } = body;
@@ -96,11 +95,20 @@ export async function POST(request: NextRequest) {
     if (!event) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
+    if (!isGlobalAdminSession(session)) {
+      const access = await getPartnerScopedAccessForEvent(db, eventId, session, 'manager');
+      if (!access.allowed) {
+        return NextResponse.json(
+          { error: 'Forbidden', message: 'Partner-level Events manager access is required' },
+          { status: 403 }
+        );
+      }
+    }
 
     const r = Math.max(1, Math.min(24, parseInt(String(rows), 10) || DEFAULT_ROWS));
     const c = Math.max(1, Math.min(24, parseInt(String(cols), 10) || DEFAULT_COLS));
 
-    let layoutAreas: SlideshowLayoutArea[] =
+    const layoutAreas: SlideshowLayoutArea[] =
       Array.isArray(areas) && areas.length > 0 ? areas : defaultAreas(r, c);
 
     const v = validateLayoutAreas(r, c, layoutAreas);
@@ -167,6 +175,11 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = request.nextUrl;
     const eventId = searchParams.get('eventId');
 
@@ -178,6 +191,15 @@ export async function GET(request: NextRequest) {
     }
 
     const db = await connectToDatabase();
+    if (!isGlobalAdminSession(session)) {
+      const access = await getPartnerScopedAccessForEventUuid(db, eventId, session);
+      if (!access.allowed) {
+        return NextResponse.json(
+          { error: 'Forbidden', message: 'Partner-level Events access is required' },
+          { status: 403 }
+        );
+      }
+    }
     const layouts = await db
       .collection(COLLECTIONS.SLIDESHOW_LAYOUTS)
       .find({ eventId })
@@ -203,12 +225,6 @@ export async function PATCH(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (session.appRole !== 'admin' && session.appRole !== 'superadmin') {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Admin access required' },
-        { status: 403 }
-      );
-    }
 
     const { searchParams } = request.nextUrl;
     const id = searchParams.get('id');
@@ -225,6 +241,15 @@ export async function PATCH(request: NextRequest) {
 
     if (!existing) {
       return NextResponse.json({ error: 'Layout not found' }, { status: 404 });
+    }
+    if (!isGlobalAdminSession(session)) {
+      const access = await getPartnerScopedAccessForEventUuid(db, existing.eventId as string, session, 'manager');
+      if (!access.allowed) {
+        return NextResponse.json(
+          { error: 'Forbidden', message: 'Partner-level Events manager access is required' },
+          { status: 403 }
+        );
+      }
     }
 
     const updates: Record<string, unknown> = {
@@ -352,12 +377,6 @@ export async function DELETE(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (session.appRole !== 'admin' && session.appRole !== 'superadmin') {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Admin access required' },
-        { status: 403 }
-      );
-    }
 
     const { searchParams } = request.nextUrl;
     const id = searchParams.get('id');
@@ -366,13 +385,24 @@ export async function DELETE(request: NextRequest) {
     }
 
     const db = await connectToDatabase();
-    const result = await db
+    const existing = await db
       .collection(COLLECTIONS.SLIDESHOW_LAYOUTS)
-      .deleteOne({ _id: new ObjectId(id) });
+      .findOne({ _id: new ObjectId(id) });
 
-    if (result.deletedCount === 0) {
+    if (!existing) {
       return NextResponse.json({ error: 'Layout not found' }, { status: 404 });
     }
+
+    if (!isGlobalAdminSession(session)) {
+      const access = await getPartnerScopedAccessForEventUuid(db, existing.eventId as string, session, 'manager');
+      if (!access.allowed) {
+        return NextResponse.json(
+          { error: 'Forbidden', message: 'Partner-level Events manager access is required' },
+          { status: 403 }
+        );
+      }
+    }
+    await db.collection(COLLECTIONS.SLIDESHOW_LAYOUTS).deleteOne({ _id: new ObjectId(id) });
 
     return NextResponse.json({ success: true });
   } catch (error) {

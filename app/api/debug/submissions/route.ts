@@ -3,12 +3,11 @@
  * Check what submissions exist with userInfo
  */
 
-import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { withErrorHandler, requireAuth, apiSuccess } from '@/lib/api';
 import { blockDangerousApiInProduction } from '@/lib/api/production-guard';
 
-export const GET = withErrorHandler(async (request: NextRequest) => {
+export const GET = withErrorHandler(async () => {
   const blocked = blockDangerousApiInProduction();
   if (blocked) {
     return blocked;

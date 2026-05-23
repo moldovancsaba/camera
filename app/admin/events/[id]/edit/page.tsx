@@ -7,11 +7,42 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { type CustomPage } from '@/lib/db/schemas';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
+
+interface EventRecord {
+  _id: string;
+  name: string;
+  partnerName?: string;
+  description?: string;
+  eventDate?: string;
+  location?: string;
+  loadingText?: string;
+  isActive?: boolean;
+  logoUrl?: string;
+  showLogo?: boolean;
+  brandColor?: string;
+  brandBorderColor?: string;
+  shortUrlSlug?: string;
+  eventId?: string;
+  customPages?: CustomPage[];
+}
+
+interface EventResponse {
+  data?: {
+    event?: EventRecord;
+  };
+  event?: EventRecord;
+  error?: string;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'An unexpected error occurred';
+}
 
 export default function EditEventPage({
   params,
@@ -23,7 +54,7 @@ export default function EditEventPage({
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [event, setEvent] = useState<any>(null);
+  const [event, setEvent] = useState<EventRecord | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -46,7 +77,7 @@ export default function EditEventPage({
         const response = await fetch(`/api/events/${eventId}`);
         console.log('Edit page - Response status:', response.status);
         
-        const data = await response.json();
+        const data: EventResponse = await response.json();
         console.log('Edit page - Response data:', data);
 
         if (!response.ok) {
@@ -56,6 +87,10 @@ export default function EditEventPage({
 
         // apiSuccess wraps in { success: true, data: { event: {...} } }
         const eventData = data.data?.event || data.event;  // Support both structures
+        if (!eventData) {
+          throw new Error('Event not found');
+        }
+
         console.log('Edit page - Loaded event data:', eventData);
         setEvent(eventData);
         // Load custom pages
@@ -65,9 +100,9 @@ export default function EditEventPage({
           setLogoPreview(eventData.logoUrl);
         }
         setIsLoading(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Fetch event error:', err);
-        setError(err.message);
+        setError(getErrorMessage(err));
         setIsLoading(false);
       }
     };
@@ -132,9 +167,9 @@ export default function EditEventPage({
         if (!logoUrl) {
           throw new Error('Upload finished without an image URL');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Logo upload error:', err);
-        setError(`Failed to upload logo: ${err.message}`);
+        setError(`Failed to upload logo: ${getErrorMessage(err)}`);
         setIsSubmitting(false);
         setIsUploadingLogo(false);
         return;
@@ -177,9 +212,9 @@ export default function EditEventPage({
       // Navigate back to event detail page on success
       router.push(`/admin/events/${eventId}`);
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Update event error:', err);
-      setError(err.message);
+      setError(getErrorMessage(err));
       setIsSubmitting(false);
     }
   };
@@ -373,9 +408,12 @@ export default function EditEventPage({
             </label>
             {logoPreview ? (
               <div className="relative inline-block">
-                <img
+                <Image
                   src={logoPreview}
                   alt="Logo preview"
+                  width={96}
+                  height={96}
+                  unoptimized
                   className="h-24 w-auto rounded border border-gray-300 dark:border-gray-600"
                 />
                 <button
@@ -520,7 +558,7 @@ export default function EditEventPage({
             </label>
           </div>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Inactive events won't be available for frame selection
+            Inactive events will not be available for frame selection
           </p>
         </div>
 
@@ -592,8 +630,8 @@ export default function EditEventPage({
             }
             
             alert('Pages saved successfully!');
-          } catch (err: any) {
-            throw new Error(err.message);
+          } catch (err: unknown) {
+            throw new Error(getErrorMessage(err));
           }
         }}
       />

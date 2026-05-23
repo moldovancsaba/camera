@@ -32,6 +32,10 @@ export default function StyleInheritanceIndicator({
     logos: 'Event Logos',
   };
 
+  function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Failed to reset style';
+  }
+
   const handleReset = async () => {
     if (!confirm(`Reset ${fieldNames[styleField]} to ${partnerName}'s default?`)) {
       return;
@@ -52,8 +56,8 @@ export default function StyleInheritanceIndicator({
 
       // Refresh the page to show updated values
       router.refresh();
-    } catch (error: any) {
-      alert(`Error: ${error.message}`);
+    } catch (error: unknown) {
+      alert(`Error: ${getErrorMessage(error)}`);
     } finally {
       setIsResetting(false);
     }

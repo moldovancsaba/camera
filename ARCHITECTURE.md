@@ -41,7 +41,7 @@ Browser / Public Screens
 ### API layer
 
 - Next.js route handlers under `app/api/**`
-- root edge middleware in `middleware.ts`
+- root edge proxy in `proxy.ts`
 - shared API helpers in `lib/api/*`
 
 ### Domain / business logic
@@ -162,7 +162,7 @@ Reference:
 
 ## 6. Middleware and routing behavior
 
-Root middleware in [middleware.ts](/Users/Shared/Projects/venturecogroup/camera/middleware.ts) does four important jobs:
+Root edge proxy in [proxy.ts](/Users/Shared/Projects/venturecogroup/camera/proxy.ts) does four important jobs:
 
 1. gate `/admin` by valid serialized session state
 2. rescue OAuth callback parameters returned to the wrong path

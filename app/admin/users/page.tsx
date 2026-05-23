@@ -24,6 +24,7 @@ import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import Link from 'next/link';
 import UserManagementActions from '@/components/admin/UserManagementActions';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
+import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
 import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
 import { redirect } from 'next/navigation';
 
@@ -336,6 +337,10 @@ export default async function AdminUsersPage({
               <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">{activeUsers.length} active identities in this directory</div>
             </div>
           </div>
+
+          <AuthorizationMatrix
+            description="Use this matrix when deciding whether a user belongs in global SSO admin management or in partner-scoped Camera assignments."
+          />
 
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
             This page manages global Camera access today. Partner-level permissions are not modeled separately yet, so guest and participation records below are derived from submissions rather than a dedicated partner access table.

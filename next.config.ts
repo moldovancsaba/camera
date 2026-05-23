@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
 
+process.env.BROWSERSLIST_IGNORE_OLD_DATA ??= 'true';
+process.env.BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA ??= 'true';
+
 /**
  * Next.js configuration for Camera webapp
  * 

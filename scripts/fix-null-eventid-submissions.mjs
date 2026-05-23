@@ -21,8 +21,6 @@ try {
   console.log('  Partner:', event.partnerName);
   
   // Get partner details
-  const partner = await db.collection('partners').findOne({ partnerId: event.partnerId });
-  
   // Find all submissions with NULL eventId
   const nullSubmissions = await db.collection('submissions')
     .find({ $or: [{ eventId: null }, { eventId: { $exists: false } }] })

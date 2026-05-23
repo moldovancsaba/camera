@@ -391,12 +391,12 @@ export function sanitizeHtml(html: string): string {
  * - Recursively sanitizes nested objects
  * - Validates object structure
  */
-export function sanitizeObject<T extends Record<string, any>>(json: T): T {
+export function sanitizeObject<T extends Record<string, unknown>>(json: T): T {
   if (!json || typeof json !== 'object' || Array.isArray(json)) {
     return json;
   }
   
-  const sanitized: any = {};
+  const sanitized: Record<string, unknown> = {};
   const dangerousKeys = ['__proto__', 'constructor', 'prototype'];
   
   for (const [key, value] of Object.entries(json)) {
@@ -407,10 +407,10 @@ export function sanitizeObject<T extends Record<string, any>>(json: T): T {
     
     // Recursively sanitize nested objects
     if (value && typeof value === 'object' && !Array.isArray(value)) {
-      sanitized[key] = sanitizeObject(value);
+      sanitized[key] = sanitizeObject(value as Record<string, unknown>);
     } else if (Array.isArray(value)) {
       sanitized[key] = value.map(item => 
-        typeof item === 'object' ? sanitizeObject(item) : item
+        item && typeof item === 'object' ? sanitizeObject(item as Record<string, unknown>) : item
       );
     } else {
       sanitized[key] = value;

@@ -34,10 +34,10 @@ import { apiError } from './responses';
  * 1. Routes without params: context is optional
  * 2. Routes with params: context is required and contains params Promise
  */
-type RouteHandler = (
-  request: NextRequest,
-  context?: any
-) => Promise<NextResponse>;
+type Tail<T extends readonly unknown[]> = T extends readonly [unknown, ...infer Rest] ? Rest : never;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RouteHandler = (request: NextRequest, ...args: any[]) => Promise<NextResponse>;
 
 /**
  * Wrap an API route handler with centralized error handling
@@ -77,11 +77,11 @@ type RouteHandler = (
  * });
  * ```
  */
-export function withErrorHandler(handler: RouteHandler): RouteHandler {
-  return async (request: NextRequest, context?: any) => {
+export function withErrorHandler<T extends RouteHandler>(handler: T): T {
+  return (async (request: NextRequest, ...args: Tail<Parameters<T>>) => {
     try {
       // Execute the wrapped handler
-      return await handler(request, context);
+      return await handler(request, ...args);
     } catch (error) {
       // If middleware threw a NextResponse (e.g., from requireAuth),
       // return it directly
@@ -107,7 +107,7 @@ export function withErrorHandler(handler: RouteHandler): RouteHandler {
       console.error('Unknown Error:', error);
       return apiError('An unexpected error occurred', 500);
     }
-  };
+  }) as T;
 }
 
 /**

@@ -18,6 +18,10 @@ export const dynamic = 'force-dynamic';
 
 const SHARE_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 
+function shareExpiryFromNow(): number {
+  return Date.now() + SHARE_TTL_MS;
+}
+
 export default async function HistoryGymDetailPage({
   params,
 }: {
@@ -50,7 +54,7 @@ export default async function HistoryGymDetailPage({
   const startedAt = typeof doc.startedAt === 'string' ? doc.startedAt : '';
   const selfieImageUrl = typeof doc.selfieImageUrl === 'string' ? doc.selfieImageUrl : '';
 
-  const exp = Date.now() + SHARE_TTL_MS;
+  const exp = shareExpiryFromNow();
   const token = signFffSharePayload({ k: 'gym', id: sessionId, exp });
   const site = await getSiteUrlFromRequest();
   const shareUrl = fffShareAbsoluteUrl(site, token);

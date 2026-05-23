@@ -8,7 +8,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -31,6 +30,33 @@ interface LogoAssignment {
   thumbnailUrl: string;
 }
 
+interface EventLogosRecord {
+  _id: string;
+  name: string;
+}
+
+interface EventLogosResponse {
+  eventId?: string;
+  eventName?: string;
+  logos?: Record<string, LogoAssignment[]>;
+  data?: {
+    logos?: Record<string, LogoAssignment[]>;
+  };
+  error?: string;
+}
+
+interface LogosResponse {
+  logos?: Logo[];
+  data?: {
+    logos?: Logo[];
+  };
+  error?: string;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'An unexpected error occurred';
+}
+
 const SCENARIOS = [
   { id: 'slideshow-transition', name: 'Slideshow Transition', description: 'Logo shown during slide transitions with fade in/out' },
   { id: 'onboarding-thankyou', name: 'Onboarding/Thank You Pages', description: 'Logo displayed at top center on custom pages' },
@@ -43,9 +69,8 @@ export default function EventLogosPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const router = useRouter();
   const [eventId, setEventId] = useState<string>('');
-  const [event, setEvent] = useState<any>(null);
+  const [event, setEvent] = useState<EventLogosRecord | null>(null);
   const [availableLogos, setAvailableLogos] = useState<Logo[]>([]);
   const [assignedLogos, setAssignedLogos] = useState<Record<string, LogoAssignment[]>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -66,7 +91,7 @@ export default function EventLogosPage({
         
         // Fetch event details with assigned logos
         const eventResponse = await fetch(`/api/events/${eventId}/logos`);
-        const eventData = await eventResponse.json();
+        const eventData: EventLogosResponse = await eventResponse.json();
         
         console.log('Initial event fetch response:', eventData);
         
@@ -74,6 +99,10 @@ export default function EventLogosPage({
           throw new Error(eventData.error || 'Failed to load event');
         }
         
+        if (!eventData.eventId || !eventData.eventName) {
+          throw new Error('Event not found');
+        }
+
         setEvent({ _id: eventData.eventId, name: eventData.eventName });
         
         // Handle both wrapped and unwrapped responses
@@ -83,7 +112,7 @@ export default function EventLogosPage({
 
         // Fetch all available logos
         const logosResponse = await fetch('/api/logos?active=true&limit=100');
-        const logosData = await logosResponse.json();
+        const logosData: LogosResponse = await logosResponse.json();
         
         if (!logosResponse.ok) {
           throw new Error(logosData.error || 'Failed to load logos');
@@ -95,9 +124,9 @@ export default function EventLogosPage({
         console.log('Available logos:', availableLogosData);
         setAvailableLogos(availableLogosData);
         setIsLoading(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching data:', err);
-        setError(err.message);
+        setError(getErrorMessage(err));
         setIsLoading(false);
       }
     };
@@ -135,9 +164,9 @@ export default function EventLogosPage({
       const assignedLogosData = eventData.logos || eventData.data?.logos || {};
       console.log('Setting assigned logos:', assignedLogosData);
       setAssignedLogos(assignedLogosData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Assignment error:', err);
-      alert(err.message);
+      alert(getErrorMessage(err));
     }
   };
 
@@ -156,10 +185,10 @@ export default function EventLogosPage({
 
       // Refresh data
       const eventResponse = await fetch(`/api/events/${eventId}/logos`);
-      const eventData = await eventResponse.json();
+      const eventData: EventLogosResponse = await eventResponse.json();
       setAssignedLogos(eventData.logos || {});
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
     }
   };
 
@@ -178,10 +207,10 @@ export default function EventLogosPage({
 
       // Refresh data
       const eventResponse = await fetch(`/api/events/${eventId}/logos`);
-      const eventData = await eventResponse.json();
+      const eventData: EventLogosResponse = await eventResponse.json();
       setAssignedLogos(eventData.logos || {});
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
     }
   };
 

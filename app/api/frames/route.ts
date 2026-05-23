@@ -6,6 +6,7 @@
  */
 
 import { NextRequest } from 'next/server';
+import type { Filter } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { uploadImage } from '@/lib/imgbb/upload';
 import { generateId } from '@/lib/db/schemas';
@@ -31,7 +32,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const db = await connectToDatabase();
     
     // Build query
-    const query: any = {};
+  const query: Filter<{ category?: string; isActive?: boolean }> = {};
     if (category) query.category = category;
     if (active !== null) query.isActive = active === 'true';
 

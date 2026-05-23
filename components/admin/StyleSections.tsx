@@ -6,13 +6,36 @@
  */
 
 import Link from 'next/link';
+import Image from 'next/image';
 import StyleInheritanceIndicator from './StyleInheritanceIndicator';
+
+interface FrameAssignment {
+  frameId: string;
+  isActive: boolean;
+  frameDetails?: {
+    thumbnailUrl?: string;
+    name?: string;
+  } | null;
+  thumbnailUrl?: string;
+  name?: string;
+}
+
+interface LogoAssignment {
+  logoId: string;
+  scenario?: string;
+  isActive: boolean;
+}
+
+interface ScenarioSummary {
+  id: string;
+  name: string;
+  icon: string;
+}
 
 interface StyleSectionsProps {
   // Context
   type: 'partner' | 'event';
   id: string;
-  name: string;
   
   // Brand Colors
   brandColor?: string;
@@ -20,11 +43,11 @@ interface StyleSectionsProps {
   brandColorsOverridden?: boolean;
   
   // Frames
-  frames?: any[];
+  frames?: FrameAssignment[];
   framesOverridden?: boolean;
   
   // Logos
-  logos?: any[];
+  logos?: LogoAssignment[];
   logosOverridden?: boolean;
   
   // Partner context (for event pages)
@@ -34,7 +57,6 @@ interface StyleSectionsProps {
 export default function StyleSections({
   type,
   id,
-  name,
   brandColor,
   brandBorderColor,
   brandColorsOverridden,
@@ -197,7 +219,7 @@ export default function StyleSections({
         ) : (
           <div className="p-6">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {frames.map((frameAssignment: any, index: number) => {
+              {frames.map((frameAssignment, index: number) => {
                 const frameDetails = frameAssignment.frameDetails || frameAssignment;
                 const thumbnailUrl = frameDetails.thumbnailUrl;
                 const frameName = frameDetails.name || 'Unnamed Frame';
@@ -210,9 +232,12 @@ export default function StyleSections({
                     <div className="text-center">
                       {thumbnailUrl ? (
                         <div className="mb-2 flex items-center justify-center">
-                          <img 
+                          <Image
                             src={thumbnailUrl} 
                             alt={frameName}
+                            width={128}
+                            height={128}
+                            unoptimized
                             className="max-w-full h-auto max-h-32 object-contain"
                           />
                         </div>
@@ -295,13 +320,13 @@ export default function StyleSections({
         ) : (
           <div className="p-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {Object.entries([
+              {[
                 { id: 'slideshow-transition', name: 'Slideshow Transitions', icon: '🔄' },
                 { id: 'onboarding-thankyou', name: 'Custom Pages', icon: '📝' },
                 { id: 'loading-slideshow', name: 'Loading Slideshow', icon: '⏳' },
                 { id: 'loading-capture', name: 'Loading Capture', icon: '📸' },
-              ]).map(([key, scenario]: [string, any]) => {
-                const count = (logos || []).filter((l: any) => l.scenario === scenario.id && l.isActive).length;
+              ].map((scenario: ScenarioSummary) => {
+                const count = (logos || []).filter((logo) => logo.scenario === scenario.id && logo.isActive).length;
                 return (
                   <div
                     key={scenario.id}

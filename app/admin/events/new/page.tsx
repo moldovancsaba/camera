@@ -7,9 +7,32 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import PartnerSearchDropdown from '@/components/admin/PartnerSearchDropdown';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
+
+interface PartnerOption {
+  _id: string;
+  partnerId: string;
+  name: string;
+}
+
+interface CreateEventResponse {
+  data?: {
+    event?: {
+      _id: string;
+    };
+  };
+  event?: {
+    _id: string;
+  };
+  error?: string;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'An unexpected error occurred';
+}
 
 export default function NewEventPage() {
   const router = useRouter();
@@ -19,7 +42,7 @@ export default function NewEventPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingPartners, setIsLoadingPartners] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [partners, setPartners] = useState<any[]>([]);
+  const [partners, setPartners] = useState<PartnerOption[]>([]);
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(preselectedPartnerId);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -30,7 +53,11 @@ export default function NewEventPage() {
     const fetchPartners = async () => {
       try {
         const response = await fetch('/api/partners?active=true&limit=100');
-        const data = await response.json();
+        const data: {
+          data?: { partners?: PartnerOption[] };
+          partners?: PartnerOption[];
+          error?: string;
+        } = await response.json();
 
         if (!response.ok) {
           throw new Error(data.error || 'Failed to load partners');
@@ -41,9 +68,9 @@ export default function NewEventPage() {
         console.log('Loaded partners:', partnersList.length);
         setPartners(partnersList);
         setIsLoadingPartners(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Fetch partners error:', err);
-        setError(err.message);
+        setError(getErrorMessage(err));
         setIsLoadingPartners(false);
       }
     };
@@ -108,9 +135,9 @@ export default function NewEventPage() {
         if (!logoUrl) {
           throw new Error('Upload finished without an image URL');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Logo upload error:', err);
-        setError(`Failed to upload logo: ${err.message}`);
+        setError(`Failed to upload logo: ${getErrorMessage(err)}`);
         setIsSubmitting(false);
         setIsUploadingLogo(false);
         return;
@@ -141,7 +168,7 @@ export default function NewEventPage() {
         body: JSON.stringify(data),
       });
 
-      const result = await response.json();
+      const result: CreateEventResponse = await response.json();
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to create event');
@@ -155,9 +182,9 @@ export default function NewEventPage() {
       }
       router.push(`/admin/events/${event._id}`);
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Create event error:', err);
-      setError(err.message);
+      setError(getErrorMessage(err));
       setIsSubmitting(false);
     }
   };
@@ -303,9 +330,12 @@ export default function NewEventPage() {
             </label>
             {logoPreview ? (
               <div className="relative inline-block">
-                <img
+                <Image
                   src={logoPreview}
                   alt="Logo preview"
+                  width={96}
+                  height={96}
+                  unoptimized
                   className="h-24 w-auto rounded border border-gray-300 dark:border-gray-600"
                 />
                 <button
@@ -364,7 +394,7 @@ export default function NewEventPage() {
             </label>
           </div>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Inactive events won't be available for frame selection
+            Inactive events will not be available for frame selection
           </p>
         </div>
 

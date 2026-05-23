@@ -81,10 +81,10 @@ export default async function AdminDashboard() {
       {/* Quick Actions */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link
-            href="/admin/partners"
-            className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg transition-colors"
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+        <Link
+          href="/admin/partners"
+          className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg transition-colors"
           >
             <span className="text-2xl">🤝</span>
             <span className="font-medium text-amber-900 dark:text-amber-100">Open Partners</span>
@@ -98,17 +98,25 @@ export default async function AdminDashboard() {
             <span className="font-medium text-blue-900 dark:text-blue-100">Add New Frame</span>
           </Link>
 
-          <Link
-            href="/admin/frames"
-            className="flex items-center gap-3 p-4 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
-          >
-            <span className="text-2xl">🖼️</span>
-            <span className="font-medium text-purple-900 dark:text-purple-100">Global Frames</span>
-          </Link>
+        <Link
+          href="/admin/frames"
+          className="flex items-center gap-3 p-4 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
+        >
+          <span className="text-2xl">🖼️</span>
+          <span className="font-medium text-purple-900 dark:text-purple-100">Global Frames</span>
+        </Link>
 
-          <Link
-            href="/admin/submissions"
-            className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+        <Link
+          href="/admin/landing-pages"
+          className="flex items-center gap-3 p-4 bg-cyan-50 dark:bg-cyan-900/20 hover:bg-cyan-100 dark:hover:bg-cyan-900/30 rounded-lg transition-colors"
+        >
+          <span className="text-2xl">🌐</span>
+          <span className="font-medium text-cyan-900 dark:text-cyan-100">Landing Pages</span>
+        </Link>
+
+        <Link
+          href="/admin/submissions"
+          className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors"
           >
             <span className="text-2xl">📷</span>
             <span className="font-medium text-green-900 dark:text-green-100">Global Galleries</span>

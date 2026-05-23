@@ -7,6 +7,19 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { NextResponse } from 'next/server';
 import { blockDangerousApiInProduction } from '@/lib/api/production-guard';
 
+interface DebugUserSummary {
+  identifier: string;
+  email?: string;
+  name: string;
+  isAnonymous: boolean;
+  userId?: string;
+  userName?: string;
+  userEmail?: string;
+  hasUserInfo: boolean;
+  userInfo?: unknown;
+  count: number;
+}
+
 export async function GET() {
   const blocked = blockDangerousApiInProduction();
   if (blocked) {
@@ -23,7 +36,7 @@ export async function GET() {
       .toArray();
 
     // Group submissions by user identifier
-    const userMap = new Map<string, any>();
+    const userMap = new Map<string, DebugUserSummary>();
     
     for (const submission of submissions) {
       const hasUserInfo = submission.userInfo?.email && submission.userInfo?.name;
@@ -49,7 +62,10 @@ export async function GET() {
         });
       }
       
-      userMap.get(identifier).count++;
+      const existing = userMap.get(identifier);
+      if (existing) {
+        existing.count++;
+      }
     }
 
     const users = Array.from(userMap.values());

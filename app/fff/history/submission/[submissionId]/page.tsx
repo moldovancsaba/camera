@@ -21,6 +21,10 @@ export const dynamic = 'force-dynamic';
 
 const SHARE_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 
+function shareExpiryFromNow(): number {
+  return Date.now() + SHARE_TTL_MS;
+}
+
 export default async function HistorySubmissionDetailPage({
   params,
 }: {
@@ -59,7 +63,7 @@ export default async function HistorySubmissionDetailPage({
   const resultLine = typeof meta.funfitfanResult === 'string' ? meta.funfitfanResult : '';
   const createdAt = typeof doc.createdAt === 'string' ? doc.createdAt : '';
 
-  const exp = Date.now() + SHARE_TTL_MS;
+  const exp = shareExpiryFromNow();
   const token = signFffSharePayload({ k: 'sub', id: submissionId, exp });
   const site = await getSiteUrlFromRequest();
   const shareUrl = fffShareAbsoluteUrl(site, token);

@@ -101,11 +101,20 @@ These come from SSO and apply to the Camera app as a whole.
 - `admin`
   - can perform full partner/app operations inside that scope
 
+## 5.1 Permission matrix
+
+| Role | Admin shell | Partner pages | Events App | Gym App | Global inventory | Mutations |
+|------|-------------|---------------|------------|---------|------------------|-----------|
+| Global `admin` / `superadmin` | yes | yes | yes | yes | yes | full |
+| Partner `admin` | yes | assigned only | assigned app only | assigned app only | no | full inside scope |
+| Partner `manager` | yes | assigned only | assigned app only | assigned app only | no | create/update inside scope |
+| Partner `viewer` | yes | assigned only | assigned app only | assigned app only | no | read-only |
+
 ## 6. Route model
 
 ### Middleware
 
-Root `middleware.ts`:
+Root `proxy.ts`:
 
 - validates serialized session for `/admin`
 - rejects when `appAccess === false`
@@ -140,6 +149,15 @@ These can be partner-scoped where implemented:
 - `/admin/gym`
 - `/admin/gym/funfitfan`
 - `/admin/gym/lessons`
+
+### Event-scoped management APIs
+
+These now follow the same partner-aware policy and should require global admin or partner-scoped Events manager access:
+
+- event frame assignment routes
+- event logo assignment routes
+- slideshow CRUD routes
+- slideshow-layout CRUD routes
 
 ## 7. Recommended check order
 
@@ -201,10 +219,11 @@ Resolve the event, then resolve partner-scoped authorization from the event’s 
 - permission changes made in SSO generally require a fresh session to take effect
 - partner assignment changes take effect through Camera reads and do not require SSO schema changes
 - Gym access is modeled as `appKey: "gym"` on the dedicated Gym/FFF partner
+- development-only auth/bootstrap routes exist for E2E smoke tests and are blocked in production
 
 ## 11. Files to check when changing authorization
 
-- [middleware.ts](/Users/Shared/Projects/venturecogroup/camera/middleware.ts)
+- [proxy.ts](/Users/Shared/Projects/venturecogroup/camera/proxy.ts)
 - [app/admin/layout.tsx](/Users/Shared/Projects/venturecogroup/camera/app/admin/layout.tsx)
 - [lib/auth/middleware-session-gate.ts](/Users/Shared/Projects/venturecogroup/camera/lib/auth/middleware-session-gate.ts)
 - [lib/api/middleware.ts](/Users/Shared/Projects/venturecogroup/camera/lib/api/middleware.ts)

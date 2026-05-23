@@ -12,6 +12,11 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
 import { normalizeStageAspectInput } from '@/lib/slideshow/stage-aspect';
+import {
+  getPartnerScopedAccessForEvent,
+  getPartnerScopedAccessForEventUuid,
+  isGlobalAdminSession,
+} from '@/lib/partners/authorization';
 
 /**
  * POST /api/slideshows
@@ -19,17 +24,9 @@ import { normalizeStageAspectInput } from '@/lib/slideshow/stage-aspect';
  */
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication - only admins can create slideshows
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (session.appRole !== 'admin' && session.appRole !== 'superadmin') {
-      return NextResponse.json(
-        { error: 'Forbidden', message: 'Admin access required to create slideshows' },
-        { status: 403 }
-      );
     }
 
     const body = await request.json();
@@ -78,6 +75,15 @@ export async function POST(request: NextRequest) {
 
     if (!event) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
+    if (!isGlobalAdminSession(session)) {
+      const access = await getPartnerScopedAccessForEvent(db, eventId, session, 'manager');
+      if (!access.allowed) {
+        return NextResponse.json(
+          { error: 'Forbidden', message: 'Partner-level Events manager access is required' },
+          { status: 403 }
+        );
+      }
     }
 
     // Create slideshow document
@@ -131,6 +137,11 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = request.nextUrl;
     const eventId = searchParams.get('eventId');
 
@@ -142,6 +153,15 @@ export async function GET(request: NextRequest) {
     }
 
     const db = await connectToDatabase();
+    if (!isGlobalAdminSession(session)) {
+      const access = await getPartnerScopedAccessForEventUuid(db, eventId, session);
+      if (!access.allowed) {
+        return NextResponse.json(
+          { error: 'Forbidden', message: 'Partner-level Events access is required' },
+          { status: 403 }
+        );
+      }
+    }
 
     const slideshows = await db
       .collection(COLLECTIONS.SLIDESHOWS)
@@ -165,7 +185,6 @@ export async function GET(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    // Check authentication
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -199,7 +218,7 @@ export async function PATCH(request: NextRequest) {
       /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(s.trim());
 
     // Build update object
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       updatedAt: generateTimestamp(),
     };
 
@@ -278,18 +297,28 @@ export async function PATCH(request: NextRequest) {
     }
 
     const db = await connectToDatabase();
-
-    const result = await db
+    const existing = await db
       .collection(COLLECTIONS.SLIDESHOWS)
-      .findOneAndUpdate(
-        { _id: new ObjectId(id) },
-        { $set: updates },
-        { returnDocument: 'after' }
-      );
+      .findOne({ _id: new ObjectId(id) });
 
-    if (!result) {
+    if (!existing) {
       return NextResponse.json({ error: 'Slideshow not found' }, { status: 404 });
     }
+
+    if (!isGlobalAdminSession(session)) {
+      const access = await getPartnerScopedAccessForEventUuid(db, existing.eventId as string, session, 'manager');
+      if (!access.allowed) {
+        return NextResponse.json(
+          { error: 'Forbidden', message: 'Partner-level Events manager access is required' },
+          { status: 403 }
+        );
+      }
+    }
+    const result = await db.collection(COLLECTIONS.SLIDESHOWS).findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      { $set: updates },
+      { returnDocument: 'after' }
+    );
 
     return NextResponse.json({ success: true, slideshow: result });
   } catch (error) {
@@ -307,7 +336,6 @@ export async function PATCH(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    // Check authentication
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -321,14 +349,25 @@ export async function DELETE(request: NextRequest) {
     }
 
     const db = await connectToDatabase();
-
-    const result = await db
+    const existing = await db
       .collection(COLLECTIONS.SLIDESHOWS)
-      .deleteOne({ _id: new ObjectId(id) });
+      .findOne({ _id: new ObjectId(id) });
 
-    if (result.deletedCount === 0) {
+    if (!existing) {
       return NextResponse.json({ error: 'Slideshow not found' }, { status: 404 });
     }
+
+    if (!isGlobalAdminSession(session)) {
+      const access = await getPartnerScopedAccessForEventUuid(db, existing.eventId as string, session, 'manager');
+      if (!access.allowed) {
+        return NextResponse.json(
+          { error: 'Forbidden', message: 'Partner-level Events manager access is required' },
+          { status: 403 }
+        );
+      }
+    }
+
+    await db.collection(COLLECTIONS.SLIDESHOWS).deleteOne({ _id: new ObjectId(id) });
 
     return NextResponse.json({ success: true });
   } catch (error) {

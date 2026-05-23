@@ -1,5 +1,5 @@
 // MongoDB Migration Script
-const { MongoClient } = require('mongodb');
+import { MongoClient } from 'mongodb';
 
 async function migrate() {
   const uri = process.env.MONGODB_URI;

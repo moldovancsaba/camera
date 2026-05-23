@@ -10,6 +10,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Failed to upload frame';
+}
+
 export default function NewFramePage() {
   const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
@@ -68,9 +72,9 @@ export default function NewFramePage() {
 
       router.push('/admin/frames');
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Upload error:', err);
-      setError(err.message);
+      setError(getErrorMessage(err));
       setIsUploading(false);
     }
   };

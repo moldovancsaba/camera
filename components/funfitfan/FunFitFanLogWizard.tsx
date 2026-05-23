@@ -75,7 +75,9 @@ export default function FunFitFanLogWizard() {
   }, []);
 
   useEffect(() => {
-    void loadBootstrap();
+    queueMicrotask(() => {
+      void loadBootstrap();
+    });
   }, [loadBootstrap]);
 
   useEffect(() => {

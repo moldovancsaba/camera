@@ -218,12 +218,7 @@ export async function checkRateLimit(
   // Update bucket in storage
   buckets.set(key, bucket);
   
-  // Set rate limit headers for client transparency
-  const headers = {
-    'X-RateLimit-Limit': config.max.toString(),
-    'X-RateLimit-Remaining': Math.floor(bucket.tokens).toString(),
-    'X-RateLimit-Reset': new Date(bucket.lastRefill + config.windowMs).toISOString(),
-  };
+  // Future enhancement: surface bucket metadata in response headers when the API layer starts consuming them.
   
   // Note: Headers are informational only; actual rate limit is enforced by throwing error
   // In production, consider adding headers to successful responses as well

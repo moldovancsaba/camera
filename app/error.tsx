@@ -7,6 +7,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { AppButton } from '@/components/ui/AppButton';
 
 export default function Error({
@@ -33,9 +34,9 @@ export default function Error({
           <AppButton type="button" variant="primary" onClick={reset}>
             Try again
           </AppButton>
-          <a href="/" className="app-btn app-btn--secondary app-btn--inline">
+          <Link href="/" className="app-btn app-btn--secondary app-btn--inline">
             Go home
-          </a>
+          </Link>
         </div>
 
         {error.digest ? <p className="app-form-status mt-6">Error ID: {error.digest}</p> : null}

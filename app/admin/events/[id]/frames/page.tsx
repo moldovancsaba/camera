@@ -11,19 +11,54 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
+
+interface EventFrameAssignment {
+  frameId: string;
+  isActive: boolean;
+}
+
+interface EventRecord {
+  name: string;
+  frames?: EventFrameAssignment[];
+}
+
+interface FrameRecord {
+  frameId: string;
+  name: string;
+  thumbnailUrl?: string;
+  hashtags?: string[];
+}
+
+interface EventResponse {
+  data?: {
+    event?: EventRecord;
+  };
+  event?: EventRecord;
+  error?: string;
+}
+
+interface FramesResponse {
+  data?: {
+    frames?: FrameRecord[];
+  };
+  error?: string;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'An unexpected error occurred';
+}
 
 export default function EventFramesPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const router = useRouter();
   const [eventId, setEventId] = useState<string>('');
-  const [event, setEvent] = useState<any>(null);
-  const [availableFrames, setAvailableFrames] = useState<any[]>([]);
-  const [assignedFrames, setAssignedFrames] = useState<any[]>([]);
+  const [event, setEvent] = useState<EventRecord | null>(null);
+  const [availableFrames, setAvailableFrames] = useState<FrameRecord[]>([]);
+  const [assignedFrames, setAssignedFrames] = useState<EventFrameAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +77,7 @@ export default function EventFramesPage({
         
         // Fetch event details
         const eventResponse = await fetch(`/api/events/${eventId}`);
-        const eventData = await eventResponse.json();
+        const eventData: EventResponse = await eventResponse.json();
         
         if (!eventResponse.ok) {
           throw new Error(eventData.error || 'Failed to load event');
@@ -50,6 +85,9 @@ export default function EventFramesPage({
         
         // apiSuccess wraps in { success: true, data: { event: {...} } }
         const event = eventData.data?.event || eventData.event;
+        if (!event) {
+          throw new Error('Event not found');
+        }
         setEvent(event);
         setAssignedFrames(event?.frames || []);
 
@@ -57,7 +95,7 @@ export default function EventFramesPage({
         // Note: Future enhancement - filter by global + partner-specific frames
         // See ROADMAP.md Q1 2026 - Advanced Frame Features (Frame Categories)
         const framesResponse = await fetch('/api/frames?active=true&limit=100');
-        const framesData = await framesResponse.json();
+        const framesData: FramesResponse = await framesResponse.json();
         
         if (!framesResponse.ok) {
           throw new Error(framesData.error || 'Failed to load frames');
@@ -68,9 +106,9 @@ export default function EventFramesPage({
         
         setAvailableFrames(framesData.data?.frames || []);
         setIsLoading(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching data:', err);
-        setError(err.message);
+        setError(getErrorMessage(err));
         setIsLoading(false);
       }
     };
@@ -93,12 +131,15 @@ export default function EventFramesPage({
 
       // Refresh data
       const eventResponse = await fetch(`/api/events/${eventId}`);
-      const eventData = await eventResponse.json();
+      const eventData: EventResponse = await eventResponse.json();
       const event = eventData.data?.event || eventData.event;
+      if (!event) {
+        throw new Error('Event not found');
+      }
       setEvent(event);
       setAssignedFrames(event?.frames || []);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
     }
   };
 
@@ -117,12 +158,15 @@ export default function EventFramesPage({
 
       // Refresh data
       const eventResponse = await fetch(`/api/events/${eventId}`);
-      const eventData = await eventResponse.json();
+      const eventData: EventResponse = await eventResponse.json();
       const event = eventData.data?.event || eventData.event;
+      if (!event) {
+        throw new Error('Event not found');
+      }
       setEvent(event);
       setAssignedFrames(event?.frames || []);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
     }
   };
 
@@ -139,12 +183,15 @@ export default function EventFramesPage({
 
       // Refresh data
       const eventResponse = await fetch(`/api/events/${eventId}`);
-      const eventData = await eventResponse.json();
+      const eventData: EventResponse = await eventResponse.json();
       const event = eventData.data?.event || eventData.event;
+      if (!event) {
+        throw new Error('Event not found');
+      }
       setEvent(event);
       setAssignedFrames(event?.frames || []);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
     }
   };
 
@@ -173,11 +220,11 @@ export default function EventFramesPage({
     );
   }
 
-  const assignedFrameIds = assignedFrames.map(f => f.frameId);
+  const assignedFrameIds = assignedFrames.map((frame) => frame.frameId);
   console.log('DEBUG: Assigned frame IDs:', assignedFrameIds);
-  console.log('DEBUG: Available frames:', availableFrames.map(f => ({ frameId: f.frameId, name: f.name })));
-  const unassignedFrames = availableFrames.filter(f => !assignedFrameIds.includes(f.frameId));
-  console.log('DEBUG: Unassigned frames:', unassignedFrames.map(f => ({ frameId: f.frameId, name: f.name })));
+  console.log('DEBUG: Available frames:', availableFrames.map((frame) => ({ frameId: frame.frameId, name: frame.name })));
+  const unassignedFrames = availableFrames.filter((frame) => !assignedFrameIds.includes(frame.frameId));
+  console.log('DEBUG: Unassigned frames:', unassignedFrames.map((frame) => ({ frameId: frame.frameId, name: frame.name })));
 
   return (
     <div className="p-8">
@@ -217,7 +264,7 @@ export default function EventFramesPage({
             ) : (
               <div className="space-y-3">
                 {assignedFrames.map((frameAssignment) => {
-                  const frame = availableFrames.find(f => f.frameId === frameAssignment.frameId);
+                  const frame = availableFrames.find((availableFrame) => availableFrame.frameId === frameAssignment.frameId);
                   return (
                     <div
                       key={frameAssignment.frameId}
@@ -225,9 +272,12 @@ export default function EventFramesPage({
                     >
                       <div className="flex items-center gap-3">
                         {frame?.thumbnailUrl ? (
-                          <img 
+                          <Image
                             src={frame.thumbnailUrl} 
                             alt={frame.name}
+                            width={64}
+                            height={64}
+                            unoptimized
                             className="w-16 h-auto object-contain"
                           />
                         ) : (
@@ -289,9 +339,12 @@ export default function EventFramesPage({
                   >
                     <div className="flex items-center gap-3">
                       {frame.thumbnailUrl ? (
-                        <img 
+                        <Image
                           src={frame.thumbnailUrl} 
                           alt={frame.name}
+                          width={64}
+                          height={64}
+                          unoptimized
                           className="w-16 h-auto object-contain"
                         />
                       ) : (

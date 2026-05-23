@@ -26,7 +26,7 @@
 
 import { NextRequest } from 'next/server';
 import { getSession, Session } from '@/lib/auth/session';
-import { apiUnauthorized, apiForbidden } from './responses';
+import { apiUnauthorized, apiForbidden, apiBadRequest } from './responses';
 
 /**
  * Check if user is authenticated
@@ -44,6 +44,7 @@ import { apiUnauthorized, apiForbidden } from './responses';
  * ```
  */
 export async function requireAuth(request?: NextRequest): Promise<Session> {
+  void request;
   const session = await getSession();
   
   if (!session) {
@@ -96,6 +97,7 @@ export async function requireAdmin(request?: NextRequest): Promise<Session> {
  * but don't require authentication. For example, public content with personalization.
  */
 export async function optionalAuth(request?: NextRequest): Promise<Session | null> {
+  void request;
   return await getSession();
 }
 
@@ -128,7 +130,7 @@ export async function optionalAuth(request?: NextRequest): Promise<Session | nul
  * ```
  */
 export function validateRequiredFields(
-  body: Record<string, any>,
+  body: Record<string, unknown>,
   fields: string[]
 ): void {
   const missing: string[] = [];
@@ -152,7 +154,6 @@ export function validateRequiredFields(
     }
     
     // Import here to avoid circular dependency
-    const { apiBadRequest } = require('./responses');
     throw apiBadRequest(errors.join('. '), {
       missingFields: missing,
       emptyFields: empty,

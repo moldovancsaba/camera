@@ -16,6 +16,18 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+interface ShareSubmission {
+  imageUrl: string;
+  userName?: string;
+  createdAt?: string;
+  metadata?: {
+    finalWidth?: number;
+    finalHeight?: number;
+  };
+  eventIds?: unknown[];
+  eventId?: unknown;
+}
+
 async function resolveEventForSubmission(
   db: Db,
   submission: Record<string, unknown>
@@ -92,14 +104,36 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function SharePage({ params }: Props) {
-  let submission: any = null;
+  let submission: ShareSubmission | null = null;
   
   try {
     const { id } = await params;
     const db = await connectToDatabase();
-    submission = await db
+    const doc = await db
       .collection(COLLECTIONS.SUBMISSIONS)
       .findOne({ _id: new ObjectId(id) });
+    if (doc && typeof doc.imageUrl === 'string') {
+      submission = {
+        imageUrl: doc.imageUrl,
+        userName: typeof doc.userName === 'string' ? doc.userName : undefined,
+        createdAt: typeof doc.createdAt === 'string' ? doc.createdAt : undefined,
+        metadata:
+          doc.metadata && typeof doc.metadata === 'object'
+            ? {
+                finalWidth:
+                  typeof (doc.metadata as { finalWidth?: unknown }).finalWidth === 'number'
+                    ? (doc.metadata as { finalWidth: number }).finalWidth
+                    : undefined,
+                finalHeight:
+                  typeof (doc.metadata as { finalHeight?: unknown }).finalHeight === 'number'
+                    ? (doc.metadata as { finalHeight: number }).finalHeight
+                    : undefined,
+              }
+            : undefined,
+        eventIds: Array.isArray(doc.eventIds) ? doc.eventIds : undefined,
+        eventId: doc.eventId,
+      };
+    }
   } catch (error) {
     console.error('Error fetching submission:', error);
   }
@@ -109,7 +143,7 @@ export default async function SharePage({ params }: Props) {
   }
 
   const db = await connectToDatabase();
-  const event = await resolveEventForSubmission(db, submission);
+  const event = await resolveEventForSubmission(db, submission as unknown as Record<string, unknown>);
 
   // `/capture/[eventId]` expects the event document Mongo `_id`, while submissions often store public `eventId` UUID in `eventIds` / `eventId`.
   let createYourOwnHref = '/capture';
@@ -150,7 +184,7 @@ export default async function SharePage({ params }: Props) {
           </div>
 
           <div className="flex items-center justify-end text-sm text-gray-600 dark:text-gray-400 mb-6">
-            <span>{new Date(submission.createdAt).toLocaleDateString()}</span>
+            <span>{submission.createdAt ? new Date(submission.createdAt).toLocaleDateString() : ''}</span>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4">

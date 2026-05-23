@@ -12,6 +12,7 @@
 
 import { connectToDatabase } from '@/lib/db/mongodb';
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getSession } from '@/lib/auth/session';
 import { buildUserManagementPropsFromSubmissions } from '@/lib/admin/build-user-management-props';
@@ -33,6 +34,59 @@ interface PageProps {
   }>;
 }
 
+interface SubmissionRecord {
+  _id: { toString(): string };
+  userId?: string;
+  userName?: string;
+  userEmail?: string;
+  userInfo?: {
+    name?: string;
+    email?: string;
+    collectedAt?: string;
+  };
+  eventId?: string;
+  eventName?: string;
+  partnerName?: string;
+  createdAt: string;
+  consents?: ConsentRecord[];
+  imageUrl?: string;
+  frameName?: string;
+  playCount?: number;
+}
+
+interface ConsentRecord {
+  pageId: string;
+  pageType: string;
+  checkboxText: string;
+  acceptedAt: string;
+}
+
+interface EventParticipation {
+  eventId: string;
+  eventName: string;
+  partnerName?: string;
+  firstSubmissionAt: string;
+  submissionCount: number;
+}
+
+interface UserProfileView {
+  name: string;
+  email?: string;
+  isAnonymous: boolean;
+  registeredAt: string;
+  events: EventParticipation[];
+  consents: ConsentRecord[];
+  submissions: Array<{
+    _id: { toString(): string };
+    imageUrl: string;
+    frameName?: string;
+    eventName?: string;
+    createdAt: string;
+    playCount: number;
+  }>;
+  totalPhotos: number;
+}
+
 export default async function UserProfilePage({ params }: PageProps) {
   const { name } = await params;
   const sanitizedUrlName = name;  // Already sanitized in URL (spaces → underscores)
@@ -41,7 +95,7 @@ export default async function UserProfilePage({ params }: PageProps) {
     (session?.appRole === 'admin' || session?.appRole === 'superadmin') &&
     session.appAccess !== false;
 
-  let user: any = null;
+  let user: UserProfileView | null = null;
   let error = null;
   let managementProps: Awaited<
     ReturnType<typeof buildUserManagementPropsFromSubmissions>
@@ -70,7 +124,7 @@ export default async function UserProfilePage({ params }: PageProps) {
     } : 'none');
     
     // Filter submissions where sanitized username matches the URL parameter
-    const submissions = allSubmissions.filter((sub: any) => {
+    const submissions = allSubmissions.flatMap((sub) => {
       const nameFromUserInfo = sub.userInfo?.name;
       const nameFromSession = sub.userName;  // From SSO session when user authenticated
       // Check multiple variations of anonymous email for backward compatibility
@@ -86,7 +140,7 @@ export default async function UserProfilePage({ params }: PageProps) {
       
       console.log(`Checking submission: sanitized="${sanitized}" vs urlName="${sanitizedUrlName}" (userInfo=${nameFromUserInfo}, userName=${nameFromSession}, userEmail=${sub.userEmail}, isAnon=${isAnonymous})`);
       
-      return sanitized === sanitizedUrlName;
+      return sanitized === sanitizedUrlName ? [sub as unknown as SubmissionRecord] : [];
     });
 
     console.log('Matched submissions:', submissions.length);
@@ -94,7 +148,7 @@ export default async function UserProfilePage({ params }: PageProps) {
       console.log('No submissions found for user:', sanitizedUrlName);
       // Show all unique sanitized names to help debug
       const uniqueNames = new Set(
-        allSubmissions.map((s: any) => {
+        allSubmissions.map((s) => {
           const n = s.userInfo?.name || s.userName || 'Unknown';
           return sanitizeUsername(n);
         })
@@ -120,7 +174,7 @@ export default async function UserProfilePage({ params }: PageProps) {
 
     // Get unique events this user participated in
     const eventsMap = new Map();
-    submissions.forEach((sub: any) => {
+    submissions.forEach((sub) => {
       if (sub.eventId && !eventsMap.has(sub.eventId)) {
         eventsMap.set(sub.eventId, {
           eventId: sub.eventId,
@@ -138,9 +192,9 @@ export default async function UserProfilePage({ params }: PageProps) {
 
     // Collect all unique consents
     const consentsMap = new Map();
-    submissions.forEach((sub: any) => {
+    submissions.forEach((sub) => {
       if (sub.consents && Array.isArray(sub.consents)) {
-        sub.consents.forEach((consent: any) => {
+        sub.consents.forEach((consent) => {
           if (!consentsMap.has(consent.pageId)) {
             consentsMap.set(consent.pageId, consent);
           }
@@ -149,15 +203,15 @@ export default async function UserProfilePage({ params }: PageProps) {
     });
 
     user = {
-      name: hasUserInfo ? firstSubmission.userInfo.name : (isAnonymous ? 'Anonymous User' : firstSubmission.userName || 'Unknown'),
-      email: hasUserInfo ? firstSubmission.userInfo.email : firstSubmission.userEmail,
+      name: hasUserInfo ? firstSubmission.userInfo?.name || 'Unknown' : (isAnonymous ? 'Anonymous User' : firstSubmission.userName || 'Unknown'),
+      email: hasUserInfo ? firstSubmission.userInfo?.email || firstSubmission.userEmail : firstSubmission.userEmail,
       isAnonymous: isAnonymous,
       registeredAt: firstSubmission.userInfo?.collectedAt || firstSubmission.createdAt,
       events: Array.from(eventsMap.values()),
       consents: Array.from(consentsMap.values()),
-      submissions: submissions.map((sub: any) => ({
+      submissions: submissions.map((sub) => ({
         _id: sub._id,
-        imageUrl: sub.imageUrl,
+        imageUrl: sub.imageUrl || 'data:image/gif;base64,R0lGODlhAQABAAAAACw=',
         frameName: sub.frameName,
         eventName: sub.eventName,
         createdAt: sub.createdAt,
@@ -268,7 +322,7 @@ export default async function UserProfilePage({ params }: PageProps) {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Event Participation</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {user.events.map((event: any, idx: number) => (
+              {user.events.map((event, idx: number) => (
                 <div
                   key={`${event.eventId}-${idx}`}
                   className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
@@ -305,7 +359,7 @@ export default async function UserProfilePage({ params }: PageProps) {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Consents & Acceptances</h2>
             <div className="space-y-3">
-              {user.consents.map((consent: any, idx: number) => (
+              {user.consents.map((consent, idx: number) => (
                 <div
                   key={`${consent.pageId}-${idx}`}
                   className="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
@@ -344,15 +398,17 @@ export default async function UserProfilePage({ params }: PageProps) {
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Photo Gallery</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {user.submissions.map((submission: any) => (
+            {user.submissions.map((submission) => (
               <Link
                 key={submission._id.toString()}
                 href={`/share/${submission._id}`}
                 className="group relative aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700"
               >
-                <img
-                  src={submission.imageUrl}
+                <Image
+                  src={submission.imageUrl || '/placeholder-image.svg'}
                   alt={`Photo with ${submission.frameName}`}
+                  fill
+                  unoptimized
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform"
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors flex flex-col justify-end p-3">

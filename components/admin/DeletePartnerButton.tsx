@@ -16,6 +16,10 @@ interface DeletePartnerButtonProps {
   eventCount?: number;
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Failed to delete partner';
+}
+
 export default function DeletePartnerButton({
   partnerId,
   partnerName,
@@ -45,9 +49,9 @@ export default function DeletePartnerButton({
       // Redirect to partners list on success
       router.push('/admin/partners');
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Delete partner error:', err);
-      setError(err.message);
+      setError(getErrorMessage(err));
       setIsDeleting(false);
     }
   };

@@ -5,12 +5,11 @@
  * Adds frameId to any frames that don't have one
  */
 
-import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateId } from '@/lib/db/schemas';
 import { withErrorHandler, requireAdmin, apiSuccess } from '@/lib/api';
 
-export const POST = withErrorHandler(async (request: NextRequest) => {
+export const POST = withErrorHandler(async () => {
   // Require admin authentication
   await requireAdmin();
 

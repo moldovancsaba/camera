@@ -94,7 +94,7 @@ export const GET = withErrorHandler(async (
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) => {
-  const session = await requireAdmin();
+  await requireAdmin();
   const { id } = await context.params;
   if (!ObjectId.isValid(id)) {
     throw apiBadRequest('Invalid landing page ID.');

@@ -22,9 +22,15 @@ export default function GymSelfieClient({
   fallbackActivity: string;
 }) {
   const router = useRouter();
+  const initialDraft = readFffLogWorkoutDraft();
   const [ctx, setCtx] = useState<CheckinBootstrapCtx | null>(null);
-  const [activity, setActivity] = useState('');
-  const [feelSoTags, setFeelSoTags] = useState<string[]>([]);
+  const [activity] = useState(() => {
+    if (initialDraft) {
+      return initialDraft.activity;
+    }
+    return fallbackActivity.trim();
+  });
+  const [feelSoTags] = useState<string[]>(() => initialDraft?.feelSoTags ?? []);
   const [error, setError] = useState<string | null>(null);
 
   const loadBootstrap = useCallback(async () => {
@@ -58,16 +64,10 @@ export default function GymSelfieClient({
   }, []);
 
   useEffect(() => {
-    const draft = readFffLogWorkoutDraft();
-    if (draft) {
-      setActivity(draft.activity);
-      setFeelSoTags(draft.feelSoTags);
-    } else if (fallbackActivity.trim()) {
-      setActivity(fallbackActivity.trim());
-      setFeelSoTags([]);
-    }
-    void loadBootstrap();
-  }, [fallbackActivity, loadBootstrap]);
+    queueMicrotask(() => {
+      void loadBootstrap();
+    });
+  }, [loadBootstrap]);
 
   async function onAfterSubmissionSaved(imageUrl: string) {
     const res = await fetch(`/api/gym/sessions/${encodeURIComponent(sessionId)}`, {

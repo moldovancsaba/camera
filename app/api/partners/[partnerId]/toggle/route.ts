@@ -8,8 +8,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
+import { requireAdmin } from '@/lib/api';
 
 /**
  * PATCH /api/partners/[id]/toggle
@@ -23,16 +23,7 @@ export async function PATCH(
   { params }: { params: Promise<{ partnerId: string }> }
 ) {
   try {
-    // Check authentication and authorization
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check app-specific role (appRole), not SSO-level role (user.role)
-    if (session.appRole !== 'admin' && session.appRole !== 'superadmin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    await requireAdmin();
 
     const { partnerId } = await params;
 

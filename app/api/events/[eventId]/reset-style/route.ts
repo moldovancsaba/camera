@@ -33,7 +33,7 @@ export const POST = withErrorHandler(async (
   { params }: { params: Promise<{ eventId: string }> }
 ) => {
   // Check authentication and authorization
-  const session = await requireAdmin();
+  await requireAdmin();
 
   const { eventId } = await params;
   

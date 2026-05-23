@@ -16,7 +16,7 @@ import {
   generateState,
   getAuthorizationUrl,
   getOAuthCallbackRedirectUri,
-  useConfidentialOAuth,
+  shouldUseConfidentialOAuth,
 } from '@/lib/auth/sso';
 import { setPendingSessionCookie } from '@/lib/auth/session';
 import { encodeSignedOAuthPkceState, getOAuthPkceStateSigningKey } from '@/lib/auth/oauth-pkce-state';
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const provider = parseLoginProvider(searchParams.get('provider'));
     const redirectUri = getOAuthCallbackRedirectUri(request);
 
-    const confidential = useConfidentialOAuth();
+    const confidential = shouldUseConfidentialOAuth();
 
     let authUrl: string;
 

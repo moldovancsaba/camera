@@ -103,7 +103,7 @@ export const SSO_ENDPOINTS = getSSOEndpoints;
  * Set `SSO_CONFIDENTIAL_OAUTH=1` (or `true`) when the OAuth client is confidential on SSO.
  * `SSO_USE_PKCE=1` or `true` forces PKCE and disables this path.
  */
-export function useConfidentialOAuth(): boolean {
+export function shouldUseConfidentialOAuth(): boolean {
   const forcePkce = process.env.SSO_USE_PKCE === '1' || process.env.SSO_USE_PKCE === 'true';
   if (forcePkce) return false;
   const optIn =
@@ -303,7 +303,7 @@ export async function refreshAccessToken(
   });
 
   const secret = process.env.SSO_CLIENT_SECRET?.trim();
-  if (secret && useConfidentialOAuth()) {
+  if (secret && shouldUseConfidentialOAuth()) {
     params.set('client_secret', secret);
   }
 

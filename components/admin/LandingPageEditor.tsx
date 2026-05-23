@@ -2,6 +2,7 @@
 
 import type { FormEvent, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { LandingPageEditorActionPreset } from '@/lib/admin/build-landing-page-editor-props';
@@ -81,7 +82,7 @@ async function fileToText(file: File): Promise<string> {
 
 async function loadImageElement(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
-    const image = new Image();
+    const image = new window.Image();
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error('Failed to load QR image preview.'));
     image.src = src;
@@ -601,7 +602,7 @@ export default function LandingPageEditor({
                   <DropZone acceptLabel="PNG only. Uploads into the logo library." onFile={handleLogoUpload} disabled={isUploadingLogo} />
                   {selectedLogo ? (
                     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
-                      <img src={selectedLogo.imageUrl} alt={selectedLogo.name} className="max-h-24 w-auto object-contain" />
+                      <Image src={selectedLogo.imageUrl} alt={selectedLogo.name} width={160} height={96} unoptimized className="max-h-24 w-auto object-contain" />
                     </div>
                   ) : null}
                 </div>
@@ -615,7 +616,7 @@ export default function LandingPageEditor({
                   <DropZone acceptLabel="PNG, JPG, GIF, WebP, or SVG." onFile={handleQrUpload} disabled={isUploadingQr} />
                   {qrCodeImageUrl ? (
                     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
-                      <img src={qrCodeImageUrl} alt="Landing page QR code" className="max-h-40 w-auto object-contain" />
+                      <Image src={qrCodeImageUrl} alt="Landing page QR code" width={160} height={160} unoptimized className="max-h-40 w-auto object-contain" />
                       <button
                         type="button"
                         onClick={() => void handleRemoveQrCode()}

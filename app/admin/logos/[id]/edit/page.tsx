@@ -10,10 +10,32 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
+interface LogoRecord {
+  _id: string;
+  logoId?: string;
+  name: string;
+  description?: string;
+  isActive?: boolean;
+  imageUrl: string;
+  thumbnailUrl?: string;
+  width?: number;
+  height?: number;
+  fileSize?: number;
+  mimeType?: string;
+  usageCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Logo request failed';
+}
+
 export default function EditLogoPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
-  const [logo, setLogo] = useState<any>(null);
+  const [logo, setLogo] = useState<LogoRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -29,8 +51,8 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
         // Handle wrapped response
         const logoData = data.logo || data.data?.logo || data;
         setLogo(logoData);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
       } finally {
         setIsLoading(false);
       }
@@ -65,8 +87,8 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
 
       router.push('/admin/logos');
       router.refresh();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
       setIsSaving(false);
     }
   };
@@ -91,8 +113,8 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
 
       router.push('/admin/logos');
       router.refresh();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
       setIsDeleting(false);
     }
   };

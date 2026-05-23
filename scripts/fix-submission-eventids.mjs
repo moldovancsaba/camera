@@ -3,7 +3,7 @@
  * Updates all submissions to use UUID eventId instead of MongoDB _id
  */
 
-import { MongoClient, ObjectId } from 'mongodb';
+import { MongoClient } from 'mongodb';
 
 const uri = 'mongodb+srv://moldovancsaba_db_user:wMP6z5B3ft5mmyI0@camaraclastar.koyedpi.mongodb.net/?appName=camaraclastar';
 const dbName = 'camera';

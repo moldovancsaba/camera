@@ -12,6 +12,7 @@
 
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 
 export interface AcceptPageConfig {
@@ -80,9 +81,12 @@ export default function AcceptPage({ config, pageId, onNext, onBack, logoUrl, br
           {/* Logo */}
           {logoUrl && (
             <div className="flex justify-center mb-6">
-              <img
+              <Image
                 src={logoUrl}
                 alt="Event logo"
+                width={320}
+                height={128}
+                unoptimized
                 className="max-w-xs max-h-32 object-contain"
               />
             </div>

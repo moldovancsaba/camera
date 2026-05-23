@@ -50,7 +50,7 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
       } else {
         alert('Failed to delete slideshow');
       }
-    } catch (err) {
+    } catch {
       alert('Failed to delete slideshow');
     }
   };

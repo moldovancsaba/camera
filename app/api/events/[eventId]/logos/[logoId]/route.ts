@@ -7,10 +7,13 @@
 
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { ObjectId } from 'mongodb';
-import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
+import { Document, ObjectId } from 'mongodb';
+import { COLLECTIONS, Event, generateTimestamp } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
-import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError } from '@/lib/api/responses';
+import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError, apiForbidden } from '@/lib/api/responses';
+import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
+
+type EventLogoAssignment = Event['logos'][number];
 
 export async function DELETE(
   request: NextRequest,
@@ -33,6 +36,10 @@ export async function DELETE(
     const db = await connectToDatabase();
     const eventsCollection = db.collection(COLLECTIONS.EVENTS);
     const logosCollection = db.collection(COLLECTIONS.LOGOS);
+    const eventAccess = await getPartnerScopedAccessForEvent(db, eventId, session, 'manager');
+    if (!eventAccess.allowed) {
+      return apiForbidden('Partner-level Events manager access is required');
+    }
 
     // Get event (using MongoDB _id)
     const event = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
@@ -41,8 +48,8 @@ export async function DELETE(
     }
 
     // Find logo assignment
-    const logoAssignment = (event.logos || []).find(
-      (l: any) => l.logoId === logoId
+    const logoAssignment = ((event.logos ?? []) as EventLogoAssignment[]).find(
+      (logo) => logo.logoId === logoId
     );
 
     if (!logoAssignment) {
@@ -53,7 +60,7 @@ export async function DELETE(
     await eventsCollection.updateOne(
       { _id: new ObjectId(eventId) },
       {
-        $pull: { logos: { logoId } } as any,
+        $pull: { logos: { logoId } } as Document,
         $set: { updatedAt: generateTimestamp() },
       }
     );
@@ -67,9 +74,9 @@ export async function DELETE(
     return apiSuccess({
       message: 'Logo removed successfully',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error removing logo:', error);
-    return apiError(error.message);
+    return apiError(error instanceof Error ? error.message : 'Failed to remove logo');
   }
 }
 
@@ -96,6 +103,10 @@ export async function PATCH(
 
     const db = await connectToDatabase();
     const eventsCollection = db.collection(COLLECTIONS.EVENTS);
+    const eventAccess = await getPartnerScopedAccessForEvent(db, eventId, session, 'manager');
+    if (!eventAccess.allowed) {
+      return apiForbidden('Partner-level Events manager access is required');
+    }
 
     // Get event (using MongoDB _id)
     const event = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
@@ -104,9 +115,8 @@ export async function PATCH(
     }
 
     // Find logo assignment index
-    const logoIndex = (event.logos || []).findIndex(
-      (l: any) => l.logoId === logoId
-    );
+    const logoAssignments = (event.logos ?? []) as EventLogoAssignment[];
+    const logoIndex = logoAssignments.findIndex((logo) => logo.logoId === logoId);
 
     if (logoIndex === -1) {
       return apiNotFound('Logo assignment');
@@ -115,7 +125,7 @@ export async function PATCH(
     // Handle different actions
     if (action === 'toggle') {
       // Toggle isActive status
-      const currentStatus = event.logos[logoIndex].isActive;
+      const currentStatus = logoAssignments[logoIndex].isActive;
       const newStatus = !currentStatus;
 
       await eventsCollection.updateOne(
@@ -151,8 +161,8 @@ export async function PATCH(
     } else {
       return apiBadRequest('Invalid action or missing order parameter');
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating logo:', error);
-    return apiError(error.message);
+    return apiError(error instanceof Error ? error.message : 'Failed to update logo');
   }
 }

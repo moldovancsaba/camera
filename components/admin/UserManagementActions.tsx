@@ -70,7 +70,7 @@ export default function UserManagementActions({ user, currentUserEmail }: UserMa
       } else {
         showMessage('error', data.error || 'Failed to update role');
       }
-    } catch (error) {
+    } catch {
       showMessage('error', 'Network error. Please try again.');
     } finally {
       setLoading(false);
@@ -104,7 +104,7 @@ export default function UserManagementActions({ user, currentUserEmail }: UserMa
       } else {
         showMessage('error', data.error || 'Failed to update status');
       }
-    } catch (error) {
+    } catch {
       showMessage('error', 'Network error. Please try again.');
     } finally {
       setLoading(false);
@@ -138,7 +138,7 @@ export default function UserManagementActions({ user, currentUserEmail }: UserMa
       } else {
         showMessage('error', data.error || 'Failed to merge users');
       }
-    } catch (error) {
+    } catch {
       showMessage('error', 'Network error. Please try again.');
     } finally {
       setLoading(false);

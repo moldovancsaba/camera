@@ -19,7 +19,8 @@
 
 'use client';
 
-import { useState, useRef, useEffect, type ReactNode } from 'react';
+import Image from 'next/image';
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { AppButton } from '@/components/ui/AppButton';
 
 /** Supports hex (#rgb) or CSS `var(--token)` for FunFitFan-branded capture UI. */
@@ -99,7 +100,7 @@ export default function CameraCapture({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const getTargetAspectRatio = () => {
+  const getTargetAspectRatio = useCallback(() => {
     if (
       previewAspectWidthOverHeight != null &&
       Number.isFinite(previewAspectWidthOverHeight) &&
@@ -117,7 +118,7 @@ export default function CameraCapture({
     }
 
     return 16 / 9;
-  };
+  }, [frameHeight, frameImage, frameWidth, previewAspectWidthOverHeight]);
 
   const getCaptureOutputPixelSize = () => {
     const forced = previewAspectWidthOverHeight;
@@ -159,7 +160,9 @@ export default function CameraCapture({
       img.onerror = (err) => console.error('Failed to load frame overlay:', err);
       img.src = frameOverlay;
     } else {
-      setFrameImage(null);
+      queueMicrotask(() => {
+        setFrameImage(null);
+      });
     }
   }, [frameOverlay]);
 
@@ -369,7 +372,7 @@ export default function CameraCapture({
   /**
    * Stop camera stream and release resources
    */
-  const stopCamera = () => {
+  const stopCamera = useCallback(() => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
@@ -378,7 +381,7 @@ export default function CameraCapture({
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-  };
+  }, [stream]);
 
   /**
    * Switch between front and back camera (mobile)
@@ -434,10 +437,6 @@ export default function CameraCapture({
         // Double RAF ensures we're definitely on a rendered frame
         
         // Calculate target aspect ratio from frame (or default 16:9)
-        const targetAspect = getTargetAspectRatio();
-        
-        const videoAspect = video.videoWidth / video.videoHeight;
-        
         // Draw the full sensor, scaled to the frame size
         // This shows maximum visible area, matching what CSS object-cover displays
         // Example: 3000x4000 sensor → 1500x1000 frame (3:2)
@@ -616,7 +615,7 @@ export default function CameraCapture({
       window.removeEventListener('orientationchange', calculateSize);
       resizeObserver?.disconnect();
     };
-  }, [frameWidth, frameHeight, frameImage, previewAspectWidthOverHeight]);
+  }, [frameWidth, frameHeight, frameImage, previewAspectWidthOverHeight, getTargetAspectRatio]);
 
   /**
    * Cleanup on unmount
@@ -625,7 +624,7 @@ export default function CameraCapture({
     return () => {
       stopCamera();
     };
-  }, []);
+  }, [stopCamera]);
 
   const useTripleBar = controlBar === 'fff-bottom-triple';
 
@@ -666,9 +665,11 @@ export default function CameraCapture({
             {/* Frame Overlay - Always on top, exact size match */}
             {frameImage && (
               <div className="absolute inset-0 pointer-events-none z-10">
-                <img
-                  src={frameOverlay}
+                <Image
+                  src={frameOverlay ?? ''}
                   alt="Frame overlay"
+                  fill
+                  unoptimized
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -728,9 +729,11 @@ export default function CameraCapture({
         ) : (
           <>
             {/* Captured Image Preview */}
-            <img
+            <Image
               src={capturedImage}
               alt="Captured photo"
+              fill
+              unoptimized
               className="w-full h-full object-cover"
             />
           </>

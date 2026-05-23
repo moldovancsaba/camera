@@ -8,6 +8,51 @@
 import { connectToDatabase } from './mongodb';
 import { COLLECTIONS, Event, Partner, LogoScenario, generateTimestamp } from './schemas';
 
+interface EventUpdatePayload {
+  updatedAt: string;
+  brandColor?: string;
+  brandBorderColor?: string;
+  frames?: Array<{
+    frameId: string;
+    isActive: boolean;
+    addedAt: string;
+    addedBy: string;
+  }>;
+  logos?: Array<{
+    logoId: string;
+    scenario: LogoScenario;
+    order: number;
+    isActive: boolean;
+    addedAt: string;
+    addedBy: string;
+  }>;
+  brandColorsOverridden?: boolean;
+  framesOverridden?: boolean;
+  logosOverridden?: boolean;
+}
+
+interface InheritedDefaults {
+  brandColor?: string;
+  brandBorderColor?: string;
+  brandColorsOverridden: boolean;
+  frames: Array<{
+    frameId: string;
+    isActive: boolean;
+    addedAt: string;
+    addedBy: string;
+  }>;
+  framesOverridden: boolean;
+  logos: Array<{
+    logoId: string;
+    scenario: LogoScenario;
+    order: number;
+    isActive: boolean;
+    addedAt: string;
+    addedBy: string;
+  }>;
+  logosOverridden: boolean;
+}
+
 /**
  * Update Child Events from Partner Defaults
  * 
@@ -58,7 +103,7 @@ export async function updateChildEventsFromPartner(
 
   // Process each event individually to handle different override states
   for (const event of events) {
-    const eventUpdates: any = {
+    const eventUpdates: EventUpdatePayload = {
       updatedAt: now,
     };
 
@@ -150,7 +195,7 @@ export async function inheritPartnerDefaults(
     throw new Error(`Partner not found: ${partnerId}`);
   }
 
-  const result: any = {
+  const result: InheritedDefaults = {
     brandColorsOverridden: false,
     framesOverridden: false,
     logosOverridden: false,
@@ -223,7 +268,7 @@ export async function resetEventStyleToDefault(
     throw new Error(`Partner not found: ${event.partnerId}`);
   }
 
-  const eventUpdates: any = {
+  const eventUpdates: EventUpdatePayload = {
     updatedAt: now,
   };
 

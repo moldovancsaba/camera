@@ -6,6 +6,7 @@
 
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import EventGalleryUpload from './EventGalleryUpload';
@@ -299,9 +300,12 @@ export default function EventGallery({
               </button>
 
               <Link href={`/share/${submission._id}`}>
-                <img
-                  src={submission.imageUrl || submission.finalImageUrl}
+                <Image
+                  src={submission.imageUrl || submission.finalImageUrl || 'data:image/gif;base64,R0lGODlhAQABAAAAACw='}
                   alt={`Photo by ${submission.userName || submission.userEmail}`}
+                  width={800}
+                  height={800}
+                  unoptimized
                   className="w-full h-auto"
                 />
               </Link>

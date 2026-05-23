@@ -126,7 +126,6 @@ function ColorField({
 }
 
 export default function SlideshowEditor({
-  mode,
   eventMongoId,
   eventName,
   initialSlideshow,

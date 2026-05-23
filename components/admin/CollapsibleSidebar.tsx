@@ -65,6 +65,7 @@ export default function CollapsibleSidebar({ session, navigationAccess }: Collap
       items: [
         { href: '/admin/frames', icon: '🖼️', label: 'Global Frames' },
         { href: '/admin/logos', icon: '🎨', label: 'Global Logos' },
+        { href: '/admin/landing-pages', icon: '🌐', label: 'Landing Pages' },
         { href: '/admin/submissions', icon: '📷', label: 'Global Galleries' },
       ],
     });

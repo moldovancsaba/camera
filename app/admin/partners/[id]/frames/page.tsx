@@ -8,8 +8,39 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+
+interface PartnerRecord {
+  name: string;
+  defaultFrames?: string[];
+}
+
+interface FrameRecord {
+  frameId: string;
+  name: string;
+  thumbnailUrl?: string;
+}
+
+interface PartnerResponse {
+  data?: {
+    partner?: PartnerRecord;
+  };
+  partner?: PartnerRecord;
+  error?: string;
+}
+
+interface FramesResponse {
+  data?: {
+    frames?: FrameRecord[];
+  };
+  error?: string;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'An unexpected error occurred';
+}
 
 export default function PartnerFramesPage({
   params,
@@ -18,8 +49,8 @@ export default function PartnerFramesPage({
 }) {
   const router = useRouter();
   const [partnerId, setPartnerId] = useState<string>('');
-  const [partner, setPartner] = useState<any>(null);
-  const [availableFrames, setAvailableFrames] = useState<any[]>([]);
+  const [partner, setPartner] = useState<PartnerRecord | null>(null);
+  const [availableFrames, setAvailableFrames] = useState<FrameRecord[]>([]);
   const [defaultFrames, setDefaultFrames] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -37,18 +68,21 @@ export default function PartnerFramesPage({
         setIsLoading(true);
         
         const partnerResponse = await fetch(`/api/partners/${partnerId}`);
-        const partnerData = await partnerResponse.json();
+        const partnerData: PartnerResponse = await partnerResponse.json();
         
         if (!partnerResponse.ok) {
           throw new Error(partnerData.error || 'Failed to load partner');
         }
         
-        const partner = partnerData.partner;
+        const partner = partnerData.data?.partner || partnerData.partner;
+        if (!partner) {
+          throw new Error('Partner not found');
+        }
         setPartner(partner);
         setDefaultFrames(partner.defaultFrames || []);
 
         const framesResponse = await fetch('/api/frames?active=true&limit=100');
-        const framesData = await framesResponse.json();
+        const framesData: FramesResponse = await framesResponse.json();
         
         if (!framesResponse.ok) {
           throw new Error(framesData.error || 'Failed to load frames');
@@ -56,9 +90,9 @@ export default function PartnerFramesPage({
         
         setAvailableFrames(framesData.data?.frames || []);
         setIsLoading(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching data:', err);
-        setError(err.message);
+        setError(getErrorMessage(err));
         setIsLoading(false);
       }
     };
@@ -90,8 +124,8 @@ export default function PartnerFramesPage({
 
       router.push(`/admin/partners/${partnerId}`);
       router.refresh();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
       setIsSaving(false);
     }
   };
@@ -158,7 +192,7 @@ export default function PartnerFramesPage({
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {availableFrames.map((frame: any) => {
+            {availableFrames.map((frame) => {
               const isSelected = defaultFrames.includes(frame.frameId);
               
               return (
@@ -178,9 +212,12 @@ export default function PartnerFramesPage({
                   )}
                   <div className="text-center">
                     {frame.thumbnailUrl ? (
-                      <img 
+                      <Image
                         src={frame.thumbnailUrl} 
                         alt={frame.name}
+                        width={128}
+                        height={128}
+                        unoptimized
                         className="w-full h-32 object-contain mb-2"
                       />
                     ) : (

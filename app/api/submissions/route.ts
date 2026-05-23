@@ -7,7 +7,6 @@
  */
 
 import { NextRequest } from 'next/server';
-import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { readFunFitFanSportActivities } from '@/lib/funfitfan/bootstrap';
 import { uploadImage } from '@/lib/imgbb/upload';
@@ -108,7 +107,13 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     // Validate consents if provided
     // Each consent must have: pageId, pageType, checkboxText, accepted, acceptedAt
-    let validatedConsents = [];
+    const validatedConsents: Array<{
+      pageId: unknown;
+      pageType: 'accept' | 'cta';
+      checkboxText: unknown;
+      accepted: true;
+      acceptedAt: unknown;
+    }> = [];
     if (consents && Array.isArray(consents)) {
       for (const consent of consents) {
         validateRequiredFields(consent, ['pageId', 'pageType', 'checkboxText', 'accepted']);

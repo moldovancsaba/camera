@@ -9,6 +9,16 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+interface CreatePartnerResponse {
+  partner?: { _id?: string };
+  data?: { partner?: { _id?: string } };
+  error?: string;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'An unexpected error occurred';
+}
+
 export default function NewPartnerPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,7 +49,7 @@ export default function NewPartnerPage() {
         body: JSON.stringify(data),
       });
 
-      const result = await response.json();
+      const result = await response.json() as CreatePartnerResponse;
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to create partner');
@@ -56,9 +66,9 @@ export default function NewPartnerPage() {
       // Navigate to partner detail page on success
       router.push(`/admin/partners/${partner._id}`);
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Create partner error:', err);
-      setError(err.message || 'An unexpected error occurred');
+      setError(getErrorMessage(err));
       setIsSubmitting(false);
     }
   };
@@ -159,7 +169,7 @@ export default function NewPartnerPage() {
             </label>
           </div>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Inactive partners won't be available for event creation
+            Inactive partners will not be available for event creation
           </p>
         </div>
 

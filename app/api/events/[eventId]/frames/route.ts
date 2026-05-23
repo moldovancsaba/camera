@@ -7,10 +7,13 @@
 
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { ObjectId } from 'mongodb';
-import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
+import { Document, ObjectId } from 'mongodb';
+import { COLLECTIONS, Event, generateTimestamp } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
-import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError } from '@/lib/api/responses';
+import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError, apiForbidden } from '@/lib/api/responses';
+import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
+
+type EventFrameAssignment = Event['frames'][number];
 
 export async function POST(
   request: NextRequest,
@@ -40,6 +43,10 @@ export async function POST(
     const db = await connectToDatabase();
     const eventsCollection = db.collection(COLLECTIONS.EVENTS);
     const framesCollection = db.collection(COLLECTIONS.FRAMES);
+    const eventAccess = await getPartnerScopedAccessForEvent(db, eventId, session, 'manager');
+    if (!eventAccess.allowed) {
+      return apiForbidden('Partner-level Events manager access is required');
+    }
 
     // Verify event exists (using MongoDB _id)
     const event = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
@@ -54,8 +61,8 @@ export async function POST(
     }
 
     // Check if frame is already assigned
-    const existingAssignment = (event.frames || []).find(
-      (f: any) => f.frameId === frameId
+    const existingAssignment = ((event.frames ?? []) as EventFrameAssignment[]).find(
+      (frame) => frame.frameId === frameId
     );
 
     if (existingAssignment) {
@@ -74,7 +81,7 @@ export async function POST(
     await eventsCollection.updateOne(
       { _id: new ObjectId(eventId) },
       {
-        $push: { frames: frameAssignment } as any,
+        $push: { frames: frameAssignment } as Document,
         $set: { 
           updatedAt: generateTimestamp(),
           framesOverridden: true, // Event now uses custom frame assignments instead of partner defaults
@@ -86,8 +93,8 @@ export async function POST(
       message: 'Frame assigned successfully',
       frameAssignment,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error assigning frame:', error);
-    return apiError(error.message);
+    return apiError(error instanceof Error ? error.message : 'Failed to assign frame');
   }
 }

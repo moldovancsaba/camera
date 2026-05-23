@@ -7,8 +7,9 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import CameraCapture from '@/components/camera/CameraCapture';
 import FileUpload from '@/components/camera/FileUpload';
 import { AppButton } from '@/components/ui/AppButton';
@@ -99,14 +100,7 @@ export default function CapturePage() {
     };
   }, [selectedFrame?._id, selectedFrame?.imageUrl]);
 
-  // Composite image with frame when photo is captured
-  useEffect(() => {
-    if (capturedImage && selectedFrame) {
-      compositeImageWithFrame();
-    }
-  }, [capturedImage, selectedFrame]);
-
-  const compositeImageWithFrame = async () => {
+  const compositeImageWithFrame = useCallback(async () => {
     if (!capturedImage || !selectedFrame) return;
 
     setIsProcessing(true);
@@ -175,7 +169,14 @@ export default function CapturePage() {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [capturedImage, selectedFrame]);
+
+  // Composite image with frame when photo is captured
+  useEffect(() => {
+    if (capturedImage && selectedFrame) {
+      void compositeImageWithFrame();
+    }
+  }, [capturedImage, compositeImageWithFrame, selectedFrame]);
 
   const handleFrameSelect = (frame: Frame) => {
     setSelectedFrame(frame);
@@ -302,9 +303,9 @@ export default function CapturePage() {
           <p className="text-slate-300 mb-6">
             There are no frames available yet. Please check back later!
           </p>
-          <a href="/" className="app-btn app-btn--primary app-btn--inline">
+          <Link href="/" className="app-btn app-btn--primary app-btn--inline">
             Go Home
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -353,9 +354,9 @@ export default function CapturePage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h1 className="app-canvas-page-title">📸 Take a Photo</h1>
-            <a href="/" className="app-canvas-back">
+            <Link href="/" className="app-canvas-back">
               ← Back
-            </a>
+            </Link>
           </div>
 
           {/* Progress Steps */}

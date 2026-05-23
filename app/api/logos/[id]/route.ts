@@ -7,7 +7,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { ObjectId } from 'mongodb';
+import { ObjectId, type Document, type UpdateFilter } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import {
   withErrorHandler,
@@ -22,6 +22,12 @@ interface RouteContext {
   params: Promise<{
     id: string;
   }>;
+}
+
+interface LogoUpdateBody {
+  name?: string;
+  description?: string;
+  isActive?: boolean;
 }
 
 /**
@@ -68,11 +74,11 @@ export const PUT = withErrorHandler(async (request: NextRequest, context: RouteC
   }
 
   // Parse request body
-  const body = await request.json();
+  const body: LogoUpdateBody = await request.json();
   const { name, description, isActive } = body;
 
   // Build update object (only include provided fields)
-  const updateData: any = {
+  const updateData: Record<string, string | boolean> = {
     updatedAt: new Date().toISOString(),
   };
 
@@ -130,7 +136,7 @@ export const DELETE = withErrorHandler(async (request: NextRequest, context: Rou
   // Also remove all event logo assignments for this logo
   await db.collection('events').updateMany(
     { 'logos.logoId': logo.logoId },
-    { $pull: { logos: { logoId: logo.logoId } } } as any
+    { $pull: { logos: { logoId: logo.logoId } } } as unknown as UpdateFilter<Document>
   );
 
   return apiNoContent();

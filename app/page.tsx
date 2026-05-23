@@ -6,6 +6,7 @@
  */
 
 import { getSession } from '@/lib/auth/session';
+import Image from 'next/image';
 import { APP_VERSION } from '@/lib/app-version';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 
@@ -66,9 +67,12 @@ export default async function Home({
         )}
         <div className="mb-8">
           <div className="flex items-center justify-center gap-4 mb-4">
-            <img 
-              src="https://i.ibb.co/zTG7ztxC/camera-logo.png" 
-              alt="Camera Logo" 
+            <Image
+              src="https://i.ibb.co/zTG7ztxC/camera-logo.png"
+              alt="Camera Logo"
+              width={192}
+              height={64}
+              unoptimized
               className="h-16 w-auto"
             />
             <h1 className="text-6xl font-bold text-white">

@@ -10,6 +10,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'An unexpected error occurred';
+}
+
 export default function NewLogoPage() {
   const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
@@ -71,9 +75,9 @@ export default function NewLogoPage() {
       console.log('Logo uploaded successfully!');
       router.push('/admin/logos');
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Upload error:', err);
-      setError(err.message || 'An unexpected error occurred');
+      setError(getErrorMessage(err));
       setIsUploading(false);
     }
   };
