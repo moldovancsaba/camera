@@ -25,6 +25,10 @@ out/
 # Local IDE / plans
 .kilo/
 
+# Playwright
+test-results/
+playwright-report/
+
 # Logs / debug
 npm-debug.log*
 yarn-debug.log*
