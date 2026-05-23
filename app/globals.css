@@ -115,6 +115,20 @@ body {
   color: #122033;
 }
 
+[data-camera-admin] .gds-responsive-mobile {
+  display: none;
+}
+
+@media (max-width: 61.99em) {
+  [data-camera-admin] .gds-responsive-table {
+    display: none;
+  }
+
+  [data-camera-admin] .gds-responsive-mobile {
+    display: flex;
+  }
+}
+
 @layer components {
   .app-btn {
     display: inline-flex;

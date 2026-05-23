@@ -1,4 +1,4 @@
-import { Box, Stack } from '@mantine/core';
+import { Stack } from '@mantine/core';
 
 export interface ResponsiveDataViewProps {
   table: React.ReactNode;
@@ -7,12 +7,13 @@ export interface ResponsiveDataViewProps {
 
 /**
  * Desktop table + mobile card/list fallback (GDS responsive data view contract).
+ * Uses admin-scoped CSS breakpoints aligned with Mantine `md` (~62em).
  */
 export default function ResponsiveDataView({ table, mobile }: ResponsiveDataViewProps) {
   return (
     <>
-      <Box visibleFrom="md">{table}</Box>
-      <Stack gap="md" hiddenFrom="md">
+      <div className="gds-responsive-table">{table}</div>
+      <Stack gap="md" className="gds-responsive-mobile">
         {mobile}
       </Stack>
     </>
