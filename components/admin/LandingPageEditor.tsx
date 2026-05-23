@@ -531,7 +531,7 @@ export default function LandingPageEditor({
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <Field
               label="Action URL"
-              helper="Optional. Use this to send visitors into capture, workout, registration, or any other app flow."
+              helper="Optional. Use this to send visitors into capture, registration, gallery, or any other app flow."
             >
               <input
                 value={url}
@@ -542,7 +542,7 @@ export default function LandingPageEditor({
             </Field>
             <Field
               label="Action button text"
-              helper="Examples: Send a Selfie, Start Workout, Join Event, View Gallery."
+              helper="Examples: Send a Selfie, Join Event, View Gallery."
             >
               <input
                 value={urlButtonText}

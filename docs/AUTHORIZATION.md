@@ -1,7 +1,7 @@
 # Authorization Guide
 
 **Version**: 2.9.0  
-**Last Updated**: 2026-05-20
+**Last Updated**: 2026-05-23
 
 This is the current authorization model for Camera.
 
@@ -63,7 +63,7 @@ Typical row:
   userId: "optional-sso-user-id",
   userEmail: "user@example.com",
   userName: "User Name",
-  appKey: "events" | "gym",
+  appKey: "events",
   role: "viewer" | "manager" | "admin",
   isActive: true,
   createdAt: "...",
@@ -103,12 +103,12 @@ These come from SSO and apply to the Camera app as a whole.
 
 ## 5.1 Permission matrix
 
-| Role | Admin shell | Partner pages | Events App | Gym App | Global inventory | Mutations |
-|------|-------------|---------------|------------|---------|------------------|-----------|
-| Global `admin` / `superadmin` | yes | yes | yes | yes | yes | full |
-| Partner `admin` | yes | assigned only | assigned app only | assigned app only | no | full inside scope |
-| Partner `manager` | yes | assigned only | assigned app only | assigned app only | no | create/update inside scope |
-| Partner `viewer` | yes | assigned only | assigned app only | assigned app only | no | read-only |
+| Role | Admin shell | Partner pages | Events App | Global inventory | Mutations |
+|------|-------------|---------------|------------|------------------|-----------|
+| Global `admin` / `superadmin` | yes | yes | yes | yes | full |
+| Partner `admin` | yes | assigned only | assigned app only | no | full inside scope |
+| Partner `manager` | yes | assigned only | assigned app only | no | create/update inside scope |
+| Partner `viewer` | yes | assigned only | assigned app only | no | read-only |
 
 ## 6. Route model
 
@@ -146,9 +146,6 @@ These can be partner-scoped where implemented:
 - `/admin/partners/[id]`
 - `/admin/events`
 - `/admin/events/[id]`
-- `/admin/gym`
-- `/admin/gym/funfitfan`
-- `/admin/gym/lessons`
 
 ### Event-scoped management APIs
 
@@ -218,7 +215,7 @@ Resolve the event, then resolve partner-scoped authorization from the event’s 
 
 - permission changes made in SSO generally require a fresh session to take effect
 - partner assignment changes take effect through Camera reads and do not require SSO schema changes
-- Gym access is modeled as `appKey: "gym"` on the dedicated Gym/FFF partner
+- partner assignments use `appKey: "events"` only
 - development-only auth/bootstrap routes exist for E2E smoke tests and are blocked in production
 
 ## 11. Files to check when changing authorization

@@ -12,6 +12,11 @@ import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert'
 import Link from 'next/link';
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
+import { Button, Card, Group, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
+import { IconFrame, IconPlus, IconSearch, IconWorld } from '@tabler/icons-react';
+import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import StatsStrip from '@/components/gds/StatsStrip';
+import StatusBadge from '@/components/gds/StatusBadge';
 
 interface FrameListItem {
   _id: { toString(): string };
@@ -125,144 +130,165 @@ export default async function FramesPage({
   }
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Global Frames</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Shared frame inventory across partners and app experiences.
-          </p>
-        </div>
-          <Link
-            href="/admin/frames/new"
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <span>+</span>
-            <span>Add Shared Frame</span>
+    <Stack gap="xl">
+      <WorkspaceHeader
+        eyebrow="Resource Inventory"
+        title="Global Frames"
+        description="Shared frame inventory across partners and app experiences."
+        actions={
+          <Link href="/admin/frames/new" style={{ textDecoration: 'none' }}>
+            <Button color="cameraTeal" leftSection={<IconPlus size={16} />}>
+              Add Shared Frame
+            </Button>
           </Link>
-      </div>
+        }
+      />
 
-      <form className="mb-6 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:flex-row">
-        <input
-          type="text"
-          name="search"
-          defaultValue={search}
-          placeholder="Search frame name, description, or category"
-          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+      {!dbError && (
+        <StatsStrip
+          items={[
+            { label: 'Visible Frames', value: frames.length, icon: <IconFrame size={20} /> },
+            {
+              label: 'Active Frames',
+              value: frames.filter((frame) => frame.isActive).length,
+              icon: <IconWorld size={20} />,
+            },
+            {
+              label: 'Assignments',
+              value: frames.reduce((sum, frame) => sum + (frame.usageCount || 0), 0),
+              icon: <IconFrame size={20} />,
+            },
+          ]}
         />
-        <div className="flex gap-3">
-          <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition-colors">
-            Search
-          </button>
-          {search ? (
-            <Link href="/admin/frames" className="rounded-lg border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
-              Clear
-            </Link>
-          ) : null}
-        </div>
-      </form>
+      )}
+
+      <Card>
+        <form>
+          <Group align="end">
+            <TextInput
+              name="search"
+              defaultValue={search}
+              label="Search"
+              placeholder="Search frame name, description, or category"
+              leftSection={<IconSearch size={16} />}
+              style={{ flex: 1 }}
+            />
+            <Button type="submit" color="cameraTeal">
+              Search
+            </Button>
+            {search ? (
+              <Link href="/admin/frames" style={{ textDecoration: 'none' }}>
+                <Button variant="default">Clear</Button>
+              </Link>
+            ) : null}
+          </Group>
+        </form>
+      </Card>
 
       {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
 
       {!dbError && frames.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-          <div className="text-6xl mb-4">🖼️</div>
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No frames yet</h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Add your first shared frame to start assigning it across partners and apps.
-          </p>
-          <Link
-            href="/admin/frames/new"
-            className="inline-flex px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-          >
-            Add Your First Frame
-          </Link>
-        </div>
+        <Card p="xl">
+          <Stack align="center" gap="sm">
+            <Text fz={48}>🖼️</Text>
+            <Text fw={700} fz="lg">
+              No frames yet
+            </Text>
+            <Text c="dimmed" ta="center">
+              Add your first shared frame to start assigning it across partners and apps.
+            </Text>
+            <Link href="/admin/frames/new" style={{ textDecoration: 'none' }}>
+              <Button color="cameraTeal">Add Your First Frame</Button>
+            </Link>
+          </Stack>
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <SimpleGrid cols={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing="lg">
           {frames.map((frame) => {
             const scope = inferFrameScope(frame);
             const partner = frame.partnerId ? partnerById.get(frame.partnerId) : undefined;
             const event = frame.eventId ? eventById.get(frame.eventId) : undefined;
 
             return (
-              <div
+              <Card
                 key={frame._id.toString()}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow"
+                p={0}
+                style={{ overflow: 'hidden' }}
               >
-                <div className="relative bg-gray-100 dark:bg-gray-700" style={{ aspectRatio: '1', maxHeight: '300px' }}>
+                <div style={{ position: 'relative', background: 'var(--mantine-color-gray-1)', aspectRatio: '1', maxHeight: '300px' }}>
                   <Image
                     src={frame.imageUrl}
                     alt={frame.name}
                     fill
-                    className="object-contain p-4"
+                    style={{ objectFit: 'contain', padding: 16 }}
                     unoptimized
                   />
                 </div>
-                <div className="p-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${
-                        scope === 'global'
-                          ? 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
-                          : scope === 'partner'
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
-                      }`}
-                    >
-                      {scope === 'global' ? 'Global' : scope === 'partner' ? 'Partner' : 'Event'}
-                    </span>
-                    <span className={frame.isActive ? 'text-xs text-green-600' : 'text-xs text-red-600'}>
-                      {frame.isActive ? '● Active' : '○ Inactive'}
-                    </span>
-                  </div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{frame.name}</h3>
+                <Stack gap="sm" p="md">
+                  <Group gap="xs">
+                    <StatusBadge
+                      tone={scope === 'event' ? 'active' : scope === 'partner' ? 'info' : 'inactive'}
+                      label={scope === 'global' ? 'Global' : scope === 'partner' ? 'Partner' : 'Event'}
+                    />
+                    <StatusBadge tone={frame.isActive ? 'active' : 'inactive'} />
+                  </Group>
+                  <Text fw={700} c="dark.8">
+                    {frame.name}
+                  </Text>
                   {frame.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">{frame.description}</p>
+                    <Text size="sm" c="dimmed" lineClamp={2}>
+                      {frame.description}
+                    </Text>
                   )}
-                  <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400 mb-3">
-                    <div className="flex items-center justify-between">
-                      <span className="capitalize">{frame.category || 'general'}</span>
-                      <span>Used {frame.usageCount || 0} time{frame.usageCount === 1 ? '' : 's'}</span>
-                    </div>
+                  <Stack gap={2}>
+                    <Group justify="space-between" gap="xs">
+                      <Text size="xs" c="dimmed" tt="capitalize">
+                        {frame.category || 'general'}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        Used {frame.usageCount || 0} time{frame.usageCount === 1 ? '' : 's'}
+                      </Text>
+                    </Group>
                     {scope === 'partner' && partner && (
-                      <div>
+                      <Text size="xs" c="dimmed">
                         Partner:{' '}
                         <Link
                           href={`/admin/partners/${partner._id.toString()}`}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                          style={{ color: 'var(--mantine-color-blue-7)' }}
                         >
                           {partner.name}
                         </Link>
-                      </div>
+                      </Text>
                     )}
                     {scope === 'event' && event && (
-                      <div>
+                      <Text size="xs" c="dimmed">
                         Event:{' '}
                         <Link
                           href={`/admin/events/${event._id.toString()}`}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                          style={{ color: 'var(--mantine-color-blue-7)' }}
                         >
                           {event.name}
                         </Link>
-                      </div>
+                      </Text>
                     )}
                     {scope === 'event' && event?.partnerName && (
-                      <div>Partner: {event.partnerName}</div>
+                      <Text size="xs" c="dimmed">Partner: {event.partnerName}</Text>
                     )}
-                  </div>
+                  </Stack>
                   <Link
                     href={`/admin/frames/${frame._id}/edit`}
-                    className="block w-full px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors text-center"
+                    style={{ textDecoration: 'none' }}
                   >
-                    Edit
+                    <Button fullWidth color="cameraTeal" variant="filled">
+                      Edit
+                    </Button>
                   </Link>
-                </div>
-              </div>
+                </Stack>
+              </Card>
             );
           })}
-        </div>
+        </SimpleGrid>
       )}
-    </div>
+    </Stack>
   );
 }

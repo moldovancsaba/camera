@@ -1,16 +1,16 @@
 # Roadmap
 
 **Version Context**: 2.9.0  
-**Last Updated**: 2026-05-20
+**Last Updated**: 2026-05-23
 
-This file is forward-looking only.
+This file is forward-looking only. Gym / Workout / FunFitFan surfaces were removed from the codebase in 2026-05; items below reflect the Events-only platform unless noted.
 
 ## Near-term priorities
 
 ### 1. Complete partner-scoped authorization rollout
 
 - finish enforcement on remaining admin/API paths not yet moved to the partner-aware model
-- verify viewer vs manager vs admin behavior consistently across Events and Gym
+- verify viewer vs manager vs admin behavior consistently across Events partner assignments
 - add regression coverage around global-admin bypass and partner scoping
 
 ### 2. Continue partner-first admin UX
@@ -22,7 +22,7 @@ This file is forward-looking only.
 ### 3. Landing page generalization
 
 - continue moving landing pages from event-only thinking to reusable experience surfaces
-- support app actions cleanly for capture, slideshow, and Gym flows
+- support app actions cleanly for capture and slideshow flows
 
 ### 4. Resource ownership clarity
 
@@ -42,11 +42,6 @@ This file is forward-looking only.
 - improve observability and operational diagnostics
 - review playlist fairness and layout-cell desynchronization under heavier load
 
-### 7. Gym / FFF productization
-
-- continue separating “Gym App” product language from older FFF implementation naming
-- formalize Gym-specific settings, reporting, and partner-level enablement
-
 ## Longer-term platform direction
 
 ### 8. Camera as a platform
@@ -55,7 +50,7 @@ Target direction:
 
 - Camera Core manages partners, resources, galleries, landing pages, and user/access models
 - apps consume those resources
-- Events and Gym are the first two app surfaces
+- Events is the first app surface on Camera Core
 - future app surfaces can reuse the same partner/resource model
 
 ### 9. Storage and media evolution

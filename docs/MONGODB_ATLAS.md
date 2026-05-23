@@ -1,6 +1,6 @@
 # MongoDB Atlas
 
-**Last Updated**: 2026-05-20
+**Last Updated**: 2026-05-23
 
 Operational guide for Atlas setup, connection validation, and index maintenance.
 
@@ -36,7 +36,6 @@ The repo maintains indexes for the live query patterns in:
 - slideshow layouts
 - landing pages
 - partner user access
-- Gym / FFF collections
 - server-side web sessions
 
 Index definitions live in:

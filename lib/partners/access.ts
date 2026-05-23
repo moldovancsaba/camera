@@ -60,7 +60,7 @@ export async function getPartnerAccessSummary(
   partnerId: string
 ): Promise<PartnerAccessSummary> {
   const assignments = await listPartnerUserAccess(db, partnerId);
-  const countsByApp: Record<PartnerAppKey, number> = { events: 0, gym: 0 };
+  const countsByApp: Record<PartnerAppKey, number> = { events: 0 };
   for (const assignment of assignments) {
     countsByApp[assignment.appKey] += 1;
   }

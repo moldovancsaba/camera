@@ -1,12 +1,11 @@
-/**
- * Partner Search Dropdown Component
- * 
- * Searchable dropdown for partner selection with predictive search
- */
-
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+/**
+ * Partner Search Dropdown Component
+ */
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Combobox, InputBase, Text, useCombobox } from '@mantine/core';
 
 interface Partner {
   _id: string;
@@ -26,186 +25,89 @@ export default function PartnerSearchDropdown({
   partners,
   selectedPartnerId,
   onSelect,
-  required = false
+  required = false,
 }: PartnerSearchDropdownProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-  const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const selectedPartner = partners.find((partner) => partner.partnerId === selectedPartnerId);
+  const combobox = useCombobox();
+  const mounted = useRef(false);
 
-  // Find selected partner
-  const selectedPartner = partners.find(p => p.partnerId === selectedPartnerId);
-
-  // Filter partners based on search query
-  const filteredPartners = partners.filter(partner =>
-    partner.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredPartners = useMemo(
+    () => partners.filter((partner) => partner.name.toLowerCase().includes(searchQuery.toLowerCase())),
+    [partners, searchQuery]
   );
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Handle keyboard navigation
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen) {
-      if (e.key === 'Enter' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        setIsOpen(true);
-        setHighlightedIndex(0);
-      }
+    if (!mounted.current) {
+      mounted.current = true;
       return;
     }
-
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setHighlightedIndex(prev =>
-          prev < filteredPartners.length - 1 ? prev + 1 : prev
-        );
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setHighlightedIndex(prev => (prev > 0 ? prev - 1 : 0));
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (highlightedIndex >= 0 && highlightedIndex < filteredPartners.length) {
-          const partner = filteredPartners[highlightedIndex];
-          onSelect(partner.partnerId, partner.name);
-          setSearchQuery('');
-          setIsOpen(false);
-          setHighlightedIndex(-1);
-        }
-        break;
-      case 'Escape':
-        e.preventDefault();
-        setIsOpen(false);
-        setHighlightedIndex(-1);
-        setSearchQuery('');
-        break;
-    }
-  };
+    combobox.resetSelectedOption();
+  }, [searchQuery, combobox]);
 
   const handleSelectPartner = (partner: Partner) => {
     onSelect(partner.partnerId, partner.name);
     setSearchQuery('');
-    setIsOpen(false);
-    setHighlightedIndex(-1);
+    combobox.closeDropdown();
   };
 
-  const handleClear = () => {
-    onSelect('', '');
-    setSearchQuery('');
-    setIsOpen(false);
-    setHighlightedIndex(-1);
-  };
+  const options = filteredPartners.map((partner) => (
+    <Combobox.Option value={partner.partnerId} key={partner.partnerId}>
+      <Text fw={600}>{partner.name}</Text>
+      {partner.description ? (
+        <Text size="sm" c="dimmed" lineClamp={1}>
+          {partner.description}
+        </Text>
+      ) : null}
+    </Combobox.Option>
+  ));
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      {/* Display selected partner or search input */}
-      {selectedPartner && !isOpen ? (
-        <div className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 flex items-center justify-between">
-          <div className="flex-1">
-            <p className="text-gray-900 dark:text-white font-medium">{selectedPartner.name}</p>
-            {selectedPartner.description && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                {selectedPartner.description}
-              </p>
+    <>
+      <Combobox
+        store={combobox}
+        onOptionSubmit={(value) => {
+          const partner = filteredPartners.find((entry) => entry.partnerId === value);
+          if (partner) {
+            handleSelectPartner(partner);
+          }
+        }}
+      >
+        <Combobox.Target>
+          <InputBase
+            component="button"
+            type="button"
+            pointer
+            rightSection="▾"
+            onClick={() => combobox.toggleDropdown()}
+            styles={{ input: { height: 'auto', minHeight: 42, paddingBlock: 8 } }}
+          >
+            {selectedPartner ? (
+              <>
+                <Text fw={600}>{selectedPartner.name}</Text>
+                {selectedPartner.description ? (
+                  <Text size="sm" c="dimmed" lineClamp={1}>
+                    {selectedPartner.description}
+                  </Text>
+                ) : null}
+              </>
+            ) : (
+              <Text c="dimmed">Search partners...</Text>
             )}
-          </div>
-          <div className="flex items-center gap-2 ml-4">
-            <button
-              type="button"
-              onClick={() => setIsOpen(true)}
-              className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 font-medium"
-            >
-              Change
-            </button>
-            {!required && (
-              <button
-                type="button"
-                onClick={handleClear}
-                className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 font-medium"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Search Input */}
-          <div className="relative">
-            <input
-              ref={inputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setIsOpen(true);
-                setHighlightedIndex(0);
-              }}
-              onFocus={() => setIsOpen(true)}
-              onKeyDown={handleKeyDown}
-              placeholder="Search partners..."
-              className="w-full px-4 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-          </div>
+          </InputBase>
+        </Combobox.Target>
 
-          {/* Dropdown List */}
-          {isOpen && (
-            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-64 overflow-y-auto">
-              {filteredPartners.length === 0 ? (
-                <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                  No partners found
-                </div>
-              ) : (
-                filteredPartners.map((partner, index) => (
-                  <button
-                    key={partner.partnerId}
-                    type="button"
-                    onClick={() => handleSelectPartner(partner)}
-                    className={`w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                      index === highlightedIndex ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                    } ${
-                      partner.partnerId === selectedPartnerId ? 'bg-blue-100 dark:bg-blue-900/30' : ''
-                    }`}
-                  >
-                    <p className="font-medium text-gray-900 dark:text-white">{partner.name}</p>
-                    {partner.description && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                        {partner.description}
-                      </p>
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
-          )}
-        </>
-      )}
+        <Combobox.Dropdown>
+          <Combobox.Search
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.currentTarget.value)}
+            placeholder="Search partners..."
+          />
+          <Combobox.Options>{options.length > 0 ? options : <Combobox.Empty>No partners found</Combobox.Empty>}</Combobox.Options>
+        </Combobox.Dropdown>
+      </Combobox>
 
-      {/* Hidden input for form submission */}
-      <input
-        type="hidden"
-        name="partnerId"
-        value={selectedPartnerId || ''}
-        required={required}
-      />
-    </div>
+      <input type="hidden" name="partnerId" value={selectedPartnerId || ''} required={required} />
+    </>
   );
 }

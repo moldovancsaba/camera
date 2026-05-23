@@ -219,54 +219,6 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       .createIndex({ partnerId: 1, isActive: 1, appKey: 1 }, { name: 'partner_user_access_partner_active_app' })
   );
 
-  // --- gym module ---
-  await track(COLLECTIONS.GYM_LESSONS, () =>
-    db.collection(COLLECTIONS.GYM_LESSONS).createIndex(
-      { lessonId: 1 },
-      {
-        unique: true,
-        name: 'gym_lessons_lessonId_unique',
-        partialFilterExpression: { lessonId: { $type: 'string' } },
-      }
-    )
-  );
-  await track(COLLECTIONS.GYM_LESSONS, () =>
-    db
-      .collection(COLLECTIONS.GYM_LESSONS)
-      .createIndex({ isPublished: 1, updatedAt: -1 }, { name: 'gym_lessons_published_updatedAt' })
-  );
-  await track(COLLECTIONS.GYM_WORKOUT_SESSIONS, () =>
-    db.collection(COLLECTIONS.GYM_WORKOUT_SESSIONS).createIndex(
-      { sessionId: 1 },
-      {
-        unique: true,
-        name: 'gym_workout_sessions_sessionId_unique',
-        partialFilterExpression: { sessionId: { $type: 'string' } },
-      }
-    )
-  );
-  await track(COLLECTIONS.GYM_WORKOUT_SESSIONS, () =>
-    db
-      .collection(COLLECTIONS.GYM_WORKOUT_SESSIONS)
-      .createIndex({ userId: 1, startedAt: -1 }, { name: 'gym_workout_sessions_userId_startedAt' })
-  );
-  await track(COLLECTIONS.GYM_WORKOUT_SESSIONS, () =>
-    db
-      .collection(COLLECTIONS.GYM_WORKOUT_SESSIONS)
-      .createIndex({ lessonId: 1, startedAt: -1 }, { name: 'gym_workout_sessions_lessonId_startedAt' })
-  );
-
-  await track(COLLECTIONS.FFF_SETTINGS, () =>
-    db
-      .collection(COLLECTIONS.FFF_SETTINGS)
-      .createIndex({ settingsKey: 1 }, { unique: true, name: 'fff_settings_settingsKey_unique' })
-  );
-  await track(COLLECTIONS.FFF_USER_PROFILES, () =>
-    db
-      .collection(COLLECTIONS.FFF_USER_PROFILES)
-      .createIndex({ userId: 1 }, { unique: true, name: 'fff_user_profiles_userId_unique' })
-  );
-
   await track(COLLECTIONS.WEB_SESSIONS, () =>
     db.collection(COLLECTIONS.WEB_SESSIONS).createIndex({ sid: 1 }, { unique: true, name: 'web_sessions_sid_unique' })
   );

@@ -7,7 +7,7 @@
 
 import crypto from 'crypto';
 
-const STATE_PREFIX = 'fffpkce1';
+const STATE_PREFIX = 'camerapkce1';
 const TTL_SEC = 15 * 60;
 
 export function getOAuthPkceStateSigningKey(): string | null {

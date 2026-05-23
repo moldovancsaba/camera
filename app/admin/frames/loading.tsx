@@ -1,35 +1,32 @@
 /**
  * Frames Loading State
- * 
- * Loading skeleton for frames listing.
  */
+
+import { Card, SimpleGrid, Skeleton, Stack } from '@mantine/core';
 
 export default function FramesLoading() {
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-2"></div>
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-64"></div>
-        </div>
-        <div className="h-12 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+    <Stack gap="xl">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+        <Stack gap="sm">
+          <Skeleton height={36} width={160} radius="md" />
+          <Skeleton height={18} width={280} radius="md" />
+        </Stack>
+        <Skeleton height={42} width={140} radius="md" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <div
-            key={i}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden animate-pulse"
-          >
-            <div className="aspect-square bg-gray-200 dark:bg-gray-700"></div>
-            <div className="p-4 space-y-2">
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
-              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-            </div>
-          </div>
+      <SimpleGrid cols={{ base: 1, md: 2, lg: 3, xl: 4 }}>
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => (
+          <Card key={item} p={0} style={{ overflow: 'hidden' }}>
+            <Skeleton height={220} radius={0} />
+            <Stack gap="sm" p="md">
+              <Skeleton height={16} width="70%" radius="md" />
+              <Skeleton height={12} width="100%" radius="md" />
+              <Skeleton height={12} width="50%" radius="md" />
+            </Stack>
+          </Card>
         ))}
-      </div>
-    </div>
+      </SimpleGrid>
+    </Stack>
   );
 }

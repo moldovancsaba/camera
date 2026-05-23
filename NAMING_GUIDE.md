@@ -72,7 +72,6 @@ Use the current product language:
 
 - `Camera Core`
 - `Events App`
-- `Gym App`
 - `Partner workspace`
 - `Global inventory`
 

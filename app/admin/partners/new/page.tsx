@@ -1,13 +1,16 @@
+'use client';
+
 /**
  * Add New Partner Page
- * 
- * Form to create a new partner organization
+ *
+ * Form to create a new partner organization.
  */
-
-'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Alert, Button, Card, Checkbox, Stack, Text, TextInput, Textarea } from '@mantine/core';
+import { IconAlertCircle } from '@tabler/icons-react';
+import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
 
 interface CreatePartnerResponse {
   partner?: { _id?: string };
@@ -30,8 +33,6 @@ export default function NewPartnerPage() {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    
-    // Build request body from form data
     const data = {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
@@ -43,154 +44,86 @@ export default function NewPartnerPage() {
     try {
       const response = await fetch('/api/partners', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
 
-      const result = await response.json() as CreatePartnerResponse;
-
+      const result = (await response.json()) as CreatePartnerResponse;
       if (!response.ok) {
         throw new Error(result.error || 'Failed to create partner');
       }
 
-      // API returns { success: true, data: { partner: {...} } }
       const partner = result.data?.partner || result.partner;
-      
       if (!partner || !partner._id) {
-        console.error('Invalid API response:', result);
         throw new Error('Invalid response from server');
       }
 
-      // Navigate to partner detail page on success
       router.push(`/admin/partners/${partner._id}`);
       router.refresh();
-    } catch (err: unknown) {
-      console.error('Create partner error:', err);
-      setError(getErrorMessage(err));
+    } catch (submitError) {
+      setError(getErrorMessage(submitError));
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Add New Partner</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">Create a new partner organization</p>
-      </div>
+    <Stack gap="xl" maw={960} mx="auto">
+      <WorkspaceHeader
+        eyebrow="Camera Core"
+        title="Add New Partner"
+        description="Create a new partner organization"
+      />
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-800 dark:text-red-200 font-medium">Error</p>
-          <p className="text-red-600 dark:text-red-300 text-sm mt-1">{error}</p>
-        </div>
-      )}
+      {error ? (
+        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+          <Text fw={700}>Error</Text>
+          <Text size="sm">{error}</Text>
+        </Alert>
+      ) : null}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Information */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Basic Information</h2>
-          
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Partner Name *
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              required
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g., AC Milan, Red Bull, Nike"
-            />
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              The name of the partner organization or brand
-            </p>
-          </div>
+      <form onSubmit={handleSubmit}>
+        <Stack gap="lg">
+          <Card>
+            <Stack gap="md">
+              <Text fw={700}>Basic Information</Text>
+              <TextInput
+                name="name"
+                label="Partner Name *"
+                required
+                placeholder="e.g., AC Milan, Red Bull, Nike"
+                description="The name of the partner organization or brand"
+              />
+              <Textarea name="description" label="Description" rows={3} placeholder="Optional description..." />
+            </Stack>
+          </Card>
 
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Description
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              rows={3}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Optional description..."
-            />
-          </div>
-        </div>
+          <Card>
+            <Stack gap="md">
+              <Text fw={700}>Contact Information</Text>
+              <TextInput name="contactName" label="Contact Person" placeholder="e.g., John Doe" />
+              <TextInput name="contactEmail" type="email" label="Contact Email" placeholder="e.g., contact@partner.com" />
+            </Stack>
+          </Card>
 
-        {/* Contact Information */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Contact Information</h2>
-          
-          <div>
-            <label htmlFor="contactName" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Contact Person
-            </label>
-            <input
-              type="text"
-              id="contactName"
-              name="contactName"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g., John Doe"
-            />
-          </div>
+          <Card>
+            <Stack gap="xs">
+              <Checkbox name="isActive" defaultChecked label="Make partner active (visible and usable)" />
+              <Text size="sm" c="dimmed">
+                Inactive partners will not be available for event creation
+              </Text>
+            </Stack>
+          </Card>
 
-          <div>
-            <label htmlFor="contactEmail" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Contact Email
-            </label>
-            <input
-              type="email"
-              id="contactEmail"
-              name="contactEmail"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g., contact@partner.com"
-            />
-          </div>
-        </div>
-
-        {/* Status */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="isActive"
-              name="isActive"
-              defaultChecked
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <label htmlFor="isActive" className="ml-2 text-sm text-gray-900 dark:text-white">
-              Make partner active (visible and usable)
-            </label>
-          </div>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Inactive partners will not be available for event creation
-          </p>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-4">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? 'Creating...' : 'Create Partner'}
-          </button>
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
+          <Stack gap="sm">
+            <Button type="submit" loading={isSubmitting}>
+              {isSubmitting ? 'Creating...' : 'Create Partner'}
+            </Button>
+            <Button variant="default" onClick={() => router.back()}>
+              Cancel
+            </Button>
+          </Stack>
+        </Stack>
       </form>
-    </div>
+    </Stack>
   );
 }

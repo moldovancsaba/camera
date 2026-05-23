@@ -1,7 +1,7 @@
 # Architecture
 
 **Version**: 2.9.0  
-**Last Updated**: 2026-05-20
+**Last Updated**: 2026-05-23
 
 This document describes the current production architecture of Camera as implemented in the repository today.
 
@@ -18,9 +18,6 @@ Camera is no longer just a flat event-photo tool. The system now behaves as:
   - user and access management
 - **Apps**
   - Events App
-  - Gym App
-
-Gym is not a separate stack. It runs on top of the same session, media, and MongoDB infrastructure as the Events App.
 
 ## 2. Top-level layers
 
@@ -34,9 +31,9 @@ Browser / Public Screens
 
 ### Browser and page layer
 
-- public capture, share, slideshow, landing, workout, and FFF pages
+- public capture, share, slideshow, and landing pages
 - admin pages under `/admin`
-- React client components for camera capture, admin forms, slideshow playback, and Gym flows
+- React client components for camera capture, admin forms, and slideshow playback
 
 ### API layer
 
@@ -49,7 +46,6 @@ Browser / Public Screens
 - auth and session management in `lib/auth/*`
 - MongoDB access and schema helpers in `lib/db/*`
 - slideshow generation in `lib/slideshow/*`
-- Gym / FFF bootstrap and workflow helpers in `lib/funfitfan/*` and `lib/gym/*`
 - partner-scoped access helpers in `lib/partners/*`
 
 ### External services
@@ -70,15 +66,12 @@ Browser / Public Screens
 - `/slideshow/[slideshowId]` — public slideshow player
 - `/slideshow-layout/[layoutId]` — public multi-cell slideshow layout
 - `/landing/[slug]` — public landing pages
-- `/workout`, `/workout/training/[trainingId]`, `/workout/session/**` — Gym workout flow
-- FFF host routes rewritten by middleware to internal `/fff/**`
 
 ### Admin routes
 
 - `/admin`
 - `/admin/partners/**`
 - `/admin/events/**`
-- `/admin/gym/**`
 - `/admin/frames/**`
 - `/admin/logos/**`
 - `/admin/submissions`
@@ -109,12 +102,10 @@ Partner detail pages are the primary daily operational surface. They expose:
 - partner events
 - partner gallery context
 - partner user assignments
-- Gym relationship when relevant
 
 ### App surfaces
 
 - Events App inventory and event instance detail
-- Gym App settings and training content
 
 ## 5. Authorization architecture
 
@@ -140,7 +131,7 @@ Fields:
 
 - `partnerId`
 - `userId` or `userEmail`
-- `appKey`: `events` or `gym`
+- `appKey`: `events`
 - `role`: `viewer`, `manager`, `admin`
 - `isActive`
 
@@ -162,16 +153,11 @@ Reference:
 
 ## 6. Middleware and routing behavior
 
-Root edge proxy in [proxy.ts](/Users/Shared/Projects/venturecogroup/camera/proxy.ts) does four important jobs:
+Root edge proxy in [proxy.ts](/Users/Shared/Projects/venturecogroup/camera/proxy.ts) does three important jobs:
 
 1. gate `/admin` by valid serialized session state
 2. rescue OAuth callback parameters returned to the wrong path
-3. rewrite FFF host public URLs to internal `/fff/*`
-4. resolve GO short links to capture redirects
-
-Important consequence:
-
-- the public Gym/FFF experience can present clean URLs on a dedicated host while still living inside this repository
+3. resolve GO short links on `GO_SHORT_HOSTNAMES` to `/api/go-short/[slug]` capture redirects
 
 ## 7. Data architecture
 
@@ -226,13 +212,6 @@ Core collections:
 - `users_cache`
 - `web_sessions`
 
-Gym / FFF collections:
-
-- `gym_lessons`
-- `gym_workout_sessions`
-- `fff_settings`
-- `fff_user_profiles`
-
 Schema definitions live in [lib/db/schemas.ts](/Users/Shared/Projects/venturecogroup/camera/lib/db/schemas.ts).
 
 ## 9. Submission pipeline
@@ -244,7 +223,7 @@ Primary path:
 3. `POST /api/submissions`
 4. server uploads raster to imgbb
 5. server inserts Mongo submission document
-6. share, gallery, slideshow, and Gym/FFF flows consume that record
+6. share, gallery, and slideshow flows consume that record
 
 Important implementation note:
 
@@ -269,23 +248,7 @@ Key properties:
 Reference:
 - [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/venturecogroup/camera/docs/SLIDESHOW_LOGIC.md)
 
-## 11. Gym / FFF architecture
-
-FFF bootstrap in [lib/funfitfan/bootstrap.ts](/Users/Shared/Projects/venturecogroup/camera/lib/funfitfan/bootstrap.ts) ensures:
-
-- dedicated Gym/FFF partner exists
-- default frame and sport-activity settings exist
-- each signed-in member gets a virtual event and slideshow context
-
-This means Gym can reuse:
-
-- Camera submissions
-- slideshow player
-- frames
-- partner defaults
-- shared SSO session state
-
-## 12. API surface summary
+## 11. API surface summary
 
 Major API groups:
 
@@ -298,14 +261,12 @@ Major API groups:
 - slideshows: `/api/slideshows/**`
 - slideshow layouts: `/api/slideshow-layouts/**`
 - landing pages: `/api/landing-pages/**`
-- admin Gym: `/api/admin/gym/**`
-- public Gym: `/api/gym/**`
 - admin users/submissions utilities: `/api/admin/**`
-- FFF bootstrap and hashtags: `/api/fff/**`
+- go-short redirects: `/api/go-short/**`
 
 The exact route list should be taken from `app/api/**/route.ts`, not from memory.
 
-## 13. Deployment and operations
+## 12. Deployment and operations
 
 Expected environment shape:
 
@@ -324,7 +285,7 @@ npm run db:ensure-indexes
 npm run env:verify
 ```
 
-## 14. Canonical references
+## 13. Canonical references
 
 - [README.md](/Users/Shared/Projects/venturecogroup/camera/README.md)
 - [TECH_STACK.md](/Users/Shared/Projects/venturecogroup/camera/TECH_STACK.md)

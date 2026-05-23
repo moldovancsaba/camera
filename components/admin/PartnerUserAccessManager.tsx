@@ -1,8 +1,23 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Grid,
+  Group,
+  Select,
+  SimpleGrid,
+  Stack,
+  Text,
+  TextInput,
+  Title,
+} from '@mantine/core';
+import { IconAlertCircle, IconCheck, IconUserPlus } from '@tabler/icons-react';
 
-type PartnerAppKey = 'events' | 'gym';
+type PartnerAppKey = 'events';
 type PartnerAccessRole = 'viewer' | 'manager' | 'admin';
 
 export interface PartnerAccessAssignmentView {
@@ -26,7 +41,6 @@ interface Props {
 
 const APP_LABELS: Record<PartnerAppKey, string> = {
   events: 'Events App',
-  gym: 'Gym App',
 };
 
 const ROLE_LABELS: Record<PartnerAccessRole, string> = {
@@ -71,7 +85,9 @@ export default function PartnerUserAccessManager({
       const assignment = payload.assignment as PartnerAccessAssignmentView;
       setAssignments((current) => {
         const deduped = current.filter((item) => item.accessId !== assignment.accessId);
-        return [assignment, ...deduped].sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.userEmail.localeCompare(b.userEmail));
+        return [assignment, ...deduped].sort(
+          (a, b) => Number(b.isActive) - Number(a.isActive) || a.userEmail.localeCompare(b.userEmail)
+        );
       });
       setUserEmail('');
       setUserName('');
@@ -128,145 +144,141 @@ export default function PartnerUserAccessManager({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Partner User Access</h2>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Manage partner-scoped app access separately from global Camera roles. This is the source of truth for who can operate this partner inside Events and Gym.
-        </p>
+    <Card p={0}>
+      <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+        <Title order={3}>Partner User Access</Title>
+        <Text size="sm" c="dimmed" mt="xs">
+          Manage partner-scoped app access separately from global Camera roles. This is the source of truth for who
+          can operate this partner inside Events.
+        </Text>
       </div>
 
-      <div className="p-6 space-y-6">
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-          <div className="xl:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">User email</label>
-            <input
-              value={userEmail}
-              onChange={(event) => setUserEmail(event.target.value)}
+      <Stack gap="lg" p="xl">
+        <Grid>
+          <Grid.Col span={{ base: 12, xl: 5 }}>
+            <TextInput
+              label="User email"
               placeholder="user@example.com"
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              value={userEmail}
+              onChange={(event) => setUserEmail(event.currentTarget.value)}
             />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Display name</label>
-            <input
-              value={userName}
-              onChange={(event) => setUserName(event.target.value)}
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 4, xl: 3 }}>
+            <TextInput
+              label="Display name"
               placeholder="Optional"
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              value={userName}
+              onChange={(event) => setUserName(event.currentTarget.value)}
             />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">App</label>
-            <select
-              value={appKey}
-              onChange={(event) => setAppKey(event.target.value as PartnerAppKey)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-            >
-              <option value="events">Events App</option>
-              <option value="gym">Gym App</option>
-            </select>
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Role</label>
-            <select
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 4, xl: 2 }}>
+            <Select label="App" data={[{ value: 'events', label: 'Events App' }]} value={appKey} readOnly />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 4, xl: 2 }}>
+            <Select
+              label="Role"
+              data={[
+                { value: 'viewer', label: 'Viewer' },
+                { value: 'manager', label: 'Manager' },
+                { value: 'admin', label: 'Admin' },
+              ]}
               value={role}
-              onChange={(event) => setRole(event.target.value as PartnerAccessRole)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-            >
-              <option value="viewer">Viewer</option>
-              <option value="manager">Manager</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-        </div>
+              onChange={(value) => setRole((value as PartnerAccessRole) || 'manager')}
+            />
+          </Grid.Col>
+        </Grid>
 
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            If the user has not appeared in Camera yet, the email assignment is still saved and will match later when they sign in or create activity.
-          </p>
-          <button
-            type="button"
+        <Group justify="space-between" align="flex-start">
+          <Text size="xs" c="dimmed" maw={760}>
+            If the user has not appeared in Camera yet, the email assignment is still saved and will match later when
+            they sign in or create activity.
+          </Text>
+          <Button
+            color="amber"
+            leftSection={<IconUserPlus size={16} />}
             onClick={() => void handleCreate()}
-            disabled={isSubmitting || !userEmail.trim()}
-            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+            loading={isSubmitting}
+            disabled={!userEmail.trim()}
           >
-            {isSubmitting ? 'Saving…' : 'Add Access'}
-          </button>
-        </div>
+            Add Access
+          </Button>
+        </Group>
 
-        {message ? <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-900/40 dark:bg-green-950/30 dark:text-green-200">{message}</div> : null}
-        {error ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">{error}</div> : null}
+        {message ? (
+          <Alert color="green" icon={<IconCheck size={16} />}>
+            {message}
+          </Alert>
+        ) : null}
+        {error ? (
+          <Alert color="red" icon={<IconAlertCircle size={16} />}>
+            {error}
+          </Alert>
+        ) : null}
 
         {assignments.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-            No partner user assignments yet.
-          </div>
+          <Card withBorder radius="md" p="xl" bg="var(--mantine-color-gray-0)">
+            <Text size="sm" c="dimmed" ta="center">
+              No partner user assignments yet.
+            </Text>
+          </Card>
         ) : (
-          <div className="space-y-4">
+          <Stack gap="md">
             {assignments.map((assignment) => (
-              <div
-                key={assignment.accessId}
-                className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900"
-              >
-                <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-gray-900 dark:text-white">
-                        {assignment.userName?.trim() || assignment.userEmail}
-                      </p>
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${assignment.isActive ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}>
+              <Card key={assignment.accessId} withBorder radius="md" bg="var(--mantine-color-gray-0)">
+                <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+                  <Stack gap={4}>
+                    <Group gap="sm">
+                      <Text fw={700}>{assignment.userName?.trim() || assignment.userEmail}</Text>
+                      <Badge color={assignment.isActive ? 'green' : 'gray'}>
                         {assignment.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{assignment.userEmail}</p>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
+                      </Badge>
+                    </Group>
+                    <Text size="sm" c="dimmed">
+                      {assignment.userEmail}
+                    </Text>
+                    <Text size="xs" c="dimmed">
                       Updated {new Date(assignment.updatedAt).toLocaleString()}
-                    </p>
-                  </div>
+                    </Text>
+                  </Stack>
 
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:w-[30rem]">
-                    <select
-                      value={assignment.appKey}
-                      onChange={(event) => void patchAssignment(assignment.accessId, { appKey: event.target.value as PartnerAppKey })}
-                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                    >
-                      {Object.entries(APP_LABELS).map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={assignment.role}
-                      onChange={(event) => void patchAssignment(assignment.accessId, { role: event.target.value as PartnerAccessRole })}
-                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                    >
-                      {Object.entries(ROLE_LABELS).map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
-                      ))}
-                    </select>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void patchAssignment(assignment.accessId, { isActive: !assignment.isActive })}
-                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${assignment.isActive ? 'bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600' : 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-200 dark:hover:bg-green-900/50'}`}
-                      >
-                        {assignment.isActive ? 'Deactivate' : 'Activate'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void removeAssignment(assignment.accessId)}
-                        className="rounded-lg bg-red-100 px-3 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-200 dark:bg-red-900/30 dark:text-red-200 dark:hover:bg-red-900/50"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                  <Stack gap="sm">
+                    <SimpleGrid cols={{ base: 1, md: 3 }}>
+                      <Select
+                        data={Object.entries(APP_LABELS).map(([value, label]) => ({ value, label }))}
+                        value={assignment.appKey}
+                        onChange={(value) =>
+                          void patchAssignment(assignment.accessId, { appKey: value as PartnerAppKey })
+                        }
+                      />
+                      <Select
+                        data={Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }))}
+                        value={assignment.role}
+                        onChange={(value) =>
+                          void patchAssignment(assignment.accessId, { role: value as PartnerAccessRole })
+                        }
+                      />
+                      <Group grow>
+                        <Button
+                          variant={assignment.isActive ? 'light' : 'filled'}
+                          color={assignment.isActive ? 'gray' : 'green'}
+                          onClick={() =>
+                            void patchAssignment(assignment.accessId, { isActive: !assignment.isActive })
+                          }
+                        >
+                          {assignment.isActive ? 'Deactivate' : 'Activate'}
+                        </Button>
+                        <Button color="red" variant="light" onClick={() => void removeAssignment(assignment.accessId)}>
+                          Remove
+                        </Button>
+                      </Group>
+                    </SimpleGrid>
+                  </Stack>
+                </SimpleGrid>
+              </Card>
             ))}
-          </div>
+          </Stack>
         )}
-      </div>
-    </div>
+      </Stack>
+    </Card>
   );
 }

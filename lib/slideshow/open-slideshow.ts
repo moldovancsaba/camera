@@ -23,7 +23,7 @@ function isLocalDevOrigin(origin: string): boolean {
 /**
  * Opens `/slideshow/:id` in a new tab (`noopener,noreferrer`).
  *
- * When FunFitFan runs as an **installed PWA** (standalone / iOS home screen), same-origin
+ * When Camera runs as an **installed PWA** (standalone / iOS home screen), same-origin
  * `window.open` often stays inside the PWA window. If the Camera app origin is configured
  * and differs from the current origin, we open the slideshow there so the OS typically
  * launches the **default browser** tab instead.

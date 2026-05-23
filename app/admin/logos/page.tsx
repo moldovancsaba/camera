@@ -12,6 +12,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import { redirect } from 'next/navigation';
+import { Button, Card, Group, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
+import { IconPhoto, IconPlus, IconSearch, IconUsers } from '@tabler/icons-react';
+import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import StatsStrip from '@/components/gds/StatsStrip';
+import StatusBadge from '@/components/gds/StatusBadge';
 
 interface Logo {
   _id: { toString(): string };
@@ -104,62 +109,73 @@ export default async function LogosPage({
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Global Logos</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Shared logo inventory across partners, event scenarios, and app experiences
-          </p>
-        </div>
-        <Link
-          href="/admin/logos/new"
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Upload Shared Logo
-        </Link>
-      </div>
+    <Stack gap="xl">
+      <WorkspaceHeader
+        eyebrow="Resource Inventory"
+        title="Global Logos"
+        description="Shared logo inventory across partners, event scenarios, and app experiences"
+        actions={
+          <Link href="/admin/logos/new" style={{ textDecoration: 'none' }}>
+            <Button color="cameraTeal" leftSection={<IconPlus size={16} />}>
+              Upload Shared Logo
+            </Button>
+          </Link>
+        }
+      />
 
-      <form className="mb-6 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:flex-row">
-        <input
-          type="text"
-          name="search"
-          defaultValue={search}
-          placeholder="Search logo name, description, or logo ID"
-          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+      {!error && (
+        <StatsStrip
+          items={[
+            { label: 'Visible Logos', value: logos.length, icon: <IconPhoto size={20} /> },
+            { label: 'Partner Defaults', value: Array.from(partnerUsageByLogoId.values()).reduce((sum, bucket) => sum + bucket.length, 0), icon: <IconUsers size={20} /> },
+            { label: 'Event Assignments', value: Array.from(eventUsageByLogoId.values()).reduce((sum, bucket) => sum + bucket.length, 0), icon: <IconPhoto size={20} /> },
+          ]}
         />
-        <div className="flex gap-3">
-          <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition-colors">
-            Search
-          </button>
-          {search ? (
-            <Link href="/admin/logos" className="rounded-lg border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
-              Clear
-            </Link>
-          ) : null}
-        </div>
-      </form>
+      )}
+
+      <Card>
+        <form>
+          <Group align="end">
+            <TextInput
+              type="text"
+              name="search"
+              defaultValue={search}
+              label="Search"
+              placeholder="Search logo name, description, or logo ID"
+              leftSection={<IconSearch size={16} />}
+              style={{ flex: 1 }}
+            />
+            <Button type="submit" color="cameraTeal">
+              Search
+            </Button>
+            {search ? (
+              <Link href="/admin/logos" style={{ textDecoration: 'none' }}>
+                <Button variant="default">Clear</Button>
+              </Link>
+            ) : null}
+          </Group>
+        </form>
+      </Card>
 
       {error != null ? <DatabaseConnectionAlert error={error} /> : null}
 
       {!error && logos.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="text-6xl mb-4">🎨</div>
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            No logos yet
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Upload your first shared logo to start assigning it across partners and apps
-          </p>
-          <Link
-            href="/admin/logos/new"
-            className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Upload Shared Logo
-          </Link>
-        </div>
+        <Card p="xl">
+          <Stack align="center" gap="sm">
+            <Text fz={48}>🎨</Text>
+            <Text fw={700} fz="lg">
+              No logos yet
+            </Text>
+            <Text c="dimmed" ta="center">
+              Upload your first shared logo to start assigning it across partners and apps
+            </Text>
+            <Link href="/admin/logos/new" style={{ textDecoration: 'none' }}>
+              <Button color="cameraTeal">Upload Shared Logo</Button>
+            </Link>
+          </Stack>
+        </Card>
       ) : !error ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3, xl: 4 }} spacing="lg">
           {logos.map((logo) => {
             const partnerAssignments = partnerUsageByLogoId.get(logo.logoId) || [];
             const eventAssignments = eventUsageByLogoId.get(logo.logoId) || [];
@@ -167,79 +183,74 @@ export default async function LogosPage({
             const primaryEvent = eventAssignments[0];
 
             return (
-              <div
+              <Card
                 key={logo.logoId}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow"
+                p={0}
+                style={{ overflow: 'hidden' }}
               >
-                <div className="relative aspect-square bg-gray-100 dark:bg-gray-700">
+                <div style={{ position: 'relative', aspectRatio: '1 / 1', background: 'var(--mantine-color-gray-1)' }}>
                   <Image
                     src={logo.imageUrl}
                     alt={logo.name}
                     fill
-                    className="object-contain p-4"
+                    style={{ objectFit: 'contain', padding: 16 }}
                     unoptimized
                   />
-                  <div className="absolute top-2 right-2">
-                    <span
-                      className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        logo.isActive
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
-                      }`}
-                    >
-                      {logo.isActive ? 'Active' : 'Inactive'}
-                    </span>
+                  <div style={{ position: 'absolute', top: 8, right: 8 }}>
+                    <StatusBadge tone={logo.isActive ? 'active' : 'inactive'} />
                   </div>
                 </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-1 truncate">
+                <Stack gap="sm" p="md">
+                  <Text fw={700} c="dark.8" truncate="end">
                     {logo.name}
-                  </h3>
+                  </Text>
                   {logo.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">
+                    <Text size="sm" c="dimmed" lineClamp={2}>
                       {logo.description}
-                    </p>
+                    </Text>
                   )}
-                  <div className="space-y-1 text-xs text-gray-500 dark:text-gray-500 mb-3">
-                    <div>Partner defaults: {partnerAssignments.length}</div>
-                    <div>Event assignments: {eventAssignments.length}</div>
-                    <div>Usage counter: {logo.usageCount || 0}</div>
+                  <Stack gap={2}>
+                    <Text size="xs" c="dimmed">Partner defaults: {partnerAssignments.length}</Text>
+                    <Text size="xs" c="dimmed">Event assignments: {eventAssignments.length}</Text>
+                    <Text size="xs" c="dimmed">Usage counter: {logo.usageCount || 0}</Text>
                     {primaryPartner && (
-                      <div>
+                      <Text size="xs" c="dimmed">
                         Partner:{' '}
                         <Link
                           href={`/admin/partners/${primaryPartner._id.toString()}`}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                          style={{ color: 'var(--mantine-color-blue-7)' }}
                         >
                           {primaryPartner.name}
                         </Link>
-                      </div>
+                      </Text>
                     )}
                     {!primaryPartner && primaryEvent && (
-                      <div>
+                      <Text size="xs" c="dimmed">
                         Event:{' '}
                         <Link
                           href={`/admin/events/${primaryEvent._id.toString()}`}
-                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                          style={{ color: 'var(--mantine-color-blue-7)' }}
                         >
                           {primaryEvent.name}
                         </Link>
-                      </div>
+                      </Text>
                     )}
-                    {!primaryPartner && !primaryEvent && <div>Unassigned shared logo</div>}
-                  </div>
+                    {!primaryPartner && !primaryEvent && <Text size="xs" c="dimmed">Unassigned shared logo</Text>}
+                  </Stack>
                   <Link
                     href={`/admin/logos/${logo._id.toString()}/edit`}
-                    className="inline-block w-full text-center px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                    style={{ textDecoration: 'none' }}
                   >
-                    Edit
+                    <Button fullWidth color="cameraTeal">
+                      Edit
+                    </Button>
                   </Link>
-                </div>
-              </div>
+                </Stack>
+              </Card>
             );
           })}
-        </div>
+        </SimpleGrid>
       ) : null}
-    </div>
+    </Stack>
   );
 }

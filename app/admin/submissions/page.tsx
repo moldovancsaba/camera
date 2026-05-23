@@ -12,6 +12,10 @@ import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert'
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { Button, Card, Group, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
+import { IconPhotoScan, IconSearch, IconUser, IconWorld } from '@tabler/icons-react';
+import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import StatsStrip from '@/components/gds/StatsStrip';
 
 interface SubmissionGalleryItem {
   _id: { toString(): string };
@@ -117,138 +121,173 @@ export default async function AdminSubmissionsPage({
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Global Galleries</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Cross-app submission inventory for audit, moderation, and gallery operations.
-        </p>
-      </div>
+    <Stack gap="xl">
+      <WorkspaceHeader
+        eyebrow="Resource Inventory"
+        title="Global Galleries"
+        description="Cross-app submission inventory for audit, moderation, and gallery operations."
+      />
 
-      <form className="mb-6 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:flex-row">
-        <input
-          type="text"
-          name="search"
-          defaultValue={search}
-          placeholder="Search user, email, partner, event, or frame"
-          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+      {!error && (
+        <StatsStrip
+          items={[
+            { label: 'Gallery Items', value: submissions.length, icon: <IconPhotoScan size={20} /> },
+            { label: 'Named Users', value: submissions.filter((submission) => Boolean(submission.userName)).length, icon: <IconUser size={20} /> },
+            { label: 'Partner-scoped', value: submissions.filter((submission) => Boolean(submission.partnerId)).length, icon: <IconWorld size={20} /> },
+          ]}
         />
-        <div className="flex gap-3">
-          <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition-colors">
-            Search
-          </button>
-          {search ? (
-            <Link href="/admin/submissions" className="rounded-lg border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
-              Clear
-            </Link>
-          ) : null}
-        </div>
-      </form>
+      )}
+
+      <Card>
+        <form>
+          <Group align="end">
+            <TextInput
+              type="text"
+              name="search"
+              defaultValue={search}
+              label="Search"
+              placeholder="Search user, email, partner, event, or frame"
+              leftSection={<IconSearch size={16} />}
+              style={{ flex: 1 }}
+            />
+            <Button type="submit" color="cameraTeal">
+              Search
+            </Button>
+            {search ? (
+              <Link href="/admin/submissions" style={{ textDecoration: 'none' }}>
+                <Button variant="default">Clear</Button>
+              </Link>
+            ) : null}
+          </Group>
+        </form>
+      </Card>
 
       {error != null ? <DatabaseConnectionAlert error={error} /> : null}
 
       {!error && submissions.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-          <div className="text-6xl mb-4">📷</div>
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No gallery items yet</h3>
-          <p className="text-gray-600 dark:text-gray-400">Waiting for users to create their first photos!</p>
-        </div>
+        <Card p="xl">
+          <Stack align="center" gap="sm">
+            <Text fz={48}>📷</Text>
+            <Text fw={700} fz="lg">
+              No gallery items yet
+            </Text>
+            <Text c="dimmed">Waiting for users to create their first photos!</Text>
+          </Stack>
+        </Card>
       ) : (
-        <div>
-          <div className="mb-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+        <Stack gap="md">
+          <div>
+            <Text size="sm" c="dimmed">
               Total: {submissions.length} gallery items
-            </p>
+            </Text>
           </div>
 
-          {/* Pinterest-style masonry grid */}
-          <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4">
+          <SimpleGrid cols={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing="lg">
             {submissions.map((submission) => {
               const partner = submission.partnerId ? partnerById.get(submission.partnerId) : undefined;
               const event = submission.eventId ? eventById.get(submission.eventId) : undefined;
 
               return (
-                <div
+                <Card
                   key={submission._id.toString()}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-4 break-inside-avoid"
+                  p={0}
+                  style={{ overflow: 'hidden' }}
                 >
                   <Link href={`/share/${submission._id}`}>
-                    <div className="relative bg-gray-100 dark:bg-gray-700">
+                    <div style={{ position: 'relative', background: 'var(--mantine-color-gray-1)' }}>
                       <Image
                         src={submission.imageUrl}
                         alt={`Photo by ${submission.userName}`}
                         width={1200}
                         height={1600}
                         unoptimized
-                        className="w-full h-auto hover:scale-105 transition-transform"
+                        style={{ width: '100%', height: 'auto' }}
                       />
                     </div>
                   </Link>
-                  <div className="p-4">
-                    <p className="font-semibold text-gray-900 dark:text-white mb-1">
+                  <Stack gap="sm" p="md">
+                    <Text fw={700} c="dark.8">
                       {submission.userName}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    </Text>
+                    <Text size="sm" c="dimmed">
                       {submission.userEmail}
-                    </p>
-                    <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400 mb-3">
-                      <div className="flex items-center justify-between">
-                        <span className="capitalize">{submission.frameName || 'frameless'}</span>
-                        <span>{new Date(submission.createdAt).toLocaleDateString()}</span>
-                      </div>
+                    </Text>
+                    <Stack gap={2}>
+                      <Group justify="space-between" gap="xs">
+                        <Text size="xs" c="dimmed" tt="capitalize">
+                          {submission.frameName || 'frameless'}
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          {new Date(submission.createdAt).toLocaleDateString()}
+                        </Text>
+                      </Group>
                       {partner && (
-                        <div>
+                        <Text size="xs" c="dimmed">
                           Partner:{' '}
                           <Link
                             href={`/admin/partners/${partner._id.toString()}`}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                            style={{ color: 'var(--mantine-color-blue-7)' }}
                           >
                             {partner.name}
                           </Link>
-                        </div>
+                        </Text>
                       )}
                       {event && (
-                        <div>
+                        <Text size="xs" c="dimmed">
                           Event:{' '}
                           <Link
                             href={`/admin/events/${event._id.toString()}`}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                            style={{ color: 'var(--mantine-color-blue-7)' }}
                           >
                             {event.name}
                           </Link>
-                        </div>
+                        </Text>
                       )}
-                      {!partner && !event && <div>General / unscoped gallery item</div>}
-                    </div>
+                      {!partner && !event && <Text size="xs" c="dimmed">General / unscoped gallery item</Text>}
+                    </Stack>
                     {typeof submission.playCount === 'number' && submission.playCount > 0 && (
-                      <div className="mb-3 px-2 py-1 bg-purple-50 dark:bg-purple-900/20 rounded text-xs text-purple-700 dark:text-purple-300 font-semibold text-center">
+                      <Text
+                        size="xs"
+                        fw={700}
+                        ta="center"
+                        style={{
+                          padding: '0.5rem',
+                          borderRadius: '0.5rem',
+                          background: 'rgba(147, 51, 234, 0.10)',
+                          color: 'rgb(126, 34, 206)',
+                        }}
+                      >
                         🎬 Slideshow plays: {submission.playCount}
-                      </div>
+                      </Text>
                     )}
-                    <div className="flex gap-2">
+                    <Group grow gap="sm">
                       <Link
                         href={`/share/${submission._id}`}
-                        className="flex-1 px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors text-center"
+                        style={{ textDecoration: 'none' }}
                       >
-                        View
+                        <Button fullWidth color="cameraTeal" size="sm">
+                          View
+                        </Button>
                       </Link>
                       <a
                         href={submission.imageUrl}
                         download
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white text-xs rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-center"
+                        style={{ textDecoration: 'none' }}
                       >
-                        Download
+                        <Button fullWidth variant="default" size="sm">
+                          Download
+                        </Button>
                       </a>
-                    </div>
-                  </div>
-                </div>
+                    </Group>
+                  </Stack>
+                </Card>
               );
             })}
-          </div>
-        </div>
+          </SimpleGrid>
+        </Stack>
       )}
-    </div>
+    </Stack>
   );
 }

@@ -141,7 +141,6 @@ export async function getAdminNavigationAccess(db: Db, session: Session) {
       isGlobalAdmin: true,
       hasAnyPartnerAccess: true,
       hasEventsAccess: true,
-      hasGymAccess: true,
     };
   }
   const assignments = await listSessionPartnerAssignments(db, session);
@@ -149,6 +148,5 @@ export async function getAdminNavigationAccess(db: Db, session: Session) {
     isGlobalAdmin: false,
     hasAnyPartnerAccess: assignments.length > 0,
     hasEventsAccess: assignments.some((assignment) => assignment.appKey === 'events' && assignment.isActive),
-    hasGymAccess: assignments.some((assignment) => assignment.appKey === 'gym' && assignment.isActive),
   };
 }

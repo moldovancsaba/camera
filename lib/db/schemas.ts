@@ -10,8 +10,6 @@
  * - frames: Pre-designed frame templates with three-tier ownership (global/partner/event)
  * - submissions: User photo submissions with comprehensive metadata and onboarding data
  * - users_cache: Optional cache of SSO user data for performance
- * - gym_lessons, gym_workout_sessions: Gym app lesson templates and logged workouts
- * - fff_settings, fff_user_profiles: Gym app per-user virtual event, slideshow, and default-frame state
  * 
  * Frame Visibility Hierarchy:
  * - Global frames: Available to all partners/events, can be deactivated per partner/event
@@ -44,12 +42,6 @@ export const COLLECTIONS = {
   LANDING_PAGES: 'landing_pages',
   LANDING_PAGE_CSS_PRESETS: 'landing_page_css_presets',
   PARTNER_USER_ACCESS: 'partner_user_access',
-  /** Gym / sport module: lesson templates and logged workouts (same SSO + Atlas as Camera) */
-  GYM_LESSONS: 'gym_lessons',
-  GYM_WORKOUT_SESSIONS: 'gym_workout_sessions',
-  /** FunFitFan: singleton app settings + per-user virtual event / slideshow */
-  FFF_SETTINGS: 'fff_settings',
-  FFF_USER_PROFILES: 'fff_user_profiles',
   /** Server-side OAuth/session payload; browser holds only a small pointer cookie (`v:2`). */
   WEB_SESSIONS: 'web_sessions',
 } as const;
@@ -686,7 +678,7 @@ export interface Slideshow {
   viewportScale?: 'fit' | 'fill';
   /**
    * Stage width ÷ height (e.g. 16/9, 4/3, 1, 9/16). When omitted or null, event default applies
-   * (16:9 for most events; FunFitFan uses 9/16 unless overridden here).
+   * (16:9 unless overridden here).
    */
   stageAspect?: number | null;
   
@@ -820,7 +812,7 @@ export interface LandingPageCssPreset {
 // PARTNER USER ACCESS COLLECTION
 // ============================================================================
 
-export type PartnerAppKey = 'events' | 'gym';
+export type PartnerAppKey = 'events';
 export type PartnerAccessRole = 'viewer' | 'manager' | 'admin';
 
 /**
@@ -878,96 +870,6 @@ export interface UserCache {
 }
 
 // ============================================================================
-// GYM MODULE (lessons + workout sessions + gym selfie URL on imgbb)
-// ============================================================================
-
-/**
- * One step inside a lesson (e.g. warm-up, set block, stretch).
- */
-export interface GymLessonStep {
-  order: number;
-  title: string;
-  detail?: string;
-}
-
-/**
- * Published lesson managed in admin; members start a workout session from it.
- */
-export interface GymLesson {
-  _id?: ObjectId;
-  lessonId: string;
-  /** Display + filtering; must match an entry in FunFitFan `sportActivities` when set. */
-  sport?: string;
-  title: string;
-  description?: string;
-  steps: GymLessonStep[];
-  isPublished: boolean;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type GymWorkoutSessionStatus = 'in_progress' | 'completed' | 'cancelled';
-
-/**
- * Singleton FunFitFan app settings (admin-managed default frame for all FFF flows).
- */
-export interface FffSettings {
-  _id?: ObjectId | string;
-  /** Exactly one document; used for upserts */
-  settingsKey: 'default';
-  /** Frame UUID from `frames` — used for partner defaults and new personal events */
-  defaultFrameId?: string;
-  /** FunFitFan log wizard sport dropdown; seeded in MongoDB when missing */
-  sportActivities?: string[];
-  updatedAt: string;
-  updatedBy: string;
-}
-
-/**
- * Links an SSO user to their personal FunFitFan "event" (Camera event) and history slideshow.
- */
-export interface FffUserProfile {
-  _id?: ObjectId;
-  userId: string;
-  userEmail: string;
-  /** MongoDB ObjectId string of the `events` document (used in /capture/[id] URLs) */
-  eventMongoId: string;
-  /** `events.eventId` UUID (submissions + slideshows reference this) */
-  eventUuid: string;
-  slideshowId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/**
- * Logged workout for a user; optional selfie uses same imgbb pipeline as submissions.
- */
-export interface GymWorkoutSession {
-  _id?: ObjectId;
-  sessionId: string;
-  userId: string;
-  userEmail: string;
-  lessonId: string;
-  lessonTitle: string;
-  /** Snapshot of lesson steps at session start (fallback: load from `gym_lessons`). */
-  lessonSteps?: GymLessonStep[];
-  status: GymWorkoutSessionStatus;
-  startedAt: string;
-  completedAt?: string;
-  /** Per-step completion or notes (flexible for future RPE/reps fields) */
-  stepLog: Array<{
-    stepOrder: number;
-    completedAt: string;
-    notes?: string;
-  }>;
-  selfieImageUrl?: string;
-  selfieUploadedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// ============================================================================
 // HELPER TYPES AND UTILITIES
 // ============================================================================
 
@@ -981,8 +883,6 @@ export type NewSubmission = Omit<Submission, '_id'>;
 export type NewUserCache = Omit<UserCache, '_id'>;
 export type NewSlideshow = Omit<Slideshow, '_id'>;
 export type NewPartnerUserAccess = Omit<PartnerUserAccess, '_id'>;
-export type NewGymLesson = Omit<GymLesson, '_id'>;
-export type NewGymWorkoutSession = Omit<GymWorkoutSession, '_id'>;
 
 /**
  * Generate ISO 8601 timestamp with milliseconds in UTC

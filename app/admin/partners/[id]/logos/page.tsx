@@ -1,16 +1,29 @@
-/**
- * Partner Default Logos Management Page
- * 
- * Manage default logo assignments for a partner
- * These defaults cascade to all child events
- */
-
 'use client';
 
-import { useState, useEffect } from 'react';
+/**
+ * Partner Default Logos Management Page
+ *
+ * Manage default logo assignments for a partner.
+ */
+
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import {
+  Alert,
+  Badge,
+  Breadcrumbs,
+  Button,
+  Card,
+  Group,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+} from '@mantine/core';
+import { IconAlertCircle } from '@tabler/icons-react';
+import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
 
 interface DefaultLogoAssignment {
   logoId: string;
@@ -30,31 +43,30 @@ interface LogoRecord {
 }
 
 interface PartnerResponse {
-  data?: {
-    partner?: PartnerRecord;
-  };
+  data?: { partner?: PartnerRecord };
   partner?: PartnerRecord;
   error?: string;
 }
 
 interface LogosResponse {
-  data?: {
-    logos?: LogoRecord[];
-  };
+  data?: { logos?: LogoRecord[] };
   error?: string;
 }
+
+const scenarios = [
+  { id: 'slideshow-transition', name: 'Slideshow Transitions', icon: '🔄' },
+  { id: 'onboarding-thankyou', name: 'Custom Pages', icon: '📝' },
+  { id: 'loading-slideshow', name: 'Loading Slideshow', icon: '⏳' },
+  { id: 'loading-capture', name: 'Loading Capture', icon: '📸' },
+];
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
 }
 
-export default function PartnerLogosPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function PartnerLogosPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const [partnerId, setPartnerId] = useState<string>('');
+  const [partnerId, setPartnerId] = useState('');
   const [partner, setPartner] = useState<PartnerRecord | null>(null);
   const [availableLogos, setAvailableLogos] = useState<LogoRecord[]>([]);
   const [defaultLogos, setDefaultLogos] = useState<DefaultLogoAssignment[]>([]);
@@ -63,7 +75,7 @@ export default function PartnerLogosPage({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    params.then(p => setPartnerId(p.id));
+    params.then((resolved) => setPartnerId(resolved.id));
   }, [params]);
 
   useEffect(() => {
@@ -72,54 +84,48 @@ export default function PartnerLogosPage({
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        
+
         const partnerResponse = await fetch(`/api/partners/${partnerId}`);
         const partnerData: PartnerResponse = await partnerResponse.json();
-        
         if (!partnerResponse.ok) {
           throw new Error(partnerData.error || 'Failed to load partner');
         }
-        
-        const partner = partnerData.data?.partner || partnerData.partner;
-        if (!partner) {
+
+        const partnerRecord = partnerData.data?.partner || partnerData.partner;
+        if (!partnerRecord) {
           throw new Error('Partner not found');
         }
-        setPartner(partner);
-        setDefaultLogos(partner.defaultLogos || []);
+        setPartner(partnerRecord);
+        setDefaultLogos(partnerRecord.defaultLogos || []);
 
         const logosResponse = await fetch('/api/logos?active=true&limit=100');
         const logosData: LogosResponse = await logosResponse.json();
-        
         if (!logosResponse.ok) {
           throw new Error(logosData.error || 'Failed to load logos');
         }
-        
+
         setAvailableLogos(logosData.data?.logos || []);
-        setIsLoading(false);
-      } catch (err: unknown) {
-        console.error('Error fetching data:', err);
-        setError(getErrorMessage(err));
+      } catch (fetchError) {
+        setError(getErrorMessage(fetchError));
+      } finally {
         setIsLoading(false);
       }
     };
 
-    fetchData();
+    void fetchData();
   }, [partnerId]);
 
   const handleToggleLogo = (logoId: string, scenario: string) => {
-    setDefaultLogos(prev => {
-      const exists = prev.find((logo) => logo.logoId === logoId && logo.scenario === scenario);
-      if (exists) {
-        return prev.filter((logo) => !(logo.logoId === logoId && logo.scenario === scenario));
-      } else {
-        return [...prev, { logoId, scenario, order: prev.length }];
-      }
+    setDefaultLogos((current) => {
+      const exists = current.find((logo) => logo.logoId === logoId && logo.scenario === scenario);
+      return exists
+        ? current.filter((logo) => !(logo.logoId === logoId && logo.scenario === scenario))
+        : [...current, { logoId, scenario, order: current.length }];
     });
   };
 
-  const isLogoSelected = (logoId: string, scenario: string) => {
-    return defaultLogos.some((logo) => logo.logoId === logoId && logo.scenario === scenario);
-  };
+  const isLogoSelected = (logoId: string, scenario: string) =>
+    defaultLogos.some((logo) => logo.logoId === logoId && logo.scenario === scenario);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -137,153 +143,114 @@ export default function PartnerLogosPage({
 
       router.push(`/admin/partners/${partnerId}`);
       router.refresh();
-    } catch (err: unknown) {
-      alert(getErrorMessage(err));
+    } catch (saveError) {
+      alert(getErrorMessage(saveError));
       setIsSaving(false);
     }
   };
 
   if (isLoading) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="text-4xl mb-4">⏳</div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
+      <Stack align="center" justify="center" mih="50vh">
+        <Text fz={40}>⏳</Text>
+        <Text c="dimmed">Loading...</Text>
+      </Stack>
     );
   }
 
   if (error || !partner) {
     return (
-      <div className="p-8">
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-800 dark:text-red-200 font-medium">Error</p>
-          <p className="text-red-600 dark:text-red-300 text-sm mt-1">{error || 'Partner not found'}</p>
-        </div>
-        <Link href="/admin/partners" className="text-blue-600 hover:text-blue-800 dark:text-blue-400">
-          ← Back to Partners
-        </Link>
-      </div>
+      <Stack gap="lg">
+        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+          <Text fw={700}>Error</Text>
+          <Text size="sm">{error || 'Partner not found'}</Text>
+        </Alert>
+        <Link href="/admin/partners">← Back to Partners</Link>
+      </Stack>
     );
   }
 
-  const scenarios = [
-    { id: 'slideshow-transition', name: 'Slideshow Transitions', icon: '🔄' },
-    { id: 'onboarding-thankyou', name: 'Custom Pages', icon: '📝' },
-    { id: 'loading-slideshow', name: 'Loading Slideshow', icon: '⏳' },
-    { id: 'loading-capture', name: 'Loading Capture', icon: '📸' },
-  ];
-
   return (
-    <div className="p-8">
-      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
-        <Link href="/admin/partners" className="hover:text-gray-700 dark:hover:text-gray-200">
-          Partners
-        </Link>
-        <span>→</span>
-        <Link href={`/admin/partners/${partnerId}`} className="hover:text-gray-700 dark:hover:text-gray-200">
-          {partner.name}
-        </Link>
-        <span>→</span>
-        <span>Default Logos</span>
-      </div>
+    <Stack gap="xl">
+      <Breadcrumbs>
+        <Link href="/admin/partners">Partners</Link>
+        <Link href={`/admin/partners/${partnerId}`}>{partner.name}</Link>
+        <Text>Default Logos</Text>
+      </Breadcrumbs>
 
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Manage Default Logos</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Select logos by scenario that will be automatically assigned to new events under {partner.name}
-        </p>
-      </div>
+      <WorkspaceHeader
+        eyebrow="Camera Core"
+        title="Manage Default Logos"
+        description={`Select logos by scenario that will be automatically assigned to new events under ${partner.name}`}
+      />
 
-      <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-        <p className="text-blue-800 dark:text-blue-200 text-sm">
-          💡 <strong>Note:</strong> Changes will automatically cascade to all child events marked with 🟢. 
-          Events with custom logos (🔴) will keep their selections.
-        </p>
-      </div>
+      <Alert color="blue">
+        <Text size="sm">
+          💡 <strong>Note:</strong> Changes will automatically cascade to all child events marked with 🟢. Events with
+          custom logos (🔴) will keep their selections.
+        </Text>
+      </Alert>
 
       {availableLogos.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-          <div className="text-5xl mb-4">🎨</div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No logos available</h3>
-          <p className="text-gray-600 dark:text-gray-400">Create logos first to assign them as defaults</p>
-        </div>
+        <Card>
+          <Stack align="center" gap="sm">
+            <Text fz={48}>🎨</Text>
+            <Title order={3}>No logos available</Title>
+            <Text c="dimmed">Create logos first to assign them as defaults</Text>
+          </Stack>
+        </Card>
       ) : (
-        <div className="space-y-6">
+        <Stack gap="lg">
           {scenarios.map((scenario) => (
-            <div key={scenario.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <span>{scenario.icon}</span>
-                  <span>{scenario.name}</span>
-                  <span className="text-sm font-normal text-gray-500">
-                    ({defaultLogos.filter((logo) => logo.scenario === scenario.id).length} selected)
-                  </span>
-                </h3>
-              </div>
-              <div className="p-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {availableLogos.map((logo) => {
-                    const isSelected = isLogoSelected(logo.logoId, scenario.id);
-                    
-                    return (
-                      <button
-                        key={`${logo.logoId}-${scenario.id}`}
-                        onClick={() => handleToggleLogo(logo.logoId, scenario.id)}
-                        className={`relative p-3 rounded-lg border-2 transition-all ${
-                          isSelected
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                        }`}
-                      >
-                        {isSelected && (
-                          <div className="absolute top-1 right-1 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs">
-                            ✓
-                          </div>
+            <Card key={scenario.id} p={0}>
+              <Group justify="space-between" align="center" p="lg" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+                <Title order={3}>
+                  {scenario.icon} {scenario.name}
+                </Title>
+                <Badge color="blue">
+                  {defaultLogos.filter((logo) => logo.scenario === scenario.id).length} selected
+                </Badge>
+              </Group>
+              <SimpleGrid cols={{ base: 2, md: 4, xl: 6 }} spacing="md" p="lg">
+                {availableLogos.map((logo) => {
+                  const selected = isLogoSelected(logo.logoId, scenario.id);
+                  return (
+                    <Card
+                      key={`${logo.logoId}-${scenario.id}`}
+                      withBorder
+                      radius="md"
+                      bg={selected ? 'blue.0' : 'white'}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleToggleLogo(logo.logoId, scenario.id)}
+                    >
+                      <Stack gap="sm" align="center">
+                        {selected ? <Badge color="blue">✓ Selected</Badge> : null}
+                        {logo.thumbnailUrl ? (
+                          <Image src={logo.thumbnailUrl} alt={logo.name} width={80} height={80} unoptimized style={{ width: '100%', height: 64, objectFit: 'contain' }} />
+                        ) : (
+                          <Text fz={32}>🎨</Text>
                         )}
-                        <div className="text-center">
-                          {logo.thumbnailUrl ? (
-                            <Image
-                              src={logo.thumbnailUrl} 
-                              alt={logo.name}
-                              width={64}
-                              height={64}
-                              unoptimized
-                              className="w-full h-16 object-contain mb-1"
-                            />
-                          ) : (
-                            <div className="text-2xl mb-1">🎨</div>
-                          )}
-                          <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
-                            {logo.name}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+                        <Text size="xs" fw={600} ta="center" lineClamp={2}>
+                          {logo.name}
+                        </Text>
+                      </Stack>
+                    </Card>
+                  );
+                })}
+              </SimpleGrid>
+            </Card>
           ))}
-        </div>
+        </Stack>
       )}
 
-      <div className="mt-6 flex items-center gap-4">
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+      <Stack gap="sm">
+        <Button onClick={handleSave} loading={isSaving}>
           {isSaving ? 'Saving...' : `Save Defaults (${defaultLogos.length} selected)`}
-        </button>
-        <Link
-          href={`/admin/partners/${partnerId}`}
-          className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-        >
-          Cancel
+        </Button>
+        <Link href={`/admin/partners/${partnerId}`} style={{ textDecoration: 'none' }}>
+          <Button variant="default">Cancel</Button>
         </Link>
-      </div>
-    </div>
+      </Stack>
+    </Stack>
   );
 }

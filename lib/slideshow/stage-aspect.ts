@@ -1,5 +1,4 @@
 import type { Event } from '@/lib/db/schemas';
-import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
 
 /** Min width÷height (very tall stage). */
 const STAGE_ASPECT_MIN = 0.25;
@@ -7,15 +6,15 @@ const STAGE_ASPECT_MIN = 0.25;
 const STAGE_ASPECT_MAX = 4;
 
 export function defaultStageAspectWidthOverHeight(event: Event): number {
-  return String(event.partnerId) === FUNFITFAN_PARTNER_ID ? 9 / 16 : 16 / 9;
+  void event;
+  return 16 / 9;
 }
 
 export type SlideshowStageSource = { stageAspect?: number | null };
 
 /**
  * Effective stage width÷height for playlist metadata and the player.
- * Uses `slideshow.stageAspect` when set to a finite number in range; otherwise event defaults
- * (16:9 for most events, 9:16 for FunFitFan).
+ * Uses `slideshow.stageAspect` when set to a finite number in range; otherwise event defaults.
  */
 export function resolveSlideshowStageAspect(
   slideshow: SlideshowStageSource,

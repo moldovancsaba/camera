@@ -1,7 +1,7 @@
 # Tech Stack
 
 **Version**: 2.9.0  
-**Last Updated**: 2026-05-20
+**Last Updated**: 2026-05-23
 
 This document records the current technical stack in use and the parts of the product each technology supports.
 
@@ -11,7 +11,7 @@ This document records the current technical stack in use and the parts of the pr
 
 - App Router architecture
 - server components for page/data composition
-- client components for interactive admin, capture, slideshow, and workout surfaces
+- client components for interactive admin, capture, and slideshow surfaces
 - route handlers for REST-style APIs
 - root middleware for auth and host-based rewrites
 
@@ -52,7 +52,6 @@ Primary persistence layer for:
 - slideshows and slideshow layouts
 - landing pages
 - partner-scoped access assignments
-- Gym / FFF settings and workout data
 - server-side web session storage
 
 ### imgbb
@@ -100,15 +99,7 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 - partner workspace operations
 - global inventory pages
 - Events App management
-- Gym App settings and training content
 - partner user assignment UI
-
-### Gym / FFF
-
-- virtual event bootstrap
-- workout lesson catalog
-- session logging
-- selfie capture and share
 
 ## Key library choices
 
@@ -150,7 +141,7 @@ npm run env:verify
 
 ### Strengths
 
-- one repository for public, admin, slideshow, and Gym surfaces
+- one repository for public, admin, and slideshow surfaces
 - shared auth/session model
 - flexible Mongo document model for evolving product areas
 - low-ops media hosting and deployment model

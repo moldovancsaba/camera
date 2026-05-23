@@ -19,16 +19,24 @@ export default function WorkspaceHeader({
     <Group justify="space-between" align="flex-start" gap="lg" wrap="wrap">
       <Stack gap="xs">
         {eyebrow ? (
-          <Text tt="uppercase" fw={700} fz="xs" c="dimmed" style={{ letterSpacing: '0.12em' }}>
+          <Text
+            tt="uppercase"
+            fw={700}
+            fz="xs"
+            c="gray.6"
+            style={{ letterSpacing: '0.12em' }}
+          >
             {eyebrow}
           </Text>
         ) : null}
         <Group gap="sm" align="center">
-          <Title order={1}>{title}</Title>
+          <Title order={1} c="dark.8">
+            {title}
+          </Title>
           {status ? <Badge color="cameraTeal">{status}</Badge> : null}
         </Group>
         {description ? (
-          <Text c="dimmed" maw={760}>
+          <Text c="gray.7" maw={760}>
             {description}
           </Text>
         ) : null}

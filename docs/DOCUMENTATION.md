@@ -1,6 +1,6 @@
 # Documentation Maintenance
 
-**Last Updated**: 2026-05-20
+**Last Updated**: 2026-05-23
 
 The running code is the source of truth. Documentation must be updated from the implementation, not from memory.
 
@@ -29,7 +29,6 @@ Historical and planning docs may exist, but they are not canonical runtime docum
 | MongoDB shapes | `lib/db/schemas.ts` plus actual route persistence code |
 | Partner-scoped access | `lib/partners/*` and affected admin/API routes |
 | Slideshow behavior | `lib/slideshow/*`, `components/slideshow/SlideshowPlayerCore.tsx` |
-| Gym / FFF behavior | `lib/funfitfan/*`, `lib/gym/*`, `app/workout/**`, `app/fff/**` |
 
 ## 3. Common drift traps
 
@@ -55,9 +54,9 @@ Current model:
 - edge middleware allows any valid Camera session
 - layout/page/API layers refine global vs partner-scoped access
 
-### Gym / FFF drift
+### Removed product surfaces
 
-Do not describe Gym as a separate product stack. It is an app surface built on Camera infrastructure.
+Do not document Gym, Workout, or FunFitFan (FFF) routes, APIs, or `appKey: "gym"` unless they exist in the current codebase. Those surfaces were removed; partner access is `events` only.
 
 ## 4. Required updates when code changes
 
@@ -66,7 +65,7 @@ Update docs in the same change when you modify:
 - admin IA or access model
 - Mongo identifier semantics
 - slideshow playlist/player behavior
-- Gym/FFF routing or data model
+- partner/app routing or access model
 - env vars or deployment expectations
 
 At minimum, review:
@@ -103,7 +102,7 @@ cat package.json
 - route names and paths match the current app
 - admin and auth behavior match current implementation
 - Mongo identifier guidance matches the live mixed model
-- Gym / Events / Partner model matches the current UX and code
+- Events / Partner model matches the current UX and code
 
 ## 9. GitHub tracker handover
 

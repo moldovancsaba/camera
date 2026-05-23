@@ -27,6 +27,11 @@ import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert'
 import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
 import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
 import { redirect } from 'next/navigation';
+import { Button, Card, Group, Stack, Text, TextInput } from '@mantine/core';
+import { IconPhotoScan, IconSearch, IconUser, IconUsers, IconUserShield } from '@tabler/icons-react';
+import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import StatsStrip from '@/components/gds/StatsStrip';
+import StatusBadge from '@/components/gds/StatusBadge';
 
 // Force dynamic rendering (uses cookies for session)
 export const dynamic = 'force-dynamic';
@@ -61,7 +66,7 @@ interface AdminUserListItem {
     accessId: string;
     partnerId: string;
     partnerName: string;
-    appKey: 'events' | 'gym';
+    appKey: 'events';
     role: 'viewer' | 'manager' | 'admin';
     isActive: boolean;
   }>;
@@ -239,7 +244,7 @@ export default async function AdminUsersPage({
         accessId: String(row.accessId ?? ''),
         partnerId: String(row.partnerId ?? ''),
         partnerName: String(row.partnerName ?? ''),
-        appKey: row.appKey === 'gym' ? 'gym' : 'events',
+        appKey: 'events',
         role: row.role === 'viewer' || row.role === 'manager' || row.role === 'admin' ? row.role : 'viewer',
         isActive: row.isActive !== false,
       });
@@ -269,91 +274,108 @@ export default async function AdminUsersPage({
       )
     : users;
 
-  const administrators = filteredUsers.filter((user) => user.type === 'administrator');
   const accessManagedUsers = filteredUsers.filter((user) => user.type === 'administrator' || user.type === 'real');
   const guestUsers = filteredUsers.filter((user) => user.type === 'pseudo');
   const anonymousUsers = filteredUsers.filter((user) => user.type === 'anonymous');
-  const activeUsers = filteredUsers.filter((user) => user.isActive !== false);
   const representedSubmissions = filteredUsers.reduce((sum, user) => sum + user.submissions.length, 0);
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Global Users</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Global access management plus participation records derived from Camera submissions.
-        </p>
-      </div>
+    <Stack gap="xl">
+      <WorkspaceHeader
+        eyebrow="Camera Core"
+        title="Global Users"
+        description="Global access management plus participation records derived from Camera submissions."
+        status="Global Admin"
+      />
 
-      <form className="mb-6 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:flex-row">
-        <input
-          type="text"
-          name="search"
-          defaultValue={search}
-          placeholder="Search name, email, partner, or event"
-          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-        />
-        <div className="flex gap-3">
-          <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition-colors">
-            Search
-          </button>
-          {search ? (
-            <Link href="/admin/users" className="rounded-lg border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">
-              Clear
-            </Link>
-          ) : null}
-        </div>
-      </form>
+      <StatsStrip
+        items={[
+          {
+            label: 'Access-managed accounts',
+            value: accessManagedUsers.length,
+            icon: <IconUserShield size={20} />,
+          },
+          {
+            label: 'Guest identities',
+            value: guestUsers.length,
+            icon: <IconUsers size={20} />,
+          },
+          {
+            label: 'Anonymous participants',
+            value: anonymousUsers.length,
+            icon: <IconUser size={20} />,
+          },
+          {
+            label: 'Represented submissions',
+            value: representedSubmissions,
+            icon: <IconPhotoScan size={20} />,
+          },
+        ]}
+      />
+
+      <Card>
+        <form>
+          <Group align="end">
+            <TextInput
+              name="search"
+              defaultValue={search}
+              label="Search"
+              placeholder="Search by name, email, partner, or event"
+              leftSection={<IconSearch size={16} />}
+              style={{ flex: 1 }}
+            />
+            <Button type="submit" color="cameraTeal">
+              Search
+            </Button>
+            {search ? (
+              <Link href="/admin/users" style={{ textDecoration: 'none' }}>
+                <Button variant="default">Clear</Button>
+              </Link>
+            ) : null}
+          </Group>
+        </form>
+      </Card>
 
       {error != null ? <DatabaseConnectionAlert error={error} /> : null}
 
       {!error && filteredUsers.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
-          <div className="text-6xl mb-4">👥</div>
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No users yet</h3>
-          <p className="text-gray-600 dark:text-gray-400">Waiting for first submissions</p>
-        </div>
+        <Card p="xl">
+          <Stack align="center" gap="sm">
+            <Text fz={48}>👥</Text>
+            <Text fw={700} fz="lg">
+              No users yet
+            </Text>
+            <Text c="dimmed">Waiting for first submissions</Text>
+          </Stack>
+        </Card>
       ) : (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Global access-managed accounts</div>
-              <div className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{accessManagedUsers.length}</div>
-              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">{administrators.length} admin-level accounts</div>
-            </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Guest identities</div>
-              <div className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{guestUsers.length}</div>
-              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">Submission-only users collected from events</div>
-            </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Anonymous participants</div>
-              <div className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{anonymousUsers.length}</div>
-              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">Session-based users without profile details</div>
-            </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Represented submissions</div>
-              <div className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{representedSubmissions}</div>
-              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">{activeUsers.length} active identities in this directory</div>
-            </div>
-          </div>
+        <Stack gap="lg">
 
           <AuthorizationMatrix
             description="Use this matrix when deciding whether a user belongs in global SSO admin management or in partner-scoped Camera assignments."
           />
 
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
-            This page manages global Camera access today. Partner-level permissions are not modeled separately yet, so guest and participation records below are derived from submissions rather than a dedicated partner access table.
-          </div>
+          <Card
+            style={{
+              background: 'rgba(251, 191, 36, 0.12)',
+              borderColor: 'rgba(245, 158, 11, 0.35)',
+            }}
+          >
+            <Text size="sm" c="dark.8">
+              This page manages global Camera access today. Partner-level permissions are not modeled separately yet, so guest and participation records below are derived from submissions rather than a dedicated partner access table.
+            </Text>
+          </Card>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Directory and Participation History</h2>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          <Card p={0} style={{ overflow: 'hidden' }}>
+            <div style={{ borderBottom: '1px solid var(--mantine-color-gray-2)', padding: '1rem 1.5rem' }}>
+              <Text fw={700} fz="lg" c="dark.8">
+                Directory and Participation History
+              </Text>
+              <Text mt={4} size="sm" c="dimmed">
                 Operators can manage global roles and status here while still seeing how each identity shows up in event participation.
-              </p>
+              </Text>
             </div>
-            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            <div style={{ borderTop: 0 }}>
               {filteredUsers.map((user, index: number) => {
               const profileHref = `/users/${sanitizeUsername(user.name || 'Anonymous')}`;
               const emailDisplay = user.isAnonymous ? 'anonymous@event.com' : (user.email || 'unknown');
@@ -370,7 +392,13 @@ export default async function AdminUsersPage({
                       : 'Anonymous participation identity';
 
               return (
-                <div key={`${user.email}-${index}`} className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+                <div
+                  key={`${user.email}-${index}`}
+                  style={{
+                    padding: '1rem 1.5rem',
+                    borderBottom: '1px solid var(--mantine-color-gray-2)',
+                  }}
+                >
                   <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                     {/* User Info */}
                     <div className="flex-1 min-w-0">
@@ -381,21 +409,21 @@ export default async function AdminUsersPage({
                         
                         {/* Status Badges */}
                         {user.isAnonymous && (
-                          <span className="px-2 py-0.5 text-[10px] font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded">Anonymous</span>
+                          <StatusBadge tone="info" label="Anonymous" />
                         )}
                         {user.type === 'administrator' && (
-                          <span className="px-2 py-0.5 text-[10px] font-semibold bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded">Admin</span>
+                          <StatusBadge tone="info" label="Admin" />
                         )}
                         {/* Only show Pseudo badge if NOT merged */}
                         {user.type === 'pseudo' && !user.mergedWith && (
-                          <span className="px-2 py-0.5 text-[10px] font-semibold bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">Pseudo</span>
+                          <StatusBadge tone="info" label="Pseudo" />
                         )}
                         {!user.isActive && (
-                          <span className="px-2 py-0.5 text-[10px] font-semibold bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded">Inactive</span>
+                          <StatusBadge tone="inactive" />
                         )}
                         {/* Show Merged badge but don't show Pseudo at the same time */}
                         {user.mergedWith && (
-                          <span className="px-2 py-0.5 text-[10px] font-semibold bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded">Merged</span>
+                          <StatusBadge tone="active" label="Merged" />
                         )}
                       </div>
                       
@@ -445,9 +473,9 @@ export default async function AdminUsersPage({
               );
               })}
             </div>
-          </div>
-        </div>
+          </Card>
+        </Stack>
       )}
-    </div>
+    </Stack>
   );
 }

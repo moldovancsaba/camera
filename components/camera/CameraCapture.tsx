@@ -23,11 +23,11 @@ import Image from 'next/image';
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { AppButton } from '@/components/ui/AppButton';
 
-/** Supports hex (#rgb) or CSS `var(--token)` for FunFitFan-branded capture UI. */
+/** Supports hex (#rgb) or CSS `var(--token)` for branded capture UI. */
 function capturePromptBackground(fill: string): string {
   const t = fill.trim();
   if (t.startsWith('var(')) {
-    return `linear-gradient(to bottom right, color-mix(in srgb, ${t} 85%, var(--fff-landing-bg-start)), color-mix(in srgb, ${t} 58%, var(--fff-landing-bg-end)))`;
+    return `linear-gradient(to bottom right, color-mix(in srgb, ${t} 85%, var(--app-shell-bg-start)), color-mix(in srgb, ${t} 58%, var(--app-shell-bg-end)))`;
   }
   return `linear-gradient(to bottom right, ${t}dd, ${t}aa)`;
 }
@@ -43,27 +43,27 @@ export interface CameraCaptureProps {
   captureButtonBorderColor?: string; // Hex or CSS `var(--token)` for capture button border
   promptTitle?: string;  // Custom title for camera start prompt
   promptDescription?: string; // Custom description for camera start prompt
-  /** Default camera facing (e.g. `user` for gym selfie). */
+  /** Default camera facing when capture opens. */
   initialFacingMode?: 'user' | 'environment';
   /**
-   * When set (e.g. `9/16` for FunFitFan), drives preview sizing, getUserMedia aspect, and capture output
+   * When set (e.g. `9/16`), drives preview sizing, getUserMedia aspect, and capture output
    * even if `frameWidth`/`frameHeight` from the DB are wrong (e.g. legacy 1920×1080 defaults).
    */
   previewAspectWidthOverHeight?: number;
   /**
-   * FunFitFan-style bottom bar: Cancel (left), Take (center), Change camera (right) — all `AppButton`s.
+   * Bottom triple bar: Cancel (left), Take (center), Change camera (right) — all `AppButton`s.
    * When set, ignores orientation-based floating capture/switch positions.
    */
-  controlBar?: 'default' | 'fff-bottom-triple';
-  /** Used with `controlBar="fff-bottom-triple"` for the left Cancel action. */
+  controlBar?: 'default' | 'bottom-triple';
+  /** Used with `controlBar="bottom-triple"` for the left Cancel action. */
   onCancel?: () => void;
   /**
-   * Optional row above Cancel / Take / Change camera in the FunFitFan bottom bar (e.g. back to activity step).
+   * Optional row above Cancel / Take / Change camera in the bottom triple bar.
    * Shown whenever the triple bar wrapper is visible before a captured still is held locally.
    */
   tripleBarExtra?: ReactNode;
   /**
-   * After capture, show “Retake” in the triple bar (default true). Gym check-in disables this so one shot uploads immediately.
+   * After capture, show “Retake” in the triple bar (default true). Set false when a single shot should upload immediately without retake.
    */
   showRetake?: boolean;
 }
@@ -626,7 +626,7 @@ export default function CameraCapture({
     };
   }, [stopCamera]);
 
-  const useTripleBar = controlBar === 'fff-bottom-triple';
+  const useTripleBar = controlBar === 'bottom-triple';
 
   return (
     <div
@@ -741,14 +741,14 @@ export default function CameraCapture({
       </div>
       </div>
 
-      {/* FunFitFan check-in: fixed bottom — optional extra row, then Cancel | Take | Change camera */}
+      {/* Fixed bottom triple bar: optional extra row, then Cancel | Take | Change camera */}
       {useTripleBar && !capturedImage && (tripleBarExtra != null || stream) ? (
-        <div className="fff-camera-triple-bar">
+        <div className="camera-triple-bar">
           {tripleBarExtra != null ? (
-            <div className="fff-camera-triple-bar-extra mb-3 flex justify-center">{tripleBarExtra}</div>
+            <div className="camera-triple-bar-extra mb-3 flex justify-center">{tripleBarExtra}</div>
           ) : null}
           {stream ? (
-            <div className="fff-camera-triple-bar-inner">
+            <div className="camera-triple-bar-inner">
               <div className="justify-self-start">
                 {onCancel ? (
                   <AppButton type="button" variant="neutral" compact onClick={onCancel}>
@@ -778,8 +778,8 @@ export default function CameraCapture({
       ) : null}
 
       {useTripleBar && capturedImage && (
-        <div className="fff-camera-triple-bar">
-          <div className="fff-camera-triple-bar-inner">
+        <div className="camera-triple-bar">
+          <div className="camera-triple-bar-inner">
             <div className="justify-self-start">
               {onCancel ? (
                 <AppButton type="button" variant="neutral" compact onClick={onCancel}>

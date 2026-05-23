@@ -14,7 +14,7 @@ export default function StatsStrip({ items }: { items: StatItem[] }) {
         <Card key={item.label}>
           <Group justify="space-between" align="flex-start">
             <Stack gap={4}>
-              <Text size="sm" c="dimmed">
+              <Text size="sm" c="gray.6">
                 {item.label}
               </Text>
               <Text fw={800} fz={34} c="dark.8">

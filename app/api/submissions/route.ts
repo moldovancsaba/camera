@@ -8,7 +8,6 @@
 
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { readFunFitFanSportActivities } from '@/lib/funfitfan/bootstrap';
 import { uploadImage } from '@/lib/imgbb/upload';
 import {
   withErrorHandler,
@@ -20,16 +19,9 @@ import {
   apiCreated,
   apiNotFound,
   apiBadRequest,
-  apiUnauthorized,
   checkRateLimit,
   RATE_LIMITS,
 } from '@/lib/api';
-import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
-import { formatFeelSoLine, normalizeFeelSoTagsList } from '@/lib/funfitfan/feel-so-tags';
-import { signFffSharePayload } from '@/lib/fff-share-token';
-import { fffShareAbsoluteUrl } from '@/lib/funfitfan/fff-browser-urls';
-
-const FFF_SHARE_LINK_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 
 /**
  * POST /api/submissions
@@ -59,18 +51,11 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       // Custom page data
       userInfo,
       consents,
-      funfitfanActivity,
-      funfitfanResult,
-      funfitfanFeelSoTags,
     } = body;
 
   // frameId can be null if the event has no frames
   if (!imageData) {
     throw apiBadRequest('Image data is required');
-  }
-
-  if (partnerId && String(partnerId).trim() === FUNFITFAN_PARTNER_ID && !session?.user?.id) {
-    throw apiUnauthorized('Sign in required for FunFitFan submissions');
   }
 
     // Convert base64 to buffer and upload to imgbb
@@ -136,18 +121,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       }
     }
 
-    const isFff = partnerId && String(partnerId).trim() === FUNFITFAN_PARTNER_ID;
-    const feelSoTags = isFff ? normalizeFeelSoTagsList(funfitfanFeelSoTags) : [];
-    const feelSoLine = feelSoTags.length > 0 ? formatFeelSoLine(feelSoTags) : '';
-
-    if (isFff) {
-      const act = typeof funfitfanActivity === 'string' ? funfitfanActivity.trim() : '';
-      const allowed = await readFunFitFanSportActivities(db);
-      if (!act || !allowed.includes(act)) {
-        throw apiBadRequest('Choose a valid sport activity for FunFitFan.');
-      }
-    }
-
     // Save submission to database
     const submission = {
       userId: session?.user?.id || 'anonymous',
@@ -180,35 +153,18 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         // Image dimensions for slideshow aspect ratio detection (default 16:9 if no frame)
         finalWidth: imageWidth || frame?.width || 1920,
         finalHeight: imageHeight || frame?.height || 1080,
-        ...(typeof funfitfanActivity === 'string' && funfitfanActivity.trim()
-          ? { funfitfanActivity: funfitfanActivity.trim() }
-          : {}),
-        ...(feelSoTags.length > 0 ? { funfitfanFeelSoTags: feelSoTags } : {}),
-        ...(feelSoLine
-          ? { funfitfanResult: feelSoLine }
-          : typeof funfitfanResult === 'string' && funfitfanResult.trim()
-            ? { funfitfanResult: funfitfanResult.trim() }
-            : {}),
       },
       createdAt: new Date().toISOString(),
     };
 
     const result = await db.collection('submissions').insertOne(submission);
 
-    const insertedIdStr = result.insertedId.toString();
     const created = {
       submission: {
         _id: result.insertedId,
         ...submission,
       },
     };
-
-    if (isFff) {
-      const exp = Date.now() + FFF_SHARE_LINK_TTL_MS;
-      const token = signFffSharePayload({ k: 'sub', id: insertedIdStr, exp });
-      const fffShareUrl = fffShareAbsoluteUrl(request.nextUrl.origin, token);
-      return apiCreated({ ...created, fffShareUrl });
-    }
 
     return apiCreated(created);
 });

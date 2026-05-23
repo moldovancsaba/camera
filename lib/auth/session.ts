@@ -38,7 +38,7 @@ const PENDING_SESSION_COOKIE_NAME = 'camera_pending_session';
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 
 /**
- * Optional cookie domain (e.g. `.messmass.com`) so `camera.*` and `fff.*` share `camera_session`.
+ * Optional cookie domain (e.g. `.messmass.com`) so trusted sibling subdomains share `camera_session`.
  * Leave unset for host-only cookies (default). Set only for trusted sibling subdomains.
  */
 function sessionCookieDomain(): string | undefined {

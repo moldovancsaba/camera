@@ -1,15 +1,27 @@
-/**
- * Event Logos Management Page
- * 
- * Manage logo assignments for event scenarios
- * Organized by 4 scenarios with random selection support
- */
-
 'use client';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+/**
+ * Event Logos Management Page
+ *
+ * Manage logo assignments for event scenarios.
+ */
+
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
+import {
+  Alert,
+  Breadcrumbs,
+  Button,
+  Card,
+  Group,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+} from '@mantine/core';
+import { IconAlertCircle } from '@tabler/icons-react';
+import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
 
 interface Logo {
   logoId: string;
@@ -39,22 +51,14 @@ interface EventLogosResponse {
   eventId?: string;
   eventName?: string;
   logos?: Record<string, LogoAssignment[]>;
-  data?: {
-    logos?: Record<string, LogoAssignment[]>;
-  };
+  data?: { logos?: Record<string, LogoAssignment[]> };
   error?: string;
 }
 
 interface LogosResponse {
   logos?: Logo[];
-  data?: {
-    logos?: Logo[];
-  };
+  data?: { logos?: Logo[] };
   error?: string;
-}
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'An unexpected error occurred';
 }
 
 const SCENARIOS = [
@@ -64,109 +68,78 @@ const SCENARIOS = [
   { id: 'loading-capture', name: 'Loading Capture App', description: 'Logo shown while capture app is loading' },
 ];
 
-export default function EventLogosPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const [eventId, setEventId] = useState<string>('');
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'An unexpected error occurred';
+}
+
+export default function EventLogosPage({ params }: { params: Promise<{ id: string }> }) {
+  const [eventId, setEventId] = useState('');
   const [event, setEvent] = useState<EventLogosRecord | null>(null);
   const [availableLogos, setAvailableLogos] = useState<Logo[]>([]);
   const [assignedLogos, setAssignedLogos] = useState<Record<string, LogoAssignment[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Unwrap params
   useEffect(() => {
-    params.then(p => setEventId(p.id));
+    params.then((resolved) => setEventId(resolved.id));
   }, [params]);
 
-  // Fetch event and logos data
+  const refreshAssignments = async (currentEventId: string) => {
+    const eventResponse = await fetch(`/api/events/${currentEventId}/logos`);
+    const eventData: EventLogosResponse = await eventResponse.json();
+    const assignedLogosData = eventData.logos || eventData.data?.logos || {};
+    setAssignedLogos(assignedLogosData);
+  };
+
   useEffect(() => {
     if (!eventId) return;
 
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        
-        // Fetch event details with assigned logos
+
         const eventResponse = await fetch(`/api/events/${eventId}/logos`);
         const eventData: EventLogosResponse = await eventResponse.json();
-        
-        console.log('Initial event fetch response:', eventData);
-        
         if (!eventResponse.ok) {
           throw new Error(eventData.error || 'Failed to load event');
         }
-        
         if (!eventData.eventId || !eventData.eventName) {
           throw new Error('Event not found');
         }
 
         setEvent({ _id: eventData.eventId, name: eventData.eventName });
-        
-        // Handle both wrapped and unwrapped responses
-        const initialLogosData = eventData.logos || eventData.data?.logos || {};
-        console.log('Initial assigned logos:', initialLogosData);
-        setAssignedLogos(initialLogosData);
+        setAssignedLogos(eventData.logos || eventData.data?.logos || {});
 
-        // Fetch all available logos
         const logosResponse = await fetch('/api/logos?active=true&limit=100');
         const logosData: LogosResponse = await logosResponse.json();
-        
         if (!logosResponse.ok) {
           throw new Error(logosData.error || 'Failed to load logos');
         }
-        
-        console.log('Logos API response:', logosData);
-        // API returns { success: true, data: { logos, pagination } }
-        const availableLogosData = logosData.logos || logosData.data?.logos || [];
-        console.log('Available logos:', availableLogosData);
-        setAvailableLogos(availableLogosData);
-        setIsLoading(false);
-      } catch (err: unknown) {
-        console.error('Error fetching data:', err);
-        setError(getErrorMessage(err));
+        setAvailableLogos(logosData.logos || logosData.data?.logos || []);
+      } catch (fetchError) {
+        setError(getErrorMessage(fetchError));
+      } finally {
         setIsLoading(false);
       }
     };
 
-    fetchData();
+    void fetchData();
   }, [eventId]);
 
   const handleAssignLogo = async (logoId: string, scenario: string) => {
     try {
-      console.log('Assigning logo:', logoId, 'to scenario:', scenario);
       const response = await fetch(`/api/events/${eventId}/logos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ logoId, scenario, isActive: true }),
       });
-
-      console.log('Assignment response status:', response.status);
       const data = await response.json();
-      console.log('Assignment response data:', data);
-
       if (!response.ok) {
         throw new Error(data.error || 'Failed to assign logo');
       }
-
-      alert('Logo assigned successfully!');
-
-      // Refresh data
-      console.log('Refreshing assigned logos...');
-      const eventResponse = await fetch(`/api/events/${eventId}/logos`);
-      console.log('Refresh response status:', eventResponse.status);
-      const eventData = await eventResponse.json();
-      console.log('Refresh response data:', eventData);
-      
-      // Handle both wrapped and unwrapped responses
-      const assignedLogosData = eventData.logos || eventData.data?.logos || {};
-      console.log('Setting assigned logos:', assignedLogosData);
-      setAssignedLogos(assignedLogosData);
-    } catch (err: unknown) {
-      console.error('Assignment error:', err);
-      alert(getErrorMessage(err));
+      await refreshAssignments(eventId);
+    } catch (assignError) {
+      alert(getErrorMessage(assignError));
     }
   };
 
@@ -174,21 +147,14 @@ export default function EventLogosPage({
     if (!confirm('Remove this logo from the event?')) return;
 
     try {
-      const response = await fetch(`/api/events/${eventId}/logos/${logoId}`, {
-        method: 'DELETE',
-      });
-
+      const response = await fetch(`/api/events/${eventId}/logos/${logoId}`, { method: 'DELETE' });
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to remove logo');
       }
-
-      // Refresh data
-      const eventResponse = await fetch(`/api/events/${eventId}/logos`);
-      const eventData: EventLogosResponse = await eventResponse.json();
-      setAssignedLogos(eventData.logos || {});
-    } catch (err: unknown) {
-      alert(getErrorMessage(err));
+      await refreshAssignments(eventId);
+    } catch (removeError) {
+      alert(getErrorMessage(removeError));
     }
   };
 
@@ -199,198 +165,140 @@ export default function EventLogosPage({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'toggle' }),
       });
-
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to toggle logo');
       }
-
-      // Refresh data
-      const eventResponse = await fetch(`/api/events/${eventId}/logos`);
-      const eventData: EventLogosResponse = await eventResponse.json();
-      setAssignedLogos(eventData.logos || {});
-    } catch (err: unknown) {
-      alert(getErrorMessage(err));
+      await refreshAssignments(eventId);
+    } catch (toggleError) {
+      alert(getErrorMessage(toggleError));
     }
   };
 
   if (isLoading) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="text-4xl mb-4">⏳</div>
-          <p className="text-gray-600 dark:text-gray-400">Loading logos...</p>
-        </div>
-      </div>
+      <Stack align="center" justify="center" mih="50vh">
+        <Text fz={40}>⏳</Text>
+        <Text c="dimmed">Loading logos...</Text>
+      </Stack>
     );
   }
 
   if (error || !event) {
     return (
-      <div className="p-8">
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-800 dark:text-red-200 font-medium">Error</p>
-          <p className="text-red-600 dark:text-red-300 text-sm mt-1">{error || 'Event not found'}</p>
-        </div>
-        <Link href="/admin/events" className="text-blue-600 hover:text-blue-800 dark:text-blue-400">
-          ← Back to Events
-        </Link>
-      </div>
+      <Stack gap="lg">
+        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+          <Text fw={700}>Error</Text>
+          <Text size="sm">{error || 'Event not found'}</Text>
+        </Alert>
+        <Link href="/admin/events">← Back to Events</Link>
+      </Stack>
     );
   }
 
   return (
-    <div className="p-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
-        <Link href="/admin/events" className="hover:text-gray-700 dark:hover:text-gray-200">
-          Events
-        </Link>
-        <span>→</span>
-        <Link href={`/admin/events/${eventId}`} className="hover:text-gray-700 dark:hover:text-gray-200">
-          {event.name}
-        </Link>
-        <span>→</span>
-        <span>Logos</span>
-      </div>
+    <Stack gap="xl">
+      <Breadcrumbs>
+        <Link href="/admin/events">Events</Link>
+        <Link href={`/admin/events/${eventId}`}>{event.name}</Link>
+        <Text>Logos</Text>
+      </Breadcrumbs>
 
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Manage Event Logos</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Assign logos to scenarios for <strong>{event.name}</strong>
-        </p>
-        <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-          💡 Multiple active logos per scenario = random selection on each display
-        </p>
-      </div>
+      <WorkspaceHeader
+        eyebrow="Events App"
+        title="Manage Event Logos"
+        description={`Assign logos to scenarios for ${event.name}`}
+      />
 
-      <div className="space-y-8">
+      <Text size="sm" c="dimmed">
+        💡 Multiple active logos per scenario = random selection on each display
+      </Text>
+
+      <Stack gap="lg">
         {SCENARIOS.map((scenario) => {
           const scenarioLogos = assignedLogos[scenario.id] || [];
-          const assignedLogoIds = scenarioLogos.map((l: LogoAssignment) => l.logoId);
-          const unassignedLogos = availableLogos.filter((l: Logo) => !assignedLogoIds.includes(l.logoId));
+          const assignedLogoIds = scenarioLogos.map((logo) => logo.logoId);
+          const unassignedLogos = availableLogos.filter((logo) => !assignedLogoIds.includes(logo.logoId));
 
           return (
-            <div key={scenario.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-              <div className="mb-4">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  {scenario.name}
-                </h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <Card key={scenario.id} p={0}>
+              <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+                <Title order={3}>{scenario.name}</Title>
+                <Text size="sm" c="dimmed" mt="xs">
                   {scenario.description}
-                </p>
+                </Text>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Assigned Logos */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg" p="lg">
+                <Stack gap="sm">
+                  <Text size="sm" fw={600}>
                     Assigned ({scenarioLogos.length})
-                  </h3>
+                  </Text>
                   {scenarioLogos.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                      No logos assigned
-                    </div>
+                    <Card withBorder radius="md" bg="var(--mantine-color-gray-0)">
+                      <Text c="dimmed" ta="center" py="xl">
+                        No logos assigned
+                      </Text>
+                    </Card>
                   ) : (
-                    <div className="space-y-2">
-                      {scenarioLogos.map((logo: LogoAssignment) => (
-                        <div
-                          key={logo.logoId}
-                          className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg"
-                        >
-                          <div className="relative w-12 h-12 flex-shrink-0">
-                            <Image
-                              src={logo.thumbnailUrl}
-                              alt={logo.name}
-                              fill
-                              className="object-contain rounded"
-                              unoptimized
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    scenarioLogos.map((logo) => (
+                      <Card key={logo.logoId} withBorder radius="md" bg="var(--mantine-color-gray-0)">
+                        <Group justify="space-between" align="center">
+                          <Group gap="md">
+                            <Image src={logo.thumbnailUrl} alt={logo.name} width={48} height={48} unoptimized style={{ width: 48, height: 48, objectFit: 'contain' }} />
+                            <Text size="sm" fw={600}>
                               {logo.name}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleToggleLogo(logo.logoId)}
-                              className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                logo.isActive
-                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                  : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
-                              }`}
-                            >
+                            </Text>
+                          </Group>
+                          <Group gap="sm">
+                            <Button variant="light" color={logo.isActive ? 'green' : 'gray'} size="xs" onClick={() => void handleToggleLogo(logo.logoId)}>
                               {logo.isActive ? '● Active' : '○ Inactive'}
-                            </button>
-                            <button
-                              onClick={() => handleRemoveLogo(logo.logoId)}
-                              className="text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 px-2 py-1 rounded"
-                            >
+                            </Button>
+                            <Button variant="subtle" color="red" size="xs" onClick={() => void handleRemoveLogo(logo.logoId)}>
                               Remove
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                            </Button>
+                          </Group>
+                        </Group>
+                      </Card>
+                    ))
                   )}
-                </div>
+                </Stack>
 
-                {/* Available Logos */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                <Stack gap="sm">
+                  <Text size="sm" fw={600}>
                     Available ({unassignedLogos.length})
-                  </h3>
+                  </Text>
                   {unassignedLogos.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                      All logos are assigned
-                    </div>
+                    <Card withBorder radius="md" bg="var(--mantine-color-gray-0)">
+                      <Text c="dimmed" ta="center" py="xl">
+                        All logos are assigned
+                      </Text>
+                    </Card>
                   ) : (
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {unassignedLogos.map((logo: Logo) => (
-                        <div
-                          key={logo.logoId}
-                          className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                        >
-                          <div className="relative w-12 h-12 flex-shrink-0">
-                            <Image
-                              src={logo.thumbnailUrl}
-                              alt={logo.name}
-                              fill
-                              className="object-contain rounded"
-                              unoptimized
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    unassignedLogos.map((logo) => (
+                      <Card key={logo.logoId} withBorder radius="md" bg="var(--mantine-color-gray-0)">
+                        <Group justify="space-between" align="center">
+                          <Group gap="md">
+                            <Image src={logo.thumbnailUrl} alt={logo.name} width={48} height={48} unoptimized style={{ width: 48, height: 48, objectFit: 'contain' }} />
+                            <Text size="sm" fw={600}>
                               {logo.name}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => handleAssignLogo(logo.logoId, scenario.id)}
-                            className="px-3 py-1 text-xs font-semibold bg-blue-600 text-white rounded hover:bg-blue-700"
-                          >
+                            </Text>
+                          </Group>
+                          <Button size="xs" onClick={() => void handleAssignLogo(logo.logoId, scenario.id)}>
                             Assign
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                          </Button>
+                        </Group>
+                      </Card>
+                    ))
                   )}
-                </div>
-              </div>
-            </div>
+                </Stack>
+              </SimpleGrid>
+            </Card>
           );
         })}
-      </div>
+      </Stack>
 
-      <div className="mt-6">
-        <Link
-          href={`/admin/events/${eventId}`}
-          className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
-        >
-          ← Back to Event
-        </Link>
-      </div>
-    </div>
+      <Link href={`/admin/events/${eventId}`}>← Back to Event</Link>
+    </Stack>
   );
 }

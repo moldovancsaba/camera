@@ -27,7 +27,6 @@ test.describe('admin access smoke', () => {
     await expect(sidebarNav.getByRole('link', { name: 'Users' })).toBeVisible();
     await expect(sidebarNav.getByRole('link', { name: 'Global Frames' })).toBeVisible();
     await expect(sidebarNav.getByRole('link', { name: 'Landing Pages' })).toBeVisible();
-    await expect(sidebarNav.getByRole('link', { name: 'Gym App' })).toBeVisible();
   });
 
   test('partner-scoped Events manager sees partner and events surfaces without global inventory', async ({ page }) => {
@@ -49,26 +48,6 @@ test.describe('admin access smoke', () => {
     await expect(sidebarNav.getByRole('link', { name: 'Dashboard' })).toHaveCount(0);
     await expect(sidebarNav.getByRole('link', { name: 'Global Frames' })).toHaveCount(0);
     await expect(sidebarNav.getByRole('link', { name: 'Users' })).toHaveCount(0);
-    await expect(sidebarNav.getByRole('link', { name: 'Gym App' })).toHaveCount(0);
-  });
-
-  test('partner-scoped Gym viewer reaches Gym surfaces without Events inventory', async ({ page }) => {
-    const sidebarNav = page.getByRole('navigation');
-
-    await devLogin(page, {
-      role: 'user',
-      access: 'true',
-      email: 'partner-gym-viewer@camera.local',
-      name: 'Partner Gym Viewer',
-      userId: 'e2e-partner-gym-viewer',
-      redirectTo: '/admin/gym',
-    });
-
-    await expect(page).toHaveURL(/\/admin\/gym$/);
-    await expect(page.getByRole('heading', { level: 1, name: 'Gym App' })).toBeVisible();
-    await expect(sidebarNav.getByRole('link', { name: 'Gym App' })).toBeVisible();
-    await expect(sidebarNav.getByRole('link', { name: 'Events App' })).toHaveCount(0);
-    await expect(sidebarNav.getByRole('link', { name: 'Global Galleries' })).toHaveCount(0);
   });
 
   test('partner-scoped manager is redirected away from global users', async ({ page }) => {

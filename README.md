@@ -4,7 +4,7 @@
 **Last Updated**: 2026-05-20  
 **Status**: Production system
 
-Camera is a Next.js platform for branded photo capture, event galleries, slideshow playback, partner operations, and Gym/FFF experiences that reuse the same identity, media, and MongoDB foundations.
+Camera is a Next.js platform for branded photo capture, event galleries, slideshow playback, partner operations, and reusable shared resources on the same identity, media, and MongoDB foundations.
 
 ## Product model
 
@@ -21,13 +21,12 @@ Camera now operates as a small platform with shared resources plus app surfaces.
   - Global Users and partner-scoped access assignments
 - **Apps**
   - Events App
-  - Gym App
 
 The admin UX is organized around that model:
 
 - global inventory and superadmin tools
 - partner workspaces for day-to-day operations
-- app-specific surfaces for Events and Gym
+- app-specific surfaces for Events
 
 ## Public surfaces
 
@@ -38,15 +37,12 @@ The admin UX is organized around that model:
 - `/slideshow/[slideshowId]` — public slideshow player
 - `/slideshow-layout/[layoutId]` — public composite slideshow layout player
 - `/landing/[slug]` — public landing page surface
-- `/workout` and `/workout/**` — Gym workout flow
-- `/fff/**` internally, with host-based rewrites for the public FFF/Gym experience
 
 ## Admin surfaces
 
 - `/admin` — global dashboard for global admins
 - `/admin/partners` — partner workspace index
 - `/admin/events` — Events App inventory
-- `/admin/gym` — Gym App operations
 - `/admin/frames`, `/admin/logos`, `/admin/submissions`, `/admin/users` — global inventory / audit pages
 
 ## Core behavior
@@ -66,12 +62,6 @@ The admin UX is organized around that model:
 - Playlist generation reads event-linked submissions, applies fairness via `playCount`, and builds single-image or mosaic slides.
 - Composite layouts mount multiple slideshow players in one screen using `slideshow_layouts`.
 
-### Gym / FFF
-
-- Gym uses the same SSO session, Atlas database, frames, submissions, and slideshow machinery as the rest of Camera.
-- FunFitFan bootstrap creates a dedicated partner plus per-user virtual event/slideshow context.
-- Workout content is stored in `gym_lessons`; logged workout sessions are stored in `gym_workout_sessions`.
-
 ## Authorization model
 
 Camera has two authorization layers.
@@ -81,7 +71,7 @@ Camera has two authorization layers.
    - `session.appAccess`
 2. **Partner-scoped app access in Camera**
    - `partner_user_access`
-   - `appKey`: `events` or `gym`
+   - `appKey`: `events`
    - `role`: `viewer`, `manager`, or `admin`
 
 Current operational rules:
@@ -140,7 +130,6 @@ See [TECH_STACK.md](/Users/Shared/Projects/venturecogroup/camera/TECH_STACK.md).
 - `slideshow_layouts` — multi-cell videowall configs
 - `landing_pages` — reusable experience surfaces
 - `partner_user_access` — partner-scoped app assignments
-- `gym_lessons`, `gym_workout_sessions`, `fff_settings`, `fff_user_profiles` — Gym/FFF domain data
 
 See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_CONVENTIONS.md) and [ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/ARCHITECTURE.md).
 

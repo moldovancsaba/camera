@@ -29,7 +29,6 @@ Examples:
 
 - Partner workspace
 - Event workspace
-- Gym workspace
 - Landing page manager/editor
 - submission review panels
 
@@ -63,13 +62,13 @@ Use for:
 
 Do not use for:
 
-- public capture, share, slideshow, or workout flows
+- public capture, share, or slideshow flows
 
 ### `WorkspaceHeader`
 
 Use for:
 
-- Partner, Event, Gym, and major resource overview pages
+- Partner, Event, and major resource overview pages
 
 Do not use for:
 

@@ -1,36 +1,36 @@
 /**
  * Admin Loading State
- * 
- * Loading skeleton for admin pages.
  */
+
+import { Card, SimpleGrid, Skeleton, Stack } from '@mantine/core';
 
 export default function AdminLoading() {
   return (
-    <div className="p-8">
-      <div className="mb-8 animate-pulse">
-        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-2"></div>
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-64"></div>
-      </div>
+    <Stack gap="xl">
+      <Stack gap="sm">
+        <Skeleton height={12} width={120} radius="xl" />
+        <Skeleton height={36} width={240} radius="md" />
+        <Skeleton height={18} width={420} radius="md" />
+      </Stack>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 animate-pulse"
-          >
-            <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          </div>
+      <SimpleGrid cols={{ base: 1, md: 3 }}>
+        {[1, 2, 3].map((item) => (
+          <Card key={item}>
+            <Skeleton height={64} radius="md" />
+          </Card>
         ))}
-      </div>
+      </SimpleGrid>
 
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 animate-pulse">
-        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-4"></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          ))}
-        </div>
-      </div>
-    </div>
+      <Card>
+        <Stack gap="md">
+          <Skeleton height={24} width={180} radius="md" />
+          <SimpleGrid cols={{ base: 1, md: 2, xl: 4 }}>
+            {[1, 2, 3, 4].map((item) => (
+              <Skeleton key={item} height={96} radius="md" />
+            ))}
+          </SimpleGrid>
+        </Stack>
+      </Card>
+    </Stack>
   );
 }

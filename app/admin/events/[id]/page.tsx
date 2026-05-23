@@ -6,20 +6,32 @@
  * Event styles inherit from partner defaults unless overridden at the event level.
  */
 
-import { connectToDatabase } from '@/lib/db/mongodb';
-import { getSession } from '@/lib/auth/session';
-import { COLLECTIONS } from '@/lib/db/schemas';
-import { ObjectId } from 'mongodb';
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
+import { ObjectId } from 'mongodb';
+import {
+  Breadcrumbs,
+  Button,
+  Card,
+  Code,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  Title,
+} from '@mantine/core';
+import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import StatsStrip from '@/components/gds/StatsStrip';
+import StyleSections from '@/components/admin/StyleSections';
 import SlideshowManager from '@/components/admin/SlideshowManager';
 import SlideshowLayoutManager from '@/components/admin/SlideshowLayoutManager';
 import LandingPageManager from '@/components/admin/LandingPageManager';
 import EventGallery from '@/components/admin/EventGallery';
-import { getInactiveUserEmails } from '@/lib/db/sso';
-import StyleInheritanceIndicator from '@/components/admin/StyleInheritanceIndicator';
 import DeleteEventButton from '@/components/admin/DeleteEventButton';
+import { connectToDatabase } from '@/lib/db/mongodb';
+import { getSession } from '@/lib/auth/session';
+import { COLLECTIONS } from '@/lib/db/schemas';
+import { getInactiveUserEmails } from '@/lib/db/sso';
 import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 
@@ -108,8 +120,7 @@ export default async function EventDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  
-  // Validate ObjectId format
+
   if (!ObjectId.isValid(id)) {
     notFound();
   }
@@ -131,121 +142,86 @@ export default async function EventDetailPage({
       redirect('/admin/events');
     }
     canManageEvent = true;
-    
-    // Get event details
-    event = await db
-      .collection(COLLECTIONS.EVENTS)
-      .findOne({ _id: new ObjectId(id) }) as EventDoc | null;
 
+    event = (await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(id) })) as EventDoc | null;
     if (!event) {
       notFound();
     }
 
-    // Get partner details
-    partner = await db
-      .collection(COLLECTIONS.PARTNERS)
-      .findOne({ partnerId: event.partnerId }) as PartnerDoc | null;
+    partner = (await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId })) as PartnerDoc | null;
 
-    // Get inactive user emails from SSO database
-    // These users' submissions will be filtered out
     const inactiveEmails = await getInactiveUserEmails();
-    console.log(`[Event Gallery] Filtering out ${inactiveEmails.size} inactive users`);
 
-    // Get submissions for this event (limit to most recent 50)
-    // BACKWARD COMPATIBILITY: Support both eventId (singular, old data) and eventIds (array, new data)
-    // Also exclude submissions that are hidden from this specific event
-    submissions = await db
+    submissions = (await db
       .collection(COLLECTIONS.SUBMISSIONS)
       .find({
         $and: [
+          { $or: [{ eventId: event.eventId }, { eventIds: { $in: [event.eventId] } }] },
+          { isArchived: { $ne: true } },
           {
             $or: [
-              { eventId: event.eventId },               // Old schema: singular eventId field
-              { eventIds: { $in: [event.eventId] } }    // New schema: eventIds array
-            ]
+              { hiddenFromEvents: { $exists: false } },
+              { hiddenFromEvents: { $nin: [event.eventId] } },
+            ],
           },
-          { isArchived: { $ne: true } },                // Exclude archived submissions
-          {
-            $or: [
-              { hiddenFromEvents: { $exists: false } },  // Field doesn't exist yet (old data)
-              { hiddenFromEvents: { $nin: [event.eventId] } } // Field exists and event not in it
-            ]
-          },
-          // Exclude submissions from inactive SSO users (real users)
-          // Also exclude pseudo users who have been marked inactive
           {
             $and: [
-              // Filter out inactive real users (SSO authenticated)
               {
-                $or: [
-                  // Real users: check userEmail against inactive list
-                  { userEmail: { $nin: Array.from(inactiveEmails) } },
-                  // Pseudo users: userId='anonymous' is always kept (not real SSO user)
-                  { userId: 'anonymous' }
-                ]
+                $or: [{ userEmail: { $nin: Array.from(inactiveEmails) } }, { userId: 'anonymous' }],
               },
-              // Filter out inactive pseudo users (userInfo.isActive = false)
               {
-                $or: [
-                  { 'userInfo.isActive': { $ne: false } },  // Not inactive pseudo
-                  { userInfo: { $exists: false } }          // Not a pseudo user
-                ]
-              }
-            ]
-          }
-        ]
+                $or: [{ 'userInfo.isActive': { $ne: false } }, { userInfo: { $exists: false } }],
+              },
+            ],
+          },
+        ],
       })
       .sort({ createdAt: -1 })
       .limit(50)
-      .toArray() as SubmissionDoc[];
+      .toArray()) as SubmissionDoc[];
 
-    // Get slideshows for this event (UUID on new docs; legacy may use Mongo event id)
-    slideshows = await db
+    slideshows = (await db
       .collection(COLLECTIONS.SLIDESHOWS)
-      .find({
-        $or: [{ eventId: event.eventId }, { eventId: id }],
-      })
+      .find({ $or: [{ eventId: event.eventId }, { eventId: id }] })
       .sort({ createdAt: -1 })
-      .toArray() as SlideshowDoc[];
+      .toArray()) as SlideshowDoc[];
 
-    slideshowLayouts = await db
+    slideshowLayouts = (await db
       .collection(COLLECTIONS.SLIDESHOW_LAYOUTS)
       .find({ eventId: event.eventId })
       .sort({ createdAt: -1 })
-      .toArray() as SlideshowLayoutDoc[];
+      .toArray()) as SlideshowLayoutDoc[];
 
-    landingPages = await db
+    landingPages = (await db
       .collection(COLLECTIONS.LANDING_PAGES)
       .find({ eventMongoId: id })
       .sort({ createdAt: -1 })
-      .toArray() as LandingPageDoc[];
+      .toArray()) as LandingPageDoc[];
 
-    // Populate frame details for assigned frames
-    // This enriches event.frames[] with full frame data (name, thumbnailUrl, etc.)
     if (event.frames && event.frames.length > 0) {
       const frameIds = event.frames.map((frame) => frame.frameId);
-      const frames = await db
+      const frames = (await db
         .collection(COLLECTIONS.FRAMES)
         .find({ frameId: { $in: frameIds } })
-        .toArray() as unknown as EventFrameDetails[];
-      
-      // Map frame details to each assignment
+        .toArray()) as unknown as EventFrameDetails[];
+
       event.frames = event.frames.map((assignment) => {
         const frameDetails = frames.find((frame) => frame.frameId === assignment.frameId);
         return {
           ...assignment,
-          frameDetails: frameDetails ? {
-            frameId: frameDetails.frameId,
-            name: frameDetails.name,
-            thumbnailUrl: frameDetails.thumbnailUrl,
-            width: frameDetails.width,
-            height: frameDetails.height,
-            hashtags: frameDetails.hashtags,
-          } : null
+          frameDetails: frameDetails
+            ? {
+                frameId: frameDetails.frameId,
+                name: frameDetails.name,
+                thumbnailUrl: frameDetails.thumbnailUrl,
+                width: frameDetails.width,
+                height: frameDetails.height,
+                hashtags: frameDetails.hashtags,
+              }
+            : null,
         };
       });
     }
-
   } catch (error) {
     console.error('Error fetching event details:', error);
     dbError = error instanceof Error ? error.message : 'Unknown error';
@@ -256,516 +232,191 @@ export default async function EventDetailPage({
   }
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
-          <Link href="/admin/events" className="hover:text-gray-700 dark:hover:text-gray-200">
-            Events
-          </Link>
-          <span>→</span>
-          <span>{event.name}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{event.name}</h1>
-            {event.description && (
-              <p className="text-gray-600 dark:text-gray-400 mt-2">{event.description}</p>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
+    <Stack gap="xl">
+      <Breadcrumbs>
+        <Link href="/admin/events">Events</Link>
+        <Text>{event.name}</Text>
+      </Breadcrumbs>
+
+      <WorkspaceHeader
+        eyebrow="Events App"
+        title={event.name}
+        description={event.description}
+        status={event.isActive ? 'Active' : 'Inactive'}
+        actions={
+          <>
             {canManageEvent ? (
-              <Link
-                href={`/admin/events/${id}/edit`}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-              >
-                Edit Event
+              <Link href={`/admin/events/${id}/edit`} style={{ textDecoration: 'none' }}>
+                <Button>Edit Event</Button>
               </Link>
             ) : null}
             {canManageEvent ? <DeleteEventButton eventId={id} eventName={event.name} /> : null}
-            <span className={`inline-flex px-3 py-2 text-sm font-semibold rounded-lg ${
-              event.isActive
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
-            }`}>
-              {event.isActive ? '● Active' : '○ Inactive'}
-            </span>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
-      {dbError && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-800 dark:text-red-200 font-medium">Error loading data</p>
-          <p className="text-red-600 dark:text-red-300 text-sm mt-1">{dbError}</p>
-        </div>
-      )}
+      {dbError ? (
+        <Card bg="red.0" c="red.8">
+          <Text fw={700}>Error loading data</Text>
+          <Text size="sm">{dbError}</Text>
+        </Card>
+      ) : null}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column - Event Information */}
-        <div className="space-y-6">
-          {/* Partner Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Partner</h2>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">{event.partnerName}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {partner ? (
-                    <Link
-                      href={`/admin/partners/${partner._id}`}
-                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline"
-                    >
-                      View Partner →
-                    </Link>
-                  ) : (
-                    'Partner details unavailable'
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
+      <StatsStrip items={[{ label: 'Frames', value: event.frames?.length || 0 }, { label: 'Photos', value: submissions.length }]} />
 
-          {/* Event Info Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Event Information</h2>
-            <dl className="space-y-3">
-              <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Event ID</dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white font-mono">{event.eventId}</dd>
-              </div>
-              {event.eventDate && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Event Date</dt>
-                  <dd className="mt-1 text-sm text-gray-900 dark:text-white">
-                    {new Date(event.eventDate).toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </dd>
-                </div>
-              )}
-              {event.location && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Location</dt>
-                  <dd className="mt-1 text-sm text-gray-900 dark:text-white">{event.location}</dd>
-                </div>
-              )}
-              <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Created</dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white">
-                  {new Date(event.createdAt).toLocaleString()}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white">
-                  {new Date(event.updatedAt).toLocaleString()}
-                </dd>
-              </div>
-            </dl>
-          </div>
+      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
+        <Stack gap="lg">
+          <Card>
+            <Title order={3}>Partner</Title>
+            <Text size="sm" fw={600} mt="md">
+              {event.partnerName}
+            </Text>
+            <Text size="xs" c="dimmed" mt={4}>
+              {partner ? <Link href={`/admin/partners/${partner._id}`}>View Partner →</Link> : 'Partner details unavailable'}
+            </Text>
+          </Card>
 
-          {/* Capture URL Card */}
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg shadow-sm border border-blue-200 dark:border-blue-800 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">📸 Event Capture URL</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          <Card>
+            <Title order={3}>Event Information</Title>
+            <Table mt="md">
+              <Table.Tbody>
+                <Table.Tr>
+                  <Table.Th>Event ID</Table.Th>
+                  <Table.Td>
+                    <Code>{event.eventId}</Code>
+                  </Table.Td>
+                </Table.Tr>
+                {event.eventDate ? (
+                  <Table.Tr>
+                    <Table.Th>Event Date</Table.Th>
+                    <Table.Td>
+                      {new Date(event.eventDate).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </Table.Td>
+                  </Table.Tr>
+                ) : null}
+                {event.location ? (
+                  <Table.Tr>
+                    <Table.Th>Location</Table.Th>
+                    <Table.Td>{event.location}</Table.Td>
+                  </Table.Tr>
+                ) : null}
+                <Table.Tr>
+                  <Table.Th>Created</Table.Th>
+                  <Table.Td>{new Date(event.createdAt).toLocaleString()}</Table.Td>
+                </Table.Tr>
+                <Table.Tr>
+                  <Table.Th>Last Updated</Table.Th>
+                  <Table.Td>{new Date(event.updatedAt).toLocaleString()}</Table.Td>
+                </Table.Tr>
+              </Table.Tbody>
+            </Table>
+          </Card>
+
+          <Card bg="blue.0">
+            <Title order={3}>📸 Event Capture URL</Title>
+            <Text size="sm" c="dimmed" mt="xs" mb="md">
               Share this URL to let users take photos for this event
-            </p>
-            <div className="bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 p-3 mb-3">
-              <code className="text-xs text-gray-900 dark:text-white break-all">
-                {defaultCameraOrigin()}/capture/{id}
-              </code>
-            </div>
-            <Link
-              href={`/capture/${id}`}
-              className="block w-full px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors text-center"
-            >
-              Open Capture Page →
+            </Text>
+            <Card withBorder radius="md" p="md" bg="white">
+              <Code block>{defaultCameraOrigin()}/capture/{id}</Code>
+            </Card>
+            <Link href={`/capture/${id}`} style={{ textDecoration: 'none' }}>
+              <Button fullWidth mt="md">
+                Open Capture Page →
+              </Button>
             </Link>
             {typeof event.shortUrlSlug === 'string' && event.shortUrlSlug.trim() ? (
-              <div className="mt-4 pt-4 border-t border-blue-200 dark:border-blue-800">
-                <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">Short link</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                  Redirects to the capture URL above (configure host on{' '}
-                  <span className="font-mono">GO_SHORT_HOSTNAMES</span>).
-                </p>
-                <div className="bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 p-3 mb-2">
-                  <code className="text-xs text-gray-900 dark:text-white break-all">
-                    {defaultGoShortOrigin()}/{event.shortUrlSlug.trim()}
-                  </code>
-                </div>
-                <a
-                  href={`${defaultGoShortOrigin()}/${event.shortUrlSlug.trim()}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors text-center"
-                >
-                  Open short link →
+              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--mantine-color-blue-2)' }}>
+                <Text size="sm" fw={600} mb="xs">
+                  Short link
+                </Text>
+                <Text size="xs" c="dimmed" mb="sm">
+                  Redirects to the capture URL above (configure host on <Code>GO_SHORT_HOSTNAMES</Code>).
+                </Text>
+                <Card withBorder radius="md" p="md" bg="white">
+                  <Code block>{defaultGoShortOrigin()}/{event.shortUrlSlug.trim()}</Code>
+                </Card>
+                <a href={`${defaultGoShortOrigin()}/${event.shortUrlSlug.trim()}`} target="_blank" rel="noopener noreferrer">
+                  <Button fullWidth mt="sm" color="indigo">
+                    Open short link →
+                  </Button>
                 </a>
               </div>
             ) : (
-              <p className="mt-3 text-xs text-gray-600 dark:text-gray-400">
-                Optional: set a short link slug under <strong>Edit Event</strong> for{' '}
-                <span className="font-mono">{defaultGoShortOrigin()}/…</span>.
-              </p>
+              <Text size="xs" c="dimmed" mt="md">
+                Optional: set a short link slug under <strong>Edit Event</strong> for <Code>{defaultGoShortOrigin()}/…</Code>.
+              </Text>
             )}
-          </div>
+          </Card>
+        </Stack>
 
-          {/* Statistics Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Statistics</h2>
-            <dl className="space-y-3">
-              <div className="flex items-center justify-between">
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Frames</dt>
-                <dd className="text-2xl font-bold text-gray-900 dark:text-white">{event.frames?.length || 0}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Photos</dt>
-                <dd className="text-2xl font-bold text-gray-900 dark:text-white">{submissions.length}</dd>
-              </div>
-            </dl>
-            <Link
-              href={`/admin/events/${id}#gallery`}
-              className="mt-4 block w-full px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors text-center"
-            >
-              View Gallery →
-            </Link>
-          </div>
+        <StyleSections
+          type="event"
+          id={id}
+          brandColor={event.brandColor}
+          brandBorderColor={event.brandBorderColor}
+          brandColorsOverridden={event.brandColorsOverridden}
+          frames={event.frames?.map((frame) => ({
+            frameId: frame.frameId,
+            isActive: frame.isActive !== false,
+            frameDetails: frame.frameDetails ?? null,
+          }))}
+          framesOverridden={event.framesOverridden}
+          logos={(event.logos || []).map((logo, index) => ({
+            logoId: `${logo.scenario || index}`,
+            scenario: logo.scenario,
+            isActive: logo.isActive !== false,
+          }))}
+          logosOverridden={event.logosOverridden}
+          partnerName={event.partnerName}
+        />
+      </SimpleGrid>
+
+      <SlideshowManager eventId={id} initialSlideshows={JSON.parse(JSON.stringify(slideshows))} />
+
+      <SlideshowLayoutManager
+        eventMongoId={id}
+        initialLayouts={slideshowLayouts.map((layout) => ({
+          _id: layout._id!.toString(),
+          layoutId: layout.layoutId,
+          name: layout.name,
+          isActive: layout.isActive !== false,
+          createdAt: layout.createdAt,
+        }))}
+      />
+
+      <LandingPageManager
+        eventMongoId={id}
+        initialLandingPages={landingPages.map((page) => ({
+          _id: page._id!.toString(),
+          slug: page.slug,
+          title: page.title ?? null,
+          targetType: page.targetType === 'layout' ? 'layout' : 'slideshow',
+          targetName: page.targetName ?? page.slug,
+          isActive: page.isActive !== false,
+          createdAt: page.createdAt,
+        }))}
+      />
+
+      <Card p={0}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+          <Title order={2}>📷 Event Gallery</Title>
+          <Text c="dimmed" mt="xs">
+            Photos visible in Event Slideshows ({submissions.length})
+          </Text>
         </div>
-
-        {/* Right Column - Brand Colors, Frames, and Logos */}
-        <div className="space-y-6">
-          {/* Brand Colors Section - Moved from bottom */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Brand Colors</h2>
-                    <StyleInheritanceIndicator
-                      styleField="brandColors"
-                      isOverridden={event.brandColorsOverridden === true}
-                      eventId={id}
-                      partnerName={event.partnerName}
-                    />
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Used throughout the event experience: buttons, inputs, checkboxes, and camera interface
-                  </p>
-                </div>
-                <Link
-                  href={`/admin/events/${id}/edit`}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
-                >
-                  Edit Colors
-                </Link>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Primary Color */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Primary Color
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-16 h-16 rounded-lg border-2 border-gray-300 dark:border-gray-600 shadow-sm"
-                      style={{ backgroundColor: event.brandColor || '#3B82F6' }}
-                    ></div>
-                    <div>
-                      <p className="text-sm font-mono text-gray-900 dark:text-white font-semibold">
-                        {event.brandColor || '#3B82F6'}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Buttons, camera button fill, focus states
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Border Color */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Border/Accent Color
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-16 h-16 rounded-lg border-2 border-gray-300 dark:border-gray-600 shadow-sm"
-                      style={{ backgroundColor: event.brandBorderColor || '#3B82F6' }}
-                    ></div>
-                    <div>
-                      <p className="text-sm font-mono text-gray-900 dark:text-white font-semibold">
-                        {event.brandBorderColor || '#3B82F6'}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Input borders, checkboxes, camera button border
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Preview */}
-              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Color Preview</p>
-                <div className="flex gap-3">
-                  <button
-                    style={{ backgroundColor: event.brandColor || '#3B82F6' }}
-                    className="px-6 py-3 text-white rounded-lg font-semibold shadow-sm"
-                    disabled
-                  >
-                    Primary Button
-                  </button>
-                  <button
-                    style={{ borderColor: event.brandBorderColor || '#3B82F6', color: event.brandBorderColor || '#3B82F6' }}
-                    className="px-6 py-3 bg-white dark:bg-gray-800 rounded-lg font-semibold shadow-sm border-2"
-                    disabled
-                  >
-                    Bordered Button
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Assigned Frames Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Assigned Frames</h2>
-                  <StyleInheritanceIndicator
-                    styleField="frames"
-                    isOverridden={event.framesOverridden === true}
-                    eventId={id}
-                    partnerName={event.partnerName}
-                  />
-                </div>
-                <Link
-                  href={`/admin/events/${id}/frames`}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
-                >
-                  Manage Frames
-                </Link>
-              </div>
-            </div>
-
-            {(!event.frames || event.frames.length === 0) ? (
-              <div className="p-12 text-center">
-                <div className="text-5xl mb-4">🖼️</div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No frames assigned yet</h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Assign frames to this event to make them available for users
-                </p>
-                <Link
-                  href={`/admin/events/${id}/frames`}
-                  className="inline-flex px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
-                >
-                  Assign Frames
-                </Link>
-              </div>
-            ) : (
-              <div className="p-6">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {event.frames.map((frameAssignment, index: number) => {
-                    // Find frame details from frames collection
-                    // Note: This requires frames to be populated on the event object
-                    const frameDetails = frameAssignment.frameDetails;
-                    const thumbnailUrl = frameDetails?.thumbnailUrl;
-                    const frameName = frameDetails?.name || 'Unnamed Frame';
-                    
-                    return (
-                      <div
-                        key={index}
-                        className="relative bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
-                      >
-                        <div className="text-center">
-                          {thumbnailUrl ? (
-                            <div className="mb-2 flex items-center justify-center">
-                              <Image
-                                src={thumbnailUrl}
-                                alt={frameName}
-                                width={320}
-                                height={180}
-                                unoptimized
-                                className="max-w-full h-auto max-h-32 object-contain"
-                              />
-                            </div>
-                          ) : (
-                            <div className="text-3xl mb-2">🖼️</div>
-                          )}
-                          <p className="text-sm font-medium text-gray-900 dark:text-white mb-1 truncate">
-                            {frameName}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate mb-2">
-                            {frameAssignment.frameId}
-                          </p>
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            frameAssignment.isActive
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
-                          }`}>
-                            {frameAssignment.isActive ? '● Active' : '○ Inactive'}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="mt-4 text-center">
-                  <Link
-                    href={`/admin/events/${id}/frames`}
-                    className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 font-medium"
-                  >
-                    Manage frame assignments →
-                  </Link>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Event Logos Section - Moved to right column */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Event Logos</h2>
-                  <StyleInheritanceIndicator
-                    styleField="logos"
-                    isOverridden={event.logosOverridden === true}
-                    eventId={id}
-                    partnerName={event.partnerName}
-                  />
-                </div>
-                <Link
-                  href={`/admin/events/${id}/logos`}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
-                >
-                  Manage Logos
-                </Link>
-              </div>
-            </div>
-
-            {(!event.logos || event.logos.length === 0) ? (
-              <div className="p-12 text-center">
-                <div className="text-5xl mb-4">🎨</div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No logos assigned yet</h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Assign logos to display on different screens (transitions, loading, custom pages)
-                </p>
-                <Link
-                  href={`/admin/events/${id}/logos`}
-                  className="inline-flex px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
-                >
-                  Assign Logos
-                </Link>
-              </div>
-            ) : (
-              <div className="p-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[
-                    { id: 'slideshow-transition', name: 'Slideshow Transitions', icon: '🔄' },
-                    { id: 'onboarding-thankyou', name: 'Custom Pages', icon: '📝' },
-                    { id: 'loading-slideshow', name: 'Loading Slideshow', icon: '⏳' },
-                    { id: 'loading-capture', name: 'Loading Capture', icon: '📸' },
-                  ].map((scenario) => {
-                    const count = (event.logos || []).filter(
-                      (logo) => logo.scenario === scenario.id && logo.isActive
-                    ).length;
-                    return (
-                      <div
-                        key={scenario.id}
-                        className="relative bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
-                      >
-                        <div className="text-center">
-                          <div className="text-3xl mb-2">{scenario.icon}</div>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                            {scenario.name}
-                          </p>
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                            {count} active
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="mt-4 text-center">
-                  <Link
-                    href={`/admin/events/${id}/logos`}
-                    className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 font-medium"
-                  >
-                    Manage logo assignments →
-                  </Link>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Slideshows Section */}
-      <div id="slideshows" className="mt-8">
-        <SlideshowManager
+        <EventGallery
           eventId={id}
-          initialSlideshows={JSON.parse(JSON.stringify(slideshows))}
+          eventName={event.name}
+          initialSubmissions={JSON.parse(JSON.stringify(submissions))}
+          slideshows={JSON.parse(JSON.stringify(slideshows))}
         />
-      </div>
-
-      {/* Slideshow layouts (multi-cell videowall) */}
-      <div id="slideshow-layouts" className="mt-8">
-        <SlideshowLayoutManager
-          eventMongoId={id}
-          initialLayouts={slideshowLayouts.map((l) => ({
-            _id: l._id!.toString(),
-            layoutId: l.layoutId,
-            name: l.name,
-            isActive: l.isActive !== false,
-            createdAt: l.createdAt,
-          }))}
-        />
-      </div>
-
-      <div id="landing-pages" className="mt-8">
-        <LandingPageManager
-          eventMongoId={id}
-          initialLandingPages={landingPages.map((page) => ({
-            _id: page._id!.toString(),
-            slug: page.slug,
-            title: page.title ?? null,
-            targetType: page.targetType === 'layout' ? 'layout' : 'slideshow',
-            targetName: page.targetName ?? page.slug,
-            isActive: page.isActive !== false,
-            createdAt: page.createdAt,
-          }))}
-        />
-      </div>
-
-      {/* Event Gallery Section */}
-      <div id="gallery" className="mt-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              📷 Event Gallery
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Photos visible in Event Slideshows ({submissions.length})
-            </p>
-          </div>
-
-          <EventGallery
-            eventId={id}
-            eventName={event.name}
-            initialSubmissions={JSON.parse(JSON.stringify(submissions))}
-            slideshows={JSON.parse(JSON.stringify(slideshows))}
-          />
-        </div>
-      </div>
-    </div>
+      </Card>
+    </Stack>
   );
 }

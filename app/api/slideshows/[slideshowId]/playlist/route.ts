@@ -24,7 +24,6 @@ import { findEventForSlideshow } from '@/lib/slideshow/resolve-event';
 import { submissionEventIdKeys } from '@/lib/slideshow/submission-event-keys';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
-import { fetchPersonalFffReelRows } from '@/lib/slideshow/personal-fff-reel';
 import type { Event } from '@/lib/db/schemas';
 import {
   resolveSlideshowStageAspect,
@@ -179,49 +178,26 @@ export async function GET(
         .toArray();
     };
 
-    const personalProfile = await db
-      .collection(COLLECTIONS.FFF_USER_PROFILES)
-      .findOne({ slideshowId: String(slideshow.slideshowId) });
-    const personalUserId =
-      personalProfile && typeof personalProfile.userId === 'string' ? personalProfile.userId : null;
-    const isPersonalFffReel = Boolean(personalUserId);
-
-    let submissions: Awaited<ReturnType<typeof fetchSubmissionsSorted>>;
-
-    if (isPersonalFffReel && personalUserId) {
-      submissions = await fetchPersonalFffReelRows(db, personalUserId, buildMatchFilter, excludeObjectIds);
-      if (submissions.length === 0 && excludeObjectIds.length > 0) {
-        if (dbg) {
-          console.log('[Playlist] Personal reel: exclude exhausted; refetching without exclude');
-        }
-        submissions = await fetchPersonalFffReelRows(db, personalUserId, buildMatchFilter, []);
+    let submissions = await fetchSubmissionsSorted(excludeObjectIds);
+    if (submissions.length === 0 && excludeObjectIds.length > 0) {
+      if (dbg) {
+        console.log('[Playlist] Exclude exhausted pool; refetching without exclude');
       }
-    } else {
-      submissions = await fetchSubmissionsSorted(excludeObjectIds);
-      if (submissions.length === 0 && excludeObjectIds.length > 0) {
-        if (dbg) {
-          console.log('[Playlist] Exclude exhausted pool; refetching without exclude');
-        }
-        submissions = await fetchSubmissionsSorted([]);
-      }
+      submissions = await fetchSubmissionsSorted([]);
     }
 
     const orderMode = slideshow.orderMode === 'random' ? 'random' : 'fixed';
-    if (!isPersonalFffReel) {
-      if (orderMode === 'random' && submissions.length > 1) {
-        if (instanceKey) {
-          const randomSalt = randomBytes(4).readUInt32BE(0);
-          const seed = (fnv1a32(instanceKey) ^ randomSalt) >>> 0;
-          shuffleInPlaceSeeded(submissions, seed);
-        } else {
-          shuffleInPlace(submissions);
-        }
-      } else if (instanceKey && submissions.length > 1) {
-        // Fixed fairness order: without this, every layout cell starts at the same head → identical tiles.
-        rotateLeftBy(submissions, fnv1a32(instanceKey) % submissions.length);
+    if (orderMode === 'random' && submissions.length > 1) {
+      if (instanceKey) {
+        const randomSalt = randomBytes(4).readUInt32BE(0);
+        const seed = (fnv1a32(instanceKey) ^ randomSalt) >>> 0;
+        shuffleInPlaceSeeded(submissions, seed);
+      } else {
+        shuffleInPlace(submissions);
       }
-    } else if (dbg) {
-      console.log('[Playlist] Personal FunFitFan reel: chronological merge (submissions + gym); no shuffle/rotate');
+    } else if (instanceKey && submissions.length > 1) {
+      // Fixed fairness order: without this, every layout cell starts at the same head → identical tiles.
+      rotateLeftBy(submissions, fnv1a32(instanceKey) % submissions.length);
     }
 
     const playMode = slideshow.playMode === 'once' ? 'once' : 'loop';

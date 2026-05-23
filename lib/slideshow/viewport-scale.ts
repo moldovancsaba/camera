@@ -9,7 +9,7 @@ const SLIDESHOW_STAGE_ASPECT_DEFAULT = 16 / 9;
 
 /**
  * Slideshow stage size inside a rectangular container (layout cell or window).
- * @param stageAspectWidthOverHeight width ÷ height of the stage (e.g. 16/9 landscape, 9/16 portrait for FunFitFan).
+ * @param stageAspectWidthOverHeight width ÷ height of the stage (e.g. 16/9 landscape).
  */
 export function slideshowStageDimensions(
   containerW: number,

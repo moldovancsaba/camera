@@ -1,14 +1,29 @@
+'use client';
+
 /**
  * Add New Frame Page
- * 
+ *
  * Upload and configure new photo frames.
  */
 
-'use client';
-
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRef, useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import {
+  Alert,
+  Button,
+  Card,
+  Checkbox,
+  FileButton,
+  Group,
+  Select,
+  Stack,
+  Text,
+  TextInput,
+  Textarea,
+} from '@mantine/core';
+import { IconAlertCircle, IconPhotoPlus, IconTrash } from '@tabler/icons-react';
+import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Failed to upload frame';
@@ -16,27 +31,33 @@ function getErrorMessage(error: unknown): string {
 
 export default function NewFramePage() {
   const router = useRouter();
+  const fileInputResetRef = useRef<() => void>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileChange = (selectedFile: File | null) => {
+    if (!selectedFile) return;
 
-    // Validate file type
-    if (!['image/png', 'image/svg+xml'].includes(file.type)) {
+    if (!['image/png', 'image/svg+xml'].includes(selectedFile.type)) {
       setError('Only PNG and SVG files are allowed');
       return;
     }
 
-    // Create preview
     const reader = new FileReader();
     reader.onload = () => {
       setPreview(reader.result as string);
+      setFile(selectedFile);
       setError(null);
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(selectedFile);
+  };
+
+  const clearFile = () => {
+    setPreview(null);
+    setFile(null);
+    fileInputResetRef.current?.();
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -45,16 +66,8 @@ export default function NewFramePage() {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-
-    // Debug: Log what we're sending
-    console.log('=== Client Side Debug ===');
-    console.log('FormData entries:');
-    for (const [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        console.log(`${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
-      } else {
-        console.log(`${key}: ${value}`);
-      }
+    if (file) {
+      formData.set('file', file);
     }
 
     try {
@@ -64,7 +77,6 @@ export default function NewFramePage() {
       });
 
       const data = await response.json();
-      console.log('Server response:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to upload frame');
@@ -73,159 +85,103 @@ export default function NewFramePage() {
       router.push('/admin/frames');
       router.refresh();
     } catch (err: unknown) {
-      console.error('Upload error:', err);
       setError(getErrorMessage(err));
       setIsUploading(false);
     }
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Add New Frame</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">Upload a PNG or SVG frame overlay</p>
-      </div>
+    <Stack gap="xl" maw={960} mx="auto">
+      <WorkspaceHeader
+        eyebrow="Resource Inventory"
+        title="Add New Frame"
+        description="Upload a PNG or SVG frame overlay"
+      />
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* File Upload */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-4">
-            Frame Image *
-          </label>
+      <form onSubmit={handleSubmit}>
+        <Stack gap="lg">
+          <Card>
+            <Stack gap="md">
+              <Text fw={600}>Frame Image *</Text>
+              <input type="hidden" name="file-placeholder" value={file?.name || ''} />
+              {preview ? (
+                <Stack gap="sm">
+                  <div
+                    style={{
+                      position: 'relative',
+                      aspectRatio: '1 / 1',
+                      background: 'var(--mantine-color-gray-1)',
+                      borderRadius: 'var(--mantine-radius-md)',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <Image src={preview} alt="Preview" fill unoptimized style={{ objectFit: 'contain', padding: 32 }} />
+                  </div>
+                  <Group justify="space-between">
+                    <Text size="sm" c="dimmed">
+                      {file?.name}
+                    </Text>
+                    <Button color="red" variant="light" leftSection={<IconTrash size={16} />} onClick={clearFile}>
+                      Remove
+                    </Button>
+                  </Group>
+                </Stack>
+              ) : (
+                <Card withBorder radius="md" bg="var(--mantine-color-gray-0)" p="xl">
+                  <Stack align="center" gap="sm">
+                    <Text fz={48}>📁</Text>
+                    <Text fw={600}>Click to upload or drag and drop</Text>
+                    <Text size="sm" c="dimmed">
+                      PNG or SVG (MAX. 32MB)
+                    </Text>
+                    <FileButton resetRef={fileInputResetRef} onChange={handleFileChange} accept=".png,.svg">
+                      {(props) => (
+                        <Button {...props} leftSection={<IconPhotoPlus size={16} />}>
+                          Choose file
+                        </Button>
+                      )}
+                    </FileButton>
+                  </Stack>
+                </Card>
+              )}
+              {error ? (
+                <Alert color="red" icon={<IconAlertCircle size={16} />}>
+                  {error}
+                </Alert>
+              ) : null}
+            </Stack>
+          </Card>
 
-          {/* File input - always present but hidden */}
-          <input
-            type="file"
-            name="file"
-            accept=".png,.svg"
-            onChange={handleFileChange}
-            className="hidden"
-            id="file-upload"
-            required
-          />
-
-          {preview ? (
-            <div className="relative aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden mb-4">
-              <Image
-                src={preview}
-                alt="Preview"
-                fill
-                className="object-contain p-8"
-                unoptimized
+          <Card>
+            <Stack gap="md">
+              <TextInput name="name" label="Frame Name *" required placeholder="e.g., Holiday Frame 2024" />
+              <Textarea name="description" label="Description" rows={3} placeholder="Optional description..." />
+              <Select
+                name="category"
+                label="Category"
+                defaultValue="general"
+                data={[
+                  { value: 'general', label: 'General' },
+                  { value: 'holiday', label: 'Holiday' },
+                  { value: 'birthday', label: 'Birthday' },
+                  { value: 'wedding', label: 'Wedding' },
+                  { value: 'corporate', label: 'Corporate' },
+                ]}
               />
-              <button
-                type="button"
-                onClick={() => {
-                  setPreview(null);
-                  const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-                  if (input) input.value = '';
-                }}
-                className="absolute top-4 right-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Remove
-              </button>
-            </div>
-          ) : (
-            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-12 text-center">
-              <label
-                htmlFor="file-upload"
-                className="cursor-pointer flex flex-col items-center"
-              >
-                <div className="text-6xl mb-4">📁</div>
-                <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  Click to upload or drag and drop
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  PNG or SVG (MAX. 32MB)
-                </p>
-              </label>
-            </div>
-          )}
+              <Checkbox name="isActive" defaultChecked value="true" label="Make frame active (visible to users)" />
+            </Stack>
+          </Card>
 
-          {error && (
-            <p className="mt-2 text-sm text-red-600">{error}</p>
-          )}
-        </div>
-
-        {/* Frame Details */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Frame Name *
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              required
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              placeholder="e.g., Holiday Frame 2024"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Description
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              rows={3}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              placeholder="Optional description..."
-            />
-          </div>
-
-          <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Category
-            </label>
-            <select
-              id="category"
-              name="category"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              <option value="general">General</option>
-              <option value="holiday">Holiday</option>
-              <option value="birthday">Birthday</option>
-              <option value="wedding">Wedding</option>
-              <option value="corporate">Corporate</option>
-            </select>
-          </div>
-
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="isActive"
-              name="isActive"
-              defaultChecked
-              value="true"
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded"
-            />
-            <label htmlFor="isActive" className="ml-2 text-sm text-gray-900 dark:text-white">
-              Make frame active (visible to users)
-            </label>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-4">
-          <button
-            type="submit"
-            disabled={isUploading || !preview}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isUploading ? 'Uploading...' : 'Create Frame'}
-          </button>
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
+          <Group>
+            <Button type="submit" loading={isUploading} disabled={!preview}>
+              {isUploading ? 'Uploading...' : 'Create Frame'}
+            </Button>
+            <Button variant="default" onClick={() => router.back()}>
+              Cancel
+            </Button>
+          </Group>
+        </Stack>
       </form>
-    </div>
+    </Stack>
   );
 }

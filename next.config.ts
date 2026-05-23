@@ -13,14 +13,6 @@ process.env.BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA ??= 'true';
  * - TypeScript strict mode enforcement
  */
 const nextConfig: NextConfig = {
-  async redirects() {
-    return [
-      { source: '/gym', destination: '/workout', permanent: true },
-      { source: '/gym/:path*', destination: '/workout/:path*', permanent: true },
-      { source: '/workout/lesson/:lessonId', destination: '/workout/training/:lessonId', permanent: true },
-    ];
-  },
-
   // Image configuration for imgbb.com CDN
   images: {
     remotePatterns: [

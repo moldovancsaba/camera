@@ -5,7 +5,6 @@ import LandingPageCookieConsent from '@/components/landing/LandingPageCookieCons
 import LandingPageMediaFrame from '@/components/landing/LandingPageMediaFrame';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, type SlideshowLayoutArea } from '@/lib/db/schemas';
-import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
 import { getActiveLandingPageBySlug } from '@/lib/landing-pages';
 import { computeCompactGridSpec } from '@/lib/slideshow/layout-geometry';
 import {
@@ -20,8 +19,7 @@ const landingDisplayFont = Bebas_Neue({
 });
 
 function resolveCommittedSlideshowStageAspect(
-  slideshow: { stageAspect?: number | null },
-  event: { partnerId?: string | null }
+  slideshow: { stageAspect?: number | null }
 ): number {
   const raw = slideshow.stageAspect;
   if (
@@ -32,7 +30,7 @@ function resolveCommittedSlideshowStageAspect(
   ) {
     return raw;
   }
-  return String(event.partnerId) === FUNFITFAN_PARTNER_ID ? 9 / 16 : 16 / 9;
+  return 16 / 9;
 }
 
 async function resolveTargetAspectRatio(
@@ -72,8 +70,7 @@ async function resolveTargetAspectRatio(
 
   if (!slideshow || !event) return 16 / 9;
   return resolveCommittedSlideshowStageAspect(
-    slideshow as { stageAspect?: number | null },
-    event as { partnerId?: string | null }
+    slideshow as { stageAspect?: number | null }
   );
 }
 

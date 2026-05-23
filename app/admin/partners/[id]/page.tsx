@@ -5,18 +5,31 @@
  * inherited by child events unless they are overridden.
  */
 
-import { connectToDatabase } from '@/lib/db/mongodb';
-import { getSession } from '@/lib/auth/session';
-import { COLLECTIONS } from '@/lib/db/schemas';
-import { ObjectId } from 'mongodb';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import DeletePartnerButton from '@/components/admin/DeletePartnerButton';
+import { ObjectId } from 'mongodb';
+import {
+  Badge,
+  Breadcrumbs,
+  Button,
+  Card,
+  Group,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  Title,
+} from '@mantine/core';
+import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import StatsStrip from '@/components/gds/StatsStrip';
 import StyleSections from '@/components/admin/StyleSections';
 import PartnerUserAccessManager from '@/components/admin/PartnerUserAccessManager';
 import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
-import { FUNFITFAN_PARTNER_ID } from '@/lib/funfitfan/constants';
+import DeletePartnerButton from '@/components/admin/DeletePartnerButton';
+import { connectToDatabase } from '@/lib/db/mongodb';
+import { getSession } from '@/lib/auth/session';
+import { COLLECTIONS } from '@/lib/db/schemas';
 import { listPartnerUserAccess } from '@/lib/partners/access';
 import {
   getPartnerScopedAccessForPartner,
@@ -37,6 +50,7 @@ interface LogoAssignmentDoc {
   logoId: string;
   position?: string;
   maxWidthPercent?: number;
+  scenario?: string;
 }
 
 interface LogoDoc {
@@ -100,7 +114,7 @@ interface PartnerAccessAssignmentDoc {
   userId?: string | null;
   userEmail: string;
   userName?: string | null;
-  appKey: 'events' | 'gym';
+  appKey: 'events';
   role: 'viewer' | 'manager' | 'admin';
   isActive: boolean;
   createdAt: string;
@@ -113,8 +127,7 @@ export default async function PartnerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  
-  // Validate ObjectId format
+
   if (!ObjectId.isValid(id)) {
     notFound();
   }
@@ -124,22 +137,16 @@ export default async function PartnerDetailPage({
   let submissions: SubmissionDoc[] = [];
   let partnerAccessAssignments: PartnerAccessAssignmentDoc[] = [];
   let participantCount = 0;
-  let dbError = null;
+  let dbError: string | null = null;
   const session = await getSession();
   const canManagePartner = isGlobalAdminSession(session);
   let canManageEvents = isGlobalAdminSession(session);
-  let canAccessGym = isGlobalAdminSession(session);
   let eventsRoleLabel = isGlobalAdminSession(session) ? 'global admin' : 'no access';
-  let gymRoleLabel = isGlobalAdminSession(session) ? 'global admin' : 'no access';
 
   try {
     const db = await connectToDatabase();
-    
-    // Get partner details
-    partner = await db
-      .collection(COLLECTIONS.PARTNERS)
-      .findOne({ _id: new ObjectId(id) }) as unknown as PartnerDoc | null;
 
+    partner = (await db.collection(COLLECTIONS.PARTNERS).findOne({ _id: new ObjectId(id) })) as PartnerDoc | null;
     if (!partner) {
       notFound();
     }
@@ -154,11 +161,7 @@ export default async function PartnerDetailPage({
       const eventAssignment = assignments.find(
         (assignment) => assignment.partnerId === partner!.partnerId && assignment.appKey === 'events' && assignment.isActive
       );
-      const gymAssignment = assignments.find(
-        (assignment) => assignment.partnerId === partner!.partnerId && assignment.appKey === 'gym' && assignment.isActive
-      );
       eventsRoleLabel = eventAssignment?.role ?? 'no access';
-      gymRoleLabel = gymAssignment?.role ?? 'no access';
       canManageEvents = assignments.some(
         (assignment) =>
           assignment.partnerId === partner!.partnerId &&
@@ -166,34 +169,25 @@ export default async function PartnerDetailPage({
           assignment.isActive &&
           (assignment.role === 'manager' || assignment.role === 'admin')
       );
-      canAccessGym = assignments.some(
-        (assignment) =>
-          assignment.partnerId === partner!.partnerId &&
-          assignment.appKey === 'gym' &&
-          assignment.isActive
-      );
     }
 
-    // Get events for this partner
-    events = await db
+    events = (await db
       .collection(COLLECTIONS.EVENTS)
       .find({ partnerId: partner.partnerId })
       .sort({ createdAt: -1 })
       .limit(50)
-      .toArray() as unknown as EventDoc[];
+      .toArray()) as unknown as EventDoc[];
 
-    // Get submissions for all events under this partner (limit to most recent 50)
-    // NEW: Updated query for new schema with archive and hidden checks
-    submissions = await db
+    submissions = (await db
       .collection(COLLECTIONS.SUBMISSIONS)
       .find({
         partnerId: partner.partnerId,
-        isArchived: false,              // NEW: Exclude archived submissions
-        hiddenFromPartner: false        // NEW: Exclude hidden from partner
+        isArchived: false,
+        hiddenFromPartner: false,
       })
       .sort({ createdAt: -1 })
       .limit(50)
-      .toArray() as unknown as SubmissionDoc[];
+      .toArray()) as unknown as SubmissionDoc[];
 
     const participantRows = await db
       .collection(COLLECTIONS.SUBMISSIONS)
@@ -208,15 +202,7 @@ export default async function PartnerDetailPage({
         {
           $project: {
             participantKey: {
-              $ifNull: [
-                '$userInfo.email',
-                {
-                  $ifNull: [
-                    '$userEmail',
-                    '$userId',
-                  ],
-                },
-              ],
+              $ifNull: ['$userInfo.email', { $ifNull: ['$userEmail', '$userId'] }],
             },
           },
         },
@@ -233,42 +219,40 @@ export default async function PartnerDetailPage({
       ])
       .toArray();
     participantCount = participantRows.length;
-    partnerAccessAssignments = await listPartnerUserAccess(db, partner.partnerId) as unknown as PartnerAccessAssignmentDoc[];
+    partnerAccessAssignments = (await listPartnerUserAccess(db, partner.partnerId)) as unknown as PartnerAccessAssignmentDoc[];
 
-    // Populate frame details for default frames
     if (partner.defaultFrames && partner.defaultFrames.length > 0) {
-      const frames = await db
+      const frames = (await db
         .collection(COLLECTIONS.FRAMES)
         .find({ frameId: { $in: partner.defaultFrames } })
-        .toArray() as unknown as FrameDetailsDoc[];
-      
-      // Map frame details to assignments
-      partner.defaultFramesWithDetails = partner.defaultFrames.map((frameId: string) => {
+        .toArray()) as unknown as FrameDetailsDoc[];
+
+      partner.defaultFramesWithDetails = partner.defaultFrames.map((frameId) => {
         const frameDetails = frames.find((frame) => frame.frameId === frameId);
         return {
           frameId,
           isActive: true,
-          frameDetails: frameDetails ? {
-            frameId: frameDetails.frameId,
-            name: frameDetails.name,
-            thumbnailUrl: frameDetails.thumbnailUrl,
-            width: frameDetails.width,
-            height: frameDetails.height,
-            hashtags: frameDetails.hashtags,
-          } : null
+          frameDetails: frameDetails
+            ? {
+                frameId: frameDetails.frameId,
+                name: frameDetails.name,
+                thumbnailUrl: frameDetails.thumbnailUrl,
+                width: frameDetails.width,
+                height: frameDetails.height,
+                hashtags: frameDetails.hashtags,
+              }
+            : null,
         };
       });
     }
 
-    // Populate logo details for default logos
     if (partner.defaultLogos && partner.defaultLogos.length > 0) {
       const logoIds = partner.defaultLogos.map((logoAssignment) => logoAssignment.logoId);
-      const logos = await db
+      const logos = (await db
         .collection(COLLECTIONS.LOGOS)
         .find({ logoId: { $in: logoIds } })
-        .toArray() as unknown as LogoDoc[];
-      
-      // Merge logo details
+        .toArray()) as unknown as LogoDoc[];
+
       partner.defaultLogosWithDetails = partner.defaultLogos.map((logoAssignment) => {
         const logo = logos.find((entry) => entry.logoId === logoAssignment.logoId);
         return {
@@ -280,7 +264,6 @@ export default async function PartnerDetailPage({
         };
       });
     }
-
   } catch (error) {
     console.error('Error fetching partner details:', error);
     dbError = error instanceof Error ? error.message : 'Unknown error';
@@ -289,275 +272,175 @@ export default async function PartnerDetailPage({
   if (!partner) {
     notFound();
   }
-
-  const isFunFitFanPartner = partner.partnerId === FUNFITFAN_PARTNER_ID;
-
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div id="overview" className="mb-8">
-        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
-          <Link href="/admin/partners" className="hover:text-gray-700 dark:hover:text-gray-200">
-            Partners
-          </Link>
-          <span>→</span>
-          <span>{partner.name}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{partner.name}</h1>
-            {partner.description && (
-              <p className="text-gray-600 dark:text-gray-400 mt-2">{partner.description}</p>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
+    <Stack gap="xl">
+      <Breadcrumbs>
+        <Link href="/admin/partners">Partners</Link>
+        <Text>{partner.name}</Text>
+      </Breadcrumbs>
+
+      <WorkspaceHeader
+        eyebrow="Camera Core"
+        title={partner.name}
+        description={partner.description}
+        status={partner.isActive ? 'Active' : 'Inactive'}
+        actions={
+          <>
             {canManagePartner ? (
-              <Link
-                href={`/admin/partners/${id}/edit`}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-              >
-                Edit Partner
+              <Link href={`/admin/partners/${id}/edit`} style={{ textDecoration: 'none' }}>
+                <Button>Edit Partner</Button>
               </Link>
             ) : null}
-            <span className={`inline-flex px-3 py-2 text-sm font-semibold rounded-lg ${
-              partner.isActive
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
-            }`}>
-              {partner.isActive ? '● Active' : '○ Inactive'}
-            </span>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
-      <div className="mb-6 flex flex-wrap gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        {[
-          { href: '#overview', label: 'Overview' },
-          { href: '#access', label: 'Access' },
-          { href: '#resources', label: 'Resources' },
-          { href: '#events', label: 'Events App' },
-          { href: '#gallery', label: 'Gallery' },
-        ].map((item) => (
-          <a
-            key={item.href}
-            href={item.href}
-            className="rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-700"
-          >
-            {item.label}
-          </a>
-        ))}
-      </div>
+      {dbError ? (
+        <Card bg="red.0" c="red.8">
+          <Text fw={700}>Error loading data</Text>
+          <Text size="sm">{dbError}</Text>
+        </Card>
+      ) : null}
 
-      {dbError && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-800 dark:text-red-200 font-medium">Error loading data</p>
-          <p className="text-red-600 dark:text-red-300 text-sm mt-1">{dbError}</p>
-        </div>
-      )}
+      <StatsStrip
+        items={[
+          { label: 'Events', value: events.length },
+          { label: 'Frames', value: partner.frameCount || 0 },
+          { label: 'Photos', value: submissions.length },
+          { label: 'Participants', value: participantCount },
+          { label: 'User assignments', value: partnerAccessAssignments.length },
+        ]}
+      />
 
-      <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-5">
-        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
+      <SimpleGrid cols={{ base: 1, xl: 5 }} spacing="lg">
+        <Card>
+          <Text size="xs" tt="uppercase" fw={700} c="dimmed" style={{ letterSpacing: '0.12em' }}>
             Workspace
-          </p>
-          <h2 className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">Partner Operations</h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          </Text>
+          <Title order={3} mt="sm">
+            Partner Operations
+          </Title>
+          <Text size="sm" c="dimmed" mt="sm">
             Use this page as the operating home for this partner’s resources, app surfaces, and gallery context.
-          </p>
-        </div>
+          </Text>
+        </Card>
 
-        <Link
-          href={`/admin/partners/${id}/frames`}
-          className="rounded-lg border border-blue-200 bg-blue-50 p-5 shadow-sm transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/20 dark:hover:bg-blue-900/30"
-        >
-          <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">Resources</p>
-          <p className="mt-2 text-sm text-blue-800 dark:text-blue-200">
-            Manage default frames and logos in partner context instead of starting from the global inventory.
-          </p>
+        <Link href={`/admin/partners/${id}/frames`} style={{ textDecoration: 'none' }}>
+          <Card bg="blue.0">
+            <Text fw={700} c="blue.9">
+              Resources
+            </Text>
+            <Text size="sm" c="blue.8" mt="sm">
+              Manage default frames and logos in partner context instead of starting from the global inventory.
+            </Text>
+          </Card>
         </Link>
 
         <Link
           href={canManageEvents ? `/admin/events/new?partnerId=${partner.partnerId}` : '/admin/events'}
-          className="rounded-lg border border-emerald-200 bg-emerald-50 p-5 shadow-sm transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30"
+          style={{ textDecoration: 'none' }}
         >
-          <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Events App</p>
-          <p className="mt-2 text-sm text-emerald-800 dark:text-emerald-200">
-            {canManageEvents
-              ? 'Create and manage the event app instances that use this partner’s brand defaults and resource assignments.'
-              : 'Review the event app instances that use this partner’s brand defaults and resource assignments.'}
-          </p>
+          <Card bg="green.0">
+            <Text fw={700} c="green.9">
+              Events App
+            </Text>
+            <Text size="sm" c="green.8" mt="sm">
+              {canManageEvents
+                ? 'Create and manage the event app instances that use this partner’s brand defaults and resource assignments.'
+                : 'Review the event app instances that use this partner’s brand defaults and resource assignments.'}
+            </Text>
+          </Card>
         </Link>
-
-        {isFunFitFanPartner ? (
-          <div className="rounded-lg border border-violet-200 bg-violet-50 p-5 shadow-sm dark:border-violet-800 dark:bg-violet-900/20">
-            <p className="text-sm font-semibold text-violet-900 dark:text-violet-100">Gym App</p>
-            <p className="mt-2 text-sm text-violet-800 dark:text-violet-200">
-              This partner is the dedicated Gym workspace. Use the app settings entry to manage the member experience.
-            </p>
-            <div className="mt-4">
-              {canAccessGym ? (
-                <Link
-                  href="/admin/gym/funfitfan"
-                  className="inline-flex rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
-                >
-                  Open Gym Settings
-                </Link>
-              ) : null}
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-lg border border-violet-200 bg-violet-50 p-5 shadow-sm dark:border-violet-800 dark:bg-violet-900/20">
-            <p className="text-sm font-semibold text-violet-900 dark:text-violet-100">Gym App</p>
-            <p className="mt-2 text-sm text-violet-800 dark:text-violet-200">
-              Gym currently uses dedicated app-scoped configuration. Keep this partner page focused on shared resources and event operations.
-            </p>
-            <div className="mt-4">
-              {canAccessGym ? (
-                <Link
-                  href="/admin/gym"
-                  className="inline-flex rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
-                >
-                  Open Gym App
-                </Link>
-              ) : null}
-            </div>
-          </div>
-        )}
-
         {canManagePartner ? (
-          <Link
-            href="/admin/users"
-            className="rounded-lg border border-amber-200 bg-amber-50 p-5 shadow-sm transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/20 dark:hover:bg-amber-900/30"
-          >
-            <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">Users</p>
-            <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">
-              View global access-managed users and submission-derived guest identities that show up in this partner’s activity.
-            </p>
+          <Link href="/admin/users" style={{ textDecoration: 'none' }}>
+            <Card bg="yellow.0">
+              <Text fw={700} c="yellow.9">
+                Users
+              </Text>
+              <Text size="sm" c="yellow.8" mt="sm">
+                View global access-managed users and submission-derived guest identities that show up in this partner’s
+                activity.
+              </Text>
+            </Card>
           </Link>
         ) : null}
-      </div>
+      </SimpleGrid>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Partner Information */}
-        <div className="lg:col-span-1 space-y-6">
-          {/* Basic Info Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Partner Information</h2>
-            <dl className="space-y-3">
-              <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Partner ID</dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white font-mono">{partner.partnerId}</dd>
-              </div>
-              {partner.contactName && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Contact Person</dt>
-                  <dd className="mt-1 text-sm text-gray-900 dark:text-white">{partner.contactName}</dd>
-                </div>
-              )}
-              {partner.contactEmail && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Contact Email</dt>
-                  <dd className="mt-1 text-sm text-gray-900 dark:text-white">
-                    <a href={`mailto:${partner.contactEmail}`} className="text-blue-600 hover:text-blue-800 dark:text-blue-400">
-                      {partner.contactEmail}
-                    </a>
-                  </dd>
-                </div>
-              )}
-              <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Created</dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white">
-                  {new Date(partner.createdAt).toLocaleString()}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white">
-                  {new Date(partner.updatedAt).toLocaleString()}
-                </dd>
-              </div>
-            </dl>
-          </div>
+      <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="lg">
+        <Stack gap="lg">
+          <Card>
+            <Title order={3}>Partner Information</Title>
+            <Table mt="md">
+              <Table.Tbody>
+                <Table.Tr>
+                  <Table.Th>Partner ID</Table.Th>
+                  <Table.Td>
+                    <Text ff="monospace" size="sm">
+                      {partner.partnerId}
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+                {partner.contactName ? (
+                  <Table.Tr>
+                    <Table.Th>Contact Person</Table.Th>
+                    <Table.Td>{partner.contactName}</Table.Td>
+                  </Table.Tr>
+                ) : null}
+                {partner.contactEmail ? (
+                  <Table.Tr>
+                    <Table.Th>Contact Email</Table.Th>
+                    <Table.Td>
+                      <a href={`mailto:${partner.contactEmail}`}>{partner.contactEmail}</a>
+                    </Table.Td>
+                  </Table.Tr>
+                ) : null}
+                <Table.Tr>
+                  <Table.Th>Created</Table.Th>
+                  <Table.Td>{new Date(partner.createdAt).toLocaleString()}</Table.Td>
+                </Table.Tr>
+                <Table.Tr>
+                  <Table.Th>Last Updated</Table.Th>
+                  <Table.Td>{new Date(partner.updatedAt).toLocaleString()}</Table.Td>
+                </Table.Tr>
+              </Table.Tbody>
+            </Table>
+          </Card>
 
-          {/* Statistics Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Statistics</h2>
-            <dl className="space-y-3">
-              <div className="flex items-center justify-between">
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Events</dt>
-                <dd className="text-2xl font-bold text-gray-900 dark:text-white">{events.length}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Frames</dt>
-                <dd className="text-2xl font-bold text-gray-900 dark:text-white">{partner.frameCount || 0}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Photos</dt>
-                <dd className="text-2xl font-bold text-gray-900 dark:text-white">{submissions.length}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Participants</dt>
-                <dd className="text-2xl font-bold text-gray-900 dark:text-white">{participantCount}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">User assignments</dt>
-                <dd className="text-2xl font-bold text-gray-900 dark:text-white">{partnerAccessAssignments.length}</dd>
-              </div>
-            </dl>
-            <Link
-              href={`/admin/partners/${id}#gallery`}
-              className="mt-4 block w-full px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors text-center"
-            >
-              View Gallery →
-            </Link>
-          </div>
+          <Card>
+            <Title order={3}>Access Summary</Title>
+            <Table mt="md">
+              <Table.Tbody>
+                <Table.Tr>
+                  <Table.Th>Current operator</Table.Th>
+                  <Table.Td>{canManagePartner ? 'Global admin' : 'Partner-scoped'}</Table.Td>
+                </Table.Tr>
+                <Table.Tr>
+                  <Table.Th>Events App role</Table.Th>
+                  <Table.Td style={{ textTransform: 'capitalize' }}>{eventsRoleLabel}</Table.Td>
+                </Table.Tr>
+                <Table.Tr>
+                  <Table.Th>Active assignments</Table.Th>
+                  <Table.Td>{partnerAccessAssignments.filter((assignment) => assignment.isActive).length}</Table.Td>
+                </Table.Tr>
+              </Table.Tbody>
+            </Table>
+            <Text size="sm" c="dimmed" mt="md">
+              Global inventory remains restricted to global admins. Partner-scoped roles are limited to the assigned app
+              surfaces for this partner.
+            </Text>
+          </Card>
 
-          <div id="access" className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Access Summary</h2>
-            <dl className="space-y-3">
-              <div className="flex items-center justify-between gap-4">
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Current operator</dt>
-                <dd className="text-sm font-semibold text-gray-900 dark:text-white">
-                  {canManagePartner ? 'Global admin' : 'Partner-scoped'}
-                </dd>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Events App role</dt>
-                <dd className="text-sm font-semibold capitalize text-gray-900 dark:text-white">{eventsRoleLabel}</dd>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Gym App role</dt>
-                <dd className="text-sm font-semibold capitalize text-gray-900 dark:text-white">{gymRoleLabel}</dd>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Active assignments</dt>
-                <dd className="text-sm font-semibold text-gray-900 dark:text-white">
-                  {partnerAccessAssignments.filter((assignment) => assignment.isActive).length}
-                </dd>
-              </div>
-            </dl>
-            <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-              Global inventory remains restricted to global admins. Partner-scoped roles are limited to the assigned
-              app surfaces for this partner.
-            </p>
-          </div>
-
-          {/* Delete Partner Card */}
           {canManagePartner ? (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Danger Zone</h2>
-              <DeletePartnerButton
-                partnerId={id}
-                partnerName={partner.name}
-                hasEvents={events.length > 0}
-                eventCount={events.length}
-              />
-            </div>
+            <Card>
+              <Title order={3} mb="md">
+                Danger Zone
+              </Title>
+              <DeletePartnerButton partnerId={id} partnerName={partner.name} hasEvents={events.length > 0} eventCount={events.length} />
+            </Card>
           ) : null}
-        </div>
+        </Stack>
 
-        {/* Right Column - Resources and App Instances */}
-        <div className="lg:col-span-2 space-y-6">
+        <Stack gap="lg" style={{ gridColumn: 'span 2' }}>
           {canManagePartner ? (
             <PartnerUserAccessManager
               partnerMongoId={id}
@@ -579,184 +462,146 @@ export default async function PartnerDetailPage({
 
           <AuthorizationMatrix
             compact
-            description="This matrix reflects the current live policy for global admin access versus partner-scoped Events and Gym roles."
+            description="This matrix reflects the current live policy for global admin access versus partner-scoped Events roles."
           />
 
-          <div id="resources">
-            {/* Default Styles Section - Using Unified StyleSections Component */}
-            <StyleSections
-              type="partner"
-              id={id}
-              brandColor={partner.defaultBrandColors?.primary}
-              brandBorderColor={partner.defaultBrandColors?.secondary}
-              frames={partner.defaultFramesWithDetails || []}
-              logos={partner.defaultLogosWithDetails || []}
-            />
-          </div>
+          <StyleSections
+            type="partner"
+            id={id}
+            brandColor={partner.defaultBrandColors?.primary}
+            brandBorderColor={partner.defaultBrandColors?.secondary}
+            frames={partner.defaultFramesWithDetails || []}
+            logos={partner.defaultLogosWithDetails || []}
+          />
 
-          {/* Events List */}
-          <div id="events" className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Events App</h2>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Event app instances that inherit this partner’s defaults and can override them when needed.
-                  </p>
-                </div>
-                {canManageEvents ? (
-                  <Link
-                    href={`/admin/events/new?partnerId=${partner.partnerId}`}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
-                  >
-                    + Add Event
-                  </Link>
-                ) : null}
+          <Card p={0}>
+            <Group justify="space-between" align="flex-start" p="xl" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+              <div>
+                <Title order={3}>Events App</Title>
+                <Text size="sm" c="dimmed" mt="xs">
+                  Event app instances that inherit this partner’s defaults and can override them when needed.
+                </Text>
               </div>
-            </div>
+              {canManageEvents ? (
+                <Link href={`/admin/events/new?partnerId=${partner.partnerId}`} style={{ textDecoration: 'none' }}>
+                  <Button>+ Add Event</Button>
+                </Link>
+              ) : null}
+            </Group>
 
             {events.length === 0 ? (
-              <div className="p-12 text-center">
-                <div className="text-5xl mb-4">🎯</div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No events yet</h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
+              <Stack align="center" gap="sm" p="xl">
+                <Text fz={48}>🎯</Text>
+                <Text fw={700} fz="lg">
+                  No events yet
+                </Text>
+                <Text c="dimmed" ta="center">
                   Create your first event for this partner
-                </p>
+                </Text>
                 {canManageEvents ? (
-                  <Link
-                    href={`/admin/events/new?partnerId=${partner.partnerId}`}
-                    className="inline-flex px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
-                  >
-                    Create Event
+                  <Link href={`/admin/events/new?partnerId=${partner.partnerId}`} style={{ textDecoration: 'none' }}>
+                    <Button>Create Event</Button>
                   </Link>
                 ) : null}
-              </div>
+              </Stack>
             ) : (
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {events.map((event) => (
-                  <div key={event._id.toString()} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <Link
-                          href={`/admin/events/${event._id}`}
-                          className="text-lg font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
-                        >
-                          {event.name}
-                        </Link>
-                        {event.description && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {event.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
-                          {event.eventDate && (
-                            <span>📅 {new Date(event.eventDate).toLocaleDateString()}</span>
-                          )}
-                          {event.location && (
-                            <span>📍 {event.location}</span>
-                          )}
-                          <span>🖼️ {event.frames?.length || 0} frames</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 ml-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          event.isActive
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
-                        }`}>
-                          {event.isActive ? '● Active' : '○ Inactive'}
-                        </span>
-                        {canManageEvents ? (
-                          <Link
-                            href={`/admin/events/${event._id}/edit`}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 text-sm font-medium"
-                          >
-                            Edit
-                          </Link>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <Table>
+                <Table.Tbody>
+                  {events.map((event) => (
+                    <Table.Tr key={event._id.toString()}>
+                      <Table.Td>
+                        <Stack gap={4}>
+                          <Link href={`/admin/events/${event._id}`}>{event.name}</Link>
+                          {event.description ? (
+                            <Text size="sm" c="dimmed">
+                              {event.description}
+                            </Text>
+                          ) : null}
+                          <Group gap="md">
+                            {event.eventDate ? <Text size="xs" c="dimmed">📅 {new Date(event.eventDate).toLocaleDateString()}</Text> : null}
+                            {event.location ? <Text size="xs" c="dimmed">📍 {event.location}</Text> : null}
+                            <Text size="xs" c="dimmed">🖼️ {event.frames?.length || 0} frames</Text>
+                          </Group>
+                        </Stack>
+                      </Table.Td>
+                      <Table.Td style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
+                        <Group gap="sm" justify="flex-end">
+                          <Badge color={event.isActive ? 'green' : 'gray'}>
+                            {event.isActive ? '● Active' : '○ Inactive'}
+                          </Badge>
+                          {canManageEvents ? (
+                            <Link href={`/admin/events/${event._id}/edit`}>Edit</Link>
+                          ) : null}
+                        </Group>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
             )}
-          </div>
+          </Card>
+        </Stack>
+      </SimpleGrid>
+
+      <Card p={0}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+          <Title order={2}>📷 Partner Gallery</Title>
+          <Text c="dimmed" mt="xs">
+            All photos captured across {partner.name}&apos;s events
+          </Text>
         </div>
-      </div>
 
-      {/* Partner Gallery Section */}
-      <div id="gallery" className="mt-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              📷 Partner Gallery
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              All photos captured across {partner.name}&apos;s events
-            </p>
-          </div>
-
-          {submissions.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="text-5xl mb-4">📸</div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                No submissions yet
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Photos captured at this partner&apos;s events will appear here
-              </p>
-              {events.length > 0 && (
+        {submissions.length === 0 ? (
+          <Stack align="center" gap="sm" p="xl">
+            <Text fz={48}>📸</Text>
+            <Text fw={700} fz="lg">
+              No submissions yet
+            </Text>
+            <Text c="dimmed" ta="center">
+              Photos captured at this partner&apos;s events will appear here
+            </Text>
+            {events.length > 0 ? (
+              <Link href={`/capture/${events[0]._id}`} style={{ textDecoration: 'none' }}>
+                <Button>📸 Start Capturing</Button>
+              </Link>
+            ) : null}
+          </Stack>
+        ) : (
+          <div style={{ padding: '1.5rem' }}>
+            <div style={{ columnCount: 5, columnGap: '1rem' }}>
+              {submissions.map((submission) => (
                 <Link
-                  href={`/capture/${events[0]._id}`}
-                  className="inline-flex px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+                  key={submission._id.toString()}
+                  href={`/share/${submission._id}`}
+                  style={{
+                    position: 'relative',
+                    display: 'block',
+                    breakInside: 'avoid',
+                    marginBottom: '1rem',
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    background: 'var(--mantine-color-gray-1)',
+                  }}
                 >
-                  📸 Start Capturing
+                  <Image
+                    src={submission.imageUrl || submission.finalImageUrl || ''}
+                    alt={`Photo by ${submission.userName || submission.userEmail}`}
+                    width={1200}
+                    height={1600}
+                    unoptimized
+                    style={{ width: '100%', height: 'auto' }}
+                  />
                 </Link>
-              )}
+              ))}
             </div>
-          ) : (
-            <div className="p-6">
-              {/* Pinterest-style masonry grid */}
-              <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4">
-                {submissions.map((submission) => (
-                  <Link
-                    key={submission._id.toString()}
-                    href={`/share/${submission._id}`}
-                    className="group relative bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all mb-4 break-inside-avoid block"
-                  >
-                    <Image
-                      src={submission.imageUrl || submission.finalImageUrl || ''}
-                      alt={`Photo by ${submission.userName || submission.userEmail}`}
-                      width={1200}
-                      height={1600}
-                      unoptimized
-                      className="w-full h-auto"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="absolute bottom-0 left-0 right-0 p-2">
-                        <p className="text-white text-xs font-medium truncate">
-                          {submission.eventName || 'General'}
-                        </p>
-                        <p className="text-white/80 text-xs truncate">
-                          {submission.userName || submission.userEmail}
-                        </p>
-                        <p className="text-white/60 text-xs">
-                          {new Date(submission.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-              {submissions.length >= 50 && (
-                <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
-                  Showing the 50 most recent submissions
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+            {submissions.length >= 50 ? (
+              <Text ta="center" size="sm" c="dimmed" mt="lg">
+                Showing the 50 most recent submissions
+              </Text>
+            ) : null}
+          </div>
+        )}
+      </Card>
+    </Stack>
   );
 }

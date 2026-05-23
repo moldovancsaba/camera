@@ -5,7 +5,7 @@ import { apiBadRequest, apiNoContent, apiNotFound, apiSuccess, requireAdmin, wit
 import { deletePartnerUserAccess, updatePartnerUserAccess } from '@/lib/partners/access';
 
 function parseAppKey(value: unknown): PartnerAppKey | null {
-  return value === 'gym' ? 'gym' : value === 'events' ? 'events' : null;
+  return value === 'events' ? 'events' : null;
 }
 
 function parseRole(value: unknown): PartnerAccessRole | null {
@@ -37,7 +37,7 @@ export const PATCH = withErrorHandler(async (
   }
   if (body.appKey !== undefined) {
     const appKey = parseAppKey(body.appKey);
-    if (!appKey) throw apiBadRequest('appKey must be "events" or "gym".');
+    if (!appKey) throw apiBadRequest('appKey must be "events".');
     updates.appKey = appKey;
   }
   if (body.isActive !== undefined) {

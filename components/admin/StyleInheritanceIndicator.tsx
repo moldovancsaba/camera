@@ -2,13 +2,13 @@
 
 /**
  * Style Inheritance Indicator Component
- * 
- * Shows inheritance status (child/orphan) with emoji indicators
- * Provides reset button for orphaned styles
+ *
+ * Shows inheritance status with emoji indicators and provides a reset action.
  */
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button, Group, Text } from '@mantine/core';
 
 interface StyleInheritanceIndicatorProps {
   styleField: 'brandColors' | 'frames' | 'logos';
@@ -54,7 +54,6 @@ export default function StyleInheritanceIndicator({
         throw new Error(error.error || 'Failed to reset style');
       }
 
-      // Refresh the page to show updated values
       router.refresh();
     } catch (error: unknown) {
       alert(`Error: ${getErrorMessage(error)}`);
@@ -64,22 +63,18 @@ export default function StyleInheritanceIndicator({
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-lg" title={isOverridden ? 'Custom' : `Using ${partnerName} default`}>
+    <Group gap="xs">
+      <Text size="lg" title={isOverridden ? 'Custom' : `Using ${partnerName} default`}>
         {isOverridden ? '🔴' : '🟢'}
-      </span>
-      <span className="text-xs text-gray-500 dark:text-gray-400">
+      </Text>
+      <Text size="xs" c="dimmed">
         {isOverridden ? 'Custom' : `From ${partnerName}`}
-      </span>
-      {isOverridden && (
-        <button
-          onClick={handleReset}
-          disabled={isResetting}
-          className="ml-2 px-2 py-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+      </Text>
+      {isOverridden ? (
+        <Button variant="subtle" size="compact-xs" onClick={handleReset} loading={isResetting}>
           {isResetting ? 'Resetting...' : 'Reset to Partner Default'}
-        </button>
-      )}
-    </div>
+        </Button>
+      ) : null}
+    </Group>
   );
 }

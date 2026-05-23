@@ -104,7 +104,7 @@ export default function EventCapturePage({
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [step, setStep] = useState<'select-frame' | 'capture-photo' | 'preview'>('select-frame');
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
-  /** Intrinsic frame bitmap aspect (w/h); preview matches composite like FunFitFan `previewAspectWidthOverHeight`. */
+  /** Intrinsic frame bitmap aspect (w/h); preview matches composite via `previewAspectWidthOverHeight`. */
   const [frameIntrinsicAspect, setFrameIntrinsicAspect] = useState<number | null>(null);
 
   // Custom page flow state

@@ -5,7 +5,7 @@ import { apiBadRequest, apiNotFound, apiSuccess, withErrorHandler, requireAdmin,
 import { getPartnerAccessSummary, upsertPartnerUserAccess } from '@/lib/partners/access';
 
 function parseAppKey(value: unknown): PartnerAppKey | null {
-  return value === 'gym' ? 'gym' : value === 'events' ? 'events' : null;
+  return value === 'events' ? 'events' : null;
 }
 
 function parseRole(value: unknown): PartnerAccessRole | null {
@@ -59,7 +59,7 @@ export const POST = withErrorHandler(async (
     throw apiBadRequest('userEmail is required.');
   }
   if (!appKey) {
-    throw apiBadRequest('appKey must be "events" or "gym".');
+    throw apiBadRequest('appKey must be "events".');
   }
   if (!role) {
     throw apiBadRequest('role must be "viewer", "manager", or "admin".');

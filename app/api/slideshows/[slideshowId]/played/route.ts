@@ -50,7 +50,7 @@ export const POST = withErrorHandler(
       .filter((id: string) => ObjectId.isValid(id))
       .map((id: string) => new ObjectId(id));
 
-    /** Personal reel may include synthetic `gym:*` ids — skip DB updates for those. */
+    /** Ignore non-ObjectId placeholders to avoid invalid DB updates. */
     if (objectIds.length === 0) {
       return apiSuccess({ updatedCount: 0 });
     }

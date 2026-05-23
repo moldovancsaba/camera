@@ -1,3 +1,5 @@
+import { Card, ScrollArea, Table, Text, Title } from '@mantine/core';
+
 interface AuthorizationMatrixProps {
   title?: string;
   description?: string;
@@ -40,50 +42,60 @@ export default function AuthorizationMatrix({
   description = 'This is the implemented authorization model for the current admin shell.',
   compact = false,
 }: AuthorizationMatrixProps) {
+  const rows = ROWS.map((row) => (
+    <Table.Tr key={row.label}>
+      <Table.Td>
+        <Text size="sm" fw={600}>
+          {row.label}
+        </Text>
+      </Table.Td>
+      <Table.Td>
+        <Text size="sm" c="dimmed">
+          {row.access}
+        </Text>
+      </Table.Td>
+      {!compact ? (
+        <Table.Td>
+          <Text size="sm" c="dimmed">
+            {row.scope}
+          </Text>
+        </Table.Td>
+      ) : null}
+      <Table.Td>
+        <Text size="sm" c="dimmed">
+          {row.inventory}
+        </Text>
+      </Table.Td>
+      <Table.Td>
+        <Text size="sm" c="dimmed">
+          {row.actions}
+        </Text>
+      </Table.Td>
+    </Table.Tr>
+  ));
+
   return (
-    <section className="rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      <div className="border-b border-gray-200 px-6 py-5 dark:border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{description}</p>
+    <Card p={0}>
+      <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+        <Title order={3}>{title}</Title>
+        <Text size="sm" c="dimmed" mt="xs">
+          {description}
+        </Text>
       </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-900">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
-                Role
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
-                Visible Surfaces
-              </th>
-              {!compact ? (
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
-                  Scope
-                </th>
-              ) : null}
-              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
-                Global Inventory
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
-                Mutations
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {ROWS.map((row) => (
-              <tr key={row.label}>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{row.label}</td>
-                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{row.access}</td>
-                {!compact ? (
-                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{row.scope}</td>
-                ) : null}
-                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{row.inventory}</td>
-                <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{row.actions}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+      <ScrollArea>
+        <Table verticalSpacing="md" horizontalSpacing="lg" highlightOnHover>
+          <Table.Thead bg="var(--mantine-color-gray-0)">
+            <Table.Tr>
+              <Table.Th>Role</Table.Th>
+              <Table.Th>Visible Surfaces</Table.Th>
+              {!compact ? <Table.Th>Scope</Table.Th> : null}
+              <Table.Th>Global Inventory</Table.Th>
+              <Table.Th>Mutations</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>{rows}</Table.Tbody>
+        </Table>
+      </ScrollArea>
+    </Card>
   );
 }

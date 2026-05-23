@@ -28,7 +28,6 @@ import {
   IconPhotoScan,
   IconUsers,
   IconWorld,
-  IconBarbell,
 } from '@tabler/icons-react';
 import { APP_VERSION } from '@/lib/app-version';
 
@@ -44,7 +43,6 @@ interface AdminShellProps {
     isGlobalAdmin: boolean;
     hasAnyPartnerAccess: boolean;
     hasEventsAccess: boolean;
-    hasGymAccess: boolean;
   };
   children: React.ReactNode;
 }
@@ -103,14 +101,6 @@ export default function AdminShell({
       icon: <IconBrandDatabricks size={18} />,
     });
   }
-  if (navigationAccess.hasGymAccess) {
-    appItems.push({
-      href: '/admin/gym',
-      label: 'Gym App',
-      icon: <IconBarbell size={18} />,
-    });
-  }
-
   return (
     <AppShell
       header={{ height: 72 }}
@@ -138,7 +128,7 @@ export default function AdminShell({
                   Camera
                 </Text>
                 <Text size="xs" c="dimmed">
-                  Mantine GDS Admin
+                  Admin Panel
                 </Text>
               </Stack>
             </Group>

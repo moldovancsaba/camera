@@ -1,13 +1,13 @@
-/**
- * Delete Partner Button Component
- * 
- * Client component for deleting partners with confirmation dialog
- */
-
 'use client';
 
-import { useRouter } from 'next/navigation';
+/**
+ * Delete Partner Button Component
+ */
+
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Alert, Button, Group, Stack, Text } from '@mantine/core';
+import { IconAlertCircle } from '@tabler/icons-react';
 
 interface DeletePartnerButtonProps {
   partnerId: string;
@@ -24,7 +24,7 @@ export default function DeletePartnerButton({
   partnerId,
   partnerName,
   hasEvents,
-  eventCount = 0
+  eventCount = 0,
 }: DeletePartnerButtonProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -36,82 +36,69 @@ export default function DeletePartnerButton({
     setError(null);
 
     try {
-      const response = await fetch(`/api/partners/${partnerId}`, {
-        method: 'DELETE',
-      });
-
+      const response = await fetch(`/api/partners/${partnerId}`, { method: 'DELETE' });
       const result = await response.json();
-
       if (!response.ok) {
         throw new Error(result.error || 'Failed to delete partner');
       }
 
-      // Redirect to partners list on success
       router.push('/admin/partners');
       router.refresh();
-    } catch (err: unknown) {
-      console.error('Delete partner error:', err);
-      setError(getErrorMessage(err));
+    } catch (deleteError) {
+      setError(getErrorMessage(deleteError));
       setIsDeleting(false);
     }
   };
 
   if (hasEvents) {
     return (
-      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-        <p className="text-sm text-yellow-800 dark:text-yellow-200">
-          <strong>Cannot delete:</strong> This partner has {eventCount} event{eventCount !== 1 ? 's' : ''}. 
-          Delete all events first before deleting the partner.
-        </p>
-      </div>
+      <Alert color="yellow">
+        <Text size="sm">
+          <strong>Cannot delete:</strong> This partner has {eventCount} event{eventCount !== 1 ? 's' : ''}. Delete all
+          events first before deleting the partner.
+        </Text>
+      </Alert>
     );
   }
 
   return (
-    <>
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-800 dark:text-red-200 font-medium">Error</p>
-          <p className="text-red-600 dark:text-red-300 text-sm mt-1">{error}</p>
-        </div>
-      )}
+    <Stack gap="md">
+      {error ? (
+        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+          <Text fw={700}>Error</Text>
+          <Text size="sm">{error}</Text>
+        </Alert>
+      ) : null}
 
       {!showConfirm ? (
-        <button
-          onClick={() => setShowConfirm(true)}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors"
-        >
+        <Button color="red" onClick={() => setShowConfirm(true)}>
           Delete Partner
-        </button>
+        </Button>
       ) : (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-sm text-red-800 dark:text-red-200 font-medium mb-3">
+        <Alert color="red">
+          <Text size="sm" fw={700} mb="sm">
             Are you sure you want to delete <strong>{partnerName}</strong>?
-          </p>
-          <p className="text-sm text-red-600 dark:text-red-300 mb-4">
+          </Text>
+          <Text size="sm" mb="md">
             This action cannot be undone.
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+          </Text>
+          <Group>
+            <Button color="red" onClick={() => void handleDelete()} loading={isDeleting}>
               {isDeleting ? 'Deleting...' : 'Yes, Delete'}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="default"
               onClick={() => {
                 setShowConfirm(false);
                 setError(null);
               }}
               disabled={isDeleting}
-              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
             >
               Cancel
-            </button>
-          </div>
-        </div>
+            </Button>
+          </Group>
+        </Alert>
       )}
-    </>
+    </Stack>
   );
 }

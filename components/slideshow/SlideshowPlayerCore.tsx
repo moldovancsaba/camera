@@ -53,7 +53,7 @@ interface SlideshowSettings {
   _id: string;
   name: string;
   eventName: string;
-  /** Stage width ÷ height (e.g. 9/16 for FunFitFan personal reels). Defaults to 16/9 when omitted. */
+  /** Stage width ÷ height. Defaults to 16/9 when omitted. */
   stageAspect?: number;
   transitionDurationMs: number;
   fadeDurationMs: number;

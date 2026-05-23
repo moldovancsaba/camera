@@ -4,7 +4,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 import "./globals.css";
-import { isFffHost } from "@/lib/site-hosts";
 import CameraGdsProvider, { CameraColorSchemeScript } from '@/components/gds/CameraGdsProvider';
 
 const geistSans = Geist({
@@ -18,19 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  try {
-    const host = (await headers()).get("host");
-    if (isFffHost(host)) {
-      return {
-        title: { absolute: "FunFitFan" },
-        description:
-          "FunFitFan (FFF): log activities and selfies, build your reel — fitness and health on the web.",
-        applicationName: "FunFitFan",
-      };
-    }
-  } catch {
-    /* headers() unavailable in some prerender contexts */
-  }
+  await headers().catch(() => null);
   return {
     title: "Camera",
     description:
