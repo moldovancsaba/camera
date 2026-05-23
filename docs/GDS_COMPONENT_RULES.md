@@ -96,6 +96,56 @@ Do not use for:
 
 - long data lists that should be tables
 
+### `DataToolbar`
+
+Use for:
+
+- list page search, filters, clear/reset, and secondary navigation actions
+
+Do not use for:
+
+- inline forms inside modals or one-off filter popovers without a list context
+
+### `ResponsiveDataView`
+
+Use for:
+
+- any admin table that must remain usable on mobile (pair with card/list `mobile` slot)
+
+Do not use for:
+
+- single-column forms or dashboards without tabular data
+
+### `StateBlock`
+
+Use for:
+
+- loading, empty, error, and permission states on admin pages
+
+Do not use for:
+
+- transient toast feedback (use notifications) or field-level validation (use input error props)
+
+### `FormSection`
+
+Use for:
+
+- grouped admin form fields with a title and optional description
+
+Do not use for:
+
+- entire multi-step wizards without section boundaries
+
+### `confirmDestructive` (`lib/gds/confirm-destructive.tsx`)
+
+Use for:
+
+- irreversible delete/disable actions in client components
+
+Do not use for:
+
+- non-destructive confirmations (use `modals.openConfirmModal` with neutral confirm color)
+
 ## Migration Guidance
 
 When touching an admin screen:

@@ -1,18 +1,39 @@
 /**
  * Edit Event Page
- * 
+ *
  * Form to edit event details and manage custom page flows.
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import {
+  Alert,
+  Anchor,
+  Breadcrumbs,
+  Button,
+  Checkbox,
+  Code,
+  ColorInput,
+  FileInput,
+  Grid,
+  Group,
+  Stack,
+  Text,
+  TextInput,
+  Textarea,
+} from '@mantine/core';
+import { IconAlertCircle, IconX } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 import { type CustomPage } from '@/lib/db/schemas';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
+import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import FormSection from '@/components/gds/FormSection';
+import StateBlock from '@/components/gds/StateBlock';
 
 interface EventRecord {
   _id: string;
@@ -50,7 +71,7 @@ export default function EditEventPage({
   params: Promise<{ id: string }>;
 }) {
   const router = useRouter();
-  const [eventId, setEventId] = useState<string>('');
+  const [mongoId, setMongoId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,71 +79,57 @@ export default function EditEventPage({
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  
-  // Custom pages state
+  const [brandColor, setBrandColor] = useState('#3B82F6');
+  const [brandBorderColor, setBrandBorderColor] = useState('#3B82F6');
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
 
-  // Unwrap params
   useEffect(() => {
-    params.then(p => setEventId(p.id));
+    params.then((p) => setMongoId(p.id));
   }, [params]);
 
-  // Fetch event data on mount
   useEffect(() => {
-    if (!eventId) return;
+    if (!mongoId) return;
 
     const fetchEvent = async () => {
       try {
-        console.log('Edit page - Fetching event:', eventId);
-        const response = await fetch(`/api/events/${eventId}`);
-        console.log('Edit page - Response status:', response.status);
-        
+        const response = await fetch(`/api/events/${mongoId}`);
         const data: EventResponse = await response.json();
-        console.log('Edit page - Response data:', data);
 
         if (!response.ok) {
-          console.error('Edit page - Response not OK:', data);
           throw new Error(data.error || 'Failed to load event');
         }
 
-        // apiSuccess wraps in { success: true, data: { event: {...} } }
-        const eventData = data.data?.event || data.event;  // Support both structures
+        const eventData = data.data?.event || data.event;
         if (!eventData) {
           throw new Error('Event not found');
         }
 
-        console.log('Edit page - Loaded event data:', eventData);
         setEvent(eventData);
-        // Load custom pages
-        setCustomPages(eventData?.customPages || []);
-        // Set existing logo preview if available
-        if (eventData?.logoUrl) {
-          setLogoPreview(eventData.logoUrl);
-        }
+        setCustomPages(eventData.customPages || []);
+        setLogoPreview(eventData.logoUrl || null);
+        setBrandColor(eventData.brandColor || '#3B82F6');
+        setBrandBorderColor(eventData.brandBorderColor || '#3B82F6');
         setIsLoading(false);
       } catch (err: unknown) {
-        console.error('Fetch event error:', err);
         setError(getErrorMessage(err));
         setIsLoading(false);
       }
     };
 
-    fetchEvent();
-  }, [eventId]);
+    void fetchEvent();
+  }, [mongoId]);
 
-  // Handle logo file selection
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setLogoFile(file);
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = () => setLogoPreview(reader.result as string);
-      reader.readAsDataURL(file);
+  const handleLogoChange = (file: File | null) => {
+    setLogoFile(file);
+    if (!file) {
+      setLogoPreview(event?.logoUrl || null);
+      return;
     }
+    const reader = new FileReader();
+    reader.onload = () => setLogoPreview(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
-  // Clear logo
   const clearLogo = () => {
     setLogoFile(null);
     setLogoPreview(event?.logoUrl || null);
@@ -134,30 +141,27 @@ export default function EditEventPage({
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    
-    // Upload logo if a new file is provided (via server-side API route)
-    let logoUrl: string | undefined = event?.logoUrl; // Keep existing logo by default
+
+    let logoUrl: string | undefined = event?.logoUrl;
     if (logoFile) {
       try {
         setIsUploadingLogo(true);
-        // Convert file to base64
         const reader = new FileReader();
         const base64Data = await new Promise<string>((resolve, reject) => {
           reader.onload = () => resolve(reader.result as string);
           reader.onerror = reject;
           reader.readAsDataURL(logoFile);
         });
-        
-        // Upload via API route (server-side has access to IMGBB_API_KEY)
+
         const uploadResponse = await fetch('/api/upload-logo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             imageData: base64Data,
-            name: `event-logo-${Date.now()}`
+            name: `event-logo-${Date.now()}`,
           }),
         });
-        
+
         const uploadResult = await uploadResponse.json();
         if (!uploadResponse.ok) {
           throw new Error(uploadResult.error || 'Upload failed');
@@ -168,7 +172,6 @@ export default function EditEventPage({
           throw new Error('Upload finished without an image URL');
         }
       } catch (err: unknown) {
-        console.error('Logo upload error:', err);
         setError(`Failed to upload logo: ${getErrorMessage(err)}`);
         setIsSubmitting(false);
         setIsUploadingLogo(false);
@@ -177,9 +180,7 @@ export default function EditEventPage({
         setIsUploadingLogo(false);
       }
     }
-    
-    // Build request body from form data.
-    // customPages are saved separately via CustomPagesManager.
+
     const data = {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
@@ -187,428 +188,230 @@ export default function EditEventPage({
       location: formData.get('location') as string,
       loadingText: formData.get('loadingText') as string,
       isActive: formData.get('isActive') === 'on',
-      logoUrl: logoUrl,
+      logoUrl,
       showLogo: formData.get('showLogo') === 'on',
-      brandColor: formData.get('brandColor') as string || undefined,
-      brandBorderColor: formData.get('brandBorderColor') as string || undefined,
+      brandColor: brandColor || undefined,
+      brandBorderColor: brandBorderColor || undefined,
       shortUrlSlug: (formData.get('shortUrlSlug') as string) ?? '',
     };
 
     try {
-      const response = await fetch(`/api/events/${eventId}`, {
+      const response = await fetch(`/api/events/${mongoId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
 
       const result = await response.json();
-
       if (!response.ok) {
         throw new Error(result.error || 'Failed to update event');
       }
 
-      // Navigate back to event detail page on success
-      router.push(`/admin/events/${eventId}`);
+      router.push(`/admin/events/${mongoId}`);
       router.refresh();
     } catch (err: unknown) {
-      console.error('Update event error:', err);
       setError(getErrorMessage(err));
       setIsSubmitting(false);
     }
   };
 
   if (isLoading) {
-    return (
-      <div className="p-8 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="text-4xl mb-4">⏳</div>
-          <p className="text-gray-600 dark:text-gray-400">Loading event...</p>
-        </div>
-      </div>
-    );
+    return <StateBlock variant="loading" title="Loading event…" />;
   }
 
   if (error && !event) {
     return (
-      <div className="p-8">
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-800 dark:text-red-200 font-medium">Error</p>
-          <p className="text-red-600 dark:text-red-300 text-sm mt-1">{error}</p>
-        </div>
-        <Link
-          href="/admin/events"
-          className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
-        >
-          ← Back to Events
-        </Link>
-      </div>
+      <Stack gap="lg" maw={960} mx="auto">
+        <StateBlock
+          variant="error"
+          title="Could not load event"
+          description={error}
+          action={
+            <Button component={Link} href="/admin/events" variant="light">
+              Back to Events
+            </Button>
+          }
+        />
+      </Stack>
     );
   }
 
-  console.log('Edit page - Rendering with event:', event);
-
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
-        <Link href="/admin/events" className="hover:text-gray-700 dark:hover:text-gray-200">
+    <Stack gap="xl" maw={960} mx="auto">
+      <Breadcrumbs>
+        <Anchor component={Link} href="/admin/events" size="sm">
           Events
-        </Link>
-        <span>→</span>
-        <Link href={`/admin/events/${eventId}`} className="hover:text-gray-700 dark:hover:text-gray-200">
+        </Anchor>
+        <Anchor component={Link} href={`/admin/events/${mongoId}`} size="sm">
           {event?.name}
-        </Link>
-        <span>→</span>
-        <span>Edit</span>
-      </div>
+        </Anchor>
+        <Text size="sm">Edit</Text>
+      </Breadcrumbs>
 
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Edit Event</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">Update event information</p>
-      </div>
+      <WorkspaceHeader
+        eyebrow="Events App"
+        title="Edit Event"
+        description="Update event information and capture experience settings."
+      />
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-800 dark:text-red-200 font-medium">Error</p>
-          <p className="text-red-600 dark:text-red-300 text-sm mt-1">{error}</p>
-        </div>
-      )}
+      {error ? (
+        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+          <Text fw={700}>Error</Text>
+          <Text size="sm">{error}</Text>
+        </Alert>
+      ) : null}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Partner Display (Read-only) */}
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-              Partner (Read-only)
-            </label>
-            <div className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white">
-              {event?.partnerName}
-            </div>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Partner cannot be changed after event creation
-            </p>
-          </div>
-        </div>
+      <form onSubmit={handleSubmit}>
+        <Stack gap="lg">
+          <FormSection title="Partner" description="Partner cannot be changed after event creation.">
+            <TextInput label="Partner (read-only)" value={event?.partnerName || ''} readOnly />
+          </FormSection>
 
-        {/* Event Details */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Event Details</h2>
-          
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Event Name *
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              required
-              defaultValue={event?.name}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g., Serie A - AC Milan x AS Roma"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Description
-            </label>
-            <textarea
-              id="description"
+          <FormSection title="Event details">
+            <TextInput name="name" label="Event name" required defaultValue={event?.name} />
+            <Textarea
               name="description"
+              label="Description"
               rows={3}
               defaultValue={event?.description || ''}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Optional event description..."
+              placeholder="Optional event description…"
             />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="eventDate" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                Event Date
-              </label>
-              <input
-                type="date"
-                id="eventDate"
-                name="eventDate"
-                defaultValue={event?.eventDate ? event.eventDate.split('T')[0] : ''}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="location" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                Location
-              </label>
-              <input
-                type="text"
-                id="location"
-                name="location"
-                defaultValue={event?.location || ''}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="e.g., San Siro, Milan"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="shortUrlSlug"
-              className="block text-sm font-medium text-gray-900 dark:text-white mb-2"
-            >
-              Short link slug (optional)
-            </label>
-            <input
-              type="text"
-              id="shortUrlSlug"
+            <Grid>
+              <Grid.Col span={{ base: 12, md: 6 }}>
+                <TextInput
+                  name="eventDate"
+                  label="Event date"
+                  type="date"
+                  defaultValue={event?.eventDate ? event.eventDate.split('T')[0] : ''}
+                />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, md: 6 }}>
+                <TextInput
+                  name="location"
+                  label="Location"
+                  defaultValue={event?.location || ''}
+                  placeholder="e.g., San Siro, Milan"
+                />
+              </Grid.Col>
+            </Grid>
+            <TextInput
               name="shortUrlSlug"
+              label="Short link slug (optional)"
               defaultValue={event?.shortUrlSlug || ''}
-              autoComplete="off"
-              spellCheck={false}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g. selfie"
+              description={`Lowercase letters, digits, and hyphens (2–63 chars). When set, ${defaultGoShortOrigin()}/your-slug redirects to this event’s capture page.`}
+              styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
             />
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Lowercase letters, digits, and hyphens (2–63 chars). Leave empty to remove. When set,{' '}
-              <span className="font-mono">{defaultGoShortOrigin()}/your-slug</span> redirects to this event’s
-              capture page. Hostnames: set <span className="font-mono">GO_SHORT_HOSTNAMES</span> (default includes
-              go.messmass.com).
-            </p>
-          </div>
-        </div>
+          </FormSection>
 
-        {/* Customization */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Customization</h2>
-          
-          <div>
-            <label htmlFor="loadingText" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Loading Text
-            </label>
-            <input
-              type="text"
-              id="loadingText"
+          <FormSection title="Customization">
+            <TextInput
               name="loadingText"
+              label="Loading text"
               defaultValue={event?.loadingText || 'Loading event...'}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g., Loading event..."
+              description="Text shown while the event is loading."
             />
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Text shown while the event is loading
-            </p>
-          </div>
 
-          {/* Logo Upload */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Event Logo
-            </label>
             {logoPreview ? (
-              <div className="relative inline-block">
-                <Image
-                  src={logoPreview}
-                  alt="Logo preview"
-                  width={96}
-                  height={96}
-                  unoptimized
-                  className="h-24 w-auto rounded border border-gray-300 dark:border-gray-600"
-                />
-                <button
-                  type="button"
-                  onClick={clearLogo}
-                  className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+              <Stack gap="sm">
+                <Text size="sm" fw={500}>
+                  Event logo
+                </Text>
+                <Group gap="md">
+                  <Image
+                    src={logoPreview}
+                    alt="Logo preview"
+                    width={96}
+                    height={96}
+                    unoptimized
+                    style={{ borderRadius: 8, border: '1px solid var(--mantine-color-gray-3)' }}
+                  />
+                  <Button
+                    type="button"
+                    variant="light"
+                    color="red"
+                    leftSection={<IconX size={16} />}
+                    onClick={clearLogo}
+                  >
+                    Clear selection
+                  </Button>
+                </Group>
+              </Stack>
             ) : (
-              <div>
-                <input
-                  type="file"
-                  id="logo"
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
-                  onChange={handleLogoChange}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+              <FileInput
+                label="Event logo"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                description="JPEG, PNG, or WebP (max 32MB). Shown during loading and on capture pages."
+                onChange={handleLogoChange}
+              />
             )}
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Upload a logo to display during loading and on capture pages (JPEG, PNG, WebP, max 32MB)
-            </p>
-          </div>
 
-          {/* Show Logo Checkbox */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="showLogo"
+            <Checkbox
               name="showLogo"
               defaultChecked={event?.showLogo}
               disabled={!logoPreview}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
+              label="Display logo on event pages"
             />
-            <label htmlFor="showLogo" className="ml-2 text-sm text-gray-900 dark:text-white">
-              Display logo on event pages
-            </label>
-          </div>
-          
-          {/* Brand Colors */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Brand Colors</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-              These colors will be used throughout the event experience: buttons, inputs, checkboxes, and camera interface
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="brandColor" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Primary Color
-                </label>
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="color"
-                    id="brandColorPicker"
-                    defaultValue={event?.brandColor || '#3B82F6'}
-                    className="h-10 w-16 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
-                    onChange={(e) => {
-                      const textInput = document.getElementById('brandColor') as HTMLInputElement;
-                      if (textInput) {
-                        textInput.value = e.target.value;
-                      }
-                    }}
-                  />
-                  <input
-                    type="text"
-                    id="brandColor"
-                    name="brandColor"
-                    defaultValue={event?.brandColor || '#3B82F6'}
-                    pattern="^#[0-9A-Fa-f]{6}$"
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-                    placeholder="#3B82F6"
-                    onChange={(e) => {
-                      const colorInput = document.getElementById('brandColorPicker') as HTMLInputElement;
-                      if (colorInput && /^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
-                        colorInput.value = e.target.value;
-                      }
-                    }}
-                  />
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Used for buttons, camera capture button fill, and focus states
-                </p>
-              </div>
-              
-              <div>
-                <label htmlFor="brandBorderColor" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Border/Accent Color
-                </label>
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="color"
-                    id="brandBorderColorPicker"
-                    defaultValue={event?.brandBorderColor || '#3B82F6'}
-                    className="h-10 w-16 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
-                    onChange={(e) => {
-                      const textInput = document.getElementById('brandBorderColor') as HTMLInputElement;
-                      if (textInput) {
-                        textInput.value = e.target.value;
-                      }
-                    }}
-                  />
-                  <input
-                    type="text"
-                    id="brandBorderColor"
-                    name="brandBorderColor"
-                    defaultValue={event?.brandBorderColor || '#3B82F6'}
-                    pattern="^#[0-9A-Fa-f]{6}$"
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm"
-                    placeholder="#3B82F6"
-                    onChange={(e) => {
-                      const colorInput = document.getElementById('brandBorderColorPicker') as HTMLInputElement;
-                      if (colorInput && /^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
-                        colorInput.value = e.target.value;
-                      }
-                    }}
-                  />
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Used for input borders, checkboxes, and camera capture button border
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Status */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="isActive"
-              name="isActive"
-              defaultChecked={event?.isActive}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <label htmlFor="isActive" className="ml-2 text-sm text-gray-900 dark:text-white">
-              Event is active (visible and usable)
-            </label>
-          </div>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Inactive events will not be available for frame selection
-          </p>
-        </div>
+            <Text fw={600} size="sm">
+              Brand colors
+            </Text>
+            <Text size="xs" c="dimmed">
+              Used across the event experience: buttons, inputs, checkboxes, and the camera interface.
+            </Text>
+            <Grid>
+              <Grid.Col span={{ base: 12, md: 6 }}>
+                <ColorInput
+                  label="Primary color"
+                  value={brandColor}
+                  onChange={setBrandColor}
+                  description="Buttons, capture fill, and focus states."
+                />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, md: 6 }}>
+                <ColorInput
+                  label="Border / accent color"
+                  value={brandBorderColor}
+                  onChange={setBrandBorderColor}
+                  description="Input borders, checkboxes, and capture button border."
+                />
+              </Grid.Col>
+            </Grid>
+          </FormSection>
 
-        {/* Event ID Display */}
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-              Event ID (Read-only)
-            </label>
-            <code className="block px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white font-mono">
-              {event?.eventId}
-            </code>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              This ID is used to reference the event across the system
-            </p>
-          </div>
-        </div>
+          <FormSection title="Status">
+            <Checkbox name="isActive" defaultChecked={event?.isActive} label="Event is active (visible and usable)" />
+            <Text size="sm" c="dimmed">
+              Inactive events will not be available for frame selection.
+            </Text>
+          </FormSection>
 
-        {/* Actions */}
-        <div className="flex items-center gap-4">
-          <button
-            type="submit"
-            disabled={isSubmitting || isUploadingLogo}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isUploadingLogo ? 'Uploading logo...' : isSubmitting ? 'Saving...' : 'Save Changes'}
-          </button>
-          <Link
-            href={`/admin/events/${eventId}`}
-            className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-          >
-            Cancel
-          </Link>
-        </div>
+          <FormSection title="Event ID" description="Used to reference the event across slideshow and submission flows.">
+            <Code block>{event?.eventId}</Code>
+          </FormSection>
+
+          <Group>
+            <Button type="submit" color="cameraTeal" loading={isSubmitting || isUploadingLogo}>
+              {isUploadingLogo ? 'Uploading logo…' : isSubmitting ? 'Saving…' : 'Save changes'}
+            </Button>
+            <Button component={Link} href={`/admin/events/${mongoId}`} variant="default">
+              Cancel
+            </Button>
+          </Group>
+        </Stack>
       </form>
 
-      {/* Custom pages management stays outside the form for independent saves */}
-      {/* Force re-render when pages change by using length as key */}
       <CustomPagesManager
         key={customPages.length}
-        eventId={eventId}
+        eventId={mongoId}
         initialPages={customPages}
         onSave={async (pages) => {
           try {
-            const response = await fetch(`/api/events/${eventId}`, {
+            const response = await fetch(`/api/events/${mongoId}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ customPages: pages }),
             });
-            
+
             if (!response.ok) {
               let message = 'Failed to save pages';
               try {
@@ -619,22 +422,25 @@ export default function EditEventPage({
               }
               throw new Error(message);
             }
-            
-            // Reload event data to get updated customPages from server
-            const updatedEventResponse = await fetch(`/api/events/${eventId}`);
+
+            const updatedEventResponse = await fetch(`/api/events/${mongoId}`);
             const updatedEventData = await updatedEventResponse.json();
             if (updatedEventResponse.ok) {
               const eventData = updatedEventData.data?.event || updatedEventData.event;
               setCustomPages(eventData?.customPages || []);
               setEvent(eventData);
             }
-            
-            alert('Pages saved successfully!');
+
+            notifications.show({
+              title: 'Pages saved',
+              message: 'Custom page flow updated successfully.',
+              color: 'green',
+            });
           } catch (err: unknown) {
             throw new Error(getErrorMessage(err));
           }
         }}
       />
-    </div>
+    </Stack>
   );
 }

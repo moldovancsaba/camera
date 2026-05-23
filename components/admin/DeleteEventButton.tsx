@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Group, Modal, Text } from '@mantine/core';
+import { Button } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { confirmDestructive } from '@/lib/gds/confirm-destructive';
 
 interface DeleteEventButtonProps {
   eventId: string;
@@ -14,7 +16,6 @@ function getErrorMessage(error: unknown): string {
 }
 
 export default function DeleteEventButton({ eventId, eventName }: DeleteEventButtonProps) {
-  const [showConfirm, setShowConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
 
@@ -31,31 +32,30 @@ export default function DeleteEventButton({ eventId, eventName }: DeleteEventBut
       router.push('/admin/events');
       router.refresh();
     } catch (error: unknown) {
-      alert(`Error: ${getErrorMessage(error)}`);
+      notifications.show({
+        title: 'Delete failed',
+        message: getErrorMessage(error),
+        color: 'red',
+      });
       setIsDeleting(false);
-      setShowConfirm(false);
     }
   };
 
   return (
-    <>
-      <Button color="red" onClick={() => setShowConfirm(true)} disabled={isDeleting}>
-        Delete Event
-      </Button>
-
-      <Modal opened={showConfirm} onClose={() => setShowConfirm(false)} title="Delete Event" centered>
-        <Text c="dimmed" mb="lg">
-          Are you sure you want to delete <strong>{eventName}</strong>? This action cannot be undone.
-        </Text>
-        <Group justify="flex-end">
-          <Button variant="default" onClick={() => setShowConfirm(false)} disabled={isDeleting}>
-            Cancel
-          </Button>
-          <Button color="red" onClick={() => void handleDelete()} loading={isDeleting}>
-            {isDeleting ? 'Deleting...' : 'Delete'}
-          </Button>
-        </Group>
-      </Modal>
-    </>
+    <Button
+      color="red"
+      disabled={isDeleting}
+      loading={isDeleting}
+      onClick={() =>
+        confirmDestructive({
+          title: 'Delete event',
+          message: 'Are you sure you want to delete this event? This action cannot be undone.',
+          targetName: eventName,
+          onConfirm: () => void handleDelete(),
+        })
+      }
+    >
+      Delete Event
+    </Button>
   );
 }

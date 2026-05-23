@@ -142,6 +142,10 @@ See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/d
 - App authorization must use `session.appRole`, not `session.user.role`.
 - Partner-scoped authorization must be checked deliberately; it does not replace global app-role checks.
 
+## Design system
+
+Camera admin UI follows the portfolio [General Design System](https://github.com/moldovancsaba/general-design-system) on Mantine. Local adapter details, migration state, and exceptions: [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_CAMERA_ADOPTION.md).
+
 ## Documentation map
 
 Canonical docs:

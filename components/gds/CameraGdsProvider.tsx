@@ -5,6 +5,7 @@ import {
   MantineProvider,
   localStorageColorSchemeManager,
 } from '@mantine/core';
+import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 import { cameraMantineTheme } from '@/lib/gds/theme';
 
@@ -27,8 +28,10 @@ export default function CameraGdsProvider({
       defaultColorScheme="light"
       colorSchemeManager={colorSchemeManager}
     >
-      <Notifications position="top-right" />
-      {children}
+      <ModalsProvider>
+        <Notifications position="top-right" />
+        {children}
+      </ModalsProvider>
     </MantineProvider>
   );
 }
