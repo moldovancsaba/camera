@@ -22,7 +22,7 @@ Camera is the reference implementation of the portfolio GDS on **Mantine 9**. Ad
 | Theme | `lib/gds/theme.ts` (`cameraMantineTheme`) |
 | Root provider | `components/gds/CameraGdsProvider.tsx` |
 | Notifications | `@mantine/notifications` in provider |
-| Modals / confirm | `@mantine/modals` + `lib/gds/confirm-destructive.tsx` |
+| Modals / confirm | `@mantine/modals` + `lib/gds/confirm-destructive.tsx` (no separate CSS import in Mantine 9) |
 
 ## Pattern adapter inventory
 
@@ -32,13 +32,13 @@ Camera is the reference implementation of the portfolio GDS on **Mantine 9**. Ad
 | Page header | `components/gds/WorkspaceHeader.tsx` (extends SSOT `PageHeader` with eyebrow + status) | Active |
 | Metric strip | `components/gds/StatsStrip.tsx` | Active |
 | Action entry grid | `components/gds/ActionCardGrid.tsx` | Active |
-| Data toolbar | `components/gds/DataToolbar.tsx` | Active — reference: Events list |
-| Responsive data view | `components/gds/ResponsiveDataView.tsx` | Active — reference: Events list |
+| Data toolbar | `components/gds/DataToolbar.tsx` | Active — Events + Partners lists |
+| Responsive data view | `components/gds/ResponsiveDataView.tsx` | Active — Events + Partners lists |
 | Data table | `components/gds/DataTable.tsx` | Active |
 | Status badge | `components/gds/StatusBadge.tsx` | Active |
 | State block | `components/gds/StateBlock.tsx` | Active — reference: Events list + edit |
-| Form section | `components/gds/FormSection.tsx` | Active — reference: Event edit |
-| Destructive confirm | `lib/gds/confirm-destructive.tsx` | Active — reference: `DeleteEventButton` |
+| Form section | `components/gds/FormSection.tsx` | Active — Event edit/new, Frame edit |
+| Destructive confirm | `lib/gds/confirm-destructive.tsx` | Active — delete/remove admin actions |
 | Auth / public capture shell | `app/page.tsx`, `app/capture/**`, `app/globals.css` | **Exception** (see below) |
 | Slideshow / share playback | `components/slideshow/**` | **Exception** (media-first) |
 | Landing page editor CSS | `components/admin/LandingPageEditor.tsx` | **Exception** (editor preview) |
@@ -64,9 +64,9 @@ Camera is the reference implementation of the portfolio GDS on **Mantine 9**. Ad
 
 1. ~~Theme and provider wiring~~ (done)
 2. ~~Admin shell~~ (done)
-3. Inventory tables + toolbar + responsive list — **in progress** (Events list is reference)
+3. Inventory tables + toolbar + responsive list — **in progress** (Events + Partners lists done)
 4. Workspaces — partial
-5. Forms and editors — **in progress** (Event edit is reference)
+5. Forms and editors — **in progress** (Event edit/new, Frame edit done; logos edit backlog)
 6. Statuses, permissions, enablement language — partial
 7. Landing-page editor alignment — backlog
 8. Public capture shell decision — backlog

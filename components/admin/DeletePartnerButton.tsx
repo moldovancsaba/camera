@@ -1,13 +1,11 @@
 'use client';
 
-/**
- * Delete Partner Button Component
- */
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Group, Stack, Text } from '@mantine/core';
+import { Alert, Button, Text } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
+import { confirmDestructive } from '@/lib/gds/confirm-destructive';
 
 interface DeletePartnerButtonProps {
   partnerId: string;
@@ -28,7 +26,6 @@ export default function DeletePartnerButton({
 }: DeletePartnerButtonProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleDelete = async () => {
@@ -45,7 +42,9 @@ export default function DeletePartnerButton({
       router.push('/admin/partners');
       router.refresh();
     } catch (deleteError) {
-      setError(getErrorMessage(deleteError));
+      const message = getErrorMessage(deleteError);
+      setError(message);
+      notifications.show({ title: 'Delete failed', message, color: 'red' });
       setIsDeleting(false);
     }
   };
@@ -62,43 +61,28 @@ export default function DeletePartnerButton({
   }
 
   return (
-    <Stack gap="md">
+    <>
       {error ? (
-        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+        <Alert color="red" icon={<IconAlertCircle size={16} />} mb="md">
           <Text fw={700}>Error</Text>
           <Text size="sm">{error}</Text>
         </Alert>
       ) : null}
-
-      {!showConfirm ? (
-        <Button color="red" onClick={() => setShowConfirm(true)}>
-          Delete Partner
-        </Button>
-      ) : (
-        <Alert color="red">
-          <Text size="sm" fw={700} mb="sm">
-            Are you sure you want to delete <strong>{partnerName}</strong>?
-          </Text>
-          <Text size="sm" mb="md">
-            This action cannot be undone.
-          </Text>
-          <Group>
-            <Button color="red" onClick={() => void handleDelete()} loading={isDeleting}>
-              {isDeleting ? 'Deleting...' : 'Yes, Delete'}
-            </Button>
-            <Button
-              variant="default"
-              onClick={() => {
-                setShowConfirm(false);
-                setError(null);
-              }}
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-          </Group>
-        </Alert>
-      )}
-    </Stack>
+      <Button
+        color="red"
+        loading={isDeleting}
+        disabled={isDeleting}
+        onClick={() =>
+          confirmDestructive({
+            title: 'Delete partner',
+            message: 'Are you sure you want to delete this partner? This action cannot be undone.',
+            targetName: partnerName,
+            onConfirm: () => void handleDelete(),
+          })
+        }
+      >
+        Delete Partner
+      </Button>
+    </>
   );
 }

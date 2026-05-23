@@ -1,7 +1,5 @@
 /**
  * Admin Partners Listing
- * 
- * List all partners with search, filter, pagination, and quick toggle
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -16,6 +14,9 @@ import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
 import StatsStrip from '@/components/gds/StatsStrip';
 import DataTable from '@/components/gds/DataTable';
 import StatusBadge from '@/components/gds/StatusBadge';
+import DataToolbar from '@/components/gds/DataToolbar';
+import StateBlock from '@/components/gds/StateBlock';
+import ResponsiveDataView from '@/components/gds/ResponsiveDataView';
 
 interface PartnerListItem {
   _id: { toString(): string };
@@ -27,6 +28,43 @@ interface PartnerListItem {
   eventCount?: number;
   frameCount?: number;
   userAccessCount?: number;
+}
+
+function PartnerMobileCard({ partner }: { partner: PartnerListItem }) {
+  const id = partner._id.toString();
+  return (
+    <Card withBorder padding="md">
+      <Stack gap="sm">
+        <Group justify="space-between" align="flex-start" wrap="nowrap">
+          <Text
+            component={Link}
+            href={`/admin/partners/${id}`}
+            fw={700}
+            c="blue.7"
+            lineClamp={2}
+            style={{ textDecoration: 'none', minWidth: 0 }}
+          >
+            {partner.name}
+          </Text>
+          <StatusBadge tone={partner.isActive ? 'active' : 'inactive'} />
+        </Group>
+        <Text size="xs" c="dimmed">
+          {partner.partnerId}
+        </Text>
+        <Text size="sm" c="dimmed">
+          {partner.eventCount || 0} events · {partner.frameCount || 0} frames · {partner.userAccessCount || 0} users
+        </Text>
+        <Group gap="sm">
+          <Button component={Link} href={`/admin/partners/${id}`} variant="light" size="compact-sm">
+            View
+          </Button>
+          <Button component={Link} href={`/admin/partners/${id}/edit`} variant="subtle" size="compact-sm">
+            Edit
+          </Button>
+        </Group>
+      </Stack>
+    </Card>
+  );
 }
 
 export default async function PartnersPage({
@@ -55,39 +93,34 @@ export default async function PartnersPage({
     if (!isGlobalAdminSession(session)) {
       Object.assign(query, { partnerId: { $in: accessiblePartnerIds } });
     }
-    partners = await db
+    partners = (await db
       .collection(COLLECTIONS.PARTNERS)
       .find(query)
       .sort({ createdAt: -1 })
       .limit(50)
-      .toArray() as unknown as PartnerListItem[];
+      .toArray()) as unknown as PartnerListItem[];
 
-    // Aggregate real-time counts for each partner
     for (const partner of partners) {
-      // Count events for this partner
-      const eventCount = await db
-        .collection(COLLECTIONS.EVENTS)
-        .countDocuments({ partnerId: partner.partnerId });
-      
-      partner.eventCount = eventCount;
-      
-      // Count frames for this partner (partner-level and event-level frames)
-      const frameCount = await db
-        .collection(COLLECTIONS.FRAMES)
-        .countDocuments({ partnerId: partner.partnerId });
-      
-      partner.frameCount = frameCount;
-
-      const userAccessCount = await db
+      partner.eventCount = await db.collection(COLLECTIONS.EVENTS).countDocuments({ partnerId: partner.partnerId });
+      partner.frameCount = await db.collection(COLLECTIONS.FRAMES).countDocuments({ partnerId: partner.partnerId });
+      partner.userAccessCount = await db
         .collection(COLLECTIONS.PARTNER_USER_ACCESS)
         .countDocuments({ partnerId: partner.partnerId, isActive: true });
-
-      partner.userAccessCount = userAccessCount;
     }
   } catch (error) {
     console.error('Error fetching partners:', error);
     dbError = error;
   }
+
+  const tableColumns = [
+    { key: 'partner', title: 'Partner Name' },
+    { key: 'events', title: 'Events' },
+    { key: 'frames', title: 'Frames' },
+    { key: 'users', title: 'Users' },
+    { key: 'status', title: 'Status' },
+    { key: 'created', title: 'Created' },
+    { key: 'actions', title: 'Actions', align: 'right' as const },
+  ];
 
   return (
     <Stack gap="xl">
@@ -96,132 +129,126 @@ export default async function PartnersPage({
         title="Partners"
         description="Manage partner organizations, access, and app ownership from one inventory view."
         actions={
-          <Link href="/admin/partners/new" style={{ textDecoration: 'none' }}>
-            <Button color="cameraTeal" leftSection={<IconPlus size={16} />}>
-              Add Partner
-            </Button>
-          </Link>
+          <Button component={Link} href="/admin/partners/new" color="cameraTeal" leftSection={<IconPlus size={16} />}>
+            Add Partner
+          </Button>
         }
       />
 
-      <StatsStrip
-        items={[
-          { label: 'Visible Partners', value: partners.length, icon: <IconBuildingStore size={20} /> },
-          {
-            label: 'Partner Users',
-            value: partners.reduce((sum, partner) => sum + (partner.userAccessCount || 0), 0),
-            icon: <IconUsers size={20} />,
-          },
-          {
-            label: 'Partner Frames',
-            value: partners.reduce((sum, partner) => sum + (partner.frameCount || 0), 0),
-            icon: <IconFrame size={20} />,
-          },
-        ]}
-      />
+      {!dbError && (
+        <StatsStrip
+          items={[
+            { label: 'Visible Partners', value: partners.length, icon: <IconBuildingStore size={20} /> },
+            {
+              label: 'Partner Users',
+              value: partners.reduce((sum, partner) => sum + (partner.userAccessCount || 0), 0),
+              icon: <IconUsers size={20} />,
+            },
+            {
+              label: 'Partner Frames',
+              value: partners.reduce((sum, partner) => sum + (partner.frameCount || 0), 0),
+              icon: <IconFrame size={20} />,
+            },
+          ]}
+        />
+      )}
 
-      <Card>
-        <form>
-          <Group align="end">
+      <DataToolbar filters={search ? [{ label: 'Search', value: search }] : undefined}>
+        <form style={{ flex: 1, minWidth: 240 }}>
+          <Group align="flex-end" wrap="wrap">
             <TextInput
               name="search"
               defaultValue={search}
               label="Search partners"
-              placeholder="Search by name, description, or partner ID"
+              placeholder="Name, description, or partner ID"
               leftSection={<IconSearch size={16} />}
-              style={{ flex: 1 }}
+              style={{ flex: 1, minWidth: 220 }}
             />
             <Button type="submit" color="cameraTeal">
               Search
             </Button>
             {search ? (
-              <Link href="/admin/partners" style={{ textDecoration: 'none' }}>
-                <Button variant="default">Clear</Button>
-              </Link>
+              <Button component={Link} href="/admin/partners" variant="default">
+                Clear
+              </Button>
             ) : null}
           </Group>
         </form>
-      </Card>
+      </DataToolbar>
 
       {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
 
       {!dbError && partners.length === 0 ? (
-        <Card p="xl">
-          <Stack align="center" gap="sm">
-            <Text fz={48}>🤝</Text>
-            <Text fw={700} fz="lg">
-              No partners yet
-            </Text>
-            <Text c="dimmed" ta="center">
-              Get started by adding your first partner workspace to Camera Core.
-            </Text>
-            <Link href="/admin/partners/new" style={{ textDecoration: 'none' }}>
-              <Button color="cameraTeal">Add Your First Partner</Button>
-            </Link>
-          </Stack>
+        <Card>
+          <StateBlock
+            variant="empty"
+            title="No partners yet"
+            description="Get started by adding your first partner workspace to Camera Core."
+            action={
+              <Button component={Link} href="/admin/partners/new" color="cameraTeal">
+                Add Your First Partner
+              </Button>
+            }
+          />
         </Card>
-      ) : (
-        <DataTable
-          columns={[
-            { key: 'partner', title: 'Partner Name' },
-            { key: 'events', title: 'Events' },
-            { key: 'frames', title: 'Frames' },
-            { key: 'users', title: 'Users' },
-            { key: 'status', title: 'Status' },
-            { key: 'created', title: 'Created' },
-            { key: 'actions', title: 'Actions', align: 'right' },
-          ]}
-        >
-          {partners.map((partner) => (
-            <tr key={partner._id.toString()} style={{ borderTop: '1px solid var(--mantine-color-gray-2)' }}>
-              <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-                <Stack gap={2}>
-                  <Link
-                    href={`/admin/partners/${partner._id}`}
-                    style={{ textDecoration: 'none', color: 'var(--mantine-color-blue-7)', fontWeight: 700 }}
-                  >
-                    {partner.name}
-                  </Link>
-                  {partner.description ? (
-                    <Text size="sm" c="dimmed" lineClamp={1}>
-                      {partner.description}
+      ) : !dbError ? (
+        <ResponsiveDataView
+          table={
+            <DataTable columns={tableColumns}>
+              {partners.map((partner) => (
+                <tr key={partner._id.toString()} style={{ borderTop: '1px solid var(--mantine-color-gray-2)' }}>
+                  <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
+                    <Stack gap={2}>
+                      <Text
+                        component={Link}
+                        href={`/admin/partners/${partner._id}`}
+                        fw={700}
+                        c="blue.7"
+                        style={{ textDecoration: 'none' }}
+                      >
+                        {partner.name}
+                      </Text>
+                      {partner.description ? (
+                        <Text size="sm" c="dimmed" lineClamp={1}>
+                          {partner.description}
+                        </Text>
+                      ) : (
+                        <Text size="xs" c="dimmed">
+                          {partner.partnerId}
+                        </Text>
+                      )}
+                    </Stack>
+                  </td>
+                  <td style={{ padding: '1rem 1.5rem' }}>{partner.eventCount || 0}</td>
+                  <td style={{ padding: '1rem 1.5rem' }}>{partner.frameCount || 0}</td>
+                  <td style={{ padding: '1rem 1.5rem' }}>{partner.userAccessCount || 0}</td>
+                  <td style={{ padding: '1rem 1.5rem' }}>
+                    <StatusBadge tone={partner.isActive ? 'active' : 'inactive'} />
+                  </td>
+                  <td style={{ padding: '1rem 1.5rem' }}>
+                    <Text size="sm" c="dimmed">
+                      {new Date(partner.createdAt).toLocaleDateString()}
                     </Text>
-                  ) : (
-                    <Text size="xs" c="dimmed">
-                      {partner.partnerId}
-                    </Text>
-                  )}
-                </Stack>
-              </td>
-              <td style={{ padding: '1rem 1.5rem' }}>{partner.eventCount || 0}</td>
-              <td style={{ padding: '1rem 1.5rem' }}>{partner.frameCount || 0}</td>
-              <td style={{ padding: '1rem 1.5rem' }}>{partner.userAccessCount || 0}</td>
-              <td style={{ padding: '1rem 1.5rem' }}>
-                <StatusBadge tone={partner.isActive ? 'active' : 'inactive'} />
-              </td>
-              <td style={{ padding: '1rem 1.5rem' }}>
-                <Text size="sm" c="dimmed">
-                  {new Date(partner.createdAt).toLocaleDateString()}
-                </Text>
-              </td>
-              <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                <Group gap="sm" justify="flex-end">
-                  <Link href={`/admin/partners/${partner._id}`} style={{ textDecoration: 'none' }}>
-                    <Button variant="subtle" size="compact-sm">
-                      View
-                    </Button>
-                  </Link>
-                  <Link href={`/admin/partners/${partner._id}/edit`} style={{ textDecoration: 'none' }}>
-                    <Button variant="subtle" size="compact-sm">
-                      Edit
-                    </Button>
-                  </Link>
-                </Group>
-              </td>
-            </tr>
+                  </td>
+                  <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                    <Group gap="sm" justify="flex-end">
+                      <Button component={Link} href={`/admin/partners/${partner._id}`} variant="subtle" size="compact-sm">
+                        View
+                      </Button>
+                      <Button component={Link} href={`/admin/partners/${partner._id}/edit`} variant="subtle" size="compact-sm">
+                        Edit
+                      </Button>
+                    </Group>
+                  </td>
+                </tr>
+              ))}
+            </DataTable>
+          }
+          mobile={partners.map((partner) => (
+            <PartnerMobileCard key={partner._id.toString()} partner={partner} />
           ))}
-        </DataTable>
-      )}
+        />
+      ) : null}
     </Stack>
   );
 }

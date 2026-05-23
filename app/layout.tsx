@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import '@mantine/core/styles.css';
-import '@mantine/modals/styles.css';
 import '@mantine/notifications/styles.css';
 import "./globals.css";
 import CameraGdsProvider, { CameraColorSchemeScript } from '@/components/gds/CameraGdsProvider';

@@ -1,14 +1,36 @@
 /**
  * Edit Frame Page
- * 
- * Full CRUD - Update frame details and toggle active status.
  */
 
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
+import {
+  Alert,
+  Anchor,
+  AspectRatio,
+  Box,
+  Breadcrumbs,
+  Button,
+  Checkbox,
+  Code,
+  Grid,
+  Group,
+  NativeSelect,
+  Stack,
+  Text,
+  TextInput,
+  Textarea,
+} from '@mantine/core';
+import { IconAlertCircle } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
+import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import FormSection from '@/components/gds/FormSection';
+import StateBlock from '@/components/gds/StateBlock';
+import { confirmDestructive } from '@/lib/gds/confirm-destructive';
 
 interface FrameRecord {
   _id: string;
@@ -41,7 +63,6 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch frame data
   useEffect(() => {
     async function fetchFrame() {
       try {
@@ -56,7 +77,7 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
       }
     }
 
-    fetchFrame();
+    void fetchFrame();
   }, [id]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -69,7 +90,7 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
       name: formData.get('name'),
       description: formData.get('description'),
       category: formData.get('category'),
-      isActive: formData.get('isActive') === 'true',
+      isActive: formData.get('isActive') === 'on',
     };
 
     try {
@@ -93,18 +114,11 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this frame? This cannot be undone.')) {
-      return;
-    }
-
     setIsDeleting(true);
     setError(null);
 
     try {
-      const response = await fetch(`/api/frames/${id}`, {
-        method: 'DELETE',
-      });
-
+      const response = await fetch(`/api/frames/${id}`, { method: 'DELETE' });
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to delete frame');
@@ -113,219 +127,141 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
       router.push('/admin/frames');
       router.refresh();
     } catch (err: unknown) {
-      setError(getErrorMessage(err));
+      const message = getErrorMessage(err);
+      setError(message);
+      notifications.show({ title: 'Delete failed', message, color: 'red' });
       setIsDeleting(false);
     }
   };
 
   if (isLoading) {
-    return (
-      <div className="p-8 max-w-4xl mx-auto">
-        <div className="text-center">Loading...</div>
-      </div>
-    );
+    return <StateBlock variant="loading" title="Loading frame…" />;
   }
 
   if (!frame) {
     return (
-      <div className="p-8 max-w-4xl mx-auto">
-        <div className="text-center">
-          <p className="text-red-600">Frame not found</p>
-          <button onClick={() => router.back()} className="mt-4 text-blue-600">Go Back</button>
-        </div>
-      </div>
+      <StateBlock
+        variant="error"
+        title="Frame not found"
+        description={error || undefined}
+        action={
+          <Button component={Link} href="/admin/frames" variant="light">
+            Back to frames
+          </Button>
+        }
+      />
     );
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Edit Frame</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">Update frame details and settings</p>
-      </div>
+    <Stack gap="xl" maw={960} mx="auto">
+      <Breadcrumbs>
+        <Anchor component={Link} href="/admin/frames" size="sm">
+          Frames
+        </Anchor>
+        <Text size="sm">Edit</Text>
+      </Breadcrumbs>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Frame Preview */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-4">
-            Frame Preview
-          </label>
-          <div className="relative aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-            <Image
-              src={frame.thumbnailUrl || frame.imageUrl}
-              alt={frame.name}
-              fill
-              className="object-contain p-8"
-              unoptimized
-            />
-          </div>
-          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            To change the image, delete this frame and upload a new one
-          </p>
-        </div>
+      <WorkspaceHeader
+        eyebrow="Camera Core"
+        title="Edit Frame"
+        description="Update frame details and settings."
+      />
 
-        {/* Technical Details (Read-only) */}
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Technical Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">Frame ID:</span>
-              <p className="font-mono text-xs text-gray-900 dark:text-white break-all">{frame.frameId || 'Not assigned'}</p>
-            </div>
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">MongoDB ID:</span>
-              <p className="font-mono text-xs text-gray-900 dark:text-white break-all">{frame._id}</p>
-            </div>
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">Dimensions:</span>
-              <p className="text-gray-900 dark:text-white">{frame.width || 'N/A'} × {frame.height || 'N/A'} px</p>
-            </div>
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">File Size:</span>
-              <p className="text-gray-900 dark:text-white">{frame.fileSize ? `${(frame.fileSize / 1024).toFixed(2)} KB` : 'N/A'}</p>
-            </div>
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">MIME Type:</span>
-              <p className="text-gray-900 dark:text-white">{frame.mimeType || 'N/A'}</p>
-            </div>
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">Created:</span>
-              <p className="text-gray-900 dark:text-white">{frame.createdAt ? new Date(frame.createdAt).toLocaleString() : 'N/A'}</p>
-            </div>
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">Updated:</span>
-              <p className="text-gray-900 dark:text-white">{frame.updatedAt ? new Date(frame.updatedAt).toLocaleString() : 'N/A'}</p>
-            </div>
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">Created By:</span>
-              <p className="text-gray-900 dark:text-white">{frame.createdBy || 'N/A'}</p>
-            </div>
-          </div>
-          
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <span className="text-gray-600 dark:text-gray-400 text-sm">Image URL:</span>
-            <a 
-              href={frame.imageUrl} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="block font-mono text-xs text-blue-600 dark:text-blue-400 hover:underline break-all mt-1"
-            >
-              {frame.imageUrl}
-            </a>
-          </div>
-          
-          {frame.thumbnailUrl && (
-            <div className="mt-2">
-              <span className="text-gray-600 dark:text-gray-400 text-sm">Thumbnail URL:</span>
-              <a 
-                href={frame.thumbnailUrl} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="block font-mono text-xs text-blue-600 dark:text-blue-400 hover:underline break-all mt-1"
-              >
-                {frame.thumbnailUrl}
-              </a>
-            </div>
-          )}
-        </div>
+      {error ? (
+        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+          <Text fw={700}>Error</Text>
+          <Text size="sm">{error}</Text>
+        </Alert>
+      ) : null}
 
-        {/* Frame Details */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Frame Name *
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              required
-              defaultValue={frame.name}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
-          </div>
+      <form onSubmit={handleSubmit}>
+        <Stack gap="lg">
+          <FormSection title="Frame preview" description="To change the image, delete this frame and upload a new one.">
+            <AspectRatio ratio={1} maw={320}>
+              <Box bg="gray.0" style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
+                <Image src={frame.thumbnailUrl || frame.imageUrl} alt={frame.name} fill style={{ objectFit: 'contain', padding: 24 }} unoptimized />
+              </Box>
+            </AspectRatio>
+          </FormSection>
 
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Description
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              rows={3}
-              defaultValue={frame.description}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Category
-            </label>
-            <select
-              id="category"
+          <FormSection title="Frame details">
+            <TextInput name="name" label="Frame name" required defaultValue={frame.name} />
+            <Textarea name="description" label="Description" rows={3} defaultValue={frame.description} />
+            <NativeSelect
               name="category"
-              defaultValue={frame.category}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              <option value="general">General</option>
-              <option value="holiday">Holiday</option>
-              <option value="birthday">Birthday</option>
-              <option value="wedding">Wedding</option>
-              <option value="corporate">Corporate</option>
-            </select>
-          </div>
-
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="isActive"
-              name="isActive"
-              defaultChecked={frame.isActive}
-              value="true"
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+              label="Category"
+              defaultValue={frame.category || 'general'}
+              data={[
+                { value: 'general', label: 'General' },
+                { value: 'holiday', label: 'Holiday' },
+                { value: 'birthday', label: 'Birthday' },
+                { value: 'wedding', label: 'Wedding' },
+                { value: 'corporate', label: 'Corporate' },
+              ]}
             />
-            <label htmlFor="isActive" className="ml-2 text-sm text-gray-900 dark:text-white">
-              Make frame active (visible to users)
-            </label>
-          </div>
-        </div>
+            <Checkbox name="isActive" defaultChecked={frame.isActive} label="Make frame active (visible to users)" />
+          </FormSection>
 
-        {error && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-red-800 dark:text-red-200">{error}</p>
-          </div>
-        )}
+          <FormSection title="Technical information">
+            <Grid>
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <Text size="sm" c="dimmed">
+                  Frame ID
+                </Text>
+                <Code block>{frame.frameId || 'Not assigned'}</Code>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <Text size="sm" c="dimmed">
+                  MongoDB ID
+                </Text>
+                <Code block>{frame._id}</Code>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <Text size="sm">
+                  Dimensions: {frame.width || 'N/A'} × {frame.height || 'N/A'} px
+                </Text>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: 6 }}>
+                <Text size="sm">
+                  File size: {frame.fileSize ? `${(frame.fileSize / 1024).toFixed(2)} KB` : 'N/A'}
+                </Text>
+              </Grid.Col>
+            </Grid>
+            <Anchor href={frame.imageUrl} target="_blank" rel="noopener noreferrer" size="sm">
+              Open image URL
+            </Anchor>
+          </FormSection>
 
-        {/* Actions */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex gap-4">
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              {isSaving ? 'Saving...' : 'Save Changes'}
-            </button>
-            <button
+          <Group justify="space-between">
+            <Group>
+              <Button type="submit" color="cameraTeal" loading={isSaving}>
+                {isSaving ? 'Saving…' : 'Save changes'}
+              </Button>
+              <Button component={Link} href="/admin/frames" variant="default">
+                Cancel
+              </Button>
+            </Group>
+            <Button
               type="button"
-              onClick={() => router.back()}
-              className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              color="red"
+              variant="light"
+              loading={isDeleting}
+              disabled={isDeleting}
+              onClick={() =>
+                confirmDestructive({
+                  title: 'Delete frame',
+                  message: 'Are you sure you want to delete this frame? This cannot be undone.',
+                  targetName: frame.name,
+                  onConfirm: () => void handleDelete(),
+                })
+              }
             >
-              Cancel
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
-          >
-            {isDeleting ? 'Deleting...' : 'Delete Frame'}
-          </button>
-        </div>
+              Delete frame
+            </Button>
+          </Group>
+        </Stack>
       </form>
-    </div>
+    </Stack>
   );
 }

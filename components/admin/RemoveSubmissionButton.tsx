@@ -1,12 +1,10 @@
 'use client';
 
-/**
- * Reusable client component for removing submissions at different levels.
- */
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Group, Modal, Text } from '@mantine/core';
+import { Button } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { confirmDestructive } from '@/lib/gds/confirm-destructive';
 
 type RemovalLevel = 'event' | 'partner';
 
@@ -16,7 +14,6 @@ interface RemoveSubmissionButtonProps {
   contextId: string;
   contextName: string;
   onSuccess?: () => void;
-  className?: string;
 }
 
 export default function RemoveSubmissionButton({
@@ -26,14 +23,26 @@ export default function RemoveSubmissionButton({
   contextName,
   onSuccess,
 }: RemoveSubmissionButtonProps) {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  const dialogMessages = {
+    event: {
+      title: 'Remove from event?',
+      message: `Remove this photo from ${contextName}? It will remain in the database and can be re-added later.`,
+      confirmLabel: 'Remove from event',
+    },
+    partner: {
+      title: 'Remove from partner?',
+      message: `Remove this photo from ${contextName} and all its events? The photo will be hidden but remain in the database.`,
+      confirmLabel: 'Remove from partner',
+    },
+  };
+
+  const { title, message, confirmLabel } = dialogMessages[level];
 
   const handleRemove = async () => {
     setIsLoading(true);
-    setError(null);
 
     try {
       const endpoint =
@@ -47,66 +56,38 @@ export default function RemoveSubmissionButton({
         throw new Error(data.error || 'Failed to remove submission');
       }
 
-      setIsDialogOpen(false);
       if (onSuccess) {
         onSuccess();
       } else {
         router.refresh();
       }
     } catch (removeError) {
-      setError(removeError instanceof Error ? removeError.message : 'Unknown error');
+      notifications.show({
+        title: 'Remove failed',
+        message: removeError instanceof Error ? removeError.message : 'Unknown error',
+        color: 'red',
+      });
       setIsLoading(false);
     }
   };
 
-  const dialogMessages = {
-    event: {
-      title: 'Remove from Event?',
-      message: `Remove this photo from ${contextName}? It will remain in the database and can be re-added to the event later.`,
-      button: 'Remove from Event',
-    },
-    partner: {
-      title: 'Remove from Partner?',
-      message: `Remove this photo from ${contextName} and all its events? The photo will be hidden but remain in the database.`,
-      button: 'Remove from Partner',
-    },
-  };
-
-  const { title, message, button } = dialogMessages[level];
-
   return (
-    <>
-      <Button variant="subtle" color="red" size="compact-sm" onClick={() => setIsDialogOpen(true)} disabled={isLoading}>
-        {level === 'event' ? 'Remove from Event' : 'Remove from Partner'}
-      </Button>
-
-      <Modal opened={isDialogOpen} onClose={() => setIsDialogOpen(false)} title={title} centered>
-        <Text c="dimmed" mb="lg">
-          {message}
-        </Text>
-
-        {error ? (
-          <Alert color="red" mb="md">
-            <Text size="sm">{error}</Text>
-          </Alert>
-        ) : null}
-
-        <Group justify="flex-end">
-          <Button
-            variant="default"
-            onClick={() => {
-              setIsDialogOpen(false);
-              setError(null);
-            }}
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button color="red" onClick={() => void handleRemove()} loading={isLoading}>
-            {isLoading ? 'Removing...' : button}
-          </Button>
-        </Group>
-      </Modal>
-    </>
+    <Button
+      variant="subtle"
+      color="red"
+      size="compact-sm"
+      loading={isLoading}
+      disabled={isLoading}
+      onClick={() =>
+        confirmDestructive({
+          title,
+          message,
+          confirmLabel,
+          onConfirm: () => void handleRemove(),
+        })
+      }
+    >
+      {level === 'event' ? 'Remove from Event' : 'Remove from Partner'}
+    </Button>
   );
 }
