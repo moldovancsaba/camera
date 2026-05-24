@@ -9,6 +9,8 @@ import { getSession } from '@/lib/auth/session';
 import Image from 'next/image';
 import { APP_VERSION } from '@/lib/app-version';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
+import PublicSurfaceShell from '@/components/gds/PublicSurfaceShell';
+import { Alert, Badge, Button, Group, Stack, Text, Title } from '@mantine/core';
 
 // This page uses cookies, so it must be dynamic
 export const dynamic = 'force-dynamic';
@@ -50,73 +52,77 @@ export default async function Home({
   const oauthHint = oauthErrorHint(oauthError);
   
   return (
-    <div className="flex min-h-screen items-center justify-center bg-transparent">
-      <main className="flex flex-col items-center justify-center px-8 py-16 text-center text-slate-100">
+    <PublicSurfaceShell size="md" centered>
+      <Stack align="center" justify="center" gap="xl" py="xl">
         {oauthError && !session && (
-          <div
-            className="mb-6 max-w-lg rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100"
+          <Alert
+            color="red"
+            title="Sign-in did not complete"
+            maw={560}
+            w="100%"
+            styles={{ body: { textAlign: 'left' } }}
             role="alert"
           >
-            <p className="font-semibold">Sign-in did not complete</p>
-            {oauthMessage && <p className="mt-2">{oauthMessage}</p>}
+            {oauthMessage ? <Text mt="xs">{oauthMessage}</Text> : null}
             {!oauthMessage && (
-              <p className="mt-2 capitalize">{oauthError.replace(/_/g, ' ')}</p>
+              <Text mt="xs" tt="capitalize">
+                {oauthError.replace(/_/g, ' ')}
+              </Text>
             )}
-            {oauthHint && <p className="mt-2 text-red-800 dark:text-red-200">{oauthHint}</p>}
-          </div>
+            {oauthHint ? <Text mt="xs">{oauthHint}</Text> : null}
+          </Alert>
         )}
-        <div className="mb-8">
-          <div className="flex items-center justify-center gap-4 mb-4">
+        <Stack align="center" gap="md">
+          <Group align="center" gap="md" wrap="nowrap">
             <Image
               src="https://i.ibb.co/zTG7ztxC/camera-logo.png"
               alt="Camera Logo"
               width={192}
               height={64}
               unoptimized
-              className="h-16 w-auto"
+              style={{ height: 64, width: 'auto' }}
             />
-            <h1 className="text-6xl font-bold text-white">
+            <Title order={1} fz={{ base: 44, md: 64 }} c="dark.8">
               Camera
-            </h1>
-          </div>
-          
+            </Title>
+          </Group>
+
           {session && (
-            <div className="mt-4 inline-block bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 px-4 py-2 rounded-lg">
-              <p className="text-sm">
-                ✓ Logged in as <span className="font-semibold">{session.user.email}</span>
-              </p>
-            </div>
+            <Badge color="green" size="lg" variant="light" styles={{ root: { paddingInline: 16, paddingBlock: 18 } }}>
+              <Text size="sm" c="green.9">
+                ✓ Logged in as <strong>{session.user.email}</strong>
+              </Text>
+            </Badge>
           )}
-        </div>
+        </Stack>
 
-
-        <div className="flex flex-col sm:flex-row gap-4">
+        <Stack align="center" gap="md" w="100%">
           {session ? (
-            // Logged in - show admin and logout buttons only
             <>
-              {/* Check appRole from SSO app permissions (not user.role from ID token) */}
               {(session.appRole === 'admin' || session.appRole === 'superadmin') && (
-                <a href="/admin" className="app-btn app-btn--primary app-btn--inline app-btn--lg">
+                <Button component="a" href="/admin" size="lg" color="cameraTeal">
                   Admin Panel
-                </a>
+                </Button>
               )}
 
-              <a href="/api/auth/logout" className="app-btn app-btn--neutral app-btn--inline app-btn--lg">
+              <Button component="a" href="/api/auth/logout" size="lg" variant="default">
                 Logout
-              </a>
+              </Button>
             </>
           ) : (
             <SocialLoginButtons fromLogout={justLoggedOut} variant="home" />
           )}
-        </div>
+        </Stack>
 
-        <div className="mt-12 text-center text-sm text-slate-400">
-          <p>🔐 Google / Facebook via SSO | ☁️ MongoDB Atlas | 🖼️ imgbb</p>
-          <p className="mt-2 text-xs font-mono text-slate-500">
+        <Stack align="center" gap={4}>
+          <Text size="sm" c="dimmed" ta="center">
+            🔐 Google / Facebook via SSO | ☁️ MongoDB Atlas | 🖼️ imgbb
+          </Text>
+          <Text size="xs" c="dimmed" ff="monospace">
             v{APP_VERSION}
-          </p>
-        </div>
-      </main>
-    </div>
+          </Text>
+        </Stack>
+      </Stack>
+    </PublicSurfaceShell>
   );
 }

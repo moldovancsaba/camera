@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
+const defaultPort = process.env.PLAYWRIGHT_PORT || '3100';
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${defaultPort}`;
 const shouldStartServer = process.env.PLAYWRIGHT_START_WEB_SERVER === 'true';
 
 export default defineConfig({
@@ -15,9 +16,9 @@ export default defineConfig({
   },
   webServer: shouldStartServer
     ? {
-        command: 'npm run dev',
+        command: `PORT=${defaultPort} npm run dev`,
         url: baseURL,
-        reuseExistingServer: true,
+        reuseExistingServer: false,
         timeout: 120_000,
       }
     : undefined,

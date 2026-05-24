@@ -11,6 +11,8 @@ import type { Db } from 'mongodb';
 import Image from 'next/image';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import PublicSurfaceShell from '@/components/gds/PublicSurfaceShell';
+import { Button, Group, Stack, Text, Title } from '@mantine/core';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -154,20 +156,25 @@ export default async function SharePage({ params }: Props) {
   const headline = event?.name ?? 'Shared photo';
 
   return (
-    <div className="min-h-screen bg-transparent py-12">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">{headline}</h1>
-          <p className="text-slate-300">
+    <PublicSurfaceShell size="lg">
+      <Stack gap="xl">
+        <Stack align="center" gap="xs" ta="center">
+          <Title order={1}>{headline}</Title>
+          <Text c="dimmed">
             Photo by{' '}
             <span className="font-semibold">{submission.userName}</span>
-          </p>
-        </div>
+          </Text>
+        </Stack>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 mb-6">
+        <div>
           <div 
-            className="relative bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden mb-4 mx-auto"
             style={{
+              position: 'relative',
+              background: 'var(--mantine-color-gray-1)',
+              borderRadius: 12,
+              overflow: 'hidden',
+              marginBottom: 16,
+              marginInline: 'auto',
               aspectRatio: submission.metadata?.finalWidth && submission.metadata?.finalHeight 
                 ? `${submission.metadata.finalWidth} / ${submission.metadata.finalHeight}`
                 : '1',
@@ -183,29 +190,20 @@ export default async function SharePage({ params }: Props) {
             />
           </div>
 
-          <div className="flex items-center justify-end text-sm text-gray-600 dark:text-gray-400 mb-6">
-            <span>{submission.createdAt ? new Date(submission.createdAt).toLocaleDateString() : ''}</span>
-          </div>
+          <Text size="sm" c="dimmed" ta="right" mb="lg">
+            {submission.createdAt ? new Date(submission.createdAt).toLocaleDateString() : ''}
+          </Text>
 
-          <div className="flex flex-col sm:flex-row gap-4">
-            <a
-              href={submission.imageUrl}
-              download
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center"
-            >
+          <Group gap="md" grow>
+            <Button component="a" href={submission.imageUrl} download target="_blank" rel="noopener noreferrer" color="cameraTeal" size="lg">
               💾 Download
-            </a>
-            <a
-              href={createYourOwnHref}
-              className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors text-center"
-            >
+            </Button>
+            <Button component="a" href={createYourOwnHref} variant="default" size="lg">
               📸 Create Your Own
-            </a>
-          </div>
+            </Button>
+          </Group>
         </div>
-      </div>
-    </div>
+      </Stack>
+    </PublicSurfaceShell>
   );
 }

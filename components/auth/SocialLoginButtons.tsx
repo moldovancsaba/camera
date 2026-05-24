@@ -5,6 +5,7 @@
  */
 
 import type { MouseEvent } from 'react';
+import { Button, Group, Stack } from '@mantine/core';
 
 import { socialLoginHref, type SocialLoginProvider } from '@/lib/auth/social-login';
 
@@ -70,47 +71,73 @@ export default function SocialLoginButtons({
 
   if (variant === 'capture') {
     return (
-      <div className="flex flex-col gap-3">
-        <a
+      <Stack gap="sm">
+        <Button
+          component="a"
           href={googleHref}
           onClick={handleClick('google', googleHref)}
-          className="w-full px-6 py-3 rounded-lg font-semibold transition-all hover:opacity-90 flex items-center justify-center gap-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-2 border-gray-200 dark:border-gray-600 shadow-sm"
+          variant="default"
+          size="md"
+          leftSection={<GoogleIcon />}
+          styles={{
+            root: {
+              backgroundColor: '#ffffff',
+            },
+          }}
         >
-          <GoogleIcon />
           Continue with Google
-        </a>
-        <a
+        </Button>
+        <Button
+          component="a"
           href={facebookHref}
           onClick={handleClick('facebook', facebookHref)}
-          className="w-full px-6 py-3 rounded-lg font-semibold transition-all hover:opacity-90 flex items-center justify-center gap-2 text-white shadow-sm"
-          style={{ backgroundColor: '#1877F2' }}
+          size="md"
+          leftSection={<FacebookIcon />}
+          styles={{
+            root: {
+              backgroundColor: '#1877F2',
+              color: '#ffffff',
+            },
+          }}
         >
-          <FacebookIcon />
           Continue with Facebook
-        </a>
-      </div>
+        </Button>
+      </Stack>
     );
   }
 
   return (
-    <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md sm:max-w-none justify-center">
-      <a
+    <Group gap="sm" justify="center" wrap="wrap">
+      <Button
+        component="a"
         href={googleHref}
         onClick={handleClick('google', googleHref)}
-        className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-2 border-gray-200 dark:border-gray-600 shadow-md hover:shadow-lg transition-shadow"
+        variant="default"
+        size="lg"
+        leftSection={<GoogleIcon />}
+        styles={{
+          root: {
+            backgroundColor: '#ffffff',
+          },
+        }}
       >
-        <GoogleIcon />
         Continue with Google
-      </a>
-      <a
+      </Button>
+      <Button
+        component="a"
         href={facebookHref}
         onClick={handleClick('facebook', facebookHref)}
-        className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-white shadow-md hover:shadow-lg transition-shadow"
-        style={{ backgroundColor: '#1877F2' }}
+        size="lg"
+        leftSection={<FacebookIcon />}
+        styles={{
+          root: {
+            backgroundColor: '#1877F2',
+            color: '#ffffff',
+          },
+        }}
       >
-        <FacebookIcon />
         Continue with Facebook
-      </a>
-    </div>
+      </Button>
+    </Group>
   );
 }

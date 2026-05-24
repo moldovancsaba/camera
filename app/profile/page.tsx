@@ -11,6 +11,9 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { ObjectId } from 'mongodb';
+import PublicSurfaceShell from '@/components/gds/PublicSurfaceShell';
+import EmptyState from '@/components/gds/EmptyState';
+import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 
 interface ProfileSubmission {
   _id: ObjectId;
@@ -60,99 +63,90 @@ export default async function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-transparent py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="app-canvas-page-title">My Gallery</h1>
-              <p className="app-canvas-subtitle">{session.user.name || session.user.email}</p>
-            </div>
-            <Link href="/" className="app-canvas-back">
-              ← Back
-            </Link>
+    <PublicSurfaceShell size="xl">
+      <Stack gap="xl">
+        <Group justify="space-between" align="flex-start">
+          <div>
+            <Title order={1}>My Gallery</Title>
+            <Text c="dimmed" mt="xs">
+              {session.user.name || session.user.email}
+            </Text>
           </div>
+          <Button component={Link} href="/" variant="subtle" color="gray">
+            ← Back
+          </Button>
+        </Group>
 
-          <div className="flex gap-4">
-            <Link href="/capture" className="app-btn app-btn--primary app-btn--inline">
-              📸 Take New Photo
-            </Link>
-          </div>
-        </div>
+        <Group>
+          <Button component={Link} href="/capture" color="cameraTeal">
+            📸 Take New Photo
+          </Button>
+        </Group>
 
         {error ? (
-          <div className="app-alert-error" role="alert">
-            <p className="app-alert-error-title">Error loading gallery</p>
-            <p className="app-alert-error-detail">{error}</p>
-          </div>
+          <Alert color="red" title="Error loading gallery" role="alert">
+            <Text size="sm">{error}</Text>
+          </Alert>
         ) : null}
 
         {!error && submissions.length === 0 ? (
-          <div className="app-surface-card app-surface-card-pad-lg">
-            <div className="text-6xl mb-4">📷</div>
-            <h2 className="app-surface-card-title">No photos yet</h2>
-            <p className="app-surface-card-lede">Start creating amazing photos with frames!</p>
-            <Link href="/capture" className="app-btn app-btn--primary app-btn--inline">
-              Take Your First Photo
-            </Link>
-          </div>
+          <EmptyState
+            icon={<Text fz={48}>📷</Text>}
+            title="No photos yet"
+            description="Start creating amazing photos with frames!"
+            action={
+              <Button component={Link} href="/capture" color="cameraTeal">
+                Take Your First Photo
+              </Button>
+            }
+          />
         ) : null}
 
         {!error && submissions.length > 0 ? (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <p className="app-canvas-count">
+          <Stack gap="md">
+            <Text size="sm" c="dimmed">
                 {submissions.length} {submissions.length === 1 ? 'photo' : 'photos'}
-              </p>
-            </div>
+            </Text>
 
-            <div className="columns-2 md:columns-3 lg:columns-4 gap-4">
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg">
               {submissions.map((submission) => (
-                <div
+                <Card
                   key={submission._id.toString()}
-                  className="app-surface-card overflow-hidden transition-shadow hover:shadow-md group mb-4 break-inside-avoid"
+                  p="sm"
+                  styles={{ root: { overflow: 'hidden' } }}
                 >
                   <Link href={`/share/${submission._id}`}>
-                    <div className="app-thumb-placeholder">
+                    <div style={{ borderRadius: 8, overflow: 'hidden', background: 'var(--mantine-color-gray-1)' }}>
                       <Image
                         src={submission.imageUrl}
                         alt={`Photo with ${submission.frameName}`}
                         width={800}
                         height={800}
                         unoptimized
-                        className="w-full h-auto group-hover:scale-105 transition-transform"
+                        style={{ width: '100%', height: 'auto', display: 'block' }}
                       />
                     </div>
                   </Link>
-                  <div className="app-surface-card-pad-sm">
-                    <p className="app-surface-card-row-title mb-1">{submission.frameName}</p>
-                    <p className="app-surface-meta">
+                  <Stack gap={4} mt="sm">
+                    <Text fw={600}>{submission.frameName}</Text>
+                    <Text size="xs" c="dimmed">
                       {new Date(submission.createdAt).toLocaleDateString()}
-                    </p>
-                    <div className="app-inline-actions">
-                      <a
-                        href={submission.imageUrl}
-                        download
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="app-btn app-btn--primary app-btn--compact app-btn--inline"
-                      >
+                    </Text>
+                    <Group gap="sm" mt="xs">
+                      <Button component="a" href={submission.imageUrl} download target="_blank" rel="noopener noreferrer" color="cameraTeal" size="xs">
                         💾 Download
-                      </a>
-                      <Link
-                        href={`/share/${submission._id}`}
-                        className="app-btn app-btn--secondary app-btn--compact app-btn--inline text-center"
-                      >
+                      </Button>
+                      <Button component={Link} href={`/share/${submission._id}`} variant="default" size="xs">
                         🔗 Share
-                      </Link>
-                    </div>
-                  </div>
-                </div>
+                      </Button>
+                    </Group>
+                  </Stack>
+                </Card>
               ))}
-            </div>
-          </div>
+            </SimpleGrid>
+          </Stack>
         ) : null}
-      </div>
-    </div>
+      </Stack>
+    </PublicSurfaceShell>
   );
 }

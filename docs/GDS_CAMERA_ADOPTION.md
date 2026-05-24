@@ -1,7 +1,7 @@
 # Camera GDS Adoption
 
 **Version**: 2.9.0  
-**Last Updated**: 2026-05-23
+**Last Updated**: 2026-05-24
 
 ## SSOT statement
 
@@ -13,7 +13,7 @@ Local checkout path (when available): `/Users/Shared/Projects/GENERAL_DESIGN_SYS
 
 ## Purpose
 
-Camera is the reference implementation of the portfolio GDS on **Mantine 9**. Admin surfaces must use shared GDS contracts; public capture flows may remain on documented CSS exceptions until migrated.
+Camera is the reference implementation of the portfolio GDS on **Mantine 9**. Admin surfaces must use shared GDS contracts; public capture remains the only broad UI exception until fully migrated.
 
 ## Root runtime
 
@@ -35,20 +35,22 @@ Camera is the reference implementation of the portfolio GDS on **Mantine 9**. Ad
 | Data toolbar | `components/gds/DataToolbar.tsx` | Active — Events + Partners lists |
 | Responsive data view | `components/gds/ResponsiveDataView.tsx` | Active — Events + Partners lists |
 | Data table | `components/gds/DataTable.tsx` | Active |
+| Empty state | `components/gds/EmptyState.tsx` | Active |
 | Status badge | `components/gds/StatusBadge.tsx` | Active |
 | State block | `components/gds/StateBlock.tsx` | Active — reference: Events list + edit |
 | Form section | `components/gds/FormSection.tsx` | Active — Event edit/new, Frame edit |
 | Destructive confirm | `lib/gds/confirm-destructive.tsx` | Active — delete/remove admin actions |
-| Auth / public capture shell | `app/page.tsx`, `app/capture/**`, `app/globals.css` | **Exception** (see below) |
-| Slideshow / share playback | `components/slideshow/**` | **Exception** (media-first) |
+| Public surface shell | `components/gds/PublicSurfaceShell.tsx` | Active — home, profile, share |
+| Auth / public capture shell | `app/capture/**`, `app/globals.css` | **Exception** (see below) |
+| Slideshow playback | `components/slideshow/**` | **Exception** (media-first) |
 | Landing page editor CSS | `components/admin/LandingPageEditor.tsx` | **Exception** (editor preview) |
 
 ## Approved exceptions
 
 | Surface | Reason | Removal condition |
 |---------|--------|-------------------|
-| Public capture, home, profile | Dark gradient guest UX predates Mantine public shell | Introduce `PublicCaptureShell` with Mantine dark theme or documented narrow CSS freeze |
-| `app/globals.css` `--app-btn-*` / `--app-panel-*` | Legacy token layer for public flows | Phase out when capture migrates to Mantine |
+| Event capture flow (`app/capture/**`) | Complex camera/composite UX still uses legacy button/token layer | Replace with Mantine public capture shell + controls |
+| `app/globals.css` `--app-btn-*` / `--app-panel-*` | Legacy token layer remains for capture and residual public helpers | Phase out when capture migrates to Mantine |
 | Landing page custom CSS | User-authored experience content | Admin chrome stays Mantine; guest CSS remains editor-owned |
 | Slideshow player | Full-screen media playback | Surrounding admin config uses Mantine only |
 
@@ -64,13 +66,27 @@ Camera is the reference implementation of the portfolio GDS on **Mantine 9**. Ad
 
 1. ~~Theme and provider wiring~~ (done)
 2. ~~Admin shell~~ (done)
-3. Inventory tables + toolbar + responsive list — **in progress** (Events + Partners lists done)
-4. Workspaces — partial
-5. Forms and editors — **in progress** (Event edit/new, Frame edit done; logos edit backlog)
+3. Inventory tables + toolbar + responsive list — **active** (core inventory screens migrated)
+4. Workspaces — **active** (major partner/event admin workspaces migrated; refinements continue)
+5. Forms and editors — **in progress** (major forms migrated; editor consistency remains)
 6. Statuses, permissions, enablement language — partial
 7. Landing-page editor alignment — backlog
-8. Public capture shell decision — backlog
-9. Consume or align with `@gds/*` packages when Mantine major versions match (GDS packages currently target Mantine 7)
+8. Public capture shell migration — **in progress** (home/profile/share moved; capture flow remains)
+9. Consume or align with `@gds/*` packages when Mantine major versions match — **blocked**
+
+## Shared package alignment
+
+Direct package consumption from `/Users/Shared/Projects/GENERAL_DESIGN_SYSTEM/packages/*` is currently blocked in Camera.
+
+Current state:
+
+- Camera runtime: Mantine `9.2.1`, React `19.2.0`
+- Shared `@gds/*` packages: version `2.0.0`, Mantine `^7.9.0`, React `^18.2.0`
+
+Required rule until the SSOT packages are upgraded:
+
+- Camera must align to the **contracts and patterns** from the GDS repository
+- Camera must not import the shared `@gds/*` packages directly until Mantine / React majors match
 
 ## What must not happen
 

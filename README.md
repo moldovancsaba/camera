@@ -146,6 +146,11 @@ See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/d
 
 Camera admin UI follows the portfolio [General Design System](https://github.com/moldovancsaba/general-design-system) on Mantine. Local adapter details, migration state, and exceptions: [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_CAMERA_ADOPTION.md).
 
+Current package note:
+
+- Camera is aligned to the GDS **contracts**
+- direct `@gds/*` package consumption is still blocked until the shared packages move from Mantine 7 / React 18 to Mantine 9 / React 19
+
 ## Documentation map
 
 Canonical docs:
