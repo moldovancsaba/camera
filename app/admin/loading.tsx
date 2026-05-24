@@ -1,6 +1,4 @@
-/**
- * Admin Loading State
- */
+'use client';
 
 import { Card, SimpleGrid, Skeleton, Stack } from '@mantine/core';
 

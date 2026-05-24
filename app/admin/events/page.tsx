@@ -11,22 +11,11 @@ import {
   listAccessiblePartnerIds,
   listSessionPartnerAssignments,
 } from '@/lib/partners/authorization';
-import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Button, Group, Stack, TextInput } from '@mantine/core';
-import {
-  IconBuildingStore,
-  IconCalendarEvent,
-  IconPhotoScan,
-  IconPlus,
-  IconSearch,
-} from '@tabler/icons-react';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
-import StatsStrip from '@/components/gds/StatsStrip';
-import DataToolbar from '@/components/gds/DataToolbar';
+import AdminListPageShell from '@/components/gds/AdminListPageShell';
 import EventsInventoryList, { type SerializedEventRow } from '@/components/gds/EventsInventoryList';
 import { formatAdminDate, mongoIdString } from '@/lib/gds/serialize-admin-rows';
+import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +42,7 @@ export default async function EventsPage({
 
   let eventRows: SerializedEventRow[] = [];
   let partnerCount = 0;
-  let dbError: unknown = null;
+  let dbError = null;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
   const partnerFilter =
@@ -121,79 +110,51 @@ export default async function EventsPage({
     );
   } catch (error) {
     console.error('Error fetching events:', error);
-    dbError = error;
+    dbError = serializeMongoError(error);
   }
 
   return (
-    <Stack gap="xl">
-      <WorkspaceHeader
-        eyebrow="Apps"
-        title="Events App"
-        description="Manage event app instances that use partner defaults, shared resources, and gallery flows."
-        actions={
-          canCreate ? (
-            <Button component={Link} href="/admin/events/new" color="cameraTeal" leftSection={<IconPlus size={16} />}>
-              Add Event Instance
-            </Button>
-          ) : null
-        }
-      />
-
-      {!dbError && (
-        <StatsStrip
-          items={[
-            { label: 'Event Instances', value: eventRows.length, icon: <IconCalendarEvent size={20} /> },
-            { label: 'Active Partners', value: partnerCount, icon: <IconBuildingStore size={20} /> },
-            {
-              label: 'Assigned Frames',
-              value: eventRows.reduce((sum, event) => sum + event.frameCount, 0),
-              icon: <IconPhotoScan size={20} />,
-            },
-          ]}
-        />
-      )}
-
-      <DataToolbar
-        hint="Create new event instances from a partner workspace whenever possible so the inheritance context stays explicit."
-        filters={
-          partnerFilter
-            ? [{ label: 'Partner', value: partnerFilter }]
-            : search
-              ? [{ label: 'Search', value: search }]
-              : undefined
-        }
-        trailing={
-          <Button component={Link} href="/admin/partners" variant="light" color="cameraTeal">
-            Open Partners
-          </Button>
-        }
-      >
-        <form style={{ flex: 1, minWidth: 240 }}>
-          <Group align="flex-end" wrap="wrap">
-            <TextInput
-              name="search"
-              defaultValue={search}
-              label="Search"
-              placeholder="Event name, description, or location"
-              leftSection={<IconSearch size={16} />}
-              style={{ flex: 1, minWidth: 220 }}
-            />
-            <input type="hidden" name="partner" value={partnerFilter} />
-            <Button type="submit" color="cameraTeal">
-              Search
-            </Button>
-            {search || partnerFilter ? (
-              <Button component={Link} href="/admin/events" variant="default">
-                Clear
-              </Button>
-            ) : null}
-          </Group>
-        </form>
-      </DataToolbar>
-
-      {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
-
-      {!dbError ? <EventsInventoryList events={eventRows} canCreate={canCreate} /> : null}
-    </Stack>
+    <AdminListPageShell
+      eyebrow="Apps"
+      title="Events App"
+      description="Manage event app instances that use partner defaults, shared resources, and gallery flows."
+      primaryAction={
+        canCreate
+          ? { href: '/admin/events/new', label: 'Add Event Instance', iconKey: 'plus' }
+          : undefined
+      }
+      stats={
+        !dbError
+          ? [
+              { label: 'Event Instances', value: eventRows.length, iconKey: 'calendarEvent' },
+              { label: 'Active Partners', value: partnerCount, iconKey: 'buildingStore' },
+              {
+                label: 'Assigned Frames',
+                value: eventRows.reduce((sum, event) => sum + event.frameCount, 0),
+                iconKey: 'photoScan',
+              },
+            ]
+          : undefined
+      }
+      toolbarHint="Create new event instances from a partner workspace whenever possible so the inheritance context stays explicit."
+      toolbarFilters={
+        partnerFilter
+          ? [{ label: 'Partner', value: partnerFilter }]
+          : search
+            ? [{ label: 'Search', value: search }]
+            : undefined
+      }
+      toolbarTrailing={{ href: '/admin/partners', label: 'Open Partners' }}
+      search={{
+        defaultValue: search,
+        label: 'Search',
+        placeholder: 'Event name, description, or location',
+        clearHref: '/admin/events',
+        hiddenFields: partnerFilter ? { partner: partnerFilter } : undefined,
+      }}
+      dbError={dbError}
+    >
+      <EventsInventoryList events={eventRows} canCreate={canCreate} />
+    </AdminListPageShell>
   );
 }

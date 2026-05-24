@@ -1,10 +1,15 @@
-import { Badge, Group, Stack, Text, Title } from '@mantine/core';
+'use client';
+
+import Link from 'next/link';
+import { Badge, Button, Group, Stack, Text, Title } from '@mantine/core';
+import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 
 interface WorkspaceHeaderProps {
   eyebrow?: string;
   title: string;
   description?: string;
   status?: string;
+  primaryAction?: { href: string; label: string; iconKey?: AdminIconKey };
   actions?: React.ReactNode;
 }
 
@@ -13,8 +18,22 @@ export default function WorkspaceHeader({
   title,
   description,
   status,
+  primaryAction,
   actions,
 }: WorkspaceHeaderProps) {
+  const actionSlot =
+    actions ??
+    (primaryAction ? (
+      <Button
+        component={Link}
+        href={primaryAction.href}
+        color="cameraTeal"
+        leftSection={primaryAction.iconKey ? <AdminIcon iconKey={primaryAction.iconKey} size={16} /> : undefined}
+      >
+        {primaryAction.label}
+      </Button>
+    ) : null);
+
   return (
     <Group justify="space-between" align="flex-start" gap="lg" wrap="wrap">
       <Stack gap="xs">
@@ -41,7 +60,7 @@ export default function WorkspaceHeader({
           </Text>
         ) : null}
       </Stack>
-      {actions ? <Group gap="sm">{actions}</Group> : null}
+      {actionSlot ? <Group gap="sm">{actionSlot}</Group> : null}
     </Group>
   );
 }

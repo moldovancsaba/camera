@@ -1,3 +1,5 @@
+'use client';
+
 import { Paper, ScrollArea } from '@mantine/core';
 
 export interface DataTableColumn {

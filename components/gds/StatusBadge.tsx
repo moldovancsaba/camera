@@ -1,3 +1,5 @@
+'use client';
+
 import { Badge } from '@mantine/core';
 
 type StatusTone = 'active' | 'inactive' | 'info' | 'warning' | 'danger';

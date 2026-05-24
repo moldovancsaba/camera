@@ -1,3 +1,5 @@
+'use client';
+
 import { Card, Stack, Text } from '@mantine/core';
 
 export interface FormSectionProps {

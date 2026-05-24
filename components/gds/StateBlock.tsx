@@ -1,3 +1,5 @@
+'use client';
+
 import { Alert, Center, Loader, Stack, Text, Title } from '@mantine/core';
 import { IconAlertCircle, IconLock } from '@tabler/icons-react';
 

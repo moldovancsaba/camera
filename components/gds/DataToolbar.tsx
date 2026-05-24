@@ -1,3 +1,5 @@
+'use client';
+
 import { Card, Group, Stack, Text } from '@mantine/core';
 
 export interface DataToolbarFilterChip {

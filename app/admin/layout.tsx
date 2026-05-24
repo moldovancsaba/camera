@@ -1,23 +1,23 @@
 /**
  * Admin layout: sidebar + main content.
- * Access: middleware requires a valid session; layout resolves global or partner-scoped admin access.
  */
 
 import { getSession } from '@/lib/auth/session';
 import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { getAdminNavigationAccess } from '@/lib/partners/authorization';
+import { getAdminNavigationAccess, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { redirect } from 'next/navigation';
 import AdminShell from '@/components/gds/AdminShell';
+
+export const dynamic = 'force-dynamic';
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Check authentication and authorization
   const session = await getSession();
-  
+
   if (!session) {
     redirect(await authEntryPathForCurrentHost());
   }
@@ -26,14 +26,37 @@ export default async function AdminLayout({
     redirect('/');
   }
 
-  const db = await connectToDatabase();
-  const navigationAccess = await getAdminNavigationAccess(db, session);
+  let navigationAccess = {
+    isGlobalAdmin: isGlobalAdminSession(session),
+    hasAnyPartnerAccess: isGlobalAdminSession(session),
+    hasEventsAccess: isGlobalAdminSession(session),
+  };
+
+  try {
+    const db = await connectToDatabase();
+    navigationAccess = await getAdminNavigationAccess(db, session);
+  } catch (error) {
+    console.error('Error resolving admin navigation access:', error);
+    if (!navigationAccess.isGlobalAdmin) {
+      redirect('/');
+    }
+  }
+
   if (!navigationAccess.isGlobalAdmin && !navigationAccess.hasAnyPartnerAccess) {
     redirect('/');
   }
 
   return (
-    <AdminShell session={session} navigationAccess={navigationAccess}>
+    <AdminShell
+      session={{
+        user: {
+          name: session.user.name,
+          email: session.user.email,
+        },
+        appRole: session.appRole,
+      }}
+      navigationAccess={navigationAccess}
+    >
       {children}
     </AdminShell>
   );

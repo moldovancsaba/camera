@@ -1,9 +1,12 @@
+'use client';
+
 import { Card, Group, SimpleGrid, Stack, Text, ThemeIcon } from '@mantine/core';
+import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 
 export interface StatItem {
   label: string;
   value: string | number;
-  icon?: React.ReactNode;
+  iconKey?: AdminIconKey;
 }
 
 export default function StatsStrip({ items }: { items: StatItem[] }) {
@@ -20,9 +23,9 @@ export default function StatsStrip({ items }: { items: StatItem[] }) {
                 {item.value}
               </Text>
             </Stack>
-            {item.icon ? (
+            {item.iconKey ? (
               <ThemeIcon color="cameraTeal" variant="light" size={44} radius="xl">
-                {item.icon}
+                <AdminIcon iconKey={item.iconKey} size={20} />
               </ThemeIcon>
             ) : null}
           </Group>

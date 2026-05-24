@@ -7,16 +7,11 @@ import { getSession } from '@/lib/auth/session';
 import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { isGlobalAdminSession, listAccessiblePartnerIds } from '@/lib/partners/authorization';
-import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Button, Group, Stack, TextInput } from '@mantine/core';
-import { IconPlus, IconSearch, IconUsers, IconBuildingStore, IconFrame } from '@tabler/icons-react';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
-import StatsStrip from '@/components/gds/StatsStrip';
-import DataToolbar from '@/components/gds/DataToolbar';
+import AdminListPageShell from '@/components/gds/AdminListPageShell';
 import PartnersInventoryList, { type SerializedPartnerRow } from '@/components/gds/PartnersInventoryList';
 import { formatAdminDate, mongoIdString } from '@/lib/gds/serialize-admin-rows';
+import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,9 +22,6 @@ interface PartnerListItem {
   description?: string;
   isActive?: boolean;
   createdAt?: unknown;
-  eventCount?: number;
-  frameCount?: number;
-  userAccessCount?: number;
 }
 
 export default async function PartnersPage({
@@ -43,7 +35,7 @@ export default async function PartnersPage({
   }
 
   let partnerRows: SerializedPartnerRow[] = [];
-  let dbError: unknown = null;
+  let dbError = null;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
 
@@ -96,66 +88,41 @@ export default async function PartnersPage({
     }
   } catch (error) {
     console.error('Error fetching partners:', error);
-    dbError = error;
+    dbError = serializeMongoError(error);
   }
 
   return (
-    <Stack gap="xl">
-      <WorkspaceHeader
-        eyebrow="Camera Core"
-        title="Partners"
-        description="Manage partner organizations, access, and app ownership from one inventory view."
-        actions={
-          <Button component={Link} href="/admin/partners/new" color="cameraTeal" leftSection={<IconPlus size={16} />}>
-            Add Partner
-          </Button>
-        }
-      />
-
-      {!dbError && (
-        <StatsStrip
-          items={[
-            { label: 'Visible Partners', value: partnerRows.length, icon: <IconBuildingStore size={20} /> },
-            {
-              label: 'Partner Users',
-              value: partnerRows.reduce((sum, partner) => sum + partner.userAccessCount, 0),
-              icon: <IconUsers size={20} />,
-            },
-            {
-              label: 'Partner Frames',
-              value: partnerRows.reduce((sum, partner) => sum + partner.frameCount, 0),
-              icon: <IconFrame size={20} />,
-            },
-          ]}
-        />
-      )}
-
-      <DataToolbar filters={search ? [{ label: 'Search', value: search }] : undefined}>
-        <form style={{ flex: 1, minWidth: 240 }}>
-          <Group align="flex-end" wrap="wrap">
-            <TextInput
-              name="search"
-              defaultValue={search}
-              label="Search partners"
-              placeholder="Name, description, or partner ID"
-              leftSection={<IconSearch size={16} />}
-              style={{ flex: 1, minWidth: 220 }}
-            />
-            <Button type="submit" color="cameraTeal">
-              Search
-            </Button>
-            {search ? (
-              <Button component={Link} href="/admin/partners" variant="default">
-                Clear
-              </Button>
-            ) : null}
-          </Group>
-        </form>
-      </DataToolbar>
-
-      {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
-
-      {!dbError ? <PartnersInventoryList partners={partnerRows} /> : null}
-    </Stack>
+    <AdminListPageShell
+      eyebrow="Camera Core"
+      title="Partners"
+      description="Manage partner organizations, access, and app ownership from one inventory view."
+      primaryAction={{ href: '/admin/partners/new', label: 'Add Partner', iconKey: 'plus' }}
+      stats={
+        !dbError
+          ? [
+              { label: 'Visible Partners', value: partnerRows.length, iconKey: 'buildingStore' },
+              {
+                label: 'Partner Users',
+                value: partnerRows.reduce((sum, partner) => sum + partner.userAccessCount, 0),
+                iconKey: 'users',
+              },
+              {
+                label: 'Partner Frames',
+                value: partnerRows.reduce((sum, partner) => sum + partner.frameCount, 0),
+                iconKey: 'frame',
+              },
+            ]
+          : undefined
+      }
+      search={{
+        defaultValue: search,
+        label: 'Search partners',
+        placeholder: 'Name, description, or partner ID',
+        clearHref: '/admin/partners',
+      }}
+      dbError={dbError}
+    >
+      <PartnersInventoryList partners={partnerRows} />
+    </AdminListPageShell>
   );
 }

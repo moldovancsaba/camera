@@ -1,44 +1,39 @@
 /**
  * Admin Submissions Page
- * 
- * View all photo submissions from all users.
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
-import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
-import Image from 'next/image';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Button, Card, Group, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
-import { IconPhotoScan, IconSearch, IconUser, IconWorld } from '@tabler/icons-react';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
-import StatsStrip from '@/components/gds/StatsStrip';
+import AdminListPageShell from '@/components/gds/AdminListPageShell';
+import SubmissionsInventoryList, { type SerializedSubmissionRow } from '@/components/gds/SubmissionsInventoryList';
+import { mongoIdString } from '@/lib/gds/serialize-admin-rows';
+import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
+
+export const dynamic = 'force-dynamic';
 
 interface SubmissionGalleryItem {
-  _id: { toString(): string };
+  _id?: unknown;
   imageUrl: string;
   userName: string;
   userEmail: string;
   partnerId?: string | null;
-  partnerName?: string | null;
   eventId?: string | null;
-  eventName?: string | null;
   frameName?: string;
   createdAt: string;
   playCount?: number;
 }
 
 interface PartnerRef {
-  _id: { toString(): string };
+  _id?: unknown;
   partnerId: string;
   name: string;
 }
 
 interface EventRef {
-  _id: { toString(): string };
+  _id?: unknown;
   eventId: string;
   name: string;
 }
@@ -53,10 +48,8 @@ export default async function AdminSubmissionsPage({
     redirect('/admin/partners');
   }
 
-  let submissions: SubmissionGalleryItem[] = [];
-  const partnerById = new Map<string, PartnerRef>();
-  const eventById = new Map<string, EventRef>();
-  let error: unknown = null;
+  let submissionRows: SerializedSubmissionRow[] = [];
+  let dbError = null;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
 
@@ -72,14 +65,14 @@ export default async function AdminSubmissionsPage({
         { frameName: { $regex: search, $options: 'i' } },
       ];
     }
-    // NEW: Exclude archived submissions from main view
+
     const submissionDocs = await db
       .collection(COLLECTIONS.SUBMISSIONS)
       .find(query)
       .sort({ createdAt: -1 })
       .limit(100)
       .toArray();
-    submissions = submissionDocs as unknown as SubmissionGalleryItem[];
+    const submissions = submissionDocs as unknown as SubmissionGalleryItem[];
 
     const partnerIds = Array.from(
       new Set(
@@ -95,6 +88,9 @@ export default async function AdminSubmissionsPage({
           .filter((eventId): eventId is string => typeof eventId === 'string' && eventId.trim().length > 0)
       )
     );
+
+    const partnerById = new Map<string, PartnerRef>();
+    const eventById = new Map<string, EventRef>();
 
     if (partnerIds.length > 0) {
       const partners = (await db
@@ -115,179 +111,63 @@ export default async function AdminSubmissionsPage({
         eventById.set(event.eventId, event);
       }
     }
-  } catch (err) {
-    console.error('Error fetching submissions:', err);
-    error = err;
+
+    submissionRows = [];
+    for (const submission of submissions) {
+      const id = mongoIdString(submission._id);
+      if (!id) continue;
+      const partner = submission.partnerId ? partnerById.get(submission.partnerId) : undefined;
+      const event = submission.eventId ? eventById.get(submission.eventId) : undefined;
+      submissionRows.push({
+        id,
+        imageUrl: submission.imageUrl,
+        userName: submission.userName,
+        userEmail: submission.userEmail,
+        frameName: submission.frameName ?? null,
+        createdAtLabel: new Date(submission.createdAt).toLocaleDateString(),
+        playCount: submission.playCount,
+        partnerAdminId: mongoIdString(partner?._id),
+        partnerName: partner?.name ?? null,
+        eventAdminId: mongoIdString(event?._id),
+        eventName: event?.name ?? null,
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching submissions:', error);
+    dbError = serializeMongoError(error);
   }
 
   return (
-    <Stack gap="xl">
-      <WorkspaceHeader
-        eyebrow="Resource Inventory"
-        title="Global Galleries"
-        description="Cross-app submission inventory for audit, moderation, and gallery operations."
-      />
-
-      {!error && (
-        <StatsStrip
-          items={[
-            { label: 'Gallery Items', value: submissions.length, icon: <IconPhotoScan size={20} /> },
-            { label: 'Named Users', value: submissions.filter((submission) => Boolean(submission.userName)).length, icon: <IconUser size={20} /> },
-            { label: 'Partner-scoped', value: submissions.filter((submission) => Boolean(submission.partnerId)).length, icon: <IconWorld size={20} /> },
-          ]}
-        />
-      )}
-
-      <Card>
-        <form>
-          <Group align="end">
-            <TextInput
-              type="text"
-              name="search"
-              defaultValue={search}
-              label="Search"
-              placeholder="Search user, email, partner, event, or frame"
-              leftSection={<IconSearch size={16} />}
-              style={{ flex: 1 }}
-            />
-            <Button type="submit" color="cameraTeal">
-              Search
-            </Button>
-            {search ? (
-              <Link href="/admin/submissions" style={{ textDecoration: 'none' }}>
-                <Button variant="default">Clear</Button>
-              </Link>
-            ) : null}
-          </Group>
-        </form>
-      </Card>
-
-      {error != null ? <DatabaseConnectionAlert error={error} /> : null}
-
-      {!error && submissions.length === 0 ? (
-        <Card p="xl">
-          <Stack align="center" gap="sm">
-            <Text fz={48}>📷</Text>
-            <Text fw={700} fz="lg">
-              No gallery items yet
-            </Text>
-            <Text c="dimmed">Waiting for users to create their first photos!</Text>
-          </Stack>
-        </Card>
-      ) : (
-        <Stack gap="md">
-          <div>
-            <Text size="sm" c="dimmed">
-              Total: {submissions.length} gallery items
-            </Text>
-          </div>
-
-          <SimpleGrid cols={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing="lg">
-            {submissions.map((submission) => {
-              const partner = submission.partnerId ? partnerById.get(submission.partnerId) : undefined;
-              const event = submission.eventId ? eventById.get(submission.eventId) : undefined;
-
-              return (
-                <Card
-                  key={submission._id.toString()}
-                  p={0}
-                  style={{ overflow: 'hidden' }}
-                >
-                  <Link href={`/share/${submission._id}`}>
-                    <div style={{ position: 'relative', background: 'var(--mantine-color-gray-1)' }}>
-                      <Image
-                        src={submission.imageUrl}
-                        alt={`Photo by ${submission.userName}`}
-                        width={1200}
-                        height={1600}
-                        unoptimized
-                        style={{ width: '100%', height: 'auto' }}
-                      />
-                    </div>
-                  </Link>
-                  <Stack gap="sm" p="md">
-                    <Text fw={700} c="dark.8">
-                      {submission.userName}
-                    </Text>
-                    <Text size="sm" c="dimmed">
-                      {submission.userEmail}
-                    </Text>
-                    <Stack gap={2}>
-                      <Group justify="space-between" gap="xs">
-                        <Text size="xs" c="dimmed" tt="capitalize">
-                          {submission.frameName || 'frameless'}
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                          {new Date(submission.createdAt).toLocaleDateString()}
-                        </Text>
-                      </Group>
-                      {partner && (
-                        <Text size="xs" c="dimmed">
-                          Partner:{' '}
-                          <Link
-                            href={`/admin/partners/${partner._id.toString()}`}
-                            style={{ color: 'var(--mantine-color-blue-7)' }}
-                          >
-                            {partner.name}
-                          </Link>
-                        </Text>
-                      )}
-                      {event && (
-                        <Text size="xs" c="dimmed">
-                          Event:{' '}
-                          <Link
-                            href={`/admin/events/${event._id.toString()}`}
-                            style={{ color: 'var(--mantine-color-blue-7)' }}
-                          >
-                            {event.name}
-                          </Link>
-                        </Text>
-                      )}
-                      {!partner && !event && <Text size="xs" c="dimmed">General / unscoped gallery item</Text>}
-                    </Stack>
-                    {typeof submission.playCount === 'number' && submission.playCount > 0 && (
-                      <Text
-                        size="xs"
-                        fw={700}
-                        ta="center"
-                        style={{
-                          padding: '0.5rem',
-                          borderRadius: '0.5rem',
-                          background: 'rgba(147, 51, 234, 0.10)',
-                          color: 'rgb(126, 34, 206)',
-                        }}
-                      >
-                        🎬 Slideshow plays: {submission.playCount}
-                      </Text>
-                    )}
-                    <Group grow gap="sm">
-                      <Link
-                        href={`/share/${submission._id}`}
-                        style={{ textDecoration: 'none' }}
-                      >
-                        <Button fullWidth color="cameraTeal" size="sm">
-                          View
-                        </Button>
-                      </Link>
-                      <a
-                        href={submission.imageUrl}
-                        download
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ textDecoration: 'none' }}
-                      >
-                        <Button fullWidth variant="default" size="sm">
-                          Download
-                        </Button>
-                      </a>
-                    </Group>
-                  </Stack>
-                </Card>
-              );
-            })}
-          </SimpleGrid>
-        </Stack>
-      )}
-    </Stack>
+    <AdminListPageShell
+      eyebrow="Resource Inventory"
+      title="Global Galleries"
+      description="Cross-app submission inventory for audit, moderation, and gallery operations."
+      stats={
+        !dbError
+          ? [
+              { label: 'Gallery Items', value: submissionRows.length, iconKey: 'photoScan' },
+              {
+                label: 'Named Users',
+                value: submissionRows.filter((submission) => Boolean(submission.userName)).length,
+                iconKey: 'user',
+              },
+              {
+                label: 'Partner-scoped',
+                value: submissionRows.filter((submission) => Boolean(submission.partnerAdminId)).length,
+                iconKey: 'world',
+              },
+            ]
+          : undefined
+      }
+      search={{
+        defaultValue: search,
+        label: 'Search',
+        placeholder: 'Search user, email, partner, event, or frame',
+        clearHref: '/admin/submissions',
+      }}
+      dbError={dbError}
+    >
+      <SubmissionsInventoryList submissions={submissionRows} />
+    </AdminListPageShell>
   );
 }

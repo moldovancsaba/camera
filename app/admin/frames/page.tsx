@@ -1,25 +1,21 @@
 /**
  * Admin Frames Listing
- * 
- * List all frames with search, filter, and pagination.
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
-import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
-import Link from 'next/link';
-import Image from 'next/image';
 import { redirect } from 'next/navigation';
-import { Button, Card, Group, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
-import { IconFrame, IconPlus, IconSearch, IconWorld } from '@tabler/icons-react';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
-import StatsStrip from '@/components/gds/StatsStrip';
-import StatusBadge from '@/components/gds/StatusBadge';
+import AdminListPageShell from '@/components/gds/AdminListPageShell';
+import FramesInventoryList, { type SerializedFrameRow } from '@/components/gds/FramesInventoryList';
+import { mongoIdString } from '@/lib/gds/serialize-admin-rows';
+import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
+
+export const dynamic = 'force-dynamic';
 
 interface FrameListItem {
-  _id: { toString(): string };
+  _id?: unknown;
   frameId?: string;
   imageUrl: string;
   name: string;
@@ -28,20 +24,18 @@ interface FrameListItem {
   isActive: boolean;
   ownershipLevel?: 'global' | 'partner' | 'event';
   partnerId?: string | null;
-  partnerName?: string | null;
   eventId?: string | null;
-  eventName?: string | null;
   usageCount?: number;
 }
 
 interface PartnerRef {
-  _id: { toString(): string };
+  _id?: unknown;
   partnerId: string;
   name: string;
 }
 
 interface EventRef {
-  _id: { toString(): string };
+  _id?: unknown;
   eventId: string;
   name: string;
   partnerName?: string;
@@ -64,10 +58,8 @@ export default async function FramesPage({
     redirect('/admin/partners');
   }
 
-  let frames: FrameListItem[] = [];
-  const partnerById = new Map<string, PartnerRef>();
-  const eventById = new Map<string, EventRef>();
-  let dbError: unknown = null;
+  let frameRows: SerializedFrameRow[] = [];
+  let dbError = null;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
 
@@ -88,7 +80,7 @@ export default async function FramesPage({
       .sort({ createdAt: -1 })
       .limit(20)
       .toArray();
-    frames = frameDocs as unknown as FrameListItem[];
+    const frames = frameDocs as unknown as FrameListItem[];
 
     const partnerIds = Array.from(
       new Set(
@@ -104,6 +96,9 @@ export default async function FramesPage({
           .filter((eventId): eventId is string => typeof eventId === 'string' && eventId.trim().length > 0)
       )
     );
+
+    const partnerById = new Map<string, PartnerRef>();
+    const eventById = new Map<string, EventRef>();
 
     if (partnerIds.length > 0) {
       const partners = (await db
@@ -124,171 +119,63 @@ export default async function FramesPage({
         eventById.set(event.eventId, event);
       }
     }
+
+    frameRows = [];
+    for (const frame of frames) {
+      const id = mongoIdString(frame._id);
+      if (!id) continue;
+      const scope = inferFrameScope(frame);
+      const partner = frame.partnerId ? partnerById.get(frame.partnerId) : undefined;
+      const event = frame.eventId ? eventById.get(frame.eventId) : undefined;
+      frameRows.push({
+        id,
+        name: frame.name,
+        description: frame.description ?? null,
+        category: frame.category ?? null,
+        imageUrl: frame.imageUrl,
+        isActive: Boolean(frame.isActive),
+        scope,
+        usageCount: frame.usageCount || 0,
+        partnerId: frame.partnerId ?? null,
+        partnerName: partner?.name ?? null,
+        partnerAdminId: mongoIdString(partner?._id),
+        eventId: frame.eventId ?? null,
+        eventName: event?.name ?? null,
+        eventAdminId: mongoIdString(event?._id),
+      });
+    }
   } catch (error) {
     console.error('Error fetching frames:', error);
-    dbError = error;
+    dbError = serializeMongoError(error);
   }
 
+  const activeCount = frameRows.filter((frame) => frame.isActive).length;
+  const assignmentCount = frameRows.reduce((sum, frame) => sum + frame.usageCount, 0);
+
   return (
-    <Stack gap="xl">
-      <WorkspaceHeader
-        eyebrow="Resource Inventory"
-        title="Global Frames"
-        description="Shared frame inventory across partners and app experiences."
-        actions={
-          <Link href="/admin/frames/new" style={{ textDecoration: 'none' }}>
-            <Button color="cameraTeal" leftSection={<IconPlus size={16} />}>
-              Add Shared Frame
-            </Button>
-          </Link>
-        }
-      />
-
-      {!dbError && (
-        <StatsStrip
-          items={[
-            { label: 'Visible Frames', value: frames.length, icon: <IconFrame size={20} /> },
-            {
-              label: 'Active Frames',
-              value: frames.filter((frame) => frame.isActive).length,
-              icon: <IconWorld size={20} />,
-            },
-            {
-              label: 'Assignments',
-              value: frames.reduce((sum, frame) => sum + (frame.usageCount || 0), 0),
-              icon: <IconFrame size={20} />,
-            },
-          ]}
-        />
-      )}
-
-      <Card>
-        <form>
-          <Group align="end">
-            <TextInput
-              name="search"
-              defaultValue={search}
-              label="Search"
-              placeholder="Search frame name, description, or category"
-              leftSection={<IconSearch size={16} />}
-              style={{ flex: 1 }}
-            />
-            <Button type="submit" color="cameraTeal">
-              Search
-            </Button>
-            {search ? (
-              <Link href="/admin/frames" style={{ textDecoration: 'none' }}>
-                <Button variant="default">Clear</Button>
-              </Link>
-            ) : null}
-          </Group>
-        </form>
-      </Card>
-
-      {dbError != null ? <DatabaseConnectionAlert error={dbError} /> : null}
-
-      {!dbError && frames.length === 0 ? (
-        <Card p="xl">
-          <Stack align="center" gap="sm">
-            <Text fz={48}>🖼️</Text>
-            <Text fw={700} fz="lg">
-              No frames yet
-            </Text>
-            <Text c="dimmed" ta="center">
-              Add your first shared frame to start assigning it across partners and apps.
-            </Text>
-            <Link href="/admin/frames/new" style={{ textDecoration: 'none' }}>
-              <Button color="cameraTeal">Add Your First Frame</Button>
-            </Link>
-          </Stack>
-        </Card>
-      ) : (
-        <SimpleGrid cols={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing="lg">
-          {frames.map((frame) => {
-            const scope = inferFrameScope(frame);
-            const partner = frame.partnerId ? partnerById.get(frame.partnerId) : undefined;
-            const event = frame.eventId ? eventById.get(frame.eventId) : undefined;
-
-            return (
-              <Card
-                key={frame._id.toString()}
-                p={0}
-                style={{ overflow: 'hidden' }}
-              >
-                <div style={{ position: 'relative', background: 'var(--mantine-color-gray-1)', aspectRatio: '1', maxHeight: '300px' }}>
-                  <Image
-                    src={frame.imageUrl}
-                    alt={frame.name}
-                    fill
-                    style={{ objectFit: 'contain', padding: 16 }}
-                    unoptimized
-                  />
-                </div>
-                <Stack gap="sm" p="md">
-                  <Group gap="xs">
-                    <StatusBadge
-                      tone={scope === 'event' ? 'active' : scope === 'partner' ? 'info' : 'inactive'}
-                      label={scope === 'global' ? 'Global' : scope === 'partner' ? 'Partner' : 'Event'}
-                    />
-                    <StatusBadge tone={frame.isActive ? 'active' : 'inactive'} />
-                  </Group>
-                  <Text fw={700} c="dark.8">
-                    {frame.name}
-                  </Text>
-                  {frame.description && (
-                    <Text size="sm" c="dimmed" lineClamp={2}>
-                      {frame.description}
-                    </Text>
-                  )}
-                  <Stack gap={2}>
-                    <Group justify="space-between" gap="xs">
-                      <Text size="xs" c="dimmed" tt="capitalize">
-                        {frame.category || 'general'}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        Used {frame.usageCount || 0} time{frame.usageCount === 1 ? '' : 's'}
-                      </Text>
-                    </Group>
-                    {scope === 'partner' && partner && (
-                      <Text size="xs" c="dimmed">
-                        Partner:{' '}
-                        <Link
-                          href={`/admin/partners/${partner._id.toString()}`}
-                          style={{ color: 'var(--mantine-color-blue-7)' }}
-                        >
-                          {partner.name}
-                        </Link>
-                      </Text>
-                    )}
-                    {scope === 'event' && event && (
-                      <Text size="xs" c="dimmed">
-                        Event:{' '}
-                        <Link
-                          href={`/admin/events/${event._id.toString()}`}
-                          style={{ color: 'var(--mantine-color-blue-7)' }}
-                        >
-                          {event.name}
-                        </Link>
-                      </Text>
-                    )}
-                    {scope === 'event' && event?.partnerName && (
-                      <Text size="xs" c="dimmed">Partner: {event.partnerName}</Text>
-                    )}
-                  </Stack>
-                  <Link
-                    href={`/admin/frames/${frame._id}/edit`}
-                    style={{ textDecoration: 'none' }}
-                  >
-                    <Button fullWidth color="cameraTeal" variant="filled">
-                      Edit
-                    </Button>
-                  </Link>
-                </Stack>
-              </Card>
-            );
-          })}
-        </SimpleGrid>
-      )}
-    </Stack>
+    <AdminListPageShell
+      eyebrow="Resource Inventory"
+      title="Global Frames"
+      description="Shared frame inventory across partners and app experiences."
+      primaryAction={{ href: '/admin/frames/new', label: 'Add Shared Frame', iconKey: 'plus' }}
+      stats={
+        !dbError
+          ? [
+              { label: 'Visible Frames', value: frameRows.length, iconKey: 'frame' },
+              { label: 'Active Frames', value: activeCount, iconKey: 'world' },
+              { label: 'Assignments', value: assignmentCount, iconKey: 'frame' },
+            ]
+          : undefined
+      }
+      search={{
+        defaultValue: search,
+        label: 'Search',
+        placeholder: 'Search frame name, description, or category',
+        clearHref: '/admin/frames',
+      }}
+      dbError={dbError}
+    >
+      <FramesInventoryList frames={frameRows} />
+    </AdminListPageShell>
   );
 }
