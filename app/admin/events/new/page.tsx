@@ -5,7 +5,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -25,9 +24,10 @@ import {
 import { IconAlertCircle, IconX } from '@tabler/icons-react';
 import PartnerSearchDropdown from '@/components/admin/PartnerSearchDropdown';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
 import FormSection from '@/components/gds/FormSection';
 import StateBlock from '@/components/gds/StateBlock';
+import EditorScaffold from '@/components/gds/EditorScaffold';
+import MediaCard from '@/components/gds/MediaCard';
 
 interface PartnerOption {
   _id: string;
@@ -183,19 +183,19 @@ export default function NewEventPage() {
   }
 
   return (
-    <Stack gap="xl" maw={960} mx="auto">
-      <Breadcrumbs>
-        <Anchor component={Link} href="/admin/events" size="sm">
-          Events
-        </Anchor>
-        <Text size="sm">New</Text>
-      </Breadcrumbs>
-
-      <WorkspaceHeader
-        eyebrow="Events App"
-        title="Create Event App Instance"
-        description="Create a new event runtime for a partner using shared Camera Core resources and partner defaults."
-      />
+    <EditorScaffold
+      eyebrow="Events App"
+      title="Create Event App Instance"
+      description="Create a new event runtime for a partner using shared Camera Core resources and partner defaults."
+      breadcrumbs={
+        <Breadcrumbs>
+          <Anchor component={Link} href="/admin/events" size="sm">
+            Events
+          </Anchor>
+          <Text size="sm">New</Text>
+        </Breadcrumbs>
+      }
+    >
 
       {error ? (
         <Alert color="red" icon={<IconAlertCircle size={16} />}>
@@ -250,28 +250,27 @@ export default function NewEventPage() {
 
           <FormSection title="Customization">
             {logoPreview ? (
-              <Group gap="md">
-                <Image
-                  src={logoPreview}
-                  alt="Logo preview"
-                  width={96}
-                  height={96}
-                  unoptimized
-                  style={{ borderRadius: 8, border: '1px solid var(--mantine-color-gray-3)' }}
-                />
-                <Button
-                  type="button"
-                  variant="light"
-                  color="red"
-                  leftSection={<IconX size={16} />}
-                  onClick={() => {
-                    setLogoFile(null);
-                    setLogoPreview(null);
-                  }}
-                >
-                  Clear logo
-                </Button>
-              </Group>
+              <MediaCard
+                src={logoPreview}
+                alt="Logo preview"
+                caption={logoFile?.name}
+                ratio={1}
+                padding={20}
+                action={
+                  <Button
+                    type="button"
+                    variant="light"
+                    color="red"
+                    leftSection={<IconX size={16} />}
+                    onClick={() => {
+                      setLogoFile(null);
+                      setLogoPreview(null);
+                    }}
+                  >
+                    Clear logo
+                  </Button>
+                }
+              />
             ) : (
               <FileInput
                 label="Event logo"
@@ -309,6 +308,6 @@ export default function NewEventPage() {
           </Group>
         </Stack>
       </form>
-    </Stack>
+    </EditorScaffold>
   );
 }

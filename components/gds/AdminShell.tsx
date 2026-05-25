@@ -11,7 +11,6 @@ import {
   Burger,
   Divider,
   Group,
-  NavLink,
   ScrollArea,
   Stack,
   Text,
@@ -30,6 +29,7 @@ import {
   IconWorld,
 } from '@tabler/icons-react';
 import { APP_VERSION } from '@/lib/app-version';
+import SemanticNavLink from '@/components/gds/SemanticNavLink';
 
 interface AdminShellProps {
   session: {
@@ -222,32 +222,13 @@ function NavSection({
         {items.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + '/');
           return (
-            <NavLink
+            <SemanticNavLink
               key={item.href}
-              component={Link}
               href={item.href}
               onClick={onNavigate}
               active={active}
               label={item.label}
-              leftSection={item.icon}
-              variant={active ? 'light' : 'subtle'}
-              color="cameraTeal"
-              styles={{
-                root: {
-                  borderRadius: 14,
-                },
-                label: {
-                  fontWeight: active ? 700 : 600,
-                  color: active
-                    ? 'var(--mantine-color-cameraTeal-8)'
-                    : 'var(--mantine-color-gray-8)',
-                },
-                section: {
-                  color: active
-                    ? 'var(--mantine-color-cameraTeal-7)'
-                    : 'var(--mantine-color-gray-7)',
-                },
-              }}
+              icon={item.icon}
             />
           );
         })}

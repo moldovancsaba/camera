@@ -9,7 +9,7 @@ import { getSession } from '@/lib/auth/session';
 import Image from 'next/image';
 import { APP_VERSION } from '@/lib/app-version';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
-import PublicSurfaceShell from '@/components/gds/PublicSurfaceShell';
+import PublicShell from '@/components/gds/PublicShell';
 import { Alert, Badge, Button, Group, Stack, Text, Title } from '@mantine/core';
 
 // This page uses cookies, so it must be dynamic
@@ -52,7 +52,7 @@ export default async function Home({
   const oauthHint = oauthErrorHint(oauthError);
   
   return (
-    <PublicSurfaceShell size="md" centered>
+    <PublicShell size="md" centered>
       <Stack align="center" justify="center" gap="xl" py="xl">
         {oauthError && !session && (
           <Alert
@@ -123,6 +123,6 @@ export default async function Home({
           </Text>
         </Stack>
       </Stack>
-    </PublicSurfaceShell>
+    </PublicShell>
   );
 }

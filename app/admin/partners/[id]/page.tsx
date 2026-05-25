@@ -23,6 +23,8 @@ import {
 } from '@mantine/core';
 import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
 import StatsStrip from '@/components/gds/StatsStrip';
+import InfoCard from '@/components/gds/InfoCard';
+import AccessSummary from '@/components/gds/AccessSummary';
 import StyleSections from '@/components/admin/StyleSections';
 import PartnerUserAccessManager from '@/components/admin/PartnerUserAccessManager';
 import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
@@ -313,55 +315,40 @@ export default async function PartnerDetailPage({
       />
 
       <SimpleGrid cols={{ base: 1, xl: 5 }} spacing="lg">
-        <Card>
-          <Text size="xs" tt="uppercase" fw={700} c="dimmed" style={{ letterSpacing: '0.12em' }}>
-            Workspace
-          </Text>
-          <Title order={3} mt="sm">
-            Partner Operations
-          </Title>
-          <Text size="sm" c="dimmed" mt="sm">
-            Use this page as the operating home for this partner’s resources, app surfaces, and gallery context.
-          </Text>
-        </Card>
+        <InfoCard
+          title="Partner Operations"
+          description="Use this page as the operating home for this partner’s resources, app surfaces, and gallery context."
+        />
 
         <Link href={`/admin/partners/${id}/frames`} style={{ textDecoration: 'none' }}>
-          <Card bg="blue.0">
-            <Text fw={700} c="blue.9">
-              Resources
-            </Text>
-            <Text size="sm" c="blue.8" mt="sm">
-              Manage default frames and logos in partner context instead of starting from the global inventory.
-            </Text>
-          </Card>
+          <InfoCard
+            tone="blue"
+            title="Resources"
+            description="Manage default frames and logos in partner context instead of starting from the global inventory."
+          />
         </Link>
 
         <Link
           href={canManageEvents ? `/admin/events/new?partnerId=${partner.partnerId}` : '/admin/events'}
           style={{ textDecoration: 'none' }}
         >
-          <Card bg="green.0">
-            <Text fw={700} c="green.9">
-              Events App
-            </Text>
-            <Text size="sm" c="green.8" mt="sm">
-              {canManageEvents
+          <InfoCard
+            tone="green"
+            title="Events App"
+            description={
+              canManageEvents
                 ? 'Create and manage the event app instances that use this partner’s brand defaults and resource assignments.'
-                : 'Review the event app instances that use this partner’s brand defaults and resource assignments.'}
-            </Text>
-          </Card>
+                : 'Review the event app instances that use this partner’s brand defaults and resource assignments.'
+            }
+          />
         </Link>
         {canManagePartner ? (
           <Link href="/admin/users" style={{ textDecoration: 'none' }}>
-            <Card bg="yellow.0">
-              <Text fw={700} c="yellow.9">
-                Users
-              </Text>
-              <Text size="sm" c="yellow.8" mt="sm">
-                View global access-managed users and submission-derived guest identities that show up in this partner’s
-                activity.
-              </Text>
-            </Card>
+            <InfoCard
+              tone="yellow"
+              title="Users"
+              description="View global access-managed users and submission-derived guest identities that show up in this partner’s activity."
+            />
           </Link>
         ) : null}
       </SimpleGrid>
@@ -406,29 +393,17 @@ export default async function PartnerDetailPage({
             </Table>
           </Card>
 
-          <Card>
-            <Title order={3}>Access Summary</Title>
-            <Table mt="md">
-              <Table.Tbody>
-                <Table.Tr>
-                  <Table.Th>Current operator</Table.Th>
-                  <Table.Td>{canManagePartner ? 'Global admin' : 'Partner-scoped'}</Table.Td>
-                </Table.Tr>
-                <Table.Tr>
-                  <Table.Th>Events App role</Table.Th>
-                  <Table.Td style={{ textTransform: 'capitalize' }}>{eventsRoleLabel}</Table.Td>
-                </Table.Tr>
-                <Table.Tr>
-                  <Table.Th>Active assignments</Table.Th>
-                  <Table.Td>{partnerAccessAssignments.filter((assignment) => assignment.isActive).length}</Table.Td>
-                </Table.Tr>
-              </Table.Tbody>
-            </Table>
-            <Text size="sm" c="dimmed" mt="md">
-              Global inventory remains restricted to global admins. Partner-scoped roles are limited to the assigned app
-              surfaces for this partner.
-            </Text>
-          </Card>
+          <AccessSummary
+            description="Global inventory remains restricted to global admins. Partner-scoped roles are limited to the assigned app surfaces for this partner."
+            items={[
+              { label: 'Current operator', value: canManagePartner ? 'Global admin' : 'Partner-scoped' },
+              { label: 'Events App role', value: eventsRoleLabel },
+              {
+                label: 'Active assignments',
+                value: partnerAccessAssignments.filter((assignment) => assignment.isActive).length,
+              },
+            ]}
+          />
 
           {canManagePartner ? (
             <Card>

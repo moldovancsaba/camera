@@ -11,7 +11,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { ObjectId } from 'mongodb';
-import PublicSurfaceShell from '@/components/gds/PublicSurfaceShell';
+import PublicShell from '@/components/gds/PublicShell';
 import EmptyState from '@/components/gds/EmptyState';
 import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 
@@ -63,7 +63,7 @@ export default async function ProfilePage() {
   }
 
   return (
-    <PublicSurfaceShell size="xl">
+    <PublicShell size="xl">
       <Stack gap="xl">
         <Group justify="space-between" align="flex-start">
           <div>
@@ -147,6 +147,6 @@ export default async function ProfilePage() {
           </Stack>
         ) : null}
       </Stack>
-    </PublicSurfaceShell>
+    </PublicShell>
   );
 }

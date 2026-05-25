@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ActionIcon, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { ActionIcon, Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
+import { confirmDestructive } from '@/lib/gds/confirm-destructive';
+import EmptyState from '@/components/gds/EmptyState';
 
 export interface LandingPageListItem {
   _id: string;
@@ -25,28 +28,29 @@ export default function LandingPageManager({
   initialLandingPages,
 }: Props) {
   const [landingPages, setLandingPages] = useState(initialLandingPages);
+  const [error, setError] = useState<string | null>(null);
 
   const handleDelete = async (mongoId: string) => {
-    if (!confirm('Delete this landing page?')) return;
+    setError(null);
     try {
-      const res = await fetch(`/api/landing-pages/${mongoId}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        setLandingPages((prev) => prev.filter((page) => page._id !== mongoId));
-      } else {
+      const res = await fetch(`/api/landing-pages/${mongoId}`, { method: 'DELETE' });
+      if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(err.error || 'Failed to delete landing page');
+        throw new Error(err.error || 'Failed to delete landing page');
       }
-    } catch {
-      alert('Failed to delete landing page');
+      setLandingPages((prev) => prev.filter((page) => page._id !== mongoId));
+      notifications.show({ title: 'Landing page deleted', message: 'Experience page removed.', color: 'green' });
+    } catch (deleteError) {
+      const message = deleteError instanceof Error ? deleteError.message : 'Failed to delete landing page';
+      setError(message);
+      notifications.show({ title: 'Delete failed', message, color: 'red' });
     }
   };
 
   const copyUrl = (slug: string) => {
     const url = `${window.location.origin}/landing/${slug}`;
-    navigator.clipboard.writeText(url);
-    alert('Landing page URL copied to clipboard');
+    void navigator.clipboard.writeText(url);
+    notifications.show({ title: 'URL copied', message: 'Landing page URL copied to clipboard.', color: 'green' });
   };
 
   return (
@@ -66,15 +70,18 @@ export default function LandingPageManager({
         </Link>
       </Group>
 
+      {error ? (
+        <Alert color="red" mx="xl" mt="xl">
+          {error}
+        </Alert>
+      ) : null}
+
       {landingPages.length === 0 ? (
-        <Stack align="center" gap="sm" p="xl">
-          <Text fz={48}>🌐</Text>
-          <Text fw={700} fz="lg">
-            No landing pages yet
-          </Text>
-          <Text c="dimmed" ta="center">
-            Create an experience page for this event and connect it to one slideshow or one layout
-          </Text>
+        <Stack p="xl">
+          <EmptyState
+            title="No landing pages yet"
+            description="Create an experience page for this event and connect it to one slideshow or one layout."
+          />
         </Stack>
       ) : (
         <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="lg" p="xl">
@@ -92,7 +99,19 @@ export default function LandingPageManager({
                     {page.isActive ? '● Active' : '○ Inactive'}
                   </Text>
                 </div>
-                <ActionIcon variant="subtle" color="red" onClick={() => void handleDelete(page._id)} aria-label="Delete">
+                <ActionIcon
+                  variant="subtle"
+                  color="red"
+                  aria-label="Delete"
+                  onClick={() =>
+                    confirmDestructive({
+                      title: 'Delete landing page',
+                      message: 'Are you sure you want to delete this landing page?',
+                      targetName: page.title?.trim() || page.slug,
+                      onConfirm: () => void handleDelete(page._id),
+                    })
+                  }
+                >
                   <IconTrash size={16} />
                 </ActionIcon>
               </Group>

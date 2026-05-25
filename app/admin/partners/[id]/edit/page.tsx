@@ -24,7 +24,8 @@ import {
   Textarea,
 } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import EditorScaffold from '@/components/gds/EditorScaffold';
+import FormSection from '@/components/gds/FormSection';
 
 interface PartnerRecord {
   partnerId: string;
@@ -157,14 +158,18 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <Stack gap="xl" maw={960} mx="auto">
-      <Breadcrumbs>
-        <Link href="/admin/partners">Partners</Link>
-        <Link href={`/admin/partners/${partnerId}`}>{partner?.name}</Link>
-        <Text>Edit</Text>
-      </Breadcrumbs>
-
-      <WorkspaceHeader eyebrow="Camera Core" title="Edit Partner" description="Update partner information" />
+    <EditorScaffold
+      eyebrow="Camera Core"
+      title="Edit Partner"
+      description="Update partner information"
+      breadcrumbs={
+        <Breadcrumbs>
+          <Link href="/admin/partners">Partners</Link>
+          <Link href={`/admin/partners/${partnerId}`}>{partner?.name}</Link>
+          <Text>Edit</Text>
+        </Breadcrumbs>
+      }
+    >
 
       {error ? (
         <Alert color="red" icon={<IconAlertCircle size={16} />}>
@@ -175,65 +180,55 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
 
       <form onSubmit={handleSubmit}>
         <Stack gap="lg">
-          <Card>
-            <Stack gap="md">
-              <Text fw={700}>Basic Information</Text>
-              <TextInput
-                name="name"
-                label="Partner Name *"
-                required
-                defaultValue={partner?.name}
-                placeholder="e.g., AC Milan, Red Bull, Nike"
-                description="The name of the partner organization or brand"
-              />
-              <Textarea
-                name="description"
-                label="Description"
-                rows={3}
-                defaultValue={partner?.description || ''}
-                placeholder="Optional description..."
-              />
-            </Stack>
-          </Card>
+          <FormSection title="Basic Information">
+            <TextInput
+              name="name"
+              label="Partner Name *"
+              required
+              defaultValue={partner?.name}
+              placeholder="e.g., AC Milan, Red Bull, Nike"
+              description="The name of the partner organization or brand"
+            />
+            <Textarea
+              name="description"
+              label="Description"
+              rows={3}
+              defaultValue={partner?.description || ''}
+              placeholder="Optional description..."
+            />
+          </FormSection>
 
-          <Card>
-            <Stack gap="md">
-              <Text fw={700}>Contact Information</Text>
-              <TextInput name="contactName" label="Contact Person" defaultValue={partner?.contactName || ''} placeholder="e.g., John Doe" />
-              <TextInput name="contactEmail" type="email" label="Contact Email" defaultValue={partner?.contactEmail || ''} placeholder="e.g., contact@partner.com" />
-            </Stack>
-          </Card>
+          <FormSection title="Contact Information">
+            <TextInput name="contactName" label="Contact Person" defaultValue={partner?.contactName || ''} placeholder="e.g., John Doe" />
+            <TextInput name="contactEmail" type="email" label="Contact Email" defaultValue={partner?.contactEmail || ''} placeholder="e.g., contact@partner.com" />
+          </FormSection>
 
-          <Card>
-            <Stack gap="md">
-              <Text fw={700}>Default Styles for Events</Text>
-              <Text size="sm" c="dimmed">
-                Set default brand colors that will automatically apply to all new events under this partner. Events can
-                override these later to become independent.
-              </Text>
-              <SimpleGrid cols={{ base: 1, md: 2 }}>
-                <ColorInput
-                  label="Default Primary Color"
-                  value={primaryColor}
-                  onChange={setPrimaryColor}
-                  description="Used for buttons, focus states"
-                  format="hex"
-                />
-                <ColorInput
-                  label="Default Border/Accent Color"
-                  value={secondaryColor}
-                  onChange={setSecondaryColor}
-                  description="Used for borders, inputs, checkboxes"
-                  format="hex"
-                />
-              </SimpleGrid>
-              <Text size="sm" c="dimmed">
-                💡 <strong>Note:</strong> Changes to default styles will automatically update all child events that have
-                not been customized (marked with 🟢). Events with custom styles (marked with 🔴) will keep their own
-                values.
-              </Text>
-            </Stack>
-          </Card>
+          <FormSection
+            title="Default Styles for Events"
+            description="Set default brand colors that will automatically apply to all new events under this partner. Events can override these later to become independent."
+          >
+            <SimpleGrid cols={{ base: 1, md: 2 }}>
+              <ColorInput
+                label="Default Primary Color"
+                value={primaryColor}
+                onChange={setPrimaryColor}
+                description="Used for buttons, focus states"
+                format="hex"
+              />
+              <ColorInput
+                label="Default Border/Accent Color"
+                value={secondaryColor}
+                onChange={setSecondaryColor}
+                description="Used for borders, inputs, checkboxes"
+                format="hex"
+              />
+            </SimpleGrid>
+            <Text size="sm" c="dimmed">
+              💡 <strong>Note:</strong> Changes to default styles will automatically update all child events that have
+              not been customized (marked with 🟢). Events with custom styles (marked with 🔴) will keep their own
+              values.
+            </Text>
+          </FormSection>
 
           <Card>
             <Stack gap="xs">
@@ -266,6 +261,6 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
           </Stack>
         </Stack>
       </form>
-    </Stack>
+    </EditorScaffold>
   );
 }

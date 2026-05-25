@@ -4,6 +4,11 @@
 
 These rules define how Mantine-backed GDS primitives should be introduced and used inside Camera.
 
+Current SSOT alignment target:
+
+- GDS version: `2.3.0`
+- Camera aligns to the shared contracts locally until direct package consumption is possible
+
 ## Primitive Categories
 
 ### Foundation
@@ -74,6 +79,27 @@ Do not use for:
 
 - tiny edit subpages that only need a compact title row
 
+### `SemanticNavLink`
+
+Use for:
+
+- admin navigation items with semantic active/inactive states
+
+Do not use for:
+
+- public navigation or inline text links inside content
+
+### `InfoCard`
+
+Use for:
+
+- concise explanatory or orientation cards in dashboards, workspace overviews, and inventory intros
+
+Do not use for:
+
+- dense metric output that belongs in `StatsStrip`
+- long-form content sections
+
 ### `StatsStrip`
 
 Use for:
@@ -126,6 +152,18 @@ Do not use for:
 
 - transient toast feedback (use notifications) or field-level validation (use input error props)
 
+### `AccessSummary`
+
+Use for:
+
+- permission and scope summaries
+- partner- or user-level access snapshots
+
+Do not use for:
+
+- editable permission matrices
+- full audit trails
+
 ### `FormSection`
 
 Use for:
@@ -135,6 +173,46 @@ Use for:
 Do not use for:
 
 - entire multi-step wizards without section boundaries
+
+### `EditorScaffold`
+
+Use for:
+
+- edit/create pages that need breadcrumbs, a consistent header, and a centered editing column
+
+Do not use for:
+
+- dashboards, list pages, or non-editor workspaces
+
+### `UploadDropzone`
+
+Use for:
+
+- admin upload flows for media, overlays, logos, and editor-owned assets
+
+Do not use for:
+
+- tiny inline single-file inputs where drag/drop would add more chrome than value
+
+### `MediaCard`
+
+Use for:
+
+- image and asset previews with optional contextual actions
+
+Do not use for:
+
+- large gallery grids that belong to dedicated gallery/list patterns
+
+### `PublicShell`
+
+Use for:
+
+- home, profile, share, and other non-capture public surfaces that need the shared page shell
+
+Do not use for:
+
+- full-screen camera capture or slideshow playback flows
 
 ### `confirmDestructive` (`lib/gds/confirm-destructive.tsx`)
 

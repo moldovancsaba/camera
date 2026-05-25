@@ -11,7 +11,7 @@ import type { Db } from 'mongodb';
 import Image from 'next/image';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import PublicSurfaceShell from '@/components/gds/PublicSurfaceShell';
+import PublicShell from '@/components/gds/PublicShell';
 import { Button, Group, Stack, Text, Title } from '@mantine/core';
 
 interface Props {
@@ -156,7 +156,7 @@ export default async function SharePage({ params }: Props) {
   const headline = event?.name ?? 'Shared photo';
 
   return (
-    <PublicSurfaceShell size="lg">
+    <PublicShell size="lg">
       <Stack gap="xl">
         <Stack align="center" gap="xs" ta="center">
           <Title order={1}>{headline}</Title>
@@ -204,6 +204,6 @@ export default async function SharePage({ params }: Props) {
           </Group>
         </div>
       </Stack>
-    </PublicSurfaceShell>
+    </PublicShell>
   );
 }

@@ -1,11 +1,12 @@
 'use client';
 
-import { Card, Stack, Text } from '@mantine/core';
+import { Stack } from '@mantine/core';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
 import StatsStrip from '@/components/gds/StatsStrip';
 import ActionCardGrid from '@/components/gds/ActionCardGrid';
+import InfoCard from '@/components/gds/InfoCard';
 
 export default function AdminDashboardView({
   framesCount,
@@ -38,16 +39,12 @@ export default function AdminDashboardView({
             ]}
           />
 
-          <Card>
-            <Stack gap="lg">
-              <div>
-                <Text fw={700} fz="lg">
-                  Quick Actions
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Primary entry points for partner operations and shared resources.
-                </Text>
-              </div>
+          <Stack gap="lg">
+            <InfoCard
+              title="Quick Actions"
+              description="Primary entry points for partner operations and shared resources."
+            />
+            <div>
               <ActionCardGrid
                 items={[
                   {
@@ -82,8 +79,8 @@ export default function AdminDashboardView({
                   },
                 ]}
               />
-            </Stack>
-          </Card>
+            </div>
+          </Stack>
         </>
       ) : null}
     </Stack>

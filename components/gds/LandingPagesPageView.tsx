@@ -8,6 +8,7 @@ import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
 import DataTable from '@/components/gds/DataTable';
 import StatusBadge from '@/components/gds/StatusBadge';
 import StateBlock from '@/components/gds/StateBlock';
+import InfoCard from '@/components/gds/InfoCard';
 
 export interface SerializedLandingPageRow {
   id: string;
@@ -43,30 +44,21 @@ export default function LandingPagesPageView({
 
       {!dbError ? (
         <SimpleGrid cols={{ base: 1, xl: 3 }}>
-          <Card bg="cyan.0">
-            <Text fw={700} c="cyan.9">
-              Shared resource
-            </Text>
-            <Text size="sm" c="cyan.8" mt="sm">
-              Landing pages are now visible as first-class Camera Core assets instead of living only inside event detail pages.
-            </Text>
-          </Card>
-          <Card bg="blue.0">
-            <Text fw={700} c="blue.9">
-              Current inventory
-            </Text>
-            <Text size="sm" c="blue.8" mt="sm">
-              {landingPages.length} landing page{landingPages.length === 1 ? '' : 's'} matched the current filters.
-            </Text>
-          </Card>
-          <Card bg="green.0">
-            <Text fw={700} c="green.9">
-              Editing model
-            </Text>
-            <Text size="sm" c="green.8" mt="sm">
-              Create and edit pages from their parent event today. Use this inventory to find ownership, public URLs, and embedded slideshow/layout relationships globally.
-            </Text>
-          </Card>
+          <InfoCard
+            tone="cyan"
+            title="Shared resource"
+            description="Landing pages are now visible as first-class Camera Core assets instead of living only inside event detail pages."
+          />
+          <InfoCard
+            tone="blue"
+            title="Current inventory"
+            description={`${landingPages.length} landing page${landingPages.length === 1 ? '' : 's'} matched the current filters.`}
+          />
+          <InfoCard
+            tone="green"
+            title="Editing model"
+            description="Create and edit pages from their parent event today. Use this inventory to find ownership, public URLs, and embedded slideshow/layout relationships globally."
+          />
         </SimpleGrid>
       ) : null}
 

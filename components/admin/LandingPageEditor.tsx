@@ -2,11 +2,31 @@
 
 import type { FormEvent, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import {
+  Alert,
+  Anchor,
+  Breadcrumbs,
+  Button,
+  Card,
+  Checkbox,
+  Group,
+  Radio,
+  Select,
+  SimpleGrid,
+  Stack,
+  Text,
+  TextInput,
+  Textarea,
+} from '@mantine/core';
+import { IconAlertCircle, IconCheck, IconCopy } from '@tabler/icons-react';
 import type { LandingPageEditorActionPreset } from '@/lib/admin/build-landing-page-editor-props';
 import type { LandingPageCssPresetOption } from '@/lib/landing-page-css-presets';
+import EditorScaffold from '@/components/gds/EditorScaffold';
+import FormSection from '@/components/gds/FormSection';
+import UploadDropzone from '@/components/gds/UploadDropzone';
+import MediaCard from '@/components/gds/MediaCard';
 
 interface TargetOption {
   id: string;
@@ -126,12 +146,7 @@ function Section({
   title: string;
   children: ReactNode;
 }) {
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-6">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
-      {children}
-    </div>
-  );
+  return <FormSection title={title}>{children}</FormSection>;
 }
 
 function Field({
@@ -144,13 +159,17 @@ function Field({
   helper?: string;
 }) {
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+    <Stack gap={6}>
+      <Text size="sm" fw={500}>
         {label}
-      </label>
+      </Text>
       {children}
-      {helper ? <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{helper}</p> : null}
-    </div>
+      {helper ? (
+        <Text size="xs" c="dimmed">
+          {helper}
+        </Text>
+      ) : null}
+    </Stack>
   );
 }
 
@@ -163,38 +182,15 @@ function DropZone({
   onFile: (file: File | null) => void | Promise<void>;
   disabled?: boolean;
 }) {
-  const [dragActive, setDragActive] = useState(false);
-
   return (
-    <label
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragActive(true);
-      }}
-      onDragLeave={() => setDragActive(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setDragActive(false);
-        void onFile(e.dataTransfer.files?.[0] ?? null);
-      }}
-      className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed px-4 py-5 text-center transition-colors ${
-        dragActive
-          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-          : 'border-gray-300 bg-gray-50 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-900 dark:hover:bg-gray-950'
-      } ${disabled ? 'pointer-events-none opacity-50' : ''}`}
-    >
-      <input
-        type="file"
-        className="hidden"
-        disabled={disabled}
-        accept={acceptLabel.includes('Markdown') ? '.md,text/markdown' : undefined}
-        onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
-      />
-      <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
-        Click to upload or drag and drop
-      </span>
-      <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">{acceptLabel}</span>
-    </label>
+    <UploadDropzone
+      accept={acceptLabel.includes('Markdown') ? ['text/markdown', '.md'] : undefined}
+      title="Click to upload or drag and drop"
+      description={acceptLabel}
+      icon={acceptLabel.includes('Markdown') ? <IconCopy size={40} color="var(--mantine-color-gray-6)" /> : undefined}
+      onFile={onFile}
+      disabled={disabled}
+    />
   );
 }
 
@@ -466,232 +462,207 @@ export default function LandingPageEditor({
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
-        <Link href="/admin/events" className="hover:text-gray-700 dark:hover:text-gray-200">Events</Link>
-        <span>→</span>
-        <Link href={`/admin/events/${eventMongoId}`} className="hover:text-gray-700 dark:hover:text-gray-200">{eventName}</Link>
-        <span>→</span>
-        <span>{landingPageId ? 'Edit Experience Page' : 'New Experience Page'}</span>
-      </div>
-
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          {landingPageId ? 'Edit Experience Landing Page' : 'Create Experience Landing Page'}
-        </h1>
-        <p className="mt-2 max-w-3xl text-gray-600 dark:text-gray-400">
-          Build a reusable public surface for <span className="font-semibold">{eventName}</span>.
-          The page can embed a slideshow or layout and also route guests into app actions like event capture.
-        </p>
-      </div>
-
+    <EditorScaffold
+      eyebrow="Experience Surfaces"
+      title={landingPageId ? 'Edit Experience Landing Page' : 'Create Experience Landing Page'}
+      description={`Build a reusable public surface for ${eventName}. The page can embed a slideshow or layout and also route guests into app actions like event capture.`}
+      maxWidth={1200}
+      breadcrumbs={
+        <Breadcrumbs>
+          <Anchor component={Link} href="/admin/events" size="sm">
+            Events
+          </Anchor>
+          <Anchor component={Link} href={`/admin/events/${eventMongoId}`} size="sm">
+            {eventName}
+          </Anchor>
+          <Text size="sm">{landingPageId ? 'Edit Experience Page' : 'New Experience Page'}</Text>
+        </Breadcrumbs>
+      }
+    >
       {error ? (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-red-800 dark:text-red-200 font-medium">Error</p>
-          <p className="text-red-600 dark:text-red-300 text-sm mt-1">{error}</p>
-        </div>
+        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+          {error}
+        </Alert>
       ) : null}
 
       {success ? (
-        <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
-          <p className="text-emerald-800 dark:text-emerald-200 font-medium">Saved</p>
-          <p className="text-emerald-600 dark:text-emerald-300 text-sm mt-1">{success}</p>
-        </div>
+        <Alert color="green" icon={<IconCheck size={16} />}>
+          {success}
+        </Alert>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit}>
+        <Stack gap="lg">
         <Section title="Experience Basics">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
             <Field label="Title">
-              <input
+              <TextInput
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Optional heading"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
               />
             </Field>
             <Field label="Slug" helper={`Public URL: /landing/${slug || 'your-slug'}`}>
-              <input
+              <TextInput
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
                 placeholder="event-promo"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                 required
               />
             </Field>
-          </div>
+          </SimpleGrid>
           <Field label="Description">
-            <textarea
+            <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
             />
           </Field>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
             <Field
               label="Action URL"
               helper="Optional. Use this to send visitors into capture, registration, gallery, or any other app flow."
             >
-              <input
+              <TextInput
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://example.com"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
               />
             </Field>
             <Field
               label="Action button text"
               helper="Examples: Send a Selfie, Join Event, View Gallery."
             >
-              <input
+              <TextInput
                 value={urlButtonText}
                 onChange={(e) => setUrlButtonText(e.target.value)}
                 placeholder="Open experience"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
               />
             </Field>
-          </div>
+          </SimpleGrid>
           {actionPresets.length > 0 ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/30">
-              <div className="mb-3">
-                <h3 className="text-sm font-semibold text-emerald-900 dark:text-emerald-300">
-                  App action presets
-                </h3>
-                <p className="mt-1 text-xs text-emerald-800 dark:text-emerald-200">
+            <Card bg="green.0" withBorder>
+              <Stack gap="md">
+                <div>
+                  <Text size="sm" fw={700} c="green.9">
+                    App action presets
+                  </Text>
+                  <Text mt={4} size="xs" c="green.8">
                   Prefill the action URL and button text from common Camera app flows, then fine-tune the copy if needed.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                  </Text>
+                </div>
+              <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="sm">
                 {actionPresets.map((preset) => (
-                  <button
+                  <Button
                     key={preset.id}
                     type="button"
+                    variant="light"
+                    color="green"
                     onClick={() => applyActionPreset(preset)}
-                    className="rounded-lg border border-emerald-300 bg-white px-4 py-3 text-left transition-colors hover:border-emerald-500 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-gray-900 dark:hover:bg-emerald-900/30"
+                    styles={{ root: { height: 'auto', justifyContent: 'flex-start', padding: '1rem' }, inner: { alignItems: 'flex-start' }, label: { width: '100%' } }}
                   >
-                    <div className="text-sm font-semibold text-gray-900 dark:text-white">{preset.label}</div>
-                    <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">{preset.description}</div>
-                    <div className="mt-2 break-all text-[11px] text-emerald-700 dark:text-emerald-300">
-                      {preset.url}
-                    </div>
-                  </button>
+                    <Stack gap={4} align="flex-start">
+                      <Text size="sm" fw={700} c="dark.8">{preset.label}</Text>
+                      <Text size="xs" c="dimmed">{preset.description}</Text>
+                      <Text size="11px" c="green.8" style={{ wordBreak: 'break-all' }}>{preset.url}</Text>
+                    </Stack>
+                  </Button>
                 ))}
-              </div>
-            </div>
+              </SimpleGrid>
+              </Stack>
+            </Card>
           ) : null}
         </Section>
 
         <Section title="Files and Assets">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="space-y-4">
+          <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+            <Stack gap="md">
               <Field label="Logo (.png) and library">
-                <div className="space-y-3">
-                  <select
+                <Stack gap="md">
+                  <Select
                     value={logoId}
-                    onChange={(e) => setLogoId(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                  >
-                    <option value="">No logo</option>
-                    {logoOptions.map((logo) => (
-                      <option key={logo.logoId} value={logo.logoId}>
-                        {logo.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(value) => setLogoId(value ?? '')}
+                    data={[{ value: '', label: 'No logo' }, ...logoOptions.map((logo) => ({ value: logo.logoId, label: logo.name }))]}
+                  />
                   <DropZone acceptLabel="PNG only. Uploads into the logo library." onFile={handleLogoUpload} disabled={isUploadingLogo} />
                   {selectedLogo ? (
-                    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
-                      <Image src={selectedLogo.imageUrl} alt={selectedLogo.name} width={160} height={96} unoptimized className="max-h-24 w-auto object-contain" />
-                    </div>
+                    <MediaCard src={selectedLogo.imageUrl} alt={selectedLogo.name} ratio={16 / 9} padding={16} />
                   ) : null}
-                </div>
+                </Stack>
               </Field>
 
               <Field
                 label="QR code image"
                 helper="Useful when the landing page also needs to hand off guests into another app flow from a screen or print asset."
               >
-                <div className="space-y-3">
+                <Stack gap="md">
                   <DropZone acceptLabel="PNG, JPG, GIF, WebP, or SVG." onFile={handleQrUpload} disabled={isUploadingQr} />
                   {qrCodeImageUrl ? (
-                    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
-                      <Image src={qrCodeImageUrl} alt="Landing page QR code" width={160} height={160} unoptimized className="max-h-40 w-auto object-contain" />
-                      <button
+                    <MediaCard
+                      src={qrCodeImageUrl}
+                      alt="Landing page QR code"
+                      ratio={1}
+                      action={
+                        <Button
                         type="button"
+                        size="xs"
+                        variant="default"
                         onClick={() => void handleRemoveQrCode()}
-                        className="mt-3 px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                       >
                         Remove QR code
-                      </button>
-                    </div>
+                        </Button>
+                      }
+                    />
                   ) : null}
-                </div>
+                </Stack>
               </Field>
-            </div>
+            </Stack>
 
-            <div className="space-y-6">
+            <Stack gap="lg">
               <Field label="Terms and Conditions (.md)">
-                <div className="space-y-3">
+                <Stack gap="md">
                   <DropZone acceptLabel="Markdown only." onFile={(file) => handleMarkdownUpload(file, 'terms')} />
-                  <textarea
+                  <Textarea
                     value={termsMarkdown}
                     onChange={(e) => setTermsMarkdown(e.target.value)}
                     rows={10}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-mono text-sm"
+                    styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
                   />
-                  {termsFileName ? <p className="text-xs text-gray-500 dark:text-gray-400">Loaded from {termsFileName}</p> : null}
-                </div>
+                  {termsFileName ? <Text size="xs" c="dimmed">Loaded from {termsFileName}</Text> : null}
+                </Stack>
               </Field>
 
               <Field label="Privacy Policy (.md)">
-                <div className="space-y-3">
+                <Stack gap="md">
                   <DropZone acceptLabel="Markdown only." onFile={(file) => handleMarkdownUpload(file, 'privacy')} />
-                  <textarea
+                  <Textarea
                     value={privacyMarkdown}
                     onChange={(e) => setPrivacyMarkdown(e.target.value)}
                     rows={10}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-mono text-sm"
+                    styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
                   />
-                  {privacyFileName ? <p className="text-xs text-gray-500 dark:text-gray-400">Loaded from {privacyFileName}</p> : null}
-                </div>
+                  {privacyFileName ? <Text size="xs" c="dimmed">Loaded from {privacyFileName}</Text> : null}
+                </Stack>
               </Field>
-            </div>
-          </div>
+            </Stack>
+          </SimpleGrid>
         </Section>
 
         <Section title="Primary Experience and CSS">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <Text size="sm" c="dimmed">
             Choose which Camera Core surface is embedded on this page today. The surrounding copy and CTA can still direct users into related app experiences.
-          </p>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          </Text>
+          <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
             <Field label="Embedded experience type">
-              <div className="flex flex-wrap gap-6">
-                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                  <input
-                    type="radio"
-                    name="targetType"
-                    checked={targetType === 'slideshow'}
-                    onChange={() => {
-                      setTargetType('slideshow');
-                      setTargetId('');
-                    }}
-                  />
-                  Slideshow experience
-                </label>
-                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                  <input
-                    type="radio"
-                    name="targetType"
-                    checked={targetType === 'layout'}
-                    onChange={() => {
-                      setTargetType('layout');
-                      setTargetId('');
-                    }}
-                  />
-                  Slideshow layout experience
-                </label>
-              </div>
+              <Radio.Group value={targetType} onChange={(value) => {
+                setTargetType(value as 'slideshow' | 'layout');
+                setTargetId('');
+              }}>
+                <Group>
+                  <Radio value="slideshow" label="Slideshow experience" />
+                  <Radio value="layout" label="Slideshow layout experience" />
+                </Group>
+              </Radio.Group>
             </Field>
             <Field
               label={targetType === 'layout' ? 'Slideshow layout target' : 'Slideshow target'}
@@ -699,90 +670,75 @@ export default function LandingPageEditor({
                 ? 'Select the multi-cell layout this experience page should embed.'
                 : 'Select the slideshow this experience page should embed.'}
             >
-              <select
+              <Select
                 value={targetId}
-                onChange={(e) => setTargetId(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                onChange={(value) => setTargetId(value ?? '')}
+                data={[{ value: '', label: 'Select one' }, ...targetOptions.map((option) => ({ value: option.id, label: option.name }))]}
                 required
-              >
-                <option value="">Select one</option>
-                {targetOptions.map((option) => (
-                  <option key={option.id} value={option.id}>{option.name}</option>
-                ))}
-              </select>
-            </Field>
-          </div>
-
-          <div className="flex flex-wrap gap-6">
-            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-              Active
-            </label>
-            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-              <input
-                type="checkbox"
-                checked={cookieConsentEnabled}
-                onChange={(e) => setCookieConsentEnabled(e.target.checked)}
               />
-              Require cookie acceptance
-            </label>
-          </div>
+            </Field>
+          </SimpleGrid>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <Group>
+            <Checkbox checked={isActive} onChange={(e) => setIsActive(e.currentTarget.checked)} label="Active" />
+            <Checkbox
+              checked={cookieConsentEnabled}
+              onChange={(e) => setCookieConsentEnabled(e.currentTarget.checked)}
+              label="Require cookie acceptance"
+            />
+          </Group>
+
+          <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
             <Field label="CSS preset">
-              <select
+              <Select
                 value={customCssPresetId}
-                onChange={(e) => handlePresetChange(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-              >
-                <option value="">Select preset</option>
-                {presetOptions.map((preset) => (
-                  <option key={preset.presetId} value={preset.presetId}>
-                    {preset.name} ({preset.className})
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => handlePresetChange(value ?? '')}
+                data={[
+                  { value: '', label: 'Select preset' },
+                  ...presetOptions.map((preset) => ({
+                    value: preset.presetId,
+                    label: `${preset.name} (${preset.className})`,
+                  })),
+                ]}
+              />
             </Field>
             <Field
               label="CSS class name"
               helper="Keep the same class name to update that CSS preset. Enter a new class name to save the CSS as a new preset."
             >
-              <input
+              <TextInput
                 value={customCssClassName}
                 onChange={(e) => setCustomCssClassName(e.target.value)}
                 placeholder="landing-page-theme"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
               />
             </Field>
-          </div>
+          </SimpleGrid>
 
           <Field label="CSS">
-            <textarea
+            <Textarea
               value={customCss}
               onChange={(e) => setCustomCss(e.target.value)}
               rows={22}
               placeholder=".landing-page-root { background: #000; }"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-mono text-sm"
+              styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
             />
           </Field>
         </Section>
 
-        <div className="flex items-center justify-end gap-3">
-          <Link
-            href={`/admin/events/${eventMongoId}`}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
+        <Group justify="flex-end">
+          <Button component={Link} href={`/admin/events/${eventMongoId}`} variant="default">
             Cancel
-          </Link>
-          <button
+          </Button>
+          <Button
             type="submit"
             disabled={isSubmitting || isUploadingQr || isUploadingLogo}
-            className="px-5 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+            color="cameraTeal"
           >
             {isSubmitting ? 'Saving…' : landingPageId ? 'Update experience page' : 'Save experience page'}
-          </button>
-        </div>
+          </Button>
+        </Group>
+        </Stack>
       </form>
-    </div>
+    </EditorScaffold>
   );
 }

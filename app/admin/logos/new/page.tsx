@@ -6,23 +6,21 @@
  * Upload and configure new logos for event scenarios.
  */
 
-import { useRef, useState } from 'react';
-import Image from 'next/image';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Alert,
   Button,
-  Card,
   Checkbox,
-  FileButton,
-  Group,
   Stack,
-  Text,
   TextInput,
   Textarea,
 } from '@mantine/core';
 import { IconAlertCircle, IconPhotoPlus, IconTrash } from '@tabler/icons-react';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import EditorScaffold from '@/components/gds/EditorScaffold';
+import FormSection from '@/components/gds/FormSection';
+import UploadDropzone from '@/components/gds/UploadDropzone';
+import MediaCard from '@/components/gds/MediaCard';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
@@ -30,7 +28,6 @@ function getErrorMessage(error: unknown): string {
 
 export default function NewLogoPage() {
   const router = useRouter();
-  const fileInputResetRef = useRef<() => void>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +54,6 @@ export default function NewLogoPage() {
   const clearFile = () => {
     setPreview(null);
     setFile(null);
-    fileInputResetRef.current?.();
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -91,85 +87,59 @@ export default function NewLogoPage() {
   };
 
   return (
-    <Stack gap="xl" maw={960} mx="auto">
-      <WorkspaceHeader
-        eyebrow="Resource Inventory"
-        title="Add New Logo"
-        description="Upload a logo for event scenarios"
-      />
+    <EditorScaffold
+      eyebrow="Resource Inventory"
+      title="Add New Logo"
+      description="Upload a logo for event scenarios"
+    >
 
       <form onSubmit={handleSubmit}>
         <Stack gap="lg">
-          <Card>
-            <Stack gap="md">
-              <Text fw={600}>Logo Image *</Text>
-              {preview ? (
-                <Stack gap="sm">
-                  <div
-                    style={{
-                      position: 'relative',
-                      aspectRatio: '1 / 1',
-                      background: 'var(--mantine-color-gray-1)',
-                      borderRadius: 'var(--mantine-radius-md)',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <Image src={preview} alt="Preview" fill unoptimized style={{ objectFit: 'contain', padding: 32 }} />
-                  </div>
-                  <Group justify="space-between">
-                    <Text size="sm" c="dimmed">
-                      {file?.name}
-                    </Text>
-                    <Button color="red" variant="light" leftSection={<IconTrash size={16} />} onClick={clearFile}>
-                      Remove
-                    </Button>
-                  </Group>
-                </Stack>
-              ) : (
-                <Card withBorder radius="md" bg="var(--mantine-color-gray-0)" p="xl">
-                  <Stack align="center" gap="sm">
-                    <Text fz={48}>🎨</Text>
-                    <Text fw={600}>Click to upload or drag and drop</Text>
-                    <Text size="sm" c="dimmed">
-                      PNG, JPG, SVG, or WebP (MAX. 32MB)
-                    </Text>
-                    <FileButton resetRef={fileInputResetRef} onChange={handleFileChange} accept=".png,.jpg,.jpeg,.svg,.webp">
-                      {(props) => (
-                        <Button {...props} leftSection={<IconPhotoPlus size={16} />}>
-                          Choose file
-                        </Button>
-                      )}
-                    </FileButton>
-                  </Stack>
-                </Card>
-              )}
+          <FormSection title="Logo Image *">
+            {preview ? (
+              <MediaCard
+                src={preview}
+                alt="Logo preview"
+                caption={file?.name}
+                action={
+                  <Button color="red" variant="light" leftSection={<IconTrash size={16} />} onClick={clearFile}>
+                    Remove
+                  </Button>
+                }
+              />
+            ) : (
+              <UploadDropzone
+                accept={['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']}
+                icon={<IconPhotoPlus size={40} color="var(--mantine-color-gray-6)" />}
+                title="Click to upload or drag and drop"
+                description="PNG, JPG, SVG, or WebP (MAX. 32MB)"
+                onFile={handleFileChange}
+              />
+            )}
 
-              {error ? (
-                <Alert color="red" icon={<IconAlertCircle size={16} />}>
-                  {error}
-                </Alert>
-              ) : null}
-            </Stack>
-          </Card>
+            {error ? (
+              <Alert color="red" icon={<IconAlertCircle size={16} />}>
+                {error}
+              </Alert>
+            ) : null}
+          </FormSection>
 
-          <Card>
-            <Stack gap="md">
-              <TextInput name="name" label="Logo Name *" required placeholder="e.g., AC Milan Logo 2025" />
-              <Textarea name="description" label="Description" rows={3} placeholder="Optional description..." />
-              <Checkbox name="isActive" defaultChecked value="true" label="Active (available for assignment to events)" />
-            </Stack>
-          </Card>
+          <FormSection title="Logo Details">
+            <TextInput name="name" label="Logo Name *" required placeholder="e.g., AC Milan Logo 2025" />
+            <Textarea name="description" label="Description" rows={3} placeholder="Optional description..." />
+            <Checkbox name="isActive" defaultChecked value="true" label="Active (available for assignment to events)" />
+          </FormSection>
 
-          <Group justify="flex-end">
+          <Stack gap="sm">
             <Button variant="default" onClick={() => router.push('/admin/logos')}>
               Cancel
             </Button>
             <Button type="submit" loading={isUploading}>
-              {isUploading ? 'Uploading...' : 'Upload Logo'}
+              {isUploading ? 'Uploading…' : 'Upload Logo'}
             </Button>
-          </Group>
+          </Stack>
         </Stack>
       </form>
-    </Stack>
+    </EditorScaffold>
   );
 }

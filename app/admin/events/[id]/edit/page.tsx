@@ -31,9 +31,9 @@ import { notifications } from '@mantine/notifications';
 import { type CustomPage } from '@/lib/db/schemas';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
 import FormSection from '@/components/gds/FormSection';
 import StateBlock from '@/components/gds/StateBlock';
+import EditorScaffold from '@/components/gds/EditorScaffold';
 
 interface EventRecord {
   _id: string;
@@ -237,22 +237,22 @@ export default function EditEventPage({
   }
 
   return (
-    <Stack gap="xl" maw={960} mx="auto">
-      <Breadcrumbs>
-        <Anchor component={Link} href="/admin/events" size="sm">
-          Events
-        </Anchor>
-        <Anchor component={Link} href={`/admin/events/${mongoId}`} size="sm">
-          {event?.name}
-        </Anchor>
-        <Text size="sm">Edit</Text>
-      </Breadcrumbs>
-
-      <WorkspaceHeader
-        eyebrow="Events App"
-        title="Edit Event"
-        description="Update event information and capture experience settings."
-      />
+    <EditorScaffold
+      eyebrow="Events App"
+      title="Edit Event"
+      description="Update event information and capture experience settings."
+      breadcrumbs={
+        <Breadcrumbs>
+          <Anchor component={Link} href="/admin/events" size="sm">
+            Events
+          </Anchor>
+          <Anchor component={Link} href={`/admin/events/${mongoId}`} size="sm">
+            {event?.name}
+          </Anchor>
+          <Text size="sm">Edit</Text>
+        </Breadcrumbs>
+      }
+    >
 
       {error ? (
         <Alert color="red" icon={<IconAlertCircle size={16} />}>
@@ -441,6 +441,6 @@ export default function EditEventPage({
           }
         }}
       />
-    </Stack>
+    </EditorScaffold>
   );
 }

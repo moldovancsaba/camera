@@ -10,7 +10,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Card, Checkbox, Stack, Text, TextInput, Textarea } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import EditorScaffold from '@/components/gds/EditorScaffold';
+import FormSection from '@/components/gds/FormSection';
 
 interface CreatePartnerResponse {
   partner?: { _id?: string };
@@ -67,12 +68,11 @@ export default function NewPartnerPage() {
   };
 
   return (
-    <Stack gap="xl" maw={960} mx="auto">
-      <WorkspaceHeader
-        eyebrow="Camera Core"
-        title="Add New Partner"
-        description="Create a new partner organization"
-      />
+    <EditorScaffold
+      eyebrow="Camera Core"
+      title="Add New Partner"
+      description="Create a new partner organization"
+    >
 
       {error ? (
         <Alert color="red" icon={<IconAlertCircle size={16} />}>
@@ -83,27 +83,21 @@ export default function NewPartnerPage() {
 
       <form onSubmit={handleSubmit}>
         <Stack gap="lg">
-          <Card>
-            <Stack gap="md">
-              <Text fw={700}>Basic Information</Text>
-              <TextInput
-                name="name"
-                label="Partner Name *"
-                required
-                placeholder="e.g., AC Milan, Red Bull, Nike"
-                description="The name of the partner organization or brand"
-              />
-              <Textarea name="description" label="Description" rows={3} placeholder="Optional description..." />
-            </Stack>
-          </Card>
+          <FormSection title="Basic Information">
+            <TextInput
+              name="name"
+              label="Partner Name *"
+              required
+              placeholder="e.g., AC Milan, Red Bull, Nike"
+              description="The name of the partner organization or brand"
+            />
+            <Textarea name="description" label="Description" rows={3} placeholder="Optional description..." />
+          </FormSection>
 
-          <Card>
-            <Stack gap="md">
-              <Text fw={700}>Contact Information</Text>
-              <TextInput name="contactName" label="Contact Person" placeholder="e.g., John Doe" />
-              <TextInput name="contactEmail" type="email" label="Contact Email" placeholder="e.g., contact@partner.com" />
-            </Stack>
-          </Card>
+          <FormSection title="Contact Information">
+            <TextInput name="contactName" label="Contact Person" placeholder="e.g., John Doe" />
+            <TextInput name="contactEmail" type="email" label="Contact Email" placeholder="e.g., contact@partner.com" />
+          </FormSection>
 
           <Card>
             <Stack gap="xs">
@@ -124,6 +118,6 @@ export default function NewPartnerPage() {
           </Stack>
         </Stack>
       </form>
-    </Stack>
+    </EditorScaffold>
   );
 }

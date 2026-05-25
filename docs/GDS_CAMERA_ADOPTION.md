@@ -1,11 +1,11 @@
 # Camera GDS Adoption
 
 **Version**: 2.9.0  
-**Last Updated**: 2026-05-24
+**Last Updated**: 2026-05-25
 
 ## SSOT statement
 
-[general-design-system](https://github.com/moldovancsaba/general-design-system) (GDS **v2.2.0+**) is the single source of truth for design, UI, and UX across the portfolio.
+[general-design-system](https://github.com/moldovancsaba/general-design-system) (GDS **v2.3.0**) is the single source of truth for design, UI, and UX across the portfolio.
 
 This file and other Camera docs describe only **implementation adapters**, migration state, validation commands, and approved exceptions. If a Camera-local UI document conflicts with the GDS repository, **the GDS repository wins**.
 
@@ -29,18 +29,26 @@ Camera is the reference implementation of the portfolio GDS on **Mantine 9**. Ad
 | GDS pattern family | Camera adapter | Status |
 |--------------------|----------------|--------|
 | App shell (admin) | `components/gds/AdminShell.tsx` | Active |
+| Semantic navigation link | `components/gds/SemanticNavLink.tsx` | Active |
 | Page header | `components/gds/WorkspaceHeader.tsx` (extends SSOT `PageHeader` with eyebrow + status) | Active |
+| Workspace header | `components/gds/WorkspaceHeader.tsx` | Active |
 | Metric strip | `components/gds/StatsStrip.tsx` | Active |
+| Info card | `components/gds/InfoCard.tsx` | Active |
 | Action entry grid | `components/gds/ActionCardGrid.tsx` | Active |
 | Data toolbar | `components/gds/DataToolbar.tsx` | Active — Events + Partners lists |
 | Responsive data view | `components/gds/ResponsiveDataView.tsx` | Active — Events + Partners lists |
 | Data table | `components/gds/DataTable.tsx` | Active |
 | Empty state | `components/gds/EmptyState.tsx` | Active |
+| Access summary | `components/gds/AccessSummary.tsx` | Active |
 | Status badge | `components/gds/StatusBadge.tsx` | Active |
 | State block | `components/gds/StateBlock.tsx` | Active — reference: Events list + edit |
 | Form section | `components/gds/FormSection.tsx` | Active — Event edit/new, Frame edit |
+| Editor scaffold | `components/gds/EditorScaffold.tsx` | Active — Event edit, Partner edit/new |
+| Upload dropzone | `components/gds/UploadDropzone.tsx` | Active — Frame, Logo, Landing Page uploads |
+| Media card | `components/gds/MediaCard.tsx` | Active — Frame, Logo, Event, Landing Page previews |
 | Destructive confirm | `lib/gds/confirm-destructive.tsx` | Active — delete/remove admin actions |
-| Public surface shell | `components/gds/PublicSurfaceShell.tsx` | Active — home, profile, share |
+| Public shell | `components/gds/PublicShell.tsx` | Active — home, profile, share |
+| Public surface shell | `components/gds/PublicSurfaceShell.tsx` | Active — implementation adapter behind `PublicShell` |
 | Auth / public capture shell | `app/capture/**`, `app/globals.css` | **Exception** (see below) |
 | Slideshow playback | `components/slideshow/**` | **Exception** (media-first) |
 | Landing page editor CSS | `components/admin/LandingPageEditor.tsx` | **Exception** (editor preview) |
@@ -68,7 +76,7 @@ Camera is the reference implementation of the portfolio GDS on **Mantine 9**. Ad
 2. ~~Admin shell~~ (done)
 3. Inventory tables + toolbar + responsive list — **active** (core inventory screens migrated)
 4. Workspaces — **active** (major partner/event admin workspaces migrated; refinements continue)
-5. Forms and editors — **in progress** (major forms migrated; editor consistency remains)
+5. Forms and editors — **in progress** (major forms migrated; landing-page/custom-page/slideshow tooling still carries the main remaining drift)
 6. Statuses, permissions, enablement language — partial
 7. Landing-page editor alignment — backlog
 8. Public capture shell migration — **in progress** (home/profile/share moved; capture flow remains)
@@ -81,7 +89,7 @@ Direct package consumption from `/Users/Shared/Projects/GENERAL_DESIGN_SYSTEM/pa
 Current state:
 
 - Camera runtime: Mantine `9.2.1`, React `19.2.0`
-- Shared `@gds/*` packages: version `2.0.0`, Mantine `^7.9.0`, React `^18.2.0`
+- Shared `@gds/*` packages: version `2.3.0`, Mantine `^7.9.0`, React `^18.2.0 || ^19.0.0`
 
 Required rule until the SSOT packages are upgraded:
 
