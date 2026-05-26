@@ -15,6 +15,7 @@
 import { useState, useEffect, use, useCallback } from 'react';
 import Image from 'next/image';
 import CameraCapture from '@/components/camera/CameraCapture';
+import ShareOverlay from '@/components/capture/ShareOverlay';
 import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoAreYouPage';
 import AcceptPage, { type AcceptPageData } from '@/components/capture/AcceptPage';
 import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
@@ -1138,156 +1139,32 @@ export default function EventCapturePage({
               
               {/* Share overlay - Transparent black overlay over photo */}
               {shareUrl && showSharePage && (
-                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-                  <div className="w-full max-w-md bg-black/70 rounded-2xl p-6 space-y-4 backdrop-blur-md">
-                    <h3 className="text-2xl font-bold text-white text-center flex items-center justify-center gap-2">
-                      <span className="text-3xl" aria-hidden>
-                        📤
-                      </span>
-                      {shareScreenTitle}
-                    </h3>
-                    
-                    {/* Share URL */}
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={shareUrl}
-                        readOnly
-                        className="flex-1 px-4 py-3 rounded-lg bg-white/20 text-white text-sm border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50"
-                      />
-                      <button
-                        onClick={handleCopyLink}
-                        className="px-4 py-3 bg-white/30 text-white rounded-lg hover:bg-white/40 transition-colors flex items-center gap-2 backdrop-blur"
-                      >
-                        <span className="text-xl" aria-hidden>
-                          📋
-                        </span>
-                        <span className="font-medium">{shareCopyLinkButtonText}</span>
-                      </button>
-                    </div>
-
-                    <a
-                      href={shareUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block w-full text-center px-4 py-3 rounded-lg font-semibold bg-white text-gray-900 border border-white/80 hover:bg-white/95 transition-colors shadow-lg"
-                    >
-                      {shareViewPhotoButtonText}
-                    </a>
-
-                    <p className="text-xs text-white/75 text-center leading-relaxed">
-                      {shareSuggestedMessageLabel}{' '}
-                      <span className="font-medium text-white">{shareCaptionForSocial}</span>
-                    </p>
-
-                    {tryOnResult?.requested ? (
-                      <div
-                        className={
-                          tryOnResult.status === 'enqueue_failed'
-                            ? 'rounded-lg border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
-                            : 'rounded-lg border border-sky-400/40 bg-sky-500/10 px-4 py-3 text-sm text-sky-100'
-                        }
-                      >
-                        {tryOnResult.status === 'queued' || tryOnResult.status === 'deduplicated' ? (
-                          <>
-                            <p className="font-semibold">Try-on queued</p>
-                            <p className="mt-1">
-                              Job ID: <span className="font-mono">{tryOnResult.jobId}</span>
-                            </p>
-                          </>
-                        ) : (
-                          <>
-                            <p className="font-semibold">Try-on was not queued</p>
-                            <p className="mt-1">
-                              {tryOnResult.error || 'The image was saved, but the try-on queue step failed.'}
-                            </p>
-                          </>
-                        )}
-                      </div>
-                    ) : null}
-                    
-                    {/* Social Share Buttons */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => handleShareSocial('facebook')}
-                        className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-lg"
-                      >
-                        Facebook
-                      </button>
-                      <button
-                        onClick={() => handleShareSocial('twitter')}
-                        className="px-4 py-3 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors font-semibold shadow-lg"
-                      >
-                        Twitter
-                      </button>
-                      <button
-                        onClick={() => handleShareSocial('linkedin')}
-                        className="px-4 py-3 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors font-semibold shadow-lg"
-                      >
-                        LinkedIn
-                      </button>
-                      <button
-                        onClick={() => handleShareSocial('whatsapp')}
-                        className="px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-semibold shadow-lg"
-                      >
-                        WhatsApp
-                      </button>
-                    </div>
-                    
-                    {/* Next Button */}
-                    <button
-                      onClick={handleMoveToThankYou}
-                      style={{ backgroundColor: event?.brandColor || '#3B82F6' }}
-                      className="w-full px-6 py-4 text-white rounded-lg font-bold text-lg hover:opacity-90 transition-all shadow-xl"
-                    >
-                      {shareNextButtonText}
-                    </button>
-                  </div>
-                </div>
+                <ShareOverlay
+                  shareUrl={shareUrl}
+                  title={shareScreenTitle}
+                  copyButtonText={shareCopyLinkButtonText}
+                  viewPhotoButtonText={shareViewPhotoButtonText}
+                  suggestedMessageLabel={shareSuggestedMessageLabel}
+                  shareCaption={shareCaptionForSocial}
+                  tryOnResult={tryOnResult}
+                  nextButtonText={shareNextButtonText}
+                  onCopyLink={handleCopyLink}
+                  onShareSocial={handleShareSocial}
+                  onNext={handleMoveToThankYou}
+                />
               )}
               
               {/* Skip share overlay */}
               {shareUrl && !showSharePage && (
-                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-                  <div className="bg-black/70 rounded-2xl p-8 text-center backdrop-blur-md max-w-md">
-                    <div className="text-6xl mb-4">✅</div>
-                    <p className="text-2xl text-white font-bold mb-6">
-                      {skipShareMessage}
-                    </p>
-                    {tryOnResult?.requested ? (
-                      <div
-                        className={
-                          tryOnResult.status === 'enqueue_failed'
-                            ? 'mb-6 rounded-lg border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-left text-sm text-amber-100'
-                            : 'mb-6 rounded-lg border border-sky-400/40 bg-sky-500/10 px-4 py-3 text-left text-sm text-sky-100'
-                        }
-                      >
-                        {tryOnResult.status === 'queued' || tryOnResult.status === 'deduplicated' ? (
-                          <>
-                            <p className="font-semibold">Try-on queued</p>
-                            <p className="mt-1">
-                              Job ID: <span className="font-mono">{tryOnResult.jobId}</span>
-                            </p>
-                          </>
-                        ) : (
-                          <>
-                            <p className="font-semibold">Try-on was not queued</p>
-                            <p className="mt-1">
-                              {tryOnResult.error || 'The image was saved, but the try-on queue step failed.'}
-                            </p>
-                          </>
-                        )}
-                      </div>
-                    ) : null}
-                    <button
-                      onClick={handleMoveToThankYou}
-                      style={{ backgroundColor: event?.brandColor || '#3B82F6' }}
-                      className="px-8 py-4 text-white rounded-lg font-bold text-lg hover:opacity-90 transition-all shadow-xl"
-                    >
-                      {shareNextButtonText}
-                    </button>
-                  </div>
-                </div>
+                <ShareOverlay
+                  title="Saved"
+                  shareCaption={shareCaptionForSocial}
+                  tryOnResult={tryOnResult}
+                  nextButtonText={shareNextButtonText}
+                  completionMessage={skipShareMessage}
+                  onNext={handleMoveToThankYou}
+                  showShareActions={false}
+                />
               )}
             </div>
           </div>

@@ -12,6 +12,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import CameraCapture from '@/components/camera/CameraCapture';
 import FileUpload from '@/components/camera/FileUpload';
+import ShareOverlay from '@/components/capture/ShareOverlay';
 import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
 import { AppButton } from '@/components/ui/AppButton';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
@@ -497,98 +498,20 @@ export default function CapturePage() {
                     </AppButton>
                   </div>
 
-                  {tryOnResult?.requested ? (
-                    <div
-                      className={
-                        tryOnResult.status === 'enqueue_failed'
-                          ? 'rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
-                          : 'rounded-xl border border-sky-500/40 bg-sky-500/10 px-4 py-3 text-sm text-sky-100'
-                      }
-                    >
-                      {tryOnResult.status === 'queued' || tryOnResult.status === 'deduplicated' ? (
-                        <>
-                          <p className="font-semibold">Try-on queued</p>
-                          <p className="mt-1">
-                            Job ID: <span className="font-mono">{tryOnResult.jobId}</span>
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="font-semibold">Try-on was not queued</p>
-                          <p className="mt-1">
-                            {tryOnResult.error || 'The image was saved, but the try-on queue step failed.'}
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  ) : null}
-
                   {shareUrl && (
                     <div className="border-t border-[var(--app-panel-border)] pt-4">
-                      <h3 className="app-surface-card-row-title mb-3">Share Your Photo</h3>
-                      <div className="flex flex-col gap-3">
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={shareUrl}
-                            readOnly
-                            className="app-form-control flex-1 text-sm"
-                          />
-                          <AppButton type="button" variant="ghost" compact onClick={handleCopyLink}>
-                            📋 Copy
-                          </AppButton>
-                        </div>
-                        <a
-                          href={shareUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="app-btn app-btn--primary app-btn--inline text-center"
-                        >
-                          View your photo (opens share link)
-                        </a>
-                        <p className="text-xs text-[var(--app-muted-fg)]">
-                          Suggested message:{' '}
-                          <span className="font-medium text-[var(--app-fg)]">{shareCaptionForSocial}</span>
-                        </p>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                          <AppButton
-                            type="button"
-                            variant="secondary"
-                            compact
-                            className="app-btn--inline w-full min-w-0"
-                            onClick={() => handleShareSocial('facebook')}
-                          >
-                            Facebook
-                          </AppButton>
-                          <AppButton
-                            type="button"
-                            variant="secondary"
-                            compact
-                            className="app-btn--inline w-full min-w-0"
-                            onClick={() => handleShareSocial('twitter')}
-                          >
-                            Twitter
-                          </AppButton>
-                          <AppButton
-                            type="button"
-                            variant="secondary"
-                            compact
-                            className="app-btn--inline w-full min-w-0"
-                            onClick={() => handleShareSocial('linkedin')}
-                          >
-                            LinkedIn
-                          </AppButton>
-                          <AppButton
-                            type="button"
-                            variant="secondary"
-                            compact
-                            className="app-btn--inline w-full min-w-0"
-                            onClick={() => handleShareSocial('whatsapp')}
-                          >
-                            WhatsApp
-                          </AppButton>
-                        </div>
-                      </div>
+                      <ShareOverlay
+                        shareUrl={shareUrl}
+                        shareCaption={shareCaptionForSocial}
+                        tryOnResult={tryOnResult}
+                        title="Share Your Photo"
+                        copyButtonText="Copy"
+                        viewPhotoButtonText="View your photo (opens share link)"
+                        suggestedMessageLabel="Suggested message:"
+                        onCopyLink={handleCopyLink}
+                        onShareSocial={handleShareSocial}
+                        overlay={false}
+                      />
                     </div>
                   )}
 
