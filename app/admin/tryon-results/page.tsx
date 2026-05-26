@@ -10,10 +10,14 @@ import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 
 export const dynamic = 'force-dynamic';
 
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export default async function AdminTryOnResultsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ reviewStatus?: string }>;
+  searchParams?: Promise<{ reviewStatus?: string; search?: string }>;
 }) {
   const session = await getSession();
   if (!isGlobalAdminSession(session)) {
@@ -22,6 +26,7 @@ export default async function AdminTryOnResultsPage({
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const reviewStatus = typeof resolvedSearchParams?.reviewStatus === 'string' ? resolvedSearchParams.reviewStatus.trim() : '';
+  const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
 
   let rows: ModerationRow[] = [];
   let dbError = null;
@@ -34,6 +39,16 @@ export default async function AdminTryOnResultsPage({
     };
     if (reviewStatus) {
       query.reviewStatus = reviewStatus;
+    }
+    if (search) {
+      const regex = { $regex: escapeRegex(search), $options: 'i' };
+      query.$or = [
+        { userName: regex },
+        { userEmail: regex },
+        { eventName: regex },
+        { partnerName: regex },
+        { tryOnLeatherSuitId: regex },
+      ];
     }
 
     const docs = (await db
@@ -94,17 +109,30 @@ export default async function AdminTryOnResultsPage({
           : undefined
       }
       search={{
-        defaultValue: '',
-        label: 'Status filter',
-        placeholder: 'Use the quick filters below',
+        defaultValue: search,
+        label: 'Search queue',
+        placeholder: 'Search by user, email, event, partner, or suit',
         clearHref: '/admin/tryon-results',
+        hiddenFields: reviewStatus ? { reviewStatus } : undefined,
       }}
+      toolbarHint="Search the queue directly or jump to the pending-only review view."
       toolbarFilters={
-        reviewStatus
-          ? [{ label: 'Review Status', value: reviewStatus.replace(/_/g, ' ') }]
+        [
+          ...(reviewStatus ? [{ label: 'Review Status', value: reviewStatus.replace(/_/g, ' ') }] : []),
+          ...(search ? [{ label: 'Search', value: search }] : []),
+        ].length > 0
+          ? [
+              ...(reviewStatus ? [{ label: 'Review Status', value: reviewStatus.replace(/_/g, ' ') }] : []),
+              ...(search ? [{ label: 'Search', value: search }] : []),
+            ]
           : undefined
       }
-      toolbarTrailing={{ href: '/admin/tryon-results?reviewStatus=pending_review', label: 'Pending only' }}
+      toolbarTrailing={{
+        href: search
+          ? `/admin/tryon-results?reviewStatus=pending_review&search=${encodeURIComponent(search)}`
+          : '/admin/tryon-results?reviewStatus=pending_review',
+        label: 'Pending only',
+      }}
       dbError={dbError}
     >
       <TryOnResultModerationTable rows={rows} />
