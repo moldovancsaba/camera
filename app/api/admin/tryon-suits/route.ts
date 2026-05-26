@@ -139,7 +139,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       throw apiBadRequest('A leather jersey with this catalog ID already exists');
     }
 
-    const uploadResult = await uploadImage(file, { name: `tryon-suit-${Date.now()}` });
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const base64 = buffer.toString('base64');
+    const uploadResult = await uploadImage(base64, { name: `tryon-suit-${Date.now()}` });
 
     const suit: LeatherSuit = {
       leatherSuitId,
