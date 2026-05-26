@@ -14,12 +14,12 @@ import {
   Button,
   Card,
   Code,
+  Group,
   SimpleGrid,
   Stack,
-  Table,
   Text,
   Title,
-} from '@mantine/core';
+} from '@/components/gds/ui';
 import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
 import StatsStrip from '@/components/gds/StatsStrip';
 import StyleSections from '@/components/admin/StyleSections';
@@ -112,6 +112,25 @@ interface LandingPageDoc {
   targetName?: string;
   isActive?: boolean;
   createdAt: string;
+}
+
+function EventInfoRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <Group justify="space-between" align="flex-start" gap="md" wrap="nowrap">
+      <Text size="sm" fw={700} c="gray.8" miw={120}>
+        {label}
+      </Text>
+      <Text size="sm" c="gray.8" ta="right">
+        {value}
+      </Text>
+    </Group>
+  );
 }
 
 export default async function EventDetailPage({
@@ -278,43 +297,31 @@ export default async function EventDetailPage({
 
           <Card>
             <Title order={3}>Event Information</Title>
-            <Table mt="md">
-              <Table.Tbody>
-                <Table.Tr>
-                  <Table.Th>Event ID</Table.Th>
-                  <Table.Td>
-                    <Code>{event.eventId}</Code>
-                  </Table.Td>
-                </Table.Tr>
-                {event.eventDate ? (
-                  <Table.Tr>
-                    <Table.Th>Event Date</Table.Th>
-                    <Table.Td>
-                      {new Date(event.eventDate).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </Table.Td>
-                  </Table.Tr>
-                ) : null}
-                {event.location ? (
-                  <Table.Tr>
-                    <Table.Th>Location</Table.Th>
-                    <Table.Td>{event.location}</Table.Td>
-                  </Table.Tr>
-                ) : null}
-                <Table.Tr>
-                  <Table.Th>Created</Table.Th>
-                  <Table.Td>{new Date(event.createdAt).toLocaleString()}</Table.Td>
-                </Table.Tr>
-                <Table.Tr>
-                  <Table.Th>Last Updated</Table.Th>
-                  <Table.Td>{new Date(event.updatedAt).toLocaleString()}</Table.Td>
-                </Table.Tr>
-              </Table.Tbody>
-            </Table>
+            <Stack gap="sm" mt="md">
+              <EventInfoRow label="Event ID" value={<Code>{event.eventId}</Code>} />
+              {event.eventDate ? (
+                <EventInfoRow
+                  label="Event Date"
+                  value={new Date(event.eventDate).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                />
+              ) : null}
+              {event.location ? (
+                <EventInfoRow label="Location" value={event.location} />
+              ) : null}
+              <EventInfoRow
+                label="Created"
+                value={new Date(event.createdAt).toLocaleString()}
+              />
+              <EventInfoRow
+                label="Last Updated"
+                value={new Date(event.updatedAt).toLocaleString()}
+              />
+            </Stack>
           </Card>
 
           <Card bg="blue.0">

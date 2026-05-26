@@ -8,17 +8,13 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Badge,
   Button,
   Card,
-  ColorSwatch,
-  Grid,
   Group,
-  SimpleGrid,
   Stack,
   Text,
   Title,
-} from '@mantine/core';
+} from '@/components/gds/ui';
 import StyleInheritanceIndicator from './StyleInheritanceIndicator';
 
 interface FrameAssignment {
@@ -64,6 +60,45 @@ const SCENARIOS: ScenarioSummary[] = [
   { id: 'loading-capture', name: 'Loading Capture', icon: '📸' },
 ];
 
+function ColorPreviewSwatch({ color }: { color: string }) {
+  return (
+    <div
+      style={{
+        width: 64,
+        height: 64,
+        borderRadius: 16,
+        backgroundColor: color,
+        border: '1px solid var(--mantine-color-gray-3)',
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
+function ScenarioCountCard({
+  icon,
+  name,
+  count,
+}: {
+  icon: string;
+  name: string;
+  count: number;
+}) {
+  return (
+    <Card withBorder radius="md" bg="var(--mantine-color-gray-0)">
+      <Stack gap="xs" align="center">
+        <Text fz={32}>{icon}</Text>
+        <Text size="xs" c="dimmed" ta="center">
+          {name}
+        </Text>
+        <Text size="sm" fw={700}>
+          {count} active
+        </Text>
+      </Stack>
+    </Card>
+  );
+}
+
 export default function StyleSections({
   type,
   id,
@@ -106,44 +141,39 @@ export default function StyleSections({
           </Link>
         </Group>
 
-        <Grid p="xl">
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <Stack gap="sm">
-              <Text size="sm" fw={600}>
-                Primary Color
-              </Text>
-              <Group>
-                <ColorSwatch color={brandColor || '#3B82F6'} size={64} radius="md" />
-                <div>
-                  <Text ff="monospace" fw={700}>
-                    {brandColor || '#3B82F6'}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    Buttons, camera button fill, focus states
-                  </Text>
-                </div>
-              </Group>
-            </Stack>
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <Stack gap="sm">
-              <Text size="sm" fw={600}>
-                Border/Accent Color
-              </Text>
-              <Group>
-                <ColorSwatch color={brandBorderColor || '#3B82F6'} size={64} radius="md" />
-                <div>
-                  <Text ff="monospace" fw={700}>
-                    {brandBorderColor || '#3B82F6'}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    Input borders, checkboxes, camera button border
-                  </Text>
-                </div>
-              </Group>
-            </Stack>
-          </Grid.Col>
-        </Grid>
+        <Stack p="xl" gap="lg">
+          <Group align="flex-start" gap="xl" wrap="wrap">
+            <Group align="center" gap="md" wrap="nowrap">
+              <ColorPreviewSwatch color={brandColor || '#3B82F6'} />
+              <Stack gap={4}>
+                <Text size="sm" fw={600}>
+                  Primary Color
+                </Text>
+                <Text ff="monospace" fw={700}>
+                  {brandColor || '#3B82F6'}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Buttons, camera button fill, focus states
+                </Text>
+              </Stack>
+            </Group>
+
+            <Group align="center" gap="md" wrap="nowrap">
+              <ColorPreviewSwatch color={brandBorderColor || '#3B82F6'} />
+              <Stack gap={4}>
+                <Text size="sm" fw={600}>
+                  Border/Accent Color
+                </Text>
+                <Text ff="monospace" fw={700}>
+                  {brandBorderColor || '#3B82F6'}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Input borders, checkboxes, camera button border
+                </Text>
+              </Stack>
+            </Group>
+          </Group>
+        </Stack>
 
         <div style={{ padding: '0 1.5rem 1.5rem', borderTop: '1px solid var(--mantine-color-gray-2)' }}>
           <Text size="sm" fw={600} mb="sm" mt="lg">
@@ -201,7 +231,13 @@ export default function StyleSections({
           </Stack>
         ) : (
           <div style={{ padding: '1.5rem' }}>
-            <SimpleGrid cols={{ base: 2, md: 3 }} spacing="md">
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                gap: '1rem',
+              }}
+            >
               {frames.map((frameAssignment, index) => {
                 const frameDetails = frameAssignment.frameDetails || frameAssignment;
                 const thumbnailUrl = frameDetails.thumbnailUrl;
@@ -221,14 +257,18 @@ export default function StyleSections({
                       <Text size="xs" ff="monospace" c="dimmed" ta="center" lineClamp={1}>
                         {frameAssignment.frameId}
                       </Text>
-                      <Badge color={frameAssignment.isActive ? 'green' : 'gray'}>
+                      <Text
+                        size="xs"
+                        fw={700}
+                        c={frameAssignment.isActive ? 'green.7' : 'gray.6'}
+                      >
                         {frameAssignment.isActive ? '● Active' : '○ Inactive'}
-                      </Badge>
+                      </Text>
                     </Stack>
                   </Card>
                 );
               })}
-            </SimpleGrid>
+            </div>
             <Group justify="center" mt="md">
               <Link href={isPartner ? `/admin/partners/${id}/edit#frames` : `/admin/events/${id}/frames`} style={{ textDecoration: 'none' }}>
                 <Button variant="subtle">Manage frame assignments →</Button>
@@ -275,22 +315,18 @@ export default function StyleSections({
           </Stack>
         ) : (
           <div style={{ padding: '1.5rem' }}>
-            <SimpleGrid cols={{ base: 2, md: 4 }} spacing="md">
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                gap: '1rem',
+              }}
+            >
               {SCENARIOS.map((scenario) => {
                 const count = logos.filter((logo) => logo.scenario === scenario.id && logo.isActive).length;
-                return (
-                  <Card key={scenario.id} withBorder radius="md" bg="var(--mantine-color-gray-0)">
-                    <Stack gap="xs" align="center">
-                      <Text fz={32}>{scenario.icon}</Text>
-                      <Text size="xs" c="dimmed" ta="center">
-                        {scenario.name}
-                      </Text>
-                      <Badge color="blue">{count} active</Badge>
-                    </Stack>
-                  </Card>
-                );
+                return <ScenarioCountCard key={scenario.id} icon={scenario.icon} name={scenario.name} count={count} />;
               })}
-            </SimpleGrid>
+            </div>
             <Group justify="center" mt="md">
               <Link href={isPartner ? `/admin/partners/${id}/edit#logos` : `/admin/events/${id}/logos`} style={{ textDecoration: 'none' }}>
                 <Button variant="subtle">Manage logo assignments →</Button>
