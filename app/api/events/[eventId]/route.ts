@@ -13,6 +13,7 @@ import { ObjectId } from 'mongodb';
 import {
   withErrorHandler,
   requireAuth,
+  optionalAuth,
   apiSuccess,
   apiNotFound,
   apiBadRequest,
@@ -41,41 +42,64 @@ interface EventFrameAssignment {
 
 interface EventDoc {
   _id: ObjectId;
+  eventId?: string;
+  shortUrlSlug?: string | null;
+  isActive?: boolean;
   frames?: EventFrameAssignment[];
   [key: string]: unknown;
 }
 
+function buildEventLookupQuery(eventIdentifier: string) {
+  const normalized = eventIdentifier.trim();
+  const or: Array<Record<string, unknown>> = [];
+
+  if (ObjectId.isValid(normalized)) {
+    or.push({ _id: new ObjectId(normalized) });
+  }
+
+  or.push({ eventId: normalized });
+  or.push({ shortUrlSlug: normalized });
+
+  return { $or: or };
+}
+
 /**
  * GET /api/events/[eventId]
- * Retrieve event details by MongoDB _id
+ * Retrieve event details by MongoDB _id, event UUID, or short-url slug.
+ * Public capture needs read access for active events without authentication.
  */
 export const GET = withErrorHandler(async (
   request: NextRequest,
   context: { params: Promise<{ eventId: string }> }
 ) => {
   await checkRateLimit(request, RATE_LIMITS.READ);
-  const session = await requireAuth(request);
+  const session = await optionalAuth(request);
 
   const { eventId } = await context.params;
-
-  // Validate ObjectId format
-  if (!ObjectId.isValid(eventId)) {
-    throw apiBadRequest('Invalid event ID format');
+  if (!eventId?.trim()) {
+    throw apiBadRequest('Event identifier is required');
   }
 
   const db = await connectToDatabase();
-  const access = await getPartnerScopedAccessForEvent(db, eventId, session);
-  if (!access.allowed) {
-    throw apiForbidden('Partner-level access is required to read this event');
-  }
 
   // Get event details including custom pages
   const event = await db
     .collection(COLLECTIONS.EVENTS)
-    .findOne({ _id: new ObjectId(eventId) }) as EventDoc | null;
+    .findOne(buildEventLookupQuery(eventId)) as EventDoc | null;
 
   if (!event) {
     throw apiNotFound('Event');
+  }
+
+  if (!event.isActive) {
+    if (!session) {
+      throw apiNotFound('Event');
+    }
+
+    const access = await getPartnerScopedAccessForEvent(db, event._id.toString(), session);
+    if (!access.allowed) {
+      throw apiForbidden('Partner-level access is required to read this event');
+    }
   }
 
   // Populate frame details for assigned frames

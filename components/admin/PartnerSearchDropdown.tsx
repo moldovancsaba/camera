@@ -54,11 +54,6 @@ export default function PartnerSearchDropdown({
   const options = filteredPartners.map((partner) => (
     <Combobox.Option value={partner.partnerId} key={partner.partnerId}>
       <Text fw={600}>{partner.name}</Text>
-      {partner.description ? (
-        <Text size="sm" c="dimmed" lineClamp={1}>
-          {partner.description}
-        </Text>
-      ) : null}
     </Combobox.Option>
   ));
 
@@ -83,14 +78,7 @@ export default function PartnerSearchDropdown({
             styles={{ input: { height: 'auto', minHeight: 42, paddingBlock: 8 } }}
           >
             {selectedPartner ? (
-              <>
-                <Text fw={600}>{selectedPartner.name}</Text>
-                {selectedPartner.description ? (
-                  <Text size="sm" c="dimmed" lineClamp={1}>
-                    {selectedPartner.description}
-                  </Text>
-                ) : null}
-              </>
+              <Text fw={600}>{selectedPartner.name}</Text>
             ) : (
               <Text c="dimmed">Search partners...</Text>
             )}

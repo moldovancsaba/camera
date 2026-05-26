@@ -100,6 +100,14 @@ export default function CameraCapture({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const isMobileDevice = useCallback(() => {
+    if (typeof navigator === 'undefined') {
+      return false;
+    }
+
+    return /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent);
+  }, []);
+
   const getTargetAspectRatio = useCallback(() => {
     if (
       previewAspectWidthOverHeight != null &&
@@ -262,19 +270,34 @@ export default function CameraCapture({
       const targetAspect = getTargetAspectRatio();
       const isLandscapeTarget = targetAspect >= 1;
 
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: { ideal: facing },
-          // Request stream dimensions that match the creative orientation,
-          // so preview/capture stays consistent regardless of phone rotation.
-          width: { ideal: isLandscapeTarget ? 3840 : 2160 },
-          height: { ideal: isLandscapeTarget ? 2160 : 3840 },
-          aspectRatio: { ideal: targetAspect },
-        },
-        audio: false,
-      };
+      const mobile = isMobileDevice();
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      const preferredVideoConstraints: MediaTrackConstraints = mobile
+        ? {
+            facingMode: { ideal: facing },
+            width: { ideal: isLandscapeTarget ? 3840 : 2160 },
+            height: { ideal: isLandscapeTarget ? 2160 : 3840 },
+            aspectRatio: { ideal: targetAspect },
+          }
+        : {
+            width: { ideal: isLandscapeTarget ? 2560 : 1440 },
+            height: { ideal: isLandscapeTarget ? 1440 : 2560 },
+            aspectRatio: { ideal: targetAspect },
+          };
+
+      let mediaStream: MediaStream;
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: preferredVideoConstraints,
+          audio: false,
+        });
+      } catch (primaryError) {
+        console.warn('Primary camera constraints failed, retrying with relaxed constraints.', primaryError);
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: mobile ? { facingMode: facing } : true,
+          audio: false,
+        });
+      }
       
       setStream(mediaStream);
       setFacingMode(facing);
@@ -283,6 +306,13 @@ export default function CameraCapture({
       if (videoRef.current) {
         const video = videoRef.current;
         video.srcObject = mediaStream;
+        video.muted = true;
+        video.playsInline = true;
+        try {
+          await video.play();
+        } catch (playError) {
+          console.warn('Initial video.play() failed, waiting for readiness events.', playError);
+        }
         
         // Safari fix: Must wait for BOTH loadedmetadata AND canplay events
         // Safari needs the video to actually start playing before capture works
@@ -338,6 +368,11 @@ export default function CameraCapture({
         
         // Extra Safari fix: Small delay to ensure video is actually rendering
         await new Promise(resolve => setTimeout(resolve, 300));
+        if (video.paused) {
+          await video.play().catch((playError) => {
+            console.warn('Video remained paused after readiness wait.', playError);
+          });
+        }
       }
 
       setIsLoading(false);

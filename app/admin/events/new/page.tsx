@@ -316,6 +316,11 @@ export default function NewEventPage() {
             title="Try-on"
             description="Optionally allow this event to queue local AI leather try-on jobs after Camera saves the normal submission."
           >
+            <Group justify="flex-end">
+              <Anchor component={Link} href="/admin/tryon-suits" size="sm">
+                Manage leather jerseys
+              </Anchor>
+            </Group>
             <Checkbox
               checked={tryOnEnabled}
               onChange={(event) => setTryOnEnabled(event.currentTarget.checked)}

@@ -88,6 +88,7 @@ export default function AdminShell({
     ? [
         { href: '/admin/frames', label: 'Global Frames', icon: <IconFrame size={18} /> },
         { href: '/admin/logos', label: 'Global Logos', icon: <IconPhoto size={18} /> },
+        { href: '/admin/tryon-suits', label: 'Leather Jerseys', icon: <IconPhoto size={18} /> },
         { href: '/admin/landing-pages', label: 'Landing Pages', icon: <IconWorld size={18} /> },
         { href: '/admin/submissions', label: 'Global Galleries', icon: <IconPhotoScan size={18} /> },
         { href: '/admin/tryon-results', label: 'Try-On Results', icon: <IconPhoto size={18} /> },

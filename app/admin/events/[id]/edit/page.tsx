@@ -425,6 +425,11 @@ export default function EditEventPage({
             title="Try-on"
             description="Enable the local AI leather pipeline for this event and optionally limit the available jersey catalog."
           >
+            <Group justify="flex-end">
+              <Anchor component={Link} href="/admin/tryon-suits" size="sm">
+                Manage leather jerseys
+              </Anchor>
+            </Group>
             <Checkbox
               checked={tryOnEnabled}
               onChange={(nextEvent) => setTryOnEnabled(nextEvent.currentTarget.checked)}
