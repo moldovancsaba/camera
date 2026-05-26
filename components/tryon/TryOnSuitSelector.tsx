@@ -110,6 +110,28 @@ export default function TryOnSuitSelector({
         value={selectedSuitId}
         onChange={onChange}
         aria-label="Select leather jersey for try-on"
+        styles={{
+          label: {
+            color: 'var(--app-shell-fg)',
+            fontWeight: 700,
+          },
+          input: {
+            backgroundColor: 'var(--app-panel-input-bg)',
+            color: 'var(--app-panel-input-fg)',
+            borderColor: 'var(--app-btn-focus-ring)',
+          },
+          section: {
+            color: 'var(--app-panel-muted)',
+          },
+          dropdown: {
+            backgroundColor: 'var(--app-panel-input-bg)',
+            borderColor: 'var(--app-panel-border)',
+          },
+          option: {
+            color: 'var(--app-panel-input-fg)',
+            backgroundColor: 'transparent',
+          },
+        }}
       />
 
       <Alert color="blue" variant="light">
