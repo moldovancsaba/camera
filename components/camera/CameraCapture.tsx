@@ -257,7 +257,6 @@ export default function CameraCapture({
     setIsLoading(true);
     setError(null);
     setCapturedImage(null);
-
     try {
       // Stop existing stream if any
       if (stream) {
@@ -299,83 +298,8 @@ export default function CameraCapture({
         });
       }
       
-      setStream(mediaStream);
       setFacingMode(facing);
-
-      // Attach stream to video element
-      if (videoRef.current) {
-        const video = videoRef.current;
-        video.srcObject = mediaStream;
-        video.muted = true;
-        video.playsInline = true;
-        try {
-          await video.play();
-        } catch (playError) {
-          console.warn('Initial video.play() failed, waiting for readiness events.', playError);
-        }
-        
-        // Safari fix: Must wait for BOTH loadedmetadata AND canplay events
-        // Safari needs the video to actually start playing before capture works
-        await new Promise<void>((resolve) => {
-          let metadataLoaded = false;
-          let canPlay = false;
-          
-          const checkReady = () => {
-            if (metadataLoaded && canPlay) {
-              cleanup();
-              resolve();
-            }
-          };
-          
-          const handleMetadata = () => {
-            metadataLoaded = true;
-            checkReady();
-          };
-          
-          const handleCanPlay = () => {
-            canPlay = true;
-            checkReady();
-          };
-          
-          const cleanup = () => {
-            video.removeEventListener('loadedmetadata', handleMetadata);
-            video.removeEventListener('canplay', handleCanPlay);
-          };
-          
-          // Check if already ready
-          if (video.readyState >= 2) {
-            metadataLoaded = true;
-          }
-          if (video.readyState >= 3) {
-            canPlay = true;
-          }
-          
-          if (metadataLoaded && canPlay) {
-            resolve();
-            return;
-          }
-          
-          // Listen for events
-          video.addEventListener('loadedmetadata', handleMetadata);
-          video.addEventListener('canplay', handleCanPlay);
-          
-          // Timeout fallback (3 seconds)
-          setTimeout(() => {
-            cleanup();
-            resolve();
-          }, 3000);
-        });
-        
-        // Extra Safari fix: Small delay to ensure video is actually rendering
-        await new Promise(resolve => setTimeout(resolve, 300));
-        if (video.paused) {
-          await video.play().catch((playError) => {
-            console.warn('Video remained paused after readiness wait.', playError);
-          });
-        }
-      }
-
-      setIsLoading(false);
+      setStream(mediaStream);
       
     } catch (err) {
       setIsLoading(false);
@@ -660,6 +584,92 @@ export default function CameraCapture({
       stopCamera();
     };
   }, [stopCamera]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !stream) {
+      return;
+    }
+
+    let cancelled = false;
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const markPreviewReady = () => {
+      if (cancelled) return;
+      setIsLoading(false);
+    };
+
+    const attachAndPlay = async () => {
+      video.srcObject = stream;
+      video.muted = true;
+      video.defaultMuted = true;
+      video.playsInline = true;
+      video.setAttribute('playsinline', 'true');
+      video.setAttribute('muted', 'true');
+      video.autoplay = true;
+
+      const readyHandler = () => {
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          markPreviewReady();
+        }
+      };
+
+      video.addEventListener('loadedmetadata', readyHandler);
+      video.addEventListener('loadeddata', readyHandler);
+      video.addEventListener('canplay', readyHandler);
+      video.addEventListener('playing', readyHandler);
+
+      fallbackTimer = setTimeout(() => {
+        if (!cancelled) {
+          // Some browsers start rendering late without firing the expected sequence.
+          // Drop the loading veil so the preview can still appear.
+          setIsLoading(false);
+        }
+      }, 3000);
+
+      try {
+        await video.play();
+      } catch (playError) {
+        console.warn('Initial video.play() failed, retrying after metadata.', playError);
+      }
+
+      if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+        markPreviewReady();
+      }
+
+      if (video.paused) {
+        setTimeout(() => {
+          void video.play().catch((playError) => {
+            console.warn('Delayed video.play() retry failed.', playError);
+          });
+        }, 150);
+      }
+
+      return () => {
+        video.removeEventListener('loadedmetadata', readyHandler);
+        video.removeEventListener('loadeddata', readyHandler);
+        video.removeEventListener('canplay', readyHandler);
+        video.removeEventListener('playing', readyHandler);
+      };
+    };
+
+    let detachListeners: (() => void) | undefined;
+    void attachAndPlay().then((cleanup) => {
+      detachListeners = cleanup;
+    });
+
+    return () => {
+      cancelled = true;
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer);
+      }
+      detachListeners?.();
+      if (video.srcObject === stream) {
+        video.pause();
+        video.srcObject = null;
+      }
+    };
+  }, [stream]);
 
   const useTripleBar = controlBar === 'bottom-triple';
 
