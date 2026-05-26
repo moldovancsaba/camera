@@ -1,7 +1,7 @@
 # Slideshow Logic
 
-**Version**: 2.9.0  
-**Last Updated**: 2026-05-20
+**Version**: 2.10.0  
+**Last Updated**: 2026-05-26
 
 This document describes the current slideshow system: admin configuration, playlist generation, public playback, and composite slideshow layouts.
 
@@ -52,6 +52,7 @@ Operators can:
 - update timings and display behavior
 - copy public URLs
 - upload or assign failover background images
+- choose whether the playlist uses originals only, approved try-on only, or both
 
 ### Slideshow layouts
 

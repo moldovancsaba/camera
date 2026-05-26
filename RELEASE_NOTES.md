@@ -1,12 +1,38 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.9.0
-**Last Updated**: 2026-05-20
+**Current Version**: 2.10.0
+**Last Updated**: 2026-05-26
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
+
+---
+
+## [v2.10.0] — 2026-05-26T12:00:00.000Z
+
+### Feature — Try-On App workspace, queue visibility, and capture/runtime hardening
+
+**Status**: Complete  
+**Release Type**: MINOR (new features + operational hardening)
+
+#### Summary
+- promoted Try-On into a first-class app workspace in admin
+- added live queue visibility for `tryon_jobs`
+- aligned leather jersey catalog management around title/description plus local asset mapping
+- restored public event access for active capture routes
+- hardened mobile/desktop camera preview binding and playback
+- refreshed canonical documentation and versioning to match the shipped system
+
+#### Operational highlights
+- new admin routes:
+  - `/admin/tryon`
+  - `/admin/tryon/queue`
+  - `/admin/tryon/suits`
+  - `/admin/tryon/vetting`
+- capture event lookup now accepts Mongo `_id`, public `eventId`, and `shortUrlSlug`
+- approved try-on results remain the only generated assets eligible for public share and slideshow sourcing
 
 ---
 

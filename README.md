@@ -1,7 +1,7 @@
 # Camera
 
-**Version**: 2.9.0  
-**Last Updated**: 2026-05-20  
+**Version**: 2.10.0  
+**Last Updated**: 2026-05-26  
 **Status**: Production system
 
 Camera is a Next.js platform for branded photo capture, event galleries, slideshow playback, partner operations, and reusable shared resources on the same identity, media, and MongoDB foundations.
@@ -21,12 +21,13 @@ Camera now operates as a small platform with shared resources plus app surfaces.
   - Global Users and partner-scoped access assignments
 - **Apps**
   - Events App
+  - Try-On App
 
 The admin UX is organized around that model:
 
 - global inventory and superadmin tools
 - partner workspaces for day-to-day operations
-- app-specific surfaces for Events
+- app-specific surfaces for Events and Try-On
 
 ## Public surfaces
 
@@ -43,6 +44,7 @@ The admin UX is organized around that model:
 - `/admin` — global dashboard for global admins
 - `/admin/partners` — partner workspace index
 - `/admin/events` — Events App inventory
+- `/admin/tryon` — Try-On App workspace
 - `/admin/frames`, `/admin/logos`, `/admin/submissions`, `/admin/users` — global inventory / audit pages
 
 ## Core behavior
@@ -130,6 +132,8 @@ See [TECH_STACK.md](/Users/Shared/Projects/venturecogroup/camera/TECH_STACK.md).
 - `slideshow_layouts` — multi-cell videowall configs
 - `landing_pages` — reusable experience surfaces
 - `partner_user_access` — partner-scoped app assignments
+- `leather_suits` — selectable try-on leather jersey catalog
+- `tryon_jobs` — async local try-on queue and worker lifecycle
 
 See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_CONVENTIONS.md) and [ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/ARCHITECTURE.md).
 
@@ -159,7 +163,10 @@ Camera can optionally enqueue asynchronous try-on jobs after a capture is saved.
 - public capture flows read active suits from `GET /api/tryon/suits`
 - `POST /api/submissions` remains the primary save path and can optionally create a linked `tryon_jobs` record
 - the official local worker in `/Users/Shared/Projects/try-on` polls Atlas, runs the try-on processor, uploads the result to imgbb, and calls Camera’s signed completion endpoint
-- generated outputs enter a moderation queue at `/admin/tryon-results`
+- `/admin/tryon` is the operator workspace for queue, catalog, and moderation
+- `/admin/tryon/queue` shows live queue state directly from `tryon_jobs`
+- `/admin/tryon/suits` manages the selectable leather jersey catalog, preview/source image URLs, and local asset mapping contract
+- `/admin/tryon/vetting` reviews generated outputs before publication
 - only approved generated results become visible on share pages and slideshow playlists
 
 Operational docs:

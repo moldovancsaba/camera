@@ -426,7 +426,7 @@ export default function EditEventPage({
             description="Enable the local AI leather pipeline for this event and optionally limit the available jersey catalog."
           >
             <Group justify="flex-end">
-              <Anchor component={Link} href="/admin/tryon-suits" size="sm">
+              <Anchor component={Link} href="/admin/tryon/suits" size="sm">
                 Manage leather jerseys
               </Anchor>
             </Group>

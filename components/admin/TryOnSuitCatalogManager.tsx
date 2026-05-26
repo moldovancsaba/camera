@@ -38,6 +38,7 @@ interface Props {
 interface SuitDraft {
   leatherSuitId: string;
   name: string;
+  description: string;
   assetKey: string;
   assetVersion: string;
   assetRelativePath: string;
@@ -50,6 +51,7 @@ interface SuitDraft {
 const EMPTY_DRAFT: SuitDraft = {
   leatherSuitId: '',
   name: '',
+  description: '',
   assetKey: '',
   assetVersion: '1',
   assetRelativePath: '',
@@ -63,6 +65,7 @@ function toDraft(row: TryOnSuitAdminRow): SuitDraft {
   return {
     leatherSuitId: row.leatherSuitId,
     name: row.name,
+    description: row.metadata?.notes || '',
     assetKey: row.assetKey,
     assetVersion: String(row.assetVersion || 1),
     assetRelativePath: row.assetRelativePath || '',
@@ -102,15 +105,15 @@ export default function TryOnSuitCatalogManager({ initialRows }: Props) {
       const response = await fetch('/api/admin/tryon-suits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          leatherSuitId: createDraft.leatherSuitId,
-          name: createDraft.name,
+          body: JSON.stringify({
+            leatherSuitId: createDraft.leatherSuitId,
+            name: createDraft.name,
           assetKey: createDraft.assetKey,
           assetVersion: Number(createDraft.assetVersion),
           assetRelativePath: createDraft.assetRelativePath,
           previewUrl: createDraft.previewUrl,
           sourceImageUrl: createDraft.sourceImageUrl,
-          notes: createDraft.notes,
+          notes: createDraft.description || createDraft.notes,
           active: createDraft.active,
         }),
       });
@@ -147,7 +150,7 @@ export default function TryOnSuitCatalogManager({ initialRows }: Props) {
           assetRelativePath: draft.assetRelativePath,
           previewUrl: draft.previewUrl,
           sourceImageUrl: draft.sourceImageUrl,
-          notes: draft.notes,
+          notes: draft.description || draft.notes,
           active: draft.active,
         }),
       });
@@ -253,7 +256,7 @@ function SuitFields({
       </Grid.Col>
       <Grid.Col span={{ base: 12, md: 6 }}>
         <TextInput
-          label="Display Name"
+          label="Title"
           placeholder="Honda Castrol 2026"
           value={draft.name}
           onChange={(event) => onChange({ name: event.currentTarget.value })}
@@ -301,10 +304,11 @@ function SuitFields({
       </Grid.Col>
       <Grid.Col span={12}>
         <Textarea
-          label="Notes"
+          label="Description"
           rows={3}
-          value={draft.notes}
-          onChange={(event) => onChange({ notes: event.currentTarget.value })}
+          placeholder="Short catalog description shown to operators and used to document this jersey."
+          value={draft.description}
+          onChange={(event) => onChange({ description: event.currentTarget.value, notes: event.currentTarget.value })}
         />
       </Grid.Col>
     </Grid>

@@ -1,7 +1,7 @@
 # Authorization Guide
 
-**Version**: 2.9.0  
-**Last Updated**: 2026-05-23
+**Version**: 2.10.0  
+**Last Updated**: 2026-05-26
 
 This is the current authorization model for Camera.
 
@@ -103,12 +103,12 @@ These come from SSO and apply to the Camera app as a whole.
 
 ## 5.1 Permission matrix
 
-| Role | Admin shell | Partner pages | Events App | Global inventory | Mutations |
-|------|-------------|---------------|------------|------------------|-----------|
-| Global `admin` / `superadmin` | yes | yes | yes | yes | full |
-| Partner `admin` | yes | assigned only | assigned app only | no | full inside scope |
-| Partner `manager` | yes | assigned only | assigned app only | no | create/update inside scope |
-| Partner `viewer` | yes | assigned only | assigned app only | no | read-only |
+| Role | Admin shell | Partner pages | Events App | Try-On App | Global inventory | Mutations |
+|------|-------------|---------------|------------|------------|------------------|-----------|
+| Global `admin` / `superadmin` | yes | yes | yes | yes | yes | full |
+| Partner `admin` | yes | assigned only | assigned app only | no | no | full inside scope |
+| Partner `manager` | yes | assigned only | assigned app only | no | no | create/update inside scope |
+| Partner `viewer` | yes | assigned only | assigned app only | no | no | read-only |
 
 ## 6. Route model
 
@@ -137,6 +137,7 @@ These remain global-admin-only:
 - `/admin/frames`
 - `/admin/logos`
 - `/admin/submissions`
+- `/admin/tryon/**`
 
 ### Partner/app pages
 

@@ -1,7 +1,7 @@
 # Camera GDS Adoption
 
-**Version**: 2.9.0  
-**Last Updated**: 2026-05-25
+**Version**: 2.10.0  
+**Last Updated**: 2026-05-26
 
 ## SSOT statement
 
@@ -50,6 +50,7 @@ Camera is the reference implementation of the portfolio GDS on **Mantine 9**. Ap
 | Destructive confirm | `lib/gds/confirm-destructive.tsx` | Active — delete/remove admin actions |
 | Public shell | `components/gds/PublicShell.tsx` | Active — home, profile, share |
 | Public surface shell | `components/gds/PublicSurfaceShell.tsx` | Active — implementation adapter behind `PublicShell` |
+| Try-On app workspace | `app/admin/tryon/**` composed from local GDS primitives | Active |
 | Auth / public capture shell | `app/capture/**`, `components/capture/**`, `components/camera/**` via local GDS entrypoints and capture-specific composition | Active |
 | Slideshow playback | `components/slideshow/**` | **Exception** (media-first) |
 | Landing page editor CSS | `components/admin/LandingPageEditor.tsx` | **Exception** (editor preview) |

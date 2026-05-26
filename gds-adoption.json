@@ -80,29 +80,29 @@
       "surface": "Event capture flow",
       "reason": "Complex camera/composite UX uses capture-specific composition while still consuming local GDS entrypoints.",
       "owner": "camera-platform",
-      "reviewDate": "2026-05-25"
+      "reviewDate": "2026-05-26"
     },
     {
       "surface": "Legacy public token layer",
       "reason": "app/globals.css --app-btn-* and --app-panel-* remain in use for capture and residual public helpers.",
       "owner": "camera-platform",
-      "reviewDate": "2026-05-25"
+      "reviewDate": "2026-05-26"
     },
     {
       "surface": "Landing page custom CSS",
       "reason": "User-authored experience CSS remains editor-owned while the surrounding admin/editor chrome follows GDS contracts.",
       "owner": "camera-platform",
-      "reviewDate": "2026-05-25"
+      "reviewDate": "2026-05-26"
     },
     {
       "surface": "Slideshow player",
       "reason": "Full-screen media playback remains a documented exception surface while surrounding configuration UI is Mantine/GDS aligned.",
       "owner": "camera-platform",
-      "reviewDate": "2026-05-25"
+      "reviewDate": "2026-05-26"
     }
   ],
   "migrationStatus": "local-gds-only",
   "directMantineOutsideGds": false,
   "owner": "camera-platform",
-  "lastReviewedAt": "2026-05-25"
+  "lastReviewedAt": "2026-05-26"
 }

@@ -1,7 +1,7 @@
 # MongoDB Conventions
 
-**Version**: 2.9.0  
-**Last Updated**: 2026-05-20
+**Version**: 2.10.0  
+**Last Updated**: 2026-05-26
 
 This repository uses a mixed identifier model. Any document claiming that every reference must use Mongo `_id` is obsolete.
 
@@ -117,6 +117,15 @@ Important:
 - submission `eventId` is the event UUID, not the event Mongo `_id`
 - submission `partnerId` is the partner business ID
 - `frameId` is the frame business ID in the hot path
+
+### Try-on conventions
+
+Try-on introduces two more collection patterns:
+
+- `leather_suits.leatherSuitId` is a business identifier, not a Mongo `_id` URL contract
+- `tryon_jobs.jobId` is an operational business identifier used by the worker and queue tooling
+
+Derived try-on result submissions still use Mongo `_id` for share-page lookup and admin moderation actions.
 
 Do not rewrite docs or code assuming every relation is an ObjectId-string foreign key.
 

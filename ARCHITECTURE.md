@@ -1,7 +1,7 @@
 # Architecture
 
-**Version**: 2.9.0  
-**Last Updated**: 2026-05-23
+**Version**: 2.10.0  
+**Last Updated**: 2026-05-26
 
 This document describes the current production architecture of Camera as implemented in the repository today.
 
@@ -18,6 +18,7 @@ Camera is no longer just a flat event-photo tool. The system now behaves as:
   - user and access management
 - **Apps**
   - Events App
+  - Try-On App
 
 ## 2. Top-level layers
 
@@ -72,6 +73,7 @@ Browser / Public Screens
 - `/admin`
 - `/admin/partners/**`
 - `/admin/events/**`
+- `/admin/tryon/**`
 - `/admin/frames/**`
 - `/admin/logos/**`
 - `/admin/submissions`
@@ -106,6 +108,7 @@ Partner detail pages are the primary daily operational surface. They expose:
 ### App surfaces
 
 - Events App inventory and event instance detail
+- Try-On App workspace, live queue, leather jersey catalog, and vetting queue
 
 ## 5. Authorization architecture
 
@@ -211,6 +214,8 @@ Core collections:
 - `partner_user_access`
 - `users_cache`
 - `web_sessions`
+- `leather_suits`
+- `tryon_jobs`
 
 Schema definitions live in [lib/db/schemas.ts](/Users/Shared/Projects/venturecogroup/camera/lib/db/schemas.ts).
 

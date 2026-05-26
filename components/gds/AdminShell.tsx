@@ -25,6 +25,7 @@ import {
   IconLayoutDashboard,
   IconPhoto,
   IconPhotoScan,
+  IconSparkles,
   IconUsers,
   IconWorld,
 } from '@tabler/icons-react';
@@ -88,10 +89,8 @@ export default function AdminShell({
     ? [
         { href: '/admin/frames', label: 'Global Frames', icon: <IconFrame size={18} /> },
         { href: '/admin/logos', label: 'Global Logos', icon: <IconPhoto size={18} /> },
-        { href: '/admin/tryon-suits', label: 'Leather Jerseys', icon: <IconPhoto size={18} /> },
         { href: '/admin/landing-pages', label: 'Landing Pages', icon: <IconWorld size={18} /> },
         { href: '/admin/submissions', label: 'Global Galleries', icon: <IconPhotoScan size={18} /> },
-        { href: '/admin/tryon-results', label: 'Try-On Results', icon: <IconPhoto size={18} /> },
       ]
     : [];
 
@@ -101,6 +100,13 @@ export default function AdminShell({
       href: '/admin/events',
       label: 'Events App',
       icon: <IconBrandDatabricks size={18} />,
+    });
+  }
+  if (navigationAccess.isGlobalAdmin) {
+    appItems.push({
+      href: '/admin/tryon',
+      label: 'Try-On App',
+      icon: <IconSparkles size={18} />,
     });
   }
   return (

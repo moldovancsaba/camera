@@ -1,5 +1,8 @@
 # Try-On Architecture
 
+**Version**: 2.10.0  
+**Last Updated**: 2026-05-26
+
 ## Purpose
 
 Camera remains the intake system. The try-on pipeline is asynchronous and uses a dedicated queue collection instead of overloading the main `submissions` flow.
@@ -12,7 +15,7 @@ Camera remains the intake system. The try-on pipeline is asynchronous and uses a
 4. The local worker in `/Users/Shared/Projects/try-on` polls Atlas, claims a job with a lease, downloads the source image, resolves the local suit asset, and runs the processor.
 5. The worker uploads the final result to imgbb and calls `POST /api/internal/tryon/complete`.
 6. Camera materializes a derived `submissionKind=tryon_result` record in `pending_review`.
-7. Admins review the generated result in `/admin/tryon-results`.
+7. Admins operate Try-On from `/admin/tryon`, monitor live queue state in `/admin/tryon/queue`, manage selectable leather jerseys in `/admin/tryon/suits`, and review generated outputs in `/admin/tryon/vetting`.
 8. Only approved generated results become share-visible and slideshow-eligible.
 
 ## Why this shape
@@ -37,6 +40,10 @@ Key fields:
 - `assetRelativePath`
 - `previewUrl`
 - `active`
+
+Important boundary:
+- Camera manages catalog metadata, preview/source URLs, and local asset mapping contracts.
+- The actual processing file must still exist on the local try-on machine under the configured suit asset root.
 
 ### `tryon_jobs`
 
@@ -95,6 +102,10 @@ The endpoint:
 
 Admin moderation queue for generated try-on results.
 
+### `GET /api/admin/tryon-suits`
+
+Admin catalog surface for selectable leather jerseys.
+
 ### `POST /api/admin/tryon-results/[submissionId]/approve`
 
 Publishes an approved generated result to:
@@ -129,3 +140,4 @@ logs/
 - Try-on should use the original capture image, not the branded composite submission.
 - Camera does not block user capture if the try-on queue step fails after submission save.
 - Slideshows and public share pages must never read directly from `tryon_jobs`; they only use approved derived submissions.
+- Camera currently does not upload local processing suit binaries; it stores the catalog row and the expected local asset mapping.

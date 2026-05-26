@@ -1,7 +1,7 @@
 # Tech Stack
 
-**Version**: 2.9.0  
-**Last Updated**: 2026-05-23
+**Version**: 2.10.0  
+**Last Updated**: 2026-05-26
 
 This document records the current technical stack in use and the parts of the product each technology supports.
 
@@ -99,6 +99,7 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 - partner workspace operations
 - global inventory pages
 - Events App management
+- Try-On App management
 - partner user assignment UI
 
 ## Key library choices
@@ -112,6 +113,12 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 ### `axios`
 
 - outbound HTTP requests where used, especially external service integrations
+
+### Local try-on worker integration
+
+- Camera writes queue state to MongoDB Atlas
+- the official worker lives in `/Users/Shared/Projects/try-on`
+- Camera finalizes generated assets through signed internal callbacks instead of running the processor in-process
 
 ### `@upstash/ratelimit` and `@upstash/redis`
 

@@ -317,7 +317,7 @@ export default function NewEventPage() {
             description="Optionally allow this event to queue local AI leather try-on jobs after Camera saves the normal submission."
           >
             <Group justify="flex-end">
-              <Anchor component={Link} href="/admin/tryon-suits" size="sm">
+              <Anchor component={Link} href="/admin/tryon/suits" size="sm">
                 Manage leather jerseys
               </Anchor>
             </Group>

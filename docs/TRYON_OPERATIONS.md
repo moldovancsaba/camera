@@ -1,5 +1,8 @@
 # Try-On Operations
 
+**Version**: 2.10.0  
+**Last Updated**: 2026-05-26
+
 ## Required environment
 
 ```bash
@@ -62,6 +65,19 @@ cd /Users/Shared/Projects/try-on
 - calls Camera’s internal completion endpoint
 - leaves the generated result in `pending_review`
 - archives the local workspace
+
+## Camera operator surfaces
+
+- `/admin/tryon` — Try-On App workspace
+- `/admin/tryon/queue` — live queue state from `tryon_jobs`
+- `/admin/tryon/suits` — selectable leather jersey catalog
+- `/admin/tryon/vetting` — approve or reject completed generated results
+
+## Catalog management boundary
+
+- Camera manages suit title, description, preview/source image URLs, active state, and the expected local asset mapping.
+- The actual processing asset file must still exist locally under `TRYON_SUIT_ASSET_ROOT`.
+- If the worker reports `missing suit asset:<leatherSuitId>`, the catalog row exists but the local file does not.
 
 ## Recovery model
 

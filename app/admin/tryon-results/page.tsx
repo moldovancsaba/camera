@@ -80,9 +80,10 @@ export default async function AdminTryOnResultsPage({
 
   return (
     <AdminListPageShell
-      eyebrow="Resource Inventory"
+      eyebrow="Apps"
       title="Try-On Vetting Queue"
       description="Review generated leather results before they become share-visible or slideshow-eligible."
+      primaryAction={{ href: '/admin/tryon', label: 'Open Try-On App' }}
       stats={
         !dbError
           ? [

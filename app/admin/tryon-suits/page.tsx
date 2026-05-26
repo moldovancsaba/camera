@@ -38,10 +38,10 @@ export default async function AdminTryOnSuitsPage() {
 
   return (
     <AdminListPageShell
-      eyebrow="Resource Inventory"
+      eyebrow="Apps"
       title="Leather Jerseys"
       description="Manage the try-on leather catalog that events can expose to users. These records map Camera to the local try-on asset registry."
-      primaryAction={{ href: '/admin/tryon-suits', label: 'Refresh Catalog' }}
+      primaryAction={{ href: '/admin/tryon', label: 'Open Try-On App' }}
       stats={[
         { label: 'Catalog Entries', value: rows.length, iconKey: 'photo' },
         { label: 'Active Entries', value: rows.filter((row) => row.active).length, iconKey: 'photoScan' },

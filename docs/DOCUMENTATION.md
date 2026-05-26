@@ -1,6 +1,6 @@
 # Documentation Maintenance
 
-**Last Updated**: 2026-05-23
+**Last Updated**: 2026-05-26
 
 The running code is the source of truth. Documentation must be updated from the implementation, not from memory.
 
@@ -15,6 +15,8 @@ Use these as the maintained operational set:
 - [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_CONVENTIONS.md)
 - [docs/MONGODB_ATLAS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_ATLAS.md)
 - [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/venturecogroup/camera/docs/SLIDESHOW_LOGIC.md)
+- [docs/TRYON_ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/docs/TRYON_ARCHITECTURE.md)
+- [docs/TRYON_OPERATIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/TRYON_OPERATIONS.md)
 
 Historical and planning docs may exist, but they are not canonical runtime documentation unless explicitly refreshed.
 
