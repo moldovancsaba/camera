@@ -99,6 +99,8 @@ export default function CameraCapture({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const startRequestRef = useRef(0);
 
   const isMobileDevice = useCallback(() => {
     if (typeof navigator === 'undefined') {
@@ -160,6 +162,10 @@ export default function CameraCapture({
   /**
    * Load frame overlay image
    */
+  useEffect(() => {
+    streamRef.current = stream;
+  }, [stream]);
+
   useEffect(() => {
     if (frameOverlay) {
       const img = new window.Image();
@@ -254,13 +260,21 @@ export default function CameraCapture({
    * Start camera stream with specified constraints
    */
   const startCamera = async (facing: 'user' | 'environment' = facingMode) => {
+    const requestId = ++startRequestRef.current;
     setIsLoading(true);
     setError(null);
     setCapturedImage(null);
     try {
-      // Stop existing stream if any
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      const currentStream = streamRef.current;
+      if (currentStream) {
+        currentStream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        setStream(null);
+      }
+
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.srcObject = null;
       }
 
       // Request camera access with the highest practical resolution
@@ -297,11 +311,19 @@ export default function CameraCapture({
           audio: false,
         });
       }
+
+      if (requestId !== startRequestRef.current) {
+        mediaStream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       
       setFacingMode(facing);
       setStream(mediaStream);
       
     } catch (err) {
+      if (requestId !== startRequestRef.current) {
+        return;
+      }
       setIsLoading(false);
       
       const error = err as Error;
@@ -332,22 +354,28 @@ export default function CameraCapture({
    * Stop camera stream and release resources
    */
   const stopCamera = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+    startRequestRef.current += 1;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
       setStream(null);
     }
     
     if (videoRef.current) {
+      videoRef.current.pause();
       videoRef.current.srcObject = null;
     }
-  }, [stream]);
+  }, []);
 
   /**
    * Switch between front and back camera (mobile)
    */
   const switchCamera = () => {
+    if (isLoading) {
+      return;
+    }
     const newFacing = facingMode === 'user' ? 'environment' : 'user';
-    startCamera(newFacing);
+    void startCamera(newFacing);
   };
 
   /**
@@ -810,7 +838,7 @@ export default function CameraCapture({
               </div>
               <div className="justify-self-end">
                 {hasMultipleCameras ? (
-                  <AppButton type="button" variant="secondary" compact onClick={() => switchCamera()}>
+                  <AppButton type="button" variant="secondary" compact onClick={() => switchCamera()} disabled={isLoading}>
                     Change camera
                   </AppButton>
                 ) : (
@@ -882,6 +910,7 @@ export default function CameraCapture({
                     : 'bottom-4 left-4'
               }`}
               aria-label="Switch camera"
+              disabled={isLoading}
             >
               <svg className="h-6 w-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
