@@ -4,6 +4,7 @@ import { COLLECTIONS, type Event, type LeatherSuit } from '@/lib/db/schemas';
 export interface TryOnSuitOption {
   id: string;
   name: string;
+  description?: string | null;
   previewUrl?: string | null;
   category: LeatherSuit['category'];
 }
@@ -11,14 +12,36 @@ export interface TryOnSuitOption {
 export interface LeatherSuitSeed {
   leatherSuitId: string;
   name: string;
+  description?: string | null;
   category: LeatherSuit['category'];
   assetKey: string;
   assetVersion?: number;
+  imageUrl?: string | null;
+  thumbnailUrl?: string | null;
+  deleteUrl?: string | null;
+  imageId?: string | null;
+  fileSize?: number | null;
+  mimeType?: string | null;
   assetRelativePath?: string | null;
   previewUrl?: string | null;
   sourceImageUrl?: string | null;
   active?: boolean;
   metadata?: LeatherSuit['metadata'];
+}
+
+export function getLeatherSuitPreviewUrl(suit: Pick<LeatherSuit, 'thumbnailUrl' | 'previewUrl' | 'imageUrl' | 'sourceImageUrl'>): string | null {
+  if (typeof suit.thumbnailUrl === 'string' && suit.thumbnailUrl.trim()) return suit.thumbnailUrl;
+  if (typeof suit.previewUrl === 'string' && suit.previewUrl.trim()) return suit.previewUrl;
+  if (typeof suit.imageUrl === 'string' && suit.imageUrl.trim()) return suit.imageUrl;
+  if (typeof suit.sourceImageUrl === 'string' && suit.sourceImageUrl.trim()) return suit.sourceImageUrl;
+  return null;
+}
+
+export function getLeatherSuitProcessingUrl(suit: Pick<LeatherSuit, 'sourceImageUrl' | 'imageUrl' | 'previewUrl'>): string | null {
+  if (typeof suit.sourceImageUrl === 'string' && suit.sourceImageUrl.trim()) return suit.sourceImageUrl;
+  if (typeof suit.imageUrl === 'string' && suit.imageUrl.trim()) return suit.imageUrl;
+  if (typeof suit.previewUrl === 'string' && suit.previewUrl.trim()) return suit.previewUrl;
+  return null;
 }
 
 export async function listActiveTryOnSuitOptions(db: Db): Promise<TryOnSuitOption[]> {
@@ -40,7 +63,8 @@ export async function listActiveTryOnSuitOptions(db: Db): Promise<TryOnSuitOptio
           {
             id: suit.leatherSuitId,
             name: suit.name,
-            previewUrl: typeof suit.previewUrl === 'string' ? suit.previewUrl : null,
+            description: typeof suit.description === 'string' ? suit.description : suit.metadata?.notes || null,
+            previewUrl: getLeatherSuitPreviewUrl(suit),
             category: suit.category,
           },
         ]
@@ -94,7 +118,8 @@ export async function listActiveTryOnSuitOptionsForEvent(
           {
             id: suit.leatherSuitId,
             name: suit.name,
-            previewUrl: typeof suit.previewUrl === 'string' ? suit.previewUrl : null,
+            description: typeof suit.description === 'string' ? suit.description : suit.metadata?.notes || null,
+            previewUrl: getLeatherSuitPreviewUrl(suit),
             category: suit.category,
           },
         ]
@@ -143,12 +168,19 @@ export async function upsertLeatherSuitsFromSeed(
       {
         $set: {
           name: seed.name,
+          description: seed.description ?? seed.metadata?.notes ?? null,
           category: seed.category,
           assetKey: seed.assetKey,
           assetVersion: seed.assetVersion ?? 1,
+          imageUrl: seed.imageUrl ?? seed.sourceImageUrl ?? seed.previewUrl ?? null,
+          thumbnailUrl: seed.thumbnailUrl ?? seed.previewUrl ?? seed.imageUrl ?? seed.sourceImageUrl ?? null,
+          deleteUrl: seed.deleteUrl ?? null,
+          imageId: seed.imageId ?? null,
+          fileSize: seed.fileSize ?? null,
+          mimeType: seed.mimeType ?? null,
           assetRelativePath: seed.assetRelativePath ?? null,
-          previewUrl: seed.previewUrl ?? null,
-          sourceImageUrl: seed.sourceImageUrl ?? null,
+          previewUrl: seed.previewUrl ?? seed.thumbnailUrl ?? seed.imageUrl ?? seed.sourceImageUrl ?? null,
+          sourceImageUrl: seed.sourceImageUrl ?? seed.imageUrl ?? seed.previewUrl ?? null,
           active: seed.active !== false,
           metadata: seed.metadata ?? {},
           updatedAt: now,

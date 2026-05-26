@@ -75,9 +75,9 @@ cd /Users/Shared/Projects/try-on
 
 ## Catalog management boundary
 
-- Camera manages suit title, description, preview/source image URLs, active state, and the expected local asset mapping.
-- The actual processing asset file must still exist locally under `TRYON_SUIT_ASSET_ROOT`.
-- If the worker reports `missing suit asset:<leatherSuitId>`, the catalog row exists but the local file does not.
+- Camera manages suit title, description, active state, and the uploaded suit asset itself.
+- The worker downloads the suit image from the `leather_suits` record before it runs processing.
+- `TRYON_SUIT_ASSET_ROOT` is now optional legacy fallback only for older suit records without a Camera-hosted asset URL.
 
 ## Recovery model
 
@@ -104,7 +104,7 @@ Per-job workspaces include:
 
 ## Operational warnings
 
-- The worker expects `TRYON_SUIT_ASSET_ROOT` to contain the referenced suit assets locally.
+- `TRYON_SUIT_ASSET_ROOT` is optional and only used as a legacy fallback if a suit record does not have a Camera-hosted processing URL.
 - Source image host validation defaults to `i.ibb.co`.
 - The queue contract assumes Camera has already saved the normal submission before try-on enqueue runs.
 - The official worker runtime now lives in `/Users/Shared/Projects/try-on`, not in the Camera repo.

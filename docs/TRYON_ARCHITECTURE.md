@@ -12,7 +12,7 @@ Camera remains the intake system. The try-on pipeline is asynchronous and uses a
 1. Camera capture saves the normal composed submission through `POST /api/submissions`.
 2. If a leather jersey was selected, Camera uploads the original unframed capture as a second image source.
 3. Camera creates or reuses a `tryon_jobs` document linked to the saved submission.
-4. The local worker in `/Users/Shared/Projects/try-on` polls Atlas, claims a job with a lease, downloads the source image, resolves the local suit asset, and runs the processor.
+4. The local worker in `/Users/Shared/Projects/try-on` polls Atlas, claims a job with a lease, downloads the source image, downloads the selected Camera-hosted suit asset, and runs the processor.
 5. The worker uploads the final result to imgbb and calls `POST /api/internal/tryon/complete`.
 6. Camera materializes a derived `submissionKind=tryon_result` record in `pending_review`.
 7. Admins operate Try-On from `/admin/tryon`, monitor live queue state in `/admin/tryon/queue`, manage selectable leather jerseys in `/admin/tryon/suits`, and review generated outputs in `/admin/tryon/vetting`.
@@ -34,16 +34,19 @@ Canonical suit catalog used by the Camera UI and local worker resolution.
 Key fields:
 - `leatherSuitId`
 - `name`
+- `description`
 - `category`
 - `assetKey`
 - `assetVersion`
-- `assetRelativePath`
+- `imageUrl`
+- `thumbnailUrl`
 - `previewUrl`
 - `active`
 
 Important boundary:
-- Camera manages catalog metadata, preview/source URLs, and local asset mapping contracts.
-- The actual processing file must still exist on the local try-on machine under the configured suit asset root.
+- Camera manages the uploaded suit asset in imgbb-backed storage, plus the catalog metadata shown in admin and public capture flows.
+- The worker downloads the processing suit image from Camera-managed storage first.
+- Legacy local asset resolution remains only as a fallback for older suit records.
 
 ### `tryon_jobs`
 
@@ -140,4 +143,4 @@ logs/
 - Try-on should use the original capture image, not the branded composite submission.
 - Camera does not block user capture if the try-on queue step fails after submission save.
 - Slideshows and public share pages must never read directly from `tryon_jobs`; they only use approved derived submissions.
-- Camera currently does not upload local processing suit binaries; it stores the catalog row and the expected local asset mapping.
+- Leather jerseys now follow the same resource pattern as frames and logos: Camera owns the uploaded suit asset and exposes it to the worker through remote URLs.

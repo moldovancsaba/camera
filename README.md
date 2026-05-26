@@ -165,7 +165,7 @@ Camera can optionally enqueue asynchronous try-on jobs after a capture is saved.
 - the official local worker in `/Users/Shared/Projects/try-on` polls Atlas, runs the try-on processor, uploads the result to imgbb, and calls Camera’s signed completion endpoint
 - `/admin/tryon` is the operator workspace for queue, catalog, and moderation
 - `/admin/tryon/queue` shows live queue state directly from `tryon_jobs`
-- `/admin/tryon/suits` manages the selectable leather jersey catalog, preview/source image URLs, and local asset mapping contract
+- `/admin/tryon/suits` manages the selectable leather jersey catalog as Camera-hosted uploaded suit assets
 - `/admin/tryon/vetting` reviews generated outputs before publication
 - only approved generated results become visible on share pages and slideshow playlists
 

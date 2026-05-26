@@ -1,55 +1,89 @@
 import { NextRequest } from 'next/server';
+import { ObjectId, type Document, type UpdateFilter } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { COLLECTIONS, type LeatherSuit, generateTimestamp } from '@/lib/db/schemas';
+import { COLLECTIONS, type LeatherSuit } from '@/lib/db/schemas';
 import {
   apiBadRequest,
+  apiNoContent,
   apiNotFound,
   apiSuccess,
   requireAdmin,
   withErrorHandler,
 } from '@/lib/api';
 
+interface RouteContext {
+  params: Promise<{ leatherSuitId: string }>;
+}
+
 function normalizeString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-export const PATCH = withErrorHandler(async (
-  request: NextRequest,
-  context: { params: Promise<{ leatherSuitId: string }> }
-) => {
-  await requireAdmin();
-  const { leatherSuitId } = await context.params;
-  const normalizedId = normalizeString(leatherSuitId);
-  if (!normalizedId) {
+async function findSuitByParam(db: Awaited<ReturnType<typeof connectToDatabase>>, rawParam: string) {
+  const normalized = normalizeString(rawParam);
+  if (!normalized) {
     throw apiBadRequest('Leather suit id is required');
   }
 
+  const query = ObjectId.isValid(normalized)
+    ? { _id: new ObjectId(normalized) }
+    : { leatherSuitId: normalized };
+
+  const suit = await db.collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS).findOne(query);
+  return { normalized, suit, query };
+}
+
+export const GET = withErrorHandler(async (_request: NextRequest, context: RouteContext) => {
+  await requireAdmin();
+  const { leatherSuitId } = await context.params;
+  const db = await connectToDatabase();
+  const { suit } = await findSuitByParam(db, leatherSuitId);
+
+  if (!suit) {
+    throw apiNotFound('Leather suit');
+  }
+
+  return apiSuccess({
+    suit: {
+      ...suit,
+      _id: suit._id?.toString?.() ?? null,
+    },
+  });
+});
+
+export const PUT = withErrorHandler(async (request: NextRequest, context: RouteContext) => {
+  await requireAdmin();
+  const { leatherSuitId } = await context.params;
+  const db = await connectToDatabase();
+  const { suit, query } = await findSuitByParam(db, leatherSuitId);
+
+  if (!suit) {
+    throw apiNotFound('Leather suit');
+  }
+
   const body = await request.json();
-  const updateFields: Partial<LeatherSuit> & { updatedAt: string } = {
-    updatedAt: generateTimestamp(),
+  const updateData: Partial<LeatherSuit> & { updatedAt: string } = {
+    updatedAt: new Date().toISOString(),
   };
 
-  if (body.name !== undefined) updateFields.name = normalizeString(body.name);
-  if (body.assetKey !== undefined) updateFields.assetKey = normalizeString(body.assetKey);
-  if (body.assetRelativePath !== undefined) updateFields.assetRelativePath = normalizeString(body.assetRelativePath) || null;
-  if (body.previewUrl !== undefined) updateFields.previewUrl = normalizeString(body.previewUrl) || null;
-  if (body.sourceImageUrl !== undefined) updateFields.sourceImageUrl = normalizeString(body.sourceImageUrl) || null;
-  if (body.active !== undefined) updateFields.active = Boolean(body.active);
-  if (body.assetVersion !== undefined) {
-    const parsed = Number(body.assetVersion);
-    updateFields.assetVersion = Number.isFinite(parsed) ? Math.max(1, parsed) : 1;
-  }
-  if (body.notes !== undefined) {
-    updateFields.metadata = {
+  if (body.name !== undefined) updateData.name = normalizeString(body.name);
+  if (body.description !== undefined) {
+    const description = normalizeString(body.description) || null;
+    updateData.description = description;
+    updateData.metadata = {
       pose: 'front_a_pose',
-      notes: normalizeString(body.notes) || null,
+      notes: description,
     };
   }
+  if (body.assetVersion !== undefined) {
+    const parsed = Number(body.assetVersion);
+    updateData.assetVersion = Number.isFinite(parsed) ? Math.max(1, parsed) : 1;
+  }
+  if (body.active !== undefined) updateData.active = Boolean(body.active);
 
-  const db = await connectToDatabase();
   const result = await db.collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS).findOneAndUpdate(
-    { leatherSuitId: normalizedId },
-    { $set: updateFields },
+    query,
+    { $set: updateData },
     { returnDocument: 'after' }
   );
 
@@ -57,5 +91,34 @@ export const PATCH = withErrorHandler(async (
     throw apiNotFound('Leather suit');
   }
 
-  return apiSuccess({ suit: result });
+  return apiSuccess({
+    suit: {
+      ...result,
+      _id: result._id?.toString?.() ?? null,
+    },
+  });
+});
+
+export const DELETE = withErrorHandler(async (_request: NextRequest, context: RouteContext) => {
+  await requireAdmin();
+  const { leatherSuitId } = await context.params;
+  const db = await connectToDatabase();
+  const { suit, query } = await findSuitByParam(db, leatherSuitId);
+
+  if (!suit) {
+    throw apiNotFound('Leather suit');
+  }
+
+  await db.collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS).deleteOne(query);
+
+  await db.collection(COLLECTIONS.EVENTS).updateMany(
+    { 'tryOn.allowedLeatherSuitIds': suit.leatherSuitId },
+    {
+      $pull: {
+        'tryOn.allowedLeatherSuitIds': suit.leatherSuitId,
+      },
+    } as unknown as UpdateFilter<Document>
+  );
+
+  return apiNoContent();
 });

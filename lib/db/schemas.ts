@@ -663,13 +663,22 @@ export interface LeatherSuit {
   _id?: ObjectId;
   leatherSuitId: string;
   name: string;
+  description?: string | null;
   category: LeatherSuitCategory;
   assetKey: string;
   assetVersion: number;
+  imageUrl?: string | null;
+  thumbnailUrl?: string | null;
+  deleteUrl?: string | null;
+  imageId?: string | null;
+  fileSize?: number | null;
+  mimeType?: string | null;
   assetRelativePath?: string | null;
   previewUrl?: string | null;
   sourceImageUrl?: string | null;
   active: boolean;
+  usageCount?: number;
+  createdBy?: string;
   metadata?: {
     pose?: 'front_a_pose';
     notes?: string | null;

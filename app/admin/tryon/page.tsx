@@ -81,7 +81,7 @@ export default async function AdminTryOnAppPage() {
             <InfoCard
               tone="green"
               title="Leather jerseys are catalog entries"
-              description="Manage the user-selectable catalog here with a clean title and description. The local try-on machine still needs the matching asset file."
+              description="Manage the user-selectable catalog here as Camera-hosted uploaded assets. The local try-on machine now downloads the suit image directly from Camera-managed storage."
             />
             <InfoCard
               tone="yellow"

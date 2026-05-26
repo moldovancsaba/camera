@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { Db, WithId } from 'mongodb';
 import { COLLECTIONS, type LeatherSuit, type TryOnJob } from '@/lib/db/schemas';
 import { nowIso } from '@/lib/tryon/time';
+import { getLeatherSuitProcessingUrl } from '@/lib/tryon/suits';
 
 export interface StagedTryOnJob {
   workspaceRoot: string;
@@ -56,6 +57,31 @@ export async function resolveLocalSuitAsset(
   throw new Error(`missing suit asset:${leatherSuitId}`);
 }
 
+export async function stageSuitAsset(
+  db: Db,
+  leatherSuitId: string,
+  destinationPath: string,
+  allowlist: string[],
+  suitAssetRoot: string
+): Promise<{ suit: LeatherSuit; resolvedSource: string }> {
+  const suit = await db
+    .collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS)
+    .findOne({ leatherSuitId, active: true });
+  if (!suit) {
+    throw new Error(`missing suit:${leatherSuitId}`);
+  }
+
+  const processingUrl = getLeatherSuitProcessingUrl(suit);
+  if (processingUrl) {
+    await downloadSourceImage(processingUrl, destinationPath, allowlist);
+    return { suit, resolvedSource: processingUrl };
+  }
+
+  const { resolvedPath } = await resolveLocalSuitAsset(db, leatherSuitId, suitAssetRoot);
+  await copyFile(resolvedPath, destinationPath);
+  return { suit, resolvedSource: resolvedPath };
+}
+
 export async function downloadSourceImage(
   imageUrl: string,
   destinationPath: string,
@@ -93,12 +119,13 @@ export async function stageTryOnJob(
   const metadataPath = path.join(workspaceRoot, 'metadata.json');
 
   await downloadSourceImage(job.source.imageUrl, personInputPath, allowlist);
-  const { resolvedPath } = await resolveLocalSuitAsset(
+  const { resolvedSource } = await stageSuitAsset(
     db,
     job.request.leatherSuitId,
+    suitInputPath,
+    allowlist,
     suitAssetRoot
   );
-  await copyFile(resolvedPath, suitInputPath);
 
   await writeFile(
     metadataPath,
@@ -110,7 +137,7 @@ export async function stageTryOnJob(
         workerId: job.processing.workerId,
         workspacePath: workspaceRoot,
         sourceImageUrl: job.source.imageUrl,
-        resolvedSuitAssetPath: resolvedPath,
+        resolvedSuitAssetPath: resolvedSource,
         createdAt: nowIso(),
       },
       null,
