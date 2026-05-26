@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       playMode: bodyPlayMode,
       orderMode: bodyOrderMode,
       stageAspect: bodyStageAspect,
+      submissionSourceMode: bodySubmissionSourceMode,
     } = body;
 
     const playMode = bodyPlayMode === 'once' ? 'once' : 'loop';
@@ -57,6 +58,12 @@ export async function POST(request: NextRequest) {
         ? body.backgroundImageUrl.trim()
         : null;
     const viewportScale = body.viewportScale === 'fill' ? 'fill' : 'fit';
+    const submissionSourceMode =
+      bodySubmissionSourceMode === 'approved_tryon_only'
+        ? 'approved_tryon_only'
+        : bodySubmissionSourceMode === 'originals_and_approved_tryon'
+          ? 'originals_and_approved_tryon'
+          : 'originals_only';
     const stageAspectNorm = normalizeStageAspectInput(bodyStageAspect);
 
     if (!eventId || !name) {
@@ -105,6 +112,7 @@ export async function POST(request: NextRequest) {
       backgroundAccentColor,
       backgroundImageUrl,
       viewportScale,
+      submissionSourceMode,
       createdBy: session.user.id,
       createdAt: generateTimestamp(),
       updatedAt: generateTimestamp(),
@@ -212,6 +220,7 @@ export async function PATCH(request: NextRequest) {
       backgroundImageUrl,
       viewportScale,
       stageAspect: bodyStageAspectPatch,
+      submissionSourceMode,
     } = body;
 
     const hexOk = (s: string) =>
@@ -277,6 +286,19 @@ export async function PATCH(request: NextRequest) {
         );
       }
       updates.viewportScale = viewportScale;
+    }
+    if (submissionSourceMode !== undefined) {
+      if (
+        submissionSourceMode !== 'originals_only' &&
+        submissionSourceMode !== 'approved_tryon_only' &&
+        submissionSourceMode !== 'originals_and_approved_tryon'
+      ) {
+        return NextResponse.json(
+          { error: 'submissionSourceMode must be "originals_only", "approved_tryon_only", or "originals_and_approved_tryon"' },
+          { status: 400 }
+        );
+      }
+      updates.submissionSourceMode = submissionSourceMode;
     }
     if (bodyStageAspectPatch !== undefined) {
       if (bodyStageAspectPatch === null) {

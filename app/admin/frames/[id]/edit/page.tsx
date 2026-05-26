@@ -24,9 +24,9 @@ import {
   Text,
   TextInput,
   Textarea,
-} from '@mantine/core';
+} from '@/components/gds/ui';
 import { IconAlertCircle } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notifications } from '@/lib/gds/notifications';
 import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
 import FormSection from '@/components/gds/FormSection';
 import StateBlock from '@/components/gds/StateBlock';

@@ -113,7 +113,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   // Parse request body
   const body = await request.json();
-  const { name, partnerId, description, eventDate, location, isActive, logoUrl, showLogo, shortUrlSlug } =
+  const { name, partnerId, description, eventDate, location, isActive, logoUrl, showLogo, shortUrlSlug, tryOn } =
     body;
 
   // Validate required fields
@@ -184,6 +184,14 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     logos: inheritedDefaults.logos || [],
     logosOverridden: inheritedDefaults.logosOverridden,
     customPages: [],
+    tryOn: {
+      enabled: Boolean(tryOn?.enabled),
+      allowedLeatherSuitIds: Array.isArray(tryOn?.allowedLeatherSuitIds)
+        ? tryOn.allowedLeatherSuitIds
+            .filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
+            .map((value: string) => value.trim())
+        : [],
+    },
     ...(resolvedShortSlug !== undefined ? { shortUrlSlug: resolvedShortSlug } : {}),
     submissionCount: 0,
     createdBy: session.user.id,

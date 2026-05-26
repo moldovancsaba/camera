@@ -15,6 +15,8 @@
     "db:ensure-indexes": "tsx scripts/run-ensure-indexes.ts",
     "db:verify-uri": "tsx scripts/verify-mongo-uri.ts",
     "env:verify": "tsx scripts/verify-env.ts",
+    "tryon:seed-suits": "tsx scripts/seed-tryon-suits.ts",
+    "tryon:worker": "tsx scripts/tryon-worker.ts",
     "postinstall": "node scripts/patch-baseline-browser-mapping.mjs",
     "vercel:link": "npx vercel@latest link",
     "vercel:env-pull": "npx vercel@latest env pull .env.local --yes"

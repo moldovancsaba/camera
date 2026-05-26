@@ -10,7 +10,7 @@ import Image from 'next/image';
 import { APP_VERSION } from '@/lib/app-version';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import PublicShell from '@/components/gds/PublicShell';
-import { Alert, Badge, Button, Group, Stack, Text, Title } from '@mantine/core';
+import { Alert, Badge, Button, Group, Stack, Text, Title } from '@/components/gds/ui';
 
 // This page uses cookies, so it must be dynamic
 export const dynamic = 'force-dynamic';

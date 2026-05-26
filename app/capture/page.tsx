@@ -12,6 +12,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import CameraCapture from '@/components/camera/CameraCapture';
 import FileUpload from '@/components/camera/FileUpload';
+import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
 import { AppButton } from '@/components/ui/AppButton';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 
@@ -26,6 +27,14 @@ interface Frame {
   /** From DB `frames` collection — drives CameraCapture aspect (same as event capture). */
   width?: number;
   height?: number;
+}
+
+interface TryOnSubmissionResult {
+  requested: boolean;
+  status: 'not_requested' | 'queued' | 'deduplicated' | 'enqueue_failed';
+  leatherSuitId: string | null;
+  jobId: string | null;
+  error: string | null;
 }
 
 function framePixelDimensions(frame: Frame): { width: number; height: number } {
@@ -49,6 +58,8 @@ export default function CapturePage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [step, setStep] = useState<'select-frame' | 'capture-photo' | 'preview'>('select-frame');
   const [frameIntrinsicAspect, setFrameIntrinsicAspect] = useState<number | null>(null);
+  const [selectedTryOnSuitId, setSelectedTryOnSuitId] = useState<string | null>(null);
+  const [tryOnResult, setTryOnResult] = useState<TryOnSubmissionResult | null>(null);
 
   // Fetch active frames
   useEffect(() => {
@@ -199,6 +210,9 @@ export default function CapturePage() {
         body: JSON.stringify({
           imageData: compositeImage,
           frameId: selectedFrame._id,
+          requestTryOn: Boolean(selectedTryOnSuitId),
+          leatherSuitId: selectedTryOnSuitId,
+          tryOnSourceImageData: selectedTryOnSuitId ? capturedImage : null,
         }),
       });
 
@@ -207,11 +221,20 @@ export default function CapturePage() {
       }
 
       const data = await response.json();
-      setSubmissionId(data.submission._id);
+      const submission = data.data?.submission ?? data.submission;
+      const rawId = submission?._id;
+      const resolvedId =
+        typeof rawId === 'string' && rawId.trim() ? rawId.trim() : rawId != null ? String(rawId) : '';
+      if (!resolvedId) {
+        throw new Error('Save succeeded but no submission id was returned');
+      }
+
+      setSubmissionId(resolvedId);
+      setTryOnResult(data.data?.tryOn ?? data.tryOn ?? null);
       
       // Generate share URL
       const origin = window.location.origin;
-      setShareUrl(`${origin}/share/${data.submission._id}`);
+      setShareUrl(`${origin}/share/${resolvedId}`);
       
       alert('Photo saved successfully! You can now share it.');
     } catch (error) {
@@ -280,6 +303,8 @@ export default function CapturePage() {
     setCompositeImage(null);
     setSubmissionId(null);
     setShareUrl(null);
+    setSelectedTryOnSuitId(null);
+    setTryOnResult(null);
     setStep('select-frame');
   };
 
@@ -434,6 +459,20 @@ export default function CapturePage() {
                 </div>
 
                 <div className="space-y-4">
+                  {!submissionId ? (
+                    <div className="app-surface-card app-surface-card-pad-sm">
+                      <p className="app-surface-card-row-title">Optional try-on</p>
+                      <p className="app-surface-meta mt-1 mb-3">
+                        Queue this capture for leather try-on after the image is saved.
+                      </p>
+                      <TryOnSuitSelector
+                        selectedSuitId={selectedTryOnSuitId}
+                        onChange={setSelectedTryOnSuitId}
+                        disabled={isSaving}
+                      />
+                    </div>
+                  ) : null}
+
                   <div className="flex flex-col sm:flex-row gap-4">
                     {!submissionId ? (
                       <AppButton
@@ -457,6 +496,32 @@ export default function CapturePage() {
                       💾 Download
                     </AppButton>
                   </div>
+
+                  {tryOnResult?.requested ? (
+                    <div
+                      className={
+                        tryOnResult.status === 'enqueue_failed'
+                          ? 'rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
+                          : 'rounded-xl border border-sky-500/40 bg-sky-500/10 px-4 py-3 text-sm text-sky-100'
+                      }
+                    >
+                      {tryOnResult.status === 'queued' || tryOnResult.status === 'deduplicated' ? (
+                        <>
+                          <p className="font-semibold">Try-on queued</p>
+                          <p className="mt-1">
+                            Job ID: <span className="font-mono">{tryOnResult.jobId}</span>
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-semibold">Try-on was not queued</p>
+                          <p className="mt-1">
+                            {tryOnResult.error || 'The image was saved, but the try-on queue step failed.'}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  ) : null}
 
                   {shareUrl && (
                     <div className="border-t border-[var(--app-panel-border)] pt-4">

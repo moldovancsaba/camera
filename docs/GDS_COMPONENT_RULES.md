@@ -6,8 +6,12 @@ These rules define how Mantine-backed GDS primitives should be introduced and us
 
 Current SSOT alignment target:
 
-- GDS version: `2.3.0`
+- GDS version: `2.4.3`
 - Camera aligns to the shared contracts locally until direct package consumption is possible
+
+Compliance artifact:
+
+- [gds-adoption.json](/Users/Shared/Projects/venturecogroup/camera/gds-adoption.json) is the machine-readable declaration of Camera's active contract coverage, exceptions, and migration state.
 
 ## Primitive Categories
 
@@ -56,6 +60,7 @@ Every new GDS primitive should define:
 2. Use direct Mantine composition when building or refining a primitive, not when bypassing one.
 3. Keep domain-specific logic out of foundation primitives.
 4. Keep visual tokens inside the Mantine theme or documented system-level props rather than scattered per page.
+5. Files outside `components/gds/**` and `lib/gds/**` must not import `@mantine/*` directly.
 
 ## Current Admin Primitive Direction
 

@@ -36,6 +36,8 @@ export const COLLECTIONS = {
   FRAMES: 'frames',
   LOGOS: 'logos',
   SUBMISSIONS: 'submissions',
+  LEATHER_SUITS: 'leather_suits',
+  TRYON_JOBS: 'tryon_jobs',
   USERS_CACHE: 'users_cache',
   SLIDESHOWS: 'slideshows',
   SLIDESHOW_LAYOUTS: 'slideshow_layouts',
@@ -221,6 +223,10 @@ export interface Event {
   eventDate?: string;                // Optional event date (ISO 8601 timestamp)
   location?: string;                 // Optional event location
   isActive: boolean;                 // Whether event is currently active
+  tryOn?: {
+    enabled: boolean;                // Whether local AI try-on can be requested from capture flows
+    allowedLeatherSuitIds?: string[]; // Optional allowlist for the public suit picker
+  };
   
   // Frame assignments
   // This array tracks which frames are assigned to this event and their activation status
@@ -527,6 +533,7 @@ export interface Submission {
   submissionId: string;              // Unique submission identifier (UUID)
   userId: string;                    // User ID from SSO
   userEmail: string;                 // User email from SSO
+  userName?: string | null;          // Cached display name used by share/profile/admin surfaces
   frameId: string;                   // Reference to frame used
   
   // Partner/Event context for gallery organization
@@ -536,8 +543,30 @@ export interface Submission {
   eventName: string | null;          // Cached event name for display (primary event)
   
   // Image URLs (all hosted on imgbb.com)
+  imageUrl?: string;                 // Legacy/current primary public image URL used by share/slideshow/admin surfaces
+  deleteUrl?: string;                // ImgBB delete URL when the image is managed by Camera
   originalImageUrl: string;          // User's original photo
   finalImageUrl: string;             // Composed photo with frame
+  eventId?: string | null;           // Legacy/current single-event mirror for filtering
+  frameName?: string | null;         // Cached frame name used by admin listings
+  frameCategory?: string | null;     // Cached frame category used by admin filters
+  imageId?: string | null;           // ImgBB image id when returned by upload API
+  fileSize?: number | null;          // Current top-level file size mirror used by some admin tools
+  mimeType?: string | null;          // Current top-level mime type mirror used by some admin tools
+  submissionKind?: 'original' | 'tryon_result'; // Publication kind for originals vs derived AI outputs
+  sourceSubmissionId?: string | null; // Mongo _id string of the originating submission for derived try-on results
+  sourceJobId?: string | null;       // Queue job that produced the derived try-on result
+  tryOnLeatherSuitId?: string | null; // Canonical leather suit selection used for generation
+  tryOnPipeline?: string | null;     // Processor pipeline name
+  tryOnPipelineVersion?: string | null; // Processor pipeline version for debugging/audit
+  reviewStatus?: 'pending_review' | 'approved' | 'rejected'; // Moderation status for generated try-on results
+  reviewedAt?: string | null;
+  reviewedBy?: string | null;
+  reviewNotes?: string | null;
+  approvedAt?: string | null;
+  approvedBy?: string | null;
+  isShareVisible?: boolean;          // Public share-page publication flag
+  isSlideshowEligible?: boolean;     // Slideshow playlist eligibility flag
   
   // Submission details
   method: SubmissionMethod;          // Camera capture or file upload
@@ -621,6 +650,118 @@ export interface Submission {
   // Timestamps
   createdAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
+  tryOnJobs?: SubmissionTryOnLink[]; // Optional try-on jobs linked back to this submission
+}
+
+// ============================================================================
+// TRY-ON COLLECTIONS
+// ============================================================================
+
+export type LeatherSuitCategory = 'motogp_full_body_leather';
+
+export interface LeatherSuit {
+  _id?: ObjectId;
+  leatherSuitId: string;
+  name: string;
+  category: LeatherSuitCategory;
+  assetKey: string;
+  assetVersion: number;
+  assetRelativePath?: string | null;
+  previewUrl?: string | null;
+  sourceImageUrl?: string | null;
+  active: boolean;
+  metadata?: {
+    pose?: 'front_a_pose';
+    notes?: string | null;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TryOnJobStatus =
+  | 'queued'
+  | 'claimed'
+  | 'processing'
+  | 'uploading_result'
+  | 'retry_wait'
+  | 'done'
+  | 'failed';
+
+export type TryOnJobStage =
+  | 'queued'
+  | 'claimed'
+  | 'downloading_input'
+  | 'resolving_suit'
+  | 'running_tryon'
+  | 'uploading_result'
+  | 'done'
+  | 'failed';
+
+export interface TryOnJobSource {
+  app: 'camera';
+  submissionId: string;
+  imageUrl: string;
+  eventId?: string | null;
+  eventMongoId?: string | null;
+  partnerId?: string | null;
+  userId?: string | null;
+}
+
+export interface TryOnJobRequest {
+  leatherSuitId: string;
+}
+
+export interface TryOnJobProcessingState {
+  workerId?: string | null;
+  claimedAt?: string | null;
+  leaseExpiresAt?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  attemptCount: number;
+  nextAttemptAt: string;
+  lastHeartbeatAt?: string | null;
+}
+
+export interface TryOnJobResult {
+  publicResultUrl?: string | null;
+  imgbbDeleteUrl?: string | null;
+  provider?: 'imgbb' | null;
+}
+
+export interface TryOnJobError {
+  code?: string | null;
+  message?: string | null;
+  details?: string | null;
+}
+
+export interface TryOnJob {
+  _id?: ObjectId;
+  jobId: string;
+  requestHash: string;
+  status: TryOnJobStatus;
+  stage: TryOnJobStage;
+  pipeline: 'motogp_leather_magic';
+  pipelineVersion: string;
+  source: TryOnJobSource;
+  request: TryOnJobRequest;
+  processing: TryOnJobProcessingState;
+  result: TryOnJobResult;
+  error: TryOnJobError;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubmissionTryOnLink {
+  jobId: string;
+  leatherSuitId: string;
+  status: TryOnJobStatus;
+  resultUrl?: string | null;
+  resultSubmissionId?: string | null;
+  reviewStatus?: 'pending_review' | 'approved' | 'rejected' | null;
+  shareVisible?: boolean;
+  slideshowEligible?: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ============================================================================
@@ -668,6 +809,8 @@ export interface Slideshow {
   playMode?: 'once' | 'loop';
   /** Submission order before mosaic grouping (default: fixed = least-played sort) */
   orderMode?: 'fixed' | 'random';
+  /** Source selection policy for original captures vs approved try-on outputs. */
+  submissionSourceMode?: 'originals_only' | 'approved_tryon_only' | 'originals_and_approved_tryon';
 
   /** Failover gradient (top-right → bottom-left): CSS hex colors */
   backgroundPrimaryColor?: string;

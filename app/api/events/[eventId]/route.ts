@@ -173,6 +173,7 @@ export const PATCH = withErrorHandler(async (
     brandBorderColor,
     customPages,
     shortUrlSlug,
+    tryOn,
   } = body;
 
   // Build update object with only provided fields
@@ -229,6 +230,18 @@ export const PATCH = withErrorHandler(async (
       }
     }
     updateFields.shortUrlSlug = norm.slug;
+  }
+
+  if (tryOn !== undefined) {
+    const allowedLeatherSuitIds = Array.isArray(tryOn?.allowedLeatherSuitIds)
+      ? tryOn.allowedLeatherSuitIds
+          .filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
+          .map((value: string) => value.trim())
+      : [];
+    updateFields.tryOn = {
+      enabled: Boolean(tryOn?.enabled),
+      allowedLeatherSuitIds,
+    };
   }
 
   // Handle customPages array

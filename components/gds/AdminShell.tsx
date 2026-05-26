@@ -90,6 +90,7 @@ export default function AdminShell({
         { href: '/admin/logos', label: 'Global Logos', icon: <IconPhoto size={18} /> },
         { href: '/admin/landing-pages', label: 'Landing Pages', icon: <IconWorld size={18} /> },
         { href: '/admin/submissions', label: 'Global Galleries', icon: <IconPhotoScan size={18} /> },
+        { href: '/admin/tryon-results', label: 'Try-On Results', icon: <IconPhoto size={18} /> },
       ]
     : [];
 

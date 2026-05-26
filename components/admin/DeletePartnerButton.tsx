@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Text } from '@mantine/core';
+import { Alert, Button, Text } from '@/components/gds/ui';
 import { IconAlertCircle } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notifications } from '@/lib/gds/notifications';
 import { confirmDestructive } from '@/lib/gds/confirm-destructive';
 
 interface DeletePartnerButtonProps {

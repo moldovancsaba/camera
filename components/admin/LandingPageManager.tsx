@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ActionIcon, Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { ActionIcon, Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/ui';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notifications } from '@/lib/gds/notifications';
 import { confirmDestructive } from '@/lib/gds/confirm-destructive';
 import EmptyState from '@/components/gds/EmptyState';
 

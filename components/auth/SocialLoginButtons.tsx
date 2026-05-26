@@ -5,7 +5,7 @@
  */
 
 import type { MouseEvent } from 'react';
-import { Button, Group, Stack } from '@mantine/core';
+import { Button, Group, Stack } from '@/components/gds/ui';
 
 import { socialLoginHref, type SocialLoginProvider } from '@/lib/auth/social-login';
 

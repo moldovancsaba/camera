@@ -21,19 +21,21 @@ import {
   FileInput,
   Grid,
   Group,
+  Select,
   Stack,
   Text,
   TextInput,
   Textarea,
-} from '@mantine/core';
+} from '@/components/gds/ui';
 import { IconAlertCircle, IconX } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notifications } from '@/lib/gds/notifications';
 import { type CustomPage } from '@/lib/db/schemas';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
 import FormSection from '@/components/gds/FormSection';
 import StateBlock from '@/components/gds/StateBlock';
 import EditorScaffold from '@/components/gds/EditorScaffold';
+import type { TryOnSuitOption } from '@/lib/tryon/suits';
 
 interface EventRecord {
   _id: string;
@@ -51,6 +53,10 @@ interface EventRecord {
   shortUrlSlug?: string;
   eventId?: string;
   customPages?: CustomPage[];
+  tryOn?: {
+    enabled?: boolean;
+    allowedLeatherSuitIds?: string[];
+  };
 }
 
 interface EventResponse {
@@ -82,6 +88,9 @@ export default function EditEventPage({
   const [brandColor, setBrandColor] = useState('#3B82F6');
   const [brandBorderColor, setBrandBorderColor] = useState('#3B82F6');
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
+  const [tryOnEnabled, setTryOnEnabled] = useState(false);
+  const [suitOptions, setSuitOptions] = useState<TryOnSuitOption[]>([]);
+  const [selectedSuitIds, setSelectedSuitIds] = useState<string[]>([]);
 
   useEffect(() => {
     params.then((p) => setMongoId(p.id));
@@ -109,6 +118,12 @@ export default function EditEventPage({
         setLogoPreview(eventData.logoUrl || null);
         setBrandColor(eventData.brandColor || '#3B82F6');
         setBrandBorderColor(eventData.brandBorderColor || '#3B82F6');
+        setTryOnEnabled(Boolean(eventData.tryOn?.enabled));
+        setSelectedSuitIds(
+          Array.isArray(eventData.tryOn?.allowedLeatherSuitIds)
+            ? eventData.tryOn.allowedLeatherSuitIds
+            : []
+        );
         setIsLoading(false);
       } catch (err: unknown) {
         setError(getErrorMessage(err));
@@ -118,6 +133,23 @@ export default function EditEventPage({
 
     void fetchEvent();
   }, [mongoId]);
+
+  useEffect(() => {
+    const fetchSuits = async () => {
+      try {
+        const response = await fetch('/api/tryon/suits');
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Failed to load leather suits');
+        }
+        setSuitOptions(payload.data?.suits ?? payload.suits ?? []);
+      } catch {
+        setSuitOptions([]);
+      }
+    };
+
+    void fetchSuits();
+  }, []);
 
   const handleLogoChange = (file: File | null) => {
     setLogoFile(file);
@@ -193,6 +225,10 @@ export default function EditEventPage({
       brandColor: brandColor || undefined,
       brandBorderColor: brandBorderColor || undefined,
       shortUrlSlug: (formData.get('shortUrlSlug') as string) ?? '',
+      tryOn: {
+        enabled: tryOnEnabled,
+        allowedLeatherSuitIds: selectedSuitIds,
+      },
     };
 
     try {
@@ -383,6 +419,55 @@ export default function EditEventPage({
             <Text size="sm" c="dimmed">
               Inactive events will not be available for frame selection.
             </Text>
+          </FormSection>
+
+          <FormSection
+            title="Try-on"
+            description="Enable the local AI leather pipeline for this event and optionally limit the available jersey catalog."
+          >
+            <Checkbox
+              checked={tryOnEnabled}
+              onChange={(nextEvent) => setTryOnEnabled(nextEvent.currentTarget.checked)}
+              label="Enable local AI leather try-on for this event"
+            />
+            <Select
+              label="Allowed leather jerseys"
+              description="Leave empty to allow the full active suit catalog when try-on is enabled."
+              placeholder={suitOptions.length > 0 ? 'Select one or more leather jerseys' : 'No active leather jerseys found'}
+              data={suitOptions.map((suit) => ({ value: suit.id, label: suit.name }))}
+              value={null}
+              disabled={!tryOnEnabled || suitOptions.length === 0}
+              searchable
+              clearable
+              onChange={(value) => {
+                if (!value || selectedSuitIds.includes(value)) return;
+                setSelectedSuitIds((current) => [...current, value]);
+              }}
+            />
+            {selectedSuitIds.length > 0 ? (
+              <Group gap="xs">
+                {selectedSuitIds.map((suitId) => {
+                  const suit = suitOptions.find((option) => option.id === suitId);
+                  return (
+                    <Button
+                      key={suitId}
+                      type="button"
+                      size="xs"
+                      variant="light"
+                      onClick={() =>
+                        setSelectedSuitIds((current) => current.filter((value) => value !== suitId))
+                      }
+                    >
+                      Remove {suit?.name ?? suitId}
+                    </Button>
+                  );
+                })}
+              </Group>
+            ) : (
+              <Text size="sm" c="dimmed">
+                No suit allowlist selected.
+              </Text>
+            )}
           </FormSection>
 
           <FormSection title="Event ID" description="Used to reference the event across slideshow and submission flows.">

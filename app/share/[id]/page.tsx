@@ -12,22 +12,34 @@ import Image from 'next/image';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import PublicShell from '@/components/gds/PublicShell';
-import { Button, Group, Stack, Text, Title } from '@mantine/core';
+import { Button, Group, Stack, Text, Title } from '@/components/gds/ui';
+import { listApprovedShareVariants } from '@/lib/tryon/publication';
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
 interface ShareSubmission {
+  id?: string;
   imageUrl: string;
   userName?: string;
   createdAt?: string;
+  submissionKind?: 'original' | 'tryon_result';
+  sourceSubmissionId?: string | null;
+  reviewStatus?: 'pending_review' | 'approved' | 'rejected';
+  tryOnLeatherSuitId?: string | null;
   metadata?: {
     finalWidth?: number;
     finalHeight?: number;
   };
   eventIds?: unknown[];
   eventId?: unknown;
+}
+
+interface ShareVariantCard {
+  id: string;
+  imageUrl: string;
+  label: string;
 }
 
 async function resolveEventForSubmission(
@@ -107,6 +119,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SharePage({ params }: Props) {
   let submission: ShareSubmission | null = null;
+  let shareVariants: ShareVariantCard[] = [];
+  let sourceOriginalVariant: ShareVariantCard | null = null;
   
   try {
     const { id } = await params;
@@ -116,9 +130,20 @@ export default async function SharePage({ params }: Props) {
       .findOne({ _id: new ObjectId(id) });
     if (doc && typeof doc.imageUrl === 'string') {
       submission = {
+        id: doc._id.toString(),
         imageUrl: doc.imageUrl,
         userName: typeof doc.userName === 'string' ? doc.userName : undefined,
         createdAt: typeof doc.createdAt === 'string' ? doc.createdAt : undefined,
+        submissionKind:
+          doc.submissionKind === 'tryon_result' ? 'tryon_result' : 'original',
+        sourceSubmissionId:
+          typeof doc.sourceSubmissionId === 'string' ? doc.sourceSubmissionId : null,
+        reviewStatus:
+          doc.reviewStatus === 'approved' || doc.reviewStatus === 'rejected' || doc.reviewStatus === 'pending_review'
+            ? doc.reviewStatus
+            : undefined,
+        tryOnLeatherSuitId:
+          typeof doc.tryOnLeatherSuitId === 'string' ? doc.tryOnLeatherSuitId : null,
         metadata:
           doc.metadata && typeof doc.metadata === 'object'
             ? {
@@ -146,6 +171,35 @@ export default async function SharePage({ params }: Props) {
 
   const db = await connectToDatabase();
   const event = await resolveEventForSubmission(db, submission as unknown as Record<string, unknown>);
+  const currentSubmissionId = submission.id ?? '';
+  const sourceSubmissionId =
+    submission.submissionKind === 'tryon_result' && submission.sourceSubmissionId
+      ? submission.sourceSubmissionId
+      : currentSubmissionId;
+
+  if (sourceSubmissionId) {
+    if (submission.submissionKind === 'tryon_result' && submission.sourceSubmissionId && ObjectId.isValid(submission.sourceSubmissionId)) {
+      const sourceDoc = await db
+        .collection(COLLECTIONS.SUBMISSIONS)
+        .findOne({ _id: new ObjectId(submission.sourceSubmissionId) });
+      if (sourceDoc && typeof sourceDoc.imageUrl === 'string') {
+        sourceOriginalVariant = {
+          id: sourceDoc._id!.toString(),
+          imageUrl: sourceDoc.imageUrl,
+          label: 'Original Camera result',
+        };
+      }
+    }
+
+    const variants = await listApprovedShareVariants(db, sourceSubmissionId);
+    shareVariants = variants
+      .map((variant) => ({
+        id: variant._id!.toString(),
+        imageUrl: variant.imageUrl ?? variant.finalImageUrl,
+        label: variant.tryOnLeatherSuitId || 'Approved try-on result',
+      }))
+      .filter((variant) => Boolean(variant.imageUrl) && variant.id !== currentSubmissionId);
+  }
 
   // `/capture/[eventId]` expects the event document Mongo `_id`, while submissions often store public `eventId` UUID in `eventIds` / `eventId`.
   let createYourOwnHref = '/capture';
@@ -202,6 +256,68 @@ export default async function SharePage({ params }: Props) {
               📸 Create Your Own
             </Button>
           </Group>
+
+          {sourceOriginalVariant || shareVariants.length > 0 ? (
+            <Stack gap="md" mt="xl">
+              <Text fw={700}>
+                {submission.submissionKind === 'tryon_result' ? 'Original and approved try-on results' : 'Approved try-on results'}
+              </Text>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                  gap: '1rem',
+                }}
+              >
+                {sourceOriginalVariant ? (
+                  <a
+                    key={sourceOriginalVariant.id}
+                    href={`/share/${sourceOriginalVariant.id}`}
+                    style={{
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      border: '1px solid var(--mantine-color-gray-2)',
+                      borderRadius: 16,
+                      overflow: 'hidden',
+                      background: 'white',
+                    }}
+                  >
+                    <div style={{ position: 'relative', aspectRatio: '1', background: 'var(--mantine-color-gray-1)' }}>
+                      <Image src={sourceOriginalVariant.imageUrl} alt={sourceOriginalVariant.label} fill unoptimized className="object-cover" />
+                    </div>
+                    <div style={{ padding: '0.875rem' }}>
+                      <Text fw={600} size="sm">
+                        {sourceOriginalVariant.label}
+                      </Text>
+                    </div>
+                  </a>
+                ) : null}
+                {shareVariants.map((variant) => (
+                  <a
+                    key={variant.id}
+                    href={`/share/${variant.id}`}
+                    style={{
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      border: '1px solid var(--mantine-color-gray-2)',
+                      borderRadius: 16,
+                      overflow: 'hidden',
+                      background: 'white',
+                    }}
+                  >
+                    <div style={{ position: 'relative', aspectRatio: '1', background: 'var(--mantine-color-gray-1)' }}>
+                      <Image src={variant.imageUrl} alt={variant.label} fill unoptimized className="object-cover" />
+                    </div>
+                    <div style={{ padding: '0.875rem' }}>
+                      <Text fw={600} size="sm">
+                        {variant.label}
+                      </Text>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </Stack>
+          ) : null}
         </div>
       </Stack>
     </PublicShell>

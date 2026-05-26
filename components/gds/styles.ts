@@ -1,0 +1,4 @@
+import '@mantine/core/styles.css';
+import '@mantine/notifications/styles.css';
+
+export {};

@@ -15,7 +15,7 @@ import {
   Stack,
   TextInput,
   Textarea,
-} from '@mantine/core';
+} from '@/components/gds/ui';
 import { IconAlertCircle, IconPhotoPlus, IconTrash } from '@tabler/icons-react';
 import EditorScaffold from '@/components/gds/EditorScaffold';
 import FormSection from '@/components/gds/FormSection';

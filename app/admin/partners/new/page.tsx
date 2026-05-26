@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Card, Checkbox, Stack, Text, TextInput, Textarea } from '@mantine/core';
+import { Alert, Button, Card, Checkbox, Stack, Text, TextInput, Textarea } from '@/components/gds/ui';
 import { IconAlertCircle } from '@tabler/icons-react';
 import EditorScaffold from '@/components/gds/EditorScaffold';
 import FormSection from '@/components/gds/FormSection';

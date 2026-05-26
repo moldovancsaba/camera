@@ -14,7 +14,7 @@ import {
   Text,
   TextInput,
   Title,
-} from '@mantine/core';
+} from '@/components/gds/ui';
 import { IconAlertCircle, IconCheck, IconUserPlus } from '@tabler/icons-react';
 
 type PartnerAppKey = 'events';

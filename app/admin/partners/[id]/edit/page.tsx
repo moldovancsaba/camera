@@ -22,7 +22,7 @@ import {
   Text,
   TextInput,
   Textarea,
-} from '@mantine/core';
+} from '@/components/gds/ui';
 import { IconAlertCircle } from '@tabler/icons-react';
 import EditorScaffold from '@/components/gds/EditorScaffold';
 import FormSection from '@/components/gds/FormSection';

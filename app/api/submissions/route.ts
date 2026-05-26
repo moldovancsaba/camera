@@ -9,6 +9,7 @@
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { uploadImage } from '@/lib/imgbb/upload';
+import { COLLECTIONS } from '@/lib/db/schemas';
 import {
   withErrorHandler,
   requireAuth,
@@ -22,6 +23,48 @@ import {
   checkRateLimit,
   RATE_LIMITS,
 } from '@/lib/api';
+import {
+  buildSubmissionTryOnLink,
+  insertOrGetTryOnJob,
+  upsertSubmissionTryOnLink,
+} from '@/lib/tryon/jobs';
+import { assertValidLeatherSuitId } from '@/lib/tryon/suits';
+
+interface TryOnRequestDetails {
+  requested: boolean;
+  leatherSuitId: string | null;
+  sourceImageData: string | null;
+}
+
+function getSubmissionMongoIdString(id: unknown): string {
+  if (typeof id === 'string' && id.trim()) {
+    return id.trim();
+  }
+
+  if (id && typeof id === 'object' && 'toString' in id && typeof id.toString === 'function') {
+    return id.toString();
+  }
+
+  return '';
+}
+
+function normalizeTryOnRequest(body: Record<string, unknown>): TryOnRequestDetails {
+  const leatherSuitIdRaw = body.leatherSuitId ?? body.leather_suit_id;
+  const requestFlagRaw = body.requestTryOn ?? body.request_try_on ?? leatherSuitIdRaw;
+  const sourceImageRaw = body.tryOnSourceImageData ?? body.try_on_source_image_data;
+
+  const leatherSuitId =
+    typeof leatherSuitIdRaw === 'string' && leatherSuitIdRaw.trim() ? leatherSuitIdRaw.trim() : null;
+  const requested = Boolean(requestFlagRaw) || Boolean(leatherSuitId);
+  const sourceImageData =
+    typeof sourceImageRaw === 'string' && sourceImageRaw.trim() ? sourceImageRaw.trim() : null;
+
+  return {
+    requested,
+    leatherSuitId,
+    sourceImageData,
+  };
+}
 
 /**
  * POST /api/submissions
@@ -52,6 +95,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       userInfo,
       consents,
     } = body;
+  const tryOnRequest = normalizeTryOnRequest(body);
 
   // frameId can be null if the event has no frames
   if (!imageData) {
@@ -158,13 +202,113 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     };
 
     const result = await db.collection('submissions').insertOne(submission);
+    const submissionId = getSubmissionMongoIdString(result.insertedId);
 
-    const created = {
-      submission: {
-        _id: result.insertedId,
-        ...submission,
+    const createdSubmission = {
+      _id: result.insertedId,
+      ...submission,
+    };
+
+    const created: {
+      submission: typeof createdSubmission;
+      tryOn: {
+        requested: boolean;
+        status: 'not_requested' | 'queued' | 'deduplicated' | 'enqueue_failed';
+        leatherSuitId: string | null;
+        jobId: string | null;
+        error: string | null;
+      };
+    } = {
+      submission: createdSubmission,
+      tryOn: {
+        requested: false,
+        status: 'not_requested',
+        leatherSuitId: null,
+        jobId: null,
+        error: null,
       },
     };
+
+    if (tryOnRequest.requested) {
+      created.tryOn.requested = true;
+      created.tryOn.leatherSuitId = tryOnRequest.leatherSuitId;
+
+      try {
+        if (!tryOnRequest.leatherSuitId) {
+          throw new Error('leather_suit_id is required when try-on is requested');
+        }
+        if (!tryOnRequest.sourceImageData) {
+          throw new Error('try_on_source_image_data is required when try-on is requested');
+        }
+
+        if (eventId) {
+          const eventPolicy = await db.collection(COLLECTIONS.EVENTS).findOne(
+            { eventId },
+            { projection: { _id: 1, tryOn: 1 } }
+          );
+          if (!eventPolicy?.tryOn?.enabled) {
+            throw new Error('try_on_not_enabled_for_event');
+          }
+          const allowedSuitIds = Array.isArray(eventPolicy.tryOn.allowedLeatherSuitIds)
+            ? eventPolicy.tryOn.allowedLeatherSuitIds
+            : [];
+          if (
+            allowedSuitIds.length > 0 &&
+            !allowedSuitIds.includes(tryOnRequest.leatherSuitId)
+          ) {
+            throw new Error('leather_suit_not_allowed_for_event');
+          }
+        }
+
+        await assertValidLeatherSuitId(db, tryOnRequest.leatherSuitId);
+
+        const sourceBase64 = tryOnRequest.sourceImageData.split(',')[1];
+        if (!sourceBase64) {
+          throw new Error('try_on_source_image_data must be a valid base64 data URL');
+        }
+
+        const sourceUpload = await uploadImage(sourceBase64, {
+          name: `tryon-source-${Date.now()}`,
+        });
+
+        const eventDocument = eventId
+          ? await db.collection(COLLECTIONS.EVENTS).findOne(
+              { eventId },
+              { projection: { _id: 1 } }
+            )
+          : null;
+
+        const linkedJob = await insertOrGetTryOnJob(db, {
+          submissionId,
+          imageUrl: sourceUpload.imageUrl,
+          leatherSuitId: tryOnRequest.leatherSuitId,
+          eventId: typeof eventId === 'string' ? eventId : null,
+          eventMongoId: eventDocument?._id ? getSubmissionMongoIdString(eventDocument._id) : null,
+          partnerId: typeof partnerId === 'string' ? partnerId : null,
+          userId: session?.user?.id || 'anonymous',
+        });
+
+        const { ObjectId } = await import('mongodb');
+        if (ObjectId.isValid(submissionId)) {
+          await upsertSubmissionTryOnLink(
+            db,
+            new ObjectId(submissionId),
+            buildSubmissionTryOnLink(
+              linkedJob.job,
+              linkedJob.deduplicated ? linkedJob.job.status : 'queued',
+              linkedJob.job.result.publicResultUrl ?? null
+            )
+          );
+        }
+
+        created.tryOn.status = linkedJob.deduplicated ? 'deduplicated' : 'queued';
+        created.tryOn.jobId = linkedJob.job.jobId;
+      } catch (tryOnError: unknown) {
+        created.tryOn.status = 'enqueue_failed';
+        created.tryOn.error =
+          tryOnError instanceof Error ? tryOnError.message : 'Unable to enqueue try-on job';
+      }
+    }
 
     return apiCreated(created);
 });

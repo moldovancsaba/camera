@@ -19,7 +19,7 @@ import {
   Text,
   TextInput,
   Textarea,
-} from '@mantine/core';
+} from '@/components/gds/ui';
 import { IconAlertCircle, IconCheck, IconCopy } from '@tabler/icons-react';
 import type { LandingPageEditorActionPreset } from '@/lib/admin/build-landing-page-editor-props';
 import type { LandingPageCssPresetOption } from '@/lib/landing-page-css-presets';

@@ -144,12 +144,28 @@ See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/d
 
 ## Design system
 
-Camera admin UI follows the portfolio [General Design System](https://github.com/moldovancsaba/general-design-system) on Mantine. Local adapter details, migration state, and exceptions: [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_CAMERA_ADOPTION.md).
+Camera admin UI follows the portfolio [General Design System](https://github.com/sovereignsquad/general-design-system) on Mantine. Local adapter details, migration state, exceptions, and the formal adoption manifest: [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_CAMERA_ADOPTION.md) and [gds-adoption.json](/Users/Shared/Projects/venturecogroup/camera/gds-adoption.json).
 
 Current package note:
 
 - Camera is aligned to the GDS **contracts**
+- Camera now enforces local GDS-only entrypoints for Mantine usage
 - direct `@gds/*` package consumption is still blocked until the shared packages move from Mantine 7 / React 18 to Mantine 9 / React 19
+
+## Try-on pipeline
+
+Camera can optionally enqueue asynchronous try-on jobs after a capture is saved.
+
+- public capture flows read active suits from `GET /api/tryon/suits`
+- `POST /api/submissions` remains the primary save path and can optionally create a linked `tryon_jobs` record
+- the official local worker in `/Users/Shared/Projects/try-on` polls Atlas, runs the try-on processor, uploads the result to imgbb, and calls Camera’s signed completion endpoint
+- generated outputs enter a moderation queue at `/admin/tryon-results`
+- only approved generated results become visible on share pages and slideshow playlists
+
+Operational docs:
+
+- [docs/TRYON_ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/docs/TRYON_ARCHITECTURE.md)
+- [docs/TRYON_OPERATIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/TRYON_OPERATIONS.md)
 
 ## Documentation map
 

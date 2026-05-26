@@ -1,33 +1,35 @@
+'use client';
+
 /**
  * CTA (Call To Action) Page Component
- * 
+ *
  * Displays call-to-action page that can redirect to a URL
  * Part of the custom event page flow system
- * 
+ *
  * CTA behavior (custom page flow):
  * - checkboxText repurposed as URL to visit
  * - Button is optional (hasButton config)
  * - If hasButton=false, this becomes an end page that auto-redirects
- * 
+ *
  * Why separate from AcceptPage:
  * - Semantic difference: CTA is for marketing/engagement, Accept is for legal consent
  * - Different analytics tracking (acceptance rates for CTAs vs consents)
  * - May have different styling/prominence in future
  */
 
-'use client';
-
 import Image from 'next/image';
 import { useState } from 'react';
+import PublicShell from '@/components/gds/PublicShell';
+import { Button, Card, Group, Stack, Text, Title } from '@/components/gds/ui';
 
 export interface CTAPageConfig {
   title: string;
   description: string;
-  checkboxText: string;  // Repurposed as URL to visit
+  checkboxText: string;
   buttonText: string;
-  hasButton?: boolean;   // If false, this is an end page (no button, auto-redirect)
-  visitButtonText?: string;  // Label for visit URL button
-  redirectingText?: string;  // Text shown while redirecting
+  hasButton?: boolean;
+  visitButtonText?: string;
+  redirectingText?: string;
 }
 
 export interface CTAPageData {
@@ -45,36 +47,28 @@ export interface CTAPageProps {
   brandBorderColor?: string;
 }
 
-/**
- * CTAPage Component
- * 
- * Renders a call-to-action page that redirects to a URL
- * If hasButton is true, shows continue button
- * If hasButton is false, auto-redirects after displaying message
- */
-export default function CTAPage({ config, onNext, onBack, logoUrl, brandColor = '#9333EA' }: CTAPageProps) {
+export default function CTAPage({
+  config,
+  onNext,
+  onBack,
+  logoUrl,
+  brandColor = '#9333EA',
+}: CTAPageProps) {
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const hasButton = config.hasButton !== false;  // Default to true for backward compatibility
-  const urlToVisit = config.checkboxText;  // Repurposed field
+  const hasButton = config.hasButton !== false;
+  const urlToVisit = config.checkboxText;
   const visitButtonText = config.visitButtonText || 'Visit Now';
   void config.redirectingText;
 
-  /**
-   * Handle redirect to URL
-   * Opens URL in new tab if hasButton, or same window if no button (end page)
-   */
   const handleRedirect = () => {
     if (urlToVisit) {
       if (hasButton) {
-        // Open URL in new tab when there's a continue button
         setIsRedirecting(true);
         window.open(urlToVisit, '_blank');
       } else {
-        // Open URL in same window when no continue button (end page)
         window.location.href = urlToVisit;
       }
     } else if (hasButton) {
-      // No URL, just continue
       onNext({
         accepted: true,
         acceptedAt: new Date().toISOString(),
@@ -82,9 +76,6 @@ export default function CTAPage({ config, onNext, onBack, logoUrl, brandColor = 
     }
   };
 
-  /**
-   * Handle continue button click (when hasButton=true)
-   */
   const handleContinue = () => {
     onNext({
       accepted: true,
@@ -93,81 +84,71 @@ export default function CTAPage({ config, onNext, onBack, logoUrl, brandColor = 
   };
 
   return (
-    <div className="min-h-screen bg-transparent flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 sm:p-8">
-          {/* Logo */}
-          {logoUrl && (
-            <div className="flex justify-center mb-6">
+    <PublicShell size="lg" centered>
+      <Card padding="xl">
+        <Stack gap="lg">
+          {logoUrl ? (
+            <Group justify="center">
               <Image
                 src={logoUrl}
                 alt="Event logo"
                 width={320}
                 height={128}
                 unoptimized
-                className="max-w-xs max-h-32 object-contain"
+                style={{ maxHeight: 128, maxWidth: 320, height: 'auto', width: 'auto' }}
               />
-            </div>
-          )}
-          
-          {/* Title */}
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-3 text-center">
-            {config.title}
-          </h1>
+            </Group>
+          ) : null}
 
-          {/* Description */}
-          {config.description && (
-            <p className="text-gray-600 dark:text-gray-400 mb-6 text-center">
-              {config.description}
-            </p>
-          )}
+          <Stack gap="xs" align="center">
+            <Title order={1} ta="center">
+              {config.title}
+            </Title>
+            {config.description ? (
+              <Text c="dimmed" ta="center">
+                {config.description}
+              </Text>
+            ) : null}
+          </Stack>
 
-          {/* Visit URL Button (if URL provided) */}
-          {urlToVisit && (
-            <div className="mb-6">
-              <button
+          {urlToVisit ? (
+            <Stack gap="xs">
+              <Button
                 onClick={handleRedirect}
                 disabled={isRedirecting}
-                style={{ backgroundColor: brandColor }}
-                className="w-full px-6 py-4 text-white rounded-lg font-semibold text-lg hover:opacity-90 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                color={brandColor}
+                size="lg"
+                fullWidth
                 aria-label="Visit URL"
               >
-                {isRedirecting ? `🔗 Opening...` : `🔗 ${visitButtonText}`}
-              </button>
-              {hasButton && (
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+                {isRedirecting ? '🔗 Opening...' : `🔗 ${visitButtonText}`}
+              </Button>
+              {hasButton ? (
+                <Text size="xs" ta="center" c="dimmed">
                   Opens in a new tab
-                </p>
-              )}
-            </div>
-          )}
+                </Text>
+              ) : null}
+            </Stack>
+          ) : null}
 
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            {onBack && hasButton && (
-              <button
-                onClick={onBack}
-                className="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                aria-label="Go back to previous page"
-              >
+          <Group grow>
+            {onBack && hasButton ? (
+              <Button variant="light" color="gray" onClick={onBack} aria-label="Go back to previous page">
                 Back
-              </button>
-            )}
-            {hasButton && (
-              <button
+              </Button>
+            ) : null}
+            {hasButton ? (
+              <Button
                 onClick={handleContinue}
-                style={{ backgroundColor: brandColor }}
-                className={`px-6 py-3 rounded-lg font-semibold transition-all hover:opacity-90 text-white ${
-                  onBack ? 'flex-1' : 'w-full'
-                }`}
+                color={brandColor}
                 aria-label={config.buttonText}
               >
                 {config.buttonText}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+              </Button>
+            ) : null}
+          </Group>
+        </Stack>
+      </Card>
+    </PublicShell>
   );
 }

@@ -18,6 +18,7 @@ import CameraCapture from '@/components/camera/CameraCapture';
 import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoAreYouPage';
 import AcceptPage, { type AcceptPageData } from '@/components/capture/AcceptPage';
 import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
+import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
 import { type CustomPage } from '@/lib/db/schemas';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 
@@ -43,6 +44,10 @@ interface EventData {
   brandColor?: string;  // Primary brand color (hex)
   brandBorderColor?: string;  // Border/accent color (hex)
   frames?: EventFrameAssignment[];
+  tryOn?: {
+    enabled: boolean;
+    allowedLeatherSuitIds?: string[];
+  };
 }
 
 interface EventFrameAssignment {
@@ -80,6 +85,14 @@ interface CollectedData {
   }>;
 }
 
+interface TryOnSubmissionResult {
+  requested: boolean;
+  status: 'not_requested' | 'queued' | 'deduplicated' | 'enqueue_failed';
+  leatherSuitId: string | null;
+  jobId: string | null;
+  error: string | null;
+}
+
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
 }
@@ -113,6 +126,8 @@ export default function EventCapturePage({
   const [collectedData, setCollectedData] = useState<CollectedData>({ consents: [] });
   const [flowPhase, setFlowPhase] = useState<'onboarding' | 'capture' | 'thankyou'>('onboarding');
   const [signInError, setSignInError] = useState<{ code: string; message: string } | null>(null);
+  const [selectedTryOnSuitId, setSelectedTryOnSuitId] = useState<string | null>(null);
+  const [tryOnResult, setTryOnResult] = useState<TryOnSubmissionResult | null>(null);
   
   // Get take-photo page config for button texts and messages
   const takePhotoPage = customPages.find(p => p.pageType === 'take-photo');
@@ -255,6 +270,7 @@ export default function EventCapturePage({
           showLogo: eventData.showLogo || false,
           brandColor: eventData.brandColor,
           brandBorderColor: eventData.brandBorderColor,
+          tryOn: eventData.tryOn,
         });
         
         // Fetch logos for loading-capture and onboarding-thankyou scenarios
@@ -517,6 +533,9 @@ export default function EventCapturePage({
         partnerName: string | null;
         imageWidth: number;
         imageHeight: number;
+        requestTryOn?: boolean;
+        leatherSuitId?: string | null;
+        tryOnSourceImageData?: string | null;
         userInfo?: WhoAreYouPageData;
         consents?: CollectedData['consents'];
       } = {
@@ -529,6 +548,12 @@ export default function EventCapturePage({
         imageWidth: imageDimensions?.width || selectedFrame?.width || 1920,
         imageHeight: imageDimensions?.height || selectedFrame?.height || 1080,
       };
+
+      if (selectedTryOnSuitId && event?.tryOn?.enabled) {
+        submissionData.requestTryOn = true;
+        submissionData.leatherSuitId = selectedTryOnSuitId;
+        submissionData.tryOnSourceImageData = capturedImage;
+      }
       
       // Add collected data from custom pages
       if (collectedData.userInfo) {
@@ -563,6 +588,7 @@ export default function EventCapturePage({
       if (!submissionId) {
         throw new Error('Save succeeded but no submission id was returned');
       }
+      setTryOnResult(data.data?.tryOn ?? data.tryOn ?? null);
       setShareUrl(`${origin}/share/${submissionId}`);
       
       alert(successMessage);
@@ -620,6 +646,8 @@ export default function EventCapturePage({
     setCapturedImage(null);
     setCompositeImage(null);
     setShareUrl(null);
+    setTryOnResult(null);
+    setSelectedTryOnSuitId(null);
     setStep('capture-photo');
   };
   
@@ -716,6 +744,8 @@ export default function EventCapturePage({
     setCompositeImage(null);
     setShareUrl(null);
     setImageDimensions(null);
+    setTryOnResult(null);
+    setSelectedTryOnSuitId(null);
     
     // CRITICAL: Auto-select frame if 0 or 1 frame available
     // PROHIBITED to show frame selector in these cases
@@ -1061,7 +1091,17 @@ export default function EventCapturePage({
               {/* Save/Retry buttons - Positioned over image */}
               {!shareUrl && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex flex-col gap-4">
+                  <div className="flex w-full max-w-md flex-col gap-4 px-4">
+                    {event?.tryOn?.enabled ? (
+                      <div className="rounded-2xl bg-black/70 p-4 shadow-2xl backdrop-blur-md">
+                        <TryOnSuitSelector
+                          selectedSuitId={selectedTryOnSuitId}
+                          onChange={setSelectedTryOnSuitId}
+                          disabled={isSaving}
+                          eventMongoId={eventId}
+                        />
+                      </div>
+                    ) : null}
                     <button
                       onClick={handleSave}
                       disabled={isSaving}
@@ -1094,7 +1134,7 @@ export default function EventCapturePage({
                     </button>
                   </div>
                 </div>
-                            )}
+              )}
               
               {/* Share overlay - Transparent black overlay over photo */}
               {shareUrl && showSharePage && (
@@ -1139,6 +1179,32 @@ export default function EventCapturePage({
                       {shareSuggestedMessageLabel}{' '}
                       <span className="font-medium text-white">{shareCaptionForSocial}</span>
                     </p>
+
+                    {tryOnResult?.requested ? (
+                      <div
+                        className={
+                          tryOnResult.status === 'enqueue_failed'
+                            ? 'rounded-lg border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
+                            : 'rounded-lg border border-sky-400/40 bg-sky-500/10 px-4 py-3 text-sm text-sky-100'
+                        }
+                      >
+                        {tryOnResult.status === 'queued' || tryOnResult.status === 'deduplicated' ? (
+                          <>
+                            <p className="font-semibold">Try-on queued</p>
+                            <p className="mt-1">
+                              Job ID: <span className="font-mono">{tryOnResult.jobId}</span>
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-semibold">Try-on was not queued</p>
+                            <p className="mt-1">
+                              {tryOnResult.error || 'The image was saved, but the try-on queue step failed.'}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    ) : null}
                     
                     {/* Social Share Buttons */}
                     <div className="grid grid-cols-2 gap-3">
@@ -1188,6 +1254,31 @@ export default function EventCapturePage({
                     <p className="text-2xl text-white font-bold mb-6">
                       {skipShareMessage}
                     </p>
+                    {tryOnResult?.requested ? (
+                      <div
+                        className={
+                          tryOnResult.status === 'enqueue_failed'
+                            ? 'mb-6 rounded-lg border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-left text-sm text-amber-100'
+                            : 'mb-6 rounded-lg border border-sky-400/40 bg-sky-500/10 px-4 py-3 text-left text-sm text-sky-100'
+                        }
+                      >
+                        {tryOnResult.status === 'queued' || tryOnResult.status === 'deduplicated' ? (
+                          <>
+                            <p className="font-semibold">Try-on queued</p>
+                            <p className="mt-1">
+                              Job ID: <span className="font-mono">{tryOnResult.jobId}</span>
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-semibold">Try-on was not queued</p>
+                            <p className="mt-1">
+                              {tryOnResult.error || 'The image was saved, but the try-on queue step failed.'}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    ) : null}
                     <button
                       onClick={handleMoveToThankYou}
                       style={{ backgroundColor: event?.brandColor || '#3B82F6' }}

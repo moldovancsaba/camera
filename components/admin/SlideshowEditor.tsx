@@ -38,6 +38,7 @@ interface SlideshowValue {
   backgroundImageUrl?: string | null;
   viewportScale?: 'fit' | 'fill';
   stageAspect?: number | null;
+  submissionSourceMode?: 'originals_only' | 'approved_tryon_only' | 'originals_and_approved_tryon';
 }
 
 interface Props {
@@ -155,6 +156,9 @@ export default function SlideshowEditor({
   const [viewportScale, setViewportScale] = useState<'fit' | 'fill'>(
     initialSlideshow?.viewportScale ?? 'fit'
   );
+  const [submissionSourceMode, setSubmissionSourceMode] = useState<
+    'originals_only' | 'approved_tryon_only' | 'originals_and_approved_tryon'
+  >(initialSlideshow?.submissionSourceMode ?? 'originals_only');
   const [stageAspect, setStageAspect] = useState<number | null | undefined>(
     initialSlideshow?.stageAspect ?? null
   );
@@ -197,6 +201,7 @@ export default function SlideshowEditor({
       backgroundAccentColor: backgroundAccentColor.trim() || '#0f172a',
       backgroundImageUrl: backgroundImageUrl.trim() || null,
       viewportScale,
+      submissionSourceMode,
       stageAspect: stageAspect ?? null,
     };
 
@@ -540,6 +545,41 @@ export default function SlideshowEditor({
               </div>
             </Field>
           </div>
+
+          <Field label="Submission source">
+            <div className="flex flex-wrap gap-6">
+              <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
+                <input
+                  type="radio"
+                  name="submissionSourceMode"
+                  className="accent-purple-600"
+                  checked={submissionSourceMode === 'originals_only'}
+                  onChange={() => setSubmissionSourceMode('originals_only')}
+                />
+                Originals only
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
+                <input
+                  type="radio"
+                  name="submissionSourceMode"
+                  className="accent-purple-600"
+                  checked={submissionSourceMode === 'approved_tryon_only'}
+                  onChange={() => setSubmissionSourceMode('approved_tryon_only')}
+                />
+                Approved try-on results only
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
+                <input
+                  type="radio"
+                  name="submissionSourceMode"
+                  className="accent-purple-600"
+                  checked={submissionSourceMode === 'originals_and_approved_tryon'}
+                  onChange={() => setSubmissionSourceMode('originals_and_approved_tryon')}
+                />
+                Originals + approved try-on results
+              </label>
+            </div>
+          </Field>
         </Section>
 
         <Section title="Background and Colors">

@@ -20,7 +20,7 @@ import {
   Table,
   Text,
   Title,
-} from '@mantine/core';
+} from '@/components/gds/ui';
 import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
 import StatsStrip from '@/components/gds/StatsStrip';
 import InfoCard from '@/components/gds/InfoCard';

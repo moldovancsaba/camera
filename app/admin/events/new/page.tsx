@@ -16,11 +16,12 @@ import {
   FileInput,
   Grid,
   Group,
+  Select,
   Stack,
   Text,
   TextInput,
   Textarea,
-} from '@mantine/core';
+} from '@/components/gds/ui';
 import { IconAlertCircle, IconX } from '@tabler/icons-react';
 import PartnerSearchDropdown from '@/components/admin/PartnerSearchDropdown';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
@@ -28,6 +29,7 @@ import FormSection from '@/components/gds/FormSection';
 import StateBlock from '@/components/gds/StateBlock';
 import EditorScaffold from '@/components/gds/EditorScaffold';
 import MediaCard from '@/components/gds/MediaCard';
+import type { TryOnSuitOption } from '@/lib/tryon/suits';
 
 interface PartnerOption {
   _id: string;
@@ -58,6 +60,9 @@ export default function NewEventPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [tryOnEnabled, setTryOnEnabled] = useState(false);
+  const [suitOptions, setSuitOptions] = useState<TryOnSuitOption[]>([]);
+  const [selectedSuitIds, setSelectedSuitIds] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchPartners = async () => {
@@ -82,6 +87,23 @@ export default function NewEventPage() {
     };
 
     void fetchPartners();
+  }, []);
+
+  useEffect(() => {
+    const fetchSuits = async () => {
+      try {
+        const response = await fetch('/api/tryon/suits');
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Failed to load leather suits');
+        }
+        setSuitOptions(payload.data?.suits ?? payload.suits ?? []);
+      } catch {
+        setSuitOptions([]);
+      }
+    };
+
+    void fetchSuits();
   }, []);
 
   const handleLogoChange = (file: File | null) => {
@@ -151,6 +173,10 @@ export default function NewEventPage() {
       isActive: formData.get('isActive') === 'on',
       logoUrl,
       showLogo: formData.get('showLogo') === 'on',
+      tryOn: {
+        enabled: tryOnEnabled,
+        allowedLeatherSuitIds: selectedSuitIds,
+      },
     };
 
     try {
@@ -284,6 +310,55 @@ export default function NewEventPage() {
               disabled={!logoFile && !logoPreview}
               label="Display logo on event pages"
             />
+          </FormSection>
+
+          <FormSection
+            title="Try-on"
+            description="Optionally allow this event to queue local AI leather try-on jobs after Camera saves the normal submission."
+          >
+            <Checkbox
+              checked={tryOnEnabled}
+              onChange={(event) => setTryOnEnabled(event.currentTarget.checked)}
+              label="Enable local AI leather try-on for this event"
+            />
+            <Select
+              label="Allowed leather jerseys"
+              description="Leave empty to allow the full active suit catalog when try-on is enabled."
+              placeholder={suitOptions.length > 0 ? 'Select one or more leather jerseys' : 'No active leather jerseys found'}
+              data={suitOptions.map((suit) => ({ value: suit.id, label: suit.name }))}
+              value={null}
+              disabled={!tryOnEnabled || suitOptions.length === 0}
+              searchable
+              clearable
+              onChange={(value) => {
+                if (!value || selectedSuitIds.includes(value)) return;
+                setSelectedSuitIds((current) => [...current, value]);
+              }}
+            />
+            {selectedSuitIds.length > 0 ? (
+              <Group gap="xs">
+                {selectedSuitIds.map((suitId) => {
+                  const suit = suitOptions.find((option) => option.id === suitId);
+                  return (
+                    <Button
+                      key={suitId}
+                      type="button"
+                      size="xs"
+                      variant="light"
+                      onClick={() =>
+                        setSelectedSuitIds((current) => current.filter((value) => value !== suitId))
+                      }
+                    >
+                      Remove {suit?.name ?? suitId}
+                    </Button>
+                  );
+                })}
+              </Group>
+            ) : (
+              <Text size="sm" c="dimmed">
+                No suit allowlist selected.
+              </Text>
+            )}
           </FormSection>
 
           <FormSection title="Status">

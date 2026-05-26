@@ -1,0 +1,17 @@
+[
+  {
+    "leatherSuitId": "motogp_honda_castrol_2026_v1",
+    "name": "Honda Castrol 2026",
+    "category": "motogp_full_body_leather",
+    "assetKey": "motogp_honda_castrol_2026_v1",
+    "assetVersion": 1,
+    "assetRelativePath": "motogp/honda-castrol-2026.png",
+    "previewUrl": "https://example.com/preview/honda-castrol-2026.png",
+    "sourceImageUrl": "https://example.com/source/honda-castrol-2026.png",
+    "active": true,
+    "metadata": {
+      "pose": "front_a_pose",
+      "notes": "Replace preview and source URLs with the real suit assets before production."
+    }
+  }
+]

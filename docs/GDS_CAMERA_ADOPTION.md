@@ -5,7 +5,7 @@
 
 ## SSOT statement
 
-[general-design-system](https://github.com/moldovancsaba/general-design-system) (GDS **v2.3.0**) is the single source of truth for design, UI, and UX across the portfolio.
+[sovereignsquad/general-design-system](https://github.com/sovereignsquad/general-design-system) (GDS **v2.4.3**) is the single source of truth for design, UI, and UX across the portfolio.
 
 This file and other Camera docs describe only **implementation adapters**, migration state, validation commands, and approved exceptions. If a Camera-local UI document conflicts with the GDS repository, **the GDS repository wins**.
 
@@ -13,7 +13,7 @@ Local checkout path (when available): `/Users/Shared/Projects/GENERAL_DESIGN_SYS
 
 ## Purpose
 
-Camera is the reference implementation of the portfolio GDS on **Mantine 9**. Admin surfaces must use shared GDS contracts; public capture remains the only broad UI exception until fully migrated.
+Camera is the reference implementation of the portfolio GDS on **Mantine 9**. App, admin, and public surfaces now consume **local GDS entrypoints only**. The remaining exceptions are composition-level surfaces such as capture, slideshow playback, and user-authored landing-page CSS, not parallel runtime UI systems.
 
 ## Root runtime
 
@@ -23,6 +23,7 @@ Camera is the reference implementation of the portfolio GDS on **Mantine 9**. Ad
 | Root provider | `components/gds/CameraGdsProvider.tsx` |
 | Notifications | `@mantine/notifications` in provider |
 | Modals / confirm | `@mantine/modals` + `lib/gds/confirm-destructive.tsx` (no separate CSS import in Mantine 9) |
+| Adoption manifest | `gds-adoption.json` |
 
 ## Pattern adapter inventory
 
@@ -49,7 +50,7 @@ Camera is the reference implementation of the portfolio GDS on **Mantine 9**. Ad
 | Destructive confirm | `lib/gds/confirm-destructive.tsx` | Active — delete/remove admin actions |
 | Public shell | `components/gds/PublicShell.tsx` | Active — home, profile, share |
 | Public surface shell | `components/gds/PublicSurfaceShell.tsx` | Active — implementation adapter behind `PublicShell` |
-| Auth / public capture shell | `app/capture/**`, `app/globals.css` | **Exception** (see below) |
+| Auth / public capture shell | `app/capture/**`, `components/capture/**`, `components/camera/**` via local GDS entrypoints and capture-specific composition | Active |
 | Slideshow playback | `components/slideshow/**` | **Exception** (media-first) |
 | Landing page editor CSS | `components/admin/LandingPageEditor.tsx` | **Exception** (editor preview) |
 
@@ -64,22 +65,23 @@ Camera is the reference implementation of the portfolio GDS on **Mantine 9**. Ad
 
 ## Core rules
 
-1. Mantine is the mandatory runtime UI foundation for **new and migrated admin work**.
+1. Mantine is the mandatory runtime UI foundation for Camera.
 2. Shared admin patterns must exist in `components/gds` before they are repeated across pages.
 3. New admin screens consume GDS primitives first — no page-local shells, toolbars, or state blocks.
 4. Tailwind / `globals.css` tokens are **not** authority for `/admin/**`.
-5. Business logic and route behavior stay stable while UI migrates underneath.
+5. No file outside `components/gds/**` or `lib/gds/**` may import `@mantine/*` directly.
+6. Business logic and route behavior stay stable while UI migrates underneath.
 
 ## Migration order
 
 1. ~~Theme and provider wiring~~ (done)
 2. ~~Admin shell~~ (done)
-3. Inventory tables + toolbar + responsive list — **active** (core inventory screens migrated)
-4. Workspaces — **active** (major partner/event admin workspaces migrated; refinements continue)
-5. Forms and editors — **in progress** (major forms migrated; landing-page/custom-page/slideshow tooling still carries the main remaining drift)
-6. Statuses, permissions, enablement language — partial
-7. Landing-page editor alignment — backlog
-8. Public capture shell migration — **in progress** (home/profile/share moved; capture flow remains)
+3. Inventory tables + toolbar + responsive list — complete at local-adapter level
+4. Workspaces — complete at local-adapter level; refinements continue
+5. Forms and editors — active; core editors use GDS scaffolds and sections
+6. Statuses, permissions, enablement language — active
+7. Landing-page editor alignment — active
+8. Public capture shell migration — active; capture uses local GDS entrypoints with capture-specific composition
 9. Consume or align with `@gds/*` packages when Mantine major versions match — **blocked**
 
 ## Shared package alignment
@@ -89,12 +91,24 @@ Direct package consumption from `/Users/Shared/Projects/GENERAL_DESIGN_SYSTEM/pa
 Current state:
 
 - Camera runtime: Mantine `9.2.1`, React `19.2.0`
-- Shared `@gds/*` packages: version `2.3.0`, Mantine `^7.9.0`, React `^18.2.0 || ^19.0.0`
+- Shared `@gds/*` packages: version `2.4.3`, Mantine `^7.9.0`, React `^18.2.0 || ^19.0.0`
 
 Required rule until the SSOT packages are upgraded:
 
 - Camera must align to the **contracts and patterns** from the GDS repository
 - Camera must not import the shared `@gds/*` packages directly until Mantine / React majors match
+
+## Formal compliance path
+
+Camera now declares its governed local adapter state in [gds-adoption.json](/Users/Shared/Projects/venturecogroup/camera/gds-adoption.json).
+
+Current compliance position:
+
+- SSOT repo/version is declared
+- local adapters and approved exceptions are enumerated
+- direct shared-package consumption remains intentionally blocked by the Mantine-major mismatch
+- Camera is now governed at the import boundary: no direct Mantine imports exist outside the GDS layer
+- remaining exception surfaces are composition-specific, not parallel UI foundations
 
 ## What must not happen
 
@@ -114,6 +128,7 @@ npm run lint
 ## References
 
 - [docs/GDS_COMPONENT_RULES.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_COMPONENT_RULES.md)
-- [GDS FOUNDATION](https://github.com/moldovancsaba/general-design-system/blob/main/FOUNDATION.md)
-- [GDS COMPONENTS_AND_PATTERNS](https://github.com/moldovancsaba/general-design-system/blob/main/COMPONENTS_AND_PATTERNS.md)
-- [GDS GOVERNANCE_AND_ADOPTION](https://github.com/moldovancsaba/general-design-system/blob/main/GOVERNANCE_AND_ADOPTION.md)
+- [GDS FOUNDATION](https://github.com/sovereignsquad/general-design-system/blob/main/FOUNDATION.md)
+- [GDS COMPONENTS_AND_PATTERNS](https://github.com/sovereignsquad/general-design-system/blob/main/COMPONENTS_AND_PATTERNS.md)
+- [GDS GOVERNANCE_AND_ADOPTION](https://github.com/sovereignsquad/general-design-system/blob/main/GOVERNANCE_AND_ADOPTION.md)
+- [GDS COMPATIBILITY_AND_RELEASES](https://github.com/sovereignsquad/general-design-system/blob/main/COMPATIBILITY_AND_RELEASES.md)

@@ -9,6 +9,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { AppButton } from '@/components/ui/AppButton';
+import { Button } from '@/components/gds/ui';
 
 export default function Error({
   error,
@@ -34,9 +35,9 @@ export default function Error({
           <AppButton type="button" variant="primary" onClick={reset}>
             Try again
           </AppButton>
-          <Link href="/" className="app-btn app-btn--secondary app-btn--inline">
+          <Button component={Link} href="/" color="cameraSlate" variant="light" radius="xl">
             Go home
-          </Link>
+          </Button>
         </div>
 
         {error.digest ? <p className="app-form-status mt-6">Error ID: {error.digest}</p> : null}

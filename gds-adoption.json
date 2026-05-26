@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "gdsVersion": "2.4.3",
+  "productArchetype": "hybrid",
+  "supportedEntryPoints": [
+    "@gds/theme/client",
+    "@gds/theme/server",
+    "@gds/core/client",
+    "@gds/core/server",
+    "@gds/admin/client",
+    "@gds/admin/server"
+  ],
+  "requiredContracts": [
+    "AppShell",
+    "PageHeader",
+    "WorkspaceHeader",
+    "StateBlock",
+    "PublicShell",
+    "DataToolbar",
+    "ResponsiveDataView",
+    "AccessSummary",
+    "UploadDropzone",
+    "MediaCard",
+    "EditorScaffold"
+  ],
+  "localAdapters": [
+    {
+      "contract": "AppShell",
+      "path": "components/gds/AdminShell.tsx",
+      "status": "active"
+    },
+    {
+      "contract": "PageHeader",
+      "path": "components/gds/WorkspaceHeader.tsx",
+      "status": "active"
+    },
+    {
+      "contract": "StateBlock",
+      "path": "components/gds/StateBlock.tsx",
+      "status": "active"
+    },
+    {
+      "contract": "PublicShell",
+      "path": "components/gds/PublicShell.tsx",
+      "status": "active"
+    },
+    {
+      "contract": "DataToolbar",
+      "path": "components/gds/DataToolbar.tsx",
+      "status": "active"
+    },
+    {
+      "contract": "ResponsiveDataView",
+      "path": "components/gds/ResponsiveDataView.tsx",
+      "status": "active"
+    },
+    {
+      "contract": "AccessSummary",
+      "path": "components/gds/AccessSummary.tsx",
+      "status": "active"
+    },
+    {
+      "contract": "UploadDropzone",
+      "path": "components/gds/UploadDropzone.tsx",
+      "status": "active"
+    },
+    {
+      "contract": "MediaCard",
+      "path": "components/gds/MediaCard.tsx",
+      "status": "active"
+    },
+    {
+      "contract": "EditorScaffold",
+      "path": "components/gds/EditorScaffold.tsx",
+      "status": "active"
+    }
+  ],
+  "approvedExceptions": [
+    {
+      "surface": "Event capture flow",
+      "reason": "Complex camera/composite UX uses capture-specific composition while still consuming local GDS entrypoints.",
+      "owner": "camera-platform",
+      "reviewDate": "2026-05-25"
+    },
+    {
+      "surface": "Legacy public token layer",
+      "reason": "app/globals.css --app-btn-* and --app-panel-* remain in use for capture and residual public helpers.",
+      "owner": "camera-platform",
+      "reviewDate": "2026-05-25"
+    },
+    {
+      "surface": "Landing page custom CSS",
+      "reason": "User-authored experience CSS remains editor-owned while the surrounding admin/editor chrome follows GDS contracts.",
+      "owner": "camera-platform",
+      "reviewDate": "2026-05-25"
+    },
+    {
+      "surface": "Slideshow player",
+      "reason": "Full-screen media playback remains a documented exception surface while surrounding configuration UI is Mantine/GDS aligned.",
+      "owner": "camera-platform",
+      "reviewDate": "2026-05-25"
+    }
+  ],
+  "migrationStatus": "local-gds-only",
+  "directMantineOutsideGds": false,
+  "owner": "camera-platform",
+  "lastReviewedAt": "2026-05-25"
+}

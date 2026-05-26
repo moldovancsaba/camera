@@ -19,6 +19,7 @@ export interface SlideshowEditorInitialValue {
   backgroundImageUrl?: string | null;
   viewportScale?: 'fit' | 'fill';
   stageAspect?: number | null;
+  submissionSourceMode?: 'originals_only' | 'approved_tryon_only' | 'originals_and_approved_tryon';
 }
 
 export interface SlideshowEditorPropsData {
@@ -87,6 +88,12 @@ export async function buildSlideshowEditorProps(
           backgroundImageUrl:
             (slideshow.backgroundImageUrl as string | null | undefined) ?? '',
           viewportScale: slideshow.viewportScale === 'fill' ? 'fill' : 'fit',
+          submissionSourceMode:
+            slideshow.submissionSourceMode === 'approved_tryon_only'
+              ? 'approved_tryon_only'
+              : slideshow.submissionSourceMode === 'originals_and_approved_tryon'
+                ? 'originals_and_approved_tryon'
+                : 'originals_only',
           stageAspect:
             typeof slideshow.stageAspect === 'number'
               ? slideshow.stageAspect

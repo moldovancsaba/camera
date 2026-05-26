@@ -122,6 +122,12 @@ export async function GET(
     }
 
     const eventIdKeys = submissionEventIdKeys(event as Event);
+    const submissionSourceMode =
+      slideshow.submissionSourceMode === 'approved_tryon_only'
+        ? 'approved_tryon_only'
+        : slideshow.submissionSourceMode === 'originals_and_approved_tryon'
+          ? 'originals_and_approved_tryon'
+          : 'originals_only';
 
     // Build match filter: event + optional exclude + archived/hidden + active users only
     const buildMatchFilter = (excludeOids: ObjectId[]) => {
@@ -156,6 +162,38 @@ export async function GET(
           ],
         },
       ];
+      if (submissionSourceMode === 'approved_tryon_only') {
+        and.push({
+          submissionKind: 'tryon_result',
+          reviewStatus: 'approved',
+          isSlideshowEligible: true,
+        });
+      } else if (submissionSourceMode === 'originals_and_approved_tryon') {
+        and.push({
+          $or: [
+            {
+              $and: [
+                { submissionKind: 'tryon_result' },
+                { reviewStatus: 'approved' },
+                { isSlideshowEligible: true },
+              ],
+            },
+            {
+              $or: [
+                { submissionKind: { $exists: false } },
+                { submissionKind: 'original' },
+              ],
+            },
+          ],
+        });
+      } else {
+        and.push({
+          $or: [
+            { submissionKind: { $exists: false } },
+            { submissionKind: 'original' },
+          ],
+        });
+      }
       if (excludeOids.length > 0) {
         and.push({ _id: { $nin: excludeOids } });
       }

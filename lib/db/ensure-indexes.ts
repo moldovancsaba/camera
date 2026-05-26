@@ -142,6 +142,90 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       .collection(COLLECTIONS.SUBMISSIONS)
       .createIndex({ 'userInfo.email': 1 }, { sparse: true, name: 'submissions_userInfo_email_sparse' })
   );
+  await track(COLLECTIONS.SUBMISSIONS, () =>
+    db
+      .collection(COLLECTIONS.SUBMISSIONS)
+      .createIndex(
+        { submissionKind: 1, reviewStatus: 1, createdAt: -1 },
+        { name: 'submissions_kind_review_createdAt' }
+      )
+  );
+  await track(COLLECTIONS.SUBMISSIONS, () =>
+    db
+      .collection(COLLECTIONS.SUBMISSIONS)
+      .createIndex(
+        { sourceSubmissionId: 1, reviewStatus: 1, createdAt: -1 },
+        { name: 'submissions_sourceSubmission_review_createdAt' }
+      )
+  );
+  await track(COLLECTIONS.SUBMISSIONS, () =>
+    db
+      .collection(COLLECTIONS.SUBMISSIONS)
+      .createIndex({ sourceJobId: 1 }, { sparse: true, unique: true, name: 'submissions_sourceJobId_unique' })
+  );
+  await track(COLLECTIONS.SUBMISSIONS, () =>
+    db
+      .collection(COLLECTIONS.SUBMISSIONS)
+      .createIndex(
+        { eventId: 1, submissionKind: 1, isSlideshowEligible: 1, isArchived: 1, createdAt: 1 },
+        { name: 'submissions_event_kind_slideshow_createdAt' }
+      )
+  );
+
+  // --- try-on suit catalog ---
+  await track(COLLECTIONS.LEATHER_SUITS, () =>
+    db
+      .collection(COLLECTIONS.LEATHER_SUITS)
+      .createIndex({ leatherSuitId: 1 }, { unique: true, name: 'leather_suits_leatherSuitId_unique' })
+  );
+  await track(COLLECTIONS.LEATHER_SUITS, () =>
+    db
+      .collection(COLLECTIONS.LEATHER_SUITS)
+      .createIndex({ active: 1, name: 1 }, { name: 'leather_suits_active_name' })
+  );
+
+  // --- try-on jobs ---
+  await track(COLLECTIONS.TRYON_JOBS, () =>
+    db
+      .collection(COLLECTIONS.TRYON_JOBS)
+      .createIndex({ jobId: 1 }, { unique: true, name: 'tryon_jobs_jobId_unique' })
+  );
+  await track(COLLECTIONS.TRYON_JOBS, () =>
+    db
+      .collection(COLLECTIONS.TRYON_JOBS)
+      .createIndex({ requestHash: 1 }, { unique: true, name: 'tryon_jobs_requestHash_unique' })
+  );
+  await track(COLLECTIONS.TRYON_JOBS, () =>
+    db
+      .collection(COLLECTIONS.TRYON_JOBS)
+      .createIndex(
+        { status: 1, 'processing.nextAttemptAt': 1, createdAt: 1 },
+        { name: 'tryon_jobs_status_nextAttempt_createdAt' }
+      )
+  );
+  await track(COLLECTIONS.TRYON_JOBS, () =>
+    db
+      .collection(COLLECTIONS.TRYON_JOBS)
+      .createIndex(
+        { status: 1, 'processing.leaseExpiresAt': 1 },
+        { name: 'tryon_jobs_status_leaseExpiresAt' }
+      )
+  );
+  await track(COLLECTIONS.TRYON_JOBS, () =>
+    db
+      .collection(COLLECTIONS.TRYON_JOBS)
+      .createIndex({ 'source.submissionId': 1 }, { name: 'tryon_jobs_source_submissionId' })
+  );
+  await track(COLLECTIONS.TRYON_JOBS, () =>
+    db
+      .collection(COLLECTIONS.TRYON_JOBS)
+      .createIndex({ 'source.userId': 1, createdAt: -1 }, { name: 'tryon_jobs_source_userId_createdAt' })
+  );
+  await track(COLLECTIONS.TRYON_JOBS, () =>
+    db
+      .collection(COLLECTIONS.TRYON_JOBS)
+      .createIndex({ updatedAt: 1 }, { name: 'tryon_jobs_updatedAt' })
+  );
 
   // --- slideshows ---
   await track(COLLECTIONS.SLIDESHOWS, () =>

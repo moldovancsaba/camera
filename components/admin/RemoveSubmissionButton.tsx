@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
+import { Button } from '@/components/gds/ui';
+import { notifications } from '@/lib/gds/notifications';
 import { confirmDestructive } from '@/lib/gds/confirm-destructive';
 
 type RemovalLevel = 'event' | 'partner';

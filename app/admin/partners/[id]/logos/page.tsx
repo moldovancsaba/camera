@@ -21,7 +21,7 @@ import {
   Stack,
   Text,
   Title,
-} from '@mantine/core';
+} from '@/components/gds/ui';
 import { IconAlertCircle } from '@tabler/icons-react';
 import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
 
