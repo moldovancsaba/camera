@@ -17,7 +17,6 @@ import {
   Group,
   SimpleGrid,
   Stack,
-  Table,
   Text,
   Title,
 } from '@/components/gds/ui';
@@ -357,40 +356,56 @@ export default async function PartnerDetailPage({
         <Stack gap="lg">
           <Card>
             <Title order={3}>Partner Information</Title>
-            <Table mt="md">
-              <Table.Tbody>
-                <Table.Tr>
-                  <Table.Th>Partner ID</Table.Th>
-                  <Table.Td>
-                    <Text ff="monospace" size="sm">
-                      {partner.partnerId}
+            <Stack gap="md" mt="md">
+              <Group justify="space-between" align="flex-start" wrap="wrap">
+                <Stack gap={4}>
+                  <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+                    Partner ID
+                  </Text>
+                  <Text ff="monospace" size="sm">
+                    {partner.partnerId}
+                  </Text>
+                </Stack>
+              </Group>
+              {partner.contactName ? (
+                <Group justify="space-between" align="flex-start" wrap="wrap">
+                  <Stack gap={4}>
+                    <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+                      Contact Person
                     </Text>
-                  </Table.Td>
-                </Table.Tr>
-                {partner.contactName ? (
-                  <Table.Tr>
-                    <Table.Th>Contact Person</Table.Th>
-                    <Table.Td>{partner.contactName}</Table.Td>
-                  </Table.Tr>
-                ) : null}
-                {partner.contactEmail ? (
-                  <Table.Tr>
-                    <Table.Th>Contact Email</Table.Th>
-                    <Table.Td>
-                      <a href={`mailto:${partner.contactEmail}`}>{partner.contactEmail}</a>
-                    </Table.Td>
-                  </Table.Tr>
-                ) : null}
-                <Table.Tr>
-                  <Table.Th>Created</Table.Th>
-                  <Table.Td>{new Date(partner.createdAt).toLocaleString()}</Table.Td>
-                </Table.Tr>
-                <Table.Tr>
-                  <Table.Th>Last Updated</Table.Th>
-                  <Table.Td>{new Date(partner.updatedAt).toLocaleString()}</Table.Td>
-                </Table.Tr>
-              </Table.Tbody>
-            </Table>
+                    <Text>{partner.contactName}</Text>
+                  </Stack>
+                </Group>
+              ) : null}
+              {partner.contactEmail ? (
+                <Group justify="space-between" align="flex-start" wrap="wrap">
+                  <Stack gap={4}>
+                    <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+                      Contact Email
+                    </Text>
+                    <Text component="a" href={`mailto:${partner.contactEmail}`}>
+                      {partner.contactEmail}
+                    </Text>
+                  </Stack>
+                </Group>
+              ) : null}
+              <Group justify="space-between" align="flex-start" wrap="wrap">
+                <Stack gap={4}>
+                  <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+                    Created
+                  </Text>
+                  <Text>{new Date(partner.createdAt).toLocaleString()}</Text>
+                </Stack>
+              </Group>
+              <Group justify="space-between" align="flex-start" wrap="wrap">
+                <Stack gap={4}>
+                  <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+                    Last Updated
+                  </Text>
+                  <Text>{new Date(partner.updatedAt).toLocaleString()}</Text>
+                </Stack>
+              </Group>
+            </Stack>
           </Card>
 
           <AccessSummary
@@ -480,39 +495,50 @@ export default async function PartnerDetailPage({
                 ) : null}
               </Stack>
             ) : (
-              <Table>
-                <Table.Tbody>
-                  {events.map((event) => (
-                    <Table.Tr key={event._id.toString()}>
-                      <Table.Td>
-                        <Stack gap={4}>
-                          <Link href={`/admin/events/${event._id}`}>{event.name}</Link>
-                          {event.description ? (
-                            <Text size="sm" c="dimmed">
-                              {event.description}
-                            </Text>
-                          ) : null}
-                          <Group gap="md">
-                            {event.eventDate ? <Text size="xs" c="dimmed">📅 {new Date(event.eventDate).toLocaleDateString()}</Text> : null}
-                            {event.location ? <Text size="xs" c="dimmed">📍 {event.location}</Text> : null}
-                            <Text size="xs" c="dimmed">🖼️ {event.frames?.length || 0} frames</Text>
-                          </Group>
-                        </Stack>
-                      </Table.Td>
-                      <Table.Td style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
-                        <Group gap="sm" justify="flex-end">
-                          <Badge color={event.isActive ? 'green' : 'gray'}>
-                            {event.isActive ? '● Active' : '○ Inactive'}
-                          </Badge>
-                          {canManageEvents ? (
-                            <Link href={`/admin/events/${event._id}/edit`}>Edit</Link>
-                          ) : null}
-                        </Group>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
+              <Stack gap={0}>
+                {events.map((event, index) => (
+                  <Group
+                    key={event._id.toString()}
+                    justify="space-between"
+                    align="flex-start"
+                    p="xl"
+                    wrap="wrap"
+                    style={index > 0 ? { borderTop: '1px solid var(--mantine-color-gray-2)' } : undefined}
+                  >
+                    <Stack gap={4} maw={720}>
+                      <Link href={`/admin/events/${event._id}`} style={{ textDecoration: 'none' }}>
+                        <Text fw={700}>{event.name}</Text>
+                      </Link>
+                      {event.description ? (
+                        <Text size="sm" c="dimmed">
+                          {event.description}
+                        </Text>
+                      ) : null}
+                      <Group gap="md" wrap="wrap">
+                        {event.eventDate ? (
+                          <Text size="xs" c="dimmed">
+                            📅 {new Date(event.eventDate).toLocaleDateString()}
+                          </Text>
+                        ) : null}
+                        {event.location ? (
+                          <Text size="xs" c="dimmed">
+                            📍 {event.location}
+                          </Text>
+                        ) : null}
+                        <Text size="xs" c="dimmed">
+                          🖼️ {event.frames?.length || 0} frames
+                        </Text>
+                      </Group>
+                    </Stack>
+                    <Group gap="sm" justify="flex-end">
+                      <Badge color={event.isActive ? 'green' : 'gray'}>
+                        {event.isActive ? '● Active' : '○ Inactive'}
+                      </Badge>
+                      {canManageEvents ? <Link href={`/admin/events/${event._id}/edit`}>Edit</Link> : null}
+                    </Group>
+                  </Group>
+                ))}
+              </Stack>
             )}
           </Card>
         </Stack>

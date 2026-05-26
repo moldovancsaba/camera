@@ -16,6 +16,7 @@
     "db:verify-uri": "tsx scripts/verify-mongo-uri.ts",
     "env:verify": "tsx scripts/verify-env.ts",
     "tryon:seed-suits": "tsx scripts/seed-tryon-suits.ts",
+    "tryon:verify": "tsx scripts/verify-tryon-prereqs.ts",
     "tryon:worker": "tsx scripts/tryon-worker.ts",
     "postinstall": "node scripts/patch-baseline-browser-mapping.mjs",
     "vercel:link": "npx vercel@latest link",

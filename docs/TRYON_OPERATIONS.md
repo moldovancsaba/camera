@@ -12,19 +12,39 @@ CAMERA_TRYON_COMPLETE_URL=https://camera.example.com/api/internal/tryon/complete
 
 ## Setup
 
-1. Seed the suit catalog in Camera:
+1. Verify Camera-side prerequisites:
+
+```bash
+npm run tryon:verify
+```
+
+2. Seed the suit catalog in Camera:
 
 ```bash
 npm run tryon:seed-suits -- config/leather-suits.example.json
 ```
 
-2. Ensure indexes:
+3. Ensure indexes:
 
 ```bash
 npm run db:ensure-indexes
 ```
 
-3. Start the local worker from `/Users/Shared/Projects/try-on`:
+4. Copy the worker env template on the try-on machine:
+
+```bash
+cd /Users/Shared/Projects/try-on
+cp .env.tryon-worker.example .env.tryon-worker
+```
+
+5. Verify the try-on worker setup:
+
+```bash
+cd /Users/Shared/Projects/try-on
+./.venv311/bin/python scripts/verify_tryon_worker_setup.py
+```
+
+6. Start the local worker from `/Users/Shared/Projects/try-on`:
 
 ```bash
 cd /Users/Shared/Projects/try-on

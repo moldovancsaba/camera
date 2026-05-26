@@ -1,4 +1,4 @@
-import { Card, ScrollArea, Table, Text, Title } from '@/components/gds/ui';
+import { Card, Group, Stack, Text, Title } from '@/components/gds/ui';
 
 interface AuthorizationMatrixProps {
   title?: string;
@@ -42,38 +42,6 @@ export default function AuthorizationMatrix({
   description = 'This is the implemented authorization model for the current admin shell.',
   compact = false,
 }: AuthorizationMatrixProps) {
-  const rows = ROWS.map((row) => (
-    <Table.Tr key={row.label}>
-      <Table.Td>
-        <Text size="sm" fw={600}>
-          {row.label}
-        </Text>
-      </Table.Td>
-      <Table.Td>
-        <Text size="sm" c="dimmed">
-          {row.access}
-        </Text>
-      </Table.Td>
-      {!compact ? (
-        <Table.Td>
-          <Text size="sm" c="dimmed">
-            {row.scope}
-          </Text>
-        </Table.Td>
-      ) : null}
-      <Table.Td>
-        <Text size="sm" c="dimmed">
-          {row.inventory}
-        </Text>
-      </Table.Td>
-      <Table.Td>
-        <Text size="sm" c="dimmed">
-          {row.actions}
-        </Text>
-      </Table.Td>
-    </Table.Tr>
-  ));
-
   return (
     <Card p={0}>
       <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
@@ -82,20 +50,61 @@ export default function AuthorizationMatrix({
           {description}
         </Text>
       </div>
-      <ScrollArea>
-        <Table verticalSpacing="md" horizontalSpacing="lg" highlightOnHover>
-          <Table.Thead bg="var(--mantine-color-gray-0)">
-            <Table.Tr>
-              <Table.Th>Role</Table.Th>
-              <Table.Th>Visible Surfaces</Table.Th>
-              {!compact ? <Table.Th>Scope</Table.Th> : null}
-              <Table.Th>Global Inventory</Table.Th>
-              <Table.Th>Mutations</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>{rows}</Table.Tbody>
-        </Table>
-      </ScrollArea>
+      <Stack gap={0}>
+        {ROWS.map((row, index) => (
+          <Group
+            key={row.label}
+            justify="space-between"
+            align="flex-start"
+            wrap="wrap"
+            p="xl"
+            style={index > 0 ? { borderTop: '1px solid var(--mantine-color-gray-2)' } : undefined}
+          >
+            <Stack gap={4} maw={260}>
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+                Role
+              </Text>
+              <Text size="sm" fw={600}>
+                {row.label}
+              </Text>
+            </Stack>
+            <Stack gap={4} maw={260}>
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+                Visible Surfaces
+              </Text>
+              <Text size="sm" c="dimmed">
+                {row.access}
+              </Text>
+            </Stack>
+            {!compact ? (
+              <Stack gap={4} maw={220}>
+                <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+                  Scope
+                </Text>
+                <Text size="sm" c="dimmed">
+                  {row.scope}
+                </Text>
+              </Stack>
+            ) : null}
+            <Stack gap={4} maw={220}>
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+                Global Inventory
+              </Text>
+              <Text size="sm" c="dimmed">
+                {row.inventory}
+              </Text>
+            </Stack>
+            <Stack gap={4} maw={220}>
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+                Mutations
+              </Text>
+              <Text size="sm" c="dimmed">
+                {row.actions}
+              </Text>
+            </Stack>
+          </Group>
+        ))}
+      </Stack>
     </Card>
   );
 }
