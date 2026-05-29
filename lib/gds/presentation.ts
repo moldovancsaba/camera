@@ -1,4 +1,4 @@
-import type { AccentTone, StatusVariant } from '@doneisbetter/gds-core/client';
+import type { AccentTone, StatusVariant } from '@doneisbetter/gds-core/server';
 import type { AdminIconKey } from '@/lib/gds/admin-icon-key';
 
 export type CameraStatusTone = 'active' | 'inactive' | 'info' | 'warning' | 'danger';

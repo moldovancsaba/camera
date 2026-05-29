@@ -29,8 +29,8 @@ import {
 import { IconAlertCircle } from '@tabler/icons-react';
 import { notifications } from '@/lib/gds/notifications';
 import EditorScaffold from '@/components/gds/EditorScaffold';
-import { FormSection } from '@doneisbetter/gds-admin/client';
-import { StateBlock } from '@doneisbetter/gds-core/client';
+import { FormSection } from '@doneisbetter/gds-admin/server';
+import { StateBlock } from '@doneisbetter/gds-core/server';
 import { confirmDestructive } from '@/lib/gds/confirm-destructive';
 
 interface LogoRecord {

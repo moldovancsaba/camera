@@ -6,7 +6,7 @@ import { COLLECTIONS, type TryOnJob } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import DataTable from '@/components/gds/DataTable';
-import { StatusBadge } from '@doneisbetter/gds-core/client';
+import { StatusBadge } from '@doneisbetter/gds-core/server';
 import { Text, Group } from '@mantine/core';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';

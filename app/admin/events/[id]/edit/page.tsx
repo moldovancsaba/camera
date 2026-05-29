@@ -32,8 +32,8 @@ import { notifications } from '@/lib/gds/notifications';
 import { type CustomPage } from '@/lib/db/schemas';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
-import { FormSection } from '@doneisbetter/gds-admin/client';
-import { StateBlock } from '@doneisbetter/gds-core/client';
+import { FormSection } from '@doneisbetter/gds-admin/server';
+import { StateBlock } from '@doneisbetter/gds-core/server';
 import EditorScaffold from '@/components/gds/EditorScaffold';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
-import { AccentPanel } from '@doneisbetter/gds-core/client';
-import { StatsStrip } from '@doneisbetter/gds-admin/client';
+import { AccentPanel } from '@doneisbetter/gds-core/server';
+import { StatsStrip } from '@doneisbetter/gds-admin/server';
 import { SimpleGrid, Stack, Text } from '@mantine/core';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';

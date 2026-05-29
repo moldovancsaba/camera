@@ -9,7 +9,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ObjectId } from 'mongodb';
-import { StatsStrip } from '@doneisbetter/gds-admin/client';
+import { StatsStrip } from '@doneisbetter/gds-admin/server';
 import {
   Breadcrumbs,
   Button,

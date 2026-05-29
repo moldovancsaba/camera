@@ -20,8 +20,8 @@ import {
   Text,
   Title,
 } from '@mantine/core';
-import { AccentPanel, AccessSummary } from '@doneisbetter/gds-core/client';
-import { StatsStrip } from '@doneisbetter/gds-admin/client';
+import { AccentPanel, AccessSummary } from '@doneisbetter/gds-core/server';
+import { StatsStrip } from '@doneisbetter/gds-admin/server';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import StyleSections from '@/components/admin/StyleSections';
 import PartnerUserAccessManager from '@/components/admin/PartnerUserAccessManager';
