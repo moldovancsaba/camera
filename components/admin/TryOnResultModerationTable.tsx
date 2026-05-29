@@ -59,13 +59,20 @@ function PreviewImage({
   alt,
   width,
   height,
+  onFailure,
 }: {
   src: string | null | undefined;
   alt: string;
   width: number;
   height: number;
+  onFailure?: () => void;
 }) {
   const [failed, setFailed] = useState(false);
+
+  const markFailed = () => {
+    setFailed(true);
+    onFailure?.();
+  };
 
   if (!src || failed) {
     return (
@@ -101,7 +108,7 @@ function PreviewImage({
       fill
       unoptimized
       style={{ objectFit: 'cover' }}
-      onError={() => setFailed(true)}
+      onError={markFailed}
     />
   );
 }
@@ -110,10 +117,14 @@ function PreviewStrip({
   row,
   clickable,
   onOpen,
+  onResultMissing,
+  onOriginalMissing,
 }: {
   row: ModerationRow;
   clickable?: boolean;
   onOpen?: () => void;
+  onResultMissing?: () => void;
+  onOriginalMissing?: () => void;
 }) {
   const content = (
     <Group align="flex-start" gap="sm" wrap="nowrap">
@@ -128,7 +139,13 @@ function PreviewStrip({
           flexShrink: 0,
         }}
       >
-        <PreviewImage src={row.imageUrl} alt="Generated try-on result" width={96} height={96} />
+        <PreviewImage
+          src={row.imageUrl}
+          alt="Generated try-on result"
+          width={96}
+          height={96}
+          onFailure={onResultMissing}
+        />
       </div>
       {row.originalImageUrl ? (
         <div
@@ -142,7 +159,13 @@ function PreviewStrip({
             flexShrink: 0,
           }}
         >
-          <PreviewImage src={row.originalImageUrl} alt="Original camera result" width={72} height={72} />
+          <PreviewImage
+            src={row.originalImageUrl}
+            alt="Original camera result"
+            width={72}
+            height={72}
+            onFailure={onOriginalMissing}
+          />
         </div>
       ) : null}
     </Group>
@@ -206,8 +229,34 @@ export default function TryOnResultModerationTable({ rows }: { rows: ModerationR
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [assetHealth, setAssetHealth] = useState<
+    Record<string, { resultMissing?: boolean; originalMissing?: boolean }>
+  >({});
 
   const activeRow = rows.find((row) => row.id === activeRowId) ?? null;
+
+  function markAssetMissing(rowId: string, kind: 'resultMissing' | 'originalMissing') {
+    setAssetHealth((current) => {
+      const existing = current[rowId] ?? {};
+      if (existing[kind]) return current;
+      return {
+        ...current,
+        [rowId]: {
+          ...existing,
+          [kind]: true,
+        },
+      };
+    });
+  }
+
+  function assetHealthLabel(rowId: string) {
+    const state = assetHealth[rowId];
+    if (!state) return null;
+    if (state.resultMissing && state.originalMissing) return 'Generated and source assets missing';
+    if (state.resultMissing) return 'Generated asset missing';
+    if (state.originalMissing) return 'Source asset missing';
+    return null;
+  }
 
   async function handleDecision(rowId: string, action: 'approve' | 'reject') {
     try {
@@ -241,7 +290,13 @@ export default function TryOnResultModerationTable({ rows }: { rows: ModerationR
             key: 'preview',
             label: 'Preview',
             render: (row) => (
-              <PreviewStrip row={row} clickable onOpen={() => setActiveRowId(row.id)} />
+              <PreviewStrip
+                row={row}
+                clickable
+                onOpen={() => setActiveRowId(row.id)}
+                onResultMissing={() => markAssetMissing(row.id, 'resultMissing')}
+                onOriginalMissing={() => markAssetMissing(row.id, 'originalMissing')}
+              />
             ),
           },
           {
@@ -290,6 +345,11 @@ export default function TryOnResultModerationTable({ rows }: { rows: ModerationR
                     Approved {new Date(row.approvedAt).toLocaleString()}
                   </Text>
                 ) : null}
+                {assetHealthLabel(row.id) ? (
+                  <Text size="xs" c="orange.7">
+                    {assetHealthLabel(row.id)}
+                  </Text>
+                ) : null}
               </Stack>
             ),
           },
@@ -304,7 +364,13 @@ export default function TryOnResultModerationTable({ rows }: { rows: ModerationR
         renderCard={(row) => (
           <Card withBorder padding="md">
             <Stack gap="md">
-              <PreviewStrip row={row} clickable onOpen={() => setActiveRowId(row.id)} />
+              <PreviewStrip
+                row={row}
+                clickable
+                onOpen={() => setActiveRowId(row.id)}
+                onResultMissing={() => markAssetMissing(row.id, 'resultMissing')}
+                onOriginalMissing={() => markAssetMissing(row.id, 'originalMissing')}
+              />
               <Stack gap={2}>
                 <Text fw={700}>{row.userName}</Text>
                 <Text size="sm" c="dimmed">
@@ -322,6 +388,11 @@ export default function TryOnResultModerationTable({ rows }: { rows: ModerationR
                 <Text size="xs" c="dimmed">
                   {visibilityLabel(row)}
                 </Text>
+                {assetHealthLabel(row.id) ? (
+                  <Text size="xs" c="orange.7">
+                    {assetHealthLabel(row.id)}
+                  </Text>
+                ) : null}
               </Stack>
               <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} />
             </Stack>
@@ -339,7 +410,11 @@ export default function TryOnResultModerationTable({ rows }: { rows: ModerationR
       >
         {activeRow ? (
           <Stack gap="lg">
-            <PreviewStrip row={activeRow} />
+            <PreviewStrip
+              row={activeRow}
+              onResultMissing={() => markAssetMissing(activeRow.id, 'resultMissing')}
+              onOriginalMissing={() => markAssetMissing(activeRow.id, 'originalMissing')}
+            />
             <Stack gap={4}>
               <Text fw={700}>{activeRow.userName}</Text>
               <Text size="sm" c="dimmed">
@@ -357,6 +432,11 @@ export default function TryOnResultModerationTable({ rows }: { rows: ModerationR
               <Text size="sm" c="dimmed">
                 {visibilityLabel(activeRow)}
               </Text>
+              {assetHealthLabel(activeRow.id) ? (
+                <Text size="sm" c="orange.7">
+                  {assetHealthLabel(activeRow.id)}
+                </Text>
+              ) : null}
             </Stack>
             <ModerationActions row={activeRow} busyId={busyId} onDecision={handleDecision} />
           </Stack>
