@@ -72,6 +72,8 @@ cd /Users/Shared/Projects/try-on
 - `/admin/tryon/queue` — live queue state from `tryon_jobs`
 - `/admin/tryon/suits` — selectable leather jersey catalog
 - `/admin/tryon/vetting` — approve or reject completed generated results
+- `/admin/tryon/vetting?archive=approved` — archived approved moderation items
+- `/admin/tryon/vetting?archive=rejected` — archived rejected moderation items
 
 ## Catalog management boundary
 
@@ -83,9 +85,11 @@ cd /Users/Shared/Projects/try-on
 
 - transient failures move to `retry_wait`
 - permanent failures move to `failed`
+- admins can requeue `failed` and `retry_wait` jobs directly from `/admin/tryon/queue`
 - stale leased jobs are reset to `retry_wait`
 - completion creates a derived try-on submission in `pending_review`
 - admin approval is required before a generated result appears on share pages or slideshows
+- review decisions archive the result out of the live queue instead of leaving approved/rejected items mixed into active vetting
 
 ## Logs and local artifacts
 

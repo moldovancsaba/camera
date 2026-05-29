@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { AccentPanel } from '@doneisbetter/gds-core/server';
 import { StatsStrip } from '@doneisbetter/gds-admin/server';
+import { ConsumerDashboardGrid, ProductCard } from '@doneisbetter/gds-core/client';
 import { SimpleGrid, Stack, Text } from '@mantine/core';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
@@ -8,9 +9,9 @@ import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
-import ActionCardGrid from '@/components/gds/ActionCardGrid';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import { cameraInfoToneMap } from '@/lib/gds/presentation';
+import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,28 +92,40 @@ export default async function AdminTryOnAppPage() {
             </AccentPanel>
           </SimpleGrid>
 
-          <ActionCardGrid
-            items={[
+        <ConsumerDashboardGrid columns={3}>
+            {[
               {
                 href: '/admin/tryon/queue',
                 title: 'Queue Status',
                 description: 'See actual live job status across queued, processing, retry, done, and failed states.',
-                iconKey: 'photoScan',
+                iconKey: 'photoScan' as AdminIconKey,
               },
               {
                 href: '/admin/tryon/suits',
                 title: 'Leather Jerseys',
                 description: 'Manage the selectable leather suit catalog for events and user capture flows.',
-                iconKey: 'photo',
+                iconKey: 'photo' as AdminIconKey,
               },
               {
                 href: '/admin/tryon/vetting',
                 title: 'Vetting Queue',
                 description: 'Approve or reject completed generated results before they go public.',
-                iconKey: 'world',
+                iconKey: 'world' as AdminIconKey,
               },
-            ]}
-          />
+            ].map((item) => (
+              <ProductCard
+                key={item.href}
+                title={item.title}
+                description={item.description}
+                icon={<AdminIcon iconKey={item.iconKey} size={20} />}
+                primaryAction={
+                  <a href={item.href} style={{ textDecoration: 'none' }}>
+                    Open
+                  </a>
+                }
+              />
+            ))}
+          </ConsumerDashboardGrid>
         </>
       ) : null}
     </Stack>

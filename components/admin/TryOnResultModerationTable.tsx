@@ -225,7 +225,15 @@ function ModerationActions({
   );
 }
 
-export default function TryOnResultModerationTable({ rows }: { rows: ModerationRow[] }) {
+export default function TryOnResultModerationTable({
+  rows,
+  emptyTitle = 'No try-on results need review',
+  emptyDescription = 'Generated try-on results will appear here after the local worker uploads them back to Camera.',
+}: {
+  rows: ModerationRow[];
+  emptyTitle?: string;
+  emptyDescription?: string;
+}) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
@@ -275,8 +283,8 @@ export default function TryOnResultModerationTable({ rows }: { rows: ModerationR
     return (
       <StateBlock
         variant="empty"
-        title="No try-on results need review"
-        description="Generated try-on results will appear here after the local worker uploads them back to Camera."
+        title={emptyTitle}
+        description={emptyDescription}
       />
     );
   }

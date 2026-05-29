@@ -1,7 +1,7 @@
 # Camera GDS Adoption
 
 **Version**: 2.10.0  
-**Last Updated**: 2026-05-28
+**Last Updated**: 2026-05-29
 
 ## SSOT statement
 
@@ -37,16 +37,16 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | Semantic navigation link | `components/gds/SemanticNavLink.tsx` | Active |
 | Metric strip | direct `@doneisbetter/gds-admin` import | Package-direct |
 | Info card | direct `@doneisbetter/gds-core` import | Package-direct |
-| Action entry grid | `components/gds/ActionCardGrid.tsx` | Active |
-| Data toolbar | `components/gds/DataToolbar.tsx` | Active — Events + Partners lists |
-| Responsive data view | `components/gds/ResponsiveDataView.tsx` | Active — thin typed adapter over package `ResponsiveDataView` |
-| Data table | `components/gds/DataTable.tsx` | Active — thin typed adapter over package `DataTable` |
+| Action entry grid | `components/gds/AdminDashboardView.tsx`, `app/admin/tryon/page.tsx`, `app/admin/tryon-results/page.tsx` | Package-direct |
+| Data toolbar | `components/admin/AdminListPageShell.tsx` | Package-direct |
+| Responsive data view | `components/gds/EventsInventoryList.tsx`, `components/gds/PartnersInventoryList.tsx`, `components/admin/TryOnResultModerationTable.tsx` | Thin adapter (`components/gds/ResponsiveDataView.tsx`) |
+| Data table | `components/gds/LandingPagesPageView.tsx`, `components/admin/TryOnQueueTable.tsx` | Thin adapter (`components/gds/DataTable.tsx`) |
 | Empty state | direct `@doneisbetter/gds-core` import | Package-direct |
 | Access summary | direct `@doneisbetter/gds-core` import | Package-direct |
 | Status badge | direct `@doneisbetter/gds-core` import | Package-direct |
 | State block | direct `@doneisbetter/gds-core` import | Package-direct |
 | Form section | direct `@doneisbetter/gds-admin` import | Package-direct |
-| Editor scaffold | `components/gds/EditorScaffold.tsx` | Active — Event edit, Partner edit/new |
+| Editor scaffold | `app/admin/{events,events/[id],partners,partners/[id],frames,logos,tryon}/**` | Thin adapter (`components/gds/EditorScaffold.tsx`) |
 | Upload dropzone | direct `@doneisbetter/gds-core` import | Package-direct |
 | Destructive confirm | `lib/gds/confirm-destructive.tsx` | Active — delete/remove admin actions |
 | Theme extension | `lib/gds/theme/index.ts` | Active |
@@ -67,9 +67,13 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 ### Retained package-boundary adapters
 
 - `components/gds/CameraGdsProvider.tsx`
+- `components/gds/DataTable.tsx`
+- `components/gds/ResponsiveDataView.tsx`
+- `components/gds/EditorScaffold.tsx`
 - `lib/gds/theme/index.ts`
 - `lib/gds/confirm-destructive.tsx`
-- thin typed adapters or package-shape bridges such as `components/gds/ResponsiveDataView.tsx`, `components/gds/DataTable.tsx`, `components/gds/DataToolbar.tsx`, `components/gds/EditorScaffold.tsx`
+
+  - `DataTable`, `ResponsiveDataView`, and `EditorScaffold` are thin compatibility adapters used for API alignment and local UX orchestration in admin surfaces.
 
 ### Domain-owned composition moved out of `components/gds`
 

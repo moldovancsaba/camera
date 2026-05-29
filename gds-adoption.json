@@ -26,6 +26,21 @@
   ],
   "localAdapters": [
     {
+      "contract": "DataTableAdapter",
+      "path": "components/gds/DataTable.tsx",
+      "status": "active"
+    },
+    {
+      "contract": "ResponsiveDataViewAdapter",
+      "path": "components/gds/ResponsiveDataView.tsx",
+      "status": "active"
+    },
+    {
+      "contract": "EditorScaffoldAdapter",
+      "path": "components/gds/EditorScaffold.tsx",
+      "status": "active"
+    },
+    {
       "contract": "ThemeExtension",
       "path": "lib/gds/theme/index.ts",
       "status": "active"
@@ -33,21 +48,6 @@
     {
       "contract": "RootProviderAdapter",
       "path": "components/gds/CameraGdsProvider.tsx",
-      "status": "active"
-    },
-    {
-      "contract": "DataToolbar",
-      "path": "components/gds/DataToolbar.tsx",
-      "status": "active"
-    },
-    {
-      "contract": "ResponsiveDataView",
-      "path": "components/gds/ResponsiveDataView.tsx",
-      "status": "active"
-    },
-    {
-      "contract": "EditorScaffold",
-      "path": "components/gds/EditorScaffold.tsx",
       "status": "active"
     }
   ],

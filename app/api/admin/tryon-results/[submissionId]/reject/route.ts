@@ -51,6 +51,12 @@ export const POST = withErrorHandler(async (
         approvedBy: null,
         isShareVisible: false,
         isSlideshowEligible: false,
+        tryOnModerationArchive: {
+          archived: true,
+          bucket: 'rejected',
+          archivedAt: now,
+          archivedBy: session.user.email,
+        },
         updatedAt: now,
       },
     }
@@ -82,5 +88,5 @@ export const POST = withErrorHandler(async (
     lastError: null,
   });
 
-  return apiSuccess({ submissionId, reviewStatus: 'rejected' });
+  return apiSuccess({ submissionId, reviewStatus: 'rejected', archived: true, archiveBucket: 'rejected' });
 });

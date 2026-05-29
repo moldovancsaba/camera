@@ -1,13 +1,14 @@
 'use client';
 
 import { Stack, Text } from '@mantine/core';
-import { AccentPanel } from '@doneisbetter/gds-core/client';
+import { AccentPanel, ConsumerDashboardGrid, ProductCard } from '@doneisbetter/gds-core/client';
 import { StatsStrip } from '@doneisbetter/gds-admin/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
-import ActionCardGrid from '@/components/gds/ActionCardGrid';
 import { cameraInfoToneMap } from '@/lib/gds/presentation';
+import { AdminIcon } from '@/lib/gds/admin-icon-key';
+import type { AdminIconKey } from '@/lib/gds/admin-icon-key';
 
 export default function AdminDashboardView({
   framesCount,
@@ -41,47 +42,57 @@ export default function AdminDashboardView({
           />
 
           <Stack gap="lg">
-            <AccentPanel tone={cameraInfoToneMap.neutral} variant="subtle" title="Quick Actions">
-              <Text size="sm" c="dimmed">
-                Primary entry points for partner operations and shared resources.
-              </Text>
-            </AccentPanel>
-            <div>
-              <ActionCardGrid
-                items={[
-                  {
-                    href: '/admin/partners',
-                    title: 'Open Partners',
-                    description: 'Use partner workspaces as the operational home for daily management.',
-                    iconKey: 'buildingStore',
-                  },
-                  {
-                    href: '/admin/frames/new',
-                    title: 'Add New Frame',
-                    description: 'Create a new shared frame resource for partner and event use.',
-                    iconKey: 'plus',
-                  },
-                  {
-                    href: '/admin/frames',
-                    title: 'Global Frames',
-                    description: 'Audit frame ownership and manage shared inventory.',
-                    iconKey: 'frame',
-                  },
-                  {
-                    href: '/admin/landing-pages',
-                    title: 'Landing Pages',
-                    description: 'Manage shared experience surfaces and connected app actions.',
-                    iconKey: 'world',
-                  },
-                  {
-                    href: '/admin/submissions',
-                    title: 'Global Galleries',
-                    description: 'Review submissions and cross-partner gallery activity.',
-                    iconKey: 'photoScan',
-                  },
-                ]}
+          <AccentPanel tone={cameraInfoToneMap.neutral} variant="subtle" title="Quick Actions">
+            <Text size="sm" c="dimmed">
+              Primary entry points for partner operations and shared resources.
+            </Text>
+          </AccentPanel>
+          <ConsumerDashboardGrid columns={3}>
+            {[
+              {
+                href: '/admin/partners',
+                title: 'Open Partners',
+                description: 'Use partner workspaces as the operational home for daily management.',
+                iconKey: 'buildingStore' as AdminIconKey,
+              },
+              {
+                href: '/admin/frames/new',
+                title: 'Add New Frame',
+                description: 'Create a new shared frame resource for partner and event use.',
+                iconKey: 'plus' as AdminIconKey,
+              },
+              {
+                href: '/admin/frames',
+                title: 'Global Frames',
+                description: 'Audit frame ownership and manage shared inventory.',
+                iconKey: 'frame' as AdminIconKey,
+              },
+              {
+                href: '/admin/landing-pages',
+                title: 'Landing Pages',
+                description: 'Manage shared experience surfaces and connected app actions.',
+                iconKey: 'world' as AdminIconKey,
+              },
+              {
+                href: '/admin/submissions',
+                title: 'Global Galleries',
+                description: 'Review submissions and cross-partner gallery activity.',
+                iconKey: 'photoScan' as AdminIconKey,
+              },
+            ].map((item) => (
+              <ProductCard
+                key={item.href}
+                title={item.title}
+                description={item.description}
+                icon={<AdminIcon iconKey={item.iconKey} size={20} />}
+                primaryAction={
+                  <a href={item.href} style={{ textDecoration: 'none' }}>
+                    Open
+                  </a>
+                }
               />
-            </div>
+            ))}
+          </ConsumerDashboardGrid>
           </Stack>
         </>
       ) : null}

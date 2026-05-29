@@ -547,6 +547,13 @@ export interface SubmissionTryOnRequestState {
   lastError?: string | null;
 }
 
+export interface TryOnModerationArchiveState {
+  archived: boolean;
+  bucket?: 'approved' | 'rejected' | null;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
+}
+
 /**
  * Submission Document Interface
  * Represents a user photo submission with complete metadata
@@ -601,6 +608,7 @@ export interface Submission {
   approvedBy?: string | null;
   isShareVisible?: boolean;          // Public share-page publication flag
   isSlideshowEligible?: boolean;     // Slideshow playlist eligibility flag
+  tryOnModerationArchive?: TryOnModerationArchiveState | null; // Review-queue archive state for try-on results only
   
   // Submission details
   method: SubmissionMethod;          // Camera capture or file upload

@@ -13,14 +13,21 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const { searchParams } = request.nextUrl;
   const reviewStatus = searchParams.get('reviewStatus')?.trim();
+  const archive = searchParams.get('archive')?.trim();
   const eventId = searchParams.get('eventId')?.trim();
   const partnerId = searchParams.get('partnerId')?.trim();
   const limit = Math.max(1, Math.min(100, Number.parseInt(searchParams.get('limit') || '50', 10) || 50));
 
   const query: Record<string, unknown> = {
     submissionKind: 'tryon_result',
-    isArchived: { $ne: true },
   };
+
+  if (archive === 'approved' || archive === 'rejected') {
+    query['tryOnModerationArchive.archived'] = true;
+    query['tryOnModerationArchive.bucket'] = archive;
+  } else {
+    query['tryOnModerationArchive.archived'] = { $ne: true };
+  }
 
   if (reviewStatus) {
     query.reviewStatus = reviewStatus;

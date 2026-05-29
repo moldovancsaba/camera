@@ -6,7 +6,7 @@ import { StatsStrip } from '@doneisbetter/gds-admin/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
-import DataToolbar from '@/components/gds/DataToolbar';
+import { DataToolbar as GdsDataToolbar } from '@doneisbetter/gds-core/client';
 import { AdminIcon } from '@/lib/gds/admin-icon-key';
 import type { AdminIconKey } from '@/lib/gds/admin-icon-key';
 import type { CameraStatItem } from '@/lib/gds/presentation';
@@ -61,43 +61,47 @@ export default function AdminListPageShell({
       ) : null}
 
       {search ? (
-        <DataToolbar
-          hint={toolbarHint}
-          filters={toolbarFilters}
-          trailing={
+        <GdsDataToolbar
+          searchSlot={
+            <Stack gap="md" style={{ flex: 1 }}>
+              <Group align="flex-end" wrap="wrap" gap="md" style={{ flex: 1 }}>
+                <form style={{ flex: 1, minWidth: 240 }}>
+                  <Group align="flex-end" wrap="wrap">
+                    <TextInput
+                      name="search"
+                      defaultValue={search.defaultValue}
+                      label={search.label}
+                      placeholder={search.placeholder}
+                      leftSection={<AdminIcon iconKey="search" size={16} />}
+                      style={{ flex: 1, minWidth: 220 }}
+                    />
+                    {search.hiddenFields
+                      ? Object.entries(search.hiddenFields).map(([name, value]) => (
+                          <input key={name} type="hidden" name={name} value={value} />
+                        ))
+                      : null}
+                    <Button type="submit" color="cameraTeal">
+                      Search
+                    </Button>
+                    {search.defaultValue || toolbarFilters?.length ? (
+                      <Button component={Link} href={search.clearHref} variant="default">
+                        Clear
+                      </Button>
+                    ) : null}
+                  </Group>
+                </form>
+              </Group>
+            </Stack>
+          }
+          activeFilters={toolbarFilters?.map((chip) => ({ label: `${chip.label}: ${chip.value}` }))}
+          createAction={
             toolbarTrailing ? (
               <Button component={Link} href={toolbarTrailing.href} variant="light" color="cameraTeal">
                 {toolbarTrailing.label}
               </Button>
             ) : undefined
           }
-        >
-          <form style={{ flex: 1, minWidth: 240 }}>
-            <Group align="flex-end" wrap="wrap">
-              <TextInput
-                name="search"
-                defaultValue={search.defaultValue}
-                label={search.label}
-                placeholder={search.placeholder}
-                leftSection={<AdminIcon iconKey="search" size={16} />}
-                style={{ flex: 1, minWidth: 220 }}
-              />
-              {search.hiddenFields
-                ? Object.entries(search.hiddenFields).map(([name, value]) => (
-                    <input key={name} type="hidden" name={name} value={value} />
-                  ))
-                : null}
-              <Button type="submit" color="cameraTeal">
-                Search
-              </Button>
-              {search.defaultValue || toolbarFilters?.length ? (
-                <Button component={Link} href={search.clearHref} variant="default">
-                  Clear
-                </Button>
-              ) : null}
-            </Group>
-          </form>
-        </DataToolbar>
+        />
       ) : null}
 
       {dbError ? <DatabaseConnectionAlert diagnosis={dbError} /> : null}

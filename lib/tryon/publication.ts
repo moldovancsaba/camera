@@ -118,6 +118,12 @@ export function buildDerivedTryOnSubmission({
     approvedBy: null,
     isShareVisible: false,
     isSlideshowEligible: false,
+    tryOnModerationArchive: {
+      archived: false,
+      bucket: null,
+      archivedAt: null,
+      archivedBy: null,
+    },
     tryOnJobs: [],
   };
 }

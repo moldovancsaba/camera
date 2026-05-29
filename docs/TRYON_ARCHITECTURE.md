@@ -16,7 +16,8 @@ Camera remains the intake system. The try-on pipeline is asynchronous and uses a
 5. The worker uploads the final result to imgbb and calls `POST /api/internal/tryon/complete`.
 6. Camera materializes a derived `submissionKind=tryon_result` record in `pending_review`.
 7. Admins operate Try-On from `/admin/tryon`, monitor live queue state in `/admin/tryon/queue`, manage selectable leather jerseys in `/admin/tryon/suits`, and review generated outputs in `/admin/tryon/vetting`.
-8. Only approved generated results become share-visible and slideshow-eligible.
+8. Approval or rejection archives the result out of the live moderation queue into an archive bucket while preserving its publication state.
+9. Only approved generated results become share-visible and slideshow-eligible.
 
 ## Why this shape
 
@@ -72,6 +73,7 @@ Key fields:
 
 - Claiming uses `findOneAndUpdate` with lease expiry.
 - Retries use `status=retry_wait` plus `processing.nextAttemptAt`.
+- Manual retry resets a failed or retry-wait job back to `queued`, clears prior error/result state, and zeroes the attempt counter.
 - Stale claims are recovered when a worker sees expired leases.
 - Deduplication is enforced with `requestHash`.
 
@@ -105,6 +107,14 @@ The endpoint:
 
 Admin moderation queue for generated try-on results.
 
+- default view shows only live moderation items
+- `?archive=approved` shows approved items archived out of the active queue
+- `?archive=rejected` shows rejected items archived out of the active queue
+
+### `POST /api/admin/tryon-jobs/[jobId]/retry`
+
+Admin retry endpoint for failed or retry-wait jobs.
+
 ### `GET /api/admin/tryon-suits`
 
 Admin catalog surface for selectable leather jerseys.
@@ -114,10 +124,11 @@ Admin catalog surface for selectable leather jerseys.
 Publishes an approved generated result to:
 - the source submission share family
 - slideshow playlists when the slideshow source mode includes approved try-on results
+- archives the moderation record out of the active vetting queue
 
 ### `POST /api/admin/tryon-results/[submissionId]/reject`
 
-Keeps the generated result hidden from public share/slideshow surfaces.
+Keeps the generated result hidden from public share/slideshow surfaces and archives the moderation record out of the active vetting queue.
 
 ## Worker filesystem
 
@@ -143,4 +154,5 @@ logs/
 - Try-on should use the original capture image, not the branded composite submission.
 - Camera does not block user capture if the try-on queue step fails after submission save.
 - Slideshows and public share pages must never read directly from `tryon_jobs`; they only use approved derived submissions.
+- Moderation archive is separate from the global `isArchived` submission flag so approved try-on results can stay publicly visible.
 - Leather jerseys now follow the same resource pattern as frames and logos: Camera owns the uploaded suit asset and exposes it to the worker through remote URLs.

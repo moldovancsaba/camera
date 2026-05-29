@@ -161,6 +161,14 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
   await track(COLLECTIONS.SUBMISSIONS, () =>
     db
       .collection(COLLECTIONS.SUBMISSIONS)
+      .createIndex(
+        { submissionKind: 1, 'tryOnModerationArchive.archived': 1, 'tryOnModerationArchive.bucket': 1, createdAt: -1 },
+        { name: 'submissions_tryonModerationArchive_createdAt' }
+      )
+  );
+  await track(COLLECTIONS.SUBMISSIONS, () =>
+    db
+      .collection(COLLECTIONS.SUBMISSIONS)
       .createIndex({ sourceJobId: 1 }, { sparse: true, unique: true, name: 'submissions_sourceJobId_unique' })
   );
   await track(COLLECTIONS.SUBMISSIONS, () =>
