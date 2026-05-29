@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { Alert, Button, Group, Modal, Stack, Text, TextInput } from '@/components/gds/ui';
+import { Alert, Button, Group, Modal, Stack, Text, TextInput } from '@mantine/core';
 
 interface UserManagementActionsProps {
   user: {

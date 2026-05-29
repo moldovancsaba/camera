@@ -11,12 +11,11 @@
  * 
  * Usage:
  * ```tsx
- * import { Button, Card, Badge, LoadingSpinner } from '@/components/shared';
+ * import { Card, Badge, LoadingSpinner } from '@/components/shared';
  * 
  * export default function MyPage() {
  *   return (
  *     <Card header={<h1>Title</h1>}>
- *       <Button variant="primary">Click Me</Button>
  *       <Badge variant="success">Active</Badge>
  *       <LoadingSpinner size="md" />
  *     </Card>
@@ -24,10 +23,6 @@
  * }
  * ```
  */
-
-// Core UI components
-export { default as Button } from './Button';
-export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
 
 export { default as Card } from './Card';
 export type { CardProps } from './Card';

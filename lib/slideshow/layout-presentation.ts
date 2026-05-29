@@ -5,11 +5,16 @@
  * flex root (that broke scaling when it overrode h-screen / collapsed layout).
  */
 
+import {
+  SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
+  SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
+} from '@/lib/gds/tokens/colors';
+
 export type LayoutAlignVertical = 'top' | 'middle' | 'bottom';
 export type LayoutAlignHorizontal = 'left' | 'center' | 'right';
 
-export const DEFAULT_SAFETY_PRIMARY = '#312e81';
-export const DEFAULT_SAFETY_ACCENT = '#0f172a';
+export const DEFAULT_SAFETY_PRIMARY = SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY;
+export const DEFAULT_SAFETY_ACCENT = SLIDESHOW_DEFAULT_BACKGROUND_ACCENT;
 
 export function normalizeLayoutAlignVertical(
   raw: unknown
@@ -45,7 +50,7 @@ export function parseSafetyColorInput(
   if (!/^#[0-9A-Fa-f]{6}$/.test(s)) {
     return {
       ok: false,
-      error: 'Safety gradient colors must be empty or #RRGGBB (e.g. #312e81)',
+      error: `Safety gradient colors must be empty or #RRGGBB (e.g. ${SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY})`,
     };
   }
   return { ok: true, value: s };

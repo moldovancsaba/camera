@@ -26,15 +26,19 @@ import {
   Text,
   TextInput,
   Textarea,
-} from '@/components/gds/ui';
+} from '@mantine/core';
 import { IconAlertCircle, IconX } from '@tabler/icons-react';
 import { notifications } from '@/lib/gds/notifications';
 import { type CustomPage } from '@/lib/db/schemas';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
-import FormSection from '@/components/gds/FormSection';
-import StateBlock from '@/components/gds/StateBlock';
+import { FormSection } from '@doneisbetter/gds-admin/client';
+import { StateBlock } from '@doneisbetter/gds-core/client';
 import EditorScaffold from '@/components/gds/EditorScaffold';
+import {
+  CAMERA_DEFAULT_BRAND_BORDER_COLOR,
+  CAMERA_DEFAULT_BRAND_COLOR,
+} from '@/lib/gds/tokens/colors';
 import type { TryOnSuitOption } from '@/lib/tryon/suits';
 
 interface EventRecord {
@@ -85,8 +89,8 @@ export default function EditEventPage({
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const [brandColor, setBrandColor] = useState('#3B82F6');
-  const [brandBorderColor, setBrandBorderColor] = useState('#3B82F6');
+  const [brandColor, setBrandColor] = useState(CAMERA_DEFAULT_BRAND_COLOR);
+  const [brandBorderColor, setBrandBorderColor] = useState(CAMERA_DEFAULT_BRAND_BORDER_COLOR);
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
   const [suitOptions, setSuitOptions] = useState<TryOnSuitOption[]>([]);
@@ -116,8 +120,8 @@ export default function EditEventPage({
         setEvent(eventData);
         setCustomPages(eventData.customPages || []);
         setLogoPreview(eventData.logoUrl || null);
-        setBrandColor(eventData.brandColor || '#3B82F6');
-        setBrandBorderColor(eventData.brandBorderColor || '#3B82F6');
+        setBrandColor(eventData.brandColor || CAMERA_DEFAULT_BRAND_COLOR);
+        setBrandBorderColor(eventData.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR);
         setTryOnEnabled(Boolean(eventData.tryOn?.enabled));
         setSelectedSuitIds(
           Array.isArray(eventData.tryOn?.allowedLeatherSuitIds)

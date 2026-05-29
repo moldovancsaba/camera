@@ -1,9 +1,10 @@
 'use client';
 
 import Image from 'next/image';
-import { AspectRatio, Box, Card, Group, Stack, Text } from '@mantine/core';
+import { AspectRatio, Box } from '@mantine/core';
+import { MediaCard as GdsMediaCard } from '@doneisbetter/gds-core/client';
 
-interface MediaCardProps {
+interface MediaPreviewCardProps {
   src: string;
   alt: string;
   caption?: string;
@@ -13,7 +14,7 @@ interface MediaCardProps {
   padding?: number;
 }
 
-export default function MediaCard({
+export default function MediaPreviewCard({
   src,
   alt,
   caption,
@@ -21,10 +22,12 @@ export default function MediaCard({
   ratio = 1,
   fit = 'contain',
   padding = 24,
-}: MediaCardProps) {
+}: MediaPreviewCardProps) {
   return (
-    <Card withBorder radius="md" bg="var(--mantine-color-gray-0)">
-      <Stack gap="sm">
+    <GdsMediaCard
+      title={caption || alt}
+      description={caption ? alt : undefined}
+      image={
         <AspectRatio ratio={ratio}>
           <Box bg="gray.1" style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
             <Image
@@ -36,19 +39,8 @@ export default function MediaCard({
             />
           </Box>
         </AspectRatio>
-        {caption || action ? (
-          <Group justify="space-between" align="center">
-            {caption ? (
-              <Text size="sm" c="dimmed">
-                {caption}
-              </Text>
-            ) : (
-              <div />
-            )}
-            {action}
-          </Group>
-        ) : null}
-      </Stack>
-    </Card>
+      }
+      overlay={action}
+    />
   );
 }

@@ -3,11 +3,10 @@
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import DataTable from '@/components/gds/DataTable';
 import ResponsiveDataView from '@/components/gds/ResponsiveDataView';
-import StateBlock from '@/components/gds/StateBlock';
-import StatusBadge from '@/components/gds/StatusBadge';
-import { Button, Card, Group, Modal, Stack, Text } from '@/components/gds/ui';
+import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
+import { Button, Card, Group, Modal, Stack, Text } from '@mantine/core';
+import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 
 export interface ModerationRow {
   id: string;
@@ -37,7 +36,7 @@ async function postDecision(id: string, action: 'approve' | 'reject') {
   }
 }
 
-function reviewTone(status: ModerationRow['reviewStatus']) {
+function reviewTone(status: ModerationRow['reviewStatus']): CameraStatusTone {
   if (status === 'approved') return 'active' as const;
   if (status === 'rejected') return 'danger' as const;
   return 'warning' as const;
@@ -184,156 +183,113 @@ export default function TryOnResultModerationTable({ rows }: { rows: ModerationR
   return (
     <>
       <ResponsiveDataView
-        table={
-          <DataTable
-            columns={[
-              { key: 'preview', title: 'Preview' },
-              { key: 'user', title: 'User' },
-              { key: 'scope', title: 'Event / Partner' },
-              { key: 'suit', title: 'Leather Suit' },
-              { key: 'status', title: 'Review Status' },
-              { key: 'actions', title: 'Actions', align: 'right' },
-            ]}
-          >
-            {rows.map((row) => (
-              <tr key={row.id} style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
-                <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-                  <PreviewStrip row={row} clickable onOpen={() => setActiveRowId(row.id)} />
-                </td>
-                <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-                  <Stack gap={2}>
-                    <Text fw={700}>{row.userName}</Text>
-                    <Text size="sm" c="dimmed">
-                      {row.userEmail}
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      {new Date(row.createdAt).toLocaleString()}
-                    </Text>
-                  </Stack>
-                </td>
-                <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-                  <Stack gap={2}>
-                    <Text>{scopeLabel(row)}</Text>
-                    <Text size="sm" c="dimmed">
-                      {row.partnerName || 'No partner'}
-                    </Text>
-                  </Stack>
-                </td>
-                <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-                  <Text size="sm">{row.tryOnLeatherSuitId || 'Unknown suit'}</Text>
-                </td>
-                <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-                  <Stack gap="xs" align="flex-start">
-                    <StatusBadge tone={reviewTone(row.reviewStatus)} label={reviewLabel(row.reviewStatus)} />
-                    <Text size="xs" c="dimmed">
-                      {visibilityLabel(row)}
-                    </Text>
-                    {row.approvedAt ? (
-                      <Text size="xs" c="dimmed">
-                        Approved {new Date(row.approvedAt).toLocaleString()}
-                      </Text>
-                    ) : null}
-                  </Stack>
-                </td>
-                <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top', textAlign: 'right' }}>
-                  <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} />
-                </td>
-              </tr>
-            ))}
-          </DataTable>
-        }
-        mobile={
-          <>
-            {rows.map((row) => (
-              <Card key={row.id} withBorder radius="md">
-                <Stack gap="md">
-                  <PreviewStrip row={row} clickable onOpen={() => setActiveRowId(row.id)} />
-                  <Group justify="space-between" align="flex-start" gap="sm">
-                    <Stack gap={2}>
-                      <Text fw={700}>{row.userName}</Text>
-                      <Text size="sm" c="dimmed">
-                        {row.userEmail}
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        {new Date(row.createdAt).toLocaleString()}
-                      </Text>
-                    </Stack>
-                    <StatusBadge tone={reviewTone(row.reviewStatus)} label={reviewLabel(row.reviewStatus)} />
-                  </Group>
-                  <Stack gap={2}>
-                    <Text size="sm" fw={600}>
-                      {scopeLabel(row)}
-                    </Text>
-                    <Text size="sm" c="dimmed">
-                      {row.partnerName || 'No partner'}
-                    </Text>
-                    <Text size="sm">{row.tryOnLeatherSuitId || 'Unknown suit'}</Text>
-                    <Text size="xs" c="dimmed">
-                      {visibilityLabel(row)}
-                    </Text>
-                    {row.approvedAt ? (
-                      <Text size="xs" c="dimmed">
-                        Approved {new Date(row.approvedAt).toLocaleString()}
-                      </Text>
-                    ) : null}
-                  </Stack>
-                  <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} />
-                </Stack>
-              </Card>
-            ))}
-          </>
-        }
+        data={rows}
+        columns={[
+          {
+            key: 'preview',
+            label: 'Preview',
+            render: (row) => (
+              <PreviewStrip row={row} clickable onOpen={() => setActiveRowId(row.id)} />
+            ),
+          },
+          {
+            key: 'user',
+            label: 'User',
+            render: (row) => (
+              <Stack gap={2}>
+                <Text fw={700}>{row.userName}</Text>
+                <Text size="sm" c="dimmed">
+                  {row.userEmail}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {new Date(row.createdAt).toLocaleString()}
+                </Text>
+              </Stack>
+            ),
+          },
+          {
+            key: 'scope',
+            label: 'Event / Partner',
+            render: (row) => (
+              <Stack gap={2}>
+                <Text>{scopeLabel(row)}</Text>
+                <Text size="sm" c="dimmed">
+                  {row.partnerName || 'No partner'}
+                </Text>
+              </Stack>
+            ),
+          },
+          {
+            key: 'suit',
+            label: 'Leather Suit',
+            render: (row) => <Text size="sm">{row.tryOnLeatherSuitId || 'Unknown suit'}</Text>,
+          },
+          {
+            key: 'status',
+            label: 'Review Status',
+            render: (row) => (
+              <Stack gap="xs" align="flex-start">
+                <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row.reviewStatus))} />
+                <Text size="xs" c="dimmed">
+                  {visibilityLabel(row)}
+                </Text>
+                {row.approvedAt ? (
+                  <Text size="xs" c="dimmed">
+                    Approved {new Date(row.approvedAt).toLocaleString()}
+                  </Text>
+                ) : null}
+              </Stack>
+            ),
+          },
+          {
+            key: 'actions',
+            label: 'Actions',
+            render: (row) => (
+              <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} />
+            ),
+          },
+        ]}
+        renderCard={(row) => (
+          <Card withBorder padding="md">
+            <Stack gap="md">
+              <PreviewStrip row={row} clickable onOpen={() => setActiveRowId(row.id)} />
+              <Stack gap={2}>
+                <Text fw={700}>{row.userName}</Text>
+                <Text size="sm" c="dimmed">
+                  {row.userEmail}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {scopeLabel(row)} · {row.partnerName || 'No partner'}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {row.tryOnLeatherSuitId || 'Unknown suit'}
+                </Text>
+              </Stack>
+              <Stack gap="xs" align="flex-start">
+                <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row.reviewStatus))} />
+                <Text size="xs" c="dimmed">
+                  {visibilityLabel(row)}
+                </Text>
+              </Stack>
+              <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} />
+            </Stack>
+          </Card>
+        )}
+        getRowKey={(row) => row.id}
       />
 
       <Modal
         opened={Boolean(activeRow)}
         onClose={() => setActiveRowId(null)}
-        title={activeRow ? `Review try-on result for ${activeRow.userName}` : 'Review try-on result'}
-        centered
+        title={activeRow ? `Review result for ${activeRow.userName}` : 'Review result'}
         size="xl"
+        centered
       >
         {activeRow ? (
           <Stack gap="lg">
-            <Group align="flex-start" grow>
-              <Stack gap="xs">
-                <Text fw={700}>Generated result</Text>
-                <div
-                  style={{
-                    position: 'relative',
-                    width: '100%',
-                    aspectRatio: '1 / 1',
-                    borderRadius: 16,
-                    overflow: 'hidden',
-                    background: 'var(--mantine-color-gray-1)',
-                  }}
-                >
-                  <Image src={activeRow.imageUrl} alt="Generated try-on result" fill unoptimized style={{ objectFit: 'contain' }} />
-                </div>
-              </Stack>
-              {activeRow.originalImageUrl ? (
-                <Stack gap="xs">
-                  <Text fw={700}>Original camera result</Text>
-                  <div
-                    style={{
-                      position: 'relative',
-                      width: '100%',
-                      aspectRatio: '1 / 1',
-                      borderRadius: 16,
-                      overflow: 'hidden',
-                      background: 'var(--mantine-color-gray-1)',
-                    }}
-                  >
-                    <Image src={activeRow.originalImageUrl} alt="Original camera result" fill unoptimized style={{ objectFit: 'contain' }} />
-                  </div>
-                </Stack>
-              ) : null}
-            </Group>
-
-            <Stack gap="xs">
-              <Group gap="sm">
-                <Text fw={700}>{activeRow.userName}</Text>
-                <StatusBadge tone={reviewTone(activeRow.reviewStatus)} label={reviewLabel(activeRow.reviewStatus)} />
-              </Group>
+            <PreviewStrip row={activeRow} />
+            <Stack gap={4}>
+              <Text fw={700}>{activeRow.userName}</Text>
               <Text size="sm" c="dimmed">
                 {activeRow.userEmail}
               </Text>
@@ -341,13 +297,15 @@ export default function TryOnResultModerationTable({ rows }: { rows: ModerationR
                 {scopeLabel(activeRow)} · {activeRow.partnerName || 'No partner'}
               </Text>
               <Text size="sm" c="dimmed">
-                Leather suit: {activeRow.tryOnLeatherSuitId || 'Unknown suit'}
+                {activeRow.tryOnLeatherSuitId || 'Unknown suit'}
               </Text>
+            </Stack>
+            <Stack gap="xs" align="flex-start">
+              <StatusBadge {...getStatusBadgeProps(reviewTone(activeRow.reviewStatus), reviewLabel(activeRow.reviewStatus))} />
               <Text size="sm" c="dimmed">
                 {visibilityLabel(activeRow)}
               </Text>
             </Stack>
-
             <ModerationActions row={activeRow} busyId={busyId} onDecision={handleDecision} />
           </Stack>
         ) : null}

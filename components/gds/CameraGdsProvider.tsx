@@ -1,37 +1,18 @@
 'use client';
 
-import {
-  ColorSchemeScript,
-  MantineProvider,
-  localStorageColorSchemeManager,
-} from '@mantine/core';
-import { ModalsProvider } from '@mantine/modals';
-import { Notifications } from '@mantine/notifications';
-import { cameraMantineTheme } from '@/lib/gds/theme';
-
-const colorSchemeManager = localStorageColorSchemeManager({
-  key: 'camera-mantine-color-scheme',
-});
-
-export function CameraColorSchemeScript() {
-  return <ColorSchemeScript defaultColorScheme="light" />;
-}
+import type { MantineThemeOverride } from '@mantine/core';
+import { GdsProvider } from '@doneisbetter/gds-theme/client';
 
 export default function CameraGdsProvider({
   children,
+  theme,
 }: {
   children: React.ReactNode;
+  theme: MantineThemeOverride;
 }) {
   return (
-    <MantineProvider
-      theme={cameraMantineTheme}
-      defaultColorScheme="light"
-      colorSchemeManager={colorSchemeManager}
-    >
-      <ModalsProvider>
-        <Notifications position="top-right" />
-        {children}
-      </ModalsProvider>
-    </MantineProvider>
+    <GdsProvider theme={theme} defaultColorScheme="light">
+      {children}
+    </GdsProvider>
   );
 }

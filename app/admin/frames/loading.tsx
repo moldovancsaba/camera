@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, SimpleGrid, Skeleton, Stack } from '@/components/gds/ui';
+import { Card, SimpleGrid, Skeleton, Stack } from '@mantine/core';
 
 export default function FramesLoading() {
   return (

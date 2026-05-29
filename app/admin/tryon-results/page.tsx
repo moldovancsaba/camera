@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
-import AdminListPageShell from '@/components/gds/AdminListPageShell';
+import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import TryOnResultModerationTable, { type ModerationRow } from '@/components/admin/TryOnResultModerationTable';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 

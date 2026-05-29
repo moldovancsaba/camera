@@ -19,11 +19,10 @@ import {
   Stack,
   Text,
   Title,
-} from '@/components/gds/ui';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
-import StatsStrip from '@/components/gds/StatsStrip';
-import InfoCard from '@/components/gds/InfoCard';
-import AccessSummary from '@/components/gds/AccessSummary';
+} from '@mantine/core';
+import { AccentPanel, AccessSummary } from '@doneisbetter/gds-core/client';
+import { StatsStrip } from '@doneisbetter/gds-admin/client';
+import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import StyleSections from '@/components/admin/StyleSections';
 import PartnerUserAccessManager from '@/components/admin/PartnerUserAccessManager';
 import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
@@ -37,6 +36,7 @@ import {
   isGlobalAdminSession,
   listSessionPartnerAssignments,
 } from '@/lib/partners/authorization';
+import { cameraInfoToneMap } from '@/lib/gds/presentation';
 
 interface FrameDetailsDoc {
   frameId: string;
@@ -304,7 +304,7 @@ export default async function PartnerDetailPage({
       ) : null}
 
       <StatsStrip
-        items={[
+        stats={[
           { label: 'Events', value: events.length },
           { label: 'Frames', value: partner.frameCount || 0 },
           { label: 'Photos', value: submissions.length },
@@ -314,40 +314,39 @@ export default async function PartnerDetailPage({
       />
 
       <SimpleGrid cols={{ base: 1, xl: 5 }} spacing="lg">
-        <InfoCard
-          title="Partner Operations"
-          description="Use this page as the operating home for this partner’s resources, app surfaces, and gallery context."
-        />
+        <AccentPanel tone={cameraInfoToneMap.neutral} variant="subtle" title="Partner Operations">
+          <Text size="sm" c="dimmed">
+            Use this page as the operating home for this partner’s resources, app surfaces, and gallery context.
+          </Text>
+        </AccentPanel>
 
         <Link href={`/admin/partners/${id}/frames`} style={{ textDecoration: 'none' }}>
-          <InfoCard
-            tone="blue"
-            title="Resources"
-            description="Manage default frames and logos in partner context instead of starting from the global inventory."
-          />
+          <AccentPanel tone={cameraInfoToneMap.blue} variant="subtle" title="Resources">
+            <Text size="sm" c="dimmed">
+              Manage default frames and logos in partner context instead of starting from the global inventory.
+            </Text>
+          </AccentPanel>
         </Link>
 
         <Link
           href={canManageEvents ? `/admin/events/new?partnerId=${partner.partnerId}` : '/admin/events'}
           style={{ textDecoration: 'none' }}
         >
-          <InfoCard
-            tone="green"
-            title="Events App"
-            description={
-              canManageEvents
+          <AccentPanel tone={cameraInfoToneMap.green} variant="subtle" title="Events App">
+            <Text size="sm" c="dimmed">
+              {canManageEvents
                 ? 'Create and manage the event app instances that use this partner’s brand defaults and resource assignments.'
-                : 'Review the event app instances that use this partner’s brand defaults and resource assignments.'
-            }
-          />
+                : 'Review the event app instances that use this partner’s brand defaults and resource assignments.'}
+            </Text>
+          </AccentPanel>
         </Link>
         {canManagePartner ? (
           <Link href="/admin/users" style={{ textDecoration: 'none' }}>
-            <InfoCard
-              tone="yellow"
-              title="Users"
-              description="View global access-managed users and submission-derived guest identities that show up in this partner’s activity."
-            />
+            <AccentPanel tone={cameraInfoToneMap.yellow} variant="subtle" title="Users">
+              <Text size="sm" c="dimmed">
+                View global access-managed users and submission-derived guest identities that show up in this partner’s activity.
+              </Text>
+            </AccentPanel>
           </Link>
         ) : null}
       </SimpleGrid>
@@ -409,15 +408,13 @@ export default async function PartnerDetailPage({
           </Card>
 
           <AccessSummary
+            title="Access summary"
             description="Global inventory remains restricted to global admins. Partner-scoped roles are limited to the assigned app surfaces for this partner."
-            items={[
-              { label: 'Current operator', value: canManagePartner ? 'Global admin' : 'Partner-scoped' },
-              { label: 'Events App role', value: eventsRoleLabel },
-              {
-                label: 'Active assignments',
-                value: partnerAccessAssignments.filter((assignment) => assignment.isActive).length,
-              },
+            roles={[
+              canManagePartner ? 'Current operator: Global admin' : 'Current operator: Partner-scoped',
+              `Events App role: ${eventsRoleLabel}`,
             ]}
+            scope={`Active assignments: ${partnerAccessAssignments.filter((assignment) => assignment.isActive).length}`}
           />
 
           {canManagePartner ? (

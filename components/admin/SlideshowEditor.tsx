@@ -3,6 +3,11 @@
 import { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import {
+  CAMERA_INPUT_FALLBACK_BLACK,
+  SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
+  SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
+} from '@/lib/gds/tokens/colors';
 
 const STAGE_ASPECT_PRESETS = [
   { id: 'auto', label: 'Auto (event default)', ratio: null as number | null },
@@ -100,7 +105,7 @@ function ColorField({
   onChange: (nextValue: string) => void;
   helper?: string;
 }) {
-  const safeValue = /^#[0-9A-Fa-f]{6}$/.test(value) ? value : '#000000';
+  const safeValue = /^#[0-9A-Fa-f]{6}$/.test(value) ? value : CAMERA_INPUT_FALLBACK_BLACK;
 
   return (
     <Field label={label} helper={helper}>
@@ -117,7 +122,7 @@ function ColorField({
           id={id}
           value={value}
           pattern="^#[0-9A-Fa-f]{6}$"
-          placeholder="#312e81"
+          placeholder={SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY}
           onChange={(e) => onChange(e.target.value)}
           className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
         />
@@ -163,10 +168,10 @@ export default function SlideshowEditor({
     initialSlideshow?.stageAspect ?? null
   );
   const [backgroundPrimaryColor, setBackgroundPrimaryColor] = useState(
-    initialSlideshow?.backgroundPrimaryColor?.trim() || '#312e81'
+    initialSlideshow?.backgroundPrimaryColor?.trim() || SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY
   );
   const [backgroundAccentColor, setBackgroundAccentColor] = useState(
-    initialSlideshow?.backgroundAccentColor?.trim() || '#0f172a'
+    initialSlideshow?.backgroundAccentColor?.trim() || SLIDESHOW_DEFAULT_BACKGROUND_ACCENT
   );
   const [backgroundImageUrl, setBackgroundImageUrl] = useState(
     initialSlideshow?.backgroundImageUrl ?? ''
@@ -197,8 +202,8 @@ export default function SlideshowEditor({
       refreshStrategy,
       playMode,
       orderMode,
-      backgroundPrimaryColor: backgroundPrimaryColor.trim() || '#312e81',
-      backgroundAccentColor: backgroundAccentColor.trim() || '#0f172a',
+      backgroundPrimaryColor: backgroundPrimaryColor.trim() || SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
+      backgroundAccentColor: backgroundAccentColor.trim() || SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
       backgroundImageUrl: backgroundImageUrl.trim() || null,
       viewportScale,
       submissionSourceMode,

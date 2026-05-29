@@ -18,6 +18,7 @@ import {
   normalizeLayoutAlignVertical,
   parseSafetyColorInput,
 } from '@/lib/slideshow/layout-presentation';
+import { SLIDESHOW_LAYOUT_PRESET_COLORS } from '@/lib/gds/tokens/colors';
 import { normalizeSlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
 import {
   getPartnerScopedAccessForEvent,
@@ -29,7 +30,7 @@ const DEFAULT_ROWS = 2;
 const DEFAULT_COLS = 2;
 
 function defaultAreas(rows: number, cols: number): SlideshowLayoutArea[] {
-  const colors = ['#0ea5e9', '#22c55e', '#eab308', '#a855f7', '#f97316', '#ec4899'];
+  const colors = SLIDESHOW_LAYOUT_PRESET_COLORS;
   const areas: SlideshowLayoutArea[] = [];
   let i = 0;
   for (let r = 0; r < rows; r++) {

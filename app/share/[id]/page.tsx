@@ -11,8 +11,8 @@ import type { Db } from 'mongodb';
 import Image from 'next/image';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import PublicShell from '@/components/gds/PublicShell';
-import { Button, Group, Stack, Text, Title } from '@/components/gds/ui';
+import PublicShell from '@/components/public/PublicPageShell';
+import { Button, Group, Stack, Text, Title } from '@mantine/core';
 import { listApprovedShareVariants } from '@/lib/tryon/publication';
 
 interface Props {

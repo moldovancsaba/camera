@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, List, Text } from '@/components/gds/ui';
+import { Alert, List, Text } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 

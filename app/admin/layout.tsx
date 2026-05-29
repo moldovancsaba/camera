@@ -7,7 +7,7 @@ import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getAdminNavigationAccess, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { redirect } from 'next/navigation';
-import AdminShell from '@/components/gds/AdminShell';
+import AdminShell from '@/components/admin/AdminChrome';
 
 export const dynamic = 'force-dynamic';
 

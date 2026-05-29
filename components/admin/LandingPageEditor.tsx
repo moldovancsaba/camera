@@ -19,14 +19,14 @@ import {
   Text,
   TextInput,
   Textarea,
-} from '@/components/gds/ui';
-import { IconAlertCircle, IconCheck, IconCopy } from '@tabler/icons-react';
+} from '@mantine/core';
+import { IconAlertCircle, IconCheck } from '@tabler/icons-react';
+import { UploadDropzone } from '@doneisbetter/gds-core/client';
 import type { LandingPageEditorActionPreset } from '@/lib/admin/build-landing-page-editor-props';
 import type { LandingPageCssPresetOption } from '@/lib/landing-page-css-presets';
 import EditorScaffold from '@/components/gds/EditorScaffold';
-import FormSection from '@/components/gds/FormSection';
-import UploadDropzone from '@/components/gds/UploadDropzone';
-import MediaCard from '@/components/gds/MediaCard';
+import { FormSection } from '@doneisbetter/gds-admin/client';
+import MediaCard from '@/components/media/MediaPreviewCard';
 
 interface TargetOption {
   id: string;
@@ -183,14 +183,15 @@ function DropZone({
   disabled?: boolean;
 }) {
   return (
-    <UploadDropzone
-      accept={acceptLabel.includes('Markdown') ? ['text/markdown', '.md'] : undefined}
-      title="Click to upload or drag and drop"
-      description={acceptLabel}
-      icon={acceptLabel.includes('Markdown') ? <IconCopy size={40} color="var(--mantine-color-gray-6)" /> : undefined}
-      onFile={onFile}
-      disabled={disabled}
-    />
+    <div aria-disabled={disabled}>
+      <UploadDropzone
+        accept={acceptLabel.includes('Markdown') ? 'text/markdown,.md' : undefined}
+        title="Click to upload or drag and drop"
+        description={acceptLabel}
+        onFilesSelected={(files) => void onFile(files[0] ?? null)}
+        actionLabel={acceptLabel.includes('Markdown') ? 'Choose Markdown file' : 'Choose file'}
+      />
+    </div>
   );
 }
 
@@ -704,7 +705,7 @@ export default function LandingPageEditor({
             </Field>
             <Field
               label="CSS class name"
-              helper="Keep the same class name to update that CSS preset. Enter a new class name to save the CSS as a new preset."
+              helper="Keep the same class name to update that CSS preset. Enter a new class name to save the CSS as a new preset. Creator CSS remains landing-page-owned and is rendered after the base landing shell CSS."
             >
               <TextInput
                 value={customCssClassName}
@@ -719,9 +720,12 @@ export default function LandingPageEditor({
               value={customCss}
               onChange={(e) => setCustomCss(e.target.value)}
               rows={22}
-              placeholder=".landing-page-root { background: #000; }"
+              placeholder=".landing-page-root { background: black; }"
               styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
             />
+            <Text size="xs" c="dimmed">
+              Custom landing-page CSS is intentionally creator-owned. It is saved with the page or preset and injected after the base landing stylesheet so creative themes can override the default presentation.
+            </Text>
           </Field>
         </Section>
 

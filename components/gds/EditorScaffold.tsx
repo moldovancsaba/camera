@@ -1,7 +1,7 @@
 'use client';
 
 import { Stack } from '@mantine/core';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import { EditorScaffold as GdsEditorScaffold, WorkspaceHeader as GdsWorkspaceHeader } from '@doneisbetter/gds-admin/client';
 
 interface EditorScaffoldProps {
   breadcrumbs?: React.ReactNode;
@@ -21,10 +21,12 @@ export default function EditorScaffold({
   maxWidth = 960,
 }: EditorScaffoldProps) {
   return (
-    <Stack gap="xl" maw={maxWidth} mx="auto">
-      {breadcrumbs}
-      <WorkspaceHeader eyebrow={eyebrow} title={title} description={description} />
-      {children}
+    <Stack maw={maxWidth} mx="auto">
+      <GdsEditorScaffold
+        context={breadcrumbs}
+        header={<GdsWorkspaceHeader eyebrow={eyebrow} title={title} description={description} />}
+        form={children}
+      />
     </Stack>
   );
 }

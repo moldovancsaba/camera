@@ -14,7 +14,7 @@ import CameraCapture from '@/components/camera/CameraCapture';
 import FileUpload from '@/components/camera/FileUpload';
 import ShareOverlay from '@/components/capture/ShareOverlay';
 import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
-import { AppButton } from '@/components/ui/AppButton';
+import { Button } from '@mantine/core';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 
 
@@ -329,9 +329,9 @@ export default function CapturePage() {
           <p className="text-slate-300 mb-6">
             There are no frames available yet. Please check back later!
           </p>
-          <Link href="/" className="app-btn app-btn--primary app-btn--inline">
+          <Button component={Link} href="/" color="cameraTeal" radius="xl">
             Go Home
-          </Link>
+          </Button>
         </div>
       </div>
     );
@@ -476,30 +476,33 @@ export default function CapturePage() {
 
                   <div className="flex flex-col sm:flex-row gap-4">
                     {!submissionId ? (
-                      <AppButton
+                      <Button
                         type="button"
-                        variant="primary"
-                        className="app-btn--inline min-w-0 flex-1"
+                        color="cameraTeal"
+                        radius="xl"
+                        fullWidth
                         onClick={handleSave}
                         disabled={isSaving}
                       >
                         {isSaving ? '💾 Saving...' : '💾 Save & Share'}
-                      </AppButton>
+                      </Button>
                     ) : (
                       <div className="app-banner-success">✓ Saved!</div>
                     )}
-                    <AppButton
+                    <Button
                       type="button"
-                      variant="secondary"
-                      className="app-btn--inline min-w-0 flex-1"
+                      variant="light"
+                      color="cameraSlate"
+                      radius="xl"
+                      fullWidth
                       onClick={handleDownload}
                     >
                       💾 Download
-                    </AppButton>
+                    </Button>
                   </div>
 
                   {shareUrl && (
-                    <div className="border-t border-[var(--app-panel-border)] pt-4">
+                    <div className="border-t border-white/10 pt-4">
                       <ShareOverlay
                         shareUrl={shareUrl}
                         shareCaption={shareCaptionForSocial}
@@ -515,9 +518,9 @@ export default function CapturePage() {
                     </div>
                   )}
 
-                  <AppButton type="button" variant="neutral" className="app-btn--block" onClick={handleReset}>
+                  <Button type="button" variant="light" color="dark" radius="xl" fullWidth onClick={handleReset}>
                     📸 Take Another Photo
-                  </AppButton>
+                  </Button>
                 </div>
               </div>
             </div>

@@ -4,11 +4,12 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS, type TryOnJob } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
-import AdminListPageShell from '@/components/gds/AdminListPageShell';
+import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import DataTable from '@/components/gds/DataTable';
-import StatusBadge from '@/components/gds/StatusBadge';
-import { Text, Group } from '@/components/gds/ui';
+import { StatusBadge } from '@doneisbetter/gds-core/client';
+import { Text, Group } from '@mantine/core';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
+import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,9 @@ type QueueStatusFilter =
   | 'done'
   | 'failed';
 
-function toneForStatus(status: string): 'active' | 'inactive' | 'info' | 'warning' | 'danger' {
+type QueueRow = TryOnJob & { jobId: string };
+
+function toneForStatus(status: string): CameraStatusTone {
   switch (status) {
     case 'done':
       return 'active';
@@ -58,7 +61,7 @@ export default async function AdminTryOnQueuePage({
   const statusFilter = (typeof resolvedSearchParams?.status === 'string' ? resolvedSearchParams.status.trim() : '') as QueueStatusFilter;
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
 
-  let rows: Array<TryOnJob & { jobId: string }> = [];
+  let rows: QueueRow[] = [];
   let dbError = null;
 
   try {
@@ -83,7 +86,7 @@ export default async function AdminTryOnQueuePage({
       .find(query)
       .sort({ createdAt: -1 })
       .limit(100)
-      .toArray()) as Array<TryOnJob & { jobId: string }>;
+      .toArray()) as QueueRow[];
   } catch (error) {
     console.error('Error loading try-on queue:', error);
     dbError = serializeMongoError(error);
@@ -117,65 +120,85 @@ export default async function AdminTryOnQueuePage({
       dbError={dbError}
     >
       <DataTable
+        data={rows}
         columns={[
-          { key: 'job', title: 'Job' },
-          { key: 'status', title: 'Status' },
-          { key: 'source', title: 'Source' },
-          { key: 'suit', title: 'Leather Jersey' },
-          { key: 'worker', title: 'Worker' },
-          { key: 'result', title: 'Result' },
-        ]}
-      >
-        {rows.map((row) => (
-          <tr key={row.jobId} style={{ borderTop: '1px solid var(--mantine-color-gray-2)' }}>
-            <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-              <Text fw={700}>{row.jobId}</Text>
-              <Text size="xs" c="dimmed" mt={4}>
-                Created {new Date(row.createdAt).toLocaleString()}
-              </Text>
-              <Text size="xs" c="dimmed" mt={4}>
-                Submission {row.source.submissionId}
-              </Text>
-            </td>
-            <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-              <Group gap="xs">
-                <StatusBadge tone={toneForStatus(row.status)} label={formatStatusLabel(row.status)} />
-              </Group>
-              <Text size="xs" c="dimmed" mt={8}>
-                Stage: {formatStatusLabel(row.stage)}
-              </Text>
-              {row.error?.message ? (
-                <Text size="xs" c="red.7" mt={8}>
-                  {row.error.message}
-                </Text>
-              ) : null}
-            </td>
-            <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-              <Text size="sm" lineClamp={2}>
-                {row.source.imageUrl}
-              </Text>
-              {row.source.eventMongoId ? (
+          {
+            key: 'job',
+            label: 'Job',
+            render: (row: QueueRow) => (
+              <>
+                <Text fw={700}>{row.jobId}</Text>
                 <Text size="xs" c="dimmed" mt={4}>
-                  Event {row.source.eventMongoId}
+                  Created {new Date(row.createdAt).toLocaleString()}
                 </Text>
-              ) : null}
-            </td>
-            <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-              <Text size="sm">{row.request.leatherSuitId}</Text>
-            </td>
-            <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-              <Text size="sm">{row.processing.workerId || 'Unclaimed'}</Text>
-              <Text size="xs" c="dimmed" mt={4}>
-                Attempts {row.processing.attemptCount}
-              </Text>
-              {row.processing.nextAttemptAt ? (
                 <Text size="xs" c="dimmed" mt={4}>
-                  Next {new Date(row.processing.nextAttemptAt).toLocaleString()}
+                  Submission {row.source.submissionId}
                 </Text>
-              ) : null}
-            </td>
-            <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-              {row.result.publicResultUrl ? (
+              </>
+            ),
+          },
+          {
+            key: 'status',
+            label: 'Status',
+            render: (row: QueueRow) => (
+              <>
+                <Group gap="xs">
+                  <StatusBadge {...getStatusBadgeProps(toneForStatus(row.status), formatStatusLabel(row.status))} />
+                </Group>
+                <Text size="xs" c="dimmed" mt={8}>
+                  Stage: {formatStatusLabel(row.stage)}
+                </Text>
+                {row.error?.message ? (
+                  <Text size="xs" c="red.7" mt={8}>
+                    {row.error.message}
+                  </Text>
+                ) : null}
+              </>
+            ),
+          },
+          {
+            key: 'source',
+            label: 'Source',
+            render: (row: QueueRow) => (
+              <>
+                <Text size="sm" lineClamp={2}>
+                  {row.source.imageUrl}
+                </Text>
+                {row.source.eventMongoId ? (
+                  <Text size="xs" c="dimmed" mt={4}>
+                    Event {row.source.eventMongoId}
+                  </Text>
+                ) : null}
+              </>
+            ),
+          },
+          {
+            key: 'suit',
+            label: 'Leather Jersey',
+            render: (row: QueueRow) => <Text size="sm">{row.request.leatherSuitId}</Text>,
+          },
+          {
+            key: 'worker',
+            label: 'Worker',
+            render: (row: QueueRow) => (
+              <>
+                <Text size="sm">{row.processing.workerId || 'Unclaimed'}</Text>
+                <Text size="xs" c="dimmed" mt={4}>
+                  Attempts {row.processing.attemptCount}
+                </Text>
+                {row.processing.nextAttemptAt ? (
+                  <Text size="xs" c="dimmed" mt={4}>
+                    Next {new Date(row.processing.nextAttemptAt).toLocaleString()}
+                  </Text>
+                ) : null}
+              </>
+            ),
+          },
+          {
+            key: 'result',
+            label: 'Result',
+            render: (row: QueueRow) =>
+              row.result.publicResultUrl ? (
                 <Text component={Link} href={row.result.publicResultUrl} target="_blank" size="sm" c="blue.7">
                   Open result
                 </Text>
@@ -183,11 +206,11 @@ export default async function AdminTryOnQueuePage({
                 <Text size="sm" c="dimmed">
                   No result yet
                 </Text>
-              )}
-            </td>
-          </tr>
-        ))}
-      </DataTable>
+              ),
+          },
+        ]}
+        getRowKey={(row) => row.jobId}
+      />
     </AdminListPageShell>
   );
 }

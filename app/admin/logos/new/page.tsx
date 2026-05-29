@@ -15,12 +15,12 @@ import {
   Stack,
   TextInput,
   Textarea,
-} from '@/components/gds/ui';
-import { IconAlertCircle, IconPhotoPlus, IconTrash } from '@tabler/icons-react';
+} from '@mantine/core';
+import { IconAlertCircle, IconTrash } from '@tabler/icons-react';
+import { UploadDropzone } from '@doneisbetter/gds-core/client';
 import EditorScaffold from '@/components/gds/EditorScaffold';
-import FormSection from '@/components/gds/FormSection';
-import UploadDropzone from '@/components/gds/UploadDropzone';
-import MediaCard from '@/components/gds/MediaCard';
+import { FormSection } from '@doneisbetter/gds-admin/client';
+import MediaCard from '@/components/media/MediaPreviewCard';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
@@ -109,11 +109,11 @@ export default function NewLogoPage() {
               />
             ) : (
               <UploadDropzone
-                accept={['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']}
-                icon={<IconPhotoPlus size={40} color="var(--mantine-color-gray-6)" />}
+                accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
                 title="Click to upload or drag and drop"
                 description="PNG, JPG, SVG, or WebP (MAX. 32MB)"
-                onFile={handleFileChange}
+                onFilesSelected={(files) => handleFileChange(files[0] ?? null)}
+                actionLabel="Choose logo"
               />
             )}
 

@@ -265,8 +265,8 @@ export interface Event {
   
   // Brand colors
   // Used throughout the event experience for consistent branding
-  brandColor?: string;               // Primary brand color (hex, e.g., "#3B82F6") - used for buttons, focus states
-  brandBorderColor?: string;         // Border/accent color (hex, e.g., "#3B82F6") - used for borders, outlines
+  brandColor?: string;               // Primary brand color hex - used for buttons, focus states
+  brandBorderColor?: string;         // Border/accent color hex - used for borders, outlines
   
   // Style inheritance from partner
   // Override flags track whether this event uses partner defaults (child) or custom values (orphan)

@@ -24,6 +24,12 @@ import {
   expandPlaylistToLength,
   type Slide as PlaylistSlide,
 } from '@/lib/slideshow/playlist';
+import { PlaybackSurface } from '@doneisbetter/gds-core/client';
+import {
+  CAMERA_STAGE_BLACK,
+  SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
+  SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
+} from '@/lib/gds/tokens/colors';
 
 /** Bridge playlist `Slide` (AspectRatio enum) to player `Slide` (string literals); same runtime values. */
 function expandPlayerPlaylist(base: Slide[], targetLen: number): Slide[] {
@@ -33,8 +39,8 @@ function expandPlayerPlaylist(base: Slide[], targetLen: number): Slide[] {
   ) as unknown as Slide[];
 }
 
-const DEFAULT_BG_PRIMARY = '#312e81';
-const DEFAULT_BG_ACCENT = '#0f172a';
+const DEFAULT_BG_PRIMARY = SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY;
+const DEFAULT_BG_ACCENT = SLIDESHOW_DEFAULT_BACKGROUND_ACCENT;
 
 interface Submission {
   _id: string;
@@ -715,37 +721,39 @@ export function SlideshowPlayerCore({
 
   const stageBackdropStyle: CSSProperties =
     bgImageUrl && !failoverBgImageReady
-      ? { background: '#000000' }
+      ? { background: CAMERA_STAGE_BLACK }
       : failoverBackgroundStyle;
 
   const outerStateClass =
     variant === 'fullscreen' ? 'w-screen h-screen' : 'w-full h-full min-h-0 min-w-0';
+  const playbackMode = variant === 'fullscreen' ? 'fullscreen' : 'embedded';
 
   if (isLoading) {
     return (
-      <div
-        className={`${outerStateClass} flex flex-col items-center justify-center overflow-hidden bg-black ${className}`}
-        aria-busy="true"
-      >
-        {logoUrl ? (
-          <img
-            src={logoUrl}
-            alt=""
-            className="relative z-10 max-h-64 max-w-md object-contain"
-          />
-        ) : null}
+      <div className={`${outerStateClass} overflow-hidden relative ${className}`} aria-busy="true">
+        <PlaybackSurface
+          title={settings?.name ?? 'Slideshow'}
+          state="loading"
+          mode={playbackMode}
+          statusMessage={logoUrl ? <img src={logoUrl} alt="" className="max-h-24 max-w-xs object-contain" /> : undefined}
+        />
       </div>
     );
   }
 
   if (error || !settings) {
     return (
-      <div
-        className={`${outerStateClass} flex items-center justify-center overflow-hidden bg-black p-2 ${className}`}
-      >
-        <div className="text-red-200 text-center text-sm md:text-xl z-10 relative px-2">
-          {error || 'Slideshow not found'}
-        </div>
+      <div className={`${outerStateClass} overflow-hidden relative ${className}`}>
+        <PlaybackSurface
+          title="Slideshow"
+          state="error"
+          mode={playbackMode}
+          errorState={
+            <div className="text-red-200 text-center text-sm md:text-xl px-2">
+              {error || 'Slideshow not found'}
+            </div>
+          }
+        />
       </div>
     );
   }
@@ -909,68 +917,73 @@ export function SlideshowPlayerCore({
         )}
       </div>
 
-      {playbackEnded && currentSlide && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 text-white px-4 text-center">
-          <p className="text-lg md:text-2xl font-semibold">Playback complete</p>
-          <p className="text-sm text-gray-300 mt-2">Press play to start again</p>
-        </div>
-      )}
-
-      {variant === 'fullscreen' && (!isFullscreen || showControls) && (
-        <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 to-transparent p-6 transition-opacity">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-6">
-            <button
-              type="button"
-              onClick={() => {
-                if (playbackEnded && onceInitialRef.current?.length) {
-                  pendingInitialDelayRef.current = delayMs > 0;
-                  setSlideQueue(
-                    onceInitialRef.current.map((sl) => ({
-                      ...sl,
-                      submissions: sl.submissions.map((s) => ({ ...s })),
-                    }))
-                  );
-                  setPlaybackEnded(false);
-                  setIsPlaying(true);
-                  setDisplayEpoch(0);
-                  return;
-                }
-                setIsPlaying(!isPlaying);
-              }}
-              className="text-white hover:text-gray-300 transition-colors"
-              title={isPlaying ? 'Pause' : 'Play'}
-            >
-              {isPlaying ? (
-                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                </svg>
-              ) : (
-                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="text-white hover:text-gray-300 transition-colors"
-              title="Fullscreen (F)"
-            >
-              {isFullscreen ? (
-                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
-                </svg>
-              ) : (
-                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
-                </svg>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
+
+  const playbackControls =
+    variant === 'fullscreen' && (!isFullscreen || showControls) ? (
+      <div className="bg-gradient-to-t from-black/80 to-transparent p-6 transition-opacity">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-6">
+          <button
+            type="button"
+            onClick={() => {
+              if (playbackEnded && onceInitialRef.current?.length) {
+                pendingInitialDelayRef.current = delayMs > 0;
+                setSlideQueue(
+                  onceInitialRef.current.map((sl) => ({
+                    ...sl,
+                    submissions: sl.submissions.map((s) => ({ ...s })),
+                  }))
+                );
+                setPlaybackEnded(false);
+                setIsPlaying(true);
+                setDisplayEpoch(0);
+                return;
+              }
+              setIsPlaying(!isPlaying);
+            }}
+            className="text-white hover:text-gray-300 transition-colors"
+            title={isPlaying ? 'Pause' : 'Play'}
+          >
+            {isPlaying ? (
+              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+              </svg>
+            ) : (
+              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="text-white hover:text-gray-300 transition-colors"
+            title="Fullscreen (F)"
+          >
+            {isFullscreen ? (
+              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
+              </svg>
+            ) : (
+              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+              </svg>
+            )}
+          </button>
+        </div>
+      </div>
+    ) : null;
+
+  const playbackOverlays = playbackEnded && currentSlide ? (
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 text-white px-4 text-center">
+      <p className="text-lg md:text-2xl font-semibold">Playback complete</p>
+      <p className="text-sm text-gray-300 mt-2">Press play to start again</p>
+    </div>
+  ) : null;
+
+  const playbackState =
+    currentSlide == null ? 'empty' : isPlaying && !playbackEnded ? 'playing' : 'ready';
 
   return (
     <div
@@ -981,13 +994,33 @@ export function SlideshowPlayerCore({
       style={failoverBackgroundStyle}
       onMouseMove={handleMouseMove}
     >
-      {variant === 'fullscreen' ? (
-        canvasInner
-      ) : (
-        <div className="absolute inset-0" style={failoverBackgroundStyle}>
-          {canvasInner}
-        </div>
-      )}
+      <PlaybackSurface
+        title={settings.name}
+        state={playbackState}
+        mode={playbackMode}
+        media={
+          variant === 'fullscreen' ? (
+            canvasInner
+          ) : (
+            <div className="absolute inset-0" style={failoverBackgroundStyle}>
+              {canvasInner}
+            </div>
+          )
+        }
+        statusMessage={
+          currentSlide
+            ? `${settings.eventName} · ${isPlaying ? 'Playing' : 'Paused'}`
+            : undefined
+        }
+        controls={playbackControls}
+        overlays={playbackOverlays}
+        emptyState={
+          <div className="text-white text-center px-4 max-w-lg">
+            <div className="text-2xl md:text-4xl mb-2 md:mb-4">📸</div>
+            <div className="text-white/80 mt-1 md:mt-2 text-xs md:text-base">No submissions yet</div>
+          </div>
+        }
+      />
     </div>
   );
 }

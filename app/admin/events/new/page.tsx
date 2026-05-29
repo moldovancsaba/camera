@@ -21,14 +21,14 @@ import {
   Text,
   TextInput,
   Textarea,
-} from '@/components/gds/ui';
+} from '@mantine/core';
 import { IconAlertCircle, IconX } from '@tabler/icons-react';
 import PartnerSearchDropdown from '@/components/admin/PartnerSearchDropdown';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
-import FormSection from '@/components/gds/FormSection';
-import StateBlock from '@/components/gds/StateBlock';
+import { FormSection } from '@doneisbetter/gds-admin/client';
+import { StateBlock } from '@doneisbetter/gds-core/client';
 import EditorScaffold from '@/components/gds/EditorScaffold';
-import MediaCard from '@/components/gds/MediaCard';
+import MediaCard from '@/components/media/MediaPreviewCard';
 import type { TryOnSuitOption } from '@/lib/tryon/suits';
 
 interface PartnerOption {

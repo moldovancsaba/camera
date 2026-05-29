@@ -16,12 +16,12 @@ import {
   Stack,
   TextInput,
   Textarea,
-} from '@/components/gds/ui';
-import { IconAlertCircle, IconPhotoPlus, IconTrash } from '@tabler/icons-react';
+} from '@mantine/core';
+import { IconAlertCircle, IconTrash } from '@tabler/icons-react';
+import { UploadDropzone } from '@doneisbetter/gds-core/client';
 import EditorScaffold from '@/components/gds/EditorScaffold';
-import FormSection from '@/components/gds/FormSection';
-import UploadDropzone from '@/components/gds/UploadDropzone';
-import MediaCard from '@/components/gds/MediaCard';
+import { FormSection } from '@doneisbetter/gds-admin/client';
+import MediaCard from '@/components/media/MediaPreviewCard';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Failed to upload frame';
@@ -110,11 +110,11 @@ export default function NewFramePage() {
               />
             ) : (
               <UploadDropzone
-                accept={['image/png', 'image/svg+xml']}
-                icon={<IconPhotoPlus size={40} color="var(--mantine-color-gray-6)" />}
+                accept="image/png,image/svg+xml"
                 title="Click to upload or drag and drop"
                 description="PNG or SVG (MAX. 32MB)"
-                onFile={handleFileChange}
+                onFilesSelected={(files) => handleFileChange(files[0] ?? null)}
+                actionLabel="Choose frame"
               />
             )}
             {error ? (

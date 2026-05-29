@@ -1,9 +1,9 @@
 import {
-  createTheme,
   rem,
   type MantineColorsTuple,
   type MantineThemeOverride,
 } from '@mantine/core';
+import { extendGdsTheme } from '@doneisbetter/gds-theme/server';
 
 const cameraTeal: MantineColorsTuple = [
   '#ebfffa',
@@ -31,7 +31,7 @@ const cameraSlate: MantineColorsTuple = [
   '#4a5a70',
 ];
 
-export const cameraMantineTheme: MantineThemeOverride = createTheme({
+export const cameraMantineTheme: MantineThemeOverride = extendGdsTheme({
   primaryColor: 'cameraTeal',
   colors: {
     cameraTeal,

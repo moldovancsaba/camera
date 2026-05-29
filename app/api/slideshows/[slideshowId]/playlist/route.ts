@@ -26,6 +26,10 @@ import { getInactiveUserEmails } from '@/lib/db/sso';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
 import type { Event } from '@/lib/db/schemas';
 import {
+  SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
+  SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
+} from '@/lib/gds/tokens/colors';
+import {
   resolveSlideshowStageAspect,
   type SlideshowStageSource,
 } from '@/lib/slideshow/stage-aspect';
@@ -243,11 +247,11 @@ export async function GET(
     const bgPrimary =
       typeof slideshow.backgroundPrimaryColor === 'string' && slideshow.backgroundPrimaryColor
         ? slideshow.backgroundPrimaryColor
-        : '#312e81';
+        : SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY;
     const bgAccent =
       typeof slideshow.backgroundAccentColor === 'string' && slideshow.backgroundAccentColor
         ? slideshow.backgroundAccentColor
-        : '#0f172a';
+        : SLIDESHOW_DEFAULT_BACKGROUND_ACCENT;
     const bgImage =
       typeof slideshow.backgroundImageUrl === 'string' && slideshow.backgroundImageUrl.trim()
         ? slideshow.backgroundImageUrl.trim()

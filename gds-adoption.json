@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "gdsVersion": "2.4.3",
+  "gdsVersion": "2.6.4",
   "productArchetype": "hybrid",
   "supportedEntryPoints": [
-    "@gds/theme/client",
-    "@gds/theme/server",
-    "@gds/core/client",
-    "@gds/core/server",
-    "@gds/admin/client",
-    "@gds/admin/server"
+    "@doneisbetter/gds-theme/client",
+    "@doneisbetter/gds-theme/server",
+    "@doneisbetter/gds-core/client",
+    "@doneisbetter/gds-core/server",
+    "@doneisbetter/gds-admin/client",
+    "@doneisbetter/gds-admin/server"
   ],
   "requiredContracts": [
     "AppShell",
@@ -16,32 +16,23 @@
     "WorkspaceHeader",
     "StateBlock",
     "PublicShell",
+    "PublicFlowShell",
     "DataToolbar",
     "ResponsiveDataView",
     "AccessSummary",
-    "UploadDropzone",
     "MediaCard",
-    "EditorScaffold"
+    "EditorScaffold",
+    "PlaybackSurface"
   ],
   "localAdapters": [
     {
-      "contract": "AppShell",
-      "path": "components/gds/AdminShell.tsx",
+      "contract": "ThemeExtension",
+      "path": "lib/gds/theme/index.ts",
       "status": "active"
     },
     {
-      "contract": "PageHeader",
-      "path": "components/gds/WorkspaceHeader.tsx",
-      "status": "active"
-    },
-    {
-      "contract": "StateBlock",
-      "path": "components/gds/StateBlock.tsx",
-      "status": "active"
-    },
-    {
-      "contract": "PublicShell",
-      "path": "components/gds/PublicShell.tsx",
+      "contract": "RootProviderAdapter",
+      "path": "components/gds/CameraGdsProvider.tsx",
       "status": "active"
     },
     {
@@ -55,21 +46,6 @@
       "status": "active"
     },
     {
-      "contract": "AccessSummary",
-      "path": "components/gds/AccessSummary.tsx",
-      "status": "active"
-    },
-    {
-      "contract": "UploadDropzone",
-      "path": "components/gds/UploadDropzone.tsx",
-      "status": "active"
-    },
-    {
-      "contract": "MediaCard",
-      "path": "components/gds/MediaCard.tsx",
-      "status": "active"
-    },
-    {
       "contract": "EditorScaffold",
       "path": "components/gds/EditorScaffold.tsx",
       "status": "active"
@@ -77,32 +53,133 @@
   ],
   "approvedExceptions": [
     {
-      "surface": "Event capture flow",
-      "reason": "Complex camera/composite UX uses capture-specific composition while still consuming local GDS entrypoints.",
+      "surface": "Event capture runtime",
+      "category": "runtime-constraint",
+      "scope": [
+        "app/capture/[eventId]/page.tsx",
+        "components/camera/CameraCapture.tsx",
+        "fullscreen frame-selection and preview orchestration"
+      ],
+      "reason": "Camera now uses the published `PublicFlowShell` contract for onboarding and share stages, but the live hardware preview, frame compositing, and fullscreen preview orchestration remain runtime-specific.",
+      "allowedImplementation": [
+        "Camera hardware preview",
+        "Frame-selection layout",
+        "Preview/compositing orchestration around capture output"
+      ],
+      "mustStillUse": [
+        "GDS provider and theme runtime",
+        "Package-backed public shells for non-hardware stages",
+        "Accessible button and form controls",
+        "Explicit loading and error states"
+      ],
+      "mustNotDo": [
+        "Introduce a second public shell system",
+        "Reuse capture-specific fullscreen composition as a default pattern for unrelated public pages"
+      ],
+      "exitCondition": "Keep narrowing until only the irreducible hardware-preview and frame-compositing region remains outside direct package ownership.",
+      "status": "approved",
       "owner": "camera-platform",
       "reviewDate": "2026-05-26"
     },
     {
       "surface": "Legacy public token layer",
-      "reason": "app/globals.css --app-btn-* and --app-panel-* remain in use for capture and residual public helpers.",
+      "category": "migration-bridge",
+      "scope": [
+        "app/globals.css",
+        "app/capture/page.tsx",
+        "app/capture/[eventId]/page.tsx",
+        "app/page.tsx",
+        "app/share/[id]/page.tsx",
+        "app/profile/page.tsx"
+      ],
+      "reason": "app/globals.css retains residual app-panel surface tokens and helper classes while capture/public composition continues narrowing toward package-first surfaces.",
+      "allowedImplementation": [
+        "Residual public helper classes",
+        "Temporary public surface tokens"
+      ],
+      "mustStillUse": [
+        "GDS runtime boundary",
+        "Published package contracts for admin surfaces"
+      ],
+      "mustNotDo": [
+        "Add new admin reliance on local helper tokens",
+        "Create a reusable second token authority"
+      ],
+      "exitCondition": "Delete the remaining public helper layer once capture/public surfaces no longer require local helper classes.",
+      "status": "temporary",
       "owner": "camera-platform",
       "reviewDate": "2026-05-26"
     },
     {
       "surface": "Landing page custom CSS",
-      "reason": "User-authored experience CSS remains editor-owned while the surrounding admin/editor chrome follows GDS contracts.",
+      "category": "product-authored-experience",
+      "scope": [
+        "landing_pages.customCss",
+        "app/landing/[slug]"
+      ],
+      "reason": "User-authored landing-page CSS remains intentionally creator-owned and renders after the base landing shell stylesheet so experience themes can override the default presentation while the surrounding admin/editor chrome follows GDS contracts.",
+      "allowedImplementation": [
+        "Creator-authored CSS inside the landing experience surface",
+        "Creator-owned presentation classes rendered after the base landing stylesheet"
+      ],
+      "mustStillUse": [
+        "GDS-governed admin and editor chrome",
+        "Shared accessibility expectations for form and consent controls"
+      ],
+      "mustNotDo": [
+        "Allow creator CSS to redefine admin surfaces",
+        "Treat creator-authored CSS as a replacement for shared application shells"
+      ],
+      "exitCondition": "Long-lived approved exception unless GDS formalizes a creator-authored experience-theming contract.",
+      "status": "approved",
       "owner": "camera-platform",
       "reviewDate": "2026-05-26"
     },
     {
       "surface": "Slideshow player",
-      "reason": "Full-screen media playback remains a documented exception surface while surrounding configuration UI is Mantine/GDS aligned.",
+      "category": "runtime-constraint",
+      "scope": [
+        "components/slideshow/SlideshowPlayerCore.tsx",
+        "app/slideshow/[slideshowId]/page.tsx",
+        "app/slideshow-layout/[layoutId]/page.tsx"
+      ],
+      "reason": "Camera now uses the published `PlaybackSurface` framing contract, while timing-sensitive queue orchestration, fullscreen behavior, and media playback internals remain runtime-specific.",
+      "allowedImplementation": [
+        "Custom playback layout",
+        "Timing-sensitive media presentation",
+        "Playback-specific control handling"
+      ],
+      "mustStillUse": [
+        "GDS runtime boundary",
+        "GDS admin configuration surfaces",
+        "Documented empty and error states"
+      ],
+      "mustNotDo": [
+        "Reuse slideshow playback styling as a default page shell",
+        "Bypass accessibility for playback controls where controls exist"
+      ],
+      "exitCondition": "Keep narrowing until only the timing-sensitive queue, fullscreen behavior, and media internals remain outside direct package ownership.",
+      "status": "approved",
       "owner": "camera-platform",
       "reviewDate": "2026-05-26"
     }
   ],
-  "migrationStatus": "local-gds-only",
-  "directMantineOutsideGds": false,
+  "compliance": {
+    "documentationPaths": [
+      "README.md",
+      "docs/GDS_CAMERA_ADOPTION.md",
+      "docs/GDS_COMPONENT_RULES.md"
+    ],
+    "staleDocumentationReferences": [
+      "/Users/Shared/Projects/GENERAL_DESIGN_SYSTEM"
+    ],
+    "protectedSurfacePaths": [
+      "components/gds",
+      "lib/gds"
+    ],
+    "bannedImports": []
+  },
+  "migrationStatus": "partial",
   "owner": "camera-platform",
-  "lastReviewedAt": "2026-05-26"
+  "lastReviewedAt": "2026-05-28"
 }

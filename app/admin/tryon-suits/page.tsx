@@ -3,7 +3,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS, type Event, type LeatherSuit, type TryOnJob } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
-import AdminListPageShell from '@/components/gds/AdminListPageShell';
+import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import TryOnSuitsInventoryList, { type SerializedTryOnSuitRow } from '@/components/gds/TryOnSuitsInventoryList';
 import { mongoIdString } from '@/lib/gds/serialize-admin-rows';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';

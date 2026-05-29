@@ -8,10 +8,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Card, Checkbox, Stack, Text, TextInput, Textarea } from '@/components/gds/ui';
+import { Alert, Button, Card, Checkbox, Stack, Text, TextInput, Textarea } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import EditorScaffold from '@/components/gds/EditorScaffold';
-import FormSection from '@/components/gds/FormSection';
+import { FormSection } from '@doneisbetter/gds-admin/client';
 
 interface CreatePartnerResponse {
   partner?: { _id?: string };

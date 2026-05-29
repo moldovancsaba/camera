@@ -2,13 +2,12 @@
 
 import Link from 'next/link';
 import { Button, Card, Group, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
+import { AccentPanel, StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import DataTable from '@/components/gds/DataTable';
-import StatusBadge from '@/components/gds/StatusBadge';
-import StateBlock from '@/components/gds/StateBlock';
-import InfoCard from '@/components/gds/InfoCard';
+import { cameraInfoToneMap, getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface SerializedLandingPageRow {
   id: string;
@@ -44,21 +43,21 @@ export default function LandingPagesPageView({
 
       {!dbError ? (
         <SimpleGrid cols={{ base: 1, xl: 3 }}>
-          <InfoCard
-            tone="cyan"
-            title="Shared resource"
-            description="Landing pages are now visible as first-class Camera Core assets instead of living only inside event detail pages."
-          />
-          <InfoCard
-            tone="blue"
-            title="Current inventory"
-            description={`${landingPages.length} landing page${landingPages.length === 1 ? '' : 's'} matched the current filters.`}
-          />
-          <InfoCard
-            tone="green"
-            title="Editing model"
-            description="Create and edit pages from their parent event today. Use this inventory to find ownership, public URLs, and embedded slideshow/layout relationships globally."
-          />
+          <AccentPanel tone={cameraInfoToneMap.cyan} variant="subtle" title="Shared resource">
+            <Text size="sm" c="dimmed">
+              Landing pages are now visible as first-class Camera Core assets instead of living only inside event detail pages.
+            </Text>
+          </AccentPanel>
+          <AccentPanel tone={cameraInfoToneMap.blue} variant="subtle" title="Current inventory">
+            <Text size="sm" c="dimmed">
+              {landingPages.length} landing page{landingPages.length === 1 ? '' : 's'} matched the current filters.
+            </Text>
+          </AccentPanel>
+          <AccentPanel tone={cameraInfoToneMap.green} variant="subtle" title="Editing model">
+            <Text size="sm" c="dimmed">
+              Create and edit pages from their parent event today. Use this inventory to find ownership, public URLs, and embedded slideshow/layout relationships globally.
+            </Text>
+          </AccentPanel>
         </SimpleGrid>
       ) : null}
 
@@ -102,43 +101,58 @@ export default function LandingPagesPageView({
 
       {!dbError && landingPages.length > 0 ? (
         <DataTable
+          data={landingPages}
           columns={[
-            { key: 'landingPage', title: 'Landing Page' },
-            { key: 'ownership', title: 'Partner / Event' },
-            { key: 'target', title: 'Embedded Target' },
-            { key: 'status', title: 'Status' },
-            { key: 'actions', title: 'Actions', align: 'right' },
-          ]}
-        >
-          {landingPages.map((page) => (
-            <tr key={page.id} style={{ borderTop: '1px solid var(--mantine-color-gray-2)' }}>
-              <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-                <Text fw={700}>{page.title?.trim() || page.slug}</Text>
-                <Text size="xs" c="dimmed" mt={4}>
-                  /landing/{page.slug}
-                </Text>
-                <Text size="xs" c="dimmed" mt="sm">
-                  Updated {page.updatedAtLabel}
-                </Text>
-              </td>
-              <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-                <Text size="sm" fw={600}>
-                  {page.partnerName || 'Unknown partner'}
-                </Text>
-                <Text size="sm" c="dimmed" mt={4}>
-                  {page.eventName}
-                </Text>
-              </td>
-              <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-                <Text size="sm">{page.targetType === 'layout' ? 'Layout' : 'Slideshow'}</Text>
-                <Text size="sm" c="dimmed" mt={4}>
-                  {page.targetName}
-                </Text>
-              </td>
-              <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-                <StatusBadge tone={page.isActive ? 'active' : 'inactive'} />
-              </td>
-              <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top', textAlign: 'right' }}>
+            {
+              key: 'landingPage',
+              label: 'Landing Page',
+              render: (page) => (
+                <Stack gap={2}>
+                  <Text fw={700}>{page.title?.trim() || page.slug}</Text>
+                  <Text size="xs" c="dimmed" mt={4}>
+                    /landing/{page.slug}
+                  </Text>
+                  <Text size="xs" c="dimmed" mt="sm">
+                    Updated {page.updatedAtLabel}
+                  </Text>
+                </Stack>
+              ),
+            },
+            {
+              key: 'ownership',
+              label: 'Partner / Event',
+              render: (page) => (
+                <Stack gap={2}>
+                  <Text size="sm" fw={600}>
+                    {page.partnerName || 'Unknown partner'}
+                  </Text>
+                  <Text size="sm" c="dimmed" mt={4}>
+                    {page.eventName}
+                  </Text>
+                </Stack>
+              ),
+            },
+            {
+              key: 'target',
+              label: 'Embedded Target',
+              render: (page) => (
+                <Stack gap={2}>
+                  <Text size="sm">{page.targetType === 'layout' ? 'Layout' : 'Slideshow'}</Text>
+                  <Text size="sm" c="dimmed" mt={4}>
+                    {page.targetName}
+                  </Text>
+                </Stack>
+              ),
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              render: (page) => <StatusBadge {...getStatusBadgeProps(page.isActive ? 'active' : 'inactive')} />,
+            },
+            {
+              key: 'actions',
+              label: 'Actions',
+              render: (page) => (
                 <Group gap="sm" justify="flex-end">
                   <Text component={Link} href={`/admin/events/${page.eventMongoId}`} size="sm" c="blue.7">
                     Open Event
@@ -155,10 +169,11 @@ export default function LandingPagesPageView({
                     Open
                   </Text>
                 </Group>
-              </td>
-            </tr>
-          ))}
-        </DataTable>
+              ),
+            },
+          ]}
+          getRowKey={(page) => page.id}
+        />
       ) : null}
     </Stack>
   );

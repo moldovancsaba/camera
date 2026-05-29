@@ -11,9 +11,9 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { ObjectId } from 'mongodb';
-import PublicShell from '@/components/gds/PublicShell';
-import EmptyState from '@/components/gds/EmptyState';
-import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/ui';
+import PublicShell from '@/components/public/PublicPageShell';
+import { EmptyState } from '@doneisbetter/gds-core/client';
+import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 
 interface ProfileSubmission {
   _id: ObjectId;

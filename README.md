@@ -150,11 +150,18 @@ See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/d
 
 Camera admin UI follows the portfolio [General Design System](https://github.com/sovereignsquad/general-design-system) on Mantine. Local adapter details, migration state, exceptions, and the formal adoption manifest: [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_CAMERA_ADOPTION.md) and [gds-adoption.json](/Users/Shared/Projects/venturecogroup/camera/gds-adoption.json).
 
+Reusable exception guidance:
+
+- [docs/GDS_EXCEPTION_STANDARD.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_EXCEPTION_STANDARD.md) defines the general exception model that Camera uses and that other GDS consumers can adopt
+
 Current package note:
 
 - Camera is aligned to the GDS **contracts**
-- Camera now enforces local GDS-only entrypoints for Mantine usage
-- direct `@gds/*` package consumption is still blocked until the shared packages move from Mantine 7 / React 18 to Mantine 9 / React 19
+- Camera now consumes the `@doneisbetter/*` package line at the provider/theme/compliance boundary
+- Camera now pins the temporary supported GitHub release-asset tarballs for `@doneisbetter/*` because npm publication is not live yet
+- Camera now runs on Mantine `8.3.6`, matching the current GDS peer contract
+- Camera no longer carries the old local `AppButton` or `components/gds/ui` barrel authority; leaf controls import Mantine directly under the GDS runtime where needed
+- public landing pages keep an explicit creator-CSS exception so pages like `/landing/*` can preserve custom themed presentation independent of the admin GDS chrome
 
 ## Try-on pipeline
 

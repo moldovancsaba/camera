@@ -22,10 +22,14 @@ import {
   Text,
   TextInput,
   Textarea,
-} from '@/components/gds/ui';
+} from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import EditorScaffold from '@/components/gds/EditorScaffold';
-import FormSection from '@/components/gds/FormSection';
+import { FormSection } from '@doneisbetter/gds-admin/client';
+import {
+  CAMERA_DEFAULT_BRAND_BORDER_COLOR,
+  CAMERA_DEFAULT_BRAND_COLOR,
+} from '@/lib/gds/tokens/colors';
 
 interface PartnerRecord {
   partnerId: string;
@@ -63,8 +67,8 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [partner, setPartner] = useState<PartnerRecord | null>(null);
-  const [primaryColor, setPrimaryColor] = useState('#3B82F6');
-  const [secondaryColor, setSecondaryColor] = useState('#3B82F6');
+  const [primaryColor, setPrimaryColor] = useState(CAMERA_DEFAULT_BRAND_COLOR);
+  const [secondaryColor, setSecondaryColor] = useState(CAMERA_DEFAULT_BRAND_BORDER_COLOR);
 
   useEffect(() => {
     params.then((resolved) => setPartnerId(resolved.id));
@@ -83,8 +87,8 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
 
         const partnerRecord = data.partner ?? data.data?.partner;
         setPartner(partnerRecord);
-        setPrimaryColor(partnerRecord.defaultBrandColors?.primary || '#3B82F6');
-        setSecondaryColor(partnerRecord.defaultBrandColors?.secondary || '#3B82F6');
+        setPrimaryColor(partnerRecord.defaultBrandColors?.primary || CAMERA_DEFAULT_BRAND_COLOR);
+        setSecondaryColor(partnerRecord.defaultBrandColors?.secondary || CAMERA_DEFAULT_BRAND_BORDER_COLOR);
       } catch (fetchError) {
         setError(getErrorMessage(fetchError));
       } finally {

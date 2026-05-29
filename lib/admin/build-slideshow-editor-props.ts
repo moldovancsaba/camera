@@ -1,6 +1,10 @@
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import {
+  SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
+  SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
+} from '@/lib/gds/tokens/colors';
 
 export interface SlideshowEditorInitialValue {
   _id: string;
@@ -81,10 +85,10 @@ export async function buildSlideshowEditorProps(
           orderMode: slideshow.orderMode === 'random' ? 'random' : 'fixed',
           backgroundPrimaryColor:
             (slideshow.backgroundPrimaryColor as string | undefined) ??
-            '#312e81',
+            SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
           backgroundAccentColor:
             (slideshow.backgroundAccentColor as string | undefined) ??
-            '#0f172a',
+            SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
           backgroundImageUrl:
             (slideshow.backgroundImageUrl as string | null | undefined) ?? '',
           viewportScale: slideshow.viewportScale === 'fill' ? 'fill' : 'fit',

@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { Button, Group, Stack, TextInput } from '@mantine/core';
+import { StatsStrip } from '@doneisbetter/gds-admin/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
-import StatsStrip, { type StatItem } from '@/components/gds/StatsStrip';
+import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import DataToolbar from '@/components/gds/DataToolbar';
 import { AdminIcon } from '@/lib/gds/admin-icon-key';
 import type { AdminIconKey } from '@/lib/gds/admin-icon-key';
+import type { CameraStatItem } from '@/lib/gds/presentation';
 
 export interface AdminListPageShellProps {
   eyebrow?: string;
@@ -16,7 +17,7 @@ export interface AdminListPageShellProps {
   description?: string;
   status?: string;
   primaryAction?: { href: string; label: string; iconKey?: AdminIconKey };
-  stats?: StatItem[];
+  stats?: CameraStatItem[];
   search?: {
     defaultValue: string;
     label: string;
@@ -55,7 +56,9 @@ export default function AdminListPageShell({
         primaryAction={primaryAction}
       />
 
-      {!dbError && stats && stats.length > 0 ? <StatsStrip items={stats} /> : null}
+      {!dbError && stats && stats.length > 0 ? (
+        <StatsStrip stats={stats.map(({ label, value }) => ({ label, value }))} />
+      ) : null}
 
       {search ? (
         <DataToolbar

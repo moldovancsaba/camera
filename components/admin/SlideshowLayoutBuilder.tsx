@@ -19,6 +19,11 @@ import {
   type LayoutAlignHorizontal,
   type LayoutAlignVertical,
 } from '@/lib/slideshow/layout-presentation';
+import {
+  SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
+  SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
+  SLIDESHOW_LAYOUT_PRESET_COLORS,
+} from '@/lib/gds/tokens/colors';
 
 type TileId = string;
 
@@ -26,16 +31,7 @@ const uid = () =>
   globalThis.crypto?.randomUUID?.() ??
   `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-const PRESET_COLORS = [
-  '#0ea5e9',
-  '#22c55e',
-  '#eab308',
-  '#a855f7',
-  '#f97316',
-  '#ec4899',
-  '#14b8a6',
-  '#ef4444',
-];
+const PRESET_COLORS = [...SLIDESHOW_LAYOUT_PRESET_COLORS];
 
 function defaultAreas(rows: number, cols: number): SlideshowLayoutArea[] {
   const areas: SlideshowLayoutArea[] = [];
@@ -491,7 +487,7 @@ export default function SlideshowLayoutBuilder({
               </span>
               <input
                 type="text"
-                placeholder="Empty = default (#312e81)"
+                placeholder={`Empty = default (${SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY})`}
                 value={safetyPrimaryColor}
                 onChange={(e) => setSafetyPrimaryColor(e.target.value)}
                 className="font-mono text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800"
@@ -503,7 +499,7 @@ export default function SlideshowLayoutBuilder({
               </span>
               <input
                 type="text"
-                placeholder="Empty = default (#0f172a)"
+                placeholder={`Empty = default (${SLIDESHOW_DEFAULT_BACKGROUND_ACCENT})`}
                 value={safetyAccentColor}
                 onChange={(e) => setSafetyAccentColor(e.target.value)}
                 className="font-mono text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800"
@@ -567,7 +563,7 @@ export default function SlideshowLayoutBuilder({
                 const area = tileToArea.get(tid);
                 const inDrag = dragSet.has(tid);
                 const inSel = selection.has(tid);
-                const bg = area?.color || '#374151';
+                const bg = area?.color || 'var(--mantine-color-gray-7)';
                 return (
                   <div
                     key={tid}
@@ -652,7 +648,7 @@ export default function SlideshowLayoutBuilder({
                 >
                   <span
                     className="inline-block w-3 h-3 rounded mr-2 align-middle"
-                    style={{ backgroundColor: a.color || '#999' }}
+                    style={{ backgroundColor: a.color || 'var(--mantine-color-gray-5)' }}
                   />
                   {a.label} ({a.tiles.length} tiles)
                 </button>

@@ -22,6 +22,10 @@ import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
 import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
 import { type CustomPage } from '@/lib/db/schemas';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
+import {
+  CAMERA_DEFAULT_BRAND_BORDER_COLOR,
+  CAMERA_DEFAULT_BRAND_COLOR,
+} from '@/lib/gds/tokens/colors';
 
 interface Frame {
   frameId: string;
@@ -1066,8 +1070,8 @@ export default function EventCapturePage({
                         : 16 / 9)
                     : undefined
                 }
-                captureButtonColor={event?.brandColor || '#3B82F6'}
-                captureButtonBorderColor={event?.brandBorderColor || '#3B82F6'}
+                captureButtonColor={event?.brandColor || CAMERA_DEFAULT_BRAND_COLOR}
+                captureButtonBorderColor={event?.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR}
                 promptTitle={cameraPromptTitle}
                 promptDescription={cameraPromptDescription}
               />

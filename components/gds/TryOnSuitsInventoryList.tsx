@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Button, Card, SimpleGrid, Stack, Text } from '@/components/gds/ui';
-import StatusBadge from '@/components/gds/StatusBadge';
-import StateBlock from '@/components/gds/StateBlock';
+import { Button, Card, SimpleGrid, Stack, Text } from '@mantine/core';
+import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
+import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface SerializedTryOnSuitRow {
   id: string;
@@ -49,7 +49,7 @@ export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTr
               unoptimized
             />
             <div style={{ position: 'absolute', top: 8, right: 8 }}>
-              <StatusBadge tone={suit.isActive ? 'active' : 'inactive'} />
+              <StatusBadge {...getStatusBadgeProps(suit.isActive ? 'active' : 'inactive')} />
             </div>
           </div>
           <Stack gap="sm" p="md">

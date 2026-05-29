@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button, Card, Group, SimpleGrid, Stack, Text } from '@mantine/core';
-import StatusBadge from '@/components/gds/StatusBadge';
-import StateBlock from '@/components/gds/StateBlock';
+import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
+import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface SerializedFrameRow {
   id: string;
@@ -57,10 +57,12 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
           <Stack gap="sm" p="md">
             <Group gap="xs">
               <StatusBadge
-                tone={frame.scope === 'event' ? 'active' : frame.scope === 'partner' ? 'info' : 'inactive'}
-                label={frame.scope === 'global' ? 'Global' : frame.scope === 'partner' ? 'Partner' : 'Event'}
+                {...getStatusBadgeProps(
+                  frame.scope === 'event' ? 'active' : frame.scope === 'partner' ? 'info' : 'inactive',
+                  frame.scope === 'global' ? 'Global' : frame.scope === 'partner' ? 'Partner' : 'Event'
+                )}
               />
-              <StatusBadge tone={frame.isActive ? 'active' : 'inactive'} />
+              <StatusBadge {...getStatusBadgeProps(frame.isActive ? 'active' : 'inactive')} />
             </Group>
             <Text fw={700} c="dark.8">
               {frame.name}

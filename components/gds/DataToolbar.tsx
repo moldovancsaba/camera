@@ -1,6 +1,7 @@
 'use client';
 
-import { Card, Group, Stack, Text } from '@mantine/core';
+import { Group, Stack, Text } from '@mantine/core';
+import { DataToolbar as GdsDataToolbar } from '@doneisbetter/gds-core/client';
 
 export interface DataToolbarFilterChip {
   label: string;
@@ -16,32 +17,23 @@ export interface DataToolbarProps {
 
 export default function DataToolbar({ hint, filters, children, trailing }: DataToolbarProps) {
   return (
-    <Card>
-      <Stack gap="md">
-        {hint ? (
-          <Text size="sm" c="dimmed">
-            {hint}
-          </Text>
-        ) : null}
-        {filters && filters.length > 0 ? (
-          <Group gap="xs">
-            {filters.map((chip) => (
-              <Text key={chip.label} size="sm" c="dimmed">
-                {chip.label}:{' '}
-                <Text span fw={700} c="dark.8">
-                  {chip.value}
-                </Text>
-              </Text>
-            ))}
-          </Group>
-        ) : null}
-        <Group align="flex-end" wrap="wrap" gap="md">
+    <GdsDataToolbar
+      searchSlot={
+        <Stack gap="md" style={{ flex: 1 }}>
+          {hint ? (
+            <Text size="sm" c="dimmed">
+              {hint}
+            </Text>
+          ) : null}
           <Group align="flex-end" wrap="wrap" gap="md" style={{ flex: 1 }}>
             {children}
           </Group>
-          {trailing}
-        </Group>
-      </Stack>
-    </Card>
+        </Stack>
+      }
+      activeFilters={filters?.map((chip) => ({
+        label: `${chip.label}: ${chip.value}`,
+      }))}
+      createAction={trailing}
+    />
   );
 }

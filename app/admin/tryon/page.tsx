@@ -1,15 +1,16 @@
 import { redirect } from 'next/navigation';
+import { AccentPanel } from '@doneisbetter/gds-core/client';
+import { StatsStrip } from '@doneisbetter/gds-admin/client';
+import { SimpleGrid, Stack, Text } from '@mantine/core';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
-import StatsStrip from '@/components/gds/StatsStrip';
+import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import ActionCardGrid from '@/components/gds/ActionCardGrid';
-import InfoCard from '@/components/gds/InfoCard';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
-import { SimpleGrid, Stack } from '@/components/gds/ui';
+import { cameraInfoToneMap } from '@/lib/gds/presentation';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,30 +65,30 @@ export default async function AdminTryOnAppPage() {
       {!dbError ? (
         <>
           <StatsStrip
-            items={[
+            stats={[
               { label: 'Jobs In Queue', value: queueCount, iconKey: 'photoScan' },
               { label: 'Pending Vetting', value: pendingReviewCount, iconKey: 'photo' },
               { label: 'Active Jerseys', value: activeSuitCount, iconKey: 'photo' },
               { label: 'Failed Jobs', value: failedCount, iconKey: 'photo' },
-            ]}
+            ].map(({ label, value }) => ({ label, value }))}
           />
 
           <SimpleGrid cols={{ base: 1, xl: 3 }}>
-            <InfoCard
-              tone="blue"
-              title="Queue is operational state"
-              description="Use the queue view to see queued, claimed, retrying, failed, and completed jobs directly from Atlas instead of relying on local shell output."
-            />
-            <InfoCard
-              tone="green"
-              title="Leather jerseys are catalog entries"
-              description="Manage the user-selectable catalog here as Camera-hosted uploaded assets. The local try-on machine now downloads the suit image directly from Camera-managed storage."
-            />
-            <InfoCard
-              tone="yellow"
-              title="Vetting controls publication"
-              description="Generated results remain private until approved. Approval is what makes them visible on share pages and eligible for result slideshows."
-            />
+            <AccentPanel tone={cameraInfoToneMap.blue} variant="subtle" title="Queue is operational state">
+              <Text size="sm" c="dimmed">
+                Use the queue view to see queued, claimed, retrying, failed, and completed jobs directly from Atlas instead of relying on local shell output.
+              </Text>
+            </AccentPanel>
+            <AccentPanel tone={cameraInfoToneMap.green} variant="subtle" title="Leather jerseys are catalog entries">
+              <Text size="sm" c="dimmed">
+                Manage the user-selectable catalog here as Camera-hosted uploaded assets. The local try-on machine now downloads the suit image directly from Camera-managed storage.
+              </Text>
+            </AccentPanel>
+            <AccentPanel tone={cameraInfoToneMap.yellow} variant="subtle" title="Vetting controls publication">
+              <Text size="sm" c="dimmed">
+                Generated results remain private until approved. Approval is what makes them visible on share pages and eligible for result slideshows.
+              </Text>
+            </AccentPanel>
           </SimpleGrid>
 
           <ActionCardGrid

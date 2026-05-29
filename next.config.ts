@@ -13,6 +13,7 @@ process.env.BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA ??= 'true';
  * - TypeScript strict mode enforcement
  */
 const nextConfig: NextConfig = {
+  transpilePackages: ['@doneisbetter/gds-theme', '@doneisbetter/gds-core', '@doneisbetter/gds-admin'],
   // Image configuration for imgbb.com CDN
   images: {
     remotePatterns: [

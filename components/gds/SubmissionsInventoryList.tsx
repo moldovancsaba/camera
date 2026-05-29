@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button, Card, Group, SimpleGrid, Stack, Text } from '@mantine/core';
-import StateBlock from '@/components/gds/StateBlock';
+import { StateBlock } from '@doneisbetter/gds-core/client';
 
 export interface SerializedSubmissionRow {
   id: string;
@@ -110,8 +110,8 @@ export default function SubmissionsInventoryList({ submissions }: { submissions:
                   style={{
                     padding: '0.5rem',
                     borderRadius: '0.5rem',
-                    background: 'rgba(147, 51, 234, 0.10)',
-                    color: 'rgb(126, 34, 206)',
+                    background: 'var(--mantine-color-grape-light)',
+                    color: 'var(--mantine-color-grape-8)',
                   }}
                 >
                   Slideshow plays: {submission.playCount}

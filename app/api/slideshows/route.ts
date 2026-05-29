@@ -11,6 +11,10 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
+import {
+  SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
+  SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
+} from '@/lib/gds/tokens/colors';
 import { normalizeStageAspectInput } from '@/lib/slideshow/stage-aspect';
 import {
   getPartnerScopedAccessForEvent,
@@ -48,11 +52,11 @@ export async function POST(request: NextRequest) {
     const backgroundPrimaryColor =
       typeof body.backgroundPrimaryColor === 'string' && body.backgroundPrimaryColor.trim()
         ? body.backgroundPrimaryColor.trim()
-        : '#312e81';
+        : SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY;
     const backgroundAccentColor =
       typeof body.backgroundAccentColor === 'string' && body.backgroundAccentColor.trim()
         ? body.backgroundAccentColor.trim()
-        : '#0f172a';
+        : SLIDESHOW_DEFAULT_BACKGROUND_ACCENT;
     const backgroundImageUrl =
       typeof body.backgroundImageUrl === 'string' && body.backgroundImageUrl.trim()
         ? body.backgroundImageUrl.trim()

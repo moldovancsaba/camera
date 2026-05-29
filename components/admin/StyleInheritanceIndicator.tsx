@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Group, Text } from '@/components/gds/ui';
+import { Button, Group, Text } from '@mantine/core';
 
 interface StyleInheritanceIndicatorProps {
   styleField: 'brandColors' | 'frames' | 'logos';

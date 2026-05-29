@@ -9,8 +9,8 @@ import { getSession } from '@/lib/auth/session';
 import Image from 'next/image';
 import { APP_VERSION } from '@/lib/app-version';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
-import PublicShell from '@/components/gds/PublicShell';
-import { Alert, Badge, Button, Group, Stack, Text, Title } from '@/components/gds/ui';
+import PublicShell from '@/components/public/PublicPageShell';
+import { Alert, Badge, Button, Group, Stack, Text, Title } from '@mantine/core';
 
 // This page uses cookies, so it must be dynamic
 export const dynamic = 'force-dynamic';

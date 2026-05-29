@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Text } from '@/components/gds/ui';
+import { Alert, Button, Text } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { notifications } from '@/lib/gds/notifications';
 import { confirmDestructive } from '@/lib/gds/confirm-destructive';

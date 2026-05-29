@@ -1,4 +1,4 @@
-import { Card, Group, Stack, Text, Title } from '@/components/gds/ui';
+import { Card, Group, Stack, Text, Title } from '@mantine/core';
 
 interface AuthorizationMatrixProps {
   title?: string;

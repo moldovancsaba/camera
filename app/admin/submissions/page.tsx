@@ -7,7 +7,7 @@ import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { redirect } from 'next/navigation';
-import AdminListPageShell from '@/components/gds/AdminListPageShell';
+import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import SubmissionsInventoryList, { type SerializedSubmissionRow } from '@/components/gds/SubmissionsInventoryList';
 import { mongoIdString } from '@/lib/gds/serialize-admin-rows';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';

@@ -17,10 +17,10 @@
  * - May have different styling/prominence in future
  */
 
-import Image from 'next/image';
 import { useState } from 'react';
-import PublicShell from '@/components/gds/PublicShell';
-import { Button, Card, Group, Stack, Text, Title } from '@/components/gds/ui';
+import CaptureStageShell from '@/components/capture/CaptureStageShell';
+import { Button, Group, Stack, Text } from '@mantine/core';
+import { CAMERA_DEFAULT_CTA_BRAND_COLOR } from '@/lib/gds/tokens/colors';
 
 export interface CTAPageConfig {
   title: string;
@@ -52,7 +52,7 @@ export default function CTAPage({
   onNext,
   onBack,
   logoUrl,
-  brandColor = '#9333EA',
+  brandColor = CAMERA_DEFAULT_CTA_BRAND_COLOR,
 }: CTAPageProps) {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const hasButton = config.hasButton !== false;
@@ -84,71 +84,48 @@ export default function CTAPage({
   };
 
   return (
-    <PublicShell size="lg" centered>
-      <Card padding="xl">
-        <Stack gap="lg">
-          {logoUrl ? (
-            <Group justify="center">
-              <Image
-                src={logoUrl}
-                alt="Event logo"
-                width={320}
-                height={128}
-                unoptimized
-                style={{ maxHeight: 128, maxWidth: 320, height: 'auto', width: 'auto' }}
-              />
-            </Group>
+    <CaptureStageShell
+      title={config.title}
+      description={config.description}
+      logoUrl={logoUrl}
+      eyebrow="Capture flow"
+    >
+      {urlToVisit ? (
+        <Stack gap="xs">
+          <Button
+            onClick={handleRedirect}
+            disabled={isRedirecting}
+            color={brandColor}
+            size="lg"
+            fullWidth
+            aria-label="Visit URL"
+          >
+            {isRedirecting ? '🔗 Opening...' : `🔗 ${visitButtonText}`}
+          </Button>
+          {hasButton ? (
+            <Text size="xs" ta="center" c="dimmed">
+              Opens in a new tab
+            </Text>
           ) : null}
-
-          <Stack gap="xs" align="center">
-            <Title order={1} ta="center">
-              {config.title}
-            </Title>
-            {config.description ? (
-              <Text c="dimmed" ta="center">
-                {config.description}
-              </Text>
-            ) : null}
-          </Stack>
-
-          {urlToVisit ? (
-            <Stack gap="xs">
-              <Button
-                onClick={handleRedirect}
-                disabled={isRedirecting}
-                color={brandColor}
-                size="lg"
-                fullWidth
-                aria-label="Visit URL"
-              >
-                {isRedirecting ? '🔗 Opening...' : `🔗 ${visitButtonText}`}
-              </Button>
-              {hasButton ? (
-                <Text size="xs" ta="center" c="dimmed">
-                  Opens in a new tab
-                </Text>
-              ) : null}
-            </Stack>
-          ) : null}
-
-          <Group grow>
-            {onBack && hasButton ? (
-              <Button variant="light" color="gray" onClick={onBack} aria-label="Go back to previous page">
-                Back
-              </Button>
-            ) : null}
-            {hasButton ? (
-              <Button
-                onClick={handleContinue}
-                color={brandColor}
-                aria-label={config.buttonText}
-              >
-                {config.buttonText}
-              </Button>
-            ) : null}
-          </Group>
         </Stack>
-      </Card>
-    </PublicShell>
+      ) : null}
+
+      <Group grow>
+        {onBack && hasButton ? (
+          <Button variant="light" color="gray" onClick={onBack} aria-label="Go back to previous page">
+            Back
+          </Button>
+        ) : null}
+        {hasButton ? (
+          <Button
+            onClick={handleContinue}
+            color={brandColor}
+            aria-label={config.buttonText}
+          >
+            {config.buttonText}
+          </Button>
+        ) : null}
+      </Group>
+    </CaptureStageShell>
   );
 }

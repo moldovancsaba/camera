@@ -1,12 +1,13 @@
 'use client';
 
-import { Stack } from '@mantine/core';
+import { Stack, Text } from '@mantine/core';
+import { AccentPanel } from '@doneisbetter/gds-core/client';
+import { StatsStrip } from '@doneisbetter/gds-admin/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
-import StatsStrip from '@/components/gds/StatsStrip';
+import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import ActionCardGrid from '@/components/gds/ActionCardGrid';
-import InfoCard from '@/components/gds/InfoCard';
+import { cameraInfoToneMap } from '@/lib/gds/presentation';
 
 export default function AdminDashboardView({
   framesCount,
@@ -32,18 +33,19 @@ export default function AdminDashboardView({
       {!dbError ? (
         <>
           <StatsStrip
-            items={[
+            stats={[
               { label: 'Total Frames', value: framesCount, iconKey: 'frame' },
               { label: 'Total Submissions', value: submissionsCount, iconKey: 'photoScan' },
               { label: 'Active Users', value: '—', iconKey: 'users' },
-            ]}
+            ].map(({ label, value }) => ({ label, value }))}
           />
 
           <Stack gap="lg">
-            <InfoCard
-              title="Quick Actions"
-              description="Primary entry points for partner operations and shared resources."
-            />
+            <AccentPanel tone={cameraInfoToneMap.neutral} variant="subtle" title="Quick Actions">
+              <Text size="sm" c="dimmed">
+                Primary entry points for partner operations and shared resources.
+              </Text>
+            </AccentPanel>
             <div>
               <ActionCardGrid
                 items={[

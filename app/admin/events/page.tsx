@@ -12,7 +12,7 @@ import {
   listSessionPartnerAssignments,
 } from '@/lib/partners/authorization';
 import { redirect } from 'next/navigation';
-import AdminListPageShell from '@/components/gds/AdminListPageShell';
+import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import EventsInventoryList, { type SerializedEventRow } from '@/components/gds/EventsInventoryList';
 import { formatAdminDate, mongoIdString } from '@/lib/gds/serialize-admin-rows';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';

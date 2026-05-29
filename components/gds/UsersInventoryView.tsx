@@ -4,10 +4,10 @@ import Link from 'next/link';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
 import UserManagementActions from '@/components/admin/UserManagementActions';
-import AdminListPageShell from '@/components/gds/AdminListPageShell';
-import StatusBadge from '@/components/gds/StatusBadge';
-import StateBlock from '@/components/gds/StateBlock';
-import { Card, Stack, Text } from '@mantine/core';
+import AdminListPageShell from '@/components/admin/AdminListPageShell';
+import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
+import { Box, Card, Group, Stack, Text } from '@mantine/core';
+import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface SerializedAdminUserRow {
   email: string;
@@ -81,8 +81,8 @@ export default function UsersInventoryView({
 
           <Card
             style={{
-              background: 'rgba(251, 191, 36, 0.12)',
-              borderColor: 'rgba(245, 158, 11, 0.35)',
+              background: 'color-mix(in srgb, var(--mantine-color-yellow-4) 12%, transparent)',
+              borderColor: 'color-mix(in srgb, var(--mantine-color-yellow-6) 35%, transparent)',
             }}
           >
             <Text size="sm" c="dark.8">
@@ -108,45 +108,65 @@ export default function UsersInventoryView({
                     borderBottom: '1px solid var(--mantine-color-gray-2)',
                   }}
                 >
-                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-2">
-                        <Link href={user.profileHref} className="font-semibold text-blue-600 dark:text-blue-400 hover:underline truncate">
+                  <Group align="flex-start" justify="space-between" gap="md" wrap="wrap">
+                    <Box style={{ flex: 1, minWidth: 0 }}>
+                      <Group gap="xs" wrap="wrap" mb="sm">
+                        <Text
+                          component={Link}
+                          href={user.profileHref}
+                          fw={600}
+                          c="blue.6"
+                          style={{ textDecoration: 'none' }}
+                          truncate
+                        >
                           {user.name || 'Anonymous'}
-                        </Link>
-                        {user.isAnonymous ? <StatusBadge tone="info" label="Anonymous" /> : null}
-                        {user.type === 'administrator' ? <StatusBadge tone="info" label="Admin" /> : null}
-                        {user.type === 'pseudo' && !user.mergedWith ? <StatusBadge tone="info" label="Pseudo" /> : null}
-                        {!user.isActive ? <StatusBadge tone="inactive" /> : null}
-                        {user.mergedWith ? <StatusBadge tone="active" label="Merged" /> : null}
-                      </div>
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300">{user.accessLabel}</div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400 truncate">{user.emailDisplay}</div>
+                        </Text>
+                        {user.isAnonymous ? <StatusBadge {...getStatusBadgeProps('info', 'Anonymous')} /> : null}
+                        {user.type === 'administrator' ? <StatusBadge {...getStatusBadgeProps('info', 'Admin')} /> : null}
+                        {user.type === 'pseudo' && !user.mergedWith ? <StatusBadge {...getStatusBadgeProps('info', 'Pseudo')} /> : null}
+                        {!user.isActive ? <StatusBadge {...getStatusBadgeProps('inactive')} /> : null}
+                        {user.mergedWith ? <StatusBadge {...getStatusBadgeProps('active', 'Merged')} /> : null}
+                      </Group>
+                      <Stack gap={2}>
+                        <Text size="sm" fw={500} c="dark.6">
+                          {user.accessLabel}
+                        </Text>
+                        <Text size="sm" c="dimmed" truncate>
+                          {user.emailDisplay}
+                        </Text>
                         {user.partnerAccess.length > 0 ? (
-                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                          <Text size="sm" c="dimmed">
                             Partner access:{' '}
                             {user.partnerAccess.slice(0, 2).map((assignment, idx) => (
                               <span key={assignment.accessId}>
                                 {idx > 0 ? ', ' : ''}
-                                <Link
+                                <Text
+                                  component={Link}
                                   href={`/admin/partners?search=${encodeURIComponent(assignment.partnerName)}`}
-                                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                                  span
+                                  c="blue.6"
+                                  style={{ textDecoration: 'none' }}
                                 >
                                   {assignment.partnerName}
-                                </Link>{' '}
+                                </Text>{' '}
                                 ({assignment.appKey}/{assignment.role})
                               </span>
                             ))}
                             {user.partnerAccess.length > 2 ? ` +${user.partnerAccess.length - 2} more` : ''}
-                          </div>
+                          </Text>
                         ) : null}
-                        <div className="text-sm text-gray-600 dark:text-gray-400 truncate">{user.photosCount} photos</div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400 truncate">Last Event: {user.eventName || 'Unknown Event'}</div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400 truncate">Registered: {user.collectedAtLabel}</div>
-                      </div>
-                    </div>
-                    <div className="lg:w-80">
+                        <Text size="sm" c="dimmed" truncate>
+                          {user.photosCount} photos
+                        </Text>
+                        <Text size="sm" c="dimmed" truncate>
+                          Last Event: {user.eventName || 'Unknown Event'}
+                        </Text>
+                        <Text size="sm" c="dimmed" truncate>
+                          Registered: {user.collectedAtLabel}
+                        </Text>
+                      </Stack>
+                    </Box>
+                    <Box style={{ width: '100%', maxWidth: 320 }}>
                       <UserManagementActions
                         user={{
                           email: user.email,
@@ -158,8 +178,8 @@ export default function UsersInventoryView({
                         }}
                         currentUserEmail={currentUserEmail}
                       />
-                    </div>
-                  </div>
+                    </Box>
+                  </Group>
                 </div>
               ))}
             </div>

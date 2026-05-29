@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Combobox, InputBase, Text, useCombobox } from '@/components/gds/ui';
+import { Combobox, InputBase, Text, useCombobox } from '@mantine/core';
 
 interface Partner {
   _id: string;

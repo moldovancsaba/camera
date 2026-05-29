@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button, Card, SimpleGrid, Stack, Text } from '@mantine/core';
-import StatusBadge from '@/components/gds/StatusBadge';
-import StateBlock from '@/components/gds/StateBlock';
+import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
+import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface SerializedLogoRow {
   id: string;
@@ -53,7 +53,7 @@ export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow
               unoptimized
             />
             <div style={{ position: 'absolute', top: 8, right: 8 }}>
-              <StatusBadge tone={logo.isActive ? 'active' : 'inactive'} />
+              <StatusBadge {...getStatusBadgeProps(logo.isActive ? 'active' : 'inactive')} />
             </div>
           </div>
           <Stack gap="sm" p="md">

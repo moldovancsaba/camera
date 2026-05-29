@@ -8,8 +8,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { AppButton } from '@/components/ui/AppButton';
-import { Button } from '@/components/gds/ui';
+import { Button, Stack, Text } from '@mantine/core';
 
 export default function Error({
   error,
@@ -24,24 +23,34 @@ export default function Error({
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-transparent p-4">
-      <div className="app-raised-dialog">
+      <Stack
+        gap="md"
+        align="center"
+        className="w-full max-w-xl rounded-3xl border border-white/10 bg-black/80 p-8 text-center shadow-2xl backdrop-blur-xl"
+      >
         <div className="text-6xl mb-4">⚠️</div>
-        <h1 className="app-raised-dialog-title">Oops! Something went wrong</h1>
-        <p className="app-raised-dialog-body">
+        <Text component="h1" size="xl" fw={800} c="white">
+          Oops! Something went wrong
+        </Text>
+        <Text c="gray.3">
           {error.message || 'An unexpected error occurred. This might be due to a temporary connection issue.'}
-        </p>
+        </Text>
 
-        <div className="app-raised-dialog-actions">
-          <AppButton type="button" variant="primary" onClick={reset}>
+        <Stack gap="sm" w="100%">
+          <Button type="button" color="cameraTeal" radius="xl" onClick={reset}>
             Try again
-          </AppButton>
+          </Button>
           <Button component={Link} href="/" color="cameraSlate" variant="light" radius="xl">
             Go home
           </Button>
-        </div>
+        </Stack>
 
-        {error.digest ? <p className="app-form-status mt-6">Error ID: {error.digest}</p> : null}
-      </div>
+        {error.digest ? (
+          <Text size="sm" c="gray.5">
+            Error ID: {error.digest}
+          </Text>
+        ) : null}
+      </Stack>
     </div>
   );
 }

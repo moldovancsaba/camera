@@ -21,7 +21,12 @@
 
 import Image from 'next/image';
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
-import { AppButton } from '@/components/ui/AppButton';
+import { Button } from '@mantine/core';
+import {
+  CAMERA_DEFAULT_BRAND_BORDER_COLOR,
+  CAMERA_DEFAULT_BRAND_COLOR,
+  CAMERA_STAGE_WHITE,
+} from '@/lib/gds/tokens/colors';
 
 /** Supports hex (#rgb) or CSS `var(--token)` for branded capture UI. */
 function capturePromptBackground(fill: string): string {
@@ -39,7 +44,7 @@ export interface CameraCaptureProps {
   frameOverlay?: string; // URL of frame image to overlay
   frameWidth?: number;   // Frame width in pixels (for aspect ratio)
   frameHeight?: number;  // Frame height in pixels (for aspect ratio)
-  captureButtonColor?: string; // Hex or CSS `var(--token)` for capture button fill (default: #3B82F6)
+  captureButtonColor?: string; // Hex or CSS `var(--token)` for capture button fill (default brand token)
   captureButtonBorderColor?: string; // Hex or CSS `var(--token)` for capture button border
   promptTitle?: string;  // Custom title for camera start prompt
   promptDescription?: string; // Custom description for camera start prompt
@@ -51,7 +56,7 @@ export interface CameraCaptureProps {
    */
   previewAspectWidthOverHeight?: number;
   /**
-   * Bottom triple bar: Cancel (left), Take (center), Change camera (right) — all `AppButton`s.
+   * Bottom triple bar: Cancel (left), Take (center), Change camera (right) using GDS buttons.
    * When set, ignores orientation-based floating capture/switch positions.
    */
   controlBar?: 'default' | 'bottom-triple';
@@ -75,8 +80,8 @@ export default function CameraCapture({
   frameOverlay, 
   frameWidth, 
   frameHeight,
-  captureButtonColor = '#3B82F6',
-  captureButtonBorderColor = '#3B82F6',
+  captureButtonColor = CAMERA_DEFAULT_BRAND_COLOR,
+  captureButtonBorderColor = CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   promptTitle = 'Ready to capture?',
   promptDescription = 'Click to start your camera and take a photo',
   initialFacingMode = 'environment',
@@ -465,7 +470,7 @@ export default function CameraCapture({
         }
 
         // Safari fix: Fill with white background first
-        ctx.fillStyle = '#FFFFFF';
+        ctx.fillStyle = CAMERA_STAGE_WHITE;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         try {
@@ -824,23 +829,31 @@ export default function CameraCapture({
             <div className="camera-triple-bar-inner">
               <div className="justify-self-start">
                 {onCancel ? (
-                  <AppButton type="button" variant="neutral" compact onClick={onCancel}>
+                  <Button type="button" variant="light" color="dark" size="sm" radius="md" onClick={onCancel}>
                     Cancel
-                  </AppButton>
+                  </Button>
                 ) : (
                   <span />
                 )}
               </div>
               <div className="justify-self-center">
-                <AppButton type="button" variant="primary" compact onClick={() => capturePhoto()}>
+                <Button type="button" color="cameraTeal" size="sm" radius="md" onClick={() => capturePhoto()}>
                   Take
-                </AppButton>
+                </Button>
               </div>
               <div className="justify-self-end">
                 {hasMultipleCameras ? (
-                  <AppButton type="button" variant="secondary" compact onClick={() => switchCamera()} disabled={isLoading}>
+                  <Button
+                    type="button"
+                    variant="light"
+                    color="cameraSlate"
+                    size="sm"
+                    radius="md"
+                    onClick={() => switchCamera()}
+                    disabled={isLoading}
+                  >
                     Change camera
-                  </AppButton>
+                  </Button>
                 ) : (
                   <span />
                 )}
@@ -855,18 +868,18 @@ export default function CameraCapture({
           <div className="camera-triple-bar-inner">
             <div className="justify-self-start">
               {onCancel ? (
-                <AppButton type="button" variant="neutral" compact onClick={onCancel}>
+                <Button type="button" variant="light" color="dark" size="sm" radius="md" onClick={onCancel}>
                   Cancel
-                </AppButton>
+                </Button>
               ) : (
                 <span />
               )}
             </div>
             <div className="justify-self-center">
               {showRetake ? (
-                <AppButton type="button" variant="secondary" compact onClick={() => retake()}>
+                <Button type="button" variant="light" color="cameraSlate" size="sm" radius="md" onClick={() => retake()}>
                   Retake
-                </AppButton>
+                </Button>
               ) : (
                 <span />
               )}

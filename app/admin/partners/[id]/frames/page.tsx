@@ -20,9 +20,9 @@ import {
   Stack,
   Text,
   Title,
-} from '@/components/gds/ui';
+} from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
+import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 
 interface PartnerRecord {
   name: string;

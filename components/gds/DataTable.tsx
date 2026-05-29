@@ -1,47 +1,36 @@
 'use client';
 
-import { Paper, ScrollArea } from '@mantine/core';
+import {
+  DataTable as GdsDataTable,
+  type DataTableColumn as GdsDataTableColumn,
+} from '@doneisbetter/gds-admin/client';
+import type { Key, ReactNode } from 'react';
 
-export interface DataTableColumn {
+export interface DataTableColumn<T> {
   key: string;
-  title: string;
-  align?: 'left' | 'right' | 'center';
+  label: string;
+  render?: (item: T) => ReactNode;
 }
 
-export default function DataTable({
+export interface DataTableProps<T> {
+  data: T[];
+  columns: DataTableColumn<T>[];
+  loading?: boolean;
+  getRowKey?: (item: T, index: number) => Key;
+}
+
+export default function DataTable<T extends object>({
+  data,
   columns,
-  children,
-}: {
-  columns: DataTableColumn[];
-  children: React.ReactNode;
-}) {
+  loading,
+  getRowKey,
+}: DataTableProps<T>) {
   return (
-    <Paper p={0} style={{ overflow: 'hidden' }}>
-      <ScrollArea>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead style={{ background: 'var(--mantine-color-gray-0)' }}>
-            <tr>
-              {columns.map((column) => (
-                <th
-                  key={column.key}
-                  style={{
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                    fontSize: '0.72rem',
-                    textAlign: column.align ?? 'left',
-                    padding: '1rem 1.5rem',
-                    color: 'var(--mantine-color-gray-6)',
-                    borderBottom: '1px solid var(--mantine-color-gray-2)',
-                  }}
-                >
-                  {column.title}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>{children}</tbody>
-        </table>
-      </ScrollArea>
-    </Paper>
+    <GdsDataTable
+      data={data as Record<string, unknown>[]}
+      columns={columns as GdsDataTableColumn<Record<string, unknown>>[]}
+      loading={loading}
+      getRowKey={getRowKey as ((item: Record<string, unknown>, index: number) => Key) | undefined}
+    />
   );
 }

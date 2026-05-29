@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { Button, Card, Group, Stack, Text } from '@mantine/core';
-import DataTable from '@/components/gds/DataTable';
-import StatusBadge from '@/components/gds/StatusBadge';
+import { StateBlock } from '@doneisbetter/gds-core/client';
+import { StatusBadge } from '@doneisbetter/gds-core/client';
 import ResponsiveDataView from '@/components/gds/ResponsiveDataView';
-import StateBlock from '@/components/gds/StateBlock';
+import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface SerializedEventRow {
   id: string;
@@ -40,7 +40,7 @@ function EventMobileCard({ event }: { event: SerializedEventRow }) {
               </Text>
             ) : null}
           </Stack>
-          <StatusBadge tone={event.isActive ? 'active' : 'inactive'} />
+          <StatusBadge {...getStatusBadgeProps(event.isActive ? 'active' : 'inactive')} />
         </Group>
         <Text size="sm" c="dimmed">
           {event.partnerName}
@@ -88,80 +88,83 @@ export default function EventsInventoryList({
     );
   }
 
-  const tableColumns = [
-    { key: 'event', title: 'Event Instance' },
-    { key: 'partner', title: 'Partner' },
-    { key: 'date', title: 'Date' },
-    { key: 'frames', title: 'Frames' },
-    { key: 'status', title: 'Status' },
-    { key: 'actions', title: 'Actions', align: 'right' as const },
-  ];
-
   return (
     <ResponsiveDataView
-      table={
-        <DataTable columns={tableColumns}>
-          {events.map((event) => (
-            <tr key={event.id} style={{ borderTop: '1px solid var(--mantine-color-gray-2)' }}>
-              <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-                <Stack gap={2}>
-                  <Text
-                    component={Link}
-                    href={`/admin/events/${event.id}`}
-                    fw={700}
-                    c="blue.7"
-                    style={{ textDecoration: 'none' }}
-                  >
-                    {event.name}
-                  </Text>
-                  {event.description ? (
-                    <Text size="sm" c="dimmed" lineClamp={1}>
-                      {event.description}
-                    </Text>
-                  ) : null}
-                  {event.location ? (
-                    <Text size="xs" c="dimmed">
-                      {event.location}
-                    </Text>
-                  ) : null}
-                </Stack>
-              </td>
-              <td style={{ padding: '1rem 1.5rem' }}>
-                <Text
-                  component={Link}
-                  href={`/admin/partners?search=${encodeURIComponent(event.partnerName)}`}
-                  c="blue.7"
-                  style={{ textDecoration: 'none' }}
-                >
-                  {event.partnerName}
+      data={events}
+      columns={[
+        {
+          key: 'event',
+          label: 'Event Instance',
+          render: (event) => (
+            <Stack gap={2}>
+              <Text
+                component={Link}
+                href={`/admin/events/${event.id}`}
+                fw={700}
+                c="blue.7"
+                style={{ textDecoration: 'none' }}
+              >
+                {event.name}
+              </Text>
+              {event.description ? (
+                <Text size="sm" c="dimmed" lineClamp={1}>
+                  {event.description}
                 </Text>
-              </td>
-              <td style={{ padding: '1rem 1.5rem' }}>
-                <Text size="sm" c="dimmed">
-                  {event.eventDateLabel}
+              ) : null}
+              {event.location ? (
+                <Text size="xs" c="dimmed">
+                  {event.location}
                 </Text>
-              </td>
-              <td style={{ padding: '1rem 1.5rem' }}>{event.frameCount}</td>
-              <td style={{ padding: '1rem 1.5rem' }}>
-                <StatusBadge tone={event.isActive ? 'active' : 'inactive'} />
-              </td>
-              <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                <Group gap="sm" justify="flex-end">
-                  <Button component={Link} href={`/admin/events/${event.id}`} variant="subtle" size="compact-sm">
-                    View
-                  </Button>
-                  <Button component={Link} href={`/admin/events/${event.id}/edit`} variant="subtle" size="compact-sm">
-                    Edit
-                  </Button>
-                </Group>
-              </td>
-            </tr>
-          ))}
-        </DataTable>
-      }
-      mobile={events.map((event) => (
-        <EventMobileCard key={event.id} event={event} />
-      ))}
+              ) : null}
+            </Stack>
+          ),
+        },
+        {
+          key: 'partner',
+          label: 'Partner',
+          render: (event) => (
+            <Text
+              component={Link}
+              href={`/admin/partners?search=${encodeURIComponent(event.partnerName)}`}
+              c="blue.7"
+              style={{ textDecoration: 'none' }}
+            >
+              {event.partnerName}
+            </Text>
+          ),
+        },
+        {
+          key: 'date',
+          label: 'Date',
+          render: (event) => (
+            <Text size="sm" c="dimmed">
+              {event.eventDateLabel}
+            </Text>
+          ),
+        },
+        { key: 'frames', label: 'Frames', render: (event) => event.frameCount },
+        {
+          key: 'status',
+          label: 'Status',
+          render: (event) => <StatusBadge {...getStatusBadgeProps(event.isActive ? 'active' : 'inactive')} />,
+        },
+        {
+          key: 'actions',
+          label: 'Actions',
+          render: (event) => (
+            <Group gap="sm" justify="flex-end">
+              <Button component={Link} href={`/admin/events/${event.id}`} variant="subtle" size="compact-sm">
+                View
+              </Button>
+              <Button component={Link} href={`/admin/events/${event.id}/edit`} variant="subtle" size="compact-sm">
+                Edit
+              </Button>
+            </Group>
+          ),
+        },
+      ]}
+      renderCard={(event) => <EventMobileCard event={event} />}
+      getRowKey={(event) => event.id}
     />
   );
 }

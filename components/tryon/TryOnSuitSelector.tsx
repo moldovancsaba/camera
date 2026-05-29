@@ -1,9 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import MediaCard from '@/components/gds/MediaCard';
-import StateBlock from '@/components/gds/StateBlock';
-import { Alert, Button, Group, Select, Stack, Text } from '@/components/gds/ui';
+import MediaCard from '@/components/media/MediaPreviewCard';
+import { StateBlock } from '@doneisbetter/gds-core/client';
+import { Alert, Button, Group, Select, Stack, Text } from '@mantine/core';
 
 interface TryOnSuitOption {
   id: string;
@@ -112,23 +112,22 @@ export default function TryOnSuitSelector({
         aria-label="Select leather jersey for try-on"
         styles={{
           label: {
-            color: 'var(--app-shell-fg)',
             fontWeight: 700,
           },
           input: {
-            backgroundColor: 'var(--app-panel-input-bg)',
-            color: 'var(--app-panel-input-fg)',
-            borderColor: 'var(--app-btn-focus-ring)',
+            backgroundColor: 'var(--mantine-color-body)',
+            color: 'var(--mantine-color-text)',
+            borderColor: 'var(--mantine-color-default-border)',
           },
           section: {
-            color: 'var(--app-panel-muted)',
+            color: 'var(--mantine-color-dimmed)',
           },
           dropdown: {
-            backgroundColor: 'var(--app-panel-input-bg)',
-            borderColor: 'var(--app-panel-border)',
+            backgroundColor: 'var(--mantine-color-body)',
+            borderColor: 'var(--mantine-color-default-border)',
           },
           option: {
-            color: 'var(--app-panel-input-fg)',
+            color: 'var(--mantine-color-text)',
             backgroundColor: 'transparent',
           },
         }}

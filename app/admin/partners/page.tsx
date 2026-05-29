@@ -8,7 +8,7 @@ import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { isGlobalAdminSession, listAccessiblePartnerIds } from '@/lib/partners/authorization';
 import { redirect } from 'next/navigation';
-import AdminListPageShell from '@/components/gds/AdminListPageShell';
+import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import PartnersInventoryList, { type SerializedPartnerRow } from '@/components/gds/PartnersInventoryList';
 import { formatAdminDate, mongoIdString } from '@/lib/gds/serialize-admin-rows';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';

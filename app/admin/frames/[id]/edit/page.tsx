@@ -24,12 +24,12 @@ import {
   Text,
   TextInput,
   Textarea,
-} from '@/components/gds/ui';
+} from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { notifications } from '@/lib/gds/notifications';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
-import FormSection from '@/components/gds/FormSection';
-import StateBlock from '@/components/gds/StateBlock';
+import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
+import { FormSection } from '@doneisbetter/gds-admin/client';
+import { StateBlock } from '@doneisbetter/gds-core/client';
 import { confirmDestructive } from '@/lib/gds/confirm-destructive';
 
 interface FrameRecord {

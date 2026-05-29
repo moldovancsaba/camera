@@ -6,8 +6,8 @@ These rules define how Mantine-backed GDS primitives should be introduced and us
 
 Current SSOT alignment target:
 
-- GDS version: `2.4.3`
-- Camera aligns to the shared contracts locally until direct package consumption is possible
+- GDS version: `2.6.1`
+- Camera aligns to the shared contracts through the published `@doneisbetter/*` npm packages plus temporary local adapters where coverage or compatibility is still incomplete
 
 Compliance artifact:
 
@@ -60,7 +60,23 @@ Every new GDS primitive should define:
 2. Use direct Mantine composition when building or refining a primitive, not when bypassing one.
 3. Keep domain-specific logic out of foundation primitives.
 4. Keep visual tokens inside the Mantine theme or documented system-level props rather than scattered per page.
-5. Files outside `components/gds/**` and `lib/gds/**` must not import `@mantine/*` directly.
+5. Direct `@mantine/core` imports are allowed for leaf composition under the GDS runtime, but no local barrel or wrapper may act as a second UI authority.
+
+## Exception Rules
+
+Use [docs/GDS_EXCEPTION_STANDARD.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_EXCEPTION_STANDARD.md) whenever a surface cannot consume direct package contracts.
+
+Exception requirements:
+
+1. name the surface explicitly
+2. choose a single primary category
+3. keep the scope narrow
+4. define what is still mandatory
+5. define what is forbidden
+6. include accessibility, testing, and observability expectations
+7. define an exit condition unless the exception is intentionally long-lived
+
+If an exception starts behaving like a reusable pattern, it is no longer an exception and should be proposed back into GDS as a contract candidate.
 
 ## Current Admin Primitive Direction
 

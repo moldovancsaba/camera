@@ -14,7 +14,11 @@ import {
   Stack,
   Text,
   Title,
-} from '@/components/gds/ui';
+} from '@mantine/core';
+import {
+  CAMERA_DEFAULT_BRAND_BORDER_COLOR,
+  CAMERA_DEFAULT_BRAND_COLOR,
+} from '@/lib/gds/tokens/colors';
 import StyleInheritanceIndicator from './StyleInheritanceIndicator';
 
 interface FrameAssignment {
@@ -144,13 +148,13 @@ export default function StyleSections({
         <Stack p="xl" gap="lg">
           <Group align="flex-start" gap="xl" wrap="wrap">
             <Group align="center" gap="md" wrap="nowrap">
-              <ColorPreviewSwatch color={brandColor || '#3B82F6'} />
+              <ColorPreviewSwatch color={brandColor || CAMERA_DEFAULT_BRAND_COLOR} />
               <Stack gap={4}>
                 <Text size="sm" fw={600}>
                   Primary Color
                 </Text>
                 <Text ff="monospace" fw={700}>
-                  {brandColor || '#3B82F6'}
+                  {brandColor || CAMERA_DEFAULT_BRAND_COLOR}
                 </Text>
                 <Text size="xs" c="dimmed">
                   Buttons, camera button fill, focus states
@@ -159,13 +163,13 @@ export default function StyleSections({
             </Group>
 
             <Group align="center" gap="md" wrap="nowrap">
-              <ColorPreviewSwatch color={brandBorderColor || '#3B82F6'} />
+              <ColorPreviewSwatch color={brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR} />
               <Stack gap={4}>
                 <Text size="sm" fw={600}>
                   Border/Accent Color
                 </Text>
                 <Text ff="monospace" fw={700}>
-                  {brandBorderColor || '#3B82F6'}
+                  {brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR}
                 </Text>
                 <Text size="xs" c="dimmed">
                   Input borders, checkboxes, camera button border
@@ -180,12 +184,15 @@ export default function StyleSections({
             Color Preview
           </Text>
           <Group>
-            <Button style={{ backgroundColor: brandColor || '#3B82F6' }} disabled>
+            <Button style={{ backgroundColor: brandColor || CAMERA_DEFAULT_BRAND_COLOR }} disabled>
               Primary Button
             </Button>
             <Button
               variant="outline"
-              style={{ borderColor: brandBorderColor || '#3B82F6', color: brandBorderColor || '#3B82F6' }}
+              style={{
+                borderColor: brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR,
+                color: brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR,
+              }}
               disabled
             >
               Bordered Button

@@ -1,6 +1,7 @@
 'use client';
 
-import { AppButton } from '@/components/ui/AppButton';
+import { PublicFlowShell } from '@doneisbetter/gds-core/client';
+import { Anchor, Button, Group, Stack, Text, TextInput } from '@mantine/core';
 
 interface TryOnStatus {
   requested: boolean;
@@ -78,99 +79,128 @@ export default function ShareOverlay({
   const shellClassName = overlay
     ? 'absolute inset-0 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm'
     : '';
-  const panelClassName = overlay ? 'app-raised-dialog max-w-xl text-left' : 'space-y-4';
+  const panelClassName = overlay
+    ? 'w-full max-w-xl rounded-3xl border border-white/10 bg-black/80 p-6 text-left shadow-2xl backdrop-blur-xl'
+    : '';
 
   return (
     <div className={shellClassName}>
       <div className={panelClassName}>
-        <div className="space-y-4">
-          <div className="text-center">
-            <h3 className="app-raised-dialog-title mb-0">{title}</h3>
-          </div>
+        <PublicFlowShell
+          eyebrow="Capture flow"
+          stage={{
+            id: 'share-stage',
+            title,
+            status: 'ready',
+            body: (
+              <Stack gap="md">
+                {showShareActions && shareUrl ? (
+                  <>
+                    <Group align="stretch" gap="sm" wrap="nowrap">
+                      <TextInput
+                        value={shareUrl}
+                        readOnly
+                        className="min-w-0 flex-1"
+                        size="md"
+                        radius="md"
+                        styles={{
+                          input: {
+                            backgroundColor: overlay ? 'var(--mantine-color-dark-8)' : undefined,
+                            color: overlay ? 'var(--mantine-color-white)' : undefined,
+                            borderColor: overlay ? 'var(--mantine-color-dark-4)' : undefined,
+                          },
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="light"
+                        color="gray"
+                        radius="md"
+                        className="shrink-0"
+                        onClick={onCopyLink}
+                      >
+                        {copyButtonText}
+                      </Button>
+                    </Group>
 
-          {showShareActions && shareUrl ? (
-            <>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <input
-                  type="text"
-                  value={shareUrl}
-                  readOnly
-                  className="app-form-control min-w-0 flex-1 text-sm"
-                />
-                <AppButton
-                  type="button"
-                  variant="ghost"
-                  compact
-                  className="app-btn--inline shrink-0"
-                  onClick={onCopyLink}
-                >
-                  {copyButtonText}
-                </AppButton>
-              </div>
+                    <Anchor
+                      href={shareUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      underline="never"
+                    >
+                      <Button component="span" color="cameraTeal" radius="xl" fullWidth>
+                        {viewPhotoButtonText}
+                      </Button>
+                    </Anchor>
 
-              <a
-                href={shareUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="app-btn app-btn--primary app-btn--inline max-w-none text-center"
-              >
-                {viewPhotoButtonText}
-              </a>
+                    <Text ta="center" size="xs" c={overlay ? 'gray.3' : 'dimmed'}>
+                      {suggestedMessageLabel}{' '}
+                      <Text component="span" fw={500} c={overlay ? 'white' : 'dark.8'}>
+                        {shareCaption}
+                      </Text>
+                    </Text>
+                  </>
+                ) : completionMessage ? (
+                  <Text c={overlay ? 'gray.3' : 'dimmed'}>{completionMessage}</Text>
+                ) : null}
 
-              <p className="text-center text-xs text-[var(--app-panel-body)]">
-                {suggestedMessageLabel}{' '}
-                <span className="font-medium text-[var(--app-panel-strong)]">{shareCaption}</span>
-              </p>
-            </>
-          ) : completionMessage ? (
-            <p className="app-raised-dialog-body mb-0">{completionMessage}</p>
-          ) : null}
+                <TryOnStatusNotice tryOnResult={tryOnResult} />
 
-          <TryOnStatusNotice tryOnResult={tryOnResult} />
+                {showShareActions ? (
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <Button
+                      type="button"
+                      variant="light"
+                      color="cameraSlate"
+                      fullWidth
+                      radius="md"
+                      onClick={() => onShareSocial?.('facebook')}
+                    >
+                      Facebook
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="light"
+                      color="cameraSlate"
+                      fullWidth
+                      radius="md"
+                      onClick={() => onShareSocial?.('twitter')}
+                    >
+                      Twitter
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="light"
+                      color="cameraSlate"
+                      fullWidth
+                      radius="md"
+                      onClick={() => onShareSocial?.('linkedin')}
+                    >
+                      LinkedIn
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="light"
+                      color="cameraSlate"
+                      fullWidth
+                      radius="md"
+                      onClick={() => onShareSocial?.('whatsapp')}
+                    >
+                      WhatsApp
+                    </Button>
+                  </div>
+                ) : null}
 
-          {showShareActions ? (
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
-              <AppButton
-                type="button"
-                variant="secondary"
-                className="app-btn--inline w-full min-w-0"
-                onClick={() => onShareSocial?.('facebook')}
-              >
-                Facebook
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="secondary"
-                className="app-btn--inline w-full min-w-0"
-                onClick={() => onShareSocial?.('twitter')}
-              >
-                Twitter
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="secondary"
-                className="app-btn--inline w-full min-w-0"
-                onClick={() => onShareSocial?.('linkedin')}
-              >
-                LinkedIn
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="secondary"
-                className="app-btn--inline w-full min-w-0"
-                onClick={() => onShareSocial?.('whatsapp')}
-              >
-                WhatsApp
-              </AppButton>
-            </div>
-          ) : null}
-
-          {nextButtonText && onNext ? (
-            <AppButton type="button" variant="primary" className="app-btn--block" onClick={onNext}>
-              {nextButtonText}
-            </AppButton>
-          ) : null}
-        </div>
+                {nextButtonText && onNext ? (
+                  <Button type="button" color="cameraTeal" radius="xl" fullWidth onClick={onNext}>
+                    {nextButtonText}
+                  </Button>
+                ) : null}
+              </Stack>
+            ),
+          }}
+        />
       </div>
     </div>
   );

@@ -12,10 +12,13 @@
  * - Immutable record of what user agreed to
  */
 
-import Image from 'next/image';
 import { useState } from 'react';
-import PublicShell from '@/components/gds/PublicShell';
-import { Alert, Button, Card, Checkbox, Group, Stack, Text, Title } from '@/components/gds/ui';
+import CaptureStageShell from '@/components/capture/CaptureStageShell';
+import { Alert, Button, Card, Checkbox, Group, Stack } from '@mantine/core';
+import {
+  CAMERA_DEFAULT_BRAND_BORDER_COLOR,
+  CAMERA_DEFAULT_BRAND_COLOR,
+} from '@/lib/gds/tokens/colors';
 
 export interface AcceptPageConfig {
   title: string;
@@ -45,8 +48,8 @@ export default function AcceptPage({
   onNext,
   onBack,
   logoUrl,
-  brandColor = '#3B82F6',
-  brandBorderColor = '#3B82F6',
+  brandColor = CAMERA_DEFAULT_BRAND_COLOR,
+  brandBorderColor = CAMERA_DEFAULT_BRAND_BORDER_COLOR,
 }: AcceptPageProps) {
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,88 +74,65 @@ export default function AcceptPage({
   };
 
   return (
-    <PublicShell size="md" centered>
-      <Card padding="xl">
-        <Stack gap="lg">
-          {logoUrl ? (
-            <Group justify="center">
-              <Image
-                src={logoUrl}
-                alt="Event logo"
-                width={320}
-                height={128}
-                unoptimized
-                style={{ maxHeight: 128, maxWidth: 320, height: 'auto', width: 'auto' }}
-              />
-            </Group>
-          ) : null}
+    <CaptureStageShell
+      title={config.title}
+      description={config.description}
+      logoUrl={logoUrl}
+      eyebrow="Capture flow"
+    >
+      <Stack gap="sm">
+        <Card
+          padding="md"
+          radius="md"
+          withBorder
+          style={{
+            borderColor: error
+              ? 'var(--mantine-color-red-5)'
+              : accepted
+                ? brandBorderColor
+                : 'var(--mantine-color-gray-3)',
+            backgroundColor: accepted ? `${brandColor}10` : undefined,
+          }}
+        >
+          <Checkbox
+            id={`accept-${pageId}`}
+            checked={accepted}
+            onChange={(event) => handleCheckboxChange(event.currentTarget.checked)}
+            label={config.checkboxText}
+            aria-label="Accept terms"
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? 'accept-error' : undefined}
+            styles={{
+              label: {
+                lineHeight: 1.6,
+              },
+            }}
+          />
+        </Card>
 
-          <Stack gap="xs" align="center">
-            <Title order={1} ta="center">
-              {config.title}
-            </Title>
-            {config.description ? (
-              <Text c="dimmed" ta="center">
-                {config.description}
-              </Text>
-            ) : null}
-          </Stack>
+        {error ? (
+          <Alert id="accept-error" color="red" role="alert">
+            {error}
+          </Alert>
+        ) : null}
+      </Stack>
 
-          <Stack gap="sm">
-            <Card
-              padding="md"
-              radius="md"
-              withBorder
-              style={{
-                borderColor: error
-                  ? 'var(--mantine-color-red-5)'
-                  : accepted
-                    ? brandBorderColor
-                    : 'var(--mantine-color-gray-3)',
-                backgroundColor: accepted ? `${brandColor}10` : undefined,
-              }}
-            >
-              <Checkbox
-                id={`accept-${pageId}`}
-                checked={accepted}
-                onChange={(event) => handleCheckboxChange(event.currentTarget.checked)}
-                label={config.checkboxText}
-                aria-label="Accept terms"
-                aria-invalid={Boolean(error)}
-                aria-describedby={error ? 'accept-error' : undefined}
-                styles={{
-                  label: {
-                    lineHeight: 1.6,
-                  },
-                }}
-              />
-            </Card>
-
-            {error ? (
-              <Alert id="accept-error" color="red" role="alert">
-                {error}
-              </Alert>
-            ) : null}
-          </Stack>
-
-          <Group grow>
-            {onBack ? (
-              <Button variant="light" color="gray" onClick={onBack} aria-label="Go back to previous page">
-                Back
-              </Button>
-            ) : null}
-            <Button
-              onClick={handleNext}
-              disabled={!accepted}
-              color={accepted ? brandColor : 'gray'}
-              aria-label={config.buttonText}
-              aria-disabled={!accepted}
-            >
-              {config.buttonText}
-            </Button>
-          </Group>
-        </Stack>
-      </Card>
-    </PublicShell>
+      <Group grow>
+        {onBack ? (
+          <Button variant="light" color="gray" onClick={onBack} aria-label="Go back to previous page">
+            Back
+          </Button>
+        ) : null}
+        <Button
+          onClick={handleNext}
+          disabled={!accepted}
+          color={accepted ? brandColor : 'gray'}
+          aria-label={config.buttonText}
+          aria-disabled={!accepted}
+        >
+          {config.buttonText}
+        </Button>
+      </Group>
+    </CaptureStageShell>
   );
 }

@@ -5,6 +5,7 @@ import LandingPageCookieConsent from '@/components/landing/LandingPageCookieCons
 import LandingPageMediaFrame from '@/components/landing/LandingPageMediaFrame';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, type SlideshowLayoutArea } from '@/lib/db/schemas';
+import { LANDING_PAGE_BASE_CSS } from '@/lib/gds/tokens/landing-page-base-css';
 import { getActiveLandingPageBySlug } from '@/lib/landing-pages';
 import { computeCompactGridSpec } from '@/lib/slideshow/layout-geometry';
 import {
@@ -111,16 +112,7 @@ export default async function PublicLandingPage({
   ]
     .filter(Boolean)
     .join(' ');
-  const landingPageBaseCss = `
-.landing-page-root {
-  position: relative;
-  min-height: 100dvh;
-  height: 100dvh;
-  overflow: hidden;
-  background: #f8fafc;
-  color: #0f172a;
-  font-family: Arial, Helvetica, sans-serif;
-}
+  const landingPageBaseCss = `${LANDING_PAGE_BASE_CSS}
 
 .landing-page-shell {
   position: relative;
@@ -406,6 +398,7 @@ export default async function PublicLandingPage({
     <main className={`${landingPageClassName} ${landingDisplayFont.className}`}>
       <style>{landingPageFontCss}</style>
       <style>{landingPageBaseCss}</style>
+      {/* Creator-authored landing CSS remains an explicit exception surface and must render after the base stylesheet so page themes can override default layout styling. */}
       {landingPageCustomCss ? <style>{landingPageCustomCss}</style> : null}
       <div className="landing-page-shell">
         <header className="landing-page-header">

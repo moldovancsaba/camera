@@ -9,6 +9,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ObjectId } from 'mongodb';
+import { StatsStrip } from '@doneisbetter/gds-admin/client';
 import {
   Breadcrumbs,
   Button,
@@ -19,9 +20,8 @@ import {
   Stack,
   Text,
   Title,
-} from '@/components/gds/ui';
-import WorkspaceHeader from '@/components/gds/WorkspaceHeader';
-import StatsStrip from '@/components/gds/StatsStrip';
+} from '@mantine/core';
+import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import StyleSections from '@/components/admin/StyleSections';
 import SlideshowManager from '@/components/admin/SlideshowManager';
 import SlideshowLayoutManager from '@/components/admin/SlideshowLayoutManager';
@@ -281,7 +281,12 @@ export default async function EventDetailPage({
         </Card>
       ) : null}
 
-      <StatsStrip items={[{ label: 'Frames', value: event.frames?.length || 0 }, { label: 'Photos', value: submissions.length }]} />
+      <StatsStrip
+        stats={[
+          { label: 'Frames', value: event.frames?.length || 0 },
+          { label: 'Photos', value: submissions.length },
+        ]}
+      />
 
       <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
         <Stack gap="lg">

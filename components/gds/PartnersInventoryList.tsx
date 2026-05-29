@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { Button, Card, Group, Stack, Text } from '@mantine/core';
-import DataTable from '@/components/gds/DataTable';
-import StatusBadge from '@/components/gds/StatusBadge';
+import { StateBlock } from '@doneisbetter/gds-core/client';
+import { StatusBadge } from '@doneisbetter/gds-core/client';
 import ResponsiveDataView from '@/components/gds/ResponsiveDataView';
-import StateBlock from '@/components/gds/StateBlock';
+import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface SerializedPartnerRow {
   id: string;
@@ -34,7 +34,7 @@ function PartnerMobileCard({ partner }: { partner: SerializedPartnerRow }) {
           >
             {partner.name}
           </Text>
-          <StatusBadge tone={partner.isActive ? 'active' : 'inactive'} />
+          <StatusBadge {...getStatusBadgeProps(partner.isActive ? 'active' : 'inactive')} />
         </Group>
         <Text size="xs" c="dimmed">
           {partner.partnerId}
@@ -73,72 +73,70 @@ export default function PartnersInventoryList({ partners }: { partners: Serializ
     );
   }
 
-  const tableColumns = [
-    { key: 'partner', title: 'Partner Name' },
-    { key: 'events', title: 'Events' },
-    { key: 'frames', title: 'Frames' },
-    { key: 'users', title: 'Users' },
-    { key: 'status', title: 'Status' },
-    { key: 'created', title: 'Created' },
-    { key: 'actions', title: 'Actions', align: 'right' as const },
-  ];
-
   return (
     <ResponsiveDataView
-      table={
-        <DataTable columns={tableColumns}>
-          {partners.map((partner) => (
-            <tr key={partner.id} style={{ borderTop: '1px solid var(--mantine-color-gray-2)' }}>
-              <td style={{ padding: '1rem 1.5rem', verticalAlign: 'top' }}>
-                <Stack gap={2}>
-                  <Text
-                    component={Link}
-                    href={`/admin/partners/${partner.id}`}
-                    fw={700}
-                    c="blue.7"
-                    style={{ textDecoration: 'none' }}
-                  >
-                    {partner.name}
-                  </Text>
-                  {partner.description ? (
-                    <Text size="sm" c="dimmed" lineClamp={1}>
-                      {partner.description}
-                    </Text>
-                  ) : (
-                    <Text size="xs" c="dimmed">
-                      {partner.partnerId}
-                    </Text>
-                  )}
-                </Stack>
-              </td>
-              <td style={{ padding: '1rem 1.5rem' }}>{partner.eventCount}</td>
-              <td style={{ padding: '1rem 1.5rem' }}>{partner.frameCount}</td>
-              <td style={{ padding: '1rem 1.5rem' }}>{partner.userAccessCount}</td>
-              <td style={{ padding: '1rem 1.5rem' }}>
-                <StatusBadge tone={partner.isActive ? 'active' : 'inactive'} />
-              </td>
-              <td style={{ padding: '1rem 1.5rem' }}>
-                <Text size="sm" c="dimmed">
-                  {partner.createdAtLabel}
+      data={partners}
+      columns={[
+        {
+          key: 'partner',
+          label: 'Partner Name',
+          render: (partner) => (
+            <Stack gap={2}>
+              <Text
+                component={Link}
+                href={`/admin/partners/${partner.id}`}
+                fw={700}
+                c="blue.7"
+                style={{ textDecoration: 'none' }}
+              >
+                {partner.name}
+              </Text>
+              {partner.description ? (
+                <Text size="sm" c="dimmed" lineClamp={1}>
+                  {partner.description}
                 </Text>
-              </td>
-              <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                <Group gap="sm" justify="flex-end">
-                  <Button component={Link} href={`/admin/partners/${partner.id}`} variant="subtle" size="compact-sm">
-                    View
-                  </Button>
-                  <Button component={Link} href={`/admin/partners/${partner.id}/edit`} variant="subtle" size="compact-sm">
-                    Edit
-                  </Button>
-                </Group>
-              </td>
-            </tr>
-          ))}
-        </DataTable>
-      }
-      mobile={partners.map((partner) => (
-        <PartnerMobileCard key={partner.id} partner={partner} />
-      ))}
+              ) : (
+                <Text size="xs" c="dimmed">
+                  {partner.partnerId}
+                </Text>
+              )}
+            </Stack>
+          ),
+        },
+        { key: 'events', label: 'Events', render: (partner) => partner.eventCount },
+        { key: 'frames', label: 'Frames', render: (partner) => partner.frameCount },
+        { key: 'users', label: 'Users', render: (partner) => partner.userAccessCount },
+        {
+          key: 'status',
+          label: 'Status',
+          render: (partner) => <StatusBadge {...getStatusBadgeProps(partner.isActive ? 'active' : 'inactive')} />,
+        },
+        {
+          key: 'created',
+          label: 'Created',
+          render: (partner) => (
+            <Text size="sm" c="dimmed">
+              {partner.createdAtLabel}
+            </Text>
+          ),
+        },
+        {
+          key: 'actions',
+          label: 'Actions',
+          render: (partner) => (
+            <Group gap="sm" justify="flex-end">
+              <Button component={Link} href={`/admin/partners/${partner.id}`} variant="subtle" size="compact-sm">
+                View
+              </Button>
+              <Button component={Link} href={`/admin/partners/${partner.id}/edit`} variant="subtle" size="compact-sm">
+                Edit
+              </Button>
+            </Group>
+          ),
+        },
+      ]}
+      renderCard={(partner) => <PartnerMobileCard partner={partner} />}
+      getRowKey={(partner) => partner.id}
     />
   );
 }
