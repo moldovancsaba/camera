@@ -8,6 +8,7 @@ import {
   buildTryOnPublicationSummary,
   upsertSubmissionTryOnPublicationLink,
 } from '@/lib/tryon/publication';
+import { patchSubmissionTryOnState } from '@/lib/tryon/jobs';
 import { nowIso } from '@/lib/tryon/time';
 
 export const POST = withErrorHandler(async (
@@ -68,6 +69,18 @@ export const POST = withErrorHandler(async (
       true
     )
   );
+
+  await patchSubmissionTryOnState(db, new ObjectId(resultSubmission.sourceSubmissionId), {
+    status: 'done',
+    requested: true,
+    leatherSuitId: resultSubmission.tryOnLeatherSuitId ?? null,
+    jobId: resultSubmission.sourceJobId ?? null,
+    resultUrl: resultSubmission.imageUrl ?? resultSubmission.finalImageUrl ?? null,
+    reviewStatus: 'approved',
+    shareVisible: true,
+    slideshowEligible: true,
+    lastError: null,
+  });
 
   return apiSuccess({ submissionId, reviewStatus: 'approved' });
 });

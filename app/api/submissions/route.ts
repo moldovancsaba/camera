@@ -7,9 +7,17 @@
  */
 
 import { NextRequest } from 'next/server';
+import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { uploadImage } from '@/lib/imgbb/upload';
-import { COLLECTIONS } from '@/lib/db/schemas';
+import {
+  COLLECTIONS,
+  DeviceType,
+  SubmissionMethod,
+  SubmissionStatus,
+  type UserConsent,
+  type Submission,
+} from '@/lib/db/schemas';
 import {
   withErrorHandler,
   requireAuth,
@@ -26,6 +34,7 @@ import {
 import {
   buildSubmissionTryOnLink,
   insertOrGetTryOnJob,
+  patchSubmissionTryOnState,
   upsertSubmissionTryOnLink,
 } from '@/lib/tryon/jobs';
 import { assertValidLeatherSuitId } from '@/lib/tryon/suits';
@@ -136,13 +145,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     // Validate consents if provided
     // Each consent must have: pageId, pageType, checkboxText, accepted, acceptedAt
-    const validatedConsents: Array<{
-      pageId: unknown;
-      pageType: 'accept' | 'cta';
-      checkboxText: unknown;
-      accepted: true;
-      acceptedAt: unknown;
-    }> = [];
+    const validatedConsents: UserConsent[] = [];
     if (consents && Array.isArray(consents)) {
       for (const consent of consents) {
         validateRequiredFields(consent, ['pageId', 'pageType', 'checkboxText', 'accepted']);
@@ -156,17 +159,22 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         }
 
         validatedConsents.push({
-          pageId: consent.pageId,
+          pageId: String(consent.pageId),
           pageType: consent.pageType,
-          checkboxText: consent.checkboxText,
+          checkboxText: String(consent.checkboxText),
           accepted: true,
-          acceptedAt: consent.acceptedAt || new Date().toISOString(),
+          acceptedAt:
+            typeof consent.acceptedAt === 'string' && consent.acceptedAt.trim()
+              ? consent.acceptedAt
+              : new Date().toISOString(),
         });
       }
     }
 
     // Save submission to database
-    const submission = {
+    const createdAt = new Date().toISOString();
+    const submission: Submission = {
+      submissionId: `submission_${Date.now()}`,
       userId: session?.user?.id || 'anonymous',
       userEmail: session?.user?.email || 'anonymous@event',
       userName: session?.user?.name || session?.user?.email || 'Event Guest',
@@ -182,23 +190,65 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       ...(eventId ? { eventIds: [eventId] } : { eventIds: [] }),
       eventName: eventName || null,
       imageUrl: uploadResult.imageUrl,
+      originalImageUrl: uploadResult.imageUrl,
+      finalImageUrl: uploadResult.imageUrl,
       deleteUrl: uploadResult.deleteUrl,
       imageId: uploadResult.imageId,
       fileSize: uploadResult.fileSize,
       mimeType: uploadResult.mimeType,
+      submissionKind: 'original',
       // User info from onboarding pages
       ...(validatedUserInfo && { userInfo: validatedUserInfo }),
       // Consent records from accept/CTA pages
       consents: validatedConsents,
+      method: SubmissionMethod.CAMERA_CAPTURE,
+      status: SubmissionStatus.COMPLETED,
       metadata: {
-        device: request.headers.get('user-agent'),
-        ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
+        deviceType: DeviceType.UNKNOWN,
+        deviceInfo: request.headers.get('user-agent') || undefined,
+        ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
+        originalWidth: imageWidth || frame?.width || 1920,
+        originalHeight: imageHeight || frame?.height || 1080,
+        originalFileSize: uploadResult.fileSize || 0,
+        originalMimeType: uploadResult.mimeType || 'image/png',
         finalFileSize: uploadResult.fileSize,
         // Image dimensions for slideshow aspect ratio detection (default 16:9 if no frame)
         finalWidth: imageWidth || frame?.width || 1920,
         finalHeight: imageHeight || frame?.height || 1080,
+        emailSent: false,
+        compositionEngine: 'camera_capture',
       },
-      createdAt: new Date().toISOString(),
+      shareCount: 0,
+      downloadCount: 0,
+      isArchived: false,
+      hiddenFromPartner: false,
+      hiddenFromEvents: [],
+      tryOnRequest: tryOnRequest.requested
+        ? {
+            requested: true,
+            status: 'requested',
+            requestedAt: createdAt,
+            lastUpdatedAt: createdAt,
+            leatherSuitId: tryOnRequest.leatherSuitId,
+            reviewStatus: null,
+            shareVisible: false,
+            slideshowEligible: false,
+            lastError: null,
+          }
+        : {
+            requested: false,
+            status: 'not_requested',
+            requestedAt: null,
+            lastUpdatedAt: createdAt,
+            leatherSuitId: null,
+            reviewStatus: null,
+            shareVisible: false,
+            slideshowEligible: false,
+            lastError: null,
+          },
+      tryOnJobs: [],
+      createdAt,
+      updatedAt: createdAt,
     };
 
     const result = await db.collection('submissions').insertOne(submission);
@@ -288,17 +338,49 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           userId: session?.user?.id || 'anonymous',
         });
 
-        const { ObjectId } = await import('mongodb');
         if (ObjectId.isValid(submissionId)) {
+          const submissionObjectId = new ObjectId(submissionId);
+          await patchSubmissionTryOnState(db, submissionObjectId, {
+            status: 'source_uploaded',
+            requested: true,
+            requestedAt: createdAt,
+            leatherSuitId: tryOnRequest.leatherSuitId,
+            sourceImageUrl: sourceUpload.imageUrl,
+            sourceDeleteUrl: sourceUpload.deleteUrl ?? null,
+            sourceImageId: sourceUpload.imageId ?? null,
+            reviewStatus: null,
+            shareVisible: false,
+            slideshowEligible: false,
+            lastError: null,
+          });
+
           await upsertSubmissionTryOnLink(
             db,
-            new ObjectId(submissionId),
+            submissionObjectId,
             buildSubmissionTryOnLink(
               linkedJob.job,
               linkedJob.deduplicated ? linkedJob.job.status : 'queued',
               linkedJob.job.result.publicResultUrl ?? null
             )
           );
+
+          await patchSubmissionTryOnState(db, submissionObjectId, {
+            status: linkedJob.deduplicated ? linkedJob.job.status : 'queued',
+            requested: true,
+            requestedAt: createdAt,
+            leatherSuitId: tryOnRequest.leatherSuitId,
+            jobId: linkedJob.job.jobId,
+            sourceImageUrl: sourceUpload.imageUrl,
+            sourceDeleteUrl: sourceUpload.deleteUrl ?? null,
+            sourceImageId: sourceUpload.imageId ?? null,
+            resultUrl: linkedJob.job.result.publicResultUrl ?? null,
+            resultDeleteUrl: linkedJob.job.result.imgbbDeleteUrl ?? null,
+            resultProvider: linkedJob.job.result.provider ?? null,
+            reviewStatus: null,
+            shareVisible: false,
+            slideshowEligible: false,
+            lastError: null,
+          });
         }
 
         created.tryOn.status = linkedJob.deduplicated ? 'deduplicated' : 'queued';
@@ -307,6 +389,19 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         created.tryOn.status = 'enqueue_failed';
         created.tryOn.error =
           tryOnError instanceof Error ? tryOnError.message : 'Unable to enqueue try-on job';
+
+        if (ObjectId.isValid(submissionId)) {
+          await patchSubmissionTryOnState(db, new ObjectId(submissionId), {
+            status: 'enqueue_failed',
+            requested: true,
+            requestedAt: createdAt,
+            leatherSuitId: tryOnRequest.leatherSuitId,
+            reviewStatus: null,
+            shareVisible: false,
+            slideshowEligible: false,
+            lastError: created.tryOn.error,
+          });
+        }
       }
     }
 

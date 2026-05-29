@@ -7,6 +7,7 @@ import {
   heartbeatTryOnJob,
   markTryOnJobDone,
   markTryOnJobStage,
+  patchSubmissionTryOnState,
   recoverStaleTryOnJobs,
   scheduleTryOnRetryOrFailure,
   getTryOnJobByJobId,
@@ -122,6 +123,24 @@ export async function runTryOnWorkerOnce(config: WorkerRuntimeConfig): Promise<v
       const submissionObjectId = freshJob.source.submissionId;
       const { ObjectId } = await import('mongodb');
       if (ObjectId.isValid(submissionObjectId)) {
+        await patchSubmissionTryOnState(
+          db,
+          new ObjectId(submissionObjectId),
+          {
+            status: 'done',
+            requested: true,
+            leatherSuitId: freshJob.request.leatherSuitId,
+            jobId: freshJob.jobId,
+            sourceImageUrl: freshJob.source.imageUrl,
+            resultUrl: upload.imageUrl,
+            resultDeleteUrl: upload.deleteUrl ?? null,
+            resultProvider: 'imgbb',
+            reviewStatus: 'pending_review',
+            shareVisible: false,
+            slideshowEligible: false,
+            lastError: null,
+          }
+        );
         await upsertSubmissionTryOnLink(
           db,
           new ObjectId(submissionObjectId),
@@ -152,6 +171,29 @@ export async function runTryOnWorkerOnce(config: WorkerRuntimeConfig): Promise<v
       },
       config.maxAttempts
     );
+    if (job.source.submissionId) {
+      const { ObjectId } = await import('mongodb');
+      if (ObjectId.isValid(job.source.submissionId)) {
+        await patchSubmissionTryOnState(
+          db,
+          new ObjectId(job.source.submissionId),
+          {
+            status: outcome,
+            requested: true,
+            leatherSuitId: freshJob.request.leatherSuitId,
+            jobId: freshJob.jobId,
+            sourceImageUrl: freshJob.source.imageUrl,
+            resultUrl: freshJob.result.publicResultUrl ?? null,
+            resultDeleteUrl: freshJob.result.imgbbDeleteUrl ?? null,
+            resultProvider: freshJob.result.provider ?? null,
+            reviewStatus: null,
+            shareVisible: false,
+            slideshowEligible: false,
+            lastError: classified.message,
+          }
+        );
+      }
+    }
     await archiveTryOnWorkspace(env.queueRoot, job.jobId, 'failed').catch(() => {});
     await writeTryOnLog(env.queueRoot, {
       ts: new Date().toISOString(),

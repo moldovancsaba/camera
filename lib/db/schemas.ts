@@ -514,6 +514,39 @@ export interface UserConsent {
   acceptedAt: string;          // ISO 8601 timestamp when user checked the box
 }
 
+export type SubmissionTryOnRequestStatus =
+  | 'not_requested'
+  | 'requested'
+  | 'source_uploaded'
+  | 'queued'
+  | 'claimed'
+  | 'processing'
+  | 'uploading_result'
+  | 'retry_wait'
+  | 'done'
+  | 'failed'
+  | 'deduplicated'
+  | 'enqueue_failed';
+
+export interface SubmissionTryOnRequestState {
+  requested: boolean;
+  status: SubmissionTryOnRequestStatus;
+  requestedAt?: string | null;
+  lastUpdatedAt: string;
+  leatherSuitId?: string | null;
+  jobId?: string | null;
+  sourceImageUrl?: string | null;
+  sourceDeleteUrl?: string | null;
+  sourceImageId?: string | null;
+  resultUrl?: string | null;
+  resultDeleteUrl?: string | null;
+  resultProvider?: 'imgbb' | null;
+  reviewStatus?: 'pending_review' | 'approved' | 'rejected' | null;
+  shareVisible?: boolean;
+  slideshowEligible?: boolean;
+  lastError?: string | null;
+}
+
 /**
  * Submission Document Interface
  * Represents a user photo submission with complete metadata
@@ -559,6 +592,7 @@ export interface Submission {
   tryOnLeatherSuitId?: string | null; // Canonical leather suit selection used for generation
   tryOnPipeline?: string | null;     // Processor pipeline name
   tryOnPipelineVersion?: string | null; // Processor pipeline version for debugging/audit
+  tryOnRequest?: SubmissionTryOnRequestState | null; // Original-submission try-on intent and lifecycle tracking
   reviewStatus?: 'pending_review' | 'approved' | 'rejected'; // Moderation status for generated try-on results
   reviewedAt?: string | null;
   reviewedBy?: string | null;

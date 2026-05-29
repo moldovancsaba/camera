@@ -2,6 +2,8 @@ import type { Db, ObjectId, WithId } from 'mongodb';
 import {
   COLLECTIONS,
   type Submission,
+  type SubmissionTryOnRequestState,
+  type SubmissionTryOnRequestStatus,
   type SubmissionTryOnLink,
   type TryOnJob,
   type TryOnJobError,
@@ -34,6 +36,24 @@ export interface WorkerRuntimeConfig {
   pollIntervalSeconds: number;
   leaseDurationSeconds: number;
   maxAttempts: number;
+}
+
+export interface SubmissionTryOnStatePatch {
+  requested?: boolean;
+  status: SubmissionTryOnRequestStatus;
+  requestedAt?: string | null;
+  leatherSuitId?: string | null;
+  jobId?: string | null;
+  sourceImageUrl?: string | null;
+  sourceDeleteUrl?: string | null;
+  sourceImageId?: string | null;
+  resultUrl?: string | null;
+  resultDeleteUrl?: string | null;
+  resultProvider?: 'imgbb' | null;
+  reviewStatus?: 'pending_review' | 'approved' | 'rejected' | null;
+  shareVisible?: boolean;
+  slideshowEligible?: boolean;
+  lastError?: string | null;
 }
 
 export function buildQueuedTryOnJob(input: CreateTryOnJobInput): TryOnJob {
@@ -153,6 +173,36 @@ export async function upsertSubmissionTryOnLink(
         tryOnJobs: link,
       },
     }
+  );
+}
+
+export async function patchSubmissionTryOnState(
+  db: Db,
+  submissionObjectId: ObjectId,
+  patch: SubmissionTryOnStatePatch
+): Promise<void> {
+  const next: SubmissionTryOnRequestState = {
+    requested: patch.requested ?? true,
+    status: patch.status,
+    requestedAt: patch.requestedAt ?? null,
+    lastUpdatedAt: nowIso(),
+    leatherSuitId: patch.leatherSuitId ?? null,
+    jobId: patch.jobId ?? null,
+    sourceImageUrl: patch.sourceImageUrl ?? null,
+    sourceDeleteUrl: patch.sourceDeleteUrl ?? null,
+    sourceImageId: patch.sourceImageId ?? null,
+    resultUrl: patch.resultUrl ?? null,
+    resultDeleteUrl: patch.resultDeleteUrl ?? null,
+    resultProvider: patch.resultProvider ?? null,
+    reviewStatus: patch.reviewStatus ?? null,
+    shareVisible: patch.shareVisible ?? false,
+    slideshowEligible: patch.slideshowEligible ?? false,
+    lastError: patch.lastError ?? null,
+  };
+
+  await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
+    { _id: submissionObjectId },
+    { $set: { tryOnRequest: next, updatedAt: next.lastUpdatedAt } }
   );
 }
 

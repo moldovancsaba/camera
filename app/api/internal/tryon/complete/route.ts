@@ -8,6 +8,7 @@ import {
   buildTryOnPublicationSummary,
   upsertSubmissionTryOnPublicationLink,
 } from '@/lib/tryon/publication';
+import { patchSubmissionTryOnState } from '@/lib/tryon/jobs';
 import { nowIso } from '@/lib/tryon/time';
 
 interface CompletionPayload {
@@ -97,6 +98,22 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   );
 
   if (existingDerived?._id) {
+    await patchSubmissionTryOnState(db, sourceSubmissionObjectId, {
+      status: 'done',
+      requested: true,
+      leatherSuitId: job.request.leatherSuitId,
+      jobId,
+      sourceImageUrl: job.source.imageUrl,
+      resultUrl: typeof existingDerived.imageUrl === 'string' ? existingDerived.imageUrl : publicResultUrl,
+      resultDeleteUrl: body.deleteUrl ?? null,
+      resultProvider: 'imgbb',
+      reviewStatus:
+        (existingDerived.reviewStatus as 'pending_review' | 'approved' | 'rejected' | undefined) ?? 'pending_review',
+      shareVisible: Boolean(existingDerived.isShareVisible),
+      slideshowEligible: Boolean(existingDerived.isSlideshowEligible),
+      lastError: null,
+    });
+
     await upsertSubmissionTryOnPublicationLink(
       db,
       sourceSubmissionObjectId,
@@ -136,6 +153,21 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const insertResult = await db
     .collection<Submission>(COLLECTIONS.SUBMISSIONS)
     .insertOne(derivedSubmission);
+
+  await patchSubmissionTryOnState(db, sourceSubmissionObjectId, {
+    status: 'done',
+    requested: true,
+    leatherSuitId: job.request.leatherSuitId,
+    jobId,
+    sourceImageUrl: job.source.imageUrl,
+    resultUrl: publicResultUrl,
+    resultDeleteUrl: body.deleteUrl ?? null,
+    resultProvider: 'imgbb',
+    reviewStatus: 'pending_review',
+    shareVisible: false,
+    slideshowEligible: false,
+    lastError: null,
+  });
 
   await upsertSubmissionTryOnPublicationLink(
     db,

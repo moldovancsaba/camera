@@ -54,6 +54,58 @@ function visibilityLabel(row: ModerationRow) {
   return `Share: ${row.isShareVisible ? 'Visible' : 'Hidden'} · Slideshow: ${row.isSlideshowEligible ? 'Eligible' : 'Hidden'}`;
 }
 
+function PreviewImage({
+  src,
+  alt,
+  width,
+  height,
+}: {
+  src: string | null | undefined;
+  alt: string;
+  width: number;
+  height: number;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (!src || failed) {
+    return (
+      <div
+        style={{
+          width,
+          height,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 12,
+          textAlign: 'center',
+          color: 'var(--mantine-color-gray-6)',
+          background: 'linear-gradient(180deg, var(--mantine-color-gray-0), var(--mantine-color-gray-1))',
+        }}
+      >
+        <Stack gap={2} align="center">
+          <Text fw={700} size="xs" c="dimmed">
+            Preview unavailable
+          </Text>
+          <Text size="10px" c="dimmed">
+            External image missing
+          </Text>
+        </Stack>
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      unoptimized
+      style={{ objectFit: 'cover' }}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function PreviewStrip({
   row,
   clickable,
@@ -76,7 +128,7 @@ function PreviewStrip({
           flexShrink: 0,
         }}
       >
-        <Image src={row.imageUrl} alt="Generated try-on result" fill unoptimized style={{ objectFit: 'cover' }} />
+        <PreviewImage src={row.imageUrl} alt="Generated try-on result" width={96} height={96} />
       </div>
       {row.originalImageUrl ? (
         <div
@@ -90,7 +142,7 @@ function PreviewStrip({
             flexShrink: 0,
           }}
         >
-          <Image src={row.originalImageUrl} alt="Original camera result" fill unoptimized style={{ objectFit: 'cover' }} />
+          <PreviewImage src={row.originalImageUrl} alt="Original camera result" width={72} height={72} />
         </div>
       ) : null}
     </Group>
