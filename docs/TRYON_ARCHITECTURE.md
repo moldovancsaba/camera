@@ -110,6 +110,15 @@ Admin moderation queue for generated try-on results.
 - default view shows only live moderation items
 - `?archive=approved` shows approved items archived out of the active queue
 - `?archive=rejected` shows rejected items archived out of the active queue
+- supported filters:
+  - `reviewStatus=pending_review|approved|rejected`
+  - `partnerId=<partnerId>`
+  - `eventId=<eventId>`
+  - `suitId=<leatherSuitId>`
+- pagination contract:
+  - `page=<n>` (default `1`)
+  - `limit=<n>` (default `50`, max `100`)
+  - response includes `pagination: { page, limit, total, pages }`
 
 ### `POST /api/admin/tryon-jobs/[jobId]/retry`
 
@@ -123,7 +132,7 @@ Admin catalog surface for selectable leather jerseys.
 
 Publishes an approved generated result to:
 - the source submission share family
-- slideshow playlists when the slideshow source mode includes approved try-on results
+- slideshow playlists only when the event-level try-on policy allows approved result publication
 - archives the moderation record out of the active vetting queue
 
 ### `POST /api/admin/tryon-results/[submissionId]/reject`

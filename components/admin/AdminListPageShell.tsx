@@ -61,47 +61,57 @@ export default function AdminListPageShell({
       ) : null}
 
       {search ? (
-        <GdsDataToolbar
-          searchSlot={
-            <Stack gap="md" style={{ flex: 1 }}>
-              <Group align="flex-end" wrap="wrap" gap="md" style={{ flex: 1 }}>
-                <form style={{ flex: 1, minWidth: 240 }}>
-                  <Group align="flex-end" wrap="wrap">
-                    <TextInput
-                      name="search"
-                      defaultValue={search.defaultValue}
-                      label={search.label}
-                      placeholder={search.placeholder}
-                      leftSection={<AdminIcon iconKey="search" size={16} />}
-                      style={{ flex: 1, minWidth: 220 }}
-                    />
-                    {search.hiddenFields
-                      ? Object.entries(search.hiddenFields).map(([name, value]) => (
-                          <input key={name} type="hidden" name={name} value={value} />
-                        ))
-                      : null}
-                    <Button type="submit" color="cameraTeal">
-                      Search
-                    </Button>
-                    {search.defaultValue || toolbarFilters?.length ? (
-                      <Button component={Link} href={search.clearHref} variant="default">
-                        Clear
+        <Stack gap="xs">
+          {toolbarHint ? (
+            <Group>
+              <AdminIcon iconKey="search" size={16} />
+              <span style={{ fontSize: 'var(--mantine-font-size-sm)', color: 'var(--mantine-color-dimmed)' }}>
+                {toolbarHint}
+              </span>
+            </Group>
+          ) : null}
+          <GdsDataToolbar
+            searchSlot={
+              <Stack gap="md" style={{ flex: 1 }}>
+                <Group align="flex-end" wrap="wrap" gap="md" style={{ flex: 1 }}>
+                  <form style={{ flex: 1, minWidth: 240 }}>
+                    <Group align="flex-end" wrap="wrap">
+                      <TextInput
+                        name="search"
+                        defaultValue={search.defaultValue}
+                        label={search.label}
+                        placeholder={search.placeholder}
+                        leftSection={<AdminIcon iconKey="search" size={16} />}
+                        style={{ flex: 1, minWidth: 220 }}
+                      />
+                      {search.hiddenFields
+                        ? Object.entries(search.hiddenFields).map(([name, value]) => (
+                            <input key={name} type="hidden" name={name} value={value} />
+                          ))
+                        : null}
+                      <Button type="submit" color="cameraTeal">
+                        Search
                       </Button>
-                    ) : null}
-                  </Group>
-                </form>
-              </Group>
-            </Stack>
-          }
-          activeFilters={toolbarFilters?.map((chip) => ({ label: `${chip.label}: ${chip.value}` }))}
-          createAction={
-            toolbarTrailing ? (
-              <Button component={Link} href={toolbarTrailing.href} variant="light" color="cameraTeal">
-                {toolbarTrailing.label}
-              </Button>
-            ) : undefined
-          }
-        />
+                      {search.defaultValue || toolbarFilters?.length ? (
+                        <Button component={Link} href={search.clearHref} variant="default">
+                          Clear
+                        </Button>
+                      ) : null}
+                    </Group>
+                  </form>
+                </Group>
+              </Stack>
+            }
+            activeFilters={toolbarFilters?.map((chip) => ({ label: `${chip.label}: ${chip.value}` }))}
+            createAction={
+              toolbarTrailing ? (
+                <Button component={Link} href={toolbarTrailing.href} variant="light" color="cameraTeal">
+                  {toolbarTrailing.label}
+                </Button>
+              ) : undefined
+            }
+          />
+        </Stack>
       ) : null}
 
       {dbError ? <DatabaseConnectionAlert diagnosis={dbError} /> : null}
