@@ -16,6 +16,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const archive = searchParams.get('archive')?.trim();
   const eventId = searchParams.get('eventId')?.trim();
   const partnerId = searchParams.get('partnerId')?.trim();
+  const suitId = searchParams.get('suitId')?.trim();
+  const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10) || 1);
   const limit = Math.max(1, Math.min(100, Number.parseInt(searchParams.get('limit') || '50', 10) || 50));
 
   const query: Record<string, unknown> = {
@@ -38,12 +40,17 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   if (partnerId) {
     query.partnerId = partnerId;
   }
+  if (suitId) {
+    query.tryOnLeatherSuitId = suitId;
+  }
 
   const db = await connectToDatabase();
+  const total = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments(query);
   const docs = (await db
     .collection<Submission>(COLLECTIONS.SUBMISSIONS)
     .find(query)
     .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
     .limit(limit)
     .toArray()) as Array<Submission & { _id: ObjectId }>;
 
@@ -84,5 +91,11 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         isSlideshowEligible: Boolean(doc.isSlideshowEligible),
       };
     }),
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+    },
   });
 });

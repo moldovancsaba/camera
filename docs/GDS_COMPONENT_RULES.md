@@ -6,7 +6,7 @@ These rules define how Mantine-backed GDS primitives should be introduced and us
 
 Current SSOT alignment target:
 
-- GDS version: `2.6.1`
+- GDS version: `2.6.4`
 - Camera aligns to the shared contracts through the published `@doneisbetter/*` npm packages plus temporary local adapters where coverage or compatibility is still incomplete
 
 Compliance artifact:

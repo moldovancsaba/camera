@@ -226,6 +226,8 @@ export interface Event {
   tryOn?: {
     enabled: boolean;                // Whether local AI try-on can be requested from capture flows
     allowedLeatherSuitIds?: string[]; // Optional allowlist for the public suit picker
+    includeApprovedResultsInSlideshows?: boolean; // Legacy/publication flag mirrored from resultSlideshowMode
+    resultSlideshowMode?: 'disabled' | 'mixed_with_originals' | 'approved_results_only'; // Event policy for approved try-on slideshow publication
   };
   
   // Frame assignments

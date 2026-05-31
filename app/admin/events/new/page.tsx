@@ -30,6 +30,7 @@ import { StateBlock } from '@doneisbetter/gds-core/client';
 import EditorScaffold from '@/components/gds/EditorScaffold';
 import MediaCard from '@/components/media/MediaPreviewCard';
 import type { TryOnSuitOption } from '@/lib/tryon/suits';
+import type { EventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 
 interface PartnerOption {
   _id: string;
@@ -61,6 +62,8 @@ export default function NewEventPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
+  const [resultSlideshowMode, setResultSlideshowMode] =
+    useState<EventTryOnResultSlideshowMode>('disabled');
   const [suitOptions, setSuitOptions] = useState<TryOnSuitOption[]>([]);
   const [selectedSuitIds, setSelectedSuitIds] = useState<string[]>([]);
 
@@ -176,6 +179,8 @@ export default function NewEventPage() {
       tryOn: {
         enabled: tryOnEnabled,
         allowedLeatherSuitIds: selectedSuitIds,
+        includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
+        resultSlideshowMode,
       },
     };
 
@@ -323,8 +328,28 @@ export default function NewEventPage() {
             </Group>
             <Checkbox
               checked={tryOnEnabled}
-              onChange={(event) => setTryOnEnabled(event.currentTarget.checked)}
+              onChange={(event) => {
+                const checked = event.currentTarget.checked;
+                setTryOnEnabled(checked);
+                if (!checked) {
+                  setResultSlideshowMode('disabled');
+                }
+              }}
               label="Enable local AI leather try-on for this event"
+            />
+            <Select
+              label="Approved result slideshow publication"
+              description="Control whether approved try-on results are hidden, mixed with originals, or result-only in slideshow playlists for this event."
+              data={[
+                { value: 'disabled', label: 'Disabled (approved results hidden from slideshows)' },
+                { value: 'mixed_with_originals', label: 'Mixed with originals' },
+                { value: 'approved_results_only', label: 'Approved results only' },
+              ]}
+              value={resultSlideshowMode}
+              disabled={!tryOnEnabled}
+              onChange={(value) =>
+                setResultSlideshowMode((value as EventTryOnResultSlideshowMode) || 'disabled')
+              }
             />
             <Select
               label="Allowed leather jerseys"

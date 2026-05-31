@@ -10,6 +10,7 @@ import {
 } from '@/lib/tryon/publication';
 import { patchSubmissionTryOnState } from '@/lib/tryon/jobs';
 import { nowIso } from '@/lib/tryon/time';
+import { shouldApprovedTryOnBeSlideshowEligible } from '@/lib/tryon/slideshow-policy';
 
 export const POST = withErrorHandler(async (
   request: NextRequest,
@@ -38,6 +39,33 @@ export const POST = withErrorHandler(async (
     throw apiBadRequest('Try-on result is missing a valid source submission');
   }
 
+  const sourceSubmission = await db
+    .collection<Submission>(COLLECTIONS.SUBMISSIONS)
+    .findOne({ _id: new ObjectId(resultSubmission.sourceSubmissionId) });
+  const eventRef = resultSubmission.eventId || sourceSubmission?.eventId || null;
+  const eventQuery: Record<string, unknown>[] = [];
+  if (eventRef) {
+    eventQuery.push({ eventId: eventRef });
+    if (ObjectId.isValid(eventRef)) {
+      eventQuery.push({ _id: new ObjectId(eventRef) });
+    }
+  }
+  const eventPolicy =
+    eventQuery.length > 0
+      ? await db.collection(COLLECTIONS.EVENTS).findOne({ $or: eventQuery })
+      : null;
+  const slideshowEligible = shouldApprovedTryOnBeSlideshowEligible(
+    eventPolicy as
+      | {
+          tryOn?: {
+            enabled?: boolean;
+            includeApprovedResultsInSlideshows?: boolean;
+            resultSlideshowMode?: unknown;
+          };
+        }
+      | null
+  );
+
   const now = nowIso();
   await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
     { _id: new ObjectId(submissionId) },
@@ -50,7 +78,7 @@ export const POST = withErrorHandler(async (
         approvedAt: now,
         approvedBy: session.user.email,
         isShareVisible: true,
-        isSlideshowEligible: true,
+        isSlideshowEligible: slideshowEligible,
         tryOnModerationArchive: {
           archived: true,
           bucket: 'approved',
@@ -72,7 +100,7 @@ export const POST = withErrorHandler(async (
       resultSubmission.imageUrl ?? resultSubmission.finalImageUrl ?? null,
       'approved',
       true,
-      true
+      slideshowEligible
     )
   );
 
@@ -84,7 +112,7 @@ export const POST = withErrorHandler(async (
     resultUrl: resultSubmission.imageUrl ?? resultSubmission.finalImageUrl ?? null,
     reviewStatus: 'approved',
     shareVisible: true,
-    slideshowEligible: true,
+    slideshowEligible,
     lastError: null,
   });
 

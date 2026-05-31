@@ -26,6 +26,7 @@ import {
   isGlobalAdminSession,
   listAccessiblePartnerIds,
 } from '@/lib/partners/authorization';
+import { normalizeEventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 
 /**
  * GET /api/events
@@ -164,6 +165,13 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   // frames/logos inherit from partner defaults
   // customPages starts empty; pages can be added later via PATCH
   const now = generateTimestamp();
+  const resultSlideshowMode = normalizeEventTryOnResultSlideshowMode({
+    tryOn: {
+      enabled: Boolean(tryOn?.enabled),
+      includeApprovedResultsInSlideshows: Boolean(tryOn?.includeApprovedResultsInSlideshows),
+      resultSlideshowMode: tryOn?.resultSlideshowMode,
+    },
+  });
   const event = {
     eventId: generateId(),
     name: name.trim(),
@@ -191,6 +199,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
             .filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
             .map((value: string) => value.trim())
         : [],
+      includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
+      resultSlideshowMode,
     },
     ...(resolvedShortSlug !== undefined ? { shortUrlSlug: resolvedShortSlug } : {}),
     submissionCount: 0,

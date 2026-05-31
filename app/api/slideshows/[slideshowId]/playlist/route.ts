@@ -33,6 +33,7 @@ import {
   resolveSlideshowStageAspect,
   type SlideshowStageSource,
 } from '@/lib/slideshow/stage-aspect';
+import { resolveSubmissionSourceModeForSlideshow } from '@/lib/tryon/slideshow-policy';
 
 /** Playlist is personalized (random / instanceKey); never cache across clients or layout cells. */
 export const dynamic = 'force-dynamic';
@@ -126,12 +127,18 @@ export async function GET(
     }
 
     const eventIdKeys = submissionEventIdKeys(event as Event);
-    const submissionSourceMode =
-      slideshow.submissionSourceMode === 'approved_tryon_only'
-        ? 'approved_tryon_only'
-        : slideshow.submissionSourceMode === 'originals_and_approved_tryon'
-          ? 'originals_and_approved_tryon'
-          : 'originals_only';
+    const submissionSourceMode = resolveSubmissionSourceModeForSlideshow(
+      event as
+        | {
+            tryOn?: {
+              enabled?: boolean;
+              includeApprovedResultsInSlideshows?: boolean;
+              resultSlideshowMode?: unknown;
+            };
+          }
+        | null,
+      slideshow as { submissionSourceMode?: unknown }
+    );
 
     // Build match filter: event + optional exclude + archived/hidden + active users only
     const buildMatchFilter = (excludeOids: ObjectId[]) => {

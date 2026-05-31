@@ -23,6 +23,7 @@ import {
   RATE_LIMITS,
 } from '@/lib/api';
 import { normalizeGoShortSlugInput } from '@/lib/go-short-url';
+import { normalizeEventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 
 interface EventFrameDetails {
@@ -262,9 +263,18 @@ export const PATCH = withErrorHandler(async (
           .filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
           .map((value: string) => value.trim())
       : [];
+    const resultSlideshowMode = normalizeEventTryOnResultSlideshowMode({
+      tryOn: {
+        enabled: Boolean(tryOn?.enabled),
+        includeApprovedResultsInSlideshows: Boolean(tryOn?.includeApprovedResultsInSlideshows),
+        resultSlideshowMode: tryOn?.resultSlideshowMode,
+      },
+    });
     updateFields.tryOn = {
       enabled: Boolean(tryOn?.enabled),
       allowedLeatherSuitIds,
+      includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
+      resultSlideshowMode,
     };
   }
 

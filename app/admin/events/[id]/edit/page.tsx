@@ -40,6 +40,7 @@ import {
   CAMERA_DEFAULT_BRAND_COLOR,
 } from '@/lib/gds/tokens/colors';
 import type { TryOnSuitOption } from '@/lib/tryon/suits';
+import type { EventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 
 interface EventRecord {
   _id: string;
@@ -60,6 +61,8 @@ interface EventRecord {
   tryOn?: {
     enabled?: boolean;
     allowedLeatherSuitIds?: string[];
+    includeApprovedResultsInSlideshows?: boolean;
+    resultSlideshowMode?: EventTryOnResultSlideshowMode;
   };
 }
 
@@ -93,6 +96,8 @@ export default function EditEventPage({
   const [brandBorderColor, setBrandBorderColor] = useState(CAMERA_DEFAULT_BRAND_BORDER_COLOR);
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
+  const [resultSlideshowMode, setResultSlideshowMode] =
+    useState<EventTryOnResultSlideshowMode>('disabled');
   const [suitOptions, setSuitOptions] = useState<TryOnSuitOption[]>([]);
   const [selectedSuitIds, setSelectedSuitIds] = useState<string[]>([]);
 
@@ -123,6 +128,10 @@ export default function EditEventPage({
         setBrandColor(eventData.brandColor || CAMERA_DEFAULT_BRAND_COLOR);
         setBrandBorderColor(eventData.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR);
         setTryOnEnabled(Boolean(eventData.tryOn?.enabled));
+        setResultSlideshowMode(
+          eventData.tryOn?.resultSlideshowMode ||
+            (eventData.tryOn?.includeApprovedResultsInSlideshows ? 'mixed_with_originals' : 'disabled')
+        );
         setSelectedSuitIds(
           Array.isArray(eventData.tryOn?.allowedLeatherSuitIds)
             ? eventData.tryOn.allowedLeatherSuitIds
@@ -232,6 +241,8 @@ export default function EditEventPage({
       tryOn: {
         enabled: tryOnEnabled,
         allowedLeatherSuitIds: selectedSuitIds,
+        includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
+        resultSlideshowMode,
       },
     };
 
@@ -436,8 +447,28 @@ export default function EditEventPage({
             </Group>
             <Checkbox
               checked={tryOnEnabled}
-              onChange={(nextEvent) => setTryOnEnabled(nextEvent.currentTarget.checked)}
+              onChange={(nextEvent) => {
+                const checked = nextEvent.currentTarget.checked;
+                setTryOnEnabled(checked);
+                if (!checked) {
+                  setResultSlideshowMode('disabled');
+                }
+              }}
               label="Enable local AI leather try-on for this event"
+            />
+            <Select
+              label="Approved result slideshow publication"
+              description="Control whether approved try-on results are hidden, mixed with originals, or result-only in slideshow playlists for this event."
+              data={[
+                { value: 'disabled', label: 'Disabled (approved results hidden from slideshows)' },
+                { value: 'mixed_with_originals', label: 'Mixed with originals' },
+                { value: 'approved_results_only', label: 'Approved results only' },
+              ]}
+              value={resultSlideshowMode}
+              disabled={!tryOnEnabled}
+              onChange={(value) =>
+                setResultSlideshowMode((value as EventTryOnResultSlideshowMode) || 'disabled')
+              }
             />
             <Select
               label="Allowed leather jerseys"
