@@ -6,7 +6,6 @@
  */
 
 import { getSession } from '@/lib/auth/session';
-import { APP_VERSION } from '@/lib/app-version';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import { AuthShell } from '@doneisbetter/gds-core/server';
 import { Button, Stack, Text } from '@mantine/core';
@@ -68,14 +67,6 @@ export default async function Home({
       intent="sign-in"
       error={signInError}
       helper={session ? `Logged in as ${session.user.email}` : null}
-      footer={
-        <Stack gap={4} align="center">
-          <Text size="sm">Google / Facebook via SSO | MongoDB Atlas | imgbb</Text>
-          <Text size="xs" ff="monospace">
-            v{APP_VERSION}
-          </Text>
-        </Stack>
-      }
     >
       <Stack align="center" gap="md" w="100%">
         {session ? (
