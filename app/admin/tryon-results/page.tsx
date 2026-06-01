@@ -9,6 +9,7 @@ import TryOnResultModerationTable, { type ModerationRow } from '@/components/adm
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import { ConsumerDashboardGrid, ProductCard } from '@doneisbetter/gds-core/client';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
+import { normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,8 +108,14 @@ export default async function AdminTryOnResultsPage({
       const source = doc.sourceSubmissionId ? sourceMap.get(doc.sourceSubmissionId) : undefined;
       return {
         id: doc._id.toString(),
-        imageUrl: doc.imageUrl ?? doc.finalImageUrl,
-        originalImageUrl: source?.imageUrl ?? source?.finalImageUrl ?? null,
+        imageUrl:
+          normalizeImgbbDirectUrl(doc.imageUrl ?? null) ??
+          normalizeImgbbDirectUrl(doc.finalImageUrl ?? null) ??
+          '',
+        originalImageUrl:
+          normalizeImgbbDirectUrl(source?.imageUrl ?? null) ??
+          normalizeImgbbDirectUrl(source?.finalImageUrl ?? null) ??
+          null,
         userName: doc.userName ?? 'Guest',
         userEmail: doc.userEmail ?? '',
         eventName: doc.eventName ?? null,

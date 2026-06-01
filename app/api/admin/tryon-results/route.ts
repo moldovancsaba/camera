@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { requireAuth, apiForbidden, apiSuccess, withErrorHandler } from '@/lib/api';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
+import { normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
 
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const session = await requireAuth(request);
@@ -78,8 +79,13 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         sourceSubmissionId: doc.sourceSubmissionId ?? null,
         sourceJobId: doc.sourceJobId ?? null,
         reviewStatus: doc.reviewStatus ?? 'pending_review',
-        imageUrl: doc.imageUrl ?? doc.finalImageUrl ?? '',
-        originalImageUrl: source?.imageUrl ?? source?.finalImageUrl ?? null,
+        imageUrl:
+          normalizeImgbbDirectUrl(doc.imageUrl ?? null) ??
+          normalizeImgbbDirectUrl(doc.finalImageUrl ?? null) ??
+          '',
+        originalImageUrl:
+          normalizeImgbbDirectUrl(source?.imageUrl ?? null) ??
+          normalizeImgbbDirectUrl(source?.finalImageUrl ?? null),
         userName: doc.userName ?? 'Guest',
         userEmail: doc.userEmail ?? '',
         eventName: doc.eventName ?? null,

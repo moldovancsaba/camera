@@ -10,6 +10,7 @@ import {
 } from '@/lib/tryon/publication';
 import { patchSubmissionTryOnState } from '@/lib/tryon/jobs';
 import { nowIso } from '@/lib/tryon/time';
+import { normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
 
 interface CompletionPayload {
   jobId?: string;
@@ -41,13 +42,13 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   assertInternalTryOnSecret(request);
   const body = (await request.json()) as CompletionPayload;
   const jobId = body.jobId?.trim();
-  const publicResultUrl = body.publicResultUrl?.trim();
+  const publicResultUrl = normalizeImgbbDirectUrl(body.publicResultUrl?.trim() ?? null);
 
   if (!jobId) {
     throw apiBadRequest('jobId is required');
   }
   if (!publicResultUrl) {
-    throw apiBadRequest('publicResultUrl is required');
+    throw apiBadRequest('publicResultUrl must be a valid direct i.ibb.co image URL');
   }
 
   const db = await connectToDatabase();

@@ -10,10 +10,21 @@ const E2E_PARTNER_NAME = 'E2E Partner';
 const E2E_EVENT_ID = 'e2e-event';
 const E2E_EVENT_NAME = 'E2E Event Instance';
 
-export async function POST() {
+export async function POST(request: Request) {
   const blocked = blockDangerousApiInProduction();
   if (blocked) {
     return blocked;
+  }
+
+  const url = new URL(request.url);
+  const hostname = url.hostname.toLowerCase();
+  const isLocalHost =
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname.endsWith('.local');
+  if (!isLocalHost && process.env.ALLOW_DANGEROUS_DEV_ROUTES !== 'true') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
   const db = await connectToDatabase();

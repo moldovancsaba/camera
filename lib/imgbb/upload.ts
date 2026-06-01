@@ -13,6 +13,7 @@
  */
 
 import axios, { AxiosError } from 'axios';
+import { isRenderableImgbbImageUrl, normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
 
 const IMGBB_UPLOAD_URL = 'https://api.imgbb.com/1/upload';
 
@@ -76,6 +77,7 @@ export interface UploadOptions {
   expiration?: number;     // Expiration time in seconds (60-15552000)
   maxRetries?: number;     // Maximum number of retry attempts (default: 3)
   retryDelay?: number;     // Delay between retries in ms (default: 1000)
+  validatePublicUrl?: boolean; // Validate final URL before returning (default: true)
 }
 
 /**
@@ -90,6 +92,36 @@ export interface UploadResult {
   fileSize: number;        // File size in bytes
   mimeType: string;        // MIME type (e.g., "image/jpeg")
   fileName: string;        // Original filename
+}
+
+function collectUrlCandidates(payload: ImgbbUploadResponse['data']): string[] {
+  return [
+    payload.url,
+    payload.image?.url,
+    payload.display_url,
+    payload.medium?.url,
+    payload.thumb?.url,
+  ]
+    .map((value) => normalizeImgbbDirectUrl(value ?? null))
+    .filter((value): value is string => Boolean(value));
+}
+
+async function canFetchImage(url: string): Promise<boolean> {
+  try {
+    const response = await axios.get(url, {
+      timeout: 10000,
+      responseType: 'stream',
+      headers: {
+        Range: 'bytes=0-0',
+        Accept: 'image/*',
+      },
+      validateStatus: (status) => status >= 200 && status < 400,
+    });
+    response.data?.destroy?.();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -126,6 +158,7 @@ export async function uploadImage(
     expiration,
     maxRetries = 3,
     retryDelay = 1000,
+    validatePublicUrl = true,
   } = options;
 
   // Convert image to base64 if it's a File or Blob
@@ -140,17 +173,6 @@ export async function uploadImage(
   // Get API key (lazy validation)
   const apiKey = getImgbbApiKey();
 
-  // Prepare form data
-  const formData = new FormData();
-  formData.append('key', apiKey);
-  formData.append('image', base64Image);
-  if (name) {
-    formData.append('name', name);
-  }
-  if (expiration) {
-    formData.append('expiration', expiration.toString());
-  }
-
   let lastError: Error | null = null;
   
   // Retry loop
@@ -158,6 +180,17 @@ export async function uploadImage(
     try {
       console.log(`imgbb upload attempt ${attempt}/${maxRetries}...`);
       
+      // Create a fresh form body each attempt; multipart streams are single-use.
+      const formData = new FormData();
+      formData.append('key', apiKey);
+      formData.append('image', base64Image);
+      if (name) {
+        formData.append('name', name);
+      }
+      if (expiration) {
+        formData.append('expiration', expiration.toString());
+      }
+
       const response = await axios.post<ImgbbUploadResponse>(
         IMGBB_UPLOAD_URL,
         formData,
@@ -171,20 +204,37 @@ export async function uploadImage(
 
       // Successful upload
       if (response.data.success) {
-        console.log('✓ imgbb upload successful:', response.data.data.id);
-        console.log('imgbb ALL URLs:');
-        console.log('  url:', response.data.data.url);
-        console.log('  display_url:', response.data.data.display_url);
-        console.log('  image.url:', response.data.data.image.url);
-        console.log('  url_viewer:', response.data.data.url_viewer);
-        if (response.data.data.medium) {
-          console.log('  medium.url:', response.data.data.medium.url);
+        const candidates = collectUrlCandidates(response.data.data);
+        const imageUrl =
+          candidates.find((value) => isRenderableImgbbImageUrl(value)) ?? null;
+        const thumbnailUrl =
+          normalizeImgbbDirectUrl(response.data.data.thumb?.url ?? null) ??
+          normalizeImgbbDirectUrl(response.data.data.medium?.url ?? null) ??
+          imageUrl;
+
+        if (!imageUrl || !thumbnailUrl) {
+          throw new Error('imgbb response did not contain a valid direct image URL');
         }
-        
+
+        if (validatePublicUrl) {
+          const preferred = [imageUrl, thumbnailUrl, ...candidates.filter((value) => value !== imageUrl && value !== thumbnailUrl)];
+          let validated = false;
+          for (const candidate of preferred) {
+            if (await canFetchImage(candidate)) {
+              validated = true;
+              break;
+            }
+          }
+          if (!validated) {
+            throw new Error('imgbb upload succeeded but direct image URL is not currently fetchable');
+          }
+        }
+
+        console.log('✓ imgbb upload successful:', response.data.data.id);
         return {
           success: true,
-          imageUrl: response.data.data.url, // Direct link to full-size original image
-          thumbnailUrl: response.data.data.thumb.url,
+          imageUrl,
+          thumbnailUrl,
           deleteUrl: response.data.data.delete_url,
           imageId: response.data.data.id,
           fileSize: response.data.data.image.size,
