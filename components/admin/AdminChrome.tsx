@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Box,
   Divider,
   Group,
   Stack,
@@ -152,7 +151,7 @@ export default function AdminChrome({
   );
 
   return (
-    <div data-camera-admin data-mantine-color-scheme="light">
+    <div data-camera-admin>
       <GdsAppShell
         logoText="Camera"
         headerContext="Admin Panel"
@@ -173,11 +172,8 @@ export default function AdminChrome({
         }
         primaryNavigation={primaryNavigation}
         accountPanel={accountPanel}
-        showThemeToggle={false}
       >
-        <Box bg="cameraSlate.0" style={{ minHeight: '100%' }}>
-          {children}
-        </Box>
+        {children}
       </GdsAppShell>
     </div>
   );
