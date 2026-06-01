@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ActionIcon, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { ActionIcon, Badge, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 
 interface Slideshow {
@@ -72,7 +72,7 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
           </Text>
         </div>
         <Link href={`/admin/events/${eventId}/slideshows/new`} style={{ textDecoration: 'none' }}>
-          <Button color="violet" leftSection={<IconPlus size={16} />}>
+          <Button leftSection={<IconPlus size={16} />}>
             New Slideshow
           </Button>
         </Link>
@@ -91,17 +91,16 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
       ) : (
         <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="lg" p="xl">
           {slideshows.map((slideshow) => (
-            <Card key={slideshow._id} withBorder radius="md" bg="var(--mantine-color-gray-0)">
+            <Card key={slideshow._id} withBorder radius="md">
               <Group justify="space-between" align="flex-start">
                 <div>
                   <Text fw={700}>{slideshow.name}</Text>
-                  <Text size="xs" mt={4} fw={700} c={slideshow.isActive ? 'green.7' : 'gray.6'}>
+                  <Badge mt={4} variant="light">
                     {slideshow.isActive ? '● Active' : '○ Inactive'}
-                  </Text>
+                  </Badge>
                 </div>
                 <ActionIcon
                   variant="subtle"
-                  color="red"
                   onClick={() => void handleDeleteSlideshow(slideshow._id)}
                   aria-label="Delete"
                 >
@@ -115,12 +114,12 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
 
               <Stack gap="sm" mt="md">
                 <Link href={`/admin/events/${eventId}/slideshows/${slideshow._id}`} style={{ textDecoration: 'none' }}>
-                  <Button fullWidth color="violet" leftSection={<IconPencil size={16} />}>
+                  <Button fullWidth leftSection={<IconPencil size={16} />}>
                     Edit slideshow
                   </Button>
                 </Link>
                 <Link href={`/slideshow/${slideshow.slideshowId}`} target="_blank" style={{ textDecoration: 'none' }}>
-                  <Button fullWidth color="dark" leftSection={<IconExternalLink size={16} />}>
+                  <Button fullWidth variant="light" leftSection={<IconExternalLink size={16} />}>
                     Open Slideshow
                   </Button>
                 </Link>

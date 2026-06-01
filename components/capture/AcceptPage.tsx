@@ -111,7 +111,7 @@ export default function AcceptPage({
         </Card>
 
         {error ? (
-          <Alert id="accept-error" color="red" role="alert">
+          <Alert id="accept-error" role="alert">
             {error}
           </Alert>
         ) : null}
@@ -119,7 +119,7 @@ export default function AcceptPage({
 
       <Group grow>
         {onBack ? (
-          <Button variant="light" color="gray" onClick={onBack} aria-label="Go back to previous page">
+          <Button variant="light" onClick={onBack} aria-label="Go back to previous page">
             Back
           </Button>
         ) : null}

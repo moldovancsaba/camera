@@ -12,7 +12,7 @@ import Image from 'next/image';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import PublicShell from '@/components/public/PublicPageShell';
-import { Button, Group, Stack, Text, Title } from '@mantine/core';
+import { Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { listApprovedShareVariants } from '@/lib/tryon/publication';
 
 interface Props {
@@ -226,7 +226,6 @@ export default async function SharePage({ params }: Props) {
           <div 
             style={{
               position: 'relative',
-              background: 'var(--mantine-color-gray-1)',
               borderRadius: 12,
               overflow: 'hidden',
               marginBottom: 16,
@@ -264,27 +263,17 @@ export default async function SharePage({ params }: Props) {
               <Text fw={700}>
                 {submission.submissionKind === 'tryon_result' ? 'Original and approved try-on results' : 'Approved try-on results'}
               </Text>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                  gap: '1rem',
-                }}
-              >
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
                 {sourceOriginalVariant ? (
-                  <a
+                  <Card
+                    component="a"
                     key={sourceOriginalVariant.id}
                     href={`/share/${sourceOriginalVariant.id}`}
-                    style={{
-                      textDecoration: 'none',
-                      color: 'inherit',
-                      border: '1px solid var(--mantine-color-gray-2)',
-                      borderRadius: 16,
-                      overflow: 'hidden',
-                      background: 'white',
-                    }}
+                    withBorder
+                    padding={0}
+                    style={{ textDecoration: 'none', color: 'inherit', overflow: 'hidden' }}
                   >
-                    <div style={{ position: 'relative', aspectRatio: '1', background: 'var(--mantine-color-gray-1)' }}>
+                    <div style={{ position: 'relative', aspectRatio: '1' }}>
                       <Image src={sourceOriginalVariant.imageUrl} alt={sourceOriginalVariant.label} fill unoptimized className="object-cover" />
                     </div>
                     <div style={{ padding: '0.875rem' }}>
@@ -292,22 +281,18 @@ export default async function SharePage({ params }: Props) {
                         {sourceOriginalVariant.label}
                       </Text>
                     </div>
-                  </a>
+                  </Card>
                 ) : null}
                 {shareVariants.map((variant) => (
-                  <a
+                  <Card
+                    component="a"
                     key={variant.id}
                     href={`/share/${variant.id}`}
-                    style={{
-                      textDecoration: 'none',
-                      color: 'inherit',
-                      border: '1px solid var(--mantine-color-gray-2)',
-                      borderRadius: 16,
-                      overflow: 'hidden',
-                      background: 'white',
-                    }}
+                    withBorder
+                    padding={0}
+                    style={{ textDecoration: 'none', color: 'inherit', overflow: 'hidden' }}
                   >
-                    <div style={{ position: 'relative', aspectRatio: '1', background: 'var(--mantine-color-gray-1)' }}>
+                    <div style={{ position: 'relative', aspectRatio: '1' }}>
                       <Image src={variant.imageUrl} alt={variant.label} fill unoptimized className="object-cover" />
                     </div>
                     <div style={{ padding: '0.875rem' }}>
@@ -315,9 +300,9 @@ export default async function SharePage({ params }: Props) {
                         {variant.label}
                       </Text>
                     </div>
-                  </a>
+                  </Card>
                 ))}
-              </div>
+              </SimpleGrid>
             </Stack>
           ) : null}
         </div>

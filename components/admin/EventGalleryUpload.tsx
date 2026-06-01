@@ -6,6 +6,18 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Alert,
+  Badge,
+  Box,
+  Button,
+  Card,
+  Group,
+  Paper,
+  ScrollArea,
+  Stack,
+  Text,
+} from '@mantine/core';
 
 interface Props {
   eventMongoId: string;
@@ -453,64 +465,66 @@ export default function EventGalleryUpload({
   const busy = pendingCount > 0;
 
   return (
-    <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50/80 dark:bg-gray-900/40 p-4">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">
+    <Card withBorder padding="md">
+      <Stack gap="md">
+        <Group align="flex-start" justify="space-between" gap="md">
+          <Stack gap={4}>
+            <Text size="sm" fw={700}>
               Add photos to this event
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            </Text>
+            <Text size="xs" c="dimmed">
               Drag and drop images, upload multiple files at once, or import a folder. Large files
               are resized/compressed in the browser to fit the current Vercel upload path.
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            </Text>
+            <Text size="xs" c="dimmed">
               Supported: {ACCEPT_COPY}. Target upload size per file: under {formatBytes(MAX_DIRECT_UPLOAD_BYTES)}.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            </Text>
+          </Stack>
+          <Group gap="xs" align="center">
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
               multiple
-              className="hidden"
+              hidden
               onChange={onFileInputChange}
             />
             <input
               ref={folderInputRef}
               type="file"
               accept="image/*"
-              className="hidden"
+              hidden
               onChange={onFolderInputChange}
             />
-            <button
+            <Button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors"
             >
               Upload images
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => folderInputRef.current?.click()}
-              className="px-4 py-2 bg-slate-700 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition-colors"
+              variant="light"
             >
               Upload folder
-            </button>
+            </Button>
             {queueItems.length > 0 ? (
-              <button
+              <Button
                 type="button"
                 onClick={clearFinished}
-                className="px-4 py-2 bg-white text-slate-700 text-sm font-semibold rounded-lg border border-slate-300 hover:bg-slate-50 dark:bg-transparent dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-800/50 transition-colors"
+                variant="default"
               >
                 Clear finished
-              </button>
+              </Button>
             ) : null}
-          </div>
-        </div>
+          </Group>
+        </Group>
 
-        <div
+        <Paper
+          withBorder
+          p="xl"
+          ta="center"
           onDragEnter={(e) => {
             e.preventDefault();
             setDragActive(true);
@@ -526,80 +540,58 @@ export default function EventGalleryUpload({
             }
           }}
           onDrop={onDrop}
-          className={`rounded-xl border-2 border-dashed px-6 py-8 text-center transition-colors ${
-            dragActive
-              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20'
-              : 'border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-black/10'
-          }`}
+          data-active={dragActive || undefined}
         >
-          <p className="text-sm font-semibold text-gray-900 dark:text-white">
+          <Text size="sm" fw={700}>
             Drop images here
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          </Text>
+          <Text size="xs" c="dimmed" mt={4}>
             Files and folders are accepted. Uploads run in a controlled queue of {MAX_PARALLEL_UPLOADS}.
-          </p>
-        </div>
+          </Text>
+        </Paper>
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600 dark:text-gray-300">
-          <span>{busy ? `${pendingCount} in progress` : 'Queue idle'}</span>
-          <span>{completedCount} completed</span>
-          <span>{failedCount} failed</span>
-        </div>
+        <Group gap="xs">
+          <Badge variant="light">{busy ? `${pendingCount} in progress` : 'Queue idle'}</Badge>
+          <Badge variant="light">{completedCount} completed</Badge>
+          <Badge variant="light">{failedCount} failed</Badge>
+        </Group>
 
         {summaryMessage ? (
-          <p className="text-xs text-emerald-700 dark:text-emerald-400">{summaryMessage}</p>
+          <Alert variant="light">{summaryMessage}</Alert>
         ) : null}
 
         {queueItems.length > 0 ? (
-          <div className="max-h-72 overflow-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950">
-            <ul className="divide-y divide-gray-200 dark:divide-gray-800">
+          <Card withBorder padding={0}>
+            <ScrollArea.Autosize mah={288}>
+            <Stack gap={0}>
               {queueItems.map((item) => (
-                <li key={item.id} className="px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                <Box key={item.id} p="sm">
+                  <Group align="flex-start" justify="space-between" gap="md" wrap="nowrap">
+                    <Stack gap={4} miw={0}>
+                      <Text size="sm" fw={600} truncate>
                         {item.sourceLabel}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      </Text>
+                      <Text size="xs" c="dimmed">
                         Original: {formatBytes(item.file.size)}
                         {item.finalSizeBytes != null ? ` · Upload: ${formatBytes(item.finalSizeBytes)}` : ''}
-                      </p>
+                      </Text>
                       {item.message ? (
-                        <p
-                          className={`text-xs mt-1 ${
-                            item.status === 'error'
-                              ? 'text-red-600 dark:text-red-400'
-                              : item.status === 'done'
-                                ? 'text-emerald-700 dark:text-emerald-400'
-                                : 'text-slate-600 dark:text-slate-300'
-                          }`}
-                        >
+                        <Text size="xs" c="dimmed">
                           {item.message}
-                        </p>
+                        </Text>
                       ) : null}
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${
-                        item.status === 'done'
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                          : item.status === 'error'
-                            ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
-                            : item.status === 'uploading'
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
-                              : item.status === 'preparing'
-                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
-                      }`}
-                    >
+                    </Stack>
+                    <Badge variant="light">
                       {item.status}
-                    </span>
-                  </div>
-                </li>
+                    </Badge>
+                  </Group>
+                </Box>
               ))}
-            </ul>
-          </div>
+            </Stack>
+            </ScrollArea.Autosize>
+          </Card>
         ) : null}
-      </div>
-    </div>
+      </Stack>
+    </Card>
   );
 }

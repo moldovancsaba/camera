@@ -41,7 +41,7 @@ export default function SubmissionsInventoryList({ submissions }: { submissions:
         {submissions.map((submission) => (
           <Card key={submission.id} p={0} style={{ overflow: 'hidden' }}>
             <Link href={`/share/${submission.id}`}>
-              <div style={{ position: 'relative', background: 'var(--mantine-color-gray-1)' }}>
+              <div style={{ position: 'relative' }}>
                 <Image
                   src={submission.imageUrl}
                   alt={`Photo by ${submission.userName}`}
@@ -75,7 +75,6 @@ export default function SubmissionsInventoryList({ submissions }: { submissions:
                       component={Link}
                       href={`/admin/partners/${submission.partnerAdminId}`}
                       span
-                      c="blue.7"
                       style={{ textDecoration: 'none' }}
                     >
                       {submission.partnerName}
@@ -89,7 +88,6 @@ export default function SubmissionsInventoryList({ submissions }: { submissions:
                       component={Link}
                       href={`/admin/events/${submission.eventAdminId}`}
                       span
-                      c="blue.7"
                       style={{ textDecoration: 'none' }}
                     >
                       {submission.eventName}
@@ -107,12 +105,7 @@ export default function SubmissionsInventoryList({ submissions }: { submissions:
                   size="xs"
                   fw={700}
                   ta="center"
-                  style={{
-                    padding: '0.5rem',
-                    borderRadius: '0.5rem',
-                    background: 'var(--mantine-color-grape-light)',
-                    color: 'var(--mantine-color-grape-8)',
-                  }}
+                  style={{ padding: '0.5rem', borderRadius: '0.5rem' }}
                 >
                   Slideshow plays: {submission.playCount}
                 </Text>

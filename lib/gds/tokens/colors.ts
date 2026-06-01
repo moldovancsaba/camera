@@ -4,14 +4,6 @@ export const CAMERA_DEFAULT_CTA_BRAND_COLOR = '#9333EA';
 
 export const CAMERA_STAGE_WHITE = '#FFFFFF';
 export const CAMERA_STAGE_BLACK = '#000000';
-export const CAMERA_INPUT_FALLBACK_BLACK = '#000000';
-
-export const SOCIAL_GOOGLE_BLUE = '#4285F4';
-export const SOCIAL_GOOGLE_GREEN = '#34A853';
-export const SOCIAL_GOOGLE_YELLOW = '#FBBC05';
-export const SOCIAL_GOOGLE_RED = '#EA4335';
-export const SOCIAL_FACEBOOK_BLUE = '#1877F2';
-export const SOCIAL_SURFACE_WHITE = '#ffffff';
 
 export const LANDING_PAGE_BASE_BACKGROUND = '#f8fafc';
 export const LANDING_PAGE_BASE_TEXT = '#0f172a';

@@ -6,6 +6,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { ObjectId } from 'mongodb';
 import { notFound } from 'next/navigation';
+import { Container, Stack, Text, Title } from '@mantine/core';
 import SlideshowLayoutBuilder from '@/components/admin/SlideshowLayoutBuilder';
 import {
   normalizeLayoutAlignHorizontal,
@@ -46,13 +47,16 @@ export default async function EditSlideshowLayoutPage({
   const layoutRaw = layout as Record<string, unknown>;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+    <Container size="xl" py="xl">
+      <Stack gap="lg">
+      <div>
+      <Title order={1}>
         Slideshow layout
-      </h1>
-      <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
+      </Title>
+      <Text c="dimmed" size="sm">
         Event: {event.name} · Assign each region to a slideshow, set delay offsets and fit/fill.
-      </p>
+      </Text>
+      </div>
       <SlideshowLayoutBuilder
         layoutMongoId={layoutMongoId}
         eventMongoId={id}
@@ -78,6 +82,7 @@ export default async function EditSlideshowLayoutPage({
           layoutRaw.cellAspect
         )}
       />
-    </div>
+      </Stack>
+    </Container>
   );
 }

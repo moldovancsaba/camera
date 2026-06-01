@@ -173,7 +173,7 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
       maxWidth={960}
     >
       {error ? (
-        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+        <Alert icon={<IconAlertCircle size={16} />}>
           {error}
         </Alert>
       ) : null}
@@ -182,7 +182,7 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
         <Stack gap="lg">
           <FormSection title="Leather jersey preview" description="To change the image, delete this leather jersey and upload a new one.">
             <AspectRatio ratio={1} maw={320}>
-              <Box bg="gray.0" style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
+              <Box style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
                 {preview ? (
                   <Image
                     src={preview}
@@ -262,7 +262,7 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
                 Cancel
               </Button>
             </Group>
-            <Button color="red" variant="light" loading={isDeleting} onClick={() => void handleDelete()}>
+            <Button variant="light" loading={isDeleting} onClick={() => void handleDelete()}>
               Delete Leather Jersey
             </Button>
           </Group>

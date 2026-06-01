@@ -45,7 +45,7 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
     <SimpleGrid cols={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing="lg">
       {frames.map((frame) => (
         <Card key={frame.id} p={0} style={{ overflow: 'hidden' }}>
-          <div style={{ position: 'relative', background: 'var(--mantine-color-gray-1)', aspectRatio: '1', maxHeight: '300px' }}>
+          <div style={{ position: 'relative', aspectRatio: '1', maxHeight: '300px' }}>
             <Image
               src={frame.imageUrl}
               alt={frame.name}
@@ -88,7 +88,6 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
                     component={Link}
                     href={`/admin/partners/${frame.partnerAdminId}`}
                     span
-                    c="blue.7"
                     style={{ textDecoration: 'none' }}
                   >
                     {frame.partnerName}
@@ -102,7 +101,6 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
                     component={Link}
                     href={`/admin/events/${frame.eventAdminId}`}
                     span
-                    c="blue.7"
                     style={{ textDecoration: 'none' }}
                   >
                     {frame.eventName}

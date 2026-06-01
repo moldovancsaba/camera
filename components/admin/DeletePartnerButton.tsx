@@ -51,7 +51,7 @@ export default function DeletePartnerButton({
 
   if (hasEvents) {
     return (
-      <Alert color="yellow">
+      <Alert>
         <Text size="sm">
           <strong>Cannot delete:</strong> This partner has {eventCount} event{eventCount !== 1 ? 's' : ''}. Delete all
           events first before deleting the partner.
@@ -63,13 +63,12 @@ export default function DeletePartnerButton({
   return (
     <>
       {error ? (
-        <Alert color="red" icon={<IconAlertCircle size={16} />} mb="md">
+        <Alert icon={<IconAlertCircle size={16} />} mb="md">
           <Text fw={700}>Error</Text>
           <Text size="sm">{error}</Text>
         </Alert>
       ) : null}
       <Button
-        color="red"
         loading={isDeleting}
         disabled={isDeleting}
         onClick={() =>

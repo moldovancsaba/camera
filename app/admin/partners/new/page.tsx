@@ -75,7 +75,7 @@ export default function NewPartnerPage() {
     >
 
       {error ? (
-        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+        <Alert icon={<IconAlertCircle size={16} />}>
           <Text fw={700}>Error</Text>
           <Text size="sm">{error}</Text>
         </Alert>

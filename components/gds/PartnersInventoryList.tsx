@@ -28,7 +28,6 @@ function PartnerMobileCard({ partner }: { partner: SerializedPartnerRow }) {
             component={Link}
             href={`/admin/partners/${partner.id}`}
             fw={700}
-            c="blue.7"
             lineClamp={2}
             style={{ textDecoration: 'none', minWidth: 0 }}
           >
@@ -86,7 +85,6 @@ export default function PartnersInventoryList({ partners }: { partners: Serializ
                 component={Link}
                 href={`/admin/partners/${partner.id}`}
                 fw={700}
-                c="blue.7"
                 style={{ textDecoration: 'none' }}
               >
                 {partner.name}

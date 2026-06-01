@@ -44,7 +44,7 @@ export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow
     <SimpleGrid cols={{ base: 1, sm: 2, lg: 3, xl: 4 }} spacing="lg">
       {logos.map((logo) => (
         <Card key={logo.logoId} p={0} style={{ overflow: 'hidden' }}>
-          <div style={{ position: 'relative', aspectRatio: '1 / 1', background: 'var(--mantine-color-gray-1)' }}>
+          <div style={{ position: 'relative', aspectRatio: '1 / 1' }}>
             <Image
               src={logo.imageUrl}
               alt={logo.name}
@@ -82,7 +82,6 @@ export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow
                     component={Link}
                     href={`/admin/partners/${logo.primaryPartnerAdminId}`}
                     span
-                    c="blue.7"
                     style={{ textDecoration: 'none' }}
                   >
                     {logo.primaryPartnerName}
@@ -96,7 +95,6 @@ export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow
                     component={Link}
                     href={`/admin/events/${logo.primaryEventAdminId}`}
                     span
-                    c="blue.7"
                     style={{ textDecoration: 'none' }}
                   >
                     {logo.primaryEventName}

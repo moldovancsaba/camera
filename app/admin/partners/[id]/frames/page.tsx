@@ -139,7 +139,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
   if (error || !partner) {
     return (
       <Stack gap="lg">
-        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+        <Alert icon={<IconAlertCircle size={16} />}>
           <Text fw={700}>Error</Text>
           <Text size="sm">{error || 'Partner not found'}</Text>
         </Alert>
@@ -162,7 +162,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
         description={`Select frames that will be automatically assigned to new events under ${partner.name}`}
       />
 
-      <Alert color="blue">
+      <Alert>
         <Text size="sm">
           💡 <strong>Note:</strong> Changes will automatically cascade to all child events marked with 🟢. Events with
           custom frames (🔴) will keep their selections.
@@ -192,7 +192,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
                 onClick={() => handleToggleFrame(frame.frameId)}
               >
                 <Stack gap="sm" align="center">
-                  {isSelected ? <Badge color="blue">✓ Selected</Badge> : null}
+                  {isSelected ? <Badge>✓ Selected</Badge> : null}
                   {frame.thumbnailUrl ? (
                     <Image src={frame.thumbnailUrl} alt={frame.name} width={128} height={128} unoptimized style={{ width: '100%', height: 128, objectFit: 'contain' }} />
                   ) : (

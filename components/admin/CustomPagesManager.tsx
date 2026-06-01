@@ -13,7 +13,21 @@
 'use client';
 
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Checkbox,
+  Divider,
+  Group,
+  Modal,
+  Stack,
+  Text,
+  TextInput,
+  Textarea,
+  Title,
+} from '@mantine/core';
 import { CustomPageType, type CustomPage, generateId, generateTimestamp } from '@/lib/db/schemas';
 
 export interface CustomPagesManagerProps {
@@ -220,135 +234,154 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Event Pages</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Configure onboarding and thank you pages for this event
-          </p>
-        </div>
-        <button
+    <Card withBorder radius="lg" p="xl">
+      <Stack gap="lg">
+        <Group justify="space-between" align="flex-start">
+          <Stack gap={4}>
+            <Title order={2}>Event Pages</Title>
+            <Text size="sm" c="dimmed">
+              Configure onboarding and thank you pages for this event
+            </Text>
+          </Stack>
+          <Button
+            type="button"
           onClick={handleSaveAll}
           disabled={isSaving}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
         >
           {isSaving ? 'Saving...' : 'Save Pages'}
-        </button>
-      </div>
+          </Button>
+        </Group>
 
       {/* Page List */}
-      <div className="space-y-2 mb-4">
+        <Stack gap="sm">
         {sortedPages.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+            <Text size="sm" c="dimmed" ta="center" py="xl">
             No custom pages yet. Add pages to create onboarding or thank you flows.
-          </p>
+            </Text>
         ) : (
           sortedPages.map((page, index) => (
-            <div
+              <Card
               key={page.pageId}
-              className="flex items-center gap-3 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900"
+                withBorder
+                radius="md"
+                p="md"
             >
               {/* Order indicators */}
-              <div className="flex flex-col gap-1">
-                <button
+                <Group gap="md" align="center" wrap="nowrap">
+                  <Stack gap={4}>
+                    <Button
+                      type="button"
+                      variant="subtle"
+                      size="compact-xs"
                   onClick={() => handleMoveUp(page.pageId)}
                   disabled={index === 0}
-                  className="text-gray-600 dark:text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed"
                   title="Move up"
                 >
                   ▲
-                </button>
-                <button
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="subtle"
+                      size="compact-xs"
                   onClick={() => handleMoveDown(page.pageId)}
                   disabled={index === sortedPages.length - 1}
-                  className="text-gray-600 dark:text-gray-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed"
                   title="Move down"
                 >
                   ▼
-                </button>
-              </div>
+                    </Button>
+                  </Stack>
 
               {/* Page info */}
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-mono text-gray-500 dark:text-gray-400">
+                  <Stack gap={4} style={{ flex: 1 }}>
+                    <Group gap="xs">
+                      <Text size="sm" ff="monospace" c="dimmed">
                     #{index + 1}
-                  </span>
-                  <span className={`text-sm font-medium px-2 py-1 rounded ${
-                    page.pageType === CustomPageType.TAKE_PHOTO
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400'
-                      : page.pageType === CustomPageType.WHO_ARE_YOU
-                      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
-                      : page.pageType === CustomPageType.ACCEPT
-                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400'
-                      : 'bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-400'
-                  }`}>
+                      </Text>
+                      <Badge variant="light">
                     {page.pageType}
-                  </span>
-                  <span className="text-sm text-gray-900 dark:text-white">
+                      </Badge>
+                    </Group>
+                    <Text size="sm" fw={600}>
                     {page.config.title || '[Untitled]'}
-                  </span>
-                </div>
-              </div>
+                    </Text>
+                  </Stack>
 
               {/* Actions */}
-              <div className="flex gap-2">
-                <button
+                  <Group gap="xs">
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="light"
                   onClick={() => handleEditPage(page)}
-                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                 >
                   Edit
-                </button>
+                    </Button>
                 {page.pageType !== CustomPageType.TAKE_PHOTO && (
-                  <button
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="light"
                     onClick={() => handleDeletePage(page.pageId)}
-                    className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
                   >
                     Delete
-                  </button>
+                      </Button>
                 )}
-              </div>
-            </div>
+                  </Group>
+                </Group>
+              </Card>
           ))
         )}
-      </div>
+        </Stack>
 
       {/* Add Page Buttons */}
-      <div className="flex gap-2">
-        <button
+        <Group gap="sm">
+          <Button
+            type="button"
+            variant="light"
           onClick={() => handleAddPage(CustomPageType.WHO_ARE_YOU)}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors"
         >
           + Who Are You
-        </button>
-        <button
+          </Button>
+          <Button
+            type="button"
+            variant="light"
           onClick={() => handleAddPage(CustomPageType.ACCEPT)}
-          className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition-colors"
         >
           + Accept/Terms
-        </button>
-        <button
+          </Button>
+          <Button
+            type="button"
+            variant="light"
           onClick={() => handleAddPage(CustomPageType.CTA)}
-          className="px-4 py-2 bg-pink-600 text-white rounded-lg text-sm font-semibold hover:bg-pink-700 transition-colors"
         >
           + CTA
-        </button>
-      </div>
+          </Button>
+        </Group>
 
       {/* Edit Modal - Rendered via Portal to avoid nested form */}
-      {showModal && editingPage && typeof document !== 'undefined' && createPortal(
-        <PageEditModal
-          page={editingPage}
-          onSave={handleSavePage}
-          onCancel={() => {
+        <Modal
+          opened={showModal && editingPage !== null}
+          onClose={() => {
             setShowModal(false);
             setEditingPage(null);
           }}
-        />,
-        document.body
-      )}
-    </div>
+          title={editingPage ? `Edit ${editingPage.pageType} Page` : 'Edit Page'}
+          size="lg"
+          centered
+        >
+          {editingPage ? (
+            <PageEditModal
+              page={editingPage}
+              onSave={handleSavePage}
+              onCancel={() => {
+                setShowModal(false);
+                setEditingPage(null);
+              }}
+            />
+          ) : null}
+        </Modal>
+      </Stack>
+    </Card>
   );
 }
 
@@ -474,557 +507,295 @@ function PageEditModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-            Edit {page.pageType} Page
-          </h3>
+    <form onSubmit={handleSubmit}>
+      <Stack gap="md">
+        <TextInput
+          label="Page Title"
+          value={title}
+          onChange={(event) => setTitle(event.currentTarget.value)}
+          required
+          placeholder="e.g., Welcome!"
+        />
+        <Textarea
+          label="Description"
+          value={description}
+          onChange={(event) => setDescription(event.currentTarget.value)}
+          rows={3}
+          placeholder="Optional description text"
+        />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Page Title *
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              placeholder="e.g., Welcome!"
+        {page.pageType === CustomPageType.WHO_ARE_YOU ? (
+          <>
+            <Card withBorder radius="md" p="md">
+              <Stack gap="md">
+                <Title order={4}>Authentication Options</Title>
+                <Checkbox
+                  checked={enableSSOLogin}
+                  onChange={(event) => setEnableSSOLogin(event.currentTarget.checked)}
+                  label="Enable Google / Facebook login"
+                  description="Shows Continue with Google and Continue with Facebook."
+                />
+                {enableSSOLogin ? (
+                  <TextInput
+                    label="Heading above social buttons"
+                    value={ssoButtonText}
+                    onChange={(event) => setSsoButtonText(event.currentTarget.value)}
+                    placeholder="e.g., Sign in with Google or Facebook"
+                  />
+                ) : null}
+                <Checkbox
+                  checked={enablePseudoReg}
+                  onChange={(event) => setEnablePseudoReg(event.currentTarget.checked)}
+                  label="Enable pseudo registration"
+                  description="Allow users to provide name and email without authentication."
+                />
+                {enablePseudoReg ? (
+                  <TextInput
+                    label="Form Title"
+                    value={pseudoFormTitle}
+                    onChange={(event) => setPseudoFormTitle(event.currentTarget.value)}
+                    placeholder="e.g., Enter your details"
+                  />
+                ) : null}
+                {!enableSSOLogin && !enablePseudoReg ? (
+                  <Alert variant="light">
+                    At least one authentication method must be enabled.
+                  </Alert>
+                ) : null}
+              </Stack>
+            </Card>
+
+            {enablePseudoReg ? (
+              <>
+                <TextInput
+                  label="Name Field Label"
+                  value={nameLabel}
+                  onChange={(event) => setNameLabel(event.currentTarget.value)}
+                  required
+                />
+                <TextInput
+                  label="Name Field Placeholder"
+                  value={namePlaceholder}
+                  onChange={(event) => setNamePlaceholder(event.currentTarget.value)}
+                  placeholder="e.g., Enter your name"
+                />
+                <TextInput
+                  label="Email Field Label"
+                  value={emailLabel}
+                  onChange={(event) => setEmailLabel(event.currentTarget.value)}
+                  required
+                />
+                <TextInput
+                  label="Email Field Placeholder"
+                  value={emailPlaceholder}
+                  onChange={(event) => setEmailPlaceholder(event.currentTarget.value)}
+                  placeholder="e.g., your.email@example.com"
+                />
+              </>
+            ) : null}
+          </>
+        ) : null}
+
+        {page.pageType === CustomPageType.ACCEPT ? (
+          <Textarea
+            label="Checkbox Text"
+            value={checkboxText}
+            onChange={(event) => setCheckboxText(event.currentTarget.value)}
+            required
+            rows={2}
+            placeholder="e.g., I agree to the terms and conditions"
+          />
+        ) : null}
+
+        {page.pageType === CustomPageType.CTA ? (
+          <>
+            <TextInput
+              type="url"
+              label="URL to visit"
+              value={checkboxText}
+              onChange={(event) => setCheckboxText(event.currentTarget.value)}
+              placeholder="e.g., https://example.com"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              placeholder="Optional description text"
+            <TextInput
+              label="Visit Button Text"
+              value={visitButtonText}
+              onChange={(event) => setVisitButtonText(event.currentTarget.value)}
+              placeholder="e.g., Visit Now"
             />
-          </div>
+            <TextInput
+              label="Redirecting Message"
+              value={redirectingText}
+              onChange={(event) => setRedirectingText(event.currentTarget.value)}
+              placeholder="e.g., Redirecting you shortly..."
+            />
+            <Checkbox
+              checked={hasButton}
+              onChange={(event) => setHasButton(event.currentTarget.checked)}
+              label="Show Continue Button"
+              description="If unchecked, this will be the final page in the flow."
+            />
+          </>
+        ) : null}
 
-          {page.pageType === CustomPageType.WHO_ARE_YOU && (
-            <>
-              <div className="space-y-4 p-4 border border-gray-300 dark:border-gray-600 rounded-lg">
-                <h4 className="text-base font-semibold text-gray-900 dark:text-white">Authentication Options</h4>
-                
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
-                    <input
-                      type="checkbox"
-                      checked={enableSSOLogin}
-                      onChange={(e) => setEnableSSOLogin(e.target.checked)}
-                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
-                    />
-                    Enable Google / Facebook login
-                  </label>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Shows Continue with Google and Continue with Facebook (central SSO)
-                  </p>
-                </div>
+        {page.pageType === CustomPageType.TAKE_PHOTO ? (
+          <>
+            <TextInput
+              label="Capture/Save Button Text"
+              value={captureButtonText}
+              onChange={(event) => setCaptureButtonText(event.currentTarget.value)}
+              placeholder="e.g., LOVE IT"
+            />
+            <TextInput
+              label="Retry Button Text"
+              value={retryButtonText}
+              onChange={(event) => setRetryButtonText(event.currentTarget.value)}
+              placeholder="e.g., TRY AGAIN"
+            />
+            <TextInput
+              label="Share Screen Next Button Text"
+              value={shareNextButtonText}
+              onChange={(event) => setShareNextButtonText(event.currentTarget.value)}
+              placeholder="e.g., NEXT"
+            />
 
-                {enableSSOLogin && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                      Heading above social buttons
-                    </label>
-                    <input
-                      type="text"
-                      value={ssoButtonText}
-                      onChange={(e) => setSsoButtonText(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="e.g., Sign in with Google or Facebook"
-                    />
-                  </div>
-                )}
+            <Divider label="Share screen language" labelPosition="left" />
+            <Text size="sm" c="dimmed">
+              Shown after save when share page is on. Leave caption template empty to use the English default with the event name.
+            </Text>
+            <TextInput
+              label="Share screen title"
+              value={shareScreenTitle}
+              onChange={(event) => setShareScreenTitle(event.currentTarget.value)}
+              placeholder="Share Your Photo"
+            />
+            <TextInput
+              label="Copy link button label"
+              value={shareCopyLinkButtonText}
+              onChange={(event) => setShareCopyLinkButtonText(event.currentTarget.value)}
+              placeholder="Copy"
+            />
+            <TextInput
+              label="View share page button label"
+              value={shareViewPhotoButtonText}
+              onChange={(event) => setShareViewPhotoButtonText(event.currentTarget.value)}
+              placeholder="View your photo (opens share link)"
+            />
+            <TextInput
+              label="Suggested message label"
+              value={shareSuggestedMessageLabel}
+              onChange={(event) => setShareSuggestedMessageLabel(event.currentTarget.value)}
+              placeholder="Suggested message for apps below:"
+            />
+            <Textarea
+              label="Social caption template"
+              value={shareSocialCaptionTemplate}
+              onChange={(event) => setShareSocialCaptionTemplate(event.currentTarget.value)}
+              rows={2}
+              placeholder="e.g. Check out my photo from {event}! - use {event} for the event name"
+            />
 
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
-                    <input
-                      type="checkbox"
-                      checked={enablePseudoReg}
-                      onChange={(e) => setEnablePseudoReg(e.target.checked)}
-                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
-                    />
-                    Enable Pseudo Registration
-                  </label>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Allow users to provide name and email without authentication
-                  </p>
-                </div>
-
-                {enablePseudoReg && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                      Form Title
-                    </label>
-                    <input
-                      type="text"
-                      value={pseudoFormTitle}
-                      onChange={(e) => setPseudoFormTitle(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="e.g., Enter your details"
-                    />
-                  </div>
-                )}
-
-                {!enableSSOLogin && !enablePseudoReg && (
-                  <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
-                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                      ⚠️ At least one authentication method must be enabled
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {enablePseudoReg && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                      Name Field Label *
-                    </label>
-                    <input
-                      type="text"
-                      value={nameLabel}
-                      onChange={(e) => setNameLabel(e.target.value)}
-                      required={enablePseudoReg}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                      Name Field Placeholder
-                    </label>
-                    <input
-                      type="text"
-                      value={namePlaceholder}
-                      onChange={(e) => setNamePlaceholder(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="e.g., Enter your name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                      Email Field Label *
-                    </label>
-                    <input
-                      type="text"
-                      value={emailLabel}
-                      onChange={(e) => setEmailLabel(e.target.value)}
-                      required={enablePseudoReg}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                      Email Field Placeholder
-                    </label>
-                    <input
-                      type="text"
-                      value={emailPlaceholder}
-                      onChange={(e) => setEmailPlaceholder(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="e.g., your.email@example.com"
-                    />
-                  </div>
-                </>
-              )}
-            </>
-          )}
-
-          {page.pageType === CustomPageType.ACCEPT && (
-            <div>
-              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                Checkbox Text *
-              </label>
-              <textarea
-                value={checkboxText}
-                onChange={(e) => setCheckboxText(e.target.value)}
-                required
+            <TextInput
+              label="Change Frame Button Text"
+              value={changeButtonText}
+              onChange={(event) => setChangeButtonText(event.currentTarget.value)}
+              placeholder="e.g., Change"
+            />
+            <Textarea
+              label="Success Message"
+              value={successMessage}
+              onChange={(event) => setSuccessMessage(event.currentTarget.value)}
+              rows={2}
+              placeholder="e.g., Photo saved successfully! You can now share it."
+            />
+            <Checkbox
+              checked={showSharePage}
+              onChange={(event) => setShowSharePage(event.currentTarget.checked)}
+              label="Show Share Page"
+              description="If unchecked, users will see a thank you message instead of share options."
+            />
+            {!showSharePage ? (
+              <Textarea
+                label="Skip Share Message"
+                value={skipShareMessage}
+                onChange={(event) => setSkipShareMessage(event.currentTarget.value)}
                 rows={2}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="e.g., I agree to the terms and conditions"
+                placeholder="e.g., Thank you! Your photo has been saved."
               />
-            </div>
-          )}
+            ) : null}
+            <Checkbox
+              checked={showFrameOnCapture}
+              onChange={(event) => setShowFrameOnCapture(event.currentTarget.checked)}
+              label="Show Frame During Live Capture"
+              description="If checked, frame overlay is visible during live camera view."
+            />
 
-          {page.pageType === CustomPageType.CTA && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  URL to visit
-                </label>
-                <input
-                  type="url"
-                  value={checkboxText}
-                  onChange={(e) => setCheckboxText(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., https://example.com"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Visit Button Text
-                </label>
-                <input
-                  type="text"
-                  value={visitButtonText}
-                  onChange={(e) => setVisitButtonText(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., Visit Now"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Redirecting Message
-                </label>
-                <input
-                  type="text"
-                  value={redirectingText}
-                  onChange={(e) => setRedirectingText(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., Redirecting you shortly..."
-                />
-              </div>
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
-                  <input
-                    type="checkbox"
-                    checked={hasButton}
-                    onChange={(e) => setHasButton(e.target.checked)}
-                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
-                  />
-                  Show Continue Button
-                </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  If unchecked, this will be the final page in the flow
-                </p>
-              </div>
-            </>
-          )}
+            <Divider label="Camera start prompt" labelPosition="left" />
+            <TextInput
+              label="Prompt Title"
+              value={cameraPromptTitle}
+              onChange={(event) => setCameraPromptTitle(event.currentTarget.value)}
+              description="Large heading shown when camera needs to be started."
+              placeholder="e.g., Ready to capture?"
+            />
+            <Textarea
+              label="Prompt Description"
+              value={cameraPromptDescription}
+              onChange={(event) => setCameraPromptDescription(event.currentTarget.value)}
+              rows={2}
+              description="Instructional text shown below the title."
+              placeholder="e.g., Click to start your camera and take a photo"
+            />
 
-          {page.pageType === CustomPageType.TAKE_PHOTO && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Capture/Save Button Text
-                </label>
-                <input
-                  type="text"
-                  value={captureButtonText}
-                  onChange={(e) => setCaptureButtonText(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., LOVE IT"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Retry Button Text
-                </label>
-                <input
-                  type="text"
-                  value={retryButtonText}
-                  onChange={(e) => setRetryButtonText(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., TRY AGAIN"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Share Screen Next Button Text
-                </label>
-                <input
-                  type="text"
-                  value={shareNextButtonText}
-                  onChange={(e) => setShareNextButtonText(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., NEXT"
-                />
-              </div>
-              <div className="border-t border-gray-200 dark:border-gray-600 pt-4 space-y-4">
-                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                  Share screen (language)
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Shown after save when &quot;Show Share Page&quot; is on. Leave caption template empty to use the
-                  English default with the event name.
-                </p>
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                    Share screen title
-                  </label>
-                  <input
-                    type="text"
-                    value={shareScreenTitle}
-                    onChange={(e) => setShareScreenTitle(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Share Your Photo"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                    Copy link button label
-                  </label>
-                  <input
-                    type="text"
-                    value={shareCopyLinkButtonText}
-                    onChange={(e) => setShareCopyLinkButtonText(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Copy"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                    View share page button label
-                  </label>
-                  <input
-                    type="text"
-                    value={shareViewPhotoButtonText}
-                    onChange={(e) => setShareViewPhotoButtonText(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="View your photo (opens share link)"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                    Suggested message label
-                  </label>
-                  <input
-                    type="text"
-                    value={shareSuggestedMessageLabel}
-                    onChange={(e) => setShareSuggestedMessageLabel(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Suggested message for apps below:"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                    Social caption template
-                  </label>
-                  <textarea
-                    value={shareSocialCaptionTemplate}
-                    onChange={(e) => setShareSocialCaptionTemplate(e.target.value)}
-                    rows={2}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder='e.g. Check out my photo from {event}! — use {event} for the event name'
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Change Frame Button Text
-                </label>
-                <input
-                  type="text"
-                  value={changeButtonText}
-                  onChange={(e) => setChangeButtonText(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., Change"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Success Message
-                </label>
-                <textarea
-                  value={successMessage}
-                  onChange={(e) => setSuccessMessage(e.target.value)}
-                  rows={2}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., Photo saved successfully! You can now share it."
-                />
-              </div>
-              
-              {/* Share Page Toggle */}
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
-                  <input
-                    type="checkbox"
-                    checked={showSharePage}
-                    onChange={(e) => setShowSharePage(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  />
-                  Show Share Page
-                </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  If unchecked, users will see a thank you message instead of share options
-                </p>
-              </div>
-              
-              {!showSharePage && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                    Skip Share Message
-                  </label>
-                  <textarea
-                    value={skipShareMessage}
-                    onChange={(e) => setSkipShareMessage(e.target.value)}
-                    rows={2}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="e.g., Thank you! Your photo has been saved."
-                  />
-                </div>
-              )}
-              
-              {/* Frame Overlay Toggle */}
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
-                  <input
-                    type="checkbox"
-                    checked={showFrameOnCapture}
-                    onChange={(e) => setShowFrameOnCapture(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  />
-                  Show Frame During Live Capture
-                </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  If checked, frame overlay is visible during live camera view. If unchecked, frame is only applied after capture.
-                </p>
-              </div>
-              
-              {/* Camera Prompt Text */}
-              <div className="col-span-2">
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 mt-2">Camera Start Prompt</h4>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Prompt Title
-                </label>
-                <input
-                  type="text"
-                  value={cameraPromptTitle}
-                  onChange={(e) => setCameraPromptTitle(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., Ready to capture?"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Large heading shown when camera needs to be started
-                </p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Prompt Description
-                </label>
-                <textarea
-                  value={cameraPromptDescription}
-                  onChange={(e) => setCameraPromptDescription(e.target.value)}
-                  rows={2}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., Click to start your camera and take a photo"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Instructional text shown below the title
-                </p>
-              </div>
-              
-              {/* Error and Notification Messages */}
-              <div className="col-span-2">
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 mt-2">Error & Notification Messages</h4>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Frame Error Message
-                </label>
-                <input
-                  type="text"
-                  value={errorFrameMessage}
-                  onChange={(e) => setErrorFrameMessage(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., Failed to apply frame. Please try again."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Save Error Message
-                </label>
-                <input
-                  type="text"
-                  value={errorSaveMessage}
-                  onChange={(e) => setErrorSaveMessage(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., Failed to save photo: Please try again."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Link Copied Message
-                </label>
-                <input
-                  type="text"
-                  value={linkCopiedMessage}
-                  onChange={(e) => setLinkCopiedMessage(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., Link copied to clipboard!"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Copy Error Message
-                </label>
-                <input
-                  type="text"
-                  value={copyErrorMessage}
-                  onChange={(e) => setCopyErrorMessage(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., Failed to copy link. Please copy it manually."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  Save First Warning Message
-                </label>
-                <input
-                  type="text"
-                  value={saveFirstMessage}
-                  onChange={(e) => setSaveFirstMessage(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="e.g., Please save the photo first to get a shareable link."
-                />
-              </div>
-            </>
-          )}
+            <Divider label="Error and notification messages" labelPosition="left" />
+            <TextInput
+              label="Frame Error Message"
+              value={errorFrameMessage}
+              onChange={(event) => setErrorFrameMessage(event.currentTarget.value)}
+              placeholder="e.g., Failed to apply frame. Please try again."
+            />
+            <TextInput
+              label="Save Error Message"
+              value={errorSaveMessage}
+              onChange={(event) => setErrorSaveMessage(event.currentTarget.value)}
+              placeholder="e.g., Failed to save photo: Please try again."
+            />
+            <TextInput
+              label="Link Copied Message"
+              value={linkCopiedMessage}
+              onChange={(event) => setLinkCopiedMessage(event.currentTarget.value)}
+              placeholder="e.g., Link copied to clipboard!"
+            />
+            <TextInput
+              label="Copy Error Message"
+              value={copyErrorMessage}
+              onChange={(event) => setCopyErrorMessage(event.currentTarget.value)}
+              placeholder="e.g., Failed to copy link. Please copy it manually."
+            />
+            <TextInput
+              label="Save First Warning Message"
+              value={saveFirstMessage}
+              onChange={(event) => setSaveFirstMessage(event.currentTarget.value)}
+              placeholder="e.g., Please save the photo first to get a shareable link."
+            />
+          </>
+        ) : null}
 
-          {/* Button text field - conditional requirement for CTA with hasButton=false and not for take-photo */}
-          {page.pageType !== CustomPageType.TAKE_PHOTO && (page.pageType !== CustomPageType.CTA || hasButton) && (
-            <div>
-              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                Button Text *
-              </label>
-              <input
-                type="text"
-                value={buttonText}
-                onChange={(e) => setButtonText(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
-            </div>
-          )}
+        {page.pageType !== CustomPageType.TAKE_PHOTO && (page.pageType !== CustomPageType.CTA || hasButton) ? (
+          <TextInput
+            label="Button Text"
+            value={buttonText}
+            onChange={(event) => setButtonText(event.currentTarget.value)}
+            required
+          />
+        ) : null}
 
-          <div className="flex gap-3 pt-4">
-            <button
-              type="submit"
-              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-            >
-              Save Page
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <Group grow pt="sm">
+          <Button type="submit">Save Page</Button>
+          <Button type="button" variant="default" onClick={onCancel}>
+            Cancel
+          </Button>
+        </Group>
+      </Stack>
+    </form>
   );
 }

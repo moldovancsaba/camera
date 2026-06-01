@@ -229,7 +229,7 @@ export default function NewEventPage() {
     >
 
       {error ? (
-        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+        <Alert icon={<IconAlertCircle size={16} />}>
           <Text fw={700}>Error</Text>
           <Text size="sm">{error}</Text>
         </Alert>
@@ -239,7 +239,7 @@ export default function NewEventPage() {
         <Stack gap="lg">
           <FormSection title="Partner" description="The partner workspace this event app instance belongs to.">
             {partners.length === 0 ? (
-              <Alert color="yellow">
+              <Alert>
                 No active partners found.{' '}
                 <Anchor component={Link} href="/admin/partners/new">
                   Create a partner first
@@ -291,7 +291,6 @@ export default function NewEventPage() {
                   <Button
                     type="button"
                     variant="light"
-                    color="red"
                     leftSection={<IconX size={16} />}
                     onClick={() => {
                       setLogoFile(null);

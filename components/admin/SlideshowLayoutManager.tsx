@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Badge, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 
 export interface SlideshowLayoutListItem {
   _id: string;
@@ -79,100 +80,98 @@ export default function SlideshowLayoutManager({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              📺 Event Slideshow Layouts
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Combine multiple slideshows on one screen (grid builder)
-            </p>
-          </div>
-          <button
+    <Card withBorder radius="lg" p="xl">
+      <Stack gap="lg">
+        <Group justify="space-between" align="flex-start">
+          <Stack gap={4}>
+            <Title order={2}>Event Slideshow Layouts</Title>
+            <Text c="dimmed">
+              Combine multiple slideshows on one screen.
+            </Text>
+          </Stack>
+          <Button
             type="button"
             onClick={handleCreate}
             disabled={creating}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
           >
-            {creating ? 'Creating…' : '➕ New layout'}
-          </button>
-        </div>
-      </div>
+            {creating ? 'Creating...' : 'New layout'}
+          </Button>
+        </Group>
 
       {layouts.length === 0 ? (
-        <div className="p-12 text-center">
-          <div className="text-5xl mb-4">🎛️</div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          <Stack align="center" py="xl" gap="sm">
+            <Text fz="3rem" aria-hidden>
+              🎛️
+            </Text>
+            <Title order={3}>
             No layouts yet
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400">
+            </Title>
+            <Text c="dimmed" ta="center">
             Create a layout to assign slideshows to regions on a shared display
-          </p>
-        </div>
+            </Text>
+          </Stack>
       ) : (
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }} spacing="md">
             {layouts.map((layout) => (
-              <div
+              <Card
                 key={layout._id}
-                className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+                withBorder
+                radius="md"
+                p="md"
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                <Stack gap="sm">
+                  <Group justify="space-between" align="flex-start">
+                    <Stack gap={4}>
+                      <Text fw={700}>
                       {layout.name}
-                    </h3>
-                    <span
-                      className={`inline-flex mt-1 px-2 py-1 text-xs font-semibold rounded-full ${
-                        layout.isActive
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
-                      }`}
-                    >
+                      </Text>
+                      <Badge variant="light">
                       {layout.isActive ? '● Active' : '○ Inactive'}
-                    </span>
-                  </div>
-                  <button
+                      </Badge>
+                    </Stack>
+                    <Button
                     type="button"
                     onClick={() => handleDelete(layout._id)}
-                    className="text-red-500 hover:text-red-700 text-sm"
+                      variant="subtle"
+                      size="compact-sm"
                     title="Delete"
                   >
                     🗑️
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    </Button>
+                  </Group>
+                  <Text size="xs" c="dimmed">
                     Created {new Date(layout.createdAt).toLocaleDateString()}
-                  </div>
-                  <Link
+                  </Text>
+                  <Button
+                    component={Link}
                     href={`/admin/events/${eventMongoId}/layouts/${layout._id}`}
-                    className="block w-full px-3 py-2 bg-indigo-600 text-white rounded text-sm font-semibold hover:bg-indigo-700 transition-colors text-center"
+                    fullWidth
                   >
-                    ✏️ Edit layout
-                  </Link>
-                  <Link
+                    Edit layout
+                  </Button>
+                  <Button
+                    component={Link}
                     href={`/slideshow-layout/${layout.layoutId}`}
                     target="_blank"
-                    className="block w-full px-3 py-2 bg-gray-800 text-white rounded text-sm font-semibold hover:bg-gray-900 transition-colors text-center"
+                    fullWidth
+                    variant="light"
                   >
-                    🎬 Open layout
-                  </Link>
-                  <button
+                    Open layout
+                  </Button>
+                  <Button
                     type="button"
                     onClick={() => copyUrl(layout.layoutId)}
-                    className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                    fullWidth
+                    variant="default"
                   >
-                    📋 Copy public URL
-                  </button>
-                </div>
-              </div>
+                    Copy public URL
+                  </Button>
+                </Stack>
+              </Card>
             ))}
-          </div>
-        </div>
+          </SimpleGrid>
       )}
-    </div>
+      </Stack>
+    </Card>
   );
 }

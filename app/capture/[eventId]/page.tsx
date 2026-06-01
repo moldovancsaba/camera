@@ -886,7 +886,7 @@ export default function EventCapturePage({
           ) : (
             <div className="text-6xl mb-4">⏳</div>
           )}
-          <p className="text-white text-2xl">{event?.loadingText || 'Loading event...'}</p>
+          <p className=" text-2xl">{event?.loadingText || 'Loading event...'}</p>
         </div>
       </div>
     );
@@ -897,10 +897,10 @@ export default function EventCapturePage({
       <div className="flex min-h-screen items-center justify-center bg-transparent p-4">
         <div className="text-center max-w-md">
           <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-white mb-2">
+          <h2 className="text-2xl font-bold  mb-2">
             Event Not Found
           </h2>
-          <p className="text-slate-300">
+          <p className="">
             This event could not be loaded.
           </p>
         </div>
@@ -912,7 +912,7 @@ export default function EventCapturePage({
     <div className="fixed inset-0 flex flex-col landscape:flex-row bg-transparent">
       {signInError && (
         <div
-          className="flex-shrink-0 z-50 mx-3 mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900 shadow-md dark:border-red-800 dark:bg-red-950/90 dark:text-red-100 landscape:mx-2 landscape:mt-2"
+          className="flex-shrink-0 z-50 mx-3 mt-3 rounded-lg border   px-3 py-2 text-sm  shadow-md    landscape:mx-2 landscape:mt-2"
           role="alert"
         >
           <div className="flex items-start justify-between gap-2">
@@ -920,7 +920,7 @@ export default function EventCapturePage({
               <p className="font-semibold">Sign-in did not complete</p>
               <p className="mt-1">{signInError.message}</p>
               {signInError.code === 'session_expired' && (
-                <p className="mt-1 text-red-800 dark:text-red-200">
+                <p className="mt-1  ">
                   Use one browser tab for sign-in, or try again.
                 </p>
               )}
@@ -928,7 +928,7 @@ export default function EventCapturePage({
             <button
               type="button"
               onClick={() => setSignInError(null)}
-              className="shrink-0 rounded px-2 py-0.5 text-red-700 hover:bg-red-100 dark:text-red-200 dark:hover:bg-red-900/50"
+              className="shrink-0 rounded px-2 py-0.5    dark:"
               aria-label="Dismiss"
             >
               ×
@@ -939,7 +939,7 @@ export default function EventCapturePage({
       {/* Combined Header and Progress Steps - Hide after save */}
       {!shareUrl && (
         <div className="flex-shrink-0 px-4 py-3 landscape:w-auto landscape:h-full landscape:py-4 landscape:px-2">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 landscape:h-full landscape:flex landscape:flex-col landscape:justify-center landscape:writing-mode-vertical">
+          <div className="  rounded-lg shadow-md p-3 landscape:h-full landscape:flex landscape:flex-col landscape:justify-center landscape:writing-mode-vertical">
             {/* Event Info */}
             <div className="text-center mb-3 landscape:mb-6 landscape:[writing-mode:vertical-lr] landscape:rotate-180">
               {event.showLogo && event.logoUrl && (
@@ -954,11 +954,11 @@ export default function EventCapturePage({
                 </div>
               )}
               {event.partnerName && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs  ">
                   {event.partnerName}
                 </p>
               )}
-              <h1 className="text-base font-bold text-gray-900 dark:text-white">
+              <h1 className="text-base font-bold  ">
                 {event.name}
               </h1>
             </div>
@@ -969,40 +969,40 @@ export default function EventCapturePage({
                 <>
                   <div className="flex flex-col items-center">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                      step === 'select-frame' ? 'bg-blue-600 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400'
+                      step === 'select-frame' ? ' ' : '   '
                     }`}>
                       1
                     </div>
                     <p className={`text-[10px] font-medium text-center mt-1 ${
-                      step === 'select-frame' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+                      step === 'select-frame' ? ' ' : ' '
                     }`}>
                       Select Frame
                     </p>
                   </div>
-                  <div className="w-4 h-0.5 bg-gray-300 dark:bg-gray-600"></div>
+                  <div className="w-4 h-0.5  "></div>
                 </>
               )}
               <div className="flex flex-col items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                  step === 'capture-photo' ? 'bg-blue-600 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400'
+                  step === 'capture-photo' ? ' ' : '   '
                 }`}>
                   {frames.length > 1 ? '2' : '1'}
                 </div>
                 <p className={`text-[10px] font-medium text-center mt-1 ${
-                  step === 'capture-photo' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+                  step === 'capture-photo' ? ' ' : ' '
                 }`}>
                   Capture Photo
                 </p>
               </div>
-              <div className="w-4 h-0.5 bg-gray-300 dark:bg-gray-600"></div>
+              <div className="w-4 h-0.5  "></div>
               <div className="flex flex-col items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                  step === 'preview' ? 'bg-blue-600 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400'
+                  step === 'preview' ? ' ' : '   '
                 }`}>
                   {frames.length > 1 ? '3' : '2'}
                 </div>
                 <p className={`text-[10px] font-medium text-center mt-1 ${
-                  step === 'preview' ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+                  step === 'preview' ? ' ' : ' '
                 }`}>
                   Preview & Save
                 </p>
@@ -1023,7 +1023,7 @@ export default function EventCapturePage({
                   <button
                     type="button"
                     onClick={() => handleFrameSelect(frame)}
-                    className="overflow-hidden rounded-lg border-2 border-gray-300 transition-all hover:border-blue-500"
+                    className="overflow-hidden rounded-lg border-2  transition-all "
                   >
                     <Image
                       src={frame.imageUrl}
@@ -1042,13 +1042,13 @@ export default function EventCapturePage({
 
         {/* Step 2: Photo Capture - Fullscreen */}
         {step === 'capture-photo' && (
-          <div className="fixed inset-0 bg-black z-40 flex flex-col">
+          <div className="fixed inset-0  z-40 flex flex-col">
             {/* Minimal header with change frame button - only show if multiple frames */}
             {frames.length > 1 && (
               <div className="absolute top-4 right-4 z-50">
                 <button
                   onClick={() => setStep('select-frame')}
-                  className="px-3 py-2 bg-white/90 text-gray-900 rounded-lg font-medium text-sm flex items-center gap-1 shadow-lg"
+                  className="px-3 py-2   rounded-lg font-medium text-sm flex items-center gap-1 shadow-lg"
                 >
                   🔄 {changeButtonText}
                 </button>
@@ -1098,7 +1098,7 @@ export default function EventCapturePage({
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="flex w-full max-w-md flex-col gap-4 px-4">
                     {event?.tryOn?.enabled ? (
-                      <div className="rounded-2xl bg-black/70 p-4 shadow-2xl backdrop-blur-md">
+                      <div className="rounded-2xl  p-4 shadow-2xl backdrop-blur-md">
                         <TryOnSuitSelector
                           selectedSuitId={selectedTryOnSuitId}
                           onChange={setSelectedTryOnSuitId}
@@ -1110,7 +1110,7 @@ export default function EventCapturePage({
                     <button
                       onClick={handleSave}
                       disabled={isSaving}
-                      className="px-8 py-4 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-2xl relative overflow-hidden"
+                      className="px-8 py-4   rounded-lg font-semibold  transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-2xl relative overflow-hidden"
                     >
                       {isSaving ? (
                         event?.showLogo && event?.logoUrl ? (
@@ -1132,7 +1132,7 @@ export default function EventCapturePage({
                     </button>
                     <button
                       onClick={handleReset}
-                      className="px-8 py-4 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 shadow-2xl"
+                      className="px-8 py-4   rounded-lg font-semibold  transition-colors flex items-center justify-center gap-2 shadow-2xl"
                     >
                       <span className="text-3xl">🔄</span>
                       <span className="text-xl">{retryButtonText}</span>
@@ -1178,8 +1178,8 @@ export default function EventCapturePage({
 
       {/* Processing Overlay */}
       {isProcessing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-8 text-center">
+        <div className="fixed inset-0  flex items-center justify-center z-50">
+          <div className="  rounded-lg p-8 text-center">
             {event?.showLogo && event?.logoUrl ? (
               <Image
                 src={event.logoUrl}
@@ -1192,7 +1192,7 @@ export default function EventCapturePage({
             ) : (
               <div className="text-6xl mb-4 animate-spin">⏳</div>
             )}
-            <p className="text-gray-900 dark:text-white font-medium">
+            <p className="  font-medium">
               Applying frame...
             </p>
           </div>

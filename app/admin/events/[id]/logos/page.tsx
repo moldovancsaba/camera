@@ -187,7 +187,7 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
   if (error || !event) {
     return (
       <Stack gap="lg">
-        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+        <Alert icon={<IconAlertCircle size={16} />}>
           <Text fw={700}>Error</Text>
           <Text size="sm">{error || 'Event not found'}</Text>
         </Alert>
@@ -254,7 +254,7 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
                             <Button variant="light" color={logo.isActive ? 'green' : 'gray'} size="xs" onClick={() => void handleToggleLogo(logo.logoId)}>
                               {logo.isActive ? '● Active' : '○ Inactive'}
                             </Button>
-                            <Button variant="subtle" color="red" size="xs" onClick={() => void handleRemoveLogo(logo.logoId)}>
+                            <Button variant="subtle" size="xs" onClick={() => void handleRemoveLogo(logo.logoId)}>
                               Remove
                             </Button>
                           </Group>

@@ -28,7 +28,6 @@ function EventMobileCard({ event }: { event: SerializedEventRow }) {
               component={Link}
               href={`/admin/events/${event.id}`}
               fw={700}
-              c="blue.7"
               lineClamp={2}
               style={{ textDecoration: 'none' }}
             >
@@ -101,7 +100,6 @@ export default function EventsInventoryList({
                 component={Link}
                 href={`/admin/events/${event.id}`}
                 fw={700}
-                c="blue.7"
                 style={{ textDecoration: 'none' }}
               >
                 {event.name}
@@ -126,7 +124,6 @@ export default function EventsInventoryList({
             <Text
               component={Link}
               href={`/admin/partners?search=${encodeURIComponent(event.partnerName)}`}
-              c="blue.7"
               style={{ textDecoration: 'none' }}
             >
               {event.partnerName}

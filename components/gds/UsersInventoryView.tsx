@@ -79,12 +79,7 @@ export default function UsersInventoryView({
         <Stack gap="lg">
           <AuthorizationMatrix description="Use this matrix when deciding whether a user belongs in global SSO admin management or in partner-scoped Camera assignments." />
 
-          <Card
-            style={{
-              background: 'color-mix(in srgb, var(--mantine-color-yellow-4) 12%, transparent)',
-              borderColor: 'color-mix(in srgb, var(--mantine-color-yellow-6) 35%, transparent)',
-            }}
-          >
+          <Card withBorder>
             <Text size="sm">
               This page manages global Camera access today. Partner-level permissions are not modeled separately yet, so guest and participation records below are derived from submissions rather than a dedicated partner access table.
             </Text>
@@ -115,7 +110,6 @@ export default function UsersInventoryView({
                           component={Link}
                           href={user.profileHref}
                           fw={600}
-                          c="blue.6"
                           style={{ textDecoration: 'none' }}
                           truncate
                         >
@@ -144,7 +138,6 @@ export default function UsersInventoryView({
                                   component={Link}
                                   href={`/admin/partners?search=${encodeURIComponent(assignment.partnerName)}`}
                                   span
-                                  c="blue.6"
                                   style={{ textDecoration: 'none' }}
                                 >
                                   {assignment.partnerName}

@@ -72,7 +72,7 @@ export default async function ProfilePage() {
               {session.user.name || session.user.email}
             </Text>
           </div>
-          <Button component={Link} href="/" variant="subtle" color="gray">
+          <Button component={Link} href="/" variant="subtle">
             ← Back
           </Button>
         </Group>
@@ -84,7 +84,7 @@ export default async function ProfilePage() {
         </Group>
 
         {error ? (
-          <Alert color="red" title="Error loading gallery" role="alert">
+          <Alert title="Error loading gallery" role="alert">
             <Text size="sm">{error}</Text>
           </Alert>
         ) : null}
@@ -116,7 +116,7 @@ export default async function ProfilePage() {
                   styles={{ root: { overflow: 'hidden' } }}
                 >
                   <Link href={`/share/${submission._id}`}>
-                    <div style={{ borderRadius: 8, overflow: 'hidden', background: 'var(--mantine-color-gray-1)' }}>
+                    <div style={{ borderRadius: 8, overflow: 'hidden' }}>
                       <Image
                         src={submission.imageUrl}
                         alt={`Photo with ${submission.frameName}`}

@@ -14,6 +14,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
+import { Badge, Card, Container, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { getSession } from '@/lib/auth/session';
 import { buildUserManagementPropsFromSubmissions } from '@/lib/admin/build-user-management-props';
 import UserManagementActions from '@/components/admin/UserManagementActions';
@@ -230,36 +231,35 @@ export default async function UserProfilePage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-transparent">
-      <div className="max-w-7xl mx-auto p-8">
+    <Container size="xl" py="xl">
+      <Stack gap="lg">
         {/* Navigation */}
-        <div className="mb-6">
           {viewerCanManageUsers ? (
             <Link
               href="/admin/users"
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:text-white transition-colors"
+            style={{ textDecoration: 'none' }}
             >
               ← Back to Users List
             </Link>
           ) : (
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:text-white transition-colors"
+            style={{ textDecoration: 'none' }}
             >
               ← Back to home
             </Link>
           )}
-        </div>
 
         {viewerCanManageUsers && managementProps ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+        <Card withBorder radius="lg" p="xl">
+          <Stack gap="md">
+            <Title order={2}>
               User management
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            </Title>
+            <Text size="sm" c="dimmed">
               Assign or revoke admin rights, activate or deactivate this account, or merge a
               pseudo user with a real SSO user.
-            </p>
+            </Text>
             <UserManagementActions
               user={{
                 email: managementProps.email,
@@ -271,61 +271,61 @@ export default async function UserProfilePage({ params }: PageProps) {
               }}
               currentUserEmail={session?.user.email ?? ''}
             />
-          </div>
+          </Stack>
+        </Card>
         ) : null}
 
         {/* User Header */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8 mb-6">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
+      <Card withBorder radius="lg" p="xl">
+        <Group justify="space-between" align="flex-start">
+          <Stack gap="sm">
+            <Group gap="sm">
+              <Title order={1}>
                   {user.name}
-                </h1>
+              </Title>
                 {user.isAnonymous ? (
-                  <span className="px-3 py-1 text-sm font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded">
+                <Badge variant="light">
                     Anonymous
-                  </span>
+                </Badge>
                 ) : (
-                  <span className="px-3 py-1 text-sm font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
+                <Badge variant="light">
                     Registered
-                  </span>
+                </Badge>
                 )}
-              </div>
+            </Group>
               
-              <div className="space-y-1 text-gray-600 dark:text-gray-400">
-                <p className="text-lg">
-                  <span className="font-medium">Email:</span> {user.isAnonymous ? 'anonymous@event.com' : user.email}
-                </p>
-                <p className="text-lg">
-                  <span className="font-medium">Registered:</span> {new Date(user.registeredAt).toLocaleString()}
-                </p>
-                <p className="text-lg">
-                  <span className="font-medium">Total Photos:</span> {user.totalPhotos}
-                </p>
-              </div>
-            </div>
+            <Stack gap={4}>
+              <Text c="dimmed"><Text span fw={600}>Email:</Text> {user.isAnonymous ? 'anonymous@event.com' : user.email}</Text>
+              <Text c="dimmed"><Text span fw={600}>Registered:</Text> {new Date(user.registeredAt).toLocaleString()}</Text>
+              <Text c="dimmed"><Text span fw={600}>Total Photos:</Text> {user.totalPhotos}</Text>
+            </Stack>
+          </Stack>
             
-            <div className="ml-6 px-6 py-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
-              <div className="text-5xl font-bold text-blue-600 dark:text-blue-400">
+          <Card withBorder radius="md" p="lg">
+            <Stack align="center" gap={4}>
+              <Text fz="3rem" fw={800}>
                 {user.totalPhotos}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              </Text>
+              <Text size="sm" c="dimmed">
                 {user.totalPhotos === 1 ? 'submission' : 'submissions'}
-              </div>
-            </div>
-          </div>
-        </div>
+              </Text>
+            </Stack>
+          </Card>
+        </Group>
+      </Card>
 
         {/* Events Participation */}
         {user.events.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Event Participation</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card withBorder radius="lg" p="xl">
+          <Stack gap="md">
+            <Title order={2}>Event Participation</Title>
+            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
               {user.events.map((event, idx: number) => (
-                <div
+                <Card
                   key={`${event.eventId}-${idx}`}
-                  className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
+                  withBorder
+                  radius="md"
+                  p="md"
                 >
                   <Link
                     href={
@@ -333,99 +333,94 @@ export default async function UserProfilePage({ params }: PageProps) {
                         ? `/admin/events/${event.eventId}`
                         : `/capture/${event.eventId}`
                     }
-                    className="text-lg font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                    style={{ textDecoration: 'none' }}
                   >
                     {event.eventName}
                   </Link>
                   {event.partnerName && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    <Text size="sm" c="dimmed" mt={4}>
                       Partner: {event.partnerName}
-                    </p>
+                    </Text>
                   )}
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <Text size="sm" c="dimmed" mt={4}>
                     First visit: {new Date(event.firstSubmissionAt).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">
+                  </Text>
+                  <Text size="sm" fw={700} mt={4}>
                     {event.submissionCount} {event.submissionCount === 1 ? 'photo' : 'photos'}
-                  </p>
-                </div>
+                  </Text>
+                </Card>
               ))}
-            </div>
-          </div>
+            </SimpleGrid>
+          </Stack>
+        </Card>
         )}
 
         {/* Consents Accepted */}
         {user.consents.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Consents & Acceptances</h2>
-            <div className="space-y-3">
+        <Card withBorder radius="lg" p="xl">
+          <Stack gap="md">
+            <Title order={2}>Consents & Acceptances</Title>
               {user.consents.map((consent, idx: number) => (
-                <div
+              <Card
                   key={`${consent.pageId}-${idx}`}
-                  className="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
+                withBorder
+                radius="md"
+                p="md"
                 >
-                  <div className="flex-shrink-0 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                    <svg
-                      className="w-4 h-4 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900 dark:text-white">
+                <Stack gap={4}>
+                  <Text fw={600}>
                       {consent.checkboxText}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  </Text>
+                  <Text size="sm" c="dimmed">
                       Accepted on {new Date(consent.acceptedAt).toLocaleString()} • {' '}
-                      <span className="capitalize">{consent.pageType}</span>
-                    </p>
-                  </div>
-                </div>
+                    {consent.pageType}
+                  </Text>
+                </Stack>
+              </Card>
               ))}
-            </div>
-          </div>
+          </Stack>
+        </Card>
         )}
 
         {/* Photo Gallery */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Photo Gallery</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+      <Card withBorder radius="lg" p="xl">
+        <Stack gap="md">
+          <Title order={2}>Photo Gallery</Title>
+          <SimpleGrid cols={{ base: 2, sm: 3, md: 4, lg: 5 }} spacing="md">
             {user.submissions.map((submission) => (
-              <Link
+              <Card
                 key={submission._id.toString()}
+                component={Link}
                 href={`/share/${submission._id}`}
-                className="group relative aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700"
+                p={0}
+                withBorder
+                radius="md"
               >
-                <Image
-                  src={submission.imageUrl || '/placeholder-image.svg'}
-                  alt={`Photo with ${submission.frameName}`}
-                  fill
-                  unoptimized
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors flex flex-col justify-end p-3">
-                  <div className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="font-semibold">{submission.frameName}</div>
-                    <div className="text-gray-300">{submission.eventName}</div>
-                    <div className="text-gray-300 mt-1">{new Date(submission.createdAt).toLocaleDateString()}</div>
-                    {submission.playCount > 0 && (
-                      <div className="text-purple-300 mt-1">🎬 {submission.playCount} plays</div>
-                    )}
+                <Stack gap="xs">
+                  <div style={{ position: 'relative', aspectRatio: '1' }}>
+                    <Image
+                      src={submission.imageUrl || '/placeholder-image.svg'}
+                      alt={`Photo with ${submission.frameName}`}
+                      fill
+                      unoptimized
+                      style={{ objectFit: 'cover' }}
+                    />
                   </div>
-                </div>
-              </Link>
+                  <Stack gap={2} p="sm">
+                    <Text size="sm" fw={600} truncate>{submission.frameName}</Text>
+                    <Text size="xs" c="dimmed" truncate>{submission.eventName}</Text>
+                    <Text size="xs" c="dimmed">{new Date(submission.createdAt).toLocaleDateString()}</Text>
+                    {submission.playCount > 0 ? (
+                      <Text size="xs" c="dimmed">{submission.playCount} plays</Text>
+                    ) : null}
+                  </Stack>
+                </Stack>
+              </Card>
             ))}
-          </div>
-        </div>
-      </div>
-    </div>
+          </SimpleGrid>
+        </Stack>
+      </Card>
+      </Stack>
+    </Container>
   );
 }

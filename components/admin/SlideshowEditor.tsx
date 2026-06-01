@@ -4,7 +4,26 @@ import { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'rea
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  CAMERA_INPUT_FALLBACK_BLACK,
+  Alert,
+  Anchor,
+  Breadcrumbs,
+  Button,
+  Card,
+  Checkbox,
+  ColorInput,
+  Group,
+  Image,
+  NumberInput,
+  Radio,
+  Select,
+  SimpleGrid,
+  Stack,
+  Text,
+  TextInput,
+} from '@mantine/core';
+import { FormSection } from '@doneisbetter/gds-admin/client';
+import EditorScaffold from '@/components/gds/EditorScaffold';
+import {
   SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
   SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
 } from '@/lib/gds/tokens/colors';
@@ -53,21 +72,8 @@ interface Props {
   initialSlideshow?: SlideshowValue | null;
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      <div className="space-y-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
-        {children}
-      </div>
-    </div>
-  );
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return <FormSection title={title}>{children}</FormSection>;
 }
 
 function Field({
@@ -80,15 +86,17 @@ function Field({
   helper?: string;
 }) {
   return (
-    <div>
-      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+    <Stack gap={6}>
+      <Text size="sm" fw={500}>
         {label}
-      </label>
+      </Text>
       {children}
       {helper ? (
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{helper}</p>
+        <Text size="xs" c="dimmed">
+          {helper}
+        </Text>
       ) : null}
-    </div>
+    </Stack>
   );
 }
 
@@ -105,30 +113,22 @@ function ColorField({
   onChange: (nextValue: string) => void;
   helper?: string;
 }) {
-  const safeValue = /^#[0-9A-Fa-f]{6}$/.test(value) ? value : CAMERA_INPUT_FALLBACK_BLACK;
-
   return (
     <Field label={label} helper={helper}>
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          id={`${id}Picker`}
-          value={safeValue}
-          className="h-10 w-16 cursor-pointer rounded border border-gray-300 dark:border-gray-600"
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <input
-          type="text"
-          id={id}
-          value={value}
-          pattern="^#[0-9A-Fa-f]{6}$"
-          placeholder={SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY}
-          onChange={(e) => onChange(e.target.value)}
-          className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-        />
-      </div>
+      <ColorInput
+        id={id}
+        value={value}
+        placeholder={SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY}
+        format="hex"
+        swatchesPerRow={8}
+        onChange={onChange}
+      />
     </Field>
   );
+}
+
+function numberValue(value: string | number, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
 export default function SlideshowEditor({
@@ -228,12 +228,8 @@ export default function SlideshowEditor({
       }
 
       const savedSlideshow = responsePayload.slideshow ?? responsePayload.data?.slideshow;
-      if (savedSlideshow?._id) {
-        setSlideshowMongoId(String(savedSlideshow._id));
-      }
-      if (savedSlideshow?.slideshowId) {
-        setSlideshowId(String(savedSlideshow.slideshowId));
-      }
+      if (savedSlideshow?._id) setSlideshowMongoId(String(savedSlideshow._id));
+      if (savedSlideshow?.slideshowId) setSlideshowId(String(savedSlideshow.slideshowId));
 
       setSuccess(slideshowMongoId ? 'Slideshow updated.' : 'Slideshow saved.');
 
@@ -268,9 +264,7 @@ export default function SlideshowEditor({
         throw new Error(payload.error || payload.message || 'Failed to upload background image');
       }
       const nextImageUrl = String(payload.data?.imageUrl ?? '');
-      if (!nextImageUrl) {
-        throw new Error('Upload finished without an image URL.');
-      }
+      if (!nextImageUrl) throw new Error('Upload finished without an image URL.');
       setBackgroundImageUrl(nextImageUrl);
       setSuccess('Background image uploaded. Save the slideshow to persist it.');
     } catch (uploadError) {
@@ -286,398 +280,302 @@ export default function SlideshowEditor({
   };
 
   return (
-    <div className="mx-auto max-w-6xl p-8">
-      <div className="mb-4 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-        <Link href="/admin/events" className="hover:text-gray-700 dark:hover:text-gray-200">
-          Events
-        </Link>
-        <span>→</span>
-        <Link
-          href={`/admin/events/${eventMongoId}`}
-          className="hover:text-gray-700 dark:hover:text-gray-200"
-        >
-          {eventName}
-        </Link>
-        <span>→</span>
-        <span>{pageTitle}</span>
-      </div>
+    <EditorScaffold
+      eyebrow="Slideshow"
+      title={pageTitle}
+      description={`Configure playback, display behavior, and media failover for ${eventName}.`}
+      maxWidth={1200}
+      breadcrumbs={
+        <Breadcrumbs>
+          <Anchor component={Link} href="/admin/events" size="sm">
+            Events
+          </Anchor>
+          <Anchor component={Link} href={`/admin/events/${eventMongoId}`} size="sm">
+            {eventName}
+          </Anchor>
+          <Text size="sm">{pageTitle}</Text>
+        </Breadcrumbs>
+      }
+    >
+      {error ? <Alert title="Error">{error}</Alert> : null}
+      {success ? <Alert title="Saved">{success}</Alert> : null}
 
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{pageTitle}</h1>
-      </div>
-
-      {error ? (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
-          <p className="font-medium text-red-800 dark:text-red-200">Error</p>
-          <p className="mt-1 text-sm text-red-600 dark:text-red-300">{error}</p>
-        </div>
-      ) : null}
-
-      {success ? (
-        <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
-          <p className="font-medium text-emerald-800 dark:text-emerald-200">Saved</p>
-          <p className="mt-1 text-sm text-emerald-600 dark:text-emerald-300">{success}</p>
-        </div>
-      ) : null}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Section title="Slideshow Basics">
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <Field label="Name">
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                required
-              />
-            </Field>
-            <Field
-              label="Status"
-              helper="Inactive slideshows stay in admin but should not be used on live displays."
-            >
-              <label className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white">
-                <input
-                  type="checkbox"
+      <form onSubmit={handleSubmit}>
+        <Stack gap="lg">
+          <Section title="Slideshow Basics">
+            <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+              <Field label="Name">
+                <TextInput value={name} onChange={(e) => setName(e.target.value)} required />
+              </Field>
+              <Field
+                label="Status"
+                helper="Inactive slideshows stay in admin but should not be used on live displays."
+              >
+                <Checkbox
                   checked={isActive}
                   onChange={(e) => setIsActive(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                  label="Slideshow is active"
                 />
-                Slideshow is active
-              </label>
-            </Field>
-          </div>
-        </Section>
+              </Field>
+            </SimpleGrid>
+          </Section>
 
-        <Section title="Playback and Stage">
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <Field
-              label="Stage aspect ratio"
-              helper="Auto uses the event default. Override when a display or layout needs a different stage shape."
-            >
-              <div className="space-y-3">
-                <select
-                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                  value={stageAspectToSelectId(stageAspect)}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    if (id === 'auto') {
-                      setStageAspect(null);
-                      return;
-                    }
-                    if (id === 'custom') {
-                      setStageAspect((current) =>
-                        typeof current === 'number' &&
-                        Number.isFinite(current) &&
-                        stageAspectToSelectId(current) === 'custom'
-                          ? current
-                          : 16 / 9
-                      );
-                      return;
-                    }
-                    const preset = STAGE_ASPECT_PRESETS.find((item) => item.id === id);
-                    setStageAspect(preset?.ratio ?? null);
-                  }}
-                >
-                  {STAGE_ASPECT_PRESETS.map((preset) => (
-                    <option key={preset.id} value={preset.id}>
-                      {preset.label}
-                    </option>
-                  ))}
-                  <option value="custom">Custom width ÷ height…</option>
-                </select>
-                {stageAspectToSelectId(stageAspect) === 'custom' ? (
-                  <input
-                    type="number"
-                    min={0.25}
-                    max={4}
-                    step={0.01}
-                    value={
-                      typeof stageAspect === 'number' && Number.isFinite(stageAspect)
-                        ? stageAspect
-                        : ''
-                    }
-                    onChange={(e) => {
-                      const nextValue = parseFloat(e.target.value);
-                      setStageAspect(Number.isFinite(nextValue) ? nextValue : undefined);
+          <Section title="Playback and Stage">
+            <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+              <Field
+                label="Stage aspect ratio"
+                helper="Auto uses the event default. Override when a display or layout needs a different stage shape."
+              >
+                <Stack gap="sm">
+                  <Select
+                    value={stageAspectToSelectId(stageAspect)}
+                    onChange={(id) => {
+                      const nextId = id ?? 'auto';
+                      if (nextId === 'auto') {
+                        setStageAspect(null);
+                        return;
+                      }
+                      if (nextId === 'custom') {
+                        setStageAspect((current) =>
+                          typeof current === 'number' &&
+                          Number.isFinite(current) &&
+                          stageAspectToSelectId(current) === 'custom'
+                            ? current
+                            : 16 / 9
+                        );
+                        return;
+                      }
+                      const preset = STAGE_ASPECT_PRESETS.find((item) => item.id === nextId);
+                      setStageAspect(preset?.ratio ?? null);
                     }}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                    data={[
+                      ...STAGE_ASPECT_PRESETS.map((preset) => ({
+                        value: preset.id,
+                        label: preset.label,
+                      })),
+                      { value: 'custom', label: 'Custom width / height...' },
+                    ]}
                   />
-                ) : null}
-              </div>
-            </Field>
+                  {stageAspectToSelectId(stageAspect) === 'custom' ? (
+                    <NumberInput
+                      min={0.25}
+                      max={4}
+                      step={0.01}
+                      value={
+                        typeof stageAspect === 'number' && Number.isFinite(stageAspect)
+                          ? stageAspect
+                          : ''
+                      }
+                      onChange={(value) => {
+                        const nextValue = numberValue(value, Number.NaN);
+                        setStageAspect(Number.isFinite(nextValue) ? nextValue : undefined);
+                      }}
+                    />
+                  ) : null}
+                </Stack>
+              </Field>
 
-            <Field
-              label="Fit vs fill"
-              helper="Fit keeps the full stage visible. Fill covers the region and may crop."
-            >
-              <div className="flex flex-wrap gap-6">
-                <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                  <input
-                    type="radio"
-                    name="viewportScale"
-                    className="accent-purple-600"
-                    checked={viewportScale === 'fit'}
-                    onChange={() => setViewportScale('fit')}
-                  />
-                  Fit (letterbox)
-                </label>
-                <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                  <input
-                    type="radio"
-                    name="viewportScale"
-                    className="accent-purple-600"
-                    checked={viewportScale === 'fill'}
-                    onChange={() => setViewportScale('fill')}
-                  />
-                  Fill (crop)
-                </label>
-              </div>
-            </Field>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <Field
-              label="Buffer (slides ahead of current)"
-              helper="Visible slide is extra, so memory holds this value plus the current slide."
-            >
-              <input
-                type="number"
-                min={1}
-                max={50}
-                value={bufferSize}
-                onChange={(e) => setBufferSize(parseInt(e.target.value, 10) || 1)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-              />
-            </Field>
-
-            <Field label="Refresh strategy">
-              <select
-                value={refreshStrategy}
-                onChange={(e) =>
-                  setRefreshStrategy(e.target.value === 'batch' ? 'batch' : 'continuous')
-                }
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              <Field
+                label="Fit vs fill"
+                helper="Fit keeps the full stage visible. Fill covers the region and may crop."
               >
-                <option value="continuous">Continuous (background refresh)</option>
-                <option value="batch">Batch (reload all at once)</option>
-              </select>
-            </Field>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <Field label="Slide duration (ms)">
-              <input
-                type="number"
-                min={1000}
-                max={600000}
-                step={100}
-                value={transitionDurationMs}
-                onChange={(e) =>
-                  setTransitionDurationMs(
-                    Math.max(1000, Math.min(600000, parseInt(e.target.value, 10) || 5000))
-                  )
-                }
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-              />
-            </Field>
-
-            <Field label="Fade duration (ms)">
-              <input
-                type="number"
-                min={0}
-                max={60000}
-                step={50}
-                value={fadeDurationMs}
-                onChange={(e) =>
-                  setFadeDurationMs(
-                    Math.max(0, Math.min(60000, parseInt(e.target.value, 10) || 0))
-                  )
-                }
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-              />
-            </Field>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <Field label="Playback">
-              <div className="flex flex-wrap gap-6">
-                <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                  <input
-                    type="radio"
-                    name="playMode"
-                    className="accent-purple-600"
-                    checked={playMode === 'once'}
-                    onChange={() => setPlayMode('once')}
-                  />
-                  Play once
-                </label>
-                <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                  <input
-                    type="radio"
-                    name="playMode"
-                    className="accent-purple-600"
-                    checked={playMode === 'loop'}
-                    onChange={() => setPlayMode('loop')}
-                  />
-                  Loop
-                </label>
-              </div>
-            </Field>
-
-            <Field label="Order">
-              <div className="flex flex-wrap gap-6">
-                <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                  <input
-                    type="radio"
-                    name="orderMode"
-                    className="accent-purple-600"
-                    checked={orderMode === 'fixed'}
-                    onChange={() => setOrderMode('fixed')}
-                  />
-                  Fixed
-                </label>
-                <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                  <input
-                    type="radio"
-                    name="orderMode"
-                    className="accent-purple-600"
-                    checked={orderMode === 'random'}
-                    onChange={() => setOrderMode('random')}
-                  />
-                  Random
-                </label>
-              </div>
-            </Field>
-          </div>
-
-          <Field label="Submission source">
-            <div className="flex flex-wrap gap-6">
-              <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                <input
-                  type="radio"
-                  name="submissionSourceMode"
-                  className="accent-purple-600"
-                  checked={submissionSourceMode === 'originals_only'}
-                  onChange={() => setSubmissionSourceMode('originals_only')}
-                />
-                Originals only
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                <input
-                  type="radio"
-                  name="submissionSourceMode"
-                  className="accent-purple-600"
-                  checked={submissionSourceMode === 'approved_tryon_only'}
-                  onChange={() => setSubmissionSourceMode('approved_tryon_only')}
-                />
-                Approved try-on results only
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                <input
-                  type="radio"
-                  name="submissionSourceMode"
-                  className="accent-purple-600"
-                  checked={submissionSourceMode === 'originals_and_approved_tryon'}
-                  onChange={() => setSubmissionSourceMode('originals_and_approved_tryon')}
-                />
-                Originals + approved try-on results
-              </label>
-            </div>
-          </Field>
-        </Section>
-
-        <Section title="Background and Colors">
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <ColorField
-              id="backgroundPrimaryColor"
-              label="Primary color (top-right)"
-              value={backgroundPrimaryColor}
-              onChange={setBackgroundPrimaryColor}
-              helper="Used for the top-right side of the fallback gradient."
-            />
-            <ColorField
-              id="backgroundAccentColor"
-              label="Accent color (bottom-left)"
-              value={backgroundAccentColor}
-              onChange={setBackgroundAccentColor}
-              helper="Used for the bottom-left side of the fallback gradient."
-            />
-          </div>
-
-          <Field
-            label="Failover background photo"
-            helper="Shown above the gradient and behind slide images in empty or letterboxed states."
-          >
-            <input
-              ref={bgFileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleBackgroundFile}
-            />
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                disabled={isUploadingBackground || !slideshowId}
-                onClick={() => bgFileInputRef.current?.click()}
-                className="rounded-lg bg-gray-200 px-3 py-2 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-300 disabled:opacity-50 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-              >
-                {isUploadingBackground ? 'Uploading…' : 'Upload image'}
-              </button>
-              {backgroundImageUrl?.trim() ? (
-                <button
-                  type="button"
-                  onClick={() => setBackgroundImageUrl('')}
-                  className="px-3 py-2 text-sm text-red-600 dark:text-red-400"
+                <Radio.Group
+                  value={viewportScale}
+                  onChange={(value) => setViewportScale(value === 'fill' ? 'fill' : 'fit')}
                 >
-                  Remove photo
-                </button>
-              ) : null}
-            </div>
-            {!slideshowId ? (
-              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                Save the slideshow once before uploading a background image.
-              </p>
-            ) : null}
-            {backgroundImageUrl?.trim() ? (
-              <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-600">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={backgroundImageUrl}
-                  alt="Background preview"
-                  className="h-40 w-full object-cover"
-                />
-              </div>
-            ) : null}
-          </Field>
-        </Section>
+                  <Group>
+                    <Radio value="fit" label="Fit (letterbox)" />
+                    <Radio value="fill" label="Fill (crop)" />
+                  </Group>
+                </Radio.Group>
+              </Field>
+            </SimpleGrid>
 
-        <div className="flex gap-3">
-          <Link
-            href={`/admin/events/${eventMongoId}`}
-            className="rounded-lg bg-gray-200 px-4 py-2 font-semibold text-gray-900 transition-colors hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-          >
-            Cancel
-          </Link>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isSubmitting ? 'Saving…' : slideshowMongoId ? 'Save changes' : 'Create slideshow'}
-          </button>
-          {slideshowId ? (
-            <Link
-              href={`/slideshow/${slideshowId}`}
-              target="_blank"
-              className="rounded-lg bg-gray-800 px-4 py-2 font-semibold text-white transition-colors hover:bg-gray-900"
+            <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+              <Field
+                label="Buffer (slides ahead of current)"
+                helper="Visible slide is extra, so memory holds this value plus the current slide."
+              >
+                <NumberInput
+                  min={1}
+                  max={50}
+                  value={bufferSize}
+                  onChange={(value) => setBufferSize(numberValue(value, 1))}
+                />
+              </Field>
+              <Field label="Refresh strategy">
+                <Select
+                  value={refreshStrategy}
+                  onChange={(value) =>
+                    setRefreshStrategy(value === 'batch' ? 'batch' : 'continuous')
+                  }
+                  data={[
+                    { value: 'continuous', label: 'Continuous (background refresh)' },
+                    { value: 'batch', label: 'Batch (reload all at once)' },
+                  ]}
+                />
+              </Field>
+            </SimpleGrid>
+
+            <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+              <Field label="Slide duration (ms)">
+                <NumberInput
+                  min={1000}
+                  max={600000}
+                  step={100}
+                  value={transitionDurationMs}
+                  onChange={(value) =>
+                    setTransitionDurationMs(
+                      Math.max(1000, Math.min(600000, numberValue(value, 5000)))
+                    )
+                  }
+                />
+              </Field>
+              <Field label="Fade duration (ms)">
+                <NumberInput
+                  min={0}
+                  max={60000}
+                  step={50}
+                  value={fadeDurationMs}
+                  onChange={(value) =>
+                    setFadeDurationMs(
+                      Math.max(0, Math.min(60000, numberValue(value, 0)))
+                    )
+                  }
+                />
+              </Field>
+            </SimpleGrid>
+
+            <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+              <Field label="Playback">
+                <Radio.Group
+                  value={playMode}
+                  onChange={(value) => setPlayMode(value === 'once' ? 'once' : 'loop')}
+                >
+                  <Group>
+                    <Radio value="once" label="Play once" />
+                    <Radio value="loop" label="Loop" />
+                  </Group>
+                </Radio.Group>
+              </Field>
+              <Field label="Order">
+                <Radio.Group
+                  value={orderMode}
+                  onChange={(value) => setOrderMode(value === 'random' ? 'random' : 'fixed')}
+                >
+                  <Group>
+                    <Radio value="fixed" label="Fixed" />
+                    <Radio value="random" label="Random" />
+                  </Group>
+                </Radio.Group>
+              </Field>
+            </SimpleGrid>
+
+            <Field label="Submission source">
+              <Radio.Group
+                value={submissionSourceMode}
+                onChange={(value) =>
+                  setSubmissionSourceMode(
+                    value === 'approved_tryon_only' ||
+                      value === 'originals_and_approved_tryon'
+                      ? value
+                      : 'originals_only'
+                  )
+                }
+              >
+                <Group>
+                  <Radio value="originals_only" label="Originals only" />
+                  <Radio value="approved_tryon_only" label="Approved try-on results only" />
+                  <Radio
+                    value="originals_and_approved_tryon"
+                    label="Originals + approved try-on results"
+                  />
+                </Group>
+              </Radio.Group>
+            </Field>
+          </Section>
+
+          <Section title="Background and Colors">
+            <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
+              <ColorField
+                id="backgroundPrimaryColor"
+                label="Primary color (top-right)"
+                value={backgroundPrimaryColor}
+                onChange={setBackgroundPrimaryColor}
+                helper="Used for the top-right side of the fallback gradient."
+              />
+              <ColorField
+                id="backgroundAccentColor"
+                label="Accent color (bottom-left)"
+                value={backgroundAccentColor}
+                onChange={setBackgroundAccentColor}
+                helper="Used for the bottom-left side of the fallback gradient."
+              />
+            </SimpleGrid>
+
+            <Field
+              label="Failover background photo"
+              helper="Shown above the gradient and behind slide images in empty or letterboxed states."
             >
-              Open slideshow
-            </Link>
-          ) : null}
-        </div>
+              <input
+                ref={bgFileInputRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={handleBackgroundFile}
+              />
+              <Group gap="xs">
+                <Button
+                  type="button"
+                  disabled={isUploadingBackground || !slideshowId}
+                  onClick={() => bgFileInputRef.current?.click()}
+                  variant="light"
+                >
+                  {isUploadingBackground ? 'Uploading...' : 'Upload image'}
+                </Button>
+                {backgroundImageUrl?.trim() ? (
+                  <Button
+                    type="button"
+                    onClick={() => setBackgroundImageUrl('')}
+                    variant="subtle"
+                  >
+                    Remove photo
+                  </Button>
+                ) : null}
+              </Group>
+              {!slideshowId ? (
+                <Text size="xs" c="dimmed">
+                  Save the slideshow once before uploading a background image.
+                </Text>
+              ) : null}
+              {backgroundImageUrl?.trim() ? (
+                <Card withBorder padding={0}>
+                  <Image src={backgroundImageUrl} alt="Background preview" h={160} fit="cover" />
+                </Card>
+              ) : null}
+            </Field>
+          </Section>
+
+          <Group>
+            <Button component={Link} href={`/admin/events/${eventMongoId}`} variant="default">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : slideshowMongoId ? 'Save changes' : 'Create slideshow'}
+            </Button>
+            {slideshowId ? (
+              <Button
+                component={Link}
+                href={`/slideshow/${slideshowId}`}
+                target="_blank"
+                variant="light"
+              >
+                Open slideshow
+              </Button>
+            ) : null}
+          </Group>
+        </Stack>
       </form>
-    </div>
+    </EditorScaffold>
   );
 }

@@ -178,7 +178,7 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
       maxWidth={960}
     >
       {error ? (
-        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+        <Alert icon={<IconAlertCircle size={16} />}>
           {error}
         </Alert>
       ) : null}
@@ -187,7 +187,7 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
         <Stack gap="lg">
           <FormSection title="Logo preview" description="To change the image, delete this logo and upload a new one.">
             <AspectRatio ratio={1} maw={320}>
-              <Box bg="gray.0" style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
+              <Box style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
                 <Image
                   src={logo.thumbnailUrl || logo.imageUrl}
                   alt={logo.name}
@@ -259,7 +259,6 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
             </Group>
             <Button
               type="button"
-              color="red"
               variant="light"
               loading={isDeleting}
               disabled={isDeleting}

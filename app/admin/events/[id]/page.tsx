@@ -123,10 +123,10 @@ function EventInfoRow({
 }) {
   return (
     <Group justify="space-between" align="flex-start" gap="md" wrap="nowrap">
-      <Text size="sm" fw={700} c="gray.8" miw={120}>
+      <Text size="sm" fw={700} miw={120}>
         {label}
       </Text>
-      <Text size="sm" c="gray.8" ta="right">
+      <Text size="sm" ta="right">
         {value}
       </Text>
     </Group>
@@ -275,7 +275,7 @@ export default async function EventDetailPage({
       />
 
       {dbError ? (
-        <Card bg="red.0" c="red.8">
+        <Card>
           <Text fw={700}>Error loading data</Text>
           <Text size="sm">{dbError}</Text>
         </Card>
@@ -329,7 +329,7 @@ export default async function EventDetailPage({
             </Stack>
           </Card>
 
-          <Card bg="blue.0">
+          <Card>
             <Title order={3}>📸 Event Capture URL</Title>
             <Text size="sm" c="dimmed" mt="xs" mb="md">
               Share this URL to let users take photos for this event
@@ -354,7 +354,7 @@ export default async function EventDetailPage({
                   <Code block>{defaultGoShortOrigin()}/{event.shortUrlSlug.trim()}</Code>
                 </Card>
                 <a href={`${defaultGoShortOrigin()}/${event.shortUrlSlug.trim()}`} target="_blank" rel="noopener noreferrer">
-                  <Button fullWidth mt="sm" color="indigo">
+                  <Button fullWidth mt="sm">
                     Open short link →
                   </Button>
                 </a>

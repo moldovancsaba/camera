@@ -156,7 +156,7 @@ export default function UserManagementActions({ user, currentUserEmail }: UserMa
         </Button>
 
         {user.type === 'pseudo' && !user.mergedWith ? (
-          <Button size="xs" variant="light" color="blue" onClick={() => setShowMergeDialog(true)} disabled={loading}>
+          <Button size="xs" variant="light" onClick={() => setShowMergeDialog(true)} disabled={loading}>
             🔗 Merge with Real User
           </Button>
         ) : null}

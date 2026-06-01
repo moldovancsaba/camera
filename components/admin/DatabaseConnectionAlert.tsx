@@ -8,7 +8,7 @@ export default function DatabaseConnectionAlert({ diagnosis }: { diagnosis: Mong
   const { rawMessage, summary, hints } = diagnosis;
 
   return (
-    <Alert color="red" icon={<IconAlertCircle size={16} />}>
+    <Alert icon={<IconAlertCircle size={16} />}>
       <Text fw={700}>Database connection error</Text>
       <Text size="sm" mt="xs">
         {summary}

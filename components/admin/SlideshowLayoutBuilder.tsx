@@ -343,7 +343,7 @@ export default function SlideshowLayoutBuilder({
         <button
           type="button"
           onClick={() => router.push(`/admin/events/${eventMongoId}`)}
-          className="text-sm text-gray-600 dark:text-gray-400 hover:underline"
+          className="text-sm hover:underline"
         >
           ← Back to event
         </button>
@@ -351,7 +351,7 @@ export default function SlideshowLayoutBuilder({
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+          className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
         >
           {saving ? 'Saving…' : 'Save layout'}
         </button>
@@ -361,44 +361,44 @@ export default function SlideshowLayoutBuilder({
         <div className="lg:col-span-2 space-y-4">
           <div className="flex flex-wrap gap-3 items-end">
             <label className="flex flex-col text-sm">
-              <span className="text-gray-600 dark:text-gray-400">Layout name</span>
+              <span>Layout name</span>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 min-w-[200px]"
+                className="border rounded px-2 py-1 min-w-[200px]"
               />
             </label>
             <label className="flex flex-col text-sm">
-              <span className="text-gray-600 dark:text-gray-400">Rows</span>
+              <span>Rows</span>
               <input
                 type="number"
                 min={1}
                 max={24}
                 value={rows}
                 onChange={(e) => setRows(Number(e.target.value) || 1)}
-                className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-20 bg-white dark:bg-gray-800"
+                className="border rounded px-2 py-1 w-20"
               />
             </label>
             <label className="flex flex-col text-sm">
-              <span className="text-gray-600 dark:text-gray-400">Cols</span>
+              <span>Cols</span>
               <input
                 type="number"
                 min={1}
                 max={24}
                 value={cols}
                 onChange={(e) => setCols(Number(e.target.value) || 1)}
-                className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-20 bg-white dark:bg-gray-800"
+                className="border rounded px-2 py-1 w-20"
               />
             </label>
             <label className="flex flex-col text-sm min-w-[140px]">
-              <span className="text-gray-600 dark:text-gray-400">Cell shape</span>
+              <span>Cell shape</span>
               <select
                 value={cellAspect}
                 onChange={(e) => {
                   const v = e.target.value;
                   if (v === '16:9' || v === '9:16') setCellAspect(v);
                 }}
-                className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800"
+                className="border rounded px-2 py-1"
               >
                 <option value="16:9">16:9 (landscape)</option>
                 <option value="9:16">9:16 (portrait)</option>
@@ -407,12 +407,12 @@ export default function SlideshowLayoutBuilder({
             <button
               type="button"
               onClick={applyGridReset}
-              className="px-3 py-2 bg-amber-600 text-white rounded text-sm font-medium"
+              className="px-3 py-2 rounded text-sm font-medium"
             >
               Apply grid & reset cells
             </button>
           </div>
-          <p className="text-xs text-amber-800 dark:text-amber-200/90 rounded-md bg-amber-50 dark:bg-amber-950/40 px-2 py-1.5 border border-amber-200/80 dark:border-amber-800/60 max-w-3xl">
+          <p className="text-xs rounded-md px-2 py-1.5 border max-w-3xl">
             <strong className="font-semibold">Cell shape on the public page:</strong> each grid cell matches
             the selected <strong className="font-semibold">{cellAspect}</strong> stage (width:height{' '}
             {cellUw}:{cellUh}). The <strong className="font-semibold">whole videowall</strong> is then{' '}
@@ -426,10 +426,10 @@ export default function SlideshowLayoutBuilder({
           </p>
 
           <div>
-            <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <span className="block text-sm font-medium mb-2">
               Grid in browser
             </span>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+            <p className="text-xs mb-2">
               The row×column grid is one rigid block (cells share edges). On the public page it{' '}
               <strong className="font-semibold">always</strong> scales so the <strong className="font-semibold">entire</strong> grid stays visible—no horizontal or vertical clipping (letterboxing margins when needed).
             </p>
@@ -437,7 +437,7 @@ export default function SlideshowLayoutBuilder({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
             <label className="flex flex-col text-sm gap-1">
-              <span className="text-gray-600 dark:text-gray-400">
+              <span>
                 Align vertical
               </span>
               <select
@@ -448,7 +448,7 @@ export default function SlideshowLayoutBuilder({
                     setAlignVertical(v);
                   }
                 }}
-                className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800"
+                className="border rounded px-2 py-1"
               >
                 <option value="top">Top</option>
                 <option value="middle">Middle</option>
@@ -456,7 +456,7 @@ export default function SlideshowLayoutBuilder({
               </select>
             </label>
             <label className="flex flex-col text-sm gap-1">
-              <span className="text-gray-600 dark:text-gray-400">
+              <span>
                 Align horizontal
               </span>
               <select
@@ -467,7 +467,7 @@ export default function SlideshowLayoutBuilder({
                     setAlignHorizontal(v);
                   }
                 }}
-                className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800"
+                className="border rounded px-2 py-1"
               >
                 <option value="left">Left</option>
                 <option value="center">Center</option>
@@ -475,14 +475,14 @@ export default function SlideshowLayoutBuilder({
               </select>
             </label>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2 max-w-xl">
+          <p className="text-xs -mt-2 max-w-xl">
             Positions the videowall in the browser (same flex classes as the public page). Does not change
             scale-to-fit sizing — only where the block sits in the viewport.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
             <label className="flex flex-col text-sm gap-1">
-              <span className="text-gray-600 dark:text-gray-400">
+              <span>
                 Safety gradient — primary (#RRGGBB)
               </span>
               <input
@@ -490,11 +490,11 @@ export default function SlideshowLayoutBuilder({
                 placeholder={`Empty = default (${SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY})`}
                 value={safetyPrimaryColor}
                 onChange={(e) => setSafetyPrimaryColor(e.target.value)}
-                className="font-mono text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800"
+                className="font-mono text-xs border rounded px-2 py-1"
               />
             </label>
             <label className="flex flex-col text-sm gap-1">
-              <span className="text-gray-600 dark:text-gray-400">
+              <span>
                 Safety gradient — accent (#RRGGBB)
               </span>
               <input
@@ -502,23 +502,23 @@ export default function SlideshowLayoutBuilder({
                 placeholder={`Empty = default (${SLIDESHOW_DEFAULT_BACKGROUND_ACCENT})`}
                 value={safetyAccentColor}
                 onChange={(e) => setSafetyAccentColor(e.target.value)}
-                className="font-mono text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800"
+                className="font-mono text-xs border rounded px-2 py-1"
               />
             </label>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2 max-w-xl">
+          <p className="text-xs -mt-2 max-w-xl">
             Diagonal gradient behind the grid (letterbox). Optional outer CSS below stacks on top. Save
             accepts empty or #RRGGBB.
           </p>
 
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs">
             Drag on the grid to select tiles, then name the region and commit. Each region maps to one
             slideshow. Tiles cannot overlap.
           </p>
 
           <div
             ref={wrapRef}
-            className={`border border-gray-200 dark:border-gray-600 rounded-lg p-2 overflow-hidden relative flex ${previewAlignClass}`}
+            className={`border rounded-lg p-2 overflow-hidden relative flex ${previewAlignClass}`}
             style={{ height: 'min(60vh, 520px)' }}
           >
             <div
@@ -568,9 +568,9 @@ export default function SlideshowLayoutBuilder({
                   <div
                     key={tid}
                     role="presentation"
-                    className={`rounded-sm cursor-pointer border border-black/20 ${
+                    className={`rounded-sm cursor-pointer border ${
                       selectedAreaId && area?.id === selectedAreaId
-                        ? 'ring-2 ring-white'
+                        ? 'ring-2'
                         : ''
                     }`}
                     style={{
@@ -600,40 +600,40 @@ export default function SlideshowLayoutBuilder({
               placeholder="New region label"
               value={newAreaLabel}
               onChange={(e) => setNewAreaLabel(e.target.value)}
-              className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm flex-1 min-w-[160px] bg-white dark:bg-gray-800"
+              className="border rounded px-2 py-1 text-sm flex-1 min-w-[160px]"
             />
             <button
               type="button"
               onClick={commitSelectionAsArea}
               disabled={selection.size === 0}
-              className="px-3 py-2 bg-indigo-600 text-white rounded text-sm disabled:opacity-40"
+              className="px-3 py-2 rounded text-sm disabled:opacity-40"
             >
               Create region from selection
             </button>
             <button
               type="button"
               onClick={() => setSelection(new Set())}
-              className="px-3 py-2 bg-gray-300 dark:bg-gray-600 rounded text-sm"
+              className="px-3 py-2 rounded text-sm"
             >
               Clear selection
             </button>
           </div>
 
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-gray-600 dark:text-gray-400">
+            <span>
               Outer background (CSS, background-* only)
             </span>
             <textarea
               value={background}
               onChange={(e) => setBackground(e.target.value)}
               rows={4}
-              className="font-mono text-xs border border-gray-300 dark:border-gray-600 rounded p-2 bg-white dark:bg-gray-800"
+              className="font-mono text-xs border rounded p-2"
             />
           </label>
         </div>
 
-        <div className="space-y-4 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
-          <h3 className="font-semibold text-gray-900 dark:text-white">Regions</h3>
+        <div className="space-y-4 border rounded-lg p-4">
+          <h3 className="font-semibold">Regions</h3>
           <ul className="space-y-2 max-h-48 overflow-y-auto text-sm">
             {areas.map((a) => (
               <li key={a.id}>
@@ -642,8 +642,8 @@ export default function SlideshowLayoutBuilder({
                   onClick={() => setSelectedAreaId(a.id)}
                   className={`w-full text-left px-2 py-1 rounded ${
                     selectedAreaId === a.id
-                      ? 'bg-indigo-100 dark:bg-indigo-900/40'
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                      ? 'ring-2'
+                      : ''
                   }`}
                 >
                   <span
@@ -657,17 +657,17 @@ export default function SlideshowLayoutBuilder({
           </ul>
 
           {selectedArea ? (
-            <div className="space-y-3 pt-2 border-t border-gray-200 dark:border-gray-600">
+            <div className="space-y-3 pt-2 border-t">
               <div>
-                <label className="text-xs text-gray-500">Label</label>
+                <label className="text-xs">Label</label>
                 <input
                   value={selectedArea.label}
                   onChange={(e) => updateSelectedArea({ label: e.target.value })}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-900"
+                  className="w-full border rounded px-2 py-1 text-sm"
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-500">Slideshow</label>
+                <label className="text-xs">Slideshow</label>
                 <select
                   value={selectedArea.slideshowId || ''}
                   onChange={(e) =>
@@ -675,7 +675,7 @@ export default function SlideshowLayoutBuilder({
                       slideshowId: e.target.value || null,
                     })
                   }
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-900"
+                  className="w-full border rounded px-2 py-1 text-sm"
                 >
                   <option value="">— None —</option>
                   {slideshows.map((s) => (
@@ -686,7 +686,7 @@ export default function SlideshowLayoutBuilder({
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-500">
+                <label className="text-xs">
                   Stagger delay (ms)
                 </label>
                 <input
@@ -702,17 +702,17 @@ export default function SlideshowLayoutBuilder({
                       : 0;
                     updateSelectedArea({ delayMs: ms });
                   }}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-900"
+                  className="w-full border rounded px-2 py-1 text-sm"
                 />
-                <p className="text-[10px] text-gray-500 mt-0.5">
+                <p className="text-[10px] mt-0.5">
                   Extra ms added to <strong className="font-semibold">each</strong> slide&apos;s display
                   time in this cell (hold = transition duration + this value). Use different values per
                   region to keep the same slideshow out of sync across tiles (0–600000 ms).
                 </p>
               </div>
               <div>
-                <label className="text-xs text-gray-500">Photo scaling</label>
-                <p className="text-[10px] text-gray-500 mt-0.5 mb-1">
+                <label className="text-xs">Photo scaling</label>
+                <p className="text-[10px] mt-0.5 mb-1">
                   Controls how the <strong className="font-semibold">slideshow stage</strong> (aspect from
                   slideshow settings) fits <em>this tile</em>: Fit = whole stage visible; Fill = stage
                   scales to cover the tile (edges cropped).
@@ -724,7 +724,7 @@ export default function SlideshowLayoutBuilder({
                       objectFit: e.target.value as 'contain' | 'cover',
                     })
                   }
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-900"
+                  className="w-full border rounded px-2 py-1 text-sm"
                 >
                   <option value="contain">Fit tile (letterbox stage)</option>
                   <option value="cover">Fill tile (crop stage)</option>
@@ -733,13 +733,13 @@ export default function SlideshowLayoutBuilder({
               <button
                 type="button"
                 onClick={() => removeArea(selectedArea.id)}
-                className="text-sm text-red-600 hover:underline"
+                className="text-sm hover:underline"
               >
                 Remove region
               </button>
             </div>
           ) : (
-            <p className="text-sm text-gray-500">Select a region to edit.</p>
+            <p className="text-sm">Select a region to edit.</p>
           )}
         </div>
       </div>

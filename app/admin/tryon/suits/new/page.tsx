@@ -94,7 +94,7 @@ export default function NewTryOnSuitPage() {
                 alt="Leather jersey preview"
                 caption={file?.name}
                 action={
-                  <Button color="red" variant="light" leftSection={<IconTrash size={16} />} onClick={clearFile}>
+                  <Button variant="light" leftSection={<IconTrash size={16} />} onClick={clearFile}>
                     Remove
                   </Button>
                 }
@@ -109,7 +109,7 @@ export default function NewTryOnSuitPage() {
               />
             )}
             {error ? (
-              <Alert color="red" icon={<IconAlertCircle size={16} />}>
+              <Alert icon={<IconAlertCircle size={16} />}>
                 {error}
               </Alert>
             ) : null}

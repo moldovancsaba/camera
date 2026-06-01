@@ -12,6 +12,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { Box, Paper, Pill, PillsInput, Stack, Text, UnstyledButton } from '@mantine/core';
 
 interface HashtagInputProps {
   value: string[];
@@ -129,37 +130,25 @@ export default function HashtagInput({
   }, [focusedIndex]);
 
   return (
-    <div className={`relative ${className}`}>
+    <Box className={className} style={{ position: 'relative' }}>
       {/* Selected hashtags + input field */}
-      <div className="min-h-[42px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 flex flex-wrap gap-2 items-center focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+      <PillsInput>
+        <Pill.Group>
         {/* Selected hashtags as chips */}
         {value.map((hashtag) => (
-          <span
+          <Pill
             key={hashtag}
-            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-sm rounded-full"
+            withRemoveButton
+            onRemove={() => removeHashtag(hashtag)}
+            removeButtonProps={{ 'aria-label': `Remove ${hashtag}` }}
           >
-            <span>#{hashtag}</span>
-            <button
-              type="button"
-              onClick={() => removeHashtag(hashtag)}
-              className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
-              aria-label={`Remove ${hashtag}`}
-            >
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-          </span>
+            #{hashtag}
+          </Pill>
         ))}
 
         {/* Input field */}
-        <input
+          <PillsInput.Field
           ref={inputRef}
-          type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -169,60 +158,62 @@ export default function HashtagInput({
             setTimeout(() => setShowSuggestions(false), 200);
           }}
           placeholder={value.length === 0 ? placeholder : ''}
-          className="flex-1 min-w-[120px] outline-none bg-transparent text-gray-900 dark:text-white text-sm"
         />
-      </div>
+        </Pill.Group>
+      </PillsInput>
 
       {/* Autocomplete suggestions dropdown */}
       {showSuggestions && (inputValue || suggestions.length > 0) && (
-        <div
+        <Paper
           ref={suggestionsRef}
-          className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+          withBorder
+          shadow="md"
+          radius="md"
+          mt={4}
+          style={{ position: 'absolute', zIndex: 10, width: '100%', maxHeight: 240, overflowY: 'auto' }}
         >
           {suggestions.length > 0 ? (
-            <div className="py-1">
+            <Stack gap={0} py={4}>
               {suggestions.map((hashtag, index) => (
-                <button
+                <UnstyledButton
                   key={hashtag}
                   type="button"
                   onClick={() => addHashtag(hashtag)}
-                  className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                    index === focusedIndex
-                      ? 'bg-blue-50 dark:bg-blue-900/20'
-                      : ''
-                  }`}
+                  p="sm"
+                  data-active={index === focusedIndex || undefined}
                 >
-                  <span className="text-gray-900 dark:text-white">#{hashtag}</span>
-                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">(existing)</span>
-                </button>
+                  <Text span size="sm">#{hashtag}</Text>
+                  <Text span size="xs" c="dimmed" ml="xs">(existing)</Text>
+                </UnstyledButton>
               ))}
-            </div>
+            </Stack>
           ) : null}
 
           {/* Show "create new" option if input doesn't match any existing */}
           {inputValue.trim() && !suggestions.includes(inputValue.toLowerCase()) && (
-            <button
+            <UnstyledButton
               type="button"
               onClick={() => addHashtag(inputValue)}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-t border-gray-200 dark:border-gray-700"
+              p="sm"
+              w="100%"
             >
-              <span className="text-gray-900 dark:text-white">#{inputValue.toLowerCase()}</span>
-              <span className="ml-2 text-xs text-green-600 dark:text-green-400">(create new)</span>
-            </button>
+              <Text span size="sm">#{inputValue.toLowerCase()}</Text>
+              <Text span size="xs" c="dimmed" ml="xs">(create new)</Text>
+            </UnstyledButton>
           )}
 
           {suggestions.length === 0 && !inputValue.trim() && (
-            <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+            <Text size="sm" c="dimmed" ta="center" p="md">
               Type to search or create hashtags
-            </div>
+            </Text>
           )}
-        </div>
+        </Paper>
       )}
 
       {/* Helper text */}
-      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+      <Text mt="xs" size="sm" c="dimmed">
         Press Enter to add, Backspace to remove. Multiple hashtags allowed.
-      </p>
-    </div>
+      </Text>
+    </Box>
   );
 }

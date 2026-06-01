@@ -170,7 +170,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
   if (error || !event) {
     return (
       <Stack gap="lg">
-        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+        <Alert icon={<IconAlertCircle size={16} />}>
           <Text fw={700}>Error</Text>
           <Text size="sm">{error || 'Event not found'}</Text>
         </Alert>
@@ -236,7 +236,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                         >
                           {frameAssignment.isActive ? '● Active' : '○ Inactive'}
                         </Button>
-                        <Button variant="subtle" color="red" size="xs" onClick={() => void handleRemoveFrame(frameAssignment.frameId)}>
+                        <Button variant="subtle" size="xs" onClick={() => void handleRemoveFrame(frameAssignment.frameId)}>
                           Remove
                         </Button>
                       </Group>

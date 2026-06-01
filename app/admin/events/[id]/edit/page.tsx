@@ -306,7 +306,7 @@ export default function EditEventPage({
     >
 
       {error ? (
-        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+        <Alert icon={<IconAlertCircle size={16} />}>
           <Text fw={700}>Error</Text>
           <Text size="sm">{error}</Text>
         </Alert>
@@ -379,7 +379,6 @@ export default function EditEventPage({
                   <Button
                     type="button"
                     variant="light"
-                    color="red"
                     leftSection={<IconX size={16} />}
                     onClick={clearLogo}
                   >

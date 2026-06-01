@@ -122,7 +122,7 @@ export default function TryOnQueueTable({ rows }: { rows: QueueRow[] }) {
                 Stage: {formatStatusLabel(row.stage)}
               </Text>
               {row.error?.message ? (
-                <Text size="xs" c="red.7" mt={8}>
+                <Text size="xs" mt={8}>
                   {row.error.message}
                 </Text>
               ) : null}
@@ -173,7 +173,7 @@ export default function TryOnQueueTable({ rows }: { rows: QueueRow[] }) {
           render: (row: QueueRow) => (
             <Stack gap="xs" align="flex-start">
               {row.result.publicResultUrl ? (
-                <Text component="a" href={row.result.publicResultUrl} target="_blank" size="sm" c="blue.7">
+                <Text component="a" href={row.result.publicResultUrl} target="_blank" size="sm">
                   Open result
                 </Text>
               ) : (

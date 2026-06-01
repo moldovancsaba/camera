@@ -2,10 +2,11 @@ import { ObjectId } from 'mongodb';
 import { redirect } from 'next/navigation';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
-import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
+import { COLLECTIONS, type Submission, type TryOnJob } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import TryOnResultModerationTable, { type ModerationRow } from '@/components/admin/TryOnResultModerationTable';
+import TryOnQueueTable, { type QueueRow } from '@/components/admin/TryOnQueueTable';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import { ConsumerDashboardGrid, ProductCard } from '@doneisbetter/gds-core/client';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
@@ -15,6 +16,44 @@ export const dynamic = 'force-dynamic';
 
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function toQueueRow(job: Partial<TryOnJob>): QueueRow | null {
+  if (typeof job.jobId !== 'string' || !job.jobId.trim()) return null;
+  if (typeof job.status !== 'string' || !job.status.trim()) return null;
+  if (typeof job.stage !== 'string' || !job.stage.trim()) return null;
+
+  return {
+    jobId: job.jobId,
+    status: job.status,
+    stage: job.stage,
+    createdAt: typeof job.createdAt === 'string' ? job.createdAt : '',
+    source: {
+      submissionId: typeof job.source?.submissionId === 'string' ? job.source.submissionId : 'unknown',
+      imageUrl: typeof job.source?.imageUrl === 'string' ? job.source.imageUrl : '',
+      eventMongoId: typeof job.source?.eventMongoId === 'string' ? job.source.eventMongoId : null,
+    },
+    request: {
+      leatherSuitId:
+        typeof job.request?.leatherSuitId === 'string' ? job.request.leatherSuitId : 'unknown',
+    },
+    processing: {
+      workerId: typeof job.processing?.workerId === 'string' ? job.processing.workerId : null,
+      attemptCount:
+        typeof job.processing?.attemptCount === 'number' && Number.isFinite(job.processing.attemptCount)
+          ? job.processing.attemptCount
+          : 0,
+      nextAttemptAt:
+        typeof job.processing?.nextAttemptAt === 'string' ? job.processing.nextAttemptAt : null,
+    },
+    result: {
+      publicResultUrl:
+        typeof job.result?.publicResultUrl === 'string' ? job.result.publicResultUrl : null,
+    },
+    error: {
+      message: typeof job.error?.message === 'string' ? job.error.message : null,
+    },
+  };
 }
 
 export default async function AdminTryOnResultsPage({
@@ -38,6 +77,8 @@ export default async function AdminTryOnResultsPage({
   let pendingCount = 0;
   let archivedApprovedCount = 0;
   let archivedRejectedCount = 0;
+  let failedJobCount = 0;
+  let failedJobRows: QueueRow[] = [];
 
   try {
     const db = await connectToDatabase();
@@ -65,7 +106,19 @@ export default async function AdminTryOnResultsPage({
       ];
     }
 
-    const [docs, pending, archivedApproved, archivedRejected] = await Promise.all([
+    const failedJobsQuery: Record<string, unknown> = { status: 'failed' };
+    if (search) {
+      const regex = { $regex: escapeRegex(search), $options: 'i' };
+      failedJobsQuery.$or = [
+        { jobId: regex },
+        { 'source.submissionId': regex },
+        { 'request.leatherSuitId': regex },
+        { 'source.imageUrl': regex },
+        { 'error.message': regex },
+      ];
+    }
+
+    const [docs, pending, archivedApproved, archivedRejected, failedJobs, failedJobsTotal] = await Promise.all([
       db
         .collection<Submission>(COLLECTIONS.SUBMISSIONS)
         .find(query)
@@ -87,11 +140,22 @@ export default async function AdminTryOnResultsPage({
         'tryOnModerationArchive.archived': true,
         'tryOnModerationArchive.bucket': 'rejected',
       }),
+      archiveBucket
+        ? Promise.resolve([])
+        : db
+            .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
+            .find(failedJobsQuery)
+            .sort({ updatedAt: -1, createdAt: -1 })
+            .limit(50)
+            .toArray(),
+      db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments({ status: 'failed' }),
     ]);
 
     pendingCount = pending;
     archivedApprovedCount = archivedApproved;
     archivedRejectedCount = archivedRejected;
+    failedJobCount = failedJobsTotal;
+    failedJobRows = failedJobs.map(toQueueRow).filter((row): row is QueueRow => Boolean(row));
 
     const sourceIds = docs
       .map((doc) => doc.sourceSubmissionId)
@@ -148,6 +212,7 @@ export default async function AdminTryOnResultsPage({
         !dbError
           ? [
               { label: 'Pending Review', value: pendingCount, iconKey: 'photoScan' },
+              { label: 'Failed Jobs', value: failedJobCount, iconKey: 'photo' },
               { label: 'Archived Approved', value: archivedApprovedCount, iconKey: 'world' },
               { label: 'Archived Rejected', value: archivedRejectedCount, iconKey: 'photo' },
             ]
@@ -200,6 +265,12 @@ export default async function AdminTryOnResultsPage({
             iconKey: 'photoScan' as AdminIconKey,
           },
           {
+            href: '/admin/tryon-results?failed=1',
+            title: `Failed Jobs (${failedJobCount})`,
+            description: 'Review failed try-on jobs, inspect their failure reason, and send them back to the worker.',
+            iconKey: 'photo' as AdminIconKey,
+          },
+          {
             href: '/admin/tryon-results?archive=approved',
             title: `Archived Approved (${archivedApprovedCount})`,
             description: 'Browse approved items that were archived out of the active vetting queue.',
@@ -225,6 +296,9 @@ export default async function AdminTryOnResultsPage({
           />
         ))}
       </ConsumerDashboardGrid>
+      {!archiveBucket && failedJobRows.length > 0 ? (
+        <TryOnQueueTable rows={failedJobRows} />
+      ) : null}
       <TryOnResultModerationTable
         rows={rows}
         emptyTitle={archiveBucket ? `No archived ${archiveBucket} try-on results` : undefined}

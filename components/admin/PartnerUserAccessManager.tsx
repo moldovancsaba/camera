@@ -205,12 +205,12 @@ export default function PartnerUserAccessManager({
         </Group>
 
         {message ? (
-          <Alert color="green" icon={<IconCheck size={16} />}>
+          <Alert icon={<IconCheck size={16} />}>
             {message}
           </Alert>
         ) : null}
         {error ? (
-          <Alert color="red" icon={<IconAlertCircle size={16} />}>
+          <Alert icon={<IconAlertCircle size={16} />}>
             {error}
           </Alert>
         ) : null}
@@ -267,7 +267,7 @@ export default function PartnerUserAccessManager({
                         >
                           {assignment.isActive ? 'Deactivate' : 'Activate'}
                         </Button>
-                        <Button color="red" variant="light" onClick={() => void removeAssignment(assignment.accessId)}>
+                        <Button variant="light" onClick={() => void removeAssignment(assignment.accessId)}>
                           Remove
                         </Button>
                       </Group>

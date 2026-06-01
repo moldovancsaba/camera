@@ -40,7 +40,7 @@ export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTr
     <SimpleGrid cols={{ base: 1, sm: 2, lg: 3, xl: 4 }} spacing="lg">
       {suits.map((suit) => (
         <Card key={suit.id} p={0} style={{ overflow: 'hidden' }}>
-          <div style={{ position: 'relative', aspectRatio: '1 / 1', background: 'var(--mantine-color-gray-1)' }}>
+          <div style={{ position: 'relative', aspectRatio: '1 / 1' }}>
             <Image
               src={suit.thumbnailUrl || suit.imageUrl}
               alt={suit.name}

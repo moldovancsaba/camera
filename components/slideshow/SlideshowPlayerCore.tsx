@@ -749,7 +749,7 @@ export function SlideshowPlayerCore({
           state="error"
           mode={playbackMode}
           errorState={
-            <div className="text-red-200 text-center text-sm md:text-xl px-2">
+            <div className=" text-center text-sm md:text-xl px-2">
               {error || 'Slideshow not found'}
             </div>
           }
@@ -910,9 +910,9 @@ export function SlideshowPlayerCore({
             {renderSlide(currentSlide)}
           </div>
         ) : (
-          <div className="text-white text-center px-4 max-w-lg">
+          <div className=" text-center px-4 max-w-lg">
             <div className="text-2xl md:text-4xl mb-2 md:mb-4">📸</div>
-            <div className="text-white/80 mt-1 md:mt-2 text-xs md:text-base">No submissions yet</div>
+            <div className=" mt-1 md:mt-2 text-xs md:text-base">No submissions yet</div>
           </div>
         )}
       </div>
@@ -922,7 +922,7 @@ export function SlideshowPlayerCore({
 
   const playbackControls =
     variant === 'fullscreen' && (!isFullscreen || showControls) ? (
-      <div className="bg-gradient-to-t from-black/80 to-transparent p-6 transition-opacity">
+      <div className="bg-gradient-to-t  to-transparent p-6 transition-opacity">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-6">
           <button
             type="button"
@@ -942,7 +942,7 @@ export function SlideshowPlayerCore({
               }
               setIsPlaying(!isPlaying);
             }}
-            className="text-white hover:text-gray-300 transition-colors"
+            className="  transition-colors"
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? (
@@ -958,7 +958,7 @@ export function SlideshowPlayerCore({
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="text-white hover:text-gray-300 transition-colors"
+            className="  transition-colors"
             title="Fullscreen (F)"
           >
             {isFullscreen ? (
@@ -976,9 +976,9 @@ export function SlideshowPlayerCore({
     ) : null;
 
   const playbackOverlays = playbackEnded && currentSlide ? (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 text-white px-4 text-center">
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center   px-4 text-center">
       <p className="text-lg md:text-2xl font-semibold">Playback complete</p>
-      <p className="text-sm text-gray-300 mt-2">Press play to start again</p>
+      <p className="text-sm  mt-2">Press play to start again</p>
     </div>
   ) : null;
 
@@ -1015,9 +1015,9 @@ export function SlideshowPlayerCore({
         controls={playbackControls}
         overlays={playbackOverlays}
         emptyState={
-          <div className="text-white text-center px-4 max-w-lg">
+          <div className=" text-center px-4 max-w-lg">
             <div className="text-2xl md:text-4xl mb-2 md:mb-4">📸</div>
-            <div className="text-white/80 mt-1 md:mt-2 text-xs md:text-base">No submissions yet</div>
+            <div className=" mt-1 md:mt-2 text-xs md:text-base">No submissions yet</div>
           </div>
         }
       />

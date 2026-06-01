@@ -161,7 +161,7 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
   if (error || !partner) {
     return (
       <Stack gap="lg">
-        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+        <Alert icon={<IconAlertCircle size={16} />}>
           <Text fw={700}>Error</Text>
           <Text size="sm">{error || 'Partner not found'}</Text>
         </Alert>
@@ -184,7 +184,7 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
         description={`Select logos by scenario that will be automatically assigned to new events under ${partner.name}`}
       />
 
-      <Alert color="blue">
+      <Alert>
         <Text size="sm">
           💡 <strong>Note:</strong> Changes will automatically cascade to all child events marked with 🟢. Events with
           custom logos (🔴) will keep their selections.
@@ -207,7 +207,7 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
                 <Title order={3}>
                   {scenario.icon} {scenario.name}
                 </Title>
-                <Badge color="blue">
+                <Badge>
                   {defaultLogos.filter((logo) => logo.scenario === scenario.id).length} selected
                 </Badge>
               </Group>
@@ -224,7 +224,7 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
                       onClick={() => handleToggleLogo(logo.logoId, scenario.id)}
                     >
                       <Stack gap="sm" align="center">
-                        {selected ? <Badge color="blue">✓ Selected</Badge> : null}
+                        {selected ? <Badge>✓ Selected</Badge> : null}
                         {logo.thumbnailUrl ? (
                           <Image src={logo.thumbnailUrl} alt={logo.name} width={80} height={80} unoptimized style={{ width: '100%', height: 64, objectFit: 'contain' }} />
                         ) : (

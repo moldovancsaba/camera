@@ -169,7 +169,7 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
       />
 
       {error ? (
-        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+        <Alert icon={<IconAlertCircle size={16} />}>
           <Text fw={700}>Error</Text>
           <Text size="sm">{error}</Text>
         </Alert>
@@ -179,7 +179,7 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
         <Stack gap="lg">
           <FormSection title="Frame preview" description="To change the image, delete this frame and upload a new one.">
             <AspectRatio ratio={1} maw={320}>
-              <Box bg="gray.0" style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
+              <Box style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
                 <Image src={frame.thumbnailUrl || frame.imageUrl} alt={frame.name} fill style={{ objectFit: 'contain', padding: 24 }} unoptimized />
               </Box>
             </AspectRatio>
@@ -244,7 +244,6 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
             </Group>
             <Button
               type="button"
-              color="red"
               variant="light"
               loading={isDeleting}
               disabled={isDeleting}

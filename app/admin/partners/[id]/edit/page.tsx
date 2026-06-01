@@ -152,7 +152,7 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
   if (error && !partner) {
     return (
       <Stack gap="lg">
-        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+        <Alert icon={<IconAlertCircle size={16} />}>
           <Text fw={700}>Error</Text>
           <Text size="sm">{error}</Text>
         </Alert>
@@ -176,7 +176,7 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
     >
 
       {error ? (
-        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+        <Alert icon={<IconAlertCircle size={16} />}>
           <Text fw={700}>Error</Text>
           <Text size="sm">{error}</Text>
         </Alert>

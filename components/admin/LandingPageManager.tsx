@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ActionIcon, Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { ActionIcon, Alert, Badge, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@/lib/gds/notifications';
 import { confirmDestructive } from '@/lib/gds/confirm-destructive';
@@ -39,18 +39,18 @@ export default function LandingPageManager({
         throw new Error(err.error || 'Failed to delete landing page');
       }
       setLandingPages((prev) => prev.filter((page) => page._id !== mongoId));
-      notifications.show({ title: 'Landing page deleted', message: 'Experience page removed.', color: 'green' });
+      notifications.show({ title: 'Landing page deleted', message: 'Experience page removed.' });
     } catch (deleteError) {
       const message = deleteError instanceof Error ? deleteError.message : 'Failed to delete landing page';
       setError(message);
-      notifications.show({ title: 'Delete failed', message, color: 'red' });
+      notifications.show({ title: 'Delete failed', message });
     }
   };
 
   const copyUrl = (slug: string) => {
     const url = `${window.location.origin}/landing/${slug}`;
     void navigator.clipboard.writeText(url);
-    notifications.show({ title: 'URL copied', message: 'Landing page URL copied to clipboard.', color: 'green' });
+    notifications.show({ title: 'URL copied', message: 'Landing page URL copied to clipboard.' });
   };
 
   return (
@@ -64,14 +64,14 @@ export default function LandingPageManager({
           </Text>
         </div>
         <Link href={`/admin/events/${eventMongoId}/landing-pages/new`} style={{ textDecoration: 'none' }}>
-          <Button color="green" leftSection={<IconPlus size={16} />}>
+          <Button leftSection={<IconPlus size={16} />}>
             New landing page
           </Button>
         </Link>
       </Group>
 
       {error ? (
-        <Alert color="red" mx="xl" mt="xl">
+        <Alert mx="xl" mt="xl">
           {error}
         </Alert>
       ) : null}
@@ -86,7 +86,7 @@ export default function LandingPageManager({
       ) : (
         <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="lg" p="xl">
           {landingPages.map((page) => (
-            <Card key={page._id} withBorder radius="md" bg="var(--mantine-color-gray-0)">
+            <Card key={page._id} withBorder radius="md">
               <Group justify="space-between" align="flex-start">
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <Text fw={700} truncate>
@@ -95,13 +95,12 @@ export default function LandingPageManager({
                   <Text size="xs" c="dimmed" mt={4} style={{ wordBreak: 'break-all' }}>
                     /landing/{page.slug}
                   </Text>
-                  <Text size="xs" mt="sm" fw={700} c={page.isActive ? 'green.7' : 'gray.6'}>
+                  <Badge mt="sm" variant="light">
                     {page.isActive ? '● Active' : '○ Inactive'}
-                  </Text>
+                  </Badge>
                 </div>
                 <ActionIcon
                   variant="subtle"
-                  color="red"
                   aria-label="Delete"
                   onClick={() =>
                     confirmDestructive({
@@ -127,12 +126,12 @@ export default function LandingPageManager({
 
               <Stack gap="sm" mt="md">
                 <Link href={`/admin/events/${eventMongoId}/landing-pages/${page._id}`} style={{ textDecoration: 'none' }}>
-                  <Button fullWidth color="green" leftSection={<IconPencil size={16} />}>
+                  <Button fullWidth leftSection={<IconPencil size={16} />}>
                     Edit experience page
                   </Button>
                 </Link>
                 <Link href={`/landing/${page.slug}`} target="_blank" style={{ textDecoration: 'none' }}>
-                  <Button fullWidth variant="filled" color="dark" leftSection={<IconExternalLink size={16} />}>
+                  <Button fullWidth variant="light" leftSection={<IconExternalLink size={16} />}>
                     Open landing page
                   </Button>
                 </Link>

@@ -11,7 +11,7 @@
  * 
  * Usage:
  * ```tsx
- * import { Card, Badge, LoadingSpinner } from '@/components/shared';
+ * import { LoadingSpinner } from '@/components/shared';
  * 
  * export default function MyPage() {
  *   return (
@@ -23,12 +23,6 @@
  * }
  * ```
  */
-
-export { default as Card } from './Card';
-export type { CardProps } from './Card';
-
-export { default as Badge } from './Badge';
-export type { BadgeProps, BadgeVariant, BadgeSize } from './Badge';
 
 export { default as LoadingSpinner } from './LoadingSpinner';
 export type { LoadingSpinnerProps, SpinnerSize } from './LoadingSpinner';

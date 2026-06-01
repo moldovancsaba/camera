@@ -720,7 +720,7 @@ export default function CameraCapture({
       >
       {/* Camera view with calculated dimensions to fit viewport */}
       <div 
-        className="relative bg-gray-900 overflow-hidden"
+        className="relative  overflow-hidden"
         style={{
           width: containerSize.width > 0 ? `${containerSize.width}px` : '100%',
           height: containerSize.height > 0 ? `${containerSize.height}px` : '100%',
@@ -755,9 +755,9 @@ export default function CameraCapture({
 
             {/* Loading Overlay */}
             {isLoading && (
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-30">
-                <div className="text-white text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+              <div className="absolute inset-0  flex items-center justify-center z-30">
+                <div className=" text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2  mx-auto mb-4"></div>
                   <p className="text-sm">Starting camera...</p>
                 </div>
               </div>
@@ -765,8 +765,8 @@ export default function CameraCapture({
 
             {/* Error Overlay */}
             {error && !stream && (
-              <div className="absolute inset-0 bg-red-900/90 flex items-center justify-center p-6 z-30">
-                <div className="text-white text-center max-w-md">
+              <div className="absolute inset-0  flex items-center justify-center p-6 z-30">
+                <div className=" text-center max-w-md">
                   <svg className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -774,7 +774,7 @@ export default function CameraCapture({
                   <p className="text-xs md:text-sm mb-4">{error}</p>
                   <button
                     onClick={() => startCamera(facingMode)}
-                    className="px-4 py-2 md:px-6 md:py-2 bg-white text-red-900 rounded-lg font-semibold hover:bg-gray-100 transition-colors text-sm"
+                    className="px-4 py-2 md:px-6 md:py-2   rounded-lg font-semibold  transition-colors text-sm"
                   >
                     Try Again
                   </button>
@@ -791,13 +791,13 @@ export default function CameraCapture({
                   background: capturePromptBackground(captureButtonColor),
                 }}
               >
-                <div className="text-white text-center max-w-xs md:max-w-md">
+                <div className=" text-center max-w-xs md:max-w-md">
                   <svg className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                   <p className="text-base md:text-lg font-semibold mb-2">{promptTitle}</p>
-                  <p className="text-xs text-white/90">
+                  <p className="text-xs ">
                     {promptDescription}
                   </p>
                 </div>
@@ -829,7 +829,7 @@ export default function CameraCapture({
             <div className="camera-triple-bar-inner">
               <div className="justify-self-start">
                 {onCancel ? (
-                  <Button type="button" variant="light" color="dark" size="sm" radius="md" onClick={onCancel}>
+                  <Button type="button" variant="light" size="sm" radius="md" onClick={onCancel}>
                     Cancel
                   </Button>
                 ) : (
@@ -846,7 +846,6 @@ export default function CameraCapture({
                   <Button
                     type="button"
                     variant="light"
-                    color="gray"
                     size="sm"
                     radius="md"
                     onClick={() => switchCamera()}
@@ -868,7 +867,7 @@ export default function CameraCapture({
           <div className="camera-triple-bar-inner">
             <div className="justify-self-start">
               {onCancel ? (
-                <Button type="button" variant="light" color="dark" size="sm" radius="md" onClick={onCancel}>
+                <Button type="button" variant="light" size="sm" radius="md" onClick={onCancel}>
                   Cancel
                 </Button>
               ) : (
@@ -877,7 +876,7 @@ export default function CameraCapture({
             </div>
             <div className="justify-self-center">
               {showRetake ? (
-                <Button type="button" variant="light" color="gray" size="sm" radius="md" onClick={() => retake()}>
+                <Button type="button" variant="light" size="sm" radius="md" onClick={() => retake()}>
                   Retake
                 </Button>
               ) : (
@@ -894,7 +893,7 @@ export default function CameraCapture({
         <>
           <button
             onClick={capturePhoto}
-            className={`fixed z-50 h-16 w-16 rounded-full bg-white shadow-lg transition-all ${
+            className={`fixed z-50 h-16 w-16 rounded-full  shadow-lg transition-all ${
               orientation === 'portrait'
                 ? 'bottom-4 left-1/2 -translate-x-1/2'
                 : orientation === 'landscape-right'
@@ -915,7 +914,7 @@ export default function CameraCapture({
             <button
               type="button"
               onClick={switchCamera}
-              className={`fixed z-50 flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-lg hover:bg-white ${
+              className={`fixed z-50 flex h-12 w-12 items-center justify-center rounded-full  shadow-lg  ${
                 orientation === 'portrait'
                   ? 'bottom-4 right-4'
                   : orientation === 'landscape-right'
@@ -925,7 +924,7 @@ export default function CameraCapture({
               aria-label="Switch camera"
               disabled={isLoading}
             >
-              <svg className="h-6 w-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-6 w-6 " fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -942,7 +941,7 @@ export default function CameraCapture({
         <button
           type="button"
           onClick={retake}
-          className={`fixed z-50 rounded-lg bg-white px-6 py-3 font-semibold text-gray-900 shadow-lg transition-all hover:bg-gray-100 ${
+          className={`fixed z-50 rounded-lg  px-6 py-3 font-semibold  shadow-lg transition-all  ${
             orientation === 'portrait'
               ? 'bottom-4 left-1/2 -translate-x-1/2'
               : orientation === 'landscape-right'

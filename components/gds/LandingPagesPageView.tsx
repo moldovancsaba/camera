@@ -154,18 +154,17 @@ export default function LandingPagesPageView({
               label: 'Actions',
               render: (page) => (
                 <Group gap="sm" justify="flex-end">
-                  <Text component={Link} href={`/admin/events/${page.eventMongoId}`} size="sm" c="blue.7">
+                  <Text component={Link} href={`/admin/events/${page.eventMongoId}`} size="sm">
                     Open Event
                   </Text>
                   <Text
                     component={Link}
                     href={`/admin/events/${page.eventMongoId}/landing-pages/${page.id}`}
                     size="sm"
-                    c="blue.7"
                   >
                     Edit
                   </Text>
-                  <Text component={Link} href={`/landing/${page.slug}`} target="_blank" size="sm" c="blue.7">
+                  <Text component={Link} href={`/landing/${page.slug}`} target="_blank" size="sm">
                     Open
                   </Text>
                 </Group>

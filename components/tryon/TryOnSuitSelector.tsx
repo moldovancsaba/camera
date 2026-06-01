@@ -110,30 +110,10 @@ export default function TryOnSuitSelector({
         value={selectedSuitId}
         onChange={onChange}
         aria-label="Select leather jersey for try-on"
-        styles={{
-          label: {
-            fontWeight: 700,
-          },
-          input: {
-            backgroundColor: 'var(--mantine-color-body)',
-            color: 'var(--mantine-color-text)',
-            borderColor: 'var(--mantine-color-default-border)',
-          },
-          section: {
-            color: 'var(--mantine-color-dimmed)',
-          },
-          dropdown: {
-            backgroundColor: 'var(--mantine-color-body)',
-            borderColor: 'var(--mantine-color-default-border)',
-          },
-          option: {
-            color: 'var(--mantine-color-text)',
-            backgroundColor: 'transparent',
-          },
-        }}
+        styles={{ label: { fontWeight: 700 } }}
       />
 
-      <Alert color="blue" variant="light">
+      <Alert variant="light">
         <Text size="sm">
           Leave this empty to save a normal Camera submission only. Select a jersey to queue a try-on job after the
           image is saved.

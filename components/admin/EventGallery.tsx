@@ -9,6 +9,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { Alert, Button, Card, Checkbox, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import EventGalleryUpload from './EventGalleryUpload';
 
 interface SlideshowPlayInfo {
@@ -184,98 +185,100 @@ export default function EventGallery({
 
   if (submissions.length === 0) {
     return (
-      <div className="p-6 space-y-6">
+      <Stack gap="lg" p="xl">
         <EventGalleryUpload
           eventMongoId={eventId}
           onUploaded={handleUploaded}
         />
-        <div className="p-12 text-center border border-gray-200 dark:border-gray-700 rounded-lg">
-          <div className="text-5xl mb-4">📸</div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+        <Card withBorder radius="lg" p="xl">
+          <Stack align="center" gap="md">
+            <Text fz="3rem" aria-hidden>📸</Text>
+            <Title order={3}>
             No submissions yet
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            </Title>
+            <Text c="dimmed" ta="center">
             Upload images above or open the public capture page for guests
-          </p>
-          <Link
+            </Text>
+            <Button
+              component={Link}
             href={`/capture/${eventId}`}
-            className="inline-flex px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
           >
-            📸 Start Capturing
-          </Link>
-        </div>
-      </div>
+              Start Capturing
+            </Button>
+          </Stack>
+        </Card>
+      </Stack>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <Stack gap="lg" p="xl">
       <EventGalleryUpload
         eventMongoId={eventId}
         onUploaded={handleUploaded}
       />
 
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+      <Card withBorder radius="lg" p="md">
+        <Group justify="space-between" align="flex-start">
+          <Stack gap={4}>
+            <Text size="sm" fw={700}>
               Gallery actions
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            </Text>
+            <Text size="xs" c="dimmed">
               Select multiple images and remove them from {eventName} in one action.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
+            </Text>
+          </Stack>
+          <Group gap="xs">
+            <Button
               type="button"
               onClick={toggleSelectAll}
-              className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              variant="default"
             >
               {allSelected ? 'Clear selection' : 'Select all visible'}
-            </button>
+            </Button>
             {selectedIds.length > 0 ? (
               removeState.bulkConfirm ? (
                 <>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => void removeFromEvent(selectedIds)}
                     disabled={removeState.busyIds.length > 0}
-                    className="px-3 py-2 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                    variant="light"
                   >
                     {removeState.busyIds.length > 0
                       ? 'Removing selected…'
                       : `Confirm remove ${selectedIds.length}`}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={cancelBulkConfirm}
                     disabled={removeState.busyIds.length > 0}
-                    className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    variant="default"
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </>
               ) : (
-                <button
+                <Button
                   type="button"
                   onClick={startBulkConfirm}
-                  className="px-3 py-2 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+                  variant="light"
                 >
                   Remove selected ({selectedIds.length})
-                </button>
+                </Button>
               )
             ) : null}
-          </div>
-        </div>
+          </Group>
+        </Group>
 
         {removeState.error ? (
-          <p className="mt-3 text-xs text-red-600 dark:text-red-400">
+          <Alert mt="md" variant="light">
             {removeState.error}
-          </p>
+          </Alert>
         ) : null}
-      </div>
+      </Card>
 
-      <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4">
+      <SimpleGrid cols={{ base: 2, md: 3, lg: 4, xl: 5 }} spacing="md">
         {submissions.map((submission) => {
           const submissionId = submissionIdOf(submission);
           const selected = selectedSet.has(submissionId);
@@ -283,110 +286,110 @@ export default function EventGallery({
           const busy = removeState.busyIds.includes(submissionId);
 
           return (
-            <div
+            <Card
               key={submissionId}
-              className={`group relative bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden transition-all mb-4 break-inside-avoid ${
-                selected ? 'ring-2 ring-emerald-500' : 'hover:ring-2 hover:ring-blue-500'
-              }`}
+              withBorder
+              radius="md"
+              p={0}
             >
-              <button
-                type="button"
-                onClick={() => toggleSelected(submissionId)}
-                className="absolute left-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/75 text-white backdrop-blur-sm"
-                aria-pressed={selected}
-                aria-label={selected ? 'Deselect image' : 'Select image'}
-              >
-                {selected ? '✓' : ''}
-              </button>
-
-              <Link href={`/share/${submission._id}`}>
+              <Stack gap={0}>
+                <div style={{ position: 'relative' }}>
+                  <Checkbox
+                    checked={selected}
+                    onChange={() => toggleSelected(submissionId)}
+                    aria-label={selected ? 'Deselect image' : 'Select image'}
+                    style={{ position: 'absolute', zIndex: 1, insetBlockStart: 8, insetInlineStart: 8 }}
+                  />
+                  <Link href={`/share/${submission._id}`}>
                 <Image
                   src={submission.imageUrl || submission.finalImageUrl || 'data:image/gif;base64,R0lGODlhAQABAAAAACw='}
                   alt={`Photo by ${submission.userName || submission.userEmail}`}
                   width={800}
                   height={800}
                   unoptimized
-                  className="w-full h-auto"
+                      style={{ width: '100%', height: 'auto', display: 'block' }}
                 />
               </Link>
-
-              {(typeof submission.playCount === 'number' && submission.playCount > 0) && (
-                <div className="absolute top-2 right-2 bg-black/80 backdrop-blur-sm px-2 py-1 rounded-full">
-                  <span className="text-white text-xs font-bold">▶ {submission.playCount}×</span>
                 </div>
-              )}
 
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="absolute bottom-0 left-0 right-0 p-3">
-                  <p className="text-white text-xs font-medium truncate">
+                <Stack gap="xs" p="sm">
+                  <Text size="xs" fw={600} truncate>
                     {submission.userName || submission.userEmail}
-                  </p>
-                  <p className="text-white/80 text-xs">
+                  </Text>
+                  <Text size="xs" c="dimmed">
                     {new Date(submission.createdAt).toLocaleDateString()}
-                  </p>
+                  </Text>
+                  {typeof submission.playCount === 'number' && submission.playCount > 0 ? (
+                    <Text size="xs" c="dimmed">Played {submission.playCount} times</Text>
+                  ) : null}
 
                   {submission.slideshowPlays && Object.keys(submission.slideshowPlays).length > 0 && (
-                    <div className="mt-2 space-y-1">
+                    <Stack gap={2}>
                       {slideshows.map((slideshow) => {
                         const plays = submission.slideshowPlays?.[slideshow.slideshowId];
                         if (!plays || plays.count === 0) return null;
                         return (
-                          <p key={slideshow.slideshowId} className="text-white/90 text-xs font-semibold">
-                            🎬 {slideshow.name}: {plays.count}×
-                          </p>
+                          <Text key={slideshow.slideshowId} size="xs" c="dimmed">
+                            {slideshow.name}: {plays.count}x
+                          </Text>
                         );
                       })}
-                    </div>
+                    </Stack>
                   )}
 
-                  <div className="mt-3 flex gap-2">
-                    <Link
+                  <Group gap="xs" grow>
+                    <Button
+                      component={Link}
                       href={`/share/${submission._id}`}
-                      className="flex-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors text-center"
+                      size="xs"
+                      variant="light"
                     >
                       View
-                    </Link>
+                    </Button>
                     {singleConfirm ? (
                       <>
-                        <button
+                        <Button
                           type="button"
                           onClick={() => void removeFromEvent([submissionId])}
                           disabled={busy}
-                          className="flex-1 px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 disabled:opacity-50 transition-colors text-center"
+                          size="xs"
+                          variant="light"
                         >
                           {busy ? 'Removing…' : 'Confirm remove'}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
                           onClick={cancelSingleConfirm}
                           disabled={busy}
-                          className="px-2 py-1 bg-white/20 text-white text-xs rounded hover:bg-white/30 transition-colors"
+                          size="xs"
+                          variant="default"
                         >
                           Cancel
-                        </button>
+                        </Button>
                       </>
                     ) : (
-                      <button
+                      <Button
                         type="button"
                         onClick={() => startSingleConfirm(submissionId)}
-                        className="flex-1 px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors text-center"
+                        size="xs"
+                        variant="light"
                       >
                         Remove from Event
-                      </button>
+                      </Button>
                     )}
-                  </div>
-                </div>
-              </div>
-            </div>
+                  </Group>
+                </Stack>
+              </Stack>
+            </Card>
           );
         })}
-      </div>
+      </SimpleGrid>
 
       {submissions.length >= 50 && (
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
+        <Text ta="center" size="sm" c="dimmed">
           Showing the 50 most recent submissions
-        </p>
+        </Text>
       )}
-    </div>
+    </Stack>
   );
 }

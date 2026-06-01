@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import ResponsiveDataView from '@/components/gds/ResponsiveDataView';
 import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
-import { Button, Card, Group, Modal, Stack, Text } from '@mantine/core';
+import { Box, Button, Card, Group, Modal, Paper, Stack, Text, UnstyledButton } from '@mantine/core';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 
 export interface ModerationRow {
@@ -76,7 +76,8 @@ function PreviewImage({
 
   if (!src || failed) {
     return (
-      <div
+      <Paper
+        withBorder
         style={{
           width,
           height,
@@ -85,8 +86,6 @@ function PreviewImage({
           justifyContent: 'center',
           padding: 12,
           textAlign: 'center',
-          color: 'var(--mantine-color-gray-6)',
-          background: 'linear-gradient(180deg, var(--mantine-color-gray-0), var(--mantine-color-gray-1))',
         }}
       >
         <Stack gap={2} align="center">
@@ -97,7 +96,7 @@ function PreviewImage({
             External image missing
           </Text>
         </Stack>
-      </div>
+      </Paper>
     );
   }
 
@@ -128,14 +127,13 @@ function PreviewStrip({
 }) {
   const content = (
     <Group align="flex-start" gap="sm" wrap="nowrap">
-      <div
+      <Box
         style={{
           position: 'relative',
           width: 96,
           height: 96,
           borderRadius: 12,
           overflow: 'hidden',
-          background: 'var(--mantine-color-gray-1)',
           flexShrink: 0,
         }}
       >
@@ -146,16 +144,15 @@ function PreviewStrip({
           height={96}
           onFailure={onResultMissing}
         />
-      </div>
+      </Box>
       {row.originalImageUrl ? (
-        <div
+        <Box
           style={{
             position: 'relative',
             width: 72,
             height: 72,
             borderRadius: 12,
             overflow: 'hidden',
-            background: 'var(--mantine-color-gray-1)',
             flexShrink: 0,
           }}
         >
@@ -166,7 +163,7 @@ function PreviewStrip({
             height={72}
             onFailure={onOriginalMissing}
           />
-        </div>
+        </Box>
       ) : null}
     </Group>
   );
@@ -174,21 +171,18 @@ function PreviewStrip({
   if (!clickable) return content;
 
   return (
-    <button
+    <UnstyledButton
       type="button"
       onClick={onOpen}
       style={{
         display: 'block',
         padding: 0,
-        border: 0,
-        background: 'transparent',
-        cursor: 'pointer',
         textAlign: 'left',
       }}
       aria-label={`Open review modal for ${row.userName}`}
     >
       {content}
-    </button>
+    </UnstyledButton>
   );
 }
 
@@ -205,7 +199,6 @@ function ModerationActions({
     <Group justify="flex-end" gap="xs" wrap="wrap">
       <Button
         variant="light"
-        color="green"
         loading={busyId === `${row.id}:approve`}
         aria-label="Approve try-on result"
         onClick={() => void onDecision(row.id, 'approve')}
@@ -214,7 +207,6 @@ function ModerationActions({
       </Button>
       <Button
         variant="light"
-        color="red"
         loading={busyId === `${row.id}:reject`}
         aria-label="Reject try-on result"
         onClick={() => void onDecision(row.id, 'reject')}
@@ -354,7 +346,7 @@ export default function TryOnResultModerationTable({
                   </Text>
                 ) : null}
                 {assetHealthLabel(row.id) ? (
-                  <Text size="xs" c="orange.7">
+                  <Text size="xs" c="dimmed">
                     {assetHealthLabel(row.id)}
                   </Text>
                 ) : null}
@@ -397,7 +389,7 @@ export default function TryOnResultModerationTable({
                   {visibilityLabel(row)}
                 </Text>
                 {assetHealthLabel(row.id) ? (
-                  <Text size="xs" c="orange.7">
+                  <Text size="xs" c="dimmed">
                     {assetHealthLabel(row.id)}
                   </Text>
                 ) : null}
@@ -441,7 +433,7 @@ export default function TryOnResultModerationTable({
                 {visibilityLabel(activeRow)}
               </Text>
               {assetHealthLabel(activeRow.id) ? (
-                <Text size="sm" c="orange.7">
+                <Text size="sm" c="dimmed">
                   {assetHealthLabel(activeRow.id)}
                 </Text>
               ) : null}

@@ -29,7 +29,7 @@ export default function MediaPreviewCard({
       description={caption ? alt : undefined}
       image={
         <AspectRatio ratio={ratio}>
-          <Box bg="gray.1" style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
+          <Box style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
             <Image
               src={src}
               alt={alt}

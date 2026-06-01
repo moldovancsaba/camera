@@ -131,7 +131,7 @@ export default function AdminChrome({
       <Divider />
       <UnstyledButton component={Link} href="/" style={{ borderRadius: 12 }}>
         <Group gap="sm" p="sm">
-          <ThemeIcon variant="light" color="gray" radius="xl">
+          <ThemeIcon variant="light" radius="xl">
             <IconCamera size={18} />
           </ThemeIcon>
           <div>
@@ -192,7 +192,7 @@ function NavSection({
 
   return (
     <Stack gap="xs">
-      <Text tt="uppercase" fw={700} fz="xs" c="gray.7" style={{ letterSpacing: '0.12em' }}>
+      <Text tt="uppercase" fw={700} fz="xs" style={{ letterSpacing: '0.12em' }}>
         {title}
       </Text>
       <Stack gap={6}>

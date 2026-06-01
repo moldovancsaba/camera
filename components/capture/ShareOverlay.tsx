@@ -114,7 +114,6 @@ export default function ShareOverlay({
                       <Button
                         type="button"
                         variant="light"
-                        color="gray"
                         radius="md"
                         className="shrink-0"
                         onClick={onCopyLink}
@@ -152,7 +151,6 @@ export default function ShareOverlay({
                     <Button
                       type="button"
                       variant="light"
-                      color="gray"
                       fullWidth
                       radius="md"
                       onClick={() => onShareSocial?.('facebook')}
@@ -162,7 +160,6 @@ export default function ShareOverlay({
                     <Button
                       type="button"
                       variant="light"
-                      color="gray"
                       fullWidth
                       radius="md"
                       onClick={() => onShareSocial?.('twitter')}
@@ -172,7 +169,6 @@ export default function ShareOverlay({
                     <Button
                       type="button"
                       variant="light"
-                      color="gray"
                       fullWidth
                       radius="md"
                       onClick={() => onShareSocial?.('linkedin')}
@@ -182,7 +178,6 @@ export default function ShareOverlay({
                     <Button
                       type="button"
                       variant="light"
-                      color="gray"
                       fullWidth
                       radius="md"
                       onClick={() => onShareSocial?.('whatsapp')}

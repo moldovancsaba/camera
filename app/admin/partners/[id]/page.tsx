@@ -297,7 +297,7 @@ export default async function PartnerDetailPage({
       />
 
       {dbError ? (
-        <Card bg="red.0" c="red.8">
+        <Card>
           <Text fw={700}>Error loading data</Text>
           <Text size="sm">{dbError}</Text>
         </Card>
@@ -578,7 +578,6 @@ export default async function PartnerDetailPage({
                     marginBottom: '1rem',
                     borderRadius: 16,
                     overflow: 'hidden',
-                    background: 'var(--mantine-color-gray-1)',
                   }}
                 >
                   <Image

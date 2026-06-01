@@ -103,7 +103,7 @@ export default function NewFramePage() {
                 alt="Frame preview"
                 caption={file?.name}
                 action={
-                  <Button color="red" variant="light" leftSection={<IconTrash size={16} />} onClick={clearFile}>
+                  <Button variant="light" leftSection={<IconTrash size={16} />} onClick={clearFile}>
                     Remove
                   </Button>
                 }
@@ -118,7 +118,7 @@ export default function NewFramePage() {
               />
             )}
             {error ? (
-              <Alert color="red" icon={<IconAlertCircle size={16} />}>
+              <Alert icon={<IconAlertCircle size={16} />}>
                 {error}
               </Alert>
             ) : null}

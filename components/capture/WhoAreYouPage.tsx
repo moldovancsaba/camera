@@ -175,7 +175,7 @@ export default function WhoAreYouPage({
 
           <Group grow pt="xs">
             {onBack ? (
-              <Button variant="light" color="gray" onClick={onBack} aria-label="Go back to previous page">
+              <Button variant="light" onClick={onBack} aria-label="Go back to previous page">
                 Back
               </Button>
             ) : null}

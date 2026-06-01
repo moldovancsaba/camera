@@ -74,7 +74,6 @@ export default function RemoveSubmissionButton({
   return (
     <Button
       variant="subtle"
-      color="red"
       size="compact-sm"
       loading={isLoading}
       disabled={isLoading}

@@ -314,7 +314,7 @@ export default function CapturePage() {
       <div className="flex min-h-screen items-center justify-center bg-transparent">
         <div className="text-center">
           <div className="text-6xl mb-4">📸</div>
-          <p className="text-slate-300">Loading frames...</p>
+          <p className="">Loading frames...</p>
         </div>
       </div>
     );
@@ -326,7 +326,7 @@ export default function CapturePage() {
         <div className="text-center max-w-md">
           <div className="text-6xl mb-4">🖼️</div>
           <h2 className="app-canvas-section-title">No Frames Available</h2>
-          <p className="text-slate-300 mb-6">
+          <p className=" mb-6">
             There are no frames available yet. Please check back later!
           </p>
           <Button component={Link} href="/" radius="xl">
@@ -342,12 +342,12 @@ export default function CapturePage() {
     const previewAspect =
       frameIntrinsicAspect ?? (frameW > 0 && frameH > 0 ? frameW / frameH : 16 / 9);
     return (
-      <div className="fixed inset-0 z-40 flex flex-col bg-black text-white">
+      <div className="fixed inset-0 z-40 flex flex-col  ">
         <div className="absolute right-4 top-4 z-50">
           <button
             type="button"
             onClick={() => setStep('select-frame')}
-            className="rounded-lg bg-white/90 px-3 py-2 text-sm font-medium text-gray-900 shadow-lg"
+            className="rounded-lg  px-3 py-2 text-sm font-medium  shadow-lg"
           >
             Change frame
           </button>
@@ -364,8 +364,8 @@ export default function CapturePage() {
               promptDescription="Fill the preview; your frame is composited after capture (same as event capture)."
             />
           </div>
-          <aside className="shrink-0 border-t border-white/15 bg-black/70 p-4 md:flex md:w-80 md:flex-col md:border-l md:border-t-0">
-            <h3 className="mb-3 text-sm font-semibold text-white/90">Or upload image</h3>
+          <aside className="shrink-0 border-t   p-4 md:flex md:w-80 md:flex-col md:border-l md:border-t-0">
+            <h3 className="mb-3 text-sm font-semibold ">Or upload image</h3>
             <FileUpload onUpload={handlePhotoCapture} />
           </aside>
         </div>
@@ -387,22 +387,22 @@ export default function CapturePage() {
 
           {/* Progress Steps */}
           <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-2 ${step === 'select-frame' ? 'text-emerald-400' : 'text-slate-500'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'select-frame' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-600 text-slate-300'}`}>
+            <div className={`flex items-center gap-2 ${step === 'select-frame' ? '' : ''}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'select-frame' ? ' ' : ' '}`}>
                 1
               </div>
               <span className="font-medium">Select Frame</span>
             </div>
-            <div className="flex-1 h-px bg-slate-600"></div>
-            <div className={`flex items-center gap-2 ${step === 'capture-photo' ? 'text-emerald-400' : 'text-slate-500'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'capture-photo' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-600 text-slate-300'}`}>
+            <div className="flex-1 h-px "></div>
+            <div className={`flex items-center gap-2 ${step === 'capture-photo' ? '' : ''}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'capture-photo' ? ' ' : ' '}`}>
                 2
               </div>
               <span className="font-medium">Capture Photo</span>
             </div>
-            <div className="flex-1 h-px bg-slate-600"></div>
-            <div className={`flex items-center gap-2 ${step === 'preview' ? 'text-emerald-400' : 'text-slate-500'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'preview' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-600 text-slate-300'}`}>
+            <div className="flex-1 h-px "></div>
+            <div className={`flex items-center gap-2 ${step === 'preview' ? '' : ''}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === 'preview' ? ' ' : ' '}`}>
                 3
               </div>
               <span className="font-medium">Preview & Save</span>
@@ -491,7 +491,6 @@ export default function CapturePage() {
                     <Button
                       type="button"
                       variant="light"
-                      color="gray"
                       radius="xl"
                       fullWidth
                       onClick={handleDownload}
@@ -501,7 +500,7 @@ export default function CapturePage() {
                   </div>
 
                   {shareUrl && (
-                    <div className="border-t border-white/10 pt-4">
+                    <div className="border-t  pt-4">
                       <ShareOverlay
                         shareUrl={shareUrl}
                         shareCaption={shareCaptionForSocial}
@@ -517,7 +516,7 @@ export default function CapturePage() {
                     </div>
                   )}
 
-                  <Button type="button" variant="light" color="dark" radius="xl" fullWidth onClick={handleReset}>
+                  <Button type="button" variant="light" radius="xl" fullWidth onClick={handleReset}>
                     📸 Take Another Photo
                   </Button>
                 </div>
@@ -528,7 +527,7 @@ export default function CapturePage() {
 
         {/* Processing Overlay */}
         {isProcessing && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="fixed inset-0 z-50 flex items-center justify-center ">
             <div className="app-surface-card p-8 text-center">
               <div className="text-6xl mb-4 animate-pulse">✨</div>
               <p className="app-surface-card-row-title">Applying frame...</p>

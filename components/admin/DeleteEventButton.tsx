@@ -43,7 +43,6 @@ export default function DeleteEventButton({ eventId, eventName }: DeleteEventBut
 
   return (
     <Button
-      color="red"
       disabled={isDeleting}
       loading={isDeleting}
       onClick={() =>

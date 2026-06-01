@@ -481,13 +481,13 @@ export default function LandingPageEditor({
       }
     >
       {error ? (
-        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+        <Alert icon={<IconAlertCircle size={16} />}>
           {error}
         </Alert>
       ) : null}
 
       {success ? (
-        <Alert color="green" icon={<IconCheck size={16} />}>
+        <Alert icon={<IconCheck size={16} />}>
           {success}
         </Alert>
       ) : null}
@@ -542,13 +542,13 @@ export default function LandingPageEditor({
             </Field>
           </SimpleGrid>
           {actionPresets.length > 0 ? (
-            <Card bg="green.0" withBorder>
+            <Card withBorder>
               <Stack gap="md">
                 <div>
-                  <Text size="sm" fw={700} c="green.9">
+                  <Text size="sm" fw={700}>
                     App action presets
                   </Text>
-                  <Text mt={4} size="xs" c="green.8">
+                  <Text mt={4} size="xs" c="dimmed">
                   Prefill the action URL and button text from common Camera app flows, then fine-tune the copy if needed.
                   </Text>
                 </div>
@@ -558,14 +558,13 @@ export default function LandingPageEditor({
                     key={preset.id}
                     type="button"
                     variant="light"
-                    color="green"
                     onClick={() => applyActionPreset(preset)}
                     styles={{ root: { height: 'auto', justifyContent: 'flex-start', padding: '1rem' }, inner: { alignItems: 'flex-start' }, label: { width: '100%' } }}
                   >
                     <Stack gap={4} align="flex-start">
                       <Text size="sm" fw={700}>{preset.label}</Text>
                       <Text size="xs" c="dimmed">{preset.description}</Text>
-                      <Text size="11px" c="green.8" style={{ wordBreak: 'break-all' }}>{preset.url}</Text>
+                      <Text size="11px" c="dimmed" style={{ wordBreak: 'break-all' }}>{preset.url}</Text>
                     </Stack>
                   </Button>
                 ))}
