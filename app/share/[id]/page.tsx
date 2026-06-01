@@ -213,10 +213,10 @@ export default async function SharePage({ params }: Props) {
     <PublicShell size="lg">
       <Stack gap="xl">
         <Stack align="center" gap="xs" ta="center">
-          <Title order={1} c="dark.9">
+          <Title order={1}>
             {headline}
           </Title>
-          <Text c="dark.4">
+          <Text c="dimmed">
             Photo by{' '}
             <span className="font-semibold">{submission.userName}</span>
           </Text>
@@ -246,12 +246,12 @@ export default async function SharePage({ params }: Props) {
             />
           </div>
 
-          <Text size="sm" c="dark.4" ta="right" mb="lg">
+          <Text size="sm" c="dimmed" ta="right" mb="lg">
             {submission.createdAt ? new Date(submission.createdAt).toLocaleDateString() : ''}
           </Text>
 
           <Group gap="md" grow>
-            <Button component="a" href={submission.imageUrl} download target="_blank" rel="noopener noreferrer" color="cameraTeal" size="lg">
+            <Button component="a" href={submission.imageUrl} download target="_blank" rel="noopener noreferrer" color="teal" size="lg">
               💾 Download
             </Button>
             <Button component="a" href={createYourOwnHref} variant="default" size="lg">
@@ -261,7 +261,7 @@ export default async function SharePage({ params }: Props) {
 
           {sourceOriginalVariant || shareVariants.length > 0 ? (
             <Stack gap="md" mt="xl">
-              <Text fw={700} c="dark.9">
+              <Text fw={700}>
                 {submission.submissionKind === 'tryon_result' ? 'Original and approved try-on results' : 'Approved try-on results'}
               </Text>
               <div

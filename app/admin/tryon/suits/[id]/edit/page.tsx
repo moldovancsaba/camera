@@ -255,7 +255,7 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
 
           <Group justify="space-between">
             <Group>
-              <Button type="submit" color="cameraTeal" loading={isSaving}>
+              <Button type="submit" color="teal" loading={isSaving}>
                 {isSaving ? 'Saving…' : 'Save Changes'}
               </Button>
               <Button component={Link} href="/admin/tryon/suits" variant="default">

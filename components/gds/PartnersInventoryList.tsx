@@ -64,7 +64,7 @@ export default function PartnersInventoryList({ partners }: { partners: Serializ
           title="No partners yet"
           description="Get started by adding your first partner workspace to Camera Core."
           action={
-            <Button component={Link} href="/admin/partners/new" color="cameraTeal">
+            <Button component={Link} href="/admin/partners/new" color="teal">
               Add Your First Partner
             </Button>
           }

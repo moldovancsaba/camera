@@ -78,7 +78,7 @@ export default async function ProfilePage() {
         </Group>
 
         <Group>
-          <Button component={Link} href="/capture" color="cameraTeal">
+          <Button component={Link} href="/capture" color="teal">
             📸 Take New Photo
           </Button>
         </Group>
@@ -95,7 +95,7 @@ export default async function ProfilePage() {
             title="No photos yet"
             description="Start creating amazing photos with frames!"
             action={
-              <Button component={Link} href="/capture" color="cameraTeal">
+              <Button component={Link} href="/capture" color="teal">
                 Take Your First Photo
               </Button>
             }
@@ -133,7 +133,7 @@ export default async function ProfilePage() {
                       {new Date(submission.createdAt).toLocaleDateString()}
                     </Text>
                     <Group gap="sm" mt="xs">
-                      <Button component="a" href={submission.imageUrl} download target="_blank" rel="noopener noreferrer" color="cameraTeal" size="xs">
+                      <Button component="a" href={submission.imageUrl} download target="_blank" rel="noopener noreferrer" color="teal" size="xs">
                         💾 Download
                       </Button>
                       <Button component={Link} href={`/share/${submission._id}`} variant="default" size="xs">

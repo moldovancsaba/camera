@@ -30,7 +30,7 @@ export default function LandingLegalDocument({
         }
       >
         <Text
-          c="dark.7"
+          c="dimmed"
           size="sm"
           style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}
         >

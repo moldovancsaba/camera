@@ -837,7 +837,7 @@ export default function CameraCapture({
                 )}
               </div>
               <div className="justify-self-center">
-                <Button type="button" color="cameraTeal" size="sm" radius="md" onClick={() => capturePhoto()}>
+                <Button type="button" color="teal" size="sm" radius="md" onClick={() => capturePhoto()}>
                   Take
                 </Button>
               </div>
@@ -846,7 +846,7 @@ export default function CameraCapture({
                   <Button
                     type="button"
                     variant="light"
-                    color="cameraSlate"
+                    color="gray"
                     size="sm"
                     radius="md"
                     onClick={() => switchCamera()}
@@ -877,7 +877,7 @@ export default function CameraCapture({
             </div>
             <div className="justify-self-center">
               {showRetake ? (
-                <Button type="button" variant="light" color="cameraSlate" size="sm" radius="md" onClick={() => retake()}>
+                <Button type="button" variant="light" color="gray" size="sm" radius="md" onClick={() => retake()}>
                   Retake
                 </Button>
               ) : (

@@ -82,7 +82,7 @@ export default async function Home({
               unoptimized
               style={{ height: 64, width: 'auto' }}
             />
-            <Title order={1} fz={{ base: 44, md: 64 }} c="dark.8">
+            <Title order={1} fz={{ base: 44, md: 64 }}>
               Camera
             </Title>
           </Group>
@@ -100,7 +100,7 @@ export default async function Home({
           {session ? (
             <>
               {(session.appRole === 'admin' || session.appRole === 'superadmin') && (
-                <Button component="a" href="/admin" size="lg" color="cameraTeal">
+                <Button component="a" href="/admin" size="lg" color="teal">
                   Admin Panel
                 </Button>
               )}

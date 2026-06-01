@@ -563,7 +563,7 @@ export default function LandingPageEditor({
                     styles={{ root: { height: 'auto', justifyContent: 'flex-start', padding: '1rem' }, inner: { alignItems: 'flex-start' }, label: { width: '100%' } }}
                   >
                     <Stack gap={4} align="flex-start">
-                      <Text size="sm" fw={700} c="dark.8">{preset.label}</Text>
+                      <Text size="sm" fw={700}>{preset.label}</Text>
                       <Text size="xs" c="dimmed">{preset.description}</Text>
                       <Text size="11px" c="green.8" style={{ wordBreak: 'break-all' }}>{preset.url}</Text>
                     </Stack>
@@ -736,7 +736,7 @@ export default function LandingPageEditor({
           <Button
             type="submit"
             disabled={isSubmitting || isUploadingQr || isUploadingLogo}
-            color="cameraTeal"
+            color="teal"
           >
             {isSubmitting ? 'Saving…' : landingPageId ? 'Update experience page' : 'Save experience page'}
           </Button>

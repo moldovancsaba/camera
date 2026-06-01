@@ -129,7 +129,7 @@ export default function ShareOverlay({
                       rel="noopener noreferrer"
                       underline="never"
                     >
-                      <Button component="span" color="cameraTeal" radius="xl" fullWidth>
+                      <Button component="span" color="teal" radius="xl" fullWidth>
                         {viewPhotoButtonText}
                       </Button>
                     </Anchor>
@@ -152,7 +152,7 @@ export default function ShareOverlay({
                     <Button
                       type="button"
                       variant="light"
-                      color="cameraSlate"
+                      color="gray"
                       fullWidth
                       radius="md"
                       onClick={() => onShareSocial?.('facebook')}
@@ -162,7 +162,7 @@ export default function ShareOverlay({
                     <Button
                       type="button"
                       variant="light"
-                      color="cameraSlate"
+                      color="gray"
                       fullWidth
                       radius="md"
                       onClick={() => onShareSocial?.('twitter')}
@@ -172,7 +172,7 @@ export default function ShareOverlay({
                     <Button
                       type="button"
                       variant="light"
-                      color="cameraSlate"
+                      color="gray"
                       fullWidth
                       radius="md"
                       onClick={() => onShareSocial?.('linkedin')}
@@ -182,7 +182,7 @@ export default function ShareOverlay({
                     <Button
                       type="button"
                       variant="light"
-                      color="cameraSlate"
+                      color="gray"
                       fullWidth
                       radius="md"
                       onClick={() => onShareSocial?.('whatsapp')}
@@ -193,7 +193,7 @@ export default function ShareOverlay({
                 ) : null}
 
                 {nextButtonText && onNext ? (
-                  <Button type="button" color="cameraTeal" radius="xl" fullWidth onClick={onNext}>
+                  <Button type="button" color="teal" radius="xl" fullWidth onClick={onNext}>
                     {nextButtonText}
                   </Button>
                 ) : null}

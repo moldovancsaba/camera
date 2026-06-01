@@ -114,8 +114,10 @@
       "surface": "Landing page custom CSS",
       "category": "product-authored-experience",
       "scope": [
-        "landing_pages.customCss",
-        "app/landing/[slug]"
+        "app/landing/[slug]/page.tsx",
+        "components/admin/LandingPageEditor.tsx",
+        "app/api/landing-pages/route.ts",
+        "app/api/landing-pages/[id]/route.ts"
       ],
       "reason": "User-authored landing-page CSS remains intentionally creator-owned and renders after the base landing shell stylesheet so experience themes can override the default presentation while the surrounding admin/editor chrome follows GDS contracts.",
       "allowedImplementation": [
@@ -129,6 +131,21 @@
       "mustNotDo": [
         "Allow creator CSS to redefine admin surfaces",
         "Treat creator-authored CSS as a replacement for shared application shells"
+      ],
+      "a11yRequirements": [
+        "Maintain WCAG AA contrast minimums for creator CSS presets exposed in admin",
+        "Keep keyboard navigation and focus visibility intact for all landing-page controls",
+        "Do not allow creator CSS to hide consent, privacy, or terms interactions"
+      ],
+      "testingRequirements": [
+        "Cover landing-page rendering with and without custom CSS in E2E smoke checks",
+        "Validate consent, privacy, and action CTA visibility under custom CSS scenarios",
+        "Verify responsive behavior across mobile and desktop breakpoints"
+      ],
+      "observabilityRequirements": [
+        "Log landing-page render failures caused by invalid custom CSS payloads",
+        "Track landing-page publish/update operations that modify custom CSS",
+        "Emit error telemetry when custom CSS parsing/sanitization fails"
       ],
       "exitCondition": "Long-lived approved exception unless GDS formalizes a creator-authored experience-theming contract.",
       "status": "approved",

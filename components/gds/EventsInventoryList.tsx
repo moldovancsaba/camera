@@ -78,7 +78,7 @@ export default function EventsInventoryList({
           description="Get started by creating the first event app instance for a partner."
           action={
             canCreate ? (
-              <Button component={Link} href="/admin/events/new" color="cameraTeal">
+              <Button component={Link} href="/admin/events/new" color="teal">
                 Add Your First Event Instance
               </Button>
             ) : undefined

@@ -250,7 +250,7 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
 
           <Group justify="space-between">
             <Group>
-              <Button type="submit" color="cameraTeal" loading={isSaving}>
+              <Button type="submit" color="teal" loading={isSaving}>
                 {isSaving ? 'Saving…' : 'Save Changes'}
               </Button>
               <Button component={Link} href="/admin/logos" variant="default">
