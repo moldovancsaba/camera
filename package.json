@@ -45,9 +45,9 @@
   "homepage": "https://github.com/moldovancsaba/camera",
   "license": "MIT",
   "dependencies": {
-    "@doneisbetter/gds-admin": "https://github.com/sovereignsquad/general-design-system/releases/download/gds-v2.6.4/doneisbetter-gds-admin-2.6.4.tgz",
-    "@doneisbetter/gds-core": "https://github.com/sovereignsquad/general-design-system/releases/download/gds-v2.6.4/doneisbetter-gds-core-2.6.4.tgz",
-    "@doneisbetter/gds-theme": "https://github.com/sovereignsquad/general-design-system/releases/download/gds-v2.6.4/doneisbetter-gds-theme-2.6.4.tgz",
+    "@doneisbetter/gds-admin": "3.0.0",
+    "@doneisbetter/gds-core": "3.0.0",
+    "@doneisbetter/gds-theme": "3.0.0",
     "@mantine/core": "^8.3.6",
     "@mantine/dropzone": "^8.3.6",
     "@mantine/hooks": "^8.3.6",
@@ -63,8 +63,8 @@
     "react-dom": "19.2.0"
   },
   "devDependencies": {
-    "@doneisbetter/gds-compliance": "https://github.com/sovereignsquad/general-design-system/releases/download/gds-v2.6.4/doneisbetter-gds-compliance-2.6.4.tgz",
-    "@doneisbetter/gds-eslint-config": "https://github.com/sovereignsquad/general-design-system/releases/download/gds-v2.6.4/doneisbetter-gds-eslint-config-2.6.4.tgz",
+    "@doneisbetter/gds-compliance": "3.0.0",
+    "@doneisbetter/gds-eslint-config": "3.0.0",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

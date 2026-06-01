@@ -30,9 +30,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     query['tryOnModerationArchive.bucket'] = archive;
   } else {
     query['tryOnModerationArchive.archived'] = { $ne: true };
+    query.reviewStatus = reviewStatus || 'pending_review';
   }
 
-  if (reviewStatus) {
+  if ((archive === 'approved' || archive === 'rejected') && reviewStatus) {
     query.reviewStatus = reviewStatus;
   }
   if (eventId) {

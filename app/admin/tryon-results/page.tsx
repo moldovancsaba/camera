@@ -49,8 +49,9 @@ export default async function AdminTryOnResultsPage({
       query['tryOnModerationArchive.bucket'] = archiveBucket;
     } else {
       query['tryOnModerationArchive.archived'] = { $ne: true };
+      query.reviewStatus = reviewStatus || 'pending_review';
     }
-    if (reviewStatus) {
+    if (archiveBucket && reviewStatus) {
       query.reviewStatus = reviewStatus;
     }
     if (search) {
