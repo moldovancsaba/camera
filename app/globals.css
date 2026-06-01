@@ -1,28 +1,49 @@
 @import "tailwindcss";
 
 :root {
-  --background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-8));
-  --foreground: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
+  --background: var(--mantine-color-gray-0);
+  --foreground: var(--mantine-color-gray-9);
 
-  --app-panel-title: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
-  --app-panel-body: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
-  --app-panel-muted: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
-  --app-panel-border: light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
-  --app-panel-input-bg: light-dark(var(--mantine-color-white), var(--mantine-color-dark-6));
-  --app-panel-input-fg: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
-  --app-panel-link: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
-  --app-panel-link-hover: light-dark(var(--mantine-color-gray-9), var(--mantine-color-white));
-  --app-panel-strong: light-dark(var(--mantine-color-gray-9), var(--mantine-color-white));
-  --app-thumb-bg: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5));
+  --app-panel-title: var(--mantine-color-gray-9);
+  --app-panel-body: var(--mantine-color-gray-7);
+  --app-panel-muted: var(--mantine-color-gray-6);
+  --app-panel-border: var(--mantine-color-gray-3);
+  --app-panel-input-bg: var(--mantine-color-white);
+  --app-panel-input-fg: var(--mantine-color-gray-9);
+  --app-panel-link: var(--mantine-color-gray-7);
+  --app-panel-link-hover: var(--mantine-color-gray-9);
+  --app-panel-strong: var(--mantine-color-gray-9);
+  --app-thumb-bg: var(--mantine-color-gray-1);
 
   --app-danger-fg: var(--mantine-color-red-6);
   --app-danger-muted: var(--mantine-color-red-5);
   --app-success-fg: var(--mantine-color-green-6);
   --app-link-accent: var(--mantine-primary-color-filled);
-  --app-shell-fg: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
-  --app-shell-muted: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
-  --app-shell-bg-start: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-7));
-  --app-shell-bg-end: light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-9));
+  --app-shell-fg: var(--mantine-color-gray-9);
+  --app-shell-muted: var(--mantine-color-gray-6);
+  --app-shell-bg-start: var(--mantine-color-gray-0);
+  --app-shell-bg-end: var(--mantine-color-gray-2);
+}
+
+html[data-mantine-color-scheme='dark'] {
+  --background: var(--mantine-color-dark-8);
+  --foreground: var(--mantine-color-dark-0);
+
+  --app-panel-title: var(--mantine-color-dark-0);
+  --app-panel-body: var(--mantine-color-dark-1);
+  --app-panel-muted: var(--mantine-color-dark-2);
+  --app-panel-border: var(--mantine-color-dark-4);
+  --app-panel-input-bg: var(--mantine-color-dark-6);
+  --app-panel-input-fg: var(--mantine-color-dark-0);
+  --app-panel-link: var(--mantine-color-dark-1);
+  --app-panel-link-hover: var(--mantine-color-white);
+  --app-panel-strong: var(--mantine-color-white);
+  --app-thumb-bg: var(--mantine-color-dark-5);
+
+  --app-shell-fg: var(--mantine-color-dark-0);
+  --app-shell-muted: var(--mantine-color-dark-2);
+  --app-shell-bg-start: var(--mantine-color-dark-7);
+  --app-shell-bg-end: var(--mantine-color-dark-9);
 }
 
 @theme inline {
@@ -34,7 +55,6 @@
 
 html {
   min-height: 100%;
-  color-scheme: light dark;
 }
 
 body {
