@@ -515,7 +515,7 @@ export default function EditEventPage({
           </FormSection>
 
           <Group>
-            <Button type="submit" color="teal" loading={isSubmitting || isUploadingLogo}>
+            <Button type="submit" loading={isSubmitting || isUploadingLogo}>
               {isUploadingLogo ? 'Uploading logo…' : isSubmitting ? 'Saving…' : 'Save changes'}
             </Button>
             <Button component={Link} href={`/admin/events/${mongoId}`} variant="default">

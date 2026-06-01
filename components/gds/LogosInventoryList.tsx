@@ -31,7 +31,7 @@ export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow
           title="No logos yet"
           description="Upload your first shared logo to start assigning it across partners and apps."
           action={
-            <Button component={Link} href="/admin/logos/new" color="teal">
+            <Button component={Link} href="/admin/logos/new">
               Upload Shared Logo
             </Button>
           }
@@ -109,7 +109,7 @@ export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow
                 </Text>
               ) : null}
             </Stack>
-            <Button component={Link} href={`/admin/logos/${logo.id}/edit`} fullWidth color="teal">
+            <Button component={Link} href={`/admin/logos/${logo.id}/edit`} fullWidth>
               Edit
             </Button>
           </Stack>

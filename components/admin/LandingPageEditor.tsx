@@ -736,7 +736,6 @@ export default function LandingPageEditor({
           <Button
             type="submit"
             disabled={isSubmitting || isUploadingQr || isUploadingLogo}
-            color="teal"
           >
             {isSubmitting ? 'Saving…' : landingPageId ? 'Update experience page' : 'Save experience page'}
           </Button>

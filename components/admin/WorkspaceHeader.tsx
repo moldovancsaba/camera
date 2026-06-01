@@ -28,7 +28,6 @@ export default function WorkspaceHeader({
       <Button
         component={Link}
         href={primaryAction.href}
-        color="teal"
         leftSection={primaryAction.iconKey ? <AdminIcon iconKey={primaryAction.iconKey} size={16} /> : undefined}
       >
         {primaryAction.label}
@@ -40,7 +39,7 @@ export default function WorkspaceHeader({
       eyebrow={eyebrow}
       title={title}
       description={description}
-      status={status ? <Badge color="teal">{status}</Badge> : undefined}
+      status={status ? <Badge>{status}</Badge> : undefined}
       primaryAction={primaryActionSlot}
     />
   );

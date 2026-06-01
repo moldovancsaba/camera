@@ -1,32 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  /* Canvas is the global fixed gradient (see `body`); surfaces use explicit colors */
-  --background: transparent;
-  --foreground: #f1f5f9;
+  --background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-8));
+  --foreground: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
 
-  --app-shell-bg-start: #0f172a;
-  --app-shell-bg-mid: #111827;
-  --app-shell-bg-end: #020617;
+  --app-panel-title: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
+  --app-panel-body: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
+  --app-panel-muted: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+  --app-panel-border: light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+  --app-panel-input-bg: light-dark(var(--mantine-color-white), var(--mantine-color-dark-6));
+  --app-panel-input-fg: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
+  --app-panel-link: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
+  --app-panel-link-hover: light-dark(var(--mantine-color-gray-9), var(--mantine-color-white));
+  --app-panel-strong: light-dark(var(--mantine-color-gray-9), var(--mantine-color-white));
+  --app-thumb-bg: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-5));
 
-  /* Light panels + admin forms (frosted admin shell, capture/profile cards) */
-  --app-panel-title: #0f172a;
-  --app-panel-body: #475569;
-  --app-panel-muted: #64748b;
-  --app-panel-border: #cbd5e1;
-  --app-panel-input-bg: #ffffff;
-  --app-panel-input-fg: #0f172a;
-  --app-panel-link: #475569;
-  --app-panel-link-hover: #0f172a;
-  --app-panel-strong: #0f172a;
-  --app-thumb-bg: #f1f5f9;
-
-  --app-danger-fg: #fca5a5;
-  --app-danger-muted: rgb(248 113 113 / 0.85);
-  --app-success-fg: rgb(52 211 153 / 0.92);
-  --app-link-accent: #6ee7b7;
-  --app-shell-fg: #ffffff;
-  --app-shell-muted: #cbd5e1;
+  --app-danger-fg: var(--mantine-color-red-6);
+  --app-danger-muted: var(--mantine-color-red-5);
+  --app-success-fg: var(--mantine-color-green-6);
+  --app-link-accent: var(--mantine-primary-color-filled);
+  --app-shell-fg: light-dark(var(--mantine-color-gray-9), var(--mantine-color-dark-0));
+  --app-shell-muted: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+  --app-shell-bg-start: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-7));
+  --app-shell-bg-end: light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-9));
 }
 
 @theme inline {
@@ -36,47 +32,17 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground: #f8fafc;
-    --app-panel-title: #f8fafc;
-    --app-panel-body: #cbd5e1;
-    --app-panel-muted: #94a3b8;
-    --app-panel-border: #475569;
-    --app-panel-input-bg: rgb(15 23 42 / 0.92);
-    --app-panel-input-fg: #f8fafc;
-    --app-panel-link: #94a3b8;
-    --app-panel-link-hover: #f8fafc;
-    --app-panel-strong: #f1f5f9;
-    --app-thumb-bg: #334155;
-  }
-}
-
 html {
   min-height: 100%;
+  color-scheme: light dark;
 }
 
-/* One fixed application gradient for the whole app (does not scroll with content). */
 body {
   min-height: 100dvh;
   margin: 0;
   color: var(--foreground);
-  background-color: var(--app-shell-bg-end);
-  background-image: linear-gradient(
-    to bottom,
-    var(--app-shell-bg-start),
-    var(--app-shell-bg-mid),
-    var(--app-shell-bg-end)
-  );
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  background-size: cover;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-/* Admin Mantine shell uses light surfaces; do not inherit public capture foreground color. */
-[data-camera-admin] {
-  color: #122033;
+  background: var(--background);
+  font-family: var(--mantine-font-family);
 }
 
 [data-camera-admin] .gds-responsive-mobile {

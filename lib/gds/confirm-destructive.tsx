@@ -33,7 +33,7 @@ export function confirmDestructive({
         {targetName ? (
           <>
             {' '}
-            <Text span fw={700} c="dark.8">
+            <Text span fw={700}>
               {targetName}
             </Text>
           </>

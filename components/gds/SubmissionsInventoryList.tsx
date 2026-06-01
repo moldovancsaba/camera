@@ -118,7 +118,7 @@ export default function SubmissionsInventoryList({ submissions }: { submissions:
                 </Text>
               ) : null}
               <Group grow gap="sm">
-                <Button component={Link} href={`/share/${submission.id}`} fullWidth color="teal" size="sm">
+                <Button component={Link} href={`/share/${submission.id}`} fullWidth size="sm">
                   View
                 </Button>
                 <Button

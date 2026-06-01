@@ -89,7 +89,7 @@ export default function AdminListPageShell({
                             <input key={name} type="hidden" name={name} value={value} />
                           ))
                         : null}
-                      <Button type="submit" color="teal">
+                      <Button type="submit">
                         Search
                       </Button>
                       {search.defaultValue || toolbarFilters?.length ? (
@@ -105,7 +105,7 @@ export default function AdminListPageShell({
             activeFilters={toolbarFilters?.map((chip) => ({ label: `${chip.label}: ${chip.value}` }))}
             createAction={
               toolbarTrailing ? (
-                <Button component={Link} href={toolbarTrailing.href} variant="light" color="teal">
+                <Button component={Link} href={toolbarTrailing.href} variant="light">
                   {toolbarTrailing.label}
                 </Button>
               ) : undefined

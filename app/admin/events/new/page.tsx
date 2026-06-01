@@ -401,7 +401,6 @@ export default function NewEventPage() {
           <Group>
             <Button
               type="submit"
-              color="teal"
               loading={isSubmitting || isUploadingLogo}
               disabled={partners.length === 0}
             >

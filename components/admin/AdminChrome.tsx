@@ -116,7 +116,7 @@ export default function AdminChrome({
   const accountPanel = (
     <Stack gap="sm">
       <Group gap="sm" wrap="nowrap">
-        <ThemeIcon variant="light" color="teal" radius="xl" size={36}>
+        <ThemeIcon variant="light" radius="xl" size={36}>
           <IconUsers size={18} />
         </ThemeIcon>
         <Stack gap={0} style={{ minWidth: 0 }}>
@@ -157,7 +157,7 @@ export default function AdminChrome({
         headerContext="Admin Panel"
         headerActions={
           <Group gap="sm" wrap="nowrap">
-            <ThemeIcon variant="light" color="teal" radius="xl" size={36}>
+            <ThemeIcon variant="light" radius="xl" size={36}>
               <IconUsers size={18} />
             </ThemeIcon>
             <Stack gap={0} visibleFrom="sm">

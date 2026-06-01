@@ -1,11 +1,11 @@
 # Camera GDS Adoption
 
 **Version**: 2.10.0  
-**Last Updated**: 2026-05-29
+**Last Updated**: 2026-06-01
 
 ## SSOT statement
 
-[sovereignsquad/general-design-system](https://github.com/sovereignsquad/general-design-system) (SSOT docs and published bundle now **v2.6.4**) is the single source of truth for design, UI, and UX across the portfolio.
+[sovereignsquad/general-design-system](https://github.com/sovereignsquad/general-design-system) (SSOT docs and published bundle now **v3.0.0**) is the single source of truth for design, UI, and UX across the portfolio.
 
 This file and other Camera docs describe only **implementation adapters**, migration state, validation commands, and approved exceptions. If a Camera-local UI document conflicts with the GDS repository, **the GDS repository wins**.
 
@@ -24,8 +24,8 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | Concern | Camera adapter |
 |---------|----------------|
 | App Router client boundary | `app/providers.tsx` |
-| Theme | `lib/gds/theme/index.ts` extending `@doneisbetter/gds-theme/server` |
-| Root provider | `components/gds/CameraGdsProvider.tsx` wrapping `@doneisbetter/gds-theme/client` `GdsProvider` |
+| Theme | package-direct `@doneisbetter/gds-theme/server` default `gdsTheme` |
+| Root provider | `components/gds/CameraGdsProvider.tsx` wrapping `@doneisbetter/gds-theme/client` `GdsProvider` without local theme extension |
 | Notifications | Shared provider composition from `@doneisbetter/gds-theme/client` |
 | Modals / confirm | Shared provider composition + `lib/gds/confirm-destructive.tsx` |
 | Adoption manifest | `gds-adoption.json` |
@@ -49,7 +49,6 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | Editor scaffold | `app/admin/{events,events/[id],partners,partners/[id],frames,logos,tryon}/**` | Thin adapter (`components/gds/EditorScaffold.tsx`) |
 | Upload dropzone | direct `@doneisbetter/gds-core` import | Package-direct |
 | Destructive confirm | `lib/gds/confirm-destructive.tsx` | Active — delete/remove admin actions |
-| Theme extension | `lib/gds/theme/index.ts` | Active |
 | Root provider adapter | `components/gds/CameraGdsProvider.tsx` | Active |
 | Public shell | `components/public/PublicPageShell.tsx` | Domain-owned composition over package `PublicShell` |
 | App shell (admin) | `components/admin/AdminChrome.tsx` | Domain-owned composition over package `AppShell` |
@@ -70,7 +69,6 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 - `components/gds/DataTable.tsx`
 - `components/gds/ResponsiveDataView.tsx`
 - `components/gds/EditorScaffold.tsx`
-- `lib/gds/theme/index.ts`
 - `lib/gds/confirm-destructive.tsx`
 
   - `DataTable`, `ResponsiveDataView`, and `EditorScaffold` are thin compatibility adapters used for API alignment and local UX orchestration in admin surfaces.
@@ -110,7 +108,7 @@ Camera exceptions follow the shared structure from [docs/GDS_EXCEPTION_STANDARD.
 
 ## Published package capability snapshot
 
-Camera is currently pinned to the latest published release bundle, `@doneisbetter/*` **2.6.4**.
+Camera is currently pinned to the latest published release bundle, `@doneisbetter/*` **3.0.0**.
 
 ### Available now in the published package line
 

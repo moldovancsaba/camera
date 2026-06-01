@@ -129,14 +129,14 @@ export default function ShareOverlay({
                       rel="noopener noreferrer"
                       underline="never"
                     >
-                      <Button component="span" color="teal" radius="xl" fullWidth>
+                      <Button component="span" radius="xl" fullWidth>
                         {viewPhotoButtonText}
                       </Button>
                     </Anchor>
 
                     <Text ta="center" size="xs" c={overlay ? 'gray.3' : 'dimmed'}>
                       {suggestedMessageLabel}{' '}
-                      <Text component="span" fw={500} c={overlay ? 'white' : 'dark.8'}>
+                      <Text component="span" fw={500} c={overlay ? 'white' : undefined}>
                         {shareCaption}
                       </Text>
                     </Text>
@@ -193,7 +193,7 @@ export default function ShareOverlay({
                 ) : null}
 
                 {nextButtonText && onNext ? (
-                  <Button type="button" color="teal" radius="xl" fullWidth onClick={onNext}>
+                  <Button type="button" radius="xl" fullWidth onClick={onNext}>
                     {nextButtonText}
                   </Button>
                 ) : null}

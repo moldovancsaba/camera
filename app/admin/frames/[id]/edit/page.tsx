@@ -235,7 +235,7 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
 
           <Group justify="space-between">
             <Group>
-              <Button type="submit" color="teal" loading={isSaving}>
+              <Button type="submit" loading={isSaving}>
                 {isSaving ? 'Saving…' : 'Save changes'}
               </Button>
               <Button component={Link} href="/admin/frames" variant="default">

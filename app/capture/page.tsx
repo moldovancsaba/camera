@@ -329,7 +329,7 @@ export default function CapturePage() {
           <p className="text-slate-300 mb-6">
             There are no frames available yet. Please check back later!
           </p>
-          <Button component={Link} href="/" color="teal" radius="xl">
+          <Button component={Link} href="/" radius="xl">
             Go Home
           </Button>
         </div>
@@ -478,7 +478,6 @@ export default function CapturePage() {
                     {!submissionId ? (
                       <Button
                         type="button"
-                        color="teal"
                         radius="xl"
                         fullWidth
                         onClick={handleSave}

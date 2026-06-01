@@ -37,7 +37,7 @@ export default function Error({
         </Text>
 
         <Stack gap="sm" w="100%">
-          <Button type="button" color="teal" radius="xl" onClick={reset}>
+          <Button type="button" radius="xl" onClick={reset}>
             Try again
           </Button>
           <Button component={Link} href="/" color="gray" variant="light" radius="xl">

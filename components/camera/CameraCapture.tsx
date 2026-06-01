@@ -837,7 +837,7 @@ export default function CameraCapture({
                 )}
               </div>
               <div className="justify-self-center">
-                <Button type="button" color="teal" size="sm" radius="md" onClick={() => capturePhoto()}>
+                <Button type="button" size="sm" radius="md" onClick={() => capturePhoto()}>
                   Take
                 </Button>
               </div>

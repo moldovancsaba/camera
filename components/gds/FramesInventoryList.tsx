@@ -32,7 +32,7 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
           title="No frames yet"
           description="Add your first shared frame to start assigning it across partners and apps."
           action={
-            <Button component={Link} href="/admin/frames/new" color="teal">
+            <Button component={Link} href="/admin/frames/new">
               Add Your First Frame
             </Button>
           }
@@ -110,7 +110,7 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
                 </Text>
               ) : null}
             </Stack>
-            <Button component={Link} href={`/admin/frames/${frame.id}/edit`} fullWidth color="teal">
+            <Button component={Link} href={`/admin/frames/${frame.id}/edit`} fullWidth>
               Edit
             </Button>
           </Stack>

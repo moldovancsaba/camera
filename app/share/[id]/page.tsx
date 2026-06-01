@@ -251,7 +251,7 @@ export default async function SharePage({ params }: Props) {
           </Text>
 
           <Group gap="md" grow>
-            <Button component="a" href={submission.imageUrl} download target="_blank" rel="noopener noreferrer" color="teal" size="lg">
+            <Button component="a" href={submission.imageUrl} download target="_blank" rel="noopener noreferrer" size="lg">
               💾 Download
             </Button>
             <Button component="a" href={createYourOwnHref} variant="default" size="lg">

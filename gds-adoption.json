@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "gdsVersion": "2.6.4",
+  "gdsVersion": "3.0.0",
   "productArchetype": "hybrid",
   "supportedEntryPoints": [
     "@doneisbetter/gds-theme/client",
@@ -38,11 +38,6 @@
     {
       "contract": "EditorScaffoldAdapter",
       "path": "components/gds/EditorScaffold.tsx",
-      "status": "active"
-    },
-    {
-      "contract": "ThemeExtension",
-      "path": "lib/gds/theme/index.ts",
       "status": "active"
     },
     {
@@ -198,5 +193,5 @@
   },
   "migrationStatus": "partial",
   "owner": "camera-platform",
-  "lastReviewedAt": "2026-05-28"
+  "lastReviewedAt": "2026-06-01"
 }
