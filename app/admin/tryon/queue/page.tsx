@@ -23,6 +23,44 @@ function formatStatusLabel(status: string): string {
   return status.replace(/_/g, ' ');
 }
 
+function toQueueRow(job: Partial<TryOnJob>): QueueRow | null {
+  if (typeof job.jobId !== 'string' || !job.jobId.trim()) return null;
+  if (typeof job.status !== 'string' || !job.status.trim()) return null;
+  if (typeof job.stage !== 'string' || !job.stage.trim()) return null;
+
+  return {
+    jobId: job.jobId,
+    status: job.status,
+    stage: job.stage,
+    createdAt: typeof job.createdAt === 'string' ? job.createdAt : '',
+    source: {
+      submissionId: typeof job.source?.submissionId === 'string' ? job.source.submissionId : 'unknown',
+      imageUrl: typeof job.source?.imageUrl === 'string' ? job.source.imageUrl : '',
+      eventMongoId: typeof job.source?.eventMongoId === 'string' ? job.source.eventMongoId : null,
+    },
+    request: {
+      leatherSuitId:
+        typeof job.request?.leatherSuitId === 'string' ? job.request.leatherSuitId : 'unknown',
+    },
+    processing: {
+      workerId: typeof job.processing?.workerId === 'string' ? job.processing.workerId : null,
+      attemptCount:
+        typeof job.processing?.attemptCount === 'number' && Number.isFinite(job.processing.attemptCount)
+          ? job.processing.attemptCount
+          : 0,
+      nextAttemptAt:
+        typeof job.processing?.nextAttemptAt === 'string' ? job.processing.nextAttemptAt : null,
+    },
+    result: {
+      publicResultUrl:
+        typeof job.result?.publicResultUrl === 'string' ? job.result.publicResultUrl : null,
+    },
+    error: {
+      message: typeof job.error?.message === 'string' ? job.error.message : null,
+    },
+  };
+}
+
 export default async function AdminTryOnQueuePage({
   searchParams,
 }: {
@@ -57,12 +95,14 @@ export default async function AdminTryOnQueuePage({
       ];
     }
 
-    rows = (await db
+    const jobs = await db
       .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
       .find(query)
       .sort({ createdAt: -1 })
       .limit(100)
-      .toArray()) as QueueRow[];
+      .toArray();
+
+    rows = jobs.map(toQueueRow).filter((row): row is QueueRow => Boolean(row));
   } catch (error) {
     console.error('Error loading try-on queue:', error);
     dbError = serializeMongoError(error);

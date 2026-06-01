@@ -6,9 +6,32 @@ import DataTable from '@/components/gds/DataTable';
 import { StatusBadge, StateBlock } from '@doneisbetter/gds-core/client';
 import { Button, Group, Stack, Text } from '@mantine/core';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
-import type { TryOnJob } from '@/lib/db/schemas';
 
-export type QueueRow = TryOnJob & { jobId: string };
+export interface QueueRow {
+  jobId: string;
+  status: string;
+  stage: string;
+  createdAt: string;
+  source: {
+    submissionId: string;
+    imageUrl: string;
+    eventMongoId?: string | null;
+  };
+  request: {
+    leatherSuitId: string;
+  };
+  processing: {
+    workerId?: string | null;
+    attemptCount: number;
+    nextAttemptAt?: string | null;
+  };
+  result: {
+    publicResultUrl?: string | null;
+  };
+  error?: {
+    message?: string | null;
+  };
+}
 
 function toneForStatus(status: string): CameraStatusTone {
   switch (status) {
