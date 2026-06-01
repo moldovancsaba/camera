@@ -152,31 +152,34 @@ export default function AdminChrome({
   );
 
   return (
-    <GdsAppShell
-      logoText="Camera"
-      headerContext="Admin Panel"
-      headerActions={
-        <Group gap="sm" wrap="nowrap">
-          <ThemeIcon variant="light" color="cameraTeal" radius="xl" size={36}>
-            <IconUsers size={18} />
-          </ThemeIcon>
-          <Stack gap={0} visibleFrom="sm">
-            <Text size="sm" fw={600}>
-              {session.user.name || session.user.email}
-            </Text>
-            <Text size="xs" c="dimmed" tt="capitalize">
-              {session.appRole || 'user'}
-            </Text>
-          </Stack>
-        </Group>
-      }
-      primaryNavigation={primaryNavigation}
-      accountPanel={accountPanel}
-    >
-      <Box bg="cameraSlate.0" style={{ minHeight: '100%' }}>
-        {children}
-      </Box>
-    </GdsAppShell>
+    <div data-camera-admin data-mantine-color-scheme="light">
+      <GdsAppShell
+        logoText="Camera"
+        headerContext="Admin Panel"
+        headerActions={
+          <Group gap="sm" wrap="nowrap">
+            <ThemeIcon variant="light" color="cameraTeal" radius="xl" size={36}>
+              <IconUsers size={18} />
+            </ThemeIcon>
+            <Stack gap={0} visibleFrom="sm">
+              <Text size="sm" fw={600}>
+                {session.user.name || session.user.email}
+              </Text>
+              <Text size="xs" c="dimmed" tt="capitalize">
+                {session.appRole || 'user'}
+              </Text>
+            </Stack>
+          </Group>
+        }
+        primaryNavigation={primaryNavigation}
+        accountPanel={accountPanel}
+        showThemeToggle={false}
+      >
+        <Box bg="cameraSlate.0" style={{ minHeight: '100%' }}>
+          {children}
+        </Box>
+      </GdsAppShell>
+    </div>
   );
 }
 
