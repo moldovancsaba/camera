@@ -85,14 +85,14 @@ export default function UsersInventoryView({
               borderColor: 'color-mix(in srgb, var(--mantine-color-yellow-6) 35%, transparent)',
             }}
           >
-            <Text size="sm" c="dark.8">
+            <Text size="sm">
               This page manages global Camera access today. Partner-level permissions are not modeled separately yet, so guest and participation records below are derived from submissions rather than a dedicated partner access table.
             </Text>
           </Card>
 
           <Card p={0} style={{ overflow: 'hidden' }}>
             <div style={{ borderBottom: '1px solid var(--mantine-color-gray-2)', padding: '1rem 1.5rem' }}>
-              <Text fw={700} fz="lg" c="dark.8">
+              <Text fw={700} fz="lg">
                 Directory and Participation History
               </Text>
               <Text mt={4} size="sm" c="dimmed">
@@ -128,7 +128,7 @@ export default function UsersInventoryView({
                         {user.mergedWith ? <StatusBadge {...getStatusBadgeProps('active', 'Merged')} /> : null}
                       </Group>
                       <Stack gap={2}>
-                        <Text size="sm" fw={500} c="dark.6">
+                        <Text size="sm" fw={500}>
                           {user.accessLabel}
                         </Text>
                         <Text size="sm" c="dimmed" truncate>

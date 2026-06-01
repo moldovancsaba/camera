@@ -32,7 +32,7 @@ export default function SemanticNavLink({
       label={label}
       leftSection={icon}
       variant={active ? 'light' : 'subtle'}
-      color="cameraTeal"
+      color="teal"
       styles={{
         root: {
           borderRadius: 14,
@@ -40,12 +40,12 @@ export default function SemanticNavLink({
         label: {
           fontWeight: active ? 700 : 600,
           color: active
-            ? 'var(--mantine-color-cameraTeal-8)'
+            ? 'var(--mantine-color-teal-8)'
             : 'var(--mantine-color-gray-8)',
         },
         section: {
           color: active
-            ? 'var(--mantine-color-cameraTeal-7)'
+            ? 'var(--mantine-color-teal-7)'
             : 'var(--mantine-color-gray-7)',
         },
       }}

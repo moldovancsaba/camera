@@ -184,7 +184,7 @@ export default function TryOnQueueTable({ rows }: { rows: QueueRow[] }) {
               {(row.status === 'failed' || row.status === 'retry_wait') ? (
                 <Button
                   variant="light"
-                  color="cameraTeal"
+                  color="teal"
                   size="xs"
                   loading={busyJobId === row.jobId}
                   aria-label={`Retry try-on job ${row.jobId}`}

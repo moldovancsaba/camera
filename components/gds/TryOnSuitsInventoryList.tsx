@@ -27,7 +27,7 @@ export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTr
           title="No leather jerseys yet"
           description="Upload your first shared leather jersey so try-on events can offer it to users."
           action={
-            <Button component={Link} href="/admin/tryon/suits/new" color="cameraTeal">
+            <Button component={Link} href="/admin/tryon/suits/new" color="teal">
               Upload First Leather Jersey
             </Button>
           }
@@ -53,7 +53,7 @@ export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTr
             </div>
           </div>
           <Stack gap="sm" p="md">
-            <Text fw={700} c="dark.8" truncate="end">
+            <Text fw={700} truncate="end">
               {suit.name}
             </Text>
             {suit.description ? (
@@ -72,7 +72,7 @@ export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTr
                 Queue usage: {suit.queueUsageCount}
               </Text>
             </Stack>
-            <Button component={Link} href={`/admin/tryon/suits/${suit.id}/edit`} fullWidth color="cameraTeal">
+            <Button component={Link} href={`/admin/tryon/suits/${suit.id}/edit`} fullWidth color="teal">
               Edit
             </Button>
           </Stack>

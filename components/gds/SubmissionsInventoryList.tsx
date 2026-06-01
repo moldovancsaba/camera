@@ -53,7 +53,7 @@ export default function SubmissionsInventoryList({ submissions }: { submissions:
               </div>
             </Link>
             <Stack gap="sm" p="md">
-              <Text fw={700} c="dark.8">
+              <Text fw={700}>
                 {submission.userName}
               </Text>
               <Text size="sm" c="dimmed">
@@ -118,7 +118,7 @@ export default function SubmissionsInventoryList({ submissions }: { submissions:
                 </Text>
               ) : null}
               <Group grow gap="sm">
-                <Button component={Link} href={`/share/${submission.id}`} fullWidth color="cameraTeal" size="sm">
+                <Button component={Link} href={`/share/${submission.id}`} fullWidth color="teal" size="sm">
                   View
                 </Button>
                 <Button

@@ -32,7 +32,7 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
           title="No frames yet"
           description="Add your first shared frame to start assigning it across partners and apps."
           action={
-            <Button component={Link} href="/admin/frames/new" color="cameraTeal">
+            <Button component={Link} href="/admin/frames/new" color="teal">
               Add Your First Frame
             </Button>
           }
@@ -64,7 +64,7 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
               />
               <StatusBadge {...getStatusBadgeProps(frame.isActive ? 'active' : 'inactive')} />
             </Group>
-            <Text fw={700} c="dark.8">
+            <Text fw={700}>
               {frame.name}
             </Text>
             {frame.description ? (
@@ -110,7 +110,7 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
                 </Text>
               ) : null}
             </Stack>
-            <Button component={Link} href={`/admin/frames/${frame.id}/edit`} fullWidth color="cameraTeal">
+            <Button component={Link} href={`/admin/frames/${frame.id}/edit`} fullWidth color="teal">
               Edit
             </Button>
           </Stack>
