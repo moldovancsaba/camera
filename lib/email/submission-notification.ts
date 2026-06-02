@@ -1,11 +1,17 @@
 import { Resend } from 'resend';
 import { sanitizeEmail } from '@/lib/security/sanitize';
+import {
+  DEFAULT_SUBMISSION_EMAIL_BODY,
+  DEFAULT_SUBMISSION_EMAIL_SUBJECT,
+} from '@/lib/email/submission-template-defaults';
 
 export interface SubmissionNotificationInput {
   recipientEmail?: string | null;
   recipientName?: string | null;
   eventName?: string | null;
   shareUrl: string;
+  subjectTemplate?: string | null;
+  bodyTemplate?: string | null;
 }
 
 export type SubmissionNotificationResult =
@@ -58,6 +64,24 @@ function normalizeRecipient(value?: string | null): string {
   return email;
 }
 
+function normalizeTemplate(value: string | null | undefined, fallback: string, maxLength: number): string {
+  const normalized = value?.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  if (!normalized) {
+    return fallback;
+  }
+  return normalized.slice(0, maxLength);
+}
+
+function renderTemplate(
+  template: string,
+  values: { recipientName: string; eventName: string; shareUrl: string }
+): string {
+  return template
+    .replace(/\{name\}/gi, values.recipientName)
+    .replace(/\{event\}/gi, values.eventName)
+    .replace(/\{link\}/gi, values.shareUrl);
+}
+
 export async function sendSubmissionResultEmail(
   input: SubmissionNotificationInput
 ): Promise<SubmissionNotificationResult> {
@@ -73,8 +97,17 @@ export async function sendSubmissionResultEmail(
 
   const eventName = input.eventName?.trim() || 'your event';
   const recipientName = input.recipientName?.trim() || 'there';
-  const safeEventName = escapeHtml(eventName);
-  const safeRecipientName = escapeHtml(recipientName);
+  const subject = renderTemplate(
+    normalizeTemplate(input.subjectTemplate, DEFAULT_SUBMISSION_EMAIL_SUBJECT, 180),
+    { recipientName, eventName, shareUrl: input.shareUrl }
+  )
+    .replace(/\s+/g, ' ')
+    .trim();
+  const bodyText = renderTemplate(
+    normalizeTemplate(input.bodyTemplate, DEFAULT_SUBMISSION_EMAIL_BODY, 5000),
+    { recipientName, eventName, shareUrl: input.shareUrl }
+  );
+  const safeBody = escapeHtml(bodyText).replace(/\n/g, '<br />');
   const safeShareUrl = escapeHtml(input.shareUrl);
 
   try {
@@ -82,12 +115,11 @@ export async function sendSubmissionResultEmail(
     const response = await resend.emails.send({
       from: getEmailFrom(),
       to: recipientEmail,
-      subject: `Your photo from ${eventName}`,
-      text: `Hi ${recipientName},\n\nYour photo is ready:\n${input.shareUrl}\n\nThanks for using Camera.`,
+      subject,
+      text: bodyText,
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.5;">
-          <p>Hi ${safeRecipientName},</p>
-          <p>Your photo from ${safeEventName} is ready.</p>
+          <p>${safeBody}</p>
           <p>
             <a href="${safeShareUrl}" style="display: inline-block; padding: 12px 18px; border-radius: 8px; text-decoration: none;">
               View your photo

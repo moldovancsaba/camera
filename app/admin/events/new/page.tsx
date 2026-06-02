@@ -36,6 +36,11 @@ import {
   EVENT_BUTTON_SIZE_OPTIONS,
   type EventButtonSize,
 } from '@/lib/events/visual-settings';
+import {
+  DEFAULT_SUBMISSION_EMAIL_BODY,
+  DEFAULT_SUBMISSION_EMAIL_SUBJECT,
+  SUBMISSION_EMAIL_TEMPLATE_HELP,
+} from '@/lib/email/submission-template-defaults';
 
 interface PartnerOption {
   _id: string;
@@ -68,6 +73,12 @@ export default function NewEventPage() {
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
   const [submissionResultEmailEnabled, setSubmissionResultEmailEnabled] = useState(false);
+  const [submissionResultEmailSubject, setSubmissionResultEmailSubject] = useState(
+    DEFAULT_SUBMISSION_EMAIL_SUBJECT
+  );
+  const [submissionResultEmailBody, setSubmissionResultEmailBody] = useState(
+    DEFAULT_SUBMISSION_EMAIL_BODY
+  );
   const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
   const [resultSlideshowMode, setResultSlideshowMode] =
     useState<EventTryOnResultSlideshowMode>('disabled');
@@ -191,6 +202,8 @@ export default function NewEventPage() {
       },
       notifications: {
         submissionResultEmailEnabled,
+        submissionResultEmailSubject,
+        submissionResultEmailBody,
       },
       visualSettings: {
         buttonSize,
@@ -346,6 +359,22 @@ export default function NewEventPage() {
               onChange={(event) => setSubmissionResultEmailEnabled(event.currentTarget.checked)}
               label="Send confirmation email with the user's result page link"
               description="Requires a collected or authenticated email address. If disabled, submissions are saved without sending email."
+            />
+            <TextInput
+              label="Email subject"
+              value={submissionResultEmailSubject}
+              onChange={(event) => setSubmissionResultEmailSubject(event.currentTarget.value)}
+              disabled={!submissionResultEmailEnabled}
+              description={SUBMISSION_EMAIL_TEMPLATE_HELP}
+            />
+            <Textarea
+              label="Email body"
+              value={submissionResultEmailBody}
+              onChange={(event) => setSubmissionResultEmailBody(event.currentTarget.value)}
+              disabled={!submissionResultEmailEnabled}
+              autosize
+              minRows={6}
+              description="Plain text only. Include {link} where the result page URL should appear."
             />
           </FormSection>
 

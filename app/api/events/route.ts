@@ -29,6 +29,24 @@ import {
 import { normalizeEventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 
+function normalizeEventNotificationSettings(value: unknown) {
+  const source = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  const subject =
+    typeof source.submissionResultEmailSubject === 'string'
+      ? source.submissionResultEmailSubject.trim().slice(0, 180)
+      : '';
+  const body =
+    typeof source.submissionResultEmailBody === 'string'
+      ? source.submissionResultEmailBody.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n').slice(0, 5000)
+      : '';
+
+  return {
+    submissionResultEmailEnabled: Boolean(source.submissionResultEmailEnabled),
+    submissionResultEmailSubject: subject || null,
+    submissionResultEmailBody: body || null,
+  };
+}
+
 /**
  * GET /api/events
  * List all events with optional pagination, search, and filtering
@@ -204,9 +222,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
       resultSlideshowMode,
     },
-    notifications: {
-      submissionResultEmailEnabled: Boolean(notifications?.submissionResultEmailEnabled),
-    },
+    notifications: normalizeEventNotificationSettings(notifications),
     ...(resolvedShortSlug !== undefined ? { shortUrlSlug: resolvedShortSlug } : {}),
     submissionCount: 0,
     createdBy: session.user.id,

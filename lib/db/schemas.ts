@@ -231,6 +231,8 @@ export interface Event {
   };
   notifications?: {
     submissionResultEmailEnabled: boolean; // Whether users receive the public result page link after submission
+    submissionResultEmailSubject?: string | null; // Optional event-level subject template
+    submissionResultEmailBody?: string | null; // Optional event-level plain-text body template
   };
   
   // Frame assignments

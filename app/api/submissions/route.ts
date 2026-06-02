@@ -50,6 +50,8 @@ interface TryOnRequestDetails {
 interface SubmissionEventPolicy {
   notifications?: {
     submissionResultEmailEnabled?: boolean;
+    submissionResultEmailSubject?: string | null;
+    submissionResultEmailBody?: string | null;
   };
 }
 
@@ -309,6 +311,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           recipientName,
           eventName: typeof eventName === 'string' ? eventName : null,
           shareUrl,
+          subjectTemplate: eventPolicy?.notifications?.submissionResultEmailSubject,
+          bodyTemplate: eventPolicy?.notifications?.submissionResultEmailBody,
         })
       : ({ sent: false, skipped: true, reason: 'event_email_disabled' } as const);
     const emailMetadata =
