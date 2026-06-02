@@ -114,7 +114,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   // Parse request body
   const body = await request.json();
-  const { name, partnerId, description, eventDate, location, isActive, logoUrl, showLogo, shortUrlSlug, tryOn } =
+  const { name, partnerId, description, eventDate, location, isActive, logoUrl, showLogo, shortUrlSlug, tryOn, notifications } =
     body;
 
   // Validate required fields
@@ -201,6 +201,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         : [],
       includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
       resultSlideshowMode,
+    },
+    notifications: {
+      submissionResultEmailEnabled: Boolean(notifications?.submissionResultEmailEnabled),
     },
     ...(resolvedShortSlug !== undefined ? { shortUrlSlug: resolvedShortSlug } : {}),
     submissionCount: 0,

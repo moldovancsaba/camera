@@ -199,6 +199,7 @@ export const PATCH = withErrorHandler(async (
     customPages,
     shortUrlSlug,
     tryOn,
+    notifications,
   } = body;
 
   // Build update object with only provided fields
@@ -275,6 +276,12 @@ export const PATCH = withErrorHandler(async (
       allowedLeatherSuitIds,
       includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
       resultSlideshowMode,
+    };
+  }
+
+  if (notifications !== undefined) {
+    updateFields.notifications = {
+      submissionResultEmailEnabled: Boolean(notifications?.submissionResultEmailEnabled),
     };
   }
 

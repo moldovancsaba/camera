@@ -229,6 +229,9 @@ export interface Event {
     includeApprovedResultsInSlideshows?: boolean; // Legacy/publication flag mirrored from resultSlideshowMode
     resultSlideshowMode?: 'disabled' | 'mixed_with_originals' | 'approved_results_only'; // Event policy for approved try-on slideshow publication
   };
+  notifications?: {
+    submissionResultEmailEnabled: boolean; // Whether users receive the public result page link after submission
+  };
   
   // Frame assignments
   // This array tracks which frames are assigned to this event and their activation status
@@ -663,7 +666,14 @@ export interface Submission {
     // Email delivery
     emailSent: boolean;              // Whether email was sent
     emailSentAt?: string;            // ISO 8601 timestamp
+    emailRecipient?: string;         // Normalized recipient address
+    emailProvider?: string;          // Delivery provider, e.g. "resend"
+    emailMessageId?: string | null;  // Provider message id when available
+    emailSkippedAt?: string;         // ISO 8601 timestamp if delivery was skipped
+    emailSkipReason?: string;        // Why delivery was skipped
+    emailFailedAt?: string;          // ISO 8601 timestamp if delivery failed
     emailError?: string;             // Error message if email failed
+    shareUrl?: string;               // Public share URL emailed to the user
   };
   
   // Sharing and engagement

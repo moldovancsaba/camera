@@ -17,6 +17,7 @@
     "db:ensure-indexes": "tsx scripts/run-ensure-indexes.ts",
     "db:verify-uri": "tsx scripts/verify-mongo-uri.ts",
     "env:verify": "tsx scripts/verify-env.ts",
+    "email:test": "tsx scripts/send-test-email.ts",
     "tryon:seed-suits": "tsx scripts/seed-tryon-suits.ts",
     "tryon:verify": "tsx scripts/verify-tryon-prereqs.ts",
     "tryon:worker": "tsx scripts/tryon-worker.ts",
@@ -60,7 +61,8 @@
     "mongodb": "^6.8.0",
     "next": "16.0.10",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "resend": "^6.12.4"
   },
   "devDependencies": {
     "@doneisbetter/gds-compliance": "3.0.0",

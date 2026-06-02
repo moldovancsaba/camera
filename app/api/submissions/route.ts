@@ -10,6 +10,7 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { uploadImage } from '@/lib/imgbb/upload';
+import { sendSubmissionResultEmail } from '@/lib/email/submission-notification';
 import {
   COLLECTIONS,
   DeviceType,
@@ -31,6 +32,7 @@ import {
   checkRateLimit,
   RATE_LIMITS,
 } from '@/lib/api';
+import { getSiteUrlFromRequest } from '@/lib/site-url';
 import {
   buildSubmissionTryOnLink,
   insertOrGetTryOnJob,
@@ -43,6 +45,12 @@ interface TryOnRequestDetails {
   requested: boolean;
   leatherSuitId: string | null;
   sourceImageData: string | null;
+}
+
+interface SubmissionEventPolicy {
+  notifications?: {
+    submissionResultEmailEnabled?: boolean;
+  };
 }
 
 function getSubmissionMongoIdString(id: unknown): string {
@@ -253,6 +261,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     const result = await db.collection('submissions').insertOne(submission);
     const submissionId = getSubmissionMongoIdString(result.insertedId);
+    const shareUrl = `${(await getSiteUrlFromRequest()).replace(/\/$/, '')}/share/${submissionId}`;
 
     const createdSubmission = {
       _id: result.insertedId,
@@ -277,6 +286,68 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         jobId: null,
         error: null,
       },
+    };
+
+    const eventPolicy = eventId
+      ? ((await db.collection(COLLECTIONS.EVENTS).findOne(
+          { eventId },
+          { projection: { _id: 0, notifications: 1 } }
+        )) as SubmissionEventPolicy | null)
+      : null;
+    const shouldSendSubmissionResultEmail =
+      eventPolicy?.notifications?.submissionResultEmailEnabled === true;
+    const recipientEmail =
+      validatedUserInfo?.email ||
+      (session?.user?.email && session.user.email !== 'anonymous@event'
+        ? session.user.email
+        : null);
+    const recipientName =
+      validatedUserInfo?.name || session?.user?.name || session?.user?.email || null;
+    const emailResult = shouldSendSubmissionResultEmail
+      ? await sendSubmissionResultEmail({
+          recipientEmail,
+          recipientName,
+          eventName: typeof eventName === 'string' ? eventName : null,
+          shareUrl,
+        })
+      : ({ sent: false, skipped: true, reason: 'event_email_disabled' } as const);
+    const emailMetadata =
+      emailResult.sent
+        ? {
+            emailSent: true,
+            emailSentAt: new Date().toISOString(),
+            emailRecipient: emailResult.recipientEmail,
+            emailProvider: emailResult.provider,
+            emailMessageId: emailResult.messageId,
+            shareUrl,
+          }
+        : emailResult.skipped
+          ? {
+              emailSent: false,
+              emailSkippedAt: new Date().toISOString(),
+              emailSkipReason: emailResult.reason,
+              shareUrl,
+            }
+          : {
+              emailSent: false,
+              emailFailedAt: new Date().toISOString(),
+              emailRecipient: emailResult.recipientEmail,
+              emailProvider: emailResult.provider,
+              emailError: emailResult.error,
+              shareUrl,
+            };
+
+    await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+      { _id: result.insertedId },
+      {
+        $set: Object.fromEntries(
+          Object.entries(emailMetadata).map(([key, value]) => [`metadata.${key}`, value])
+        ),
+      }
+    );
+    createdSubmission.metadata = {
+      ...createdSubmission.metadata,
+      ...emailMetadata,
     };
 
     if (tryOnRequest.requested) {

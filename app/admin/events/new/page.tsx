@@ -62,6 +62,7 @@ export default function NewEventPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
+  const [submissionResultEmailEnabled, setSubmissionResultEmailEnabled] = useState(false);
   const [resultSlideshowMode, setResultSlideshowMode] =
     useState<EventTryOnResultSlideshowMode>('disabled');
   const [suitOptions, setSuitOptions] = useState<TryOnSuitOption[]>([]);
@@ -181,6 +182,9 @@ export default function NewEventPage() {
         allowedLeatherSuitIds: selectedSuitIds,
         includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
         resultSlideshowMode,
+      },
+      notifications: {
+        submissionResultEmailEnabled,
       },
     };
 
@@ -313,6 +317,18 @@ export default function NewEventPage() {
               name="showLogo"
               disabled={!logoFile && !logoPreview}
               label="Display logo on event pages"
+            />
+          </FormSection>
+
+          <FormSection
+            title="Notifications"
+            description="Control whether Camera emails the public result page link after a user submits a photo."
+          >
+            <Checkbox
+              checked={submissionResultEmailEnabled}
+              onChange={(event) => setSubmissionResultEmailEnabled(event.currentTarget.checked)}
+              label="Send confirmation email with the user's result page link"
+              description="Requires a collected or authenticated email address. If disabled, submissions are saved without sending email."
             />
           </FormSection>
 

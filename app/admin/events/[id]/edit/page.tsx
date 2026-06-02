@@ -64,6 +64,9 @@ interface EventRecord {
     includeApprovedResultsInSlideshows?: boolean;
     resultSlideshowMode?: EventTryOnResultSlideshowMode;
   };
+  notifications?: {
+    submissionResultEmailEnabled?: boolean;
+  };
 }
 
 interface EventResponse {
@@ -96,6 +99,7 @@ export default function EditEventPage({
   const [brandBorderColor, setBrandBorderColor] = useState(CAMERA_DEFAULT_BRAND_BORDER_COLOR);
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
+  const [submissionResultEmailEnabled, setSubmissionResultEmailEnabled] = useState(false);
   const [resultSlideshowMode, setResultSlideshowMode] =
     useState<EventTryOnResultSlideshowMode>('disabled');
   const [suitOptions, setSuitOptions] = useState<TryOnSuitOption[]>([]);
@@ -128,6 +132,7 @@ export default function EditEventPage({
         setBrandColor(eventData.brandColor || CAMERA_DEFAULT_BRAND_COLOR);
         setBrandBorderColor(eventData.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR);
         setTryOnEnabled(Boolean(eventData.tryOn?.enabled));
+        setSubmissionResultEmailEnabled(Boolean(eventData.notifications?.submissionResultEmailEnabled));
         setResultSlideshowMode(
           eventData.tryOn?.resultSlideshowMode ||
             (eventData.tryOn?.includeApprovedResultsInSlideshows ? 'mixed_with_originals' : 'disabled')
@@ -243,6 +248,9 @@ export default function EditEventPage({
         allowedLeatherSuitIds: selectedSuitIds,
         includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
         resultSlideshowMode,
+      },
+      notifications: {
+        submissionResultEmailEnabled,
       },
     };
 
@@ -426,6 +434,18 @@ export default function EditEventPage({
                 />
               </Grid.Col>
             </Grid>
+          </FormSection>
+
+          <FormSection
+            title="Notifications"
+            description="Control whether Camera emails the public result page link after a user submits a photo."
+          >
+            <Checkbox
+              checked={submissionResultEmailEnabled}
+              onChange={(event) => setSubmissionResultEmailEnabled(event.currentTarget.checked)}
+              label="Send confirmation email with the user's result page link"
+              description="Requires a collected or authenticated email address. If disabled, submissions are saved without sending email."
+            />
           </FormSection>
 
           <FormSection title="Status">
