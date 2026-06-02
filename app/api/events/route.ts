@@ -27,6 +27,7 @@ import {
   listAccessiblePartnerIds,
 } from '@/lib/partners/authorization';
 import { normalizeEventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
+import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 
 /**
  * GET /api/events
@@ -114,7 +115,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   // Parse request body
   const body = await request.json();
-  const { name, partnerId, description, eventDate, location, isActive, logoUrl, showLogo, shortUrlSlug, tryOn, notifications } =
+  const { name, partnerId, description, eventDate, location, isActive, logoUrl, showLogo, shortUrlSlug, tryOn, notifications, visualSettings } =
     body;
 
   // Validate required fields
@@ -186,6 +187,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     // Inherited defaults from partner
     brandColor: inheritedDefaults.brandColor,
     brandBorderColor: inheritedDefaults.brandBorderColor,
+    visualSettings: normalizeEventVisualSettings(visualSettings),
     brandColorsOverridden: inheritedDefaults.brandColorsOverridden,
     frames: inheritedDefaults.frames,
     framesOverridden: inheritedDefaults.framesOverridden,

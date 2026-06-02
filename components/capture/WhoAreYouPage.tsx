@@ -20,6 +20,7 @@ import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
 } from '@/lib/gds/tokens/colors';
+import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
 
 export interface WhoAreYouPageConfig {
   title: string;
@@ -49,6 +50,7 @@ export interface WhoAreYouPageProps {
   brandBorderColor?: string;
   eventId: string;
   pageIndex: number;
+  buttonSize?: EventButtonSize;
 }
 
 export default function WhoAreYouPage({
@@ -60,6 +62,7 @@ export default function WhoAreYouPage({
   brandBorderColor = CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   eventId,
   pageIndex,
+  buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
 }: WhoAreYouPageProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -175,11 +178,11 @@ export default function WhoAreYouPage({
 
           <Group grow pt="xs">
             {onBack ? (
-              <Button variant="light" onClick={onBack} aria-label="Go back to previous page">
+              <Button variant="light" size={buttonSize} onClick={onBack} aria-label="Go back to previous page">
                 Back
               </Button>
             ) : null}
-            <Button onClick={handleNext} color={brandColor} aria-label={config.buttonText}>
+            <Button onClick={handleNext} color={brandColor} size={buttonSize} aria-label={config.buttonText}>
               {config.buttonText}
             </Button>
           </Group>

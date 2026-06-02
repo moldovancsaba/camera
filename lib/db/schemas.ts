@@ -272,6 +272,9 @@ export interface Event {
   // Used throughout the event experience for consistent branding
   brandColor?: string;               // Primary brand color hex - used for buttons, focus states
   brandBorderColor?: string;         // Border/accent color hex - used for borders, outlines
+  visualSettings?: {
+    buttonSize: 'xs' | 'sm' | 'md' | 'lg' | 'xl'; // Event action button size, rendered through GDS/Mantine buttons
+  };
   
   // Style inheritance from partner
   // Override flags track whether this event uses partner defaults (child) or custom values (orphan)

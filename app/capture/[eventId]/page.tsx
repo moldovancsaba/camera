@@ -14,6 +14,7 @@
 
 import { useState, useEffect, use, useCallback } from 'react';
 import Image from 'next/image';
+import { Button } from '@mantine/core';
 import CameraCapture from '@/components/camera/CameraCapture';
 import ShareOverlay from '@/components/capture/ShareOverlay';
 import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoAreYouPage';
@@ -26,6 +27,11 @@ import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
 } from '@/lib/gds/tokens/colors';
+import {
+  DEFAULT_EVENT_BUTTON_SIZE,
+  normalizeEventButtonSize,
+  type EventButtonSize,
+} from '@/lib/events/visual-settings';
 
 interface Frame {
   frameId: string;
@@ -48,6 +54,9 @@ interface EventData {
   showLogo: boolean;  // Whether to display logo on pages
   brandColor?: string;  // Primary brand color (hex)
   brandBorderColor?: string;  // Border/accent color (hex)
+  visualSettings?: {
+    buttonSize?: EventButtonSize;
+  };
   frames?: EventFrameAssignment[];
   tryOn?: {
     enabled: boolean;
@@ -170,6 +179,7 @@ export default function EventCapturePage({
     : event?.name?.trim()
       ? `Check out my photo from ${event.name.trim()}!`
       : 'Check out my photo!';
+  const eventButtonSize = normalizeEventButtonSize(event?.visualSettings?.buttonSize);
 
   // Check for SSO resume after authentication
   useEffect(() => {
@@ -275,6 +285,9 @@ export default function EventCapturePage({
           showLogo: eventData.showLogo || false,
           brandColor: eventData.brandColor,
           brandBorderColor: eventData.brandBorderColor,
+          visualSettings: {
+            buttonSize: normalizeEventButtonSize(eventData.visualSettings?.buttonSize),
+          },
           tryOn: eventData.tryOn,
         });
         
@@ -815,6 +828,7 @@ export default function EventCapturePage({
             logoUrl={onboardingLogoUrl}
             brandColor={event.brandColor}
             brandBorderColor={event.brandBorderColor}
+            buttonSize={eventButtonSize}
             eventId={eventId}
             pageIndex={currentPageIndex}
             onNext={handleWhoAreYouComplete}
@@ -834,6 +848,7 @@ export default function EventCapturePage({
             logoUrl={onboardingLogoUrl}
             brandColor={event.brandColor}
             brandBorderColor={event.brandBorderColor}
+            buttonSize={eventButtonSize}
             onNext={(data) => handleConsentComplete(currentPage, data)}
           />
         );
@@ -854,6 +869,7 @@ export default function EventCapturePage({
             logoUrl={onboardingLogoUrl}
             brandColor={event.brandColor}
             brandBorderColor={event.brandBorderColor}
+            buttonSize={eventButtonSize}
             onNext={(data) => handleConsentComplete(currentPage, data)}
           />
         );
@@ -1046,12 +1062,15 @@ export default function EventCapturePage({
             {/* Minimal header with change frame button - only show if multiple frames */}
             {frames.length > 1 && (
               <div className="absolute top-4 right-4 z-50">
-                <button
+                <Button
+                  type="button"
                   onClick={() => setStep('select-frame')}
-                  className="px-3 py-2   rounded-lg font-medium text-sm flex items-center gap-1 shadow-lg"
+                  size={eventButtonSize}
+                  radius="md"
+                  variant="light"
                 >
                   🔄 {changeButtonText}
-                </button>
+                </Button>
               </div>
             )}
             <div className="flex-1 flex items-center justify-center p-4 min-h-0">
@@ -1074,6 +1093,7 @@ export default function EventCapturePage({
                 captureButtonBorderColor={event?.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR}
                 promptTitle={cameraPromptTitle}
                 promptDescription={cameraPromptDescription}
+                buttonSize={eventButtonSize}
               />
             </div>
           </div>
@@ -1107,10 +1127,15 @@ export default function EventCapturePage({
                         />
                       </div>
                     ) : null}
-                    <button
+                    <Button
+                      type="button"
                       onClick={handleSave}
                       disabled={isSaving}
-                      className="px-8 py-4   rounded-lg font-semibold  transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-2xl relative overflow-hidden"
+                      size={eventButtonSize}
+                      radius="md"
+                      fullWidth
+                      color={event?.brandColor || CAMERA_DEFAULT_BRAND_COLOR}
+                      className="shadow-2xl"
                     >
                       {isSaving ? (
                         event?.showLogo && event?.logoUrl ? (
@@ -1129,14 +1154,19 @@ export default function EventCapturePage({
                         <span className="text-3xl">❤️</span>
                       )}
                       <span className="text-xl">{isSaving ? 'SAVING...' : captureButtonText}</span>
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      type="button"
                       onClick={handleReset}
-                      className="px-8 py-4   rounded-lg font-semibold  transition-colors flex items-center justify-center gap-2 shadow-2xl"
+                      size={eventButtonSize}
+                      radius="md"
+                      fullWidth
+                      variant="light"
+                      className="shadow-2xl"
                     >
                       <span className="text-3xl">🔄</span>
                       <span className="text-xl">{retryButtonText}</span>
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -1151,6 +1181,7 @@ export default function EventCapturePage({
                   suggestedMessageLabel={shareSuggestedMessageLabel}
                   shareCaption={shareCaptionForSocial}
                   tryOnResult={tryOnResult}
+                  buttonSize={eventButtonSize}
                   nextButtonText={shareNextButtonText}
                   onCopyLink={handleCopyLink}
                   onShareSocial={handleShareSocial}
@@ -1164,6 +1195,7 @@ export default function EventCapturePage({
                   title="Saved"
                   shareCaption={shareCaptionForSocial}
                   tryOnResult={tryOnResult}
+                  buttonSize={eventButtonSize}
                   nextButtonText={shareNextButtonText}
                   completionMessage={skipShareMessage}
                   onNext={handleMoveToThankYou}

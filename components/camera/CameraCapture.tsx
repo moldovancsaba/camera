@@ -27,6 +27,7 @@ import {
   CAMERA_DEFAULT_BRAND_COLOR,
   CAMERA_STAGE_WHITE,
 } from '@/lib/gds/tokens/colors';
+import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
 
 /** Supports hex (#rgb) or CSS `var(--token)` for branded capture UI. */
 function capturePromptBackground(fill: string): string {
@@ -71,6 +72,8 @@ export interface CameraCaptureProps {
    * After capture, show “Retake” in the triple bar (default true). Set false when a single shot should upload immediately without retake.
    */
   showRetake?: boolean;
+  /** Event-level GDS button size for text controls. */
+  buttonSize?: EventButtonSize;
 }
 
 export default function CameraCapture({ 
@@ -90,6 +93,7 @@ export default function CameraCapture({
   onCancel,
   tripleBarExtra,
   showRetake = true,
+  buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
 }: CameraCaptureProps) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -772,12 +776,14 @@ export default function CameraCapture({
                   </svg>
                   <p className="text-base md:text-lg font-semibold mb-2">Camera Error</p>
                   <p className="text-xs md:text-sm mb-4">{error}</p>
-                  <button
+                  <Button
+                    type="button"
+                    variant="light"
+                    size={buttonSize}
                     onClick={() => startCamera(facingMode)}
-                    className="px-4 py-2 md:px-6 md:py-2   rounded-lg font-semibold  transition-colors text-sm"
                   >
                     Try Again
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -829,7 +835,7 @@ export default function CameraCapture({
             <div className="camera-triple-bar-inner">
               <div className="justify-self-start">
                 {onCancel ? (
-                  <Button type="button" variant="light" size="sm" radius="md" onClick={onCancel}>
+                  <Button type="button" variant="light" size={buttonSize} radius="md" onClick={onCancel}>
                     Cancel
                   </Button>
                 ) : (
@@ -837,7 +843,7 @@ export default function CameraCapture({
                 )}
               </div>
               <div className="justify-self-center">
-                <Button type="button" size="sm" radius="md" onClick={() => capturePhoto()}>
+                <Button type="button" size={buttonSize} radius="md" onClick={() => capturePhoto()}>
                   Take
                 </Button>
               </div>
@@ -846,7 +852,7 @@ export default function CameraCapture({
                   <Button
                     type="button"
                     variant="light"
-                    size="sm"
+                    size={buttonSize}
                     radius="md"
                     onClick={() => switchCamera()}
                     disabled={isLoading}
@@ -867,7 +873,7 @@ export default function CameraCapture({
           <div className="camera-triple-bar-inner">
             <div className="justify-self-start">
               {onCancel ? (
-                <Button type="button" variant="light" size="sm" radius="md" onClick={onCancel}>
+                <Button type="button" variant="light" size={buttonSize} radius="md" onClick={onCancel}>
                   Cancel
                 </Button>
               ) : (
@@ -876,7 +882,7 @@ export default function CameraCapture({
             </div>
             <div className="justify-self-center">
               {showRetake ? (
-                <Button type="button" variant="light" size="sm" radius="md" onClick={() => retake()}>
+                <Button type="button" variant="light" size={buttonSize} radius="md" onClick={() => retake()}>
                   Retake
                 </Button>
               ) : (

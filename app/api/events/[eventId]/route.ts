@@ -25,6 +25,7 @@ import {
 import { normalizeGoShortSlugInput } from '@/lib/go-short-url';
 import { normalizeEventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
+import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 
 interface EventFrameDetails {
   frameId: string;
@@ -200,6 +201,7 @@ export const PATCH = withErrorHandler(async (
     shortUrlSlug,
     tryOn,
     notifications,
+    visualSettings,
   } = body;
 
   // Build update object with only provided fields
@@ -283,6 +285,10 @@ export const PATCH = withErrorHandler(async (
     updateFields.notifications = {
       submissionResultEmailEnabled: Boolean(notifications?.submissionResultEmailEnabled),
     };
+  }
+
+  if (visualSettings !== undefined) {
+    updateFields.visualSettings = normalizeEventVisualSettings(visualSettings);
   }
 
   // Handle customPages array

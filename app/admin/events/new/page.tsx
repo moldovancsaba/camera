@@ -31,6 +31,11 @@ import EditorScaffold from '@/components/gds/EditorScaffold';
 import MediaCard from '@/components/media/MediaPreviewCard';
 import type { TryOnSuitOption } from '@/lib/tryon/suits';
 import type { EventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
+import {
+  DEFAULT_EVENT_BUTTON_SIZE,
+  EVENT_BUTTON_SIZE_OPTIONS,
+  type EventButtonSize,
+} from '@/lib/events/visual-settings';
 
 interface PartnerOption {
   _id: string;
@@ -63,6 +68,7 @@ export default function NewEventPage() {
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
   const [submissionResultEmailEnabled, setSubmissionResultEmailEnabled] = useState(false);
+  const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
   const [resultSlideshowMode, setResultSlideshowMode] =
     useState<EventTryOnResultSlideshowMode>('disabled');
   const [suitOptions, setSuitOptions] = useState<TryOnSuitOption[]>([]);
@@ -186,6 +192,9 @@ export default function NewEventPage() {
       notifications: {
         submissionResultEmailEnabled,
       },
+      visualSettings: {
+        buttonSize,
+      },
     };
 
     try {
@@ -284,6 +293,14 @@ export default function NewEventPage() {
           </FormSection>
 
           <FormSection title="Customization">
+            <Select
+              label="Button size"
+              description="Controls the primary action button size across this event app."
+              data={EVENT_BUTTON_SIZE_OPTIONS}
+              value={buttonSize}
+              onChange={(value) => setButtonSize((value as EventButtonSize) || DEFAULT_EVENT_BUTTON_SIZE)}
+            />
+
             {logoPreview ? (
               <MediaCard
                 src={logoPreview}

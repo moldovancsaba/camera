@@ -21,6 +21,7 @@ import { useState } from 'react';
 import CaptureStageShell from '@/components/capture/CaptureStageShell';
 import { Button, Group, Stack, Text } from '@mantine/core';
 import { CAMERA_DEFAULT_CTA_BRAND_COLOR } from '@/lib/gds/tokens/colors';
+import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
 
 export interface CTAPageConfig {
   title: string;
@@ -45,6 +46,7 @@ export interface CTAPageProps {
   logoUrl?: string | null;
   brandColor?: string;
   brandBorderColor?: string;
+  buttonSize?: EventButtonSize;
 }
 
 export default function CTAPage({
@@ -53,6 +55,7 @@ export default function CTAPage({
   onBack,
   logoUrl,
   brandColor = CAMERA_DEFAULT_CTA_BRAND_COLOR,
+  buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
 }: CTAPageProps) {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const hasButton = config.hasButton !== false;
@@ -96,7 +99,7 @@ export default function CTAPage({
             onClick={handleRedirect}
             disabled={isRedirecting}
             color={brandColor}
-            size="lg"
+            size={buttonSize}
             fullWidth
             aria-label="Visit URL"
           >
@@ -112,7 +115,7 @@ export default function CTAPage({
 
       <Group grow>
         {onBack && hasButton ? (
-          <Button variant="light" onClick={onBack} aria-label="Go back to previous page">
+          <Button variant="light" size={buttonSize} onClick={onBack} aria-label="Go back to previous page">
             Back
           </Button>
         ) : null}
@@ -120,6 +123,7 @@ export default function CTAPage({
           <Button
             onClick={handleContinue}
             color={brandColor}
+            size={buttonSize}
             aria-label={config.buttonText}
           >
             {config.buttonText}

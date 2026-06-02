@@ -2,6 +2,7 @@
 
 import { PublicFlowShell } from '@doneisbetter/gds-core/client';
 import { Anchor, Button, Group, Stack, Text, TextInput } from '@mantine/core';
+import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
 
 interface TryOnStatus {
   requested: boolean;
@@ -25,6 +26,7 @@ interface ShareOverlayProps {
   onNext?: () => void;
   showShareActions?: boolean;
   overlay?: boolean;
+  buttonSize?: EventButtonSize;
 }
 
 function TryOnStatusNotice({ tryOnResult }: { tryOnResult?: TryOnStatus | null }) {
@@ -75,6 +77,7 @@ export default function ShareOverlay({
   onNext,
   showShareActions = true,
   overlay = true,
+  buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
 }: ShareOverlayProps) {
   const shellClassName = overlay
     ? 'absolute inset-0 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm'
@@ -114,6 +117,7 @@ export default function ShareOverlay({
                       <Button
                         type="button"
                         variant="light"
+                        size={buttonSize}
                         radius="md"
                         className="shrink-0"
                         onClick={onCopyLink}
@@ -128,7 +132,7 @@ export default function ShareOverlay({
                       rel="noopener noreferrer"
                       underline="never"
                     >
-                      <Button component="span" radius="xl" fullWidth>
+                      <Button component="span" size={buttonSize} radius="xl" fullWidth>
                         {viewPhotoButtonText}
                       </Button>
                     </Anchor>
@@ -151,6 +155,7 @@ export default function ShareOverlay({
                     <Button
                       type="button"
                       variant="light"
+                      size={buttonSize}
                       fullWidth
                       radius="md"
                       onClick={() => onShareSocial?.('facebook')}
@@ -160,6 +165,7 @@ export default function ShareOverlay({
                     <Button
                       type="button"
                       variant="light"
+                      size={buttonSize}
                       fullWidth
                       radius="md"
                       onClick={() => onShareSocial?.('twitter')}
@@ -169,6 +175,7 @@ export default function ShareOverlay({
                     <Button
                       type="button"
                       variant="light"
+                      size={buttonSize}
                       fullWidth
                       radius="md"
                       onClick={() => onShareSocial?.('linkedin')}
@@ -178,6 +185,7 @@ export default function ShareOverlay({
                     <Button
                       type="button"
                       variant="light"
+                      size={buttonSize}
                       fullWidth
                       radius="md"
                       onClick={() => onShareSocial?.('whatsapp')}
@@ -188,7 +196,7 @@ export default function ShareOverlay({
                 ) : null}
 
                 {nextButtonText && onNext ? (
-                  <Button type="button" radius="xl" fullWidth onClick={onNext}>
+                  <Button type="button" size={buttonSize} radius="xl" fullWidth onClick={onNext}>
                     {nextButtonText}
                   </Button>
                 ) : null}

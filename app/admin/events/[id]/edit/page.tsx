@@ -41,6 +41,12 @@ import {
 } from '@/lib/gds/tokens/colors';
 import type { TryOnSuitOption } from '@/lib/tryon/suits';
 import type { EventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
+import {
+  DEFAULT_EVENT_BUTTON_SIZE,
+  EVENT_BUTTON_SIZE_OPTIONS,
+  normalizeEventButtonSize,
+  type EventButtonSize,
+} from '@/lib/events/visual-settings';
 
 interface EventRecord {
   _id: string;
@@ -66,6 +72,9 @@ interface EventRecord {
   };
   notifications?: {
     submissionResultEmailEnabled?: boolean;
+  };
+  visualSettings?: {
+    buttonSize?: EventButtonSize;
   };
 }
 
@@ -100,6 +109,7 @@ export default function EditEventPage({
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
   const [submissionResultEmailEnabled, setSubmissionResultEmailEnabled] = useState(false);
+  const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
   const [resultSlideshowMode, setResultSlideshowMode] =
     useState<EventTryOnResultSlideshowMode>('disabled');
   const [suitOptions, setSuitOptions] = useState<TryOnSuitOption[]>([]);
@@ -133,6 +143,7 @@ export default function EditEventPage({
         setBrandBorderColor(eventData.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR);
         setTryOnEnabled(Boolean(eventData.tryOn?.enabled));
         setSubmissionResultEmailEnabled(Boolean(eventData.notifications?.submissionResultEmailEnabled));
+        setButtonSize(normalizeEventButtonSize(eventData.visualSettings?.buttonSize));
         setResultSlideshowMode(
           eventData.tryOn?.resultSlideshowMode ||
             (eventData.tryOn?.includeApprovedResultsInSlideshows ? 'mixed_with_originals' : 'disabled')
@@ -252,6 +263,9 @@ export default function EditEventPage({
       notifications: {
         submissionResultEmailEnabled,
       },
+      visualSettings: {
+        buttonSize,
+      },
     };
 
     try {
@@ -363,6 +377,14 @@ export default function EditEventPage({
           </FormSection>
 
           <FormSection title="Customization">
+            <Select
+              label="Button size"
+              description="Controls the primary action button size across this event app."
+              data={EVENT_BUTTON_SIZE_OPTIONS}
+              value={buttonSize}
+              onChange={(value) => setButtonSize((value as EventButtonSize) || DEFAULT_EVENT_BUTTON_SIZE)}
+            />
+
             <TextInput
               name="loadingText"
               label="Loading text"

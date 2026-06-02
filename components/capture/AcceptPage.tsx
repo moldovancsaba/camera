@@ -19,6 +19,7 @@ import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
 } from '@/lib/gds/tokens/colors';
+import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
 
 export interface AcceptPageConfig {
   title: string;
@@ -40,6 +41,7 @@ export interface AcceptPageProps {
   logoUrl?: string | null;
   brandColor?: string;
   brandBorderColor?: string;
+  buttonSize?: EventButtonSize;
 }
 
 export default function AcceptPage({
@@ -50,6 +52,7 @@ export default function AcceptPage({
   logoUrl,
   brandColor = CAMERA_DEFAULT_BRAND_COLOR,
   brandBorderColor = CAMERA_DEFAULT_BRAND_BORDER_COLOR,
+  buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
 }: AcceptPageProps) {
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +122,7 @@ export default function AcceptPage({
 
       <Group grow>
         {onBack ? (
-          <Button variant="light" onClick={onBack} aria-label="Go back to previous page">
+          <Button variant="light" size={buttonSize} onClick={onBack} aria-label="Go back to previous page">
             Back
           </Button>
         ) : null}
@@ -127,6 +130,7 @@ export default function AcceptPage({
           onClick={handleNext}
           disabled={!accepted}
           color={accepted ? brandColor : 'gray'}
+          size={buttonSize}
           aria-label={config.buttonText}
           aria-disabled={!accepted}
         >
