@@ -32,6 +32,7 @@ interface ShareSubmission {
   submissionKind?: 'original' | 'tryon_result';
   sourceSubmissionId?: string | null;
   reviewStatus?: 'pending_review' | 'approved' | 'rejected';
+  isShareVisible?: boolean;
   tryOnLeatherSuitId?: string | null;
   metadata?: {
     finalWidth?: number;
@@ -222,6 +223,7 @@ export default async function SharePage({ params }: Props) {
           doc.reviewStatus === 'approved' || doc.reviewStatus === 'rejected' || doc.reviewStatus === 'pending_review'
             ? doc.reviewStatus
             : undefined,
+        isShareVisible: Boolean((doc as { isShareVisible?: unknown }).isShareVisible),
         tryOnLeatherSuitId:
           typeof doc.tryOnLeatherSuitId === 'string' ? doc.tryOnLeatherSuitId : null,
         metadata:
@@ -340,6 +342,25 @@ export default async function SharePage({ params }: Props) {
           addUniqueShareVariant(card);
         });
       });
+
+      if (
+        submission.submissionKind === 'tryon_result' &&
+        (submission.reviewStatus === 'approved' || Boolean(submission.isShareVisible))
+      ) {
+        const variant = {
+          _id: { toString: () => currentSubmissionId },
+          imageUrl: submission.imageUrl,
+          tryOnLeatherSuitId: submission.tryOnLeatherSuitId,
+          metadata: {
+            compositionEngine: submission.metadata?.compositionEngine,
+            tryOnRawResultUrl: submission.metadata?.tryOnRawResultUrl,
+          },
+        } as const;
+
+        buildTryOnVariantCards(variant, sharePageSettings).forEach((card) => {
+          addUniqueShareVariant(card);
+        });
+      }
     }
   }
 
