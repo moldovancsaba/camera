@@ -240,6 +240,13 @@ export interface Event {
     submissionResultEmailSubject?: string | null; // Optional event-level subject template
     submissionResultEmailBody?: string | null; // Optional event-level plain-text body template
   };
+  sharePage?: {
+    includeOriginalCapture?: boolean; // Raw camera image before frame composition, when available
+    includeCameraResult?: boolean; // Camera result saved by the capture flow, usually with frame
+    includeTryOnResult?: boolean; // Approved raw try-on result, when available
+    includeFramedTryOnResult?: boolean; // Approved try-on result with Camera frame applied, when available
+    pendingTryOnMessage?: string | null; // Message shown on share page while requested try-on result is not available
+  };
   
   // Frame assignments
   // This array tracks which frames are assigned to this event and their activation status
@@ -673,6 +680,7 @@ export interface Submission {
     // Processing details
     processingTimeMs?: number;       // Time taken to process (milliseconds)
     compositionEngine?: string;      // "canvas-api" or other
+    tryOnRawResultUrl?: string | null; // Raw worker result URL when Camera stores a framed try-on derivative
     
     // Email delivery
     emailSent: boolean;              // Whether email was sent

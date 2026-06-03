@@ -22,12 +22,21 @@ export interface CreateDerivedTryOnSubmissionInput {
   publicResultUrl: string;
   deleteUrl?: string | null;
   pipelineVersion?: string | null;
+  publication?: {
+    reviewStatus: TryOnReviewStatus;
+    shareVisible: boolean;
+    slideshowEligible: boolean;
+    reviewedBy?: string | null;
+    approvedBy?: string | null;
+    archive?: boolean;
+  };
   resultImageMeta?: {
     width?: number | null;
     height?: number | null;
     fileSize?: number | null;
     mimeType?: string | null;
     compositionEngine?: string | null;
+    rawResultUrl?: string | null;
   };
 }
 
@@ -48,10 +57,15 @@ export function buildDerivedTryOnSubmission({
   publicResultUrl,
   deleteUrl,
   pipelineVersion,
+  publication,
   resultImageMeta,
 }: CreateDerivedTryOnSubmissionInput): Submission {
   const timestamp = nowIso();
   const eventIds = Array.isArray(sourceSubmission.eventIds) ? sourceSubmission.eventIds : [];
+  const reviewStatus = publication?.reviewStatus ?? 'pending_review';
+  const isReviewed = reviewStatus !== 'pending_review';
+  const isApproved = reviewStatus === 'approved';
+  const archiveResult = publication?.archive ?? isReviewed;
 
   return {
     submissionId:
@@ -92,6 +106,7 @@ export function buildDerivedTryOnSubmission({
             finalHeight: resultImageMeta?.height ?? sourceSubmission.metadata.finalHeight ?? sourceSubmission.metadata.originalHeight ?? 0,
             emailSent: sourceSubmission.metadata.emailSent ?? false,
             compositionEngine: resultImageMeta?.compositionEngine ?? 'motogp_leather_magic',
+            tryOnRawResultUrl: resultImageMeta?.rawResultUrl ?? null,
           }
         : {
             deviceType: DeviceType.UNKNOWN,
@@ -103,6 +118,7 @@ export function buildDerivedTryOnSubmission({
             finalWidth: resultImageMeta?.width ?? 0,
             finalHeight: resultImageMeta?.height ?? 0,
             compositionEngine: resultImageMeta?.compositionEngine ?? 'motogp_leather_magic',
+            tryOnRawResultUrl: resultImageMeta?.rawResultUrl ?? null,
             emailSent: false,
           },
     fileSize: resultImageMeta?.fileSize ?? sourceSubmission.fileSize ?? null,
@@ -120,19 +136,19 @@ export function buildDerivedTryOnSubmission({
     tryOnLeatherSuitId: job.request.leatherSuitId,
     tryOnPipeline: job.pipeline,
     tryOnPipelineVersion: pipelineVersion?.trim() || job.pipelineVersion,
-    reviewStatus: 'pending_review',
-    reviewedAt: null,
-    reviewedBy: null,
+    reviewStatus,
+    reviewedAt: isReviewed ? timestamp : null,
+    reviewedBy: isReviewed ? publication?.reviewedBy ?? 'system' : null,
     reviewNotes: null,
-    approvedAt: null,
-    approvedBy: null,
-    isShareVisible: false,
-    isSlideshowEligible: false,
+    approvedAt: isApproved ? timestamp : null,
+    approvedBy: isApproved ? publication?.approvedBy ?? 'system' : null,
+    isShareVisible: publication?.shareVisible ?? false,
+    isSlideshowEligible: publication?.slideshowEligible ?? false,
     tryOnModerationArchive: {
-      archived: false,
-      bucket: null,
-      archivedAt: null,
-      archivedBy: null,
+      archived: archiveResult,
+      bucket: archiveResult ? (isApproved ? 'approved' : 'rejected') : null,
+      archivedAt: archiveResult ? timestamp : null,
+      archivedBy: archiveResult ? publication?.reviewedBy ?? 'system' : null,
     },
     tryOnJobs: [],
   };

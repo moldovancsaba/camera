@@ -48,6 +48,10 @@ import {
   type EventButtonSize,
 } from '@/lib/events/visual-settings';
 import {
+  DEFAULT_EVENT_SHARE_PAGE_SETTINGS,
+  normalizeEventSharePageSettings,
+} from '@/lib/events/share-page-settings';
+import {
   DEFAULT_SUBMISSION_EMAIL_BODY,
   DEFAULT_SUBMISSION_EMAIL_SUBJECT,
   SUBMISSION_EMAIL_TEMPLATE_HELP,
@@ -73,6 +77,7 @@ interface EventRecord {
     enabled?: boolean;
     allowedLeatherSuitIds?: string[];
     applyFrameToReturnedResults?: boolean;
+    vettingEnabled?: boolean;
     includeApprovedResultsInSlideshows?: boolean;
     resultSlideshowMode?: EventTryOnResultSlideshowMode;
   };
@@ -83,6 +88,13 @@ interface EventRecord {
   };
   visualSettings?: {
     buttonSize?: EventButtonSize;
+  };
+  sharePage?: {
+    includeOriginalCapture?: boolean;
+    includeCameraResult?: boolean;
+    includeTryOnResult?: boolean;
+    includeFramedTryOnResult?: boolean;
+    pendingTryOnMessage?: string | null;
   };
 }
 
@@ -124,9 +136,25 @@ export default function EditEventPage({
     DEFAULT_SUBMISSION_EMAIL_BODY
   );
   const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
+  const [includeOriginalCapture, setIncludeOriginalCapture] = useState(
+    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeOriginalCapture
+  );
+  const [includeCameraResult, setIncludeCameraResult] = useState(
+    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeCameraResult
+  );
+  const [includeTryOnResult, setIncludeTryOnResult] = useState(
+    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeTryOnResult
+  );
+  const [includeFramedTryOnResult, setIncludeFramedTryOnResult] = useState(
+    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeFramedTryOnResult
+  );
+  const [pendingTryOnMessage, setPendingTryOnMessage] = useState(
+    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.pendingTryOnMessage
+  );
   const [resultSlideshowMode, setResultSlideshowMode] =
     useState<EventTryOnResultSlideshowMode>('disabled');
   const [applyFrameToReturnedResults, setApplyFrameToReturnedResults] = useState(false);
+  const [tryOnVettingEnabled, setTryOnVettingEnabled] = useState(true);
   const [suitOptions, setSuitOptions] = useState<TryOnSuitOption[]>([]);
   const [selectedSuitIds, setSelectedSuitIds] = useState<string[]>([]);
 
@@ -158,6 +186,7 @@ export default function EditEventPage({
         setBrandBorderColor(eventData.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR);
         setTryOnEnabled(Boolean(eventData.tryOn?.enabled));
         setApplyFrameToReturnedResults(Boolean(eventData.tryOn?.applyFrameToReturnedResults));
+        setTryOnVettingEnabled(eventData.tryOn?.vettingEnabled !== false);
         setSubmissionResultEmailEnabled(Boolean(eventData.notifications?.submissionResultEmailEnabled));
         setSubmissionResultEmailSubject(
           eventData.notifications?.submissionResultEmailSubject || DEFAULT_SUBMISSION_EMAIL_SUBJECT
@@ -166,6 +195,12 @@ export default function EditEventPage({
           eventData.notifications?.submissionResultEmailBody || DEFAULT_SUBMISSION_EMAIL_BODY
         );
         setButtonSize(normalizeEventButtonSize(eventData.visualSettings?.buttonSize));
+        const sharePageSettings = normalizeEventSharePageSettings(eventData.sharePage);
+        setIncludeOriginalCapture(sharePageSettings.includeOriginalCapture);
+        setIncludeCameraResult(sharePageSettings.includeCameraResult);
+        setIncludeTryOnResult(sharePageSettings.includeTryOnResult);
+        setIncludeFramedTryOnResult(sharePageSettings.includeFramedTryOnResult);
+        setPendingTryOnMessage(sharePageSettings.pendingTryOnMessage);
         setResultSlideshowMode(
           eventData.tryOn?.resultSlideshowMode ||
             (eventData.tryOn?.includeApprovedResultsInSlideshows ? 'mixed_with_originals' : 'disabled')
@@ -280,6 +315,7 @@ export default function EditEventPage({
         enabled: tryOnEnabled,
         allowedLeatherSuitIds: selectedSuitIds,
         applyFrameToReturnedResults,
+        vettingEnabled: tryOnVettingEnabled,
         includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
         resultSlideshowMode,
       },
@@ -290,6 +326,13 @@ export default function EditEventPage({
       },
       visualSettings: {
         buttonSize,
+      },
+      sharePage: {
+        includeOriginalCapture,
+        includeCameraResult,
+        includeTryOnResult,
+        includeFramedTryOnResult,
+        pendingTryOnMessage,
       },
     };
 
@@ -484,14 +527,14 @@ export default function EditEventPage({
           </FormSection>
 
           <FormSection
-            title="Notifications"
-            description="Control whether Camera emails the public result page link after a user submits a photo."
+            title="Email module"
+            description="Optional email module. It does not add a visible page to the capture flow; it sends after a submission is saved."
           >
             <Checkbox
               checked={submissionResultEmailEnabled}
               onChange={(event) => setSubmissionResultEmailEnabled(event.currentTarget.checked)}
-              label="Send confirmation email with the user's result page link"
-              description="Requires a collected or authenticated email address. If disabled, submissions are saved without sending email."
+              label="Email the user's result page link after save"
+              description="Requires a collected or authenticated email address. This is independent from the capture flow share-options screen."
             />
             <TextInput
               label="Email subject"
@@ -508,6 +551,44 @@ export default function EditEventPage({
               autosize
               minRows={6}
               description="Plain text only. Include {link} where the result page URL should appear."
+            />
+          </FormSection>
+
+          <FormSection
+            title="Public result page"
+            description="Control which related photos are shown on the shareable result page linked from email and share actions."
+          >
+            <Checkbox
+              checked={includeOriginalCapture}
+              onChange={(event) => setIncludeOriginalCapture(event.currentTarget.checked)}
+              label="Show original photo taken"
+              description="Available when the raw camera image was uploaded as a try-on source."
+            />
+            <Checkbox
+              checked={includeCameraResult}
+              onChange={(event) => setIncludeCameraResult(event.currentTarget.checked)}
+              label="Show photo with Camera frame"
+              description="The normal Camera submission saved by the capture flow."
+            />
+            <Checkbox
+              checked={includeTryOnResult}
+              onChange={(event) => setIncludeTryOnResult(event.currentTarget.checked)}
+              label="Show try-on photo generated by the worker"
+              description="Available after try-on finishes and is approved or auto-approved."
+            />
+            <Checkbox
+              checked={includeFramedTryOnResult}
+              onChange={(event) => setIncludeFramedTryOnResult(event.currentTarget.checked)}
+              label="Show try-on photo with Camera frame"
+              description="Available when returned try-on results are framed by Camera."
+            />
+            <Textarea
+              label="Pending try-on message"
+              value={pendingTryOnMessage}
+              onChange={(event) => setPendingTryOnMessage(event.currentTarget.value)}
+              autosize
+              minRows={2}
+              description="Shown on the shareable result page when a try-on was requested but no approved result is available yet."
             />
           </FormSection>
 
@@ -535,9 +616,17 @@ export default function EditEventPage({
                 if (!checked) {
                   setResultSlideshowMode('disabled');
                   setApplyFrameToReturnedResults(false);
+                  setTryOnVettingEnabled(true);
                 }
               }}
               label="Enable local AI leather try-on for this event"
+            />
+            <Checkbox
+              checked={tryOnVettingEnabled}
+              onChange={(nextEvent) => setTryOnVettingEnabled(nextEvent.currentTarget.checked)}
+              disabled={!tryOnEnabled}
+              label="Require admin vetting before publishing try-on results"
+              description="When disabled, completed try-on results are approved automatically and become visible on the user's result page."
             />
             <Checkbox
               checked={applyFrameToReturnedResults}

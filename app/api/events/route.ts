@@ -28,6 +28,7 @@ import {
 } from '@/lib/partners/authorization';
 import { normalizeEventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
+import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
 
 function normalizeEventNotificationSettings(value: unknown) {
   const source = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -133,7 +134,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   // Parse request body
   const body = await request.json();
-  const { name, partnerId, description, eventDate, location, isActive, logoUrl, showLogo, shortUrlSlug, tryOn, notifications, visualSettings } =
+  const { name, partnerId, description, eventDate, location, isActive, logoUrl, showLogo, shortUrlSlug, tryOn, notifications, visualSettings, sharePage } =
     body;
 
   // Validate required fields
@@ -206,6 +207,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     brandColor: inheritedDefaults.brandColor,
     brandBorderColor: inheritedDefaults.brandBorderColor,
     visualSettings: normalizeEventVisualSettings(visualSettings),
+    sharePage: normalizeEventSharePageSettings(sharePage),
     brandColorsOverridden: inheritedDefaults.brandColorsOverridden,
     frames: inheritedDefaults.frames,
     framesOverridden: inheritedDefaults.framesOverridden,
@@ -220,6 +222,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
             .map((value: string) => value.trim())
         : [],
       applyFrameToReturnedResults: Boolean(tryOn?.applyFrameToReturnedResults),
+      vettingEnabled: tryOn?.vettingEnabled !== false,
       includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
       resultSlideshowMode,
     },

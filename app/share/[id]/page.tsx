@@ -12,8 +12,13 @@ import Image from 'next/image';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import PublicShell from '@/components/public/PublicPageShell';
-import { Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { listApprovedShareVariants } from '@/lib/tryon/publication';
+import {
+  DEFAULT_EVENT_SHARE_PAGE_SETTINGS,
+  normalizeEventSharePageSettings,
+  type EventSharePageSettings,
+} from '@/lib/events/share-page-settings';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -31,7 +36,14 @@ interface ShareSubmission {
   metadata?: {
     finalWidth?: number;
     finalHeight?: number;
+    compositionEngine?: string;
+    tryOnRawResultUrl?: string | null;
   };
+  tryOnRequest?: {
+    requested?: boolean;
+    sourceImageUrl?: string | null;
+    shareVisible?: boolean;
+  } | null;
   eventIds?: unknown[];
   eventId?: unknown;
 }
@@ -45,7 +57,7 @@ interface ShareVariantCard {
 async function resolveEventForSubmission(
   db: Db,
   submission: Record<string, unknown>
-): Promise<{ mongoId: string; name: string } | null> {
+): Promise<{ mongoId: string; name: string; sharePageSettings: EventSharePageSettings } | null> {
   const eventLookupKey =
     (Array.isArray(submission.eventIds) && submission.eventIds[0]) ||
     submission.eventId ||
@@ -64,7 +76,68 @@ async function resolveEventForSubmission(
     typeof eventDoc.name === 'string' && eventDoc.name.trim()
       ? eventDoc.name.trim()
       : 'Event';
-  return { mongoId: eventDoc._id.toString(), name };
+  const sharePage = eventDoc.sharePage && typeof eventDoc.sharePage === 'object'
+    ? eventDoc.sharePage
+    : null;
+  return {
+    mongoId: eventDoc._id.toString(),
+    name,
+    sharePageSettings: normalizeEventSharePageSettings(sharePage),
+  };
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function buildTryOnVariantCards(
+  variant: {
+    _id?: { toString: () => string };
+    imageUrl?: string | null;
+    finalImageUrl?: string | null;
+    tryOnLeatherSuitId?: string | null;
+    metadata?: unknown;
+  },
+  settings: EventSharePageSettings,
+  currentSubmissionId: string
+): ShareVariantCard[] {
+  const id = variant._id?.toString() ?? '';
+  const metadata = variant.metadata && typeof variant.metadata === 'object'
+    ? variant.metadata as { compositionEngine?: unknown; tryOnRawResultUrl?: unknown }
+    : {};
+  const resultUrl = readString(variant.imageUrl) || readString(variant.finalImageUrl);
+  const rawResultUrl = readString(metadata.tryOnRawResultUrl);
+  const isFramed = metadata.compositionEngine === 'motogp_leather_magic_framed';
+  const suitLabel = readString(variant.tryOnLeatherSuitId) || 'Approved try-on result';
+  const cards: ShareVariantCard[] = [];
+
+  if (settings.includeTryOnResult && rawResultUrl) {
+    cards.push({
+      id: `${id}:tryon-generated`,
+      imageUrl: rawResultUrl,
+      label: `${suitLabel} - generated`,
+    });
+  }
+
+  if (resultUrl && id !== currentSubmissionId) {
+    if (isFramed && settings.includeFramedTryOnResult) {
+      cards.push({
+        id: `${id}:tryon-framed`,
+        imageUrl: resultUrl,
+        label: `${suitLabel} - with frame`,
+      });
+    }
+
+    if (!isFramed && settings.includeTryOnResult) {
+      cards.push({
+        id: `${id}:tryon-result`,
+        imageUrl: resultUrl,
+        label: suitLabel,
+      });
+    }
+  }
+
+  return cards;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -155,8 +228,27 @@ export default async function SharePage({ params }: Props) {
                   typeof (doc.metadata as { finalHeight?: unknown }).finalHeight === 'number'
                     ? (doc.metadata as { finalHeight: number }).finalHeight
                     : undefined,
+                compositionEngine:
+                  typeof (doc.metadata as { compositionEngine?: unknown }).compositionEngine === 'string'
+                    ? (doc.metadata as { compositionEngine: string }).compositionEngine
+                    : undefined,
+                tryOnRawResultUrl:
+                  typeof (doc.metadata as { tryOnRawResultUrl?: unknown }).tryOnRawResultUrl === 'string'
+                    ? (doc.metadata as { tryOnRawResultUrl: string }).tryOnRawResultUrl
+                    : null,
               }
             : undefined,
+        tryOnRequest:
+          doc.tryOnRequest && typeof doc.tryOnRequest === 'object'
+            ? {
+                requested: Boolean((doc.tryOnRequest as { requested?: unknown }).requested),
+                sourceImageUrl:
+                  typeof (doc.tryOnRequest as { sourceImageUrl?: unknown }).sourceImageUrl === 'string'
+                    ? (doc.tryOnRequest as { sourceImageUrl: string }).sourceImageUrl
+                    : null,
+                shareVisible: Boolean((doc.tryOnRequest as { shareVisible?: unknown }).shareVisible),
+              }
+            : null,
         eventIds: Array.isArray(doc.eventIds) ? doc.eventIds : undefined,
         eventId: doc.eventId,
       };
@@ -171,6 +263,9 @@ export default async function SharePage({ params }: Props) {
 
   const db = await connectToDatabase();
   const event = await resolveEventForSubmission(db, submission as unknown as Record<string, unknown>);
+  const sharePageSettings = event?.sharePageSettings ?? DEFAULT_EVENT_SHARE_PAGE_SETTINGS;
+  const showApprovedTryOnRelatedPhotos =
+    sharePageSettings.includeTryOnResult || sharePageSettings.includeFramedTryOnResult;
   const currentSubmissionId = submission.id ?? '';
   const sourceSubmissionId =
     submission.submissionKind === 'tryon_result' && submission.sourceSubmissionId
@@ -178,7 +273,12 @@ export default async function SharePage({ params }: Props) {
       : currentSubmissionId;
 
   if (sourceSubmissionId) {
-    if (submission.submissionKind === 'tryon_result' && submission.sourceSubmissionId && ObjectId.isValid(submission.sourceSubmissionId)) {
+    if (
+      sharePageSettings.includeCameraResult &&
+      submission.submissionKind === 'tryon_result' &&
+      submission.sourceSubmissionId &&
+      ObjectId.isValid(submission.sourceSubmissionId)
+    ) {
       const sourceDoc = await db
         .collection(COLLECTIONS.SUBMISSIONS)
         .findOne({ _id: new ObjectId(submission.sourceSubmissionId) });
@@ -186,20 +286,39 @@ export default async function SharePage({ params }: Props) {
         sourceOriginalVariant = {
           id: sourceDoc._id!.toString(),
           imageUrl: sourceDoc.imageUrl,
-          label: 'Original Camera result',
+          label: 'Photo with Camera frame',
         };
       }
     }
 
-    const variants = await listApprovedShareVariants(db, sourceSubmissionId);
-    shareVariants = variants
-      .map((variant) => ({
-        id: variant._id!.toString(),
-        imageUrl: variant.imageUrl ?? variant.finalImageUrl,
-        label: variant.tryOnLeatherSuitId || 'Approved try-on result',
-      }))
-      .filter((variant) => Boolean(variant.imageUrl) && variant.id !== currentSubmissionId);
+    if (
+      sharePageSettings.includeOriginalCapture &&
+      submission.submissionKind !== 'tryon_result' &&
+      submission.tryOnRequest?.sourceImageUrl
+    ) {
+      shareVariants.push({
+        id: `${currentSubmissionId}:original-capture`,
+        imageUrl: submission.tryOnRequest.sourceImageUrl,
+        label: 'Original photo taken',
+      });
+    }
+
+    if (showApprovedTryOnRelatedPhotos) {
+      const variants = await listApprovedShareVariants(db, sourceSubmissionId);
+      shareVariants = [
+        ...shareVariants,
+        ...variants.flatMap((variant) =>
+          buildTryOnVariantCards(variant, sharePageSettings, currentSubmissionId)
+        ),
+      ];
+    }
   }
+
+  const showPendingTryOnMessage =
+    submission.submissionKind !== 'tryon_result' &&
+    Boolean(submission.tryOnRequest?.requested) &&
+    !submission.tryOnRequest?.shareVisible &&
+    shareVariants.every((variant) => !variant.id.includes('tryon-'));
 
   // `/capture/[eventId]` expects the event document Mongo `_id`, while submissions often store public `eventId` UUID in `eventIds` / `eventId`.
   let createYourOwnHref = '/capture';
@@ -251,12 +370,18 @@ export default async function SharePage({ params }: Props) {
 
           <Group gap="md" grow>
             <Button component="a" href={submission.imageUrl} download target="_blank" rel="noopener noreferrer" size="lg">
-              💾 Download
+              Download
             </Button>
             <Button component="a" href={createYourOwnHref} variant="default" size="lg">
-              📸 Create Your Own
+              Create Your Own
             </Button>
           </Group>
+
+          {showPendingTryOnMessage ? (
+            <Alert color="blue" variant="light" mt="xl">
+              {sharePageSettings.pendingTryOnMessage}
+            </Alert>
+          ) : null}
 
           {sourceOriginalVariant || shareVariants.length > 0 ? (
             <Stack gap="md" mt="xl">
@@ -287,7 +412,9 @@ export default async function SharePage({ params }: Props) {
                   <Card
                     component="a"
                     key={variant.id}
-                    href={`/share/${variant.id}`}
+                    href={variant.id.includes(':') ? variant.imageUrl : `/share/${variant.id}`}
+                    target={variant.id.includes(':') ? '_blank' : undefined}
+                    rel={variant.id.includes(':') ? 'noopener noreferrer' : undefined}
                     withBorder
                     padding={0}
                     style={{ textDecoration: 'none', color: 'inherit', overflow: 'hidden' }}

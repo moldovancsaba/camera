@@ -677,9 +677,9 @@ function PageEditModal({
               placeholder="e.g., NEXT"
             />
 
-            <Divider label="Share screen language" labelPosition="left" />
+            <Divider label="Share options screen language" labelPosition="left" />
             <Text size="sm" c="dimmed">
-              Shown after save when share page is on. Leave caption template empty to use the English default with the event name.
+              Shown after save when share options are enabled. Email delivery is controlled separately in the event notification settings.
             </Text>
             <TextInput
               label="Share screen title"
@@ -729,8 +729,8 @@ function PageEditModal({
             <Checkbox
               checked={showSharePage}
               onChange={(event) => setShowSharePage(event.currentTarget.checked)}
-              label="Show Share Page"
-              description="If unchecked, users will see a thank you message instead of share options."
+              label="Show share options after save"
+              description="If unchecked, users see a thank-you message instead. Email can still be sent if the event notification module is enabled."
             />
             {!showSharePage ? (
               <Textarea

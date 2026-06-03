@@ -12,6 +12,7 @@ import { patchSubmissionTryOnState } from '@/lib/tryon/jobs';
 import { nowIso } from '@/lib/tryon/time';
 import { normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
 import { applyFrameToTryOnResult, inspectTryOnResultAsset } from '@/lib/tryon/frame-composition';
+import { shouldApprovedTryOnBeSlideshowEligible } from '@/lib/tryon/slideshow-policy';
 
 interface CompletionPayload {
   jobId?: string;
@@ -26,25 +27,17 @@ interface CompletionPayload {
 async function resolveTryOnResultAsset(
   db: Awaited<ReturnType<typeof connectToDatabase>>,
   sourceSubmission: Submission,
-  publicResultUrl: string
+  publicResultUrl: string,
+  event: Pick<Event, 'tryOn'> | null
 ) {
-  const eventId =
-    typeof sourceSubmission.eventId === 'string' && sourceSubmission.eventId.trim()
-      ? sourceSubmission.eventId.trim()
-      : null;
   const frameId =
     typeof sourceSubmission.frameId === 'string' && sourceSubmission.frameId.trim()
       ? sourceSubmission.frameId.trim()
       : null;
 
-  if (!eventId || !frameId) {
+  if (!frameId) {
     return inspectTryOnResultAsset(publicResultUrl);
   }
-
-  const event = await db.collection<Event>(COLLECTIONS.EVENTS).findOne(
-    { eventId },
-    { projection: { tryOn: 1 } }
-  );
 
   if (!event?.tryOn?.applyFrameToReturnedResults) {
     return inspectTryOnResultAsset(publicResultUrl);
@@ -63,13 +56,54 @@ async function resolveTryOnResultAsset(
     return await applyFrameToTryOnResult(publicResultUrl, frame.fileUrl, `tryon-framed-${Date.now()}`);
   } catch (error) {
     console.error('Failed to apply frame to returned try-on result; falling back to raw upload.', {
-      eventId,
+      eventId: sourceSubmission.eventId ?? null,
       frameId,
       publicResultUrl,
       error,
     });
     return inspectTryOnResultAsset(publicResultUrl);
   }
+}
+
+async function resolveSourceEvent(
+  db: Awaited<ReturnType<typeof connectToDatabase>>,
+  sourceSubmission: Submission
+): Promise<Pick<Event, 'tryOn'> | null> {
+  const eventId =
+    typeof sourceSubmission.eventId === 'string' && sourceSubmission.eventId.trim()
+      ? sourceSubmission.eventId.trim()
+      : null;
+
+  if (!eventId) return null;
+
+  return db.collection<Event>(COLLECTIONS.EVENTS).findOne(
+    { eventId },
+    { projection: { tryOn: 1 } }
+  );
+}
+
+function resolvePublicationState(event: Pick<Event, 'tryOn'> | null) {
+  if (event?.tryOn?.vettingEnabled === false) {
+    return {
+      reviewStatus: 'approved' as const,
+      shareVisible: true,
+      slideshowEligible: shouldApprovedTryOnBeSlideshowEligible(event),
+      reviewedBy: 'system:auto-vetting-disabled',
+      approvedBy: 'system:auto-vetting-disabled',
+      archive: true,
+      publicationStatus: 'approved' as const,
+    };
+  }
+
+  return {
+    reviewStatus: 'pending_review' as const,
+    shareVisible: false,
+    slideshowEligible: false,
+    reviewedBy: null,
+    approvedBy: null,
+    archive: false,
+    publicationStatus: 'pending_review' as const,
+  };
 }
 
 function assertInternalTryOnSecret(request: NextRequest): void {
@@ -121,7 +155,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const existingDerived = await db
     .collection<Submission>(COLLECTIONS.SUBMISSIONS)
     .findOne({ sourceJobId: jobId });
-  const resolvedAsset = await resolveTryOnResultAsset(db, sourceSubmission, publicResultUrl);
+  const sourceEvent = await resolveSourceEvent(db, sourceSubmission);
+  const publicationState = resolvePublicationState(sourceEvent);
+  const resolvedAsset = await resolveTryOnResultAsset(db, sourceSubmission, publicResultUrl, sourceEvent);
 
   const now = nowIso();
   await db.collection(COLLECTIONS.TRYON_JOBS).updateOne(
@@ -207,7 +243,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       fileSize: resolvedAsset.fileSize,
       mimeType: resolvedAsset.mimeType,
       compositionEngine: resolvedAsset.compositionEngine,
+      rawResultUrl:
+        resolvedAsset.publicResultUrl !== publicResultUrl ? publicResultUrl : null,
     },
+    publication: publicationState,
   });
 
   const insertResult = await db
@@ -223,9 +262,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     resultUrl: resolvedAsset.publicResultUrl,
     resultDeleteUrl: resolvedAsset.deleteUrl ?? body.deleteUrl ?? null,
     resultProvider: 'imgbb',
-    reviewStatus: 'pending_review',
-    shareVisible: false,
-    slideshowEligible: false,
+    reviewStatus: publicationState.reviewStatus,
+    shareVisible: publicationState.shareVisible,
+    slideshowEligible: publicationState.slideshowEligible,
     lastError: null,
   });
 
@@ -237,9 +276,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       jobId,
       job.request.leatherSuitId,
       resolvedAsset.publicResultUrl,
-      'pending_review',
-      false,
-      false
+      publicationState.reviewStatus,
+      publicationState.shareVisible,
+      publicationState.slideshowEligible
     )
   );
 
@@ -247,6 +286,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     jobId,
     sourceSubmissionId: sourceSubmissionObjectId.toString(),
     resultSubmissionId: insertResult.insertedId.toString(),
-    publicationStatus: 'pending_review',
+    publicationStatus: publicationState.publicationStatus,
   });
 });

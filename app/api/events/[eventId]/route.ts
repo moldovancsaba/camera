@@ -26,6 +26,7 @@ import { normalizeGoShortSlugInput } from '@/lib/go-short-url';
 import { normalizeEventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
+import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
 
 function normalizeEventNotificationSettings(value: unknown) {
   const source = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -220,6 +221,7 @@ export const PATCH = withErrorHandler(async (
     tryOn,
     notifications,
     visualSettings,
+    sharePage,
   } = body;
 
   // Build update object with only provided fields
@@ -295,6 +297,7 @@ export const PATCH = withErrorHandler(async (
       enabled: Boolean(tryOn?.enabled),
       allowedLeatherSuitIds,
       applyFrameToReturnedResults: Boolean(tryOn?.applyFrameToReturnedResults),
+      vettingEnabled: tryOn?.vettingEnabled !== false,
       includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
       resultSlideshowMode,
     };
@@ -306,6 +309,10 @@ export const PATCH = withErrorHandler(async (
 
   if (visualSettings !== undefined) {
     updateFields.visualSettings = normalizeEventVisualSettings(visualSettings);
+  }
+
+  if (sharePage !== undefined) {
+    updateFields.sharePage = normalizeEventSharePageSettings(sharePage);
   }
 
   // Handle customPages array
