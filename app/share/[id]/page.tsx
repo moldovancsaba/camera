@@ -26,7 +26,7 @@ interface Props {
 
 interface ShareSubmission {
   id?: string;
-  imageUrl: string;
+  imageUrl?: string;
   userName?: string;
   createdAt?: string;
   submissionKind?: 'original' | 'tryon_result';
@@ -162,29 +162,35 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const eventLabel = event?.name ?? 'Shared photo';
     const userName =
       typeof submission.userName === 'string' ? submission.userName : 'Guest';
+    const submissionImageUrl = readString(submission.imageUrl);
+    const openGraph: NonNullable<Metadata['openGraph']> = {
+      title: `Photo by ${userName}`,
+      description: `From ${eventLabel}`,
+      type: 'website',
+    };
+    const twitter: NonNullable<Metadata['twitter']> = {
+      card: submissionImageUrl ? 'summary_large_image' : 'summary',
+      title: `Photo by ${userName}`,
+      description: `From ${eventLabel}`,
+    };
+
+    if (submissionImageUrl) {
+      openGraph.images = [
+        {
+          url: submissionImageUrl,
+          width: 1200,
+          height: 1200,
+          alt: `Photo by ${userName}`,
+        },
+      ];
+      twitter.images = [submissionImageUrl];
+    }
 
     return {
       title: `Photo by ${userName} — ${eventLabel}`,
       description: `Photo from ${eventLabel}`,
-      openGraph: {
-        title: `Photo by ${userName}`,
-        description: `From ${eventLabel}`,
-        images: [
-          {
-            url: submission.imageUrl,
-            width: 1200,
-            height: 1200,
-            alt: `Photo by ${userName}`,
-          },
-        ],
-        type: 'website',
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title: `Photo by ${userName}`,
-        description: `From ${eventLabel}`,
-        images: [submission.imageUrl],
-      },
+      openGraph,
+      twitter,
     };
   } catch (error) {
     console.error('Error generating metadata:', error);
@@ -209,10 +215,10 @@ export default async function SharePage({ params }: Props) {
     const doc = await db
       .collection(COLLECTIONS.SUBMISSIONS)
       .findOne({ _id: new ObjectId(id) });
-    if (doc && typeof doc.imageUrl === 'string') {
+    if (doc && typeof doc === 'object') {
       submission = {
         id: doc._id.toString(),
-        imageUrl: doc.imageUrl,
+        imageUrl: readString(doc.imageUrl) ?? undefined,
         userName: typeof doc.userName === 'string' ? doc.userName : undefined,
         createdAt: typeof doc.createdAt === 'string' ? doc.createdAt : undefined,
         submissionKind:
@@ -378,6 +384,8 @@ export default async function SharePage({ params }: Props) {
   const galleryVariants = featuredVariant ? displayVariants.slice(1) : displayVariants;
   const hasTryOnVariant = displayVariants.some((variant) => variant.isTryOn);
   const downloadableImageUrl = featuredVariant?.imageUrl ?? submission.imageUrl;
+  const hasDownloadableImage = Boolean(downloadableImageUrl);
+  const imageMissingMessage = sharePageSettings.pendingTryOnMessage;
 
   const showPendingTryOnMessage =
     submission.submissionKind !== 'tryon_result' &&
@@ -430,7 +438,24 @@ export default async function SharePage({ params }: Props) {
                 className="object-contain"
                 unoptimized
               />
-            ) : null}
+            ) : (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#f8f9fa',
+                  padding: '1.5rem',
+                  textAlign: 'center',
+                }}
+              >
+                <Text c="dimmed" size="sm">
+                  {imageMissingMessage}
+                </Text>
+              </div>
+            )}
           </div>
 
           <Text size="sm" c="dimmed" ta="right" mb="lg">
@@ -438,15 +463,28 @@ export default async function SharePage({ params }: Props) {
           </Text>
 
           <Group gap="md" grow>
-            <Button component="a" href={downloadableImageUrl} download target="_blank" rel="noopener noreferrer" size="lg">
-              Download
-            </Button>
+            {hasDownloadableImage ? (
+              <Button
+                component="a"
+                href={downloadableImageUrl}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+                size="lg"
+              >
+                Download
+              </Button>
+            ) : (
+              <Button size="lg" disabled>
+                Download
+              </Button>
+            )}
             <Button component="a" href={createYourOwnHref} variant="default" size="lg">
               Create Your Own
             </Button>
           </Group>
 
-          {showPendingTryOnMessage ? (
+          {showPendingTryOnMessage && featuredVariant ? (
             <Alert color="blue" variant="light" mt="xl">
               {sharePageSettings.pendingTryOnMessage}
             </Alert>

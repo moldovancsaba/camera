@@ -54,6 +54,26 @@ cd /Users/Shared/Projects/try-on
 ./.venv311/bin/python scripts/tryon_queue_worker.py
 ```
 
+## Internal callbacks and periodic sync
+
+- Primary path: worker posts completion payloads to `POST /api/internal/tryon/complete`.
+- Recovery path: Vercel cron calls `GET /api/internal/tryon/sync?status=done&limit=50` every 5 minutes and replays durable job completion for any done jobs that still need derived submission materialization.
+- Manual recovery: trigger sync on demand when needed:
+
+```bash
+curl -X GET "$NEXT_PUBLIC_APP_URL/api/internal/tryon/sync?status=done&limit=50" \
+  -H "x-camera-tryon-secret: $CAMERA_TRYON_INTERNAL_SECRET"
+```
+
+Use the recovery route when the local worker uploaded a result but Camera didn’t create the framed derived submission in `tryon_result` (for example due worker timeout on the callback).
+
+The sync path is idempotent:
+
+- keeps `tryon_jobs` metadata current,
+- creates missing `tryon_result` submissions,
+- re-applies frame overlay when `event.tryOn.applyFrameToReturnedResults` is enabled,
+- and updates derived submission URLs/metadata when corrected outputs are detected.
+
 ## Expected worker behavior
 
 - polls Atlas
