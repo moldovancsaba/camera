@@ -383,7 +383,7 @@ export default async function SharePage({ params }: Props) {
   const featuredVariant = displayVariants[0] ?? null;
   const galleryVariants = featuredVariant ? displayVariants.slice(1) : displayVariants;
   const hasTryOnVariant = displayVariants.some((variant) => variant.isTryOn);
-  const downloadableImageUrl = featuredVariant?.imageUrl ?? submission.imageUrl;
+  const downloadableImageUrl = featuredVariant?.imageUrl ?? null;
   const hasDownloadableImage = Boolean(downloadableImageUrl);
   const imageMissingMessage = sharePageSettings.pendingTryOnMessage;
 
