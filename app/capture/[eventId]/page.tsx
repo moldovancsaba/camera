@@ -123,6 +123,33 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
 }
 
+function isOnboardingPageType(pageType: CustomPage['pageType']): boolean {
+  return pageType === 'who-are-you' || pageType === 'accept' || pageType === 'cta';
+}
+
+function splitCustomPages(
+  pages: CustomPage[]
+): {
+  onboardingPages: CustomPage[];
+  thankYouPages: CustomPage[];
+  takePhotoPage: CustomPage | undefined;
+} {
+  const sortedPages = [...pages].sort((a, b) => a.order - b.order);
+  const takePhotoPage = sortedPages.find((page) => page.pageType === 'take-photo');
+
+  const onboardingPages = sortedPages.filter((page) => {
+    if (page.pageType === 'take-photo') return false;
+    return isOnboardingPageType(page.pageType);
+  });
+
+  const thankYouPages = sortedPages.filter((page) => {
+    if (page.pageType === 'take-photo') return false;
+    return !isOnboardingPageType(page.pageType);
+  });
+
+  return { onboardingPages, thankYouPages, takePhotoPage };
+}
+
 function buildEmailDeliveryNotice(metadata?: SubmissionEmailMetadata | null): string {
   if (!metadata) {
     return '';
@@ -177,34 +204,40 @@ export default function EventCapturePage({
   const [selectedTryOnSuitId, setSelectedTryOnSuitId] = useState<string | null>(null);
   const [tryOnResult, setTryOnResult] = useState<TryOnSubmissionResult | null>(null);
   
+  const { onboardingPages, thankYouPages, takePhotoPage } = splitCustomPages(customPages);
+
   // Get take-photo page config for button texts and messages
-  const takePhotoPage = customPages.find(p => p.pageType === 'take-photo');
-  const captureButtonText = takePhotoPage?.config.captureButtonText || 'LOVE IT';
-  const retryButtonText = takePhotoPage?.config.retryButtonText || 'TRY AGAIN';
-  const shareNextButtonText = takePhotoPage?.config.shareNextButtonText || 'NEXT';
-  const changeButtonText = takePhotoPage?.config.changeButtonText || 'Change';
-  const successMessage = takePhotoPage?.config.successMessage || 'Photo saved successfully! You can now share it.';
-  const showSharePage = takePhotoPage?.config.showSharePage !== false;
-  const skipShareMessage = takePhotoPage?.config.skipShareMessage || 'Thank you! Your photo has been saved.';
-  const cameraPromptTitle = takePhotoPage?.config.cameraPromptTitle || 'Ready to capture?';
-  const cameraPromptDescription = takePhotoPage?.config.cameraPromptDescription || 'Click to start your camera and take a photo';
-  const errorFrameMessage = takePhotoPage?.config.errorFrameMessage || 'Failed to apply frame. Please try again.';
-  const errorSaveMessage = takePhotoPage?.config.errorSaveMessage || 'Failed to save photo: Please try again.';
-  const linkCopiedMessage = takePhotoPage?.config.linkCopiedMessage || 'Link copied to clipboard!';
-  const copyErrorMessage = takePhotoPage?.config.copyErrorMessage || 'Failed to copy link. Please copy it manually.';
-  const saveFirstMessage = takePhotoPage?.config.saveFirstMessage || 'Please save the photo first to get a shareable link.';
+  const configuredTakePhotoPage = takePhotoPage;
+  const hasAnyOnboardingPages = onboardingPages.length > 0;
+  const hasAnyThankYouPages = thankYouPages.length > 0;
+
+  const captureButtonText = configuredTakePhotoPage?.config.captureButtonText || 'LOVE IT';
+  const retryButtonText = configuredTakePhotoPage?.config.retryButtonText || 'TRY AGAIN';
+  const shareNextButtonText = configuredTakePhotoPage?.config.shareNextButtonText || 'NEXT';
+  const changeButtonText = configuredTakePhotoPage?.config.changeButtonText || 'Change';
+  const successMessage = configuredTakePhotoPage?.config.successMessage || 'Photo saved successfully! You can now share it.';
+  const showSharePage = configuredTakePhotoPage?.config.showSharePage !== false;
+  const skipShareMessage = configuredTakePhotoPage?.config.skipShareMessage || 'Thank you! Your photo has been saved.';
+  const cameraPromptTitle = configuredTakePhotoPage?.config.cameraPromptTitle || 'Ready to capture?';
+  const cameraPromptDescription =
+    configuredTakePhotoPage?.config.cameraPromptDescription || 'Click to start your camera and take a photo';
+  const errorFrameMessage = configuredTakePhotoPage?.config.errorFrameMessage || 'Failed to apply frame. Please try again.';
+  const errorSaveMessage = configuredTakePhotoPage?.config.errorSaveMessage || 'Failed to save photo: Please try again.';
+  const linkCopiedMessage = configuredTakePhotoPage?.config.linkCopiedMessage || 'Link copied to clipboard!';
+  const copyErrorMessage = configuredTakePhotoPage?.config.copyErrorMessage || 'Failed to copy link. Please copy it manually.';
+  const saveFirstMessage = configuredTakePhotoPage?.config.saveFirstMessage || 'Please save the photo first to get a shareable link.';
   const shareScreenTitle =
-    takePhotoPage?.config.shareScreenTitle?.trim() || 'Share Your Photo';
+    configuredTakePhotoPage?.config.shareScreenTitle?.trim() || 'Share Your Photo';
   const shareCopyLinkButtonText =
-    takePhotoPage?.config.shareCopyLinkButtonText?.trim() || 'Copy';
+    configuredTakePhotoPage?.config.shareCopyLinkButtonText?.trim() || 'Copy';
   const shareViewPhotoButtonText =
-    takePhotoPage?.config.shareViewPhotoButtonText?.trim() ||
+    configuredTakePhotoPage?.config.shareViewPhotoButtonText?.trim() ||
     'View your photo (opens share link)';
   const shareSuggestedMessageLabel =
-    takePhotoPage?.config.shareSuggestedMessageLabel?.trim() ||
+    configuredTakePhotoPage?.config.shareSuggestedMessageLabel?.trim() ||
     'Suggested message for apps below:';
   const shareSocialCaptionTemplateRaw =
-    takePhotoPage?.config.shareSocialCaptionTemplate?.trim();
+    configuredTakePhotoPage?.config.shareSocialCaptionTemplate?.trim();
   const shareCaptionForSocial = shareSocialCaptionTemplateRaw
     ? shareSocialCaptionTemplateRaw.replace(
         /\{event\}/gi,
@@ -352,21 +385,17 @@ export default function EventCapturePage({
         // Set up the custom page flow
         const pages = (eventData.customPages || []).filter((p: CustomPage) => p.isActive);
         if (pages.length > 0) {
-          // Sort pages by order
-          const sortedPages = [...pages].sort((a, b) => a.order - b.order);
-          setCustomPages(sortedPages);
+          const { onboardingPages: resolvedOnboardingPages } = splitCustomPages(pages);
+          setCustomPages([...pages].sort((a, b) => a.order - b.order));
           
           // Only set initial flow state if NOT resuming from SSO
           // SSO resume logic will set the correct page index
           if (!isResume) {
-            // Start with onboarding if there are pages before 'take-photo'
-            const takePhotoIndex = sortedPages.findIndex(p => p.pageType === 'take-photo');
-            if (takePhotoIndex > 0) {
-              // Has onboarding pages
+            // Start onboarding if any onboarding page is configured, else capture
+            if (resolvedOnboardingPages.length > 0) {
               setFlowPhase('onboarding');
               setCurrentPageIndex(0);
             } else {
-              // No onboarding, go straight to capture
               setFlowPhase('capture');
             }
           }
@@ -747,11 +776,9 @@ export default function EventCapturePage({
    * Determines if moving to next custom page, capture, or thank you phase
    */
   const handleNextPage = () => {
-    const takePhotoIndex = customPages.findIndex(p => p.pageType === 'take-photo');
-    
     if (flowPhase === 'onboarding') {
       // In onboarding phase
-      if (currentPageIndex + 1 < takePhotoIndex) {
+      if (currentPageIndex + 1 < onboardingPages.length) {
         // More onboarding pages
         setCurrentPageIndex(currentPageIndex + 1);
       } else {
@@ -760,7 +787,7 @@ export default function EventCapturePage({
       }
     } else if (flowPhase === 'thankyou') {
       // In thank you phase
-      if (currentPageIndex + 1 < customPages.length) {
+      if (currentPageIndex + 1 < thankYouPages.length) {
         // More thank you pages
         setCurrentPageIndex(currentPageIndex + 1);
       } else {
@@ -778,12 +805,10 @@ export default function EventCapturePage({
    * Called when user clicks NEXT button after saving
    */
   const handleMoveToThankYou = () => {
-    const takePhotoIndex = customPages.findIndex(p => p.pageType === 'take-photo');
-    
-    if (takePhotoIndex >= 0 && takePhotoIndex + 1 < customPages.length) {
+    if (hasAnyThankYouPages) {
       // Has thank you pages
       setFlowPhase('thankyou');
-      setCurrentPageIndex(takePhotoIndex + 1);
+      setCurrentPageIndex(0);
     } else {
       // No thank you pages, restart
       handleRestartFlow();
@@ -818,8 +843,7 @@ export default function EventCapturePage({
     setCollectedData({ consents: [] });
     
     // ALWAYS restart from the very beginning
-    const takePhotoIndex = customPages.findIndex(p => p.pageType === 'take-photo');
-    if (takePhotoIndex > 0) {
+    if (hasAnyOnboardingPages) {
       // Has onboarding pages - start from first onboarding page
       setFlowPhase('onboarding');
       setCurrentPageIndex(0);
@@ -833,7 +857,8 @@ export default function EventCapturePage({
 
   // Render custom pages for onboarding or thank-you phases
   if (!isLoading && event && (flowPhase === 'onboarding' || flowPhase === 'thankyou')) {
-    const currentPage = customPages[currentPageIndex];
+    const phasePages = flowPhase === 'onboarding' ? onboardingPages : thankYouPages;
+    const currentPage = phasePages[currentPageIndex];
     
     if (!currentPage) {
       // No current page, move to appropriate phase
