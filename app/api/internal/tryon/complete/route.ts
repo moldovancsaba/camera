@@ -67,17 +67,40 @@ async function resolveTryOnResultAsset(
 
 async function resolveSourceEvent(
   db: Awaited<ReturnType<typeof connectToDatabase>>,
-  sourceSubmission: Submission
+  sourceSubmission: Submission,
+  sourceJob: TryOnJob
 ): Promise<Pick<Event, 'tryOn'> | null> {
-  const eventId =
-    typeof sourceSubmission.eventId === 'string' && sourceSubmission.eventId.trim()
-      ? sourceSubmission.eventId.trim()
-      : null;
+  const eventIdentifiers = new Set<string>();
+  const sourceEventId = typeof sourceSubmission.eventId === 'string' ? sourceSubmission.eventId.trim() : '';
+  if (sourceEventId) {
+    eventIdentifiers.add(sourceEventId);
+  }
+  if (sourceJob.source.eventMongoId) {
+    eventIdentifiers.add(String(sourceJob.source.eventMongoId));
+  }
+  if (Array.isArray(sourceSubmission.eventIds)) {
+    sourceSubmission.eventIds.forEach((value) => {
+      if (typeof value === 'string' && value.trim()) {
+        eventIdentifiers.add(value.trim());
+      }
+    });
+  }
 
-  if (!eventId) return null;
+  if (eventIdentifiers.size === 0) return null;
+
+  const eventLookup: Array<Record<string, unknown>> = [];
+  for (const value of eventIdentifiers) {
+    if (ObjectId.isValid(value)) {
+      eventLookup.push({ _id: new ObjectId(value) });
+      eventLookup.push({ eventId: value });
+      continue;
+    }
+
+    eventLookup.push({ eventId: value });
+  }
 
   return db.collection<Event>(COLLECTIONS.EVENTS).findOne(
-    { eventId },
+    { $or: eventLookup },
     { projection: { tryOn: 1 } }
   );
 }
@@ -155,7 +178,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const existingDerived = await db
     .collection<Submission>(COLLECTIONS.SUBMISSIONS)
     .findOne({ sourceJobId: jobId });
-  const sourceEvent = await resolveSourceEvent(db, sourceSubmission);
+  const sourceEvent = await resolveSourceEvent(db, sourceSubmission, job);
   const publicationState = resolvePublicationState(sourceEvent);
   const resolvedAsset = await resolveTryOnResultAsset(db, sourceSubmission, publicResultUrl, sourceEvent);
 
