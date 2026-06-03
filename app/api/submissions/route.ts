@@ -7,7 +7,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { ObjectId, type Db } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { uploadImage } from '@/lib/imgbb/upload';
 import {
@@ -31,7 +31,6 @@ import {
   checkRateLimit,
   RATE_LIMITS,
 } from '@/lib/api';
-import { getSiteUrlFromRequest } from '@/lib/site-url';
 import {
   buildSubmissionTryOnLink,
   insertOrGetTryOnJob,
@@ -63,27 +62,6 @@ interface SubmissionEventDocument {
 
 interface EventLookupFilter {
   $or: Array<Record<string, unknown>>;
-}
-
-function trimUndefinedEntries(input: Record<string, unknown>): Record<string, unknown> {
-  const filtered = Object.entries(input).filter(([, value]) => value !== undefined);
-  return Object.fromEntries(filtered);
-}
-
-async function applySubmissionMetadataPatch(
-  db: Db,
-  submissionObjectId: ObjectId,
-  metadataPatch: Record<string, unknown>
-): Promise<void> {
-  const sanitized = trimUndefinedEntries(metadataPatch);
-  if (Object.keys(sanitized).length === 0) {
-    return;
-  }
-
-  await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: submissionObjectId },
-    { $set: sanitized }
-  );
 }
 
 function buildEventLookupFilterByIdentifier(eventId: string): EventLookupFilter {
@@ -305,8 +283,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     const result = await db.collection('submissions').insertOne(submission);
     const submissionId = getSubmissionMongoIdString(result.insertedId);
-    const shareUrl = `${(await getSiteUrlFromRequest()).replace(/\/$/, '')}/share/${submissionId}`;
-
     const createdSubmission = {
       _id: result.insertedId,
       ...submission,

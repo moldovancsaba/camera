@@ -31,7 +31,6 @@ import {
   CAMERA_DEFAULT_BRAND_COLOR,
 } from '@/lib/gds/tokens/colors';
 import {
-  DEFAULT_EVENT_BUTTON_SIZE,
   normalizeEventButtonSize,
   type EventButtonSize,
 } from '@/lib/events/visual-settings';
@@ -126,12 +125,6 @@ interface SubmissionEmailMetadata {
   emailSendAfterRelatedPending?: boolean;
 }
 
-interface AuthenticatedCaptureUser {
-  id: string;
-  name?: string;
-  email: string;
-}
-
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
 }
@@ -212,7 +205,6 @@ export default function EventCapturePage({
   const [frameIntrinsicAspect, setFrameIntrinsicAspect] = useState<number | null>(null);
   const [savedSubmissionId, setSavedSubmissionId] = useState<string | null>(null);
   const [isFinalizingSubmission, setIsFinalizingSubmission] = useState(false);
-  const [isUpdatingContact, setIsUpdatingContact] = useState(false);
   const [hasFinalizedSubmissionEmail, setHasFinalizedSubmissionEmail] = useState(false);
 
   // Custom page flow state
@@ -842,12 +834,7 @@ export default function EventCapturePage({
     }));
 
     if (savedSubmissionId) {
-      setIsUpdatingContact(true);
-      try {
-        await updateSubmissionContact(savedSubmissionId, data);
-      } finally {
-        setIsUpdatingContact(false);
-      }
+      await updateSubmissionContact(savedSubmissionId, data);
     }
 
     handleNextPage();
