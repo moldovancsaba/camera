@@ -38,6 +38,39 @@ interface TryOnSubmissionResult {
   error: string | null;
 }
 
+interface SubmissionEmailMetadata {
+  emailSent?: boolean;
+  emailSentAt?: string | null;
+  emailRecipient?: string | null;
+  emailProvider?: string | null;
+  emailMessageId?: string | null;
+  emailSkipReason?: string | null;
+  emailFailedAt?: string | null;
+  emailError?: string | null;
+}
+
+function buildEmailDeliveryNotice(metadata?: SubmissionEmailMetadata | null): string {
+  if (!metadata) {
+    return '';
+  }
+  if (metadata.emailSent) {
+    return `Confirmation email was sent to ${metadata.emailRecipient || 'the provided address'}.`;
+  }
+  if (metadata.emailSkipReason === 'event_email_disabled') {
+    return 'Email module is disabled.';
+  }
+  if (metadata.emailSkipReason === 'missing_recipient') {
+    return 'Email was not sent because no email address was provided.';
+  }
+  if (metadata.emailSkipReason === 'missing_api_key') {
+    return 'Email was not sent because RESEND API key is not configured.';
+  }
+  if (metadata.emailFailedAt && metadata.emailError) {
+    return `Email failed: ${metadata.emailError}`;
+  }
+  return '';
+}
+
 function framePixelDimensions(frame: Frame): { width: number; height: number } {
   const w = Number(frame.width);
   const h = Number(frame.height);
@@ -236,8 +269,12 @@ export default function CapturePage() {
       // Generate share URL
       const origin = window.location.origin;
       setShareUrl(`${origin}/share/${resolvedId}`);
-      
-      alert('Photo saved successfully! You can now share it.');
+      const emailNotice = buildEmailDeliveryNotice(submission?.metadata);
+      const successMessage = emailNotice
+        ? `Photo saved successfully! You can now share it.\n${emailNotice}`
+        : 'Photo saved successfully! You can now share it.';
+
+      alert(successMessage);
     } catch (error) {
       console.error('Error saving submission:', error);
       alert('Failed to save photo. Please try again.');

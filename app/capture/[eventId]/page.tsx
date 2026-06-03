@@ -108,8 +108,41 @@ interface TryOnSubmissionResult {
   error: string | null;
 }
 
+interface SubmissionEmailMetadata {
+  emailSent?: boolean;
+  emailSentAt?: string | null;
+  emailRecipient?: string | null;
+  emailProvider?: string | null;
+  emailMessageId?: string | null;
+  emailSkipReason?: string | null;
+  emailFailedAt?: string | null;
+  emailError?: string | null;
+}
+
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
+}
+
+function buildEmailDeliveryNotice(metadata?: SubmissionEmailMetadata | null): string {
+  if (!metadata) {
+    return '';
+  }
+  if (metadata.emailSent) {
+    return `Confirmation email was sent to ${metadata.emailRecipient || 'the provided address'}.`;
+  }
+  if (metadata.emailSkipReason === 'event_email_disabled') {
+    return 'Email module is disabled for this event.';
+  }
+  if (metadata.emailSkipReason === 'missing_recipient') {
+    return 'Email was not sent because no email address was collected.';
+  }
+  if (metadata.emailSkipReason === 'missing_api_key') {
+    return 'Email was not sent because RESEND API key is not configured.';
+  }
+  if (metadata.emailFailedAt && metadata.emailError) {
+    return `Email failed: ${metadata.emailError}`;
+  }
+  return '';
 }
 
 export default function EventCapturePage({
@@ -607,10 +640,14 @@ export default function EventCapturePage({
       if (!submissionId) {
         throw new Error('Save succeeded but no submission id was returned');
       }
+      const emailNotice = buildEmailDeliveryNotice(data.data?.submission?.metadata);
+      const finalSuccessMessage = emailNotice
+        ? `${successMessage}\n${emailNotice}`
+        : successMessage;
       setTryOnResult(data.data?.tryOn ?? data.tryOn ?? null);
       setShareUrl(`${origin}/share/${submissionId}`);
       
-      alert(successMessage);
+      alert(finalSuccessMessage);
     } catch (error: unknown) {
       console.error('Error saving submission:', error);
       alert(`${errorSaveMessage.replace(': Please try again.', '')}: ${getErrorMessage(error)}`);
