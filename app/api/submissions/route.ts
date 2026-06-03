@@ -47,12 +47,35 @@ interface TryOnRequestDetails {
   sourceImageData: string | null;
 }
 
+interface SubmissionEventDocument {
+  notifications?: SubmissionEventPolicy['notifications'];
+  tryOn?: {
+    enabled?: boolean;
+    allowedLeatherSuitIds?: string[];
+  };
+}
+
 interface SubmissionEventPolicy {
   notifications?: {
     submissionResultEmailEnabled?: boolean;
     submissionResultEmailSubject?: string | null;
     submissionResultEmailBody?: string | null;
   };
+}
+
+interface EventLookupFilter {
+  $or: Array<Record<string, unknown>>;
+}
+
+function buildEventLookupFilterByIdentifier(eventId: string): EventLookupFilter {
+  const normalized = eventId.trim();
+  const query: EventLookupFilter = { $or: [{ eventId: normalized }, { shortUrlSlug: normalized }] };
+
+  if (ObjectId.isValid(normalized)) {
+    query.$or.push({ _id: new ObjectId(normalized) });
+  }
+
+  return query;
 }
 
 function getSubmissionMongoIdString(id: unknown): string {
@@ -290,14 +313,36 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       },
     };
 
-    const eventPolicy = eventId
+    const eventPolicy: SubmissionEventDocument | null = eventId
       ? ((await db.collection(COLLECTIONS.EVENTS).findOne(
-          { eventId },
-          { projection: { _id: 0, notifications: 1 } }
-        )) as SubmissionEventPolicy | null)
+          buildEventLookupFilterByIdentifier(eventId),
+          {
+            projection: {
+              _id: 0,
+              notifications: 1,
+              tryOn: 1,
+            },
+          }
+        )) as SubmissionEventDocument | null)
       : null;
+
     const shouldSendSubmissionResultEmail =
       eventPolicy?.notifications?.submissionResultEmailEnabled === true;
+    if (eventId && !eventPolicy) {
+      console.warn('[submissions] Skipping confirmation email: event document not found.', {
+        eventId,
+      });
+    }
+    if (shouldSendSubmissionResultEmail === false) {
+      if (eventId) {
+        console.info('[submissions] Confirmation email disabled for event.', {
+          eventId,
+          notificationEnabled: eventPolicy?.notifications?.submissionResultEmailEnabled ?? false,
+        });
+      } else {
+        console.info('[submissions] Confirmation email disabled because submission was not tied to an event.');
+      }
+    }
     const recipientEmail =
       validatedUserInfo?.email ||
       (session?.user?.email && session.user.email !== 'anonymous@event'
@@ -311,9 +356,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           recipientName,
           eventName: typeof eventName === 'string' ? eventName : null,
           shareUrl,
-          subjectTemplate: eventPolicy?.notifications?.submissionResultEmailSubject,
-          bodyTemplate: eventPolicy?.notifications?.submissionResultEmailBody,
-        })
+        subjectTemplate: eventPolicy?.notifications?.submissionResultEmailSubject,
+        bodyTemplate: eventPolicy?.notifications?.submissionResultEmailBody,
+      })
       : ({ sent: false, skipped: true, reason: 'event_email_disabled' } as const);
     const emailMetadata =
       emailResult.sent
@@ -367,15 +412,17 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         }
 
         if (eventId) {
-          const eventPolicy = await db.collection(COLLECTIONS.EVENTS).findOne(
-            { eventId },
-            { projection: { _id: 1, tryOn: 1 } }
-          );
-          if (!eventPolicy?.tryOn?.enabled) {
+          const eventPolicyForTryOn = eventPolicy
+            ? ({ _id: null, tryOn: eventPolicy.tryOn })
+            : await db.collection(COLLECTIONS.EVENTS).findOne(
+                buildEventLookupFilterByIdentifier(eventId),
+                { projection: { _id: 1, tryOn: 1 } }
+              );
+          if (!eventPolicyForTryOn?.tryOn?.enabled) {
             throw new Error('try_on_not_enabled_for_event');
           }
-          const allowedSuitIds = Array.isArray(eventPolicy.tryOn.allowedLeatherSuitIds)
-            ? eventPolicy.tryOn.allowedLeatherSuitIds
+          const allowedSuitIds = Array.isArray(eventPolicyForTryOn?.tryOn?.allowedLeatherSuitIds)
+            ? eventPolicyForTryOn.tryOn.allowedLeatherSuitIds
             : [];
           if (
             allowedSuitIds.length > 0 &&
@@ -398,7 +445,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
         const eventDocument = eventId
           ? await db.collection(COLLECTIONS.EVENTS).findOne(
-              { eventId },
+              buildEventLookupFilterByIdentifier(eventId),
               { projection: { _id: 1 } }
             )
           : null;

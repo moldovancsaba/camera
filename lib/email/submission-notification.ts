@@ -87,11 +87,18 @@ export async function sendSubmissionResultEmail(
 ): Promise<SubmissionNotificationResult> {
   const recipientEmail = normalizeRecipient(input.recipientEmail);
   if (!recipientEmail) {
+    console.warn('[email] Submission result email skipped: missing recipient', {
+      eventName: input.eventName || null,
+    });
     return { sent: false, skipped: true, reason: 'missing_recipient' };
   }
 
   const apiKey = getEmailApiKey();
   if (!apiKey) {
+    console.warn('[email] Submission result email skipped: RESEND API key missing', {
+      eventName: input.eventName || null,
+      hasResendKey: Boolean(process.env.RESEND_API_KEY || process.env.RESEND || process.env.EMAIL_API_KEY),
+    });
     return { sent: false, skipped: true, reason: 'missing_api_key' };
   }
 
@@ -132,6 +139,12 @@ export async function sendSubmissionResultEmail(
     });
 
     if (response.error) {
+      console.error('[email] Submission result email rejected by Resend', {
+        eventName: input.eventName || null,
+        recipientEmail,
+        from: getEmailFrom(),
+        error: response.error.message,
+      });
       return {
         sent: false,
         skipped: false,
@@ -141,6 +154,12 @@ export async function sendSubmissionResultEmail(
       };
     }
 
+    console.info('[email] Submission result email queued successfully', {
+      eventName: input.eventName || null,
+      recipientEmail,
+      messageId: response.data?.id,
+    });
+
     return {
       sent: true,
       provider: 'resend',
@@ -148,6 +167,12 @@ export async function sendSubmissionResultEmail(
       recipientEmail,
     };
   } catch (error) {
+    console.error('[email] Submission result email failed', {
+      eventName: input.eventName || null,
+      recipientEmail,
+      from: getEmailFrom(),
+      error: error instanceof Error ? error.message : 'Unknown email delivery error',
+    });
     return {
       sent: false,
       skipped: false,
