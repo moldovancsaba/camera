@@ -479,9 +479,11 @@ export default async function SharePage({ params }: Props) {
                 Download
               </Button>
             )}
-            <Button component="a" href={createYourOwnHref} variant="default" size="lg">
-              Create Your Own
-            </Button>
+            {sharePageSettings.showCreateYourOwnButton ? (
+              <Button component="a" href={createYourOwnHref} variant="default" size="lg">
+                Create Your Own
+              </Button>
+            ) : null}
           </Group>
 
           {showPendingTryOnMessage && featuredVariant ? (

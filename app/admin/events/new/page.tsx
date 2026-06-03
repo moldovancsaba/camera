@@ -95,6 +95,9 @@ export default function NewEventPage() {
   const [includeFramedTryOnResult, setIncludeFramedTryOnResult] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeFramedTryOnResult
   );
+  const [showCreateYourOwnButton, setShowCreateYourOwnButton] = useState(
+    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.showCreateYourOwnButton
+  );
   const [pendingTryOnMessage, setPendingTryOnMessage] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.pendingTryOnMessage
   );
@@ -235,6 +238,7 @@ export default function NewEventPage() {
         includeCameraResult,
         includeTryOnResult,
         includeFramedTryOnResult,
+        showCreateYourOwnButton,
         pendingTryOnMessage,
       },
     };
@@ -434,6 +438,12 @@ export default function NewEventPage() {
               onChange={(event) => setIncludeFramedTryOnResult(event.currentTarget.checked)}
               label="Show try-on photo with Camera frame"
               description="Available when returned try-on results are framed by Camera."
+            />
+            <Checkbox
+              checked={showCreateYourOwnButton}
+              onChange={(event) => setShowCreateYourOwnButton(event.currentTarget.checked)}
+              label="Show Create Your Own button"
+              description="Display a CTA on the shared photo page that returns users to capture and start a new photo."
             />
             <Textarea
               label="Pending try-on message"

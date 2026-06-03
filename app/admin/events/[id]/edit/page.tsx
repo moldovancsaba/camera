@@ -94,6 +94,7 @@ interface EventRecord {
     includeCameraResult?: boolean;
     includeTryOnResult?: boolean;
     includeFramedTryOnResult?: boolean;
+    showCreateYourOwnButton?: boolean;
     pendingTryOnMessage?: string | null;
   };
 }
@@ -148,6 +149,9 @@ export default function EditEventPage({
   const [includeFramedTryOnResult, setIncludeFramedTryOnResult] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeFramedTryOnResult
   );
+  const [showCreateYourOwnButton, setShowCreateYourOwnButton] = useState(
+    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.showCreateYourOwnButton
+  );
   const [pendingTryOnMessage, setPendingTryOnMessage] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.pendingTryOnMessage
   );
@@ -200,6 +204,7 @@ export default function EditEventPage({
         setIncludeCameraResult(sharePageSettings.includeCameraResult);
         setIncludeTryOnResult(sharePageSettings.includeTryOnResult);
         setIncludeFramedTryOnResult(sharePageSettings.includeFramedTryOnResult);
+        setShowCreateYourOwnButton(sharePageSettings.showCreateYourOwnButton);
         setPendingTryOnMessage(sharePageSettings.pendingTryOnMessage);
         setResultSlideshowMode(
           eventData.tryOn?.resultSlideshowMode ||
@@ -332,6 +337,7 @@ export default function EditEventPage({
         includeCameraResult,
         includeTryOnResult,
         includeFramedTryOnResult,
+        showCreateYourOwnButton,
         pendingTryOnMessage,
       },
     };
@@ -581,6 +587,12 @@ export default function EditEventPage({
               onChange={(event) => setIncludeFramedTryOnResult(event.currentTarget.checked)}
               label="Show try-on photo with Camera frame"
               description="Available when returned try-on results are framed by Camera."
+            />
+            <Checkbox
+              checked={showCreateYourOwnButton}
+              onChange={(event) => setShowCreateYourOwnButton(event.currentTarget.checked)}
+              label="Show Create Your Own button"
+              description="Display a CTA on the shared photo page that returns users to capture and start a new photo."
             />
             <Textarea
               label="Pending try-on message"
