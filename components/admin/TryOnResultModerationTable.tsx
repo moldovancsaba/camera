@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import ResponsiveDataView from '@/components/gds/ResponsiveDataView';
 import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
-import { Box, Button, Card, Group, Modal, Paper, Stack, Text, UnstyledButton } from '@mantine/core';
+import { Box, Button, Card, Group, Modal, Paper, SimpleGrid, Stack, Text, UnstyledButton } from '@mantine/core';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 
 export interface ModerationRow {
@@ -60,12 +60,14 @@ function PreviewImage({
   width,
   height,
   onFailure,
+  objectFit = 'cover',
 }: {
   src: string | null | undefined;
   alt: string;
   width: number;
   height: number;
   onFailure?: () => void;
+  objectFit?: 'contain' | 'cover';
 }) {
   const [failed, setFailed] = useState(false);
 
@@ -106,7 +108,7 @@ function PreviewImage({
       alt={alt}
       fill
       unoptimized
-      style={{ objectFit: 'cover' }}
+      style={{ objectFit }}
       onError={markFailed}
     />
   );
@@ -183,6 +185,47 @@ function PreviewStrip({
     >
       {content}
     </UnstyledButton>
+  );
+}
+
+function ReviewImagePanel({
+  src,
+  alt,
+  label,
+  onFailure,
+}: {
+  src: string | null | undefined;
+  alt: string;
+  label: string;
+  onFailure?: () => void;
+}) {
+  return (
+    <Stack gap="xs">
+      <Text size="sm" fw={600}>
+        {label}
+      </Text>
+      <Box
+        style={{
+          position: 'relative',
+          width: '100%',
+          aspectRatio: '3 / 4',
+          minHeight: 320,
+          maxHeight: '70vh',
+          borderRadius: 16,
+          overflow: 'hidden',
+          background: 'var(--mantine-color-gray-0)',
+        }}
+      >
+        <PreviewImage
+          src={src}
+          alt={alt}
+          width={768}
+          height={1024}
+          objectFit="contain"
+          onFailure={onFailure}
+        />
+      </Box>
+    </Stack>
   );
 }
 
@@ -405,16 +448,27 @@ export default function TryOnResultModerationTable({
         opened={Boolean(activeRow)}
         onClose={() => setActiveRowId(null)}
         title={activeRow ? `Review result for ${activeRow.userName}` : 'Review result'}
-        size="xl"
+        size="90rem"
         centered
       >
         {activeRow ? (
           <Stack gap="lg">
-            <PreviewStrip
-              row={activeRow}
-              onResultMissing={() => markAssetMissing(activeRow.id, 'resultMissing')}
-              onOriginalMissing={() => markAssetMissing(activeRow.id, 'originalMissing')}
-            />
+            <SimpleGrid cols={{ base: 1, md: activeRow.originalImageUrl ? 2 : 1 }} spacing="lg">
+              <ReviewImagePanel
+                src={activeRow.imageUrl}
+                alt="Generated try-on result"
+                label="Generated result"
+                onFailure={() => markAssetMissing(activeRow.id, 'resultMissing')}
+              />
+              {activeRow.originalImageUrl ? (
+                <ReviewImagePanel
+                  src={activeRow.originalImageUrl}
+                  alt="Original camera result"
+                  label="Original capture"
+                  onFailure={() => markAssetMissing(activeRow.id, 'originalMissing')}
+                />
+              ) : null}
+            </SimpleGrid>
             <Stack gap={4}>
               <Text fw={700}>{activeRow.userName}</Text>
               <Text size="sm" c="dimmed">
