@@ -737,6 +737,18 @@ export default function EventCapturePage({
   };
   
   // Custom page navigation handlers
+
+  const enterCaptureStep = () => {
+    if (selectedFrame) {
+      setStep('capture-photo');
+      return;
+    }
+    if (frames.length === 0) {
+      setStep('capture-photo');
+      return;
+    }
+    setStep('select-frame');
+  };
   
   /**
    * Handle completion of Who Are You page
@@ -784,6 +796,7 @@ export default function EventCapturePage({
       } else {
         // Move to capture phase
         setFlowPhase('capture');
+        enterCaptureStep();
       }
     } else if (flowPhase === 'thankyou') {
       // In thank you phase
@@ -850,8 +863,7 @@ export default function EventCapturePage({
     } else {
       // No onboarding - go straight to capture phase
       setFlowPhase('capture');
-      // Set step based on frame count (enforces strict rule)
-      setStep(frames.length > 1 ? 'select-frame' : 'capture-photo');
+      enterCaptureStep();
     }
   };
 
