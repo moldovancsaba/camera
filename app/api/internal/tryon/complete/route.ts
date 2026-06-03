@@ -209,14 +209,38 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   );
 
   if (existingDerived?._id) {
+    const rawResultUrl =
+      resolvedAsset.publicResultUrl !== publicResultUrl ? publicResultUrl : null;
+    const derivedUpdate: { $set: Record<string, unknown> } = {
+      $set: {
+        imageUrl: resolvedAsset.publicResultUrl,
+        deleteUrl: resolvedAsset.deleteUrl ?? body.deleteUrl ?? null,
+        finalImageUrl: resolvedAsset.publicResultUrl,
+        fileSize: resolvedAsset.fileSize ?? null,
+        mimeType: resolvedAsset.mimeType ?? null,
+        updatedAt: now,
+        'metadata.compositionEngine': resolvedAsset.compositionEngine,
+        'metadata.tryOnRawResultUrl': rawResultUrl,
+      },
+    };
+    if (resolvedAsset.width) {
+      derivedUpdate.$set['metadata.finalWidth'] = resolvedAsset.width;
+    }
+    if (resolvedAsset.height) {
+      derivedUpdate.$set['metadata.finalHeight'] = resolvedAsset.height;
+    }
+
+    await db
+      .collection<Submission>(COLLECTIONS.SUBMISSIONS)
+      .updateOne({ _id: existingDerived._id }, derivedUpdate);
+
     await patchSubmissionTryOnState(db, sourceSubmissionObjectId, {
       status: 'done',
       requested: true,
       leatherSuitId: job.request.leatherSuitId,
       jobId,
       sourceImageUrl: job.source.imageUrl,
-      resultUrl:
-        typeof existingDerived.imageUrl === 'string' ? existingDerived.imageUrl : resolvedAsset.publicResultUrl,
+      resultUrl: resolvedAsset.publicResultUrl,
       resultDeleteUrl: resolvedAsset.deleteUrl ?? body.deleteUrl ?? null,
       resultProvider: 'imgbb',
       reviewStatus:
@@ -233,7 +257,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         existingDerived._id.toString(),
         jobId,
         job.request.leatherSuitId,
-        typeof existingDerived.imageUrl === 'string' ? existingDerived.imageUrl : resolvedAsset.publicResultUrl,
+        resolvedAsset.publicResultUrl,
         (existingDerived.reviewStatus as 'pending_review' | 'approved' | 'rejected' | undefined) ?? 'pending_review',
         Boolean(existingDerived.isShareVisible),
         Boolean(existingDerived.isSlideshowEligible)
