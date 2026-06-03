@@ -352,16 +352,6 @@ export async function dispatchPendingRelatedEmailForSubmission(
   const event = await resolveEventForSubmission(db, sourceSubmission);
   const policy = normalizeSubmissionEmailPolicy(event?.notifications);
 
-  if (sourceSubmission.metadata?.emailSent) {
-    return {
-      sent: false,
-      shouldRetry: false,
-      metadataPatch: {
-        'metadata.emailSendAfterRelatedPending': false,
-      },
-    };
-  }
-
   if (!policy.enabled || !policy.sendAfterRelatedPhotosReady) {
     return null;
   }

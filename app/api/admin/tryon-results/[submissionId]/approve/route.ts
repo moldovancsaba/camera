@@ -13,6 +13,16 @@ import { nowIso } from '@/lib/tryon/time';
 import { shouldApprovedTryOnBeSlideshowEligible } from '@/lib/tryon/slideshow-policy';
 import { dispatchPendingRelatedEmailForSubmission } from '@/lib/email/submission-result-email';
 
+function sanitizeMetadataPatch(metadataPatch?: Record<string, unknown> | null): Record<string, unknown> {
+  if (!metadataPatch) return {};
+  return Object.entries(metadataPatch).reduce<Record<string, unknown>>((acc, [key, value]) => {
+    if (value !== undefined) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+}
+
 export const POST = withErrorHandler(async (
   request: NextRequest,
   context: { params: Promise<{ submissionId: string }> }
@@ -118,10 +128,17 @@ export const POST = withErrorHandler(async (
   });
 
   if (sourceSubmission) {
-    await dispatchPendingRelatedEmailForSubmission(db, {
+    const relatedEmailResult = await dispatchPendingRelatedEmailForSubmission(db, {
       ...sourceSubmission,
       _id: new ObjectId(resultSubmission.sourceSubmissionId),
     });
+    const relatedEmailPatch = sanitizeMetadataPatch(relatedEmailResult?.metadataPatch);
+    if (Object.keys(relatedEmailPatch).length > 0) {
+      await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+        { _id: new ObjectId(resultSubmission.sourceSubmissionId) },
+        { $set: relatedEmailPatch }
+      );
+    }
   }
 
   return apiSuccess({ submissionId, reviewStatus: 'approved', archived: true, archiveBucket: 'approved' });

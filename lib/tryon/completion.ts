@@ -2,7 +2,6 @@ import { ObjectId, type Db, type WithId } from 'mongodb';
 import {
   COLLECTIONS,
   type Event,
-  type Frame,
   type Submission,
   type TryOnJob,
 } from '@/lib/db/schemas';
@@ -202,6 +201,21 @@ function isUnchangedDerivedSubmission(
   );
 }
 
+async function applyEmailMetadataPatch(
+  db: Db,
+  sourceSubmissionObjectId: ObjectId,
+  metadataPatch: Record<string, unknown> | null | undefined
+) {
+  if (!metadataPatch || Object.keys(metadataPatch).length === 0) {
+    return;
+  }
+
+  await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
+    { _id: sourceSubmissionObjectId },
+    { $set: metadataPatch }
+  );
+}
+
 export async function applyTryOnCompletion(
   db: Db,
   job: WithId<TryOnJob>,
@@ -333,7 +347,8 @@ export async function applyTryOnCompletion(
       )
     );
 
-    await dispatchPendingRelatedEmailForSubmission(db, sourceSubmission);
+    const relatedEmailResult = await dispatchPendingRelatedEmailForSubmission(db, sourceSubmission);
+    await applyEmailMetadataPatch(db, sourceSubmissionObjectId, relatedEmailResult?.metadataPatch);
 
     return {
       action: updated ? 'updated' : 'unchanged',
@@ -408,10 +423,11 @@ export async function applyTryOnCompletion(
     )
   );
 
-  await dispatchPendingRelatedEmailForSubmission(db, {
+  const relatedEmailResult = await dispatchPendingRelatedEmailForSubmission(db, {
     ...sourceSubmission,
     _id: sourceSubmissionObjectId,
   });
+  await applyEmailMetadataPatch(db, sourceSubmissionObjectId, relatedEmailResult?.metadataPatch);
 
   return {
     action: 'created',
