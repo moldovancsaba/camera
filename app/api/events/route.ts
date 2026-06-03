@@ -219,6 +219,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
             .filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
             .map((value: string) => value.trim())
         : [],
+      applyFrameToReturnedResults: Boolean(tryOn?.applyFrameToReturnedResults),
       includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
       resultSlideshowMode,
     },

@@ -294,6 +294,7 @@ export const PATCH = withErrorHandler(async (
     updateFields.tryOn = {
       enabled: Boolean(tryOn?.enabled),
       allowedLeatherSuitIds,
+      applyFrameToReturnedResults: Boolean(tryOn?.applyFrameToReturnedResults),
       includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
       resultSlideshowMode,
     };

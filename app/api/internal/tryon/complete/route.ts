@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { apiBadRequest, apiCreated, apiForbidden, apiNotFound, apiSuccess, withErrorHandler } from '@/lib/api';
-import { COLLECTIONS, type Submission, type TryOnJob } from '@/lib/db/schemas';
+import { COLLECTIONS, type Event, type Frame, type Submission, type TryOnJob } from '@/lib/db/schemas';
 import {
   buildDerivedTryOnSubmission,
   buildTryOnPublicationSummary,
@@ -11,6 +11,7 @@ import {
 import { patchSubmissionTryOnState } from '@/lib/tryon/jobs';
 import { nowIso } from '@/lib/tryon/time';
 import { normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
+import { applyFrameToTryOnResult, inspectTryOnResultAsset } from '@/lib/tryon/frame-composition';
 
 interface CompletionPayload {
   jobId?: string;
@@ -20,6 +21,55 @@ interface CompletionPayload {
   processorMeta?: {
     pipelineVersion?: string | null;
   };
+}
+
+async function resolveTryOnResultAsset(
+  db: Awaited<ReturnType<typeof connectToDatabase>>,
+  sourceSubmission: Submission,
+  publicResultUrl: string
+) {
+  const eventId =
+    typeof sourceSubmission.eventId === 'string' && sourceSubmission.eventId.trim()
+      ? sourceSubmission.eventId.trim()
+      : null;
+  const frameId =
+    typeof sourceSubmission.frameId === 'string' && sourceSubmission.frameId.trim()
+      ? sourceSubmission.frameId.trim()
+      : null;
+
+  if (!eventId || !frameId) {
+    return inspectTryOnResultAsset(publicResultUrl);
+  }
+
+  const event = await db.collection<Event>(COLLECTIONS.EVENTS).findOne(
+    { eventId },
+    { projection: { tryOn: 1 } }
+  );
+
+  if (!event?.tryOn?.applyFrameToReturnedResults) {
+    return inspectTryOnResultAsset(publicResultUrl);
+  }
+
+  const frame = await db.collection<Frame>(COLLECTIONS.FRAMES).findOne(
+    { frameId },
+    { projection: { fileUrl: 1 } }
+  );
+
+  if (!frame?.fileUrl) {
+    return inspectTryOnResultAsset(publicResultUrl);
+  }
+
+  try {
+    return await applyFrameToTryOnResult(publicResultUrl, frame.fileUrl, `tryon-framed-${Date.now()}`);
+  } catch (error) {
+    console.error('Failed to apply frame to returned try-on result; falling back to raw upload.', {
+      eventId,
+      frameId,
+      publicResultUrl,
+      error,
+    });
+    return inspectTryOnResultAsset(publicResultUrl);
+  }
 }
 
 function assertInternalTryOnSecret(request: NextRequest): void {
@@ -71,6 +121,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const existingDerived = await db
     .collection<Submission>(COLLECTIONS.SUBMISSIONS)
     .findOne({ sourceJobId: jobId });
+  const resolvedAsset = await resolveTryOnResultAsset(db, sourceSubmission, publicResultUrl);
 
   const now = nowIso();
   await db.collection(COLLECTIONS.TRYON_JOBS).updateOne(
@@ -85,8 +136,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         'processing.lastHeartbeatAt': now,
         ...(body.workerId ? { 'processing.workerId': body.workerId } : {}),
         result: {
-          publicResultUrl,
-          imgbbDeleteUrl: body.deleteUrl ?? null,
+          publicResultUrl: resolvedAsset.publicResultUrl,
+          imgbbDeleteUrl: resolvedAsset.deleteUrl ?? body.deleteUrl ?? null,
           provider: 'imgbb',
         },
         error: {
@@ -105,8 +156,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       leatherSuitId: job.request.leatherSuitId,
       jobId,
       sourceImageUrl: job.source.imageUrl,
-      resultUrl: typeof existingDerived.imageUrl === 'string' ? existingDerived.imageUrl : publicResultUrl,
-      resultDeleteUrl: body.deleteUrl ?? null,
+      resultUrl:
+        typeof existingDerived.imageUrl === 'string' ? existingDerived.imageUrl : resolvedAsset.publicResultUrl,
+      resultDeleteUrl: resolvedAsset.deleteUrl ?? body.deleteUrl ?? null,
       resultProvider: 'imgbb',
       reviewStatus:
         (existingDerived.reviewStatus as 'pending_review' | 'approved' | 'rejected' | undefined) ?? 'pending_review',
@@ -122,7 +174,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         existingDerived._id.toString(),
         jobId,
         job.request.leatherSuitId,
-        typeof existingDerived.imageUrl === 'string' ? existingDerived.imageUrl : publicResultUrl,
+        typeof existingDerived.imageUrl === 'string' ? existingDerived.imageUrl : resolvedAsset.publicResultUrl,
         (existingDerived.reviewStatus as 'pending_review' | 'approved' | 'rejected' | undefined) ?? 'pending_review',
         Boolean(existingDerived.isShareVisible),
         Boolean(existingDerived.isSlideshowEligible)
@@ -146,9 +198,16 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       ...job,
       _id: job._id ?? new ObjectId(),
     },
-    publicResultUrl,
-    deleteUrl: body.deleteUrl ?? null,
+    publicResultUrl: resolvedAsset.publicResultUrl,
+    deleteUrl: resolvedAsset.deleteUrl ?? body.deleteUrl ?? null,
     pipelineVersion: body.processorMeta?.pipelineVersion ?? null,
+    resultImageMeta: {
+      width: resolvedAsset.width,
+      height: resolvedAsset.height,
+      fileSize: resolvedAsset.fileSize,
+      mimeType: resolvedAsset.mimeType,
+      compositionEngine: resolvedAsset.compositionEngine,
+    },
   });
 
   const insertResult = await db
@@ -161,8 +220,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     leatherSuitId: job.request.leatherSuitId,
     jobId,
     sourceImageUrl: job.source.imageUrl,
-    resultUrl: publicResultUrl,
-    resultDeleteUrl: body.deleteUrl ?? null,
+    resultUrl: resolvedAsset.publicResultUrl,
+    resultDeleteUrl: resolvedAsset.deleteUrl ?? body.deleteUrl ?? null,
     resultProvider: 'imgbb',
     reviewStatus: 'pending_review',
     shareVisible: false,
@@ -177,7 +236,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       insertResult.insertedId.toString(),
       jobId,
       job.request.leatherSuitId,
-      publicResultUrl,
+      resolvedAsset.publicResultUrl,
       'pending_review',
       false,
       false

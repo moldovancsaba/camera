@@ -82,6 +82,7 @@ export default function NewEventPage() {
   const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
   const [resultSlideshowMode, setResultSlideshowMode] =
     useState<EventTryOnResultSlideshowMode>('disabled');
+  const [applyFrameToReturnedResults, setApplyFrameToReturnedResults] = useState(false);
   const [suitOptions, setSuitOptions] = useState<TryOnSuitOption[]>([]);
   const [selectedSuitIds, setSelectedSuitIds] = useState<string[]>([]);
 
@@ -197,6 +198,7 @@ export default function NewEventPage() {
       tryOn: {
         enabled: tryOnEnabled,
         allowedLeatherSuitIds: selectedSuitIds,
+        applyFrameToReturnedResults,
         includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
         resultSlideshowMode,
       },
@@ -394,9 +396,16 @@ export default function NewEventPage() {
                 setTryOnEnabled(checked);
                 if (!checked) {
                   setResultSlideshowMode('disabled');
+                  setApplyFrameToReturnedResults(false);
                 }
               }}
               label="Enable local AI leather try-on for this event"
+            />
+            <Checkbox
+              checked={applyFrameToReturnedResults}
+              onChange={(event) => setApplyFrameToReturnedResults(event.currentTarget.checked)}
+              disabled={!tryOnEnabled}
+              label="Apply the selected Camera frame to returned try-on results"
             />
             <Select
               label="Approved result slideshow publication"

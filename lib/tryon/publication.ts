@@ -22,6 +22,13 @@ export interface CreateDerivedTryOnSubmissionInput {
   publicResultUrl: string;
   deleteUrl?: string | null;
   pipelineVersion?: string | null;
+  resultImageMeta?: {
+    width?: number | null;
+    height?: number | null;
+    fileSize?: number | null;
+    mimeType?: string | null;
+    compositionEngine?: string | null;
+  };
 }
 
 export interface TryOnPublicationSummary {
@@ -41,6 +48,7 @@ export function buildDerivedTryOnSubmission({
   publicResultUrl,
   deleteUrl,
   pipelineVersion,
+  resultImageMeta,
 }: CreateDerivedTryOnSubmissionInput): Submission {
   const timestamp = nowIso();
   const eventIds = Array.isArray(sourceSubmission.eventIds) ? sourceSubmission.eventIds : [];
@@ -79,11 +87,11 @@ export function buildDerivedTryOnSubmission({
             originalHeight: sourceSubmission.metadata.originalHeight ?? sourceSubmission.metadata.finalHeight ?? 0,
             originalFileSize: sourceSubmission.metadata.originalFileSize ?? sourceSubmission.metadata.finalFileSize ?? sourceSubmission.fileSize ?? 0,
             originalMimeType: sourceSubmission.metadata.originalMimeType ?? sourceSubmission.mimeType ?? 'image/png',
-            finalFileSize: sourceSubmission.metadata.finalFileSize ?? sourceSubmission.fileSize ?? 0,
-            finalWidth: sourceSubmission.metadata.finalWidth ?? sourceSubmission.metadata.originalWidth ?? 0,
-            finalHeight: sourceSubmission.metadata.finalHeight ?? sourceSubmission.metadata.originalHeight ?? 0,
+            finalFileSize: resultImageMeta?.fileSize ?? sourceSubmission.metadata.finalFileSize ?? sourceSubmission.fileSize ?? 0,
+            finalWidth: resultImageMeta?.width ?? sourceSubmission.metadata.finalWidth ?? sourceSubmission.metadata.originalWidth ?? 0,
+            finalHeight: resultImageMeta?.height ?? sourceSubmission.metadata.finalHeight ?? sourceSubmission.metadata.originalHeight ?? 0,
             emailSent: sourceSubmission.metadata.emailSent ?? false,
-            compositionEngine: 'motogp_leather_magic',
+            compositionEngine: resultImageMeta?.compositionEngine ?? 'motogp_leather_magic',
           }
         : {
             deviceType: DeviceType.UNKNOWN,
@@ -91,12 +99,14 @@ export function buildDerivedTryOnSubmission({
             originalHeight: 0,
             originalFileSize: sourceSubmission.fileSize ?? 0,
             originalMimeType: sourceSubmission.mimeType ?? 'image/png',
-            finalFileSize: sourceSubmission.fileSize ?? 0,
-            finalWidth: 0,
-            finalHeight: 0,
-            compositionEngine: 'motogp_leather_magic',
+            finalFileSize: resultImageMeta?.fileSize ?? sourceSubmission.fileSize ?? 0,
+            finalWidth: resultImageMeta?.width ?? 0,
+            finalHeight: resultImageMeta?.height ?? 0,
+            compositionEngine: resultImageMeta?.compositionEngine ?? 'motogp_leather_magic',
             emailSent: false,
           },
+    fileSize: resultImageMeta?.fileSize ?? sourceSubmission.fileSize ?? null,
+    mimeType: resultImageMeta?.mimeType ?? sourceSubmission.mimeType ?? null,
     shareCount: 0,
     downloadCount: 0,
     isArchived: false,
