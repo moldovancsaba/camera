@@ -416,21 +416,21 @@ export default async function SharePage({ params }: Props) {
         </Stack>
 
         <div>
-          <div 
-            style={{
-              position: 'relative',
-              borderRadius: 12,
-              overflow: 'hidden',
-              marginBottom: 16,
-              marginInline: 'auto',
-              aspectRatio:
-                featuredVariant && submission.metadata?.finalWidth && submission.metadata?.finalHeight
-                  ? `${submission.metadata.finalWidth} / ${submission.metadata.finalHeight}`
-                  : '1',
-              maxWidth: '100%',
-            }}
-          >
-            {featuredVariant ? (
+          {featuredVariant ? (
+            <div
+              style={{
+                position: 'relative',
+                borderRadius: 12,
+                overflow: 'hidden',
+                marginBottom: 16,
+                marginInline: 'auto',
+                aspectRatio:
+                  featuredVariant && submission.metadata?.finalWidth && submission.metadata?.finalHeight
+                    ? `${submission.metadata.finalWidth} / ${submission.metadata.finalHeight}`
+                    : '1',
+                maxWidth: '100%',
+              }}
+            >
               <Image
                 src={featuredVariant.imageUrl}
                 alt={featuredVariant.label}
@@ -438,25 +438,18 @@ export default async function SharePage({ params }: Props) {
                 className="object-contain"
                 unoptimized
               />
-            ) : (
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: '#f8f9fa',
-                  padding: '1.5rem',
-                  textAlign: 'center',
-                }}
-              >
-                <Text c="dimmed" size="sm">
-                  {imageMissingMessage}
-                </Text>
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <Text
+              size="sm"
+              c="dimmed"
+              ta="center"
+              mb="md"
+              style={{ minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              {imageMissingMessage}
+            </Text>
+          )}
 
           <Text size="sm" c="dimmed" ta="right" mb="lg">
             {submission.createdAt ? new Date(submission.createdAt).toLocaleDateString() : ''}
