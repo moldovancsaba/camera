@@ -39,12 +39,6 @@ import {
   upsertSubmissionTryOnLink,
 } from '@/lib/tryon/jobs';
 import { assertValidLeatherSuitId } from '@/lib/tryon/suits';
-import {
-  normalizeSubmissionEmailPolicy,
-  sendSubmissionResultEmailByPolicy,
-  dispatchPendingRelatedEmailForSubmission,
-} from '@/lib/email/submission-result-email';
-
 interface TryOnRequestDetails {
   requested: boolean;
   leatherSuitId: string | null;
@@ -344,60 +338,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           { projection: { notifications: 1, name: 1, tryOn: 1 } }
         )) as SubmissionEventDocument | null)
       : null;
-    const notificationPolicy = normalizeSubmissionEmailPolicy(eventPolicy?.notifications);
-    if (eventId && !eventPolicy) {
-      console.warn('[submissions] Email policy lookup missed event document.', { eventId });
-    }
-
-    const emailSource = {
-      userInfo: validatedUserInfo
-        ? {
-            name: validatedUserInfo.name,
-            email: validatedUserInfo.email,
-          }
-        : undefined,
-      userEmail: submission.userEmail,
-      userName: submission.userName,
-    };
-    const eventNameValue =
-      typeof eventName === 'string'
-        ? eventName
-        : typeof eventPolicy?.name === 'string'
-          ? eventPolicy.name
-          : null;
-
-    const afterSaveEmailResult = notificationPolicy.sendAfterSave
-      ? await sendSubmissionResultEmailByPolicy(
-          emailSource,
-          eventNameValue,
-          shareUrl,
-          notificationPolicy,
-          'after_save'
-        )
-      : { sent: false, shouldRetry: false, metadataPatch: {} };
-
-    let relatedEmailResult = null;
-    if (notificationPolicy.sendAfterRelatedPhotosReady) {
-      relatedEmailResult = await dispatchPendingRelatedEmailForSubmission(db, createdSubmission);
-    }
-
-    const mergedMetadataPatch: Record<string, unknown> = {
-      ...afterSaveEmailResult.metadataPatch,
-      ...(relatedEmailResult?.metadataPatch ?? {}),
-    };
-
-    await applySubmissionMetadataPatch(db, result.insertedId, mergedMetadataPatch);
-    createdSubmission.metadata = {
-      ...createdSubmission.metadata,
-      ...Object.fromEntries(
-        Object.entries(mergedMetadataPatch).map(([key, value]) => [
-          key.startsWith('metadata.')
-            ? key.replace(/^metadata\./, '')
-            : key,
-          value,
-        ])
-      ),
-    };
 
     if (tryOnRequest.requested) {
       created.tryOn.requested = true;

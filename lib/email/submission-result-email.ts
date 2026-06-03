@@ -352,6 +352,16 @@ export async function dispatchPendingRelatedEmailForSubmission(
   const event = await resolveEventForSubmission(db, sourceSubmission);
   const policy = normalizeSubmissionEmailPolicy(event?.notifications);
 
+  if (sourceSubmission.metadata?.emailSent) {
+    return {
+      sent: false,
+      shouldRetry: false,
+      metadataPatch: {
+        'metadata.emailSendAfterRelatedPending': false,
+      },
+    };
+  }
+
   if (!policy.enabled || !policy.sendAfterRelatedPhotosReady) {
     return null;
   }
@@ -392,4 +402,90 @@ export async function dispatchPendingRelatedEmailForSubmission(
   }
 
   return result;
+}
+
+export async function dispatchPendingSubmissionEmailForSubmission(
+  db: Db,
+  sourceSubmission: WithId<Submission>,
+  baseUrl = PUBLIC_BASE_URL
+): Promise<SendSubmissionEmailMetadataResult | null> {
+  const event = await resolveEventForSubmission(db, sourceSubmission);
+  const policy = normalizeSubmissionEmailPolicy(event?.notifications);
+
+  if (!policy.enabled) {
+    return null;
+  }
+
+  if (sourceSubmission.metadata?.emailSent) {
+    return {
+      sent: false,
+      shouldRetry: false,
+      metadataPatch: {
+        'metadata.emailSendAfterRelatedPending': false,
+      },
+    };
+  }
+
+  const submissionId = sourceSubmission._id.toString();
+  const shareUrl = buildSubmissionShareUrl(submissionId, baseUrl);
+  const eventName = event?.name || null;
+
+  const mergedResult: SendSubmissionEmailMetadataResult = {
+    sent: false,
+    shouldRetry: false,
+    metadataPatch: {},
+  };
+
+  if (policy.sendAfterSave && sourceSubmission.metadata?.emailSentAfterSave !== true) {
+    const afterSaveResult = await sendSubmissionResultEmailByPolicy(
+      sourceSubmission,
+      eventName,
+      shareUrl,
+      policy,
+      'after_save'
+    );
+
+    mergedResult.shouldRetry = mergedResult.shouldRetry || afterSaveResult.shouldRetry;
+    mergedResult.sent = mergedResult.sent || afterSaveResult.sent;
+    mergedResult.metadataPatch = {
+      ...mergedResult.metadataPatch,
+      ...afterSaveResult.metadataPatch,
+    };
+
+    if (afterSaveResult.sent) {
+      return {
+        ...mergedResult,
+        metadataPatch: {
+          ...mergedResult.metadataPatch,
+          'metadata.emailSendAfterRelatedPending': false,
+        },
+      };
+    }
+
+    // If there is no recipient we keep the request open and do not try related mode here.
+    if (afterSaveResult.metadataPatch['metadata.emailSkipReason'] === 'missing_recipient') {
+      return {
+        sent: false,
+        shouldRetry: false,
+        metadataPatch: {
+          ...mergedResult.metadataPatch,
+          'metadata.emailSendAfterRelatedPending': false,
+        },
+      };
+    }
+  }
+
+  if (policy.sendAfterRelatedPhotosReady) {
+    const relatedResult = await dispatchPendingRelatedEmailForSubmission(db, sourceSubmission, baseUrl);
+    if (relatedResult) {
+      mergedResult.shouldRetry = mergedResult.shouldRetry || relatedResult.shouldRetry;
+      mergedResult.sent = mergedResult.sent || relatedResult.sent;
+      mergedResult.metadataPatch = {
+        ...mergedResult.metadataPatch,
+        ...relatedResult.metadataPatch,
+      };
+    }
+  }
+
+  return mergedResult;
 }

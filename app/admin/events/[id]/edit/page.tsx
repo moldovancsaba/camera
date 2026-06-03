@@ -16,7 +16,6 @@ import {
   Breadcrumbs,
   Button,
   Checkbox,
-  Code,
   ColorInput,
   FileInput,
   Grid,
@@ -131,7 +130,6 @@ export default function EditEventPage({
   const [brandBorderColor, setBrandBorderColor] = useState(CAMERA_DEFAULT_BRAND_BORDER_COLOR);
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
-  const [submissionResultEmailEnabled, setSubmissionResultEmailEnabled] = useState(false);
   const [submissionResultEmailSendAfterSave, setSubmissionResultEmailSendAfterSave] = useState(true);
   const [submissionResultEmailSendAfterRelatedPhotosReady, setSubmissionResultEmailSendAfterRelatedPhotosReady] =
     useState(false);
@@ -196,14 +194,23 @@ export default function EditEventPage({
         setTryOnEnabled(Boolean(eventData.tryOn?.enabled));
         setApplyFrameToReturnedResults(Boolean(eventData.tryOn?.applyFrameToReturnedResults));
         setTryOnVettingEnabled(eventData.tryOn?.vettingEnabled !== false);
-        setSubmissionResultEmailEnabled(Boolean(eventData.notifications?.submissionResultEmailEnabled));
+        const emailModuleSettings = eventData.notifications;
+        const emailSendAfterSave = emailModuleSettings?.submissionResultEmailSendAfterSave;
+        const emailSendAfterRelatedPhotos = Boolean(
+          emailModuleSettings?.submissionResultEmailSendAfterRelatedPhotosReady
+        );
+        const emailModuleEnabled = Boolean(emailModuleSettings?.submissionResultEmailEnabled);
+        const hasEmailSendAfterSaveSetting =
+          typeof emailModuleSettings?.submissionResultEmailSendAfterSave === 'boolean';
+        const hasEmailSendAfterRelatedSetting =
+          typeof emailModuleSettings?.submissionResultEmailSendAfterRelatedPhotosReady === 'boolean';
         setSubmissionResultEmailSendAfterSave(
-          eventData.notifications?.submissionResultEmailSendAfterSave ??
-            Boolean(eventData.notifications?.submissionResultEmailEnabled)
+          emailSendAfterSave ??
+            (emailModuleEnabled &&
+            !hasEmailSendAfterSaveSetting &&
+            !hasEmailSendAfterRelatedSetting)
         );
-        setSubmissionResultEmailSendAfterRelatedPhotosReady(
-          Boolean(eventData.notifications?.submissionResultEmailSendAfterRelatedPhotosReady)
-        );
+        setSubmissionResultEmailSendAfterRelatedPhotosReady(emailSendAfterRelatedPhotos);
         setSubmissionResultEmailSubject(
           eventData.notifications?.submissionResultEmailSubject || DEFAULT_SUBMISSION_EMAIL_SUBJECT
         );
@@ -316,6 +323,9 @@ export default function EditEventPage({
       }
     }
 
+    const isEmailEnabled =
+      submissionResultEmailSendAfterSave || submissionResultEmailSendAfterRelatedPhotosReady;
+
     const data = {
       name: formData.get('name') as string,
       description: formData.get('description') as string,
@@ -337,7 +347,7 @@ export default function EditEventPage({
         resultSlideshowMode,
       },
       notifications: {
-        submissionResultEmailEnabled,
+        submissionResultEmailEnabled: isEmailEnabled,
         submissionResultEmailSendAfterSave,
         submissionResultEmailSendAfterRelatedPhotosReady,
         submissionResultEmailSubject,
@@ -429,6 +439,10 @@ export default function EditEventPage({
           </FormSection>
 
           <FormSection title="Event details">
+            <Checkbox name="isActive" defaultChecked={event?.isActive} label="Event status" />
+            <Text size="sm" c="dimmed" mt={-4}>
+              Inactive events will not be available for frame selection.
+            </Text>
             <TextInput name="name" label="Event name" required defaultValue={event?.name} />
             <Textarea
               name="description"
@@ -551,25 +565,8 @@ export default function EditEventPage({
             description="Optional email module. It does not add a visible page to the capture flow; it sends after a submission is saved."
           >
             <Checkbox
-              checked={submissionResultEmailEnabled}
-              onChange={(event) => {
-                const checked = event.currentTarget.checked;
-                setSubmissionResultEmailEnabled(checked);
-                if (
-                  checked &&
-                  !submissionResultEmailSendAfterSave &&
-                  !submissionResultEmailSendAfterRelatedPhotosReady
-                ) {
-                  setSubmissionResultEmailSendAfterSave(true);
-                }
-              }}
-              label="Email the user's result page link after save"
-              description="Requires a collected or authenticated email address. This is independent from the capture flow share-options screen."
-            />
-            <Checkbox
               checked={submissionResultEmailSendAfterSave}
               onChange={(event) => setSubmissionResultEmailSendAfterSave(event.currentTarget.checked)}
-              disabled={!submissionResultEmailEnabled}
               label="Send email immediately after save"
             />
             <Checkbox
@@ -577,7 +574,6 @@ export default function EditEventPage({
               onChange={(event) =>
                 setSubmissionResultEmailSendAfterRelatedPhotosReady(event.currentTarget.checked)
               }
-              disabled={!submissionResultEmailEnabled}
               label="Send email when related photos are ready"
               description="Useful for send-at-the-end behavior after approved try-on photos are available."
             />
@@ -585,14 +581,18 @@ export default function EditEventPage({
               label="Email subject"
               value={submissionResultEmailSubject}
               onChange={(event) => setSubmissionResultEmailSubject(event.currentTarget.value)}
-              disabled={!submissionResultEmailEnabled}
+              disabled={
+                !submissionResultEmailSendAfterSave && !submissionResultEmailSendAfterRelatedPhotosReady
+              }
               description={SUBMISSION_EMAIL_TEMPLATE_HELP}
             />
             <Textarea
               label="Email body"
               value={submissionResultEmailBody}
               onChange={(event) => setSubmissionResultEmailBody(event.currentTarget.value)}
-              disabled={!submissionResultEmailEnabled}
+              disabled={
+                !submissionResultEmailSendAfterSave && !submissionResultEmailSendAfterRelatedPhotosReady
+              }
               autosize
               minRows={6}
               description="Plain text only. Include {link} where the result page URL should appear."
@@ -641,13 +641,6 @@ export default function EditEventPage({
               minRows={2}
               description="Shown on the shareable result page when a try-on was requested but no approved result is available yet."
             />
-          </FormSection>
-
-          <FormSection title="Status">
-            <Checkbox name="isActive" defaultChecked={event?.isActive} label="Event is active (visible and usable)" />
-            <Text size="sm" c="dimmed">
-              Inactive events will not be available for frame selection.
-            </Text>
           </FormSection>
 
           <FormSection
@@ -737,10 +730,6 @@ export default function EditEventPage({
                 No suit allowlist selected.
               </Text>
             )}
-          </FormSection>
-
-          <FormSection title="Event ID" description="Used to reference the event across slideshow and submission flows.">
-            <Code block>{event?.eventId}</Code>
           </FormSection>
 
           <Group>

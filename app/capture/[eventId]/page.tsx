@@ -65,6 +65,10 @@ interface EventData {
     enabled: boolean;
     allowedLeatherSuitIds?: string[];
   };
+  notifications?: {
+    submissionResultEmailEnabled?: boolean;
+    submissionResultEmailSendAfterSave?: boolean;
+  };
 }
 
 interface EventFrameAssignment {
@@ -119,6 +123,13 @@ interface SubmissionEmailMetadata {
   emailSkipReason?: string | null;
   emailFailedAt?: string | null;
   emailError?: string | null;
+  emailSendAfterRelatedPending?: boolean;
+}
+
+interface AuthenticatedCaptureUser {
+  id: string;
+  name?: string;
+  email: string;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -163,10 +174,13 @@ function buildEmailDeliveryNotice(metadata?: SubmissionEmailMetadata | null): st
     return 'Email module is disabled for this event.';
   }
   if (metadata.emailSkipReason === 'missing_recipient') {
-    return 'Email was not sent because no email address was collected.';
+    return 'Email will be sent once the event is completed and guest email is collected.';
   }
   if (metadata.emailSkipReason === 'missing_api_key') {
     return 'Email was not sent because RESEND API key is not configured.';
+  }
+  if (metadata.emailSendAfterRelatedPending) {
+    return 'Email is waiting for related photos to become ready.';
   }
   if (metadata.emailFailedAt && metadata.emailError) {
     return `Email failed: ${metadata.emailError}`;
@@ -196,6 +210,10 @@ export default function EventCapturePage({
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
   /** Intrinsic frame bitmap aspect (w/h); preview matches composite via `previewAspectWidthOverHeight`. */
   const [frameIntrinsicAspect, setFrameIntrinsicAspect] = useState<number | null>(null);
+  const [savedSubmissionId, setSavedSubmissionId] = useState<string | null>(null);
+  const [isFinalizingSubmission, setIsFinalizingSubmission] = useState(false);
+  const [isUpdatingContact, setIsUpdatingContact] = useState(false);
+  const [hasFinalizedSubmissionEmail, setHasFinalizedSubmissionEmail] = useState(false);
 
   // Custom page flow state
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
@@ -671,6 +689,8 @@ export default function EventCapturePage({
       if (!submissionId) {
         throw new Error('Save succeeded but no submission id was returned');
       }
+      setSavedSubmissionId(submissionId);
+      setHasFinalizedSubmissionEmail(false);
       const emailNotice = buildEmailDeliveryNotice(data.data?.submission?.metadata);
       const finalSuccessMessage = emailNotice
         ? `${successMessage}\n${emailNotice}`
@@ -684,6 +704,59 @@ export default function EventCapturePage({
       alert(`${errorSaveMessage.replace(': Please try again.', '')}: ${getErrorMessage(error)}`);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const updateSubmissionContact = async (submissionId: string, userInfo: WhoAreYouPageData) => {
+    try {
+      const response = await fetch(`/api/submissions/${submissionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_user_info',
+          userInfo,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('Could not persist guest contact on submission:', response.status, errorData);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.warn('Could not persist guest contact on submission:', error);
+      return false;
+    }
+  };
+
+  const finalizeSubmissionEmail = async (submissionId: string) => {
+    if (isFinalizingSubmission || hasFinalizedSubmissionEmail) {
+      return false;
+    }
+
+    setIsFinalizingSubmission(true);
+    try {
+      const response = await fetch(`/api/submissions/${submissionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'finalize' }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('Could not finalize submission email dispatch:', response.status, errorData);
+        return false;
+      }
+
+      setHasFinalizedSubmissionEmail(true);
+      return true;
+    } catch (error) {
+      console.warn('Could not finalize submission email dispatch:', error);
+      return false;
+    } finally {
+      setIsFinalizingSubmission(false);
     }
   };
 
@@ -729,6 +802,10 @@ export default function EventCapturePage({
   };
 
   const handleReset = () => {
+    if (savedSubmissionId && shareUrl && !hasFinalizedSubmissionEmail) {
+      void finalizeSubmissionEmail(savedSubmissionId);
+    }
+
     // Keep selected frame and go back to capture step
     setCapturedImage(null);
     setCompositeImage(null);
@@ -736,6 +813,8 @@ export default function EventCapturePage({
     setTryOnResult(null);
     setSelectedTryOnSuitId(null);
     setStep('capture-photo');
+    setSavedSubmissionId(null);
+    setHasFinalizedSubmissionEmail(false);
   };
   
   // Custom page navigation handlers
@@ -756,11 +835,21 @@ export default function EventCapturePage({
    * Handle completion of Who Are You page
    * Stores user info and moves to next page
    */
-  const handleWhoAreYouComplete = (data: WhoAreYouPageData) => {
+  const handleWhoAreYouComplete = async (data: WhoAreYouPageData) => {
     setCollectedData(prev => ({
       ...prev,
       userInfo: data,
     }));
+
+    if (savedSubmissionId) {
+      setIsUpdatingContact(true);
+      try {
+        await updateSubmissionContact(savedSubmissionId, data);
+      } finally {
+        setIsUpdatingContact(false);
+      }
+    }
+
     handleNextPage();
   };
   
@@ -826,6 +915,9 @@ export default function EventCapturePage({
       setCurrentPageIndex(0);
     } else {
       // No thank you pages, restart
+      if (savedSubmissionId && shareUrl && !hasFinalizedSubmissionEmail) {
+        void finalizeSubmissionEmail(savedSubmissionId);
+      }
       handleRestartFlow();
     }
   };
@@ -835,6 +927,10 @@ export default function EventCapturePage({
    * Resets all state and goes back to first page or capture
    */
   const handleRestartFlow = () => {
+    if (savedSubmissionId && shareUrl && !hasFinalizedSubmissionEmail) {
+      void finalizeSubmissionEmail(savedSubmissionId);
+    }
+
     // Reset capture state
     setCapturedImage(null);
     setCompositeImage(null);
@@ -853,6 +949,10 @@ export default function EventCapturePage({
       // Multiple frames: reset selection, will show selector during flow
       setSelectedFrame(null);
     }
+
+    setSavedSubmissionId(null);
+    setHasFinalizedSubmissionEmail(false);
+    setIsFinalizingSubmission(false);
     
     // Reset flow state
     setCollectedData({ consents: [] });
