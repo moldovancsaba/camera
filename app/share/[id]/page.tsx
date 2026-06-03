@@ -52,6 +52,7 @@ interface ShareVariantCard {
   id: string;
   imageUrl: string;
   label: string;
+  isTryOn?: boolean;
 }
 
 async function resolveEventForSubmission(
@@ -98,8 +99,7 @@ function buildTryOnVariantCards(
     tryOnLeatherSuitId?: string | null;
     metadata?: unknown;
   },
-  settings: EventSharePageSettings,
-  currentSubmissionId: string
+  settings: EventSharePageSettings
 ): ShareVariantCard[] {
   const id = variant._id?.toString() ?? '';
   const metadata = variant.metadata && typeof variant.metadata === 'object'
@@ -116,15 +116,17 @@ function buildTryOnVariantCards(
       id: `${id}:tryon-generated`,
       imageUrl: rawResultUrl,
       label: `${suitLabel} - generated`,
+      isTryOn: true,
     });
   }
 
-  if (resultUrl && id !== currentSubmissionId) {
+  if (resultUrl) {
     if (isFramed && settings.includeFramedTryOnResult) {
       cards.push({
         id: `${id}:tryon-framed`,
         imageUrl: resultUrl,
         label: `${suitLabel} - with frame`,
+        isTryOn: true,
       });
     }
 
@@ -133,6 +135,7 @@ function buildTryOnVariantCards(
         id: `${id}:tryon-result`,
         imageUrl: resultUrl,
         label: suitLabel,
+        isTryOn: true,
       });
     }
   }
@@ -192,8 +195,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SharePage({ params }: Props) {
   let submission: ShareSubmission | null = null;
-  let shareVariants: ShareVariantCard[] = [];
-  let sourceOriginalVariant: ShareVariantCard | null = null;
+  const shareVariants: ShareVariantCard[] = [];
+  const addUniqueShareVariant = (variant: ShareVariantCard) => {
+    if (!shareVariants.some((item) => item.id === variant.id)) {
+      shareVariants.push(variant);
+    }
+  };
   
   try {
     const { id } = await params;
@@ -273,52 +280,90 @@ export default async function SharePage({ params }: Props) {
       : currentSubmissionId;
 
   if (sourceSubmissionId) {
+    let sourceDoc: Record<string, unknown> | null = null;
+
     if (
-      sharePageSettings.includeCameraResult &&
       submission.submissionKind === 'tryon_result' &&
       submission.sourceSubmissionId &&
       ObjectId.isValid(submission.sourceSubmissionId)
     ) {
-      const sourceDoc = await db
+      const foundSourceDoc = await db
         .collection(COLLECTIONS.SUBMISSIONS)
         .findOne({ _id: new ObjectId(submission.sourceSubmissionId) });
-      if (sourceDoc && typeof sourceDoc.imageUrl === 'string') {
-        sourceOriginalVariant = {
-          id: sourceDoc._id!.toString(),
-          imageUrl: sourceDoc.imageUrl,
-          label: 'Photo with Camera frame',
-        };
+      if (foundSourceDoc) {
+        sourceDoc = foundSourceDoc as Record<string, unknown>;
       }
     }
 
-    if (
-      sharePageSettings.includeOriginalCapture &&
-      submission.submissionKind !== 'tryon_result' &&
-      submission.tryOnRequest?.sourceImageUrl
-    ) {
-      shareVariants.push({
-        id: `${currentSubmissionId}:original-capture`,
-        imageUrl: submission.tryOnRequest.sourceImageUrl,
+    const submissionImage = readString(submission.imageUrl);
+    const sourceImageUrl = readString(
+      sourceDoc && typeof sourceDoc.tryOnRequest === 'object' && sourceDoc.tryOnRequest !== null
+        ? (sourceDoc.tryOnRequest as { sourceImageUrl?: unknown }).sourceImageUrl
+        : submission.tryOnRequest?.sourceImageUrl
+    );
+
+    if (sharePageSettings.includeCameraResult) {
+      if (submission.submissionKind === 'original') {
+        if (submissionImage) {
+          addUniqueShareVariant({
+            id: `${currentSubmissionId}:camera-result`,
+            imageUrl: submissionImage,
+            label: 'Photo with Camera frame',
+          });
+        }
+      } else if (sourceDoc && typeof sourceDoc.imageUrl === 'string' && sourceDoc.imageUrl.trim()) {
+        const sourceResultImage = readString(
+          typeof sourceDoc?.imageUrl === 'string' ? sourceDoc.imageUrl : null
+        );
+        if (sourceResultImage) {
+          addUniqueShareVariant({
+            id: `${submission.sourceSubmissionId}:camera-result`,
+            imageUrl: sourceResultImage,
+            label: 'Photo with Camera frame',
+          });
+        }
+      }
+    }
+
+    if (sharePageSettings.includeOriginalCapture && sourceImageUrl) {
+      addUniqueShareVariant({
+        id: `${(submission.submissionKind === 'original' ? currentSubmissionId : submission.sourceSubmissionId) ?? currentSubmissionId}:original-capture`,
+        imageUrl: sourceImageUrl,
         label: 'Original photo taken',
       });
     }
 
     if (showApprovedTryOnRelatedPhotos) {
       const variants = await listApprovedShareVariants(db, sourceSubmissionId);
-      shareVariants = [
-        ...shareVariants,
-        ...variants.flatMap((variant) =>
-          buildTryOnVariantCards(variant, sharePageSettings, currentSubmissionId)
-        ),
-      ];
+      variants.forEach((variant) => {
+        buildTryOnVariantCards(variant, sharePageSettings).forEach((card) => {
+          addUniqueShareVariant(card);
+        });
+      });
     }
   }
 
+  const displayVariants = shareVariants.filter((variant) => {
+    if (variant.id.endsWith(':original-capture') && !sharePageSettings.includeOriginalCapture) {
+      return false;
+    }
+    if (variant.id.endsWith(':camera-result') && !sharePageSettings.includeCameraResult) {
+      return false;
+    }
+    return true;
+  });
+
+  const featuredVariant = displayVariants[0] ?? null;
+  const galleryVariants = featuredVariant ? displayVariants.slice(1) : displayVariants;
+  const hasTryOnVariant = displayVariants.some((variant) => variant.isTryOn);
+  const downloadableImageUrl = featuredVariant?.imageUrl ?? submission.imageUrl;
+
   const showPendingTryOnMessage =
     submission.submissionKind !== 'tryon_result' &&
+    (sharePageSettings.includeTryOnResult || sharePageSettings.includeFramedTryOnResult) &&
     Boolean(submission.tryOnRequest?.requested) &&
     !submission.tryOnRequest?.shareVisible &&
-    shareVariants.every((variant) => !variant.id.includes('tryon-'));
+    !hasTryOnVariant;
 
   // `/capture/[eventId]` expects the event document Mongo `_id`, while submissions often store public `eventId` UUID in `eventIds` / `eventId`.
   let createYourOwnHref = '/capture';
@@ -349,19 +394,22 @@ export default async function SharePage({ params }: Props) {
               overflow: 'hidden',
               marginBottom: 16,
               marginInline: 'auto',
-              aspectRatio: submission.metadata?.finalWidth && submission.metadata?.finalHeight 
-                ? `${submission.metadata.finalWidth} / ${submission.metadata.finalHeight}`
-                : '1',
+              aspectRatio:
+                featuredVariant && submission.metadata?.finalWidth && submission.metadata?.finalHeight
+                  ? `${submission.metadata.finalWidth} / ${submission.metadata.finalHeight}`
+                  : '1',
               maxWidth: '100%',
             }}
           >
-            <Image
-              src={submission.imageUrl}
-              alt="Shared photo"
-              fill
-              className="object-contain"
-              unoptimized
-            />
+            {featuredVariant ? (
+              <Image
+                src={featuredVariant.imageUrl}
+                alt={featuredVariant.label}
+                fill
+                className="object-contain"
+                unoptimized
+              />
+            ) : null}
           </div>
 
           <Text size="sm" c="dimmed" ta="right" mb="lg">
@@ -369,7 +417,7 @@ export default async function SharePage({ params }: Props) {
           </Text>
 
           <Group gap="md" grow>
-            <Button component="a" href={submission.imageUrl} download target="_blank" rel="noopener noreferrer" size="lg">
+            <Button component="a" href={downloadableImageUrl} download target="_blank" rel="noopener noreferrer" size="lg">
               Download
             </Button>
             <Button component="a" href={createYourOwnHref} variant="default" size="lg">
@@ -383,32 +431,15 @@ export default async function SharePage({ params }: Props) {
             </Alert>
           ) : null}
 
-          {sourceOriginalVariant || shareVariants.length > 0 ? (
+          {galleryVariants.length > 0 ? (
             <Stack gap="md" mt="xl">
               <Text fw={700}>
-                {submission.submissionKind === 'tryon_result' ? 'Original and approved try-on results' : 'Approved try-on results'}
+                {sharePageSettings.includeTryOnResult || sharePageSettings.includeFramedTryOnResult
+                  ? 'Related photos'
+                  : 'Related photos'}
               </Text>
               <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-                {sourceOriginalVariant ? (
-                  <Card
-                    component="a"
-                    key={sourceOriginalVariant.id}
-                    href={`/share/${sourceOriginalVariant.id}`}
-                    withBorder
-                    padding={0}
-                    style={{ textDecoration: 'none', color: 'inherit', overflow: 'hidden' }}
-                  >
-                    <div style={{ position: 'relative', aspectRatio: '1' }}>
-                      <Image src={sourceOriginalVariant.imageUrl} alt={sourceOriginalVariant.label} fill unoptimized className="object-cover" />
-                    </div>
-                    <div style={{ padding: '0.875rem' }}>
-                      <Text fw={600} size="sm">
-                        {sourceOriginalVariant.label}
-                      </Text>
-                    </div>
-                  </Card>
-                ) : null}
-                {shareVariants.map((variant) => (
+                {galleryVariants.map((variant) => (
                   <Card
                     component="a"
                     key={variant.id}
