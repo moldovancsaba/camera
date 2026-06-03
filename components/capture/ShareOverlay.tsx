@@ -1,7 +1,7 @@
 'use client';
 
 import { PublicFlowShell } from '@doneisbetter/gds-core/client';
-import { Anchor, Button, Group, Stack, Text, TextInput } from '@mantine/core';
+import { Alert, Anchor, Button, Group, Stack, Text, TextInput } from '@mantine/core';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
 
 interface TryOnStatus {
@@ -36,29 +36,21 @@ function TryOnStatusNotice({ tryOnResult }: { tryOnResult?: TryOnStatus | null }
     tryOnResult.status === 'queued' || tryOnResult.status === 'deduplicated';
 
   return (
-    <div
-      className={
-        isQueued
-          ? 'rounded-xl border border-sky-500/40 bg-sky-500/10 px-4 py-3 text-sm text-sky-100'
-          : 'rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
-      }
-    >
+    <Alert color={isQueued ? 'blue' : 'yellow'} variant="light">
       {isQueued ? (
         <>
-          <p className="font-semibold">Try-on queued</p>
-          <p className="mt-1">
-            Job ID: <span className="font-mono">{tryOnResult.jobId}</span>
-          </p>
+          <Text fw={700}>Try-on queued</Text>
+          <Text size="sm">Job ID: {tryOnResult.jobId}</Text>
         </>
       ) : (
         <>
-          <p className="font-semibold">Try-on was not queued</p>
-          <p className="mt-1">
+          <Text fw={700}>Try-on was not queued</Text>
+          <Text size="sm">
             {tryOnResult.error || 'The image was saved, but the try-on queue step failed.'}
-          </p>
+          </Text>
         </>
       )}
-    </div>
+    </Alert>
   );
 }
 
@@ -83,7 +75,7 @@ export default function ShareOverlay({
     ? 'absolute inset-0 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm'
     : '';
   const panelClassName = overlay
-    ? 'w-full max-w-xl rounded-3xl border border-white/10 bg-black/80 p-6 text-left shadow-2xl backdrop-blur-xl'
+    ? 'w-full max-w-xl text-left'
     : '';
 
   return (
@@ -106,13 +98,6 @@ export default function ShareOverlay({
                         className="min-w-0 flex-1"
                         size="md"
                         radius="md"
-                        styles={{
-                          input: {
-                            backgroundColor: overlay ? 'var(--mantine-color-dark-8)' : undefined,
-                            color: overlay ? 'var(--mantine-color-white)' : undefined,
-                            borderColor: overlay ? 'var(--mantine-color-dark-4)' : undefined,
-                          },
-                        }}
                       />
                       <Button
                         type="button"
@@ -137,15 +122,15 @@ export default function ShareOverlay({
                       </Button>
                     </Anchor>
 
-                    <Text ta="center" size="xs" c={overlay ? 'gray.3' : 'dimmed'}>
+                    <Text ta="center" size="xs" c="dimmed">
                       {suggestedMessageLabel}{' '}
-                      <Text component="span" fw={500} c={overlay ? 'white' : undefined}>
+                      <Text component="span" fw={500}>
                         {shareCaption}
                       </Text>
                     </Text>
                   </>
                 ) : completionMessage ? (
-                  <Text c={overlay ? 'gray.3' : 'dimmed'}>{completionMessage}</Text>
+                  <Text c="dimmed">{completionMessage}</Text>
                 ) : null}
 
                 <TryOnStatusNotice tryOnResult={tryOnResult} />
