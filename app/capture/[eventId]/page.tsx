@@ -899,9 +899,7 @@ export default function EventCapturePage({
                 className="object-contain"
               />
             </div>
-          ) : (
-            <div className="text-6xl mb-4">⏳</div>
-          )}
+          ) : null}
           <p className=" text-2xl">{event?.loadingText || 'Loading event...'}</p>
         </div>
       </div>
@@ -912,7 +910,6 @@ export default function EventCapturePage({
     return (
       <div className="flex min-h-screen items-center justify-center bg-transparent p-4">
         <div className="text-center max-w-md">
-          <div className="text-6xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold  mb-2">
             Event Not Found
           </h2>
@@ -1069,7 +1066,7 @@ export default function EventCapturePage({
                   radius="md"
                   variant="light"
                 >
-                  🔄 {changeButtonText}
+                  {changeButtonText}
                 </Button>
               </div>
             )}
@@ -1148,12 +1145,8 @@ export default function EventCapturePage({
                             unoptimized
                             className="animate-pulse object-contain"
                           />
-                        ) : (
-                          <span className="text-3xl animate-spin">⏳</span>
-                        )
-                      ) : (
-                        <span className="text-3xl">❤️</span>
-                      )}
+                        ) : null
+                      ) : null}
                       <span className="text-xl">{isSaving ? 'SAVING...' : captureButtonText}</span>
                     </Button>
                     <Button
@@ -1165,7 +1158,6 @@ export default function EventCapturePage({
                       variant="light"
                       className="shadow-2xl"
                     >
-                      <span className="text-3xl">🔄</span>
                       <span className="text-xl">{retryButtonText}</span>
                     </Button>
                   </div>
@@ -1222,9 +1214,7 @@ export default function EventCapturePage({
                 unoptimized
                 className="mx-auto mb-4 animate-pulse object-contain"
               />
-            ) : (
-              <div className="text-6xl mb-4 animate-spin">⏳</div>
-            )}
+            ) : null}
             <p className="  font-medium">
               Applying frame...
             </p>
