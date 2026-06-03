@@ -421,15 +421,17 @@ export default async function SharePage({ params }: Props) {
         });
       });
 
-      if (sharePageSettings.includeCheckedInTryOnResult) {
-        const checkedInVariant = pickFirstCheckedInTryOnVariantCard(
-          variantCandidates,
-          sharePageSettings
-        );
-        if (checkedInVariant) {
-          addUniqueShareVariant(checkedInVariant);
+    if (sharePageSettings.includeCheckedInTryOnResult) {
+      const checkedInVariant = pickFirstCheckedInTryOnVariantCard(
+        variantCandidates,
+        sharePageSettings
+      );
+      if (checkedInVariant) {
+        if (!shareVariants.some((variant) => variant.id === checkedInVariant.id)) {
+          shareVariants.unshift(checkedInVariant);
         }
       }
+    }
     }
   }
 

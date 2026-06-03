@@ -275,7 +275,10 @@ async function resolveShareImageUrlByVariantId(
         sharePageSettings
       );
       if (checkedInVariant) {
-        addUniqueShareVariant(checkedInVariant);
+        const alreadyExists = shareVariants.some((variant) => variant.id === checkedInVariant.id);
+        if (!alreadyExists) {
+          shareVariants.unshift(checkedInVariant);
+        }
       }
     }
   }
