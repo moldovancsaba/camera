@@ -1094,6 +1094,7 @@ export default function EventCapturePage({
                 promptTitle={cameraPromptTitle}
                 promptDescription={cameraPromptDescription}
                 buttonSize={eventButtonSize}
+                autoStart
               />
             </div>
           </div>

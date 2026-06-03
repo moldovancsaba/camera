@@ -74,6 +74,8 @@ export interface CameraCaptureProps {
   showRetake?: boolean;
   /** Event-level GDS button size for text controls. */
   buttonSize?: EventButtonSize;
+  /** Start getUserMedia as soon as the camera step mounts. Falls back to the manual prompt if blocked. */
+  autoStart?: boolean;
 }
 
 export default function CameraCapture({ 
@@ -94,10 +96,11 @@ export default function CameraCapture({
   tripleBarExtra,
   showRetake = true,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
+  autoStart = false,
 }: CameraCaptureProps) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(autoStart);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>(initialFacingMode);
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -110,6 +113,7 @@ export default function CameraCapture({
   const containerRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const startRequestRef = useRef(0);
+  const autoStartAttemptedRef = useRef(false);
 
   const isMobileDevice = useCallback(() => {
     if (typeof navigator === 'undefined') {
@@ -543,6 +547,15 @@ export default function CameraCapture({
     setCapturedImage(null);
     startCamera(facingMode);
   };
+
+  useEffect(() => {
+    if (!autoStart || autoStartAttemptedRef.current) {
+      return;
+    }
+
+    autoStartAttemptedRef.current = true;
+    void startCamera(facingMode);
+  }, [autoStart, facingMode]);
 
   /**
    * Calculate container size to match the target aspect ratio.
