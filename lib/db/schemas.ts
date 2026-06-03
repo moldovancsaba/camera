@@ -250,6 +250,7 @@ export interface Event {
     includeCameraResult?: boolean; // Camera result saved by the capture flow, usually with frame
     includeTryOnResult?: boolean; // Approved raw try-on result, when available
     includeFramedTryOnResult?: boolean; // Approved try-on result with Camera frame applied, when available
+    includeCheckedInTryOnResult?: boolean; // Approved checked-in try-on result to prioritize on share pages
     showCreateYourOwnButton?: boolean; // Whether the share page displays a "Create Your Own" CTA back to capture
     pendingTryOnMessage?: string | null; // Message shown on share page while requested try-on result is not available
   };

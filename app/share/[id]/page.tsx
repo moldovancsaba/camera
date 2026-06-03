@@ -22,6 +22,7 @@ import {
 import {
   type ShareVariantCard,
   limitShareVariantsToConfiguredMode,
+  pickFirstCheckedInTryOnVariantCard,
 } from '@/lib/tryon/share-page-variants';
 
 interface Props {
@@ -58,9 +59,23 @@ const FALLBACK_SHARE_PAGE_SETTINGS: EventSharePageSettings = {
   includeCameraResult: true,
   includeTryOnResult: false,
   includeFramedTryOnResult: false,
+  includeCheckedInTryOnResult: false,
   showCreateYourOwnButton: false,
   pendingTryOnMessage: DEFAULT_PENDING_TRYON_MESSAGE,
 };
+
+interface TryOnVariantLike {
+  _id?: {
+    toString: () => string;
+  };
+  imageUrl?: string | null;
+  finalImageUrl?: string | null;
+  tryOnLeatherSuitId?: string | null;
+  metadata?: {
+    compositionEngine?: unknown;
+    tryOnRawResultUrl?: unknown;
+  } | null;
+}
 
 function getSubmissionEventLookupKeys(submission: Record<string, unknown>): string[] {
   const candidates = [
@@ -121,13 +136,7 @@ function readString(value: unknown): string | null {
 }
 
 function buildTryOnVariantCards(
-  variant: {
-    _id?: { toString: () => string };
-    imageUrl?: string | null;
-    finalImageUrl?: string | null;
-    tryOnLeatherSuitId?: string | null;
-    metadata?: unknown;
-  },
+  variant: TryOnVariantLike,
   settings: EventSharePageSettings
 ): ShareVariantCard[] {
   const id = variant._id?.toString() ?? '';
@@ -308,7 +317,9 @@ export default async function SharePage({ params }: Props) {
   const event = await resolveEventForSubmission(db, submission as unknown as Record<string, unknown>);
   const sharePageSettings = event?.sharePageSettings ?? FALLBACK_SHARE_PAGE_SETTINGS;
   const showApprovedTryOnRelatedPhotos =
-    sharePageSettings.includeTryOnResult || sharePageSettings.includeFramedTryOnResult;
+    sharePageSettings.includeTryOnResult ||
+    sharePageSettings.includeFramedTryOnResult ||
+    sharePageSettings.includeCheckedInTryOnResult;
   const currentSubmissionId = submission.id ?? '';
   const sourceSubmissionId =
     submission.submissionKind === 'tryon_result' && submission.sourceSubmissionId
@@ -371,29 +382,53 @@ export default async function SharePage({ params }: Props) {
 
     if (showApprovedTryOnRelatedPhotos) {
       const variants = await listApprovedShareVariants(db, sourceSubmissionId);
-      variants.forEach((variant) => {
+      const variantCandidates: TryOnVariantLike[] = variants.map((variant) => ({
+        _id: { toString: () => variant._id.toString() },
+        imageUrl: variant.imageUrl,
+        finalImageUrl: variant.finalImageUrl,
+        tryOnLeatherSuitId: variant.tryOnLeatherSuitId ?? null,
+        metadata:
+          variant.metadata && typeof variant.metadata === 'object'
+            ? {
+                compositionEngine: (variant.metadata as { compositionEngine?: unknown }).compositionEngine,
+                tryOnRawResultUrl: (variant.metadata as { tryOnRawResultUrl?: unknown }).tryOnRawResultUrl,
+              }
+            : null,
+      }));
+
+      const selfVariant: TryOnVariantLike | null =
+        submission.submissionKind === 'tryon_result' &&
+        (submission.reviewStatus === 'approved' || Boolean(submission.isShareVisible))
+          ? {
+              _id: { toString: () => currentSubmissionId },
+              imageUrl: submission.imageUrl,
+              finalImageUrl: submission.imageUrl,
+              tryOnLeatherSuitId: submission.tryOnLeatherSuitId,
+              metadata: {
+                compositionEngine: submission.metadata?.compositionEngine,
+                tryOnRawResultUrl: submission.metadata?.tryOnRawResultUrl,
+              },
+            }
+          : null;
+
+      if (selfVariant) {
+        variantCandidates.push(selfVariant);
+      }
+
+      variantCandidates.forEach((variant) => {
         buildTryOnVariantCards(variant, sharePageSettings).forEach((card) => {
           addUniqueShareVariant(card);
         });
       });
 
-      if (
-        submission.submissionKind === 'tryon_result' &&
-        (submission.reviewStatus === 'approved' || Boolean(submission.isShareVisible))
-      ) {
-        const variant = {
-          _id: { toString: () => currentSubmissionId },
-          imageUrl: submission.imageUrl,
-          tryOnLeatherSuitId: submission.tryOnLeatherSuitId,
-          metadata: {
-            compositionEngine: submission.metadata?.compositionEngine,
-            tryOnRawResultUrl: submission.metadata?.tryOnRawResultUrl,
-          },
-        } as const;
-
-        buildTryOnVariantCards(variant, sharePageSettings).forEach((card) => {
-          addUniqueShareVariant(card);
-        });
+      if (sharePageSettings.includeCheckedInTryOnResult) {
+        const checkedInVariant = pickFirstCheckedInTryOnVariantCard(
+          variantCandidates,
+          sharePageSettings
+        );
+        if (checkedInVariant) {
+          addUniqueShareVariant(checkedInVariant);
+        }
       }
     }
   }
@@ -421,7 +456,9 @@ export default async function SharePage({ params }: Props) {
 
   const showPendingTryOnMessage =
     submission.submissionKind !== 'tryon_result' &&
-    (sharePageSettings.includeTryOnResult || sharePageSettings.includeFramedTryOnResult) &&
+    (sharePageSettings.includeTryOnResult ||
+      sharePageSettings.includeFramedTryOnResult ||
+      sharePageSettings.includeCheckedInTryOnResult) &&
     Boolean(submission.tryOnRequest?.requested) &&
     !hasTryOnVariant;
 

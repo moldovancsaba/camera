@@ -7,6 +7,7 @@ import { listApprovedShareVariants } from '@/lib/tryon/publication';
 import {
   type ShareVariantCard,
   limitShareVariantsToConfiguredMode,
+  pickFirstCheckedInTryOnVariantCard,
 } from '@/lib/tryon/share-page-variants';
 import {
   DEFAULT_EVENT_SHARE_PAGE_SETTINGS,
@@ -40,9 +41,23 @@ const FALLBACK_SHARE_PAGE_SETTINGS: EventSharePageSettings = {
   includeCameraResult: true,
   includeTryOnResult: false,
   includeFramedTryOnResult: false,
+  includeCheckedInTryOnResult: false,
   showCreateYourOwnButton: false,
   pendingTryOnMessage: DEFAULT_EVENT_SHARE_PAGE_SETTINGS.pendingTryOnMessage,
 };
+
+interface TryOnVariantLike {
+  _id?: {
+    toString: () => string;
+  };
+  imageUrl?: string | null;
+  finalImageUrl?: string | null;
+  tryOnLeatherSuitId?: string | null;
+  metadata?: {
+    compositionEngine?: unknown;
+    tryOnRawResultUrl?: unknown;
+  } | null;
+}
 
 function getSubmissionEventLookupKeys(submission: Record<string, unknown>): string[] {
   const candidates = [
@@ -102,13 +117,7 @@ async function resolveEventForSubmission(
 }
 
 function buildTryOnVariantCards(
-  variant: {
-    _id?: { toString: () => string };
-    imageUrl?: string | null;
-    finalImageUrl?: string | null;
-    tryOnLeatherSuitId?: string | null;
-    metadata?: unknown;
-  },
+  variant: TryOnVariantLike,
   settings: EventSharePageSettings
 ): ShareVariantCard[] {
   const id = variant._id?.toString() ?? '';
@@ -168,7 +177,9 @@ async function resolveShareImageUrlByVariantId(
   const event = await resolveEventForSubmission(db, submission as unknown as Record<string, unknown>);
   const sharePageSettings = event?.sharePageSettings ?? FALLBACK_SHARE_PAGE_SETTINGS;
   const showApprovedTryOnRelatedPhotos =
-    sharePageSettings.includeTryOnResult || sharePageSettings.includeFramedTryOnResult;
+    sharePageSettings.includeTryOnResult ||
+    sharePageSettings.includeFramedTryOnResult ||
+    sharePageSettings.includeCheckedInTryOnResult;
 
   const sourceSubmissionId =
     submission.submissionKind === 'tryon_result' && submission.sourceSubmissionId
@@ -223,17 +234,25 @@ async function resolveShareImageUrlByVariantId(
 
   if (showApprovedTryOnRelatedPhotos) {
     const variants = await listApprovedShareVariants(db, sourceSubmissionId);
-    variants.forEach((variant) => {
-      buildTryOnVariantCards(variant, sharePageSettings).forEach((card) => {
-        addUniqueShareVariant(card);
-      });
-    });
+    const variantCandidates: TryOnVariantLike[] = variants.map((variant) => ({
+      _id: { toString: () => variant._id.toString() },
+      imageUrl: variant.imageUrl,
+      finalImageUrl: variant.finalImageUrl,
+      tryOnLeatherSuitId: variant.tryOnLeatherSuitId ?? null,
+      metadata:
+        variant.metadata && typeof variant.metadata === 'object'
+          ? {
+              compositionEngine: (variant.metadata as { compositionEngine?: unknown }).compositionEngine,
+              tryOnRawResultUrl: (variant.metadata as { tryOnRawResultUrl?: unknown }).tryOnRawResultUrl,
+            }
+          : null,
+    }));
 
     if (
       submission.submissionKind === 'tryon_result' &&
       (submission.reviewStatus === 'approved' || Boolean(submission.isShareVisible))
     ) {
-      const variant = {
+      variantCandidates.push({
         _id: { toString: () => currentSubmissionId },
         imageUrl: submission.imageUrl,
         tryOnLeatherSuitId: submission.tryOnLeatherSuitId,
@@ -241,11 +260,23 @@ async function resolveShareImageUrlByVariantId(
           compositionEngine: submission.metadata?.compositionEngine,
           tryOnRawResultUrl: submission.metadata?.tryOnRawResultUrl,
         },
-      } as const;
+      });
+    }
 
+    variantCandidates.forEach((variant) => {
       buildTryOnVariantCards(variant, sharePageSettings).forEach((card) => {
         addUniqueShareVariant(card);
       });
+    });
+
+    if (sharePageSettings.includeCheckedInTryOnResult) {
+      const checkedInVariant = pickFirstCheckedInTryOnVariantCard(
+        variantCandidates,
+        sharePageSettings
+      );
+      if (checkedInVariant) {
+        addUniqueShareVariant(checkedInVariant);
+      }
     }
   }
 
@@ -299,7 +330,7 @@ export async function GET(
     }
 
     const sourceSubmissionId = readString(doc.sourceSubmissionId);
-  const submission: ShareSubmission = {
+    const submission: ShareSubmission = {
       id: String(doc._id),
       imageUrl: readString(doc.imageUrl),
       submissionKind:

@@ -97,6 +97,7 @@ interface EventRecord {
     includeCameraResult?: boolean;
     includeTryOnResult?: boolean;
     includeFramedTryOnResult?: boolean;
+    includeCheckedInTryOnResult?: boolean;
     showCreateYourOwnButton?: boolean;
     pendingTryOnMessage?: string | null;
   };
@@ -156,6 +157,9 @@ export default function EditEventPage({
   );
   const [includeFramedTryOnResult, setIncludeFramedTryOnResult] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeFramedTryOnResult
+  );
+  const [includeCheckedInTryOnResult, setIncludeCheckedInTryOnResult] = useState(
+    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeCheckedInTryOnResult
   );
   const [showCreateYourOwnButton, setShowCreateYourOwnButton] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.showCreateYourOwnButton
@@ -237,6 +241,7 @@ export default function EditEventPage({
         setIncludeCameraResult(sharePageSettings.includeCameraResult);
         setIncludeTryOnResult(sharePageSettings.includeTryOnResult);
         setIncludeFramedTryOnResult(sharePageSettings.includeFramedTryOnResult);
+        setIncludeCheckedInTryOnResult(sharePageSettings.includeCheckedInTryOnResult);
         setShowCreateYourOwnButton(sharePageSettings.showCreateYourOwnButton);
         setPendingTryOnMessage(sharePageSettings.pendingTryOnMessage);
         setResultSlideshowMode(
@@ -441,6 +446,7 @@ export default function EditEventPage({
         includeCameraResult,
         includeTryOnResult,
         includeFramedTryOnResult,
+        includeCheckedInTryOnResult,
         showCreateYourOwnButton,
         pendingTryOnMessage,
       },
@@ -706,6 +712,12 @@ export default function EditEventPage({
               onChange={(event) => setIncludeFramedTryOnResult(event.currentTarget.checked)}
               label="Show try-on photo with Camera frame"
               description="Available when returned try-on results are framed by Camera."
+            />
+            <Checkbox
+              checked={includeCheckedInTryOnResult}
+              onChange={(event) => setIncludeCheckedInTryOnResult(event.currentTarget.checked)}
+              label="Show checked-in try-on photo"
+              description="Display the checked-in try-on result when available for this submission."
             />
             <Checkbox
               checked={showCreateYourOwnButton}

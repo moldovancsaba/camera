@@ -34,6 +34,23 @@ function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function hasTryOnVariantUrl(variant: {
+  imageUrl?: string | null;
+  metadata?: unknown;
+  finalImageUrl?: string | null;
+}): boolean {
+  if (readString(variant.imageUrl) !== null) {
+    return true;
+  }
+  if (readString(variant.finalImageUrl) !== null) {
+    return true;
+  }
+
+  const metadata =
+    variant.metadata && typeof variant.metadata === 'object' ? variant.metadata as { tryOnRawResultUrl?: unknown } : {};
+  return readString(metadata.tryOnRawResultUrl) !== null;
+}
+
 export function resolveSubmissionResultEmailRecipient(submission: {
   userInfo?: { name?: string; email?: string } | null;
   userEmail?: string;
@@ -155,8 +172,15 @@ export async function evaluateSubmissionShareReadiness(
     }
   }
 
-  if (sharePage.includeTryOnResult || sharePage.includeFramedTryOnResult) {
+  if (
+    sharePage.includeTryOnResult ||
+    sharePage.includeFramedTryOnResult ||
+    sharePage.includeCheckedInTryOnResult
+  ) {
     const variants = await listApprovedShareVariants(db, sourceSubmission._id.toString());
+    const hasCheckedInTryOnResult = sharePage.includeCheckedInTryOnResult
+      ? variants.some((variant) => hasTryOnVariantUrl(variant))
+      : true;
     const hasTryOnResult = sharePage.includeTryOnResult
       ? variants.some((variant) => {
           const metadata =
@@ -190,6 +214,13 @@ export async function evaluateSubmissionShareReadiness(
       required.push('framedTryOnResult');
       if (!hasFramedTryOnResult) {
         missing.push('framedTryOnResult');
+      }
+    }
+
+    if (sharePage.includeCheckedInTryOnResult) {
+      required.push('checkedInTryOnResult');
+      if (!hasCheckedInTryOnResult) {
+        missing.push('checkedInTryOnResult');
       }
     }
   }

@@ -3,6 +3,7 @@ export interface EventSharePageSettings {
   includeCameraResult: boolean;
   includeTryOnResult: boolean;
   includeFramedTryOnResult: boolean;
+  includeCheckedInTryOnResult: boolean;
   showCreateYourOwnButton: boolean;
   pendingTryOnMessage: string;
 }
@@ -14,6 +15,7 @@ export const DEFAULT_EVENT_SHARE_PAGE_SETTINGS: EventSharePageSettings = {
   includeCameraResult: true,
   includeTryOnResult: true,
   includeFramedTryOnResult: true,
+  includeCheckedInTryOnResult: false,
   showCreateYourOwnButton: false,
   pendingTryOnMessage: DEFAULT_PENDING_TRYON_MESSAGE,
 };
@@ -43,6 +45,10 @@ export function normalizeEventSharePageSettings(value: unknown): EventSharePageS
       source.includeFramedTryOnResult === undefined
         ? legacyMode !== 'original_only'
         : Boolean(source.includeFramedTryOnResult),
+    includeCheckedInTryOnResult:
+      source.includeCheckedInTryOnResult === undefined
+        ? false
+        : Boolean(source.includeCheckedInTryOnResult),
     showCreateYourOwnButton:
       source.showCreateYourOwnButton === undefined
         ? false

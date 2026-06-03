@@ -101,6 +101,9 @@ export default function NewEventPage() {
   const [includeFramedTryOnResult, setIncludeFramedTryOnResult] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeFramedTryOnResult
   );
+  const [includeCheckedInTryOnResult, setIncludeCheckedInTryOnResult] = useState(
+    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeCheckedInTryOnResult
+  );
   const [showCreateYourOwnButton, setShowCreateYourOwnButton] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.showCreateYourOwnButton
   );
@@ -320,6 +323,7 @@ export default function NewEventPage() {
         includeCameraResult,
         includeTryOnResult,
         includeFramedTryOnResult,
+        includeCheckedInTryOnResult,
         showCreateYourOwnButton,
         pendingTryOnMessage,
       },
@@ -541,6 +545,12 @@ export default function NewEventPage() {
               onChange={(event) => setIncludeFramedTryOnResult(event.currentTarget.checked)}
               label="Show try-on photo with Camera frame"
               description="Available when returned try-on results are framed by Camera."
+            />
+            <Checkbox
+              checked={includeCheckedInTryOnResult}
+              onChange={(event) => setIncludeCheckedInTryOnResult(event.currentTarget.checked)}
+              label="Show checked-in try-on photo"
+              description="Display the checked-in try-on result when available for this submission."
             />
             <Checkbox
               checked={showCreateYourOwnButton}
