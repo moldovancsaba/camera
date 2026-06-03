@@ -74,6 +74,8 @@ interface ResolvedEventProfile {
 type FrameRecord = {
   fileUrl?: string | null;
   imageUrl?: string | null;
+  width?: number | null;
+  height?: number | null;
 };
 
 function resolveFrameAssetUrl(frame: FrameRecord): string | null {
@@ -337,7 +339,7 @@ async function reframeExistingTryOnResult(
 
   const frame = await db.collection<FrameRecord>(COLLECTIONS.FRAMES).findOne(
     { frameId: sourceSubmission.frameId },
-    { projection: { fileUrl: 1, imageUrl: 1 } }
+    { projection: { fileUrl: 1, imageUrl: 1, width: 1, height: 1 } }
   );
 
   const frameAssetUrl = frame ? resolveFrameAssetUrl(frame) : null;
@@ -348,6 +350,8 @@ async function reframeExistingTryOnResult(
       submissionId: resultSubmissionId,
     };
   }
+  const frameWidth = frame?.width;
+  const frameHeight = frame?.height;
 
   const currentEngine = resultSubmission.metadata?.compositionEngine;
   const alreadyFramed = currentEngine === 'motogp_leather_magic_framed';
@@ -374,7 +378,7 @@ async function reframeExistingTryOnResult(
         width: resultSubmission.metadata?.finalWidth ?? null,
         height: resultSubmission.metadata?.finalHeight ?? null,
       }
-    : await applyFrameToTryOnResult(baseRawUrl, frameAssetUrl, uploadName);
+    : await applyFrameToTryOnResult(baseRawUrl, frameAssetUrl, uploadName, frameWidth, frameHeight);
 
   const finalUpdates: Document = {
     'metadata.compositionEngine': 'motogp_leather_magic_framed',

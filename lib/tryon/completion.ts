@@ -17,6 +17,8 @@ import { dispatchPendingRelatedEmailForSubmission } from '@/lib/email/submission
 type FrameRecord = {
   fileUrl?: string | null;
   imageUrl?: string | null;
+  width?: number | null;
+  height?: number | null;
 };
 
 function resolveFrameAssetUrl(frame: FrameRecord): string | null {
@@ -136,7 +138,7 @@ async function resolveTryOnResultAsset(
 
   const frame = await db.collection<FrameRecord>(COLLECTIONS.FRAMES).findOne(
     { frameId },
-    { projection: { fileUrl: 1, imageUrl: 1 } }
+    { projection: { fileUrl: 1, imageUrl: 1, width: 1, height: 1 } }
   );
 
   const frameAssetUrl = frame ? resolveFrameAssetUrl(frame) : null;
@@ -145,7 +147,13 @@ async function resolveTryOnResultAsset(
   }
 
   try {
-    return await applyFrameToTryOnResult(publicResultUrl, frameAssetUrl, `tryon-framed-${Date.now()}`);
+    return await applyFrameToTryOnResult(
+      publicResultUrl,
+      frameAssetUrl,
+      `tryon-framed-${Date.now()}`,
+      frame?.width,
+      frame?.height
+    );
   } catch (error) {
     console.error('Failed to apply frame to returned try-on result; falling back to raw upload.', {
       eventId: sourceSubmission.eventId ?? null,

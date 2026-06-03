@@ -57,7 +57,9 @@ export async function inspectTryOnResultAsset(publicResultUrl: string): Promise<
 export async function applyFrameToTryOnResult(
   publicResultUrl: string,
   frameUrl: string,
-  uploadName: string
+  uploadName: string,
+  frameWidth?: number | null,
+  frameHeight?: number | null
 ): Promise<TryOnResultAsset> {
   const [resultBuffer, frameBuffer] = await Promise.all([
     fetchImageBuffer(publicResultUrl),
@@ -65,17 +67,35 @@ export async function applyFrameToTryOnResult(
   ]);
 
   const resultMetadata = await sharp(resultBuffer, { failOn: 'none' }).metadata();
-  const width = resultMetadata.width ?? null;
-  const height = resultMetadata.height ?? null;
+  const sourceWidth = resultMetadata.width ?? null;
+  const sourceHeight = resultMetadata.height ?? null;
+  const hasFrameDimensions = Number.isFinite(frameWidth ?? NaN) && Number(frameWidth) > 0
+    && Number.isFinite(frameHeight ?? NaN) && Number(frameHeight) > 0;
+  const normalizedFrameWidth = hasFrameDimensions ? Math.round(frameWidth as number) : null;
+  const normalizedFrameHeight = hasFrameDimensions ? Math.round(frameHeight as number) : null;
 
-  if (!width || !height) {
+  if (!sourceWidth || !sourceHeight) {
     throw new Error('Try-on result dimensions could not be determined');
   }
 
+  const outputWidth = normalizedFrameWidth ?? sourceWidth;
+  const outputHeight = normalizedFrameHeight ?? sourceHeight;
+  const sourceImage = hasFrameDimensions
+    ? await sharp(resultBuffer, { failOn: 'none' })
+      .resize({
+        width: normalizedFrameWidth!,
+        height: normalizedFrameHeight!,
+        fit: 'cover',
+        position: 'center',
+      })
+      .png()
+      .toBuffer()
+    : resultBuffer;
+
   const resizedFrameBuffer = await sharp(frameBuffer, { failOn: 'none', density: 300 })
     .resize({
-      width,
-      height,
+      width: outputWidth,
+      height: outputHeight,
       fit: 'contain',
       position: 'center',
       background: { r: 0, g: 0, b: 0, alpha: 0 },
@@ -83,7 +103,7 @@ export async function applyFrameToTryOnResult(
     .png()
     .toBuffer();
 
-  const composedBuffer = await sharp(resultBuffer, { failOn: 'none' })
+  const composedBuffer = await sharp(sourceImage, { failOn: 'none' })
     .composite([{ input: resizedFrameBuffer, blend: 'over' }])
     .png()
     .toBuffer();
@@ -92,5 +112,5 @@ export async function applyFrameToTryOnResult(
     name: uploadName,
   });
 
-  return buildUploadAsset(upload, width, height);
+  return buildUploadAsset(upload, outputWidth, outputHeight);
 }
