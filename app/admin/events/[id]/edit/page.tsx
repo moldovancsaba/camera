@@ -32,8 +32,8 @@ import { notifications } from '@/lib/gds/notifications';
 import { type CustomPage } from '@/lib/db/schemas';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
-import { FormSection } from '@doneisbetter/gds-admin/server';
-import { StateBlock } from '@doneisbetter/gds-core/server';
+import { FormSection } from '@doneisbetter/gds-admin/client';
+import { StateBlock } from '@doneisbetter/gds-core/client';
 import EditorScaffold from '@/components/gds/EditorScaffold';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
@@ -83,6 +83,8 @@ interface EventRecord {
   };
   notifications?: {
     submissionResultEmailEnabled?: boolean;
+    submissionResultEmailSendAfterSave?: boolean;
+    submissionResultEmailSendAfterRelatedPhotosReady?: boolean;
     submissionResultEmailSubject?: string | null;
     submissionResultEmailBody?: string | null;
   };
@@ -130,6 +132,9 @@ export default function EditEventPage({
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
   const [submissionResultEmailEnabled, setSubmissionResultEmailEnabled] = useState(false);
+  const [submissionResultEmailSendAfterSave, setSubmissionResultEmailSendAfterSave] = useState(true);
+  const [submissionResultEmailSendAfterRelatedPhotosReady, setSubmissionResultEmailSendAfterRelatedPhotosReady] =
+    useState(false);
   const [submissionResultEmailSubject, setSubmissionResultEmailSubject] = useState(
     DEFAULT_SUBMISSION_EMAIL_SUBJECT
   );
@@ -192,6 +197,13 @@ export default function EditEventPage({
         setApplyFrameToReturnedResults(Boolean(eventData.tryOn?.applyFrameToReturnedResults));
         setTryOnVettingEnabled(eventData.tryOn?.vettingEnabled !== false);
         setSubmissionResultEmailEnabled(Boolean(eventData.notifications?.submissionResultEmailEnabled));
+        setSubmissionResultEmailSendAfterSave(
+          eventData.notifications?.submissionResultEmailSendAfterSave ??
+            Boolean(eventData.notifications?.submissionResultEmailEnabled)
+        );
+        setSubmissionResultEmailSendAfterRelatedPhotosReady(
+          Boolean(eventData.notifications?.submissionResultEmailSendAfterRelatedPhotosReady)
+        );
         setSubmissionResultEmailSubject(
           eventData.notifications?.submissionResultEmailSubject || DEFAULT_SUBMISSION_EMAIL_SUBJECT
         );
@@ -326,6 +338,8 @@ export default function EditEventPage({
       },
       notifications: {
         submissionResultEmailEnabled,
+        submissionResultEmailSendAfterSave,
+        submissionResultEmailSendAfterRelatedPhotosReady,
         submissionResultEmailSubject,
         submissionResultEmailBody,
       },
@@ -538,9 +552,34 @@ export default function EditEventPage({
           >
             <Checkbox
               checked={submissionResultEmailEnabled}
-              onChange={(event) => setSubmissionResultEmailEnabled(event.currentTarget.checked)}
+              onChange={(event) => {
+                const checked = event.currentTarget.checked;
+                setSubmissionResultEmailEnabled(checked);
+                if (
+                  checked &&
+                  !submissionResultEmailSendAfterSave &&
+                  !submissionResultEmailSendAfterRelatedPhotosReady
+                ) {
+                  setSubmissionResultEmailSendAfterSave(true);
+                }
+              }}
               label="Email the user's result page link after save"
               description="Requires a collected or authenticated email address. This is independent from the capture flow share-options screen."
+            />
+            <Checkbox
+              checked={submissionResultEmailSendAfterSave}
+              onChange={(event) => setSubmissionResultEmailSendAfterSave(event.currentTarget.checked)}
+              disabled={!submissionResultEmailEnabled}
+              label="Send email immediately after save"
+            />
+            <Checkbox
+              checked={submissionResultEmailSendAfterRelatedPhotosReady}
+              onChange={(event) =>
+                setSubmissionResultEmailSendAfterRelatedPhotosReady(event.currentTarget.checked)
+              }
+              disabled={!submissionResultEmailEnabled}
+              label="Send email when related photos are ready"
+              description="Useful for send-at-the-end behavior after approved try-on photos are available."
             />
             <TextInput
               label="Email subject"

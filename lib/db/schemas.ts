@@ -239,6 +239,8 @@ export interface Event {
     submissionResultEmailEnabled: boolean; // Whether users receive the public result page link after submission
     submissionResultEmailSubject?: string | null; // Optional event-level subject template
     submissionResultEmailBody?: string | null; // Optional event-level plain-text body template
+    submissionResultEmailSendAfterSave: boolean; // Send immediately after submission save
+    submissionResultEmailSendAfterRelatedPhotosReady: boolean; // Send when related share photos are available
   };
   sharePage?: {
     includeOriginalCapture?: boolean; // Raw camera image before frame composition, when available
@@ -685,6 +687,9 @@ export interface Submission {
     
     // Email delivery
     emailSent: boolean;              // Whether email was sent
+    emailSentAfterSave?: boolean;    // Whether email was sent from "after save" policy
+    emailSentAfterRelatedPhotos?: boolean; // Whether email was sent from "after related photos" policy
+    emailSendAfterRelatedPending?: boolean; // Whether related-photo email is waiting on publish readiness
     emailSentAt?: string;            // ISO 8601 timestamp
     emailRecipient?: string;         // Normalized recipient address
     emailProvider?: string;          // Delivery provider, e.g. "resend"

@@ -11,6 +11,7 @@ import {
 import { patchSubmissionTryOnState } from '@/lib/tryon/jobs';
 import { nowIso } from '@/lib/tryon/time';
 import { shouldApprovedTryOnBeSlideshowEligible } from '@/lib/tryon/slideshow-policy';
+import { dispatchPendingRelatedEmailForSubmission } from '@/lib/email/submission-result-email';
 
 export const POST = withErrorHandler(async (
   request: NextRequest,
@@ -115,6 +116,13 @@ export const POST = withErrorHandler(async (
     slideshowEligible,
     lastError: null,
   });
+
+  if (sourceSubmission) {
+    await dispatchPendingRelatedEmailForSubmission(db, {
+      ...sourceSubmission,
+      _id: new ObjectId(resultSubmission.sourceSubmissionId),
+    });
+  }
 
   return apiSuccess({ submissionId, reviewStatus: 'approved', archived: true, archiveBucket: 'approved' });
 });

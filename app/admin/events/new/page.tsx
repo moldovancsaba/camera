@@ -76,6 +76,9 @@ export default function NewEventPage() {
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
   const [submissionResultEmailEnabled, setSubmissionResultEmailEnabled] = useState(false);
+  const [submissionResultEmailSendAfterSave, setSubmissionResultEmailSendAfterSave] = useState(true);
+  const [submissionResultEmailSendAfterRelatedPhotosReady, setSubmissionResultEmailSendAfterRelatedPhotosReady] =
+    useState(false);
   const [submissionResultEmailSubject, setSubmissionResultEmailSubject] = useState(
     DEFAULT_SUBMISSION_EMAIL_SUBJECT
   );
@@ -227,6 +230,8 @@ export default function NewEventPage() {
       },
       notifications: {
         submissionResultEmailEnabled,
+        submissionResultEmailSendAfterSave,
+        submissionResultEmailSendAfterRelatedPhotosReady,
         submissionResultEmailSubject,
         submissionResultEmailBody,
       },
@@ -389,9 +394,30 @@ export default function NewEventPage() {
           >
             <Checkbox
               checked={submissionResultEmailEnabled}
-              onChange={(event) => setSubmissionResultEmailEnabled(event.currentTarget.checked)}
+              onChange={(event) => {
+                const checked = event.currentTarget.checked;
+                setSubmissionResultEmailEnabled(checked);
+                if (checked && !submissionResultEmailSendAfterSave && !submissionResultEmailSendAfterRelatedPhotosReady) {
+                  setSubmissionResultEmailSendAfterSave(true);
+                }
+              }}
               label="Email the user's result page link after save"
               description="Requires a collected or authenticated email address. This is independent from the capture flow share-options screen."
+            />
+            <Checkbox
+              checked={submissionResultEmailSendAfterSave}
+              onChange={(event) => setSubmissionResultEmailSendAfterSave(event.currentTarget.checked)}
+              disabled={!submissionResultEmailEnabled}
+              label="Send email immediately after save"
+            />
+            <Checkbox
+              checked={submissionResultEmailSendAfterRelatedPhotosReady}
+              onChange={(event) =>
+                setSubmissionResultEmailSendAfterRelatedPhotosReady(event.currentTarget.checked)
+              }
+              disabled={!submissionResultEmailEnabled}
+              label="Send email when related photos are ready"
+              description="Useful for send-at-the-end behavior after approved try-on photos are available."
             />
             <TextInput
               label="Email subject"

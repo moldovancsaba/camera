@@ -13,6 +13,7 @@ import { buildDerivedTryOnSubmission, buildTryOnPublicationSummary, upsertSubmis
 import { patchSubmissionTryOnState } from '@/lib/tryon/jobs';
 import { shouldApprovedTryOnBeSlideshowEligible } from '@/lib/tryon/slideshow-policy';
 import { applyFrameToTryOnResult, inspectTryOnResultAsset } from '@/lib/tryon/frame-composition';
+import { dispatchPendingRelatedEmailForSubmission } from '@/lib/email/submission-result-email';
 
 type FrameRecord = {
   fileUrl?: string | null;
@@ -332,6 +333,8 @@ export async function applyTryOnCompletion(
       )
     );
 
+    await dispatchPendingRelatedEmailForSubmission(db, sourceSubmission);
+
     return {
       action: updated ? 'updated' : 'unchanged',
       sourceSubmissionId: sourceSubmissionObjectId.toString(),
@@ -404,6 +407,11 @@ export async function applyTryOnCompletion(
       publication.slideshowEligible
     )
   );
+
+  await dispatchPendingRelatedEmailForSubmission(db, {
+    ...sourceSubmission,
+    _id: sourceSubmissionObjectId,
+  });
 
   return {
     action: 'created',

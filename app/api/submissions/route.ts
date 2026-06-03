@@ -7,10 +7,9 @@
  */
 
 import { NextRequest } from 'next/server';
-import { ObjectId } from 'mongodb';
+import { ObjectId, type Db } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { uploadImage } from '@/lib/imgbb/upload';
-import { sendSubmissionResultEmail } from '@/lib/email/submission-notification';
 import {
   COLLECTIONS,
   DeviceType,
@@ -40,6 +39,11 @@ import {
   upsertSubmissionTryOnLink,
 } from '@/lib/tryon/jobs';
 import { assertValidLeatherSuitId } from '@/lib/tryon/suits';
+import {
+  normalizeSubmissionEmailPolicy,
+  sendSubmissionResultEmailByPolicy,
+  dispatchPendingRelatedEmailForSubmission,
+} from '@/lib/email/submission-result-email';
 
 interface TryOnRequestDetails {
   requested: boolean;
@@ -48,23 +52,44 @@ interface TryOnRequestDetails {
 }
 
 interface SubmissionEventDocument {
-  notifications?: SubmissionEventPolicy['notifications'];
+  _id: string;
+  name?: string;
+  notifications?: {
+    submissionResultEmailEnabled?: boolean;
+    submissionResultEmailSendAfterSave?: boolean;
+    submissionResultEmailSendAfterRelatedPhotosReady?: boolean;
+    submissionResultEmailSubject?: string | null;
+    submissionResultEmailBody?: string | null;
+  };
   tryOn?: {
     enabled?: boolean;
     allowedLeatherSuitIds?: string[];
   };
 }
 
-interface SubmissionEventPolicy {
-  notifications?: {
-    submissionResultEmailEnabled?: boolean;
-    submissionResultEmailSubject?: string | null;
-    submissionResultEmailBody?: string | null;
-  };
-}
-
 interface EventLookupFilter {
   $or: Array<Record<string, unknown>>;
+}
+
+function trimUndefinedEntries(input: Record<string, unknown>): Record<string, unknown> {
+  const filtered = Object.entries(input).filter(([, value]) => value !== undefined);
+  return Object.fromEntries(filtered);
+}
+
+async function applySubmissionMetadataPatch(
+  db: Db,
+  submissionObjectId: ObjectId,
+  metadataPatch: Record<string, unknown>
+): Promise<void> {
+  const sanitized = trimUndefinedEntries(metadataPatch);
+  if (Object.keys(sanitized).length === 0) {
+    return;
+  }
+
+  await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+    { _id: submissionObjectId },
+    { $set: sanitized }
+  );
 }
 
 function buildEventLookupFilterByIdentifier(eventId: string): EventLookupFilter {
@@ -316,87 +341,62 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     const eventPolicy: SubmissionEventDocument | null = eventId
       ? ((await db.collection(COLLECTIONS.EVENTS).findOne(
           buildEventLookupFilterByIdentifier(eventId),
-          {
-            projection: {
-              _id: 0,
-              notifications: 1,
-              tryOn: 1,
-            },
-          }
+          { projection: { notifications: 1, name: 1, tryOn: 1 } }
         )) as SubmissionEventDocument | null)
       : null;
-
-    const shouldSendSubmissionResultEmail =
-      eventPolicy?.notifications?.submissionResultEmailEnabled === true;
+    const notificationPolicy = normalizeSubmissionEmailPolicy(eventPolicy?.notifications);
     if (eventId && !eventPolicy) {
-      console.warn('[submissions] Skipping confirmation email: event document not found.', {
-        eventId,
-      });
+      console.warn('[submissions] Email policy lookup missed event document.', { eventId });
     }
-    if (shouldSendSubmissionResultEmail === false) {
-      if (eventId) {
-        console.info('[submissions] Confirmation email disabled for event.', {
-          eventId,
-          notificationEnabled: eventPolicy?.notifications?.submissionResultEmailEnabled ?? false,
-        });
-      } else {
-        console.info('[submissions] Confirmation email disabled because submission was not tied to an event.');
-      }
-    }
-    const recipientEmail =
-      validatedUserInfo?.email ||
-      (session?.user?.email && session.user.email !== 'anonymous@event'
-        ? session.user.email
-        : null);
-    const recipientName =
-      validatedUserInfo?.name || session?.user?.name || session?.user?.email || null;
-    const emailResult = shouldSendSubmissionResultEmail
-      ? await sendSubmissionResultEmail({
-          recipientEmail,
-          recipientName,
-          eventName: typeof eventName === 'string' ? eventName : null,
-          shareUrl,
-        subjectTemplate: eventPolicy?.notifications?.submissionResultEmailSubject,
-        bodyTemplate: eventPolicy?.notifications?.submissionResultEmailBody,
-      })
-      : ({ sent: false, skipped: true, reason: 'event_email_disabled' } as const);
-    const emailMetadata =
-      emailResult.sent
-        ? {
-            emailSent: true,
-            emailSentAt: new Date().toISOString(),
-            emailRecipient: emailResult.recipientEmail,
-            emailProvider: emailResult.provider,
-            emailMessageId: emailResult.messageId,
-            shareUrl,
-          }
-        : emailResult.skipped
-          ? {
-              emailSent: false,
-              emailSkippedAt: new Date().toISOString(),
-              emailSkipReason: emailResult.reason,
-              shareUrl,
-            }
-          : {
-              emailSent: false,
-              emailFailedAt: new Date().toISOString(),
-              emailRecipient: emailResult.recipientEmail,
-              emailProvider: emailResult.provider,
-              emailError: emailResult.error,
-              shareUrl,
-            };
 
-    await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-      { _id: result.insertedId },
-      {
-        $set: Object.fromEntries(
-          Object.entries(emailMetadata).map(([key, value]) => [`metadata.${key}`, value])
-        ),
-      }
-    );
+    const emailSource = {
+      userInfo: validatedUserInfo
+        ? {
+            name: validatedUserInfo.name,
+            email: validatedUserInfo.email,
+          }
+        : undefined,
+      userEmail: submission.userEmail,
+      userName: submission.userName,
+    };
+    const eventNameValue =
+      typeof eventName === 'string'
+        ? eventName
+        : typeof eventPolicy?.name === 'string'
+          ? eventPolicy.name
+          : null;
+
+    const afterSaveEmailResult = notificationPolicy.sendAfterSave
+      ? await sendSubmissionResultEmailByPolicy(
+          emailSource,
+          eventNameValue,
+          shareUrl,
+          notificationPolicy,
+          'after_save'
+        )
+      : { sent: false, shouldRetry: false, metadataPatch: {} };
+
+    let relatedEmailResult = null;
+    if (notificationPolicy.sendAfterRelatedPhotosReady) {
+      relatedEmailResult = await dispatchPendingRelatedEmailForSubmission(db, createdSubmission);
+    }
+
+    const mergedMetadataPatch: Record<string, unknown> = {
+      ...afterSaveEmailResult.metadataPatch,
+      ...(relatedEmailResult?.metadataPatch ?? {}),
+    };
+
+    await applySubmissionMetadataPatch(db, result.insertedId, mergedMetadataPatch);
     createdSubmission.metadata = {
       ...createdSubmission.metadata,
-      ...emailMetadata,
+      ...Object.fromEntries(
+        Object.entries(mergedMetadataPatch).map(([key, value]) => [
+          key.startsWith('metadata.')
+            ? key.replace(/^metadata\./, '')
+            : key,
+          value,
+        ])
+      ),
     };
 
     if (tryOnRequest.requested) {

@@ -29,22 +29,16 @@ import {
 import { normalizeEventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
+import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
 
 function normalizeEventNotificationSettings(value: unknown) {
-  const source = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
-  const subject =
-    typeof source.submissionResultEmailSubject === 'string'
-      ? source.submissionResultEmailSubject.trim().slice(0, 180)
-      : '';
-  const body =
-    typeof source.submissionResultEmailBody === 'string'
-      ? source.submissionResultEmailBody.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n').slice(0, 5000)
-      : '';
-
+  const notificationPolicy = normalizeSubmissionEmailPolicy(value);
   return {
-    submissionResultEmailEnabled: Boolean(source.submissionResultEmailEnabled),
-    submissionResultEmailSubject: subject || null,
-    submissionResultEmailBody: body || null,
+    submissionResultEmailEnabled: notificationPolicy.enabled,
+    submissionResultEmailSubject: notificationPolicy.subjectTemplate || null,
+    submissionResultEmailBody: notificationPolicy.bodyTemplate || null,
+    submissionResultEmailSendAfterSave: notificationPolicy.sendAfterSave,
+    submissionResultEmailSendAfterRelatedPhotosReady: notificationPolicy.sendAfterRelatedPhotosReady,
   };
 }
 
