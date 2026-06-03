@@ -723,7 +723,7 @@ export default function EventCapturePage({
     }
   };
 
-  const finalizeSubmissionEmail = async (submissionId: string) => {
+  const finalizeSubmissionEmail = async (submissionId: string, userInfo?: WhoAreYouPageData | null) => {
     if (isFinalizingSubmission || hasFinalizedSubmissionEmail) {
       return false;
     }
@@ -733,7 +733,10 @@ export default function EventCapturePage({
       const response = await fetch(`/api/submissions/${submissionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'finalize' }),
+        body: JSON.stringify({
+          action: 'finalize',
+          ...(userInfo ? { userInfo } : {}),
+        }),
       });
 
       if (!response.ok) {
@@ -750,6 +753,14 @@ export default function EventCapturePage({
     } finally {
       setIsFinalizingSubmission(false);
     }
+  };
+
+  const finalizeSubmissionForEventEnd = () => {
+    if (!savedSubmissionId || !shareUrl || hasFinalizedSubmissionEmail || isFinalizingSubmission) {
+      return;
+    }
+
+    void finalizeSubmissionEmail(savedSubmissionId, collectedData.userInfo);
   };
 
   const handleCopyLink = async () => {
@@ -794,10 +805,6 @@ export default function EventCapturePage({
   };
 
   const handleReset = () => {
-    if (savedSubmissionId && shareUrl && !hasFinalizedSubmissionEmail) {
-      void finalizeSubmissionEmail(savedSubmissionId);
-    }
-
     // Keep selected frame and go back to capture step
     setCapturedImage(null);
     setCompositeImage(null);
@@ -883,6 +890,7 @@ export default function EventCapturePage({
         setCurrentPageIndex(currentPageIndex + 1);
       } else {
         // Completed all thank you pages - restart flow
+        finalizeSubmissionForEventEnd();
         handleRestartFlow();
       }
     }
@@ -902,9 +910,7 @@ export default function EventCapturePage({
       setCurrentPageIndex(0);
     } else {
       // No thank you pages, restart
-      if (savedSubmissionId && shareUrl && !hasFinalizedSubmissionEmail) {
-        void finalizeSubmissionEmail(savedSubmissionId);
-      }
+      finalizeSubmissionForEventEnd();
       handleRestartFlow();
     }
   };
@@ -914,10 +920,6 @@ export default function EventCapturePage({
    * Resets all state and goes back to first page or capture
    */
   const handleRestartFlow = () => {
-    if (savedSubmissionId && shareUrl && !hasFinalizedSubmissionEmail) {
-      void finalizeSubmissionEmail(savedSubmissionId);
-    }
-
     // Reset capture state
     setCapturedImage(null);
     setCompositeImage(null);
@@ -966,6 +968,7 @@ export default function EventCapturePage({
       if (flowPhase === 'onboarding') {
         setFlowPhase('capture');
       } else {
+        finalizeSubmissionForEventEnd();
         handleRestartFlow();
       }
       return null;
@@ -1051,7 +1054,10 @@ export default function EventCapturePage({
             brandColor={event.brandColor}
             brandBorderColor={event.brandBorderColor}
             buttonSize={eventButtonSize}
-            onRestart={handleRestartFlow}
+            onRestart={() => {
+              finalizeSubmissionForEventEnd();
+              handleRestartFlow();
+            }}
           />
         );
       
@@ -1060,6 +1066,7 @@ export default function EventCapturePage({
         if (flowPhase === 'onboarding') {
           setFlowPhase('capture');
         } else {
+          finalizeSubmissionForEventEnd();
           handleRestartFlow();
         }
         return null;
