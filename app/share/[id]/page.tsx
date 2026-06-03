@@ -19,6 +19,10 @@ import {
   normalizeEventSharePageSettings,
   type EventSharePageSettings,
 } from '@/lib/events/share-page-settings';
+import {
+  type ShareVariantCard,
+  limitShareVariantsToConfiguredMode,
+} from '@/lib/tryon/share-page-variants';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -47,13 +51,6 @@ interface ShareSubmission {
   } | null;
   eventIds?: unknown[];
   eventId?: unknown;
-}
-
-interface ShareVariantCard {
-  id: string;
-  imageUrl: string;
-  label: string;
-  isTryOn?: boolean;
 }
 
 async function resolveEventForSubmission(
@@ -370,7 +367,7 @@ export default async function SharePage({ params }: Props) {
     }
   }
 
-  const displayVariants = shareVariants.filter((variant) => {
+  const filteredVariants = shareVariants.filter((variant) => {
     if (variant.id.endsWith(':original-capture') && !sharePageSettings.includeOriginalCapture) {
       return false;
     }
@@ -379,6 +376,7 @@ export default async function SharePage({ params }: Props) {
     }
     return true;
   });
+  const displayVariants = limitShareVariantsToConfiguredMode(filteredVariants, sharePageSettings);
 
   const featuredVariant = displayVariants[0] ?? null;
   const galleryVariants = featuredVariant ? displayVariants.slice(1) : displayVariants;

@@ -5,6 +5,10 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { listApprovedShareVariants } from '@/lib/tryon/publication';
 import {
+  type ShareVariantCard,
+  limitShareVariantsToConfiguredMode,
+} from '@/lib/tryon/share-page-variants';
+import {
   DEFAULT_EVENT_SHARE_PAGE_SETTINGS,
   normalizeEventSharePageSettings,
   type EventSharePageSettings,
@@ -29,13 +33,6 @@ interface ShareSubmission {
     sourceImageUrl: string | null;
     shareVisible: boolean;
   } | null;
-}
-
-interface ShareVariantCard {
-  id: string;
-  imageUrl: string;
-  label: string;
-  isTryOn?: boolean;
 }
 
 function readString(value: unknown): string | null {
@@ -227,7 +224,7 @@ async function resolveShareImageUrlByVariantId(
     }
   }
 
-  const displayVariants = shareVariants.filter((variant) => {
+  const filteredVariants = shareVariants.filter((variant) => {
     if (variant.id.endsWith(':original-capture') && !sharePageSettings.includeOriginalCapture) {
       return false;
     }
@@ -236,6 +233,7 @@ async function resolveShareImageUrlByVariantId(
     }
     return true;
   });
+  const displayVariants = limitShareVariantsToConfiguredMode(filteredVariants, sharePageSettings);
 
   const normalizedVariantId = variantId;
 
