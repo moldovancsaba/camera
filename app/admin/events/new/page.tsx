@@ -630,6 +630,17 @@ export default function NewEventPage() {
               onChange={(value) => handleTryOnSetupChange(value)}
               disabled={!tryOnEnabled || isLoadingTryOnSetups || isSavingTryOnSetup}
             />
+            {tryOnSetups.length === 1 && !cameraId ? (
+              <Alert color="yellow" variant="light">
+                Only one active try-on setup profile is available. Add additional profiles to the
+                MongoDB `tryon_setups` collection to expose more options.
+              </Alert>
+            ) : tryOnSetups.length === 0 ? (
+              <Alert color="red" variant="light">
+                No active try-on setup profiles found. Use the seed/import workflow to populate
+                `tryon_setups` first.
+              </Alert>
+            ) : null}
             <Select
               label="Allowed leather jerseys"
               description="Leave empty to allow the full active suit catalog when try-on is enabled."

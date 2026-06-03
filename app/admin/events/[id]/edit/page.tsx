@@ -768,6 +768,17 @@ export default function EditEventPage({
               disabled={!tryOnEnabled || isLoadingTryOnSetups || isSavingTryOnSetup}
               onChange={(value) => handleTryOnSetupChange(value)}
             />
+            {tryOnSetups.length === 1 && !cameraId ? (
+              <Alert color="yellow" variant="light">
+                Only one active try-on setup profile is available. Add additional profiles to the
+                MongoDB `tryon_setups` collection to expose more options.
+              </Alert>
+            ) : tryOnSetups.length === 0 ? (
+              <Alert color="red" variant="light">
+                No active try-on setup profiles found. Use the seed/import workflow to populate
+                `tryon_setups` first.
+              </Alert>
+            ) : null}
             <Checkbox
               checked={tryOnVettingEnabled}
               onChange={(nextEvent) => setTryOnVettingEnabled(nextEvent.currentTarget.checked)}
