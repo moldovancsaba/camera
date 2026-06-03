@@ -14,7 +14,7 @@ export const DEFAULT_EVENT_SHARE_PAGE_SETTINGS: EventSharePageSettings = {
   includeCameraResult: true,
   includeTryOnResult: true,
   includeFramedTryOnResult: true,
-  showCreateYourOwnButton: true,
+  showCreateYourOwnButton: false,
   pendingTryOnMessage: DEFAULT_PENDING_TRYON_MESSAGE,
 };
 
@@ -45,7 +45,7 @@ export function normalizeEventSharePageSettings(value: unknown): EventSharePageS
         : Boolean(source.includeFramedTryOnResult),
     showCreateYourOwnButton:
       source.showCreateYourOwnButton === undefined
-        ? true
+        ? false
         : Boolean(source.showCreateYourOwnButton),
     pendingTryOnMessage: pendingTryOnMessage || DEFAULT_PENDING_TRYON_MESSAGE,
   };

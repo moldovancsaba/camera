@@ -5,9 +5,11 @@
  * Full interactive capture flow with camera/upload support
  * 
  * Custom page flow system
- * - Onboarding pages → Frame selection → Capture → Preview/Save → Sharing → Thank you pages
- * - Collects user data (name/email) and consents before capture
- * - Passes collected data to submission API
+ * - Sorted custom pages are read in their configured order.
+ * - Pages before [Take Photo] are rendered before capture.
+ * - [Take Photo] represents the capture step.
+ * - Pages after [Take Photo] are rendered after sharing.
+ * - Collects user data (name/email) and consents before or after capture based on configured order.
  */
 
 'use client';
@@ -123,10 +125,6 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
 }
 
-function isOnboardingPageType(pageType: CustomPage['pageType']): boolean {
-  return pageType === 'who-are-you' || pageType === 'accept' || pageType === 'cta';
-}
-
 function splitCustomPages(
   pages: CustomPage[]
 ): {
@@ -136,16 +134,20 @@ function splitCustomPages(
 } {
   const sortedPages = [...pages].sort((a, b) => a.order - b.order);
   const takePhotoPage = sortedPages.find((page) => page.pageType === 'take-photo');
+  const takePhotoIndex = sortedPages.findIndex((page) => page.pageType === 'take-photo');
 
-  const onboardingPages = sortedPages.filter((page) => {
-    if (page.pageType === 'take-photo') return false;
-    return isOnboardingPageType(page.pageType);
-  });
+  if (takePhotoIndex === -1) {
+    return {
+      onboardingPages: sortedPages,
+      thankYouPages: [],
+      takePhotoPage: undefined,
+    };
+  }
 
-  const thankYouPages = sortedPages.filter((page) => {
-    if (page.pageType === 'take-photo') return false;
-    return !isOnboardingPageType(page.pageType);
-  });
+  const onboardingPages = sortedPages.slice(0, takePhotoIndex).filter((page) => page.pageType !== 'take-photo');
+  const thankYouPages = sortedPages
+    .slice(takePhotoIndex + 1)
+    .filter((page) => page.pageType !== 'take-photo');
 
   return { onboardingPages, thankYouPages, takePhotoPage };
 }
