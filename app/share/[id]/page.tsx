@@ -385,6 +385,9 @@ export default async function SharePage({ params }: Props) {
   const hasTryOnVariant = displayVariants.some((variant) => variant.isTryOn);
   const downloadableImageUrl = featuredVariant?.imageUrl ?? null;
   const hasDownloadableImage = Boolean(downloadableImageUrl);
+  const downloadableImageHref = hasDownloadableImage && featuredVariant && submission.id
+    ? `/api/share/${submission.id}/download?variant=${encodeURIComponent(featuredVariant.id)}`
+    : null;
   const imageMissingMessage = sharePageSettings.pendingTryOnMessage;
 
   const showPendingTryOnMessage =
@@ -456,13 +459,11 @@ export default async function SharePage({ params }: Props) {
           </Text>
 
           <Group gap="md" grow>
-            {hasDownloadableImage ? (
+            {downloadableImageHref ? (
               <Button
                 component="a"
-                href={downloadableImageUrl}
+                href={downloadableImageHref}
                 download
-                target="_blank"
-                rel="noopener noreferrer"
                 size="lg"
               >
                 Download
