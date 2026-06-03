@@ -19,7 +19,7 @@
  * Custom Page Flows:
  * - Events can have custom onboarding and thank you pages
  * - Pages are drag-and-drop reorderable including [Take Photo] step
- * - Page types: 'who-are-you' (data collection), 'accept' (consent), 'cta' (call to action), 'take-photo' (capture)
+ * - Page types: 'who-are-you' (data collection), 'accept' (consent), 'cta' (call to action), 'take-photo' (capture), 'restart' (restart full journey)
  * - Collected data (name, email, consents) stored with each submission
  */
 
@@ -113,12 +113,14 @@ export interface Partner {
  * - accept: GDPR/terms consent with required checkbox
  * - cta: Call-to-action that can redirect to URL, optional button (if no button = end page)
  * - take-photo: Represents the existing camera capture flow (special type for ordering)
+ * - restart: Explicitly restarts the entire journey from the first onboarding step
  */
 export enum CustomPageType {
   WHO_ARE_YOU = 'who-are-you',  // Data collection page
   ACCEPT = 'accept',            // Consent/terms page
   CTA = 'cta',                  // Call to action page
   TAKE_PHOTO = 'take-photo',    // Photo capture step (for ordering only)
+  RESTART = 'restart',          // Restart the full experience from the beginning
 }
 
 /**
@@ -187,6 +189,8 @@ export interface CustomPage {
     linkCopiedMessage?: string;  // Success when link copied (e.g., "Link copied to clipboard!")
     copyErrorMessage?: string;   // Error when copy fails (e.g., "Failed to copy link. Please copy it manually.")
     saveFirstMessage?: string;   // Warning when trying to share before saving (e.g., "Please save the photo first to get a shareable link.")
+    // For 'restart' type only
+    restartButtonText?: string;  // Optional dedicated label for restarting from the first page
   };
   createdAt: string;           // ISO 8601 timestamp when page was added
   updatedAt: string;           // ISO 8601 timestamp of last modification
@@ -227,6 +231,7 @@ export interface Event {
     enabled: boolean;                // Whether local AI try-on can be requested from capture flows
     allowedLeatherSuitIds?: string[]; // Optional allowlist for the public suit picker
     applyFrameToReturnedResults?: boolean; // Whether Camera should re-apply the selected frame after the try-on worker uploads the generated result
+    vettingEnabled?: boolean;        // Whether generated try-on results require admin review before publication
     includeApprovedResultsInSlideshows?: boolean; // Legacy/publication flag mirrored from resultSlideshowMode
     resultSlideshowMode?: 'disabled' | 'mixed_with_originals' | 'approved_results_only'; // Event policy for approved try-on slideshow publication
   };

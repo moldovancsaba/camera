@@ -111,6 +111,8 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
         ? 'Who are you?'
         : type === CustomPageType.ACCEPT
           ? 'Please accept'
+          : type === CustomPageType.RESTART
+            ? 'Ready for the next guest?'
           : 'Next step';
 
     const newPage: CustomPage = {
@@ -131,6 +133,10 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
         }),
         ...(type === CustomPageType.CTA && {
           checkboxText: '',
+        }),
+        ...(type === CustomPageType.RESTART && {
+          buttonText: 'Start again',
+          restartButtonText: 'Start again',
         }),
       },
       createdAt: now,
@@ -356,6 +362,13 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
         >
           + CTA
           </Button>
+          <Button
+            type="button"
+            variant="light"
+          onClick={() => handleAddPage(CustomPageType.RESTART)}
+        >
+          + Restart
+          </Button>
         </Group>
 
       {/* Edit Modal - Rendered via Portal to avoid nested form */}
@@ -449,6 +462,9 @@ function PageEditModal({
   const [linkCopiedMessage, setLinkCopiedMessage] = useState(page.config.linkCopiedMessage || 'Link copied to clipboard!');
   const [copyErrorMessage, setCopyErrorMessage] = useState(page.config.copyErrorMessage || 'Failed to copy link. Please copy it manually.');
   const [saveFirstMessage, setSaveFirstMessage] = useState(page.config.saveFirstMessage || 'Please save the photo first to get a shareable link.');
+  const [restartButtonText, setRestartButtonText] = useState(
+    page.config.restartButtonText || page.config.buttonText || 'Start again'
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -499,6 +515,9 @@ function PageEditModal({
           linkCopiedMessage,
           copyErrorMessage,
           saveFirstMessage,
+        }),
+        ...(page.pageType === CustomPageType.RESTART && {
+          restartButtonText,
         }),
       },
     };
@@ -778,6 +797,15 @@ function PageEditModal({
               placeholder="e.g., Please save the photo first to get a shareable link."
             />
           </>
+        ) : null}
+
+        {page.pageType === CustomPageType.RESTART ? (
+          <TextInput
+            label="Restart Button Text"
+            value={restartButtonText}
+            onChange={(event) => setRestartButtonText(event.currentTarget.value)}
+            placeholder="e.g., Start again"
+          />
         ) : null}
 
         {page.pageType !== CustomPageType.TAKE_PHOTO && (page.pageType !== CustomPageType.CTA || hasButton) ? (

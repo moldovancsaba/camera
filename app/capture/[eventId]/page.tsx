@@ -20,6 +20,7 @@ import ShareOverlay from '@/components/capture/ShareOverlay';
 import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoAreYouPage';
 import AcceptPage, { type AcceptPageData } from '@/components/capture/AcceptPage';
 import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
+import RestartPage from '@/components/capture/RestartPage';
 import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
 import { type CustomPage } from '@/lib/db/schemas';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
@@ -871,6 +872,23 @@ export default function EventCapturePage({
             brandBorderColor={event.brandBorderColor}
             buttonSize={eventButtonSize}
             onNext={(data) => handleConsentComplete(currentPage, data)}
+          />
+        );
+
+      case 'restart':
+        return (
+          <RestartPage
+            config={{
+              title: currentPage.config.title,
+              description: currentPage.config.description,
+              buttonText: currentPage.config.buttonText,
+              restartButtonText: currentPage.config.restartButtonText,
+            }}
+            logoUrl={onboardingLogoUrl}
+            brandColor={event.brandColor}
+            brandBorderColor={event.brandBorderColor}
+            buttonSize={eventButtonSize}
+            onRestart={handleRestartFlow}
           />
         );
       
