@@ -22,6 +22,7 @@
     "tryon:verify": "tsx scripts/verify-tryon-prereqs.ts",
     "tryon:reframe": "tsx scripts/reframe-tryon-results.ts",
     "tryon:reconcile-jobs": "tsx scripts/reconcile-tryon-done-jobs.ts",
+    "tryon:enable-frame-composition": "tsx scripts/enable-tryon-frame-composition.ts",
     "tryon:worker": "tsx scripts/tryon-worker.ts",
     "postinstall": "node scripts/patch-baseline-browser-mapping.mjs",
     "vercel:link": "npx vercel@latest link",
