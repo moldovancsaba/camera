@@ -71,6 +71,19 @@ interface ResolvedEventProfile {
   shouldApplyReturnedFrame: boolean;
 }
 
+type FrameRecord = {
+  fileUrl?: string | null;
+  imageUrl?: string | null;
+};
+
+function resolveFrameAssetUrl(frame: FrameRecord): string | null {
+  const legacyUrl = typeof frame.fileUrl === 'string' ? frame.fileUrl.trim() : '';
+  if (legacyUrl) return legacyUrl;
+
+  const currentUrl = typeof frame.imageUrl === 'string' ? frame.imageUrl.trim() : '';
+  return currentUrl || null;
+}
+
 function parseArgs(): ReframeOptions {
   const args = process.argv.slice(2);
   const eventArg = args.find((value) => value.startsWith('--event='));
@@ -322,13 +335,13 @@ async function reframeExistingTryOnResult(
     };
   }
 
-  const frame = await db.collection(COLLECTIONS.FRAMES).findOne(
+  const frame = await db.collection<FrameRecord>(COLLECTIONS.FRAMES).findOne(
     { frameId: sourceSubmission.frameId },
-    { projection: { fileUrl: 1 } }
+    { projection: { fileUrl: 1, imageUrl: 1 } }
   );
 
-  const frameFileUrl = typeof frame?.fileUrl === 'string' ? frame.fileUrl.trim() : '';
-  if (!frameFileUrl) {
+  const frameAssetUrl = frame ? resolveFrameAssetUrl(frame) : null;
+  if (!frameAssetUrl) {
     return {
       status: 'skipped',
       reason: 'frame_file_missing',
@@ -361,7 +374,7 @@ async function reframeExistingTryOnResult(
         width: resultSubmission.metadata?.finalWidth ?? null,
         height: resultSubmission.metadata?.finalHeight ?? null,
       }
-    : await applyFrameToTryOnResult(baseRawUrl, frameFileUrl, uploadName);
+    : await applyFrameToTryOnResult(baseRawUrl, frameAssetUrl, uploadName);
 
   const finalUpdates: Document = {
     'metadata.compositionEngine': 'motogp_leather_magic_framed',

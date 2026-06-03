@@ -14,6 +14,19 @@ import { patchSubmissionTryOnState } from '@/lib/tryon/jobs';
 import { shouldApprovedTryOnBeSlideshowEligible } from '@/lib/tryon/slideshow-policy';
 import { applyFrameToTryOnResult, inspectTryOnResultAsset } from '@/lib/tryon/frame-composition';
 
+type FrameRecord = {
+  fileUrl?: string | null;
+  imageUrl?: string | null;
+};
+
+function resolveFrameAssetUrl(frame: FrameRecord): string | null {
+  const legacyUrl = typeof frame.fileUrl === 'string' ? frame.fileUrl.trim() : '';
+  if (legacyUrl) return legacyUrl;
+
+  const currentUrl = typeof frame.imageUrl === 'string' ? frame.imageUrl.trim() : '';
+  return currentUrl || null;
+}
+
 export interface TryOnCompletionPayload {
   publicResultUrl: string;
   deleteUrl?: string | null;
@@ -121,17 +134,18 @@ async function resolveTryOnResultAsset(
     return inspectTryOnResultAsset(publicResultUrl);
   }
 
-  const frame = await db.collection<Frame>(COLLECTIONS.FRAMES).findOne(
+  const frame = await db.collection<FrameRecord>(COLLECTIONS.FRAMES).findOne(
     { frameId },
-    { projection: { fileUrl: 1 } }
+    { projection: { fileUrl: 1, imageUrl: 1 } }
   );
 
-  if (!frame?.fileUrl) {
+  const frameAssetUrl = frame ? resolveFrameAssetUrl(frame) : null;
+  if (!frameAssetUrl) {
     return inspectTryOnResultAsset(publicResultUrl);
   }
 
   try {
-    return await applyFrameToTryOnResult(publicResultUrl, frame.fileUrl, `tryon-framed-${Date.now()}`);
+    return await applyFrameToTryOnResult(publicResultUrl, frameAssetUrl, `tryon-framed-${Date.now()}`);
   } catch (error) {
     console.error('Failed to apply frame to returned try-on result; falling back to raw upload.', {
       eventId: sourceSubmission.eventId ?? null,
