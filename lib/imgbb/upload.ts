@@ -16,16 +16,24 @@ import axios, { AxiosError } from 'axios';
 import { isRenderableImgbbImageUrl, normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
 
 const IMGBB_UPLOAD_URL = 'https://api.imgbb.com/1/upload';
+const IMGBB_API_KEY_CANDIDATES = [
+  'IMGBB_API_KEY',
+  'NEXT_PUBLIC_IMG_BB_API_KEY',
+  'IMG_BB_API_KEY',
+] as const;
 
 /**
  * Get imgbb API key with validation
  * Lazy loaded to avoid build-time errors
  */
 function getImgbbApiKey(): string {
-  if (!process.env.IMGBB_API_KEY) {
+  const found = IMGBB_API_KEY_CANDIDATES.map((key) => process.env[key]).find(
+    (value) => Boolean(value?.trim())
+  );
+  if (!found) {
     throw new Error('IMGBB_API_KEY environment variable is not defined');
   }
-  return process.env.IMGBB_API_KEY;
+  return found;
 }
 
 /**
@@ -53,7 +61,7 @@ export interface ImgbbUploadResponse {
       name: string;
       mime: string;
       extension: string;
-      url: string;          // Thumbnail URL
+      url: string;
       size: number;
     };
     medium?: {
@@ -132,12 +140,45 @@ async function fileToBase64(file: File | Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      const base64 = (reader.result as string).split(',')[1];
+      const payload = (reader.result as string).split(',');
+      const base64 = payload.length > 1 ? payload[1] : payload[0];
+      if (!base64) {
+        reject(new Error('Invalid base64 image payload'));
+        return;
+      }
       resolve(base64);
     };
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+function normalizeBase64Input(image: string): string {
+  const trimmed = image.trim();
+  if (!trimmed) {
+    throw new Error('Invalid base64 image payload');
+  }
+
+  const isDataUrl = trimmed.startsWith('data:') && trimmed.includes('base64,');
+  if (!isDataUrl) {
+    return trimmed;
+  }
+
+  const separatorIndex = trimmed.indexOf('base64,');
+  const payload = trimmed.slice(separatorIndex + 'base64,'.length);
+  if (!payload) {
+    throw new Error('Invalid base64 image payload');
+  }
+  return payload;
+}
+
+function isTransientAxiosError(error: AxiosError): boolean {
+  if (!error.response) {
+    return true;
+  }
+
+  const status = error.response.status;
+  return status >= 500 || status === 429;
 }
 
 /**
@@ -165,7 +206,7 @@ export async function uploadImage(
   let base64Image: string;
   if (typeof image === 'string') {
     // Already base64
-    base64Image = image;
+    base64Image = normalizeBase64Input(image);
   } else {
     base64Image = await fileToBase64(image);
   }
@@ -217,7 +258,11 @@ export async function uploadImage(
         }
 
         if (validatePublicUrl) {
-          const preferred = [imageUrl, thumbnailUrl, ...candidates.filter((value) => value !== imageUrl && value !== thumbnailUrl)];
+          const preferred = [
+            imageUrl,
+            thumbnailUrl,
+            ...candidates.filter((value) => value !== imageUrl && value !== thumbnailUrl),
+          ];
           let validated = false;
           for (const candidate of preferred) {
             if (await canFetchImage(candidate)) {
@@ -226,7 +271,7 @@ export async function uploadImage(
             }
           }
           if (!validated) {
-            throw new Error('imgbb upload succeeded but direct image URL is not currently fetchable');
+            console.warn('imgbb upload validation did not confirm fetchability; returning unverified URL');
           }
         }
 
@@ -256,24 +301,19 @@ export async function uploadImage(
           message: axiosError.message,
           data: axiosError.response?.data,
         });
-      } else {
-        console.error(`✗ imgbb upload attempt ${attempt} failed:`, error);
-      }
 
-      // Don't retry on client errors (4xx) except 429 (rate limit)
-      if (axios.isAxiosError(error) && error.response) {
-        const status = error.response.status;
-        if (status >= 400 && status < 500 && status !== 429) {
-          console.error('Client error detected, not retrying');
+        if (!isTransientAxiosError(axiosError)) {
           throw lastError;
         }
+      } else {
+        console.error(`✗ imgbb upload attempt ${attempt} failed:`, error);
       }
 
       // Wait before retrying (except on last attempt)
       if (attempt < maxRetries) {
         const delay = retryDelay * attempt; // Exponential backoff
         console.log(`Waiting ${delay}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
