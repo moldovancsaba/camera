@@ -15,6 +15,8 @@ export interface TryOnShareVariantSource {
   finalImageUrl?: string | null;
   tryOnLeatherSuitId?: string | null;
   metadata?: unknown;
+  createdAt?: unknown;
+  approvedAt?: unknown;
 }
 
 function readString(value: unknown): string | null {
@@ -101,10 +103,24 @@ export function limitShareVariantsToConfiguredMode(variants: ShareVariantCard[],
   return [variants[targetIndex]];
 }
 
-function resolveCheckedInVariantCard(
+function readDateEpoch(value: unknown): number {
+  if (value instanceof Date && Number.isFinite(value.getTime())) {
+    return value.getTime();
+  }
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  return 0;
+}
+
+function buildCheckedInCandidate(
   variant: TryOnShareVariantSource,
   settings: EventSharePageSettings
-): ShareVariantCard | null {
+): { card: ShareVariantCard; rank: number; timestamp: number } | null {
   const id = variant._id?.toString() ?? '';
   const metadata =
     variant.metadata && typeof variant.metadata === 'object'
@@ -114,55 +130,75 @@ function resolveCheckedInVariantCard(
   const rawResultUrl = readString(metadata.tryOnRawResultUrl);
   const isFramed = metadata.compositionEngine === 'motogp_leather_magic_framed';
   const suitLabel = readString(variant.tryOnLeatherSuitId) || 'Approved try-on result';
-  const preferFramed = settings.includeFramedTryOnResult || !settings.includeTryOnResult;
-  const preferRaw = settings.includeTryOnResult || !settings.includeFramedTryOnResult;
 
-  if (isFramed && preferFramed && resultUrl) {
-    return {
-      id: `${id}:tryon-checked-in`,
-      imageUrl: resultUrl,
-      label: `${suitLabel} - checked-in`,
-      isTryOn: true,
-    };
+  const canUseFramed = Boolean(resultUrl && isFramed);
+  const canUseRaw = Boolean(rawResultUrl);
+  const canUseFallback = Boolean(resultUrl);
+  if (!canUseFramed && !canUseRaw && !canUseFallback) {
+    return null;
   }
 
-  if (preferRaw && rawResultUrl) {
-    return {
-      id: `${id}:tryon-checked-in`,
-      imageUrl: rawResultUrl,
-      label: `${suitLabel} - checked-in`,
-      isTryOn: true,
-    };
+  let rank = 1;
+  let imageUrl: string | null = null;
+
+  if (settings.includeFramedTryOnResult && canUseFramed) {
+    rank = 400;
+    imageUrl = resultUrl;
+  } else if (settings.includeTryOnResult && canUseRaw) {
+    rank = 300;
+    imageUrl = rawResultUrl;
+  } else if (settings.includeCheckedInTryOnResult && settings.includeTryOnResult && canUseFramed) {
+    rank = 200;
+    imageUrl = resultUrl;
+  } else if (canUseFramed) {
+    rank = 140;
+    imageUrl = resultUrl;
+  } else if (canUseRaw) {
+    rank = 120;
+    imageUrl = rawResultUrl;
+  } else {
+    rank = 80;
+    imageUrl = resultUrl;
   }
 
-  if (resultUrl) {
-    return {
-      id: `${id}:tryon-checked-in`,
-      imageUrl: resultUrl,
-      label: `${suitLabel} - checked-in`,
-      isTryOn: true,
-    };
+  if (!imageUrl) {
+    return null;
   }
 
-  return null;
+  return {
+    rank,
+    timestamp: Math.max(readDateEpoch(variant.approvedAt), readDateEpoch(variant.createdAt)),
+    card: {
+      id: `${id}:tryon-checked-in`,
+      imageUrl,
+      label: `${suitLabel} - checked-in`,
+      isTryOn: true,
+    },
+  };
 }
 
 export function buildCheckedInTryOnVariantCard(
   variant: TryOnShareVariantSource,
   settings: EventSharePageSettings
 ): ShareVariantCard | null {
-  return resolveCheckedInVariantCard(variant, settings);
+  return buildCheckedInCandidate(variant, settings)?.card ?? null;
 }
 
 export function pickFirstCheckedInTryOnVariantCard(
   variants: TryOnShareVariantSource[],
   settings: EventSharePageSettings
 ): ShareVariantCard | null {
-  for (const variant of variants) {
-    const card = buildCheckedInTryOnVariantCard(variant, settings);
-    if (card) {
-      return card;
-    }
-  }
-  return null;
+  const candidates = variants
+    .map((variant) => buildCheckedInCandidate(variant, settings))
+    .filter((value): value is { card: ShareVariantCard; rank: number; timestamp: number } => Boolean(value));
+
+  if (!candidates.length) return null;
+
+  candidates.sort((a, b) => {
+    if (b.rank !== a.rank) return b.rank - a.rank;
+    if (b.timestamp !== a.timestamp) return b.timestamp - a.timestamp;
+    return a.card.label.localeCompare(b.card.label);
+  });
+
+  return candidates[0].card;
 }

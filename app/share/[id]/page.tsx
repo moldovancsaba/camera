@@ -71,11 +71,15 @@ interface TryOnVariantLike {
   imageUrl?: string | null;
   finalImageUrl?: string | null;
   tryOnLeatherSuitId?: string | null;
+  createdAt?: string | null;
+  approvedAt?: string | null;
   metadata?: {
     compositionEngine?: unknown;
     tryOnRawResultUrl?: unknown;
   } | null;
 }
+
+export const dynamic = 'force-dynamic';
 
 function getSubmissionEventLookupKeys(submission: Record<string, unknown>): string[] {
   const candidates = [
@@ -387,6 +391,8 @@ export default async function SharePage({ params }: Props) {
         imageUrl: variant.imageUrl,
         finalImageUrl: variant.finalImageUrl,
         tryOnLeatherSuitId: variant.tryOnLeatherSuitId ?? null,
+        createdAt: typeof variant.createdAt === 'string' ? variant.createdAt : null,
+        approvedAt: typeof variant.approvedAt === 'string' ? variant.approvedAt : null,
         metadata:
           variant.metadata && typeof variant.metadata === 'object'
             ? {
@@ -403,6 +409,7 @@ export default async function SharePage({ params }: Props) {
               _id: { toString: () => currentSubmissionId },
               imageUrl: submission.imageUrl,
               finalImageUrl: submission.imageUrl,
+              createdAt: submission.createdAt,
               tryOnLeatherSuitId: submission.tryOnLeatherSuitId,
               metadata: {
                 compositionEngine: submission.metadata?.compositionEngine,
@@ -421,17 +428,17 @@ export default async function SharePage({ params }: Props) {
         });
       });
 
-    if (sharePageSettings.includeCheckedInTryOnResult) {
-      const checkedInVariant = pickFirstCheckedInTryOnVariantCard(
-        variantCandidates,
-        sharePageSettings
-      );
-      if (checkedInVariant) {
-        if (!shareVariants.some((variant) => variant.id === checkedInVariant.id)) {
-          shareVariants.unshift(checkedInVariant);
+      if (sharePageSettings.includeCheckedInTryOnResult) {
+        const checkedInVariant = pickFirstCheckedInTryOnVariantCard(
+          variantCandidates,
+          sharePageSettings
+        );
+        if (checkedInVariant) {
+          if (!shareVariants.some((variant) => variant.id === checkedInVariant.id)) {
+            shareVariants.unshift(checkedInVariant);
+          }
         }
       }
-    }
     }
   }
 
@@ -462,7 +469,7 @@ export default async function SharePage({ params }: Props) {
       sharePageSettings.includeFramedTryOnResult ||
       sharePageSettings.includeCheckedInTryOnResult) &&
     Boolean(submission.tryOnRequest?.requested) &&
-    !hasTryOnVariant;
+    (!hasTryOnVariant || submission.tryOnRequest?.shareVisible === false);
 
   // `/capture/[eventId]` expects the event document Mongo `_id`, while submissions often store public `eventId` UUID in `eventIds` / `eventId`.
   let createYourOwnHref = '/capture';

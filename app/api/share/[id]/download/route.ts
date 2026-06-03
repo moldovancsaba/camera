@@ -19,6 +19,7 @@ interface ShareSubmission {
   id: string;
   imageUrl: string | null;
   submissionKind: 'original' | 'tryon_result';
+  createdAt?: string | null;
   sourceSubmissionId: string | null;
   eventIds: unknown[] | null;
   eventId?: unknown;
@@ -53,11 +54,15 @@ interface TryOnVariantLike {
   imageUrl?: string | null;
   finalImageUrl?: string | null;
   tryOnLeatherSuitId?: string | null;
+  createdAt?: string | null;
+  approvedAt?: string | null;
   metadata?: {
     compositionEngine?: unknown;
     tryOnRawResultUrl?: unknown;
   } | null;
 }
+
+export const dynamic = 'force-dynamic';
 
 function getSubmissionEventLookupKeys(submission: Record<string, unknown>): string[] {
   const candidates = [
@@ -239,6 +244,10 @@ async function resolveShareImageUrlByVariantId(
       imageUrl: variant.imageUrl,
       finalImageUrl: variant.finalImageUrl,
       tryOnLeatherSuitId: variant.tryOnLeatherSuitId ?? null,
+      createdAt: typeof variant.createdAt === 'string' ? variant.createdAt : null,
+      approvedAt: typeof (variant as { approvedAt?: unknown }).approvedAt === 'string'
+        ? (variant as { approvedAt: string }).approvedAt
+        : null,
       metadata:
         variant.metadata && typeof variant.metadata === 'object'
           ? {
@@ -255,6 +264,7 @@ async function resolveShareImageUrlByVariantId(
       variantCandidates.push({
         _id: { toString: () => currentSubmissionId },
         imageUrl: submission.imageUrl,
+        createdAt: submission.createdAt,
         tryOnLeatherSuitId: submission.tryOnLeatherSuitId,
         metadata: {
           compositionEngine: submission.metadata?.compositionEngine,
@@ -336,6 +346,7 @@ export async function GET(
     const submission: ShareSubmission = {
       id: String(doc._id),
       imageUrl: readString(doc.imageUrl),
+      createdAt: typeof doc.createdAt === 'string' ? doc.createdAt : null,
       submissionKind:
         doc.submissionKind === 'tryon_result' ? 'tryon_result' : 'original',
       sourceSubmissionId: sourceSubmissionId || null,
