@@ -30,6 +30,7 @@ import { StateBlock } from '@doneisbetter/gds-core/client';
 import EditorScaffold from '@/components/gds/EditorScaffold';
 import MediaCard from '@/components/media/MediaPreviewCard';
 import type { TryOnSuitOption } from '@/lib/tryon/suits';
+import type { TryOnSetup } from '@/lib/db/schemas';
 import type { EventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 import {
   DEFAULT_EVENT_BUTTON_SIZE,
@@ -71,6 +72,8 @@ export default function NewEventPage() {
   const [error, setError] = useState<string | null>(null);
   const [partners, setPartners] = useState<PartnerOption[]>([]);
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(preselectedPartnerId);
+  const [tryOnSetups, setTryOnSetups] = useState<TryOnSetup[]>([]);
+  const [tryOnSetupId, setTryOnSetupId] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -153,6 +156,23 @@ export default function NewEventPage() {
     void fetchSuits();
   }, []);
 
+  useEffect(() => {
+    const fetchTryOnSetups = async () => {
+      try {
+        const response = await fetch('/api/tryon/setups');
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Failed to load try-on setups');
+        }
+        setTryOnSetups(payload.data?.setups ?? payload.setups ?? []);
+      } catch {
+        setTryOnSetups([]);
+      }
+    };
+
+    void fetchTryOnSetups();
+  }, []);
+
   const handleLogoChange = (file: File | null) => {
     setLogoFile(file);
     if (!file) {
@@ -222,6 +242,7 @@ export default function NewEventPage() {
       showLogo: formData.get('showLogo') === 'on',
       tryOn: {
         enabled: tryOnEnabled,
+        setupId: tryOnSetupId || null,
         allowedLeatherSuitIds: selectedSuitIds,
         applyFrameToReturnedResults,
         vettingEnabled: tryOnVettingEnabled,
@@ -499,6 +520,7 @@ export default function NewEventPage() {
                   setResultSlideshowMode('disabled');
                   setApplyFrameToReturnedResults(false);
                   setTryOnVettingEnabled(true);
+                  setTryOnSetupId('');
                 }
               }}
               label="Enable local AI leather try-on for this event"
@@ -529,6 +551,18 @@ export default function NewEventPage() {
               onChange={(value) =>
                 setResultSlideshowMode((value as EventTryOnResultSlideshowMode) || 'disabled')
               }
+            />
+            <Select
+              label="Try-on setup profile"
+              description="Select which model/profile config is used for this event. Leave empty to use global default."
+              placeholder={tryOnSetups.length > 0 ? 'Use global default' : 'No active try-on setups found'}
+              data={tryOnSetups.map((setup) => ({
+                value: setup.setupId,
+                label: `${setup.name}${setup.isDefault ? ' (global default)' : ''}`,
+              }))}
+              value={tryOnSetupId || null}
+              onChange={(value) => setTryOnSetupId(value || '')}
+              disabled={!tryOnEnabled}
             />
             <Select
               label="Allowed leather jerseys"

@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { closeConnection, connectToDatabase } from '@/lib/db/mongodb';
 import { uploadImage } from '@/lib/imgbb/upload';
+import { COLLECTIONS } from '@/lib/db/schemas';
 import {
   classifyTryOnFailure,
   claimNextTryOnJob,
@@ -15,6 +16,7 @@ import {
   upsertSubmissionTryOnLink,
   type WorkerRuntimeConfig,
 } from '@/lib/tryon/jobs';
+import { resolveTryOnSetupForJob } from '@/lib/tryon/setup-resolution';
 import { ensureTryOnQueueDirectories, getTryOnEnv } from '@/lib/tryon/env';
 import { writeTryOnLog } from '@/lib/tryon/logging';
 import {
@@ -71,6 +73,29 @@ export async function runTryOnWorkerOnce(config: WorkerRuntimeConfig): Promise<v
   }, Math.max(5000, Math.floor(config.leaseDurationSeconds * 1000 * 0.4)));
 
   try {
+    const resolvedSetup = await resolveTryOnSetupForJob(db, {
+      requestSetupId: job.request.setupId,
+      cameraId: job.source.cameraId,
+    });
+
+    await db.collection(COLLECTIONS.TRYON_JOBS).updateOne(
+      { jobId: job.jobId },
+      {
+        $set: {
+          'processing.resolvedSetup': resolvedSetup,
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    );
+
+    const resolvedJob = {
+      ...job,
+      processing: {
+        ...job.processing,
+        resolvedSetup,
+      },
+    };
+
     await writeTryOnLog(env.queueRoot, {
       ts: new Date().toISOString(),
       level: 'info',
@@ -82,10 +107,11 @@ export async function runTryOnWorkerOnce(config: WorkerRuntimeConfig): Promise<v
 
     await markTryOnJobStage(db, job.jobId, 'processing', 'downloading_input', {
       'processing.startedAt': new Date().toISOString(),
+      'processing.resolvedSetup': resolvedSetup,
     });
     const staged = await stageTryOnJob(
       db,
-      job,
+      resolvedJob,
       env.queueRoot,
       env.suitAssetRoot,
       env.allowedSourceHosts

@@ -218,6 +218,11 @@ export const PATCH = withErrorHandler(async (
     sharePage,
   } = body;
 
+  const tryOnSetupId =
+    typeof tryOn?.setupId === 'string' && tryOn.setupId.trim().length > 0
+      ? tryOn.setupId.trim()
+      : null;
+
   // Build update object with only provided fields
   const updateFields: Record<string, unknown> = {
     updatedAt: generateTimestamp(),
@@ -289,6 +294,7 @@ export const PATCH = withErrorHandler(async (
     });
     updateFields.tryOn = {
       enabled: Boolean(tryOn?.enabled),
+      setupId: tryOnSetupId,
       allowedLeatherSuitIds,
       applyFrameToReturnedResults: Boolean(tryOn?.applyFrameToReturnedResults),
       vettingEnabled: tryOn?.vettingEnabled !== false,

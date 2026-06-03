@@ -234,6 +234,40 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       .collection(COLLECTIONS.TRYON_JOBS)
       .createIndex({ updatedAt: 1 }, { name: 'tryon_jobs_updatedAt' })
   );
+  await track(COLLECTIONS.TRYON_JOBS, () =>
+    db
+      .collection(COLLECTIONS.TRYON_JOBS)
+      .createIndex({ 'source.cameraId': 1 }, { name: 'tryon_jobs_source_cameraId' })
+  );
+  await track(COLLECTIONS.TRYON_JOBS, () =>
+    db
+      .collection(COLLECTIONS.TRYON_JOBS)
+      .createIndex({ 'request.setupId': 1 }, { name: 'tryon_jobs_request_setupId' })
+  );
+
+  // --- try-on setups ---
+  await track(COLLECTIONS.TRYON_SETUPS, () =>
+    db
+      .collection(COLLECTIONS.TRYON_SETUPS)
+      .createIndex({ setupId: 1 }, { unique: true, name: 'tryon_setups_setupId_unique' })
+  );
+  await track(COLLECTIONS.TRYON_SETUPS, () =>
+    db
+      .collection(COLLECTIONS.TRYON_SETUPS)
+      .createIndex({ active: 1, isDefault: 1, cameraId: 1 }, { name: 'tryon_setups_active_default_camera' })
+  );
+
+  // --- per-camera setup preferences ---
+  await track(COLLECTIONS.CAMERA_SETUP_PREFERENCES, () =>
+    db
+      .collection(COLLECTIONS.CAMERA_SETUP_PREFERENCES)
+      .createIndex({ cameraId: 1 }, { unique: true, name: 'camera_setup_preferences_cameraId_unique' })
+  );
+  await track(COLLECTIONS.CAMERA_SETUP_PREFERENCES, () =>
+    db
+      .collection(COLLECTIONS.CAMERA_SETUP_PREFERENCES)
+      .createIndex({ setupId: 1 }, { name: 'camera_setup_preferences_setupId' })
+  );
 
   // --- slideshows ---
   await track(COLLECTIONS.SLIDESHOWS, () =>

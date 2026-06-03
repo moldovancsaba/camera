@@ -42,6 +42,8 @@ interface TryOnRequestDetails {
   requested: boolean;
   leatherSuitId: string | null;
   sourceImageData: string | null;
+  setupId?: string | null;
+  cameraId?: string | null;
 }
 
 interface SubmissionEventDocument {
@@ -57,6 +59,7 @@ interface SubmissionEventDocument {
   tryOn?: {
     enabled?: boolean;
     allowedLeatherSuitIds?: string[];
+    setupId?: string | null;
   };
 }
 
@@ -91,17 +94,25 @@ function normalizeTryOnRequest(body: Record<string, unknown>): TryOnRequestDetai
   const leatherSuitIdRaw = body.leatherSuitId ?? body.leather_suit_id;
   const requestFlagRaw = body.requestTryOn ?? body.request_try_on ?? leatherSuitIdRaw;
   const sourceImageRaw = body.tryOnSourceImageData ?? body.try_on_source_image_data;
+  const setupIdRaw = body.setupId ?? body.setup_id;
+  const cameraIdRaw = body.cameraId ?? body.camera_id;
 
   const leatherSuitId =
     typeof leatherSuitIdRaw === 'string' && leatherSuitIdRaw.trim() ? leatherSuitIdRaw.trim() : null;
   const requested = Boolean(requestFlagRaw) || Boolean(leatherSuitId);
   const sourceImageData =
     typeof sourceImageRaw === 'string' && sourceImageRaw.trim() ? sourceImageRaw.trim() : null;
+  const setupId =
+    typeof setupIdRaw === 'string' && setupIdRaw.trim() ? setupIdRaw.trim() : null;
+  const cameraId =
+    typeof cameraIdRaw === 'string' && cameraIdRaw.trim() ? cameraIdRaw.trim() : null;
 
   return {
     requested,
     leatherSuitId,
     sourceImageData,
+    setupId,
+    cameraId,
   };
 }
 
@@ -319,6 +330,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       created.tryOn.requested = true;
       created.tryOn.leatherSuitId = tryOnRequest.leatherSuitId;
 
+      const resolvedSetupId =
+        tryOnRequest.setupId ??
+        (eventPolicy?.tryOn?.setupId && eventPolicy.tryOn.setupId.trim()
+          ? eventPolicy.tryOn.setupId.trim()
+          : null);
+
       try {
         if (!tryOnRequest.leatherSuitId) {
           throw new Error('leather_suit_id is required when try-on is requested');
@@ -370,6 +387,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           submissionId,
           imageUrl: sourceUpload.imageUrl,
           leatherSuitId: tryOnRequest.leatherSuitId,
+          setupId: resolvedSetupId,
+          cameraId: tryOnRequest.cameraId,
           eventId: typeof eventId === 'string' ? eventId : null,
           eventMongoId: eventDocument?._id ? getSubmissionMongoIdString(eventDocument._id) : null,
           partnerId: typeof partnerId === 'string' ? partnerId : null,

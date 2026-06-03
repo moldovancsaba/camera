@@ -3,10 +3,12 @@ import { createHash, randomUUID } from 'node:crypto';
 export function buildTryOnRequestHash(
   submissionId: string,
   leatherSuitId: string,
-  pipelineVersion: string
+  pipelineVersion: string,
+  setupId?: string | null
 ): string {
+  const normalizedSetupId = typeof setupId === 'string' && setupId.trim() ? setupId.trim() : null;
   return createHash('sha256')
-    .update(`${submissionId}:${leatherSuitId}:${pipelineVersion}`)
+    .update(`${submissionId}:${leatherSuitId}:${pipelineVersion}:${normalizedSetupId || ''}`)
     .digest('hex');
 }
 

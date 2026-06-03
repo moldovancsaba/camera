@@ -34,6 +34,7 @@ import { defaultGoShortOrigin } from '@/lib/site-hosts';
 import { FormSection } from '@doneisbetter/gds-admin/client';
 import { StateBlock } from '@doneisbetter/gds-core/client';
 import EditorScaffold from '@/components/gds/EditorScaffold';
+import type { TryOnSetup } from '@/lib/db/schemas';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -74,6 +75,7 @@ interface EventRecord {
   customPages?: CustomPage[];
   tryOn?: {
     enabled?: boolean;
+    setupId?: string | null;
     allowedLeatherSuitIds?: string[];
     applyFrameToReturnedResults?: boolean;
     vettingEnabled?: boolean;
@@ -130,6 +132,8 @@ export default function EditEventPage({
   const [brandBorderColor, setBrandBorderColor] = useState(CAMERA_DEFAULT_BRAND_BORDER_COLOR);
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
+  const [tryOnSetupId, setTryOnSetupId] = useState('');
+  const [tryOnSetups, setTryOnSetups] = useState<TryOnSetup[]>([]);
   const [submissionResultEmailSendAfterSave, setSubmissionResultEmailSendAfterSave] = useState(true);
   const [submissionResultEmailSendAfterRelatedPhotosReady, setSubmissionResultEmailSendAfterRelatedPhotosReady] =
     useState(false);
@@ -164,6 +168,7 @@ export default function EditEventPage({
   const [tryOnVettingEnabled, setTryOnVettingEnabled] = useState(true);
   const [suitOptions, setSuitOptions] = useState<TryOnSuitOption[]>([]);
   const [selectedSuitIds, setSelectedSuitIds] = useState<string[]>([]);
+  const [isLoadingTryOnSetups, setIsLoadingTryOnSetups] = useState(true);
 
   useEffect(() => {
     params.then((p) => setMongoId(p.id));
@@ -192,6 +197,7 @@ export default function EditEventPage({
         setBrandColor(eventData.brandColor || CAMERA_DEFAULT_BRAND_COLOR);
         setBrandBorderColor(eventData.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR);
         setTryOnEnabled(Boolean(eventData.tryOn?.enabled));
+        setTryOnSetupId(eventData.tryOn?.setupId || '');
         setApplyFrameToReturnedResults(Boolean(eventData.tryOn?.applyFrameToReturnedResults));
         setTryOnVettingEnabled(eventData.tryOn?.vettingEnabled !== false);
         const emailModuleSettings = eventData.notifications;
@@ -259,6 +265,25 @@ export default function EditEventPage({
     };
 
     void fetchSuits();
+  }, []);
+
+  useEffect(() => {
+    const fetchTryOnSetups = async () => {
+      try {
+        const response = await fetch('/api/tryon/setups');
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || 'Failed to load try-on setups');
+        }
+        setTryOnSetups(payload.data?.setups ?? payload.setups ?? []);
+      } catch {
+        setTryOnSetups([]);
+      } finally {
+        setIsLoadingTryOnSetups(false);
+      }
+    };
+
+    void fetchTryOnSetups();
   }, []);
 
   const handleLogoChange = (file: File | null) => {
@@ -340,6 +365,7 @@ export default function EditEventPage({
       shortUrlSlug: (formData.get('shortUrlSlug') as string) ?? '',
       tryOn: {
         enabled: tryOnEnabled,
+        setupId: tryOnSetupId || null,
         allowedLeatherSuitIds: selectedSuitIds,
         applyFrameToReturnedResults,
         vettingEnabled: tryOnVettingEnabled,
@@ -661,9 +687,28 @@ export default function EditEventPage({
                   setResultSlideshowMode('disabled');
                   setApplyFrameToReturnedResults(false);
                   setTryOnVettingEnabled(true);
+                  setTryOnSetupId('');
                 }
               }}
               label="Enable local AI leather try-on for this event"
+            />
+            <Select
+              label="Try-on setup profile"
+              description="Select which model/profile config is used for this event. Leave empty to use global default."
+              placeholder={
+                isLoadingTryOnSetups
+                  ? 'Loading try-on setups...'
+                  : tryOnSetups.length > 0
+                    ? 'Use global default'
+                    : 'No active try-on setups found'
+              }
+              data={tryOnSetups.map((setup) => ({
+                value: setup.setupId,
+                label: `${setup.name}${setup.isDefault ? ' (global default)' : ''}`,
+              }))}
+              value={tryOnSetupId || null}
+              disabled={!tryOnEnabled || isLoadingTryOnSetups}
+              onChange={(value) => setTryOnSetupId(value || '')}
             />
             <Checkbox
               checked={tryOnVettingEnabled}

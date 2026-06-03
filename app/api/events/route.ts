@@ -186,6 +186,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       resultSlideshowMode: tryOn?.resultSlideshowMode,
     },
   });
+  const tryOnSetupId =
+    typeof tryOn?.setupId === 'string' && tryOn.setupId.trim().length > 0
+      ? tryOn.setupId.trim()
+      : null;
   const event = {
     eventId: generateId(),
     name: name.trim(),
@@ -210,6 +214,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     customPages: [],
     tryOn: {
       enabled: Boolean(tryOn?.enabled),
+      setupId: tryOnSetupId,
       allowedLeatherSuitIds: Array.isArray(tryOn?.allowedLeatherSuitIds)
         ? tryOn.allowedLeatherSuitIds
             .filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)

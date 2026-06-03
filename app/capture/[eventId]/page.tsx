@@ -62,6 +62,7 @@ interface EventData {
   frames?: EventFrameAssignment[];
   tryOn?: {
     enabled: boolean;
+    setupId?: string | null;
     allowedLeatherSuitIds?: string[];
   };
   notifications?: {
@@ -215,8 +216,18 @@ export default function EventCapturePage({
   const [signInError, setSignInError] = useState<{ code: string; message: string } | null>(null);
   const [selectedTryOnSuitId, setSelectedTryOnSuitId] = useState<string | null>(null);
   const [tryOnResult, setTryOnResult] = useState<TryOnSubmissionResult | null>(null);
+  const [cameraId, setCameraId] = useState<string | null>(null);
   
   const { onboardingPages, thankYouPages, takePhotoPage } = splitCustomPages(customPages);
+
+  // Keep camera scope identifier for per-event/camera try-on setup resolution.
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const cameraIdParam = (urlParams.get('cameraId') || urlParams.get('camera_id') || '').trim();
+    if (cameraIdParam) {
+      setCameraId(cameraIdParam);
+    }
+  }, []);
 
   // Get take-photo page config for button texts and messages
   const configuredTakePhotoPage = takePhotoPage;
@@ -340,7 +351,7 @@ export default function EventCapturePage({
         const urlParams = new URLSearchParams(window.location.search);
         const isResume = urlParams.get('resume') === 'true';
         
-        const response = await fetch(`/api/events/${eventId}`);
+      const response = await fetch(`/api/events/${eventId}`);
         if (!response.ok) throw new Error('Event not found');
         
         const data = await response.json();
@@ -629,6 +640,8 @@ export default function EventCapturePage({
         requestTryOn?: boolean;
         leatherSuitId?: string | null;
         tryOnSourceImageData?: string | null;
+        setupId?: string | null;
+        cameraId?: string | null;
         userInfo?: WhoAreYouPageData;
         consents?: CollectedData['consents'];
       } = {
@@ -640,12 +653,17 @@ export default function EventCapturePage({
         partnerName: event.partnerName,
         imageWidth: imageDimensions?.width || selectedFrame?.width || 1920,
         imageHeight: imageDimensions?.height || selectedFrame?.height || 1080,
+        cameraId,
       };
 
       if (selectedTryOnSuitId && event?.tryOn?.enabled) {
         submissionData.requestTryOn = true;
         submissionData.leatherSuitId = selectedTryOnSuitId;
         submissionData.tryOnSourceImageData = capturedImage;
+        submissionData.setupId =
+          typeof event?.tryOn?.setupId === 'string' && event.tryOn.setupId.trim().length > 0
+            ? event.tryOn.setupId.trim()
+            : null;
       }
       
       // Add collected data from custom pages

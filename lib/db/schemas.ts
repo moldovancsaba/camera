@@ -38,6 +38,8 @@ export const COLLECTIONS = {
   SUBMISSIONS: 'submissions',
   LEATHER_SUITS: 'leather_suits',
   TRYON_JOBS: 'tryon_jobs',
+  TRYON_SETUPS: 'tryon_setups',
+  CAMERA_SETUP_PREFERENCES: 'camera_setup_preferences',
   USERS_CACHE: 'users_cache',
   SLIDESHOWS: 'slideshows',
   SLIDESHOW_LAYOUTS: 'slideshow_layouts',
@@ -229,6 +231,7 @@ export interface Event {
   isActive: boolean;                 // Whether event is currently active
   tryOn?: {
     enabled: boolean;                // Whether local AI try-on can be requested from capture flows
+    setupId?: string | null;         // Optional default try-on setup selected for this event
     allowedLeatherSuitIds?: string[]; // Optional allowlist for the public suit picker
     applyFrameToReturnedResults?: boolean; // Whether Camera should re-apply the selected frame after the try-on worker uploads the generated result
     vettingEnabled?: boolean;        // Whether generated try-on results require admin review before publication
@@ -785,10 +788,52 @@ export type TryOnJobStage =
   | 'done'
   | 'failed';
 
+export type TryOnSetupSource = 'job.assigned' | 'camera.last' | 'global.default' | 'legacy';
+
+export interface TryOnSetupConfig {
+  processing_profile?: string;
+  processingProfile?: string;
+  category?: string;
+  sleeve_length?: string;
+  pant_length?: string;
+  resolution?: string;
+  steps?: number;
+  guidance?: number;
+  show_mask?: boolean;
+  mask_sharpness?: number;
+  mask_padding?: number;
+  detail_boost?: number;
+  [key: string]: string | number | boolean | null | undefined;
+}
+
+export interface TryOnSetup {
+  _id?: ObjectId;
+  setupId: string;
+  name: string;
+  description?: string | null;
+  cameraId?: string | null;
+  active: boolean;
+  isDefault: boolean;
+  rank: number;
+  config: TryOnSetupConfig;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TryOnSetupPreference {
+  _id?: ObjectId;
+  cameraId: string;
+  setupId: string;
+  updatedAt: string;
+  updatedBy?: string | null;
+  updatedByEvent?: string | null;
+}
+
 export interface TryOnJobSource {
   app: 'camera';
   submissionId: string;
   imageUrl: string;
+  cameraId?: string | null;
   eventId?: string | null;
   eventMongoId?: string | null;
   partnerId?: string | null;
@@ -797,6 +842,14 @@ export interface TryOnJobSource {
 
 export interface TryOnJobRequest {
   leatherSuitId: string;
+  setupId?: string | null;
+}
+
+export interface TryOnJobResolvedSetup {
+  setupId: string;
+  setupName: string;
+  setupProfile: string | null;
+  setupSource: TryOnSetupSource;
 }
 
 export interface TryOnJobProcessingState {
@@ -808,6 +861,7 @@ export interface TryOnJobProcessingState {
   attemptCount: number;
   nextAttemptAt: string;
   lastHeartbeatAt?: string | null;
+  resolvedSetup?: TryOnJobResolvedSetup;
 }
 
 export interface TryOnJobResult {

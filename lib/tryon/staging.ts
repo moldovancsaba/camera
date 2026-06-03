@@ -138,6 +138,14 @@ export async function stageTryOnJob(
         workspacePath: workspaceRoot,
         sourceImageUrl: job.source.imageUrl,
         resolvedSuitAssetPath: resolvedSource,
+        resolvedSetup: job.processing.resolvedSetup
+          ? {
+              setupId: job.processing.resolvedSetup.setupId,
+              setupName: job.processing.resolvedSetup.setupName,
+              setupProfile: job.processing.resolvedSetup.setupProfile,
+              setupSource: job.processing.resolvedSetup.setupSource,
+            }
+          : null,
         createdAt: nowIso(),
       },
       null,

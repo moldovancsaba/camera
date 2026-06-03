@@ -20,6 +20,8 @@ export interface CreateTryOnJobInput {
   submissionId: string;
   imageUrl: string;
   leatherSuitId: string;
+  setupId?: string | null;
+  cameraId?: string | null;
   eventId?: string | null;
   eventMongoId?: string | null;
   partnerId?: string | null;
@@ -60,13 +62,18 @@ export function buildQueuedTryOnJob(input: CreateTryOnJobInput): TryOnJob {
   const createdAt = nowIso();
   const normalizedSubmissionId = input.submissionId.trim();
   const normalizedSuitId = input.leatherSuitId.trim();
+  const normalizedSetupId =
+    typeof input.setupId === 'string' && input.setupId.trim() ? input.setupId.trim() : null;
+  const normalizedCameraId =
+    typeof input.cameraId === 'string' && input.cameraId.trim() ? input.cameraId.trim() : null;
 
   return {
     jobId: createTryOnJobId(),
     requestHash: buildTryOnRequestHash(
       normalizedSubmissionId,
       normalizedSuitId,
-      TRYON_PIPELINE_VERSION
+      TRYON_PIPELINE_VERSION,
+      normalizedSetupId
     ),
     status: 'queued',
     stage: 'queued',
@@ -80,9 +87,11 @@ export function buildQueuedTryOnJob(input: CreateTryOnJobInput): TryOnJob {
       eventMongoId: input.eventMongoId ?? null,
       partnerId: input.partnerId ?? null,
       userId: input.userId ?? null,
+      cameraId: normalizedCameraId,
     },
     request: {
       leatherSuitId: normalizedSuitId,
+      setupId: normalizedSetupId,
     },
     processing: {
       attemptCount: 0,
