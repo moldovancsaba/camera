@@ -394,7 +394,6 @@ export default async function SharePage({ params }: Props) {
     submission.submissionKind !== 'tryon_result' &&
     (sharePageSettings.includeTryOnResult || sharePageSettings.includeFramedTryOnResult) &&
     Boolean(submission.tryOnRequest?.requested) &&
-    !submission.tryOnRequest?.shareVisible &&
     !hasTryOnVariant;
 
   // `/capture/[eventId]` expects the event document Mongo `_id`, while submissions often store public `eventId` UUID in `eventIds` / `eventId`.
