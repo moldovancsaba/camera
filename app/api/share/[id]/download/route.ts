@@ -35,6 +35,34 @@ interface ShareSubmission {
   } | null;
 }
 
+const FALLBACK_SHARE_PAGE_SETTINGS: EventSharePageSettings = {
+  includeOriginalCapture: false,
+  includeCameraResult: true,
+  includeTryOnResult: false,
+  includeFramedTryOnResult: false,
+  showCreateYourOwnButton: false,
+  pendingTryOnMessage: DEFAULT_EVENT_SHARE_PAGE_SETTINGS.pendingTryOnMessage,
+};
+
+function getSubmissionEventLookupKeys(submission: Record<string, unknown>): string[] {
+  const candidates = [
+    ...(Array.isArray(submission.eventIds) ? submission.eventIds : []),
+    submission.eventId,
+  ];
+  const normalized = candidates
+    .map((value) => {
+      if (typeof value === 'string' || value instanceof String) {
+        return value.trim();
+      }
+      if (value && typeof value === 'object' && 'toString' in value && typeof value.toString === 'function') {
+        return value.toString().trim();
+      }
+      return '';
+    })
+    .filter(Boolean);
+  return Array.from(new Set(normalized.map((value) => value.trim()).filter((value) => value.length > 0)));
+}
+
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
@@ -43,21 +71,18 @@ async function resolveEventForSubmission(
   db: Db,
   submission: Record<string, unknown>
 ): Promise<{ sharePageSettings: EventSharePageSettings } | null> {
-  const eventLookupKey =
-    (Array.isArray(submission.eventIds) && submission.eventIds[0]) ||
-    submission.eventId ||
-    null;
-
-  if (!eventLookupKey || !String(eventLookupKey).trim()) {
+  const eventLookupKeys = getSubmissionEventLookupKeys(submission);
+  if (!eventLookupKeys.length) {
     return null;
   }
 
-  const key = String(eventLookupKey).trim();
-  const orClauses: Record<string, unknown>[] = [{ eventId: key }];
-
-  if (ObjectId.isValid(key)) {
-    orClauses.push({ _id: new ObjectId(key) });
-  }
+  const orClauses: Record<string, unknown>[] = eventLookupKeys.flatMap((key) => {
+    const candidates: Record<string, unknown>[] = [{ eventId: key }];
+    if (ObjectId.isValid(key)) {
+      candidates.push({ _id: new ObjectId(key) });
+    }
+    return candidates;
+  });
 
   const eventDoc = await db
     .collection(COLLECTIONS.EVENTS)
@@ -141,7 +166,7 @@ async function resolveShareImageUrlByVariantId(
   };
 
   const event = await resolveEventForSubmission(db, submission as unknown as Record<string, unknown>);
-  const sharePageSettings = event?.sharePageSettings ?? DEFAULT_EVENT_SHARE_PAGE_SETTINGS;
+  const sharePageSettings = event?.sharePageSettings ?? FALLBACK_SHARE_PAGE_SETTINGS;
   const showApprovedTryOnRelatedPhotos =
     sharePageSettings.includeTryOnResult || sharePageSettings.includeFramedTryOnResult;
 

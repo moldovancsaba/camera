@@ -113,6 +113,14 @@ export default function NewEventPage() {
   const [tryOnVettingEnabled, setTryOnVettingEnabled] = useState(true);
   const [suitOptions, setSuitOptions] = useState<TryOnSuitOption[]>([]);
   const [selectedSuitIds, setSelectedSuitIds] = useState<string[]>([]);
+  const [cameraId, setCameraId] = useState<string | null>(null);
+  const [isLoadingTryOnSetups, setIsLoadingTryOnSetups] = useState(true);
+  const [isSavingTryOnSetup, setIsSavingTryOnSetup] = useState(false);
+
+  useEffect(() => {
+    const rawCameraId = searchParams.get('cameraId') || searchParams.get('camera_id');
+    setCameraId(rawCameraId && rawCameraId.trim().length > 0 ? rawCameraId.trim() : null);
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchPartners = async () => {
@@ -158,20 +166,68 @@ export default function NewEventPage() {
 
   useEffect(() => {
     const fetchTryOnSetups = async () => {
+      setIsLoadingTryOnSetups(true);
       try {
-        const response = await fetch('/api/tryon/setups');
+        const query = cameraId ? `?cameraId=${encodeURIComponent(cameraId)}` : '';
+        const response = await fetch(`/api/tryon/setups${query}`);
         const payload = await response.json();
         if (!response.ok) {
           throw new Error(payload.error || 'Failed to load try-on setups');
         }
-        setTryOnSetups(payload.data?.setups ?? payload.setups ?? []);
+        const setups = payload.data?.setups ?? payload.setups ?? [];
+        setTryOnSetups(setups);
+        const preferenceSetupId = typeof payload.data?.cameraPreference?.setupId === 'string'
+          ? payload.data.cameraPreference.setupId.trim()
+          : typeof payload.cameraPreference?.setupId === 'string'
+            ? payload.cameraPreference.setupId.trim()
+            : '';
+        if (preferenceSetupId) {
+          setTryOnSetupId(preferenceSetupId);
+        }
       } catch {
         setTryOnSetups([]);
+      } finally {
+        setIsLoadingTryOnSetups(false);
       }
     };
 
     void fetchTryOnSetups();
-  }, []);
+  }, [cameraId]);
+
+  const syncCameraTryOnSetup = async (setupId: string) => {
+    if (!cameraId) {
+      return;
+    }
+
+    const response = await fetch(
+      `/api/tryon/setups/${encodeURIComponent(setupId)}/use`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cameraId }),
+      }
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error || 'Failed to save try-on setup preference');
+    }
+  };
+
+  const handleTryOnSetupChange = (value: string | null) => {
+    const nextSetupId = value || '';
+    setTryOnSetupId(nextSetupId);
+    if (!cameraId || !nextSetupId) {
+      return;
+    }
+    if (!isLoadingTryOnSetups) {
+      setIsSavingTryOnSetup(true);
+      void syncCameraTryOnSetup(nextSetupId)
+        .catch((error) => {
+          setError(error instanceof Error ? error.message : 'Failed to save try-on setup preference');
+        })
+        .finally(() => setIsSavingTryOnSetup(false));
+    }
+  };
 
   const handleLogoChange = (file: File | null) => {
     setLogoFile(file);
@@ -242,7 +298,7 @@ export default function NewEventPage() {
       showLogo: formData.get('showLogo') === 'on',
       tryOn: {
         enabled: tryOnEnabled,
-        setupId: tryOnSetupId || null,
+        setupId: cameraId ? null : (tryOnSetupId || null),
         allowedLeatherSuitIds: selectedSuitIds,
         applyFrameToReturnedResults,
         vettingEnabled: tryOnVettingEnabled,
@@ -554,15 +610,25 @@ export default function NewEventPage() {
             />
             <Select
               label="Try-on setup profile"
-              description="Select which model/profile config is used for this event. Leave empty to use global default."
-              placeholder={tryOnSetups.length > 0 ? 'Use global default' : 'No active try-on setups found'}
+              description={
+                cameraId
+                  ? 'Select the setup for this camera. If no camera preference is selected here, worker will use default.'
+                  : 'Select which model/profile config is used for this event. Leave empty to use global default.'
+              }
+              placeholder={
+                isLoadingTryOnSetups
+                  ? 'Loading try-on setups...'
+                  : tryOnSetups.length > 0
+                    ? 'Use global default'
+                    : 'No active try-on setups found'
+              }
               data={tryOnSetups.map((setup) => ({
                 value: setup.setupId,
                 label: `${setup.name}${setup.isDefault ? ' (global default)' : ''}`,
               }))}
               value={tryOnSetupId || null}
-              onChange={(value) => setTryOnSetupId(value || '')}
-              disabled={!tryOnEnabled}
+              onChange={(value) => handleTryOnSetupChange(value)}
+              disabled={!tryOnEnabled || isLoadingTryOnSetups || isSavingTryOnSetup}
             />
             <Select
               label="Allowed leather jerseys"

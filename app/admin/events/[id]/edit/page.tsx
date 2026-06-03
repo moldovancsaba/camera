@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Alert,
@@ -120,6 +120,7 @@ export default function EditEventPage({
   params: Promise<{ id: string }>;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mongoId, setMongoId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -169,6 +170,13 @@ export default function EditEventPage({
   const [suitOptions, setSuitOptions] = useState<TryOnSuitOption[]>([]);
   const [selectedSuitIds, setSelectedSuitIds] = useState<string[]>([]);
   const [isLoadingTryOnSetups, setIsLoadingTryOnSetups] = useState(true);
+  const [cameraId, setCameraId] = useState<string | null>(null);
+  const [isSavingTryOnSetup, setIsSavingTryOnSetup] = useState(false);
+
+  useEffect(() => {
+    const rawCameraId = searchParams.get('cameraId') || searchParams.get('camera_id');
+    setCameraId(rawCameraId && rawCameraId.trim().length > 0 ? rawCameraId.trim() : null);
+  }, [searchParams]);
 
   useEffect(() => {
     params.then((p) => setMongoId(p.id));
@@ -269,13 +277,24 @@ export default function EditEventPage({
 
   useEffect(() => {
     const fetchTryOnSetups = async () => {
+      setIsLoadingTryOnSetups(true);
       try {
-        const response = await fetch('/api/tryon/setups');
+        const query = cameraId ? `?cameraId=${encodeURIComponent(cameraId)}` : '';
+        const response = await fetch(`/api/tryon/setups${query}`);
         const payload = await response.json();
         if (!response.ok) {
           throw new Error(payload.error || 'Failed to load try-on setups');
         }
-        setTryOnSetups(payload.data?.setups ?? payload.setups ?? []);
+        const setups = payload.data?.setups ?? payload.setups ?? [];
+        setTryOnSetups(setups);
+        const preferenceSetupId = typeof payload.data?.cameraPreference?.setupId === 'string'
+          ? payload.data.cameraPreference.setupId.trim()
+          : typeof payload.cameraPreference?.setupId === 'string'
+            ? payload.cameraPreference.setupId.trim()
+            : '';
+        if (preferenceSetupId) {
+          setTryOnSetupId(preferenceSetupId);
+        }
       } catch {
         setTryOnSetups([]);
       } finally {
@@ -284,7 +303,42 @@ export default function EditEventPage({
     };
 
     void fetchTryOnSetups();
-  }, []);
+  }, [cameraId]);
+
+  const syncCameraTryOnSetup = async (setupId: string) => {
+    if (!cameraId) {
+      return;
+    }
+
+    const response = await fetch(
+      `/api/tryon/setups/${encodeURIComponent(setupId)}/use`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cameraId }),
+      }
+    );
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error || 'Failed to save try-on setup preference');
+    }
+  };
+
+  const handleTryOnSetupChange = (value: string | null) => {
+    const nextSetupId = value || '';
+    const previousSetupId = tryOnSetupId;
+    setTryOnSetupId(nextSetupId);
+    if (!cameraId || !nextSetupId) {
+      return;
+    }
+    setIsSavingTryOnSetup(true);
+    void syncCameraTryOnSetup(nextSetupId)
+      .catch(() => {
+        setTryOnSetupId(previousSetupId);
+        setError('Failed to save try-on setup preference for this camera.');
+      })
+      .finally(() => setIsSavingTryOnSetup(false));
+  };
 
   const handleLogoChange = (file: File | null) => {
     setLogoFile(file);
@@ -365,7 +419,7 @@ export default function EditEventPage({
       shortUrlSlug: (formData.get('shortUrlSlug') as string) ?? '',
       tryOn: {
         enabled: tryOnEnabled,
-        setupId: tryOnSetupId || null,
+        setupId: cameraId ? null : (tryOnSetupId || null),
         allowedLeatherSuitIds: selectedSuitIds,
         applyFrameToReturnedResults,
         vettingEnabled: tryOnVettingEnabled,
@@ -694,7 +748,11 @@ export default function EditEventPage({
             />
             <Select
               label="Try-on setup profile"
-              description="Select which model/profile config is used for this event. Leave empty to use global default."
+              description={
+                cameraId
+                  ? 'Select the setup used by this camera. If no camera preference is set here, worker resolution uses global default.'
+                  : 'Select which model/profile config is used for this event. Leave empty to use global default.'
+              }
               placeholder={
                 isLoadingTryOnSetups
                   ? 'Loading try-on setups...'
@@ -707,8 +765,8 @@ export default function EditEventPage({
                 label: `${setup.name}${setup.isDefault ? ' (global default)' : ''}`,
               }))}
               value={tryOnSetupId || null}
-              disabled={!tryOnEnabled || isLoadingTryOnSetups}
-              onChange={(value) => setTryOnSetupId(value || '')}
+              disabled={!tryOnEnabled || isLoadingTryOnSetups || isSavingTryOnSetup}
+              onChange={(value) => handleTryOnSetupChange(value)}
             />
             <Checkbox
               checked={tryOnVettingEnabled}

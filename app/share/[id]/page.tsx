@@ -15,7 +15,7 @@ import PublicShell from '@/components/public/PublicPageShell';
 import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { listApprovedShareVariants } from '@/lib/tryon/publication';
 import {
-  DEFAULT_EVENT_SHARE_PAGE_SETTINGS,
+  DEFAULT_PENDING_TRYON_MESSAGE,
   normalizeEventSharePageSettings,
   type EventSharePageSettings,
 } from '@/lib/events/share-page-settings';
@@ -53,20 +53,51 @@ interface ShareSubmission {
   eventId?: unknown;
 }
 
+const FALLBACK_SHARE_PAGE_SETTINGS: EventSharePageSettings = {
+  includeOriginalCapture: false,
+  includeCameraResult: true,
+  includeTryOnResult: false,
+  includeFramedTryOnResult: false,
+  showCreateYourOwnButton: false,
+  pendingTryOnMessage: DEFAULT_PENDING_TRYON_MESSAGE,
+};
+
+function getSubmissionEventLookupKeys(submission: Record<string, unknown>): string[] {
+  const candidates = [
+    ...(Array.isArray(submission.eventIds) ? submission.eventIds : []),
+    submission.eventId,
+  ];
+  const normalized = candidates
+    .map((value) => {
+      if (typeof value === 'string' || value instanceof String) {
+        return value.trim();
+      }
+      if (value && typeof value === 'object' && 'toString' in value && typeof value.toString === 'function') {
+        return value.toString().trim();
+      }
+      return '';
+    })
+    .filter(Boolean);
+  return Array.from(new Set(normalized.map((value) => value.trim()).filter((value) => value.length > 0)));
+}
+
 async function resolveEventForSubmission(
   db: Db,
   submission: Record<string, unknown>
 ): Promise<{ mongoId: string; name: string; sharePageSettings: EventSharePageSettings } | null> {
-  const eventLookupKey =
-    (Array.isArray(submission.eventIds) && submission.eventIds[0]) ||
-    submission.eventId ||
-    null;
-  if (!eventLookupKey || !String(eventLookupKey).trim()) return null;
-  const key = String(eventLookupKey).trim();
-  const orClauses: Record<string, unknown>[] = [{ eventId: key }];
-  if (ObjectId.isValid(key)) {
-    orClauses.push({ _id: new ObjectId(key) });
+  const eventLookupKeys = getSubmissionEventLookupKeys(submission);
+  if (!eventLookupKeys.length) {
+    return null;
   }
+
+  const orClauses: Record<string, unknown>[] = eventLookupKeys.flatMap((key) => {
+    const candidates: Record<string, unknown>[] = [{ eventId: key }];
+    if (ObjectId.isValid(key)) {
+      candidates.push({ _id: new ObjectId(key) });
+    }
+    return candidates;
+  });
+
   const eventDoc = await db
     .collection(COLLECTIONS.EVENTS)
     .findOne({ $or: orClauses });
@@ -275,7 +306,7 @@ export default async function SharePage({ params }: Props) {
 
   const db = await connectToDatabase();
   const event = await resolveEventForSubmission(db, submission as unknown as Record<string, unknown>);
-  const sharePageSettings = event?.sharePageSettings ?? DEFAULT_EVENT_SHARE_PAGE_SETTINGS;
+  const sharePageSettings = event?.sharePageSettings ?? FALLBACK_SHARE_PAGE_SETTINGS;
   const showApprovedTryOnRelatedPhotos =
     sharePageSettings.includeTryOnResult || sharePageSettings.includeFramedTryOnResult;
   const currentSubmissionId = submission.id ?? '';

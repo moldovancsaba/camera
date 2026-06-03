@@ -660,10 +660,6 @@ export default function EventCapturePage({
         submissionData.requestTryOn = true;
         submissionData.leatherSuitId = selectedTryOnSuitId;
         submissionData.tryOnSourceImageData = capturedImage;
-        submissionData.setupId =
-          typeof event?.tryOn?.setupId === 'string' && event.tryOn.setupId.trim().length > 0
-            ? event.tryOn.setupId.trim()
-            : null;
       }
       
       // Add collected data from custom pages

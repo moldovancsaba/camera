@@ -332,8 +332,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
       const resolvedSetupId =
         tryOnRequest.setupId ??
-        (eventPolicy?.tryOn?.setupId && eventPolicy.tryOn.setupId.trim()
-          ? eventPolicy.tryOn.setupId.trim()
+        (!tryOnRequest.cameraId
+          ? eventPolicy?.tryOn?.setupId && eventPolicy.tryOn.setupId.trim()
+            ? eventPolicy.tryOn.setupId.trim()
+            : null
           : null);
 
       try {
