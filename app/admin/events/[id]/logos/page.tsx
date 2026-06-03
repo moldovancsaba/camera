@@ -51,7 +51,11 @@ interface EventLogosResponse {
   eventId?: string;
   eventName?: string;
   logos?: Record<string, LogoAssignment[]>;
-  data?: { logos?: Record<string, LogoAssignment[]> };
+  data?: {
+    eventId?: string;
+    eventName?: string;
+    logos?: Record<string, LogoAssignment[]>;
+  };
   error?: string;
 }
 
@@ -87,7 +91,7 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
   const refreshAssignments = async (currentEventId: string) => {
     const eventResponse = await fetch(`/api/events/${currentEventId}/logos`);
     const eventData: EventLogosResponse = await eventResponse.json();
-    const assignedLogosData = eventData.logos || eventData.data?.logos || {};
+    const assignedLogosData = eventData.data?.logos || eventData.logos || {};
     setAssignedLogos(assignedLogosData);
   };
 
@@ -103,12 +107,14 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
         if (!eventResponse.ok) {
           throw new Error(eventData.error || 'Failed to load event');
         }
-        if (!eventData.eventId || !eventData.eventName) {
+        const resolvedEventId = eventData.data?.eventId || eventData.eventId;
+        const resolvedEventName = eventData.data?.eventName || eventData.eventName;
+        if (!resolvedEventId || !resolvedEventName) {
           throw new Error('Event not found');
         }
 
-        setEvent({ _id: eventData.eventId, name: eventData.eventName });
-        setAssignedLogos(eventData.logos || eventData.data?.logos || {});
+        setEvent({ _id: resolvedEventId, name: resolvedEventName });
+        setAssignedLogos(eventData.data?.logos || eventData.logos || {});
 
         const logosResponse = await fetch('/api/logos?active=true&limit=100');
         const logosData: LogosResponse = await logosResponse.json();

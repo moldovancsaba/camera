@@ -17,6 +17,17 @@ import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
 type EventLogoAssignment = Event['logos'][number];
 type GroupedEventLogos = Record<LogoScenario, Array<EventLogoAssignment & Pick<Logo, 'name' | 'imageUrl' | 'thumbnailUrl'>>>;
 
+function buildEventLookupQuery(eventIdentifier: string): Record<string, unknown> {
+  const normalized = eventIdentifier.trim();
+  const or: Array<Record<string, unknown>> = [{ eventId: normalized }];
+
+  if (ObjectId.isValid(normalized)) {
+    or.unshift({ _id: new ObjectId(normalized) });
+  }
+
+  return { $or: or };
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
@@ -134,17 +145,12 @@ export async function GET(
   try {
     const { eventId } = await params;
     
-    // Validate ObjectId format
-    if (!ObjectId.isValid(eventId)) {
-      return apiBadRequest('Invalid event ID format');
-    }
-
     const db = await connectToDatabase();
     const eventsCollection = db.collection(COLLECTIONS.EVENTS);
     const logosCollection = db.collection(COLLECTIONS.LOGOS);
 
     // Get event with logos
-    const event = await eventsCollection.findOne({ _id: new ObjectId(eventId) });
+    const event = await eventsCollection.findOne(buildEventLookupQuery(eventId));
     if (!event) {
       return apiNotFound('Event');
     }
