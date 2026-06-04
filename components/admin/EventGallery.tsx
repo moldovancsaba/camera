@@ -81,7 +81,7 @@ function getDisplayName(submission: SubmissionRecord): string {
   if (userName && !isLikelyEmail(userName)) {
     return userName;
   }
-  return 'Event Guest';
+  return 'Guest';
 }
 
 function submissionIdOf(submission: SubmissionRecord): string {

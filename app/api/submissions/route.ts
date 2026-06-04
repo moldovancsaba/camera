@@ -222,7 +222,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       submissionId: `submission_${Date.now()}`,
       userId: session?.user?.id || 'anonymous',
       userEmail: session?.user?.email || 'anonymous@event',
-      userName: session?.user?.name || 'Event Guest',
+      userName: session?.user?.name || 'Guest',
       // Frame data (null if no frame assigned to event)
       frameId: frame?.frameId || null,
       frameName: frame?.name || null,
