@@ -37,6 +37,12 @@ function normalizeEventNotificationSettings(value: unknown) {
     submissionResultEmailEnabled: notificationPolicy.enabled,
     submissionResultEmailSubject: notificationPolicy.subjectTemplate || null,
     submissionResultEmailBody: notificationPolicy.bodyTemplate || null,
+    submissionResultEmailSubjectAfterSave: notificationPolicy.subjectTemplateAfterSave || null,
+    submissionResultEmailBodyAfterSave: notificationPolicy.bodyTemplateAfterSave || null,
+    submissionResultEmailSubjectAfterRelatedPhotosReady:
+      notificationPolicy.subjectTemplateAfterRelatedPhotosReady || null,
+    submissionResultEmailBodyAfterRelatedPhotosReady:
+      notificationPolicy.bodyTemplateAfterRelatedPhotosReady || null,
     submissionResultEmailSendAfterSave: notificationPolicy.sendAfterSave,
     submissionResultEmailSendAfterRelatedPhotosReady: notificationPolicy.sendAfterRelatedPhotosReady,
   };

@@ -26,7 +26,9 @@
     "tryon:worker": "tsx scripts/tryon-worker.ts",
     "postinstall": "node scripts/patch-baseline-browser-mapping.mjs",
     "vercel:link": "npx vercel@latest link",
-    "vercel:env-pull": "npx vercel@latest env pull .env.local --yes"
+    "vercel:env-pull": "npx vercel@latest env pull .env.local --yes",
+    "db:migrate-email-template-fields": "tsx scripts/backfill-event-email-template-fields.ts",
+    "db:migrate-email-template-fields:apply": "tsx scripts/backfill-event-email-template-fields.ts --apply"
   },
   "keywords": [
     "photo-frames",

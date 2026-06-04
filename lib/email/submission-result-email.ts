@@ -11,6 +11,10 @@ export interface SubmissionEmailPolicy {
   sendAfterRelatedPhotosReady: boolean;
   subjectTemplate?: string | null;
   bodyTemplate?: string | null;
+  subjectTemplateAfterSave?: string | null;
+  bodyTemplateAfterSave?: string | null;
+  subjectTemplateAfterRelatedPhotosReady?: string | null;
+  bodyTemplateAfterRelatedPhotosReady?: string | null;
 }
 
 export interface SubmissionEmailRecipient {
@@ -32,6 +36,21 @@ function hasOwnProperty(source: Record<string, unknown>, key: string): boolean {
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function readTemplate(value: unknown, maxLength: number, normalizeNewlines = false): string {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+  const normalized = normalizeNewlines
+    ? trimmed.replace(/
+/g, '\n').replace(//g, '\n')
+    : trimmed;
+  return normalized.slice(0, maxLength);
 }
 
 function hasTryOnVariantUrl(variant: {
@@ -74,14 +93,18 @@ export function normalizeSubmissionEmailPolicy(value: unknown): SubmissionEmailP
   const hasExplicitAfterSave = hasOwnProperty(source, 'submissionResultEmailSendAfterSave');
   const hasExplicitAfterRelated = hasOwnProperty(source, 'submissionResultEmailSendAfterRelatedPhotosReady');
 
-  const subject =
-    typeof source.submissionResultEmailSubject === 'string'
-      ? source.submissionResultEmailSubject.trim().slice(0, 180)
-      : '';
-  const body =
-    typeof source.submissionResultEmailBody === 'string'
-      ? source.submissionResultEmailBody.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n').slice(0, 5000)
-      : '';
+  const legacySubject = readTemplate(source.submissionResultEmailSubject, 180);
+  const legacyBody = readTemplate(source.submissionResultEmailBody, 5000, true);
+  const subjectTemplateAfterSave = readTemplate(
+    source.submissionResultEmailSubjectAfterSave,
+    180
+  ) || legacySubject;
+  const bodyTemplateAfterSave =
+    readTemplate(source.submissionResultEmailBodyAfterSave, 5000, true) || legacyBody;
+  const subjectTemplateAfterRelatedPhotosReady =
+    readTemplate(source.submissionResultEmailSubjectAfterRelatedPhotosReady, 180) || legacySubject;
+  const bodyTemplateAfterRelatedPhotosReady =
+    readTemplate(source.submissionResultEmailBodyAfterRelatedPhotosReady, 5000, true) || legacyBody;
 
   return {
     enabled,
@@ -95,8 +118,12 @@ export function normalizeSubmissionEmailPolicy(value: unknown): SubmissionEmailP
         ? Boolean(source.submissionResultEmailSendAfterRelatedPhotosReady)
         : false
       : false,
-    subjectTemplate: subject || null,
-    bodyTemplate: body || null,
+    subjectTemplate: legacySubject || null,
+    bodyTemplate: legacyBody || null,
+    subjectTemplateAfterSave,
+    bodyTemplateAfterSave,
+    subjectTemplateAfterRelatedPhotosReady,
+    bodyTemplateAfterRelatedPhotosReady,
   };
 }
 
@@ -328,20 +355,30 @@ export function buildSubmissionEmailInput(
   },
   shareUrl: string,
   policy: SubmissionEmailPolicy,
-  eventName: string | null
+  eventName: string | null,
+  mode: 'after_save' | 'after_related' = 'after_save'
 ): SubmissionNotificationInput | null {
   const recipient = resolveSubmissionResultEmailRecipient(submission);
   if (!recipient.email) {
     return null;
   }
 
+  const subjectTemplate =
+    mode === 'after_save'
+      ? policy.subjectTemplateAfterSave || policy.subjectTemplate
+      : policy.subjectTemplateAfterRelatedPhotosReady || policy.subjectTemplate;
+  const bodyTemplate =
+    mode === 'after_save'
+      ? policy.bodyTemplateAfterSave || policy.bodyTemplate
+      : policy.bodyTemplateAfterRelatedPhotosReady || policy.bodyTemplate;
+
   return {
     recipientEmail: recipient.email,
     recipientName: recipient.name,
     eventName,
     shareUrl,
-    subjectTemplate: policy.subjectTemplate,
-    bodyTemplate: policy.bodyTemplate,
+    subjectTemplate,
+    bodyTemplate,
   };
 }
 
@@ -352,7 +389,7 @@ export async function sendSubmissionResultEmailByPolicy(
   policy: SubmissionEmailPolicy,
   mode: 'after_save' | 'after_related'
 ): Promise<SendSubmissionEmailMetadataResult> {
-  const input = buildSubmissionEmailInput(submission, shareUrl, policy, eventName);
+  const input = buildSubmissionEmailInput(submission, shareUrl, policy, eventName, mode);
   if (!input) {
     const now = new Date().toISOString();
 

@@ -68,6 +68,13 @@ interface EventData {
   notifications?: {
     submissionResultEmailEnabled?: boolean;
     submissionResultEmailSendAfterSave?: boolean;
+    submissionResultEmailSendAfterRelatedPhotosReady?: boolean;
+    submissionResultEmailSubject?: string | null;
+    submissionResultEmailBody?: string | null;
+    submissionResultEmailSubjectAfterSave?: string | null;
+    submissionResultEmailBodyAfterSave?: string | null;
+    submissionResultEmailSubjectAfterRelatedPhotosReady?: string | null;
+    submissionResultEmailBodyAfterRelatedPhotosReady?: string | null;
   };
 }
 

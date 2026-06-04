@@ -240,8 +240,12 @@ export interface Event {
   };
   notifications?: {
     submissionResultEmailEnabled: boolean; // Whether users receive the public result page link after submission
-    submissionResultEmailSubject?: string | null; // Optional event-level subject template
-    submissionResultEmailBody?: string | null; // Optional event-level plain-text body template
+    submissionResultEmailSubject?: string | null; // Optional legacy event-level subject template (fallback)
+    submissionResultEmailBody?: string | null; // Optional legacy event-level plain-text body template (fallback)
+    submissionResultEmailSubjectAfterSave?: string | null; // Optional event-level subject template for "send after save"
+    submissionResultEmailBodyAfterSave?: string | null; // Optional event-level body template for "send after save"
+    submissionResultEmailSubjectAfterRelatedPhotosReady?: string | null; // Optional event-level subject template for "send after related photos"
+    submissionResultEmailBodyAfterRelatedPhotosReady?: string | null; // Optional event-level body template for "send after related photos"
     submissionResultEmailSendAfterSave: boolean; // Send immediately after submission save
     submissionResultEmailSendAfterRelatedPhotosReady: boolean; // Send when related share photos are available
   };

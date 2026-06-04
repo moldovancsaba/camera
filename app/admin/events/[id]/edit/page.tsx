@@ -88,6 +88,10 @@ interface EventRecord {
     submissionResultEmailSendAfterRelatedPhotosReady?: boolean;
     submissionResultEmailSubject?: string | null;
     submissionResultEmailBody?: string | null;
+    submissionResultEmailSubjectAfterSave?: string | null;
+    submissionResultEmailBodyAfterSave?: string | null;
+    submissionResultEmailSubjectAfterRelatedPhotosReady?: string | null;
+    submissionResultEmailBodyAfterRelatedPhotosReady?: string | null;
   };
   visualSettings?: {
     buttonSize?: EventButtonSize;
@@ -139,12 +143,16 @@ export default function EditEventPage({
   const [submissionResultEmailSendAfterSave, setSubmissionResultEmailSendAfterSave] = useState(true);
   const [submissionResultEmailSendAfterRelatedPhotosReady, setSubmissionResultEmailSendAfterRelatedPhotosReady] =
     useState(false);
-  const [submissionResultEmailSubject, setSubmissionResultEmailSubject] = useState(
+  const [submissionResultEmailSubjectAfterSave, setSubmissionResultEmailSubjectAfterSave] = useState(
     DEFAULT_SUBMISSION_EMAIL_SUBJECT
   );
-  const [submissionResultEmailBody, setSubmissionResultEmailBody] = useState(
+  const [submissionResultEmailBodyAfterSave, setSubmissionResultEmailBodyAfterSave] = useState(
     DEFAULT_SUBMISSION_EMAIL_BODY
   );
+  const [submissionResultEmailSubjectAfterRelatedPhotosReady, setSubmissionResultEmailSubjectAfterRelatedPhotosReady] =
+    useState(DEFAULT_SUBMISSION_EMAIL_SUBJECT);
+  const [submissionResultEmailBodyAfterRelatedPhotosReady, setSubmissionResultEmailBodyAfterRelatedPhotosReady] =
+    useState(DEFAULT_SUBMISSION_EMAIL_BODY);
   const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
   const [includeOriginalCapture, setIncludeOriginalCapture] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeOriginalCapture
@@ -229,11 +237,27 @@ export default function EditEventPage({
             !hasEmailSendAfterRelatedSetting)
         );
         setSubmissionResultEmailSendAfterRelatedPhotosReady(emailSendAfterRelatedPhotos);
-        setSubmissionResultEmailSubject(
-          eventData.notifications?.submissionResultEmailSubject || DEFAULT_SUBMISSION_EMAIL_SUBJECT
+        const legacySubject = eventData.notifications?.submissionResultEmailSubject;
+        const legacyBody = eventData.notifications?.submissionResultEmailBody;
+        setSubmissionResultEmailSubjectAfterSave(
+          eventData.notifications?.submissionResultEmailSubjectAfterSave ||
+            legacySubject ||
+            DEFAULT_SUBMISSION_EMAIL_SUBJECT
         );
-        setSubmissionResultEmailBody(
-          eventData.notifications?.submissionResultEmailBody || DEFAULT_SUBMISSION_EMAIL_BODY
+        setSubmissionResultEmailBodyAfterSave(
+          eventData.notifications?.submissionResultEmailBodyAfterSave ||
+            legacyBody ||
+            DEFAULT_SUBMISSION_EMAIL_BODY
+        );
+        setSubmissionResultEmailSubjectAfterRelatedPhotosReady(
+          eventData.notifications?.submissionResultEmailSubjectAfterRelatedPhotosReady ||
+            legacySubject ||
+            DEFAULT_SUBMISSION_EMAIL_SUBJECT
+        );
+        setSubmissionResultEmailBodyAfterRelatedPhotosReady(
+          eventData.notifications?.submissionResultEmailBodyAfterRelatedPhotosReady ||
+            legacyBody ||
+            DEFAULT_SUBMISSION_EMAIL_BODY
         );
         setButtonSize(normalizeEventButtonSize(eventData.visualSettings?.buttonSize));
         const sharePageSettings = normalizeEventSharePageSettings(eventData.sharePage);
@@ -435,8 +459,12 @@ export default function EditEventPage({
         submissionResultEmailEnabled: isEmailEnabled,
         submissionResultEmailSendAfterSave,
         submissionResultEmailSendAfterRelatedPhotosReady,
-        submissionResultEmailSubject,
-        submissionResultEmailBody,
+        submissionResultEmailSubject: submissionResultEmailSubjectAfterSave,
+        submissionResultEmailBody: submissionResultEmailBodyAfterSave,
+        submissionResultEmailSubjectAfterSave,
+        submissionResultEmailBodyAfterSave,
+        submissionResultEmailSubjectAfterRelatedPhotosReady,
+        submissionResultEmailBodyAfterRelatedPhotosReady,
       },
       visualSettings: {
         buttonSize,
@@ -655,6 +683,22 @@ export default function EditEventPage({
               onChange={(event) => setSubmissionResultEmailSendAfterSave(event.currentTarget.checked)}
               label="Send email immediately after save"
             />
+            <TextInput
+              label="Email subject after save"
+              value={submissionResultEmailSubjectAfterSave}
+              onChange={(event) => setSubmissionResultEmailSubjectAfterSave(event.currentTarget.value)}
+              disabled={!submissionResultEmailSendAfterSave}
+              description={SUBMISSION_EMAIL_TEMPLATE_HELP}
+            />
+            <Textarea
+              label="Email body after save"
+              value={submissionResultEmailBodyAfterSave}
+              onChange={(event) => setSubmissionResultEmailBodyAfterSave(event.currentTarget.value)}
+              disabled={!submissionResultEmailSendAfterSave}
+              autosize
+              minRows={6}
+              description="Plain text only. Include {link} where the result page URL should appear."
+            />
             <Checkbox
               checked={submissionResultEmailSendAfterRelatedPhotosReady}
               onChange={(event) =>
@@ -664,21 +708,21 @@ export default function EditEventPage({
               description="Useful for send-at-the-end behavior after approved try-on photos are available."
             />
             <TextInput
-              label="Email subject"
-              value={submissionResultEmailSubject}
-              onChange={(event) => setSubmissionResultEmailSubject(event.currentTarget.value)}
-              disabled={
-                !submissionResultEmailSendAfterSave && !submissionResultEmailSendAfterRelatedPhotosReady
+              label="Email subject when related photos are ready"
+              value={submissionResultEmailSubjectAfterRelatedPhotosReady}
+              onChange={(event) =>
+                setSubmissionResultEmailSubjectAfterRelatedPhotosReady(event.currentTarget.value)
               }
+              disabled={!submissionResultEmailSendAfterRelatedPhotosReady}
               description={SUBMISSION_EMAIL_TEMPLATE_HELP}
             />
             <Textarea
-              label="Email body"
-              value={submissionResultEmailBody}
-              onChange={(event) => setSubmissionResultEmailBody(event.currentTarget.value)}
-              disabled={
-                !submissionResultEmailSendAfterSave && !submissionResultEmailSendAfterRelatedPhotosReady
+              label="Email body when related photos are ready"
+              value={submissionResultEmailBodyAfterRelatedPhotosReady}
+              onChange={(event) =>
+                setSubmissionResultEmailBodyAfterRelatedPhotosReady(event.currentTarget.value)
               }
+              disabled={!submissionResultEmailSendAfterRelatedPhotosReady}
               autosize
               minRows={6}
               description="Plain text only. Include {link} where the result page URL should appear."
