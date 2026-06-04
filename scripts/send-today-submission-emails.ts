@@ -7,6 +7,7 @@ interface SendTodayOptions {
   dateLabel: string;
   startIso: string;
   endIso: string;
+  includeTryon: boolean;
   force: boolean;
   dryRun: boolean;
   limit: number | null;
@@ -77,6 +78,7 @@ function parseArgs(): SendTodayOptions {
     dateLabel,
     startIso,
     endIso,
+    includeTryon: args.includes('--include-tryon'),
     force: args.includes('--force'),
     dryRun: args.includes('--dry-run'),
     limit: parseLimitArg(args),
@@ -99,12 +101,15 @@ async function applyMetadataPatch(
 
 async function runForDate(db: Awaited<ReturnType<typeof connectToDatabase>>, options: SendTodayOptions) {
   const baseQuery: Record<string, unknown> = {
-    submissionKind: { $ne: 'tryon_result' },
     createdAt: {
       $gte: options.startIso,
       $lt: options.endIso,
     },
   };
+
+  if (!options.includeTryon) {
+    baseQuery.submissionKind = { $ne: 'tryon_result' };
+  }
 
   if (!options.force) {
     baseQuery['metadata.emailSent'] = { $ne: true };
