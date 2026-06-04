@@ -65,6 +65,9 @@ function buildEmailDeliveryNotice(metadata?: SubmissionEmailMetadata | null): st
   if (metadata.emailSkipReason === 'missing_api_key') {
     return 'Email was not sent because RESEND API key is not configured.';
   }
+  if (metadata.emailSkipReason === 'missing_from_address') {
+    return 'Email was not sent because sender domain is not configured.';
+  }
   if (metadata.emailFailedAt && metadata.emailError) {
     return `Email failed: ${metadata.emailError}`;
   }

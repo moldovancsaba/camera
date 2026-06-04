@@ -24,7 +24,7 @@ export type SubmissionNotificationResult =
   | {
       sent: false;
       skipped: true;
-      reason: 'event_email_disabled' | 'missing_recipient' | 'missing_api_key';
+      reason: 'event_email_disabled' | 'missing_recipient' | 'missing_api_key' | 'missing_from_address';
     }
   | {
       sent: false;
@@ -34,17 +34,29 @@ export type SubmissionNotificationResult =
       error: string;
     };
 
+const DEFAULT_RESEND_DEV_FROM = 'Camera <onboarding@resend.dev>';
+
 function getEmailApiKey(): string {
   return (process.env.RESEND_API_KEY || process.env.RESEND || process.env.EMAIL_API_KEY || '').trim();
 }
 
 function getEmailFrom(): string {
-  return (
+  const configuredFrom = (
     process.env.CAMERA_EMAIL_FROM ||
     process.env.EMAIL_FROM ||
     process.env.RESEND_FROM ||
-    'Camera <onboarding@resend.dev>'
+    ''
   ).trim();
+
+  if (configuredFrom) {
+    return configuredFrom;
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    return '';
+  }
+
+  return DEFAULT_RESEND_DEV_FROM;
 }
 
 function escapeHtml(value: string): string {
@@ -82,6 +94,44 @@ function renderTemplate(
     .replace(/\{link\}/gi, values.shareUrl);
 }
 
+function summarizeResendError(error: unknown): string {
+  if (error && typeof error === 'object') {
+    const details: string[] = [];
+    const typedError = error as Record<string, unknown>;
+
+    if (typeof typedError.message === 'string' && typedError.message.trim()) {
+      details.push(typedError.message.trim());
+    }
+    if (typeof typedError.name === 'string' && typedError.name.trim()) {
+      details.push(`[${typedError.name.trim()}]`);
+    }
+
+    const statusCode = typedError.statusCode ?? typedError.status;
+    if (typeof statusCode === 'number' && Number.isFinite(statusCode)) {
+      details.push(`HTTP ${statusCode}`);
+    } else if (typeof statusCode === 'string' && statusCode.trim()) {
+      details.push(`HTTP ${statusCode.trim()}`);
+    }
+
+    if (typeof typedError.code === 'string' && typedError.code.trim()) {
+      details.push(`code=${typedError.code.trim()}`);
+    }
+    if (typeof typedError.type === 'string' && typedError.type.trim()) {
+      details.push(`type=${typedError.type.trim()}`);
+    }
+
+    if (details.length > 0) {
+      return details.join(' ');
+    }
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return 'Resend rejected the email';
+}
+
 export async function sendSubmissionResultEmail(
   input: SubmissionNotificationInput
 ): Promise<SubmissionNotificationResult> {
@@ -102,6 +152,24 @@ export async function sendSubmissionResultEmail(
     return { sent: false, skipped: true, reason: 'missing_api_key' };
   }
 
+  const from = getEmailFrom();
+  if (!from) {
+    console.error('[email] Submission result email skipped: missing configured sender address', {
+      eventName: input.eventName || null,
+      hasCameraEmailFrom: Boolean(process.env.CAMERA_EMAIL_FROM || process.env.EMAIL_FROM || process.env.RESEND_FROM),
+      nodeEnv: process.env.NODE_ENV || 'unknown',
+    });
+    return { sent: false, skipped: true, reason: 'missing_from_address' };
+  }
+
+  if (from === DEFAULT_RESEND_DEV_FROM && process.env.NODE_ENV === 'production') {
+    console.error('[email] Submission result email skipped: production sender points to onboarding domain', {
+      eventName: input.eventName || null,
+      from,
+    });
+    return { sent: false, skipped: true, reason: 'missing_from_address' };
+  }
+
   const eventName = input.eventName?.trim() || 'your event';
   const recipientName = input.recipientName?.trim() || 'there';
   const subject = renderTemplate(
@@ -120,7 +188,7 @@ export async function sendSubmissionResultEmail(
   try {
     const resend = new Resend(apiKey);
     const response = await resend.emails.send({
-      from: getEmailFrom(),
+      from,
       to: recipientEmail,
       subject,
       text: bodyText,
@@ -139,18 +207,20 @@ export async function sendSubmissionResultEmail(
     });
 
     if (response.error) {
+      const errorMessage = summarizeResendError(response.error);
       console.error('[email] Submission result email rejected by Resend', {
         eventName: input.eventName || null,
         recipientEmail,
-        from: getEmailFrom(),
-        error: response.error.message,
+        from,
+        resendError: response.error,
+        error: errorMessage,
       });
       return {
         sent: false,
         skipped: false,
         provider: 'resend',
         recipientEmail,
-        error: response.error.message || 'Resend rejected the email',
+        error: errorMessage,
       };
     }
 
@@ -167,18 +237,19 @@ export async function sendSubmissionResultEmail(
       recipientEmail,
     };
   } catch (error) {
+    const errorMessage = summarizeResendError(error);
     console.error('[email] Submission result email failed', {
       eventName: input.eventName || null,
       recipientEmail,
-      from: getEmailFrom(),
-      error: error instanceof Error ? error.message : 'Unknown email delivery error',
+      from,
+      error: errorMessage,
     });
     return {
       sent: false,
       skipped: false,
       provider: 'resend',
       recipientEmail,
-      error: error instanceof Error ? error.message : 'Unknown email delivery error',
+      error: errorMessage,
     };
   }
 }
