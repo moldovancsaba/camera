@@ -33,6 +33,20 @@ function isLikelyEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function resolveDisplayName(userName: string | undefined, nameFromUserInfo: string | undefined): string {
   if (typeof nameFromUserInfo === 'string' && nameFromUserInfo.trim()) {
     return nameFromUserInfo.trim();
@@ -422,7 +436,7 @@ export default async function UserProfilePage({ params }: PageProps) {
                   <Stack gap={2} p="sm">
                     <Text size="sm" fw={600} truncate>{submission.frameName}</Text>
                     <Text size="xs" c="dimmed" truncate>{submission.eventName}</Text>
-                    <Text size="xs" c="dimmed">{new Date(submission.createdAt).toLocaleDateString()}</Text>
+                    <Text size="xs" c="dimmed">{formatDateTime(submission.createdAt)}</Text>
                     {submission.playCount > 0 ? (
                       <Text size="xs" c="dimmed">{submission.playCount} plays</Text>
                     ) : null}

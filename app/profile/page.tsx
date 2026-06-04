@@ -22,6 +22,20 @@ interface ProfileSubmission {
   createdAt: string;
 }
 
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 // This page uses cookies and database, so it must be dynamic
 export const dynamic = 'force-dynamic';
 
@@ -130,7 +144,7 @@ export default async function ProfilePage() {
                   <Stack gap={4} mt="sm">
                     <Text fw={600}>{submission.frameName}</Text>
                     <Text size="xs" c="dimmed">
-                      {new Date(submission.createdAt).toLocaleDateString()}
+                      {formatDateTime(submission.createdAt)}
                     </Text>
                     <Group gap="sm" mt="xs">
                       <Button component="a" href={submission.imageUrl} download target="_blank" rel="noopener noreferrer" size="xs">

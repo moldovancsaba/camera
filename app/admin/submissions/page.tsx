@@ -38,6 +38,20 @@ interface EventRef {
   name: string;
 }
 
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export default async function AdminSubmissionsPage({
   searchParams,
 }: {
@@ -124,7 +138,7 @@ export default async function AdminSubmissionsPage({
         userName: submission.userName,
         userEmail: submission.userEmail,
         frameName: submission.frameName ?? null,
-        createdAtLabel: new Date(submission.createdAt).toLocaleDateString(),
+        createdAtLabel: formatDateTime(submission.createdAt),
         playCount: submission.playCount,
         partnerAdminId: mongoIdString(partner?._id),
         partnerName: partner?.name ?? null,

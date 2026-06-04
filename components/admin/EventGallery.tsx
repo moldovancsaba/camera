@@ -53,6 +53,20 @@ function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function isLikelyEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -342,7 +356,7 @@ export default function EventGallery({
                     {displayName}
                   </Text>
                   <Text size="xs" c="dimmed">
-                    {new Date(submission.createdAt).toLocaleDateString()}
+                    {formatDateTime(submission.createdAt)}
                   </Text>
                   {typeof submission.playCount === 'number' && submission.playCount > 0 ? (
                     <Text size="xs" c="dimmed">Played {submission.playCount} times</Text>
