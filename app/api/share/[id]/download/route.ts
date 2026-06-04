@@ -294,11 +294,23 @@ async function resolveShareImageUrlByVariantId(
     }
   }
 
+  const shouldShowCheckedInOnly =
+    Boolean(submission.tryOnRequest?.requested) &&
+    (sharePageSettings.includeTryOnResult ||
+      sharePageSettings.includeFramedTryOnResult ||
+      sharePageSettings.includeCheckedInTryOnResult);
+
   const filteredVariants = shareVariants.filter((variant) => {
     if (variant.id.endsWith(':original-capture') && !sharePageSettings.includeOriginalCapture) {
       return false;
     }
     if (variant.id.endsWith(':camera-result') && !sharePageSettings.includeCameraResult) {
+      return false;
+    }
+    if (
+      shouldShowCheckedInOnly &&
+      (variant.id.endsWith(':original-capture') || variant.id.endsWith(':camera-result'))
+    ) {
       return false;
     }
     return true;
