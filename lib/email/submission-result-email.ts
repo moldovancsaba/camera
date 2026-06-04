@@ -307,6 +307,7 @@ export function buildEmailMetadataPatch(
         'metadata.emailRecipient': result.recipientEmail,
         'metadata.emailProvider': result.provider,
         'metadata.emailMessageId': result.messageId ?? null,
+        'metadata.emailSkipReason': null,
         'metadata.emailError': null,
         'metadata.emailSkippedAt': null,
         'metadata.emailFailedAt': null,
