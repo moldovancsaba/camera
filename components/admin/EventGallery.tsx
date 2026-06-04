@@ -71,6 +71,10 @@ function isLikelyEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function isLegacyGuestName(value: string): boolean {
+  return value.trim().toLowerCase() === 'event guest';
+}
+
 function getDisplayName(submission: SubmissionRecord): string {
   const userInfoName = readString(submission.userInfo?.name);
   const userName = readString(submission.userName);
@@ -81,7 +85,10 @@ function getDisplayName(submission: SubmissionRecord): string {
   if (userName && !isLikelyEmail(userName)) {
     return userName;
   }
-  return 'Guest';
+  if (userInfoName || !userName || isLegacyGuestName(userName)) {
+    return 'Guest';
+  }
+  return userName;
 }
 
 function submissionIdOf(submission: SubmissionRecord): string {

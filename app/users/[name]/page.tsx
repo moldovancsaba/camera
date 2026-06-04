@@ -33,6 +33,10 @@ function isLikelyEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function isLegacyGuestName(value: string): boolean {
+  return value.trim().toLowerCase() === 'event guest';
+}
+
 function formatDateTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -51,8 +55,11 @@ function resolveDisplayName(userName: string | undefined, nameFromUserInfo: stri
   if (typeof nameFromUserInfo === 'string' && nameFromUserInfo.trim()) {
     return nameFromUserInfo.trim();
   }
-  if (typeof userName === 'string' && userName.trim() && !isLikelyEmail(userName.trim())) {
-    return userName.trim();
+  if (typeof userName === 'string') {
+    const normalizedUserName = userName.trim();
+    if (normalizedUserName && !isLikelyEmail(normalizedUserName) && !isLegacyGuestName(normalizedUserName)) {
+      return normalizedUserName;
+    }
   }
   return 'Guest';
 }

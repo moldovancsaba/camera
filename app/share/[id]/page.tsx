@@ -161,12 +161,17 @@ function isLikelyEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function isLegacyGuestName(value: string): boolean {
+  return value.trim().toLowerCase() === 'event guest';
+}
+
 function resolveDisplayName(userName: string | null, userInfoName: string | null): string {
   if (userInfoName) {
     return userInfoName;
   }
-  if (userName && !isLikelyEmail(userName)) {
-    return userName;
+  const normalizedUserName = userName?.trim();
+  if (normalizedUserName && !isLikelyEmail(normalizedUserName) && !isLegacyGuestName(normalizedUserName)) {
+    return normalizedUserName;
   }
   return 'Guest';
 }

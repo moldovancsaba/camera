@@ -56,6 +56,16 @@ function toQueueRow(job: Partial<TryOnJob>): QueueRow | null {
   };
 }
 
+function normalizeDisplayName(value: string | null | undefined): string {
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    if (normalized && normalized.toLowerCase() !== 'event guest') {
+      return normalized;
+    }
+  }
+  return 'Guest';
+}
+
 export default async function AdminTryOnResultsPage({
   searchParams,
 }: {
@@ -181,7 +191,7 @@ export default async function AdminTryOnResultsPage({
           normalizeImgbbDirectUrl(source?.imageUrl ?? null) ??
           normalizeImgbbDirectUrl(source?.finalImageUrl ?? null) ??
           null,
-        userName: doc.userName ?? 'Guest',
+        userName: normalizeDisplayName(doc.userName),
         userEmail: doc.userEmail ?? '',
         eventName: doc.eventName ?? null,
         partnerName: doc.partnerName ?? null,

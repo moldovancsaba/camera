@@ -19,6 +19,15 @@ export interface SerializedSubmissionRow {
   eventName?: string | null;
 }
 
+function isLegacyGuestName(value: string): boolean {
+  return value.trim().toLowerCase() === 'event guest';
+}
+
+function resolveDisplayName(userName: string): string {
+  const normalized = userName.trim();
+  return normalized && !isLegacyGuestName(normalized) ? normalized : 'Guest';
+}
+
 export default function SubmissionsInventoryList({ submissions }: { submissions: SerializedSubmissionRow[] }) {
   if (submissions.length === 0) {
     return (
@@ -44,7 +53,7 @@ export default function SubmissionsInventoryList({ submissions }: { submissions:
               <div style={{ position: 'relative' }}>
                 <Image
                   src={submission.imageUrl}
-                  alt={`Photo by ${submission.userName}`}
+                  alt={`Photo by ${resolveDisplayName(submission.userName)}`}
                   width={1200}
                   height={1600}
                   unoptimized
@@ -54,7 +63,7 @@ export default function SubmissionsInventoryList({ submissions }: { submissions:
             </Link>
             <Stack gap="sm" p="md">
               <Text fw={700}>
-                {submission.userName}
+                {resolveDisplayName(submission.userName)}
               </Text>
               <Text size="sm" c="dimmed">
                 {submission.userEmail}

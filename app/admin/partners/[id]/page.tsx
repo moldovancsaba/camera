@@ -122,6 +122,15 @@ interface PartnerAccessAssignmentDoc {
   updatedAt: string;
 }
 
+function isLegacyGuestName(value: string): boolean {
+  return value.trim().toLowerCase() === 'event guest';
+}
+
+function resolveDisplayName(userName?: string | null): string {
+  const normalized = typeof userName === 'string' ? userName.trim() : '';
+  return normalized && !isLegacyGuestName(normalized) ? normalized : 'Guest';
+}
+
 export default async function PartnerDetailPage({
   params,
 }: {
@@ -582,7 +591,7 @@ export default async function PartnerDetailPage({
                 >
                   <Image
                     src={submission.imageUrl || submission.finalImageUrl || ''}
-                    alt={`Photo by ${submission.userName || submission.userEmail}`}
+                    alt={`Photo by ${resolveDisplayName(submission.userName)}`}
                     width={1200}
                     height={1600}
                     unoptimized

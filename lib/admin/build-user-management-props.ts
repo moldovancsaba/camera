@@ -14,6 +14,15 @@ export interface UserManagementProps {
   mergedWith?: string;
 }
 
+function isLegacyGuestName(value: string): boolean {
+  return value.trim().toLowerCase() === 'event guest';
+}
+
+function resolveDisplayName(rawName: string | undefined | null): string {
+  const normalized = typeof rawName === 'string' ? rawName.trim() : '';
+  return normalized && !isLegacyGuestName(normalized) ? normalized : 'Unknown';
+}
+
 /**
  * @param submissions Raw Mongo docs for this profile (same order as admin list: newest first)
  */
@@ -62,7 +71,9 @@ export async function buildUserManagementPropsFromSubmissions(
   }
 
   const email = hasUserInfo ? submission.userInfo.email : submission.userEmail;
-  const name = hasUserInfo ? submission.userInfo.name : submission.userName || 'Unknown';
+  const name = hasUserInfo
+    ? resolveDisplayName(submission.userInfo?.name)
+    : resolveDisplayName(submission.userName);
   const mergedWith = submission.userInfo?.mergedWith;
 
   if (accessToken && ssoIdForPermission) {

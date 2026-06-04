@@ -17,6 +17,18 @@ function sanitizeUsername(name: string): string {
   return name.replace(/[^a-zA-Z0-9]/g, '_');
 }
 
+function isLegacyGuestName(value: string): boolean {
+  return value.trim().toLowerCase() === 'event guest';
+}
+
+function resolveDisplayName(userName: string | undefined | null, isAnonymous: boolean): string {
+  const normalized = typeof userName === 'string' ? userName.trim() : '';
+  if (isAnonymous) {
+    return 'Anonymous User';
+  }
+  return normalized && !isLegacyGuestName(normalized) ? normalized : 'Unknown';
+}
+
 interface AdminUserListItem {
   email: string;
   name: string;
@@ -117,10 +129,8 @@ export default async function AdminUsersPage({
         userMap.set(identifier, {
           email: hasUserInfo ? submission.userInfo.email : submission.userEmail,
           name: hasUserInfo
-            ? submission.userInfo.name
-            : isAnonymous
-              ? 'Anonymous User'
-              : submission.userName || 'Unknown',
+            ? resolveDisplayName(submission.userInfo.name, isAnonymous)
+            : resolveDisplayName(submission.userName, isAnonymous),
           isAnonymous,
           type: userType,
           role,

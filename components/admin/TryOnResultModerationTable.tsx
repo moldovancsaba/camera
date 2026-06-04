@@ -8,6 +8,17 @@ import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
 import { Box, Button, Card, Group, Modal, Paper, SimpleGrid, Stack, Text, UnstyledButton } from '@mantine/core';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 
+function resolveDisplayName(value: string): string {
+  const normalized = typeof value === 'string' ? value.trim() : '';
+  const isEventGuest = normalized.toLowerCase() === 'event guest';
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized);
+
+  if (normalized && !isEventGuest && !isEmail) {
+    return normalized;
+  }
+  return 'Guest';
+}
+
 export interface ModerationRow {
   id: string;
   imageUrl: string;
@@ -181,7 +192,7 @@ function PreviewStrip({
         padding: 0,
         textAlign: 'left',
       }}
-      aria-label={`Open review modal for ${row.userName}`}
+      aria-label={`Open review modal for ${resolveDisplayName(row.userName)}`}
     >
       {content}
     </UnstyledButton>
@@ -347,7 +358,7 @@ export default function TryOnResultModerationTable({
             label: 'User',
             render: (row) => (
               <Stack gap={2}>
-                <Text fw={700}>{row.userName}</Text>
+                <Text fw={700}>{resolveDisplayName(row.userName)}</Text>
                 <Text size="sm" c="dimmed">
                   {row.userEmail}
                 </Text>
@@ -415,7 +426,7 @@ export default function TryOnResultModerationTable({
                 onOriginalMissing={() => markAssetMissing(row.id, 'originalMissing')}
               />
               <Stack gap={2}>
-                <Text fw={700}>{row.userName}</Text>
+              <Text fw={700}>{resolveDisplayName(row.userName)}</Text>
                 <Text size="sm" c="dimmed">
                   {row.userEmail}
                 </Text>
@@ -447,7 +458,7 @@ export default function TryOnResultModerationTable({
       <Modal
         opened={Boolean(activeRow)}
         onClose={() => setActiveRowId(null)}
-        title={activeRow ? `Review result for ${activeRow.userName}` : 'Review result'}
+        title={activeRow ? `Review result for ${resolveDisplayName(activeRow.userName)}` : 'Review result'}
         size="90rem"
         centered
       >
@@ -470,7 +481,7 @@ export default function TryOnResultModerationTable({
               ) : null}
             </SimpleGrid>
             <Stack gap={4}>
-              <Text fw={700}>{activeRow.userName}</Text>
+              <Text fw={700}>{resolveDisplayName(activeRow.userName)}</Text>
               <Text size="sm" c="dimmed">
                 {activeRow.userEmail}
               </Text>

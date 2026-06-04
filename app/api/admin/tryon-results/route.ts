@@ -6,6 +6,13 @@ import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
 
+function normalizeDisplayName(value?: string | null): string {
+  if (typeof value === 'string' && value.trim() && value.trim().toLowerCase() !== 'event guest') {
+    return value.trim();
+  }
+  return 'Guest';
+}
+
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const session = await requireAuth(request);
   if (!isGlobalAdminSession(session)) {
@@ -87,7 +94,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         originalImageUrl:
           normalizeImgbbDirectUrl(source?.imageUrl ?? null) ??
           normalizeImgbbDirectUrl(source?.finalImageUrl ?? null),
-        userName: doc.userName ?? 'Guest',
+        userName: normalizeDisplayName(doc.userName),
         userEmail: doc.userEmail ?? '',
         eventName: doc.eventName ?? null,
         partnerName: doc.partnerName ?? null,
