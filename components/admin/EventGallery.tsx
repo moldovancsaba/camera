@@ -79,7 +79,7 @@ function getDisplayName(submission: SubmissionRecord): string {
   const userInfoName = readString(submission.userInfo?.name);
   const userName = readString(submission.userName);
 
-  if (userInfoName) {
+  if (userInfoName && !isLikelyEmail(userInfoName) && !isLegacyGuestName(userInfoName)) {
     return userInfoName;
   }
   if (userName && !isLikelyEmail(userName)) {

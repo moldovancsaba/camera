@@ -166,8 +166,9 @@ function isLegacyGuestName(value: string): boolean {
 }
 
 function resolveDisplayName(userName: string | null, userInfoName: string | null): string {
-  if (userInfoName) {
-    return userInfoName;
+  const normalizedUserInfoName = userInfoName?.trim();
+  if (normalizedUserInfoName && !isLikelyEmail(normalizedUserInfoName) && !isLegacyGuestName(normalizedUserInfoName)) {
+    return normalizedUserInfoName;
   }
   const normalizedUserName = userName?.trim();
   if (normalizedUserName && !isLikelyEmail(normalizedUserName) && !isLegacyGuestName(normalizedUserName)) {

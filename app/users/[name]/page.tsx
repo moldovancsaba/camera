@@ -52,8 +52,11 @@ function formatDateTime(value: string): string {
 }
 
 function resolveDisplayName(userName: string | undefined, nameFromUserInfo: string | undefined): string {
-  if (typeof nameFromUserInfo === 'string' && nameFromUserInfo.trim()) {
-    return nameFromUserInfo.trim();
+  if (typeof nameFromUserInfo === 'string') {
+    const normalizedNameFromUserInfo = nameFromUserInfo.trim();
+    if (normalizedNameFromUserInfo && !isLikelyEmail(normalizedNameFromUserInfo) && !isLegacyGuestName(normalizedNameFromUserInfo)) {
+      return normalizedNameFromUserInfo;
+    }
   }
   if (typeof userName === 'string') {
     const normalizedUserName = userName.trim();
