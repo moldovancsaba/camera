@@ -29,9 +29,7 @@ export function getConfiguredSiteUrl(): string {
     return normalizeUrl(withProtocol(vercelUrl));
   }
 
-  return process.env.NODE_ENV === 'production'
-    ? 'https://camera.doneisbetter.com'
-    : 'http://localhost:3000';
+  return 'https://camera.doneisbetter.com';
 }
 
 /** Absolute site URL for the current request (share links, redirects). */
