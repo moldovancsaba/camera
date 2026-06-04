@@ -21,6 +21,7 @@ import {
 } from '@/lib/events/share-page-settings';
 import {
   type ShareVariantCard,
+  prioritizeShareVariantCardsForFeaturedDisplay,
   limitShareVariantsToConfiguredMode,
   pickFirstCheckedInTryOnVariantCard,
 } from '@/lib/tryon/share-page-variants';
@@ -503,7 +504,10 @@ export default async function SharePage({ params }: Props) {
     }
     return true;
   });
-  const displayVariants = limitShareVariantsToConfiguredMode(filteredVariants, sharePageSettings);
+  const displayVariants = prioritizeShareVariantCardsForFeaturedDisplay(
+    limitShareVariantsToConfiguredMode(filteredVariants, sharePageSettings),
+    sharePageSettings
+  );
 
   const featuredVariant = displayVariants[0] ?? null;
   const galleryVariants = featuredVariant ? displayVariants.slice(1) : displayVariants;

@@ -6,6 +6,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { listApprovedShareVariants } from '@/lib/tryon/publication';
 import {
   type ShareVariantCard,
+  prioritizeShareVariantCardsForFeaturedDisplay,
   limitShareVariantsToConfiguredMode,
   pickFirstCheckedInTryOnVariantCard,
 } from '@/lib/tryon/share-page-variants';
@@ -302,7 +303,10 @@ async function resolveShareImageUrlByVariantId(
     }
     return true;
   });
-  const displayVariants = limitShareVariantsToConfiguredMode(filteredVariants, sharePageSettings);
+  const displayVariants = prioritizeShareVariantCardsForFeaturedDisplay(
+    limitShareVariantsToConfiguredMode(filteredVariants, sharePageSettings),
+    sharePageSettings
+  );
 
   const normalizedVariantId = variantId;
 

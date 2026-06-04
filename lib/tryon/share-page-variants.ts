@@ -220,3 +220,37 @@ export function pickFirstCheckedInTryOnVariantCard(
 
   return candidates[0].card;
 }
+
+export function prioritizeShareVariantCardsForFeaturedDisplay(
+  variants: ShareVariantCard[],
+  settings: EventSharePageSettings
+): ShareVariantCard[] {
+  const rankedVariants = variants.map((variant, index) => {
+    let rank = 10;
+
+    if (variant.id.endsWith(':tryon-checked-in')) {
+      rank = 500;
+    } else if (settings.includeFramedTryOnResult && variant.id.endsWith(':tryon-framed')) {
+      rank = 430;
+    } else if (settings.includeTryOnResult && variant.id.endsWith(':tryon-generated')) {
+      rank = 390;
+    } else if (settings.includeTryOnResult && variant.id.endsWith(':tryon-result')) {
+      rank = 380;
+    } else if (settings.includeCameraResult && variant.id.endsWith(':camera-result')) {
+      rank = 300;
+    } else if (settings.includeOriginalCapture && variant.id.endsWith(':original-capture')) {
+      rank = 200;
+    }
+
+    return { variant, index, rank };
+  });
+
+  return rankedVariants
+    .sort((a, b) => {
+      if (b.rank !== a.rank) {
+        return b.rank - a.rank;
+      }
+      return a.index - b.index;
+    })
+    .map((item) => item.variant);
+}
