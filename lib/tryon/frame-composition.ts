@@ -67,30 +67,34 @@ export async function applyFrameToTryOnResult(
   ]);
 
   const resultMetadata = await sharp(resultBuffer, { failOn: 'none' }).metadata();
+  const frameMetadata = await sharp(frameBuffer, { failOn: 'none', density: 300 }).metadata();
   const sourceWidth = resultMetadata.width ?? null;
   const sourceHeight = resultMetadata.height ?? null;
   const hasFrameDimensions = Number.isFinite(frameWidth ?? NaN) && Number(frameWidth) > 0
     && Number.isFinite(frameHeight ?? NaN) && Number(frameHeight) > 0;
   const normalizedFrameWidth = hasFrameDimensions ? Math.round(frameWidth as number) : null;
   const normalizedFrameHeight = hasFrameDimensions ? Math.round(frameHeight as number) : null;
+  const finalFrameWidth = normalizedFrameWidth ?? (frameMetadata.width ?? null);
+  const finalFrameHeight = normalizedFrameHeight ?? (frameMetadata.height ?? null);
 
   if (!sourceWidth || !sourceHeight) {
     throw new Error('Try-on result dimensions could not be determined');
   }
+  if (!finalFrameWidth || !finalFrameHeight) {
+    throw new Error('Frame dimensions could not be determined');
+  }
 
-  const outputWidth = normalizedFrameWidth ?? sourceWidth;
-  const outputHeight = normalizedFrameHeight ?? sourceHeight;
-  const sourceImage = hasFrameDimensions
-    ? await sharp(resultBuffer, { failOn: 'none' })
-      .resize({
-        width: normalizedFrameWidth!,
-        height: normalizedFrameHeight!,
-        fit: 'cover',
-        position: 'center',
-      })
-      .png()
-      .toBuffer()
-    : resultBuffer;
+  const outputWidth = Math.round(finalFrameWidth);
+  const outputHeight = Math.round(finalFrameHeight);
+  const sourceImage = await sharp(resultBuffer, { failOn: 'none' })
+    .resize({
+      width: outputWidth,
+      height: outputHeight,
+      fit: 'cover',
+      position: 'center',
+    })
+    .png()
+    .toBuffer();
 
   const resizedFrameBuffer = await sharp(frameBuffer, { failOn: 'none', density: 300 })
     .resize({
