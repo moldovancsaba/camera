@@ -34,29 +34,13 @@ export type SubmissionNotificationResult =
       error: string;
     };
 
-const DEFAULT_RESEND_DEV_FROM = 'Camera <onboarding@resend.dev>';
-
 function getEmailApiKey(): string {
   return (process.env.RESEND_API_KEY || process.env.RESEND || process.env.EMAIL_API_KEY || '').trim();
 }
 
 function getEmailFrom(): string {
-  const configuredFrom = (
-    process.env.CAMERA_EMAIL_FROM ||
-    process.env.EMAIL_FROM ||
-    process.env.RESEND_FROM ||
-    ''
-  ).trim();
-
-  if (configuredFrom) {
-    return configuredFrom;
-  }
-
-  if (process.env.NODE_ENV === 'production') {
-    return '';
-  }
-
-  return DEFAULT_RESEND_DEV_FROM;
+  const configuredFrom = (process.env.CAMERA_EMAIL_FROM || '').trim();
+  return configuredFrom;
 }
 
 function escapeHtml(value: string): string {
@@ -156,16 +140,8 @@ export async function sendSubmissionResultEmail(
   if (!from) {
     console.error('[email] Submission result email skipped: missing configured sender address', {
       eventName: input.eventName || null,
-      hasCameraEmailFrom: Boolean(process.env.CAMERA_EMAIL_FROM || process.env.EMAIL_FROM || process.env.RESEND_FROM),
+      hasCameraEmailFrom: Boolean(process.env.CAMERA_EMAIL_FROM),
       nodeEnv: process.env.NODE_ENV || 'unknown',
-    });
-    return { sent: false, skipped: true, reason: 'missing_from_address' };
-  }
-
-  if (from === DEFAULT_RESEND_DEV_FROM && process.env.NODE_ENV === 'production') {
-    console.error('[email] Submission result email skipped: production sender points to onboarding domain', {
-      eventName: input.eventName || null,
-      from,
     });
     return { sent: false, skipped: true, reason: 'missing_from_address' };
   }
