@@ -33,6 +33,10 @@ interface ShareSubmission {
   id?: string;
   imageUrl?: string;
   userName?: string;
+  userInfo?: {
+    name?: string | null;
+    email?: string | null;
+  } | null;
   createdAt?: string;
   submissionKind?: 'original' | 'tryon_result';
   sourceSubmissionId?: string | null;
@@ -204,21 +208,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       };
     }
 
-    const event = await resolveEventForSubmission(db, submission);
-    const eventLabel = event?.name ?? 'Shared photo';
-    const userName =
-      typeof submission.userName === 'string' ? submission.userName : 'Guest';
-    const submissionImageUrl = readString(submission.imageUrl);
-    const openGraph: NonNullable<Metadata['openGraph']> = {
-      title: `Photo by ${userName}`,
-      description: `From ${eventLabel}`,
-      type: 'website',
-    };
-    const twitter: NonNullable<Metadata['twitter']> = {
-      card: submissionImageUrl ? 'summary_large_image' : 'summary',
-      title: `Photo by ${userName}`,
-      description: `From ${eventLabel}`,
-    };
+  const event = await resolveEventForSubmission(db, submission);
+  const eventLabel = event?.name ?? 'Shared photo';
+  const displayName = readString(submission.userInfo?.name) || readString(submission.userName) || 'Guest';
+  const submissionImageUrl = readString(submission.imageUrl);
+  const openGraph: NonNullable<Metadata['openGraph']> = {
+    title: `Photo of ${displayName}`,
+    description: `From ${eventLabel}`,
+    type: 'website',
+  };
+  const twitter: NonNullable<Metadata['twitter']> = {
+    card: submissionImageUrl ? 'summary_large_image' : 'summary',
+    title: `Photo of ${displayName}`,
+    description: `From ${eventLabel}`,
+  };
 
     if (submissionImageUrl) {
       openGraph.images = [
@@ -226,14 +229,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           url: submissionImageUrl,
           width: 1200,
           height: 1200,
-          alt: `Photo by ${userName}`,
+          alt: `Photo of ${displayName}`,
         },
       ];
       twitter.images = [submissionImageUrl];
     }
 
     return {
-      title: `Photo by ${userName} — ${eventLabel}`,
+      title: `Photo of ${displayName} — ${eventLabel}`,
       description: `Photo from ${eventLabel}`,
       openGraph,
       twitter,
@@ -266,6 +269,13 @@ export default async function SharePage({ params }: Props) {
         id: doc._id.toString(),
         imageUrl: readString(doc.imageUrl) ?? undefined,
         userName: typeof doc.userName === 'string' ? doc.userName : undefined,
+        userInfo:
+          doc.userInfo && typeof doc.userInfo === 'object'
+            ? {
+                name: readString((doc.userInfo as { name?: unknown }).name),
+                email: readString((doc.userInfo as { email?: unknown }).email),
+              }
+            : undefined,
         createdAt: typeof doc.createdAt === 'string' ? doc.createdAt : undefined,
         submissionKind:
           doc.submissionKind === 'tryon_result' ? 'tryon_result' : 'original',
@@ -483,6 +493,7 @@ export default async function SharePage({ params }: Props) {
   }
 
   const headline = event?.name ?? 'Shared photo';
+  const displayName = readString(submission.userInfo?.name) || readString(submission.userName) || 'Guest';
 
   return (
     <PublicShell size="lg">
@@ -492,8 +503,8 @@ export default async function SharePage({ params }: Props) {
             {headline}
           </Title>
           <Text c="dimmed">
-            Photo by{' '}
-            <span className="font-semibold">{submission.userName}</span>
+            Photo of{' '}
+            <span className="font-semibold">{displayName}</span>
           </Text>
         </Stack>
 
