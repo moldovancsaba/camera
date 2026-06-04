@@ -25,7 +25,6 @@ interface SubmissionRecord {
     name?: string | null;
     email?: string | null;
   } | null;
-  userEmail?: string;
   createdAt: string;
   playCount?: number;
   slideshowPlays?: Record<string, SlideshowPlayInfo | undefined>;
@@ -54,13 +53,21 @@ function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function isLikelyEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 function getDisplayName(submission: SubmissionRecord): string {
-  return (
-    readString(submission.userInfo?.name) ||
-    readString(submission.userName) ||
-    readString(submission.userEmail) ||
-    'Event Guest'
-  );
+  const userInfoName = readString(submission.userInfo?.name);
+  const userName = readString(submission.userName);
+
+  if (userInfoName) {
+    return userInfoName;
+  }
+  if (userName && !isLikelyEmail(userName)) {
+    return userName;
+  }
+  return 'Event Guest';
 }
 
 function submissionIdOf(submission: SubmissionRecord): string {

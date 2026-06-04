@@ -29,6 +29,20 @@ function sanitizeUsername(name: string): string {
   return name.replace(/[^a-zA-Z0-9]/g, '_');
 }
 
+function isLikelyEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function resolveDisplayName(userName: string | undefined, nameFromUserInfo: string | undefined): string {
+  if (typeof nameFromUserInfo === 'string' && nameFromUserInfo.trim()) {
+    return nameFromUserInfo.trim();
+  }
+  if (typeof userName === 'string' && userName.trim() && !isLikelyEmail(userName.trim())) {
+    return userName.trim();
+  }
+  return 'Guest';
+}
+
 interface PageProps {
   params: Promise<{
     name: string;
@@ -72,7 +86,6 @@ interface EventParticipation {
 
 interface UserProfileView {
   name: string;
-  email?: string;
   isAnonymous: boolean;
   registeredAt: string;
   events: EventParticipation[];
@@ -204,8 +217,9 @@ export default async function UserProfilePage({ params }: PageProps) {
     });
 
     user = {
-      name: hasUserInfo ? firstSubmission.userInfo?.name || 'Unknown' : (isAnonymous ? 'Anonymous User' : firstSubmission.userName || 'Unknown'),
-      email: hasUserInfo ? firstSubmission.userInfo?.email || firstSubmission.userEmail : firstSubmission.userEmail,
+      name: isAnonymous
+        ? 'Anonymous User'
+        : resolveDisplayName(firstSubmission.userName, hasUserInfo ? firstSubmission.userInfo?.name : undefined),
       isAnonymous: isAnonymous,
       registeredAt: firstSubmission.userInfo?.collectedAt || firstSubmission.createdAt,
       events: Array.from(eventsMap.values()),
@@ -295,7 +309,6 @@ export default async function UserProfilePage({ params }: PageProps) {
             </Group>
               
             <Stack gap={4}>
-              <Text c="dimmed"><Text span fw={600}>Email:</Text> {user.isAnonymous ? 'anonymous@event.com' : user.email}</Text>
               <Text c="dimmed"><Text span fw={600}>Registered:</Text> {new Date(user.registeredAt).toLocaleString()}</Text>
               <Text c="dimmed"><Text span fw={600}>Total Photos:</Text> {user.totalPhotos}</Text>
             </Stack>

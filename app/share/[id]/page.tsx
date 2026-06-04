@@ -143,6 +143,20 @@ function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function isLikelyEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function resolveDisplayName(userName: string | null, userInfoName: string | null): string {
+  if (userInfoName) {
+    return userInfoName;
+  }
+  if (userName && !isLikelyEmail(userName)) {
+    return userName;
+  }
+  return 'Guest';
+}
+
 function buildTryOnVariantCards(
   variant: TryOnVariantLike,
   settings: EventSharePageSettings
@@ -210,7 +224,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const event = await resolveEventForSubmission(db, submission);
   const eventLabel = event?.name ?? 'Shared photo';
-  const displayName = readString(submission.userInfo?.name) || readString(submission.userName) || 'Guest';
+  const displayName = resolveDisplayName(
+    readString(submission.userName),
+    readString(submission.userInfo?.name)
+  );
   const submissionImageUrl = readString(submission.imageUrl);
   const openGraph: NonNullable<Metadata['openGraph']> = {
     title: `Photo of ${displayName}`,
@@ -493,7 +510,10 @@ export default async function SharePage({ params }: Props) {
   }
 
   const headline = event?.name ?? 'Shared photo';
-  const displayName = readString(submission.userInfo?.name) || readString(submission.userName) || 'Guest';
+  const displayName = resolveDisplayName(
+    readString(submission.userName),
+    readString(submission.userInfo?.name)
+  );
 
   return (
     <PublicShell size="lg">
