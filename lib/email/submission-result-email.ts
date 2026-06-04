@@ -47,8 +47,7 @@ function readTemplate(value: unknown, maxLength: number, normalizeNewlines = fal
     return '';
   }
   const normalized = normalizeNewlines
-    ? trimmed.replace(/
-/g, '\n').replace(//g, '\n')
+    ? trimmed.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
     : trimmed;
   return normalized.slice(0, maxLength);
 }
