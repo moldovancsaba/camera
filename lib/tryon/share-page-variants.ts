@@ -23,6 +23,20 @@ function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function isFramedByComparison(
+  resultUrl: string | null,
+  rawResultUrl: string | null,
+  compositionEngine: unknown
+): boolean {
+  if (compositionEngine === 'motogp_leather_magic_framed') {
+    return true;
+  }
+  if (!resultUrl || !rawResultUrl) {
+    return false;
+  }
+  return resultUrl !== rawResultUrl;
+}
+
 type ShareVariantSuffix =
   | ':original-capture'
   | ':camera-result'
@@ -128,7 +142,11 @@ function buildCheckedInCandidate(
       : {};
   const resultUrl = readString(variant.imageUrl) || readString(variant.finalImageUrl);
   const rawResultUrl = readString(metadata.tryOnRawResultUrl);
-  const isFramed = metadata.compositionEngine === 'motogp_leather_magic_framed';
+  const isFramed = isFramedByComparison(
+    resultUrl,
+    rawResultUrl,
+    metadata.compositionEngine
+  );
   const suitLabel = readString(variant.tryOnLeatherSuitId) || 'Approved try-on result';
 
   const canUseFramed = Boolean(resultUrl && isFramed);

@@ -149,7 +149,12 @@ function buildTryOnVariantCards(
     : {};
   const resultUrl = readString(variant.imageUrl) || readString(variant.finalImageUrl);
   const rawResultUrl = readString(metadata.tryOnRawResultUrl);
-  const isFramed = metadata.compositionEngine === 'motogp_leather_magic_framed';
+  const isFramed = (() => {
+    if (metadata.compositionEngine === 'motogp_leather_magic_framed') {
+      return true;
+    }
+    return Boolean(resultUrl && rawResultUrl && resultUrl !== rawResultUrl);
+  })();
   const suitLabel = readString(variant.tryOnLeatherSuitId) || 'Approved try-on result';
   const cards: ShareVariantCard[] = [];
 
