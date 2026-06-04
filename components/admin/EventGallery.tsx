@@ -21,6 +21,10 @@ interface SubmissionRecord {
   imageUrl?: string;
   finalImageUrl?: string;
   userName?: string;
+  userInfo?: {
+    name?: string | null;
+    email?: string | null;
+  } | null;
   userEmail?: string;
   createdAt: string;
   playCount?: number;
@@ -45,6 +49,19 @@ type RemoveState = {
   busyIds: string[];
   error: string | null;
 };
+
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function getDisplayName(submission: SubmissionRecord): string {
+  return (
+    readString(submission.userInfo?.name) ||
+    readString(submission.userName) ||
+    readString(submission.userEmail) ||
+    'Event Guest'
+  );
+}
 
 function submissionIdOf(submission: SubmissionRecord): string {
   return submission._id.toString();
@@ -284,6 +301,7 @@ export default function EventGallery({
           const selected = selectedSet.has(submissionId);
           const singleConfirm = removeState.singleConfirmId === submissionId;
           const busy = removeState.busyIds.includes(submissionId);
+          const displayName = getDisplayName(submission);
 
           return (
             <Card
@@ -301,9 +319,9 @@ export default function EventGallery({
                     style={{ position: 'absolute', zIndex: 1, insetBlockStart: 8, insetInlineStart: 8 }}
                   />
                   <Link href={`/share/${submission._id}`}>
-                <Image
+                  <Image
                   src={submission.imageUrl || submission.finalImageUrl || 'data:image/gif;base64,R0lGODlhAQABAAAAACw='}
-                  alt={`Photo by ${submission.userName || submission.userEmail}`}
+                  alt={`Photo of ${displayName}`}
                   width={800}
                   height={800}
                   unoptimized
@@ -314,7 +332,7 @@ export default function EventGallery({
 
                 <Stack gap="xs" p="sm">
                   <Text size="xs" fw={600} truncate>
-                    {submission.userName || submission.userEmail}
+                    {displayName}
                   </Text>
                   <Text size="xs" c="dimmed">
                     {new Date(submission.createdAt).toLocaleDateString()}
