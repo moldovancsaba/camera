@@ -373,10 +373,21 @@ export default async function SharePage({ params }: Props) {
   const db = await connectToDatabase();
   const event = await resolveEventForSubmission(db, submission as unknown as Record<string, unknown>);
   const sharePageSettings = event?.sharePageSettings ?? FALLBACK_SHARE_PAGE_SETTINGS;
+  const hasTryOnRequest = Boolean(submission.tryOnRequest?.requested);
+  const enforcedSharePageSettings = hasTryOnRequest
+    ? {
+        ...sharePageSettings,
+        includeOriginalCapture: false,
+        includeCameraResult: false,
+        includeTryOnResult: false,
+        includeFramedTryOnResult: false,
+        includeCheckedInTryOnResult: true,
+      }
+    : sharePageSettings;
   const showApprovedTryOnRelatedPhotos =
-    sharePageSettings.includeTryOnResult ||
-    sharePageSettings.includeFramedTryOnResult ||
-    sharePageSettings.includeCheckedInTryOnResult;
+    enforcedSharePageSettings.includeTryOnResult ||
+    enforcedSharePageSettings.includeFramedTryOnResult ||
+    enforcedSharePageSettings.includeCheckedInTryOnResult;
   const currentSubmissionId = submission.id ?? '';
   const sourceSubmissionId =
     submission.submissionKind === 'tryon_result' && submission.sourceSubmissionId
@@ -406,7 +417,7 @@ export default async function SharePage({ params }: Props) {
         : submission.tryOnRequest?.sourceImageUrl
     );
 
-    if (sharePageSettings.includeCameraResult) {
+    if (enforcedSharePageSettings.includeCameraResult) {
       if (submission.submissionKind === 'original') {
         if (submissionImage) {
           addUniqueShareVariant({
@@ -429,7 +440,7 @@ export default async function SharePage({ params }: Props) {
       }
     }
 
-    if (sharePageSettings.includeOriginalCapture && sourceImageUrl) {
+    if (enforcedSharePageSettings.includeOriginalCapture && sourceImageUrl) {
       addUniqueShareVariant({
         id: `${(submission.submissionKind === 'original' ? currentSubmissionId : submission.sourceSubmissionId) ?? currentSubmissionId}:original-capture`,
         imageUrl: sourceImageUrl,
@@ -476,15 +487,15 @@ export default async function SharePage({ params }: Props) {
       }
 
       variantCandidates.forEach((variant) => {
-        buildTryOnVariantCards(variant, sharePageSettings).forEach((card) => {
+        buildTryOnVariantCards(variant, enforcedSharePageSettings).forEach((card) => {
           addUniqueShareVariant(card);
         });
       });
 
-      if (sharePageSettings.includeCheckedInTryOnResult) {
+      if (enforcedSharePageSettings.includeCheckedInTryOnResult) {
         const checkedInVariant = pickFirstCheckedInTryOnVariantCard(
           variantCandidates,
-          sharePageSettings
+          enforcedSharePageSettings
         );
         if (checkedInVariant) {
           if (!shareVariants.some((variant) => variant.id === checkedInVariant.id)) {
@@ -495,18 +506,19 @@ export default async function SharePage({ params }: Props) {
     }
   }
 
-  const hasTryOnRequest = Boolean(submission.tryOnRequest?.requested);
-  const shouldShowCheckedInOnly = hasTryOnRequest && (
-    sharePageSettings.includeTryOnResult ||
-    sharePageSettings.includeFramedTryOnResult ||
-    sharePageSettings.includeCheckedInTryOnResult
-  );
+  const shouldShowCheckedInOnly = hasTryOnRequest;
 
   const filteredVariants = shareVariants.filter((variant) => {
-    if (variant.id.endsWith(':original-capture') && !sharePageSettings.includeOriginalCapture) {
+    if (
+      variant.id.endsWith(':original-capture') &&
+      !enforcedSharePageSettings.includeOriginalCapture
+    ) {
       return false;
     }
-    if (variant.id.endsWith(':camera-result') && !sharePageSettings.includeCameraResult) {
+    if (
+      variant.id.endsWith(':camera-result') &&
+      !enforcedSharePageSettings.includeCameraResult
+    ) {
       return false;
     }
     if (
@@ -518,8 +530,8 @@ export default async function SharePage({ params }: Props) {
     return true;
   });
   const displayVariants = prioritizeShareVariantCardsForFeaturedDisplay(
-    limitShareVariantsToConfiguredMode(filteredVariants, sharePageSettings),
-    sharePageSettings
+    limitShareVariantsToConfiguredMode(filteredVariants, enforcedSharePageSettings),
+    enforcedSharePageSettings
   );
 
   const featuredVariant = displayVariants[0] ?? null;
@@ -533,11 +545,8 @@ export default async function SharePage({ params }: Props) {
   const imageMissingMessage = sharePageSettings.pendingTryOnMessage;
 
   const showPendingTryOnMessage =
+    hasTryOnRequest &&
     submission.submissionKind !== 'tryon_result' &&
-    (sharePageSettings.includeTryOnResult ||
-      sharePageSettings.includeFramedTryOnResult ||
-      sharePageSettings.includeCheckedInTryOnResult) &&
-    Boolean(submission.tryOnRequest?.requested) &&
     (!hasTryOnVariant || submission.tryOnRequest?.shareVisible === false);
 
   // `/capture/[eventId]` expects the event document Mongo `_id`, while submissions often store public `eventId` UUID in `eventIds` / `eventId`.
@@ -636,9 +645,10 @@ export default async function SharePage({ params }: Props) {
           {galleryVariants.length > 0 ? (
             <Stack gap="md" mt="xl">
               <Text fw={700}>
-                {sharePageSettings.includeTryOnResult || sharePageSettings.includeFramedTryOnResult
-                  ? 'Related photos'
-                  : 'Related photos'}
+            {enforcedSharePageSettings.includeTryOnResult ||
+            enforcedSharePageSettings.includeFramedTryOnResult
+              ? 'Related photos'
+              : 'Related photos'}
               </Text>
               <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
                 {galleryVariants.map((variant) => (

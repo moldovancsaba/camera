@@ -182,10 +182,21 @@ async function resolveShareImageUrlByVariantId(
 
   const event = await resolveEventForSubmission(db, submission as unknown as Record<string, unknown>);
   const sharePageSettings = event?.sharePageSettings ?? FALLBACK_SHARE_PAGE_SETTINGS;
+  const hasTryOnRequest = Boolean(submission.tryOnRequest?.requested);
+  const enforcedSharePageSettings = hasTryOnRequest
+    ? {
+        ...sharePageSettings,
+        includeOriginalCapture: false,
+        includeCameraResult: false,
+        includeTryOnResult: false,
+        includeFramedTryOnResult: false,
+        includeCheckedInTryOnResult: true,
+      }
+    : sharePageSettings;
   const showApprovedTryOnRelatedPhotos =
-    sharePageSettings.includeTryOnResult ||
-    sharePageSettings.includeFramedTryOnResult ||
-    sharePageSettings.includeCheckedInTryOnResult;
+    enforcedSharePageSettings.includeTryOnResult ||
+    enforcedSharePageSettings.includeFramedTryOnResult ||
+    enforcedSharePageSettings.includeCheckedInTryOnResult;
 
   const sourceSubmissionId =
     submission.submissionKind === 'tryon_result' && submission.sourceSubmissionId
@@ -209,7 +220,7 @@ async function resolveShareImageUrlByVariantId(
       : submission.tryOnRequest?.sourceImageUrl
   );
 
-  if (sharePageSettings.includeCameraResult) {
+  if (enforcedSharePageSettings.includeCameraResult) {
     if (submission.submissionKind === 'original') {
       if (submissionImage) {
         addUniqueShareVariant({
@@ -230,7 +241,7 @@ async function resolveShareImageUrlByVariantId(
     }
   }
 
-  if (sharePageSettings.includeOriginalCapture && sourceImageUrl) {
+  if (enforcedSharePageSettings.includeOriginalCapture && sourceImageUrl) {
     addUniqueShareVariant({
       id: `${(submission.submissionKind === 'original' ? currentSubmissionId : submission.sourceSubmissionId) ?? currentSubmissionId}:original-capture`,
       imageUrl: sourceImageUrl,
@@ -275,18 +286,18 @@ async function resolveShareImageUrlByVariantId(
     }
 
     variantCandidates.forEach((variant) => {
-      buildTryOnVariantCards(variant, sharePageSettings).forEach((card) => {
+      buildTryOnVariantCards(variant, enforcedSharePageSettings).forEach((card) => {
         addUniqueShareVariant(card);
       });
     });
 
-    if (sharePageSettings.includeCheckedInTryOnResult) {
-      const checkedInVariant = pickFirstCheckedInTryOnVariantCard(
-        variantCandidates,
-        sharePageSettings
-      );
-      if (checkedInVariant) {
-        const alreadyExists = shareVariants.some((variant) => variant.id === checkedInVariant.id);
+      if (enforcedSharePageSettings.includeCheckedInTryOnResult) {
+        const checkedInVariant = pickFirstCheckedInTryOnVariantCard(
+          variantCandidates,
+          enforcedSharePageSettings
+        );
+        if (checkedInVariant) {
+          const alreadyExists = shareVariants.some((variant) => variant.id === checkedInVariant.id);
         if (!alreadyExists) {
           shareVariants.unshift(checkedInVariant);
         }
@@ -294,17 +305,19 @@ async function resolveShareImageUrlByVariantId(
     }
   }
 
-  const shouldShowCheckedInOnly =
-    Boolean(submission.tryOnRequest?.requested) &&
-    (sharePageSettings.includeTryOnResult ||
-      sharePageSettings.includeFramedTryOnResult ||
-      sharePageSettings.includeCheckedInTryOnResult);
+  const shouldShowCheckedInOnly = hasTryOnRequest;
 
   const filteredVariants = shareVariants.filter((variant) => {
-    if (variant.id.endsWith(':original-capture') && !sharePageSettings.includeOriginalCapture) {
+    if (
+      variant.id.endsWith(':original-capture') &&
+      !enforcedSharePageSettings.includeOriginalCapture
+    ) {
       return false;
     }
-    if (variant.id.endsWith(':camera-result') && !sharePageSettings.includeCameraResult) {
+    if (
+      variant.id.endsWith(':camera-result') &&
+      !enforcedSharePageSettings.includeCameraResult
+    ) {
       return false;
     }
     if (
@@ -316,8 +329,8 @@ async function resolveShareImageUrlByVariantId(
     return true;
   });
   const displayVariants = prioritizeShareVariantCardsForFeaturedDisplay(
-    limitShareVariantsToConfiguredMode(filteredVariants, sharePageSettings),
-    sharePageSettings
+    limitShareVariantsToConfiguredMode(filteredVariants, enforcedSharePageSettings),
+    enforcedSharePageSettings
   );
 
   const normalizedVariantId = variantId;
