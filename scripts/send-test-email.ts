@@ -1,10 +1,11 @@
 import { loadEnvFromFiles } from './load-env-from-files';
 import { sendSubmissionResultEmail } from '../lib/email/submission-notification';
+import { getConfiguredSiteUrl } from '@/lib/site-url';
 
 loadEnvFromFiles();
 
 const recipientEmail = process.env.RESEND_TEST_TO || process.env.EMAIL_TEST_TO || '';
-const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+const appUrl = getConfiguredSiteUrl();
 
 if (!recipientEmail.trim()) {
   console.error('Missing RESEND_TEST_TO. Example: RESEND_TEST_TO=you@example.com npm run email:test');

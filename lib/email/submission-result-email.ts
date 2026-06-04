@@ -4,6 +4,7 @@ import { normalizeEventSharePageSettings, type EventSharePageSettings } from '@/
 import { listApprovedShareVariants } from '@/lib/tryon/publication';
 import { sendSubmissionResultEmail, type SubmissionNotificationResult, type SubmissionNotificationInput } from '@/lib/email/submission-notification';
 import { sanitizeEmail } from '@/lib/security/sanitize';
+import { getConfiguredSiteUrl } from '@/lib/site-url';
 
 export interface SubmissionEmailPolicy {
   enabled: boolean;
@@ -28,7 +29,7 @@ export interface SubmissionShareReadinessResult {
   missing: string[];
 }
 
-const PUBLIC_BASE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+const PUBLIC_BASE_URL = getConfiguredSiteUrl();
 
 function hasOwnProperty(source: Record<string, unknown>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(source, key);

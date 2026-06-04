@@ -7,6 +7,7 @@
 
 import { MongoClient } from 'mongodb';
 import { loadEnvFromFiles } from './load-env-from-files';
+import { getConfiguredSiteUrl } from '@/lib/site-url';
 
 async function testMongo(uri: string, dbName: string): Promise<MongoClient> {
   const client = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 });
@@ -44,7 +45,7 @@ async function main() {
   const mongoDb = process.env.MONGODB_DB?.trim() || '';
   const imgbbKey = process.env.IMGBB_API_KEY?.trim() || '';
   const internalSecret = process.env.CAMERA_TRYON_INTERNAL_SECRET?.trim() || '';
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'http://localhost:3000';
+  const appUrl = getConfiguredSiteUrl();
 
   const checks: boolean[] = [];
 
