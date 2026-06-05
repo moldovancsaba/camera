@@ -334,7 +334,7 @@ export default async function AdminTryOnResultsPage({
         {[
           {
             href: '/admin/tryon-results',
-            title: `Active Queue (${pendingCount})`,
+            title: `Vetting (${pendingCount})`,
             description: 'Open the live moderation queue for pending try-on results.',
             iconKey: 'photoScan' as AdminIconKey,
           },
