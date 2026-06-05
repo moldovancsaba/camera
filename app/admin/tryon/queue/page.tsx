@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS, type TryOnJob } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
+import { listActiveTryOnSetups, type TryOnSetup } from '@/lib/tryon/setup-resolution';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import TryOnQueueTable, { type QueueRow } from '@/components/admin/TryOnQueueTable';
@@ -41,6 +42,10 @@ function toQueueRow(job: Partial<TryOnJob>): QueueRow | null {
     request: {
       leatherSuitId:
         typeof job.request?.leatherSuitId === 'string' ? job.request.leatherSuitId : 'unknown',
+      setupId:
+        typeof job.request?.setupId === 'string' && job.request.setupId.trim().length > 0
+          ? job.request.setupId
+          : null,
     },
     processing: {
       workerId: typeof job.processing?.workerId === 'string' ? job.processing.workerId : null,
@@ -50,6 +55,14 @@ function toQueueRow(job: Partial<TryOnJob>): QueueRow | null {
           : 0,
       nextAttemptAt:
         typeof job.processing?.nextAttemptAt === 'string' ? job.processing.nextAttemptAt : null,
+      resolvedSetup:
+        typeof job.processing?.resolvedSetup?.setupId === 'string' &&
+        typeof job.processing.resolvedSetup.setupName === 'string'
+          ? {
+              setupId: job.processing.resolvedSetup.setupId,
+              setupName: job.processing.resolvedSetup.setupName,
+            }
+          : undefined,
     },
     result: {
       publicResultUrl:
@@ -77,9 +90,12 @@ export default async function AdminTryOnQueuePage({
 
   let rows: QueueRow[] = [];
   let dbError = null;
+  let setupOptions: TryOnSetup[] = [];
 
   try {
     const db = await connectToDatabase();
+    setupOptions = await listActiveTryOnSetups(db);
+
     const query: Record<string, unknown> = {};
 
     if (statusFilter) {
@@ -91,6 +107,7 @@ export default async function AdminTryOnQueuePage({
         { jobId: { $regex: search, $options: 'i' } },
         { 'source.submissionId': { $regex: search, $options: 'i' } },
         { 'request.leatherSuitId': { $regex: search, $options: 'i' } },
+        { 'request.setupId': { $regex: search, $options: 'i' } },
         { 'source.imageUrl': { $regex: search, $options: 'i' } },
       ];
     }
@@ -127,7 +144,7 @@ export default async function AdminTryOnQueuePage({
       search={{
         defaultValue: search,
         label: 'Search queue',
-        placeholder: 'Search job id, submission id, suit id, or source image URL',
+        placeholder: 'Search job id, submission id, suit id, setup id, or source image URL',
         clearHref: statusFilter ? `/admin/tryon/queue?status=${encodeURIComponent(statusFilter)}` : '/admin/tryon/queue',
         hiddenFields: statusFilter ? { status: statusFilter } : undefined,
       }}
@@ -135,7 +152,7 @@ export default async function AdminTryOnQueuePage({
       toolbarTrailing={{ href: '/admin/tryon/queue?status=retry_wait', label: 'Retrying only' }}
       dbError={dbError}
     >
-      <TryOnQueueTable rows={rows} />
+      <TryOnQueueTable rows={rows} setupOptions={setupOptions} />
     </AdminListPageShell>
   );
 }

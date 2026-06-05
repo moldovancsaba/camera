@@ -1,11 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import DataTable from '@/components/gds/DataTable';
 import { StatusBadge, StateBlock } from '@doneisbetter/gds-core/client';
-import { Button, Group, Stack, Text } from '@mantine/core';
+import { Button, Group, Select, Stack, Text } from '@mantine/core';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
+import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
 
 export interface QueueRow {
   jobId: string;
@@ -15,15 +16,20 @@ export interface QueueRow {
   source: {
     submissionId: string;
     imageUrl: string;
-    eventMongoId?: string | null;
+  eventMongoId?: string | null;
   };
   request: {
     leatherSuitId: string;
+    setupId?: string | null;
   };
   processing: {
     workerId?: string | null;
     attemptCount: number;
     nextAttemptAt?: string | null;
+    resolvedSetup?: {
+      setupId: string;
+      setupName: string;
+    };
   };
   result: {
     publicResultUrl?: string | null;
@@ -31,6 +37,11 @@ export interface QueueRow {
   error?: {
     message?: string | null;
   };
+}
+
+interface TryOnQueueTableProps {
+  rows: QueueRow[];
+  setupOptions?: TryOnSetup[];
 }
 
 function toneForStatus(status: string): CameraStatusTone {
@@ -67,14 +78,80 @@ async function retryJob(jobId: string) {
   }
 }
 
-export default function TryOnQueueTable({ rows }: { rows: QueueRow[] }) {
+async function rerunJob(jobId: string, setupId?: string) {
+  const payload = setupId ? { setupId } : {};
+  const response = await fetch(`/api/admin/tryon-jobs/${jobId}/rerun`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const responsePayload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(responsePayload.error || 'Failed to rerun try-on job');
+  }
+}
+
+async function reapplyResult(jobId: string) {
+  const response = await fetch(`/api/admin/tryon-jobs/${jobId}/reapply-result`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to resend try-on result');
+  }
+}
+
+function makeSetupDisplayMap(setups: TryOnSetup[]) {
+  return new Map(setups.map((setup) => [setup.setupId, setup.name]));
+}
+
+function getSetupLabel(
+  setupsById: Map<string, string>,
+  setup?: {
+    setupId: string;
+    setupName?: string | null;
+  } | null
+): string {
+  if (!setup) return 'Unknown preset';
+  if (setup.setupName && setup.setupName.trim().length > 0) {
+    return setup.setupName;
+  }
+  return setupsById.get(setup.setupId) ?? setup.setupId;
+}
+
+export default function TryOnQueueTable({ rows, setupOptions = [] }: TryOnQueueTableProps) {
   const router = useRouter();
   const [busyJobId, setBusyJobId] = useState<string | null>(null);
+  const [selectedSetupByJob, setSelectedSetupByJob] = useState<Record<string, string>>({});
+  const setupsById = useMemo(() => makeSetupDisplayMap(setupOptions), [setupOptions]);
+  const defaultSetupId = setupOptions[0]?.setupId ?? '';
 
   async function handleRetry(jobId: string) {
     try {
       setBusyJobId(jobId);
       await retryJob(jobId);
+      router.refresh();
+    } finally {
+      setBusyJobId(null);
+    }
+  }
+
+  async function handleRerun(jobId: string, setupId?: string) {
+    try {
+      setBusyJobId(jobId);
+      await rerunJob(jobId, setupId);
+      router.refresh();
+    } finally {
+      setBusyJobId(null);
+    }
+  }
+
+  async function handleReapplyResult(jobId: string) {
+    try {
+      setBusyJobId(jobId);
+      await reapplyResult(jobId);
       router.refresh();
     } finally {
       setBusyJobId(null);
@@ -151,6 +228,21 @@ export default function TryOnQueueTable({ rows }: { rows: QueueRow[] }) {
           render: (row: QueueRow) => <Text size="sm">{row.request.leatherSuitId}</Text>,
         },
         {
+          key: 'preset',
+          label: 'Preset',
+          render: (row: QueueRow) => {
+            const setupForDisplay = row.processing.resolvedSetup
+              ? {
+                  setupId: row.processing.resolvedSetup.setupId,
+                  setupName: row.processing.resolvedSetup.setupName,
+                }
+              : typeof row.request.setupId === 'string'
+                ? { setupId: row.request.setupId }
+                : null;
+            return <Text size="sm">{getSetupLabel(setupsById, setupForDisplay)}</Text>;
+          },
+        },
+        {
           key: 'worker',
           label: 'Worker',
           render: (row: QueueRow) => (
@@ -190,6 +282,65 @@ export default function TryOnQueueTable({ rows }: { rows: QueueRow[] }) {
                   onClick={() => void handleRetry(row.jobId)}
                 >
                   Retry job
+                </Button>
+              ) : null}
+              {(row.status === 'failed' || row.status === 'retry_wait' || row.status === 'done') ? (
+                <Stack gap="xs">
+                  {(() => {
+                    const selectedSetupId =
+                      selectedSetupByJob[row.jobId] ??
+                      (row.processing.resolvedSetup?.setupId ??
+                        (row.request.setupId && setupOptions.some((setup) => setup.setupId === row.request.setupId)
+                          ? row.request.setupId
+                          : defaultSetupId));
+                    return (
+                      <>
+                        {setupOptions.length > 0 ? (
+                          <Select
+                            label="Try-on preset"
+                            data={setupOptions.map((setup) => ({
+                              value: setup.setupId,
+                              label: `${setup.name}${setup.isDefault ? ' (default)' : ''}`,
+                            }))}
+                            value={selectedSetupId}
+                            onChange={(nextSetupId) => {
+                              if (typeof nextSetupId === 'string') {
+                                setSelectedSetupByJob((state) => ({ ...state, [row.jobId]: nextSetupId }));
+                              }
+                            }}
+                            size="xs"
+                            checkIconPosition="left"
+                            searchable
+                            disabled={busyJobId === row.jobId}
+                          />
+                        ) : (
+                          <Text size="xs" c="dimmed">
+                            Preset list unavailable
+                          </Text>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          loading={busyJobId === row.jobId}
+                          aria-label={`Rerun try-on job ${row.jobId}`}
+                          onClick={() => void handleRerun(row.jobId, selectedSetupId)}
+                        >
+                          Rerun job
+                        </Button>
+                      </>
+                    );
+                  })()}
+                </Stack>
+              ) : null}
+              {(row.status === 'done' && Boolean(row.result.publicResultUrl)) ? (
+                <Button
+                  variant="default"
+                  size="xs"
+                  loading={busyJobId === row.jobId}
+                  aria-label={`Re-send try-on result ${row.jobId}`}
+                  onClick={() => void handleReapplyResult(row.jobId)}
+                >
+                  Resend to user
                 </Button>
               ) : null}
             </Stack>
