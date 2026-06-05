@@ -92,6 +92,17 @@ body {
     pointer-events: auto;
   }
 
+  .camera-triple-bar--inline {
+    position: relative;
+    inset: auto;
+    bottom: auto;
+    padding-inline: 0;
+    padding-top: 0;
+    background: none;
+    margin-top: 0.75rem;
+    width: 100%;
+  }
+
   .camera-triple-bar-inner {
     margin-inline: auto;
     display: grid;

@@ -882,7 +882,7 @@ export default function CameraCapture({
       ) : null}
 
       {useTripleBar && capturedImage && (
-        <div className="camera-triple-bar">
+        <div className="camera-triple-bar camera-triple-bar--inline">
           <div className="camera-triple-bar-inner">
             <div className="justify-self-start">
               {onCancel ? (
