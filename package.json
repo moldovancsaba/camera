@@ -68,7 +68,8 @@
     "next": "16.0.10",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "resend": "^6.12.4"
+    "resend": "^6.12.4",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@doneisbetter/gds-compliance": "3.0.0",

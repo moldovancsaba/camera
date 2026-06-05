@@ -7,6 +7,8 @@ import {
   type TryOnSetupPreference,
 } from '@/lib/db/schemas';
 
+export type { TryOnSetup };
+
 const LEGACY_SETUP_ID = 'default_motogp';
 
 export interface SetupResolutionInput {

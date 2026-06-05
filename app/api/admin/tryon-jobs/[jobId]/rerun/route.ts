@@ -80,8 +80,11 @@ export const POST = withErrorHandler(async (
 
   const body = await request.json().catch(() => ({}));
   const requestedSetupId = normalizeSetupId(
-    typeof body === 'object' && body !== null && 'setupId' in body
-      ? (body as { setupId?: unknown }).setupId
+    typeof body === 'object' &&
+    body !== null &&
+    'setupId' in body &&
+    typeof (body as { setupId?: unknown }).setupId === 'string'
+      ? (body as { setupId: string }).setupId
       : undefined
   );
   if (requestedSetupId) {
