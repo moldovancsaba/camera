@@ -1311,101 +1311,102 @@ export default function EventCapturePage({
 
         {/* Step 3: Preview */}
         {step === 'preview' && compositeImage && (
-          <div className="h-full flex items-center justify-center p-4">
-            {/* Image with overlay - Full screen with share overlay when saved */}
-            <div className="relative max-w-full max-h-full">
-              <Image
-                src={compositeImage}
-                alt="Final result"
-                width={1200}
-                height={1200}
-                unoptimized
-                className="max-h-[80vh] max-w-full object-contain"
-              />
-              
-              {/* Save/Retry buttons - Positioned over image */}
+          <div className="h-full w-full overflow-y-auto flex items-center justify-center p-4">
+            <div className="flex w-full max-w-4xl flex-col items-center gap-4">
+              {/* Image with no overlayed controls */}
+              <div className="relative w-full max-w-full max-h-[80vh]">
+                <Image
+                  src={compositeImage}
+                  alt="Final result"
+                  width={1200}
+                  height={1200}
+                  unoptimized
+                  className="w-full h-auto max-h-[80vh] max-w-full object-contain"
+                />
+              </div>
+
               {!shareUrl && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex w-full max-w-md flex-col gap-4 px-4">
-                    {event?.tryOn?.enabled ? (
-                      <div className="rounded-2xl  p-4 shadow-2xl backdrop-blur-md">
-                        <TryOnSuitSelector
-                          selectedSuitId={selectedTryOnSuitId}
-                          onChange={setSelectedTryOnSuitId}
-                          disabled={isSaving}
-                          eventMongoId={eventId}
+                <div className="flex w-full max-w-md flex-col gap-4 px-4">
+                  {event?.tryOn?.enabled ? (
+                    <div className="rounded-2xl p-4 shadow-2xl">
+                      <TryOnSuitSelector
+                        selectedSuitId={selectedTryOnSuitId}
+                        onChange={setSelectedTryOnSuitId}
+                        disabled={isSaving}
+                        eventMongoId={eventId}
+                      />
+                    </div>
+                  ) : null}
+                  <Button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    size={eventButtonSize}
+                    radius="md"
+                    fullWidth
+                    color={event?.brandColor || CAMERA_DEFAULT_BRAND_COLOR}
+                    className="shadow-2xl"
+                  >
+                    {isSaving ? (
+                      event?.showLogo && event?.logoUrl ? (
+                        <Image
+                          src={event.logoUrl}
+                          alt="Event logo"
+                          width={32}
+                          height={32}
+                          unoptimized
+                          className="animate-pulse object-contain"
                         />
-                      </div>
+                      ) : null
                     ) : null}
-                    <Button
-                      type="button"
-                      onClick={handleSave}
-                      disabled={isSaving}
-                      size={eventButtonSize}
-                      radius="md"
-                      fullWidth
-                      color={event?.brandColor || CAMERA_DEFAULT_BRAND_COLOR}
-                      className="shadow-2xl"
-                    >
-                      {isSaving ? (
-                        event?.showLogo && event?.logoUrl ? (
-                          <Image
-                            src={event.logoUrl}
-                            alt="Event logo"
-                            width={32}
-                            height={32}
-                            unoptimized
-                            className="animate-pulse object-contain"
-                          />
-                        ) : null
-                      ) : null}
-                      <span className="text-xl">{isSaving ? 'SAVING...' : captureButtonText}</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleReset}
-                      size={eventButtonSize}
-                      radius="md"
-                      fullWidth
-                      variant="light"
-                      className="shadow-2xl"
-                    >
-                      <span className="text-xl">{retryButtonText}</span>
-                    </Button>
-                  </div>
+                    <span className="text-xl">{isSaving ? 'SAVING...' : captureButtonText}</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleReset}
+                    size={eventButtonSize}
+                    radius="md"
+                    fullWidth
+                    variant="light"
+                    className="shadow-2xl"
+                  >
+                    <span className="text-xl">{retryButtonText}</span>
+                  </Button>
                 </div>
               )}
-              
-              {/* Share overlay - Transparent black overlay over photo */}
+
               {shareUrl && showSharePage && (
-                <ShareOverlay
-                  shareUrl={shareUrl}
-                  title={shareScreenTitle}
-                  copyButtonText={shareCopyLinkButtonText}
-                  viewPhotoButtonText={shareViewPhotoButtonText}
-                  suggestedMessageLabel={shareSuggestedMessageLabel}
-                  shareCaption={shareCaptionForSocial}
-                  tryOnResult={tryOnResult}
-                  buttonSize={eventButtonSize}
-                  nextButtonText={shareNextButtonText}
-                  onCopyLink={handleCopyLink}
-                  onShareSocial={handleShareSocial}
-                  onNext={handleMoveToThankYou}
-                />
+                <div className="w-full px-4 max-w-md">
+                  <ShareOverlay
+                    shareUrl={shareUrl}
+                    title={shareScreenTitle}
+                    copyButtonText={shareCopyLinkButtonText}
+                    viewPhotoButtonText={shareViewPhotoButtonText}
+                    suggestedMessageLabel={shareSuggestedMessageLabel}
+                    shareCaption={shareCaptionForSocial}
+                    tryOnResult={tryOnResult}
+                    buttonSize={eventButtonSize}
+                    nextButtonText={shareNextButtonText}
+                    onCopyLink={handleCopyLink}
+                    onShareSocial={handleShareSocial}
+                    onNext={handleMoveToThankYou}
+                  />
+                </div>
               )}
-              
-              {/* Skip share overlay */}
+
               {shareUrl && !showSharePage && (
-                <ShareOverlay
-                  title="Saved"
-                  shareCaption={shareCaptionForSocial}
-                  tryOnResult={tryOnResult}
-                  buttonSize={eventButtonSize}
-                  nextButtonText={shareNextButtonText}
-                  completionMessage={skipShareMessage}
-                  onNext={handleMoveToThankYou}
-                  showShareActions={false}
-                />
+                <div className="w-full px-4 max-w-md">
+                  <ShareOverlay
+                    title="Saved"
+                    shareCaption={shareCaptionForSocial}
+                    tryOnResult={tryOnResult}
+                    buttonSize={eventButtonSize}
+                    nextButtonText={shareNextButtonText}
+                    completionMessage={skipShareMessage}
+                    onNext={handleMoveToThankYou}
+                    showShareActions={false}
+                  />
+                </div>
               )}
             </div>
           </div>
