@@ -722,6 +722,7 @@ export default function CameraCapture({
   }, [stream]);
 
   const useTripleBar = controlBar === 'bottom-triple';
+  const tripleBarClassName = useTripleBar ? 'camera-triple-bar camera-triple-bar--inline' : 'camera-triple-bar';
 
   return (
     <div
@@ -838,9 +839,9 @@ export default function CameraCapture({
       </div>
       </div>
 
-      {/* Fixed bottom triple bar: optional extra row, then Cancel | Take | Change camera */}
+      {/* Triple bar: optional extra row, then Cancel | Take | Change camera */}
       {useTripleBar && !capturedImage && (tripleBarExtra != null || stream) ? (
-        <div className="camera-triple-bar">
+        <div className={tripleBarClassName}>
           {tripleBarExtra != null ? (
             <div className="camera-triple-bar-extra mb-3 flex justify-center">{tripleBarExtra}</div>
           ) : null}
@@ -882,7 +883,7 @@ export default function CameraCapture({
       ) : null}
 
       {useTripleBar && capturedImage && (
-        <div className="camera-triple-bar camera-triple-bar--inline">
+        <div className={tripleBarClassName}>
           <div className="camera-triple-bar-inner">
             <div className="justify-self-start">
               {onCancel ? (
