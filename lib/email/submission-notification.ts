@@ -40,7 +40,18 @@ function getEmailApiKey(): string {
 
 function getEmailFrom(): string {
   const configuredFrom = (process.env.CAMERA_EMAIL_FROM || '').trim();
-  return configuredFrom;
+  if (!configuredFrom) {
+    return '';
+  }
+
+  // Keep manually set display name if already present.
+  if (configuredFrom.includes('<') && configuredFrom.includes('>')) {
+    return configuredFrom;
+  }
+
+  const senderName = (process.env.CAMERA_EMAIL_FROM_NAME || 'MotoGP Leather Magic').trim();
+  const escapedName = senderName.replace(/["\\]/g, (char) => `\\${char}`);
+  return `"${escapedName}" <${configuredFrom}>`;
 }
 
 function escapeHtml(value: string): string {
