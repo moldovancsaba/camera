@@ -1311,17 +1311,17 @@ export default function EventCapturePage({
 
         {/* Step 3: Preview */}
         {step === 'preview' && compositeImage && (
-          <div className="h-full w-full overflow-y-auto flex items-center justify-center p-4">
-            <div className="flex w-full max-w-4xl flex-col items-center gap-4">
+          <div className="w-full py-4">
+            <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-4">
               {/* Image with no overlayed controls */}
-              <div className="relative w-full max-w-full max-h-[80vh]">
+              <div className="relative w-full">
                 <Image
                   src={compositeImage}
                   alt="Final result"
-                  width={1200}
-                  height={1200}
+                  width={selectedFrame?.width || 1200}
+                  height={selectedFrame?.height || 1200}
                   unoptimized
-                  className="w-full h-auto max-h-[80vh] max-w-full object-contain"
+                  className="w-full h-auto max-w-full object-contain"
                 />
               </div>
 
