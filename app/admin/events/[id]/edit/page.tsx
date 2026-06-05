@@ -54,6 +54,8 @@ import {
 import {
   DEFAULT_SUBMISSION_EMAIL_BODY,
   DEFAULT_SUBMISSION_EMAIL_SUBJECT,
+  DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY,
+  DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT,
   SUBMISSION_EMAIL_TEMPLATE_HELP,
 } from '@/lib/email/submission-template-defaults';
 
@@ -86,12 +88,15 @@ interface EventRecord {
     submissionResultEmailEnabled?: boolean;
     submissionResultEmailSendAfterSave?: boolean;
     submissionResultEmailSendAfterRelatedPhotosReady?: boolean;
+    submissionResultEmailSendAfterTryOnResubmissionApproved?: boolean;
     submissionResultEmailSubject?: string | null;
     submissionResultEmailBody?: string | null;
     submissionResultEmailSubjectAfterSave?: string | null;
     submissionResultEmailBodyAfterSave?: string | null;
     submissionResultEmailSubjectAfterRelatedPhotosReady?: string | null;
     submissionResultEmailBodyAfterRelatedPhotosReady?: string | null;
+    submissionResultEmailSubjectAfterTryOnResubmissionApproved?: string | null;
+    submissionResultEmailBodyAfterTryOnResubmissionApproved?: string | null;
   };
   visualSettings?: {
     buttonSize?: EventButtonSize;
@@ -143,6 +148,10 @@ export default function EditEventPage({
   const [submissionResultEmailSendAfterSave, setSubmissionResultEmailSendAfterSave] = useState(true);
   const [submissionResultEmailSendAfterRelatedPhotosReady, setSubmissionResultEmailSendAfterRelatedPhotosReady] =
     useState(false);
+  const [
+    submissionResultEmailSendAfterTryOnResubmissionApproved,
+    setSubmissionResultEmailSendAfterTryOnResubmissionApproved,
+  ] = useState(false);
   const [submissionResultEmailSubjectAfterSave, setSubmissionResultEmailSubjectAfterSave] = useState(
     DEFAULT_SUBMISSION_EMAIL_SUBJECT
   );
@@ -153,6 +162,14 @@ export default function EditEventPage({
     useState(DEFAULT_SUBMISSION_EMAIL_SUBJECT);
   const [submissionResultEmailBodyAfterRelatedPhotosReady, setSubmissionResultEmailBodyAfterRelatedPhotosReady] =
     useState(DEFAULT_SUBMISSION_EMAIL_BODY);
+  const [
+    submissionResultEmailSubjectAfterTryOnResubmissionApproved,
+    setSubmissionResultEmailSubjectAfterTryOnResubmissionApproved,
+  ] = useState(DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT);
+  const [
+    submissionResultEmailBodyAfterTryOnResubmissionApproved,
+    setSubmissionResultEmailBodyAfterTryOnResubmissionApproved,
+  ] = useState(DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY);
   const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
   const [includeOriginalCapture, setIncludeOriginalCapture] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeOriginalCapture
@@ -225,18 +242,27 @@ export default function EditEventPage({
         const emailSendAfterRelatedPhotos = Boolean(
           emailModuleSettings?.submissionResultEmailSendAfterRelatedPhotosReady
         );
+        const emailSendAfterTryOnResubmissionApproved = Boolean(
+          emailModuleSettings?.submissionResultEmailSendAfterTryOnResubmissionApproved
+        );
         const emailModuleEnabled = Boolean(emailModuleSettings?.submissionResultEmailEnabled);
         const hasEmailSendAfterSaveSetting =
           typeof emailModuleSettings?.submissionResultEmailSendAfterSave === 'boolean';
         const hasEmailSendAfterRelatedSetting =
           typeof emailModuleSettings?.submissionResultEmailSendAfterRelatedPhotosReady === 'boolean';
+        const hasEmailSendAfterTryOnResubmissionSetting =
+          typeof emailModuleSettings?.submissionResultEmailSendAfterTryOnResubmissionApproved === 'boolean';
         setSubmissionResultEmailSendAfterSave(
           emailSendAfterSave ??
             (emailModuleEnabled &&
             !hasEmailSendAfterSaveSetting &&
-            !hasEmailSendAfterRelatedSetting)
+            !hasEmailSendAfterRelatedSetting &&
+            !hasEmailSendAfterTryOnResubmissionSetting)
         );
         setSubmissionResultEmailSendAfterRelatedPhotosReady(emailSendAfterRelatedPhotos);
+        setSubmissionResultEmailSendAfterTryOnResubmissionApproved(
+          emailSendAfterTryOnResubmissionApproved
+        );
         const legacySubject = eventData.notifications?.submissionResultEmailSubject;
         const legacyBody = eventData.notifications?.submissionResultEmailBody;
         setSubmissionResultEmailSubjectAfterSave(
@@ -258,6 +284,14 @@ export default function EditEventPage({
           eventData.notifications?.submissionResultEmailBodyAfterRelatedPhotosReady ||
             legacyBody ||
             DEFAULT_SUBMISSION_EMAIL_BODY
+        );
+        setSubmissionResultEmailSubjectAfterTryOnResubmissionApproved(
+          eventData.notifications?.submissionResultEmailSubjectAfterTryOnResubmissionApproved ||
+            DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT
+        );
+        setSubmissionResultEmailBodyAfterTryOnResubmissionApproved(
+          eventData.notifications?.submissionResultEmailBodyAfterTryOnResubmissionApproved ||
+            DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY
         );
         setButtonSize(normalizeEventButtonSize(eventData.visualSettings?.buttonSize));
         const sharePageSettings = normalizeEventSharePageSettings(eventData.sharePage);
@@ -432,7 +466,9 @@ export default function EditEventPage({
     }
 
     const isEmailEnabled =
-      submissionResultEmailSendAfterSave || submissionResultEmailSendAfterRelatedPhotosReady;
+      submissionResultEmailSendAfterSave ||
+      submissionResultEmailSendAfterRelatedPhotosReady ||
+      submissionResultEmailSendAfterTryOnResubmissionApproved;
 
     const data = {
       name: formData.get('name') as string,
@@ -459,12 +495,15 @@ export default function EditEventPage({
         submissionResultEmailEnabled: isEmailEnabled,
         submissionResultEmailSendAfterSave,
         submissionResultEmailSendAfterRelatedPhotosReady,
+        submissionResultEmailSendAfterTryOnResubmissionApproved,
         submissionResultEmailSubject: submissionResultEmailSubjectAfterSave,
         submissionResultEmailBody: submissionResultEmailBodyAfterSave,
         submissionResultEmailSubjectAfterSave,
         submissionResultEmailBodyAfterSave,
         submissionResultEmailSubjectAfterRelatedPhotosReady,
         submissionResultEmailBodyAfterRelatedPhotosReady,
+        submissionResultEmailSubjectAfterTryOnResubmissionApproved,
+        submissionResultEmailBodyAfterTryOnResubmissionApproved,
       },
       visualSettings: {
         buttonSize,
@@ -726,6 +765,34 @@ export default function EditEventPage({
               autosize
               minRows={6}
               description="Plain text only. Include {link} where the result page URL should appear."
+            />
+            <Checkbox
+              checked={submissionResultEmailSendAfterTryOnResubmissionApproved}
+              onChange={(event) =>
+                setSubmissionResultEmailSendAfterTryOnResubmissionApproved(event.currentTarget.checked)
+              }
+              label="Send update email after approved resubmitted try-on result"
+              description="Sends only when an admin resubmits a try-on job and later approves the new result."
+            />
+            <TextInput
+              label="Email subject after approved resubmission"
+              value={submissionResultEmailSubjectAfterTryOnResubmissionApproved}
+              onChange={(event) =>
+                setSubmissionResultEmailSubjectAfterTryOnResubmissionApproved(event.currentTarget.value)
+              }
+              disabled={!submissionResultEmailSendAfterTryOnResubmissionApproved}
+              description={SUBMISSION_EMAIL_TEMPLATE_HELP}
+            />
+            <Textarea
+              label="Email body after approved resubmission"
+              value={submissionResultEmailBodyAfterTryOnResubmissionApproved}
+              onChange={(event) =>
+                setSubmissionResultEmailBodyAfterTryOnResubmissionApproved(event.currentTarget.value)
+              }
+              disabled={!submissionResultEmailSendAfterTryOnResubmissionApproved}
+              autosize
+              minRows={6}
+              description="Plain text only. Include {link} where the updated result page URL should appear."
             />
           </FormSection>
 

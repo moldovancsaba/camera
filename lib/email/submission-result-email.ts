@@ -1,5 +1,5 @@
 import { ObjectId, type Db, type WithId } from 'mongodb';
-import { COLLECTIONS, type Event, type Submission } from '@/lib/db/schemas';
+import { COLLECTIONS, type Event, type Submission, type TryOnJob } from '@/lib/db/schemas';
 import { normalizeEventSharePageSettings, type EventSharePageSettings } from '@/lib/events/share-page-settings';
 import { listApprovedShareVariants } from '@/lib/tryon/publication';
 import { sendSubmissionResultEmail, type SubmissionNotificationResult, type SubmissionNotificationInput } from '@/lib/email/submission-notification';
@@ -10,12 +10,15 @@ export interface SubmissionEmailPolicy {
   enabled: boolean;
   sendAfterSave: boolean;
   sendAfterRelatedPhotosReady: boolean;
+  sendAfterTryOnResubmissionApproved: boolean;
   subjectTemplate?: string | null;
   bodyTemplate?: string | null;
   subjectTemplateAfterSave?: string | null;
   bodyTemplateAfterSave?: string | null;
   subjectTemplateAfterRelatedPhotosReady?: string | null;
   bodyTemplateAfterRelatedPhotosReady?: string | null;
+  subjectTemplateAfterTryOnResubmissionApproved?: string | null;
+  bodyTemplateAfterTryOnResubmissionApproved?: string | null;
 }
 
 export interface SubmissionEmailRecipient {
@@ -92,6 +95,10 @@ export function normalizeSubmissionEmailPolicy(value: unknown): SubmissionEmailP
 
   const hasExplicitAfterSave = hasOwnProperty(source, 'submissionResultEmailSendAfterSave');
   const hasExplicitAfterRelated = hasOwnProperty(source, 'submissionResultEmailSendAfterRelatedPhotosReady');
+  const hasExplicitAfterTryOnResubmissionApproved = hasOwnProperty(
+    source,
+    'submissionResultEmailSendAfterTryOnResubmissionApproved'
+  );
 
   const legacySubject = readTemplate(source.submissionResultEmailSubject, 180);
   const legacyBody = readTemplate(source.submissionResultEmailBody, 5000, true);
@@ -105,6 +112,14 @@ export function normalizeSubmissionEmailPolicy(value: unknown): SubmissionEmailP
     readTemplate(source.submissionResultEmailSubjectAfterRelatedPhotosReady, 180) || legacySubject;
   const bodyTemplateAfterRelatedPhotosReady =
     readTemplate(source.submissionResultEmailBodyAfterRelatedPhotosReady, 5000, true) || legacyBody;
+  const subjectTemplateAfterTryOnResubmissionApproved =
+    readTemplate(source.submissionResultEmailSubjectAfterTryOnResubmissionApproved, 180) ||
+    subjectTemplateAfterRelatedPhotosReady ||
+    legacySubject;
+  const bodyTemplateAfterTryOnResubmissionApproved =
+    readTemplate(source.submissionResultEmailBodyAfterTryOnResubmissionApproved, 5000, true) ||
+    bodyTemplateAfterRelatedPhotosReady ||
+    legacyBody;
 
   return {
     enabled,
@@ -118,12 +133,19 @@ export function normalizeSubmissionEmailPolicy(value: unknown): SubmissionEmailP
         ? Boolean(source.submissionResultEmailSendAfterRelatedPhotosReady)
         : false
       : false,
+    sendAfterTryOnResubmissionApproved: enabled
+      ? hasExplicitAfterTryOnResubmissionApproved
+        ? Boolean(source.submissionResultEmailSendAfterTryOnResubmissionApproved)
+        : false
+      : false,
     subjectTemplate: legacySubject || null,
     bodyTemplate: legacyBody || null,
     subjectTemplateAfterSave,
     bodyTemplateAfterSave,
     subjectTemplateAfterRelatedPhotosReady,
     bodyTemplateAfterRelatedPhotosReady,
+    subjectTemplateAfterTryOnResubmissionApproved,
+    bodyTemplateAfterTryOnResubmissionApproved,
   };
 }
 
@@ -265,10 +287,18 @@ export interface SendSubmissionEmailMetadataResult {
   metadataPatch: Record<string, unknown>;
 }
 
-function buildModePatch(mode: 'after_save' | 'after_related'): Record<string, unknown> {
+type SubmissionEmailMode = 'after_save' | 'after_related' | 'after_tryon_resubmission_approved';
+
+function buildModePatch(mode: SubmissionEmailMode): Record<string, unknown> {
   if (mode === 'after_save') {
     return {
       'metadata.emailSentAfterSave': true,
+    };
+  }
+
+  if (mode === 'after_tryon_resubmission_approved') {
+    return {
+      'metadata.emailSentAfterTryOnResubmissionApproved': true,
     };
   }
 
@@ -277,10 +307,16 @@ function buildModePatch(mode: 'after_save' | 'after_related'): Record<string, un
   };
 }
 
-function buildFailureModePatch(mode: 'after_save' | 'after_related'): Record<string, unknown> {
+function buildFailureModePatch(mode: SubmissionEmailMode): Record<string, unknown> {
   if (mode === 'after_save') {
     return {
       'metadata.emailSentAfterSave': false,
+    };
+  }
+
+  if (mode === 'after_tryon_resubmission_approved') {
+    return {
+      'metadata.emailSentAfterTryOnResubmissionApproved': false,
     };
   }
 
@@ -290,7 +326,7 @@ function buildFailureModePatch(mode: 'after_save' | 'after_related'): Record<str
 }
 
 export function buildEmailMetadataPatch(
-  mode: 'after_save' | 'after_related',
+  mode: SubmissionEmailMode,
   result: SubmissionNotificationResult,
   shareUrl: string
 ): SendSubmissionEmailMetadataResult {
@@ -357,7 +393,7 @@ export function buildSubmissionEmailInput(
   shareUrl: string,
   policy: SubmissionEmailPolicy,
   eventName: string | null,
-  mode: 'after_save' | 'after_related' = 'after_save'
+  mode: SubmissionEmailMode = 'after_save'
 ): SubmissionNotificationInput | null {
   const recipient = resolveSubmissionResultEmailRecipient(submission);
   if (!recipient.email) {
@@ -367,11 +403,15 @@ export function buildSubmissionEmailInput(
   const subjectTemplate =
     mode === 'after_save'
       ? policy.subjectTemplateAfterSave || policy.subjectTemplate
-      : policy.subjectTemplateAfterRelatedPhotosReady || policy.subjectTemplate;
+      : mode === 'after_tryon_resubmission_approved'
+        ? policy.subjectTemplateAfterTryOnResubmissionApproved || policy.subjectTemplateAfterRelatedPhotosReady || policy.subjectTemplate
+        : policy.subjectTemplateAfterRelatedPhotosReady || policy.subjectTemplate;
   const bodyTemplate =
     mode === 'after_save'
       ? policy.bodyTemplateAfterSave || policy.bodyTemplate
-      : policy.bodyTemplateAfterRelatedPhotosReady || policy.bodyTemplate;
+      : mode === 'after_tryon_resubmission_approved'
+        ? policy.bodyTemplateAfterTryOnResubmissionApproved || policy.bodyTemplateAfterRelatedPhotosReady || policy.bodyTemplate
+        : policy.bodyTemplateAfterRelatedPhotosReady || policy.bodyTemplate;
 
   return {
     recipientEmail: recipient.email,
@@ -388,7 +428,7 @@ export async function sendSubmissionResultEmailByPolicy(
   eventName: string | null,
   shareUrl: string,
   policy: SubmissionEmailPolicy,
-  mode: 'after_save' | 'after_related'
+  mode: SubmissionEmailMode
 ): Promise<SendSubmissionEmailMetadataResult> {
   const input = buildSubmissionEmailInput(submission, shareUrl, policy, eventName, mode);
   if (!input) {
@@ -398,9 +438,7 @@ export async function sendSubmissionResultEmailByPolicy(
       sent: false,
       shouldRetry: false,
       metadataPatch: {
-        ...(mode === 'after_save'
-          ? { 'metadata.emailSentAfterSave': false }
-          : { 'metadata.emailSentAfterRelatedPhotos': false }),
+        ...buildFailureModePatch(mode),
         'metadata.emailSent': false,
         'metadata.emailSkippedAt': now,
         'metadata.emailSkipReason': 'missing_recipient',
@@ -461,6 +499,53 @@ export async function dispatchPendingRelatedEmailForSubmission(
   }
 
   return result;
+}
+
+function isTryOnRerunJob(job: TryOnJob | null): boolean {
+  if (!job) return false;
+  return Boolean(job.request?.rerunOfJobId) || job.requestHash.includes('::rerun:');
+}
+
+export async function dispatchTryOnResubmissionApprovalEmailForSubmission(
+  db: Db,
+  sourceSubmission: WithId<Submission>,
+  resultSubmission: WithId<Submission>,
+  baseUrl = PUBLIC_BASE_URL
+): Promise<SendSubmissionEmailMetadataResult | null> {
+  const sourceJobId = readString(resultSubmission.sourceJobId);
+  if (!sourceJobId) {
+    return null;
+  }
+
+  const sourceJob = await db
+    .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
+    .findOne({ jobId: sourceJobId });
+  if (!isTryOnRerunJob(sourceJob)) {
+    return null;
+  }
+
+  const event = await resolveEventForSubmission(db, sourceSubmission);
+  const policy = normalizeSubmissionEmailPolicy(event?.notifications);
+  if (!policy.enabled || !policy.sendAfterTryOnResubmissionApproved) {
+    return null;
+  }
+
+  if (resultSubmission.metadata?.emailSentAfterTryOnResubmissionApproved) {
+    return {
+      sent: false,
+      shouldRetry: false,
+      metadataPatch: {},
+    };
+  }
+
+  const shareUrl = buildSubmissionShareUrl(sourceSubmission._id.toString(), baseUrl);
+  return sendSubmissionResultEmailByPolicy(
+    sourceSubmission,
+    event?.name || null,
+    shareUrl,
+    policy,
+    'after_tryon_resubmission_approved'
+  );
 }
 
 export async function dispatchPendingSubmissionEmailForSubmission(

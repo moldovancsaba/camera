@@ -11,7 +11,10 @@ import {
 import { patchSubmissionTryOnState } from '@/lib/tryon/jobs';
 import { nowIso } from '@/lib/tryon/time';
 import { shouldApprovedTryOnBeSlideshowEligible } from '@/lib/tryon/slideshow-policy';
-import { dispatchPendingRelatedEmailForSubmission } from '@/lib/email/submission-result-email';
+import {
+  dispatchPendingRelatedEmailForSubmission,
+  dispatchTryOnResubmissionApprovalEmailForSubmission,
+} from '@/lib/email/submission-result-email';
 
 function sanitizeMetadataPatch(metadataPatch?: Record<string, unknown> | null): Record<string, unknown> {
   if (!metadataPatch) return {};
@@ -128,18 +131,49 @@ export const POST = withErrorHandler(async (
   });
 
   if (sourceSubmission) {
-    const relatedEmailResult = await dispatchPendingRelatedEmailForSubmission(db, {
+    const sourceSubmissionObjectId = new ObjectId(resultSubmission.sourceSubmissionId);
+    const resultSubmissionObjectId = new ObjectId(submissionId);
+    const sourceSubmissionWithId = {
       ...sourceSubmission,
-      _id: new ObjectId(resultSubmission.sourceSubmissionId),
-    });
-    const relatedEmailPatch = sanitizeMetadataPatch(relatedEmailResult?.metadataPatch);
-    if (Object.keys(relatedEmailPatch).length > 0) {
+      _id: sourceSubmissionObjectId,
+    };
+    const resubmissionEmailResult = await dispatchTryOnResubmissionApprovalEmailForSubmission(
+      db,
+      sourceSubmissionWithId,
+      {
+        ...resultSubmission,
+        _id: resultSubmissionObjectId,
+      }
+    );
+    const resubmissionEmailPatch = sanitizeMetadataPatch(resubmissionEmailResult?.metadataPatch);
+    if (Object.keys(resubmissionEmailPatch).length > 0) {
       await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-        { _id: new ObjectId(resultSubmission.sourceSubmissionId) },
-        { $set: relatedEmailPatch }
+        { _id: resultSubmissionObjectId },
+        { $set: resubmissionEmailPatch }
       );
+    }
+
+    if (resubmissionEmailResult) {
+      await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+        { _id: sourceSubmissionObjectId },
+        { $set: { 'metadata.emailSendAfterRelatedPending': false } }
+      );
+    } else {
+      const relatedEmailResult = await dispatchPendingRelatedEmailForSubmission(db, sourceSubmissionWithId);
+      const relatedEmailPatch = sanitizeMetadataPatch(relatedEmailResult?.metadataPatch);
+      if (Object.keys(relatedEmailPatch).length > 0) {
+        await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
+          { _id: sourceSubmissionObjectId },
+          { $set: relatedEmailPatch }
+        );
+      }
     }
   }
 
-  return apiSuccess({ submissionId, reviewStatus: 'approved', archived: true, archiveBucket: 'approved' });
+  return apiSuccess({
+    submissionId,
+    reviewStatus: 'approved',
+    archived: true,
+    archiveBucket: 'approved',
+  });
 });

@@ -246,8 +246,11 @@ export interface Event {
     submissionResultEmailBodyAfterSave?: string | null; // Optional event-level body template for "send after save"
     submissionResultEmailSubjectAfterRelatedPhotosReady?: string | null; // Optional event-level subject template for "send after related photos"
     submissionResultEmailBodyAfterRelatedPhotosReady?: string | null; // Optional event-level body template for "send after related photos"
+    submissionResultEmailSubjectAfterTryOnResubmissionApproved?: string | null; // Optional event-level subject template for approved rerun update
+    submissionResultEmailBodyAfterTryOnResubmissionApproved?: string | null; // Optional event-level body template for approved rerun update
     submissionResultEmailSendAfterSave: boolean; // Send immediately after submission save
     submissionResultEmailSendAfterRelatedPhotosReady: boolean; // Send when related share photos are available
+    submissionResultEmailSendAfterTryOnResubmissionApproved?: boolean; // Send when a resubmitted try-on result is approved
   };
   sharePage?: {
     includeOriginalCapture?: boolean; // Raw camera image before frame composition, when available
@@ -697,6 +700,7 @@ export interface Submission {
     emailSent: boolean;              // Whether email was sent
     emailSentAfterSave?: boolean;    // Whether email was sent from "after save" policy
     emailSentAfterRelatedPhotos?: boolean; // Whether email was sent from "after related photos" policy
+    emailSentAfterTryOnResubmissionApproved?: boolean; // Whether update email was sent for an approved rerun result
     emailSendAfterRelatedPending?: boolean; // Whether related-photo email is waiting on publish readiness
     emailSentAt?: string;            // ISO 8601 timestamp
     emailRecipient?: string;         // Normalized recipient address

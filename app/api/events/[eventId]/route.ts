@@ -41,8 +41,14 @@ function normalizeEventNotificationSettings(value: unknown) {
       notificationPolicy.subjectTemplateAfterRelatedPhotosReady || null,
     submissionResultEmailBodyAfterRelatedPhotosReady:
       notificationPolicy.bodyTemplateAfterRelatedPhotosReady || null,
+    submissionResultEmailSubjectAfterTryOnResubmissionApproved:
+      notificationPolicy.subjectTemplateAfterTryOnResubmissionApproved || null,
+    submissionResultEmailBodyAfterTryOnResubmissionApproved:
+      notificationPolicy.bodyTemplateAfterTryOnResubmissionApproved || null,
     submissionResultEmailSendAfterSave: notificationPolicy.sendAfterSave,
     submissionResultEmailSendAfterRelatedPhotosReady: notificationPolicy.sendAfterRelatedPhotosReady,
+    submissionResultEmailSendAfterTryOnResubmissionApproved:
+      notificationPolicy.sendAfterTryOnResubmissionApproved,
   };
 }
 

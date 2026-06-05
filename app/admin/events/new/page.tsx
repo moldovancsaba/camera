@@ -43,6 +43,8 @@ import {
 import {
   DEFAULT_SUBMISSION_EMAIL_BODY,
   DEFAULT_SUBMISSION_EMAIL_SUBJECT,
+  DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY,
+  DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT,
   SUBMISSION_EMAIL_TEMPLATE_HELP,
 } from '@/lib/email/submission-template-defaults';
 
@@ -82,6 +84,10 @@ export default function NewEventPage() {
   const [submissionResultEmailSendAfterSave, setSubmissionResultEmailSendAfterSave] = useState(true);
   const [submissionResultEmailSendAfterRelatedPhotosReady, setSubmissionResultEmailSendAfterRelatedPhotosReady] =
     useState(false);
+  const [
+    submissionResultEmailSendAfterTryOnResubmissionApproved,
+    setSubmissionResultEmailSendAfterTryOnResubmissionApproved,
+  ] = useState(false);
   const [submissionResultEmailSubjectAfterSave, setSubmissionResultEmailSubjectAfterSave] = useState(
     DEFAULT_SUBMISSION_EMAIL_SUBJECT
   );
@@ -92,6 +98,14 @@ export default function NewEventPage() {
     useState(DEFAULT_SUBMISSION_EMAIL_SUBJECT);
   const [submissionResultEmailBodyAfterRelatedPhotosReady, setSubmissionResultEmailBodyAfterRelatedPhotosReady] =
     useState(DEFAULT_SUBMISSION_EMAIL_BODY);
+  const [
+    submissionResultEmailSubjectAfterTryOnResubmissionApproved,
+    setSubmissionResultEmailSubjectAfterTryOnResubmissionApproved,
+  ] = useState(DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT);
+  const [
+    submissionResultEmailBodyAfterTryOnResubmissionApproved,
+    setSubmissionResultEmailBodyAfterTryOnResubmissionApproved,
+  ] = useState(DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY);
   const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
   const [includeOriginalCapture, setIncludeOriginalCapture] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeOriginalCapture
@@ -316,12 +330,15 @@ export default function NewEventPage() {
         submissionResultEmailEnabled,
         submissionResultEmailSendAfterSave,
         submissionResultEmailSendAfterRelatedPhotosReady,
+        submissionResultEmailSendAfterTryOnResubmissionApproved,
         submissionResultEmailSubject: submissionResultEmailSubjectAfterSave,
         submissionResultEmailBody: submissionResultEmailBodyAfterSave,
         submissionResultEmailSubjectAfterSave,
         submissionResultEmailBodyAfterSave,
         submissionResultEmailSubjectAfterRelatedPhotosReady,
         submissionResultEmailBodyAfterRelatedPhotosReady,
+        submissionResultEmailSubjectAfterTryOnResubmissionApproved,
+        submissionResultEmailBodyAfterTryOnResubmissionApproved,
       },
       visualSettings: {
         buttonSize,
@@ -486,7 +503,12 @@ export default function NewEventPage() {
               onChange={(event) => {
                 const checked = event.currentTarget.checked;
                 setSubmissionResultEmailEnabled(checked);
-                if (checked && !submissionResultEmailSendAfterSave && !submissionResultEmailSendAfterRelatedPhotosReady) {
+                if (
+                  checked &&
+                  !submissionResultEmailSendAfterSave &&
+                  !submissionResultEmailSendAfterRelatedPhotosReady &&
+                  !submissionResultEmailSendAfterTryOnResubmissionApproved
+                ) {
                   setSubmissionResultEmailSendAfterSave(true);
                 }
               }}
@@ -543,6 +565,35 @@ export default function NewEventPage() {
               autosize
               minRows={6}
               description="Plain text only. Include {link} where the result page URL should appear."
+            />
+            <Checkbox
+              checked={submissionResultEmailSendAfterTryOnResubmissionApproved}
+              onChange={(event) =>
+                setSubmissionResultEmailSendAfterTryOnResubmissionApproved(event.currentTarget.checked)
+              }
+              disabled={!submissionResultEmailEnabled}
+              label="Send update email after approved resubmitted try-on result"
+              description="Sends only when an admin resubmits a try-on job and later approves the new result."
+            />
+            <TextInput
+              label="Email subject after approved resubmission"
+              value={submissionResultEmailSubjectAfterTryOnResubmissionApproved}
+              onChange={(event) =>
+                setSubmissionResultEmailSubjectAfterTryOnResubmissionApproved(event.currentTarget.value)
+              }
+              disabled={!submissionResultEmailEnabled || !submissionResultEmailSendAfterTryOnResubmissionApproved}
+              description={SUBMISSION_EMAIL_TEMPLATE_HELP}
+            />
+            <Textarea
+              label="Email body after approved resubmission"
+              value={submissionResultEmailBodyAfterTryOnResubmissionApproved}
+              onChange={(event) =>
+                setSubmissionResultEmailBodyAfterTryOnResubmissionApproved(event.currentTarget.value)
+              }
+              disabled={!submissionResultEmailEnabled || !submissionResultEmailSendAfterTryOnResubmissionApproved}
+              autosize
+              minRows={6}
+              description="Plain text only. Include {link} where the updated result page URL should appear."
             />
           </FormSection>
 
