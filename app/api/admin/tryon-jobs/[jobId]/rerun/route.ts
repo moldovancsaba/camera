@@ -47,6 +47,7 @@ function buildRerunJob(job: TryOnJob, setupIdOverride?: string | null): TryOnJob
     },
     request: {
       ...job.request,
+      rerunOfJobId: job.jobId,
       ...(setupIdOverride ? { setupId: setupIdOverride } : {}),
     },
     error: {
@@ -151,6 +152,8 @@ export const POST = withErrorHandler(async (
   return apiSuccess({
     jobId: rerunJob.jobId,
     sourceJobId: normalizedJobId,
+    setupId: rerunJob.request.setupId ?? null,
+    rerunOfJobId: sourceJob.jobId,
     status: 'queued',
     stage: 'queued',
     createdAt: rerunJob.createdAt,

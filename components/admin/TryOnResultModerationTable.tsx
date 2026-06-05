@@ -2,11 +2,12 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import ResponsiveDataView from '@/components/gds/ResponsiveDataView';
 import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
-import { Box, Button, Card, Group, Modal, Paper, SimpleGrid, Stack, Text, UnstyledButton } from '@mantine/core';
+import { Box, Button, Card, Group, Modal, Paper, Select, SimpleGrid, Stack, Text, UnstyledButton } from '@mantine/core';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
+import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
 
 function resolveDisplayName(value: string): string {
   const normalized = typeof value === 'string' ? value.trim() : '';
@@ -21,6 +22,7 @@ function resolveDisplayName(value: string): string {
 
 export interface ModerationRow {
   id: string;
+  sourceJobId: string | null;
   imageUrl: string;
   originalImageUrl: string | null;
   userName: string;
@@ -33,6 +35,12 @@ export interface ModerationRow {
   approvedAt: string | null;
   isShareVisible: boolean;
   isSlideshowEligible: boolean;
+  setup: {
+    setupId: string;
+    setupName?: string | null;
+    setupProfile?: string | null;
+    setupSource?: string | null;
+  } | null;
 }
 
 async function postDecision(id: string, action: 'approve' | 'reject') {
@@ -45,6 +53,23 @@ async function postDecision(id: string, action: 'approve' | 'reject') {
   if (!response.ok) {
     throw new Error(payload.error || `Failed to ${action} try-on result`);
   }
+}
+
+async function postRerun(sourceJobId: string, setupId?: string) {
+  const response = await fetch(`/api/admin/tryon-jobs/${sourceJobId}/rerun`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(setupId ? { setupId } : {}),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to resubmit try-on job');
+  }
+
+  return {
+    jobId: typeof payload.data?.jobId === 'string' ? payload.data.jobId : null,
+    setupId: typeof payload.data?.setupId === 'string' ? payload.data.setupId : null,
+  };
 }
 
 function reviewTone(status: ModerationRow['reviewStatus']): CameraStatusTone {
@@ -63,6 +88,34 @@ function scopeLabel(row: ModerationRow) {
 
 function visibilityLabel(row: ModerationRow) {
   return `Share: ${row.isShareVisible ? 'Visible' : 'Hidden'} · Slideshow: ${row.isSlideshowEligible ? 'Eligible' : 'Hidden'}`;
+}
+
+function makeSetupDisplayMap(setups: TryOnSetup[]) {
+  return new Map(setups.map((setup) => [setup.setupId, setup.name]));
+}
+
+function getSetupLabel(
+  setupsById: Map<string, string>,
+  setup?: {
+    setupId: string;
+    setupName?: string | null;
+  } | null
+): string {
+  if (!setup) return 'Unknown preset';
+  if (setup.setupName && setup.setupName.trim().length > 0) {
+    return setup.setupName;
+  }
+  return setupsById.get(setup.setupId) ?? setup.setupId;
+}
+
+function setupDetailLabel(row: ModerationRow) {
+  const details = [
+    row.setup?.setupProfile ? `Profile: ${row.setup.setupProfile}` : null,
+    row.setup?.setupSource ? `Source: ${row.setup.setupSource.replace(/\./g, ' ')}` : null,
+    row.sourceJobId ? `Job: ${row.sourceJobId}` : null,
+  ].filter((value): value is string => Boolean(value));
+
+  return details.join(' · ');
 }
 
 function PreviewImage({
@@ -273,21 +326,27 @@ function ModerationActions({
 
 export default function TryOnResultModerationTable({
   rows,
+  setupOptions = [],
   emptyTitle = 'No try-on results need review',
   emptyDescription = 'Generated try-on results will appear here after the local worker uploads them back to Camera.',
 }: {
   rows: ModerationRow[];
+  setupOptions?: TryOnSetup[];
   emptyTitle?: string;
   emptyDescription?: string;
 }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [selectedSetupByRow, setSelectedSetupByRow] = useState<Record<string, string>>({});
+  const [rerunFeedbackByRow, setRerunFeedbackByRow] = useState<Record<string, string>>({});
   const [assetHealth, setAssetHealth] = useState<
     Record<string, { resultMissing?: boolean; originalMissing?: boolean }>
   >({});
 
   const activeRow = rows.find((row) => row.id === activeRowId) ?? null;
+  const setupsById = useMemo(() => makeSetupDisplayMap(setupOptions), [setupOptions]);
+  const defaultSetupId = setupOptions[0]?.setupId ?? '';
 
   function markAssetMissing(rowId: string, kind: 'resultMissing' | 'originalMissing') {
     setAssetHealth((current) => {
@@ -323,6 +382,104 @@ export default function TryOnResultModerationTable({
     } finally {
       setBusyId(null);
     }
+  }
+
+  function selectedSetupIdForRow(row: ModerationRow) {
+    if (selectedSetupByRow[row.id]) {
+      return selectedSetupByRow[row.id];
+    }
+    if (row.setup?.setupId && setupOptions.some((setup) => setup.setupId === row.setup?.setupId)) {
+      return row.setup.setupId;
+    }
+    return defaultSetupId;
+  }
+
+  async function handleRerun(row: ModerationRow) {
+    if (!row.sourceJobId) return;
+
+    const selectedSetupId = selectedSetupIdForRow(row);
+    try {
+      setBusyId(`${row.id}:rerun`);
+      const result = await postRerun(row.sourceJobId, selectedSetupId || undefined);
+      const setupLabel = getSetupLabel(
+        setupsById,
+        selectedSetupId ? { setupId: selectedSetupId } : row.setup
+      );
+      setRerunFeedbackByRow((current) => ({
+        ...current,
+        [row.id]: result.jobId
+          ? `Job resubmitted as ${result.jobId} with ${setupLabel}. The new result will return to pending review before publication.`
+          : `Job resubmitted with ${setupLabel}. The new result will return to pending review before publication.`,
+      }));
+      router.refresh();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function renderPresetControls(row: ModerationRow) {
+    const selectedSetupId = selectedSetupIdForRow(row);
+    const presetLabel = getSetupLabel(setupsById, row.setup);
+    const detailLabel = setupDetailLabel(row);
+    const feedback = rerunFeedbackByRow[row.id];
+
+    return (
+      <Stack gap="xs" align="stretch">
+        <Stack gap={2}>
+          <Text fw={700} size="sm">
+            {presetLabel}
+          </Text>
+          {row.setup?.setupId ? (
+            <Text size="xs" c="dimmed">
+              {row.setup.setupId}
+            </Text>
+          ) : null}
+          {detailLabel ? (
+            <Text size="xs" c="dimmed">
+              {detailLabel}
+            </Text>
+          ) : null}
+        </Stack>
+        {setupOptions.length > 0 ? (
+          <Select
+            label="Rerun preset"
+            data={setupOptions.map((setup) => ({
+              value: setup.setupId,
+              label: `${setup.name}${setup.isDefault ? ' (default)' : ''}`,
+            }))}
+            value={selectedSetupId}
+            onChange={(nextSetupId) => {
+              if (typeof nextSetupId === 'string') {
+                setSelectedSetupByRow((state) => ({ ...state, [row.id]: nextSetupId }));
+              }
+            }}
+            size="xs"
+            checkIconPosition="left"
+            searchable
+            disabled={busyId === `${row.id}:rerun`}
+          />
+        ) : (
+          <Text size="xs" c="dimmed">
+            Preset list unavailable
+          </Text>
+        )}
+        <Button
+          variant="outline"
+          size="xs"
+          loading={busyId === `${row.id}:rerun`}
+          disabled={!row.sourceJobId || setupOptions.length === 0}
+          aria-label={`Submit try-on job again for ${resolveDisplayName(row.userName)}`}
+          onClick={() => void handleRerun(row)}
+        >
+          Submit again
+        </Button>
+        {feedback ? (
+          <Text size="xs" c="teal">
+            {feedback}
+          </Text>
+        ) : null}
+      </Stack>
+    );
   }
 
   if (rows.length === 0) {
@@ -386,6 +543,11 @@ export default function TryOnResultModerationTable({
             render: (row) => <Text size="sm">{row.tryOnLeatherSuitId || 'Unknown suit'}</Text>,
           },
           {
+            key: 'preset',
+            label: 'Preset Used',
+            render: (row) => renderPresetControls(row),
+          },
+          {
             key: 'status',
             label: 'Review Status',
             render: (row) => (
@@ -426,7 +588,7 @@ export default function TryOnResultModerationTable({
                 onOriginalMissing={() => markAssetMissing(row.id, 'originalMissing')}
               />
               <Stack gap={2}>
-              <Text fw={700}>{resolveDisplayName(row.userName)}</Text>
+                <Text fw={700}>{resolveDisplayName(row.userName)}</Text>
                 <Text size="sm" c="dimmed">
                   {row.userEmail}
                 </Text>
@@ -437,6 +599,7 @@ export default function TryOnResultModerationTable({
                   {row.tryOnLeatherSuitId || 'Unknown suit'}
                 </Text>
               </Stack>
+              {renderPresetControls(row)}
               <Stack gap="xs" align="flex-start">
                 <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row.reviewStatus))} />
                 <Text size="xs" c="dimmed">
@@ -492,6 +655,7 @@ export default function TryOnResultModerationTable({
                 {activeRow.tryOnLeatherSuitId || 'Unknown suit'}
               </Text>
             </Stack>
+            {renderPresetControls(activeRow)}
             <Stack gap="xs" align="flex-start">
               <StatusBadge {...getStatusBadgeProps(reviewTone(activeRow.reviewStatus), reviewLabel(activeRow.reviewStatus))} />
               <Text size="sm" c="dimmed">

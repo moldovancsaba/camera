@@ -848,6 +848,7 @@ export interface TryOnJobSource {
 export interface TryOnJobRequest {
   leatherSuitId: string;
   setupId?: string | null;
+  rerunOfJobId?: string | null;
 }
 
 export interface TryOnJobResolvedSetup {

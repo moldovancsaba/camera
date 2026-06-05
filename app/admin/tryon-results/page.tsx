@@ -7,6 +7,7 @@ import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import TryOnResultModerationTable, { type ModerationRow } from '@/components/admin/TryOnResultModerationTable';
 import TryOnQueueTable, { type QueueRow } from '@/components/admin/TryOnQueueTable';
+import { listActiveTryOnSetups, type TryOnSetup } from '@/lib/tryon/setup-resolution';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import { ConsumerDashboardGrid, ProductCard } from '@doneisbetter/gds-core/client';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
@@ -36,6 +37,10 @@ function toQueueRow(job: Partial<TryOnJob>): QueueRow | null {
     request: {
       leatherSuitId:
         typeof job.request?.leatherSuitId === 'string' ? job.request.leatherSuitId : 'unknown',
+      setupId:
+        typeof job.request?.setupId === 'string' && job.request.setupId.trim().length > 0
+          ? job.request.setupId
+          : null,
     },
     processing: {
       workerId: typeof job.processing?.workerId === 'string' ? job.processing.workerId : null,
@@ -45,6 +50,14 @@ function toQueueRow(job: Partial<TryOnJob>): QueueRow | null {
           : 0,
       nextAttemptAt:
         typeof job.processing?.nextAttemptAt === 'string' ? job.processing.nextAttemptAt : null,
+      resolvedSetup:
+        typeof job.processing?.resolvedSetup?.setupId === 'string' &&
+        typeof job.processing.resolvedSetup.setupName === 'string'
+          ? {
+              setupId: job.processing.resolvedSetup.setupId,
+              setupName: job.processing.resolvedSetup.setupName,
+            }
+          : undefined,
     },
     result: {
       publicResultUrl:
@@ -64,6 +77,37 @@ function normalizeDisplayName(value: string | null | undefined): string {
     }
   }
   return 'Guest';
+}
+
+function toModerationSetup(job: TryOnJob | null | undefined): ModerationRow['setup'] {
+  if (typeof job?.processing?.resolvedSetup?.setupId === 'string' && job.processing.resolvedSetup.setupId.trim()) {
+    return {
+      setupId: job.processing.resolvedSetup.setupId,
+      setupName:
+        typeof job.processing.resolvedSetup.setupName === 'string'
+          ? job.processing.resolvedSetup.setupName
+          : null,
+      setupProfile:
+        typeof job.processing.resolvedSetup.setupProfile === 'string'
+          ? job.processing.resolvedSetup.setupProfile
+          : null,
+      setupSource:
+        typeof job.processing.resolvedSetup.setupSource === 'string'
+          ? job.processing.resolvedSetup.setupSource
+          : null,
+    };
+  }
+
+  if (typeof job?.request?.setupId === 'string' && job.request.setupId.trim()) {
+    return {
+      setupId: job.request.setupId.trim(),
+      setupName: null,
+      setupProfile: null,
+      setupSource: null,
+    };
+  }
+
+  return null;
 }
 
 export default async function AdminTryOnResultsPage({
@@ -89,9 +133,11 @@ export default async function AdminTryOnResultsPage({
   let archivedRejectedCount = 0;
   let failedJobCount = 0;
   let failedJobRows: QueueRow[] = [];
+  let setupOptions: TryOnSetup[] = [];
 
   try {
     const db = await connectToDatabase();
+    setupOptions = await listActiveTryOnSetups(db);
     const query: Record<string, unknown> = {
       submissionKind: 'tryon_result',
     };
@@ -113,6 +159,7 @@ export default async function AdminTryOnResultsPage({
         { eventName: regex },
         { partnerName: regex },
         { tryOnLeatherSuitId: regex },
+        { sourceJobId: regex },
       ];
     }
 
@@ -123,6 +170,7 @@ export default async function AdminTryOnResultsPage({
         { jobId: regex },
         { 'source.submissionId': regex },
         { 'request.leatherSuitId': regex },
+        { 'request.setupId': regex },
         { 'source.imageUrl': regex },
         { 'error.message': regex },
       ];
@@ -167,22 +215,37 @@ export default async function AdminTryOnResultsPage({
     failedJobCount = failedJobsTotal;
     failedJobRows = failedJobs.map(toQueueRow).filter((row): row is QueueRow => Boolean(row));
 
-    const sourceIds = docs
+    const sourceObjectIds = docs
       .map((doc) => doc.sourceSubmissionId)
-      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+      .filter((value): value is string => typeof value === 'string' && ObjectId.isValid(value))
+      .map((value) => new ObjectId(value));
+    const sourceJobIds = Array.from(new Set(
+      docs
+        .map((doc) => doc.sourceJobId)
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    ));
 
-    const sourceDocs = sourceIds.length
+    const sourceDocs = sourceObjectIds.length
       ? ((await db
           .collection<Submission>(COLLECTIONS.SUBMISSIONS)
-          .find({ _id: { $in: sourceIds.map((value) => new ObjectId(value)) } })
+          .find({ _id: { $in: sourceObjectIds } })
           .toArray()) as Array<Submission & { _id: { toString(): string } }>)
       : [];
     const sourceMap = new Map(sourceDocs.map((doc) => [doc._id.toString(), doc]));
+    const sourceJobs = sourceJobIds.length
+      ? await db
+          .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
+          .find({ jobId: { $in: sourceJobIds } })
+          .toArray()
+      : [];
+    const sourceJobMap = new Map(sourceJobs.map((job) => [job.jobId, job]));
 
     rows = docs.map((doc) => {
       const source = doc.sourceSubmissionId ? sourceMap.get(doc.sourceSubmissionId) : undefined;
+      const sourceJob = doc.sourceJobId ? sourceJobMap.get(doc.sourceJobId) : undefined;
       return {
         id: doc._id.toString(),
+        sourceJobId: doc.sourceJobId ?? null,
         imageUrl:
           normalizeImgbbDirectUrl(doc.imageUrl ?? null) ??
           normalizeImgbbDirectUrl(doc.finalImageUrl ?? null) ??
@@ -201,6 +264,7 @@ export default async function AdminTryOnResultsPage({
         approvedAt: doc.approvedAt ?? null,
         isShareVisible: Boolean(doc.isShareVisible),
         isSlideshowEligible: Boolean(doc.isSlideshowEligible),
+        setup: toModerationSetup(sourceJob),
       };
     });
   } catch (error) {
@@ -231,7 +295,7 @@ export default async function AdminTryOnResultsPage({
       search={{
         defaultValue: search,
         label: 'Search queue',
-        placeholder: 'Search by user, email, event, partner, or suit',
+        placeholder: 'Search by user, email, event, partner, suit, or job',
         clearHref: archiveBucket ? `/admin/tryon-results?archive=${archiveBucket}` : '/admin/tryon-results',
         hiddenFields: {
           ...(reviewStatus ? { reviewStatus } : {}),
@@ -307,10 +371,11 @@ export default async function AdminTryOnResultsPage({
         ))}
       </ConsumerDashboardGrid>
       {!archiveBucket && failedJobRows.length > 0 ? (
-        <TryOnQueueTable rows={failedJobRows} />
+        <TryOnQueueTable rows={failedJobRows} setupOptions={setupOptions} />
       ) : null}
       <TryOnResultModerationTable
         rows={rows}
+        setupOptions={setupOptions}
         emptyTitle={archiveBucket ? `No archived ${archiveBucket} try-on results` : undefined}
         emptyDescription={
           archiveBucket

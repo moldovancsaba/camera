@@ -44,6 +44,14 @@ export interface TryOnCompletionResult {
   publicationVisible: boolean;
 }
 
+function getPendingReviewState() {
+  return {
+    reviewStatus: 'pending_review' as const,
+    shareVisible: false,
+    slideshowEligible: false,
+  };
+}
+
 function getCompositionReviewState(event: Pick<Event, 'tryOn'> | null) {
   if (event?.tryOn?.vettingEnabled === false) {
     return {
@@ -53,11 +61,20 @@ function getCompositionReviewState(event: Pick<Event, 'tryOn'> | null) {
     };
   }
 
-  return {
-    reviewStatus: 'pending_review' as const,
-    shareVisible: false,
-    slideshowEligible: false,
-  };
+  return getPendingReviewState();
+}
+
+function isAdminRerunJob(job: TryOnJob): boolean {
+  return Boolean(job.request.rerunOfJobId) || job.requestHash.includes('::rerun:');
+}
+
+function hasHumanApproval(existing: Submission | null): boolean {
+  return (
+    existing?.reviewStatus === 'approved' &&
+    typeof existing.approvedBy === 'string' &&
+    existing.approvedBy.trim().length > 0 &&
+    !existing.approvedBy.startsWith('system')
+  );
 }
 
 export function assertInternalTryOnSecret(request: Request): void {
@@ -247,7 +264,10 @@ export async function applyTryOnCompletion(
   }
 
   const sourceEvent = await resolveSourceEvent(db, sourceSubmission, job);
-  const publication = getCompositionReviewState(sourceEvent);
+  const isRerunJob = isAdminRerunJob(job);
+  const publication = isRerunJob
+    ? getPendingReviewState()
+    : getCompositionReviewState(sourceEvent);
   const resolvedAsset = await resolveTryOnResultAsset(db, sourceSubmission, publicResultUrl, sourceEvent);
   const existingDerived = await db
     .collection<Submission>(COLLECTIONS.SUBMISSIONS)
@@ -261,11 +281,14 @@ export async function applyTryOnCompletion(
     : null;
   const hasFramedAsset = resolvedAsset.publicResultUrl !== publicResultUrl;
   const resolvedRawResultUrl = hasFramedAsset ? publicResultUrl : existingRawResultUrl ?? null;
-  const sourceReviewState = {
-    reviewStatus: existingDerived?.reviewStatus ?? publication.reviewStatus,
-    shareVisible: Boolean(existingDerived?.isShareVisible ?? publication.shareVisible),
-    slideshowEligible: Boolean(existingDerived?.isSlideshowEligible ?? publication.slideshowEligible),
-  };
+  const sourceReviewState =
+    isRerunJob && !hasHumanApproval(existingDerived)
+      ? publication
+      : {
+          reviewStatus: existingDerived?.reviewStatus ?? publication.reviewStatus,
+          shareVisible: Boolean(existingDerived?.isShareVisible ?? publication.shareVisible),
+          slideshowEligible: Boolean(existingDerived?.isSlideshowEligible ?? publication.slideshowEligible),
+        };
 
   await db.collection(COLLECTIONS.TRYON_JOBS).updateOne(
     { jobId: job.jobId },
@@ -308,6 +331,22 @@ export async function applyTryOnCompletion(
     isSlideshowEligible: sourceReviewState.slideshowEligible,
     sourceJobId: job.jobId,
   };
+
+  if (sourceReviewState.reviewStatus === 'pending_review') {
+    Object.assign(derivedSet, {
+      reviewedAt: null,
+      reviewedBy: null,
+      reviewNotes: null,
+      approvedAt: null,
+      approvedBy: null,
+      tryOnModerationArchive: {
+        archived: false,
+        bucket: null,
+        archivedAt: null,
+        archivedBy: null,
+      },
+    });
+  }
 
   const pipelineVersion =
     payload.pipelineVersion?.trim() || job.pipelineVersion || null;

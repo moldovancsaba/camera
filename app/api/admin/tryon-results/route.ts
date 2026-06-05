@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { requireAuth, apiForbidden, apiSuccess, withErrorHandler } from '@/lib/api';
-import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
+import { COLLECTIONS, type Submission, type TryOnJob } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
 
@@ -11,6 +11,37 @@ function normalizeDisplayName(value?: string | null): string {
     return value.trim();
   }
   return 'Guest';
+}
+
+function toSetupPayload(job: TryOnJob | null | undefined) {
+  if (typeof job?.processing?.resolvedSetup?.setupId === 'string' && job.processing.resolvedSetup.setupId.trim()) {
+    return {
+      setupId: job.processing.resolvedSetup.setupId,
+      setupName:
+        typeof job.processing.resolvedSetup.setupName === 'string'
+          ? job.processing.resolvedSetup.setupName
+          : null,
+      setupProfile:
+        typeof job.processing.resolvedSetup.setupProfile === 'string'
+          ? job.processing.resolvedSetup.setupProfile
+          : null,
+      setupSource:
+        typeof job.processing.resolvedSetup.setupSource === 'string'
+          ? job.processing.resolvedSetup.setupSource
+          : null,
+    };
+  }
+
+  if (typeof job?.request?.setupId === 'string' && job.request.setupId.trim()) {
+    return {
+      setupId: job.request.setupId.trim(),
+      setupName: null,
+      setupProfile: null,
+      setupSource: null,
+    };
+  }
+
+  return null;
 }
 
 export const GET = withErrorHandler(async (request: NextRequest) => {
@@ -79,13 +110,31 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     }
   }
 
+  const sourceJobIds = Array.from(new Set(
+    docs
+      .map((doc) => doc.sourceJobId)
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+  ));
+  const sourceJobMap = new Map<string, TryOnJob>();
+  if (sourceJobIds.length > 0) {
+    const sourceJobs = await db
+      .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
+      .find({ jobId: { $in: sourceJobIds } })
+      .toArray();
+    for (const sourceJob of sourceJobs) {
+      sourceJobMap.set(sourceJob.jobId, sourceJob);
+    }
+  }
+
   return apiSuccess({
     results: docs.map((doc) => {
       const source = doc.sourceSubmissionId ? sourceMap.get(doc.sourceSubmissionId) : null;
+      const sourceJob = doc.sourceJobId ? sourceJobMap.get(doc.sourceJobId) : null;
       return {
         id: doc._id.toString(),
         sourceSubmissionId: doc.sourceSubmissionId ?? null,
         sourceJobId: doc.sourceJobId ?? null,
+        setup: toSetupPayload(sourceJob),
         reviewStatus: doc.reviewStatus ?? 'pending_review',
         imageUrl:
           normalizeImgbbDirectUrl(doc.imageUrl ?? null) ??
