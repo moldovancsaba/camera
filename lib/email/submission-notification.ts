@@ -44,13 +44,16 @@ function getEmailFrom(): string {
     return '';
   }
 
-  // Keep manually set display name if already present.
-  if (configuredFrom.includes('<') && configuredFrom.includes('>')) {
-    return configuredFrom;
-  }
-
   const senderName = (process.env.CAMERA_EMAIL_FROM_NAME || 'MotoGP Leather Magic').trim();
   const escapedName = senderName.replace(/["\\]/g, (char) => `\\${char}`);
+
+  if (configuredFrom.includes('<') && configuredFrom.includes('>')) {
+    const match = configuredFrom.match(/<\s*([^>]+)\s*>/);
+    if (match && match[1]) {
+      return `"${escapedName}" <${match[1].trim()}>`;
+    }
+  }
+
   return `"${escapedName}" <${configuredFrom}>`;
 }
 
