@@ -12,6 +12,7 @@ interface RawEvent {
   _id: ObjectId | string;
   eventId?: string;
   name?: string;
+  partnerName?: string;
   notifications?: Record<string, unknown>;
 }
 
@@ -35,17 +36,59 @@ function formatEventLabel(event: WithId<RawEvent>): string {
   return `${name ?? 'Untitled event'} (${publicId ?? event._id.toString()})`;
 }
 
+const MOTOGP_SUBMISSION_EMAIL_BODY = `Hi {name},
+
+Thank you for enjoying the MotoGP Leather Magic experience at {event}.
+
+Your amazing rider photo is ready. Don't forget to share it on your social media!
+{link}
+
+AI is fun, but it can make mistakes. If you want to make a new image, feel free to come back to us.
+
+Wishing you an unforgettable time at {event}.
+
+Policies and General Terms and Conditions:
+{terms}`;
+
+const MOTOGP_TRYON_RESUBMISSION_EMAIL_BODY = `Hi {name},
+
+Thank you for enjoying the MotoGP Leather Magic experience at {event}.
+
+Your updated rider photo is ready. Don't forget to share it on your social media!
+{link}
+
+AI is fun, but it can make mistakes. If you want to make a new image, feel free to come back to us.
+
+Wishing you an unforgettable time at {event}.
+
+Policies and General Terms and Conditions:
+{terms}`;
+
+function isMotoGpEvent(event: RawEvent): boolean {
+  const values = [event.name, event.partnerName]
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.toLowerCase());
+
+  return values.some((value) => value.includes('motogp') || value.includes('moto gp'));
+}
+
 function buildUpdateSet(event: RawEvent): Record<string, unknown> {
   const notifications = event.notifications && typeof event.notifications === 'object'
     ? event.notifications
     : {};
+  const submissionBody = isMotoGpEvent(event)
+    ? MOTOGP_SUBMISSION_EMAIL_BODY
+    : DEFAULT_SUBMISSION_EMAIL_BODY;
+  const tryOnResubmissionBody = isMotoGpEvent(event)
+    ? MOTOGP_TRYON_RESUBMISSION_EMAIL_BODY
+    : DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY;
 
   const updateSet: Record<string, unknown> = {};
   const bodyFields = {
-    'notifications.submissionResultEmailBody': DEFAULT_SUBMISSION_EMAIL_BODY,
-    'notifications.submissionResultEmailBodyAfterSave': DEFAULT_SUBMISSION_EMAIL_BODY,
-    'notifications.submissionResultEmailBodyAfterRelatedPhotosReady': DEFAULT_SUBMISSION_EMAIL_BODY,
-    'notifications.submissionResultEmailBodyAfterTryOnResubmissionApproved': DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY,
+    'notifications.submissionResultEmailBody': submissionBody,
+    'notifications.submissionResultEmailBodyAfterSave': submissionBody,
+    'notifications.submissionResultEmailBodyAfterRelatedPhotosReady': submissionBody,
+    'notifications.submissionResultEmailBodyAfterTryOnResubmissionApproved': tryOnResubmissionBody,
     'notifications.termsUrl': DEFAULT_EVENT_TERMS_URL,
   };
 
@@ -65,7 +108,7 @@ async function main() {
 
   const db = await connectToDatabase();
   const collection = db.collection<RawEvent>(COLLECTIONS.EVENTS);
-  const cursor = collection.find({}, { projection: { eventId: 1, name: 1, notifications: 1 } });
+  const cursor = collection.find({}, { projection: { eventId: 1, name: 1, partnerName: 1, notifications: 1 } });
 
   const stats: MigrationStats = {
     scanned: 0,

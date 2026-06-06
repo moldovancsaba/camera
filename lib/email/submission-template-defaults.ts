@@ -4,9 +4,9 @@ export const DEFAULT_EVENT_TERMS_URL = 'https://seyuselfies.com/en/policies/';
 
 export const DEFAULT_SUBMISSION_EMAIL_BODY = `Hi {name},
 
-Thank you for enjoying the MotoGP Leather Magic experience at {event}.
+Thank you for joining us at {event}.
 
-Your amazing rider photo is ready. Don't forget to share it on your social media!
+Your photo is ready. Don't forget to share it on your social media!
 {link}
 
 AI is fun, but it can make mistakes. If you want to make a new image, feel free to come back to us.
@@ -20,9 +20,9 @@ export const DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT = 'Your updated photo from
 
 export const DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY = `Hi {name},
 
-Thank you for enjoying the MotoGP Leather Magic experience at {event}.
+Thank you for joining us at {event}.
 
-Your updated rider photo is ready. Don't forget to share it on your social media!
+Your updated photo is ready. Don't forget to share it on your social media!
 {link}
 
 AI is fun, but it can make mistakes. If you want to make a new image, feel free to come back to us.
