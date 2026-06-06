@@ -15,6 +15,7 @@ export interface SerializedEventRow {
   location?: string | null;
   eventDateLabel: string;
   frameCount: number;
+  pendingTryOnVettingCount: number;
   isActive: boolean;
 }
 
@@ -54,6 +55,14 @@ function EventMobileCard({ event }: { event: SerializedEventRow }) {
           </Button>
           <Button component={Link} href={`/admin/events/${event.id}/edit`} variant="subtle" size="compact-sm">
             Edit
+          </Button>
+          <Button
+            component={Link}
+            href={`/admin/tryon/vetting?eventId=${encodeURIComponent(event.id)}`}
+            variant={event.pendingTryOnVettingCount > 0 ? 'light' : 'subtle'}
+            size="compact-sm"
+          >
+            Vetting ({event.pendingTryOnVettingCount})
           </Button>
         </Group>
       </Stack>
@@ -155,6 +164,14 @@ export default function EventsInventoryList({
               </Button>
               <Button component={Link} href={`/admin/events/${event.id}/edit`} variant="subtle" size="compact-sm">
                 Edit
+              </Button>
+              <Button
+                component={Link}
+                href={`/admin/tryon/vetting?eventId=${encodeURIComponent(event.id)}`}
+                variant={event.pendingTryOnVettingCount > 0 ? 'light' : 'subtle'}
+                size="compact-sm"
+              >
+                Vetting ({event.pendingTryOnVettingCount})
               </Button>
             </Group>
           ),

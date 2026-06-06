@@ -147,7 +147,7 @@ function toModerationSetup(job: TryOnJob | null | undefined): ModerationRow['set
 export default async function AdminTryOnResultsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ reviewStatus?: string; search?: string; archive?: string; failed?: string }>;
+  searchParams?: Promise<{ reviewStatus?: string; search?: string; archive?: string; failed?: string; eventId?: string }>;
 }) {
   const session = await getSession();
   if (!isGlobalAdminSession(session)) {
@@ -157,6 +157,7 @@ export default async function AdminTryOnResultsPage({
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const reviewStatus = typeof resolvedSearchParams?.reviewStatus === 'string' ? resolvedSearchParams.reviewStatus.trim() : '';
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
+  const eventId = typeof resolvedSearchParams?.eventId === 'string' ? resolvedSearchParams.eventId.trim() : '';
   const archive = typeof resolvedSearchParams?.archive === 'string' ? resolvedSearchParams.archive.trim() : '';
   const failed = typeof resolvedSearchParams?.failed === 'string' ? resolvedSearchParams.failed.trim() : '';
   const archiveBucket = archive === 'approved' || archive === 'rejected' || archive === 'greatest' ? archive : '';
@@ -210,9 +211,12 @@ export default async function AdminTryOnResultsPage({
     if (archiveBucket && reviewStatus) {
       query.reviewStatus = reviewStatus;
     }
+    if (eventId) {
+      query.$or = [{ eventId }, { eventIds: { $in: [eventId] } }];
+    }
     if (search) {
       const regex = { $regex: escapeRegex(search), $options: 'i' };
-      query.$or = [
+      const searchOr = [
         { userName: regex },
         { userEmail: regex },
         { eventName: regex },
@@ -220,6 +224,12 @@ export default async function AdminTryOnResultsPage({
         { tryOnLeatherSuitId: regex },
         { sourceJobId: regex },
       ];
+      if (query.$or) {
+        query.$and = [{ $or: query.$or }, { $or: searchOr }];
+        delete query.$or;
+      } else {
+        query.$or = searchOr;
+      }
     }
 
     const failedJobsQuery: Record<string, unknown> = { status: 'failed' };
@@ -376,6 +386,7 @@ export default async function AdminTryOnResultsPage({
             : '/admin/tryon-results',
         hiddenFields: {
           ...(reviewStatus ? { reviewStatus } : {}),
+          ...(eventId ? { eventId } : {}),
           ...(archiveBucket ? { archive: archiveBucket } : {}),
           ...(failedJobsMode ? { failed: '1' } : {}),
         },
@@ -392,12 +403,14 @@ export default async function AdminTryOnResultsPage({
           ...(failedJobsMode ? [{ label: 'Queue', value: 'failed jobs' }] : []),
           ...(archiveBucket ? [{ label: 'Archive', value: archiveBucket }] : []),
           ...(reviewStatus ? [{ label: 'Review Status', value: reviewStatus.replace(/_/g, ' ') }] : []),
+          ...(eventId ? [{ label: 'Event', value: eventId }] : []),
           ...(search ? [{ label: 'Search', value: search }] : []),
         ].length > 0
           ? [
               ...(failedJobsMode ? [{ label: 'Queue', value: 'failed jobs' }] : []),
               ...(archiveBucket ? [{ label: 'Archive', value: archiveBucket }] : []),
               ...(reviewStatus ? [{ label: 'Review Status', value: reviewStatus.replace(/_/g, ' ') }] : []),
+              ...(eventId ? [{ label: 'Event', value: eventId }] : []),
               ...(search ? [{ label: 'Search', value: search }] : []),
             ]
           : undefined

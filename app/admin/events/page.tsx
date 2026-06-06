@@ -6,6 +6,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { ObjectId } from 'mongodb';
 import {
   isGlobalAdminSession,
   listAccessiblePartnerIds,
@@ -21,6 +22,7 @@ export const dynamic = 'force-dynamic';
 
 interface EventListItem {
   _id?: unknown;
+  eventId?: string;
   name?: string;
   description?: string;
   partnerName?: string;
@@ -88,9 +90,12 @@ export default async function EventsPage({
       .toArray()) as unknown as EventListItem[];
 
     eventRows = [];
+    const eventReferenceById = new Map<string, string[]>();
     for (const event of events) {
       const id = mongoIdString(event._id);
       if (!id) continue;
+      const refs = [id, event.eventId].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+      eventReferenceById.set(id, refs);
       eventRows.push({
         id,
         name: event.name || 'Untitled event',
@@ -99,8 +104,52 @@ export default async function EventsPage({
         location: event.location ?? null,
         eventDateLabel: formatAdminDate(event.eventDate),
         frameCount: Array.isArray(event.frames) ? event.frames.length : 0,
+        pendingTryOnVettingCount: 0,
         isActive: Boolean(event.isActive),
       });
+    }
+
+    const allEventRefs = Array.from(new Set(Array.from(eventReferenceById.values()).flat()));
+    if (allEventRefs.length > 0) {
+      const objectRefs = allEventRefs.filter((value) => ObjectId.isValid(value));
+      const pendingTryOnResults = await db
+        .collection(COLLECTIONS.SUBMISSIONS)
+        .aggregate<{ _id: string; count: number }>([
+          {
+            $match: {
+              submissionKind: 'tryon_result',
+              reviewStatus: 'pending_review',
+              'tryOnModerationArchive.archived': { $ne: true },
+              $or: [
+                { eventId: { $in: allEventRefs } },
+                { eventIds: { $in: allEventRefs } },
+                ...(objectRefs.length > 0 ? [{ eventObjectId: { $in: objectRefs.map((value) => new ObjectId(value)) } }] : []),
+              ],
+            },
+          },
+          {
+            $project: {
+              eventRefs: {
+                $setUnion: [
+                  [{ $ifNull: ['$eventId', ''] }],
+                  { $ifNull: ['$eventIds', []] },
+                ],
+              },
+            },
+          },
+          { $unwind: '$eventRefs' },
+          { $match: { eventRefs: { $in: allEventRefs } } },
+          { $group: { _id: '$eventRefs', count: { $sum: 1 } } },
+        ])
+        .toArray();
+      const countByRef = new Map(pendingTryOnResults.map((item) => [item._id, item.count]));
+      eventRows = eventRows.map((row) => ({
+        ...row,
+        pendingTryOnVettingCount: Math.max(
+          0,
+          ...((eventReferenceById.get(row.id) ?? []).map((ref) => countByRef.get(ref) ?? 0))
+        ),
+      }));
     }
 
     partnerCount = await db.collection(COLLECTIONS.PARTNERS).countDocuments(
@@ -116,7 +165,7 @@ export default async function EventsPage({
   return (
     <AdminListPageShell
       eyebrow="Apps"
-      title="Events App"
+      title="Events"
       primaryAction={
         canCreate
           ? { href: '/admin/events/new', label: 'Add Event Instance', iconKey: 'plus' }
