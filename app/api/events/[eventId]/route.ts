@@ -72,6 +72,7 @@ interface EventDoc {
   _id: ObjectId;
   eventId?: string;
   shortUrlSlug?: string | null;
+  greatestHitsSlug?: string | null;
   isActive?: boolean;
   frames?: EventFrameAssignment[];
   [key: string]: unknown;
@@ -87,6 +88,7 @@ function buildEventLookupQuery(eventIdentifier: string) {
 
   or.push({ eventId: normalized });
   or.push({ shortUrlSlug: normalized });
+  or.push({ greatestHitsSlug: normalized });
 
   return { $or: or };
 }
@@ -225,6 +227,7 @@ export const PATCH = withErrorHandler(async (
     brandBorderColor,
     customPages,
     shortUrlSlug,
+    greatestHitsSlug,
     tryOn,
     notifications,
     visualSettings,
@@ -290,6 +293,23 @@ export const PATCH = withErrorHandler(async (
       }
     }
     updateFields.shortUrlSlug = norm.slug;
+  }
+
+  if (greatestHitsSlug !== undefined) {
+    const norm = normalizeGoShortSlugInput(greatestHitsSlug);
+    if (!norm.ok) {
+      throw apiBadRequest(norm.error);
+    }
+    if (norm.slug) {
+      const dup = await db.collection(COLLECTIONS.EVENTS).findOne({
+        greatestHitsSlug: norm.slug,
+        _id: { $ne: new ObjectId(eventId) },
+      });
+      if (dup) {
+        throw apiBadRequest('This Greatest Hits slug is already used by another event.');
+      }
+    }
+    updateFields.greatestHitsSlug = norm.slug;
   }
 
   if (tryOn !== undefined) {

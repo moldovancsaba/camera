@@ -141,7 +141,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   // Parse request body
   const body = await request.json();
-  const { name, partnerId, description, eventDate, location, isActive, logoUrl, showLogo, shortUrlSlug, tryOn, notifications, visualSettings, sharePage } =
+  const { name, partnerId, description, eventDate, location, isActive, logoUrl, showLogo, shortUrlSlug, greatestHitsSlug, tryOn, notifications, visualSettings, sharePage } =
     body;
 
   // Validate required fields
@@ -183,6 +183,23 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       resolvedShortSlug = norm.slug;
     } else {
       resolvedShortSlug = null;
+    }
+  }
+
+  let resolvedGreatestHitsSlug: string | null | undefined;
+  if (greatestHitsSlug !== undefined && greatestHitsSlug !== null) {
+    const norm = normalizeGoShortSlugInput(greatestHitsSlug);
+    if (!norm.ok) {
+      throw apiBadRequest(norm.error);
+    }
+    if (norm.slug) {
+      const dup = await db.collection(COLLECTIONS.EVENTS).findOne({ greatestHitsSlug: norm.slug });
+      if (dup) {
+        throw apiBadRequest('This Greatest Hits slug is already used by another event.');
+      }
+      resolvedGreatestHitsSlug = norm.slug;
+    } else {
+      resolvedGreatestHitsSlug = null;
     }
   }
 
@@ -240,6 +257,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     },
     notifications: normalizeEventNotificationSettings(notifications),
     ...(resolvedShortSlug !== undefined ? { shortUrlSlug: resolvedShortSlug } : {}),
+    ...(resolvedGreatestHitsSlug !== undefined ? { greatestHitsSlug: resolvedGreatestHitsSlug } : {}),
     submissionCount: 0,
     createdBy: session.user.id,
     createdAt: now,

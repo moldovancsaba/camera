@@ -68,6 +68,7 @@ interface EventDoc {
   updatedAt: string;
   isActive?: boolean;
   shortUrlSlug?: string;
+  greatestHitsSlug?: string;
   brandColor?: string;
   brandBorderColor?: string;
   brandColorsOverridden?: boolean;
@@ -362,6 +363,29 @@ export default async function EventDetailPage({
             ) : (
               <Text size="xs" c="dimmed" mt="md">
                 Optional: set a short link slug under <strong>Edit Event</strong> for <Code>{defaultGoShortOrigin()}/…</Code>.
+              </Text>
+            )}
+          </Card>
+
+          <Card>
+            <Title order={3}>Greatest Hits Public Page</Title>
+            <Text size="sm" c="dimmed" mt="xs" mb="md">
+              Public no-login grid of this event&apos;s Great approved try-on images.
+            </Text>
+            {typeof event.greatestHitsSlug === 'string' && event.greatestHitsSlug.trim() ? (
+              <>
+                <Card withBorder radius="md" p="md" bg="white">
+                  <Code block>{defaultCameraOrigin()}/greatest-hits/{event.greatestHitsSlug.trim()}</Code>
+                </Card>
+                <a href={`${defaultCameraOrigin()}/greatest-hits/${event.greatestHitsSlug.trim()}`} target="_blank" rel="noopener noreferrer">
+                  <Button fullWidth mt="md">
+                    Open Greatest Hits →
+                  </Button>
+                </a>
+              </>
+            ) : (
+              <Text size="xs" c="dimmed">
+                Optional: set a Greatest Hits link slug under <strong>Edit Event</strong>.
               </Text>
             )}
           </Card>

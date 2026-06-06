@@ -316,6 +316,7 @@ export default function NewEventPage() {
       eventDate: formData.get('eventDate') as string,
       location: formData.get('location') as string,
       shortUrlSlug: (formData.get('shortUrlSlug') as string) ?? '',
+      greatestHitsSlug: (formData.get('greatestHitsSlug') as string) ?? '',
       isActive: formData.get('isActive') === 'on',
       logoUrl,
       showLogo: formData.get('showLogo') === 'on',
@@ -445,10 +446,17 @@ export default function NewEventPage() {
             </Grid>
             <TextInput
               name="shortUrlSlug"
-              label="Short link slug (optional)"
+              label="URL slug (optional)"
               description={`When set, ${defaultGoShortOrigin()}/your-slug redirects to this event’s capture page after save.`}
               styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
               placeholder="e.g. selfie"
+            />
+            <TextInput
+              name="greatestHitsSlug"
+              label="Greatest Hits link slug (optional)"
+              description="Creates a public no-login Greatest Hits page at /greatest-hits/your-slug."
+              styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
+              placeholder="e.g. motogp-best-of"
             />
           </FormSection>
 

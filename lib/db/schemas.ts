@@ -220,6 +220,7 @@ export interface Event {
    * Lowercase; unique when set.
    */
   shortUrlSlug?: string | null;
+  greatestHitsSlug?: string | null;
 
   // Partner relationship
   partnerId: string;                 // Reference to parent partner

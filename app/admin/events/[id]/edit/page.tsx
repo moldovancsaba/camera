@@ -74,6 +74,7 @@ interface EventRecord {
   brandColor?: string;
   brandBorderColor?: string;
   shortUrlSlug?: string;
+  greatestHitsSlug?: string;
   eventId?: string;
   customPages?: CustomPage[];
   tryOn?: {
@@ -486,6 +487,7 @@ export default function EditEventPage({
       brandColor: brandColor || undefined,
       brandBorderColor: brandBorderColor || undefined,
       shortUrlSlug: (formData.get('shortUrlSlug') as string) ?? '',
+      greatestHitsSlug: (formData.get('greatestHitsSlug') as string) ?? '',
       tryOn: {
         enabled: tryOnEnabled,
         setupId: cameraId ? null : (tryOnSetupId || null),
@@ -629,9 +631,16 @@ export default function EditEventPage({
             </Grid>
             <TextInput
               name="shortUrlSlug"
-              label="Short link slug (optional)"
+              label="URL slug (optional)"
               defaultValue={event?.shortUrlSlug || ''}
               description={`Lowercase letters, digits, and hyphens (2–63 chars). When set, ${defaultGoShortOrigin()}/your-slug redirects to this event’s capture page.`}
+              styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
+            />
+            <TextInput
+              name="greatestHitsSlug"
+              label="Greatest Hits link slug (optional)"
+              defaultValue={event?.greatestHitsSlug || ''}
+              description="Lowercase letters, digits, and hyphens (2-63 chars). Creates a public Greatest Hits page for this event."
               styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
             />
           </FormSection>
