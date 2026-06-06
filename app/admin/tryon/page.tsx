@@ -10,6 +10,12 @@ import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert'
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob } from '@/lib/db/schemas';
 import { activeTryOnQueueTotal, formatActiveTryOnQueueSummary } from '@/lib/tryon/queue-status';
+import {
+  formatTryOnWorkerHealthDescription,
+  formatTryOnWorkerHealthTitle,
+  summarizeTryOnWorkerHealth,
+  type TryOnWorkerHealthSummary,
+} from '@/lib/tryon/worker-health';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,10 +30,11 @@ export default async function AdminTryOnAppPage() {
   let activeSuitCount = 0;
   let totalSuitCount = 0;
   let pendingVettingCount = 0;
+  let workerHealth: TryOnWorkerHealthSummary | null = null;
 
   try {
     const db = await connectToDatabase();
-    const [queueStatusCounts, activeSuits, totalSuits, pendingVetting] = await Promise.all([
+    const [queueStatusCounts, activeSuits, totalSuits, pendingVetting, runningJobs] = await Promise.all([
       db
         .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
         .aggregate<{ _id: string; count: number }>([
@@ -41,12 +48,19 @@ export default async function AdminTryOnAppPage() {
         reviewStatus: 'pending_review',
         'tryOnModerationArchive.archived': { $ne: true },
       }),
+      db
+        .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
+        .find({ status: { $in: ['claimed', 'processing', 'uploading_result'] } })
+        .sort({ updatedAt: -1 })
+        .limit(10)
+        .toArray(),
     ]);
 
     queueCounts = Object.fromEntries(queueStatusCounts.map((item) => [item._id, item.count]));
     activeSuitCount = activeSuits;
     totalSuitCount = totalSuits;
     pendingVettingCount = pendingVetting;
+    workerHealth = summarizeTryOnWorkerHealth(runningJobs, activeTryOnQueueTotal(queueCounts));
   } catch (error) {
     console.error('Error loading try-on app workspace:', error);
     dbError = serializeMongoError(error);
@@ -71,6 +85,14 @@ export default async function AdminTryOnAppPage() {
                 href: '/admin/tryon/queue',
                 title: `Queue Status (${activeTryOnQueueTotal(queueCounts)})`,
                 description: formatActiveTryOnQueueSummary(queueCounts),
+                iconKey: 'photoScan' as AdminIconKey,
+              },
+              {
+                href: '/admin/tryon/queue?status=processing',
+                title: workerHealth ? formatTryOnWorkerHealthTitle(workerHealth) : 'Worker Unknown',
+                description: workerHealth
+                  ? formatTryOnWorkerHealthDescription(workerHealth)
+                  : 'Worker health could not be loaded.',
                 iconKey: 'photoScan' as AdminIconKey,
               },
               {
