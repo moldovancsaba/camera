@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 import { sanitizeEmail } from '@/lib/security/sanitize';
 import {
+  DEFAULT_EVENT_TERMS_URL,
   DEFAULT_SUBMISSION_EMAIL_BODY,
   DEFAULT_SUBMISSION_EMAIL_SUBJECT,
 } from '@/lib/email/submission-template-defaults';
@@ -10,6 +11,7 @@ export interface SubmissionNotificationInput {
   recipientName?: string | null;
   eventName?: string | null;
   shareUrl: string;
+  termsUrl?: string | null;
   subjectTemplate?: string | null;
   bodyTemplate?: string | null;
 }
@@ -84,12 +86,13 @@ function normalizeTemplate(value: string | null | undefined, fallback: string, m
 
 function renderTemplate(
   template: string,
-  values: { recipientName: string; eventName: string; shareUrl: string }
+  values: { recipientName: string; eventName: string; shareUrl: string; termsUrl: string }
 ): string {
   return template
     .replace(/\{name\}/gi, values.recipientName)
     .replace(/\{event\}/gi, values.eventName)
-    .replace(/\{link\}/gi, values.shareUrl);
+    .replace(/\{link\}/gi, values.shareUrl)
+    .replace(/\{terms\}/gi, values.termsUrl);
 }
 
 function summarizeResendError(error: unknown): string {
@@ -162,18 +165,18 @@ export async function sendSubmissionResultEmail(
 
   const eventName = input.eventName?.trim() || 'your event';
   const recipientName = input.recipientName?.trim() || 'there';
+  const termsUrl = input.termsUrl?.trim() || DEFAULT_EVENT_TERMS_URL;
   const subject = renderTemplate(
     normalizeTemplate(input.subjectTemplate, DEFAULT_SUBMISSION_EMAIL_SUBJECT, 180),
-    { recipientName, eventName, shareUrl: input.shareUrl }
+    { recipientName, eventName, shareUrl: input.shareUrl, termsUrl }
   )
     .replace(/\s+/g, ' ')
     .trim();
   const bodyText = renderTemplate(
     normalizeTemplate(input.bodyTemplate, DEFAULT_SUBMISSION_EMAIL_BODY, 5000),
-    { recipientName, eventName, shareUrl: input.shareUrl }
+    { recipientName, eventName, shareUrl: input.shareUrl, termsUrl }
   );
   const safeBody = escapeHtml(bodyText).replace(/\n/g, '<br />');
-  const safeShareUrl = escapeHtml(input.shareUrl);
 
   try {
     const resend = new Resend(apiKey);
@@ -185,13 +188,6 @@ export async function sendSubmissionResultEmail(
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.5;">
           <p>${safeBody}</p>
-          <p>
-            <a href="${safeShareUrl}" style="display: inline-block; padding: 12px 18px; border-radius: 8px; text-decoration: none;">
-              View your photo
-            </a>
-          </p>
-          <p>If the button does not work, open this link:</p>
-          <p><a href="${safeShareUrl}">${safeShareUrl}</a></p>
         </div>
       `,
     });

@@ -248,6 +248,7 @@ export interface Event {
     submissionResultEmailBodyAfterRelatedPhotosReady?: string | null; // Optional event-level body template for "send after related photos"
     submissionResultEmailSubjectAfterTryOnResubmissionApproved?: string | null; // Optional event-level subject template for approved rerun update
     submissionResultEmailBodyAfterTryOnResubmissionApproved?: string | null; // Optional event-level body template for approved rerun update
+    termsUrl?: string | null; // Event-specific General Terms and Conditions / Privacy Policy URL for email templates
     submissionResultEmailSendAfterSave: boolean; // Send immediately after submission save
     submissionResultEmailSendAfterRelatedPhotosReady: boolean; // Send when related share photos are available
     submissionResultEmailSendAfterTryOnResubmissionApproved?: boolean; // Send when a resubmitted try-on result is approved

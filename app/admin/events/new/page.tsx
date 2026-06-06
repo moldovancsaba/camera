@@ -43,6 +43,7 @@ import {
 import {
   DEFAULT_SUBMISSION_EMAIL_BODY,
   DEFAULT_SUBMISSION_EMAIL_SUBJECT,
+  DEFAULT_EVENT_TERMS_URL,
   DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY,
   DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT,
   SUBMISSION_EMAIL_TEMPLATE_HELP,
@@ -106,6 +107,7 @@ export default function NewEventPage() {
     submissionResultEmailBodyAfterTryOnResubmissionApproved,
     setSubmissionResultEmailBodyAfterTryOnResubmissionApproved,
   ] = useState(DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY);
+  const [termsUrl, setTermsUrl] = useState(DEFAULT_EVENT_TERMS_URL);
   const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
   const [includeOriginalCapture, setIncludeOriginalCapture] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeOriginalCapture
@@ -339,6 +341,7 @@ export default function NewEventPage() {
         submissionResultEmailBodyAfterRelatedPhotosReady,
         submissionResultEmailSubjectAfterTryOnResubmissionApproved,
         submissionResultEmailBodyAfterTryOnResubmissionApproved,
+        termsUrl,
       },
       visualSettings: {
         buttonSize,
@@ -514,6 +517,14 @@ export default function NewEventPage() {
               }}
               label="Email the user's result page link after save"
               description="Requires a collected or authenticated email address. This is independent from the capture flow share-options screen."
+            />
+            <TextInput
+              label="General Terms and Conditions / Privacy Policy URL"
+              value={termsUrl}
+              onChange={(event) => setTermsUrl(event.currentTarget.value)}
+              disabled={!submissionResultEmailEnabled}
+              description="Used by the {terms} email template placeholder."
+              placeholder={DEFAULT_EVENT_TERMS_URL}
             />
             <Checkbox
               checked={submissionResultEmailSendAfterSave}

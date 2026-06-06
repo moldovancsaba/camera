@@ -54,6 +54,7 @@ import {
 import {
   DEFAULT_SUBMISSION_EMAIL_BODY,
   DEFAULT_SUBMISSION_EMAIL_SUBJECT,
+  DEFAULT_EVENT_TERMS_URL,
   DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY,
   DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT,
   SUBMISSION_EMAIL_TEMPLATE_HELP,
@@ -97,6 +98,7 @@ interface EventRecord {
     submissionResultEmailBodyAfterRelatedPhotosReady?: string | null;
     submissionResultEmailSubjectAfterTryOnResubmissionApproved?: string | null;
     submissionResultEmailBodyAfterTryOnResubmissionApproved?: string | null;
+    termsUrl?: string | null;
   };
   visualSettings?: {
     buttonSize?: EventButtonSize;
@@ -170,6 +172,7 @@ export default function EditEventPage({
     submissionResultEmailBodyAfterTryOnResubmissionApproved,
     setSubmissionResultEmailBodyAfterTryOnResubmissionApproved,
   ] = useState(DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY);
+  const [termsUrl, setTermsUrl] = useState(DEFAULT_EVENT_TERMS_URL);
   const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
   const [includeOriginalCapture, setIncludeOriginalCapture] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeOriginalCapture
@@ -293,6 +296,7 @@ export default function EditEventPage({
           eventData.notifications?.submissionResultEmailBodyAfterTryOnResubmissionApproved ||
             DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY
         );
+        setTermsUrl(eventData.notifications?.termsUrl || DEFAULT_EVENT_TERMS_URL);
         setButtonSize(normalizeEventButtonSize(eventData.visualSettings?.buttonSize));
         const sharePageSettings = normalizeEventSharePageSettings(eventData.sharePage);
         setIncludeOriginalCapture(sharePageSettings.includeOriginalCapture);
@@ -504,6 +508,7 @@ export default function EditEventPage({
         submissionResultEmailBodyAfterRelatedPhotosReady,
         submissionResultEmailSubjectAfterTryOnResubmissionApproved,
         submissionResultEmailBodyAfterTryOnResubmissionApproved,
+        termsUrl,
       },
       visualSettings: {
         buttonSize,
@@ -721,6 +726,13 @@ export default function EditEventPage({
               checked={submissionResultEmailSendAfterSave}
               onChange={(event) => setSubmissionResultEmailSendAfterSave(event.currentTarget.checked)}
               label="Send email immediately after save"
+            />
+            <TextInput
+              label="General Terms and Conditions / Privacy Policy URL"
+              value={termsUrl}
+              onChange={(event) => setTermsUrl(event.currentTarget.value)}
+              description="Used by the {terms} email template placeholder."
+              placeholder={DEFAULT_EVENT_TERMS_URL}
             />
             <TextInput
               label="Email subject after save"

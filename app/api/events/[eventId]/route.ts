@@ -49,6 +49,7 @@ function normalizeEventNotificationSettings(value: unknown) {
     submissionResultEmailSendAfterRelatedPhotosReady: notificationPolicy.sendAfterRelatedPhotosReady,
     submissionResultEmailSendAfterTryOnResubmissionApproved:
       notificationPolicy.sendAfterTryOnResubmissionApproved,
+    termsUrl: notificationPolicy.termsUrl,
   };
 }
 

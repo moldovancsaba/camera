@@ -5,6 +5,7 @@ import { listApprovedShareVariants } from '@/lib/tryon/publication';
 import { sendSubmissionResultEmail, type SubmissionNotificationResult, type SubmissionNotificationInput } from '@/lib/email/submission-notification';
 import { sanitizeEmail } from '@/lib/security/sanitize';
 import { getConfiguredSiteUrl } from '@/lib/site-url';
+import { DEFAULT_EVENT_TERMS_URL } from '@/lib/email/submission-template-defaults';
 
 export interface SubmissionEmailPolicy {
   enabled: boolean;
@@ -19,6 +20,7 @@ export interface SubmissionEmailPolicy {
   bodyTemplateAfterRelatedPhotosReady?: string | null;
   subjectTemplateAfterTryOnResubmissionApproved?: string | null;
   bodyTemplateAfterTryOnResubmissionApproved?: string | null;
+  termsUrl: string;
 }
 
 export interface SubmissionEmailRecipient {
@@ -146,6 +148,7 @@ export function normalizeSubmissionEmailPolicy(value: unknown): SubmissionEmailP
     bodyTemplateAfterRelatedPhotosReady,
     subjectTemplateAfterTryOnResubmissionApproved,
     bodyTemplateAfterTryOnResubmissionApproved,
+    termsUrl: readString(source.termsUrl) || DEFAULT_EVENT_TERMS_URL,
   };
 }
 
@@ -418,6 +421,7 @@ export function buildSubmissionEmailInput(
     recipientName: recipient.name,
     eventName,
     shareUrl,
+    termsUrl: policy.termsUrl,
     subjectTemplate,
     bodyTemplate,
   };
