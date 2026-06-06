@@ -122,7 +122,7 @@ function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeRow[] }) {
               alignItems: 'end',
               borderBottom: '1px solid var(--mantine-color-gray-3)',
               display: 'flex',
-              gap: 14,
+              gap: 4,
               minHeight: 280,
               overflowX: 'auto',
               padding: '16px 0 8px',
@@ -138,7 +138,7 @@ function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeRow[] }) {
                   style={{
                     alignItems: 'center',
                     display: 'flex',
-                    flex: '0 0 34px',
+                    flex: '0 0 26px',
                     flexDirection: 'column',
                     gap: 6,
                   }}
@@ -155,7 +155,7 @@ function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeRow[] }) {
                       flexDirection: 'column-reverse',
                       height: barHeight(row.total, maxTotal),
                       overflow: 'hidden',
-                      width: 22,
+                      width: 20,
                     }}
                   >
                     <div title={`Approved: ${row.approved}`} style={{ background: colors.approved, height: pct(row.approved, row.total) }} />
