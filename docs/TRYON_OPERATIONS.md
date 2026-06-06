@@ -76,6 +76,14 @@ Each audit event stores the result id, source submission id, source job id, acto
 
 Use `docs/TRYON_RECOVERY_RUNBOOK.md` for live-event recovery decisions covering worker health, failed jobs, retry waits, reruns, completed-result reapply, and human-in-the-loop publication repair.
 
+## Data cleanup and reporting
+
+Use `pnpm tryon:report-unrecoverable-identities` to export generated try-on results that still have Guest/empty identity after source-based backfill. Add `--csv` for an operator-safe CSV report. If manual correction is required, prepare a JSON array with `resultSubmissionId`, `userName`, `userEmail`, and optional `reason`, then run `pnpm tryon:apply-identity-corrections -- --file=corrections.json` for dry-run or add `--apply`.
+
+Use `pnpm tryon:audit-data-integrity` for recurring Atlas integrity checks covering garment references, placeholder identities, done jobs missing result submissions, and moderation archive consistency. Add `--strict` in CI/ops contexts to exit non-zero when actionable integrity issues exist.
+
+The admin analytics export endpoint is `GET /api/admin/tryon-analytics/export`. It supports the same `bucket`, `eventId`, `from`, and `to` filters as the analytics page, with `format=csv` by default or `format=json`.
+
 ## Analytics buckets
 
 Try-on analytics are based on archived moderation decisions:

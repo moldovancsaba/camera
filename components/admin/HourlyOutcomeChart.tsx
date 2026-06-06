@@ -42,11 +42,13 @@ export default function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeR
     () => OUTCOMES.filter((outcome) => visible[outcome.key]).map((outcome) => outcome.key),
     [visible]
   );
+  const visibleKeyCount = visibleKeys.length;
   const chartRows = rows.map((row) => ({
     ...row,
     visibleTotal: visibleKeys.reduce((sum, key) => sum + row[key], 0),
   }));
   const maxTotal = Math.max(1, ...chartRows.map((row) => row.visibleTotal));
+  const selectedTotal = chartRows.reduce((sum, row) => sum + row.visibleTotal, 0);
 
   return (
     <Stack gap="sm">
@@ -63,7 +65,9 @@ export default function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeR
                 type="button"
                 size="xs"
                 variant={visible[outcome.key] ? 'light' : 'subtle'}
+                disabled={visible[outcome.key] && visibleKeyCount === 1}
                 aria-pressed={visible[outcome.key]}
+                aria-label={`${visible[outcome.key] ? 'Hide' : 'Show'} ${outcome.label} values`}
                 onClick={() => setVisible((state) => ({ ...state, [outcome.key]: !state[outcome.key] }))}
                 leftSection={
                   <span
@@ -83,15 +87,21 @@ export default function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeR
               </Button>
             ))}
           </Group>
+          <Text size="xs" c="dimmed">
+            Selected total: {selectedTotal} image{selectedTotal === 1 ? '' : 's'}
+          </Text>
           <div
             style={{
               alignItems: 'end',
               borderBottom: '1px solid var(--mantine-color-gray-3)',
               display: 'flex',
-              gap: 4,
+              gap: 3,
               minHeight: 280,
+              overscrollBehaviorX: 'contain',
               overflowX: 'auto',
               padding: '16px 0 8px',
+              scrollSnapType: 'x proximity',
+              WebkitOverflowScrolling: 'touch',
             }}
           >
             {chartRows.map((row, index) => {
@@ -103,10 +113,13 @@ export default function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeR
                   key={row.hour}
                   style={{
                     alignItems: 'center',
+                    borderLeft: showDay && index > 0 ? '1px solid var(--mantine-color-gray-3)' : undefined,
                     display: 'flex',
-                    flex: '0 0 26px',
+                    flex: '0 0 24px',
                     flexDirection: 'column',
                     gap: 6,
+                    paddingLeft: showDay && index > 0 ? 4 : 0,
+                    scrollSnapAlign: 'start',
                   }}
                 >
                   <Text size="xs" fw={700}>{row.visibleTotal}</Text>

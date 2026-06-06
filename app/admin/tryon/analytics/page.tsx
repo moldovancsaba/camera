@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { Stack, Text, Title } from '@mantine/core';
+import { Button, Group, Stack, Text, Title } from '@mantine/core';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
@@ -13,6 +13,7 @@ import {
   type TryOnPresetPerformanceRow,
 } from '@/lib/tryon/analytics';
 import HourlyOutcomeChart from '@/components/admin/HourlyOutcomeChart';
+import DataTable from '@/components/gds/DataTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,33 +26,18 @@ function AnalyticsTable({ title, rows }: { title: string; rows: TryOnAnalyticsRo
     <Stack gap="sm">
       <Title order={3}>{title}</Title>
       {rows.length > 0 ? (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'collapse', minWidth: 680, width: '100%' }}>
-            <thead>
-              <tr>
-                {['Name', 'Total', 'Approved', 'Rejected', 'Service', 'Greatest'].map((heading) => (
-                  <th key={heading} scope="col" style={{ padding: 12, textAlign: heading === 'Name' ? 'left' : 'right' }}>
-                    {heading}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.key}>
-                  <th scope="row" style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'left' }}>
-                    {row.label}
-                  </th>
-                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.total}</td>
-                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.approved}</td>
-                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.rejected}</td>
-                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.service}</td>
-                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.greatest}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          data={rows}
+          getRowKey={(row) => row.key}
+          columns={[
+            { key: 'label', label: 'Name' },
+            { key: 'total', label: 'Total' },
+            { key: 'approved', label: 'Approved' },
+            { key: 'rejected', label: 'Rejected' },
+            { key: 'service', label: 'Service' },
+            { key: 'greatest', label: 'Greatest' },
+          ]}
+        />
       ) : (
         <Text c="dimmed">No try-on decisions match this filter.</Text>
       )}
@@ -64,43 +50,37 @@ function PresetPerformanceTable({ rows }: { rows: TryOnPresetPerformanceRow[] })
     <Stack gap="sm">
       <Title order={3}>Preset Performance</Title>
       {rows.length > 0 ? (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'collapse', minWidth: 920, width: '100%' }}>
-            <thead>
-              <tr>
-                {['Preset', 'Jobs', 'Done', 'Failed', 'Retry', 'Timeouts', 'Approved', 'Rejected', 'Service', 'Great', 'Approval Rate'].map((heading) => (
-                  <th key={heading} scope="col" style={{ padding: 12, textAlign: heading === 'Preset' ? 'left' : 'right' }}>
-                    {heading}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.setupId}>
-                  <th scope="row" style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'left' }}>
-                    {row.setupName}
-                  </th>
-                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.jobs}</td>
-                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.done}</td>
-                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.failed}</td>
-                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.retryWait}</td>
-                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.providerTimeouts}</td>
-                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.approved}</td>
-                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.rejected}</td>
-                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.service}</td>
-                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.great}</td>
-                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.approvalRate}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          data={rows}
+          getRowKey={(row) => row.setupId}
+          columns={[
+            { key: 'setupName', label: 'Preset' },
+            { key: 'jobs', label: 'Jobs' },
+            { key: 'done', label: 'Done' },
+            { key: 'failed', label: 'Failed' },
+            { key: 'retryWait', label: 'Retry' },
+            { key: 'providerTimeouts', label: 'Timeouts' },
+            { key: 'approved', label: 'Approved' },
+            { key: 'rejected', label: 'Rejected' },
+            { key: 'service', label: 'Service' },
+            { key: 'great', label: 'Great' },
+            { key: 'approvalRate', label: 'Approval Rate', render: (row) => `${row.approvalRate}%` },
+          ]}
+        />
       ) : (
         <Text c="dimmed">No preset performance data matches this filter.</Text>
       )}
     </Stack>
   );
+}
+
+function exportHref(format: 'csv' | 'json', params: { bucket: string; eventId: string; from: string; to: string }): string {
+  const query = new URLSearchParams({ format });
+  if (params.bucket) query.set('bucket', params.bucket);
+  if (params.eventId) query.set('eventId', params.eventId);
+  if (params.from) query.set('from', params.from);
+  if (params.to) query.set('to', params.to);
+  return `/api/admin/tryon-analytics/export?${query.toString()}`;
 }
 
 export default async function AdminTryOnAnalyticsPage({
@@ -174,6 +154,14 @@ export default async function AdminTryOnAnalyticsPage({
           <Text c="dimmed">
             Reporting over {analytics.scannedResultCount} archived try-on decision{analytics.scannedResultCount === 1 ? '' : 's'}.
           </Text>
+          <Group gap="sm">
+            <Button component="a" href={exportHref('csv', { bucket, eventId, from, to })}>
+              Export CSV
+            </Button>
+            <Button component="a" href={exportHref('json', { bucket, eventId, from, to })} variant="light">
+              Export JSON
+            </Button>
+          </Group>
           <HourlyOutcomeChart rows={analytics.hourlyOutcomes} />
           <PresetPerformanceTable rows={analytics.presetPerformance} />
           <AnalyticsTable title="By Preset" rows={analytics.byPreset} />
