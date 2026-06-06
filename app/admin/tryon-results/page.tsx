@@ -356,7 +356,7 @@ export default async function AdminTryOnResultsPage({
       search={{
         defaultValue: search,
         label: 'Search queue',
-        placeholder: 'Search by user, email, event, partner, suit, or job',
+        placeholder: 'Search by user, email, event, partner, garment, or job',
         clearHref: failedJobsMode
           ? '/admin/tryon-results?failed=1'
           : archiveBucket

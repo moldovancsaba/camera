@@ -10,12 +10,12 @@ Camera remains the intake system. The try-on pipeline is asynchronous and uses a
 ## Runtime flow
 
 1. Camera capture saves the normal composed submission through `POST /api/submissions`.
-2. If a leather jersey was selected, Camera uploads the original unframed capture as a second image source.
+2. If a garment was selected, Camera uploads the original unframed capture as a second image source.
 3. Camera creates or reuses a `tryon_jobs` document linked to the saved submission.
-4. The local worker in the try-on worker repository polls Atlas, claims a job with a lease, downloads the source image, downloads the selected Camera-hosted suit asset, and runs the processor.
+4. The local worker in the try-on worker repository polls Atlas, claims a job with a lease, downloads the source image, downloads the selected Camera-hosted garment asset, and runs the processor.
 5. The worker uploads the final result to imgbb and calls `POST /api/internal/tryon/complete`.
 6. Camera materializes a derived `submissionKind=tryon_result` record in `pending_review`.
-7. Admins operate Try-On from `/admin/tryon`, monitor live queue state in `/admin/tryon/queue`, manage selectable leather jerseys in `/admin/tryon/suits`, and review generated outputs in `/admin/tryon/vetting`.
+7. Admins operate Try-On from `/admin/tryon`, monitor live queue state in `/admin/tryon/queue`, manage selectable garments in `/admin/tryon/suits`, and review generated outputs in `/admin/tryon/vetting`.
 8. Approval or rejection archives the result out of the live moderation queue into an archive bucket while preserving its publication state.
 9. Only approved generated results become share-visible and slideshow-eligible.
 
@@ -30,7 +30,7 @@ Camera remains the intake system. The try-on pipeline is asynchronous and uses a
 
 ### `leather_suits`
 
-Canonical suit catalog used by the Camera UI and local worker resolution.
+Canonical garment catalog used by the Camera UI and local worker resolution. The collection and identifier names are legacy internal contracts.
 
 Key fields:
 - `leatherSuitId`
@@ -45,9 +45,9 @@ Key fields:
 - `active`
 
 Important boundary:
-- Camera manages the uploaded suit asset in imgbb-backed storage, plus the catalog metadata shown in admin and public capture flows.
-- The worker downloads the processing suit image from Camera-managed storage first.
-- Legacy local asset resolution remains only as a fallback for older suit records.
+- Camera manages the uploaded garment asset in imgbb-backed storage, plus the catalog metadata shown in admin and public capture flows.
+- The worker downloads the processing garment image from Camera-managed storage first.
+- Legacy local asset resolution remains only as a fallback for older records.
 
 ### `tryon_jobs`
 
@@ -81,7 +81,7 @@ Key fields:
 
 ### `GET /api/tryon/suits`
 
-Returns the active suit catalog for public capture flows.
+Returns the active garment catalog for public capture flows.
 
 ### `POST /api/submissions`
 
@@ -126,7 +126,7 @@ Admin retry endpoint for failed or retry-wait jobs.
 
 ### `GET /api/admin/tryon-suits`
 
-Admin catalog surface for selectable leather jerseys.
+Admin catalog surface for selectable garments.
 
 ### `POST /api/admin/tryon-results/[submissionId]/approve`
 
@@ -164,4 +164,4 @@ logs/
 - Camera does not block user capture if the try-on queue step fails after submission save.
 - Slideshows and public share pages must never read directly from `tryon_jobs`; they only use approved derived submissions.
 - Moderation archive is separate from the global `isArchived` submission flag so approved try-on results can stay publicly visible.
-- Leather jerseys now follow the same resource pattern as frames and logos: Camera owns the uploaded suit asset and exposes it to the worker through remote URLs.
+- Garments now follow the same resource pattern as frames and logos: Camera owns the uploaded asset and exposes it to the worker through remote URLs.

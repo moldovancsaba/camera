@@ -61,6 +61,10 @@ Non-retryable validation errors:
 
 Retry scheduling must only retry retryable classifications. Non-retryable classifications move directly to `failed`.
 
+## Product terminology
+
+Admin and public UI use `Garment` for the selectable try-on catalog. Legacy internal schema/API names such as `leather_suits`, `leatherSuitId`, and route paths containing `suits` remain compatibility contracts and should not be renamed without a dedicated data migration.
+
 ## Analytics buckets
 
 Try-on analytics are based on archived moderation decisions:

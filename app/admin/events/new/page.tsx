@@ -668,11 +668,11 @@ export default function NewEventPage() {
 
           <FormSection
             title="Try-on"
-            description="Optionally allow this event to queue local AI leather try-on jobs after Camera saves the normal submission."
+            description="Optionally allow this event to queue local AI try-on jobs after Camera saves the normal submission."
           >
             <Group justify="flex-end">
               <Anchor component={Link} href="/admin/tryon/suits" size="sm">
-                Manage leather jerseys
+                Manage garments
               </Anchor>
             </Group>
             <Checkbox
@@ -687,7 +687,7 @@ export default function NewEventPage() {
                   setTryOnSetupId('');
                 }
               }}
-              label="Enable local AI leather try-on for this event"
+              label="Enable local AI try-on for this event"
             />
             <Checkbox
               checked={tryOnVettingEnabled}
@@ -750,9 +750,9 @@ export default function NewEventPage() {
               </Alert>
             ) : null}
             <Select
-              label="Allowed leather jerseys"
-              description="Leave empty to allow the full active suit catalog when try-on is enabled."
-              placeholder={suitOptions.length > 0 ? 'Select one or more leather jerseys' : 'No active leather jerseys found'}
+              label="Allowed garments"
+              description="Leave empty to allow the full active garment catalog when try-on is enabled."
+              placeholder={suitOptions.length > 0 ? 'Select one or more garments' : 'No active garments found'}
               data={suitOptions.map((suit) => ({ value: suit.id, label: suit.name }))}
               value={null}
               disabled={!tryOnEnabled || suitOptions.length === 0}
@@ -783,7 +783,7 @@ export default function NewEventPage() {
               </Group>
             ) : (
               <Text size="sm" c="dimmed">
-                No suit allowlist selected.
+                No garment allowlist selected.
               </Text>
             )}
           </FormSection>

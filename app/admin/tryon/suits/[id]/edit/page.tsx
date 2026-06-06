@@ -46,7 +46,7 @@ interface TryOnSuitRecord {
 }
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Leather jersey request failed';
+  return error instanceof Error ? error.message : 'Garment request failed';
 }
 
 export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: string }> }) {
@@ -62,7 +62,7 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
     async function fetchSuit() {
       try {
         const response = await fetch(`/api/admin/tryon-suits/${id}`);
-        if (!response.ok) throw new Error('Leather jersey not found');
+        if (!response.ok) throw new Error('Garment not found');
         const data = await response.json();
         setSuit(data.suit || data.data?.suit || data);
       } catch (err: unknown) {
@@ -97,7 +97,7 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to update leather jersey');
+        throw new Error(data.error || 'Failed to update garment');
       }
 
       router.push('/admin/tryon/suits');
@@ -109,7 +109,7 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this leather jersey? This cannot be undone.')) {
+    if (!confirm('Are you sure you want to delete this garment? This cannot be undone.')) {
       return;
     }
 
@@ -123,7 +123,7 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to delete leather jersey');
+        throw new Error(data.error || 'Failed to delete garment');
       }
 
       router.push('/admin/tryon/suits');
@@ -137,18 +137,18 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
   };
 
   if (isLoading) {
-    return <StateBlock variant="loading" title="Loading leather jersey…" />;
+    return <StateBlock variant="loading" title="Loading garment…" />;
   }
 
   if (!suit) {
     return (
       <StateBlock
         variant="error"
-        title="Leather jersey not found"
+        title="Garment not found"
         description={error || undefined}
         action={
           <Button component={Link} href="/admin/tryon/suits" variant="light">
-            Back to leather jerseys
+            Back to garments
           </Button>
         }
       />
@@ -160,8 +160,8 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
   return (
     <EditorScaffold
       eyebrow="Apps"
-      title="Edit Leather Jersey"
-      description="Update leather jersey details and publishing state."
+      title="Edit Garment"
+      description="Update garment details and publishing state."
       breadcrumbs={
         <Breadcrumbs>
           <Anchor component={Link} href="/admin/tryon/suits" size="sm">
@@ -180,7 +180,7 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
 
       <form onSubmit={handleSubmit}>
         <Stack gap="lg">
-          <FormSection title="Leather jersey preview" description="To change the image, delete this leather jersey and upload a new one.">
+          <FormSection title="Garment preview" description="To change the image, delete this garment and upload a new one.">
             <AspectRatio ratio={1} maw={320}>
               <Box style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
                 {preview ? (
@@ -237,7 +237,7 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
             ) : null}
           </FormSection>
 
-          <FormSection title="Leather jersey details">
+          <FormSection title="Garment details">
             <TextInput name="name" label="Title *" required defaultValue={suit.name} />
             <Textarea name="description" label="Description" rows={3} defaultValue={suit.description || ''} />
             <TextInput
@@ -263,7 +263,7 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
               </Button>
             </Group>
             <Button variant="light" loading={isDeleting} onClick={() => void handleDelete()}>
-              Delete Leather Jersey
+              Delete Garment
             </Button>
           </Group>
         </Stack>

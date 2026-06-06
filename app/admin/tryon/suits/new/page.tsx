@@ -17,7 +17,7 @@ import { FormSection } from '@doneisbetter/gds-admin/client';
 import MediaCard from '@/components/media/MediaPreviewCard';
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Failed to upload leather jersey';
+  return error instanceof Error ? error.message : 'Failed to upload garment';
 }
 
 export default function NewTryOnSuitPage() {
@@ -68,7 +68,7 @@ export default function NewTryOnSuitPage() {
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to upload leather jersey');
+        throw new Error(data.error || 'Failed to upload garment');
       }
 
       router.push('/admin/tryon/suits');
@@ -82,16 +82,16 @@ export default function NewTryOnSuitPage() {
   return (
     <EditorScaffold
       eyebrow="Apps"
-      title="Upload Leather Jersey"
-      description="Upload a try-on suit asset that Camera will host and the local try-on worker will download."
+      title="Upload Garment"
+      description="Upload a try-on garment asset that Camera will host and the local try-on worker will download."
     >
       <form onSubmit={handleSubmit}>
         <Stack gap="lg">
-          <FormSection title="Leather jersey image *">
+          <FormSection title="Garment image *">
             {preview ? (
               <MediaCard
                 src={preview}
-                alt="Leather jersey preview"
+                alt="Garment preview"
                 caption={file?.name}
                 action={
                   <Button variant="light" leftSection={<IconTrash size={16} />} onClick={clearFile}>
@@ -105,7 +105,7 @@ export default function NewTryOnSuitPage() {
                 title="Click to upload or drag and drop"
                 description="PNG, JPG, or WebP (MAX. 32MB)"
                 onFilesSelected={(files) => handleFileChange(files[0] ?? null)}
-                actionLabel="Choose leather jersey"
+                actionLabel="Choose garment"
               />
             )}
             {error ? (
@@ -115,7 +115,7 @@ export default function NewTryOnSuitPage() {
             ) : null}
           </FormSection>
 
-          <FormSection title="Leather jersey details">
+          <FormSection title="Garment details">
             <TextInput name="name" label="Title *" required placeholder="e.g., Honda Castrol 2026" />
             <Textarea name="description" label="Description" rows={3} placeholder="Optional operator notes..." />
             <TextInput
@@ -135,7 +135,7 @@ export default function NewTryOnSuitPage() {
 
           <Stack gap="sm">
             <Button type="submit" loading={isUploading} disabled={!preview}>
-              {isUploading ? 'Uploading…' : 'Create Leather Jersey'}
+              {isUploading ? 'Uploading…' : 'Create Garment'}
             </Button>
             <Button variant="default" onClick={() => router.push('/admin/tryon/suits')}>
               Cancel

@@ -24,11 +24,11 @@ export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTr
       <Card p="xl">
         <StateBlock
           variant="empty"
-          title="No leather jerseys yet"
-          description="Upload your first shared leather jersey so try-on events can offer it to users."
+          title="No garments yet"
+          description="Upload your first shared garment so try-on events can offer it to users."
           action={
             <Button component={Link} href="/admin/tryon/suits/new">
-              Upload First Leather Jersey
+              Upload First Garment
             </Button>
           }
         />
@@ -73,7 +73,7 @@ export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTr
               </Text>
             </Stack>
             <Button component={Link} href={`/admin/tryon/suits/${suit.id}/edit`} fullWidth>
-              Edit
+              Edit Garment
             </Button>
           </Stack>
         </Card>

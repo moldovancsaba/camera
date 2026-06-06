@@ -86,7 +86,7 @@ export default async function AdminTryOnSuitsPage({
       ];
     });
   } catch (error) {
-    console.error('Error fetching try-on leather jerseys:', error);
+    console.error('Error fetching try-on garments:', error);
     dbError = serializeMongoError(error);
   }
 
@@ -94,7 +94,7 @@ export default async function AdminTryOnSuitsPage({
     <AdminListPageShell
       eyebrow="Apps"
       title="Garments"
-      primaryAction={{ href: '/admin/tryon/suits/new', label: 'Upload Leather Jersey', iconKey: 'plus' }}
+      primaryAction={{ href: '/admin/tryon/suits/new', label: 'Upload Garment', iconKey: 'plus' }}
       stats={
         !dbError
           ? [
@@ -107,7 +107,7 @@ export default async function AdminTryOnSuitsPage({
       search={{
         defaultValue: search,
         label: 'Search',
-        placeholder: 'Search leather jersey name, description, or catalog ID',
+        placeholder: 'Search garment name, description, or catalog ID',
         clearHref: '/admin/tryon/suits',
       }}
       dbError={dbError}
