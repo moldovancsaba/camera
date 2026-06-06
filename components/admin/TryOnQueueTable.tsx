@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DataTable from '@/components/gds/DataTable';
@@ -121,6 +122,45 @@ function recoveryHint(row: QueueRow): string {
     return 'Reapply repairs result/publication links from the completed output. It does not bypass human approval.';
   }
   return 'No recovery action is available for this state.';
+}
+
+function SourceImagePreview({ row }: { row: QueueRow }) {
+  const imageUrl = row.source.imageUrl.trim();
+  if (!imageUrl) {
+    return (
+      <Text size="sm" c="dimmed">
+        No source image
+      </Text>
+    );
+  }
+
+  return (
+    <Stack gap="xs">
+      <div
+        style={{
+          background: 'var(--mantine-color-gray-1)',
+          border: '1px solid var(--mantine-color-gray-3)',
+          borderRadius: 12,
+          height: 132,
+          overflow: 'hidden',
+          position: 'relative',
+          width: 96,
+        }}
+      >
+        <Image
+          src={imageUrl}
+          alt={`Original source image for job ${row.jobId}`}
+          fill
+          sizes="96px"
+          style={{ objectFit: 'contain' }}
+          unoptimized
+        />
+      </div>
+      <Text component="a" href={imageUrl} target="_blank" rel="noopener noreferrer" size="xs">
+        Open original
+      </Text>
+    </Stack>
+  );
 }
 
 function makeSetupDisplayMap(setups: TryOnSetup[]) {
@@ -345,7 +385,8 @@ export default function TryOnQueueTable({
           key: 'source',
           label: 'Source',
           render: (row: QueueRow) => (
-            <>
+            <Stack gap="xs">
+              <SourceImagePreview row={row} />
               <Text size="sm" lineClamp={2}>
                 {row.source.imageUrl}
               </Text>
@@ -354,7 +395,7 @@ export default function TryOnQueueTable({
                   Event {row.source.eventMongoId}
                 </Text>
               ) : null}
-            </>
+            </Stack>
           ),
         },
         {
