@@ -2,6 +2,7 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { isTryOnPlaceholderEmail, resolveTryOnSubmissionIdentity } from '@/lib/tryon/identity';
+import { loadEnvFromFiles } from './load-env-from-files';
 
 const apply = process.argv.includes('--apply');
 const limitArg = process.argv.find((arg) => arg.startsWith('--limit='));
@@ -17,6 +18,7 @@ function needsIdentityPatch(doc: Submission, identity: ReturnType<typeof resolve
 }
 
 async function main() {
+  loadEnvFromFiles();
   const db = await connectToDatabase();
   const cursor = db
     .collection<Submission>(COLLECTIONS.SUBMISSIONS)
