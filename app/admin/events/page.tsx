@@ -117,7 +117,6 @@ export default async function EventsPage({
     <AdminListPageShell
       eyebrow="Apps"
       title="Events App"
-      description="Manage event app instances that use partner defaults, shared resources, and gallery flows."
       primaryAction={
         canCreate
           ? { href: '/admin/events/new', label: 'Add Event Instance', iconKey: 'plus' }
