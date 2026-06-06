@@ -320,8 +320,6 @@ export default async function AdminTryOnResultsPage({
       description={
         failedJobsMode
           ? 'Review failed try-on jobs, inspect their failure reason, and send them back to the worker.'
-        : archiveBucket
-          ? `Review archive for ${archiveBucket} try-on decisions. Approved items remain publishable; this archive only removes them from the active moderation queue.`
           : undefined
       }
       status={pageStatus}
