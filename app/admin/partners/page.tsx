@@ -95,7 +95,6 @@ export default async function PartnersPage({
     <AdminListPageShell
       eyebrow="Camera Core"
       title="Partners"
-      description="Manage partner organizations, access, and app ownership from one inventory view."
       primaryAction={{ href: '/admin/partners/new', label: 'Add Partner', iconKey: 'plus' }}
       stats={
         !dbError

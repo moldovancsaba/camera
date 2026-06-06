@@ -120,11 +120,31 @@ export default async function EventsPage({
               submissionKind: 'tryon_result',
               reviewStatus: 'pending_review',
               'tryOnModerationArchive.archived': { $ne: true },
-              $or: [
-                { eventId: { $in: allEventRefs } },
-                { eventIds: { $in: allEventRefs } },
-                ...(objectRefs.length > 0 ? [{ eventObjectId: { $in: objectRefs.map((value) => new ObjectId(value)) } }] : []),
-              ],
+            },
+          },
+          {
+            $addFields: {
+              sourceSubmissionObjectId: {
+                $convert: {
+                  input: '$sourceSubmissionId',
+                  to: 'objectId',
+                  onError: null,
+                  onNull: null,
+                },
+              },
+            },
+          },
+          {
+            $lookup: {
+              from: COLLECTIONS.SUBMISSIONS,
+              localField: 'sourceSubmissionObjectId',
+              foreignField: '_id',
+              as: 'sourceSubmission',
+            },
+          },
+          {
+            $addFields: {
+              sourceSubmission: { $first: '$sourceSubmission' },
             },
           },
           {
@@ -133,6 +153,9 @@ export default async function EventsPage({
                 $setUnion: [
                   [{ $ifNull: ['$eventId', ''] }],
                   { $ifNull: ['$eventIds', []] },
+                  [{ $ifNull: ['$sourceSubmission.eventId', ''] }],
+                  { $ifNull: ['$sourceSubmission.eventIds', []] },
+                  ...(objectRefs.length > 0 ? [[{ $toString: '$sourceSubmission._id' }]] : []),
                 ],
               },
             },

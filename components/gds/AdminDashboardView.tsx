@@ -24,7 +24,6 @@ export default function AdminDashboardView({
       <WorkspaceHeader
         eyebrow="Camera Core"
         title="Dashboard"
-        description="Camera Core overview across partners, shared resources, and app operations."
         status="Global Admin"
         primaryAction={{ href: '/admin/partners', label: 'Open Partners' }}
       />
