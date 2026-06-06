@@ -313,6 +313,8 @@ export default async function AdminTryOnResultsPage({
     dbError = serializeMongoError(error);
   }
 
+  const oldestWaitingRow = !failedJobsMode && !archiveBucket ? rows[0] : null;
+
   return (
     <AdminListPageShell
       eyebrow="Apps"
@@ -370,62 +372,112 @@ export default async function AdminTryOnResultsPage({
         label: archiveBucket || failedJobsMode ? 'Active queue' : 'Pending only',
       }}
       beforeToolbar={
-        <ConsumerDashboardGrid columns={3}>
-          {[
-            {
-              href: '/admin/tryon-results',
-              title: `Vetting (${pendingCount})`,
-              description: 'Open the live moderation queue for pending try-on results.',
-              iconKey: 'photoScan' as AdminIconKey,
-            },
-            {
-              href: '/admin/tryon-results?failed=1',
-              title: `Failed Jobs (${failedJobCount})`,
-              description: 'Review failed try-on jobs, inspect their failure reason, and send them back to the worker.',
-              iconKey: 'photo' as AdminIconKey,
-            },
-            {
-              href: '/admin/tryon-results?archive=approved',
-              title: `Approved (${archivedApprovedCount})`,
-              description: 'Browse approved items that were archived out of the active vetting queue.',
-              iconKey: 'world' as AdminIconKey,
-            },
-            {
-              href: '/admin/tryon-results?archive=greatest',
-              title: `Greatest Hits (${greatestHitsCount})`,
-              description: 'Best-of selected approved try-on results for event highlights.',
-              iconKey: 'world' as AdminIconKey,
-            },
-            {
-              href: '/admin/tryon-results?archive=rejected',
-              title: `Rejected (${archivedRejectedCount})`,
-              description: 'Browse declined items that were archived out of the active vetting queue.',
-              iconKey: 'photo' as AdminIconKey,
-            },
-          ].map((item) => (
+        <>
+          {oldestWaitingRow ? (
             <a
-              key={item.href}
-              href={item.href}
-              aria-label={`Open ${item.title}`}
+              href={`#${oldestWaitingRow.id}`}
+              aria-label="Jump to oldest waiting try-on result"
               style={{
                 background:
                   'linear-gradient(135deg, var(--mantine-color-violet-2), var(--mantine-color-cyan-1))',
-                borderRadius: 20,
-                boxShadow: '0 14px 32px rgba(109, 40, 217, 0.16), 0 0 0 1px rgba(109, 40, 217, 0.16)',
+                borderRadius: 24,
+                boxShadow: '0 18px 42px rgba(109, 40, 217, 0.18), 0 0 0 1px rgba(109, 40, 217, 0.18)',
                 color: 'inherit',
                 display: 'block',
-                padding: 2,
+                marginBottom: 'var(--mantine-spacing-xl)',
+                padding: 3,
                 textDecoration: 'none',
               }}
             >
-              <ProductCard
-                title={item.title}
-                description={item.description}
-                icon={<AdminIcon iconKey={item.iconKey} size={20} />}
-              />
+              <div
+                style={{
+                  background: 'var(--mantine-color-body)',
+                  borderRadius: 21,
+                  overflow: 'hidden',
+                }}
+              >
+                <img
+                  src={oldestWaitingRow.imageUrl}
+                  alt="Oldest waiting try-on result"
+                  style={{
+                    aspectRatio: '4 / 5',
+                    display: 'block',
+                    objectFit: 'cover',
+                    width: '100%',
+                  }}
+                />
+                <div style={{ padding: 'var(--mantine-spacing-md)' }}>
+                  <div style={{ fontSize: 'var(--mantine-font-size-xs)', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    Oldest waiting
+                  </div>
+                  <div style={{ fontSize: 'var(--mantine-font-size-lg)', fontWeight: 800 }}>
+                    {normalizeDisplayName(oldestWaitingRow.userName)}
+                  </div>
+                  <div style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-sm)' }}>
+                    Created {new Date(oldestWaitingRow.createdAt).toLocaleString()}
+                  </div>
+                </div>
+              </div>
             </a>
-          ))}
-        </ConsumerDashboardGrid>
+          ) : null}
+
+          <ConsumerDashboardGrid columns={3}>
+            {[
+              {
+                href: '/admin/tryon-results',
+                title: `Vetting (${pendingCount})`,
+                description: 'Open the live moderation queue for pending try-on results.',
+                iconKey: 'photoScan' as AdminIconKey,
+              },
+              {
+                href: '/admin/tryon-results?failed=1',
+                title: `Failed Jobs (${failedJobCount})`,
+                description: 'Review failed try-on jobs, inspect their failure reason, and send them back to the worker.',
+                iconKey: 'photo' as AdminIconKey,
+              },
+              {
+                href: '/admin/tryon-results?archive=approved',
+                title: `Approved (${archivedApprovedCount})`,
+                description: 'Browse approved items that were archived out of the active vetting queue.',
+                iconKey: 'world' as AdminIconKey,
+              },
+              {
+                href: '/admin/tryon-results?archive=greatest',
+                title: `Greatest Hits (${greatestHitsCount})`,
+                description: 'Best-of selected approved try-on results for event highlights.',
+                iconKey: 'world' as AdminIconKey,
+              },
+              {
+                href: '/admin/tryon-results?archive=rejected',
+                title: `Rejected (${archivedRejectedCount})`,
+                description: 'Browse declined items that were archived out of the active vetting queue.',
+                iconKey: 'photo' as AdminIconKey,
+              },
+            ].map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                aria-label={`Open ${item.title}`}
+                style={{
+                  background:
+                    'linear-gradient(135deg, var(--mantine-color-violet-2), var(--mantine-color-cyan-1))',
+                  borderRadius: 20,
+                  boxShadow: '0 14px 32px rgba(109, 40, 217, 0.16), 0 0 0 1px rgba(109, 40, 217, 0.16)',
+                  color: 'inherit',
+                  display: 'block',
+                  padding: 2,
+                  textDecoration: 'none',
+                }}
+              >
+                <ProductCard
+                  title={item.title}
+                  description={item.description}
+                  icon={<AdminIcon iconKey={item.iconKey} size={20} />}
+                />
+              </a>
+            ))}
+          </ConsumerDashboardGrid>
+        </>
       }
       dbError={dbError}
     >
