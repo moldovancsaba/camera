@@ -9,26 +9,9 @@ import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob } from '@/lib/db/schemas';
+import { activeTryOnQueueTotal, formatActiveTryOnQueueSummary } from '@/lib/tryon/queue-status';
 
 export const dynamic = 'force-dynamic';
-
-function formatQueueSummary(counts: Record<string, number>) {
-  return [
-    `Queued ${counts.queued ?? 0}`,
-    `Processing ${(counts.claimed ?? 0) + (counts.processing ?? 0) + (counts.uploading_result ?? 0)}`,
-    `Retry ${counts.retry_wait ?? 0}`,
-  ].join(' · ');
-}
-
-function activeQueueTotal(counts: Record<string, number>) {
-  return (
-    (counts.queued ?? 0) +
-    (counts.claimed ?? 0) +
-    (counts.processing ?? 0) +
-    (counts.uploading_result ?? 0) +
-    (counts.retry_wait ?? 0)
-  );
-}
 
 export default async function AdminTryOnAppPage() {
   const session = await getSession();
@@ -86,8 +69,8 @@ export default async function AdminTryOnAppPage() {
             {[
               {
                 href: '/admin/tryon/queue',
-                title: `Queue Status (${activeQueueTotal(queueCounts)})`,
-                description: formatQueueSummary(queueCounts),
+                title: `Queue Status (${activeTryOnQueueTotal(queueCounts)})`,
+                description: formatActiveTryOnQueueSummary(queueCounts),
                 iconKey: 'photoScan' as AdminIconKey,
               },
               {

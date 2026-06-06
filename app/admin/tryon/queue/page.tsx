@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import type { Filter } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS, type TryOnJob } from '@/lib/db/schemas';
@@ -7,6 +8,7 @@ import { listActiveTryOnSetups, type TryOnSetup } from '@/lib/tryon/setup-resolu
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import TryOnQueueTable, { type QueueRow } from '@/components/admin/TryOnQueueTable';
+import { buildTryOnQueueStatusCountsQuery } from '@/lib/tryon/queue-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,7 +102,7 @@ export default async function AdminTryOnQueuePage({
     const db = await connectToDatabase();
     setupOptions = await listActiveTryOnSetups(db);
 
-    const query: Record<string, unknown> = {};
+    const query: Filter<TryOnJob> = {};
 
     if (statusFilter) {
       query.status = statusFilter;
@@ -124,9 +126,9 @@ export default async function AdminTryOnQueuePage({
         .limit(100)
         .toArray(),
       db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments(query),
-      db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments({ ...query, status: 'queued' }),
-      db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments({ ...query, status: 'retry_wait' }),
-      db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments({ ...query, status: 'failed' }),
+      db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments(buildTryOnQueueStatusCountsQuery(query, 'queued')),
+      db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments(buildTryOnQueueStatusCountsQuery(query, 'retry_wait')),
+      db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments(buildTryOnQueueStatusCountsQuery(query, 'failed')),
     ]);
 
     rows = jobs.map(toQueueRow).filter((row): row is QueueRow => Boolean(row));
