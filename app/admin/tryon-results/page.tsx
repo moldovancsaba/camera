@@ -380,6 +380,7 @@ export default async function AdminTryOnResultsPage({
         <TryOnResultModerationTable
           rows={rows}
           setupOptions={setupOptions}
+          autoRefresh={!archiveBucket && !failedJobsMode && !search}
           emptyTitle={archiveBucket ? `No archived ${archiveBucket} try-on results` : undefined}
           emptyDescription={
             archiveBucket

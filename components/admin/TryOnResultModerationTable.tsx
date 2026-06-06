@@ -2,12 +2,18 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ResponsiveDataView from '@/components/gds/ResponsiveDataView';
 import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
 import { Box, Button, Card, Group, Modal, Paper, Select, SimpleGrid, Stack, Text, UnstyledButton } from '@mantine/core';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
+
+declare global {
+  interface Window {
+    webkitAudioContext?: typeof AudioContext;
+  }
+}
 
 function resolveDisplayName(value: string): string {
   const normalized = typeof value === 'string' ? value.trim() : '';
@@ -116,6 +122,55 @@ function setupDetailLabel(row: ModerationRow) {
   ].filter((value): value is string => Boolean(value));
 
   return details.join(' · ');
+}
+
+function playDing() {
+  const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextConstructor) return;
+
+  const audioContext = new AudioContextConstructor();
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+
+  oscillator.type = 'sine';
+  oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+  oscillator.frequency.exponentialRampToValueAtTime(1320, audioContext.currentTime + 0.08);
+  gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.18, audioContext.currentTime + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.28);
+
+  oscillator.connect(gain);
+  gain.connect(audioContext.destination);
+  oscillator.start();
+  oscillator.stop(audioContext.currentTime + 0.3);
+  window.setTimeout(() => void audioContext.close().catch(() => undefined), 500);
+}
+
+function toModerationRow(value: unknown): ModerationRow | null {
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Partial<ModerationRow>;
+  if (typeof row.id !== 'string' || typeof row.imageUrl !== 'string') return null;
+
+  return {
+    id: row.id,
+    sourceJobId: typeof row.sourceJobId === 'string' ? row.sourceJobId : null,
+    imageUrl: row.imageUrl,
+    originalImageUrl: typeof row.originalImageUrl === 'string' ? row.originalImageUrl : null,
+    userName: typeof row.userName === 'string' ? row.userName : 'Guest',
+    userEmail: typeof row.userEmail === 'string' ? row.userEmail : '',
+    eventName: typeof row.eventName === 'string' ? row.eventName : null,
+    partnerName: typeof row.partnerName === 'string' ? row.partnerName : null,
+    tryOnLeatherSuitId: typeof row.tryOnLeatherSuitId === 'string' ? row.tryOnLeatherSuitId : null,
+    reviewStatus:
+      row.reviewStatus === 'approved' || row.reviewStatus === 'rejected'
+        ? row.reviewStatus
+        : 'pending_review',
+    createdAt: typeof row.createdAt === 'string' ? row.createdAt : new Date().toISOString(),
+    approvedAt: typeof row.approvedAt === 'string' ? row.approvedAt : null,
+    isShareVisible: Boolean(row.isShareVisible),
+    isSlideshowEligible: Boolean(row.isSlideshowEligible),
+    setup: row.setup && typeof row.setup === 'object' && typeof row.setup.setupId === 'string' ? row.setup : null,
+  };
 }
 
 function PreviewImage({
@@ -327,26 +382,80 @@ function ModerationActions({
 export default function TryOnResultModerationTable({
   rows,
   setupOptions = [],
+  autoRefresh = false,
   emptyTitle = 'No try-on results need review',
   emptyDescription = 'Generated try-on results will appear here after the local worker uploads them back to Camera.',
 }: {
   rows: ModerationRow[];
   setupOptions?: TryOnSetup[];
+  autoRefresh?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
 }) {
   const router = useRouter();
+  const [displayRows, setDisplayRows] = useState(rows);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [lastRefreshLabel, setLastRefreshLabel] = useState<string | null>(null);
   const [selectedSetupByRow, setSelectedSetupByRow] = useState<Record<string, string>>({});
   const [rerunFeedbackByRow, setRerunFeedbackByRow] = useState<Record<string, string>>({});
   const [assetHealth, setAssetHealth] = useState<
     Record<string, { resultMissing?: boolean; originalMissing?: boolean }>
   >({});
+  const knownRowIdsRef = useRef(new Set(rows.map((row) => row.id)));
+  const isPollingRef = useRef(false);
 
-  const activeRow = rows.find((row) => row.id === activeRowId) ?? null;
+  const activeRow = displayRows.find((row) => row.id === activeRowId) ?? null;
   const setupsById = useMemo(() => makeSetupDisplayMap(setupOptions), [setupOptions]);
   const defaultSetupId = setupOptions[0]?.setupId ?? '';
+
+  useEffect(() => {
+    setDisplayRows(rows);
+    knownRowIdsRef.current = new Set(rows.map((row) => row.id));
+  }, [rows]);
+
+  const refreshRows = useCallback(async () => {
+    if (!autoRefresh || isPollingRef.current) return;
+    isPollingRef.current = true;
+    try {
+      const response = await fetch('/api/admin/tryon-results?reviewStatus=pending_review&limit=100', {
+        cache: 'no-store',
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !Array.isArray(payload.data?.results)) return;
+
+      const nextRows = payload.data.results
+        .map((value: unknown) => toModerationRow(value))
+        .filter((value: ModerationRow | null): value is ModerationRow => Boolean(value));
+      const previousIds = knownRowIdsRef.current;
+      const hasNewRows = nextRows.some((row) => !previousIds.has(row.id));
+
+      knownRowIdsRef.current = new Set(nextRows.map((row) => row.id));
+      setDisplayRows(nextRows);
+      setLastRefreshLabel(new Date().toLocaleTimeString());
+
+      if (hasNewRows) {
+        if (soundEnabled) {
+          playDing();
+        }
+        router.refresh();
+      }
+    } finally {
+      isPollingRef.current = false;
+    }
+  }, [autoRefresh, router, soundEnabled]);
+
+  useEffect(() => {
+    if (!autoRefresh) return undefined;
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void refreshRows();
+      }
+    }, 15000);
+    void refreshRows();
+    return () => window.clearInterval(interval);
+  }, [autoRefresh, refreshRows]);
 
   function markAssetMissing(rowId: string, kind: 'resultMissing' | 'originalMissing') {
     setAssetHealth((current) => {
@@ -482,20 +591,58 @@ export default function TryOnResultModerationTable({
     );
   }
 
-  if (rows.length === 0) {
+  if (displayRows.length === 0) {
     return (
-      <StateBlock
-        variant="empty"
-        title={emptyTitle}
-        description={emptyDescription}
-      />
+      <Stack gap="md">
+        {autoRefresh ? (
+          <Group justify="space-between" gap="sm">
+            <Text size="sm" c="dimmed">
+              Auto-refresh checks for new vetting results every 15 seconds.
+              {lastRefreshLabel ? ` Last checked ${lastRefreshLabel}.` : ''}
+            </Text>
+            <Button
+              size="xs"
+              variant={soundEnabled ? 'light' : 'outline'}
+              onClick={() => {
+                setSoundEnabled(true);
+                playDing();
+              }}
+            >
+              {soundEnabled ? 'Sound enabled' : 'Enable ding'}
+            </Button>
+          </Group>
+        ) : null}
+        <StateBlock
+          variant="empty"
+          title={emptyTitle}
+          description={emptyDescription}
+        />
+      </Stack>
     );
   }
 
   return (
     <>
+      {autoRefresh ? (
+        <Group justify="space-between" gap="sm" mb="md">
+          <Text size="sm" c="dimmed">
+            Auto-refresh checks for new vetting results every 15 seconds.
+            {lastRefreshLabel ? ` Last checked ${lastRefreshLabel}.` : ''}
+          </Text>
+          <Button
+            size="xs"
+            variant={soundEnabled ? 'light' : 'outline'}
+            onClick={() => {
+              setSoundEnabled(true);
+              playDing();
+            }}
+          >
+            {soundEnabled ? 'Sound enabled' : 'Enable ding'}
+          </Button>
+        </Group>
+      ) : null}
       <ResponsiveDataView
-        data={rows}
+        data={displayRows}
         columns={[
           {
             key: 'preview',
