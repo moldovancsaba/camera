@@ -331,48 +331,50 @@ export default async function AdminTryOnResultsPage({
             : '/admin/tryon-results?reviewStatus=pending_review',
         label: archiveBucket || failedJobsMode ? 'Active queue' : 'Pending only',
       }}
+      beforeToolbar={
+        <ConsumerDashboardGrid columns={3}>
+          {[
+            {
+              href: '/admin/tryon-results',
+              title: `Vetting (${pendingCount})`,
+              description: 'Open the live moderation queue for pending try-on results.',
+              iconKey: 'photoScan' as AdminIconKey,
+            },
+            {
+              href: '/admin/tryon-results?failed=1',
+              title: `Failed Jobs (${failedJobCount})`,
+              description: 'Review failed try-on jobs, inspect their failure reason, and send them back to the worker.',
+              iconKey: 'photo' as AdminIconKey,
+            },
+            {
+              href: '/admin/tryon-results?archive=approved',
+              title: `Archived Approved (${archivedApprovedCount})`,
+              description: 'Browse approved items that were archived out of the active vetting queue.',
+              iconKey: 'world' as AdminIconKey,
+            },
+            {
+              href: '/admin/tryon-results?archive=rejected',
+              title: `Archived Rejected (${archivedRejectedCount})`,
+              description: 'Browse declined items that were archived out of the active vetting queue.',
+              iconKey: 'photo' as AdminIconKey,
+            },
+          ].map((item) => (
+            <ProductCard
+              key={item.href}
+              title={item.title}
+              description={item.description}
+              icon={<AdminIcon iconKey={item.iconKey} size={20} />}
+              primaryAction={
+                <a href={item.href} style={{ textDecoration: 'none' }}>
+                  Open
+                </a>
+              }
+            />
+          ))}
+        </ConsumerDashboardGrid>
+      }
       dbError={dbError}
     >
-      <ConsumerDashboardGrid columns={3}>
-        {[
-          {
-            href: '/admin/tryon-results',
-            title: `Vetting (${pendingCount})`,
-            description: 'Open the live moderation queue for pending try-on results.',
-            iconKey: 'photoScan' as AdminIconKey,
-          },
-          {
-            href: '/admin/tryon-results?failed=1',
-            title: `Failed Jobs (${failedJobCount})`,
-            description: 'Review failed try-on jobs, inspect their failure reason, and send them back to the worker.',
-            iconKey: 'photo' as AdminIconKey,
-          },
-          {
-            href: '/admin/tryon-results?archive=approved',
-            title: `Archived Approved (${archivedApprovedCount})`,
-            description: 'Browse approved items that were archived out of the active vetting queue.',
-            iconKey: 'world' as AdminIconKey,
-          },
-          {
-            href: '/admin/tryon-results?archive=rejected',
-            title: `Archived Rejected (${archivedRejectedCount})`,
-            description: 'Browse declined items that were archived out of the active vetting queue.',
-            iconKey: 'photo' as AdminIconKey,
-          },
-        ].map((item) => (
-          <ProductCard
-            key={item.href}
-            title={item.title}
-            description={item.description}
-            icon={<AdminIcon iconKey={item.iconKey} size={20} />}
-            primaryAction={
-              <a href={item.href} style={{ textDecoration: 'none' }}>
-                Open
-              </a>
-            }
-          />
-        ))}
-      </ConsumerDashboardGrid>
       {failedJobsMode ? (
         <TryOnQueueTable rows={failedJobRows} setupOptions={setupOptions} />
       ) : null}

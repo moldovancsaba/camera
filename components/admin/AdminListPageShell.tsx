@@ -28,6 +28,7 @@ export interface AdminListPageShellProps {
   toolbarHint?: string;
   toolbarFilters?: { label: string; value: string }[];
   toolbarTrailing?: { href: string; label: string };
+  beforeToolbar?: React.ReactNode;
   dbError?: MongoConnectionDiagnosis | null;
   children: React.ReactNode;
 }
@@ -43,6 +44,7 @@ export default function AdminListPageShell({
   toolbarHint,
   toolbarFilters,
   toolbarTrailing,
+  beforeToolbar,
   dbError,
   children,
 }: AdminListPageShellProps) {
@@ -59,6 +61,8 @@ export default function AdminListPageShell({
       {!dbError && stats && stats.length > 0 ? (
         <StatsStrip stats={stats.map(({ label, value }) => ({ label, value }))} />
       ) : null}
+
+      {!dbError ? beforeToolbar : null}
 
       {search ? (
         <Stack gap="xs">
