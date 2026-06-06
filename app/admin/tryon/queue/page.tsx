@@ -148,7 +148,6 @@ export default async function AdminTryOnQueuePage({
         !dbError
           ? [
               { label: 'Matching Jobs', value: totalJobCount, iconKey: 'photoScan' },
-              { label: 'Showing', value: rows.length, iconKey: 'photoScan' },
               { label: 'Queued', value: queuedJobCount, iconKey: 'photo' },
               { label: 'Retry Wait', value: retryWaitJobCount, iconKey: 'photo' },
               { label: 'Failed', value: failedJobCount, iconKey: 'photo' },
@@ -166,7 +165,7 @@ export default async function AdminTryOnQueuePage({
       toolbarTrailing={{ href: '/admin/tryon/queue?status=retry_wait', label: 'Retrying only' }}
       dbError={dbError}
     >
-      <TryOnQueueTable rows={rows} setupOptions={setupOptions} />
+      <TryOnQueueTable rows={rows} setupOptions={setupOptions} totalCount={totalJobCount} statusFilter={statusFilter} search={search} />
     </AdminListPageShell>
   );
 }

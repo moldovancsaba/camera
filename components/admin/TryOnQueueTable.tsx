@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DataTable from '@/components/gds/DataTable';
 import { StatusBadge, StateBlock } from '@doneisbetter/gds-core/client';
 import { Button, Group, Select, Stack, Text } from '@mantine/core';
@@ -42,6 +42,9 @@ export interface QueueRow {
 interface TryOnQueueTableProps {
   rows: QueueRow[];
   setupOptions?: TryOnSetup[];
+  totalCount?: number;
+  statusFilter?: string;
+  search?: string;
 }
 
 function toneForStatus(status: string): CameraStatusTone {
@@ -121,12 +124,106 @@ function getSetupLabel(
   return setupsById.get(setup.setupId) ?? setup.setupId;
 }
 
-export default function TryOnQueueTable({ rows, setupOptions = [] }: TryOnQueueTableProps) {
+function toQueueRow(value: unknown): QueueRow | null {
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Partial<QueueRow>;
+  if (typeof row.jobId !== 'string' || typeof row.status !== 'string' || typeof row.stage !== 'string') return null;
+
+  return {
+    jobId: row.jobId,
+    status: row.status,
+    stage: row.stage,
+    createdAt: typeof row.createdAt === 'string' ? row.createdAt : '',
+    source: {
+      submissionId: typeof row.source?.submissionId === 'string' ? row.source.submissionId : 'unknown',
+      imageUrl: typeof row.source?.imageUrl === 'string' ? row.source.imageUrl : '',
+      eventMongoId: typeof row.source?.eventMongoId === 'string' ? row.source.eventMongoId : null,
+    },
+    request: {
+      leatherSuitId: typeof row.request?.leatherSuitId === 'string' ? row.request.leatherSuitId : 'unknown',
+      setupId: typeof row.request?.setupId === 'string' ? row.request.setupId : null,
+    },
+    processing: {
+      workerId: typeof row.processing?.workerId === 'string' ? row.processing.workerId : null,
+      attemptCount: typeof row.processing?.attemptCount === 'number' ? row.processing.attemptCount : 0,
+      nextAttemptAt: typeof row.processing?.nextAttemptAt === 'string' ? row.processing.nextAttemptAt : null,
+      resolvedSetup:
+        typeof row.processing?.resolvedSetup?.setupId === 'string' &&
+        typeof row.processing.resolvedSetup.setupName === 'string'
+          ? row.processing.resolvedSetup
+          : undefined,
+    },
+    result: {
+      publicResultUrl: typeof row.result?.publicResultUrl === 'string' ? row.result.publicResultUrl : null,
+    },
+    error: {
+      message: typeof row.error?.message === 'string' ? row.error.message : null,
+    },
+  };
+}
+
+export default function TryOnQueueTable({
+  rows,
+  setupOptions = [],
+  totalCount = rows.length,
+  statusFilter = '',
+  search = '',
+}: TryOnQueueTableProps) {
   const router = useRouter();
+  const [displayRows, setDisplayRows] = useState(rows);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [busyJobId, setBusyJobId] = useState<string | null>(null);
   const [selectedSetupByJob, setSelectedSetupByJob] = useState<Record<string, string>>({});
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
   const setupsById = useMemo(() => makeSetupDisplayMap(setupOptions), [setupOptions]);
   const defaultSetupId = setupOptions[0]?.setupId ?? '';
+  const hasMore = displayRows.length < totalCount;
+
+  useEffect(() => {
+    setDisplayRows(rows);
+  }, [rows]);
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    try {
+      const params = new URLSearchParams({
+        offset: String(displayRows.length),
+        limit: '100',
+      });
+      if (statusFilter) params.set('status', statusFilter);
+      if (search) params.set('search', search);
+
+      const response = await fetch(`/api/admin/tryon-jobs?${params.toString()}`, { cache: 'no-store' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !Array.isArray(payload.data?.jobs)) return;
+
+      const nextRows = payload.data.jobs
+        .map((value: unknown) => toQueueRow(value))
+        .filter((value: QueueRow | null): value is QueueRow => Boolean(value));
+
+      setDisplayRows((current) => {
+        const knownIds = new Set(current.map((row) => row.jobId));
+        return [...current, ...nextRows.filter((row: QueueRow) => !knownIds.has(row.jobId))];
+      });
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [displayRows.length, hasMore, isLoadingMore, search, statusFilter]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore) return undefined;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        void loadMore();
+      }
+    }, { rootMargin: '600px 0px' });
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore]);
 
   async function handleRetry(jobId: string) {
     try {
@@ -158,7 +255,7 @@ export default function TryOnQueueTable({ rows, setupOptions = [] }: TryOnQueueT
     }
   }
 
-  if (rows.length === 0) {
+  if (displayRows.length === 0) {
     return (
       <StateBlock
         variant="empty"
@@ -169,8 +266,9 @@ export default function TryOnQueueTable({ rows, setupOptions = [] }: TryOnQueueT
   }
 
   return (
-    <DataTable
-      data={rows}
+    <Stack gap="md">
+      <DataTable
+      data={displayRows}
       columns={[
         {
           key: 'job',
@@ -347,6 +445,20 @@ export default function TryOnQueueTable({ rows, setupOptions = [] }: TryOnQueueT
         },
       ]}
       getRowKey={(row) => row.jobId}
-    />
+      />
+      {hasMore ? (
+        <div ref={sentinelRef}>
+          <StateBlock
+            variant="loading"
+            title={isLoadingMore ? 'Loading more jobs...' : 'Scroll to load more jobs'}
+            description={`${displayRows.length} of ${totalCount} matching jobs loaded.`}
+          />
+        </div>
+      ) : (
+        <Text size="sm" c="dimmed" ta="center">
+          All {totalCount} matching jobs loaded.
+        </Text>
+      )}
+    </Stack>
   );
 }
