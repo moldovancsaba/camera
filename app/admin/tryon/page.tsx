@@ -10,8 +10,19 @@ import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import { cameraInfoToneMap } from '@/lib/gds/presentation';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
+import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob } from '@/lib/db/schemas';
 
 export const dynamic = 'force-dynamic';
+
+function formatQueueSummary(counts: Record<string, number>) {
+  return [
+    `Queued ${counts.queued ?? 0}`,
+    `Processing ${(counts.claimed ?? 0) + (counts.processing ?? 0) + (counts.uploading_result ?? 0)}`,
+    `Retry ${counts.retry_wait ?? 0}`,
+    `Done ${counts.done ?? 0}`,
+    `Failed ${counts.failed ?? 0}`,
+  ].join(' · ');
+}
 
 export default async function AdminTryOnAppPage() {
   const session = await getSession();
@@ -20,9 +31,33 @@ export default async function AdminTryOnAppPage() {
   }
 
   let dbError = null;
+  let queueCounts: Record<string, number> = {};
+  let activeSuitCount = 0;
+  let totalSuitCount = 0;
+  let pendingVettingCount = 0;
 
   try {
-    await connectToDatabase();
+    const db = await connectToDatabase();
+    const [queueStatusCounts, activeSuits, totalSuits, pendingVetting] = await Promise.all([
+      db
+        .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
+        .aggregate<{ _id: string; count: number }>([
+          { $group: { _id: '$status', count: { $sum: 1 } } },
+        ])
+        .toArray(),
+      db.collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS).countDocuments({ active: true }),
+      db.collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS).countDocuments({}),
+      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
+        submissionKind: 'tryon_result',
+        reviewStatus: 'pending_review',
+        'tryOnModerationArchive.archived': { $ne: true },
+      }),
+    ]);
+
+    queueCounts = Object.fromEntries(queueStatusCounts.map((item) => [item._id, item.count]));
+    activeSuitCount = activeSuits;
+    totalSuitCount = totalSuits;
+    pendingVettingCount = pendingVetting;
   } catch (error) {
     console.error('Error loading try-on app workspace:', error);
     dbError = serializeMongoError(error);
@@ -64,20 +99,20 @@ export default async function AdminTryOnAppPage() {
             {[
               {
                 href: '/admin/tryon/queue',
-                title: 'Queue Status',
-                description: 'See actual live job status across queued, processing, retry, done, and failed states.',
+                title: `Queue Status (${Object.values(queueCounts).reduce((sum, count) => sum + count, 0)})`,
+                description: formatQueueSummary(queueCounts),
                 iconKey: 'photoScan' as AdminIconKey,
               },
               {
                 href: '/admin/tryon/suits',
-                title: 'Leather Jerseys',
-                description: 'Manage the selectable leather suit catalog for events and user capture flows.',
+                title: `Leather Jerseys (${activeSuitCount}/${totalSuitCount})`,
+                description: `Active ${activeSuitCount} · Total ${totalSuitCount}. Manage the selectable leather suit catalog for events and user capture flows.`,
                 iconKey: 'photo' as AdminIconKey,
               },
               {
                 href: '/admin/tryon/vetting',
-                title: 'Vetting Queue',
-                description: 'Approve or reject completed generated results before they go public.',
+                title: `Vetting Queue (${pendingVettingCount})`,
+                description: `${pendingVettingCount} pending generated result${pendingVettingCount === 1 ? '' : 's'} waiting for approval or rejection.`,
                 iconKey: 'world' as AdminIconKey,
               },
             ].map((item) => (
