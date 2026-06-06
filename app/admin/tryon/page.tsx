@@ -68,7 +68,6 @@ export default async function AdminTryOnAppPage() {
       <WorkspaceHeader
         eyebrow="Apps"
         title="Try-On App"
-        description="Operate the local AI leather pipeline from one workspace: live queue state, selectable leather jersey catalog, and moderation."
         status="Global Admin"
         primaryAction={{ href: '/admin/tryon/queue', label: 'Open Queue' }}
       />
@@ -105,13 +104,13 @@ export default async function AdminTryOnAppPage() {
               },
               {
                 href: '/admin/tryon/suits',
-                title: `Leather Jerseys (${activeSuitCount}/${totalSuitCount})`,
+                title: `Garments (${activeSuitCount}/${totalSuitCount})`,
                 description: `Active ${activeSuitCount} · Total ${totalSuitCount}. Manage the selectable leather suit catalog for events and user capture flows.`,
                 iconKey: 'photo' as AdminIconKey,
               },
               {
                 href: '/admin/tryon/vetting',
-                title: `Vetting Queue (${pendingVettingCount})`,
+                title: `Vetting (${pendingVettingCount})`,
                 description: `${pendingVettingCount} pending generated result${pendingVettingCount === 1 ? '' : 's'} waiting for approval or rejection.`,
                 iconKey: 'world' as AdminIconKey,
               },

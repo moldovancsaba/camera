@@ -93,8 +93,7 @@ export default async function AdminTryOnSuitsPage({
   return (
     <AdminListPageShell
       eyebrow="Apps"
-      title="Leather Jerseys"
-      description="Shared try-on suit inventory managed by Camera, with uploaded suit assets that the local try-on worker downloads on demand."
+      title="Garments"
       primaryAction={{ href: '/admin/tryon/suits/new', label: 'Upload Leather Jersey', iconKey: 'plus' }}
       stats={
         !dbError

@@ -165,7 +165,7 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
       breadcrumbs={
         <Breadcrumbs>
           <Anchor component={Link} href="/admin/tryon/suits" size="sm">
-            Leather Jerseys
+            Garments
           </Anchor>
           <Text size="sm">Edit</Text>
         </Breadcrumbs>

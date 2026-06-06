@@ -129,7 +129,6 @@ export default async function AdminTryOnQueuePage({
     <AdminListPageShell
       eyebrow="Apps"
       title="Try-On Queue"
-      description="Live queue state from Atlas. This is the actual operational status of try-on jobs before moderation."
       primaryAction={{ href: '/admin/tryon', label: 'Open Try-On App' }}
       stats={
         !dbError

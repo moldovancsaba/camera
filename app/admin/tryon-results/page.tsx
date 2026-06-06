@@ -130,16 +130,16 @@ export default async function AdminTryOnResultsPage({
   const pageTitle = failedJobsMode
     ? 'Failed Try-On Jobs'
     : archiveBucket === 'approved'
-      ? 'Archived Approved Try-On Results'
+      ? 'Approved'
       : archiveBucket === 'rejected'
-        ? 'Archived Rejected Try-On Results'
-        : 'Vetting Queue';
+        ? 'Rejected'
+        : 'Vetting';
   const pageStatus = failedJobsMode
     ? 'Failed Jobs'
     : archiveBucket === 'approved'
-      ? 'Archived Approved'
+      ? 'Approved'
       : archiveBucket === 'rejected'
-        ? 'Archived Rejected'
+        ? 'Rejected'
         : 'Active Vetting';
 
   let rows: ModerationRow[] = [];
@@ -363,13 +363,13 @@ export default async function AdminTryOnResultsPage({
             },
             {
               href: '/admin/tryon-results?archive=approved',
-              title: `Archived Approved (${archivedApprovedCount})`,
+              title: `Approved (${archivedApprovedCount})`,
               description: 'Browse approved items that were archived out of the active vetting queue.',
               iconKey: 'world' as AdminIconKey,
             },
             {
               href: '/admin/tryon-results?archive=rejected',
-              title: `Archived Rejected (${archivedRejectedCount})`,
+              title: `Rejected (${archivedRejectedCount})`,
               description: 'Browse declined items that were archived out of the active vetting queue.',
               iconKey: 'photo' as AdminIconKey,
             },
