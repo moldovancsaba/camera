@@ -249,7 +249,7 @@ function PreviewStrip({
       style={{
         position: 'relative',
         width: 'min(100%, 400px)',
-        height: 200,
+        height: 300,
         borderRadius: 14,
         overflow: 'hidden',
         background: 'var(--mantine-color-gray-0)',
@@ -259,7 +259,7 @@ function PreviewStrip({
         src={row.imageUrl}
         alt="Final try-on result"
         width={400}
-        height={200}
+        height={300}
         objectFit="contain"
         onFailure={onResultMissing}
       />
