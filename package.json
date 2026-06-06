@@ -29,6 +29,8 @@
     "vercel:env-pull": "npx vercel@latest env pull .env.local --yes",
     "db:migrate-email-template-fields": "tsx scripts/backfill-event-email-template-fields.ts",
     "db:migrate-email-template-fields:apply": "tsx scripts/backfill-event-email-template-fields.ts --apply",
+    "db:migrate-email-body-defaults": "tsx scripts/migrate-event-email-body-defaults.ts",
+    "db:migrate-email-body-defaults:apply": "tsx scripts/migrate-event-email-body-defaults.ts --apply",
     "db:backfill-event-terms-url": "tsx scripts/backfill-event-terms-url.ts",
     "email:send-today": "tsx scripts/send-today-submission-emails.ts"
   },
