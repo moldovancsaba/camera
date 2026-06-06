@@ -5,38 +5,7 @@ import { requireAuth, apiForbidden, apiSuccess, withErrorHandler } from '@/lib/a
 import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
-
-function normalizeDisplayName(value?: string | null): string {
-  if (typeof value === 'string' && value.trim() && value.trim().toLowerCase() !== 'event guest') {
-    return value.trim();
-  }
-  return 'Guest';
-}
-
-function isPlaceholderEmail(value: string | null | undefined): boolean {
-  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  return !normalized || normalized === 'anonymous@event' || normalized === 'anonymous@event.com';
-}
-
-function resolvePersonName(doc: Submission, source?: Submission | null): string {
-  return normalizeDisplayName(
-    source?.userInfo?.name ??
-      source?.userName ??
-      doc.userInfo?.name ??
-      doc.userName
-  );
-}
-
-function resolvePersonEmail(doc: Submission, source?: Submission | null): string {
-  const candidates = [
-    source?.userInfo?.email,
-    source?.userEmail,
-    doc.userInfo?.email,
-    doc.userEmail,
-  ];
-
-  return candidates.find((value) => !isPlaceholderEmail(value))?.trim() ?? '';
-}
+import { resolveTryOnSubmissionIdentity } from '@/lib/tryon/identity';
 
 function isTryOnGreat(metadata: Submission['metadata']): boolean {
   return Boolean(
@@ -183,6 +152,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     results: docs.map((doc) => {
       const source = doc.sourceSubmissionId ? sourceMap.get(doc.sourceSubmissionId) : null;
       const sourceJob = doc.sourceJobId ? sourceJobMap.get(doc.sourceJobId) : null;
+      const identity = resolveTryOnSubmissionIdentity(doc, source);
       return {
         id: doc._id.toString(),
         sourceSubmissionId: doc.sourceSubmissionId ?? null,
@@ -196,8 +166,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         originalImageUrl:
           normalizeImgbbDirectUrl(source?.imageUrl ?? null) ??
           normalizeImgbbDirectUrl(source?.finalImageUrl ?? null),
-        userName: resolvePersonName(doc, source),
-        userEmail: resolvePersonEmail(doc, source),
+        userName: identity.name,
+        userEmail: identity.email ?? '',
         eventName: doc.eventName ?? null,
         partnerName: doc.partnerName ?? null,
         tryOnLeatherSuitId: doc.tryOnLeatherSuitId ?? null,

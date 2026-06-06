@@ -22,6 +22,8 @@
     "tryon:verify": "tsx scripts/verify-tryon-prereqs.ts",
     "tryon:reframe": "tsx scripts/reframe-tryon-results.ts",
     "tryon:reconcile-jobs": "tsx scripts/reconcile-tryon-done-jobs.ts",
+    "tryon:backfill-identity": "tsx scripts/backfill-tryon-result-identity.ts",
+    "tryon:backfill-identity:apply": "tsx scripts/backfill-tryon-result-identity.ts --apply",
     "tryon:enable-frame-composition": "tsx scripts/enable-tryon-frame-composition.ts",
     "tryon:worker": "tsx scripts/tryon-worker.ts",
     "postinstall": "node scripts/patch-baseline-browser-mapping.mjs",

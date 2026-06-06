@@ -13,6 +13,7 @@ import { patchSubmissionTryOnState } from '@/lib/tryon/jobs';
 import { shouldApprovedTryOnBeSlideshowEligible } from '@/lib/tryon/slideshow-policy';
 import { applyFrameToTryOnResult, inspectTryOnResultAsset } from '@/lib/tryon/frame-composition';
 import { dispatchPendingRelatedEmailForSubmission } from '@/lib/email/submission-result-email';
+import { resolveTryOnSubmissionIdentity } from '@/lib/tryon/identity';
 
 type FrameRecord = {
   fileUrl?: string | null;
@@ -289,6 +290,7 @@ export async function applyTryOnCompletion(
           shareVisible: Boolean(existingDerived?.isShareVisible ?? publication.shareVisible),
           slideshowEligible: Boolean(existingDerived?.isSlideshowEligible ?? publication.slideshowEligible),
         };
+  const identity = resolveTryOnSubmissionIdentity(existingDerived ?? sourceSubmission, sourceSubmission);
 
   await db.collection(COLLECTIONS.TRYON_JOBS).updateOne(
     { jobId: job.jobId },
@@ -330,6 +332,9 @@ export async function applyTryOnCompletion(
     isShareVisible: sourceReviewState.shareVisible,
     isSlideshowEligible: sourceReviewState.slideshowEligible,
     sourceJobId: job.jobId,
+    userName: identity.name,
+    userEmail: identity.email ?? '',
+    ...(identity.userInfo ? { userInfo: identity.userInfo } : {}),
   };
 
   if (sourceReviewState.reviewStatus === 'pending_review') {

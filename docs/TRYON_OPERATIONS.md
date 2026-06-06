@@ -83,3 +83,9 @@ Preset performance combines job execution data with moderation outcomes:
 - provider timeouts
 - approved/rejected/service/great outcomes
 - approval rate over decided outcomes
+
+## Result identity normalization
+
+Derived try-on result records resolve participant identity from the source submission before falling back to the result document. Placeholder emails such as `anonymous@event` and `anonymous@event.com` are never treated as usable participant emails.
+
+Run `pnpm tryon:backfill-identity` for a dry-run count of stored try-on results that need identity repair. Run `pnpm tryon:backfill-identity:apply` to write the resolved `userName`, `userEmail`, and `userInfo` back to generated result records.

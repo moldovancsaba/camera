@@ -9,6 +9,7 @@ import {
   type TryOnJob,
 } from '@/lib/db/schemas';
 import { nowIso } from '@/lib/tryon/time';
+import { resolveTryOnSubmissionIdentity } from '@/lib/tryon/identity';
 
 export type TryOnReviewStatus = 'pending_review' | 'approved' | 'rejected';
 export type SlideshowSourceMode =
@@ -66,6 +67,7 @@ export function buildDerivedTryOnSubmission({
   const isReviewed = reviewStatus !== 'pending_review';
   const isApproved = reviewStatus === 'approved';
   const archiveResult = publication?.archive ?? isReviewed;
+  const identity = resolveTryOnSubmissionIdentity(sourceSubmission, sourceSubmission);
 
   return {
     submissionId:
@@ -73,8 +75,8 @@ export function buildDerivedTryOnSubmission({
         ? `${sourceSubmission.submissionId}__${job.jobId}`
         : job.jobId,
     userId: sourceSubmission.userId,
-    userEmail: sourceSubmission.userEmail,
-    userName: sourceSubmission.userName,
+    userEmail: identity.email ?? '',
+    userName: identity.name,
     frameId: sourceSubmission.frameId,
     frameName: sourceSubmission.frameName ?? null,
     frameCategory: sourceSubmission.frameCategory ?? null,
@@ -92,6 +94,7 @@ export function buildDerivedTryOnSubmission({
     finalImageUrl: publicResultUrl,
     method: sourceSubmission.method ?? SubmissionMethod.FILE_UPLOAD,
     status: SubmissionStatus.COMPLETED,
+    userInfo: identity.userInfo,
     consents: Array.isArray(sourceSubmission.consents) ? sourceSubmission.consents : [],
     metadata:
       sourceSubmission.metadata && typeof sourceSubmission.metadata === 'object'

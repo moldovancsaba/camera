@@ -13,6 +13,7 @@ import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import { ConsumerDashboardGrid, ProductCard } from '@doneisbetter/gds-core/client';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 import { normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
+import { resolveTryOnSubmissionIdentity } from '@/lib/tryon/identity';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,41 +69,6 @@ function toQueueRow(job: Partial<TryOnJob>): QueueRow | null {
       message: typeof job.error?.message === 'string' ? job.error.message : null,
     },
   };
-}
-
-function normalizeDisplayName(value: string | null | undefined): string {
-  if (typeof value === 'string') {
-    const normalized = value.trim();
-    if (normalized && normalized.toLowerCase() !== 'event guest') {
-      return normalized;
-    }
-  }
-  return 'Guest';
-}
-
-function isPlaceholderEmail(value: string | null | undefined): boolean {
-  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  return !normalized || normalized === 'anonymous@event' || normalized === 'anonymous@event.com';
-}
-
-function resolvePersonName(doc: Submission, source?: Submission | null): string {
-  return normalizeDisplayName(
-    source?.userInfo?.name ??
-      source?.userName ??
-      doc.userInfo?.name ??
-      doc.userName
-  );
-}
-
-function resolvePersonEmail(doc: Submission, source?: Submission | null): string {
-  const candidates = [
-    source?.userInfo?.email,
-    source?.userEmail,
-    doc.userInfo?.email,
-    doc.userEmail,
-  ];
-
-  return candidates.find((value) => !isPlaceholderEmail(value))?.trim() ?? '';
 }
 
 function isTryOnGreat(metadata: Submission['metadata']): boolean {
@@ -342,6 +308,7 @@ export default async function AdminTryOnResultsPage({
     rows = docs.map((doc) => {
       const source = doc.sourceSubmissionId ? sourceMap.get(doc.sourceSubmissionId) : undefined;
       const sourceJob = doc.sourceJobId ? sourceJobMap.get(doc.sourceJobId) : undefined;
+      const identity = resolveTryOnSubmissionIdentity(doc, source);
       return {
         id: doc._id.toString(),
         sourceJobId: doc.sourceJobId ?? null,
@@ -353,8 +320,8 @@ export default async function AdminTryOnResultsPage({
           normalizeImgbbDirectUrl(source?.imageUrl ?? null) ??
           normalizeImgbbDirectUrl(source?.finalImageUrl ?? null) ??
           null,
-        userName: resolvePersonName(doc, source),
-        userEmail: resolvePersonEmail(doc, source),
+        userName: identity.name,
+        userEmail: identity.email ?? '',
         eventName: doc.eventName ?? null,
         partnerName: doc.partnerName ?? null,
         tryOnLeatherSuitId: doc.tryOnLeatherSuitId ?? null,
