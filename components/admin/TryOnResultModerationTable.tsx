@@ -43,6 +43,9 @@ export interface ModerationRow {
   isShareVisible: boolean;
   isSlideshowEligible: boolean;
   isGreat: boolean;
+  archiveReason?: string | null;
+  archiveSupersededByJobId?: string | null;
+  archiveSupersededAt?: string | null;
   recentAudit?: Array<{
     eventId: string;
     action: string;
@@ -56,6 +59,13 @@ export interface ModerationRow {
     setupProfile?: string | null;
     setupSource?: string | null;
   } | null;
+}
+
+interface ModerationListQuery {
+  reviewStatus?: string;
+  archive?: string;
+  eventId?: string;
+  search?: string;
 }
 
 async function postDecision(id: string, action: 'approve' | 'reject') {
@@ -221,6 +231,9 @@ function toModerationRow(value: unknown): ModerationRow | null {
     isShareVisible: Boolean(row.isShareVisible),
     isSlideshowEligible: Boolean(row.isSlideshowEligible),
     isGreat: Boolean(row.isGreat),
+    archiveReason: typeof row.archiveReason === 'string' ? row.archiveReason : null,
+    archiveSupersededByJobId: typeof row.archiveSupersededByJobId === 'string' ? row.archiveSupersededByJobId : null,
+    archiveSupersededAt: typeof row.archiveSupersededAt === 'string' ? row.archiveSupersededAt : null,
     setup: row.setup && typeof row.setup === 'object' && typeof row.setup.setupId === 'string' ? row.setup : null,
   };
 }
@@ -290,32 +303,49 @@ function PreviewStrip({
   clickable,
   onOpen,
   onResultMissing,
+  onOriginalMissing,
 }: {
   row: ModerationRow;
   clickable?: boolean;
   onOpen?: () => void;
   onResultMissing?: () => void;
+  onOriginalMissing?: () => void;
 }) {
-  const content = (
+  const renderImage = (src: string | null, alt: string, onFailure?: () => void) => (
     <Box
       style={{
         position: 'relative',
         width: 'min(100%, 400px)',
-        height: 300,
+        aspectRatio: '4 / 5',
+        maxHeight: 320,
         borderRadius: 14,
         overflow: 'hidden',
         background: 'var(--mantine-color-gray-0)',
       }}
     >
       <PreviewImage
-        src={row.imageUrl}
-        alt="Final try-on result"
+        src={src}
+        alt={alt}
         width={400}
-        height={300}
+        height={500}
         objectFit="contain"
-        onFailure={onResultMissing}
+        onFailure={onFailure}
       />
     </Box>
+  );
+
+  const content = (
+    <Stack gap="xs">
+      {renderImage(row.imageUrl, 'Final try-on result', onResultMissing)}
+      {row.originalImageUrl ? (
+        <Stack gap={2}>
+          <Text size="xs" c="dimmed">
+            Original image
+          </Text>
+          {renderImage(row.originalImageUrl, 'Original image', onOriginalMissing)}
+        </Stack>
+      ) : null}
+    </Stack>
   );
 
   if (!clickable) return content;
@@ -339,14 +369,20 @@ function PreviewStrip({
 
 function ReviewImagePanel({
   src,
+  secondarySrc,
   alt,
   label,
   onFailure,
+  onSecondaryFailure,
+  showSecondary,
 }: {
   src: string | null | undefined;
+  secondarySrc?: string | null | undefined;
   alt: string;
   label: string;
   onFailure?: () => void;
+  onSecondaryFailure?: () => void;
+  showSecondary?: boolean;
 }) {
   return (
     <Stack gap="xs">
@@ -374,6 +410,33 @@ function ReviewImagePanel({
           onFailure={onFailure}
         />
       </Box>
+      {showSecondary && secondarySrc ? (
+        <Stack gap="xs">
+          <Text size="xs" c="dimmed">
+            Original image
+          </Text>
+          <Box
+            style={{
+              position: 'relative',
+              width: '100%',
+              aspectRatio: '4 / 5',
+              maxHeight: 360,
+              borderRadius: 16,
+              overflow: 'hidden',
+              background: 'var(--mantine-color-gray-0)',
+            }}
+          >
+            <PreviewImage
+              src={secondarySrc}
+              alt="Original source image"
+              width={768}
+              height={960}
+              objectFit="contain"
+              onFailure={onSecondaryFailure}
+            />
+          </Box>
+        </Stack>
+      ) : null}
     </Stack>
   );
 }
@@ -441,12 +504,16 @@ function ModerationActions({
 export default function TryOnResultModerationTable({
   rows,
   setupOptions = [],
+  totalCount = rows.length,
+  listQuery = {},
   autoRefresh = false,
   emptyTitle = 'No try-on results need review',
   emptyDescription = 'Generated try-on results will appear here after the local worker uploads them back to Camera.',
 }: {
   rows: ModerationRow[];
   setupOptions?: TryOnSetup[];
+  totalCount?: number;
+  listQuery?: ModerationListQuery;
   autoRefresh?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -457,6 +524,7 @@ export default function TryOnResultModerationTable({
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [lastRefreshLabel, setLastRefreshLabel] = useState<string | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedSetupByRow, setSelectedSetupByRow] = useState<Record<string, string>>({});
   const [rerunFeedbackByRow, setRerunFeedbackByRow] = useState<Record<string, string>>({});
   const [assetHealth, setAssetHealth] = useState<
@@ -465,10 +533,17 @@ export default function TryOnResultModerationTable({
   const knownRowIdsRef = useRef(new Set(rows.map((row) => row.id)));
   const isPollingRef = useRef(false);
   const preloadedImageUrlsRef = useRef(new Set<string>());
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const LIST_LIMIT = 24;
 
   const activeRow = displayRows.find((row) => row.id === activeRowId) ?? null;
   const setupsById = useMemo(() => makeSetupDisplayMap(setupOptions), [setupOptions]);
   const defaultSetupId = setupOptions[0]?.setupId ?? '';
+  const hasMore = displayRows.length < totalCount;
+  const queryReviewStatus = listQuery.reviewStatus?.trim() || '';
+  const queryArchive = listQuery.archive?.trim() || '';
+  const queryEventId = listQuery.eventId?.trim() || '';
+  const querySearch = listQuery.search?.trim() || '';
 
   useEffect(() => {
     setDisplayRows(rows);
@@ -483,11 +558,66 @@ export default function TryOnResultModerationTable({
     }
   }, [displayRows]);
 
+  const buildResultListParams = useCallback(
+    (offsetValue: number) => {
+      const params = new URLSearchParams();
+      if (queryReviewStatus) params.set('reviewStatus', queryReviewStatus);
+      if (queryArchive) params.set('archive', queryArchive);
+      if (queryEventId) params.set('eventId', queryEventId);
+      if (querySearch) params.set('search', querySearch);
+      params.set('offset', String(offsetValue));
+      params.set('limit', String(LIST_LIMIT));
+      return params;
+    },
+    [queryArchive, queryEventId, queryReviewStatus, querySearch]
+  );
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    try {
+      const params = buildResultListParams(displayRows.length);
+      const response = await fetch(`/api/admin/tryon-results?${params.toString()}`, {
+        cache: 'no-store',
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !Array.isArray(payload.data?.results)) return;
+
+      const nextRows = payload.data.results
+        .map((value: unknown) => toModerationRow(value))
+        .filter((value: ModerationRow | null): value is ModerationRow => Boolean(value));
+
+      setDisplayRows((current) => {
+        const knownIds = new Set(current.map((row) => row.id));
+        return [...current, ...nextRows.filter((row) => !knownIds.has(row.id))];
+      });
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [buildResultListParams, displayRows.length, hasMore, isLoadingMore]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore) return undefined;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        void loadMore();
+      }
+    }, { rootMargin: '600px 0px' });
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore]);
+
   const refreshRows = useCallback(async () => {
     if (!autoRefresh || isPollingRef.current) return;
     isPollingRef.current = true;
     try {
-      const response = await fetch('/api/admin/tryon-results?reviewStatus=pending_review&limit=100', {
+      const params = buildResultListParams(0);
+      params.set('reviewStatus', 'pending_review');
+
+      const response = await fetch(`/api/admin/tryon-results?${params.toString()}`, {
         cache: 'no-store',
       });
       const payload = await response.json().catch(() => ({}));
@@ -512,7 +642,7 @@ export default function TryOnResultModerationTable({
     } finally {
       isPollingRef.current = false;
     }
-  }, [autoRefresh, router, soundEnabled]);
+  }, [autoRefresh, buildResultListParams, router, soundEnabled]);
 
   useEffect(() => {
     if (!autoRefresh) return undefined;
@@ -614,6 +744,14 @@ export default function TryOnResultModerationTable({
           ? `Job resubmitted as ${result.jobId} with ${setupLabel}. The new result will return to pending review before publication.`
           : `Job resubmitted with ${setupLabel}. The new result will return to pending review before publication.`,
       }));
+      setDisplayRows((current) => {
+        const next = current.filter((item) => item.id !== row.id);
+        knownRowIdsRef.current = new Set(next.map((item) => item.id));
+        return next;
+      });
+      if (activeRowId === row.id) {
+        setActiveRowId(null);
+      }
       router.refresh();
     } finally {
       setBusyId(null);
@@ -749,6 +887,7 @@ export default function TryOnResultModerationTable({
                 clickable
                 onOpen={() => setActiveRowId(row.id)}
                 onResultMissing={() => markAssetMissing(row.id, 'resultMissing')}
+                onOriginalMissing={() => markAssetMissing(row.id, 'originalMissing')}
               />
             ),
           },
@@ -833,6 +972,7 @@ export default function TryOnResultModerationTable({
                   clickable
                   onOpen={() => setActiveRowId(row.id)}
                   onResultMissing={() => markAssetMissing(row.id, 'resultMissing')}
+                  onOriginalMissing={() => markAssetMissing(row.id, 'originalMissing')}
                 />
                 <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} onService={handleService} />
               </Stack>
@@ -871,6 +1011,21 @@ export default function TryOnResultModerationTable({
         getRowKey={(row) => row.id}
       />
 
+      {hasMore ? (
+        <div ref={sentinelRef}>
+          <StateBlock
+            variant="loading"
+            title={isLoadingMore ? 'Loading more results...' : 'Scroll to load more results'}
+            description={`${displayRows.length} of ${totalCount} matching results loaded.`}
+          />
+        </div>
+      ) : null}
+      {hasMore ? null : (
+        <Text size="sm" c="dimmed" ta="center">
+          All {totalCount} matching results loaded.
+        </Text>
+      )}
+
       <Modal
         opened={Boolean(activeRow)}
         onClose={() => setActiveRowId(null)}
@@ -885,6 +1040,9 @@ export default function TryOnResultModerationTable({
               alt="Final try-on result"
               label="Final result"
               onFailure={() => markAssetMissing(activeRow.id, 'resultMissing')}
+              secondarySrc={activeRow.originalImageUrl}
+              onSecondaryFailure={() => markAssetMissing(activeRow.id, 'originalMissing')}
+              showSecondary
             />
             <Stack gap={4}>
               <Text fw={700}>{resolveDisplayName(activeRow.userName)}</Text>

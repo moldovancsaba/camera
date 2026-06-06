@@ -69,15 +69,6 @@ function isAdminRerunJob(job: TryOnJob): boolean {
   return Boolean(job.request.rerunOfJobId) || job.requestHash.includes('::rerun:');
 }
 
-function hasHumanApproval(existing: Submission | null): boolean {
-  return (
-    existing?.reviewStatus === 'approved' &&
-    typeof existing.approvedBy === 'string' &&
-    existing.approvedBy.trim().length > 0 &&
-    !existing.approvedBy.startsWith('system')
-  );
-}
-
 export function assertInternalTryOnSecret(request: Request): void {
   const configured = process.env.CAMERA_TRYON_INTERNAL_SECRET?.trim();
   if (!configured) {
@@ -282,14 +273,13 @@ export async function applyTryOnCompletion(
     : null;
   const hasFramedAsset = resolvedAsset.publicResultUrl !== publicResultUrl;
   const resolvedRawResultUrl = hasFramedAsset ? publicResultUrl : existingRawResultUrl ?? null;
-  const sourceReviewState =
-    isRerunJob && !hasHumanApproval(existingDerived)
-      ? publication
-      : {
-          reviewStatus: existingDerived?.reviewStatus ?? publication.reviewStatus,
-          shareVisible: Boolean(existingDerived?.isShareVisible ?? publication.shareVisible),
-          slideshowEligible: Boolean(existingDerived?.isSlideshowEligible ?? publication.slideshowEligible),
-        };
+  const sourceReviewState = existingDerived && !isRerunJob
+    ? {
+        reviewStatus: existingDerived.reviewStatus ?? publication.reviewStatus,
+        shareVisible: Boolean(existingDerived.isShareVisible ?? publication.shareVisible),
+        slideshowEligible: Boolean(existingDerived.isSlideshowEligible ?? publication.slideshowEligible),
+      }
+    : publication;
   const identity = resolveTryOnSubmissionIdentity(existingDerived ?? sourceSubmission, sourceSubmission);
 
   await db.collection(COLLECTIONS.TRYON_JOBS).updateOne(

@@ -594,6 +594,9 @@ export interface TryOnModerationArchiveState {
   bucket?: 'approved' | 'rejected' | 'service' | null;
   archivedAt?: string | null;
   archivedBy?: string | null;
+  reason?: string | null;
+  supersededByJobId?: string | null;
+  supersededAt?: string | null;
 }
 
 /**
@@ -765,6 +768,9 @@ export interface TryOnModerationStateSnapshot {
   slideshowEligible?: boolean | null;
   isGreat?: boolean | null;
   isService?: boolean | null;
+  archiveReason?: string | null;
+  archiveSupersededByJobId?: string | null;
+  archiveSupersededAt?: string | null;
 }
 
 export interface TryOnModerationEvent {

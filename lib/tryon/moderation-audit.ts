@@ -28,6 +28,9 @@ export function snapshotTryOnModerationState(
     slideshowEligible: submission.isSlideshowEligible ?? null,
     isGreat: Boolean(metadata.tryOnGreat),
     isService: Boolean(metadata.tryOnService),
+    archiveReason: submission.tryOnModerationArchive?.reason ?? null,
+    archiveSupersededByJobId: submission.tryOnModerationArchive?.supersededByJobId ?? null,
+    archiveSupersededAt: submission.tryOnModerationArchive?.supersededAt ?? null,
     ...overrides,
   };
 }

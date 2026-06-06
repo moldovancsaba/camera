@@ -95,8 +95,8 @@ export default function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeR
               alignItems: 'end',
               borderBottom: '1px solid var(--mantine-color-gray-3)',
               display: 'flex',
-              gap: 3,
-              minHeight: 280,
+              gap: 2,
+              minHeight: 270,
               overscrollBehaviorX: 'contain',
               overflowX: 'auto',
               padding: '16px 0 8px',
@@ -115,7 +115,7 @@ export default function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeR
                     alignItems: 'center',
                     borderLeft: showDay && index > 0 ? '1px solid var(--mantine-color-gray-3)' : undefined,
                     display: 'flex',
-                    flex: '0 0 24px',
+                    flex: '0 0 16px',
                     flexDirection: 'column',
                     gap: 6,
                     paddingLeft: showDay && index > 0 ? 4 : 0,
@@ -134,7 +134,7 @@ export default function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeR
                       flexDirection: 'column-reverse',
                       height: barHeight(row.visibleTotal, maxTotal),
                       overflow: 'hidden',
-                      width: 20,
+                      width: 12,
                     }}
                   >
                     {OUTCOMES.map((outcome) =>

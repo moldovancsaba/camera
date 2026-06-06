@@ -126,6 +126,7 @@ export const POST = withErrorHandler(async (
   if (priorResult?._id) {
     const rerunArchivedAt = nowIso();
     const rerunReviewNotes = `Superseded by rerun job ${rerunJob.jobId} because result quality was not accepted.`;
+    const rerunArchiveReason = 'quality_rerun_superseded';
     await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
       { _id: priorResult._id },
       {
@@ -142,11 +143,14 @@ export const POST = withErrorHandler(async (
             bucket: 'rejected',
             archivedAt: rerunArchivedAt,
             archivedBy: session.user.email,
+            reason: 'quality_rerun_superseded',
+            supersededByJobId: rerunJob.jobId,
+            supersededAt: rerunArchivedAt,
           },
           'metadata.tryOnSupersededByRerun': true,
           'metadata.tryOnSupersededByJobId': rerunJob.jobId,
           'metadata.tryOnSupersededAt': rerunArchivedAt,
-          'metadata.tryOnSupersededReason': 'quality_rerun',
+          'metadata.tryOnSupersededReason': rerunArchiveReason,
         },
       }
     );
@@ -161,6 +165,9 @@ export const POST = withErrorHandler(async (
         archived: true,
         shareVisible: false,
         slideshowEligible: false,
+        archiveReason: rerunArchiveReason,
+        archiveSupersededByJobId: rerunJob.jobId,
+        archiveSupersededAt: rerunArchivedAt,
       }),
       metadata: {
         rerunJobId: rerunJob.jobId,

@@ -58,8 +58,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const eventId = searchParams.get('eventId')?.trim();
   const partnerId = searchParams.get('partnerId')?.trim();
   const suitId = searchParams.get('suitId')?.trim();
-  const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10) || 1);
-  const limit = Math.max(1, Math.min(100, Number.parseInt(searchParams.get('limit') || '50', 10) || 50));
+  const offset = Math.max(0, Number.parseInt(searchParams.get('offset') || '0', 10) || 0);
+  const limit = Math.max(1, Math.min(100, Number.parseInt(searchParams.get('limit') || '24', 10) || 24));
 
   const query: Record<string, unknown> = {
     submissionKind: 'tryon_result',
@@ -91,14 +91,16 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   }
 
   const db = await connectToDatabase();
-  const total = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments(query);
-  const docs = (await db
-    .collection<Submission>(COLLECTIONS.SUBMISSIONS)
-    .find(query)
-    .sort(archive === 'approved' || archive === 'rejected' || archive === 'service' || archive === 'greatest' ? { createdAt: -1 } : { createdAt: 1 })
-    .skip((page - 1) * limit)
-    .limit(limit)
-    .toArray()) as Array<Submission & { _id: ObjectId }>;
+  const [docs, total] = await Promise.all([
+    (await db
+      .collection<Submission>(COLLECTIONS.SUBMISSIONS)
+      .find(query)
+      .sort(archive === 'approved' || archive === 'rejected' || archive === 'service' || archive === 'greatest' ? { createdAt: -1 } : { createdAt: 1 })
+      .skip(offset)
+      .limit(limit)
+      .toArray()) as Array<Submission & { _id: ObjectId }>,
+    db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments(query),
+  ]);
 
   const sourceIds = docs
     .map((doc) => doc.sourceSubmissionId)
@@ -194,6 +196,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         isShareVisible: Boolean(doc.isShareVisible),
         isSlideshowEligible: Boolean(doc.isSlideshowEligible),
         isGreat: isTryOnGreat(doc.metadata),
+        archiveReason: doc.tryOnModerationArchive?.reason ?? null,
+        archiveSupersededByJobId: doc.tryOnModerationArchive?.supersededByJobId ?? null,
+        archiveSupersededAt: doc.tryOnModerationArchive?.supersededAt ?? null,
         recentAudit: (auditMap.get(doc._id.toString()) ?? []).map((event) => ({
           eventId: event.eventId,
           action: event.action,
@@ -204,10 +209,11 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       };
     }),
     pagination: {
-      page,
+      offset,
       limit,
       total,
-      pages: Math.ceil(total / limit),
+      loaded: Math.min(offset + docs.length, total),
+      hasMore: offset + docs.length < total,
     },
   });
 });

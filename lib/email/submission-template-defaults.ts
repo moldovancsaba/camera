@@ -4,7 +4,7 @@ export const DEFAULT_EVENT_TERMS_URL = 'https://seyuselfies.com/en/policies/';
 
 export const DEFAULT_SUBMISSION_EMAIL_BODY = `Hi {name},
 
-Thank you for joining us at {event}.
+Thank you for enjoying the {event} experience.
 
 Your photo is ready. Don't forget to share it on your social media!
 {link}
@@ -20,7 +20,7 @@ export const DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT = 'Your updated photo from
 
 export const DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY = `Hi {name},
 
-Thank you for joining us at {event}.
+Thank you for enjoying the {event} experience.
 
 Your updated photo is ready. Don't forget to share it on your social media!
 {link}

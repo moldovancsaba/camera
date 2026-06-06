@@ -126,6 +126,7 @@ export default async function AdminTryOnResultsPage({
   const eventId = typeof resolvedSearchParams?.eventId === 'string' ? resolvedSearchParams.eventId.trim() : '';
   const archive = typeof resolvedSearchParams?.archive === 'string' ? resolvedSearchParams.archive.trim() : '';
   const failed = typeof resolvedSearchParams?.failed === 'string' ? resolvedSearchParams.failed.trim() : '';
+  const resultPageLimit = 24;
   const archiveBucket = archive === 'approved' || archive === 'rejected' || archive === 'service' || archive === 'greatest' ? archive : '';
   const failedJobsMode = failed === '1' || failed.toLowerCase() === 'true';
   const pageTitle = failedJobsMode
@@ -148,8 +149,8 @@ export default async function AdminTryOnResultsPage({
       : archiveBucket === 'service'
         ? 'Service'
       : archiveBucket === 'rejected'
-        ? 'Rejected'
-        : 'Active Vetting';
+      ? 'Rejected'
+        : 'Vetting';
 
   let rows: ModerationRow[] = [];
   let dbError = null;
@@ -160,6 +161,7 @@ export default async function AdminTryOnResultsPage({
   let greatestHitsCount = 0;
   let failedJobCount = 0;
   let failedJobRows: QueueRow[] = [];
+  let resultTotalCount = 0;
   let setupOptions: TryOnSetup[] = [];
 
   try {
@@ -216,13 +218,14 @@ export default async function AdminTryOnResultsPage({
       ];
     }
 
-    const [docs, pending, archivedApproved, archivedRejected, archivedService, greatestHits, failedJobs, failedJobsTotal] = await Promise.all([
+    const [docs, resultTotal, pending, archivedApproved, archivedRejected, archivedService, greatestHits, failedJobs, failedJobsTotal] = await Promise.all([
       db
         .collection<Submission>(COLLECTIONS.SUBMISSIONS)
         .find(query)
         .sort(archiveBucket || failedJobsMode ? { createdAt: -1 } : { createdAt: 1 })
-        .limit(100)
+        .limit(resultPageLimit)
         .toArray() as Promise<Array<Submission & { _id: { toString(): string } }>>,
+      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments(query),
       db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
         submissionKind: 'tryon_result',
         reviewStatus: 'pending_review',
@@ -266,6 +269,7 @@ export default async function AdminTryOnResultsPage({
     archivedServiceCount = archivedService;
     greatestHitsCount = greatestHits;
     failedJobCount = failedJobsTotal;
+    resultTotalCount = resultTotal;
     failedJobRows = failedJobs.map(toQueueRow).filter((row): row is QueueRow => Boolean(row));
 
     const sourceObjectIds = docs
@@ -422,7 +426,7 @@ export default async function AdminTryOnResultsPage({
           : search
             ? `/admin/tryon-results?reviewStatus=pending_review&search=${encodeURIComponent(search)}`
             : '/admin/tryon-results?reviewStatus=pending_review',
-        label: archiveBucket || failedJobsMode ? 'Active queue' : 'Pending only',
+        label: archiveBucket || failedJobsMode ? 'Vetting' : 'Pending only',
       }}
       beforeToolbar={
         <>
@@ -502,7 +506,14 @@ export default async function AdminTryOnResultsPage({
       {!failedJobsMode ? (
         <TryOnResultModerationTable
           rows={rows}
+          totalCount={resultTotalCount}
           setupOptions={setupOptions}
+          listQuery={{
+            reviewStatus: reviewStatus || (archiveBucket ? '' : 'pending_review'),
+            archive: archiveBucket,
+            eventId,
+            search,
+          }}
           autoRefresh={!archiveBucket && !failedJobsMode && !search}
           emptyTitle={archiveBucket ? `No ${archiveBucket === 'greatest' ? 'greatest hits' : archiveBucket} try-on results` : undefined}
           emptyDescription={
