@@ -159,6 +159,14 @@ function setupDetailLabel(row: ModerationRow) {
   return details.join(' · ');
 }
 
+function preloadImage(src: string | null | undefined, cache: Set<string>) {
+  if (!src || cache.has(src)) return;
+  cache.add(src);
+  const image = document.createElement('img');
+  image.decoding = 'async';
+  image.src = src;
+}
+
 function playDing() {
   const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextConstructor) return;
@@ -449,6 +457,7 @@ export default function TryOnResultModerationTable({
   >({});
   const knownRowIdsRef = useRef(new Set(rows.map((row) => row.id)));
   const isPollingRef = useRef(false);
+  const preloadedImageUrlsRef = useRef(new Set<string>());
 
   const activeRow = displayRows.find((row) => row.id === activeRowId) ?? null;
   const setupsById = useMemo(() => makeSetupDisplayMap(setupOptions), [setupOptions]);
@@ -458,6 +467,14 @@ export default function TryOnResultModerationTable({
     setDisplayRows(rows);
     knownRowIdsRef.current = new Set(rows.map((row) => row.id));
   }, [rows]);
+
+  useEffect(() => {
+    const cache = preloadedImageUrlsRef.current;
+    for (const row of displayRows) {
+      preloadImage(row.imageUrl, cache);
+      preloadImage(row.originalImageUrl, cache);
+    }
+  }, [displayRows]);
 
   const refreshRows = useCallback(async () => {
     if (!autoRefresh || isPollingRef.current) return;

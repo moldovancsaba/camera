@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Group, Stack, Text } from '@mantine/core';
 import type { ModerationRow } from '@/components/admin/TryOnResultModerationTable';
 
@@ -64,6 +64,13 @@ async function postService(id: string) {
 export default function OldestVettingResultCard({ row }: { row: ModerationRow }) {
   const router = useRouter();
   const [busyAction, setBusyAction] = useState<'approve' | 'great' | 'reject' | 'service' | null>(null);
+
+  useEffect(() => {
+    if (!row.imageUrl) return;
+    const image = document.createElement('img');
+    image.decoding = 'async';
+    image.src = row.imageUrl;
+  }, [row.imageUrl]);
 
   async function handleDecision(action: 'approve' | 'reject') {
     try {
