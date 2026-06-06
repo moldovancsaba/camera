@@ -1,5 +1,5 @@
 /**
- * Public redirect: short slug → Camera event capture URL.
+ * Public redirect: short slug → Camera event capture or Greatest Hits URL.
  * On GO_SHORT_HOSTNAMES, middleware rewrites `/{slug}` here (same deployment).
  */
 
@@ -26,10 +26,16 @@ export const GET = withErrorHandler(async (
 
   const db = await connectToDatabase();
   const event = await db.collection(COLLECTIONS.EVENTS).findOne({ shortUrlSlug: slug });
-  if (!event?._id) {
+  if (event?._id) {
+    const dest = `${defaultCameraOrigin()}/capture/${(event._id as ObjectId).toString()}`;
+    return NextResponse.redirect(dest, 302);
+  }
+
+  const greatestHitsEvent = await db.collection(COLLECTIONS.EVENTS).findOne({ greatestHitsSlug: slug });
+  if (!greatestHitsEvent?._id) {
     throw apiNotFound('Link');
   }
 
-  const dest = `${defaultCameraOrigin()}/capture/${(event._id as ObjectId).toString()}`;
+  const dest = `${defaultCameraOrigin()}/greatest-hits/${slug}`;
   return NextResponse.redirect(dest, 302);
 });
