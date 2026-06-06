@@ -526,6 +526,15 @@ export default function TryOnResultModerationTable({
     }
   }
 
+  function toggleSound() {
+    setSoundEnabled((enabled) => {
+      if (!enabled) {
+        playDing();
+      }
+      return !enabled;
+    });
+  }
+
   function renderPresetControls(row: ModerationRow) {
     const selectedSetupId = selectedSetupIdForRow(row);
     const presetLabel = getSetupLabel(setupsById, row.setup);
@@ -603,12 +612,9 @@ export default function TryOnResultModerationTable({
             <Button
               size="xs"
               variant={soundEnabled ? 'light' : 'outline'}
-              onClick={() => {
-                setSoundEnabled(true);
-                playDing();
-              }}
+              onClick={toggleSound}
             >
-              {soundEnabled ? 'Sound enabled' : 'Enable ding'}
+              {soundEnabled ? 'Disable sound' : 'Enable sound'}
             </Button>
           </Group>
         ) : null}
@@ -632,12 +638,9 @@ export default function TryOnResultModerationTable({
           <Button
             size="xs"
             variant={soundEnabled ? 'light' : 'outline'}
-            onClick={() => {
-              setSoundEnabled(true);
-              playDing();
-            }}
+            onClick={toggleSound}
           >
-            {soundEnabled ? 'Sound enabled' : 'Enable ding'}
+            {soundEnabled ? 'Disable sound' : 'Enable sound'}
           </Button>
         </Group>
       ) : null}
