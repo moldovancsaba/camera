@@ -82,9 +82,9 @@ export default async function AdminTryOnAppPage() {
                 Use the queue view to see queued, claimed, retrying, failed, and completed jobs directly from Atlas instead of relying on local shell output.
               </Text>
             </AccentPanel>
-            <AccentPanel tone={cameraInfoToneMap.green} variant="subtle" title="Leather jerseys are catalog entries">
+            <AccentPanel tone={cameraInfoToneMap.green} variant="subtle" title="Garments are catalog entries">
               <Text size="sm" c="dimmed">
-                Manage the user-selectable catalog here as Camera-hosted uploaded assets. The local try-on machine now downloads the suit image directly from Camera-managed storage.
+                Manage the user-selectable catalog here as Camera-hosted uploaded assets. The local try-on machine now downloads the garment image directly from Camera-managed storage.
               </Text>
             </AccentPanel>
             <AccentPanel tone={cameraInfoToneMap.yellow} variant="subtle" title="Vetting controls publication">
@@ -105,7 +105,7 @@ export default async function AdminTryOnAppPage() {
               {
                 href: '/admin/tryon/suits',
                 title: `Garments (${activeSuitCount}/${totalSuitCount})`,
-                description: `Active ${activeSuitCount} · Total ${totalSuitCount}. Manage the selectable leather suit catalog for events and user capture flows.`,
+                description: `Active ${activeSuitCount} · Total ${totalSuitCount}. Manage the selectable garment catalog for events and user capture flows.`,
                 iconKey: 'photo' as AdminIconKey,
               },
               {
