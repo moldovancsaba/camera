@@ -71,6 +71,10 @@ Every try-on moderation decision appends an immutable record to `tryon_moderatio
 
 Each audit event stores the result id, source submission id, source job id, actor email, timestamp, previous publication state, next publication state, optional reason, and action metadata. The admin endpoint `GET /api/admin/tryon-results/{submissionId}/audit` returns recent events for a result.
 
+## Recovery runbook
+
+Use `docs/TRYON_RECOVERY_RUNBOOK.md` for live-event recovery decisions covering worker health, failed jobs, retry waits, reruns, completed-result reapply, and human-in-the-loop publication repair.
+
 ## Analytics buckets
 
 Try-on analytics are based on archived moderation decisions:

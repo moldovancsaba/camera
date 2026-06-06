@@ -177,7 +177,10 @@ export const POST = withErrorHandler(async (
     rerunOfJobId: sourceJob.jobId,
     status: 'queued',
     stage: 'queued',
+    recoveryAction: 'rerun',
+    recoveryOutcome: 'new_job_queued',
     createdAt: rerunJob.createdAt,
     rerunRequestedBy: session.user.email,
+    message: 'A new job was queued with the selected settings. The result will require human approval before publication.',
   });
 });

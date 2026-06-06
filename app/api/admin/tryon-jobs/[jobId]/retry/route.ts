@@ -28,6 +28,22 @@ export const POST = withErrorHandler(async (
     throw apiNotFound('Try-on job');
   }
 
+  if (job.status === 'queued' && job.stage === 'queued') {
+    console.info('[tryon:recovery] retry already queued', {
+      jobId: normalizedJobId,
+      actorEmail: session.user.email,
+    });
+    return apiSuccess({
+      jobId: normalizedJobId,
+      status: 'queued',
+      stage: 'queued',
+      recoveryAction: 'retry',
+      recoveryOutcome: 'already_queued',
+      retryRequestedBy: session.user.email,
+      message: 'Job is already queued for worker pickup.',
+    });
+  }
+
   if (!['failed', 'retry_wait'].includes(job.status)) {
     throw apiBadRequest(`Only failed or retry-wait jobs can be retried. Current status: ${job.status}`);
   }
@@ -86,10 +102,19 @@ export const POST = withErrorHandler(async (
     );
   }
 
+  console.info('[tryon:recovery] retry queued', {
+    jobId: normalizedJobId,
+    previousStatus: job.status,
+    actorEmail: session.user.email,
+  });
+
   return apiSuccess({
     jobId: normalizedJobId,
     status: 'queued',
     stage: 'queued',
+    recoveryAction: 'retry',
+    recoveryOutcome: 'queued',
     retryRequestedBy: session.user.email,
+    message: 'Job has been reset to queued and is waiting for the worker.',
   });
 });

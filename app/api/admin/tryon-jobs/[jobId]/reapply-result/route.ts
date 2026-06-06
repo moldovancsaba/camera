@@ -35,13 +35,26 @@ export const POST = withErrorHandler(async (
   }
 
   const outcome = await applyCompletionFromJobResult(db, job);
+  console.info('[tryon:recovery] reapplied done result', {
+    jobId: normalizedJobId,
+    resultSubmissionId: outcome.resultSubmissionId,
+    publicationStatus: outcome.publicationStatus,
+    publicationVisible: outcome.publicationVisible,
+    actorEmail: session.user.email,
+  });
   return apiSuccess({
     jobId: normalizedJobId,
     sourceSubmissionId: outcome.sourceSubmissionId,
     resultSubmissionId: outcome.resultSubmissionId,
     publicationStatus: outcome.publicationStatus,
     publicationVisible: outcome.publicationVisible,
+    recoveryAction: 'reapply_result',
+    recoveryOutcome: outcome.action,
     action: outcome.action,
     resentBy: session.user.email,
+    message:
+      outcome.publicationStatus === 'pending_review'
+        ? 'Result was reapplied and remains pending human approval.'
+        : 'Result publication links were reapplied from the completed job result.',
   });
 });

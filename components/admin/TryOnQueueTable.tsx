@@ -80,6 +80,7 @@ async function retryJob(jobId: string) {
   if (!response.ok) {
     throw new Error(payload.error || 'Failed to retry try-on job');
   }
+  return payload.data?.message || payload.message || 'Job queued for retry.';
 }
 
 async function rerunJob(jobId: string, setupId?: string) {
@@ -93,6 +94,7 @@ async function rerunJob(jobId: string, setupId?: string) {
   if (!response.ok) {
     throw new Error(responsePayload.error || 'Failed to rerun try-on job');
   }
+  return responsePayload.data?.message || responsePayload.message || 'New rerun job queued.';
 }
 
 async function reapplyResult(jobId: string) {
@@ -105,6 +107,20 @@ async function reapplyResult(jobId: string) {
   if (!response.ok) {
     throw new Error(payload.error || 'Failed to resend try-on result');
   }
+  return payload.data?.message || payload.message || 'Result reapplied.';
+}
+
+function recoveryHint(row: QueueRow): string {
+  if (row.status === 'failed') {
+    return 'Retry keeps the same job/settings. Rerun creates a new job when quality or settings need to change.';
+  }
+  if (row.status === 'retry_wait') {
+    return 'Retry now bypasses the wait timer and returns the job to queued.';
+  }
+  if (row.status === 'done' && row.result.publicResultUrl) {
+    return 'Reapply repairs result/publication links from the completed output. It does not bypass human approval.';
+  }
+  return 'No recovery action is available for this state.';
 }
 
 function makeSetupDisplayMap(setups: TryOnSetup[]) {
@@ -175,6 +191,7 @@ export default function TryOnQueueTable({
   const [displayRows, setDisplayRows] = useState(rows);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [busyJobId, setBusyJobId] = useState<string | null>(null);
+  const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
   const [selectedSetupByJob, setSelectedSetupByJob] = useState<Record<string, string>>({});
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const setupsById = useMemo(() => makeSetupDisplayMap(setupOptions), [setupOptions]);
@@ -230,7 +247,7 @@ export default function TryOnQueueTable({
   async function handleRetry(jobId: string) {
     try {
       setBusyJobId(jobId);
-      await retryJob(jobId);
+      setRecoveryMessage(await retryJob(jobId));
       router.refresh();
     } finally {
       setBusyJobId(null);
@@ -238,9 +255,12 @@ export default function TryOnQueueTable({
   }
 
   async function handleRerun(jobId: string, setupId?: string) {
+    if (!window.confirm('Rerun creates a new queued job with the selected preset. The new result will require human approval before it can be sent to the user. Continue?')) {
+      return;
+    }
     try {
       setBusyJobId(jobId);
-      await rerunJob(jobId, setupId);
+      setRecoveryMessage(await rerunJob(jobId, setupId));
       router.refresh();
     } finally {
       setBusyJobId(null);
@@ -248,9 +268,12 @@ export default function TryOnQueueTable({
   }
 
   async function handleReapplyResult(jobId: string) {
+    if (!window.confirm('Reapply repairs publication links from the completed result. It does not auto-approve pending results. Continue?')) {
+      return;
+    }
     try {
       setBusyJobId(jobId);
-      await reapplyResult(jobId);
+      setRecoveryMessage(await reapplyResult(jobId));
       router.refresh();
     } finally {
       setBusyJobId(null);
@@ -269,6 +292,11 @@ export default function TryOnQueueTable({
 
   return (
     <Stack gap="md">
+      {recoveryMessage ? (
+        <Text role="status" size="sm" fw={700}>
+          {recoveryMessage}
+        </Text>
+      ) : null}
       <DataTable
       data={displayRows}
       columns={[
@@ -371,6 +399,9 @@ export default function TryOnQueueTable({
           label: 'Result',
           render: (row: QueueRow) => (
             <Stack gap="xs" align="flex-start">
+              <Text size="xs" c="dimmed">
+                {recoveryHint(row)}
+              </Text>
               {row.result.publicResultUrl ? (
                 <Text component="a" href={row.result.publicResultUrl} target="_blank" size="sm">
                   Open result
