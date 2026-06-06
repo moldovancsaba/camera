@@ -362,16 +362,19 @@ function ModerationActions({
   onDecision: (rowId: string, action: 'approve' | 'reject') => Promise<void>;
   onGreat: (row: ModerationRow) => Promise<void>;
 }) {
+  const isApproved = row.reviewStatus === 'approved';
+  const isRejected = row.reviewStatus === 'rejected';
+
   return (
     <Group justify="stretch" gap="xs" wrap="wrap" style={{ width: '100%' }}>
       <Button
         variant="light"
         loading={busyId === `${row.id}:approve`}
-        aria-label="Approve try-on result"
+        aria-label={isApproved ? 'Try-on result approved' : 'Approve try-on result'}
         onClick={() => void onDecision(row.id, 'approve')}
         style={{ flex: 1 }}
       >
-        Approve
+        {isApproved ? 'Approved' : 'Approve'}
       </Button>
       <Button
         variant={row.isGreat ? 'default' : 'outline'}
@@ -385,11 +388,11 @@ function ModerationActions({
       <Button
         variant="light"
         loading={busyId === `${row.id}:reject`}
-        aria-label="Reject try-on result"
+        aria-label={isRejected ? 'Try-on result rejected' : 'Reject try-on result'}
         onClick={() => void onDecision(row.id, 'reject')}
         style={{ flex: 1 }}
       >
-        Reject
+        {isRejected ? 'Rejected' : 'Reject'}
       </Button>
     </Group>
   );
