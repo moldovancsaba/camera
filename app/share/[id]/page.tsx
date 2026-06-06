@@ -568,10 +568,6 @@ export default async function SharePage({ params }: Props) {
           <Title order={1}>
             {headline}
           </Title>
-          <Text c="dimmed">
-            Photo of{' '}
-            <span className="font-semibold">{displayName}</span>
-          </Text>
         </Stack>
 
         <div>
