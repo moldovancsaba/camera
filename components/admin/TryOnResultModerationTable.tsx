@@ -370,6 +370,7 @@ function ModerationActions({
       <Button
         variant="light"
         loading={busyId === `${row.id}:approve`}
+        disabled={isApproved}
         aria-label={isApproved ? 'Try-on result approved' : 'Approve try-on result'}
         onClick={() => void onDecision(row.id, 'approve')}
         style={{ flex: 1 }}
@@ -388,6 +389,7 @@ function ModerationActions({
       <Button
         variant="light"
         loading={busyId === `${row.id}:reject`}
+        disabled={isRejected}
         aria-label={isRejected ? 'Try-on result rejected' : 'Reject try-on result'}
         onClick={() => void onDecision(row.id, 'reject')}
         style={{ flex: 1 }}
