@@ -13,6 +13,14 @@ function normalizeDisplayName(value?: string | null): string {
   return 'Guest';
 }
 
+function isTryOnGreat(metadata: Submission['metadata']): boolean {
+  return Boolean(
+    metadata &&
+      typeof metadata === 'object' &&
+      (metadata as Record<string, unknown>).tryOnGreat
+  );
+}
+
 function toSetupPayload(job: TryOnJob | null | undefined) {
   if (typeof job?.processing?.resolvedSetup?.setupId === 'string' && job.processing.resolvedSetup.setupId.trim()) {
     return {
@@ -63,7 +71,11 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     submissionKind: 'tryon_result',
   };
 
-  if (archive === 'approved' || archive === 'rejected') {
+  if (archive === 'greatest') {
+    query['tryOnModerationArchive.archived'] = true;
+    query['tryOnModerationArchive.bucket'] = 'approved';
+    query['metadata.tryOnGreat'] = true;
+  } else if (archive === 'approved' || archive === 'rejected') {
     query['tryOnModerationArchive.archived'] = true;
     query['tryOnModerationArchive.bucket'] = archive;
   } else {
@@ -71,7 +83,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     query.reviewStatus = reviewStatus || 'pending_review';
   }
 
-  if ((archive === 'approved' || archive === 'rejected') && reviewStatus) {
+  if ((archive === 'approved' || archive === 'rejected' || archive === 'greatest') && reviewStatus) {
     query.reviewStatus = reviewStatus;
   }
   if (eventId) {

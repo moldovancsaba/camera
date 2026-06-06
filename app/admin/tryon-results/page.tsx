@@ -79,6 +79,14 @@ function normalizeDisplayName(value: string | null | undefined): string {
   return 'Guest';
 }
 
+function isTryOnGreat(metadata: Submission['metadata']): boolean {
+  return Boolean(
+    metadata &&
+      typeof metadata === 'object' &&
+      (metadata as Record<string, unknown>).tryOnGreat
+  );
+}
+
 function toModerationSetup(job: TryOnJob | null | undefined): ModerationRow['setup'] {
   if (typeof job?.processing?.resolvedSetup?.setupId === 'string' && job.processing.resolvedSetup.setupId.trim()) {
     return {
