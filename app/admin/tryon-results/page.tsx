@@ -286,16 +286,6 @@ export default async function AdminTryOnResultsPage({
           : 'Review generated leather results before they become share-visible or slideshow-eligible.'
       }
       primaryAction={{ href: '/admin/tryon', label: 'Open Try-On App' }}
-      stats={
-        !dbError
-          ? [
-              { label: 'Pending Review', value: pendingCount, iconKey: 'photoScan' },
-              { label: 'Failed Jobs', value: failedJobCount, iconKey: 'photo' },
-              { label: 'Archived Approved', value: archivedApprovedCount, iconKey: 'world' },
-              { label: 'Archived Rejected', value: archivedRejectedCount, iconKey: 'photo' },
-            ]
-          : undefined
-      }
       search={{
         defaultValue: search,
         label: 'Search queue',
