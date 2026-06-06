@@ -48,6 +48,17 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
+function closeMobileNavigation() {
+  if (typeof window === 'undefined' || window.matchMedia('(min-width: 48em)').matches) {
+    return;
+  }
+
+  window.setTimeout(() => {
+    const toggle = document.querySelector<HTMLButtonElement>('button[aria-label="Toggle navigation"]');
+    toggle?.click();
+  }, 0);
+}
+
 export default function AdminChrome({
   session,
   navigationAccess,
@@ -105,10 +116,10 @@ export default function AdminChrome({
 
   const primaryNavigation = (
     <Stack gap="xl">
-      <NavSection title="Apps" items={appItems} pathname={pathname} />
-      <NavSection title="Core" items={coreItems} pathname={pathname} />
+      <NavSection title="Apps" items={appItems} pathname={pathname} onNavigate={closeMobileNavigation} />
+      <NavSection title="Core" items={coreItems} pathname={pathname} onNavigate={closeMobileNavigation} />
       {resourceItems.length > 0 ? (
-        <NavSection title="Resource Inventory" items={resourceItems} pathname={pathname} />
+        <NavSection title="Resource Inventory" items={resourceItems} pathname={pathname} onNavigate={closeMobileNavigation} />
       ) : null}
     </Stack>
   );
@@ -183,10 +194,12 @@ function NavSection({
   title,
   items,
   pathname,
+  onNavigate,
 }: {
   title: string;
   items: NavItem[];
   pathname: string;
+  onNavigate: () => void;
 }) {
   if (items.length === 0) return null;
 
@@ -205,6 +218,7 @@ function NavSection({
               active={active}
               label={item.label}
               icon={item.icon}
+              onNavigate={onNavigate}
             />
           );
         })}
