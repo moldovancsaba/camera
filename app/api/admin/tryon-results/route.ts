@@ -152,7 +152,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         approvedAt: doc.approvedAt ?? null,
         isShareVisible: Boolean(doc.isShareVisible),
         isSlideshowEligible: Boolean(doc.isSlideshowEligible),
-        isGreat: Boolean(doc.metadata?.tryOnGreat),
+        isGreat: isTryOnGreat(doc.metadata),
       };
     }),
     pagination: {

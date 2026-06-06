@@ -296,7 +296,7 @@ export default async function AdminTryOnResultsPage({
         approvedAt: doc.approvedAt ?? null,
         isShareVisible: Boolean(doc.isShareVisible),
         isSlideshowEligible: Boolean(doc.isSlideshowEligible),
-        isGreat: Boolean(doc.metadata?.tryOnGreat),
+        isGreat: isTryOnGreat(doc.metadata),
         setup: toModerationSetup(sourceJob),
       };
     });
