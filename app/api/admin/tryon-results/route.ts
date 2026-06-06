@@ -101,7 +101,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const docs = (await db
     .collection<Submission>(COLLECTIONS.SUBMISSIONS)
     .find(query)
-    .sort({ createdAt: -1 })
+    .sort(archive === 'approved' || archive === 'rejected' || archive === 'greatest' ? { createdAt: -1 } : { createdAt: 1 })
     .skip((page - 1) * limit)
     .limit(limit)
     .toArray()) as Array<Submission & { _id: ObjectId }>;
