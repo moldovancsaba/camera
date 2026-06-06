@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb';
 import { redirect } from 'next/navigation';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
-import { COLLECTIONS, type Submission, type TryOnJob } from '@/lib/db/schemas';
+import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import TryOnResultModerationTable, { type ModerationRow } from '@/components/admin/TryOnResultModerationTable';
@@ -77,6 +77,31 @@ function normalizeDisplayName(value: string | null | undefined): string {
     }
   }
   return 'Guest';
+}
+
+function isPlaceholderEmail(value: string | null | undefined): boolean {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return !normalized || normalized === 'anonymous@event' || normalized === 'anonymous@event.com';
+}
+
+function resolvePersonName(doc: Submission, source?: Submission | null): string {
+  return normalizeDisplayName(
+    source?.userInfo?.name ??
+      source?.userName ??
+      doc.userInfo?.name ??
+      doc.userName
+  );
+}
+
+function resolvePersonEmail(doc: Submission, source?: Submission | null): string {
+  const candidates = [
+    source?.userInfo?.email,
+    source?.userEmail,
+    doc.userInfo?.email,
+    doc.userEmail,
+  ];
+
+  return candidates.find((value) => !isPlaceholderEmail(value))?.trim() ?? '';
 }
 
 function isTryOnGreat(metadata: Submission['metadata']): boolean {
@@ -264,6 +289,11 @@ export default async function AdminTryOnResultsPage({
         .map((doc) => doc.sourceJobId)
         .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
     ));
+    const leatherSuitIds = Array.from(new Set(
+      docs
+        .map((doc) => doc.tryOnLeatherSuitId)
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    ));
 
     const sourceDocs = sourceObjectIds.length
       ? ((await db
@@ -279,6 +309,13 @@ export default async function AdminTryOnResultsPage({
           .toArray()
       : [];
     const sourceJobMap = new Map(sourceJobs.map((job) => [job.jobId, job]));
+    const leatherSuits = leatherSuitIds.length
+      ? await db
+          .collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS)
+          .find({ leatherSuitId: { $in: leatherSuitIds } })
+          .toArray()
+      : [];
+    const leatherSuitNameMap = new Map(leatherSuits.map((suit) => [suit.leatherSuitId, suit.name]));
 
     rows = docs.map((doc) => {
       const source = doc.sourceSubmissionId ? sourceMap.get(doc.sourceSubmissionId) : undefined;
@@ -294,11 +331,12 @@ export default async function AdminTryOnResultsPage({
           normalizeImgbbDirectUrl(source?.imageUrl ?? null) ??
           normalizeImgbbDirectUrl(source?.finalImageUrl ?? null) ??
           null,
-        userName: normalizeDisplayName(doc.userName),
-        userEmail: doc.userEmail ?? '',
+        userName: resolvePersonName(doc, source),
+        userEmail: resolvePersonEmail(doc, source),
         eventName: doc.eventName ?? null,
         partnerName: doc.partnerName ?? null,
         tryOnLeatherSuitId: doc.tryOnLeatherSuitId ?? null,
+        tryOnLeatherSuitName: doc.tryOnLeatherSuitId ? leatherSuitNameMap.get(doc.tryOnLeatherSuitId) ?? null : null,
         reviewStatus: doc.reviewStatus ?? 'pending_review',
         createdAt: doc.createdAt,
         approvedAt: doc.approvedAt ?? null,

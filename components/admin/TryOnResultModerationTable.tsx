@@ -36,6 +36,7 @@ export interface ModerationRow {
   eventName: string | null;
   partnerName: string | null;
   tryOnLeatherSuitId: string | null;
+  tryOnLeatherSuitName: string | null;
   reviewStatus: 'pending_review' | 'approved' | 'rejected';
   createdAt: string;
   approvedAt: string | null;
@@ -109,6 +110,15 @@ function visibilityLabel(row: ModerationRow) {
   return `Share: ${row.isShareVisible ? 'Visible' : 'Hidden'} · Slideshow: ${row.isSlideshowEligible ? 'Eligible' : 'Hidden'}`;
 }
 
+function shouldShowEmail(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  return Boolean(normalized) && normalized !== 'anonymous@event' && normalized !== 'anonymous@event.com';
+}
+
+function garmentLabel(row: ModerationRow) {
+  return row.tryOnLeatherSuitName || row.tryOnLeatherSuitId || 'Unknown garment';
+}
+
 function makeSetupDisplayMap(setups: TryOnSetup[]) {
   return new Map(setups.map((setup) => [setup.setupId, setup.name]));
 }
@@ -174,6 +184,7 @@ function toModerationRow(value: unknown): ModerationRow | null {
     eventName: typeof row.eventName === 'string' ? row.eventName : null,
     partnerName: typeof row.partnerName === 'string' ? row.partnerName : null,
     tryOnLeatherSuitId: typeof row.tryOnLeatherSuitId === 'string' ? row.tryOnLeatherSuitId : null,
+    tryOnLeatherSuitName: typeof row.tryOnLeatherSuitName === 'string' ? row.tryOnLeatherSuitName : null,
     reviewStatus:
       row.reviewStatus === 'approved' || row.reviewStatus === 'rejected'
         ? row.reviewStatus
@@ -690,9 +701,11 @@ export default function TryOnResultModerationTable({
             render: (row) => (
               <Stack gap={2}>
                 <Text fw={700}>{resolveDisplayName(row.userName)}</Text>
-                <Text size="sm" c="dimmed">
-                  {row.userEmail}
-                </Text>
+                {shouldShowEmail(row.userEmail) ? (
+                  <Text size="sm" c="dimmed">
+                    {row.userEmail}
+                  </Text>
+                ) : null}
                 <Text size="xs" c="dimmed">
                   {new Date(row.createdAt).toLocaleString()}
                 </Text>
@@ -713,8 +726,8 @@ export default function TryOnResultModerationTable({
           },
           {
             key: 'suit',
-            label: 'Leather Suit',
-            render: (row) => <Text size="sm">{row.tryOnLeatherSuitId || 'Unknown suit'}</Text>,
+            label: 'Garment',
+            render: (row) => <Text size="sm">{garmentLabel(row)}</Text>,
           },
           {
             key: 'preset',
@@ -761,14 +774,16 @@ export default function TryOnResultModerationTable({
               </Stack>
               <Stack gap={2}>
                 <Text fw={700}>{resolveDisplayName(row.userName)}</Text>
-                <Text size="sm" c="dimmed">
-                  {row.userEmail}
-                </Text>
+                {shouldShowEmail(row.userEmail) ? (
+                  <Text size="sm" c="dimmed">
+                    {row.userEmail}
+                  </Text>
+                ) : null}
                 <Text size="xs" c="dimmed">
                   {scopeLabel(row)} · {row.partnerName || 'No partner'}
                 </Text>
                 <Text size="xs" c="dimmed">
-                  {row.tryOnLeatherSuitId || 'Unknown suit'}
+                  {garmentLabel(row)}
                 </Text>
               </Stack>
               {renderPresetControls(row)}
@@ -809,14 +824,16 @@ export default function TryOnResultModerationTable({
             />
             <Stack gap={4}>
               <Text fw={700}>{resolveDisplayName(activeRow.userName)}</Text>
-              <Text size="sm" c="dimmed">
-                {activeRow.userEmail}
-              </Text>
+              {shouldShowEmail(activeRow.userEmail) ? (
+                <Text size="sm" c="dimmed">
+                  {activeRow.userEmail}
+                </Text>
+              ) : null}
               <Text size="sm">
                 {scopeLabel(activeRow)} · {activeRow.partnerName || 'No partner'}
               </Text>
               <Text size="sm" c="dimmed">
-                {activeRow.tryOnLeatherSuitId || 'Unknown suit'}
+                {garmentLabel(activeRow)}
               </Text>
             </Stack>
             {renderPresetControls(activeRow)}

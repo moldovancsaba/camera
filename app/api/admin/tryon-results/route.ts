@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { requireAuth, apiForbidden, apiSuccess, withErrorHandler } from '@/lib/api';
-import { COLLECTIONS, type Submission, type TryOnJob } from '@/lib/db/schemas';
+import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
 
@@ -11,6 +11,31 @@ function normalizeDisplayName(value?: string | null): string {
     return value.trim();
   }
   return 'Guest';
+}
+
+function isPlaceholderEmail(value: string | null | undefined): boolean {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return !normalized || normalized === 'anonymous@event' || normalized === 'anonymous@event.com';
+}
+
+function resolvePersonName(doc: Submission, source?: Submission | null): string {
+  return normalizeDisplayName(
+    source?.userInfo?.name ??
+      source?.userName ??
+      doc.userInfo?.name ??
+      doc.userName
+  );
+}
+
+function resolvePersonEmail(doc: Submission, source?: Submission | null): string {
+  const candidates = [
+    source?.userInfo?.email,
+    source?.userEmail,
+    doc.userInfo?.email,
+    doc.userEmail,
+  ];
+
+  return candidates.find((value) => !isPlaceholderEmail(value))?.trim() ?? '';
 }
 
 function isTryOnGreat(metadata: Submission['metadata']): boolean {
@@ -138,6 +163,22 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     }
   }
 
+  const leatherSuitIds = Array.from(new Set(
+    docs
+      .map((doc) => doc.tryOnLeatherSuitId)
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+  ));
+  const leatherSuitNameMap = new Map<string, string>();
+  if (leatherSuitIds.length > 0) {
+    const leatherSuits = await db
+      .collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS)
+      .find({ leatherSuitId: { $in: leatherSuitIds } })
+      .toArray();
+    for (const suit of leatherSuits) {
+      leatherSuitNameMap.set(suit.leatherSuitId, suit.name);
+    }
+  }
+
   return apiSuccess({
     results: docs.map((doc) => {
       const source = doc.sourceSubmissionId ? sourceMap.get(doc.sourceSubmissionId) : null;
@@ -155,11 +196,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         originalImageUrl:
           normalizeImgbbDirectUrl(source?.imageUrl ?? null) ??
           normalizeImgbbDirectUrl(source?.finalImageUrl ?? null),
-        userName: normalizeDisplayName(doc.userName),
-        userEmail: doc.userEmail ?? '',
+        userName: resolvePersonName(doc, source),
+        userEmail: resolvePersonEmail(doc, source),
         eventName: doc.eventName ?? null,
         partnerName: doc.partnerName ?? null,
         tryOnLeatherSuitId: doc.tryOnLeatherSuitId ?? null,
+        tryOnLeatherSuitName: doc.tryOnLeatherSuitId ? leatherSuitNameMap.get(doc.tryOnLeatherSuitId) ?? null : null,
         createdAt: doc.createdAt,
         approvedAt: doc.approvedAt ?? null,
         isShareVisible: Boolean(doc.isShareVisible),
