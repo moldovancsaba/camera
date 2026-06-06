@@ -5,6 +5,7 @@ import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
+import OldestVettingResultCard from '@/components/admin/OldestVettingResultCard';
 import TryOnResultModerationTable, { type ModerationRow } from '@/components/admin/TryOnResultModerationTable';
 import TryOnQueueTable, { type QueueRow } from '@/components/admin/TryOnQueueTable';
 import { listActiveTryOnSetups, type TryOnSetup } from '@/lib/tryon/setup-resolution';
@@ -412,51 +413,7 @@ export default async function AdminTryOnResultsPage({
       beforeToolbar={
         <>
           {oldestWaitingRow ? (
-            <a
-              href={`#${oldestWaitingRow.id}`}
-              aria-label="Jump to oldest waiting try-on result"
-              style={{
-                background:
-                  'linear-gradient(135deg, var(--mantine-color-violet-2), var(--mantine-color-cyan-1))',
-                borderRadius: 24,
-                boxShadow: '0 18px 42px rgba(109, 40, 217, 0.18), 0 0 0 1px rgba(109, 40, 217, 0.18)',
-                color: 'inherit',
-                display: 'block',
-                marginBottom: 'var(--mantine-spacing-xl)',
-                padding: 3,
-                textDecoration: 'none',
-              }}
-            >
-              <div
-                style={{
-                  background: 'var(--mantine-color-body)',
-                  borderRadius: 21,
-                  overflow: 'hidden',
-                }}
-              >
-                <img
-                  src={oldestWaitingRow.imageUrl}
-                  alt="Oldest waiting try-on result"
-                  style={{
-                    aspectRatio: '4 / 5',
-                    display: 'block',
-                    objectFit: 'cover',
-                    width: '100%',
-                  }}
-                />
-                <div style={{ padding: 'var(--mantine-spacing-md)' }}>
-                  <div style={{ fontSize: 'var(--mantine-font-size-xs)', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                    Oldest waiting
-                  </div>
-                  <div style={{ fontSize: 'var(--mantine-font-size-lg)', fontWeight: 800 }}>
-                    {normalizeDisplayName(oldestWaitingRow.userName)}
-                  </div>
-                  <div style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-sm)' }}>
-                    Created {new Date(oldestWaitingRow.createdAt).toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            </a>
+            <OldestVettingResultCard row={oldestWaitingRow} />
           ) : null}
 
           <ConsumerDashboardGrid columns={3}>
