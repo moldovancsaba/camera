@@ -22,6 +22,12 @@ const scopedGdsConfig = createGdsConfig({ allowedImports: gdsAllowedImports }).m
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    rules: {
+      "react-hooks/preserve-manual-memoization": "warn",
+      "react-hooks/set-state-in-effect": "warn",
+    },
+  },
   ...scopedGdsConfig,
   // Override default ignores of eslint-config-next.
   globalIgnores([

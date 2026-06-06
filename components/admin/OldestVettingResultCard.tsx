@@ -107,7 +107,8 @@ export default function OldestVettingResultCard({ row }: { row: ModerationRow })
       style={{
         background: 'linear-gradient(135deg, var(--mantine-color-violet-2), var(--mantine-color-cyan-1))',
         borderRadius: 24,
-        boxShadow: '0 18px 42px rgba(109, 40, 217, 0.18), 0 0 0 1px rgba(109, 40, 217, 0.18)',
+        boxShadow:
+          '0 18px 42px color-mix(in srgb, var(--mantine-color-violet-7) 18%, transparent), 0 0 0 1px color-mix(in srgb, var(--mantine-color-violet-7) 18%, transparent)',
         color: 'inherit',
         marginBottom: 'var(--mantine-spacing-xl)',
         padding: 3,

@@ -1,167 +1,128 @@
 # Try-On Architecture
 
 **Version**: 2.10.0  
-**Last Updated**: 2026-05-26
+**Last Updated**: 2026-06-06
 
 ## Purpose
 
-Camera remains the intake system. The try-on pipeline is asynchronous and uses a dedicated queue collection instead of overloading the main `submissions` flow.
+Camera uses a strict separation between queue execution and published artifacts for try-on. `tryon_jobs` drives async processing state while `submissions` stores derived output records that are subject to moderation.
 
-## Runtime flow
+## 1. Runtime topology
 
-1. Camera capture saves the normal composed submission through `POST /api/submissions`.
-2. If a garment was selected, Camera uploads the original unframed capture as a second image source.
-3. Camera creates or reuses a `tryon_jobs` document linked to the saved submission.
-4. The local worker in the try-on worker repository polls Atlas, claims a job with a lease, downloads the source image, downloads the selected Camera-hosted garment asset, and runs the processor.
-5. The worker uploads the final result to imgbb and calls `POST /api/internal/tryon/complete`.
-6. Camera materializes a derived `submissionKind=tryon_result` record in `pending_review`.
-7. Admins operate Try-On from `/admin/tryon`, monitor live queue state in `/admin/tryon/queue`, manage selectable garments in `/admin/tryon/suits`, and review generated outputs in `/admin/tryon/vetting`.
-8. Approval or rejection archives the result out of the live moderation queue into an archive bucket while preserving its publication state.
-9. Only approved generated results become share-visible and slideshow-eligible.
+- Intake creates a source submission and optional try-on request.
+- Worker executes queue jobs and returns completed image URLs via signed callback.
+- Administration uses `/admin/tryon-results` for moderation and `/admin/tryon` for queue/catalog operations.
+- Analytics consumes only archived moderation outcomes for deterministic reporting.
 
-## Why this shape
+## 2. Data flow
 
-- `submissions` stays authoritative for Camera galleries, sharing, and slideshows.
-- `tryon_jobs` carries queue state, retries, leases, and worker metadata.
-- generated try-on outputs become derived `submissions`, not queue-only artifacts
-- The worker consumes a clean contract instead of scraping Camera UI or polling random URLs.
+1. User or partner capture flow posts to `POST /api/submissions`.
+2. When try-on is requested, Camera:
+   - uploads the source image / asset reference
+   - creates or updates a `tryon_jobs` document.
+3. A local worker claims the job and executes the configured setup:
+   - downloads input source
+   - downloads garment asset from Camera-hosted storage
+   - runs generation pipeline
+   - uploads final image and calls `POST /api/internal/tryon/complete`.
+4. Completion materializes a derived `submissionKind: 'tryon_result'` record:
+   - stores source/garment/job linkage
+   - preserves event, partner, and garment metadata
+   - sets `reviewStatus = pending_review`
+   - sets `isShareVisible = false`, `isSlideshowEligible = false` unless event policy explicitly bypasses moderation.
+5. Administrators moderate via `/admin/tryon-results`:
+   - pending queue: `tryOnModerationArchive.archived !== true` and `reviewStatus='pending_review'`
+   - archive modes: `approved`, `rejected`, `service`, `greatest`
+6. Manual recovery happens in job-level flows (`retry`, `rerun`, `reapply-result`) from the queue and moderation pages.
 
-## Collections
+## 3. Contracts and state
+
+- `leather_suits` collection and `tryOnLeatherSuitId` identifiers are retained as the compatibility contract for garments.
+- User-facing language uses **Garment** while schemas and APIs preserve legacy names.
+- Moderation outcomes:
+  - `approve` → `approved` bucket
+  - `reject` → `rejected` bucket
+  - `service` → `service` bucket
+  - `great` / `remove_great` mutate metadata flag only (`metadata.tryOnGreat`) while staying in `approved` bucket.
+  - `rerun` supersedes prior result as rejected and queues a fresh job; new result must pass moderation again.
+- Active queue is derived from `tryon_jobs` statuses excluding `failed` by default for SLA counters.
+- Rerun results are never auto-published.
+
+## 4. Core collections
 
 ### `leather_suits`
 
-Canonical garment catalog used by the Camera UI and local worker resolution. The collection and identifier names are legacy internal contracts.
-
-Key fields:
-- `leatherSuitId`
-- `name`
-- `description`
-- `category`
-- `assetKey`
-- `assetVersion`
-- `imageUrl`
-- `thumbnailUrl`
-- `previewUrl`
-- `active`
-
-Important boundary:
-- Camera manages the uploaded garment asset in imgbb-backed storage, plus the catalog metadata shown in admin and public capture flows.
-- The worker downloads the processing garment image from Camera-managed storage first.
-- Legacy local asset resolution remains only as a fallback for older records.
+Canonical garment catalog used by capture and moderation UIs. Legacy identifier names are stable:
+- collection: `leather_suits`
+- business ID: `leatherSuitId`
+- display fields: `name`, `description`, `assetKey`, `assetUrl`
 
 ### `tryon_jobs`
 
-Queue and state machine for asynchronous try-on work.
+Queue document used for:
+- lease/worker coordination
+- retries and attempt scheduling
+- preset selection (`request.setupId`, `processing.resolvedSetup`)
+- source/result linkage (`source.submissionId`, `source.imageUrl`, `sourceJobId`)
 
-Key fields:
-- `jobId`
-- `requestHash`
-- `status`
-- `stage`
-- `pipeline`
-- `pipelineVersion`
-- `source.submissionId`
-- `source.imageUrl`
-- `request.leatherSuitId`
-- `processing.workerId`
-- `processing.leaseExpiresAt`
-- `processing.nextAttemptAt`
-- `result.publicResultUrl`
-- `error`
+### `submissions`
 
-## Queue semantics
+Output records for try-on attempts use:
+- `submissionKind: 'tryon_result'`
+- optional identity resolution against source submission
+- moderation link data in `tryOnModerationArchive`
 
-- Claiming uses `findOneAndUpdate` with lease expiry.
-- Retries use `status=retry_wait` plus `processing.nextAttemptAt`.
-- Manual retry resets a failed or retry-wait job back to `queued`, clears prior error/result state, and zeroes the attempt counter.
-- Stale claims are recovered when a worker sees expired leases.
-- Deduplication is enforced with `requestHash`.
-
-## API surfaces
+## 5. API surfaces
 
 ### `GET /api/tryon/suits`
 
-Returns the active garment catalog for public capture flows.
-
-### `POST /api/submissions`
-
-Additive try-on request fields:
-- `requestTryOn`
-- `leatherSuitId`
-- `tryOnSourceImageData`
-
-Normal submission creation still succeeds even if try-on enqueue fails. The response includes a `tryOn` block describing the queue outcome.
-
-### `POST /api/internal/tryon/complete`
-
-Signed internal callback used by the local try-on worker after it uploads the generated result to imgbb.
-
-The endpoint:
-- validates the queue job
-- marks the queue job `done`
-- creates a derived `submissionKind=tryon_result` record
-- sets `reviewStatus=pending_review`
-- keeps the generated result hidden from share/slideshow until approval
+Returns catalog entries for capture selection.
 
 ### `GET /api/admin/tryon-results`
 
-Admin moderation queue for generated try-on results.
+Moderation query API with:
+- `reviewStatus`, `archive`, `eventId`, `partnerId`, `suitId`
+- paging: `offset` and `limit` (`limit` max 100, default 24)
+- sort:
+  - active queue and waiting order: `createdAt: 1` (oldest first)
+  - archive modes: `createdAt: -1`
+- archive filters:
+  - `?archive=approved`
+  - `?archive=rejected`
+  - `?archive=service`
+  - `?archive=greatest` (approved + great flag)
 
-- default view shows only live moderation items
-- `?archive=approved` shows approved items archived out of the active queue
-- `?archive=rejected` shows rejected items archived out of the active queue
-- supported filters:
-  - `reviewStatus=pending_review|approved|rejected`
-  - `partnerId=<partnerId>`
-  - `eventId=<eventId>`
-  - `suitId=<leatherSuitId>`
-- pagination contract:
-  - `page=<n>` (default `1`)
-  - `limit=<n>` (default `50`, max `100`)
-  - response includes `pagination: { page, limit, total, pages }`
+### `POST /api/admin/tryon-results/{submissionId}`
 
-### `POST /api/admin/tryon-jobs/[jobId]/retry`
+- `/approve` — marks approved, updates share/slideshow flags and archive bucket.
+- `/reject` — marks rejected and hides from publication.
+- `/service` — moves to service bucket.
+- `/great` — marks approved + great metadata.
+- `/remove-great` — removes great metadata while keeping approval state.
 
-Admin retry endpoint for failed or retry-wait jobs.
+### `POST /api/admin/tryon-jobs/{jobId}`
 
-### `GET /api/admin/tryon-suits`
+- `/retry` — requeue `failed` or `retry_wait` jobs.
+- `/rerun` — duplicate job with optional new active `setupId`; prior result is superseded as quality/retry recovery.
+- `/reapply-result` — re-link completed result after external consistency fixes without creating a new job.
 
-Admin catalog surface for selectable garments.
+### Internal completion
 
-### `POST /api/admin/tryon-results/[submissionId]/approve`
+- `POST /api/internal/tryon/complete` receives signed worker callback and creates/updates try-on result submissions.
 
-Publishes an approved generated result to:
-- the source submission share family
-- slideshow playlists only when the event-level try-on policy allows approved result publication
-- archives the moderation record out of the active vetting queue
+### Analytics
 
-### `POST /api/admin/tryon-results/[submissionId]/reject`
+- `GET /api/admin/tryon-analytics`
+- `GET /api/admin/tryon-analytics/export?format=csv|json`
 
-Keeps the generated result hidden from public share/slideshow surfaces and archives the moderation record out of the active vetting queue.
+## 6. Observability and audits
 
-## Worker filesystem
+- All moderation actions append immutable audit entries to `tryon_moderation_events` before or alongside submission updates.
+- Retry/rerun actions maintain reason code and actor email for incident review.
 
-Default local root:
+## 7. Constraints
 
-```text
-<worker-queue-root>
-```
-
-Expected structure:
-
-```text
-incoming/
-processing/<jobId>/
-done/<jobId>/
-failed/<jobId>/
-logs/
-```
-
-## Constraints
-
-- Worker source downloads are allowlisted by hostname.
-- Try-on should use the original capture image, not the branded composite submission.
-- Camera does not block user capture if the try-on queue step fails after submission save.
-- Slideshows and public share pages must never read directly from `tryon_jobs`; they only use approved derived submissions.
-- Moderation archive is separate from the global `isArchived` submission flag so approved try-on results can stay publicly visible.
-- Garments now follow the same resource pattern as frames and logos: Camera owns the uploaded asset and exposes it to the worker through remote URLs.
+- `submissions` is the only public source for gallery/share and slideshow pipelines.
+- `tryon_jobs` remains operational queue state and must not be read for public rendering.
+- Worker failures are surfaced as queue status in queue APIs and recovery views.
+- Failed jobs are excluded from active queue totals and handled in failed-job workflows.

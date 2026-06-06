@@ -1,6 +1,6 @@
 # Documentation Maintenance
 
-**Last Updated**: 2026-05-26
+**Last Updated**: 2026-06-06
 
 The running code is the source of truth. Documentation must be updated from the implementation, not from memory.
 
@@ -8,15 +8,18 @@ The running code is the source of truth. Documentation must be updated from the 
 
 Use these as the maintained operational set:
 
-- [README.md](/Users/Shared/Projects/venturecogroup/camera/README.md)
-- [ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/ARCHITECTURE.md)
-- [TECH_STACK.md](/Users/Shared/Projects/venturecogroup/camera/TECH_STACK.md)
-- [docs/AUTHORIZATION.md](/Users/Shared/Projects/venturecogroup/camera/docs/AUTHORIZATION.md)
-- [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_CONVENTIONS.md)
-- [docs/MONGODB_ATLAS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_ATLAS.md)
-- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/venturecogroup/camera/docs/SLIDESHOW_LOGIC.md)
-- [docs/TRYON_ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/docs/TRYON_ARCHITECTURE.md)
-- [docs/TRYON_OPERATIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/TRYON_OPERATIONS.md)
+- [README.md](/Users/Shared/Projects/camera/README.md)
+- [ARCHITECTURE.md](/Users/Shared/Projects/camera/ARCHITECTURE.md)
+- [TECH_STACK.md](/Users/Shared/Projects/camera/TECH_STACK.md)
+- [docs/AUTHORIZATION.md](/Users/Shared/Projects/camera/docs/AUTHORIZATION.md)
+- [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CONVENTIONS.md)
+- [docs/MONGODB_ATLAS.md](/Users/Shared/Projects/camera/docs/MONGODB_ATLAS.md)
+- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/camera/docs/SLIDESHOW_LOGIC.md)
+- [docs/TRYON_ARCHITECTURE.md](/Users/Shared/Projects/camera/docs/TRYON_ARCHITECTURE.md)
+- [docs/TRYON_OPERATIONS.md](/Users/Shared/Projects/camera/docs/TRYON_OPERATIONS.md)
+- [docs/TRYON_LOW_LEVEL_DESIGN.md](/Users/Shared/Projects/camera/docs/TRYON_LOW_LEVEL_DESIGN.md)
+- [docs/TRYON_ADMIN_GUIDE.md](/Users/Shared/Projects/camera/docs/TRYON_ADMIN_GUIDE.md)
+- [docs/TRYON_ANALYTICS.md](/Users/Shared/Projects/camera/docs/TRYON_ANALYTICS.md)
 
 Historical and planning docs may exist, but they are not canonical runtime documentation unless explicitly refreshed.
 
@@ -106,65 +109,21 @@ cat package.json
 - Mongo identifier guidance matches the live mixed model
 - Events / Partner model matches the current UX and code
 
-## 9. GitHub tracker handover
+## 9. GitHub tracker and release handoff
 
-The GitHub issue tracker and GitHub Projects board must be kept aligned with the codebase and the canonical docs.
+The GitHub issue tracker and Projects board must be kept aligned with canonical implementation before release handoff.
 
-Repository:
+- Repository: `moldovancsaba/camera`
+- Before any production release:
+  - all related implementation artifacts are closed or explicitly blocked
+  - release notes include scope, verification path, and known risks
+  - docs listed in section 1 are updated to match the latest route, model, and contract behavior
+  - `docs/TRYON_ADMIN_GUIDE.md` and `docs/TRYON_LOW_LEVEL_DESIGN.md` are updated for any moderation workflow changes
+  - any queue/state/analytics contract changes are mirrored in API references and route behavior
 
-- `moldovancsaba/camera`
+Operational note:
 
-### Current issue state
-
-As of `2026-05-20` the issue tracker was synchronized to the implementation state:
-
-- Open:
-  - `#3` admin UX parent tracker
-  - `#8` landing-page generalization follow-up
-- Closed as completed:
-  - `#4`
-  - `#5`
-  - `#6`
-  - `#7`
-  - `#9`
-  - `#10`
-  - `#11`
-  - `#12`
-
-### Required GitHub Projects board state
-
-When the board is writable, the intended Projects status is:
-
-- `In Progress`:
-  - `#3`
-  - `#8`
-- `Done` / `Completed`:
-  - `#4`
-  - `#5`
-  - `#6`
-  - `#7`
-  - `#9`
-  - `#10`
-  - `#11`
-  - `#12`
-
-### Pending automation handoff
-
-A follow-up Codex heartbeat automation was created because GitHub Projects v2 mutation was blocked by GraphQL rate limiting during the sync pass.
-
-- Automation id:
-  - `sync-github-project-board-after-rate-limit-reset`
-- Intent:
-  - revisit the GitHub Projects board
-  - keep `#3` and `#8` active
-  - move `#4`, `#5`, `#6`, `#7`, `#9`, `#10`, `#11`, `#12` to completed/done
-
-### Practical follow-up steps
-
-1. Check whether the board sync automation already ran successfully.
-2. If not, update the Projects board manually or via GitHub API/CLI after GraphQL rate-limit reset.
-3. Reconfirm that issue states still match the live code and canonical docs before changing board columns.
-4. If `#8` lands later, close `#8` and then close `#3`, and move both project items to `Done`.
+- A stale tracker snapshot is a known source of process drift. Refresh this section at handoff time instead of preserving old issue IDs.
 
 ### Do not drift again
 

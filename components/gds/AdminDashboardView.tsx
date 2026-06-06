@@ -87,7 +87,8 @@ export default function AdminDashboardView({
                   background:
                     'linear-gradient(135deg, var(--mantine-color-violet-2), var(--mantine-color-cyan-1))',
                   borderRadius: 20,
-                  boxShadow: '0 14px 32px rgba(109, 40, 217, 0.16), 0 0 0 1px rgba(109, 40, 217, 0.16)',
+                  boxShadow:
+                    '0 14px 32px color-mix(in srgb, var(--mantine-color-violet-7) 16%, transparent), 0 0 0 1px color-mix(in srgb, var(--mantine-color-violet-7) 16%, transparent)',
                   color: 'inherit',
                   display: 'block',
                   padding: 2,

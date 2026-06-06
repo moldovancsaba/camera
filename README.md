@@ -1,7 +1,7 @@
 # Camera
 
 **Version**: 2.10.0  
-**Last Updated**: 2026-05-26  
+**Last Updated**: 2026-06-06  
 **Status**: Production system
 
 Camera is a Next.js platform for branded photo capture, event galleries, slideshow playback, partner operations, and reusable shared resources on the same identity, media, and MongoDB foundations.
@@ -20,7 +20,7 @@ Camera now operates as a small platform with shared resources plus app surfaces.
   - Galleries / Submissions
   - Global Users and partner-scoped access assignments
 - **Apps**
-  - Events App
+  - Events
   - Try-On App
 
 The admin UX is organized around that model:
@@ -43,7 +43,7 @@ The admin UX is organized around that model:
 
 - `/admin` — global dashboard for global admins
 - `/admin/partners` — partner workspace index
-- `/admin/events` — Events App inventory
+- `/admin/events` — Events inventory
 - `/admin/tryon` — Try-On App workspace
 - `/admin/frames`, `/admin/logos`, `/admin/submissions`, `/admin/users` — global inventory / audit pages
 
@@ -82,7 +82,7 @@ Current operational rules:
 - partner-scoped users can access only their assigned partner/app surfaces
 - global inventory pages remain global-admin-only
 
-See [docs/AUTHORIZATION.md](/Users/Shared/Projects/venturecogroup/camera/docs/AUTHORIZATION.md).
+See [docs/AUTHORIZATION.md](/Users/Shared/Projects/camera/docs/AUTHORIZATION.md).
 
 ## Quick start
 
@@ -120,7 +120,7 @@ http://localhost:3000
 - imgbb for raster hosting
 - optional Upstash Redis for shared rate limits
 
-See [TECH_STACK.md](/Users/Shared/Projects/venturecogroup/camera/TECH_STACK.md).
+See [TECH_STACK.md](/Users/Shared/Projects/camera/TECH_STACK.md).
 
 ## Data model highlights
 
@@ -132,10 +132,10 @@ See [TECH_STACK.md](/Users/Shared/Projects/venturecogroup/camera/TECH_STACK.md).
 - `slideshow_layouts` — multi-cell videowall configs
 - `landing_pages` — reusable experience surfaces
 - `partner_user_access` — partner-scoped app assignments
-- `leather_suits` — selectable try-on leather jersey catalog
+- `leather_suits` — selectable try-on garment catalog (legacy collection and API names are preserved)
 - `tryon_jobs` — async local try-on queue and worker lifecycle
 
-See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_CONVENTIONS.md) and [ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/ARCHITECTURE.md).
+See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CONVENTIONS.md) and [ARCHITECTURE.md](/Users/Shared/Projects/camera/ARCHITECTURE.md).
 
 ## Important conventions
 
@@ -148,11 +148,11 @@ See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/d
 
 ## Design system
 
-Camera admin UI follows the portfolio [General Design System](https://github.com/sovereignsquad/general-design-system) on Mantine. Local adapter details, migration state, exceptions, and the formal adoption manifest: [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_CAMERA_ADOPTION.md) and [gds-adoption.json](/Users/Shared/Projects/venturecogroup/camera/gds-adoption.json).
+Camera admin UI follows the portfolio [General Design System](https://github.com/sovereignsquad/general-design-system) on Mantine. Local adapter details, migration state, exceptions, and the formal adoption manifest: [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/camera/docs/GDS_CAMERA_ADOPTION.md) and [gds-adoption.json](/Users/Shared/Projects/camera/gds-adoption.json).
 
 Reusable exception guidance:
 
-- [docs/GDS_EXCEPTION_STANDARD.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_EXCEPTION_STANDARD.md) defines the general exception model that Camera uses and that other GDS consumers can adopt
+- [docs/GDS_EXCEPTION_STANDARD.md](/Users/Shared/Projects/camera/docs/GDS_EXCEPTION_STANDARD.md) defines the general exception model that Camera uses and that other GDS consumers can adopt
 
 Current package note:
 
@@ -172,32 +172,36 @@ Camera can optionally enqueue asynchronous try-on jobs after a capture is saved.
 - the official local worker in the try-on worker repository polls Atlas, runs the try-on processor, uploads the result to imgbb, and calls Camera’s signed completion endpoint
 - `/admin/tryon` is the operator workspace for queue, catalog, and moderation
 - `/admin/tryon/queue` shows live queue state directly from `tryon_jobs`
-- `/admin/tryon/suits` manages the selectable leather jersey catalog as Camera-hosted uploaded suit assets
+- `/admin/tryon/suits` manages the selectable garment catalog as Camera-hosted uploaded garment assets (legacy route name remains `/suits`)
 - `/admin/tryon/vetting` reviews generated outputs before publication
 - only approved generated results become visible on share pages and slideshow playlists
+- rerun actions always return to pending review before any result can be sent to users
 
 Operational docs:
 
-- [docs/TRYON_ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/docs/TRYON_ARCHITECTURE.md)
-- [docs/TRYON_OPERATIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/TRYON_OPERATIONS.md)
+- [docs/TRYON_ARCHITECTURE.md](/Users/Shared/Projects/camera/docs/TRYON_ARCHITECTURE.md)
+- [docs/TRYON_OPERATIONS.md](/Users/Shared/Projects/camera/docs/TRYON_OPERATIONS.md)
 
 ## Documentation map
 
 Canonical docs:
 
-- [ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/ARCHITECTURE.md)
-- [TECH_STACK.md](/Users/Shared/Projects/venturecogroup/camera/TECH_STACK.md)
-- [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_CAMERA_ADOPTION.md)
-- [docs/GDS_COMPONENT_RULES.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_COMPONENT_RULES.md)
-- [docs/AUTHORIZATION.md](/Users/Shared/Projects/venturecogroup/camera/docs/AUTHORIZATION.md)
-- [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_CONVENTIONS.md)
-- [docs/MONGODB_ATLAS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_ATLAS.md)
-- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/venturecogroup/camera/docs/SLIDESHOW_LOGIC.md)
-- [docs/DOCUMENTATION.md](/Users/Shared/Projects/venturecogroup/camera/docs/DOCUMENTATION.md)
+- [ARCHITECTURE.md](/Users/Shared/Projects/camera/ARCHITECTURE.md)
+- [TECH_STACK.md](/Users/Shared/Projects/camera/TECH_STACK.md)
+- [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/camera/docs/GDS_CAMERA_ADOPTION.md)
+- [docs/GDS_COMPONENT_RULES.md](/Users/Shared/Projects/camera/docs/GDS_COMPONENT_RULES.md)
+- [docs/AUTHORIZATION.md](/Users/Shared/Projects/camera/docs/AUTHORIZATION.md)
+- [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CONVENTIONS.md)
+- [docs/MONGODB_ATLAS.md](/Users/Shared/Projects/camera/docs/MONGODB_ATLAS.md)
+- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/camera/docs/SLIDESHOW_LOGIC.md)
+- [docs/DOCUMENTATION.md](/Users/Shared/Projects/camera/docs/DOCUMENTATION.md)
+- [docs/TRYON_LOW_LEVEL_DESIGN.md](/Users/Shared/Projects/camera/docs/TRYON_LOW_LEVEL_DESIGN.md)
+- [docs/TRYON_ADMIN_GUIDE.md](/Users/Shared/Projects/camera/docs/TRYON_ADMIN_GUIDE.md)
+- [docs/TRYON_ANALYTICS.md](/Users/Shared/Projects/camera/docs/TRYON_ANALYTICS.md)
 
 Tracker handover:
 
-- GitHub issue and Projects-board handoff status is documented in [docs/DOCUMENTATION.md](/Users/Shared/Projects/venturecogroup/camera/docs/DOCUMENTATION.md) under `GitHub tracker handover`.
+- GitHub issue and Projects-board handoff status is documented in [docs/DOCUMENTATION.md](/Users/Shared/Projects/camera/docs/DOCUMENTATION.md) under `GitHub tracker handover`.
 
 Historical or planning-heavy docs should not be treated as runtime truth unless they were refreshed recently:
 

@@ -589,7 +589,7 @@ export default function TryOnResultModerationTable({
 
       setDisplayRows((current) => {
         const knownIds = new Set(current.map((row) => row.id));
-        return [...current, ...nextRows.filter((row) => !knownIds.has(row.id))];
+        return [...current, ...nextRows.filter((row: ModerationRow) => !knownIds.has(row.id))];
       });
     } finally {
       setIsLoadingMore(false);

@@ -2,13 +2,54 @@
 
 **Project**: Camera — Photo Frame Webapp
 **Current Version**: 2.10.0
-**Last Updated**: 2026-05-26
+**Last Updated**: 2026-06-06
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
 
 ---
+
+## [unreleased] — 2026-06-06
+
+### Feature — Try-On moderation, rerun, reporting, and operational hardening
+
+**Status**: Complete  
+**Release Type**: Production-adjacent hardening (HIL + reporting + operator UX)
+
+#### Summary
+
+- Added explicit oldest-item highlighting for the active Try-On vetting queue.
+- Added full moderation action coverage on first waiting image and list cards: `Approve`, `Reject`, `Great`, `Service`, and `Submit again`.
+- Added preset selection for rerun/retry flow at moderation and failed-job layers.
+- Implemented strict rerun gatekeeping: reruns are always archived as superseded and require fresh approval.
+- Added separate service archive bucket and updated queue/reporting behavior.
+- Added failed-job queue recovery controls (retry/rerun/resent result).
+- Added image preloading for moderation screens and reduced image loading friction.
+- Completed hourly chart refinements with togglable outcome bars and chart clarity improvements.
+- Clarified terms pipeline to include accepted resubmission update emails.
+- Added analytics export command and reporting schema documentation.
+- Added dedicated low-level design and admin operation guides.
+
+#### Runtime and API impact
+
+- `/api/admin/tryon-results` now supports archive filters for `approved`, `rejected`, `service`, `greatest`, with result ordering adapted for queue (`createdAt: 1`) vs archives (`createdAt: -1`).
+- `/api/admin/tryon-jobs/{jobId}/rerun` supports quality reruns and preset overrides while preserving source identity.
+- `/api/admin/tryon-jobs/{jobId}/reapply-result` replays completed results without bypassing moderation.
+- `/admin/tryon-results` uses `autoRefresh` queue polling and action controls for operators.
+- `docs/TRYON_LOW_LEVEL_DESIGN.md`, `docs/TRYON_ADMIN_GUIDE.md`, and updated `docs/TRYON_ANALYTICS.md` provide canonical operational guidance.
+
+#### Data and governance
+
+- Moderation audit events now include `rerun`, `service`, and `great/remove_great` states and snapshots.
+- `tryOnModerationArchive.bucket=service` is now a first-class category.
+- Rerun actions set `metadata.tryOnSupersededByRerun` flags and preserve new job linkage.
+- Failed jobs are excluded from active queue totals per operations contract.
+
+#### Docs and maintenance updates
+
+- `README.md` and `ARCHITECTURE.md` include explicit references to new Try-On behaviors.
+- `docs/DOCUMENTATION.md` now points to operational docs that describe runtime contracts and UX states.
 
 ## [v2.10.0] — 2026-05-26T12:00:00.000Z
 

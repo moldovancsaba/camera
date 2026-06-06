@@ -1,7 +1,7 @@
 # Architecture
 
 **Version**: 2.10.0  
-**Last Updated**: 2026-05-26
+**Last Updated**: 2026-06-06
 
 This document describes the current production architecture of Camera as implemented in the repository today.
 
@@ -17,7 +17,7 @@ Camera is no longer just a flat event-photo tool. The system now behaves as:
   - slideshow systems
   - user and access management
 - **Apps**
-  - Events App
+  - Events
   - Try-On App
 
 ## 2. Top-level layers
@@ -107,8 +107,16 @@ Partner detail pages are the primary daily operational surface. They expose:
 
 ### App surfaces
 
-- Events App inventory and event instance detail
-- Try-On App workspace, live queue, leather jersey catalog, and vetting queue
+- Events inventory and event instance detail
+- Try-On App workspace, live queue, garment catalog, and vetting queue
+
+### Try-On hard contracts
+
+- Queue processing and moderation are coordinated through `lib/db/schemas.ts`.
+- Results from worker completion are intentionally published as `tryon_result` with `reviewStatus = pending_review` unless explicitly configured otherwise by event policy.
+- Reruns always create a new job and require fresh human approval before being sent to the user.
+- Moderation archive buckets are `approved`, `rejected`, and `service`; `greatest` is a derived approval+great view.
+- Failed job states are not included in active queue SLA counts.
 
 ## 5. Authorization architecture
 
