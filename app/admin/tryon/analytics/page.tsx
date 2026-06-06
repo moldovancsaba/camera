@@ -6,7 +6,12 @@ import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
-import { collectTryOnAnalytics, type TryOnAnalyticsBucket, type TryOnAnalyticsRow } from '@/lib/tryon/analytics';
+import {
+  collectTryOnAnalytics,
+  type TryOnAnalyticsBucket,
+  type TryOnAnalyticsRow,
+  type TryOnPresetPerformanceRow,
+} from '@/lib/tryon/analytics';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +53,50 @@ function AnalyticsTable({ title, rows }: { title: string; rows: TryOnAnalyticsRo
         </div>
       ) : (
         <Text c="dimmed">No try-on decisions match this filter.</Text>
+      )}
+    </Stack>
+  );
+}
+
+function PresetPerformanceTable({ rows }: { rows: TryOnPresetPerformanceRow[] }) {
+  return (
+    <Stack gap="sm">
+      <Title order={3}>Preset Performance</Title>
+      {rows.length > 0 ? (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ borderCollapse: 'collapse', minWidth: 920, width: '100%' }}>
+            <thead>
+              <tr>
+                {['Preset', 'Jobs', 'Done', 'Failed', 'Retry', 'Timeouts', 'Approved', 'Rejected', 'Service', 'Great', 'Approval Rate'].map((heading) => (
+                  <th key={heading} scope="col" style={{ padding: 12, textAlign: heading === 'Preset' ? 'left' : 'right' }}>
+                    {heading}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.setupId}>
+                  <th scope="row" style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'left' }}>
+                    {row.setupName}
+                  </th>
+                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.jobs}</td>
+                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.done}</td>
+                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.failed}</td>
+                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.retryWait}</td>
+                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.providerTimeouts}</td>
+                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.approved}</td>
+                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.rejected}</td>
+                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.service}</td>
+                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.great}</td>
+                  <td style={{ borderTop: '1px solid var(--mantine-color-gray-3)', padding: 12, textAlign: 'right' }}>{row.approvalRate}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <Text c="dimmed">No preset performance data matches this filter.</Text>
       )}
     </Stack>
   );
@@ -124,6 +173,7 @@ export default async function AdminTryOnAnalyticsPage({
           <Text c="dimmed">
             Reporting over {analytics.scannedResultCount} archived try-on decision{analytics.scannedResultCount === 1 ? '' : 's'}.
           </Text>
+          <PresetPerformanceTable rows={analytics.presetPerformance} />
           <AnalyticsTable title="By Preset" rows={analytics.byPreset} />
           <AnalyticsTable title="By Garment" rows={analytics.byGarment} />
           <AnalyticsTable title="By Event" rows={analytics.byEvent} />

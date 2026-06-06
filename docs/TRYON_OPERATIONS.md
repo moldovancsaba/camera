@@ -73,3 +73,13 @@ Try-on analytics are based on archived moderation decisions:
 The admin analytics page is `/admin/tryon/analytics`.
 
 The admin-only API is `GET /api/admin/tryon-analytics`.
+
+Preset performance combines job execution data with moderation outcomes:
+
+- jobs
+- done
+- failed
+- retry wait
+- provider timeouts
+- approved/rejected/service/great outcomes
+- approval rate over decided outcomes
