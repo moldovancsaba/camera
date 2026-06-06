@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { requireAuth, apiForbidden, apiSuccess, withErrorHandler } from '@/lib/api';
-import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob } from '@/lib/db/schemas';
+import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob, type TryOnModerationEvent } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
 import { resolveTryOnSubmissionIdentity } from '@/lib/tryon/identity';
@@ -148,6 +148,23 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     }
   }
 
+  const resultIds = docs.map((doc) => doc._id.toString());
+  const auditEvents = resultIds.length > 0
+    ? await db
+        .collection<TryOnModerationEvent>(COLLECTIONS.TRYON_MODERATION_EVENTS)
+        .find({ resultSubmissionId: { $in: resultIds } })
+        .sort({ createdAt: -1 })
+        .toArray()
+    : [];
+  const auditMap = new Map<string, TryOnModerationEvent[]>();
+  for (const event of auditEvents) {
+    const current = auditMap.get(event.resultSubmissionId) ?? [];
+    if (current.length < 5) {
+      current.push(event);
+      auditMap.set(event.resultSubmissionId, current);
+    }
+  }
+
   return apiSuccess({
     results: docs.map((doc) => {
       const source = doc.sourceSubmissionId ? sourceMap.get(doc.sourceSubmissionId) : null;
@@ -177,6 +194,13 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         isShareVisible: Boolean(doc.isShareVisible),
         isSlideshowEligible: Boolean(doc.isSlideshowEligible),
         isGreat: isTryOnGreat(doc.metadata),
+        recentAudit: (auditMap.get(doc._id.toString()) ?? []).map((event) => ({
+          eventId: event.eventId,
+          action: event.action,
+          actorEmail: event.actorEmail,
+          createdAt: event.createdAt,
+          reason: event.reason ?? null,
+        })),
       };
     }),
     pagination: {

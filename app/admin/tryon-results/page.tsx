@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb';
 import { redirect } from 'next/navigation';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
-import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob } from '@/lib/db/schemas';
+import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob, type TryOnModerationEvent } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import OldestVettingResultCard from '@/components/admin/OldestVettingResultCard';
@@ -304,6 +304,22 @@ export default async function AdminTryOnResultsPage({
           .toArray()
       : [];
     const leatherSuitNameMap = new Map(leatherSuits.map((suit) => [suit.leatherSuitId, suit.name]));
+    const resultIds = docs.map((doc) => doc._id.toString());
+    const auditEvents = resultIds.length
+      ? await db
+          .collection<TryOnModerationEvent>(COLLECTIONS.TRYON_MODERATION_EVENTS)
+          .find({ resultSubmissionId: { $in: resultIds } })
+          .sort({ createdAt: -1 })
+          .toArray()
+      : [];
+    const auditMap = new Map<string, TryOnModerationEvent[]>();
+    for (const event of auditEvents) {
+      const current = auditMap.get(event.resultSubmissionId) ?? [];
+      if (current.length < 5) {
+        current.push(event);
+        auditMap.set(event.resultSubmissionId, current);
+      }
+    }
 
     rows = docs.map((doc) => {
       const source = doc.sourceSubmissionId ? sourceMap.get(doc.sourceSubmissionId) : undefined;
@@ -332,6 +348,13 @@ export default async function AdminTryOnResultsPage({
         isShareVisible: Boolean(doc.isShareVisible),
         isSlideshowEligible: Boolean(doc.isSlideshowEligible),
         isGreat: isTryOnGreat(doc.metadata),
+        recentAudit: (auditMap.get(doc._id.toString()) ?? []).map((event) => ({
+          eventId: event.eventId,
+          action: event.action,
+          actorEmail: event.actorEmail,
+          createdAt: event.createdAt,
+          reason: event.reason ?? null,
+        })),
         setup: toModerationSetup(sourceJob),
       };
     });

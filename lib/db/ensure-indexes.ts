@@ -211,6 +211,23 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
         { name: 'tryon_jobs_status_nextAttempt_createdAt' }
       )
   );
+
+  // --- try-on moderation audit ---
+  await track(COLLECTIONS.TRYON_MODERATION_EVENTS, () =>
+    db
+      .collection(COLLECTIONS.TRYON_MODERATION_EVENTS)
+      .createIndex({ eventId: 1 }, { unique: true, name: 'tryon_moderation_events_eventId_unique' })
+  );
+  await track(COLLECTIONS.TRYON_MODERATION_EVENTS, () =>
+    db
+      .collection(COLLECTIONS.TRYON_MODERATION_EVENTS)
+      .createIndex({ resultSubmissionId: 1, createdAt: -1 }, { name: 'tryon_moderation_events_result_createdAt' })
+  );
+  await track(COLLECTIONS.TRYON_MODERATION_EVENTS, () =>
+    db
+      .collection(COLLECTIONS.TRYON_MODERATION_EVENTS)
+      .createIndex({ action: 1, createdAt: -1 }, { name: 'tryon_moderation_events_action_createdAt' })
+  );
   await track(COLLECTIONS.TRYON_JOBS, () =>
     db
       .collection(COLLECTIONS.TRYON_JOBS)

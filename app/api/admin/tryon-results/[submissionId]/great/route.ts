@@ -15,6 +15,7 @@ import {
   dispatchPendingRelatedEmailForSubmission,
   dispatchTryOnResubmissionApprovalEmailForSubmission,
 } from '@/lib/email/submission-result-email';
+import { appendTryOnModerationEvent, snapshotTryOnModerationState } from '@/lib/tryon/moderation-audit';
 
 function sanitizeMetadataPatch(metadataPatch?: Record<string, unknown> | null): Record<string, unknown> {
   if (!metadataPatch) return {};
@@ -82,6 +83,24 @@ export const POST = withErrorHandler(async (
   );
 
   const now = nowIso();
+  await appendTryOnModerationEvent(db, {
+    resultSubmissionId: submissionId,
+    resultSubmission,
+    action: 'great',
+    actorEmail: session.user.email,
+    nextState: snapshotTryOnModerationState(resultSubmission, {
+      reviewStatus: 'approved',
+      archiveBucket: 'approved',
+      archived: true,
+      shareVisible: true,
+      slideshowEligible,
+      isGreat: markGreat,
+      isService: false,
+    }),
+    reason: typeof payload.notes === 'string' && payload.notes.trim() ? payload.notes.trim() : null,
+    metadata: { markGreat },
+  });
+
   await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
     { _id: new ObjectId(submissionId) },
     {

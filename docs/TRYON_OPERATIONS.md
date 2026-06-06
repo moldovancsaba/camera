@@ -65,6 +65,12 @@ Retry scheduling must only retry retryable classifications. Non-retryable classi
 
 Admin and public UI use `Garment` for the selectable try-on catalog. Legacy internal schema/API names such as `leather_suits`, `leatherSuitId`, and route paths containing `suits` remain compatibility contracts and should not be renamed without a dedicated data migration.
 
+## Moderation audit
+
+Every try-on moderation decision appends an immutable record to `tryon_moderation_events` before the result state is changed. Audited actions are `approve`, `reject`, `service`, `great`, `remove_great`, and `rerun`.
+
+Each audit event stores the result id, source submission id, source job id, actor email, timestamp, previous publication state, next publication state, optional reason, and action metadata. The admin endpoint `GET /api/admin/tryon-results/{submissionId}/audit` returns recent events for a result.
+
 ## Analytics buckets
 
 Try-on analytics are based on archived moderation decisions:

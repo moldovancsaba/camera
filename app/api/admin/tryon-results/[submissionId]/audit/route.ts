@@ -4,10 +4,9 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { requireAuth, apiBadRequest, apiForbidden, apiNotFound, apiSuccess, withErrorHandler } from '@/lib/api';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
-import { nowIso } from '@/lib/tryon/time';
-import { appendTryOnModerationEvent, snapshotTryOnModerationState } from '@/lib/tryon/moderation-audit';
+import { listTryOnModerationEvents } from '@/lib/tryon/moderation-audit';
 
-export const POST = withErrorHandler(async (
+export const GET = withErrorHandler(async (
   request: NextRequest,
   context: { params: Promise<{ submissionId: string }> }
 ) => {
@@ -24,34 +23,13 @@ export const POST = withErrorHandler(async (
   const db = await connectToDatabase();
   const resultSubmission = await db
     .collection<Submission>(COLLECTIONS.SUBMISSIONS)
-    .findOne({ _id: new ObjectId(submissionId), submissionKind: 'tryon_result' });
-
+    .findOne({ _id: new ObjectId(submissionId), submissionKind: 'tryon_result' }, { projection: { _id: 1 } });
   if (!resultSubmission) {
     throw apiNotFound('Try-on result');
   }
 
-  const now = nowIso();
-  await appendTryOnModerationEvent(db, {
-    resultSubmissionId: submissionId,
-    resultSubmission,
-    action: 'remove_great',
-    actorEmail: session.user.email,
-    nextState: snapshotTryOnModerationState(resultSubmission, {
-      isGreat: false,
-    }),
+  return apiSuccess({
+    submissionId,
+    events: await listTryOnModerationEvents(db, submissionId, 30),
   });
-
-  await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
-    { _id: new ObjectId(submissionId) },
-    {
-      $set: {
-        'metadata.tryOnGreat': false,
-        'metadata.tryOnGreatRemovedAt': now,
-        'metadata.tryOnGreatRemovedBy': session.user.email,
-        updatedAt: now,
-      },
-    }
-  );
-
-  return apiSuccess({ submissionId, isGreat: false });
 });

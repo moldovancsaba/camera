@@ -38,6 +38,7 @@ export const COLLECTIONS = {
   SUBMISSIONS: 'submissions',
   LEATHER_SUITS: 'leather_suits',
   TRYON_JOBS: 'tryon_jobs',
+  TRYON_MODERATION_EVENTS: 'tryon_moderation_events',
   TRYON_SETUPS: 'tryon_setups',
   CAMERA_SETUP_PREFERENCES: 'camera_setup_preferences',
   USERS_CACHE: 'users_cache',
@@ -745,6 +746,39 @@ export interface Submission {
   createdAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   tryOnJobs?: SubmissionTryOnLink[]; // Optional try-on jobs linked back to this submission
+}
+
+export type TryOnModerationAction =
+  | 'approve'
+  | 'reject'
+  | 'service'
+  | 'great'
+  | 'remove_great'
+  | 'rerun';
+
+export interface TryOnModerationStateSnapshot {
+  reviewStatus?: 'pending_review' | 'approved' | 'rejected' | null;
+  archiveBucket?: 'approved' | 'rejected' | 'service' | null;
+  archived?: boolean | null;
+  shareVisible?: boolean | null;
+  slideshowEligible?: boolean | null;
+  isGreat?: boolean | null;
+  isService?: boolean | null;
+}
+
+export interface TryOnModerationEvent {
+  _id?: ObjectId;
+  eventId: string;
+  resultSubmissionId: string;
+  sourceSubmissionId: string | null;
+  sourceJobId: string | null;
+  action: TryOnModerationAction;
+  actorEmail: string;
+  createdAt: string;
+  previousState: TryOnModerationStateSnapshot;
+  nextState: TryOnModerationStateSnapshot;
+  reason?: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 // ============================================================================

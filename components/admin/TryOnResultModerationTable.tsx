@@ -43,6 +43,13 @@ export interface ModerationRow {
   isShareVisible: boolean;
   isSlideshowEligible: boolean;
   isGreat: boolean;
+  recentAudit?: Array<{
+    eventId: string;
+    action: string;
+    actorEmail: string;
+    createdAt: string;
+    reason?: string | null;
+  }>;
   setup: {
     setupId: string;
     setupName?: string | null;
@@ -907,6 +914,30 @@ export default function TryOnResultModerationTable({
                   {assetHealthLabel(activeRow.id)}
                 </Text>
               ) : null}
+            </Stack>
+            <Stack gap="xs">
+              <Text fw={700}>Audit history</Text>
+              {activeRow.recentAudit && activeRow.recentAudit.length > 0 ? (
+                activeRow.recentAudit.map((event) => (
+                  <Paper key={event.eventId} p="sm" withBorder>
+                    <Text size="sm" fw={700}>
+                      {event.action.replace(/_/g, ' ')}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {event.actorEmail} · {new Date(event.createdAt).toLocaleString()}
+                    </Text>
+                    {event.reason ? (
+                      <Text size="xs" c="dimmed">
+                        {event.reason}
+                      </Text>
+                    ) : null}
+                  </Paper>
+                ))
+              ) : (
+                <Text size="sm" c="dimmed">
+                  No audit events recorded for this result yet.
+                </Text>
+              )}
             </Stack>
             <ModerationActions row={activeRow} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} onService={handleService} />
           </Stack>

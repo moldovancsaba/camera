@@ -10,6 +10,7 @@ import {
 } from '@/lib/tryon/publication';
 import { patchSubmissionTryOnState } from '@/lib/tryon/jobs';
 import { nowIso } from '@/lib/tryon/time';
+import { appendTryOnModerationEvent, snapshotTryOnModerationState } from '@/lib/tryon/moderation-audit';
 
 export const POST = withErrorHandler(async (
   request: NextRequest,
@@ -39,6 +40,23 @@ export const POST = withErrorHandler(async (
   }
 
   const now = nowIso();
+  await appendTryOnModerationEvent(db, {
+    resultSubmissionId: submissionId,
+    resultSubmission,
+    action: 'service',
+    actorEmail: session.user.email,
+    nextState: snapshotTryOnModerationState(resultSubmission, {
+      reviewStatus: 'rejected',
+      archiveBucket: 'service',
+      archived: true,
+      shareVisible: false,
+      slideshowEligible: false,
+      isGreat: false,
+      isService: true,
+    }),
+    reason: typeof payload.notes === 'string' && payload.notes.trim() ? payload.notes.trim() : null,
+  });
+
   await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
     { _id: new ObjectId(submissionId) },
     {

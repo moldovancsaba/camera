@@ -5,8 +5,9 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { requireAuth, apiBadRequest, apiForbidden, apiNotFound, apiSuccess, withErrorHandler } from '@/lib/api';
-import { COLLECTIONS, type TryOnJob, type TryOnSetup } from '@/lib/db/schemas';
+import { COLLECTIONS, type Submission, type TryOnJob, type TryOnSetup } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
+import { appendTryOnModerationEvent, snapshotTryOnModerationState } from '@/lib/tryon/moderation-audit';
 
 function buildRerunRequestHash(requestHash: string): string {
   return `${requestHash}::rerun:${createTryOnJobId()}`;
@@ -119,6 +120,26 @@ export const POST = withErrorHandler(async (
   const rerunJob = buildRerunJob(sourceJob, requestedSetupId);
 
   const inserted = await db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).insertOne(rerunJob);
+  const priorResult = await db
+    .collection<Submission>(COLLECTIONS.SUBMISSIONS)
+    .findOne({ sourceJobId: normalizedJobId, submissionKind: 'tryon_result' });
+  if (priorResult?._id) {
+    await appendTryOnModerationEvent(db, {
+      resultSubmissionId: priorResult._id.toString(),
+      resultSubmission: priorResult,
+      action: 'rerun',
+      actorEmail: session.user.email,
+      nextState: snapshotTryOnModerationState(priorResult, {
+        shareVisible: false,
+        slideshowEligible: false,
+      }),
+      metadata: {
+        rerunJobId: rerunJob.jobId,
+        rerunOfJobId: sourceJob.jobId,
+        setupId: rerunJob.request.setupId ?? null,
+      },
+    });
+  }
 
   if (ObjectId.isValid(sourceJob.source.submissionId)) {
     const submissionObjectId = new ObjectId(sourceJob.source.submissionId);
