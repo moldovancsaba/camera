@@ -5,8 +5,13 @@
 
 import { MongoClient } from 'mongodb';
 
-const SSO_URI = 'mongodb+srv://thanperfect:CuW54NNNFKnGQtt6@doneisbetter.49s2z.mongodb.net';
-const userId = process.argv[2] || 'eea56c57-d8c0-431a-8cff-181817646777';
+const SSO_URI = process.env.SSO_MONGODB_URI;
+const userId = process.argv[2];
+
+if (!SSO_URI || !userId) {
+  console.error('Required environment/arguments are missing.');
+  process.exit(1);
+}
 
 async function grantAdmin() {
   const client = new MongoClient(SSO_URI);

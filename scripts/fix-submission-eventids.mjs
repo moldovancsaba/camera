@@ -5,8 +5,13 @@
 
 import { MongoClient } from 'mongodb';
 
-const uri = 'mongodb+srv://moldovancsaba_db_user:wMP6z5B3ft5mmyI0@camaraclastar.koyedpi.mongodb.net/?appName=camaraclastar';
-const dbName = 'camera';
+const uri = process.env.MONGODB_URI;
+const dbName = process.env.MONGODB_DB || 'camera';
+
+if (!uri) {
+  console.error('MONGODB_URI is required');
+  process.exit(1);
+}
 
 const client = new MongoClient(uri);
 

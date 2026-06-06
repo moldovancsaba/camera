@@ -12,7 +12,7 @@ Camera remains the intake system. The try-on pipeline is asynchronous and uses a
 1. Camera capture saves the normal composed submission through `POST /api/submissions`.
 2. If a leather jersey was selected, Camera uploads the original unframed capture as a second image source.
 3. Camera creates or reuses a `tryon_jobs` document linked to the saved submission.
-4. The local worker in `/Users/Shared/Projects/try-on` polls Atlas, claims a job with a lease, downloads the source image, downloads the selected Camera-hosted suit asset, and runs the processor.
+4. The local worker in the try-on worker repository polls Atlas, claims a job with a lease, downloads the source image, downloads the selected Camera-hosted suit asset, and runs the processor.
 5. The worker uploads the final result to imgbb and calls `POST /api/internal/tryon/complete`.
 6. Camera materializes a derived `submissionKind=tryon_result` record in `pending_review`.
 7. Admins operate Try-On from `/admin/tryon`, monitor live queue state in `/admin/tryon/queue`, manage selectable leather jerseys in `/admin/tryon/suits`, and review generated outputs in `/admin/tryon/vetting`.
@@ -144,7 +144,7 @@ Keeps the generated result hidden from public share/slideshow surfaces and archi
 Default local root:
 
 ```text
-/Users/Shared/Projects/try-on/queue
+<worker-queue-root>
 ```
 
 Expected structure:

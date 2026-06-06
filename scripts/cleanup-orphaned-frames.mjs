@@ -5,9 +5,14 @@
 
 import { MongoClient, ObjectId } from 'mongodb';
 
-const uri = 'mongodb+srv://moldovancsaba_db_user:wMP6z5B3ft5mmyI0@camaraclastar.koyedpi.mongodb.net/?appName=camaraclastar';
-const dbName = 'camera';
-const eventMongoId = '690a72d084eb48114aa84ef5';
+const uri = process.env.MONGODB_URI;
+const dbName = process.env.MONGODB_DB || 'camera';
+const eventMongoId = process.env.EVENT_MONGO_ID;
+
+if (!uri || !eventMongoId) {
+  console.error('Required environment variables are missing.');
+  process.exit(1);
+}
 
 const client = new MongoClient(uri);
 

@@ -169,7 +169,7 @@ Camera can optionally enqueue asynchronous try-on jobs after a capture is saved.
 
 - public capture flows read active suits from `GET /api/tryon/suits`
 - `POST /api/submissions` remains the primary save path and can optionally create a linked `tryon_jobs` record
-- the official local worker in `/Users/Shared/Projects/try-on` polls Atlas, runs the try-on processor, uploads the result to imgbb, and calls Camera’s signed completion endpoint
+- the official local worker in the try-on worker repository polls Atlas, runs the try-on processor, uploads the result to imgbb, and calls Camera’s signed completion endpoint
 - `/admin/tryon` is the operator workspace for queue, catalog, and moderation
 - `/admin/tryon/queue` shows live queue state directly from `tryon_jobs`
 - `/admin/tryon/suits` manages the selectable leather jersey catalog as Camera-hosted uploaded suit assets

@@ -1,134 +1,85 @@
 # Try-On Operations
 
-**Version**: 2.10.0  
-**Last Updated**: 2026-05-26
+## Scope
 
-## Required environment
+This document describes the Camera-side operational boundary for try-on jobs without exposing deployment secrets, provider endpoints, private machine paths, or event-specific presets.
 
-```bash
-MONGODB_URI=...
-MONGODB_DB=...
-IMGBB_API_KEY=...
-CAMERA_TRYON_INTERNAL_SECRET=...
-CAMERA_TRYON_COMPLETE_URL=https://camera.example.com/api/internal/tryon/complete
-```
+## Required configuration
 
-## Setup
+Keep all runtime values in deployment or local environment variables. Do not commit real credentials, callback URLs, provider model IDs, or machine-local paths.
 
-1. Verify Camera-side prerequisites:
+Required groups:
 
-```bash
-npm run tryon:verify
-```
+- Camera database connection
+- media upload credentials
+- internal worker callback URL
+- shared internal callback secret
+- queue and catalog collection names
+- optional external processor credentials
+- local worker storage paths
 
-2. Seed the suit catalog in Camera:
+## Setup flow
 
-```bash
-npm run tryon:seed-suits -- config/leather-suits.example.json
-```
-
-3. Ensure indexes:
-
-```bash
-npm run db:ensure-indexes
-```
-
-4. Copy the worker env template on the try-on machine:
-
-```bash
-cd /Users/Shared/Projects/try-on
-cp .env.tryon-worker.example .env.tryon-worker
-```
-
-5. Verify the try-on worker setup:
-
-```bash
-cd /Users/Shared/Projects/try-on
-./.venv311/bin/python scripts/verify_tryon_worker_setup.py
-```
-
-6. Start the local worker from `/Users/Shared/Projects/try-on`:
-
-```bash
-cd /Users/Shared/Projects/try-on
-./.venv311/bin/python scripts/tryon_queue_worker.py
-```
+1. Verify Camera-side try-on prerequisites with the package script.
+2. Seed or manage the suit catalog through the Camera admin surface or a controlled import script.
+3. Ensure database indexes before live queue processing.
+4. Configure the worker from its private environment template.
+5. Start the worker from the try-on repository using the local runtime documented in the private ops runbook.
 
 ## Internal callbacks and periodic sync
 
-- Primary path: worker posts completion payloads to `POST /api/internal/tryon/complete`.
-- Recovery path: Vercel cron calls `GET /api/internal/tryon/sync?status=done&limit=50` every 5 minutes and replays durable job completion for any done jobs that still need derived submission materialization.
-- Manual recovery: trigger sync on demand when needed:
+The worker reports completion and final failure to Camera through authenticated internal callbacks configured by environment variable.
 
-```bash
-curl -X GET "$NEXT_PUBLIC_APP_URL/api/internal/tryon/sync?status=done&limit=50" \
-  -H "x-camera-tryon-secret: $CAMERA_TRYON_INTERNAL_SECRET"
-```
+The recovery sync path is idempotent and may be run periodically or manually to materialize missing derived submissions after a worker-side upload or callback interruption.
 
-Use the recovery route when the local worker uploaded a result but Camera didn’t create the framed derived submission in `tryon_result` (for example due worker timeout on the callback).
+The sync path:
 
-The sync path is idempotent:
-
-- keeps `tryon_jobs` metadata current,
-- creates missing `tryon_result` submissions,
-- re-applies frame overlay when `event.tryOn.applyFrameToReturnedResults` is enabled,
-- and updates derived submission URLs/metadata when corrected outputs are detected.
+- keeps queue job metadata current
+- creates missing derived result submissions
+- reapplies frame overlays when the event requires framed returned results
+- updates derived URLs and metadata when corrected outputs are detected
 
 ## Expected worker behavior
 
-- polls Atlas
+- polls the configured queue
 - recovers stale leased jobs
-- claims one job
+- claims one job at a time
 - stages assets locally
-- runs the processor
-- uploads the result to imgbb
-- calls Camera’s internal completion endpoint
-- leaves the generated result in `pending_review`
-- archives the local workspace
+- runs the selected processor profile
+- uploads the result to the configured media host
+- calls Camera’s internal completion callback
+- leaves generated results in review state
+- archives local per-job workspace artifacts
 
 ## Camera operator surfaces
 
-- `/admin/tryon` — Try-On App workspace
-- `/admin/tryon/queue` — live queue state from `tryon_jobs`
-- `/admin/tryon/suits` — selectable leather jersey catalog
-- `/admin/tryon/vetting` — approve or reject completed generated results
-- `/admin/tryon/vetting?archive=approved` — archived approved moderation items
-- `/admin/tryon/vetting?archive=rejected` — archived rejected moderation items
+Camera exposes admin surfaces for queue state, suit catalog management, active vetting, approved archives, rejected archives, failed jobs, and greatest-hit selections. Keep exact deployment URLs out of committed docs.
 
 ## Catalog management boundary
 
-- Camera manages suit title, description, active state, and the uploaded suit asset itself.
-- The worker downloads the suit image from the `leather_suits` record before it runs processing.
-- `TRYON_SUIT_ASSET_ROOT` is now optional legacy fallback only for older suit records without a Camera-hosted asset URL.
+- Camera owns suit title, description, active state, and the uploaded suit asset.
+- The worker downloads the suit image from the catalog record before processing.
+- File-system suit roots are legacy fallbacks only and should not be required for current catalog records.
 
 ## Recovery model
 
-- transient failures move to `retry_wait`
-- permanent failures move to `failed`
-- admins can requeue `failed` and `retry_wait` jobs directly from `/admin/tryon/queue`
-- stale leased jobs are reset to `retry_wait`
-- completion creates a derived try-on submission in `pending_review`
-- admin approval is required before a generated result appears on share pages or slideshows
-- review decisions archive the result out of the live queue instead of leaving approved/rejected items mixed into active vetting
+- transient failures move to retry state
+- permanent failures move to failed state
+- admins can requeue recoverable failed or retry jobs
+- stale leased jobs are reset for retry
+- completion creates a derived result submission in review state
+- admin approval is required before generated results appear publicly
+- review decisions archive the result out of active vetting
 
 ## Logs and local artifacts
 
-Worker logs are written under:
+Worker logs and per-job workspaces must remain on the worker machine or private log storage. Do not commit paths, generated inputs, generated outputs, or per-job metadata.
 
-```text
-$TRYON_QUEUE_ROOT/logs
-```
-
-Per-job workspaces include:
-- `person_input.jpg`
-- `suit_input.png`
-- `result.png`
-- `metadata.json`
-- `log.txt`
+Per-job workspace contents may include source input, suit input, result image, metadata, and logs.
 
 ## Operational warnings
 
-- `TRYON_SUIT_ASSET_ROOT` is optional and only used as a legacy fallback if a suit record does not have a Camera-hosted processing URL.
-- Source image host validation defaults to `i.ibb.co`.
-- The queue contract assumes Camera has already saved the normal submission before try-on enqueue runs.
-- The official worker runtime now lives in `/Users/Shared/Projects/try-on`, not in the Camera repo.
+- Source host validation should stay narrow.
+- The queue contract assumes Camera saved the normal submission before enqueueing try-on.
+- Keep the worker runtime path and host-specific commands in private ops notes, not in this repository.
+- Rotate shared callback secrets when worker ownership or deployment ownership changes.

@@ -1,10 +1,15 @@
 import { MongoClient, ObjectId } from 'mongodb';
 
-const uri = 'mongodb+srv://moldovancsaba_db_user:wMP6z5B3ft5mmyI0@camaraclastar.koyedpi.mongodb.net/?appName=camaraclastar';
-const dbName = 'camera';
+const uri = process.env.MONGODB_URI;
+const dbName = process.env.MONGODB_DB || 'camera';
+const targetEventMongoId = process.env.EVENT_MONGO_ID;
 
-// AS Roma - Lupetto Day event
-const targetEventMongoId = '690a72d084eb48114aa84ef5';
+if (!uri || !targetEventMongoId) {
+  console.error('Required environment variables are missing.');
+  process.exit(1);
+}
+
+// Target event comes from EVENT_MONGO_ID.
 
 const client = new MongoClient(uri);
 

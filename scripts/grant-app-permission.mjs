@@ -5,9 +5,14 @@
 
 import { MongoClient } from 'mongodb';
 
-const SSO_URI = 'mongodb+srv://thanperfect:CuW54NNNFKnGQtt6@doneisbetter.49s2z.mongodb.net';
-const userId = process.argv[2] || '5143beb1-9bb6-47e7-a099-e9eeb2d89e93';
-const clientId = '1e59b6a1-3c18-4141-9139-7a3dd0da62bf'; // Camera app client ID
+const SSO_URI = process.env.SSO_MONGODB_URI;
+const userId = process.argv[2];
+const clientId = process.env.SSO_CAMERA_CLIENT_ID;
+
+if (!SSO_URI || !userId || !clientId) {
+  console.error('Required environment/arguments are missing.');
+  process.exit(1);
+}
 const role = process.argv[3] || 'admin';
 
 async function grantAppPermission() {
