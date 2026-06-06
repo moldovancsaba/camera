@@ -105,11 +105,11 @@ export default function AdminChrome({
 
   const primaryNavigation = (
     <Stack gap="xl">
+      <NavSection title="Apps" items={appItems} pathname={pathname} />
       <NavSection title="Core" items={coreItems} pathname={pathname} />
       {resourceItems.length > 0 ? (
         <NavSection title="Resource Inventory" items={resourceItems} pathname={pathname} />
       ) : null}
-      <NavSection title="Apps" items={appItems} pathname={pathname} />
     </Stack>
   );
 
