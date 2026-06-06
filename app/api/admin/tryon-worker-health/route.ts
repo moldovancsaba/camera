@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { requireAuth, apiForbidden, apiSuccess, withErrorHandler } from '@/lib/api';
-import { COLLECTIONS, type TryOnJob } from '@/lib/db/schemas';
+import { COLLECTIONS, type TryOnJob, type TryOnWorkerHeartbeat } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { activeTryOnQueueTotal, WORKER_OWNED_TRYON_QUEUE_STATUSES } from '@/lib/tryon/queue-status';
 import { summarizeTryOnWorkerHealth } from '@/lib/tryon/worker-health';
@@ -13,7 +13,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   }
 
   const db = await connectToDatabase();
-  const [queueStatusCounts, runningJobs] = await Promise.all([
+  const [queueStatusCounts, runningJobs, latestHeartbeat] = await Promise.all([
     db
       .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
       .aggregate<{ _id: string; count: number }>([
@@ -26,13 +26,20 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       .sort({ updatedAt: -1 })
       .limit(10)
       .toArray(),
+    db
+      .collection<TryOnWorkerHeartbeat>(COLLECTIONS.TRYON_WORKER_HEARTBEATS)
+      .find({})
+      .sort({ updatedAt: -1 })
+      .limit(1)
+      .next(),
   ]);
 
   const queueCounts = Object.fromEntries(queueStatusCounts.map((item) => [item._id, item.count]));
-  const summary = summarizeTryOnWorkerHealth(runningJobs, activeTryOnQueueTotal(queueCounts));
+  const summary = summarizeTryOnWorkerHealth(runningJobs, activeTryOnQueueTotal(queueCounts), latestHeartbeat);
 
   return apiSuccess({
     worker: summary,
+    latestHeartbeat,
     runningJobs: runningJobs.map((job) => ({
       jobId: job.jobId,
       status: job.status,

@@ -1,4 +1,4 @@
-import type { TryOnJob } from '@/lib/db/schemas';
+import type { TryOnJob, TryOnWorkerHeartbeat } from '@/lib/db/schemas';
 
 export type TryOnWorkerHealthState = 'online' | 'offline' | 'stale' | 'idle' | 'unknown';
 
@@ -42,6 +42,7 @@ export function isTryOnWorkerJobStale(job: Partial<TryOnJob>, nowMs = Date.now()
 export function summarizeTryOnWorkerHealth(
   runningJobs: Array<Partial<TryOnJob>>,
   activeQueueCount: number,
+  latestHeartbeat: Partial<TryOnWorkerHeartbeat> | null = null,
   nowMs = Date.now()
 ): TryOnWorkerHealthSummary {
   const staleJobs = runningJobs.filter((job) => isTryOnWorkerJobStale(job, nowMs));
@@ -61,6 +62,20 @@ export function summarizeTryOnWorkerHealth(
   }
 
   if (activeQueueCount > 0) {
+    const heartbeatAt = timeValue(latestHeartbeat?.lastHeartbeatAt) ?? timeValue(latestHeartbeat?.updatedAt);
+    const heartbeatFresh = heartbeatAt !== null && nowMs - heartbeatAt <= STALE_AFTER_MS;
+    if (latestHeartbeat?.workerRunning && heartbeatFresh) {
+      return {
+        state: 'online',
+        workerId: latestHeartbeat.workerId ?? null,
+        activeJobId: latestHeartbeat.currentJobId ?? null,
+        activeStage: latestHeartbeat.currentJobId ? 'active' : 'idle',
+        lastHeartbeatAt: latestHeartbeat.lastHeartbeatAt ?? latestHeartbeat.updatedAt ?? null,
+        leaseExpiresAt: null,
+        activeJobCount: 0,
+        staleJobCount: 0,
+      };
+    }
     return {
       state: 'offline',
       workerId: null,
@@ -70,6 +85,21 @@ export function summarizeTryOnWorkerHealth(
       leaseExpiresAt: null,
       activeJobCount: 0,
       staleJobCount: 0,
+    };
+  }
+
+  if (latestHeartbeat?.workerRunning) {
+    const heartbeatAt = timeValue(latestHeartbeat.lastHeartbeatAt) ?? timeValue(latestHeartbeat.updatedAt);
+    const heartbeatFresh = heartbeatAt !== null && nowMs - heartbeatAt <= STALE_AFTER_MS;
+    return {
+      state: heartbeatFresh ? 'idle' : 'stale',
+      workerId: latestHeartbeat.workerId ?? null,
+      activeJobId: latestHeartbeat.currentJobId ?? null,
+      activeStage: latestHeartbeat.currentJobId ? 'active' : null,
+      lastHeartbeatAt: latestHeartbeat.lastHeartbeatAt ?? latestHeartbeat.updatedAt ?? null,
+      leaseExpiresAt: null,
+      activeJobCount: 0,
+      staleJobCount: heartbeatFresh ? 0 : 1,
     };
   }
 
@@ -101,7 +131,9 @@ export function formatTryOnWorkerHealthDescription(summary: TryOnWorkerHealthSum
     return 'Active jobs are waiting, but no worker currently owns a job.';
   }
   if (summary.state === 'idle') {
-    return 'No active queue work is currently assigned to the local worker.';
+    return summary.workerId
+      ? `${summary.workerId} is online with no active queue work.`
+      : 'No active queue work is currently assigned to the local worker.';
   }
   return 'Worker health could not be determined from current job leases.';
 }

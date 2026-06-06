@@ -8,7 +8,7 @@ import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
-import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob } from '@/lib/db/schemas';
+import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob, type TryOnWorkerHeartbeat } from '@/lib/db/schemas';
 import { activeTryOnQueueTotal, formatActiveTryOnQueueSummary, WORKER_OWNED_TRYON_QUEUE_STATUSES } from '@/lib/tryon/queue-status';
 import {
   formatTryOnWorkerHealthDescription,
@@ -34,7 +34,7 @@ export default async function AdminTryOnAppPage() {
 
   try {
     const db = await connectToDatabase();
-    const [queueStatusCounts, activeSuits, totalSuits, pendingVetting, runningJobs] = await Promise.all([
+    const [queueStatusCounts, activeSuits, totalSuits, pendingVetting, runningJobs, latestHeartbeat] = await Promise.all([
       db
         .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
         .aggregate<{ _id: string; count: number }>([
@@ -54,13 +54,19 @@ export default async function AdminTryOnAppPage() {
         .sort({ updatedAt: -1 })
         .limit(10)
         .toArray(),
+      db
+        .collection<TryOnWorkerHeartbeat>(COLLECTIONS.TRYON_WORKER_HEARTBEATS)
+        .find({})
+        .sort({ updatedAt: -1 })
+        .limit(1)
+        .next(),
     ]);
 
     queueCounts = Object.fromEntries(queueStatusCounts.map((item) => [item._id, item.count]));
     activeSuitCount = activeSuits;
     totalSuitCount = totalSuits;
     pendingVettingCount = pendingVetting;
-    workerHealth = summarizeTryOnWorkerHealth(runningJobs, activeTryOnQueueTotal(queueCounts));
+    workerHealth = summarizeTryOnWorkerHealth(runningJobs, activeTryOnQueueTotal(queueCounts), latestHeartbeat);
   } catch (error) {
     console.error('Error loading try-on app workspace:', error);
     dbError = serializeMongoError(error);

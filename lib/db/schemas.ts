@@ -38,6 +38,7 @@ export const COLLECTIONS = {
   SUBMISSIONS: 'submissions',
   LEATHER_SUITS: 'leather_suits',
   TRYON_JOBS: 'tryon_jobs',
+  TRYON_WORKER_HEARTBEATS: 'tryon_worker_heartbeats',
   TRYON_MODERATION_EVENTS: 'tryon_moderation_events',
   TRYON_SETUPS: 'tryon_setups',
   CAMERA_SETUP_PREFERENCES: 'camera_setup_preferences',
@@ -941,6 +942,19 @@ export interface TryOnJob {
   error: TryOnJobError;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TryOnWorkerHeartbeat {
+  _id?: ObjectId;
+  workerId: string;
+  workerRunning: boolean;
+  currentJobId?: string | null;
+  lastLoopAt?: string | null;
+  lastHeartbeatAt?: string | null;
+  pollIntervalSeconds?: number | null;
+  enabled?: boolean | null;
+  updatedAt: string;
+  createdAt?: string;
 }
 
 export interface SubmissionTryOnLink {
