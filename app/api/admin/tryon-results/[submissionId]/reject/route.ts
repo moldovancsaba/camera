@@ -57,6 +57,7 @@ export const POST = withErrorHandler(async (
           archivedAt: now,
           archivedBy: session.user.email,
         },
+        'metadata.tryOnGreat': false,
         updatedAt: now,
       },
     }

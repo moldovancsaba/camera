@@ -137,8 +137,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         setup: toSetupPayload(sourceJob),
         reviewStatus: doc.reviewStatus ?? 'pending_review',
         imageUrl:
-          normalizeImgbbDirectUrl(doc.imageUrl ?? null) ??
           normalizeImgbbDirectUrl(doc.finalImageUrl ?? null) ??
+          normalizeImgbbDirectUrl(doc.imageUrl ?? null) ??
           '',
         originalImageUrl:
           normalizeImgbbDirectUrl(source?.imageUrl ?? null) ??
@@ -152,6 +152,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         approvedAt: doc.approvedAt ?? null,
         isShareVisible: Boolean(doc.isShareVisible),
         isSlideshowEligible: Boolean(doc.isSlideshowEligible),
+        isGreat: Boolean(doc.metadata?.tryOnGreat),
       };
     }),
     pagination: {

@@ -125,10 +125,12 @@ export default async function AdminTryOnResultsPage({
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
   const archive = typeof resolvedSearchParams?.archive === 'string' ? resolvedSearchParams.archive.trim() : '';
   const failed = typeof resolvedSearchParams?.failed === 'string' ? resolvedSearchParams.failed.trim() : '';
-  const archiveBucket = archive === 'approved' || archive === 'rejected' ? archive : '';
+  const archiveBucket = archive === 'approved' || archive === 'rejected' || archive === 'greatest' ? archive : '';
   const failedJobsMode = failed === '1' || failed.toLowerCase() === 'true';
   const pageTitle = failedJobsMode
     ? 'Failed Try-On Jobs'
+    : archiveBucket === 'greatest'
+      ? 'Greatest Hits'
     : archiveBucket === 'approved'
       ? 'Approved'
       : archiveBucket === 'rejected'
@@ -136,6 +138,8 @@ export default async function AdminTryOnResultsPage({
         : 'Vetting';
   const pageStatus = failedJobsMode
     ? 'Failed Jobs'
+    : archiveBucket === 'greatest'
+      ? 'Greatest Hits'
     : archiveBucket === 'approved'
       ? 'Approved'
       : archiveBucket === 'rejected'
@@ -147,6 +151,7 @@ export default async function AdminTryOnResultsPage({
   let pendingCount = 0;
   let archivedApprovedCount = 0;
   let archivedRejectedCount = 0;
+  let greatestHitsCount = 0;
   let failedJobCount = 0;
   let failedJobRows: QueueRow[] = [];
   let setupOptions: TryOnSetup[] = [];
@@ -157,7 +162,11 @@ export default async function AdminTryOnResultsPage({
     const query: Record<string, unknown> = {
       submissionKind: 'tryon_result',
     };
-    if (archiveBucket) {
+    if (archiveBucket === 'greatest') {
+      query['tryOnModerationArchive.archived'] = true;
+      query['tryOnModerationArchive.bucket'] = 'approved';
+      query['metadata.tryOnGreat'] = true;
+    } else if (archiveBucket) {
       query['tryOnModerationArchive.archived'] = true;
       query['tryOnModerationArchive.bucket'] = archiveBucket;
     } else {
@@ -192,7 +201,7 @@ export default async function AdminTryOnResultsPage({
       ];
     }
 
-    const [docs, pending, archivedApproved, archivedRejected, failedJobs, failedJobsTotal] = await Promise.all([
+    const [docs, pending, archivedApproved, archivedRejected, greatestHits, failedJobs, failedJobsTotal] = await Promise.all([
       db
         .collection<Submission>(COLLECTIONS.SUBMISSIONS)
         .find(query)
@@ -214,6 +223,12 @@ export default async function AdminTryOnResultsPage({
         'tryOnModerationArchive.archived': true,
         'tryOnModerationArchive.bucket': 'rejected',
       }),
+      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
+        submissionKind: 'tryon_result',
+        'tryOnModerationArchive.archived': true,
+        'tryOnModerationArchive.bucket': 'approved',
+        'metadata.tryOnGreat': true,
+      }),
       failedJobsMode
         ? db
             .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
@@ -228,6 +243,7 @@ export default async function AdminTryOnResultsPage({
     pendingCount = pending;
     archivedApprovedCount = archivedApproved;
     archivedRejectedCount = archivedRejected;
+    greatestHitsCount = greatestHits;
     failedJobCount = failedJobsTotal;
     failedJobRows = failedJobs.map(toQueueRow).filter((row): row is QueueRow => Boolean(row));
 
@@ -280,6 +296,7 @@ export default async function AdminTryOnResultsPage({
         approvedAt: doc.approvedAt ?? null,
         isShareVisible: Boolean(doc.isShareVisible),
         isSlideshowEligible: Boolean(doc.isSlideshowEligible),
+        isGreat: Boolean(doc.metadata?.tryOnGreat),
         setup: toModerationSetup(sourceJob),
       };
     });
@@ -368,6 +385,12 @@ export default async function AdminTryOnResultsPage({
               iconKey: 'world' as AdminIconKey,
             },
             {
+              href: '/admin/tryon-results?archive=greatest',
+              title: `Greatest Hits (${greatestHitsCount})`,
+              description: 'Best-of selected approved try-on results for event highlights.',
+              iconKey: 'world' as AdminIconKey,
+            },
+            {
               href: '/admin/tryon-results?archive=rejected',
               title: `Rejected (${archivedRejectedCount})`,
               description: 'Browse declined items that were archived out of the active vetting queue.',
@@ -408,10 +431,12 @@ export default async function AdminTryOnResultsPage({
           rows={rows}
           setupOptions={setupOptions}
           autoRefresh={!archiveBucket && !failedJobsMode && !search}
-          emptyTitle={archiveBucket ? `No archived ${archiveBucket} try-on results` : undefined}
+          emptyTitle={archiveBucket ? `No ${archiveBucket === 'greatest' ? 'greatest hits' : archiveBucket} try-on results` : undefined}
           emptyDescription={
             archiveBucket
-              ? `Approved or rejected try-on results will appear here after they are archived out of the live moderation queue.`
+              ? archiveBucket === 'greatest'
+                ? 'Great try-on results will appear here after an admin marks approved images as Great.'
+                : `Approved or rejected try-on results will appear here after they are archived out of the live moderation queue.`
               : undefined
           }
         />

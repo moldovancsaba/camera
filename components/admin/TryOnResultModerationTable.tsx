@@ -41,6 +41,7 @@ export interface ModerationRow {
   approvedAt: string | null;
   isShareVisible: boolean;
   isSlideshowEligible: boolean;
+  isGreat: boolean;
   setup: {
     setupId: string;
     setupName?: string | null;
@@ -58,6 +59,18 @@ async function postDecision(id: string, action: 'approve' | 'reject') {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(payload.error || `Failed to ${action} try-on result`);
+  }
+}
+
+async function postGreat(id: string, isGreat: boolean) {
+  const response = await fetch(`/api/admin/tryon-results/${id}/${isGreat ? 'remove-great' : 'great'}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(isGreat ? {} : { great: true }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || (isGreat ? 'Failed to remove Greatest Hits flag' : 'Failed to mark result as Great'));
   }
 }
 
@@ -169,6 +182,7 @@ function toModerationRow(value: unknown): ModerationRow | null {
     approvedAt: typeof row.approvedAt === 'string' ? row.approvedAt : null,
     isShareVisible: Boolean(row.isShareVisible),
     isSlideshowEligible: Boolean(row.isSlideshowEligible),
+    isGreat: Boolean(row.isGreat),
     setup: row.setup && typeof row.setup === 'object' && typeof row.setup.setupId === 'string' ? row.setup : null,
   };
 }
@@ -330,13 +344,15 @@ function ModerationActions({
   row,
   busyId,
   onDecision,
+  onGreat,
 }: {
   row: ModerationRow;
   busyId: string | null;
   onDecision: (rowId: string, action: 'approve' | 'reject') => Promise<void>;
+  onGreat: (row: ModerationRow) => Promise<void>;
 }) {
   return (
-    <Group justify="stretch" gap="xs" wrap="nowrap" style={{ width: '100%' }}>
+    <Group justify="stretch" gap="xs" wrap="wrap" style={{ width: '100%' }}>
       <Button
         variant="light"
         loading={busyId === `${row.id}:approve`}
@@ -345,6 +361,15 @@ function ModerationActions({
         style={{ flex: 1 }}
       >
         Approve
+      </Button>
+      <Button
+        variant={row.isGreat ? 'default' : 'outline'}
+        loading={busyId === `${row.id}:great`}
+        aria-label={row.isGreat ? 'Remove from Greatest Hits' : 'Mark try-on result as Great'}
+        onClick={() => void onGreat(row)}
+        style={{ flex: 1 }}
+      >
+        {row.isGreat ? 'Remove Great' : 'Great'}
       </Button>
       <Button
         variant="light"
@@ -465,6 +490,19 @@ export default function TryOnResultModerationTable({
       setBusyId(`${rowId}:${action}`);
       await postDecision(rowId, action);
       if (activeRowId === rowId) {
+        setActiveRowId(null);
+      }
+      router.refresh();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleGreat(row: ModerationRow) {
+    try {
+      setBusyId(`${row.id}:great`);
+      await postGreat(row.id, row.isGreat);
+      if (activeRowId === row.id && !row.isGreat) {
         setActiveRowId(null);
       }
       router.refresh();
@@ -641,9 +679,9 @@ export default function TryOnResultModerationTable({
           },
           {
             key: 'quickActions',
-            label: 'Approve / Reject',
+            label: 'Actions',
             render: (row) => (
-              <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} />
+              <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} />
             ),
           },
           {
@@ -689,6 +727,9 @@ export default function TryOnResultModerationTable({
             render: (row) => (
               <Stack gap="xs" align="flex-start">
                 <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row.reviewStatus))} />
+                {row.isGreat ? (
+                  <StatusBadge {...getStatusBadgeProps('active', 'Great')} />
+                ) : null}
                 <Text size="xs" c="dimmed">
                   {visibilityLabel(row)}
                 </Text>
@@ -716,7 +757,7 @@ export default function TryOnResultModerationTable({
                   onOpen={() => setActiveRowId(row.id)}
                   onResultMissing={() => markAssetMissing(row.id, 'resultMissing')}
                 />
-                <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} />
+                <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} />
               </Stack>
               <Stack gap={2}>
                 <Text fw={700}>{resolveDisplayName(row.userName)}</Text>
@@ -733,6 +774,9 @@ export default function TryOnResultModerationTable({
               {renderPresetControls(row)}
               <Stack gap="xs" align="flex-start">
                 <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row.reviewStatus))} />
+                {row.isGreat ? (
+                  <StatusBadge {...getStatusBadgeProps('active', 'Great')} />
+                ) : null}
                 <Text size="xs" c="dimmed">
                   {visibilityLabel(row)}
                 </Text>
@@ -778,6 +822,9 @@ export default function TryOnResultModerationTable({
             {renderPresetControls(activeRow)}
             <Stack gap="xs" align="flex-start">
               <StatusBadge {...getStatusBadgeProps(reviewTone(activeRow.reviewStatus), reviewLabel(activeRow.reviewStatus))} />
+              {activeRow.isGreat ? (
+                <StatusBadge {...getStatusBadgeProps('active', 'Great')} />
+              ) : null}
               <Text size="sm" c="dimmed">
                 {visibilityLabel(activeRow)}
               </Text>
@@ -787,7 +834,7 @@ export default function TryOnResultModerationTable({
                 </Text>
               ) : null}
             </Stack>
-            <ModerationActions row={activeRow} busyId={busyId} onDecision={handleDecision} />
+            <ModerationActions row={activeRow} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} />
           </Stack>
         ) : null}
       </Modal>
