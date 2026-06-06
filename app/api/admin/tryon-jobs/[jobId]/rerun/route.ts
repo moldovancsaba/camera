@@ -124,12 +124,41 @@ export const POST = withErrorHandler(async (
     .collection<Submission>(COLLECTIONS.SUBMISSIONS)
     .findOne({ sourceJobId: normalizedJobId, submissionKind: 'tryon_result' });
   if (priorResult?._id) {
+    const rerunArchivedAt = nowIso();
+    const rerunReviewNotes = `Superseded by rerun job ${rerunJob.jobId} because result quality was not accepted.`;
+    await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
+      { _id: priorResult._id },
+      {
+        $set: {
+          reviewStatus: 'rejected',
+          reviewedAt: rerunArchivedAt,
+          reviewedBy: session.user.email,
+          reviewNotes: rerunReviewNotes,
+          isShareVisible: false,
+          isSlideshowEligible: false,
+          updatedAt: rerunArchivedAt,
+          tryOnModerationArchive: {
+            archived: true,
+            bucket: 'rejected',
+            archivedAt: rerunArchivedAt,
+            archivedBy: session.user.email,
+          },
+          'metadata.tryOnSupersededByRerun': true,
+          'metadata.tryOnSupersededByJobId': rerunJob.jobId,
+          'metadata.tryOnSupersededAt': rerunArchivedAt,
+          'metadata.tryOnSupersededReason': 'quality_rerun',
+        },
+      }
+    );
     await appendTryOnModerationEvent(db, {
       resultSubmissionId: priorResult._id.toString(),
       resultSubmission: priorResult,
       action: 'rerun',
       actorEmail: session.user.email,
       nextState: snapshotTryOnModerationState(priorResult, {
+        reviewStatus: 'rejected',
+        archiveBucket: 'rejected',
+        archived: true,
         shareVisible: false,
         slideshowEligible: false,
       }),
