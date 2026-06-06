@@ -224,7 +224,7 @@ export default function TryOnQueueTable({ rows, setupOptions = [] }: TryOnQueueT
         },
         {
           key: 'suit',
-          label: 'Leather Jersey',
+          label: 'Garment',
           render: (row: QueueRow) => <Text size="sm">{row.request.leatherSuitId}</Text>,
         },
         {

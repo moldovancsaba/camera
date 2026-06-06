@@ -91,6 +91,10 @@ export default async function AdminTryOnQueuePage({
   let rows: QueueRow[] = [];
   let dbError = null;
   let setupOptions: TryOnSetup[] = [];
+  let totalJobCount = 0;
+  let queuedJobCount = 0;
+  let retryWaitJobCount = 0;
+  let failedJobCount = 0;
 
   try {
     const db = await connectToDatabase();
@@ -112,14 +116,24 @@ export default async function AdminTryOnQueuePage({
       ];
     }
 
-    const jobs = await db
-      .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
-      .find(query)
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .toArray();
+    const [jobs, totalJobs, queuedJobs, retryWaitJobs, failedJobs] = await Promise.all([
+      db
+        .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
+        .find(query)
+        .sort({ createdAt: -1 })
+        .limit(100)
+        .toArray(),
+      db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments(query),
+      db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments({ ...query, status: 'queued' }),
+      db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments({ ...query, status: 'retry_wait' }),
+      db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments({ ...query, status: 'failed' }),
+    ]);
 
     rows = jobs.map(toQueueRow).filter((row): row is QueueRow => Boolean(row));
+    totalJobCount = totalJobs;
+    queuedJobCount = queuedJobs;
+    retryWaitJobCount = retryWaitJobs;
+    failedJobCount = failedJobs;
   } catch (error) {
     console.error('Error loading try-on queue:', error);
     dbError = serializeMongoError(error);
@@ -133,17 +147,18 @@ export default async function AdminTryOnQueuePage({
       stats={
         !dbError
           ? [
-              { label: 'Jobs Loaded', value: rows.length, iconKey: 'photoScan' },
-              { label: 'Queued', value: rows.filter((row) => row.status === 'queued').length, iconKey: 'photo' },
-              { label: 'Retry Wait', value: rows.filter((row) => row.status === 'retry_wait').length, iconKey: 'photo' },
-              { label: 'Failed', value: rows.filter((row) => row.status === 'failed').length, iconKey: 'photo' },
+              { label: 'Matching Jobs', value: totalJobCount, iconKey: 'photoScan' },
+              { label: 'Showing', value: rows.length, iconKey: 'photoScan' },
+              { label: 'Queued', value: queuedJobCount, iconKey: 'photo' },
+              { label: 'Retry Wait', value: retryWaitJobCount, iconKey: 'photo' },
+              { label: 'Failed', value: failedJobCount, iconKey: 'photo' },
             ]
           : undefined
       }
       search={{
         defaultValue: search,
         label: 'Search queue',
-        placeholder: 'Search job id, submission id, suit id, setup id, or source image URL',
+        placeholder: 'Search job id, submission id, garment id, setup id, or source image URL',
         clearHref: statusFilter ? `/admin/tryon/queue?status=${encodeURIComponent(statusFilter)}` : '/admin/tryon/queue',
         hiddenFields: statusFilter ? { status: statusFilter } : undefined,
       }}
