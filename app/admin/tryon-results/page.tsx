@@ -113,7 +113,7 @@ function toModerationSetup(job: TryOnJob | null | undefined): ModerationRow['set
 export default async function AdminTryOnResultsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ reviewStatus?: string; search?: string; archive?: string }>;
+  searchParams?: Promise<{ reviewStatus?: string; search?: string; archive?: string; failed?: string }>;
 }) {
   const session = await getSession();
   if (!isGlobalAdminSession(session)) {
@@ -124,7 +124,9 @@ export default async function AdminTryOnResultsPage({
   const reviewStatus = typeof resolvedSearchParams?.reviewStatus === 'string' ? resolvedSearchParams.reviewStatus.trim() : '';
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
   const archive = typeof resolvedSearchParams?.archive === 'string' ? resolvedSearchParams.archive.trim() : '';
+  const failed = typeof resolvedSearchParams?.failed === 'string' ? resolvedSearchParams.failed.trim() : '';
   const archiveBucket = archive === 'approved' || archive === 'rejected' ? archive : '';
+  const failedJobsMode = failed === '1' || failed.toLowerCase() === 'true';
 
   let rows: ModerationRow[] = [];
   let dbError = null;
@@ -198,14 +200,14 @@ export default async function AdminTryOnResultsPage({
         'tryOnModerationArchive.archived': true,
         'tryOnModerationArchive.bucket': 'rejected',
       }),
-      archiveBucket
-        ? Promise.resolve([])
-        : db
+      failedJobsMode
+        ? db
             .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
             .find(failedJobsQuery)
             .sort({ updatedAt: -1, createdAt: -1 })
             .limit(50)
-            .toArray(),
+            .toArray()
+        : Promise.resolve([]),
       db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments({ status: 'failed' }),
     ]);
 
@@ -277,7 +279,9 @@ export default async function AdminTryOnResultsPage({
       eyebrow="Apps"
       title="Try-On Vetting Queue"
       description={
-        archiveBucket
+        failedJobsMode
+          ? 'Review failed try-on jobs, inspect their failure reason, and send them back to the worker.'
+          : archiveBucket
           ? `Review archive for ${archiveBucket} try-on decisions. Approved items remain publishable; this archive only removes them from the active moderation queue.`
           : 'Review generated leather results before they become share-visible or slideshow-eligible.'
       }
@@ -296,24 +300,33 @@ export default async function AdminTryOnResultsPage({
         defaultValue: search,
         label: 'Search queue',
         placeholder: 'Search by user, email, event, partner, suit, or job',
-        clearHref: archiveBucket ? `/admin/tryon-results?archive=${archiveBucket}` : '/admin/tryon-results',
+        clearHref: failedJobsMode
+          ? '/admin/tryon-results?failed=1'
+          : archiveBucket
+            ? `/admin/tryon-results?archive=${archiveBucket}`
+            : '/admin/tryon-results',
         hiddenFields: {
           ...(reviewStatus ? { reviewStatus } : {}),
           ...(archiveBucket ? { archive: archiveBucket } : {}),
+          ...(failedJobsMode ? { failed: '1' } : {}),
         },
       }}
       toolbarHint={
-        archiveBucket
+        failedJobsMode
+          ? 'Search failed try-on jobs or return to the active review queue.'
+          : archiveBucket
           ? 'Search archived try-on decisions or return to the active review queue.'
           : 'Search the queue directly or jump to the pending-only review view.'
       }
       toolbarFilters={
         [
+          ...(failedJobsMode ? [{ label: 'Queue', value: 'failed jobs' }] : []),
           ...(archiveBucket ? [{ label: 'Archive', value: archiveBucket }] : []),
           ...(reviewStatus ? [{ label: 'Review Status', value: reviewStatus.replace(/_/g, ' ') }] : []),
           ...(search ? [{ label: 'Search', value: search }] : []),
         ].length > 0
           ? [
+              ...(failedJobsMode ? [{ label: 'Queue', value: 'failed jobs' }] : []),
               ...(archiveBucket ? [{ label: 'Archive', value: archiveBucket }] : []),
               ...(reviewStatus ? [{ label: 'Review Status', value: reviewStatus.replace(/_/g, ' ') }] : []),
               ...(search ? [{ label: 'Search', value: search }] : []),
@@ -321,12 +334,12 @@ export default async function AdminTryOnResultsPage({
           : undefined
       }
       toolbarTrailing={{
-        href: archiveBucket
+        href: archiveBucket || failedJobsMode
           ? '/admin/tryon-results'
           : search
             ? `/admin/tryon-results?reviewStatus=pending_review&search=${encodeURIComponent(search)}`
             : '/admin/tryon-results?reviewStatus=pending_review',
-        label: archiveBucket ? 'Active queue' : 'Pending only',
+        label: archiveBucket || failedJobsMode ? 'Active queue' : 'Pending only',
       }}
       dbError={dbError}
     >
@@ -370,19 +383,21 @@ export default async function AdminTryOnResultsPage({
           />
         ))}
       </ConsumerDashboardGrid>
-      {!archiveBucket && failedJobRows.length > 0 ? (
+      {failedJobsMode ? (
         <TryOnQueueTable rows={failedJobRows} setupOptions={setupOptions} />
       ) : null}
-      <TryOnResultModerationTable
-        rows={rows}
-        setupOptions={setupOptions}
-        emptyTitle={archiveBucket ? `No archived ${archiveBucket} try-on results` : undefined}
-        emptyDescription={
-          archiveBucket
-            ? `Approved or rejected try-on results will appear here after they are archived out of the live moderation queue.`
-            : undefined
-        }
-      />
+      {!failedJobsMode ? (
+        <TryOnResultModerationTable
+          rows={rows}
+          setupOptions={setupOptions}
+          emptyTitle={archiveBucket ? `No archived ${archiveBucket} try-on results` : undefined}
+          emptyDescription={
+            archiveBucket
+              ? `Approved or rejected try-on results will appear here after they are archived out of the live moderation queue.`
+              : undefined
+          }
+        />
+      ) : null}
     </AdminListPageShell>
   );
 }
