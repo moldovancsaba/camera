@@ -429,9 +429,9 @@ export default function TryOnResultModerationTable({
         .map((value: unknown) => toModerationRow(value))
         .filter((value: ModerationRow | null): value is ModerationRow => Boolean(value));
       const previousIds = knownRowIdsRef.current;
-      const hasNewRows = nextRows.some((row) => !previousIds.has(row.id));
+      const hasNewRows = nextRows.some((row: ModerationRow) => !previousIds.has(row.id));
 
-      knownRowIdsRef.current = new Set(nextRows.map((row) => row.id));
+      knownRowIdsRef.current = new Set(nextRows.map((row: ModerationRow) => row.id));
       setDisplayRows(nextRows);
       setLastRefreshLabel(new Date().toLocaleTimeString());
 
