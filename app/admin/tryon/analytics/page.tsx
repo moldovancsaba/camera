@@ -9,6 +9,7 @@ import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import {
   collectTryOnAnalytics,
   type TryOnAnalyticsBucket,
+  type TryOnHourlyOutcomeRow,
   type TryOnAnalyticsRow,
   type TryOnPresetPerformanceRow,
 } from '@/lib/tryon/analytics';
@@ -53,6 +54,93 @@ function AnalyticsTable({ title, rows }: { title: string; rows: TryOnAnalyticsRo
         </div>
       ) : (
         <Text c="dimmed">No try-on decisions match this filter.</Text>
+      )}
+    </Stack>
+  );
+}
+
+function pct(value: number, total: number): string {
+  if (total <= 0 || value <= 0) return '0%';
+  return `${Math.max(4, Math.round((value / total) * 1000) / 10)}%`;
+}
+
+function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeRow[] }) {
+  const maxTotal = Math.max(1, ...rows.map((row) => row.total));
+  const colors = {
+    approved: 'var(--mantine-color-green-6)',
+    rejected: 'var(--mantine-color-red-6)',
+    service: 'var(--mantine-color-blue-6)',
+    failed: 'var(--mantine-color-orange-6)',
+  };
+
+  return (
+    <Stack gap="sm">
+      <Title order={3}>Hourly Outcomes</Title>
+      <Text c="dimmed" size="sm">
+        Approved, declined, service, and failed images grouped by hour.
+      </Text>
+      {rows.length > 0 ? (
+        <Stack gap="xs">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            {[
+              ['Approved', colors.approved],
+              ['Declined', colors.rejected],
+              ['Service', colors.service],
+              ['Failed', colors.failed],
+            ].map(([label, color]) => (
+              <Text key={label} size="xs" c="dimmed">
+                <span
+                  aria-hidden
+                  style={{
+                    background: color,
+                    borderRadius: 999,
+                    display: 'inline-block',
+                    height: 10,
+                    marginRight: 6,
+                    width: 10,
+                  }}
+                />
+                {label}
+              </Text>
+            ))}
+          </div>
+          <Stack gap="sm">
+            {rows.map((row) => (
+              <div key={row.hour}>
+                <div style={{ alignItems: 'baseline', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <Text size="sm" fw={700}>{row.label}</Text>
+                  <Text size="xs" c="dimmed">
+                    {row.total} total
+                  </Text>
+                </div>
+                <div
+                  aria-label={`${row.label}: approved ${row.approved}, declined ${row.rejected}, service ${row.service}, failed ${row.failed}`}
+                  role="img"
+                  style={{
+                    background: 'var(--mantine-color-gray-1)',
+                    borderRadius: 999,
+                    display: 'flex',
+                    height: 18,
+                    marginTop: 6,
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    width: `${Math.max(12, Math.round((row.total / maxTotal) * 100))}%`,
+                  }}
+                >
+                  <div title={`Approved: ${row.approved}`} style={{ background: colors.approved, width: pct(row.approved, row.total) }} />
+                  <div title={`Declined: ${row.rejected}`} style={{ background: colors.rejected, width: pct(row.rejected, row.total) }} />
+                  <div title={`Service: ${row.service}`} style={{ background: colors.service, width: pct(row.service, row.total) }} />
+                  <div title={`Failed: ${row.failed}`} style={{ background: colors.failed, width: pct(row.failed, row.total) }} />
+                </div>
+                <Text size="xs" c="dimmed" mt={4}>
+                  Approved {row.approved} · Declined {row.rejected} · Service {row.service} · Failed {row.failed}
+                </Text>
+              </div>
+            ))}
+          </Stack>
+        </Stack>
+      ) : (
+        <Text c="dimmed">No hourly outcome data matches this filter.</Text>
       )}
     </Stack>
   );
@@ -173,6 +261,7 @@ export default async function AdminTryOnAnalyticsPage({
           <Text c="dimmed">
             Reporting over {analytics.scannedResultCount} archived try-on decision{analytics.scannedResultCount === 1 ? '' : 's'}.
           </Text>
+          <HourlyOutcomeChart rows={analytics.hourlyOutcomes} />
           <PresetPerformanceTable rows={analytics.presetPerformance} />
           <AnalyticsTable title="By Preset" rows={analytics.byPreset} />
           <AnalyticsTable title="By Garment" rows={analytics.byGarment} />

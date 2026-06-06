@@ -32,7 +32,18 @@ export interface TryOnAnalyticsResult {
   byGarment: TryOnAnalyticsRow[];
   byEvent: TryOnAnalyticsRow[];
   presetPerformance: TryOnPresetPerformanceRow[];
+  hourlyOutcomes: TryOnHourlyOutcomeRow[];
   scannedResultCount: number;
+}
+
+export interface TryOnHourlyOutcomeRow {
+  hour: string;
+  label: string;
+  approved: number;
+  rejected: number;
+  service: number;
+  failed: number;
+  total: number;
 }
 
 export interface TryOnPresetPerformanceRow {
@@ -84,6 +95,42 @@ function getOrCreate(map: Map<string, TryOnAnalyticsRow>, key: string, label: st
 
 function sortRows(rows: TryOnAnalyticsRow[]) {
   return rows.sort((a, b) => b.total - a.total || a.label.localeCompare(b.label));
+}
+
+function toHourKey(value: string | null | undefined): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return null;
+  const date = new Date(timestamp);
+  date.setUTCMinutes(0, 0, 0);
+  return date.toISOString();
+}
+
+function formatHourLabel(hour: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'UTC',
+  }).format(new Date(hour));
+}
+
+function getOrCreateHourlyOutcome(map: Map<string, TryOnHourlyOutcomeRow>, hour: string) {
+  const existing = map.get(hour);
+  if (existing) return existing;
+  const row: TryOnHourlyOutcomeRow = {
+    hour,
+    label: `${formatHourLabel(hour)} UTC`,
+    approved: 0,
+    rejected: 0,
+    service: 0,
+    failed: 0,
+    total: 0,
+  };
+  map.set(hour, row);
+  return row;
 }
 
 function buildMatch(filters: TryOnAnalyticsFilters) {
@@ -168,6 +215,7 @@ export async function collectTryOnAnalytics(
   const byPreset = new Map<string, TryOnAnalyticsRow>();
   const byGarment = new Map<string, TryOnAnalyticsRow>();
   const byEvent = new Map<string, TryOnAnalyticsRow>();
+  const hourlyOutcomes = new Map<string, TryOnHourlyOutcomeRow>();
   const totals = { approved: 0, rejected: 0, service: 0, greatest: 0, total: 0 };
 
   for (const doc of docs) {
@@ -176,6 +224,12 @@ export async function collectTryOnAnalytics(
 
     const great = bucket === 'approved' && isGreat(doc.metadata);
     increment(totals, bucket, great);
+    const decisionHour = toHourKey(doc.tryOnModerationArchive?.archivedAt ?? doc.reviewedAt ?? doc.createdAt);
+    if (decisionHour) {
+      const hourlyRow = getOrCreateHourlyOutcome(hourlyOutcomes, decisionHour);
+      hourlyRow[bucket] += 1;
+      hourlyRow.total += 1;
+    }
 
     const job = doc.sourceJobId ? jobMap.get(doc.sourceJobId) : null;
     const setupId = job?.processing?.resolvedSetup?.setupId ?? job?.request?.setupId ?? 'unknown_preset';
@@ -211,7 +265,15 @@ export async function collectTryOnAnalytics(
     };
     row.jobs += 1;
     if (job.status === 'done') row.done += 1;
-    if (job.status === 'failed') row.failed += 1;
+    if (job.status === 'failed') {
+      row.failed += 1;
+      const failedHour = toHourKey(job.updatedAt ?? job.createdAt);
+      if (failedHour) {
+        const hourlyRow = getOrCreateHourlyOutcome(hourlyOutcomes, failedHour);
+        hourlyRow.failed += 1;
+        hourlyRow.total += 1;
+      }
+    }
     if (job.status === 'retry_wait') row.retryWait += 1;
     if (job.error?.code === 'provider_timeout') row.providerTimeouts += 1;
     presetPerformanceMap.set(setupId, row);
@@ -247,6 +309,7 @@ export async function collectTryOnAnalytics(
     byGarment: sortRows(Array.from(byGarment.values())),
     byEvent: sortRows(Array.from(byEvent.values())),
     presetPerformance: Array.from(presetPerformanceMap.values()).sort((a, b) => b.jobs - a.jobs || a.setupName.localeCompare(b.setupName)),
+    hourlyOutcomes: Array.from(hourlyOutcomes.values()).sort((a, b) => a.hour.localeCompare(b.hour)),
     scannedResultCount: docs.length,
   };
 }
