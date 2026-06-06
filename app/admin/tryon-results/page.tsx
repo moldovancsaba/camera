@@ -213,7 +213,7 @@ export default async function AdminTryOnResultsPage({
       db
         .collection<Submission>(COLLECTIONS.SUBMISSIONS)
         .find(query)
-        .sort({ createdAt: -1 })
+        .sort(archiveBucket || failedJobsMode ? { createdAt: -1 } : { createdAt: 1 })
         .limit(100)
         .toArray() as Promise<Array<Submission & { _id: { toString(): string } }>>,
       db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
