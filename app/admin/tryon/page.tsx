@@ -19,9 +19,17 @@ function formatQueueSummary(counts: Record<string, number>) {
     `Queued ${counts.queued ?? 0}`,
     `Processing ${(counts.claimed ?? 0) + (counts.processing ?? 0) + (counts.uploading_result ?? 0)}`,
     `Retry ${counts.retry_wait ?? 0}`,
-    `Done ${counts.done ?? 0}`,
-    `Failed ${counts.failed ?? 0}`,
   ].join(' · ');
+}
+
+function activeQueueTotal(counts: Record<string, number>) {
+  return (
+    (counts.queued ?? 0) +
+    (counts.claimed ?? 0) +
+    (counts.processing ?? 0) +
+    (counts.uploading_result ?? 0) +
+    (counts.retry_wait ?? 0)
+  );
 }
 
 export default async function AdminTryOnAppPage() {
@@ -79,7 +87,7 @@ export default async function AdminTryOnAppPage() {
           <SimpleGrid cols={{ base: 1, xl: 3 }}>
             <AccentPanel tone={cameraInfoToneMap.blue} variant="subtle" title="Queue is operational state">
               <Text size="sm" c="dimmed">
-                Use the queue view to see queued, claimed, retrying, failed, and completed jobs directly from Atlas instead of relying on local shell output.
+                Use the queue view to see active queued, claimed, processing, and retrying jobs directly from Atlas instead of relying on local shell output.
               </Text>
             </AccentPanel>
             <AccentPanel tone={cameraInfoToneMap.green} variant="subtle" title="Garments are catalog entries">
@@ -98,7 +106,7 @@ export default async function AdminTryOnAppPage() {
             {[
               {
                 href: '/admin/tryon/queue',
-                title: `Queue Status (${Object.values(queueCounts).reduce((sum, count) => sum + count, 0)})`,
+                title: `Queue Status (${activeQueueTotal(queueCounts)})`,
                 description: formatQueueSummary(queueCounts),
                 iconKey: 'photoScan' as AdminIconKey,
               },
