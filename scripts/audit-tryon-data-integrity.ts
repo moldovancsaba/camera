@@ -5,8 +5,18 @@ import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { isTryOnPlaceholderEmail } from '@/lib/tryon/identity';
 
 function hasGuestIdentity(doc: Submission): boolean {
-  const name = typeof doc.userName === 'string' ? doc.userName.trim() : '';
+  const nameValue = doc.userInfo?.name ?? doc.userName;
+  const name = typeof nameValue === 'string' ? nameValue.trim() : '';
   return isTryOnPlaceholderEmail(doc.userEmail) || !name || name === 'Guest' || name === 'Event Guest';
+}
+
+function hasUsableIdentity(doc: Submission | null | undefined): boolean {
+  if (!doc) return false;
+  const nameValue = doc.userInfo?.name ?? doc.userName;
+  const name = typeof nameValue === 'string' ? nameValue.trim() : '';
+  const hasName = Boolean(name && name !== 'Guest' && name !== 'Event Guest');
+  const hasEmail = !isTryOnPlaceholderEmail(doc.userInfo?.email ?? doc.userEmail);
+  return hasName || hasEmail;
 }
 
 async function main() {
@@ -46,7 +56,7 @@ async function main() {
   const sourceMap = new Map(sources.map((source) => [source._id?.toString() ?? '', source]));
   const sourceRecoverable = guestDocs.filter((doc) => {
     const source = doc.sourceSubmissionId ? sourceMap.get(doc.sourceSubmissionId) : null;
-    return source && (!isTryOnPlaceholderEmail(source.userInfo?.email ?? source.userEmail) || Boolean(source.userInfo?.name ?? source.userName));
+    return hasUsableIdentity(source);
   });
   const doneJobsMissingResults = await db.collection(COLLECTIONS.TRYON_JOBS).aggregate([
     { $match: { status: 'done' } },

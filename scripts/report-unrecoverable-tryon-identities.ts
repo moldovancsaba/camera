@@ -26,7 +26,9 @@ function csvEscape(value: unknown): string {
 
 function readName(submission: Submission | null | undefined): string | null {
   const value = submission?.userInfo?.name ?? submission?.userName ?? null;
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized && normalized !== 'Guest' && normalized !== 'Event Guest' ? normalized : null;
 }
 
 function readEmail(submission: Submission | null | undefined): string | null {
@@ -37,7 +39,7 @@ function readEmail(submission: Submission | null | undefined): string | null {
 function hasGuestIdentity(submission: Submission): boolean {
   const name = readName(submission);
   const email = readEmail(submission);
-  return !email || !name || name === 'Guest' || name === 'Event Guest';
+  return !email || !name;
 }
 
 async function main() {

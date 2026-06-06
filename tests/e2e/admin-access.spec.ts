@@ -42,9 +42,9 @@ test.describe('admin access smoke', () => {
     });
 
     await expect(page).toHaveURL(/\/admin\/events$/);
-    await expect(page.getByRole('heading', { level: 1, name: 'Events App' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Events' })).toBeVisible();
     await expect(sidebarNav.getByRole('link', { name: 'Partners' })).toBeVisible();
-    await expect(sidebarNav.getByRole('link', { name: 'Events App' })).toBeVisible();
+    await expect(sidebarNav.getByRole('link', { name: 'Events' })).toBeVisible();
     await expect(sidebarNav.getByRole('link', { name: 'Dashboard' })).toHaveCount(0);
     await expect(sidebarNav.getByRole('link', { name: 'Global Frames' })).toHaveCount(0);
     await expect(sidebarNav.getByRole('link', { name: 'Users' })).toHaveCount(0);

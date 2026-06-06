@@ -247,8 +247,8 @@ export async function collectTryOnAnalytics(
 
   const presetPerformanceMap = new Map<string, TryOnPresetPerformanceRow>();
   for (const job of allMatchingJobs) {
-    const setupId = job.processing.resolvedSetup?.setupId ?? job.request.setupId ?? 'unknown_preset';
-    const setupName = job.processing.resolvedSetup?.setupName ?? setupId;
+    const setupId = job.processing?.resolvedSetup?.setupId ?? job.request?.setupId ?? 'unknown_preset';
+    const setupName = job.processing?.resolvedSetup?.setupName ?? setupId;
     const row = presetPerformanceMap.get(setupId) ?? {
       setupId,
       setupName,
