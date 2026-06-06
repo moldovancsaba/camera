@@ -52,6 +52,62 @@ function formatDateTime(value: string): string {
   });
 }
 
+function meaningfulIdentityExpression() {
+  return {
+    $let: {
+      vars: {
+        email: { $toLower: { $trim: { input: { $ifNull: ['$userEmail', ''] } } } },
+        userInfoEmail: { $toLower: { $trim: { input: { $ifNull: ['$userInfo.email', ''] } } } },
+        name: { $toLower: { $trim: { input: { $ifNull: ['$userName', ''] } } } },
+        userInfoName: { $toLower: { $trim: { input: { $ifNull: ['$userInfo.name', ''] } } } },
+      },
+      in: {
+        $switch: {
+          branches: [
+            {
+              case: {
+                $and: [
+                  { $ne: ['$$userInfoEmail', ''] },
+                  { $not: { $in: ['$$userInfoEmail', ['anonymous@event', 'anonymous@event.com', 'unknown@unknown.com']] } },
+                ],
+              },
+              then: '$$userInfoEmail',
+            },
+            {
+              case: {
+                $and: [
+                  { $ne: ['$$email', ''] },
+                  { $not: { $in: ['$$email', ['anonymous@event', 'anonymous@event.com', 'unknown@unknown.com']] } },
+                ],
+              },
+              then: '$$email',
+            },
+            {
+              case: {
+                $and: [
+                  { $ne: ['$$userInfoName', ''] },
+                  { $not: { $in: ['$$userInfoName', ['event guest', 'anonymous user', 'unknown']] } },
+                ],
+              },
+              then: '$$userInfoName',
+            },
+            {
+              case: {
+                $and: [
+                  { $ne: ['$$name', ''] },
+                  { $not: { $in: ['$$name', ['event guest', 'anonymous user', 'unknown']] } },
+                ],
+              },
+              then: '$$name',
+            },
+          ],
+          default: null,
+        },
+      },
+    },
+  };
+}
+
 export default async function AdminSubmissionsPage({
   searchParams,
 }: {
@@ -63,6 +119,9 @@ export default async function AdminSubmissionsPage({
   }
 
   let submissionRows: SerializedSubmissionRow[] = [];
+  let galleryItemCount = 0;
+  let namedUserCount = 0;
+  let partnerScopedCount = 0;
   let dbError = null;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
@@ -80,12 +139,32 @@ export default async function AdminSubmissionsPage({
       ];
     }
 
-    const submissionDocs = await db
-      .collection(COLLECTIONS.SUBMISSIONS)
-      .find(query)
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .toArray();
+    const [submissionDocs, totalCount, namedUsers, scopedCount] = await Promise.all([
+      db
+        .collection(COLLECTIONS.SUBMISSIONS)
+        .find(query)
+        .sort({ createdAt: -1 })
+        .limit(100)
+        .toArray(),
+      db.collection(COLLECTIONS.SUBMISSIONS).countDocuments(query),
+      db
+        .collection(COLLECTIONS.SUBMISSIONS)
+        .aggregate<{ count: number }>([
+          { $match: query },
+          { $project: { identity: meaningfulIdentityExpression() } },
+          { $match: { identity: { $type: 'string', $ne: '' } } },
+          { $group: { _id: '$identity' } },
+          { $count: 'count' },
+        ])
+        .toArray(),
+      db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({
+        ...query,
+        partnerId: { $type: 'string', $ne: '' },
+      }),
+    ]);
+    galleryItemCount = totalCount;
+    namedUserCount = namedUsers[0]?.count ?? 0;
+    partnerScopedCount = scopedCount;
     const submissions = submissionDocs as unknown as SubmissionGalleryItem[];
 
     const partnerIds = Array.from(
@@ -155,19 +234,18 @@ export default async function AdminSubmissionsPage({
     <AdminListPageShell
       eyebrow="Resource Inventory"
       title="Global Galleries"
-      description="Cross-app submission inventory for audit, moderation, and gallery operations."
       stats={
         !dbError
           ? [
-              { label: 'Gallery Items', value: submissionRows.length, iconKey: 'photoScan' },
+              { label: 'Gallery Items', value: galleryItemCount, iconKey: 'photoScan' },
               {
                 label: 'Named Users',
-                value: submissionRows.filter((submission) => Boolean(submission.userName)).length,
+                value: namedUserCount,
                 iconKey: 'user',
               },
               {
                 label: 'Partner-scoped',
-                value: submissionRows.filter((submission) => Boolean(submission.partnerAdminId)).length,
+                value: partnerScopedCount,
                 iconKey: 'world',
               },
             ]
@@ -181,7 +259,7 @@ export default async function AdminSubmissionsPage({
       }}
       dbError={dbError}
     >
-      <SubmissionsInventoryList submissions={submissionRows} />
+      <SubmissionsInventoryList submissions={submissionRows} totalCount={galleryItemCount} />
     </AdminListPageShell>
   );
 }

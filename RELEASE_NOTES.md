@@ -12,6 +12,20 @@ This document tracks all completed tasks and version releases in chronological o
 
 ## [unreleased] — 2026-06-06
 
+### Fix — Admin inventory stats now use database totals
+
+**Status**: Complete  
+**Release Type**: Data correctness hardening
+
+#### Summary
+
+- Replaced capped first-page calculations on admin inventory stat cards with DB-backed totals and aggregations.
+- Fixed `/admin/submissions` so `Gallery Items`, `Named Users`, and `Partner-scoped` no longer report the first 100 loaded rows as totals.
+- Replaced the dashboard `Active Users` placeholder with a real active partner-access user count.
+- Updated partner, event, frame, logo, and garment inventory cards to use full matching collection totals rather than loaded row counts.
+- Changed gallery list copy from `Total` to `Showing X of Y` to make pagination limits explicit.
+- Removed requested helper text panels/descriptions from landing pages, dashboard quick actions, and global galleries.
+
 ### Feature — Try-On moderation, rerun, reporting, and operational hardening
 
 **Status**: Complete  

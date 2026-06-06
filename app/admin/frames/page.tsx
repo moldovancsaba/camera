@@ -59,6 +59,9 @@ export default async function FramesPage({
   }
 
   let frameRows: SerializedFrameRow[] = [];
+  let matchingFrameCount = 0;
+  let activeFrameCount = 0;
+  let assignmentCount = 0;
   let dbError = null;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
@@ -74,12 +77,26 @@ export default async function FramesPage({
           ],
         }
       : {};
-    const frameDocs = await db
-      .collection(COLLECTIONS.FRAMES)
-      .find(query)
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .toArray();
+    const [frameDocs, totalFrames, activeFrames, assignments] = await Promise.all([
+      db
+        .collection(COLLECTIONS.FRAMES)
+        .find(query)
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .toArray(),
+      db.collection(COLLECTIONS.FRAMES).countDocuments(query),
+      db.collection(COLLECTIONS.FRAMES).countDocuments({ ...query, isActive: true }),
+      db
+        .collection(COLLECTIONS.FRAMES)
+        .aggregate<{ total: number }>([
+          { $match: query },
+          { $group: { _id: null, total: { $sum: { $ifNull: ['$usageCount', 0] } } } },
+        ])
+        .toArray(),
+    ]);
+    matchingFrameCount = totalFrames;
+    activeFrameCount = activeFrames;
+    assignmentCount = assignments[0]?.total ?? 0;
     const frames = frameDocs as unknown as FrameListItem[];
 
     const partnerIds = Array.from(
@@ -149,9 +166,6 @@ export default async function FramesPage({
     dbError = serializeMongoError(error);
   }
 
-  const activeCount = frameRows.filter((frame) => frame.isActive).length;
-  const assignmentCount = frameRows.reduce((sum, frame) => sum + frame.usageCount, 0);
-
   return (
     <AdminListPageShell
       eyebrow="Resource Inventory"
@@ -161,8 +175,8 @@ export default async function FramesPage({
       stats={
         !dbError
           ? [
-              { label: 'Visible Frames', value: frameRows.length, iconKey: 'frame' },
-              { label: 'Active Frames', value: activeCount, iconKey: 'world' },
+              { label: search ? 'Matching Frames' : 'Frames', value: matchingFrameCount, iconKey: 'frame' },
+              { label: 'Active Frames', value: activeFrameCount, iconKey: 'world' },
               { label: 'Assignments', value: assignmentCount, iconKey: 'frame' },
             ]
           : undefined

@@ -28,7 +28,13 @@ function resolveDisplayName(userName: string): string {
   return normalized && !isLegacyGuestName(normalized) ? normalized : 'Guest';
 }
 
-export default function SubmissionsInventoryList({ submissions }: { submissions: SerializedSubmissionRow[] }) {
+export default function SubmissionsInventoryList({
+  submissions,
+  totalCount,
+}: {
+  submissions: SerializedSubmissionRow[];
+  totalCount: number;
+}) {
   if (submissions.length === 0) {
     return (
       <Card p="xl">
@@ -44,7 +50,7 @@ export default function SubmissionsInventoryList({ submissions }: { submissions:
   return (
     <Stack gap="md">
       <Text size="sm" c="dimmed">
-        Total: {submissions.length} gallery items
+        Showing {submissions.length} of {totalCount} gallery item{totalCount === 1 ? '' : 's'}
       </Text>
       <SimpleGrid cols={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing="lg">
         {submissions.map((submission) => (

@@ -49,6 +49,9 @@ export default async function LogosPage({
   }
 
   let logoRows: SerializedLogoRow[] = [];
+  let matchingLogoCount = 0;
+  let partnerDefaultTotal = 0;
+  let eventAssignmentTotal = 0;
   let dbError = null;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
@@ -64,12 +67,18 @@ export default async function LogosPage({
           ],
         }
       : {};
-    const logos = (await db
-      .collection(COLLECTIONS.LOGOS)
-      .find(query)
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .toArray()) as unknown as Logo[];
+    const [logos, totalLogos, matchingLogoIds] = await Promise.all([
+      db
+        .collection(COLLECTIONS.LOGOS)
+        .find(query)
+        .sort({ createdAt: -1 })
+        .limit(100)
+        .toArray() as Promise<unknown[]>,
+      db.collection(COLLECTIONS.LOGOS).countDocuments(query),
+      db.collection(COLLECTIONS.LOGOS).distinct('logoId', query),
+    ]);
+    matchingLogoCount = totalLogos;
+    const logoIds = matchingLogoIds.filter((logoId): logoId is string => typeof logoId === 'string' && logoId.trim().length > 0);
 
     const partnerUsageByLogoId = new Map<string, PartnerLogoUsage[]>();
     const eventUsageByLogoId = new Map<string, EventLogoUsage[]>();
@@ -97,9 +106,31 @@ export default async function LogosPage({
         eventUsageByLogoId.set(logo.logoId, bucket);
       }
     }
+    if (logoIds.length > 0) {
+      const [partnerDefaults, eventAssignments] = await Promise.all([
+        db
+          .collection(COLLECTIONS.PARTNERS)
+          .aggregate<{ total: number }>([
+            { $unwind: '$defaultLogos' },
+            { $match: { 'defaultLogos.logoId': { $in: logoIds } } },
+            { $count: 'total' },
+          ])
+          .toArray(),
+        db
+          .collection(COLLECTIONS.EVENTS)
+          .aggregate<{ total: number }>([
+            { $unwind: '$logos' },
+            { $match: { 'logos.logoId': { $in: logoIds } } },
+            { $count: 'total' },
+          ])
+          .toArray(),
+      ]);
+      partnerDefaultTotal = partnerDefaults[0]?.total ?? 0;
+      eventAssignmentTotal = eventAssignments[0]?.total ?? 0;
+    }
 
     logoRows = [];
-    for (const logo of logos) {
+    for (const logo of logos as Logo[]) {
       const id = mongoIdString(logo._id);
       if (!id) continue;
       const partnerAssignments = partnerUsageByLogoId.get(logo.logoId) || [];
@@ -127,9 +158,6 @@ export default async function LogosPage({
     dbError = serializeMongoError(error);
   }
 
-  const partnerDefaultTotal = logoRows.reduce((sum, logo) => sum + logo.partnerDefaultCount, 0);
-  const eventAssignmentTotal = logoRows.reduce((sum, logo) => sum + logo.eventAssignmentCount, 0);
-
   return (
     <AdminListPageShell
       eyebrow="Resource Inventory"
@@ -139,7 +167,7 @@ export default async function LogosPage({
       stats={
         !dbError
           ? [
-              { label: 'Visible Logos', value: logoRows.length, iconKey: 'photo' },
+              { label: search ? 'Matching Logos' : 'Logos', value: matchingLogoCount, iconKey: 'photo' },
               { label: 'Partner Defaults', value: partnerDefaultTotal, iconKey: 'users' },
               { label: 'Event Assignments', value: eventAssignmentTotal, iconKey: 'photo' },
             ]

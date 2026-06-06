@@ -35,6 +35,9 @@ export default async function PartnersPage({
   }
 
   let partnerRows: SerializedPartnerRow[] = [];
+  let matchingPartnerCount = 0;
+  let partnerUsersCount = 0;
+  let partnerFramesCount = 0;
   let dbError = null;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
@@ -55,15 +58,37 @@ export default async function PartnersPage({
       Object.assign(query, { partnerId: { $in: accessiblePartnerIds } });
     }
 
-    const partners = (await db
+    const matchingPartners = (await db
       .collection(COLLECTIONS.PARTNERS)
-      .find(query)
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .toArray()) as unknown as PartnerListItem[];
+      .find(query, { projection: { partnerId: 1 } })
+      .toArray()) as unknown as Array<{ partnerId?: string }>;
+    const matchingPartnerIds = matchingPartners
+      .map((partner) => partner.partnerId)
+      .filter((partnerId): partnerId is string => typeof partnerId === 'string' && partnerId.trim().length > 0);
+
+    const [partners, userTotal, frameTotal] = await Promise.all([
+      db
+        .collection(COLLECTIONS.PARTNERS)
+        .find(query)
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .toArray() as Promise<unknown[]>,
+      matchingPartnerIds.length > 0
+        ? db.collection(COLLECTIONS.PARTNER_USER_ACCESS).countDocuments({
+            partnerId: { $in: matchingPartnerIds },
+            isActive: true,
+          })
+        : Promise.resolve(0),
+      matchingPartnerIds.length > 0
+        ? db.collection(COLLECTIONS.FRAMES).countDocuments({ partnerId: { $in: matchingPartnerIds } })
+        : Promise.resolve(0),
+    ]);
+    matchingPartnerCount = matchingPartnerIds.length;
+    partnerUsersCount = userTotal;
+    partnerFramesCount = frameTotal;
 
     partnerRows = [];
-    for (const partner of partners) {
+    for (const partner of partners as PartnerListItem[]) {
       const id = mongoIdString(partner._id);
       const partnerId = partner.partnerId || '';
       if (!id || !partnerId) continue;
@@ -99,15 +124,15 @@ export default async function PartnersPage({
       stats={
         !dbError
           ? [
-              { label: 'Visible Partners', value: partnerRows.length, iconKey: 'buildingStore' },
+              { label: search ? 'Matching Partners' : 'Partners', value: matchingPartnerCount, iconKey: 'buildingStore' },
               {
                 label: 'Partner Users',
-                value: partnerRows.reduce((sum, partner) => sum + partner.userAccessCount, 0),
+                value: partnerUsersCount,
                 iconKey: 'users',
               },
               {
                 label: 'Partner Frames',
-                value: partnerRows.reduce((sum, partner) => sum + partner.frameCount, 0),
+                value: partnerFramesCount,
                 iconKey: 'frame',
               },
             ]

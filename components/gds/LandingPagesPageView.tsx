@@ -1,13 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { Button, Card, Group, SimpleGrid, Stack, Text, TextInput } from '@mantine/core';
-import { AccentPanel, StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
+import { Button, Card, Group, Stack, Text, TextInput } from '@mantine/core';
+import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import DataTable from '@/components/gds/DataTable';
-import { cameraInfoToneMap, getStatusBadgeProps } from '@/lib/gds/presentation';
+import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface SerializedLandingPageRow {
   id: string;
@@ -38,28 +38,7 @@ export default function LandingPagesPageView({
       <WorkspaceHeader
         eyebrow="Resource Inventory"
         title="Landing Pages"
-        description="Shared experience surfaces across Camera Core. Each landing page belongs to an event today, but this inventory makes ownership, embedded targets, and public URLs manageable from one place."
       />
-
-      {!dbError ? (
-        <SimpleGrid cols={{ base: 1, xl: 3 }}>
-          <AccentPanel tone={cameraInfoToneMap.cyan} variant="subtle" title="Shared resource">
-            <Text size="sm" c="dimmed">
-              Landing pages are now visible as first-class Camera Core assets instead of living only inside event detail pages.
-            </Text>
-          </AccentPanel>
-          <AccentPanel tone={cameraInfoToneMap.blue} variant="subtle" title="Current inventory">
-            <Text size="sm" c="dimmed">
-              {landingPages.length} landing page{landingPages.length === 1 ? '' : 's'} matched the current filters.
-            </Text>
-          </AccentPanel>
-          <AccentPanel tone={cameraInfoToneMap.green} variant="subtle" title="Editing model">
-            <Text size="sm" c="dimmed">
-              Create and edit pages from their parent event today. Use this inventory to find ownership, public URLs, and embedded slideshow/layout relationships globally.
-            </Text>
-          </AccentPanel>
-        </SimpleGrid>
-      ) : null}
 
       <Card>
         <form>

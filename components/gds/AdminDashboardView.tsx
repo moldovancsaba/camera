@@ -1,22 +1,23 @@
 'use client';
 
-import { Stack, Text } from '@mantine/core';
-import { AccentPanel, ConsumerDashboardGrid, ProductCard } from '@doneisbetter/gds-core/client';
+import { Stack } from '@mantine/core';
+import { ConsumerDashboardGrid, ProductCard } from '@doneisbetter/gds-core/client';
 import { StatsStrip } from '@doneisbetter/gds-admin/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
-import { cameraInfoToneMap } from '@/lib/gds/presentation';
 import { AdminIcon } from '@/lib/gds/admin-icon-key';
 import type { AdminIconKey } from '@/lib/gds/admin-icon-key';
 
 export default function AdminDashboardView({
   framesCount,
   submissionsCount,
+  activeUsersCount,
   dbError,
 }: {
   framesCount: number;
   submissionsCount: number;
+  activeUsersCount: number;
   dbError?: MongoConnectionDiagnosis | null;
 }) {
   return (
@@ -36,16 +37,11 @@ export default function AdminDashboardView({
             stats={[
               { label: 'Total Frames', value: framesCount, iconKey: 'frame' },
               { label: 'Total Submissions', value: submissionsCount, iconKey: 'photoScan' },
-              { label: 'Active Users', value: '—', iconKey: 'users' },
+              { label: 'Active Access Users', value: activeUsersCount, iconKey: 'users' },
             ].map(({ label, value }) => ({ label, value }))}
           />
 
           <Stack gap="lg">
-          <AccentPanel tone={cameraInfoToneMap.neutral} variant="subtle" title="Quick Actions">
-            <Text size="sm" c="dimmed">
-              Primary entry points for partner operations and shared resources.
-            </Text>
-          </AccentPanel>
           <ConsumerDashboardGrid columns={3}>
             {[
               {

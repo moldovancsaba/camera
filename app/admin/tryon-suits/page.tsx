@@ -22,6 +22,9 @@ export default async function AdminTryOnSuitsPage({
   }
 
   let suitRows: SerializedTryOnSuitRow[] = [];
+  let matchingSuitCount = 0;
+  let activeSuitCount = 0;
+  let eventAllowlistCount = 0;
   let dbError = null;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
@@ -38,12 +41,20 @@ export default async function AdminTryOnSuitsPage({
         }
       : {};
 
-    const suits = await db
-      .collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS)
-      .find(query)
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .toArray();
+    const [suits, totalSuits, activeSuits, matchingSuitIds] = await Promise.all([
+      db
+        .collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS)
+        .find(query)
+        .sort({ createdAt: -1 })
+        .limit(100)
+        .toArray(),
+      db.collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS).countDocuments(query),
+      db.collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS).countDocuments({ ...query, active: true }),
+      db.collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS).distinct('leatherSuitId', query),
+    ]);
+    matchingSuitCount = totalSuits;
+    activeSuitCount = activeSuits;
+    const suitIds = matchingSuitIds.filter((suitId): suitId is string => typeof suitId === 'string' && suitId.trim().length > 0);
 
     const events = (await db
       .collection<Event>(COLLECTIONS.EVENTS)
@@ -65,6 +76,17 @@ export default async function AdminTryOnSuitsPage({
     }
 
     const queueUsageBySuit = new Map(jobs.map((job) => [job._id, job.count]));
+    if (suitIds.length > 0) {
+      const allowlists = await db
+        .collection<Event>(COLLECTIONS.EVENTS)
+        .aggregate<{ total: number }>([
+          { $unwind: '$tryOn.allowedLeatherSuitIds' },
+          { $match: { 'tryOn.allowedLeatherSuitIds': { $in: suitIds } } },
+          { $count: 'total' },
+        ])
+        .toArray();
+      eventAllowlistCount = allowlists[0]?.total ?? 0;
+    }
 
     suitRows = suits.flatMap((suit) => {
       const id = mongoIdString(suit._id);
@@ -98,9 +120,9 @@ export default async function AdminTryOnSuitsPage({
       stats={
         !dbError
           ? [
-              { label: 'Catalog Entries', value: suitRows.length, iconKey: 'photo' },
-              { label: 'Active Entries', value: suitRows.filter((row) => row.isActive).length, iconKey: 'photoScan' },
-              { label: 'Event Allowlists', value: suitRows.reduce((sum, row) => sum + row.eventAssignmentCount, 0), iconKey: 'users' },
+              { label: search ? 'Matching Garments' : 'Garments', value: matchingSuitCount, iconKey: 'photo' },
+              { label: 'Active Garments', value: activeSuitCount, iconKey: 'photoScan' },
+              { label: 'Event Allowlists', value: eventAllowlistCount, iconKey: 'users' },
             ]
           : undefined
       }

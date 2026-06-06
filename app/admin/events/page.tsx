@@ -43,7 +43,9 @@ export default async function EventsPage({
   }
 
   let eventRows: SerializedEventRow[] = [];
+  let matchingEventCount = 0;
   let partnerCount = 0;
+  let assignedFrameCount = 0;
   let dbError = null;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
@@ -82,16 +84,37 @@ export default async function EventsPage({
       query.partnerId = { $in: accessiblePartnerIds };
     }
 
-    const events = (await db
-      .collection(COLLECTIONS.EVENTS)
-      .find(query)
-      .sort({ eventDate: -1, createdAt: -1 })
-      .limit(100)
-      .toArray()) as unknown as EventListItem[];
+    const [events, totalEvents, frameAssignments] = await Promise.all([
+      db
+        .collection(COLLECTIONS.EVENTS)
+        .find(query)
+        .sort({ eventDate: -1, createdAt: -1 })
+        .limit(100)
+        .toArray() as Promise<unknown[]>,
+      db.collection(COLLECTIONS.EVENTS).countDocuments(query),
+      db
+        .collection(COLLECTIONS.EVENTS)
+        .aggregate<{ total: number }>([
+          { $match: query },
+          {
+            $group: {
+              _id: null,
+              total: {
+                $sum: {
+                  $cond: [{ $isArray: '$frames' }, { $size: '$frames' }, 0],
+                },
+              },
+            },
+          },
+        ])
+        .toArray(),
+    ]);
+    matchingEventCount = totalEvents;
+    assignedFrameCount = frameAssignments[0]?.total ?? 0;
 
     eventRows = [];
     const eventReferenceById = new Map<string, string[]>();
-    for (const event of events) {
+    for (const event of events as EventListItem[]) {
       const id = mongoIdString(event._id);
       if (!id) continue;
       const refs = [id, event.eventId].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
@@ -197,11 +220,11 @@ export default async function EventsPage({
       stats={
         !dbError
           ? [
-              { label: 'Event Instances', value: eventRows.length, iconKey: 'calendarEvent' },
+              { label: search || partnerFilter ? 'Matching Events' : 'Event Instances', value: matchingEventCount, iconKey: 'calendarEvent' },
               { label: 'Active Partners', value: partnerCount, iconKey: 'buildingStore' },
               {
                 label: 'Assigned Frames',
-                value: eventRows.reduce((sum, event) => sum + event.frameCount, 0),
+                value: assignedFrameCount,
                 iconKey: 'photoScan',
               },
             ]
