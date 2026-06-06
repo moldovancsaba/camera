@@ -191,7 +191,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
       </Breadcrumbs>
 
       <WorkspaceHeader
-        eyebrow="Events App"
+        eyebrow="Events"
         title="Manage Event Frames"
         description={`Assign and manage frames for ${event.name}`}
       />

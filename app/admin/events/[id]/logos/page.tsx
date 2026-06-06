@@ -211,7 +211,7 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
       </Breadcrumbs>
 
       <WorkspaceHeader
-        eyebrow="Events App"
+        eyebrow="Events"
         title="Manage Event Logos"
         description={`Assign logos to scenarios for ${event.name}`}
       />

@@ -91,7 +91,7 @@ export default function AdminChrome({
   if (navigationAccess.hasEventsAccess) {
     appItems.push({
       href: '/admin/events',
-      label: 'Events App',
+      label: 'Events',
       icon: <IconBrandDatabricks size={18} />,
     });
   }

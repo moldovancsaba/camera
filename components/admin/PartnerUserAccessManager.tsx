@@ -40,7 +40,7 @@ interface Props {
 }
 
 const APP_LABELS: Record<PartnerAppKey, string> = {
-  events: 'Events App',
+  events: 'Events',
 };
 
 const ROLE_LABELS: Record<PartnerAccessRole, string> = {
@@ -172,7 +172,7 @@ export default function PartnerUserAccessManager({
             />
           </Grid.Col>
           <Grid.Col span={{ base: 12, md: 4, xl: 2 }}>
-            <Select label="App" data={[{ value: 'events', label: 'Events App' }]} value={appKey} readOnly />
+            <Select label="App" data={[{ value: 'events', label: 'Events' }]} value={appKey} readOnly />
           </Grid.Col>
           <Grid.Col span={{ base: 12, md: 4, xl: 2 }}>
             <Select

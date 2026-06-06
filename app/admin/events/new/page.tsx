@@ -389,7 +389,7 @@ export default function NewEventPage() {
 
   return (
     <EditorScaffold
-      eyebrow="Events App"
+      eyebrow="Events"
       title="Create Event App Instance"
       description="Create a new event runtime for a partner using shared Camera Core resources and partner defaults."
       breadcrumbs={

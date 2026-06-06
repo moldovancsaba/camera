@@ -259,7 +259,7 @@ export default async function EventDetailPage({
       </Breadcrumbs>
 
       <WorkspaceHeader
-        eyebrow="Events App"
+        eyebrow="Events"
         title={event.name}
         description={event.description}
         status={event.isActive ? 'Active' : 'Inactive'}

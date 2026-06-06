@@ -341,7 +341,7 @@ export default async function PartnerDetailPage({
           href={canManageEvents ? `/admin/events/new?partnerId=${partner.partnerId}` : '/admin/events'}
           style={{ textDecoration: 'none' }}
         >
-          <AccentPanel tone={cameraInfoToneMap.green} variant="subtle" title="Events App">
+          <AccentPanel tone={cameraInfoToneMap.green} variant="subtle" title="Events">
             <Text size="sm" c="dimmed">
               {canManageEvents
                 ? 'Create and manage the event app instances that use this partner’s brand defaults and resource assignments.'
@@ -421,7 +421,7 @@ export default async function PartnerDetailPage({
             description="Global inventory remains restricted to global admins. Partner-scoped roles are limited to the assigned app surfaces for this partner."
             roles={[
               canManagePartner ? 'Current operator: Global admin' : 'Current operator: Partner-scoped',
-              `Events App role: ${eventsRoleLabel}`,
+              `Events role: ${eventsRoleLabel}`,
             ]}
             scope={`Active assignments: ${partnerAccessAssignments.filter((assignment) => assignment.isActive).length}`}
           />
@@ -473,7 +473,7 @@ export default async function PartnerDetailPage({
           <Card p={0}>
             <Group justify="space-between" align="flex-start" p="xl" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
               <div>
-                <Title order={3}>Events App</Title>
+                <Title order={3}>Events</Title>
                 <Text size="sm" c="dimmed" mt="xs">
                   Event app instances that inherit this partner’s defaults and can override them when needed.
                 </Text>

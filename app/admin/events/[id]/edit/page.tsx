@@ -569,7 +569,7 @@ export default function EditEventPage({
 
   return (
     <EditorScaffold
-      eyebrow="Events App"
+      eyebrow="Events"
       title="Edit Event"
       description="Update event information and capture experience settings."
       breadcrumbs={
