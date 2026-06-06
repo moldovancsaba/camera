@@ -60,3 +60,16 @@ Non-retryable validation errors:
 - `processing_failed`
 
 Retry scheduling must only retry retryable classifications. Non-retryable classifications move directly to `failed`.
+
+## Analytics buckets
+
+Try-on analytics are based on archived moderation decisions:
+
+- `approved`
+- `rejected`
+- `service`
+- `greatest` as an approved result with `metadata.tryOnGreat`
+
+The admin analytics page is `/admin/tryon/analytics`.
+
+The admin-only API is `GET /api/admin/tryon-analytics`.

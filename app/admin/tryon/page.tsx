@@ -107,6 +107,12 @@ export default async function AdminTryOnAppPage() {
                 description: `${pendingVettingCount} pending generated result${pendingVettingCount === 1 ? '' : 's'} waiting for approval or rejection.`,
                 iconKey: 'world' as AdminIconKey,
               },
+              {
+                href: '/admin/tryon/analytics',
+                title: 'Analytics',
+                description: 'Review approved, rejected, service, greatest, preset, garment, and event performance.',
+                iconKey: 'world' as AdminIconKey,
+              },
             ].map((item) => (
               <a
                 key={item.href}
