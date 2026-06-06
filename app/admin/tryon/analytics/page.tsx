@@ -64,6 +64,11 @@ function pct(value: number, total: number): string {
   return `${Math.max(4, Math.round((value / total) * 1000) / 10)}%`;
 }
 
+function barHeight(value: number, maxTotal: number): string {
+  if (value <= 0) return '0px';
+  return `${Math.max(24, Math.round((value / maxTotal) * 220))}px`;
+}
+
 function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeRow[] }) {
   const maxTotal = Math.max(1, ...rows.map((row) => row.total));
   const colors = {
@@ -104,40 +109,57 @@ function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeRow[] }) {
               </Text>
             ))}
           </div>
-          <Stack gap="sm">
+          <div
+            style={{
+              alignItems: 'end',
+              borderBottom: '1px solid var(--mantine-color-gray-3)',
+              display: 'flex',
+              gap: 14,
+              minHeight: 280,
+              overflowX: 'auto',
+              padding: '16px 0 8px',
+            }}
+          >
             {rows.map((row) => (
-              <div key={row.hour}>
-                <div style={{ alignItems: 'baseline', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                  <Text size="sm" fw={700}>{row.label}</Text>
-                  <Text size="xs" c="dimmed">
-                    {row.total} total
-                  </Text>
-                </div>
+              <div
+                key={row.hour}
+                style={{
+                  alignItems: 'center',
+                  display: 'flex',
+                  flex: '0 0 72px',
+                  flexDirection: 'column',
+                  gap: 8,
+                }}
+              >
+                <Text size="xs" fw={700}>{row.total}</Text>
                 <div
                   aria-label={`${row.label}: approved ${row.approved}, declined ${row.rejected}, service ${row.service}, failed ${row.failed}`}
                   role="img"
                   style={{
+                    alignItems: 'stretch',
                     background: 'var(--mantine-color-gray-1)',
-                    borderRadius: 999,
+                    borderRadius: '10px 10px 4px 4px',
                     display: 'flex',
-                    height: 18,
-                    marginTop: 6,
-                    maxWidth: '100%',
+                    flexDirection: 'column-reverse',
+                    height: barHeight(row.total, maxTotal),
                     overflow: 'hidden',
-                    width: `${Math.max(12, Math.round((row.total / maxTotal) * 100))}%`,
+                    width: 42,
                   }}
                 >
-                  <div title={`Approved: ${row.approved}`} style={{ background: colors.approved, width: pct(row.approved, row.total) }} />
-                  <div title={`Declined: ${row.rejected}`} style={{ background: colors.rejected, width: pct(row.rejected, row.total) }} />
-                  <div title={`Service: ${row.service}`} style={{ background: colors.service, width: pct(row.service, row.total) }} />
-                  <div title={`Failed: ${row.failed}`} style={{ background: colors.failed, width: pct(row.failed, row.total) }} />
+                  <div title={`Approved: ${row.approved}`} style={{ background: colors.approved, height: pct(row.approved, row.total) }} />
+                  <div title={`Declined: ${row.rejected}`} style={{ background: colors.rejected, height: pct(row.rejected, row.total) }} />
+                  <div title={`Service: ${row.service}`} style={{ background: colors.service, height: pct(row.service, row.total) }} />
+                  <div title={`Failed: ${row.failed}`} style={{ background: colors.failed, height: pct(row.failed, row.total) }} />
                 </div>
-                <Text size="xs" c="dimmed" mt={4}>
-                  Approved {row.approved} · Declined {row.rejected} · Service {row.service} · Failed {row.failed}
+                <Text size="xs" c="dimmed" ta="center" style={{ lineHeight: 1.2 }}>
+                  {row.label}
+                </Text>
+                <Text size="xs" c="dimmed" ta="center" style={{ lineHeight: 1.2 }}>
+                  A {row.approved} · D {row.rejected} · S {row.service} · F {row.failed}
                 </Text>
               </div>
             ))}
-          </Stack>
+          </div>
         </Stack>
       ) : (
         <Text c="dimmed">No hourly outcome data matches this filter.</Text>
