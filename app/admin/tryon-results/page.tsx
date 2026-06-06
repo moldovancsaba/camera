@@ -127,6 +127,20 @@ export default async function AdminTryOnResultsPage({
   const failed = typeof resolvedSearchParams?.failed === 'string' ? resolvedSearchParams.failed.trim() : '';
   const archiveBucket = archive === 'approved' || archive === 'rejected' ? archive : '';
   const failedJobsMode = failed === '1' || failed.toLowerCase() === 'true';
+  const pageTitle = failedJobsMode
+    ? 'Failed Try-On Jobs'
+    : archiveBucket === 'approved'
+      ? 'Archived Approved Try-On Results'
+      : archiveBucket === 'rejected'
+        ? 'Archived Rejected Try-On Results'
+        : 'Vetting Queue';
+  const pageStatus = failedJobsMode
+    ? 'Failed Jobs'
+    : archiveBucket === 'approved'
+      ? 'Archived Approved'
+      : archiveBucket === 'rejected'
+        ? 'Archived Rejected'
+        : 'Active Vetting';
 
   let rows: ModerationRow[] = [];
   let dbError = null;
@@ -277,7 +291,7 @@ export default async function AdminTryOnResultsPage({
   return (
     <AdminListPageShell
       eyebrow="Apps"
-      title="Vetting Queue"
+      title={pageTitle}
       description={
         failedJobsMode
           ? 'Review failed try-on jobs, inspect their failure reason, and send them back to the worker.'
@@ -285,6 +299,7 @@ export default async function AdminTryOnResultsPage({
           ? `Review archive for ${archiveBucket} try-on decisions. Approved items remain publishable; this archive only removes them from the active moderation queue.`
           : undefined
       }
+      status={pageStatus}
       primaryAction={{ href: '/admin/tryon', label: 'Open Try-On App' }}
       search={{
         defaultValue: search,
