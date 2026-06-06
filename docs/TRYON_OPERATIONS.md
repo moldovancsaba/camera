@@ -37,7 +37,7 @@ Health states:
 
 - `Worker Online`: at least one worker-owned job has a fresh heartbeat/lease.
 - `Worker Stale`: at least one worker-owned job has an expired lease or stale heartbeat.
-- `Worker Offline`: active jobs are waiting, but no worker currently owns a job.
+- `Worker Offline`: active jobs are waiting, but no worker-owned job is currently in `claimed`, `processing`, `uploading_result`, or `notifying_camera`.
 - `Worker Idle`: no active queue work exists.
 
 The admin-only API `GET /api/admin/tryon-worker-health` returns the same summary contract used by the Try-On dashboard.

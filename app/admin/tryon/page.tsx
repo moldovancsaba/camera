@@ -9,7 +9,7 @@ import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob } from '@/lib/db/schemas';
-import { activeTryOnQueueTotal, formatActiveTryOnQueueSummary } from '@/lib/tryon/queue-status';
+import { activeTryOnQueueTotal, formatActiveTryOnQueueSummary, WORKER_OWNED_TRYON_QUEUE_STATUSES } from '@/lib/tryon/queue-status';
 import {
   formatTryOnWorkerHealthDescription,
   formatTryOnWorkerHealthTitle,
@@ -50,7 +50,7 @@ export default async function AdminTryOnAppPage() {
       }),
       db
         .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
-        .find({ status: { $in: ['claimed', 'processing', 'uploading_result'] } })
+        .find({ status: { $in: [...WORKER_OWNED_TRYON_QUEUE_STATUSES] } })
         .sort({ updatedAt: -1 })
         .limit(10)
         .toArray(),

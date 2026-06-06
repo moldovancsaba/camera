@@ -3,7 +3,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { requireAuth, apiForbidden, apiSuccess, withErrorHandler } from '@/lib/api';
 import { COLLECTIONS, type TryOnJob } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
-import { activeTryOnQueueTotal } from '@/lib/tryon/queue-status';
+import { activeTryOnQueueTotal, WORKER_OWNED_TRYON_QUEUE_STATUSES } from '@/lib/tryon/queue-status';
 import { summarizeTryOnWorkerHealth } from '@/lib/tryon/worker-health';
 
 export const GET = withErrorHandler(async (request: NextRequest) => {
@@ -22,7 +22,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       .toArray(),
     db
       .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
-      .find({ status: { $in: ['claimed', 'processing', 'uploading_result'] } })
+      .find({ status: { $in: [...WORKER_OWNED_TRYON_QUEUE_STATUSES] } })
       .sort({ updatedAt: -1 })
       .limit(10)
       .toArray(),

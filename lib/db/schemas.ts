@@ -561,6 +561,7 @@ export type SubmissionTryOnRequestStatus =
   | 'claimed'
   | 'processing'
   | 'uploading_result'
+  | 'notifying_camera'
   | 'retry_wait'
   | 'done'
   | 'failed'
@@ -785,6 +786,7 @@ export type TryOnJobStatus =
   | 'claimed'
   | 'processing'
   | 'uploading_result'
+  | 'notifying_camera'
   | 'retry_wait'
   | 'done'
   | 'failed';
@@ -796,6 +798,8 @@ export type TryOnJobStage =
   | 'resolving_suit'
   | 'running_tryon'
   | 'uploading_result'
+  | 'uploaded_result'
+  | 'notifying_camera'
   | 'done'
   | 'failed';
 
