@@ -35,6 +35,7 @@ export interface QueueRow {
     publicResultUrl?: string | null;
   };
   error?: {
+    code?: string | null;
     message?: string | null;
   };
 }
@@ -157,6 +158,7 @@ function toQueueRow(value: unknown): QueueRow | null {
       publicResultUrl: typeof row.result?.publicResultUrl === 'string' ? row.result.publicResultUrl : null,
     },
     error: {
+      code: typeof row.error?.code === 'string' ? row.error.code : null,
       message: typeof row.error?.message === 'string' ? row.error.message : null,
     },
   };
@@ -297,9 +299,16 @@ export default function TryOnQueueTable({
                 Stage: {formatStatusLabel(row.stage)}
               </Text>
               {row.error?.message ? (
-                <Text size="xs" mt={8}>
-                  {row.error.message}
-                </Text>
+                <Stack gap={2} mt={8}>
+                  {row.error.code ? (
+                    <Text size="xs" fw={700}>
+                      {formatStatusLabel(row.error.code)}
+                    </Text>
+                  ) : null}
+                  <Text size="xs">
+                    {row.error.message}
+                  </Text>
+                </Stack>
               ) : null}
             </>
           ),

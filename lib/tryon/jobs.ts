@@ -315,14 +315,44 @@ export function classifyTryOnFailure(error: unknown): {
   const lower = raw.toLowerCase();
 
   if (
-    lower.includes('timeout') ||
-    lower.includes('network') ||
-    lower.includes('imgbb') ||
-    lower.includes('fetch failed')
+    lower.includes('429') ||
+    lower.includes('rate limit') ||
+    lower.includes('too many requests')
   ) {
     return {
       transient: true,
-      code: 'transient_runtime_error',
+      code: 'provider_rate_limited',
+      message: raw,
+      details: null,
+    };
+  }
+
+  if (
+    lower.includes('timeout') ||
+    lower.includes('timed out') ||
+    lower.includes('read timed out')
+  ) {
+    return {
+      transient: true,
+      code: 'provider_timeout',
+      message: raw,
+      details: null,
+    };
+  }
+
+  if (lower.includes('imgbb') || lower.includes('upload')) {
+    return {
+      transient: true,
+      code: 'result_upload_failed',
+      message: raw,
+      details: null,
+    };
+  }
+
+  if (lower.includes('network') || lower.includes('fetch failed')) {
+    return {
+      transient: true,
+      code: 'transient_network_error',
       message: raw,
       details: null,
     };
@@ -364,10 +394,11 @@ export async function scheduleTryOnRetryOrFailure(
   db: Db,
   job: WithId<TryOnJob>,
   error: TryOnJobError,
-  maxAttempts: number
+  maxAttempts: number,
+  retryable = true
 ): Promise<'retry_wait' | 'failed'> {
   const attemptCount = job.processing.attemptCount;
-  const delayMinutes = attemptCount < maxAttempts ? retryDelayMinutes(attemptCount) : null;
+  const delayMinutes = retryable && attemptCount < maxAttempts ? retryDelayMinutes(attemptCount) : null;
   const now = nowIso();
 
   if (delayMinutes != null) {

@@ -195,7 +195,8 @@ export async function runTryOnWorkerOnce(config: WorkerRuntimeConfig): Promise<v
         message: classified.message,
         details: classified.details,
       },
-      config.maxAttempts
+      config.maxAttempts,
+      classified.transient
     );
     if (job.source.submissionId) {
       const { ObjectId } = await import('mongodb');

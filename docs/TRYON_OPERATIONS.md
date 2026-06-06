@@ -41,3 +41,22 @@ Health states:
 - `Worker Idle`: no active queue work exists.
 
 The admin-only API `GET /api/admin/tryon-worker-health` returns the same summary contract used by the Try-On dashboard.
+
+## Failure classification
+
+Worker failures must use stable error codes so operators can distinguish local issues from provider issues.
+
+Retryable provider/runtime errors:
+
+- `provider_timeout`
+- `provider_rate_limited`
+- `result_upload_failed`
+- `transient_network_error`
+
+Non-retryable validation errors:
+
+- `invalid_suit`
+- `invalid_source_image`
+- `processing_failed`
+
+Retry scheduling must only retry retryable classifications. Non-retryable classifications move directly to `failed`.

@@ -71,6 +71,7 @@ function toQueueRow(job: Partial<TryOnJob>): QueueRow | null {
         typeof job.result?.publicResultUrl === 'string' ? job.result.publicResultUrl : null,
     },
     error: {
+      code: typeof job.error?.code === 'string' ? job.error.code : null,
       message: typeof job.error?.message === 'string' ? job.error.message : null,
     },
   };
