@@ -602,7 +602,6 @@ export default function TryOnResultModerationTable({
             }}
             size="xs"
             checkIconPosition="left"
-            searchable
             disabled={busyId === `${row.id}:rerun`}
           />
         ) : (

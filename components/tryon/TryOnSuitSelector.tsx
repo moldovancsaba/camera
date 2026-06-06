@@ -100,7 +100,6 @@ export default function TryOnSuitSelector({
       <Select
         label="Leather jersey"
         placeholder="Select a leather jersey for try-on"
-        searchable
         clearable
         disabled={disabled}
         data={suits.map((suit) => ({

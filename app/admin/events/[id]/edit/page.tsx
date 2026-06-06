@@ -957,7 +957,6 @@ export default function EditEventPage({
               data={suitOptions.map((suit) => ({ value: suit.id, label: suit.name }))}
               value={null}
               disabled={!tryOnEnabled || suitOptions.length === 0}
-              searchable
               clearable
               onChange={(value) => {
                 if (!value || selectedSuitIds.includes(value)) return;

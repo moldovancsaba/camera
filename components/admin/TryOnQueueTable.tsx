@@ -310,7 +310,6 @@ export default function TryOnQueueTable({ rows, setupOptions = [] }: TryOnQueueT
                             }}
                             size="xs"
                             checkIconPosition="left"
-                            searchable
                             disabled={busyJobId === row.jobId}
                           />
                         ) : (
