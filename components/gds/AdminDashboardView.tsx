@@ -83,7 +83,17 @@ export default function AdminDashboardView({
               <a
                 key={item.href}
                 href={item.href}
-                style={{ color: 'inherit', display: 'block', textDecoration: 'none' }}
+                aria-label={`Open ${item.title}`}
+                style={{
+                  background:
+                    'linear-gradient(135deg, var(--mantine-color-violet-2), var(--mantine-color-cyan-1))',
+                  borderRadius: 20,
+                  boxShadow: '0 14px 32px rgba(109, 40, 217, 0.16), 0 0 0 1px rgba(109, 40, 217, 0.16)',
+                  color: 'inherit',
+                  display: 'block',
+                  padding: 2,
+                  textDecoration: 'none',
+                }}
               >
                 <ProductCard
                   title={item.title}
