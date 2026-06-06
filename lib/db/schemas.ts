@@ -588,7 +588,7 @@ export interface SubmissionTryOnRequestState {
 
 export interface TryOnModerationArchiveState {
   archived: boolean;
-  bucket?: 'approved' | 'rejected' | null;
+  bucket?: 'approved' | 'rejected' | 'service' | null;
   archivedAt?: string | null;
   archivedBy?: string | null;
 }

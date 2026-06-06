@@ -49,9 +49,21 @@ async function postGreat(id: string, isGreat: boolean) {
   }
 }
 
+async function postService(id: string) {
+  const response = await fetch(`/api/admin/tryon-results/${id}/service`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to mark try-on result as Service');
+  }
+}
+
 export default function OldestVettingResultCard({ row }: { row: ModerationRow }) {
   const router = useRouter();
-  const [busyAction, setBusyAction] = useState<'approve' | 'great' | 'reject' | null>(null);
+  const [busyAction, setBusyAction] = useState<'approve' | 'great' | 'reject' | 'service' | null>(null);
 
   async function handleDecision(action: 'approve' | 'reject') {
     try {
@@ -67,6 +79,16 @@ export default function OldestVettingResultCard({ row }: { row: ModerationRow })
     try {
       setBusyAction('great');
       await postGreat(row.id, row.isGreat);
+      router.refresh();
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleService() {
+    try {
+      setBusyAction('service');
+      await postService(row.id);
       router.refresh();
     } finally {
       setBusyAction(null);
@@ -122,32 +144,40 @@ export default function OldestVettingResultCard({ row }: { row: ModerationRow })
               Created {new Date(row.createdAt).toLocaleString()}
             </Text>
           </Stack>
-          <Group justify="stretch" gap="xs" wrap="wrap" style={{ width: '100%' }}>
-            <Button
-              variant="light"
-              loading={busyAction === 'approve'}
-              onClick={() => void handleDecision('approve')}
-              style={{ flex: 1 }}
-            >
-              Approve
-            </Button>
-            <Button
-              variant={row.isGreat ? 'default' : 'outline'}
-              loading={busyAction === 'great'}
-              onClick={() => void handleGreat()}
-              style={{ flex: 1 }}
-            >
-              {row.isGreat ? 'Remove Great' : 'Great'}
-            </Button>
-            <Button
-              variant="light"
-              loading={busyAction === 'reject'}
-              onClick={() => void handleDecision('reject')}
-              style={{ flex: 1 }}
-            >
-              Decline
-            </Button>
-          </Group>
+          <Stack gap="xs">
+            <Group justify="stretch" gap="xs" grow wrap="nowrap">
+              <Button
+                variant="light"
+                loading={busyAction === 'approve'}
+                onClick={() => void handleDecision('approve')}
+              >
+                Approve
+              </Button>
+              <Button
+                variant="light"
+                loading={busyAction === 'reject'}
+                onClick={() => void handleDecision('reject')}
+              >
+                Reject
+              </Button>
+            </Group>
+            <Group justify="stretch" gap="xs" grow wrap="nowrap">
+              <Button
+                variant={row.isGreat ? 'default' : 'outline'}
+                loading={busyAction === 'great'}
+                onClick={() => void handleGreat()}
+              >
+                {row.isGreat ? 'Remove Great' : 'Great'}
+              </Button>
+              <Button
+                variant="outline"
+                loading={busyAction === 'service'}
+                onClick={() => void handleService()}
+              >
+                Service
+              </Button>
+            </Group>
+          </Stack>
         </Stack>
       </div>
     </div>

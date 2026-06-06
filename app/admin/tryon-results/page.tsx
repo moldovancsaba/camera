@@ -160,7 +160,7 @@ export default async function AdminTryOnResultsPage({
   const eventId = typeof resolvedSearchParams?.eventId === 'string' ? resolvedSearchParams.eventId.trim() : '';
   const archive = typeof resolvedSearchParams?.archive === 'string' ? resolvedSearchParams.archive.trim() : '';
   const failed = typeof resolvedSearchParams?.failed === 'string' ? resolvedSearchParams.failed.trim() : '';
-  const archiveBucket = archive === 'approved' || archive === 'rejected' || archive === 'greatest' ? archive : '';
+  const archiveBucket = archive === 'approved' || archive === 'rejected' || archive === 'service' || archive === 'greatest' ? archive : '';
   const failedJobsMode = failed === '1' || failed.toLowerCase() === 'true';
   const pageTitle = failedJobsMode
     ? 'Failed Try-On Jobs'
@@ -168,6 +168,8 @@ export default async function AdminTryOnResultsPage({
       ? 'Greatest Hits'
     : archiveBucket === 'approved'
       ? 'Approved'
+      : archiveBucket === 'service'
+        ? 'Service'
       : archiveBucket === 'rejected'
         ? 'Rejected'
         : 'Vetting';
@@ -177,6 +179,8 @@ export default async function AdminTryOnResultsPage({
       ? 'Greatest Hits'
     : archiveBucket === 'approved'
       ? 'Approved'
+      : archiveBucket === 'service'
+        ? 'Service'
       : archiveBucket === 'rejected'
         ? 'Rejected'
         : 'Active Vetting';
@@ -186,6 +190,7 @@ export default async function AdminTryOnResultsPage({
   let pendingCount = 0;
   let archivedApprovedCount = 0;
   let archivedRejectedCount = 0;
+  let archivedServiceCount = 0;
   let greatestHitsCount = 0;
   let failedJobCount = 0;
   let failedJobRows: QueueRow[] = [];
@@ -245,7 +250,7 @@ export default async function AdminTryOnResultsPage({
       ];
     }
 
-    const [docs, pending, archivedApproved, archivedRejected, greatestHits, failedJobs, failedJobsTotal] = await Promise.all([
+    const [docs, pending, archivedApproved, archivedRejected, archivedService, greatestHits, failedJobs, failedJobsTotal] = await Promise.all([
       db
         .collection<Submission>(COLLECTIONS.SUBMISSIONS)
         .find(query)
@@ -270,6 +275,11 @@ export default async function AdminTryOnResultsPage({
       db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
         submissionKind: 'tryon_result',
         'tryOnModerationArchive.archived': true,
+        'tryOnModerationArchive.bucket': 'service',
+      }),
+      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
+        submissionKind: 'tryon_result',
+        'tryOnModerationArchive.archived': true,
         'tryOnModerationArchive.bucket': 'approved',
         'metadata.tryOnGreat': true,
       }),
@@ -287,6 +297,7 @@ export default async function AdminTryOnResultsPage({
     pendingCount = pending;
     archivedApprovedCount = archivedApproved;
     archivedRejectedCount = archivedRejected;
+    archivedServiceCount = archivedService;
     greatestHitsCount = greatestHits;
     failedJobCount = failedJobsTotal;
     failedJobRows = failedJobs.map(toQueueRow).filter((row): row is QueueRow => Boolean(row));
@@ -461,6 +472,12 @@ export default async function AdminTryOnResultsPage({
                 description: 'Browse declined items that were archived out of the active vetting queue.',
                 iconKey: 'photo' as AdminIconKey,
               },
+              {
+                href: '/admin/tryon-results?archive=service',
+                title: `Service (${archivedServiceCount})`,
+                description: 'Browse service photos separated from rejected and approved analytics.',
+                iconKey: 'photo' as AdminIconKey,
+              },
             ].map((item) => (
               <a
                 key={item.href}
@@ -502,7 +519,9 @@ export default async function AdminTryOnResultsPage({
             archiveBucket
               ? archiveBucket === 'greatest'
                 ? 'Great try-on results will appear here after an admin marks approved images as Great.'
-                : `Approved or rejected try-on results will appear here after they are archived out of the live moderation queue.`
+                : archiveBucket === 'service'
+                  ? 'Service photos will appear here after an admin marks images as Service.'
+                  : `Approved or rejected try-on results will appear here after they are archived out of the live moderation queue.`
               : undefined
           }
         />

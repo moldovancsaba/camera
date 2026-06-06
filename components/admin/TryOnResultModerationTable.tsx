@@ -75,6 +75,18 @@ async function postGreat(id: string, isGreat: boolean) {
   }
 }
 
+async function postService(id: string) {
+  const response = await fetch(`/api/admin/tryon-results/${id}/service`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to mark try-on result as Service');
+  }
+}
+
 async function postRerun(sourceJobId: string, setupId?: string) {
   const response = await fetch(`/api/admin/tryon-jobs/${sourceJobId}/rerun`, {
     method: 'POST',
@@ -356,47 +368,58 @@ function ModerationActions({
   busyId,
   onDecision,
   onGreat,
+  onService,
 }: {
   row: ModerationRow;
   busyId: string | null;
   onDecision: (rowId: string, action: 'approve' | 'reject') => Promise<void>;
   onGreat: (row: ModerationRow) => Promise<void>;
+  onService: (row: ModerationRow) => Promise<void>;
 }) {
   const isApproved = row.reviewStatus === 'approved';
   const isRejected = row.reviewStatus === 'rejected';
 
   return (
-    <Group justify="stretch" gap="xs" wrap="wrap" style={{ width: '100%' }}>
-      <Button
-        variant="light"
-        loading={busyId === `${row.id}:approve`}
-        disabled={isApproved}
-        aria-label={isApproved ? 'Try-on result approved' : 'Approve try-on result'}
-        onClick={() => void onDecision(row.id, 'approve')}
-        style={{ flex: 1 }}
-      >
-        {isApproved ? 'Approved' : 'Approve'}
-      </Button>
-      <Button
-        variant={row.isGreat ? 'default' : 'outline'}
-        loading={busyId === `${row.id}:great`}
-        aria-label={row.isGreat ? 'Remove from Greatest Hits' : 'Mark try-on result as Great'}
-        onClick={() => void onGreat(row)}
-        style={{ flex: 1 }}
-      >
-        {row.isGreat ? 'Remove Great' : 'Great'}
-      </Button>
-      <Button
-        variant="light"
-        loading={busyId === `${row.id}:reject`}
-        disabled={isRejected}
-        aria-label={isRejected ? 'Try-on result rejected' : 'Reject try-on result'}
-        onClick={() => void onDecision(row.id, 'reject')}
-        style={{ flex: 1 }}
-      >
-        {isRejected ? 'Rejected' : 'Reject'}
-      </Button>
-    </Group>
+    <Stack gap="xs" style={{ width: '100%' }}>
+      <Group justify="stretch" gap="xs" grow wrap="nowrap">
+        <Button
+          variant="light"
+          loading={busyId === `${row.id}:approve`}
+          disabled={isApproved}
+          aria-label={isApproved ? 'Try-on result approved' : 'Approve try-on result'}
+          onClick={() => void onDecision(row.id, 'approve')}
+        >
+          {isApproved ? 'Approved' : 'Approve'}
+        </Button>
+        <Button
+          variant="light"
+          loading={busyId === `${row.id}:reject`}
+          disabled={isRejected}
+          aria-label={isRejected ? 'Try-on result rejected' : 'Reject try-on result'}
+          onClick={() => void onDecision(row.id, 'reject')}
+        >
+          {isRejected ? 'Rejected' : 'Reject'}
+        </Button>
+      </Group>
+      <Group justify="stretch" gap="xs" grow wrap="nowrap">
+        <Button
+          variant={row.isGreat ? 'default' : 'outline'}
+          loading={busyId === `${row.id}:great`}
+          aria-label={row.isGreat ? 'Remove from Greatest Hits' : 'Mark try-on result as Great'}
+          onClick={() => void onGreat(row)}
+        >
+          {row.isGreat ? 'Remove Great' : 'Great'}
+        </Button>
+        <Button
+          variant="outline"
+          loading={busyId === `${row.id}:service`}
+          aria-label="Mark try-on result as Service"
+          onClick={() => void onService(row)}
+        >
+          Service
+        </Button>
+      </Group>
+    </Stack>
   );
 }
 
@@ -519,6 +542,19 @@ export default function TryOnResultModerationTable({
       setBusyId(`${row.id}:great`);
       await postGreat(row.id, row.isGreat);
       if (activeRowId === row.id && !row.isGreat) {
+        setActiveRowId(null);
+      }
+      router.refresh();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleService(row: ModerationRow) {
+    try {
+      setBusyId(`${row.id}:service`);
+      await postService(row.id);
+      if (activeRowId === row.id) {
         setActiveRowId(null);
       }
       router.refresh();
@@ -696,7 +732,7 @@ export default function TryOnResultModerationTable({
             key: 'quickActions',
             label: 'Actions',
             render: (row) => (
-              <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} />
+              <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} onService={handleService} />
             ),
           },
           {
@@ -774,7 +810,7 @@ export default function TryOnResultModerationTable({
                   onOpen={() => setActiveRowId(row.id)}
                   onResultMissing={() => markAssetMissing(row.id, 'resultMissing')}
                 />
-                <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} />
+                <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} onService={handleService} />
               </Stack>
               <Stack gap={2}>
                 <Text fw={700}>{resolveDisplayName(row.userName)}</Text>
@@ -855,7 +891,7 @@ export default function TryOnResultModerationTable({
                 </Text>
               ) : null}
             </Stack>
-            <ModerationActions row={activeRow} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} />
+            <ModerationActions row={activeRow} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} onService={handleService} />
           </Stack>
         ) : null}
       </Modal>

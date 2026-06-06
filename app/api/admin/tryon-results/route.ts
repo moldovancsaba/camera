@@ -100,7 +100,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     query['tryOnModerationArchive.archived'] = true;
     query['tryOnModerationArchive.bucket'] = 'approved';
     query['metadata.tryOnGreat'] = true;
-  } else if (archive === 'approved' || archive === 'rejected') {
+  } else if (archive === 'approved' || archive === 'rejected' || archive === 'service') {
     query['tryOnModerationArchive.archived'] = true;
     query['tryOnModerationArchive.bucket'] = archive;
   } else {
@@ -108,7 +108,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     query.reviewStatus = reviewStatus || 'pending_review';
   }
 
-  if ((archive === 'approved' || archive === 'rejected' || archive === 'greatest') && reviewStatus) {
+  if ((archive === 'approved' || archive === 'rejected' || archive === 'service' || archive === 'greatest') && reviewStatus) {
     query.reviewStatus = reviewStatus;
   }
   if (eventId) {
@@ -126,7 +126,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const docs = (await db
     .collection<Submission>(COLLECTIONS.SUBMISSIONS)
     .find(query)
-    .sort(archive === 'approved' || archive === 'rejected' || archive === 'greatest' ? { createdAt: -1 } : { createdAt: 1 })
+    .sort(archive === 'approved' || archive === 'rejected' || archive === 'service' || archive === 'greatest' ? { createdAt: -1 } : { createdAt: 1 })
     .skip((page - 1) * limit)
     .limit(limit)
     .toArray()) as Array<Submission & { _id: ObjectId }>;

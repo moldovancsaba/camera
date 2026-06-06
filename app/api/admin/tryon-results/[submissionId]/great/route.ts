@@ -104,6 +104,7 @@ export const POST = withErrorHandler(async (
         'metadata.tryOnGreat': markGreat,
         'metadata.tryOnGreatAt': markGreat ? now : null,
         'metadata.tryOnGreatBy': markGreat ? session.user.email : null,
+        'metadata.tryOnService': false,
       },
     }
   );

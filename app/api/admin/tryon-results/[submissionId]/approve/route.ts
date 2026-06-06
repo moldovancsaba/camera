@@ -99,6 +99,7 @@ export const POST = withErrorHandler(async (
           archivedAt: now,
           archivedBy: session.user.email,
         },
+        'metadata.tryOnService': false,
         updatedAt: now,
       },
     }
