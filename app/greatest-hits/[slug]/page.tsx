@@ -108,9 +108,6 @@ export default async function GreatestHitsPage({ params }: Props) {
             Greatest Hits
           </Text>
           <Title order={1}>{event.name}</Title>
-          <Text c="dimmed" maw={720}>
-            Best-of selected images from the event.
-          </Text>
         </Stack>
 
         {hits.length > 0 ? (
