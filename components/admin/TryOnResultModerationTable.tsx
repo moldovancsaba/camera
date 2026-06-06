@@ -425,7 +425,7 @@ export default function TryOnResultModerationTable({
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || !Array.isArray(payload.data?.results)) return;
 
-      const nextRows = payload.data.results
+      const nextRows: ModerationRow[] = payload.data.results
         .map((value: unknown) => toModerationRow(value))
         .filter((value: ModerationRow | null): value is ModerationRow => Boolean(value));
       const previousIds = knownRowIdsRef.current;

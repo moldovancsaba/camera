@@ -277,13 +277,13 @@ export default async function AdminTryOnResultsPage({
   return (
     <AdminListPageShell
       eyebrow="Apps"
-      title="Try-On Vetting Queue"
+      title="Vetting Queue"
       description={
         failedJobsMode
           ? 'Review failed try-on jobs, inspect their failure reason, and send them back to the worker.'
-          : archiveBucket
+        : archiveBucket
           ? `Review archive for ${archiveBucket} try-on decisions. Approved items remain publishable; this archive only removes them from the active moderation queue.`
-          : 'Review generated leather results before they become share-visible or slideshow-eligible.'
+          : undefined
       }
       primaryAction={{ href: '/admin/tryon', label: 'Open Try-On App' }}
       search={{
