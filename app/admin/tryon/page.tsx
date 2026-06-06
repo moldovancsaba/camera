@@ -116,17 +116,17 @@ export default async function AdminTryOnAppPage() {
                 iconKey: 'world' as AdminIconKey,
               },
             ].map((item) => (
-              <ProductCard
+              <a
                 key={item.href}
-                title={item.title}
-                description={item.description}
-                icon={<AdminIcon iconKey={item.iconKey} size={20} />}
-                primaryAction={
-                  <a href={item.href} style={{ textDecoration: 'none' }}>
-                    Open
-                  </a>
-                }
-              />
+                href={item.href}
+                style={{ color: 'inherit', display: 'block', textDecoration: 'none' }}
+              >
+                <ProductCard
+                  title={item.title}
+                  description={item.description}
+                  icon={<AdminIcon iconKey={item.iconKey} size={20} />}
+                />
+              </a>
             ))}
           </ConsumerDashboardGrid>
         </>
