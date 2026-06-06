@@ -9,10 +9,10 @@ import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import {
   collectTryOnAnalytics,
   type TryOnAnalyticsBucket,
-  type TryOnHourlyOutcomeRow,
   type TryOnAnalyticsRow,
   type TryOnPresetPerformanceRow,
 } from '@/lib/tryon/analytics';
+import HourlyOutcomeChart from '@/components/admin/HourlyOutcomeChart';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,125 +54,6 @@ function AnalyticsTable({ title, rows }: { title: string; rows: TryOnAnalyticsRo
         </div>
       ) : (
         <Text c="dimmed">No try-on decisions match this filter.</Text>
-      )}
-    </Stack>
-  );
-}
-
-function pct(value: number, total: number): string {
-  if (total <= 0 || value <= 0) return '0%';
-  return `${Math.max(4, Math.round((value / total) * 1000) / 10)}%`;
-}
-
-function barHeight(value: number, maxTotal: number): string {
-  if (value <= 0) return '0px';
-  return `${Math.max(24, Math.round((value / maxTotal) * 220))}px`;
-}
-
-function dayLabel(hour: string): string {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(hour));
-}
-
-function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeRow[] }) {
-  const maxTotal = Math.max(1, ...rows.map((row) => row.total));
-  const colors = {
-    approved: 'var(--mantine-color-green-6)',
-    rejected: 'var(--mantine-color-red-6)',
-    service: 'var(--mantine-color-blue-6)',
-    failed: 'var(--mantine-color-orange-6)',
-  };
-
-  return (
-    <Stack gap="sm">
-      <Title order={3}>Hourly Outcomes</Title>
-      <Text c="dimmed" size="sm">
-        Approved, declined, service, and failed images grouped by hour.
-      </Text>
-      {rows.length > 0 ? (
-        <Stack gap="xs">
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            {[
-              ['Approved', colors.approved],
-              ['Declined', colors.rejected],
-              ['Service', colors.service],
-              ['Failed', colors.failed],
-            ].map(([label, color]) => (
-              <Text key={label} size="xs" c="dimmed">
-                <span
-                  aria-hidden
-                  style={{
-                    background: color,
-                    borderRadius: 999,
-                    display: 'inline-block',
-                    height: 10,
-                    marginRight: 6,
-                    width: 10,
-                  }}
-                />
-                {label}
-              </Text>
-            ))}
-          </div>
-          <div
-            style={{
-              alignItems: 'end',
-              borderBottom: '1px solid var(--mantine-color-gray-3)',
-              display: 'flex',
-              gap: 4,
-              minHeight: 280,
-              overflowX: 'auto',
-              padding: '16px 0 8px',
-            }}
-          >
-            {rows.map((row, index) => {
-              const currentDay = row.hour.slice(0, 10);
-              const previousDay = rows[index - 1]?.hour.slice(0, 10);
-              const showDay = index === 0 || currentDay !== previousDay;
-              return (
-                <div
-                  key={row.hour}
-                  style={{
-                    alignItems: 'center',
-                    display: 'flex',
-                    flex: '0 0 26px',
-                    flexDirection: 'column',
-                    gap: 6,
-                  }}
-                >
-                  <Text size="xs" fw={700}>{row.total}</Text>
-                  <div
-                    aria-label={`${row.label}: approved ${row.approved}, declined ${row.rejected}, service ${row.service}, failed ${row.failed}`}
-                    role="img"
-                    style={{
-                      alignItems: 'stretch',
-                      background: 'var(--mantine-color-gray-1)',
-                      borderRadius: '7px 7px 3px 3px',
-                      display: 'flex',
-                      flexDirection: 'column-reverse',
-                      height: barHeight(row.total, maxTotal),
-                      overflow: 'hidden',
-                      width: 20,
-                    }}
-                  >
-                    <div title={`Approved: ${row.approved}`} style={{ background: colors.approved, height: pct(row.approved, row.total) }} />
-                    <div title={`Declined: ${row.rejected}`} style={{ background: colors.rejected, height: pct(row.rejected, row.total) }} />
-                    <div title={`Service: ${row.service}`} style={{ background: colors.service, height: pct(row.service, row.total) }} />
-                    <div title={`Failed: ${row.failed}`} style={{ background: colors.failed, height: pct(row.failed, row.total) }} />
-                  </div>
-                  <Text size="xs" c="dimmed" ta="center" style={{ lineHeight: 1.1, minHeight: 24 }}>
-                    {showDay ? dayLabel(row.hour) : ''}
-                  </Text>
-                </div>
-              );
-            })}
-          </div>
-        </Stack>
-      ) : (
-        <Text c="dimmed">No hourly outcome data matches this filter.</Text>
       )}
     </Stack>
   );
