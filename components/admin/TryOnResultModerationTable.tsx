@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ResponsiveDataView from '@/components/gds/ResponsiveDataView';
 import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
-import { Box, Button, Card, Group, Modal, Paper, Select, SimpleGrid, Stack, Text, UnstyledButton } from '@mantine/core';
+import { Box, Button, Card, Group, Modal, Paper, Select, Stack, Text, UnstyledButton } from '@mantine/core';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
 
@@ -238,55 +238,32 @@ function PreviewStrip({
   clickable,
   onOpen,
   onResultMissing,
-  onOriginalMissing,
 }: {
   row: ModerationRow;
   clickable?: boolean;
   onOpen?: () => void;
   onResultMissing?: () => void;
-  onOriginalMissing?: () => void;
 }) {
   const content = (
-    <Group align="flex-start" gap="sm" wrap="nowrap">
-      <Box
-        style={{
-          position: 'relative',
-          width: 96,
-          height: 96,
-          borderRadius: 12,
-          overflow: 'hidden',
-          flexShrink: 0,
-        }}
-      >
-        <PreviewImage
-          src={row.imageUrl}
-          alt="Generated try-on result"
-          width={96}
-          height={96}
-          onFailure={onResultMissing}
-        />
-      </Box>
-      {row.originalImageUrl ? (
-        <Box
-          style={{
-            position: 'relative',
-            width: 72,
-            height: 72,
-            borderRadius: 12,
-            overflow: 'hidden',
-            flexShrink: 0,
-          }}
-        >
-          <PreviewImage
-            src={row.originalImageUrl}
-            alt="Original camera result"
-            width={72}
-            height={72}
-            onFailure={onOriginalMissing}
-          />
-        </Box>
-      ) : null}
-    </Group>
+    <Box
+      style={{
+        position: 'relative',
+        width: 'min(100%, 400px)',
+        height: 200,
+        borderRadius: 14,
+        overflow: 'hidden',
+        background: 'var(--mantine-color-gray-0)',
+      }}
+    >
+      <PreviewImage
+        src={row.imageUrl}
+        alt="Final try-on result"
+        width={400}
+        height={200}
+        objectFit="contain"
+        onFailure={onResultMissing}
+      />
+    </Box>
   );
 
   if (!clickable) return content;
@@ -299,6 +276,7 @@ function PreviewStrip({
         display: 'block',
         padding: 0,
         textAlign: 'left',
+        width: '100%',
       }}
       aria-label={`Open review modal for ${resolveDisplayName(row.userName)}`}
     >
@@ -358,12 +336,13 @@ function ModerationActions({
   onDecision: (rowId: string, action: 'approve' | 'reject') => Promise<void>;
 }) {
   return (
-    <Group justify="flex-end" gap="xs" wrap="wrap">
+    <Group justify="stretch" gap="xs" wrap="nowrap" style={{ width: '100%' }}>
       <Button
         variant="light"
         loading={busyId === `${row.id}:approve`}
         aria-label="Approve try-on result"
         onClick={() => void onDecision(row.id, 'approve')}
+        style={{ flex: 1 }}
       >
         Approve
       </Button>
@@ -372,6 +351,7 @@ function ModerationActions({
         loading={busyId === `${row.id}:reject`}
         aria-label="Reject try-on result"
         onClick={() => void onDecision(row.id, 'reject')}
+        style={{ flex: 1 }}
       >
         Reject
       </Button>
@@ -656,8 +636,14 @@ export default function TryOnResultModerationTable({
                 clickable
                 onOpen={() => setActiveRowId(row.id)}
                 onResultMissing={() => markAssetMissing(row.id, 'resultMissing')}
-                onOriginalMissing={() => markAssetMissing(row.id, 'originalMissing')}
               />
+            ),
+          },
+          {
+            key: 'quickActions',
+            label: 'Approve / Reject',
+            render: (row) => (
+              <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} />
             ),
           },
           {
@@ -719,24 +705,19 @@ export default function TryOnResultModerationTable({
               </Stack>
             ),
           },
-          {
-            key: 'actions',
-            label: 'Actions',
-            render: (row) => (
-              <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} />
-            ),
-          },
         ]}
         renderCard={(row) => (
           <Card withBorder padding="md">
             <Stack gap="md">
-              <PreviewStrip
-                row={row}
-                clickable
-                onOpen={() => setActiveRowId(row.id)}
-                onResultMissing={() => markAssetMissing(row.id, 'resultMissing')}
-                onOriginalMissing={() => markAssetMissing(row.id, 'originalMissing')}
-              />
+              <Stack gap="sm">
+                <PreviewStrip
+                  row={row}
+                  clickable
+                  onOpen={() => setActiveRowId(row.id)}
+                  onResultMissing={() => markAssetMissing(row.id, 'resultMissing')}
+                />
+                <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} />
+              </Stack>
               <Stack gap={2}>
                 <Text fw={700}>{resolveDisplayName(row.userName)}</Text>
                 <Text size="sm" c="dimmed">
@@ -761,7 +742,6 @@ export default function TryOnResultModerationTable({
                   </Text>
                 ) : null}
               </Stack>
-              <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} />
             </Stack>
           </Card>
         )}
@@ -777,22 +757,12 @@ export default function TryOnResultModerationTable({
       >
         {activeRow ? (
           <Stack gap="lg">
-            <SimpleGrid cols={{ base: 1, md: activeRow.originalImageUrl ? 2 : 1 }} spacing="lg">
-              <ReviewImagePanel
-                src={activeRow.imageUrl}
-                alt="Generated try-on result"
-                label="Generated result"
-                onFailure={() => markAssetMissing(activeRow.id, 'resultMissing')}
-              />
-              {activeRow.originalImageUrl ? (
-                <ReviewImagePanel
-                  src={activeRow.originalImageUrl}
-                  alt="Original camera result"
-                  label="Original capture"
-                  onFailure={() => markAssetMissing(activeRow.id, 'originalMissing')}
-                />
-              ) : null}
-            </SimpleGrid>
+            <ReviewImagePanel
+              src={activeRow.imageUrl}
+              alt="Final try-on result"
+              label="Final result"
+              onFailure={() => markAssetMissing(activeRow.id, 'resultMissing')}
+            />
             <Stack gap={4}>
               <Text fw={700}>{resolveDisplayName(activeRow.userName)}</Text>
               <Text size="sm" c="dimmed">

@@ -263,8 +263,8 @@ export default async function AdminTryOnResultsPage({
         id: doc._id.toString(),
         sourceJobId: doc.sourceJobId ?? null,
         imageUrl:
-          normalizeImgbbDirectUrl(doc.imageUrl ?? null) ??
           normalizeImgbbDirectUrl(doc.finalImageUrl ?? null) ??
+          normalizeImgbbDirectUrl(doc.imageUrl ?? null) ??
           '',
         originalImageUrl:
           normalizeImgbbDirectUrl(source?.imageUrl ?? null) ??
