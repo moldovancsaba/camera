@@ -96,8 +96,9 @@ export default function OldestVettingResultCard({ row }: { row: ModerationRow })
           alt="Oldest waiting try-on result"
           style={{
             aspectRatio: '4 / 5',
+            background: 'var(--mantine-color-gray-0)',
             display: 'block',
-            objectFit: 'cover',
+            objectFit: 'contain',
             width: '100%',
           }}
         />
