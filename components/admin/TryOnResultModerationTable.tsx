@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ResponsiveDataView } from '@doneisbetter/gds-admin/client';
+import { AdminModal, AdminReviewLayout, ResponsiveDataView } from '@doneisbetter/gds-admin/client';
 import { SemanticButton, StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
@@ -125,10 +125,6 @@ function Box({ children, style }: { children: React.ReactNode; style?: React.CSS
   return <div style={style}>{children}</div>;
 }
 
-function Card({ children }: { children: React.ReactNode; [key: string]: unknown }) {
-  return <article style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', padding: '1rem' }}>{children}</article>;
-}
-
 function Paper({ children }: { children: React.ReactNode; [key: string]: unknown }) {
   return <div style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.75rem', padding: '0.75rem' }}>{children}</div>;
 }
@@ -230,32 +226,6 @@ function UnstyledButton({
   [key: string]: unknown;
 }) {
   return <button type="button" onClick={onClick} style={{ background: 'transparent', border: 0, ...style }} {...props}>{children}</button>;
-}
-
-function Modal({
-  opened,
-  onClose,
-  title,
-  children,
-}: {
-  opened: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-  [key: string]: unknown;
-}) {
-  if (!opened) return null;
-  return (
-    <div role="dialog" aria-modal="true" aria-label={title} style={{ background: 'var(--gds-color-overlay)', inset: 0, display: 'grid', placeItems: 'center', padding: '1rem', position: 'fixed', zIndex: 1000 }}>
-      <div style={{ background: 'var(--gds-color-surface)', border: '1px solid var(--gds-color-border)', borderRadius: '1rem', maxHeight: '90vh', maxWidth: '90rem', overflowY: 'auto', padding: '1.5rem', width: '100%' }}>
-        <div style={{ alignItems: 'center', display: 'flex', gap: '1rem', justifyContent: 'space-between', marginBottom: '1rem' }}>
-          <h2 style={{ margin: 0 }}>{title}</h2>
-          <SemanticButton action="tryon-moderation:close-modal" variant="secondary" onClick={onClose}>Close</SemanticButton>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
 }
 
 interface ModerationListQuery {
@@ -1173,19 +1143,18 @@ export default function TryOnResultModerationTable({
           },
         ]}
         renderCard={(row) => (
-          <Card withBorder padding="md">
-            <Stack gap="md">
-              <Stack gap="sm">
-                <PreviewStrip
-                  row={row}
-                  clickable
-                  onOpen={() => setActiveRowId(row.id)}
-                  onResultMissing={() => markAssetMissing(row.id, 'resultMissing')}
-                  onOriginalMissing={() => markAssetMissing(row.id, 'originalMissing')}
-                />
-                <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} onService={handleService} />
-              </Stack>
-              <Stack gap={2}>
+          <AdminReviewLayout
+            media={
+              <PreviewStrip
+                row={row}
+                clickable
+                onOpen={() => setActiveRowId(row.id)}
+                onResultMissing={() => markAssetMissing(row.id, 'resultMissing')}
+                onOriginalMissing={() => markAssetMissing(row.id, 'originalMissing')}
+              />
+            }
+            metadata={
+              <Stack gap="xs">
                 <Text fw={700}>{resolveDisplayName(row.userName)}</Text>
                 {shouldShowEmail(row.userEmail) ? (
                   <Text size="sm" c="dimmed">
@@ -1199,23 +1168,29 @@ export default function TryOnResultModerationTable({
                   {garmentLabel(row)}
                 </Text>
               </Stack>
-              {renderPresetControls(row)}
-              <Stack gap="xs" align="flex-start">
-                <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row.reviewStatus))} />
-                {row.isGreat ? (
-                  <StatusBadge {...getStatusBadgeProps('active', 'Great')} />
-                ) : null}
-                <Text size="xs" c="dimmed">
-                  {visibilityLabel(row)}
-                </Text>
-                {assetHealthLabel(row.id) ? (
-                  <Text size="xs" c="dimmed">
-                    {assetHealthLabel(row.id)}
-                  </Text>
-                ) : null}
+            }
+            actions={
+              <Stack gap="xs">
+                <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} onService={handleService} />
               </Stack>
+            }
+          >
+            {renderPresetControls(row)}
+            <Stack gap="xs" align="flex-start">
+              <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row.reviewStatus))} />
+              {row.isGreat ? (
+                <StatusBadge {...getStatusBadgeProps('active', 'Great')} />
+              ) : null}
+              <Text size="xs" c="dimmed">
+                {visibilityLabel(row)}
+              </Text>
+              {assetHealthLabel(row.id) ? (
+                <Text size="xs" c="dimmed">
+                  {assetHealthLabel(row.id)}
+                </Text>
+              ) : null}
             </Stack>
-          </Card>
+          </AdminReviewLayout>
         )}
         getRowKey={(row) => row.id}
       />
@@ -1235,12 +1210,11 @@ export default function TryOnResultModerationTable({
         </Text>
       )}
 
-      <Modal
+      <AdminModal
         opened={Boolean(activeRow)}
         onClose={() => setActiveRowId(null)}
         title={activeRow ? `Review result for ${resolveDisplayName(activeRow.userName)}` : 'Review result'}
         size="90rem"
-        centered
       >
         {activeRow ? (
           <Stack gap="lg">
@@ -1309,7 +1283,7 @@ export default function TryOnResultModerationTable({
             <ModerationActions row={activeRow} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} onService={handleService} />
           </Stack>
         ) : null}
-      </Modal>
+      </AdminModal>
     </>
   );
 }
