@@ -6,11 +6,25 @@
 
 'use client';
 
-import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import {
+  Anchor,
+  Breadcrumbs,
+  Button,
+  Checkbox,
+  ColorInput,
+  FileInput,
+  Grid,
+  Group,
+  Select,
+  Stack,
+  Text,
+  Textarea,
+  TextInput,
+} from '@/components/gds/PublicPrimitives';
 import { notifications } from '@/lib/gds/notifications';
 import { type CustomPage } from '@/lib/db/schemas';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
@@ -110,64 +124,6 @@ interface EventResponse {
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
-}
-
-function Stack({ children, gap = '1rem' }: { children: React.ReactNode; gap?: string | number; [key: string]: unknown }) {
-  return <div style={{ display: 'grid', gap }}>{children}</div>;
-}
-
-function Group({ children, justify }: { children: React.ReactNode; justify?: string; [key: string]: unknown }) {
-  return <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: justify }}>{children}</div>;
-}
-
-function Grid({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))' }}>{children}</div>;
-}
-Grid.Col = function GridCol({ children }: { children: React.ReactNode; [key: string]: unknown }) {
-  return <div>{children}</div>;
-};
-
-function Text({ children, size, c, fw }: { children: React.ReactNode; size?: string; c?: string; fw?: number; [key: string]: unknown }) {
-  return <span style={{ color: c === 'dimmed' ? 'var(--gds-color-muted)' : undefined, display: 'block', fontSize: size === 'xs' ? '0.75rem' : size === 'sm' ? '0.875rem' : size, fontWeight: fw }}>{children}</span>;
-}
-
-function TextInput({ label, description, name, value, defaultValue, onChange, required, placeholder, disabled, readOnly, type = 'text' }: { label?: string; description?: string; name?: string; value?: string; defaultValue?: string; onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void; required?: boolean; placeholder?: string; disabled?: boolean; readOnly?: boolean; type?: string; [key: string]: unknown }) {
-  const input = <input name={name} value={value} defaultValue={defaultValue} onChange={onChange} required={required} placeholder={placeholder} disabled={disabled} readOnly={readOnly} type={type} style={{ minHeight: 44, padding: '0 0.75rem' }} />;
-  if (!label) return input;
-  return <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>{label}{input}{description ? <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>{description}</span> : null}</label>;
-}
-
-function Textarea({ label, description, name, value, defaultValue, onChange, rows, placeholder, disabled }: { label?: string; description?: string; name?: string; value?: string; defaultValue?: string; onChange?: (event: React.ChangeEvent<HTMLTextAreaElement>) => void; rows?: number; placeholder?: string; disabled?: boolean; [key: string]: unknown }) {
-  return <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>{label}<textarea name={name} value={value} defaultValue={defaultValue} onChange={onChange} rows={rows} placeholder={placeholder} disabled={disabled} style={{ padding: '0.75rem' }} />{description ? <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>{description}</span> : null}</label>;
-}
-
-function Checkbox({ label, description, checked, defaultChecked, onChange, name, disabled }: { label: string; description?: string; checked?: boolean; defaultChecked?: boolean; onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void; name?: string; disabled?: boolean; [key: string]: unknown }) {
-  return <label style={{ display: 'grid', gap: '0.35rem' }}><span style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}><input type="checkbox" name={name} checked={checked} defaultChecked={defaultChecked} onChange={onChange} disabled={disabled} />{label}</span>{description ? <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem' }}>{description}</span> : null}</label>;
-}
-
-function Select({ label, description, data, value, onChange, disabled, placeholder }: { label?: string; description?: string; data: Array<{ value: string; label: string }>; value?: string | null; onChange?: (value: string | null) => void; disabled?: boolean; placeholder?: string; [key: string]: unknown }) {
-  return <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>{label}<select value={value ?? ''} disabled={disabled} onChange={(event) => onChange?.(event.currentTarget.value || null)} style={{ minHeight: 44, padding: '0 0.75rem' }}>{placeholder ? <option value="">{placeholder}</option> : null}{data.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>{description ? <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>{description}</span> : null}</label>;
-}
-
-function FileInput({ label, description, accept, onChange }: { label: string; description?: string; accept?: string; onChange: (file: File | null) => void }) {
-  return <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>{label}<input type="file" accept={accept} onChange={(event) => onChange(event.currentTarget.files?.[0] ?? null)} />{description ? <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>{description}</span> : null}</label>;
-}
-
-function ColorInput({ label, description, value, onChange }: { label: string; description?: string; value: string; onChange: (value: string) => void }) {
-  return <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>{label}<input type="color" value={value} onChange={(event) => onChange(event.currentTarget.value)} style={{ minHeight: 44 }} />{description ? <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>{description}</span> : null}</label>;
-}
-
-function Button({ children, component, href, variant, type = 'button', disabled, loading, onClick }: { children: React.ReactNode; component?: typeof Link; href?: string; variant?: string; type?: 'button' | 'submit'; disabled?: boolean; loading?: boolean; onClick?: () => void; [key: string]: unknown }) {
-  const button = <SemanticButton action="events:form-action" type={type} variant={variant === 'default' || variant === 'light' ? 'secondary' : undefined} disabled={disabled} loading={loading} onClick={onClick}>{children}</SemanticButton>;
-  return component === Link && href ? <Link href={href} style={{ textDecoration: 'none' }}>{button}</Link> : button;
-}
-
-function Breadcrumbs({ children }: { children: React.ReactNode }) {
-  return <nav aria-label="Breadcrumb" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>{children}</nav>;
-}
-
-function Anchor({ component, href, children }: { component?: typeof Link; href: string; children: React.ReactNode; [key: string]: unknown }) {
-  return component === Link ? <Link href={href}>{children}</Link> : <a href={href}>{children}</a>;
 }
 
 export default function EditEventPage({

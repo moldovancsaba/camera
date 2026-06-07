@@ -11,6 +11,7 @@ import { notFound, redirect } from 'next/navigation';
 import { ObjectId } from 'mongodb';
 import { AccentPanel, AccessSummary } from '@doneisbetter/gds-core/server';
 import { StatsStrip } from '@doneisbetter/gds-admin/server';
+import { Badge, Breadcrumbs, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import StyleSections from '@/components/admin/StyleSections';
 import PartnerUserAccessManager from '@/components/admin/PartnerUserAccessManager';
@@ -26,45 +27,6 @@ import {
   listSessionPartnerAssignments,
 } from '@/lib/partners/authorization';
 import { cameraInfoToneMap } from '@/lib/gds/presentation';
-
-function Stack({ children, gap = '1rem', style }: { children: React.ReactNode; gap?: string | number; style?: React.CSSProperties; [key: string]: unknown }) {
-  return <div style={{ display: 'grid', gap, ...style }}>{children}</div>;
-}
-
-function Group({ children, justify, style }: { children: React.ReactNode; justify?: string; style?: React.CSSProperties; [key: string]: unknown }) {
-  return <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: justify, ...style }}>{children}</div>;
-}
-
-function SimpleGrid({ children }: { children: React.ReactNode; [key: string]: unknown }) {
-  return <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))' }}>{children}</div>;
-}
-
-function Text({ children, size, c, fw, ta, style }: { children: React.ReactNode; size?: string; c?: string; fw?: number; ta?: React.CSSProperties['textAlign']; style?: React.CSSProperties; [key: string]: unknown }) {
-  return <span style={{ color: c === 'dimmed' ? 'var(--gds-color-muted)' : undefined, display: 'block', fontSize: size === 'xs' ? '0.75rem' : size === 'sm' ? '0.875rem' : size, fontWeight: fw, textAlign: ta, ...style }}>{children}</span>;
-}
-
-function Title({ children, order = 2 }: { children: React.ReactNode; order?: 1 | 2 | 3 | 4; [key: string]: unknown }) {
-  if (order === 1) return <h1 style={{ margin: 0 }}>{children}</h1>;
-  if (order === 3) return <h3 style={{ margin: 0 }}>{children}</h3>;
-  if (order === 4) return <h4 style={{ margin: 0 }}>{children}</h4>;
-  return <h2 style={{ margin: 0 }}>{children}</h2>;
-}
-
-function Card({ children }: { children: React.ReactNode; [key: string]: unknown }) {
-  return <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', padding: '1rem' }}>{children}</section>;
-}
-
-function Button({ children }: { children: React.ReactNode; [key: string]: unknown }) {
-  return <span style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.75rem', display: 'inline-flex', fontWeight: 700, justifyContent: 'center', padding: '0.65rem 1rem' }}>{children}</span>;
-}
-
-function Badge({ children }: { children: React.ReactNode; [key: string]: unknown }) {
-  return <span style={{ border: '1px solid var(--gds-color-border)', borderRadius: '999px', display: 'inline-flex', fontSize: '0.75rem', fontWeight: 700, padding: '0.2rem 0.55rem' }}>{children}</span>;
-}
-
-function Breadcrumbs({ children }: { children: React.ReactNode }) {
-  return <nav aria-label="Breadcrumb" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>{children}</nav>;
-}
 
 interface FrameDetailsDoc {
   frameId: string;
