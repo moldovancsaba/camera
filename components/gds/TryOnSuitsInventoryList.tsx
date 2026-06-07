@@ -47,6 +47,14 @@ export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTr
       },
     },
     {
+      id: 'download',
+      label: 'Download',
+      kind: 'secondary',
+      onSelect: (suit) => {
+        window.open(suit.imageUrl, '_blank', 'noopener,noreferrer');
+      },
+    },
+    {
       id: 'analytics',
       label: 'Asset Builder',
       kind: 'secondary',
