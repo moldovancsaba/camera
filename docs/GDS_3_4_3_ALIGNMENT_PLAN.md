@@ -23,7 +23,7 @@ Checked on 2026-06-07 against `moldovancsaba/camera` and Project `#24` (`{camera
 | `#75` Feedback, overlays, confirmations | Root GDS feedback/overlay providers are implemented. Legacy destructive-confirm bridge still remains. | Open | Backlog (SOONER) | Keep open as partial. Update issue with provider baseline complete and remaining call-site replacement. |
 | `#76` Public surfaces | Public/capture/slideshow exceptions remain by design. | Open | Backlog (SOONER) | Keep open. |
 | `#77` Media cards | Media-card migration status is not fully proven from local docs alone. | Open | Backlog (SOONER) | Keep open pending visual inspection and accessibility review. |
-| `#78` Compliance enforcement | `gds-adoption.json` and docs are updated locally; release-gate checks still need to run in the final package-manager lane. | Open | Backlog (SOONER) | Keep open until final gate. |
+| `#78` Compliance enforcement | `gds-adoption.json`, docs, and GitHub Actions release gate are implemented locally. | Open | Backlog (SOONER) | Run the final npm validation lane and update the issue before closure. |
 
 Project board sync:
 
@@ -227,12 +227,14 @@ Release gate:
 - Direct page-level Mantine imports are removed or listed as exceptions.
 - Compatibility shims have exit conditions.
 - Docs and release notes are updated.
+- GitHub Actions runs the npm release lane defined in `docs/GDS_RELEASE_GATE.md`.
 
 ## Validation
 
 Run before release:
 
 ```bash
+npm ci
 npm run gds:validate-manifest
 npm run gds:check
 npm run type-check

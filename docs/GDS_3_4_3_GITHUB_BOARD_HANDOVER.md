@@ -35,7 +35,7 @@ Fetched on 2026-06-07 before the Project API blocked.
 | `#75` | GDS: Operator feedback - centralized notifications confirmations and overlays | Open | Backlog (SOONER) | Root GDS feedback/overlay providers are implemented. Legacy destructive-confirm bridge remains. |
 | `#76` | GDS: Public surfaces - capture share recovery and playback primitive adoption | Open | Backlog (SOONER) | Public/capture/slideshow exceptions remain by design. |
 | `#77` | GDS: Media cards - official image card primitives and non-cropping behavior | Open | Backlog (SOONER) | Media-card migration needs visual and accessibility confirmation. |
-| `#78` | GDS: Compliance enforcement - CI guardrails docs and exception register | Open | Backlog (SOONER) | `gds-adoption.json` and docs are updated locally; final gate checks still need the selected package-manager lane. |
+| `#78` | GDS: Compliance enforcement - CI guardrails docs and exception register | Open | Backlog (SOONER) | `gds-adoption.json`, docs, and GitHub Actions release gate are implemented locally; final npm validation lane still needs to be reported back to the issue. |
 
 ## GitHub issue comments posted
 
@@ -126,9 +126,10 @@ Keep `#71`, `#72`, `#74`, `#76`, and `#77` open in Backlog (SOONER) unless imple
 
 ## Verification still needed before release
 
-Use the package manager selected for the repository release lane.
+Use the repository release lane.
 
 ```bash
+npm ci
 npm run gds:validate-manifest
 npm run gds:check
 npm run type-check
@@ -151,7 +152,7 @@ Targeted smoke:
 
 ## Local verification run
 
-Run on 2026-06-07 with `pnpm` because `npm` was not available on this shell PATH.
+Run on 2026-06-07 with `pnpm` because `npm` was not available on this shell PATH. The GitHub Actions release gate uses `npm ci` on the hosted runner because `package-lock.json` is the canonical repository lockfile.
 
 ```bash
 pnpm run gds:validate-manifest
@@ -164,9 +165,9 @@ pnpm run build
 Results:
 
 - `gds:validate-manifest`: passed.
-- `gds:check`: passed.
+- `gds:check`: passed, including the Camera scoped GDS boundary check.
 - `type-check`: passed.
-- `lint`: passed with 21 warnings, 0 errors. Warnings are existing React hook/compiler and unused-variable warnings outside the GDS board-sync work.
+- `lint`: passed with 23 warnings, 0 errors. Warnings are existing React hook/compiler, no-img, and unused-variable warnings outside the GDS release-gate work.
 - `build`: passed. `/admin/tryon/analytics` compiled as a dynamic route.
 - Local authenticated HTTP smoke: passed.
   - Dev login used `role=superadmin`.
@@ -175,9 +176,9 @@ Results:
 
 Remaining release work:
 
-- Confirm whether release validation must use `npm`, `pnpm`, or both.
+- Report the npm release-gate result back to issue `#78`.
 - Run visual/browser smoke for the full manual target list. Browser-control tooling was not exposed in this session, so the analytics check used HTTP instead of an in-app browser screenshot.
-- Decide whether the 21 lint warnings are acceptable for this release gate or should be split into follow-up hardening issues.
+- Decide whether the 23 lint warnings are acceptable for this release gate or should be split into follow-up hardening issues.
 
 ## Local working-tree caution
 

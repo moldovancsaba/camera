@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "BROWSERSLIST_IGNORE_OLD_DATA=true BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA=true eslint .",
     "gds:validate-manifest": "gds-compliance validate-manifest --manifest ./gds-adoption.json",
-    "gds:check": "gds-compliance check --manifest ./gds-adoption.json",
+    "gds:check": "gds-compliance check --manifest ./gds-adoption.json && node scripts/check-gds-boundaries.mjs",
     "type-check": "tsc --noEmit",
     "test:e2e": "BROWSERSLIST_IGNORE_OLD_DATA=true BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA=true playwright test",
     "test:e2e:headed": "BROWSERSLIST_IGNORE_OLD_DATA=true BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA=true playwright test --headed",

@@ -199,7 +199,7 @@
       "lib/gds"
     ],
     "bannedImports": [],
-    "plannedBannedImports": [
+    "scopedBannedImports": [
       {
         "import": "@mantine/core",
         "scope": [
@@ -208,11 +208,12 @@
         ],
         "allow": [
           "components/gds/styles.ts",
-          "components/gds/SemanticNavLink.tsx"
+          "components/gds/EventsInventoryList.tsx"
         ],
         "reason": "Admin and GDS-boundary surfaces must consume official GDS primitives first. Mantine remains allowed only as leaf/runtime implementation under explicit exceptions."
       }
-    ]
+    ],
+    "plannedBannedImports": []
   },
   "migrationStatus": "direct-consumption-in-progress",
   "owner": "camera-platform",

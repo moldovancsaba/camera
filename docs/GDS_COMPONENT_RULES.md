@@ -12,6 +12,7 @@ Current SSOT alignment target:
 Compliance artifact:
 
 - [gds-adoption.json](/Users/Shared/Projects/venturecogroup/camera/gds-adoption.json) is the machine-readable declaration of Camera's active contract coverage, exceptions, and migration state.
+- [docs/GDS_RELEASE_GATE.md](/Users/Shared/Projects/camera/docs/GDS_RELEASE_GATE.md) defines the required CI/release validation commands.
 
 ## Primitive Categories
 
@@ -61,6 +62,8 @@ Every new GDS primitive should define:
 3. Keep domain-specific logic out of foundation primitives.
 4. Keep visual tokens inside the Mantine theme or documented system-level props rather than scattered per page.
 5. Direct `@mantine/core` imports are not allowed in new admin page-level surfaces. Existing imports are migration debt unless listed as an approved exception.
+
+The active manifest enforces the `@mantine/core` import boundary for `app/admin/**` and `components/gds/**`. Any new exception must be narrow, owned, time-boxed where possible, and documented in `gds-adoption.json`.
 
 ## Exception Rules
 

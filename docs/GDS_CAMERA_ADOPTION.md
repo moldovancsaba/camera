@@ -29,6 +29,7 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | Notifications | Root `GdsNotificationProvider` / `GdsToastProvider` from `@doneisbetter/gds-core/client` plus `showGdsNotification` from `@doneisbetter/gds-theme/client` |
 | Modals / confirm | Root `GdsConfirmProvider` / `OverlayManagerProvider` from `@doneisbetter/gds-core/client`; legacy `lib/gds/confirm-destructive.tsx` remains a migration bridge |
 | Adoption manifest | `gds-adoption.json` |
+| Release gate | `.github/workflows/gds-release-gate.yml`, [docs/GDS_RELEASE_GATE.md](/Users/Shared/Projects/camera/docs/GDS_RELEASE_GATE.md) |
 
 ## Pattern adapter inventory
 
@@ -107,6 +108,7 @@ Camera exceptions follow the shared structure from [docs/GDS_EXCEPTION_STANDARD.
 | Residual public surface helper layer (`app/globals.css` helper classes and `--app-panel-*` tokens) | Migration bridge | Limited public/capture helper styling outside `/admin/**` | No second shell system, no admin reuse, no raw package bypass, accessibility and contrast still enforced | Remove once public/capture surfaces no longer depend on local helper classes |
 | Landing page custom CSS (`landing_pages.customCss`, public `/landing/[slug]`) | Product-authored experience | Creator-authored presentation inside the landing experience surface only | GDS-governed admin/editor chrome, safe rendering order, accessibility baseline for shared controls and consent surfaces | Long-lived approved exception unless GDS later formalizes creator-authored experience theming |
 | Slideshow player (`components/slideshow/**`, `/slideshow/**`) | Runtime constraint | Timing-sensitive queue orchestration, fullscreen behavior, and media-first presentation | GDS runtime boundary, `PlaybackSurface` framing, surrounding admin configuration surfaces, visible error/empty states, keyboard-safe exit where applicable | Keep narrowing until only timing-sensitive queue, fullscreen behavior, and media internals remain outside direct package ownership |
+| Event inventory per-row vetting action (`components/gds/EventsInventoryList.tsx`) | Package coverage gap | Mantine `SimpleGrid` only, around package `AdminResourceCard` | Official GDS resource cards, status badges, metadata, accessible action labels | Remove when `AdminResourceManager` supports row-derived action labels such as `Vetting (N)` |
 
 ## Published package capability snapshot
 
@@ -177,12 +179,15 @@ Current compliance position:
 ## Validation
 
 ```bash
+npm ci
 npm run gds:validate-manifest
 npm run gds:check
 npm run type-check
 npm run lint
 npm run build
 ```
+
+The same commands run in GitHub Actions through [docs/GDS_RELEASE_GATE.md](/Users/Shared/Projects/camera/docs/GDS_RELEASE_GATE.md).
 
 ## References
 

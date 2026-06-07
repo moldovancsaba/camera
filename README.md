@@ -1,7 +1,7 @@
 # Camera
 
 **Version**: 2.10.0  
-**Last Updated**: 2026-06-06  
+**Last Updated**: 2026-06-07  
 **Status**: Production system
 
 Camera is a Next.js platform for branded photo capture, event galleries, slideshow playback, partner operations, and reusable shared resources on the same identity, media, and MongoDB foundations.
@@ -150,6 +150,12 @@ See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CON
 
 Camera admin UI follows the portfolio [General Design System](https://github.com/sovereignsquad/general-design-system) through the published `@doneisbetter/*` package line. Local adapter details, migration state, exceptions, and the formal adoption manifest: [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/camera/docs/GDS_CAMERA_ADOPTION.md) and [gds-adoption.json](/Users/Shared/Projects/camera/gds-adoption.json).
 
+GDS release gate:
+
+- `npm` is the canonical CI/release package manager because `package-lock.json` is present
+- GitHub Actions runs `npm ci`, GDS manifest validation, GDS compliance, type-check, lint, and build on `main` changes
+- release-gate details are maintained in [docs/GDS_RELEASE_GATE.md](/Users/Shared/Projects/camera/docs/GDS_RELEASE_GATE.md)
+
 Reusable exception guidance:
 
 - [docs/GDS_EXCEPTION_STANDARD.md](/Users/Shared/Projects/camera/docs/GDS_EXCEPTION_STANDARD.md) defines the general exception model that Camera uses and that other GDS consumers can adopt
@@ -190,6 +196,7 @@ Canonical docs:
 - [TECH_STACK.md](/Users/Shared/Projects/camera/TECH_STACK.md)
 - [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/camera/docs/GDS_CAMERA_ADOPTION.md)
 - [docs/GDS_COMPONENT_RULES.md](/Users/Shared/Projects/camera/docs/GDS_COMPONENT_RULES.md)
+- [docs/GDS_RELEASE_GATE.md](/Users/Shared/Projects/camera/docs/GDS_RELEASE_GATE.md)
 - [docs/GDS_3_4_3_ALIGNMENT_PLAN.md](/Users/Shared/Projects/camera/docs/GDS_3_4_3_ALIGNMENT_PLAN.md)
 - [docs/AUTHORIZATION.md](/Users/Shared/Projects/camera/docs/AUTHORIZATION.md)
 - [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CONVENTIONS.md)
