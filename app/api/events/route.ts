@@ -252,6 +252,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         : [],
       applyFrameToReturnedResults: Boolean(tryOn?.applyFrameToReturnedResults),
       vettingEnabled: tryOn?.vettingEnabled !== false,
+      localAiQualityGateEnabled: Boolean(tryOn?.localAiQualityGateEnabled),
       includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
       resultSlideshowMode,
     },

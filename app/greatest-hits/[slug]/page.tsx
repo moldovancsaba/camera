@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ObjectId } from 'mongodb';
-import { Card, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { Card, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import PublicShell from '@/components/public/PublicPageShell';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, type Event, type Submission } from '@/lib/db/schemas';

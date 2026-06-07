@@ -5,7 +5,6 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Combobox, InputBase, Text, useCombobox } from '@mantine/core';
 
 interface Partner {
   _id: string;
@@ -28,8 +27,8 @@ export default function PartnerSearchDropdown({
   required = false,
 }: PartnerSearchDropdownProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
   const selectedPartner = partners.find((partner) => partner.partnerId === selectedPartnerId);
-  const combobox = useCombobox();
   const mounted = useRef(false);
 
   const filteredPartners = useMemo(
@@ -42,60 +41,92 @@ export default function PartnerSearchDropdown({
       mounted.current = true;
       return;
     }
-    combobox.resetSelectedOption();
-  }, [searchQuery, combobox]);
+  }, [searchQuery]);
 
   const handleSelectPartner = (partner: Partner) => {
     onSelect(partner.partnerId, partner.name);
     setSearchQuery('');
-    combobox.closeDropdown();
+    setIsOpen(false);
   };
 
-  const options = filteredPartners.map((partner) => (
-    <Combobox.Option value={partner.partnerId} key={partner.partnerId}>
-      <Text fw={600}>{partner.name}</Text>
-    </Combobox.Option>
-  ));
-
   return (
-    <>
-      <Combobox
-        store={combobox}
-        onOptionSubmit={(value) => {
-          const partner = filteredPartners.find((entry) => entry.partnerId === value);
-          if (partner) {
-            handleSelectPartner(partner);
-          }
+    <div style={{ position: 'relative' }}>
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        onClick={() => setIsOpen((value) => !value)}
+        style={{
+          alignItems: 'center',
+          background: 'var(--gds-color-surface)',
+          border: '1px solid var(--gds-color-border)',
+          borderRadius: '0.625rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          minHeight: 44,
+          padding: '0.5rem 0.75rem',
+          textAlign: 'left',
+          width: '100%',
         }}
       >
-        <Combobox.Target>
-          <InputBase
-            component="button"
-            type="button"
-            pointer
-            rightSection="▾"
-            onClick={() => combobox.toggleDropdown()}
-            styles={{ input: { height: 'auto', minHeight: 42, paddingBlock: 8 } }}
-          >
-            {selectedPartner ? (
-              <Text fw={600}>{selectedPartner.name}</Text>
-            ) : (
-              <Text c="dimmed">Search partners...</Text>
-            )}
-          </InputBase>
-        </Combobox.Target>
+        <span style={{ color: selectedPartner ? 'inherit' : 'var(--gds-color-muted)', fontWeight: 700 }}>
+          {selectedPartner ? selectedPartner.name : 'Search partners...'}
+        </span>
+        <span aria-hidden>▾</span>
+      </button>
 
-        <Combobox.Dropdown>
-          <Combobox.Search
+      {isOpen ? (
+        <div
+          style={{
+            background: 'var(--gds-color-surface)',
+            border: '1px solid var(--gds-color-border)',
+            borderRadius: '0.75rem',
+            boxShadow: 'var(--gds-shadow-lg))',
+            display: 'grid',
+            gap: '0.5rem',
+            left: 0,
+            marginTop: '0.35rem',
+            padding: '0.75rem',
+            position: 'absolute',
+            right: 0,
+            zIndex: 20,
+          }}
+        >
+          <input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.currentTarget.value)}
             placeholder="Search partners..."
+            style={{ minHeight: 40, padding: '0 0.75rem' }}
           />
-          <Combobox.Options>{options.length > 0 ? options : <Combobox.Empty>No partners found</Combobox.Empty>}</Combobox.Options>
-        </Combobox.Dropdown>
-      </Combobox>
+          <div role="listbox" style={{ display: 'grid', maxHeight: 260, overflowY: 'auto' }}>
+            {filteredPartners.length > 0 ? (
+              filteredPartners.map((partner) => (
+                <button
+                  key={partner.partnerId}
+                  type="button"
+                  role="option"
+                  aria-selected={partner.partnerId === selectedPartnerId}
+                  onClick={() => handleSelectPartner(partner)}
+                  style={{
+                    background: partner.partnerId === selectedPartnerId ? 'var(--gds-color-surface-muted)' : 'transparent',
+                    border: 0,
+                    borderRadius: '0.5rem',
+                    fontWeight: 700,
+                    padding: '0.65rem 0.75rem',
+                    textAlign: 'left',
+                  }}
+                >
+                  {partner.name}
+                </button>
+              ))
+            ) : (
+              <span style={{ color: 'var(--gds-color-muted)', padding: '0.65rem 0.75rem' }}>No partners found</span>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       <input type="hidden" name="partnerId" value={selectedPartnerId || ''} required={required} />
-    </>
+    </div>
   );
 }

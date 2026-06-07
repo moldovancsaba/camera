@@ -2,9 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@mantine/core';
-import { notifications } from '@/lib/gds/notifications';
-import { confirmDestructive } from '@/lib/gds/confirm-destructive';
+import { SemanticButton, useGdsConfirm, useGdsToasts } from '@doneisbetter/gds-core/client';
 
 type RemovalLevel = 'event' | 'partner';
 
@@ -25,6 +23,8 @@ export default function RemoveSubmissionButton({
 }: RemoveSubmissionButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { confirm } = useGdsConfirm();
+  const { notifyError } = useGdsToasts();
 
   const dialogMessages = {
     event: {
@@ -62,31 +62,36 @@ export default function RemoveSubmissionButton({
         router.refresh();
       }
     } catch (removeError) {
-      notifications.show({
+      notifyError({
         title: 'Remove failed',
         message: removeError instanceof Error ? removeError.message : 'Unknown error',
-        color: 'red',
       });
       setIsLoading(false);
     }
   };
 
+  const confirmRemove = async () => {
+    const confirmed = await confirm({
+      title,
+      message,
+      confirmAction: 'delete',
+      danger: false,
+    });
+    if (confirmed) {
+      void handleRemove();
+    }
+  };
+
   return (
-    <Button
-      variant="subtle"
-      size="compact-sm"
+    <SemanticButton
+      action="delete"
+      size="xs"
       loading={isLoading}
       disabled={isLoading}
-      onClick={() =>
-        confirmDestructive({
-          title,
-          message,
-          confirmLabel,
-          onConfirm: () => void handleRemove(),
-        })
-      }
+      onClick={() => void confirmRemove()}
+      aria-label={confirmLabel}
     >
       {level === 'event' ? 'Remove from Event' : 'Remove from Partner'}
-    </Button>
+    </SemanticButton>
   );
 }

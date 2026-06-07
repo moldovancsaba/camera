@@ -8,7 +8,7 @@
 import { getSession } from '@/lib/auth/session';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import { AuthShell } from '@doneisbetter/gds-core/server';
-import { Button, Stack, Text } from '@mantine/core';
+import { Button, Stack, Text } from '@/components/gds/PublicPrimitives';
 
 // This page uses cookies, so it must be dynamic
 export const dynamic = 'force-dynamic';

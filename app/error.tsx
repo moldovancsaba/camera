@@ -8,7 +8,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { Button, Card, Center, Stack, Text } from '@mantine/core';
+import { Button, Card, Center, Stack, Text } from '@/components/gds/PublicPrimitives';
 
 export default function Error({
   error,

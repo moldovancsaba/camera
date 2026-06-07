@@ -2,11 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ActionIcon, Alert, Badge, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@/lib/gds/notifications';
 import { confirmDestructive } from '@/lib/gds/confirm-destructive';
-import { EmptyState } from '@doneisbetter/gds-core/client';
+import { EmptyState, InlineAlert, LabelTag, SemanticButton } from '@doneisbetter/gds-core/client';
 
 export interface LandingPageListItem {
   _id: string;
@@ -54,53 +53,55 @@ export default function LandingPageManager({
   };
 
   return (
-    <Card p={0}>
-      <Group justify="space-between" align="flex-start" p="xl" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+    <section style={{ background: 'var(--gds-color-surface)', border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+      <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--gds-color-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
         <div>
-          <Title order={2}>🌐 Experience Landing Pages</Title>
-          <Text c="dimmed" mt="xs">
+          <h2 style={{ margin: 0 }}>Experience Landing Pages</h2>
+          <p style={{ color: 'var(--gds-color-muted)', margin: '0.5rem 0 0' }}>
             Public experience surfaces for this event. They can embed a slideshow or layout and route visitors into
             app actions like capture.
-          </Text>
+          </p>
         </div>
         <Link href={`/admin/events/${eventMongoId}/landing-pages/new`} style={{ textDecoration: 'none' }}>
-          <Button leftSection={<IconPlus size={16} />}>
+          <SemanticButton action="landing-pages:create" leftSection={<IconPlus size={16} />}>
             New landing page
-          </Button>
+          </SemanticButton>
         </Link>
-      </Group>
+      </div>
 
       {error ? (
-        <Alert mx="xl" mt="xl">
-          {error}
-        </Alert>
+        <div style={{ padding: '1.5rem 1.5rem 0' }}>
+          <InlineAlert title="Landing page action failed" message={error} severity="error" />
+        </div>
       ) : null}
 
       {landingPages.length === 0 ? (
-        <Stack p="xl">
+        <div style={{ padding: '1.5rem' }}>
           <EmptyState
             title="No landing pages yet"
             description="Create an experience page for this event and connect it to one slideshow or one layout."
           />
-        </Stack>
+        </div>
       ) : (
-        <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="lg" p="xl">
+        <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', padding: '1.5rem' }}>
           {landingPages.map((page) => (
-            <Card key={page._id} withBorder radius="md">
-              <Group justify="space-between" align="flex-start">
+            <article key={page._id} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', display: 'grid', gap: '1rem', padding: '1rem' }}>
+              <div style={{ alignItems: 'flex-start', display: 'flex', gap: '0.75rem', justifyContent: 'space-between' }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <Text fw={700} truncate>
+                  <strong style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {page.title?.trim() || page.slug}
-                  </Text>
-                  <Text size="xs" c="dimmed" mt={4} style={{ wordBreak: 'break-all' }}>
+                  </strong>
+                  <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0', wordBreak: 'break-all' }}>
                     /landing/{page.slug}
-                  </Text>
-                  <Badge mt="sm" variant="light">
-                    {page.isActive ? '● Active' : '○ Inactive'}
-                  </Badge>
+                  </p>
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <LabelTag tone={page.isActive ? 'success' : 'neutral'} label={page.isActive ? 'Active' : 'Inactive'} />
+                  </div>
                 </div>
-                <ActionIcon
-                  variant="subtle"
+                <SemanticButton
+                  action="landing-pages:delete"
+                  variant="danger"
+                  size="xs"
                   aria-label="Delete"
                   onClick={() =>
                     confirmDestructive({
@@ -112,37 +113,37 @@ export default function LandingPageManager({
                   }
                 >
                   <IconTrash size={16} />
-                </ActionIcon>
-              </Group>
+                </SemanticButton>
+              </div>
 
-              <Stack gap="xs" mt="md">
-                <Text size="xs" c="dimmed">
+              <div style={{ display: 'grid', gap: '0.35rem' }}>
+                <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0 }}>
                   Embedded experience: {page.targetType === 'layout' ? 'Layout' : 'Slideshow'} · {page.targetName}
-                </Text>
-                <Text size="xs" c="dimmed">
+                </p>
+                <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0 }}>
                   Created {new Date(page.createdAt).toLocaleDateString()}
-                </Text>
-              </Stack>
+                </p>
+              </div>
 
-              <Stack gap="sm" mt="md">
+              <div style={{ display: 'grid', gap: '0.5rem' }}>
                 <Link href={`/admin/events/${eventMongoId}/landing-pages/${page._id}`} style={{ textDecoration: 'none' }}>
-                  <Button fullWidth leftSection={<IconPencil size={16} />}>
+                  <SemanticButton action="landing-pages:edit" fullWidth leftSection={<IconPencil size={16} />}>
                     Edit experience page
-                  </Button>
+                  </SemanticButton>
                 </Link>
                 <Link href={`/landing/${page.slug}`} target="_blank" style={{ textDecoration: 'none' }}>
-                  <Button fullWidth variant="light" leftSection={<IconExternalLink size={16} />}>
+                  <SemanticButton action="landing-pages:open" fullWidth variant="secondary" leftSection={<IconExternalLink size={16} />}>
                     Open landing page
-                  </Button>
+                  </SemanticButton>
                 </Link>
-                <Button fullWidth variant="default" size="xs" leftSection={<IconCopy size={14} />} onClick={() => copyUrl(page.slug)}>
+                <SemanticButton action="landing-pages:copy-url" fullWidth variant="secondary" size="xs" leftSection={<IconCopy size={14} />} onClick={() => copyUrl(page.slug)}>
                   Copy public URL
-                </Button>
-              </Stack>
-            </Card>
+                </SemanticButton>
+              </div>
+            </article>
           ))}
-        </SimpleGrid>
+        </div>
       )}
-    </Card>
+    </section>
   );
 }

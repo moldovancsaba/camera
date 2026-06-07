@@ -9,7 +9,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { InlineAlert, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
 import EventGalleryUpload from './EventGalleryUpload';
 
 interface SlideshowPlayInfo {
@@ -230,100 +230,97 @@ export default function EventGallery({
 
   if (submissions.length === 0) {
     return (
-      <Stack gap="lg" p="xl">
+      <div style={{ display: 'grid', gap: '1.5rem', padding: '1.5rem' }}>
         <EventGalleryUpload
           eventMongoId={eventId}
           onUploaded={handleUploaded}
         />
-        <Card withBorder radius="lg" p="xl">
-          <Stack align="center" gap="md">
-            <Text fz="3rem" aria-hidden>📸</Text>
-            <Title order={3}>
-            No submissions yet
-            </Title>
-            <Text c="dimmed" ta="center">
-            Upload images above or open the public capture page for guests
-            </Text>
-            <Button
-              component={Link}
-            href={`/capture/${eventId}`}
-          >
-              Start Capturing
-            </Button>
-          </Stack>
-        </Card>
-      </Stack>
+        <StateBlock
+          variant="empty"
+          title="No submissions yet"
+          description="Upload images above or open the public capture page for guests."
+          action={
+            <Link href={`/capture/${eventId}`} style={{ textDecoration: 'none' }}>
+              <SemanticButton action="event-gallery:start-capturing">Start Capturing</SemanticButton>
+            </Link>
+          }
+        />
+      </div>
     );
   }
 
   return (
-    <Stack gap="lg" p="xl">
+    <div style={{ display: 'grid', gap: '1.5rem', padding: '1.5rem' }}>
       <EventGalleryUpload
         eventMongoId={eventId}
         onUploaded={handleUploaded}
       />
 
-      <Card withBorder radius="lg" p="md">
-        <Group justify="space-between" align="flex-start">
-          <Stack gap={4}>
-            <Text size="sm" fw={700}>
+      <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', padding: '1rem' }}>
+        <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
+          <div style={{ display: 'grid', gap: '0.25rem' }}>
+            <strong style={{ fontSize: '0.875rem' }}>
               Gallery actions
-            </Text>
-            <Text size="xs" c="dimmed">
+            </strong>
+            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0 }}>
               Select multiple images and remove them from {eventName} in one action.
-            </Text>
-          </Stack>
-          <Group gap="xs">
-            <Button
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <SemanticButton
+              action="event-gallery:toggle-select-all"
               type="button"
               onClick={toggleSelectAll}
-              variant="default"
+              variant="secondary"
             >
               {allSelected ? 'Clear selection' : 'Select all visible'}
-            </Button>
+            </SemanticButton>
             {selectedIds.length > 0 ? (
               removeState.bulkConfirm ? (
                 <>
-                  <Button
+                  <SemanticButton
+                    action="event-gallery:confirm-bulk-remove"
                     type="button"
                     onClick={() => void removeFromEvent(selectedIds)}
                     disabled={removeState.busyIds.length > 0}
-                    variant="light"
+                    variant="danger"
                   >
                     {removeState.busyIds.length > 0
                       ? 'Removing selected…'
                       : `Confirm remove ${selectedIds.length}`}
-                  </Button>
-                  <Button
+                  </SemanticButton>
+                  <SemanticButton
+                    action="event-gallery:cancel-bulk-remove"
                     type="button"
                     onClick={cancelBulkConfirm}
                     disabled={removeState.busyIds.length > 0}
-                    variant="default"
+                    variant="secondary"
                   >
                     Cancel
-                  </Button>
+                  </SemanticButton>
                 </>
               ) : (
-                <Button
+                <SemanticButton
+                  action="event-gallery:start-bulk-remove"
                   type="button"
                   onClick={startBulkConfirm}
-                  variant="light"
+                  variant="danger"
                 >
                   Remove selected ({selectedIds.length})
-                </Button>
+                </SemanticButton>
               )
             ) : null}
-          </Group>
-        </Group>
+          </div>
+        </div>
 
         {removeState.error ? (
-          <Alert mt="md" variant="light">
-            {removeState.error}
-          </Alert>
+          <div style={{ marginTop: '1rem' }}>
+            <InlineAlert title="Remove failed" message={removeState.error} severity="error" />
+          </div>
         ) : null}
-      </Card>
+      </section>
 
-      <SimpleGrid cols={{ base: 2, md: 3, lg: 4, xl: 5 }} spacing="md">
+      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))' }}>
         {submissions.map((submission) => {
           const submissionId = submissionIdOf(submission);
           const selected = selectedSet.has(submissionId);
@@ -332,15 +329,14 @@ export default function EventGallery({
           const displayName = getDisplayName(submission);
 
           return (
-            <Card
+            <article
               key={submissionId}
-              withBorder
-              radius="md"
-              p={0}
+              style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', overflow: 'hidden' }}
             >
-              <Stack gap={0}>
+              <div style={{ display: 'grid' }}>
                 <div style={{ position: 'relative' }}>
-                  <Checkbox
+                  <input
+                    type="checkbox"
                     checked={selected}
                     onChange={() => toggleSelected(submissionId)}
                     aria-label={selected ? 'Deselect image' : 'Select image'}
@@ -358,84 +354,94 @@ export default function EventGallery({
               </Link>
                 </div>
 
-                <Stack gap="xs" p="sm">
-                  <Text size="xs" fw={600} truncate>
+                <div style={{ display: 'grid', gap: '0.5rem', padding: '0.75rem' }}>
+                  <strong style={{ fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {displayName}
-                  </Text>
-                  <Text size="xs" c="dimmed">
+                  </strong>
+                  <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
                     {formatDateTime(submission.createdAt)}
-                  </Text>
+                  </span>
                   {typeof submission.playCount === 'number' && submission.playCount > 0 ? (
-                    <Text size="xs" c="dimmed">Played {submission.playCount} times</Text>
+                    <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>Played {submission.playCount} times</span>
                   ) : null}
 
                   {submission.slideshowPlays && Object.keys(submission.slideshowPlays).length > 0 && (
-                    <Stack gap={2}>
+                    <div style={{ display: 'grid', gap: 2 }}>
                       {slideshows.map((slideshow) => {
                         const plays = submission.slideshowPlays?.[slideshow.slideshowId];
                         if (!plays || plays.count === 0) return null;
                         return (
-                          <Text key={slideshow.slideshowId} size="xs" c="dimmed">
+                          <span key={slideshow.slideshowId} style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
                             {slideshow.name}: {plays.count}x
-                          </Text>
+                          </span>
                         );
                       })}
-                    </Stack>
+                    </div>
                   )}
 
-                  <Group gap="xs" grow>
-                    <Button
-                      component={Link}
-                      href={`/share/${submission._id}`}
-                      size="xs"
-                      variant="light"
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    <Link href={`/share/${submission._id}`} style={{ textDecoration: 'none' }}>
+                      <SemanticButton action="event-gallery:view-submission" fullWidth size="xs" variant="secondary">View</SemanticButton>
+                    </Link>
+                    <a
+                      href={submission.imageUrl || submission.finalImageUrl || undefined}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-disabled={!submission.imageUrl && !submission.finalImageUrl}
+                      style={{ pointerEvents: !submission.imageUrl && !submission.finalImageUrl ? 'none' : undefined, textDecoration: 'none' }}
                     >
-                      View
-                    </Button>
+                      <SemanticButton action="event-gallery:download-submission" fullWidth size="xs" variant="secondary" disabled={!submission.imageUrl && !submission.finalImageUrl}>
+                      Download
+                      </SemanticButton>
+                    </a>
                     {singleConfirm ? (
                       <>
-                        <Button
+                        <SemanticButton
+                          action="event-gallery:confirm-remove"
                           type="button"
                           onClick={() => void removeFromEvent([submissionId])}
                           disabled={busy}
                           size="xs"
-                          variant="light"
+                          variant="danger"
                         >
                           {busy ? 'Removing…' : 'Confirm remove'}
-                        </Button>
-                        <Button
+                        </SemanticButton>
+                        <SemanticButton
+                          action="event-gallery:cancel-remove"
                           type="button"
                           onClick={cancelSingleConfirm}
                           disabled={busy}
                           size="xs"
-                          variant="default"
+                          variant="secondary"
                         >
                           Cancel
-                        </Button>
+                        </SemanticButton>
                       </>
                     ) : (
-                      <Button
+                      <SemanticButton
+                        action="event-gallery:start-remove"
                         type="button"
                         onClick={() => startSingleConfirm(submissionId)}
                         size="xs"
-                        variant="light"
+                        variant="danger"
                       >
                         Remove from Event
-                      </Button>
+                      </SemanticButton>
                     )}
-                  </Group>
-                </Stack>
-              </Stack>
-            </Card>
+                  </div>
+                </div>
+              </div>
+            </article>
           );
         })}
-      </SimpleGrid>
+      </div>
 
       {submissions.length >= 50 && (
-        <Text ta="center" size="sm" c="dimmed">
+        <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0, textAlign: 'center' }}>
           Showing the 50 most recent submissions
-        </Text>
+        </p>
       )}
-    </Stack>
+    </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Badge, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { EmptyState, LabelTag, SemanticButton } from '@doneisbetter/gds-core/client';
 
 export interface SlideshowLayoutListItem {
   _id: string;
@@ -80,98 +80,80 @@ export default function SlideshowLayoutManager({
   };
 
   return (
-    <Card withBorder radius="lg" p="xl">
-      <Stack gap="lg">
-        <Group justify="space-between" align="flex-start">
-          <Stack gap={4}>
-            <Title order={2}>Event Slideshow Layouts</Title>
-            <Text c="dimmed">
+    <section style={{ background: 'var(--gds-color-surface)', border: '1px solid var(--gds-color-border)', borderRadius: '1rem', padding: '1.5rem' }}>
+      <div style={{ display: 'grid', gap: '1.5rem' }}>
+        <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
+          <div>
+            <h2 style={{ margin: 0 }}>Event Slideshow Layouts</h2>
+            <p style={{ color: 'var(--gds-color-muted)', margin: '0.25rem 0 0' }}>
               Combine multiple slideshows on one screen.
-            </Text>
-          </Stack>
-          <Button
+            </p>
+          </div>
+          <SemanticButton
+            action="slideshow-layouts:create"
             type="button"
             onClick={handleCreate}
             disabled={creating}
           >
             {creating ? 'Creating...' : 'New layout'}
-          </Button>
-        </Group>
+          </SemanticButton>
+        </div>
 
       {layouts.length === 0 ? (
-          <Stack align="center" py="xl" gap="sm">
-            <Text fz="3rem" aria-hidden>
-              🎛️
-            </Text>
-            <Title order={3}>
-            No layouts yet
-            </Title>
-            <Text c="dimmed" ta="center">
-            Create a layout to assign slideshows to regions on a shared display
-            </Text>
-          </Stack>
+          <EmptyState
+            title="No layouts yet"
+            description="Create a layout to assign slideshows to regions on a shared display."
+          />
       ) : (
-          <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }} spacing="md">
+          <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))' }}>
             {layouts.map((layout) => (
-              <Card
+              <article
                 key={layout._id}
-                withBorder
-                radius="md"
-                p="md"
+                style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}
               >
-                <Stack gap="sm">
-                  <Group justify="space-between" align="flex-start">
-                    <Stack gap={4}>
-                      <Text fw={700}>
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  <div style={{ alignItems: 'flex-start', display: 'flex', gap: '0.75rem', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'grid', gap: '0.25rem' }}>
+                      <strong>
                       {layout.name}
-                      </Text>
-                      <Badge variant="light">
-                      {layout.isActive ? '● Active' : '○ Inactive'}
-                      </Badge>
-                    </Stack>
-                    <Button
+                      </strong>
+                      <LabelTag tone={layout.isActive ? 'success' : 'neutral'} label={layout.isActive ? 'Active' : 'Inactive'} />
+                    </div>
+                    <SemanticButton
+                    action="slideshow-layouts:delete"
                     type="button"
                     onClick={() => handleDelete(layout._id)}
-                      variant="subtle"
-                      size="compact-sm"
+                      variant="danger"
+                      size="xs"
                     title="Delete"
                   >
-                    🗑️
-                    </Button>
-                  </Group>
-                  <Text size="xs" c="dimmed">
+                    Delete
+                    </SemanticButton>
+                  </div>
+                  <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0 }}>
                     Created {new Date(layout.createdAt).toLocaleDateString()}
-                  </Text>
-                  <Button
-                    component={Link}
-                    href={`/admin/events/${eventMongoId}/layouts/${layout._id}`}
-                    fullWidth
-                  >
-                    Edit layout
-                  </Button>
-                  <Button
-                    component={Link}
-                    href={`/slideshow-layout/${layout.layoutId}`}
-                    target="_blank"
-                    fullWidth
-                    variant="light"
-                  >
-                    Open layout
-                  </Button>
-                  <Button
+                  </p>
+                  <Link href={`/admin/events/${eventMongoId}/layouts/${layout._id}`} style={{ textDecoration: 'none' }}>
+                    <SemanticButton action="slideshow-layouts:edit" fullWidth>Edit layout</SemanticButton>
+                  </Link>
+                  <Link href={`/slideshow-layout/${layout.layoutId}`} target="_blank" style={{ textDecoration: 'none' }}>
+                    <SemanticButton action="slideshow-layouts:open" fullWidth variant="secondary">Open layout</SemanticButton>
+                  </Link>
+                  <SemanticButton
+                    action="slideshow-layouts:copy-url"
                     type="button"
                     onClick={() => copyUrl(layout.layoutId)}
                     fullWidth
-                    variant="default"
+                    variant="secondary"
                   >
                     Copy public URL
-                  </Button>
-                </Stack>
-              </Card>
+                  </SemanticButton>
+                </div>
+              </article>
             ))}
-          </SimpleGrid>
+          </div>
       )}
-      </Stack>
-    </Card>
+      </div>
+    </section>
   );
 }

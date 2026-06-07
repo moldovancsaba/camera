@@ -10,27 +10,10 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import {
-  Alert,
-  Anchor,
-  AspectRatio,
-  Box,
-  Breadcrumbs,
-  Button,
-  Checkbox,
-  Code,
-  Grid,
-  Group,
-  Stack,
-  Text,
-  TextInput,
-  Textarea,
-} from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
 import { notifications } from '@/lib/gds/notifications';
-import EditorScaffold from '@/components/gds/EditorScaffold';
-import { FormSection } from '@doneisbetter/gds-admin/server';
-import { StateBlock } from '@doneisbetter/gds-core/server';
+import EditorScaffold from '@/components/admin/AdminEditorScaffold';
+import { FormSection } from '@doneisbetter/gds-admin/client';
+import { InlineAlert, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
 import { confirmDestructive } from '@/lib/gds/confirm-destructive';
 
 interface LogoRecord {
@@ -154,9 +137,11 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
         title="Logo not found"
         description={error || undefined}
         action={
-          <Button component={Link} href="/admin/logos" variant="light">
+          <Link href="/admin/logos" style={{ textDecoration: 'none' }}>
+          <SemanticButton action="logos:back-to-list" variant="secondary">
             Back to logos
-          </Button>
+          </SemanticButton>
+          </Link>
         }
       />
     );
@@ -168,26 +153,24 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
       title="Edit Logo"
       description="Update logo details and settings."
       breadcrumbs={
-        <Breadcrumbs>
-          <Anchor component={Link} href="/admin/logos" size="sm">
+        <nav aria-label="Breadcrumb">
+          <Link href="/admin/logos">
             Logos
-          </Anchor>
-          <Text size="sm">Edit</Text>
-        </Breadcrumbs>
+          </Link>
+          <span aria-hidden> / </span>
+          <span>Edit</span>
+        </nav>
       }
       maxWidth={960}
     >
       {error ? (
-        <Alert icon={<IconAlertCircle size={16} />}>
-          {error}
-        </Alert>
+        <InlineAlert title="Error" message={error} severity="error" />
       ) : null}
 
       <form onSubmit={handleSubmit}>
-        <Stack gap="lg">
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
           <FormSection title="Logo preview" description="To change the image, delete this logo and upload a new one.">
-            <AspectRatio ratio={1} maw={320}>
-              <Box style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
+            <div style={{ aspectRatio: '1 / 1', borderRadius: 12, maxWidth: 320, overflow: 'hidden', position: 'relative' }}>
                 <Image
                   src={logo.thumbnailUrl || logo.imageUrl}
                   alt={logo.name}
@@ -195,71 +178,60 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
                   style={{ objectFit: 'contain', padding: 24 }}
                   unoptimized
                 />
-              </Box>
-            </AspectRatio>
+            </div>
           </FormSection>
 
           <FormSection title="Technical information">
-            <Grid>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm" c="dimmed">Logo ID</Text>
-                <Code block>{logo.logoId || 'Not assigned'}</Code>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm" c="dimmed">MongoDB ID</Text>
-                <Code block>{logo._id}</Code>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm">Dimensions: {logo.width || 'N/A'} × {logo.height || 'N/A'} px</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm">File size: {logo.fileSize ? `${(logo.fileSize / 1024).toFixed(2)} KB` : 'N/A'}</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm">MIME type: {logo.mimeType || 'N/A'}</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm">Usage count: {logo.usageCount || 0}</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm">Created: {logo.createdAt ? new Date(logo.createdAt).toLocaleString() : 'N/A'}</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm">Updated: {logo.updatedAt ? new Date(logo.updatedAt).toLocaleString() : 'N/A'}</Text>
-              </Grid.Col>
-            </Grid>
-            <Anchor href={logo.imageUrl} target="_blank" rel="noopener noreferrer" size="sm">
+            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' }}>
+              <div><span>Logo ID</span><code style={{ display: 'block' }}>{logo.logoId || 'Not assigned'}</code></div>
+              <div><span>MongoDB ID</span><code style={{ display: 'block' }}>{logo._id}</code></div>
+              <div>Dimensions: {logo.width || 'N/A'} × {logo.height || 'N/A'} px</div>
+              <div>File size: {logo.fileSize ? `${(logo.fileSize / 1024).toFixed(2)} KB` : 'N/A'}</div>
+              <div>MIME type: {logo.mimeType || 'N/A'}</div>
+              <div>Usage count: {logo.usageCount || 0}</div>
+              <div>Created: {logo.createdAt ? new Date(logo.createdAt).toLocaleString() : 'N/A'}</div>
+              <div>Updated: {logo.updatedAt ? new Date(logo.updatedAt).toLocaleString() : 'N/A'}</div>
+            </div>
+            <a href={logo.imageUrl} target="_blank" rel="noopener noreferrer">
               Open image URL
-            </Anchor>
+            </a>
             {logo.thumbnailUrl ? (
-              <Anchor href={logo.thumbnailUrl} target="_blank" rel="noopener noreferrer" size="sm">
+              <a href={logo.thumbnailUrl} target="_blank" rel="noopener noreferrer">
                 Open thumbnail URL
-              </Anchor>
+              </a>
             ) : null}
           </FormSection>
 
           <FormSection title="Logo details">
-            <TextInput name="name" label="Logo Name *" required defaultValue={logo.name} />
-            <Textarea name="description" label="Description" rows={3} defaultValue={logo.description} />
-            <Checkbox
-              name="isActive"
-              defaultChecked={logo.isActive}
-              label="Make logo active (available for assignment to events)"
-            />
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Logo Name *
+              <input name="name" required defaultValue={logo.name} style={{ minHeight: 44, padding: '0 0.75rem' }} />
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Description
+              <textarea name="description" rows={3} defaultValue={logo.description} style={{ padding: '0.75rem' }} />
+            </label>
+            <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
+              <input type="checkbox" name="isActive" defaultChecked={logo.isActive} />
+              Make logo active (available for assignment to events)
+            </label>
           </FormSection>
 
-          <Group justify="space-between">
-            <Group>
-              <Button type="submit" loading={isSaving}>
+          <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <SemanticButton action="logos:save" type="submit" loading={isSaving}>
                 {isSaving ? 'Saving…' : 'Save Changes'}
-              </Button>
-              <Button component={Link} href="/admin/logos" variant="default">
+              </SemanticButton>
+              <Link href="/admin/logos" style={{ textDecoration: 'none' }}>
+              <SemanticButton action="logos:cancel-edit" variant="secondary">
                 Cancel
-              </Button>
-            </Group>
-            <Button
+              </SemanticButton>
+              </Link>
+            </div>
+            <SemanticButton
+              action="logos:delete"
               type="button"
-              variant="light"
+              variant="danger"
               loading={isDeleting}
               disabled={isDeleting}
               onClick={() =>
@@ -272,9 +244,9 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
               }
             >
               Delete Logo
-            </Button>
-          </Group>
-        </Stack>
+            </SemanticButton>
+          </div>
+        </div>
       </form>
     </EditorScaffold>
   );

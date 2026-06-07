@@ -1,28 +1,11 @@
 'use client';
 
-import { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import React, { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  Alert,
-  Anchor,
-  Breadcrumbs,
-  Button,
-  Card,
-  Checkbox,
-  ColorInput,
-  Group,
-  Image,
-  NumberInput,
-  Radio,
-  Select,
-  SimpleGrid,
-  Stack,
-  Text,
-  TextInput,
-} from '@mantine/core';
+import { InlineAlert, SemanticButton } from '@doneisbetter/gds-core/client';
 import { FormSection } from '@doneisbetter/gds-admin/client';
-import EditorScaffold from '@/components/gds/EditorScaffold';
+import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import {
   SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
   SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
@@ -76,6 +59,86 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return <FormSection title={title}>{children}</FormSection>;
 }
 
+function Stack({ children, gap = '1rem' }: { children: ReactNode; gap?: string | number }) {
+  return <div style={{ display: 'grid', gap }}>{children}</div>;
+}
+
+function Group({ children, justify }: { children: ReactNode; justify?: string; [key: string]: unknown }) {
+  return <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: justify }}>{children}</div>;
+}
+
+function SimpleGrid({ children }: { children: ReactNode; [key: string]: unknown }) {
+  return <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))' }}>{children}</div>;
+}
+
+function Text({ children, size, c }: { children: ReactNode; size?: string; c?: string; [key: string]: unknown }) {
+  return <span style={{ color: c === 'dimmed' ? 'var(--gds-color-muted)' : undefined, display: 'block', fontSize: size === 'xs' ? '0.75rem' : size === 'sm' ? '0.875rem' : size }}>{children}</span>;
+}
+
+function TextInput({ value, onChange, required, placeholder }: { value: string; onChange: (event: React.ChangeEvent<HTMLInputElement>) => void; required?: boolean; placeholder?: string }) {
+  return <input value={value} onChange={onChange} required={required} placeholder={placeholder} style={{ minHeight: 44, padding: '0 0.75rem' }} />;
+}
+
+function ColorInput({ id, value, onChange }: { id: string; value: string; onChange: (event: React.ChangeEvent<HTMLInputElement>) => void }) {
+  return <input id={id} type="color" value={value} onChange={onChange} style={{ minHeight: 44 }} />;
+}
+
+function NumberInput({ value, onChange, min, max, step }: { value: number | string; onChange: (value: number | string) => void; min?: number; max?: number; step?: number }) {
+  return <input type="number" value={value} min={min} max={max} step={step} onChange={(event) => onChange(event.currentTarget.value === '' ? '' : Number(event.currentTarget.value))} style={{ minHeight: 44, padding: '0 0.75rem' }} />;
+}
+
+function Select({ value, onChange, data }: { value: string; onChange: (value: string) => void; data: Array<{ value: string; label: string }>; [key: string]: unknown }) {
+  return <select value={value} onChange={(event) => onChange(event.currentTarget.value)} style={{ minHeight: 44, padding: '0 0.75rem' }}>{data.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>;
+}
+
+function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: (event: React.ChangeEvent<HTMLInputElement>) => void; label: string }) {
+  return <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}><input type="checkbox" checked={checked} onChange={onChange} />{label}</label>;
+}
+
+function Radio({ value, label }: { value: string; label: string }) {
+  return <option value={value}>{label}</option>;
+}
+
+Radio.Group = function RadioGroup({ value, onChange, children }: { value: string; onChange: (value: string) => void; children: ReactNode }) {
+  const options = React.Children.toArray(children)
+    .flatMap((child) => {
+      if (!React.isValidElement(child)) return [];
+      if (child.type === Group) {
+        return React.Children.toArray((child.props as { children?: ReactNode }).children);
+      }
+      return [child];
+    })
+    .filter(React.isValidElement) as Array<React.ReactElement<{ value: string; label: string }>>;
+  return (
+    <select value={value} onChange={(event) => onChange(event.currentTarget.value)} style={{ minHeight: 44, padding: '0 0.75rem' }}>
+      {options.map((option) => (
+        <option key={option.props.value} value={option.props.value}>{option.props.label}</option>
+      ))}
+    </select>
+  );
+};
+
+function Button({ children, component, href, target, variant, type = 'button', disabled, onClick }: { children: ReactNode; component?: typeof Link; href?: string; target?: string; variant?: string; type?: 'button' | 'submit'; disabled?: boolean; onClick?: () => void }) {
+  const button = <SemanticButton action="slideshows:editor-action" type={type} variant={variant === 'default' || variant === 'light' || variant === 'subtle' ? 'secondary' : undefined} disabled={disabled} onClick={onClick}>{children}</SemanticButton>;
+  return component === Link && href ? <Link href={href} target={target} style={{ textDecoration: 'none' }}>{button}</Link> : button;
+}
+
+function Card({ children }: { children: ReactNode; [key: string]: unknown }) {
+  return <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', overflow: 'hidden' }}>{children}</section>;
+}
+
+function Image({ src, alt }: { src: string; alt: string; [key: string]: unknown }) {
+  return <img src={src} alt={alt} style={{ display: 'block', height: 160, objectFit: 'cover', width: '100%' }} />;
+}
+
+function Breadcrumbs({ children }: { children: ReactNode }) {
+  return <nav aria-label="Breadcrumb" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>{children}</nav>;
+}
+
+function Anchor({ component, href, children }: { component?: typeof Link; href: string; children: ReactNode; [key: string]: unknown }) {
+  return component === Link ? <Link href={href}>{children}</Link> : <a href={href}>{children}</a>;
+}
+
 function Field({
   label,
   children,
@@ -118,10 +181,7 @@ function ColorField({
       <ColorInput
         id={id}
         value={value}
-        placeholder={SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY}
-        format="hex"
-        swatchesPerRow={8}
-        onChange={onChange}
+        onChange={(event) => onChange(event.currentTarget.value)}
       />
     </Field>
   );
@@ -297,8 +357,8 @@ export default function SlideshowEditor({
         </Breadcrumbs>
       }
     >
-      {error ? <Alert title="Error">{error}</Alert> : null}
-      {success ? <Alert title="Saved">{success}</Alert> : null}
+      {error ? <InlineAlert title="Error" message={error} severity="error" /> : null}
+      {success ? <InlineAlert title="Saved" message={success} severity="success" /> : null}
 
       <form onSubmit={handleSubmit}>
         <Stack gap="lg">

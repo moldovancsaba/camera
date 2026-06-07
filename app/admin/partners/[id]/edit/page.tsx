@@ -9,23 +9,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  Alert,
-  Breadcrumbs,
-  Button,
-  Card,
-  Checkbox,
-  ColorInput,
-  Code,
-  SimpleGrid,
-  Stack,
-  Text,
-  TextInput,
-  Textarea,
-} from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
-import EditorScaffold from '@/components/gds/EditorScaffold';
+import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { FormSection } from '@doneisbetter/gds-admin/client';
+import { InlineAlert, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -141,23 +127,15 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
   };
 
   if (isLoading) {
-    return (
-      <Stack align="center" justify="center" mih="50vh">
-        <Text fz={40}>⏳</Text>
-        <Text c="dimmed">Loading partner...</Text>
-      </Stack>
-    );
+    return <StateBlock variant="loading" title="Loading partner..." />;
   }
 
   if (error && !partner) {
     return (
-      <Stack gap="lg">
-        <Alert icon={<IconAlertCircle size={16} />}>
-          <Text fw={700}>Error</Text>
-          <Text size="sm">{error}</Text>
-        </Alert>
+      <div style={{ display: 'grid', gap: '1rem' }}>
+        <InlineAlert title="Error" message={error} severity="error" />
         <Link href="/admin/partners">← Back to Partners</Link>
-      </Stack>
+      </div>
     );
   }
 
@@ -167,103 +145,130 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
       title="Edit Partner"
       description="Update partner information"
       breadcrumbs={
-        <Breadcrumbs>
+        <nav aria-label="Breadcrumb">
           <Link href="/admin/partners">Partners</Link>
+          <span aria-hidden> / </span>
           <Link href={`/admin/partners/${partnerId}`}>{partner?.name}</Link>
-          <Text>Edit</Text>
-        </Breadcrumbs>
+          <span aria-hidden> / </span>
+          <span>Edit</span>
+        </nav>
       }
     >
 
       {error ? (
-        <Alert icon={<IconAlertCircle size={16} />}>
-          <Text fw={700}>Error</Text>
-          <Text size="sm">{error}</Text>
-        </Alert>
+        <InlineAlert title="Error" message={error} severity="error" />
       ) : null}
 
       <form onSubmit={handleSubmit}>
-        <Stack gap="lg">
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
           <FormSection title="Basic Information">
-            <TextInput
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Partner Name *
+              <input
               name="name"
-              label="Partner Name *"
               required
               defaultValue={partner?.name}
               placeholder="e.g., AC Milan, Red Bull, Nike"
-              description="The name of the partner organization or brand"
+              aria-describedby="partner-name-help"
+              style={{ minHeight: 44, padding: '0 0.75rem' }}
             />
-            <Textarea
+              <span id="partner-name-help" style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>
+                The name of the partner organization or brand.
+              </span>
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Description
+              <textarea
               name="description"
-              label="Description"
               rows={3}
               defaultValue={partner?.description || ''}
               placeholder="Optional description..."
+              style={{ padding: '0.75rem' }}
             />
+            </label>
           </FormSection>
 
           <FormSection title="Contact Information">
-            <TextInput name="contactName" label="Contact Person" defaultValue={partner?.contactName || ''} placeholder="e.g., John Doe" />
-            <TextInput name="contactEmail" type="email" label="Contact Email" defaultValue={partner?.contactEmail || ''} placeholder="e.g., contact@partner.com" />
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Contact Person
+              <input name="contactName" defaultValue={partner?.contactName || ''} placeholder="e.g., John Doe" style={{ minHeight: 44, padding: '0 0.75rem' }} />
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Contact Email
+              <input name="contactEmail" type="email" defaultValue={partner?.contactEmail || ''} placeholder="e.g., contact@partner.com" style={{ minHeight: 44, padding: '0 0.75rem' }} />
+            </label>
           </FormSection>
 
           <FormSection
             title="Default Styles for Events"
             description="Set default brand colors that will automatically apply to all new events under this partner. Events can override these later to become independent."
           >
-            <SimpleGrid cols={{ base: 1, md: 2 }}>
-              <ColorInput
-                label="Default Primary Color"
+            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))' }}>
+              <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+                Default Primary Color
+                <input
+                type="color"
                 value={primaryColor}
-                onChange={setPrimaryColor}
-                description="Used for buttons, focus states"
-                format="hex"
+                onChange={(event) => setPrimaryColor(event.currentTarget.value)}
+                aria-describedby="partner-primary-color-help"
+                style={{ minHeight: 44 }}
               />
-              <ColorInput
-                label="Default Border/Accent Color"
+                <span id="partner-primary-color-help" style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>
+                  Used for buttons and focus states.
+                </span>
+              </label>
+              <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+                Default Border/Accent Color
+                <input
+                type="color"
                 value={secondaryColor}
-                onChange={setSecondaryColor}
-                description="Used for borders, inputs, checkboxes"
-                format="hex"
+                onChange={(event) => setSecondaryColor(event.currentTarget.value)}
+                aria-describedby="partner-secondary-color-help"
+                style={{ minHeight: 44 }}
               />
-            </SimpleGrid>
-            <Text size="sm" c="dimmed">
-              💡 <strong>Note:</strong> Changes to default styles will automatically update all child events that have
-              not been customized (marked with 🟢). Events with custom styles (marked with 🔴) will keep their own
-              values.
-            </Text>
+                <span id="partner-secondary-color-help" style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>
+                  Used for borders, inputs, and checkboxes.
+                </span>
+              </label>
+            </div>
+            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
+              Changes to default styles automatically update child events that still inherit partner defaults. Events with custom styles keep their own values.
+            </p>
           </FormSection>
 
-          <Card>
-            <Stack gap="xs">
-              <Checkbox name="isActive" defaultChecked={partner?.isActive} label="Partner is active (visible and usable)" />
-              <Text size="sm" c="dimmed">
+          <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+            <div style={{ display: 'grid', gap: '0.5rem' }}>
+              <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
+                <input type="checkbox" name="isActive" defaultChecked={partner?.isActive} />
+                Partner is active (visible and usable)
+              </label>
+              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
                 Inactive partners will not be available for event creation
-              </Text>
-            </Stack>
-          </Card>
+              </p>
+            </div>
+          </section>
 
-          <Card bg="var(--mantine-color-gray-0)">
-            <Stack gap="xs">
-              <Text size="sm" fw={600} c="dimmed">
+          <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+            <div style={{ display: 'grid', gap: '0.5rem' }}>
+              <strong style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem' }}>
                 Partner ID (Read-only)
-              </Text>
-              <Code block>{partner?.partnerId}</Code>
-              <Text size="sm" c="dimmed">
+              </strong>
+              <code style={{ display: 'block' }}>{partner?.partnerId}</code>
+              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
                 This ID is used to reference the partner across the system
-              </Text>
-            </Stack>
-          </Card>
+              </p>
+            </div>
+          </section>
 
-          <Stack gap="sm">
-            <Button type="submit" loading={isSubmitting}>
+          <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <SemanticButton action="partners:save" type="submit" loading={isSubmitting}>
               {isSubmitting ? 'Saving...' : 'Save Changes'}
-            </Button>
+            </SemanticButton>
             <Link href={`/admin/partners/${partnerId}`} style={{ textDecoration: 'none' }}>
-              <Button variant="default">Cancel</Button>
+              <SemanticButton action="partners:cancel-edit" variant="secondary">Cancel</SemanticButton>
             </Link>
-          </Stack>
-        </Stack>
+          </div>
+        </div>
       </form>
     </EditorScaffold>
   );

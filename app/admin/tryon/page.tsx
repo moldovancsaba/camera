@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { ConsumerDashboardGrid, ProductCard } from '@doneisbetter/gds-core/client';
-import { Stack } from '@mantine/core';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
@@ -73,7 +72,7 @@ export default async function AdminTryOnAppPage() {
   }
 
   return (
-    <Stack gap="xl">
+    <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
       <WorkspaceHeader
         eyebrow="Apps"
         title="Try-On App"
@@ -146,6 +145,6 @@ export default async function AdminTryOnAppPage() {
           </ConsumerDashboardGrid>
         </>
       ) : null}
-    </Stack>
+    </div>
   );
 }

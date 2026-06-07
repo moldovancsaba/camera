@@ -6,18 +6,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Alert,
-  Badge,
-  Box,
-  Button,
-  Card,
-  Group,
-  Paper,
-  ScrollArea,
-  Stack,
-  Text,
-} from '@mantine/core';
+import { InlineAlert, LabelTag, SemanticButton } from '@doneisbetter/gds-core/client';
 
 interface Props {
   eventMongoId: string;
@@ -465,22 +454,22 @@ export default function EventGalleryUpload({
   const busy = pendingCount > 0;
 
   return (
-    <Card withBorder padding="md">
-      <Stack gap="md">
-        <Group align="flex-start" justify="space-between" gap="md">
-          <Stack gap={4}>
-            <Text size="sm" fw={700}>
+    <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', padding: '1rem' }}>
+      <div style={{ display: 'grid', gap: '1rem' }}>
+        <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
+          <div style={{ display: 'grid', gap: '0.25rem' }}>
+            <strong style={{ fontSize: '0.875rem' }}>
               Add photos to this event
-            </Text>
-            <Text size="xs" c="dimmed">
+            </strong>
+            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0 }}>
               Drag and drop images, upload multiple files at once, or import a folder. Large files
               are resized/compressed in the browser to fit the current Vercel upload path.
-            </Text>
-            <Text size="xs" c="dimmed">
+            </p>
+            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0 }}>
               Supported: {ACCEPT_COPY}. Target upload size per file: under {formatBytes(MAX_DIRECT_UPLOAD_BYTES)}.
-            </Text>
-          </Stack>
-          <Group gap="xs" align="center">
+            </p>
+          </div>
+          <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             <input
               ref={fileInputRef}
               type="file"
@@ -496,35 +485,35 @@ export default function EventGalleryUpload({
               hidden
               onChange={onFolderInputChange}
             />
-            <Button
+            <SemanticButton
+              action="event-gallery:upload-images"
               type="button"
               onClick={() => fileInputRef.current?.click()}
             >
               Upload images
-            </Button>
-            <Button
+            </SemanticButton>
+            <SemanticButton
+              action="event-gallery:upload-folder"
               type="button"
               onClick={() => folderInputRef.current?.click()}
-              variant="light"
+              variant="secondary"
             >
               Upload folder
-            </Button>
+            </SemanticButton>
             {queueItems.length > 0 ? (
-              <Button
+              <SemanticButton
+                action="event-gallery:clear-finished"
                 type="button"
                 onClick={clearFinished}
-                variant="default"
+                variant="secondary"
               >
                 Clear finished
-              </Button>
+              </SemanticButton>
             ) : null}
-          </Group>
-        </Group>
+          </div>
+        </div>
 
-        <Paper
-          withBorder
-          p="xl"
-          ta="center"
+        <div
           onDragEnter={(e) => {
             e.preventDefault();
             setDragActive(true);
@@ -541,57 +530,59 @@ export default function EventGalleryUpload({
           }}
           onDrop={onDrop}
           data-active={dragActive || undefined}
+          style={{
+            border: '1px dashed var(--gds-color-border)',
+            borderRadius: '1rem',
+            padding: '2rem',
+            textAlign: 'center',
+          }}
         >
-          <Text size="sm" fw={700}>
+          <strong style={{ fontSize: '0.875rem' }}>
             Drop images here
-          </Text>
-          <Text size="xs" c="dimmed" mt={4}>
+          </strong>
+          <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
             Files and folders are accepted. Uploads run in a controlled queue of {MAX_PARALLEL_UPLOADS}.
-          </Text>
-        </Paper>
+          </p>
+        </div>
 
-        <Group gap="xs">
-          <Badge variant="light">{busy ? `${pendingCount} in progress` : 'Queue idle'}</Badge>
-          <Badge variant="light">{completedCount} completed</Badge>
-          <Badge variant="light">{failedCount} failed</Badge>
-        </Group>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <LabelTag tone={busy ? 'warning' : 'neutral'} label={busy ? `${pendingCount} in progress` : 'Queue idle'} />
+          <LabelTag tone="success" label={`${completedCount} completed`} />
+          <LabelTag tone={failedCount > 0 ? 'warning' : 'neutral'} label={`${failedCount} failed`} />
+        </div>
 
         {summaryMessage ? (
-          <Alert variant="light">{summaryMessage}</Alert>
+          <InlineAlert title="Upload queue updated" message={summaryMessage} severity="info" />
         ) : null}
 
         {queueItems.length > 0 ? (
-          <Card withBorder padding={0}>
-            <ScrollArea.Autosize mah={288}>
-            <Stack gap={0}>
+          <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', maxHeight: 288, overflowY: 'auto' }}>
+            <div style={{ display: 'grid' }}>
               {queueItems.map((item) => (
-                <Box key={item.id} p="sm">
-                  <Group align="flex-start" justify="space-between" gap="md" wrap="nowrap">
-                    <Stack gap={4} miw={0}>
-                      <Text size="sm" fw={600} truncate>
+                <div key={item.id} style={{ padding: '0.75rem' }}>
+                  <div style={{ alignItems: 'flex-start', display: 'flex', gap: '1rem', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'grid', gap: '0.25rem', minWidth: 0 }}>
+                      <strong style={{ fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {item.sourceLabel}
-                      </Text>
-                      <Text size="xs" c="dimmed">
+                      </strong>
+                      <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
                         Original: {formatBytes(item.file.size)}
                         {item.finalSizeBytes != null ? ` · Upload: ${formatBytes(item.finalSizeBytes)}` : ''}
-                      </Text>
+                      </span>
                       {item.message ? (
-                        <Text size="xs" c="dimmed">
+                        <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
                           {item.message}
-                        </Text>
+                        </span>
                       ) : null}
-                    </Stack>
-                    <Badge variant="light">
-                      {item.status}
-                    </Badge>
-                  </Group>
-                </Box>
+                    </div>
+                    <LabelTag tone={item.status === 'error' ? 'warning' : item.status === 'done' ? 'success' : 'neutral'} label={item.status} />
+                  </div>
+                </div>
               ))}
-            </Stack>
-            </ScrollArea.Autosize>
-          </Card>
+            </div>
+          </section>
         ) : null}
-      </Stack>
-    </Card>
+      </div>
+    </section>
   );
 }

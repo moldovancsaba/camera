@@ -10,20 +10,8 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  Alert,
-  Badge,
-  Breadcrumbs,
-  Button,
-  Card,
-  Group,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
+import { InlineAlert, LabelTag, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
 
 interface DefaultLogoAssignment {
   logoId: string;
@@ -54,10 +42,10 @@ interface LogosResponse {
 }
 
 const scenarios = [
-  { id: 'slideshow-transition', name: 'Slideshow Transitions', icon: '🔄' },
-  { id: 'onboarding-thankyou', name: 'Custom Pages', icon: '📝' },
-  { id: 'loading-slideshow', name: 'Loading Slideshow', icon: '⏳' },
-  { id: 'loading-capture', name: 'Loading Capture', icon: '📸' },
+  { id: 'slideshow-transition', name: 'Slideshow Transitions' },
+  { id: 'onboarding-thankyou', name: 'Custom Pages' },
+  { id: 'loading-slideshow', name: 'Loading Slideshow' },
+  { id: 'loading-capture', name: 'Loading Capture' },
 ];
 
 function getErrorMessage(error: unknown): string {
@@ -150,33 +138,27 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
   };
 
   if (isLoading) {
-    return (
-      <Stack align="center" justify="center" mih="50vh">
-        <Text fz={40}>⏳</Text>
-        <Text c="dimmed">Loading...</Text>
-      </Stack>
-    );
+    return <StateBlock variant="loading" title="Loading..." />;
   }
 
   if (error || !partner) {
     return (
-      <Stack gap="lg">
-        <Alert icon={<IconAlertCircle size={16} />}>
-          <Text fw={700}>Error</Text>
-          <Text size="sm">{error || 'Partner not found'}</Text>
-        </Alert>
+      <div style={{ display: 'grid', gap: '1rem' }}>
+        <InlineAlert title="Error" message={error || 'Partner not found'} severity="error" />
         <Link href="/admin/partners">← Back to Partners</Link>
-      </Stack>
+      </div>
     );
   }
 
   return (
-    <Stack gap="xl">
-      <Breadcrumbs>
+    <div style={{ display: 'grid', gap: '2rem' }}>
+      <nav aria-label="Breadcrumb">
         <Link href="/admin/partners">Partners</Link>
+        <span aria-hidden> / </span>
         <Link href={`/admin/partners/${partnerId}`}>{partner.name}</Link>
-        <Text>Default Logos</Text>
-      </Breadcrumbs>
+        <span aria-hidden> / </span>
+        <span>Default Logos</span>
+      </nav>
 
       <WorkspaceHeader
         eyebrow="Camera Core"
@@ -184,73 +166,61 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
         description={`Select logos by scenario that will be automatically assigned to new events under ${partner.name}`}
       />
 
-      <Alert>
-        <Text size="sm">
-          💡 <strong>Note:</strong> Changes will automatically cascade to all child events marked with 🟢. Events with
-          custom logos (🔴) will keep their selections.
-        </Text>
-      </Alert>
+      <InlineAlert
+        title="Default inheritance"
+        message="Changes automatically cascade to child events that still inherit partner defaults. Events with custom logos keep their selections."
+        severity="info"
+      />
 
       {availableLogos.length === 0 ? (
-        <Card>
-          <Stack align="center" gap="sm">
-            <Text fz={48}>🎨</Text>
-            <Title order={3}>No logos available</Title>
-            <Text c="dimmed">Create logos first to assign them as defaults</Text>
-          </Stack>
-        </Card>
+        <StateBlock variant="empty" title="No logos available" description="Create logos first to assign them as defaults." />
       ) : (
-        <Stack gap="lg">
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
           {scenarios.map((scenario) => (
-            <Card key={scenario.id} p={0}>
-              <Group justify="space-between" align="center" p="lg" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
-                <Title order={3}>
-                  {scenario.icon} {scenario.name}
-                </Title>
-                <Badge>
-                  {defaultLogos.filter((logo) => logo.scenario === scenario.id).length} selected
-                </Badge>
-              </Group>
-              <SimpleGrid cols={{ base: 2, md: 4, xl: 6 }} spacing="md" p="lg">
+            <section key={scenario.id} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+              <div style={{ alignItems: 'center', borderBottom: '1px solid var(--gds-color-border)', display: 'flex', gap: '1rem', justifyContent: 'space-between', padding: '1rem' }}>
+                <h3 style={{ margin: 0 }}>{scenario.name}</h3>
+                <LabelTag tone="neutral" label={`${defaultLogos.filter((logo) => logo.scenario === scenario.id).length} selected`} />
+              </div>
+              <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', padding: '1rem' }}>
                 {availableLogos.map((logo) => {
                   const selected = isLogoSelected(logo.logoId, scenario.id);
                   return (
-                    <Card
+                    <button
                       key={`${logo.logoId}-${scenario.id}`}
-                      withBorder
-                      radius="md"
-                      bg={selected ? 'blue.0' : 'white'}
-                      style={{ cursor: 'pointer' }}
+                      type="button"
+                      aria-pressed={selected}
+                      style={{ background: 'var(--gds-color-surface)', border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', cursor: 'pointer', padding: '1rem' }}
                       onClick={() => handleToggleLogo(logo.logoId, scenario.id)}
                     >
-                      <Stack gap="sm" align="center">
-                        {selected ? <Badge>✓ Selected</Badge> : null}
+                      <span style={{ alignItems: 'center', display: 'grid', gap: '0.75rem', justifyItems: 'center' }}>
+                        {selected ? <LabelTag tone="success" label="Selected" /> : null}
                         {logo.thumbnailUrl ? (
                           <Image src={logo.thumbnailUrl} alt={logo.name} width={80} height={80} unoptimized style={{ width: '100%', height: 64, objectFit: 'contain' }} />
                         ) : (
-                          <Text fz={32}>🎨</Text>
+                          <span aria-hidden>Logo</span>
                         )}
-                        <Text size="xs" fw={600} ta="center" lineClamp={2}>
+                        <strong style={{ display: '-webkit-box', fontSize: '0.75rem', overflow: 'hidden', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>
                           {logo.name}
-                        </Text>
-                      </Stack>
-                    </Card>
+                        </strong>
+                      </span>
+                    </button>
                   );
                 })}
-              </SimpleGrid>
-            </Card>
+              </div>
+            </section>
           ))}
-        </Stack>
+        </div>
       )}
 
-      <Stack gap="sm">
-        <Button onClick={handleSave} loading={isSaving}>
+      <div style={{ display: 'grid', gap: '0.75rem' }}>
+        <SemanticButton action="partner-logos:save-defaults" onClick={handleSave} loading={isSaving}>
           {isSaving ? 'Saving...' : `Save Defaults (${defaultLogos.length} selected)`}
-        </Button>
+        </SemanticButton>
         <Link href={`/admin/partners/${partnerId}`} style={{ textDecoration: 'none' }}>
-          <Button variant="default">Cancel</Button>
+          <SemanticButton action="partner-logos:cancel" variant="secondary">Cancel</SemanticButton>
         </Link>
-      </Stack>
-    </Stack>
+      </div>
+    </div>
   );
 }

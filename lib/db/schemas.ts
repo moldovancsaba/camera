@@ -238,6 +238,7 @@ export interface Event {
     allowedLeatherSuitIds?: string[]; // Optional allowlist for the public suit picker
     applyFrameToReturnedResults?: boolean; // Whether Camera should re-apply the selected frame after the try-on worker uploads the generated result
     vettingEnabled?: boolean;        // Whether generated try-on results require admin review before publication
+    localAiQualityGateEnabled?: boolean; // Whether local AI pre-vetting triage can auto-screen event try-on results before manual review
     includeApprovedResultsInSlideshows?: boolean; // Legacy/publication flag mirrored from resultSlideshowMode
     resultSlideshowMode?: 'disabled' | 'mixed_with_originals' | 'approved_results_only'; // Event policy for approved try-on slideshow publication
   };

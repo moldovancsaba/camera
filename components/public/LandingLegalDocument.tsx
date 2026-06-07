@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ArticleShell } from '@doneisbetter/gds-core/client';
-import { Button, Text } from '@mantine/core';
+import { Button, Text } from '@/components/gds/PublicPrimitives';
 import PublicShell from '@/components/public/PublicPageShell';
 
 interface LandingLegalDocumentProps {

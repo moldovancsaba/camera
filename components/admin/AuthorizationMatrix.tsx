@@ -1,5 +1,3 @@
-import { Card, Group, Stack, Text, Title } from '@mantine/core';
-
 interface AuthorizationMatrixProps {
   title?: string;
   description?: string;
@@ -43,68 +41,78 @@ export default function AuthorizationMatrix({
   compact = false,
 }: AuthorizationMatrixProps) {
   return (
-    <Card p={0}>
+    <section
+      style={{
+        border: '1px solid var(--mantine-color-gray-3)',
+        borderRadius: 'var(--mantine-radius-md)',
+        overflow: 'hidden',
+      }}
+    >
       <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
-        <Title order={3}>{title}</Title>
-        <Text size="sm" c="dimmed" mt="xs">
+        <h3 style={{ margin: 0 }}>{title}</h3>
+        <p style={{ color: 'var(--mantine-color-dimmed)', margin: 'var(--mantine-spacing-xs) 0 0' }}>
           {description}
-        </Text>
+        </p>
       </div>
-      <Stack gap={0}>
+      <div>
         {ROWS.map((row, index) => (
-          <Group
+          <div
             key={row.label}
-            justify="space-between"
-            align="flex-start"
-            wrap="wrap"
-            p="xl"
-            style={index > 0 ? { borderTop: '1px solid var(--mantine-color-gray-2)' } : undefined}
+            style={{
+              alignItems: 'flex-start',
+              borderTop: index > 0 ? '1px solid var(--mantine-color-gray-2)' : undefined,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 'var(--mantine-spacing-xl)',
+              justifyContent: 'space-between',
+              padding: 'var(--mantine-spacing-xl)',
+            }}
           >
-            <Stack gap={4} maw={260}>
-              <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+            <div style={{ display: 'grid', gap: 4, maxWidth: 260 }}>
+              <strong style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 Role
-              </Text>
-              <Text size="sm" fw={600}>
+              </strong>
+              <span style={{ fontWeight: 600 }}>
                 {row.label}
-              </Text>
-            </Stack>
-            <Stack gap={4} maw={260}>
-              <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+              </span>
+            </div>
+            <div style={{ display: 'grid', gap: 4, maxWidth: 260 }}>
+              <strong style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 Visible Surfaces
-              </Text>
-              <Text size="sm" c="dimmed">
+              </strong>
+              <span style={{ color: 'var(--mantine-color-dimmed)' }}>
                 {row.access}
-              </Text>
-            </Stack>
+              </span>
+            </div>
             {!compact ? (
-              <Stack gap={4} maw={220}>
-                <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+              <div style={{ display: 'grid', gap: 4, maxWidth: 220 }}>
+                <strong style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                   Scope
-                </Text>
-                <Text size="sm" c="dimmed">
+                </strong>
+                <span style={{ color: 'var(--mantine-color-dimmed)' }}>
                   {row.scope}
-                </Text>
-              </Stack>
+                </span>
+              </div>
             ) : null}
-            <Stack gap={4} maw={220}>
-              <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+            <div style={{ display: 'grid', gap: 4, maxWidth: 220 }}>
+              <strong style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 Global Inventory
-              </Text>
-              <Text size="sm" c="dimmed">
+              </strong>
+              <span style={{ color: 'var(--mantine-color-dimmed)' }}>
                 {row.inventory}
-              </Text>
-            </Stack>
-            <Stack gap={4} maw={220}>
-              <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+              </span>
+            </div>
+            <div style={{ display: 'grid', gap: 4, maxWidth: 220 }}>
+              <strong style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 Mutations
-              </Text>
-              <Text size="sm" c="dimmed">
+              </strong>
+              <span style={{ color: 'var(--mantine-color-dimmed)' }}>
                 {row.actions}
-              </Text>
-            </Stack>
-          </Group>
+              </span>
+            </div>
+          </div>
         ))}
-      </Stack>
-    </Card>
+      </div>
+    </section>
   );
 }

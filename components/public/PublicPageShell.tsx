@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Box } from '@mantine/core';
+import { Box } from '@/components/gds/PublicPrimitives';
 import { PublicShell as GdsPublicShell, SectionPanel } from '@doneisbetter/gds-core/client';
 
 export interface PublicPageShellProps {

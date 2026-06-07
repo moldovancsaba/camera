@@ -124,6 +124,7 @@ The GitHub issue tracker and Projects board must be kept aligned with canonical 
 Operational note:
 
 - A stale tracker snapshot is a known source of process drift. Refresh this section at handoff time instead of preserving old issue IDs.
+- 2026-06-07 handoff note: GDS 3.4.3 issue snapshot for `#69`-`#78` is recorded in `docs/GDS_3_4_3_ALIGNMENT_PLAN.md` and board-sync details are recorded in `docs/GDS_3_4_3_GITHUB_BOARD_HANDOVER.md`. GitHub Project v2 status edits were initially blocked by GraphQL rate limit until 2026-06-07 15:54:46 CEST; after reset, issue comments were posted and `#69` plus `#73` were moved to `Review (ALMOST)`.
 
 ### Do not drift again
 

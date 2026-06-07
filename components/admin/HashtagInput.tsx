@@ -12,7 +12,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Box, Paper, Pill, PillsInput, Stack, Text, UnstyledButton } from '@mantine/core';
 
 interface HashtagInputProps {
   value: string[];
@@ -130,24 +129,39 @@ export default function HashtagInput({
   }, [focusedIndex]);
 
   return (
-    <Box className={className} style={{ position: 'relative' }}>
+    <div className={className} style={{ position: 'relative' }}>
       {/* Selected hashtags + input field */}
-      <PillsInput>
-        <Pill.Group>
+      <div
+        style={{
+          alignItems: 'center',
+          border: '1px solid var(--gds-color-border)',
+          borderRadius: '0.75rem',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
+          minHeight: 44,
+          padding: '0.5rem',
+        }}
+      >
         {/* Selected hashtags as chips */}
         {value.map((hashtag) => (
-          <Pill
+          <button
             key={hashtag}
-            withRemoveButton
-            onRemove={() => removeHashtag(hashtag)}
-            removeButtonProps={{ 'aria-label': `Remove ${hashtag}` }}
+            type="button"
+            aria-label={`Remove ${hashtag}`}
+            onClick={() => removeHashtag(hashtag)}
+            style={{
+              border: '1px solid var(--gds-color-border)',
+              borderRadius: '999px',
+              padding: '0.25rem 0.6rem',
+            }}
           >
-            #{hashtag}
-          </Pill>
+            #{hashtag} <span aria-hidden>×</span>
+          </button>
         ))}
 
         {/* Input field */}
-          <PillsInput.Field
+          <input
           ref={inputRef}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
@@ -158,62 +172,84 @@ export default function HashtagInput({
             setTimeout(() => setShowSuggestions(false), 200);
           }}
           placeholder={value.length === 0 ? placeholder : ''}
+          style={{ border: 0, flex: '1 1 180px', minHeight: 32, outline: 'none' }}
         />
-        </Pill.Group>
-      </PillsInput>
+      </div>
 
       {/* Autocomplete suggestions dropdown */}
       {showSuggestions && (inputValue || suggestions.length > 0) && (
-        <Paper
+        <div
           ref={suggestionsRef}
-          withBorder
-          shadow="md"
-          radius="md"
-          mt={4}
-          style={{ position: 'absolute', zIndex: 10, width: '100%', maxHeight: 240, overflowY: 'auto' }}
+          role="listbox"
+          style={{
+            background: 'var(--gds-color-surface)',
+            border: '1px solid var(--gds-color-border)',
+            borderRadius: '0.75rem',
+            boxShadow: 'var(--gds-shadow-lg)',
+            marginTop: 4,
+            maxHeight: 240,
+            overflowY: 'auto',
+            position: 'absolute',
+            width: '100%',
+            zIndex: 10,
+          }}
         >
           {suggestions.length > 0 ? (
-            <Stack gap={0} py={4}>
+            <div style={{ display: 'grid', padding: '0.25rem 0' }}>
               {suggestions.map((hashtag, index) => (
-                <UnstyledButton
+                <button
                   key={hashtag}
                   type="button"
+                  role="option"
+                  aria-selected={index === focusedIndex}
                   onClick={() => addHashtag(hashtag)}
-                  p="sm"
                   data-active={index === focusedIndex || undefined}
+                  style={{
+                    background: index === focusedIndex ? 'var(--gds-color-surface-muted)' : 'transparent',
+                    border: 0,
+                    padding: '0.65rem 0.75rem',
+                    textAlign: 'left',
+                  }}
                 >
-                  <Text span size="sm">#{hashtag}</Text>
-                  <Text span size="xs" c="dimmed" ml="xs">(existing)</Text>
-                </UnstyledButton>
+                  <span style={{ fontSize: '0.875rem' }}>#{hashtag}</span>
+                  <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>(existing)</span>
+                </button>
               ))}
-            </Stack>
+            </div>
           ) : null}
 
           {/* Show "create new" option if input doesn't match any existing */}
           {inputValue.trim() && !suggestions.includes(inputValue.toLowerCase()) && (
-            <UnstyledButton
+            <button
               type="button"
+              role="option"
+              aria-selected={false}
               onClick={() => addHashtag(inputValue)}
-              p="sm"
-              w="100%"
+              style={{
+                background: 'transparent',
+                border: 0,
+                padding: '0.65rem 0.75rem',
+                textAlign: 'left',
+                width: '100%',
+              }}
             >
-              <Text span size="sm">#{inputValue.toLowerCase()}</Text>
-              <Text span size="xs" c="dimmed" ml="xs">(create new)</Text>
-            </UnstyledButton>
+              <span style={{ fontSize: '0.875rem' }}>#{inputValue.toLowerCase()}</span>
+              <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>(create new)</span>
+            </button>
           )}
 
           {suggestions.length === 0 && !inputValue.trim() && (
-            <Text size="sm" c="dimmed" ta="center" p="md">
+            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0, padding: '1rem', textAlign: 'center' }}>
               Type to search or create hashtags
-            </Text>
+            </p>
           )}
-        </Paper>
+        </div>
       )}
 
       {/* Helper text */}
-      <Text mt="xs" size="sm" c="dimmed">
+      <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
         Press Enter to add, Backspace to remove. Multiple hashtags allowed.
-      </Text>
-    </Box>
+      </p>
+    </div>
   );
 }

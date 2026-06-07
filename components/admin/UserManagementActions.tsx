@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { Alert, Button, Group, Modal, Stack, Text, TextInput } from '@mantine/core';
+import { InlineAlert, SemanticButton } from '@doneisbetter/gds-core/client';
 
 interface UserManagementActionsProps {
   user: {
@@ -131,59 +131,98 @@ export default function UserManagementActions({ user, currentUserEmail }: UserMa
   };
 
   return (
-    <Stack gap="xs">
-      <Group gap="xs" wrap="wrap">
+    <div style={{ display: 'grid', gap: 'var(--gds-space-2, 0.5rem)' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--gds-space-2, 0.5rem)' }}>
         {(user.type === 'real' || user.type === 'administrator') ? (
-          <Button
+          <SemanticButton
+            action={user.role === 'admin' ? 'users:demote' : 'users:promote'}
             size="xs"
-            variant="light"
-            color={user.role === 'admin' ? 'gray' : 'violet'}
+            variant="secondary"
             onClick={() => void toggleRole()}
             disabled={loading || (isSelf && user.role === 'admin')}
           >
-            {user.role === 'admin' ? '👤 Demote to User' : '👑 Promote to Admin'}
-          </Button>
+            {user.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
+          </SemanticButton>
         ) : null}
 
-        <Button
+        <SemanticButton
+          action={isActive ? 'users:deactivate' : 'users:activate'}
           size="xs"
-          variant="light"
-          color={isActive ? 'red' : 'green'}
+          variant={isActive ? 'danger' : 'secondary'}
           onClick={() => void toggleStatus()}
           disabled={loading || (isSelf && isActive)}
         >
-          {isActive ? '🚫 Deactivate' : '✅ Activate'}
-        </Button>
+          {isActive ? 'Deactivate' : 'Activate'}
+        </SemanticButton>
 
         {user.type === 'pseudo' && !user.mergedWith ? (
-          <Button size="xs" variant="light" onClick={() => setShowMergeDialog(true)} disabled={loading}>
-            🔗 Merge with Real User
-          </Button>
+          <SemanticButton action="users:merge" size="xs" variant="secondary" onClick={() => setShowMergeDialog(true)} disabled={loading}>
+            Merge with Real User
+          </SemanticButton>
         ) : null}
-      </Group>
+      </div>
 
-      {message ? <Alert color={message.type === 'success' ? 'green' : 'red'}>{message.text}</Alert> : null}
+      {message ? (
+        <InlineAlert
+          title={message.type === 'success' ? 'User update complete' : 'User update failed'}
+          message={message.text}
+          severity={message.type === 'success' ? 'success' : 'error'}
+        />
+      ) : null}
 
-      <Modal opened={showMergeDialog} onClose={() => setShowMergeDialog(false)} title="Merge Pseudo User with Real User" centered>
-        <Stack gap="md">
-          <TextInput label="Pseudo User Email" value={user.email} disabled />
-          <TextInput
-            type="email"
-            label="Real User Email"
-            value={realUserEmail}
-            onChange={(e) => setRealUserEmail(e.currentTarget.value)}
-            placeholder="user@example.com"
-          />
-          <Text size="xs" c="dimmed">
-            This will transfer all submissions from the pseudo user to the real user account. This action cannot be
-            undone.
-          </Text>
-          <Group grow>
-            <Button onClick={() => void handleMerge()} loading={loading} disabled={!realUserEmail}>
+      {showMergeDialog ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="merge-pseudo-user-title"
+          style={{
+            background: 'var(--gds-color-overlay)',
+            inset: 0,
+            display: 'grid',
+            placeItems: 'center',
+            padding: '1rem',
+            position: 'fixed',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--gds-color-surface)',
+              border: '1px solid var(--gds-color-border)',
+              borderRadius: 'var(--gds-radius-lg, 1rem)',
+              boxShadow: 'var(--gds-shadow-xl))',
+              display: 'grid',
+              gap: '1rem',
+              maxWidth: 520,
+              padding: '1.25rem',
+              width: '100%',
+            }}
+          >
+            <h2 id="merge-pseudo-user-title" style={{ margin: 0 }}>Merge Pseudo User with Real User</h2>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Pseudo User Email
+              <input value={user.email} disabled style={{ minHeight: 42, padding: '0 0.75rem' }} />
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Real User Email
+              <input
+                type="email"
+                value={realUserEmail}
+                onChange={(e) => setRealUserEmail(e.currentTarget.value)}
+                placeholder="user@example.com"
+                style={{ minHeight: 42, padding: '0 0.75rem' }}
+              />
+            </label>
+            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
+              This transfers all submissions from the pseudo user to the real user account. This action cannot be undone.
+            </p>
+            <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+            <SemanticButton action="users:merge-confirm" onClick={() => void handleMerge()} loading={loading} disabled={!realUserEmail}>
               {loading ? 'Merging...' : 'Merge Users'}
-            </Button>
-            <Button
-              variant="default"
+            </SemanticButton>
+            <SemanticButton
+              action="users:merge-cancel"
+              variant="secondary"
               onClick={() => {
                 setShowMergeDialog(false);
                 setRealUserEmail('');
@@ -191,10 +230,11 @@ export default function UserManagementActions({ user, currentUserEmail }: UserMa
               disabled={loading}
             >
               Cancel
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
-    </Stack>
+            </SemanticButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }

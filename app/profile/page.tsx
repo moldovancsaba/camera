@@ -13,7 +13,7 @@ import Image from 'next/image';
 import type { ObjectId } from 'mongodb';
 import PublicShell from '@/components/public/PublicPageShell';
 import { EmptyState } from '@doneisbetter/gds-core/server';
-import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 
 interface ProfileSubmission {
   _id: ObjectId;

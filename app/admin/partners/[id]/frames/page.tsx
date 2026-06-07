@@ -10,19 +10,8 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  Alert,
-  Badge,
-  Breadcrumbs,
-  Button,
-  Card,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
+import { InlineAlert, LabelTag, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
 
 interface PartnerRecord {
   name: string;
@@ -128,33 +117,27 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
   };
 
   if (isLoading) {
-    return (
-      <Stack align="center" justify="center" mih="50vh">
-        <Text fz={40}>⏳</Text>
-        <Text c="dimmed">Loading...</Text>
-      </Stack>
-    );
+    return <StateBlock variant="loading" title="Loading..." />;
   }
 
   if (error || !partner) {
     return (
-      <Stack gap="lg">
-        <Alert icon={<IconAlertCircle size={16} />}>
-          <Text fw={700}>Error</Text>
-          <Text size="sm">{error || 'Partner not found'}</Text>
-        </Alert>
+      <div style={{ display: 'grid', gap: '1rem' }}>
+        <InlineAlert title="Error" message={error || 'Partner not found'} severity="error" />
         <Link href="/admin/partners">← Back to Partners</Link>
-      </Stack>
+      </div>
     );
   }
 
   return (
-    <Stack gap="xl">
-      <Breadcrumbs>
+    <div style={{ display: 'grid', gap: '2rem' }}>
+      <nav aria-label="Breadcrumb">
         <Link href="/admin/partners">Partners</Link>
+        <span aria-hidden> / </span>
         <Link href={`/admin/partners/${partnerId}`}>{partner.name}</Link>
-        <Text>Default Frames</Text>
-      </Breadcrumbs>
+        <span aria-hidden> / </span>
+        <span>Default Frames</span>
+      </nav>
 
       <WorkspaceHeader
         eyebrow="Camera Core"
@@ -162,60 +145,52 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
         description={`Select frames that will be automatically assigned to new events under ${partner.name}`}
       />
 
-      <Alert>
-        <Text size="sm">
-          💡 <strong>Note:</strong> Changes will automatically cascade to all child events marked with 🟢. Events with
-          custom frames (🔴) will keep their selections.
-        </Text>
-      </Alert>
+      <InlineAlert
+        title="Default inheritance"
+        message="Changes automatically cascade to child events that still inherit partner defaults. Events with custom frames keep their selections."
+        severity="info"
+      />
 
       {availableFrames.length === 0 ? (
-        <Card>
-          <Stack align="center" gap="sm">
-            <Text fz={48}>🖼️</Text>
-            <Title order={3}>No frames available</Title>
-            <Text c="dimmed">Create frames first to assign them as defaults</Text>
-          </Stack>
-        </Card>
+        <StateBlock variant="empty" title="No frames available" description="Create frames first to assign them as defaults." />
       ) : (
-        <SimpleGrid cols={{ base: 2, md: 3, lg: 4 }} spacing="md">
+        <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))' }}>
           {availableFrames.map((frame) => {
             const isSelected = defaultFrames.includes(frame.frameId);
 
             return (
-              <Card
+              <button
                 key={frame.frameId}
-                withBorder
-                radius="md"
-                bg={isSelected ? 'blue.0' : 'white'}
-                style={{ cursor: 'pointer' }}
+                type="button"
+                aria-pressed={isSelected}
+                style={{ background: 'var(--gds-color-surface)', border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', cursor: 'pointer', padding: '1rem' }}
                 onClick={() => handleToggleFrame(frame.frameId)}
               >
-                <Stack gap="sm" align="center">
-                  {isSelected ? <Badge>✓ Selected</Badge> : null}
+                <span style={{ alignItems: 'center', display: 'grid', gap: '0.75rem', justifyItems: 'center' }}>
+                  {isSelected ? <LabelTag tone="success" label="Selected" /> : null}
                   {frame.thumbnailUrl ? (
                     <Image src={frame.thumbnailUrl} alt={frame.name} width={128} height={128} unoptimized style={{ width: '100%', height: 128, objectFit: 'contain' }} />
                   ) : (
-                    <Text fz={40}>🖼️</Text>
+                    <span aria-hidden>Image</span>
                   )}
-                  <Text size="sm" fw={600} ta="center" lineClamp={2}>
+                  <strong style={{ display: '-webkit-box', fontSize: '0.875rem', overflow: 'hidden', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>
                     {frame.name}
-                  </Text>
-                </Stack>
-              </Card>
+                  </strong>
+                </span>
+              </button>
             );
           })}
-        </SimpleGrid>
+        </div>
       )}
 
-      <Stack gap="sm">
-        <Button onClick={handleSave} loading={isSaving}>
+      <div style={{ display: 'grid', gap: '0.75rem' }}>
+        <SemanticButton action="partner-frames:save-defaults" onClick={handleSave} loading={isSaving}>
           {isSaving ? 'Saving...' : `Save Defaults (${defaultFrames.length} selected)`}
-        </Button>
+        </SemanticButton>
         <Link href={`/admin/partners/${partnerId}`} style={{ textDecoration: 'none' }}>
-          <Button variant="default">Cancel</Button>
+          <SemanticButton action="partner-frames:cancel" variant="secondary">Cancel</SemanticButton>
         </Link>
-      </Stack>
-    </Stack>
+      </div>
+    </div>
   );
 }

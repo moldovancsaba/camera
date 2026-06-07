@@ -1,11 +1,11 @@
 # Camera GDS Adoption
 
 **Version**: 2.10.0  
-**Last Updated**: 2026-06-01
+**Last Updated**: 2026-06-07
 
 ## SSOT statement
 
-[sovereignsquad/general-design-system](https://github.com/sovereignsquad/general-design-system) (SSOT docs and published bundle now **v3.0.0**) is the single source of truth for design, UI, and UX across the portfolio.
+[sovereignsquad/general-design-system](https://github.com/sovereignsquad/general-design-system) (SSOT docs and published bundle now **v3.4.3**) is the single source of truth for design, UI, and UX across the portfolio.
 
 This file and other Camera docs describe only **implementation adapters**, migration state, validation commands, and approved exceptions. If a Camera-local UI document conflicts with the GDS repository, **the GDS repository wins**.
 
@@ -17,7 +17,7 @@ Exception standard:
 
 ## Purpose
 
-Camera is the reference implementation of the portfolio GDS on the currently validated Mantine 8 line. App, admin, and public surfaces now consume package-backed provider/theme/compliance entrypoints, with local adapter families still present where Camera-specific coverage remains incomplete.
+Camera is the reference implementation of the portfolio GDS on the currently validated Mantine 8 line. App, admin, and public surfaces consume package-backed provider/theme/compliance entrypoints. Remaining local adapter families are compatibility shims only and must shrink whenever a package contract is available.
 
 ## Root runtime
 
@@ -26,27 +26,27 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | App Router client boundary | `app/providers.tsx` |
 | Theme | package-direct `@doneisbetter/gds-theme/server` default `gdsTheme` |
 | Root provider | `components/gds/CameraGdsProvider.tsx` wrapping `@doneisbetter/gds-theme/client` `GdsProvider` without local theme extension |
-| Notifications | Shared provider composition from `@doneisbetter/gds-theme/client` |
-| Modals / confirm | Shared provider composition + `lib/gds/confirm-destructive.tsx` |
+| Notifications | Root `GdsNotificationProvider` / `GdsToastProvider` from `@doneisbetter/gds-core/client` plus `showGdsNotification` from `@doneisbetter/gds-theme/client` |
+| Modals / confirm | Root `GdsConfirmProvider` / `OverlayManagerProvider` from `@doneisbetter/gds-core/client`; legacy `lib/gds/confirm-destructive.tsx` remains a migration bridge |
 | Adoption manifest | `gds-adoption.json` |
 
 ## Pattern adapter inventory
 
 | GDS pattern family | Camera adapter | Status |
 |--------------------|----------------|--------|
-| Semantic navigation link | `components/gds/SemanticNavLink.tsx` | Active |
+| Semantic navigation link | `components/admin/SemanticNavLink.tsx` | Domain navigation composition; replace with package nav contract when compatible |
 | Metric strip | direct `@doneisbetter/gds-admin` import | Package-direct |
 | Info card | direct `@doneisbetter/gds-core` import | Package-direct |
 | Action entry grid | `components/gds/AdminDashboardView.tsx`, `app/admin/tryon/page.tsx`, `app/admin/tryon-results/page.tsx` | Package-direct |
 | Data toolbar | `components/admin/AdminListPageShell.tsx` | Package-direct |
-| Responsive data view | `components/gds/EventsInventoryList.tsx`, `components/gds/PartnersInventoryList.tsx`, `components/admin/TryOnResultModerationTable.tsx` | Thin adapter (`components/gds/ResponsiveDataView.tsx`) |
-| Data table | `components/gds/LandingPagesPageView.tsx`, `components/admin/TryOnQueueTable.tsx` | Thin adapter (`components/gds/DataTable.tsx`) |
+| Responsive data view | `components/gds/EventsInventoryList.tsx`, `components/gds/PartnersInventoryList.tsx`, `components/admin/TryOnResultModerationTable.tsx` | Package-direct `ResponsiveDataView` |
+| Data table | `components/gds/LandingPagesPageView.tsx`, `components/admin/TryOnQueueTable.tsx` | Package-direct `DataTable`; analytics tables use package `AdminAnalyticsTable` |
 | Empty state | direct `@doneisbetter/gds-core` import | Package-direct |
 | Access summary | direct `@doneisbetter/gds-core` import | Package-direct |
 | Status badge | direct `@doneisbetter/gds-core` import | Package-direct |
 | State block | direct `@doneisbetter/gds-core` import | Package-direct |
 | Form section | direct `@doneisbetter/gds-admin` import | Package-direct |
-| Editor scaffold | `app/admin/{events,events/[id],partners,partners/[id],frames,logos,tryon}/**` | Thin adapter (`components/gds/EditorScaffold.tsx`) |
+| Editor scaffold | `app/admin/{events,events/[id],partners,partners/[id],frames,logos,tryon}/**` | Domain composition `components/admin/AdminEditorScaffold.tsx` over package `EditorScaffold` and `WorkspaceHeader` |
 | Upload dropzone | direct `@doneisbetter/gds-core` import | Package-direct |
 | Destructive confirm | `lib/gds/confirm-destructive.tsx` | Active — delete/remove admin actions |
 | Root provider adapter | `components/gds/CameraGdsProvider.tsx` | Active |
@@ -66,12 +66,10 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 ### Retained package-boundary adapters
 
 - `components/gds/CameraGdsProvider.tsx`
-- `components/gds/DataTable.tsx`
-- `components/gds/ResponsiveDataView.tsx`
-- `components/gds/EditorScaffold.tsx`
 - `lib/gds/confirm-destructive.tsx`
 
-  - `DataTable`, `ResponsiveDataView`, and `EditorScaffold` are thin compatibility adapters used for API alignment and local UX orchestration in admin surfaces.
+  - `CameraGdsProvider` is the single root composition point for official GDS providers.
+  - `lib/gds/confirm-destructive.tsx` is a legacy bridge and must migrate to `GdsConfirmProvider`.
 
 ### Domain-owned composition moved out of `components/gds`
 
@@ -93,6 +91,10 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 - `components/gds/StatsStrip.tsx`
 - `components/gds/InfoCard.tsx`
 - `components/gds/StatusBadge.tsx`
+- `components/gds/DataTable.tsx`
+- `components/gds/ResponsiveDataView.tsx`
+- `components/gds/EditorScaffold.tsx`
+- `components/gds/SemanticNavLink.tsx`
 - former `components/gds` shell/card wrappers replaced by domain-owned components or direct package usage
 
 ## Approved exceptions
@@ -108,21 +110,21 @@ Camera exceptions follow the shared structure from [docs/GDS_EXCEPTION_STANDARD.
 
 ## Published package capability snapshot
 
-Camera is currently pinned to the latest published release bundle, `@doneisbetter/*` **3.0.0**.
+Camera is currently pinned to the latest verified published release bundle, `@doneisbetter/*` **3.4.3**.
 
 ### Available now in the published package line
 
 - public/editorial primitives: `PublicShell`, `PublicFlowShell`, `ArticleShell`, `DocsPageShell`, `AuthShell`, `BrowseSurface`, `EditorialHero`, `FeatureBand`, `ConsumerSection`, `ConsumerDashboardGrid`, `MediaField`, `PublicBrandFooter`, `MapPanel`, `PlaybackSurface`
-- admin/ops primitives: `AppShell`, `PageHeader`, `WorkspaceHeader`, `ResponsiveDataView`, `StatsStrip`, `ContentOpsEditor`, `ContentOpsSection`, `ContentOpsActionBar`, `FormSection`
-- shared state and utility primitives: `EmptyState`, `StateBlock`, `StatusBadge`, `AccessSummary`, `MediaCard`, `ProductCard`, `ActionBar`
+- admin/ops primitives: `AppShell`, `PageHeader`, `WorkspaceHeader`, `ResponsiveDataView`, `StatsStrip`, `ContentOpsEditor`, `ContentOpsSection`, `ContentOpsActionBar`, `FormSection`, `AdminResourceManager`, `AdminResourceGrid`, `AdminResourceCard`, `AdminDataTable`, `AdminAnalyticsTable`, `AdminReviewLayout`, `AdminModal`, `AdminDetailDrawer`, `AdminCrudForm`, `AdminFormSection`, `AdminFormStatus`, `AdminFormActions`
+- shared state and utility primitives: `EmptyState`, `StateBlock`, `StatusBadge`, `AccessSummary`, `MediaCard`, `MediaPreviewCard`, `ProductCard`, `ActionBar`, `SemanticButton`, `ConfirmDialog`, `GdsConfirmProvider`, `GdsToastProvider`, `GdsNotificationProvider`, `OverlayManagerProvider`, `ReportingSection`, `GdsChart`, `StatsSection`, `PublicCaptureFlow`, `ShareButtonGroup`, `PlaybackControls`, `PlaybackOverlayControls`
 
 ## Core rules
 
-1. Mantine is the mandatory runtime UI foundation for Camera.
-2. Shared admin patterns must consume package contracts first; only true package-boundary adapters belong in `components/gds`, while domain composition belongs in domain folders.
-3. New admin screens consume GDS primitives first — no page-local shells, toolbars, or state blocks.
+1. GDS is the mandatory UI/UX authority for Camera. Mantine is a runtime dependency behind GDS and approved leaf/runtime exceptions.
+2. Shared admin patterns must consume package contracts first; only compatibility shims belong in `components/gds`, while domain composition belongs in domain folders.
+3. New admin screens consume GDS primitives first — no page-local shells, toolbars, state blocks, resource cards, or analytics visuals.
 4. Tailwind / `globals.css` tokens are **not** authority for `/admin/**`.
-5. Direct `@mantine/core` imports are allowed for leaf controls and layout glue under the GDS provider, but no repo-local barrel may masquerade as a second UI authority.
+5. Direct `@mantine/core` imports are migration debt in admin page-level surfaces unless explicitly listed as an approved exception.
 6. Business logic and route behavior stay stable while UI migrates underneath.
 
 ## Migration order
@@ -144,12 +146,12 @@ Camera now uses the real `@doneisbetter/*` package line through the temporary su
 Current state:
 
 - Camera runtime: Mantine `8.3.6`, React `19.2.0`
-- Shared `@doneisbetter/*` packages: version `2.6.4`, Mantine `^7.9.0 || ^8.3.0 || ^9.0.0`, React `^18.2.0 || ^19.0.0`
+- Shared `@doneisbetter/*` packages: version `3.4.3`, Mantine `^7.9.0 || ^8.3.0 || ^9.0.0`, React `^18.2.0 || ^19.0.0`
 
-Required rule until npm publication is live:
+Required rule:
 
 - Camera must align to the **contracts and patterns** from the GDS repository
-- Camera must consume the release-asset-backed `@doneisbetter/*` packages at the provider/theme/compliance boundary until npm publication is live
+- Camera must consume the published `@doneisbetter/*` packages at the provider/theme/compliance boundary
 - Camera must continue shrinking local adapters as central package coverage and compatibility improve
 
 ## Formal compliance path
@@ -160,7 +162,7 @@ Current compliance position:
 
 - SSOT repo/version is declared
 - local adapters and approved exceptions are enumerated
-- release-asset package consumption is live on a Mantine version that satisfies the current GDS peer contract
+- npm package consumption is live on a Mantine version that satisfies the current GDS peer contract
 - Camera is now governed at the runtime boundary: Mantine is consumed directly where needed, but shell/card/table/toolbar/state authority stays aligned to published GDS contracts
 - remaining exception surfaces are composition-specific, not parallel UI foundations
 
@@ -175,13 +177,17 @@ Current compliance position:
 ## Validation
 
 ```bash
+npm run gds:validate-manifest
+npm run gds:check
 npm run type-check
 npm run lint
+npm run build
 ```
 
 ## References
 
 - [docs/GDS_COMPONENT_RULES.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_COMPONENT_RULES.md)
+- [docs/GDS_3_4_3_ALIGNMENT_PLAN.md](/Users/Shared/Projects/camera/docs/GDS_3_4_3_ALIGNMENT_PLAN.md)
 - [GDS FOUNDATION](https://github.com/sovereignsquad/general-design-system/blob/main/FOUNDATION.md)
 - [GDS COMPONENTS_AND_PATTERNS](https://github.com/sovereignsquad/general-design-system/blob/main/COMPONENTS_AND_PATTERNS.md)
 - [GDS GOVERNANCE_AND_ADOPTION](https://github.com/sovereignsquad/general-design-system/blob/main/GOVERNANCE_AND_ADOPTION.md)

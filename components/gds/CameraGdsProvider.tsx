@@ -1,5 +1,12 @@
 'use client';
 
+import {
+  GdsConfirmProvider,
+  GdsNotificationProvider,
+  GdsTelemetryProvider,
+  GdsToastProvider,
+  OverlayManagerProvider,
+} from '@doneisbetter/gds-core/client';
 import { GdsProvider } from '@doneisbetter/gds-theme/client';
 
 export default function CameraGdsProvider({
@@ -9,7 +16,15 @@ export default function CameraGdsProvider({
 }) {
   return (
     <GdsProvider defaultColorScheme="light">
-      {children}
+      <GdsTelemetryProvider>
+        <GdsNotificationProvider>
+          <GdsToastProvider>
+            <OverlayManagerProvider>
+              <GdsConfirmProvider>{children}</GdsConfirmProvider>
+            </OverlayManagerProvider>
+          </GdsToastProvider>
+        </GdsNotificationProvider>
+      </GdsTelemetryProvider>
     </GdsProvider>
   );
 }

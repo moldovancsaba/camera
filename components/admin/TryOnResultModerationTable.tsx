@@ -2,10 +2,9 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import ResponsiveDataView from '@/components/gds/ResponsiveDataView';
-import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
-import { Box, Button, Card, Group, Modal, Paper, Select, Stack, Text, UnstyledButton } from '@mantine/core';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ResponsiveDataView } from '@doneisbetter/gds-admin/client';
+import { SemanticButton, StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
 
@@ -59,6 +58,204 @@ export interface ModerationRow {
     setupProfile?: string | null;
     setupSource?: string | null;
   } | null;
+}
+
+type ModerationTableRow = ModerationRow & Record<string, unknown>;
+
+function Stack({
+  children,
+  gap = '1rem',
+  align,
+  style,
+}: {
+  children: React.ReactNode;
+  gap?: string | number;
+  align?: string;
+  style?: React.CSSProperties;
+  [key: string]: unknown;
+}) {
+  return <div style={{ alignItems: align, display: 'grid', gap, ...style }}>{children}</div>;
+}
+
+function Group({
+  children,
+  gap = '0.75rem',
+  justify,
+  grow,
+  wrap = 'wrap',
+}: {
+  children: React.ReactNode;
+  gap?: string | number;
+  justify?: string;
+  grow?: boolean;
+  wrap?: React.CSSProperties['flexWrap'];
+  [key: string]: unknown;
+}) {
+  return (
+    <div style={{ display: 'flex', flexWrap: wrap, gap, justifyContent: justify === 'space-between' ? 'space-between' : justify === 'stretch' ? undefined : justify, width: '100%' }}>
+      {grow
+        ? React.Children.map(children, (child) => <div style={{ flex: '1 1 0' }}>{child}</div>)
+        : children}
+    </div>
+  );
+}
+
+function Text({
+  children,
+  fw,
+  size,
+  c,
+  ta,
+}: {
+  children: React.ReactNode;
+  fw?: number;
+  size?: string;
+  c?: string;
+  ta?: React.CSSProperties['textAlign'];
+  [key: string]: unknown;
+}) {
+  return (
+    <span style={{ color: c === 'dimmed' ? 'var(--gds-color-muted)' : c === 'teal' ? 'var(--gds-color-success)' : undefined, display: 'block', fontSize: size === 'xs' ? '0.75rem' : size === 'sm' ? '0.875rem' : size, fontWeight: fw, textAlign: ta }}>
+      {children}
+    </span>
+  );
+}
+
+function Box({ children, style }: { children: React.ReactNode; style?: React.CSSProperties; [key: string]: unknown }) {
+  return <div style={style}>{children}</div>;
+}
+
+function Card({ children }: { children: React.ReactNode; [key: string]: unknown }) {
+  return <article style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', padding: '1rem' }}>{children}</article>;
+}
+
+function Paper({ children }: { children: React.ReactNode; [key: string]: unknown }) {
+  return <div style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.75rem', padding: '0.75rem' }}>{children}</div>;
+}
+
+function Button({
+  children,
+  component,
+  href,
+  download,
+  target,
+  rel,
+  disabled,
+  loading,
+  onClick,
+  type = 'button',
+  fullWidth,
+  variant,
+  size,
+  ...props
+}: {
+  children: React.ReactNode;
+  component?: 'a';
+  href?: string;
+  download?: boolean;
+  target?: string;
+  rel?: string;
+  disabled?: boolean;
+  loading?: boolean;
+  onClick?: () => void;
+  type?: 'button' | 'submit';
+  fullWidth?: boolean;
+  variant?: string;
+  size?: string;
+  [key: string]: unknown;
+}) {
+  const button = (
+    <SemanticButton
+      action="tryon-moderation:action"
+      type={type}
+      size={size}
+      variant={variant === 'outline' || variant === 'light' || variant === 'default' ? 'secondary' : undefined}
+      disabled={disabled}
+      loading={loading}
+      onClick={onClick}
+      fullWidth={fullWidth}
+      {...props}
+    >
+      {children}
+    </SemanticButton>
+  );
+
+  if (component === 'a') {
+    return (
+      <a href={href} download={download} target={target} rel={rel} style={{ display: fullWidth ? 'block' : undefined, pointerEvents: disabled ? 'none' : undefined, textDecoration: 'none' }}>
+        {button}
+      </a>
+    );
+  }
+
+  return button;
+}
+
+function Select({
+  label,
+  data,
+  value,
+  onChange,
+  disabled,
+  ..._props
+}: {
+  label: string;
+  data: Array<{ value: string; label: string }>;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  [key: string]: unknown;
+}) {
+  return (
+    <label style={{ display: 'grid', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 700 }}>
+      {label}
+      <select value={value} onChange={(event) => onChange(event.currentTarget.value)} disabled={disabled} style={{ minHeight: 36, padding: '0 0.75rem' }}>
+        {data.map((item) => (
+          <option key={item.value} value={item.value}>{item.label}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function UnstyledButton({
+  children,
+  onClick,
+  style,
+  ...props
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  style?: React.CSSProperties;
+  [key: string]: unknown;
+}) {
+  return <button type="button" onClick={onClick} style={{ background: 'transparent', border: 0, ...style }} {...props}>{children}</button>;
+}
+
+function Modal({
+  opened,
+  onClose,
+  title,
+  children,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+  [key: string]: unknown;
+}) {
+  if (!opened) return null;
+  return (
+    <div role="dialog" aria-modal="true" aria-label={title} style={{ background: 'var(--gds-color-overlay)', inset: 0, display: 'grid', placeItems: 'center', padding: '1rem', position: 'fixed', zIndex: 1000 }}>
+      <div style={{ background: 'var(--gds-color-surface)', border: '1px solid var(--gds-color-border)', borderRadius: '1rem', maxHeight: '90vh', maxWidth: '90rem', overflowY: 'auto', padding: '1.5rem', width: '100%' }}>
+        <div style={{ alignItems: 'center', display: 'flex', gap: '1rem', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <h2 style={{ margin: 0 }}>{title}</h2>
+          <SemanticButton action="tryon-moderation:close-modal" variant="secondary" onClick={onClose}>Close</SemanticButton>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 interface ModerationListQuery {
@@ -320,7 +517,7 @@ function PreviewStrip({
         maxHeight: 320,
         borderRadius: 14,
         overflow: 'hidden',
-        background: 'var(--mantine-color-gray-0)',
+        background: 'var(--gds-color-surface-muted)',
       }}
     >
       <PreviewImage
@@ -398,7 +595,7 @@ function ReviewImagePanel({
           maxHeight: '70vh',
           borderRadius: 16,
           overflow: 'hidden',
-          background: 'var(--mantine-color-gray-0)',
+          background: 'var(--gds-color-surface-muted)',
         }}
       >
         <PreviewImage
@@ -423,7 +620,7 @@ function ReviewImagePanel({
               maxHeight: 360,
               borderRadius: 16,
               overflow: 'hidden',
-              background: 'var(--mantine-color-gray-0)',
+              background: 'var(--gds-color-surface-muted)',
             }}
           >
             <PreviewImage
@@ -497,6 +694,18 @@ function ModerationActions({
           Service
         </Button>
       </Group>
+      <Button
+        component="a"
+        href={row.imageUrl}
+        download
+        target="_blank"
+        rel="noopener noreferrer"
+        variant="light"
+        disabled={!row.imageUrl}
+        fullWidth
+      >
+        Download
+      </Button>
     </Stack>
   );
 }
@@ -875,8 +1084,8 @@ export default function TryOnResultModerationTable({
           </Button>
         </Group>
       ) : null}
-      <ResponsiveDataView
-        data={displayRows}
+      <ResponsiveDataView<ModerationTableRow>
+        data={displayRows as ModerationTableRow[]}
         columns={[
           {
             key: 'preview',

@@ -8,18 +8,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Alert,
-  Button,
-  Checkbox,
-  Select,
-  Stack,
-  TextInput,
-  Textarea,
-} from '@mantine/core';
-import { IconAlertCircle, IconTrash } from '@tabler/icons-react';
-import { UploadDropzone } from '@doneisbetter/gds-core/client';
-import EditorScaffold from '@/components/gds/EditorScaffold';
+import { IconTrash } from '@tabler/icons-react';
+import { InlineAlert, SemanticButton, UploadDropzone } from '@doneisbetter/gds-core/client';
+import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { FormSection } from '@doneisbetter/gds-admin/client';
 import MediaCard from '@/components/media/MediaPreviewCard';
 
@@ -94,7 +85,7 @@ export default function NewFramePage() {
     >
 
       <form onSubmit={handleSubmit}>
-        <Stack gap="lg">
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
           <FormSection title="Frame Image *">
             <input type="hidden" name="file-placeholder" value={file?.name || ''} />
             {preview ? (
@@ -103,9 +94,9 @@ export default function NewFramePage() {
                 alt="Frame preview"
                 caption={file?.name}
                 action={
-                  <Button variant="light" leftSection={<IconTrash size={16} />} onClick={clearFile}>
+                  <SemanticButton action="frames:remove-upload" variant="secondary" leftSection={<IconTrash size={16} />} onClick={clearFile}>
                     Remove
-                  </Button>
+                  </SemanticButton>
                 }
               />
             ) : (
@@ -118,39 +109,48 @@ export default function NewFramePage() {
               />
             )}
             {error ? (
-              <Alert icon={<IconAlertCircle size={16} />}>
-                {error}
-              </Alert>
+              <InlineAlert title="Frame upload failed" message={error} severity="error" />
             ) : null}
           </FormSection>
 
           <FormSection title="Frame Details">
-            <TextInput name="name" label="Frame Name *" required placeholder="e.g., Holiday Frame 2024" />
-            <Textarea name="description" label="Description" rows={3} placeholder="Optional description..." />
-            <Select
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Frame Name *
+              <input name="name" required placeholder="e.g., Holiday Frame 2024" style={{ minHeight: 44, padding: '0 0.75rem' }} />
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Description
+              <textarea name="description" rows={3} placeholder="Optional description..." style={{ padding: '0.75rem' }} />
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Category
+              <select
               name="category"
-              label="Category"
               defaultValue="general"
-              data={[
-                { value: 'general', label: 'General' },
-                { value: 'holiday', label: 'Holiday' },
-                { value: 'birthday', label: 'Birthday' },
-                { value: 'wedding', label: 'Wedding' },
-                { value: 'corporate', label: 'Corporate' },
-              ]}
-            />
-            <Checkbox name="isActive" defaultChecked value="true" label="Make frame active (visible to users)" />
+              style={{ minHeight: 44, padding: '0 0.75rem' }}
+            >
+                <option value="general">General</option>
+                <option value="holiday">Holiday</option>
+                <option value="birthday">Birthday</option>
+                <option value="wedding">Wedding</option>
+                <option value="corporate">Corporate</option>
+              </select>
+            </label>
+            <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
+              <input type="checkbox" name="isActive" defaultChecked value="true" />
+              Make frame active (visible to users)
+            </label>
           </FormSection>
 
-          <Stack gap="sm">
-            <Button type="submit" loading={isUploading} disabled={!preview}>
+          <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <SemanticButton action="frames:create" type="submit" loading={isUploading} disabled={!preview}>
               {isUploading ? 'Uploading...' : 'Create Frame'}
-            </Button>
-            <Button variant="default" onClick={() => router.back()}>
+            </SemanticButton>
+            <SemanticButton action="frames:cancel-create" variant="secondary" onClick={() => router.back()}>
               Cancel
-            </Button>
-          </Stack>
-        </Stack>
+            </SemanticButton>
+          </div>
+        </div>
       </form>
     </EditorScaffold>
   );

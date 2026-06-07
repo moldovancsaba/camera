@@ -1,9 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
-import { Button, Card, Group, SimpleGrid, Stack, Text } from '@mantine/core';
-import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
+import {
+  AdminResourceEmptyState,
+  AdminResourceManager,
+  type AdminResourceAction,
+  type AdminResourceRecord,
+} from '@doneisbetter/gds-admin/client';
+import { StatusBadge } from '@doneisbetter/gds-core/client';
 import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface SerializedFrameRow {
@@ -24,96 +28,57 @@ export interface SerializedFrameRow {
 }
 
 export default function FramesInventoryList({ frames }: { frames: SerializedFrameRow[] }) {
+  const records: Array<AdminResourceRecord & SerializedFrameRow> = frames.map((frame) => ({
+    ...frame,
+    id: frame.id,
+    title: frame.name,
+    description: frame.description || frame.category || 'Shared frame',
+    mediaSrc: frame.imageUrl,
+    mediaAlt: frame.name,
+    status: (
+      <>
+        <StatusBadge
+          {...getStatusBadgeProps(
+            frame.scope === 'event' ? 'active' : frame.scope === 'partner' ? 'info' : 'inactive',
+            frame.scope === 'global' ? 'Global' : frame.scope === 'partner' ? 'Partner' : 'Event'
+          )}
+        />
+        <StatusBadge {...getStatusBadgeProps(frame.isActive ? 'active' : 'inactive')} />
+      </>
+    ),
+    metadata: [
+      { label: 'Category', value: frame.category || 'general' },
+      { label: 'Usage', value: `${frame.usageCount} assignment${frame.usageCount === 1 ? '' : 's'}` },
+      frame.partnerName ? { label: 'Partner', value: frame.partnerName } : null,
+      frame.eventName ? { label: 'Event', value: frame.eventName } : null,
+    ].filter((item): item is { label: string; value: string } => Boolean(item)),
+  }));
+  const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedFrameRow>> = [
+    {
+      id: 'edit',
+      label: 'Edit',
+      kind: 'primary',
+      onSelect: (frame) => {
+        window.location.href = `/admin/frames/${frame.id}/edit`;
+      },
+    },
+  ];
+
   if (frames.length === 0) {
     return (
-      <Card p="xl">
-        <StateBlock
-          variant="empty"
+      <AdminResourceEmptyState
           title="No frames yet"
           description="Add your first shared frame to start assigning it across partners and apps."
           action={
-            <Button component={Link} href="/admin/frames/new">
+            <Link href="/admin/frames/new">
               Add Your First Frame
-            </Button>
+            </Link>
           }
         />
-      </Card>
     );
   }
 
   return (
-    <SimpleGrid cols={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing="lg">
-      {frames.map((frame) => (
-        <Card key={frame.id} p={0} style={{ overflow: 'hidden' }}>
-          <div style={{ position: 'relative', aspectRatio: '1', maxHeight: '300px' }}>
-            <Image
-              src={frame.imageUrl}
-              alt={frame.name}
-              fill
-              style={{ objectFit: 'contain', padding: 16 }}
-              unoptimized
-            />
-          </div>
-          <Stack gap="sm" p="md">
-            <Group gap="xs">
-              <StatusBadge
-                {...getStatusBadgeProps(
-                  frame.scope === 'event' ? 'active' : frame.scope === 'partner' ? 'info' : 'inactive',
-                  frame.scope === 'global' ? 'Global' : frame.scope === 'partner' ? 'Partner' : 'Event'
-                )}
-              />
-              <StatusBadge {...getStatusBadgeProps(frame.isActive ? 'active' : 'inactive')} />
-            </Group>
-            <Text fw={700}>
-              {frame.name}
-            </Text>
-            {frame.description ? (
-              <Text size="sm" c="dimmed" lineClamp={2}>
-                {frame.description}
-              </Text>
-            ) : null}
-            <Stack gap={2}>
-              <Group justify="space-between" gap="xs">
-                <Text size="xs" c="dimmed" tt="capitalize">
-                  {frame.category || 'general'}
-                </Text>
-                <Text size="xs" c="dimmed">
-                  Used {frame.usageCount} time{frame.usageCount === 1 ? '' : 's'}
-                </Text>
-              </Group>
-              {frame.scope === 'partner' && frame.partnerAdminId && frame.partnerName ? (
-                <Text size="xs" c="dimmed">
-                  Partner:{' '}
-                  <Text
-                    component={Link}
-                    href={`/admin/partners/${frame.partnerAdminId}`}
-                    span
-                    style={{ textDecoration: 'none' }}
-                  >
-                    {frame.partnerName}
-                  </Text>
-                </Text>
-              ) : null}
-              {frame.scope === 'event' && frame.eventAdminId && frame.eventName ? (
-                <Text size="xs" c="dimmed">
-                  Event:{' '}
-                  <Text
-                    component={Link}
-                    href={`/admin/events/${frame.eventAdminId}`}
-                    span
-                    style={{ textDecoration: 'none' }}
-                  >
-                    {frame.eventName}
-                  </Text>
-                </Text>
-              ) : null}
-            </Stack>
-            <Button component={Link} href={`/admin/frames/${frame.id}/edit`} fullWidth>
-              Edit
-            </Button>
-          </Stack>
-        </Card>
-      ))}
-    </SimpleGrid>
+    <AdminResourceManager records={records} state="ready" actions={actions} />
   );
 }

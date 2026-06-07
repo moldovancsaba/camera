@@ -2,7 +2,7 @@
 
 import NextImage from 'next/image';
 import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
-import { Alert, Badge, Box, Button, Card, Center, Stack, Text } from '@mantine/core';
+import { Alert, Badge, Box, Button, Card, Center, Stack, Text } from '@/components/gds/PublicPrimitives';
 import { validateImage } from '@/lib/imgbb/upload';
 
 export interface FileUploadProps {
@@ -105,7 +105,7 @@ export default function FileUpload({
                     <Text size="sm">{error}</Text>
                     <Button
                       type="button"
-                      onClick={(event) => {
+                      onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
                         event.stopPropagation();
                         setError(null);
                       }}

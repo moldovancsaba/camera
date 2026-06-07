@@ -2,9 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@mantine/core';
-import { notifications } from '@/lib/gds/notifications';
-import { confirmDestructive } from '@/lib/gds/confirm-destructive';
+import { SemanticButton, useGdsConfirm, useGdsToasts } from '@doneisbetter/gds-core/client';
 
 interface DeleteEventButtonProps {
   eventId: string;
@@ -18,6 +16,8 @@ function getErrorMessage(error: unknown): string {
 export default function DeleteEventButton({ eventId, eventName }: DeleteEventButtonProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
+  const { confirmDestructive } = useGdsConfirm();
+  const { notifyError } = useGdsToasts();
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -32,29 +32,33 @@ export default function DeleteEventButton({ eventId, eventName }: DeleteEventBut
       router.push('/admin/events');
       router.refresh();
     } catch (error: unknown) {
-      notifications.show({
+      notifyError({
         title: 'Delete failed',
         message: getErrorMessage(error),
-        color: 'red',
       });
       setIsDeleting(false);
     }
   };
 
+  const confirmDelete = async () => {
+    const confirmed = await confirmDestructive({
+      title: 'Delete event',
+      message: 'Are you sure you want to delete this event? This action cannot be undone.',
+      targetName: eventName,
+    });
+    if (confirmed) {
+      void handleDelete();
+    }
+  };
+
   return (
-    <Button
+    <SemanticButton
+      action="delete"
       disabled={isDeleting}
       loading={isDeleting}
-      onClick={() =>
-        confirmDestructive({
-          title: 'Delete event',
-          message: 'Are you sure you want to delete this event? This action cannot be undone.',
-          targetName: eventName,
-          onConfirm: () => void handleDelete(),
-        })
-      }
+      onClick={() => void confirmDelete()}
     >
       Delete Event
-    </Button>
+    </SemanticButton>
   );
 }

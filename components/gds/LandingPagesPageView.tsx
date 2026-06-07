@@ -1,12 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { Button, Card, Group, Stack, Text, TextInput } from '@mantine/core';
-import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
+import { StatusBadge } from '@doneisbetter/gds-core/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
-import DataTable from '@/components/gds/DataTable';
+import {
+  AdminResourceEmptyState,
+  AdminResourceManager,
+  type AdminResourceAction,
+  type AdminResourceRecord,
+} from '@doneisbetter/gds-admin/client';
 import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface SerializedLandingPageRow {
@@ -33,126 +37,102 @@ export default function LandingPagesPageView({
   partnerFilter: string;
   dbError?: MongoConnectionDiagnosis | null;
 }) {
+  const records: Array<AdminResourceRecord & SerializedLandingPageRow> = landingPages.map((page) => ({
+    ...page,
+    id: page.id,
+    title: page.title?.trim() || page.slug,
+    description: `/landing/${page.slug}`,
+    status: <StatusBadge {...getStatusBadgeProps(page.isActive ? 'active' : 'inactive')} />,
+    metadata: [
+      { label: 'Partner', value: page.partnerName || 'Unknown partner' },
+      { label: 'Event', value: page.eventName },
+      { label: 'Target', value: `${page.targetType === 'layout' ? 'Layout' : 'Slideshow'}: ${page.targetName}` },
+      { label: 'Updated', value: page.updatedAtLabel },
+    ],
+  }));
+  const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedLandingPageRow>> = [
+    {
+      id: 'event',
+      label: 'Open Event',
+      kind: 'secondary',
+      onSelect: (page) => {
+        window.location.href = `/admin/events/${page.eventMongoId}`;
+      },
+    },
+    {
+      id: 'edit',
+      label: 'Edit',
+      kind: 'primary',
+      onSelect: (page) => {
+        window.location.href = `/admin/events/${page.eventMongoId}/landing-pages/${page.id}`;
+      },
+    },
+    {
+      id: 'open',
+      label: 'Open',
+      kind: 'secondary',
+      onSelect: (page) => {
+        window.open(`/landing/${page.slug}`, '_blank', 'noopener,noreferrer');
+      },
+    },
+  ];
+
   return (
-    <Stack gap="xl">
+    <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
       <WorkspaceHeader
         eyebrow="Resource Inventory"
         title="Landing Pages"
       />
 
-      <Card>
+      <section
+        style={{
+          border: '1px solid var(--mantine-color-gray-3)',
+          borderRadius: 'var(--mantine-radius-md)',
+          padding: 'var(--mantine-spacing-md)',
+        }}
+      >
         <form>
-          <Group align="end">
-            <TextInput
+          <div style={{ alignItems: 'end', display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-sm)' }}>
+            <label style={{ display: 'grid', flex: '1 1 280px', gap: 6, fontWeight: 600 }}>
+              Search
+              <input
               name="search"
               defaultValue={search}
               placeholder="Search slug, title, event, or embedded target"
-              label="Search"
-              style={{ flex: 1 }}
-            />
-            <TextInput
+                style={{ border: '1px solid var(--mantine-color-gray-4)', borderRadius: 8, padding: '10px 12px' }}
+              />
+            </label>
+            <label style={{ display: 'grid', flex: '0 1 260px', gap: 6, fontWeight: 600 }}>
+              Partner
+              <input
               name="partner"
               defaultValue={partnerFilter}
               placeholder="Exact partner name filter"
-              label="Partner"
-            />
-            <Button type="submit">Search</Button>
+                style={{ border: '1px solid var(--mantine-color-gray-4)', borderRadius: 8, padding: '10px 12px' }}
+              />
+            </label>
+            <button type="submit">Search</button>
             {search || partnerFilter ? (
-              <Button component={Link} href="/admin/landing-pages" variant="default">
+              <Link href="/admin/landing-pages">
                 Clear
-              </Button>
+              </Link>
             ) : null}
-          </Group>
+          </div>
         </form>
-      </Card>
+      </section>
 
       {dbError ? <DatabaseConnectionAlert diagnosis={dbError} /> : null}
 
       {!dbError && landingPages.length === 0 ? (
-        <Card>
-          <StateBlock
-            variant="empty"
+        <AdminResourceEmptyState
             title="No landing pages found"
             description="Create a landing page from an event workspace, then manage and audit it here."
           />
-        </Card>
       ) : null}
 
       {!dbError && landingPages.length > 0 ? (
-        <DataTable
-          data={landingPages}
-          columns={[
-            {
-              key: 'landingPage',
-              label: 'Landing Page',
-              render: (page) => (
-                <Stack gap={2}>
-                  <Text fw={700}>{page.title?.trim() || page.slug}</Text>
-                  <Text size="xs" c="dimmed" mt={4}>
-                    /landing/{page.slug}
-                  </Text>
-                  <Text size="xs" c="dimmed" mt="sm">
-                    Updated {page.updatedAtLabel}
-                  </Text>
-                </Stack>
-              ),
-            },
-            {
-              key: 'ownership',
-              label: 'Partner / Event',
-              render: (page) => (
-                <Stack gap={2}>
-                  <Text size="sm" fw={600}>
-                    {page.partnerName || 'Unknown partner'}
-                  </Text>
-                  <Text size="sm" c="dimmed" mt={4}>
-                    {page.eventName}
-                  </Text>
-                </Stack>
-              ),
-            },
-            {
-              key: 'target',
-              label: 'Embedded Target',
-              render: (page) => (
-                <Stack gap={2}>
-                  <Text size="sm">{page.targetType === 'layout' ? 'Layout' : 'Slideshow'}</Text>
-                  <Text size="sm" c="dimmed" mt={4}>
-                    {page.targetName}
-                  </Text>
-                </Stack>
-              ),
-            },
-            {
-              key: 'status',
-              label: 'Status',
-              render: (page) => <StatusBadge {...getStatusBadgeProps(page.isActive ? 'active' : 'inactive')} />,
-            },
-            {
-              key: 'actions',
-              label: 'Actions',
-              render: (page) => (
-                <Group gap="sm" justify="flex-end">
-                  <Text component={Link} href={`/admin/events/${page.eventMongoId}`} size="sm">
-                    Open Event
-                  </Text>
-                  <Text
-                    component={Link}
-                    href={`/admin/events/${page.eventMongoId}/landing-pages/${page.id}`}
-                    size="sm"
-                  >
-                    Edit
-                  </Text>
-                  <Text component={Link} href={`/landing/${page.slug}`} target="_blank" size="sm">
-                    Open
-                  </Text>
-                </Group>
-              ),
-            },
-          ]}
-          getRowKey={(page) => page.id}
-        />
+        <AdminResourceManager records={records} state="ready" actions={actions} />
       ) : null}
-    </Stack>
+    </div>
   );
 }

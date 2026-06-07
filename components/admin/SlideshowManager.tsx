@@ -8,8 +8,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ActionIcon, Badge, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
+import { EmptyState, LabelTag, SemanticButton } from '@doneisbetter/gds-core/client';
 
 interface Slideshow {
   _id: string;
@@ -63,80 +63,80 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
   };
 
   return (
-    <Card p={0}>
-      <Group justify="space-between" align="flex-start" p="xl" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+    <section style={{ background: 'var(--gds-color-surface)', border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+      <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--gds-color-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
         <div>
-          <Title order={2}>📺 Event Slideshows</Title>
-          <Text c="dimmed" mt="xs">
+          <h2 style={{ margin: 0 }}>Event Slideshows</h2>
+          <p style={{ color: 'var(--gds-color-muted)', margin: '0.5rem 0 0' }}>
             Display submissions on screens during the event
-          </Text>
+          </p>
         </div>
         <Link href={`/admin/events/${eventId}/slideshows/new`} style={{ textDecoration: 'none' }}>
-          <Button leftSection={<IconPlus size={16} />}>
+          <SemanticButton action="slideshows:create" leftSection={<IconPlus size={16} />}>
             New Slideshow
-          </Button>
+          </SemanticButton>
         </Link>
-      </Group>
+      </div>
 
       {slideshows.length === 0 ? (
-        <Stack align="center" gap="sm" p="xl">
-          <Text fz={48}>📺</Text>
-          <Text fw={700} fz="lg">
-            No slideshows yet
-          </Text>
-          <Text c="dimmed" ta="center">
-            Create a slideshow to display event photos on screens with smart playlist rotation
-          </Text>
-        </Stack>
+        <div style={{ padding: '1.5rem' }}>
+          <EmptyState
+            title="No slideshows yet"
+            description="Create a slideshow to display event photos on screens with smart playlist rotation."
+          />
+        </div>
       ) : (
-        <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="lg" p="xl">
+        <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', padding: '1.5rem' }}>
           {slideshows.map((slideshow) => (
-            <Card key={slideshow._id} withBorder radius="md">
-              <Group justify="space-between" align="flex-start">
+            <article key={slideshow._id} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', display: 'grid', gap: '1rem', padding: '1rem' }}>
+              <div style={{ alignItems: 'flex-start', display: 'flex', gap: '0.75rem', justifyContent: 'space-between' }}>
                 <div>
-                  <Text fw={700}>{slideshow.name}</Text>
-                  <Badge mt={4} variant="light">
-                    {slideshow.isActive ? '● Active' : '○ Inactive'}
-                  </Badge>
+                  <strong>{slideshow.name}</strong>
+                  <div style={{ marginTop: '0.25rem' }}>
+                    <LabelTag tone={slideshow.isActive ? 'success' : 'neutral'} label={slideshow.isActive ? 'Active' : 'Inactive'} />
+                  </div>
                 </div>
-                <ActionIcon
-                  variant="subtle"
+                <SemanticButton
+                  action="slideshows:delete"
+                  variant="danger"
+                  size="xs"
                   onClick={() => void handleDeleteSlideshow(slideshow._id)}
                   aria-label="Delete"
                 >
                   <IconTrash size={16} />
-                </ActionIcon>
-              </Group>
+                </SemanticButton>
+              </div>
 
-              <Text size="xs" c="dimmed" mt="md">
+              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0 }}>
                 Created {new Date(slideshow.createdAt).toLocaleDateString()}
-              </Text>
+              </p>
 
-              <Stack gap="sm" mt="md">
+              <div style={{ display: 'grid', gap: '0.5rem' }}>
                 <Link href={`/admin/events/${eventId}/slideshows/${slideshow._id}`} style={{ textDecoration: 'none' }}>
-                  <Button fullWidth leftSection={<IconPencil size={16} />}>
+                  <SemanticButton action="slideshows:edit" fullWidth leftSection={<IconPencil size={16} />}>
                     Edit slideshow
-                  </Button>
+                  </SemanticButton>
                 </Link>
                 <Link href={`/slideshow/${slideshow.slideshowId}`} target="_blank" style={{ textDecoration: 'none' }}>
-                  <Button fullWidth variant="light" leftSection={<IconExternalLink size={16} />}>
+                  <SemanticButton action="slideshows:open" fullWidth variant="secondary" leftSection={<IconExternalLink size={16} />}>
                     Open Slideshow
-                  </Button>
+                  </SemanticButton>
                 </Link>
-                <Button
+                <SemanticButton
+                  action="slideshows:copy-url"
                   fullWidth
-                  variant="default"
+                  variant="secondary"
                   size="xs"
                   leftSection={<IconCopy size={14} />}
                   onClick={() => copySlideshowUrl(slideshow.slideshowId)}
                 >
                   Copy public URL
-                </Button>
-              </Stack>
-            </Card>
+                </SemanticButton>
+              </div>
+            </article>
           ))}
-        </SimpleGrid>
+        </div>
       )}
-    </Card>
+    </section>
   );
 }

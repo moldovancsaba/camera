@@ -398,7 +398,12 @@ export async function scheduleTryOnRetryOrFailure(
   retryable = true
 ): Promise<'retry_wait' | 'failed'> {
   const attemptCount = job.processing.attemptCount;
-  const delayMinutes = retryable && attemptCount < maxAttempts ? retryDelayMinutes(attemptCount) : null;
+  const isTimeoutError = error.code === 'provider_timeout';
+  const reachedTimeoutLimit = isTimeoutError && attemptCount >= 2;
+  const delayMinutes =
+    retryable && !reachedTimeoutLimit && attemptCount < maxAttempts
+      ? retryDelayMinutes(attemptCount)
+      : null;
   const now = nowIso();
 
   if (delayMinutes != null) {

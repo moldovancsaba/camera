@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Button, Group, Stack, Text } from '@mantine/core';
+import { SemanticButton } from '@doneisbetter/gds-core/client';
 import type { ModerationRow } from '@/components/admin/TryOnResultModerationTable';
 
 function resolveDisplayName(value: string): string {
@@ -132,61 +132,61 @@ export default function OldestVettingResultCard({ row }: { row: ModerationRow })
             width: '100%',
           }}
         />
-        <Stack gap="sm" p="md">
-          <Stack gap={2}>
-            <Text size="xs" fw={800} tt="uppercase" style={{ letterSpacing: '0.08em' }}>
+        <div style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)', padding: 'var(--mantine-spacing-md)' }}>
+          <div style={{ display: 'grid', gap: 2 }}>
+            <strong style={{ fontSize: 'var(--mantine-font-size-xs)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               Oldest waiting
-            </Text>
-            <Text size="lg" fw={800}>
+            </strong>
+            <strong style={{ fontSize: 'var(--mantine-font-size-lg)' }}>
               {resolveDisplayName(row.userName)}
-            </Text>
+            </strong>
             {shouldShowEmail(row.userEmail) ? (
-              <Text size="sm" c="dimmed">
+              <span style={{ color: 'var(--mantine-color-dimmed)' }}>
                 {row.userEmail}
-              </Text>
+              </span>
             ) : null}
-            <Text size="sm" c="dimmed">
+            <span style={{ color: 'var(--mantine-color-dimmed)' }}>
               {row.eventName || 'Unscoped event'} · {garmentLabel(row)}
-            </Text>
-            <Text size="sm" c="dimmed">
+            </span>
+            <span style={{ color: 'var(--mantine-color-dimmed)' }}>
               Created {new Date(row.createdAt).toLocaleString()}
-            </Text>
-          </Stack>
-          <Stack gap="xs">
-            <Group justify="stretch" gap="xs" grow wrap="nowrap">
-              <Button
-                variant="light"
+            </span>
+          </div>
+          <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)' }}>
+            <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)', gridTemplateColumns: '1fr 1fr' }}>
+              <SemanticButton
+                action="tryon:approve"
                 loading={busyAction === 'approve'}
                 onClick={() => void handleDecision('approve')}
               >
                 Approve
-              </Button>
-              <Button
-                variant="light"
+              </SemanticButton>
+              <SemanticButton
+                action="tryon:reject"
                 loading={busyAction === 'reject'}
                 onClick={() => void handleDecision('reject')}
               >
                 Reject
-              </Button>
-            </Group>
-            <Group justify="stretch" gap="xs" grow wrap="nowrap">
-              <Button
-                variant={row.isGreat ? 'default' : 'outline'}
+              </SemanticButton>
+            </div>
+            <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)', gridTemplateColumns: '1fr 1fr' }}>
+              <SemanticButton
+                action="tryon:great"
                 loading={busyAction === 'great'}
                 onClick={() => void handleGreat()}
               >
                 {row.isGreat ? 'Remove Great' : 'Great'}
-              </Button>
-              <Button
-                variant="outline"
+              </SemanticButton>
+              <SemanticButton
+                action="tryon:service"
                 loading={busyAction === 'service'}
                 onClick={() => void handleService()}
               >
                 Service
-              </Button>
-            </Group>
-          </Stack>
-        </Stack>
+              </SemanticButton>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

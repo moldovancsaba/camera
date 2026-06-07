@@ -13,27 +13,109 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Alert,
-  Badge,
-  Button,
-  Card,
-  Checkbox,
-  Divider,
-  Group,
-  Modal,
-  Stack,
-  Text,
-  TextInput,
-  Textarea,
-  Title,
-} from '@mantine/core';
+import { InlineAlert, LabelTag, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
 import { CustomPageType, type CustomPage, generateId, generateTimestamp } from '@/lib/db/schemas';
 
 export interface CustomPagesManagerProps {
   eventId: string;
   initialPages: CustomPage[];
   onSave: (pages: CustomPage[]) => Promise<void>;
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  required,
+  placeholder,
+  type = 'text',
+  helper,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  placeholder?: string;
+  type?: string;
+  helper?: string;
+}) {
+  return (
+    <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+      {label}
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.currentTarget.value)}
+        required={required}
+        placeholder={placeholder}
+        style={{ minHeight: 44, padding: '0 0.75rem' }}
+      />
+      {helper ? <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>{helper}</span> : null}
+    </label>
+  );
+}
+
+function Area({
+  label,
+  value,
+  onChange,
+  required,
+  placeholder,
+  rows = 3,
+  helper,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  placeholder?: string;
+  rows?: number;
+  helper?: string;
+}) {
+  return (
+    <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+      {label}
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.currentTarget.value)}
+        required={required}
+        placeholder={placeholder}
+        rows={rows}
+        style={{ padding: '0.75rem' }}
+      />
+      {helper ? <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>{helper}</span> : null}
+    </label>
+  );
+}
+
+function Check({
+  checked,
+  onChange,
+  label,
+  helper,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  helper?: string;
+}) {
+  return (
+    <label style={{ display: 'grid', gap: '0.35rem' }}>
+      <span style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
+        <input type="checkbox" checked={checked} onChange={(event) => onChange(event.currentTarget.checked)} />
+        {label}
+      </span>
+      {helper ? <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem' }}>{helper}</span> : null}
+    </label>
+  );
+}
+
+function DividerLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ borderTop: '1px solid var(--gds-color-border)', paddingTop: '1rem' }}>
+      <strong>{children}</strong>
+    </div>
+  );
 }
 
 export default function CustomPagesManager({ eventId, initialPages, onSave }: CustomPagesManagerProps) {
@@ -240,148 +322,150 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
   };
 
   return (
-    <Card withBorder radius="lg" p="xl">
-      <Stack gap="lg">
-        <Group justify="space-between" align="flex-start">
-          <Stack gap={4}>
-            <Title order={2}>Event Pages</Title>
-            <Text size="sm" c="dimmed">
+    <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', padding: '1.5rem' }}>
+      <div style={{ display: 'grid', gap: '1.5rem' }}>
+        <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
+          <div style={{ display: 'grid', gap: '0.25rem' }}>
+            <h2 style={{ margin: 0 }}>Event Pages</h2>
+            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
               Configure onboarding and thank you pages for this event
-            </Text>
-          </Stack>
-          <Button
+            </p>
+          </div>
+          <SemanticButton
+            action="custom-pages:save-all"
             type="button"
           onClick={handleSaveAll}
           disabled={isSaving}
         >
           {isSaving ? 'Saving...' : 'Save Pages'}
-          </Button>
-        </Group>
+          </SemanticButton>
+        </div>
 
       {/* Page List */}
-        <Stack gap="sm">
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
         {sortedPages.length === 0 ? (
-            <Text size="sm" c="dimmed" ta="center" py="xl">
-            No custom pages yet. Add pages to create onboarding or thank you flows.
-            </Text>
+            <StateBlock variant="empty" title="No custom pages yet" description="Add pages to create onboarding or thank you flows." />
         ) : (
           sortedPages.map((page, index) => (
-              <Card
+              <article
               key={page.pageId}
-                withBorder
-                radius="md"
-                p="md"
+                style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}
             >
               {/* Order indicators */}
-                <Group gap="md" align="center" wrap="nowrap">
-                  <Stack gap={4}>
-                    <Button
+                <div style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gap: '0.25rem' }}>
+                    <SemanticButton
+                      action="custom-pages:move-up"
                       type="button"
-                      variant="subtle"
+                      variant="secondary"
                       size="compact-xs"
                   onClick={() => handleMoveUp(page.pageId)}
                   disabled={index === 0}
                   title="Move up"
                 >
                   ▲
-                    </Button>
-                    <Button
+                    </SemanticButton>
+                    <SemanticButton
+                      action="custom-pages:move-down"
                       type="button"
-                      variant="subtle"
+                      variant="secondary"
                       size="compact-xs"
                   onClick={() => handleMoveDown(page.pageId)}
                   disabled={index === sortedPages.length - 1}
                   title="Move down"
                 >
                   ▼
-                    </Button>
-                  </Stack>
+                    </SemanticButton>
+                  </div>
 
               {/* Page info */}
-                  <Stack gap={4} style={{ flex: 1 }}>
-                    <Group gap="xs">
-                      <Text size="sm" ff="monospace" c="dimmed">
+                  <div style={{ display: 'grid', flex: 1, gap: '0.25rem' }}>
+                    <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <code style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem' }}>
                     #{index + 1}
-                      </Text>
-                      <Badge variant="light">
-                    {page.pageType}
-                      </Badge>
-                    </Group>
-                    <Text size="sm" fw={600}>
+                      </code>
+                      <LabelTag tone="neutral" label={page.pageType} />
+                    </div>
+                    <strong style={{ fontSize: '0.875rem' }}>
                     {page.config.title || '[Untitled]'}
-                    </Text>
-                  </Stack>
+                    </strong>
+                  </div>
 
               {/* Actions */}
-                  <Group gap="xs">
-                    <Button
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <SemanticButton
+                      action="custom-pages:edit"
                       type="button"
                       size="xs"
-                      variant="light"
+                      variant="secondary"
                   onClick={() => handleEditPage(page)}
                 >
                   Edit
-                    </Button>
+                    </SemanticButton>
                 {page.pageType !== CustomPageType.TAKE_PHOTO && (
-                      <Button
+                      <SemanticButton
+                        action="custom-pages:delete"
                         type="button"
                         size="xs"
-                        variant="light"
+                        variant="danger"
                     onClick={() => handleDeletePage(page.pageId)}
                   >
                     Delete
-                      </Button>
+                      </SemanticButton>
                 )}
-                  </Group>
-                </Group>
-              </Card>
+                  </div>
+                </div>
+              </article>
           ))
         )}
-        </Stack>
+        </div>
 
       {/* Add Page Buttons */}
-        <Group gap="sm">
-          <Button
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <SemanticButton
+            action="custom-pages:add-who-are-you"
             type="button"
-            variant="light"
+            variant="secondary"
           onClick={() => handleAddPage(CustomPageType.WHO_ARE_YOU)}
         >
           + Who Are You
-          </Button>
-          <Button
+          </SemanticButton>
+          <SemanticButton
+            action="custom-pages:add-accept"
             type="button"
-            variant="light"
+            variant="secondary"
           onClick={() => handleAddPage(CustomPageType.ACCEPT)}
         >
           + Accept/Terms
-          </Button>
-          <Button
+          </SemanticButton>
+          <SemanticButton
+            action="custom-pages:add-cta"
             type="button"
-            variant="light"
+            variant="secondary"
           onClick={() => handleAddPage(CustomPageType.CTA)}
         >
           + CTA
-          </Button>
-          <Button
+          </SemanticButton>
+          <SemanticButton
+            action="custom-pages:add-restart"
             type="button"
-            variant="light"
+            variant="secondary"
           onClick={() => handleAddPage(CustomPageType.RESTART)}
         >
           + Restart
-          </Button>
-        </Group>
+          </SemanticButton>
+        </div>
 
       {/* Edit Modal - Rendered via Portal to avoid nested form */}
-        <Modal
-          opened={showModal && editingPage !== null}
-          onClose={() => {
-            setShowModal(false);
-            setEditingPage(null);
-          }}
-          title={editingPage ? `Edit ${editingPage.pageType} Page` : 'Edit Page'}
-          size="lg"
-          centered
+        {showModal && editingPage !== null ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="custom-page-editor-title"
+          style={{ background: 'var(--gds-color-overlay)', inset: 0, display: 'grid', placeItems: 'center', padding: '1rem', position: 'fixed', zIndex: 1000 }}
         >
+          <div style={{ background: 'var(--gds-color-surface)', border: '1px solid var(--gds-color-border)', borderRadius: '1rem', maxHeight: '90vh', maxWidth: 760, overflowY: 'auto', padding: '1.5rem', width: '100%' }}>
+          <h2 id="custom-page-editor-title" style={{ marginTop: 0 }}>{editingPage ? `Edit ${editingPage.pageType} Page` : 'Edit Page'}</h2>
           {editingPage ? (
             <PageEditModal
               page={editingPage}
@@ -392,9 +476,11 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
               }}
             />
           ) : null}
-        </Modal>
-      </Stack>
-    </Card>
+          </div>
+        </div>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
@@ -527,87 +613,73 @@ function PageEditModal({
 
   return (
     <form onSubmit={handleSubmit}>
-      <Stack gap="md">
-        <TextInput
-          label="Page Title"
-          value={title}
-          onChange={(event) => setTitle(event.currentTarget.value)}
-          required
-          placeholder="e.g., Welcome!"
-        />
-        <Textarea
-          label="Description"
-          value={description}
-          onChange={(event) => setDescription(event.currentTarget.value)}
-          rows={3}
-          placeholder="Optional description text"
-        />
+      <div style={{ display: 'grid', gap: '1rem' }}>
+        <Field label="Page Title" value={title} onChange={setTitle} required placeholder="e.g., Welcome!" />
+        <Area label="Description" value={description} onChange={setDescription} rows={3} placeholder="Optional description text" />
 
         {page.pageType === CustomPageType.WHO_ARE_YOU ? (
           <>
-            <Card withBorder radius="md" p="md">
-              <Stack gap="md">
-                <Title order={4}>Authentication Options</Title>
-                <Checkbox
+            <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                <h4 style={{ margin: 0 }}>Authentication Options</h4>
+                <Check
                   checked={enableSSOLogin}
-                  onChange={(event) => setEnableSSOLogin(event.currentTarget.checked)}
+                  onChange={setEnableSSOLogin}
                   label="Enable Google / Facebook login"
-                  description="Shows Continue with Google and Continue with Facebook."
+                  helper="Shows Continue with Google and Continue with Facebook."
                 />
                 {enableSSOLogin ? (
-                  <TextInput
+                  <Field
                     label="Heading above social buttons"
                     value={ssoButtonText}
-                    onChange={(event) => setSsoButtonText(event.currentTarget.value)}
+                    onChange={setSsoButtonText}
                     placeholder="e.g., Sign in with Google or Facebook"
                   />
                 ) : null}
-                <Checkbox
+                <Check
                   checked={enablePseudoReg}
-                  onChange={(event) => setEnablePseudoReg(event.currentTarget.checked)}
+                  onChange={setEnablePseudoReg}
                   label="Enable pseudo registration"
-                  description="Allow users to provide name and email without authentication."
+                  helper="Allow users to provide name and email without authentication."
                 />
                 {enablePseudoReg ? (
-                  <TextInput
+                  <Field
                     label="Form Title"
                     value={pseudoFormTitle}
-                    onChange={(event) => setPseudoFormTitle(event.currentTarget.value)}
+                    onChange={setPseudoFormTitle}
                     placeholder="e.g., Enter your details"
                   />
                 ) : null}
                 {!enableSSOLogin && !enablePseudoReg ? (
-                  <Alert variant="light">
-                    At least one authentication method must be enabled.
-                  </Alert>
+                  <InlineAlert title="Authentication required" message="At least one authentication method must be enabled." severity="warning" />
                 ) : null}
-              </Stack>
-            </Card>
+              </div>
+            </section>
 
             {enablePseudoReg ? (
               <>
-                <TextInput
+                <Field
                   label="Name Field Label"
                   value={nameLabel}
-                  onChange={(event) => setNameLabel(event.currentTarget.value)}
+                  onChange={setNameLabel}
                   required
                 />
-                <TextInput
+                <Field
                   label="Name Field Placeholder"
                   value={namePlaceholder}
-                  onChange={(event) => setNamePlaceholder(event.currentTarget.value)}
+                  onChange={setNamePlaceholder}
                   placeholder="e.g., Enter your name"
                 />
-                <TextInput
+                <Field
                   label="Email Field Label"
                   value={emailLabel}
-                  onChange={(event) => setEmailLabel(event.currentTarget.value)}
+                  onChange={setEmailLabel}
                   required
                 />
-                <TextInput
+                <Field
                   label="Email Field Placeholder"
                   value={emailPlaceholder}
-                  onChange={(event) => setEmailPlaceholder(event.currentTarget.value)}
+                  onChange={setEmailPlaceholder}
                   placeholder="e.g., your.email@example.com"
                 />
               </>
@@ -616,10 +688,10 @@ function PageEditModal({
         ) : null}
 
         {page.pageType === CustomPageType.ACCEPT ? (
-          <Textarea
+          <Area
             label="Checkbox Text"
             value={checkboxText}
-            onChange={(event) => setCheckboxText(event.currentTarget.value)}
+            onChange={setCheckboxText}
             required
             rows={2}
             placeholder="e.g., I agree to the terms and conditions"
@@ -628,202 +700,202 @@ function PageEditModal({
 
         {page.pageType === CustomPageType.CTA ? (
           <>
-            <TextInput
+            <Field
               type="url"
               label="URL to visit"
               value={checkboxText}
-              onChange={(event) => setCheckboxText(event.currentTarget.value)}
+              onChange={setCheckboxText}
               placeholder="e.g., https://example.com"
             />
-            <TextInput
+            <Field
               label="Visit Button Text"
               value={visitButtonText}
-              onChange={(event) => setVisitButtonText(event.currentTarget.value)}
+              onChange={setVisitButtonText}
               placeholder="e.g., Visit Now"
             />
-            <TextInput
+            <Field
               label="Redirecting Message"
               value={redirectingText}
-              onChange={(event) => setRedirectingText(event.currentTarget.value)}
+              onChange={setRedirectingText}
               placeholder="e.g., Redirecting you shortly..."
             />
-            <Checkbox
+            <Check
               checked={hasButton}
-              onChange={(event) => setHasButton(event.currentTarget.checked)}
+              onChange={setHasButton}
               label="Show Continue Button"
-              description="If unchecked, this will be the final page in the flow."
+              helper="If unchecked, this will be the final page in the flow."
             />
           </>
         ) : null}
 
         {page.pageType === CustomPageType.TAKE_PHOTO ? (
           <>
-            <TextInput
+            <Field
               label="Capture/Save Button Text"
               value={captureButtonText}
-              onChange={(event) => setCaptureButtonText(event.currentTarget.value)}
+              onChange={setCaptureButtonText}
               placeholder="e.g., LOVE IT"
             />
-            <TextInput
+            <Field
               label="Retry Button Text"
               value={retryButtonText}
-              onChange={(event) => setRetryButtonText(event.currentTarget.value)}
+              onChange={setRetryButtonText}
               placeholder="e.g., TRY AGAIN"
             />
-            <TextInput
+            <Field
               label="Share Screen Next Button Text"
               value={shareNextButtonText}
-              onChange={(event) => setShareNextButtonText(event.currentTarget.value)}
+              onChange={setShareNextButtonText}
               placeholder="e.g., NEXT"
             />
 
-            <Divider label="Share options screen language" labelPosition="left" />
-            <Text size="sm" c="dimmed">
+            <DividerLabel>Share options screen language</DividerLabel>
+            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
               Shown after save when share options are enabled. Email delivery is controlled separately in the event notification settings.
-            </Text>
-            <TextInput
+            </p>
+            <Field
               label="Share screen title"
               value={shareScreenTitle}
-              onChange={(event) => setShareScreenTitle(event.currentTarget.value)}
+              onChange={setShareScreenTitle}
               placeholder="Share Your Photo"
             />
-            <TextInput
+            <Field
               label="Copy link button label"
               value={shareCopyLinkButtonText}
-              onChange={(event) => setShareCopyLinkButtonText(event.currentTarget.value)}
+              onChange={setShareCopyLinkButtonText}
               placeholder="Copy"
             />
-            <TextInput
+            <Field
               label="View share page button label"
               value={shareViewPhotoButtonText}
-              onChange={(event) => setShareViewPhotoButtonText(event.currentTarget.value)}
+              onChange={setShareViewPhotoButtonText}
               placeholder="View your photo (opens share link)"
             />
-            <TextInput
+            <Field
               label="Suggested message label"
               value={shareSuggestedMessageLabel}
-              onChange={(event) => setShareSuggestedMessageLabel(event.currentTarget.value)}
+              onChange={setShareSuggestedMessageLabel}
               placeholder="Suggested message for apps below:"
             />
-            <Textarea
+            <Area
               label="Social caption template"
               value={shareSocialCaptionTemplate}
-              onChange={(event) => setShareSocialCaptionTemplate(event.currentTarget.value)}
+              onChange={setShareSocialCaptionTemplate}
               rows={2}
               placeholder="e.g. Check out my photo from {event}! - use {event} for the event name"
             />
 
-            <TextInput
+            <Field
               label="Change Frame Button Text"
               value={changeButtonText}
-              onChange={(event) => setChangeButtonText(event.currentTarget.value)}
+              onChange={setChangeButtonText}
               placeholder="e.g., Change"
             />
-            <Textarea
+            <Area
               label="Success Message"
               value={successMessage}
-              onChange={(event) => setSuccessMessage(event.currentTarget.value)}
+              onChange={setSuccessMessage}
               rows={2}
               placeholder="e.g., Photo saved successfully! You can now share it."
             />
-            <Checkbox
+            <Check
               checked={showSharePage}
-              onChange={(event) => setShowSharePage(event.currentTarget.checked)}
+              onChange={setShowSharePage}
               label="Show share options after save"
-              description="If unchecked, users see a thank-you message instead. Email can still be sent if the event notification module is enabled."
+              helper="If unchecked, users see a thank-you message instead. Email can still be sent if the event notification module is enabled."
             />
             {!showSharePage ? (
-              <Textarea
+              <Area
                 label="Skip Share Message"
                 value={skipShareMessage}
-                onChange={(event) => setSkipShareMessage(event.currentTarget.value)}
+                onChange={setSkipShareMessage}
                 rows={2}
                 placeholder="e.g., Thank you! Your photo has been saved."
               />
             ) : null}
-            <Checkbox
+            <Check
               checked={showFrameOnCapture}
-              onChange={(event) => setShowFrameOnCapture(event.currentTarget.checked)}
+              onChange={setShowFrameOnCapture}
               label="Show Frame During Live Capture"
-              description="If checked, frame overlay is visible during live camera view."
+              helper="If checked, frame overlay is visible during live camera view."
             />
 
-            <Divider label="Camera start prompt" labelPosition="left" />
-            <TextInput
+            <DividerLabel>Camera start prompt</DividerLabel>
+            <Field
               label="Prompt Title"
               value={cameraPromptTitle}
-              onChange={(event) => setCameraPromptTitle(event.currentTarget.value)}
-              description="Large heading shown when camera needs to be started."
+              onChange={setCameraPromptTitle}
+              helper="Large heading shown when camera needs to be started."
               placeholder="e.g., Ready to capture?"
             />
-            <Textarea
+            <Area
               label="Prompt Description"
               value={cameraPromptDescription}
-              onChange={(event) => setCameraPromptDescription(event.currentTarget.value)}
+              onChange={setCameraPromptDescription}
               rows={2}
-              description="Instructional text shown below the title."
+              helper="Instructional text shown below the title."
               placeholder="e.g., Click to start your camera and take a photo"
             />
 
-            <Divider label="Error and notification messages" labelPosition="left" />
-            <TextInput
+            <DividerLabel>Error and notification messages</DividerLabel>
+            <Field
               label="Frame Error Message"
               value={errorFrameMessage}
-              onChange={(event) => setErrorFrameMessage(event.currentTarget.value)}
+              onChange={setErrorFrameMessage}
               placeholder="e.g., Failed to apply frame. Please try again."
             />
-            <TextInput
+            <Field
               label="Save Error Message"
               value={errorSaveMessage}
-              onChange={(event) => setErrorSaveMessage(event.currentTarget.value)}
+              onChange={setErrorSaveMessage}
               placeholder="e.g., Failed to save photo: Please try again."
             />
-            <TextInput
+            <Field
               label="Link Copied Message"
               value={linkCopiedMessage}
-              onChange={(event) => setLinkCopiedMessage(event.currentTarget.value)}
+              onChange={setLinkCopiedMessage}
               placeholder="e.g., Link copied to clipboard!"
             />
-            <TextInput
+            <Field
               label="Copy Error Message"
               value={copyErrorMessage}
-              onChange={(event) => setCopyErrorMessage(event.currentTarget.value)}
+              onChange={setCopyErrorMessage}
               placeholder="e.g., Failed to copy link. Please copy it manually."
             />
-            <TextInput
+            <Field
               label="Save First Warning Message"
               value={saveFirstMessage}
-              onChange={(event) => setSaveFirstMessage(event.currentTarget.value)}
+              onChange={setSaveFirstMessage}
               placeholder="e.g., Please save the photo first to get a shareable link."
             />
           </>
         ) : null}
 
         {page.pageType === CustomPageType.RESTART ? (
-          <TextInput
+          <Field
             label="Restart Button Text"
             value={restartButtonText}
-            onChange={(event) => setRestartButtonText(event.currentTarget.value)}
+            onChange={setRestartButtonText}
             placeholder="e.g., Start again"
           />
         ) : null}
 
         {page.pageType !== CustomPageType.TAKE_PHOTO && (page.pageType !== CustomPageType.CTA || hasButton) ? (
-          <TextInput
+          <Field
             label="Button Text"
             value={buttonText}
-            onChange={(event) => setButtonText(event.currentTarget.value)}
+            onChange={setButtonText}
             required
           />
         ) : null}
 
-        <Group grow pt="sm">
-          <Button type="submit">Save Page</Button>
-          <Button type="button" variant="default" onClick={onCancel}>
+        <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', paddingTop: '0.5rem' }}>
+          <SemanticButton action="custom-pages:save-page" type="submit">Save Page</SemanticButton>
+          <SemanticButton action="custom-pages:cancel-page" type="button" variant="secondary" onClick={onCancel}>
             Cancel
-          </Button>
-        </Group>
-      </Stack>
+          </SemanticButton>
+        </div>
+      </div>
     </form>
   );
 }

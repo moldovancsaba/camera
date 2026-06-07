@@ -148,7 +148,7 @@ See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CON
 
 ## Design system
 
-Camera admin UI follows the portfolio [General Design System](https://github.com/sovereignsquad/general-design-system) on Mantine. Local adapter details, migration state, exceptions, and the formal adoption manifest: [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/camera/docs/GDS_CAMERA_ADOPTION.md) and [gds-adoption.json](/Users/Shared/Projects/camera/gds-adoption.json).
+Camera admin UI follows the portfolio [General Design System](https://github.com/sovereignsquad/general-design-system) through the published `@doneisbetter/*` package line. Local adapter details, migration state, exceptions, and the formal adoption manifest: [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/camera/docs/GDS_CAMERA_ADOPTION.md) and [gds-adoption.json](/Users/Shared/Projects/camera/gds-adoption.json).
 
 Reusable exception guidance:
 
@@ -156,10 +156,10 @@ Reusable exception guidance:
 
 Current package note:
 
-- Camera is aligned to the GDS **contracts**
+- Camera is aligned to the GDS **3.4.3 contracts**
 - Camera now consumes the `@doneisbetter/*` package line at the provider/theme/compliance boundary
 - Camera now pins the temporary supported GitHub release-asset tarballs for `@doneisbetter/*` because npm publication is not live yet
-- Camera now runs on Mantine `8.3.6`, matching the current GDS peer contract
+- Camera now runs on Mantine `8.3.x`, matching the current GDS peer contract
 - Camera no longer carries the old local `AppButton` or `components/gds/ui` barrel authority; leaf controls import Mantine directly under the GDS runtime where needed
 - public landing pages keep an explicit creator-CSS exception so pages like `/landing/*` can preserve custom themed presentation independent of the admin GDS chrome
 
@@ -190,6 +190,7 @@ Canonical docs:
 - [TECH_STACK.md](/Users/Shared/Projects/camera/TECH_STACK.md)
 - [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/camera/docs/GDS_CAMERA_ADOPTION.md)
 - [docs/GDS_COMPONENT_RULES.md](/Users/Shared/Projects/camera/docs/GDS_COMPONENT_RULES.md)
+- [docs/GDS_3_4_3_ALIGNMENT_PLAN.md](/Users/Shared/Projects/camera/docs/GDS_3_4_3_ALIGNMENT_PLAN.md)
 - [docs/AUTHORIZATION.md](/Users/Shared/Projects/camera/docs/AUTHORIZATION.md)
 - [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CONVENTIONS.md)
 - [docs/MONGODB_ATLAS.md](/Users/Shared/Projects/camera/docs/MONGODB_ATLAS.md)

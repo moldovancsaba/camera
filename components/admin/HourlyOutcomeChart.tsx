@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Button, Group, Stack, Text, Title } from '@mantine/core';
+import { ReportingSection } from '@doneisbetter/gds-core/client';
 import type { TryOnHourlyOutcomeRow } from '@/lib/tryon/analytics';
 
 type OutcomeKey = 'approved' | 'rejected' | 'service' | 'failed';
@@ -51,45 +51,50 @@ export default function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeR
   const selectedTotal = chartRows.reduce((sum, row) => sum + row.visibleTotal, 0);
 
   return (
-    <Stack gap="sm">
-      <Title order={3}>Hourly Outcomes</Title>
-      <Text c="dimmed" size="sm">
-        Approved, declined, service, and failed images grouped by hour.
-      </Text>
-      {rows.length > 0 ? (
-        <Stack gap="xs">
-          <Group gap="xs">
+    <ReportingSection
+      title="Hourly Outcomes"
+      description="Approved, declined, service, and failed images grouped by hour."
+      state={rows.length > 0 ? 'ready' : 'empty'}
+      stateMessage={rows.length === 0 ? 'No hourly outcome data matches this filter.' : undefined}
+      chart={rows.length > 0 ? (
+        <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-xs)' }}>
             {OUTCOMES.map((outcome) => (
-              <Button
+              <button
                 key={outcome.key}
                 type="button"
-                size="xs"
-                variant={visible[outcome.key] ? 'light' : 'subtle'}
                 disabled={visible[outcome.key] && visibleKeyCount === 1}
                 aria-pressed={visible[outcome.key]}
                 aria-label={`${visible[outcome.key] ? 'Hide' : 'Show'} ${outcome.label} values`}
                 onClick={() => setVisible((state) => ({ ...state, [outcome.key]: !state[outcome.key] }))}
-                leftSection={
-                  <span
-                    aria-hidden
-                    style={{
-                      background: outcome.color,
-                      borderRadius: 999,
-                      display: 'inline-block',
-                      height: 10,
-                      opacity: visible[outcome.key] ? 1 : 0.35,
-                      width: 10,
-                    }}
-                  />
-                }
+                style={{
+                  alignItems: 'center',
+                  border: '1px solid var(--mantine-color-gray-3)',
+                  borderRadius: 999,
+                  display: 'inline-flex',
+                  gap: 8,
+                  opacity: visible[outcome.key] ? 1 : 0.55,
+                  padding: '6px 10px',
+                }}
               >
+                <span
+                  aria-hidden
+                  style={{
+                    background: outcome.color,
+                    borderRadius: 999,
+                    display: 'inline-block',
+                    height: 10,
+                    opacity: visible[outcome.key] ? 1 : 0.35,
+                    width: 10,
+                  }}
+                />
                 {outcome.label}
-              </Button>
+              </button>
             ))}
-          </Group>
-          <Text size="xs" c="dimmed">
+          </div>
+          <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', margin: 0 }}>
             Selected total: {selectedTotal} image{selectedTotal === 1 ? '' : 's'}
-          </Text>
+          </p>
           <div
             style={{
               alignItems: 'end',
@@ -122,7 +127,7 @@ export default function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeR
                     scrollSnapAlign: 'start',
                   }}
                 >
-                  <Text size="xs" fw={700}>{row.visibleTotal}</Text>
+                  <strong style={{ fontSize: 'var(--mantine-font-size-xs)' }}>{row.visibleTotal}</strong>
                   <div
                     aria-label={`${row.label}: approved ${row.approved}, declined ${row.rejected}, service ${row.service}, failed ${row.failed}`}
                     role="img"
@@ -147,17 +152,15 @@ export default function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeR
                       ) : null
                     )}
                   </div>
-                  <Text size="xs" c="dimmed" ta="center" style={{ lineHeight: 1.1, minHeight: 24 }}>
+                  <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', lineHeight: 1.1, minHeight: 24, textAlign: 'center' }}>
                     {showDay ? dayLabel(row.hour) : ''}
-                  </Text>
+                  </span>
                 </div>
               );
             })}
           </div>
-        </Stack>
-      ) : (
-        <Text c="dimmed">No hourly outcome data matches this filter.</Text>
-      )}
-    </Stack>
+        </div>
+      ) : undefined}
+    />
   );
 }

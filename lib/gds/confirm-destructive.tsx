@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { modals } from '@mantine/modals';
-import { Text } from '@mantine/core';
+import { Text } from '@/components/gds/PublicPrimitives';
 
 export interface ConfirmDestructiveOptions {
   title: string;

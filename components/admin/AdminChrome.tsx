@@ -2,14 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  Divider,
-  Group,
-  Stack,
-  Text,
-  ThemeIcon,
-  UnstyledButton,
-} from '@mantine/core';
 import { AppShell as GdsAppShell } from '@doneisbetter/gds-admin/client';
 import {
   IconBrandDatabricks,
@@ -24,7 +16,7 @@ import {
   IconWorld,
 } from '@tabler/icons-react';
 import { APP_VERSION } from '@/lib/app-version';
-import SemanticNavLink from '@/components/gds/SemanticNavLink';
+import SemanticNavLink from '@/components/admin/SemanticNavLink';
 
 interface AdminChromeProps {
   session: {
@@ -115,50 +107,50 @@ export default function AdminChrome({
   }
 
   const primaryNavigation = (
-    <Stack gap="xl">
+    <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
       <NavSection title="Apps" items={appItems} pathname={pathname} onNavigate={closeMobileNavigation} />
       <NavSection title="Core" items={coreItems} pathname={pathname} onNavigate={closeMobileNavigation} />
       {resourceItems.length > 0 ? (
         <NavSection title="Resource Inventory" items={resourceItems} pathname={pathname} onNavigate={closeMobileNavigation} />
       ) : null}
-    </Stack>
+    </div>
   );
 
   const accountPanel = (
-    <Stack gap="sm">
-      <Group gap="sm" wrap="nowrap">
-        <ThemeIcon variant="light" radius="xl" size={36}>
+    <div style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)' }}>
+      <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'nowrap', gap: 'var(--mantine-spacing-sm)' }}>
+        <span style={{ alignItems: 'center', background: 'var(--mantine-color-blue-light)', borderRadius: 999, display: 'inline-flex', height: 36, justifyContent: 'center', width: 36 }}>
           <IconUsers size={18} />
-        </ThemeIcon>
-        <Stack gap={0} style={{ minWidth: 0 }}>
-          <Text size="sm" fw={600} truncate>
+        </span>
+        <div style={{ display: 'grid', gap: 0, minWidth: 0 }}>
+          <strong style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {session.user.name || session.user.email}
-          </Text>
-          <Text size="xs" c="dimmed" tt="capitalize">
+          </strong>
+          <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', textTransform: 'capitalize' }}>
             {session.appRole || 'user'}
-          </Text>
-        </Stack>
-      </Group>
-      <Divider />
-      <UnstyledButton component={Link} href="/" style={{ borderRadius: 12 }}>
-        <Group gap="sm" p="sm">
-          <ThemeIcon variant="light" radius="xl">
+          </span>
+        </div>
+      </div>
+      <hr style={{ border: 0, borderTop: '1px solid var(--mantine-color-gray-3)', margin: 0 }} />
+      <Link href="/" style={{ borderRadius: 12, color: 'inherit', display: 'block', padding: 'var(--mantine-spacing-sm)', textDecoration: 'none' }}>
+        <div style={{ alignItems: 'center', display: 'flex', gap: 'var(--mantine-spacing-sm)' }}>
+          <span style={{ alignItems: 'center', background: 'var(--mantine-color-blue-light)', borderRadius: 999, display: 'inline-flex', height: 34, justifyContent: 'center', width: 34 }}>
             <IconCamera size={18} />
-          </ThemeIcon>
+          </span>
           <div>
-            <Text size="sm" fw={600}>
+            <strong>
               Back to App
-            </Text>
-            <Text size="xs" c="dimmed">
+            </strong>
+            <div style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)' }}>
               Return to Camera home
-            </Text>
+            </div>
           </div>
-        </Group>
-      </UnstyledButton>
-      <Text size="xs" c="dimmed" ta="center" ff="monospace">
+        </div>
+      </Link>
+      <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', textAlign: 'center' }}>
         v{APP_VERSION}
-      </Text>
-    </Stack>
+      </code>
+    </div>
   );
 
   return (
@@ -167,19 +159,19 @@ export default function AdminChrome({
         logoText="Camera"
         headerContext="Admin Panel"
         headerActions={
-          <Group gap="sm" wrap="nowrap">
-            <ThemeIcon variant="light" radius="xl" size={36}>
+          <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'nowrap', gap: 'var(--mantine-spacing-sm)' }}>
+            <span style={{ alignItems: 'center', background: 'var(--mantine-color-blue-light)', borderRadius: 999, display: 'inline-flex', height: 36, justifyContent: 'center', width: 36 }}>
               <IconUsers size={18} />
-            </ThemeIcon>
-            <Stack gap={0} visibleFrom="sm">
-              <Text size="sm" fw={600}>
+            </span>
+            <div style={{ display: 'grid', gap: 0 }}>
+              <strong>
                 {session.user.name || session.user.email}
-              </Text>
-              <Text size="xs" c="dimmed" tt="capitalize">
+              </strong>
+              <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', textTransform: 'capitalize' }}>
                 {session.appRole || 'user'}
-              </Text>
-            </Stack>
-          </Group>
+              </span>
+            </div>
+          </div>
         }
         primaryNavigation={primaryNavigation}
         accountPanel={accountPanel}
@@ -204,11 +196,11 @@ function NavSection({
   if (items.length === 0) return null;
 
   return (
-    <Stack gap="xs">
-      <Text tt="uppercase" fw={700} fz="xs" style={{ letterSpacing: '0.12em' }}>
+    <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)' }}>
+      <strong style={{ fontSize: 'var(--mantine-font-size-xs)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
         {title}
-      </Text>
-      <Stack gap={6}>
+      </strong>
+      <div style={{ display: 'grid', gap: 6 }}>
         {items.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + '/');
           return (
@@ -222,7 +214,7 @@ function NavSection({
             />
           );
         })}
-      </Stack>
-    </Stack>
+      </div>
+    </div>
   );
 }

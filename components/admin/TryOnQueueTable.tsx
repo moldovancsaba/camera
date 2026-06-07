@@ -3,9 +3,8 @@
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import DataTable from '@/components/gds/DataTable';
-import { StatusBadge, StateBlock } from '@doneisbetter/gds-core/client';
-import { Button, Group, Select, Stack, Text } from '@mantine/core';
+import { DataTable } from '@doneisbetter/gds-admin/client';
+import { SemanticButton, StatusBadge, StateBlock } from '@doneisbetter/gds-core/client';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
 
@@ -40,6 +39,8 @@ export interface QueueRow {
     message?: string | null;
   };
 }
+
+type QueueTableRow = QueueRow & Record<string, unknown>;
 
 interface TryOnQueueTableProps {
   rows: QueueRow[];
@@ -128,18 +129,18 @@ function SourceImagePreview({ row }: { row: QueueRow }) {
   const imageUrl = row.source.imageUrl.trim();
   if (!imageUrl) {
     return (
-      <Text size="sm" c="dimmed">
+      <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem' }}>
         No source image
-      </Text>
+      </span>
     );
   }
 
   return (
-    <Stack gap="xs">
+    <div style={{ display: 'grid', gap: '0.5rem' }}>
       <div
         style={{
-          background: 'var(--mantine-color-gray-1)',
-          border: '1px solid var(--mantine-color-gray-3)',
+          background: 'var(--gds-color-surface-muted)',
+          border: '1px solid var(--gds-color-border)',
           borderRadius: 12,
           height: 132,
           overflow: 'hidden',
@@ -156,10 +157,10 @@ function SourceImagePreview({ row }: { row: QueueRow }) {
           unoptimized
         />
       </div>
-      <Text component="a" href={imageUrl} target="_blank" rel="noopener noreferrer" size="xs">
+      <a href={imageUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem' }}>
         Open original
-      </Text>
-    </Stack>
+      </a>
+    </div>
   );
 }
 
@@ -331,52 +332,50 @@ export default function TryOnQueueTable({
   }
 
   return (
-    <Stack gap="md">
+    <div style={{ display: 'grid', gap: '1rem' }}>
       {recoveryMessage ? (
-        <Text role="status" size="sm" fw={700}>
+        <p role="status" style={{ fontSize: '0.875rem', fontWeight: 700, margin: 0 }}>
           {recoveryMessage}
-        </Text>
+        </p>
       ) : null}
-      <DataTable
-      data={displayRows}
+      <DataTable<QueueTableRow>
+      data={displayRows as QueueTableRow[]}
       columns={[
         {
           key: 'job',
           label: 'Job',
-          render: (row: QueueRow) => (
+          render: (row) => (
             <>
-              <Text fw={700}>{row.jobId}</Text>
-              <Text size="xs" c="dimmed" mt={4}>
+              <strong>{row.jobId}</strong>
+              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
                 Created {new Date(row.createdAt).toLocaleString()}
-              </Text>
-              <Text size="xs" c="dimmed" mt={4}>
+              </p>
+              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
                 Submission {row.source.submissionId}
-              </Text>
+              </p>
             </>
           ),
         },
         {
           key: 'status',
           label: 'Status',
-          render: (row: QueueRow) => (
+          render: (row) => (
             <>
-              <Group gap="xs">
-                <StatusBadge {...getStatusBadgeProps(toneForStatus(row.status), formatStatusLabel(row.status))} />
-              </Group>
-              <Text size="xs" c="dimmed" mt={8}>
+              <StatusBadge {...getStatusBadgeProps(toneForStatus(row.status), formatStatusLabel(row.status))} />
+              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.5rem 0 0' }}>
                 Stage: {formatStatusLabel(row.stage)}
-              </Text>
+              </p>
               {row.error?.message ? (
-                <Stack gap={2} mt={8}>
+                <div style={{ display: 'grid', gap: 2, marginTop: '0.5rem' }}>
                   {row.error.code ? (
-                    <Text size="xs" fw={700}>
+                    <strong style={{ fontSize: '0.75rem' }}>
                       {formatStatusLabel(row.error.code)}
-                    </Text>
+                    </strong>
                   ) : null}
-                  <Text size="xs">
+                  <span style={{ fontSize: '0.75rem' }}>
                     {row.error.message}
-                  </Text>
-                </Stack>
+                  </span>
+                </div>
               ) : null}
             </>
           ),
@@ -384,29 +383,29 @@ export default function TryOnQueueTable({
         {
           key: 'source',
           label: 'Source',
-          render: (row: QueueRow) => (
-            <Stack gap="xs">
+          render: (row) => (
+            <div style={{ display: 'grid', gap: '0.5rem' }}>
               <SourceImagePreview row={row} />
-              <Text size="sm" lineClamp={2}>
+              <span style={{ display: '-webkit-box', fontSize: '0.875rem', overflow: 'hidden', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>
                 {row.source.imageUrl}
-              </Text>
+              </span>
               {row.source.eventMongoId ? (
-                <Text size="xs" c="dimmed" mt={4}>
+                <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
                   Event {row.source.eventMongoId}
-                </Text>
+                </span>
               ) : null}
-            </Stack>
+            </div>
           ),
         },
         {
           key: 'suit',
           label: 'Garment',
-          render: (row: QueueRow) => <Text size="sm">{row.request.leatherSuitId}</Text>,
+          render: (row) => <span style={{ fontSize: '0.875rem' }}>{row.request.leatherSuitId}</span>,
         },
         {
           key: 'preset',
           label: 'Preset',
-          render: (row: QueueRow) => {
+          render: (row) => {
             const setupForDisplay = row.processing.resolvedSetup
               ? {
                   setupId: row.processing.resolvedSetup.setupId,
@@ -415,22 +414,22 @@ export default function TryOnQueueTable({
               : typeof row.request.setupId === 'string'
                 ? { setupId: row.request.setupId }
                 : null;
-            return <Text size="sm">{getSetupLabel(setupsById, setupForDisplay)}</Text>;
+            return <span style={{ fontSize: '0.875rem' }}>{getSetupLabel(setupsById, setupForDisplay)}</span>;
           },
         },
         {
           key: 'worker',
           label: 'Worker',
-          render: (row: QueueRow) => (
+          render: (row) => (
             <>
-              <Text size="sm">{row.processing.workerId || 'Unclaimed'}</Text>
-              <Text size="xs" c="dimmed" mt={4}>
+              <span style={{ fontSize: '0.875rem' }}>{row.processing.workerId || 'Unclaimed'}</span>
+              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
                 Attempts {row.processing.attemptCount}
-              </Text>
+              </p>
               {row.processing.nextAttemptAt ? (
-                <Text size="xs" c="dimmed" mt={4}>
+                <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
                   Next {new Date(row.processing.nextAttemptAt).toLocaleString()}
-                </Text>
+                </p>
               ) : null}
             </>
           ),
@@ -438,33 +437,34 @@ export default function TryOnQueueTable({
         {
           key: 'result',
           label: 'Result',
-          render: (row: QueueRow) => (
-            <Stack gap="xs" align="flex-start">
-              <Text size="xs" c="dimmed">
+          render: (row) => (
+            <div style={{ alignItems: 'flex-start', display: 'grid', gap: '0.5rem' }}>
+              <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
                 {recoveryHint(row)}
-              </Text>
+              </span>
               {row.result.publicResultUrl ? (
-                <Text component="a" href={row.result.publicResultUrl} target="_blank" size="sm">
+                <a href={row.result.publicResultUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.875rem' }}>
                   Open result
-                </Text>
+                </a>
               ) : (
-                <Text size="sm" c="dimmed">
+                <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem' }}>
                   No result yet
-                </Text>
+                </span>
               )}
               {(row.status === 'failed' || row.status === 'retry_wait') ? (
-                <Button
-                  variant="light"
+                <SemanticButton
+                  action="tryon:retry-job"
+                  variant="secondary"
                   size="xs"
                   loading={busyJobId === row.jobId}
                   aria-label={`Retry try-on job ${row.jobId}`}
                   onClick={() => void handleRetry(row.jobId)}
                 >
                   Retry job
-                </Button>
+                </SemanticButton>
               ) : null}
               {(row.status === 'failed' || row.status === 'retry_wait' || row.status === 'done') ? (
-                <Stack gap="xs">
+                <div style={{ display: 'grid', gap: '0.5rem' }}>
                   {(() => {
                     const selectedSetupId =
                       selectedSetupByJob[row.jobId] ??
@@ -475,53 +475,56 @@ export default function TryOnQueueTable({
                     return (
                       <>
                         {setupOptions.length > 0 ? (
-                          <Select
-                            label="Try-on preset"
-                            data={setupOptions.map((setup) => ({
-                              value: setup.setupId,
-                              label: `${setup.name}${setup.isDefault ? ' (default)' : ''}`,
-                            }))}
+                          <label style={{ display: 'grid', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 700 }}>
+                            Try-on preset
+                            <select
                             value={selectedSetupId}
-                            onChange={(nextSetupId) => {
-                              if (typeof nextSetupId === 'string') {
-                                setSelectedSetupByJob((state) => ({ ...state, [row.jobId]: nextSetupId }));
-                              }
+                            onChange={(event) => {
+                              setSelectedSetupByJob((state) => ({ ...state, [row.jobId]: event.currentTarget.value }));
                             }}
-                            size="xs"
-                            checkIconPosition="left"
                             disabled={busyJobId === row.jobId}
-                          />
+                            style={{ minHeight: 36, minWidth: 180 }}
+                          >
+                            {setupOptions.map((setup) => (
+                              <option key={setup.setupId} value={setup.setupId}>
+                                {setup.name}{setup.isDefault ? ' (default)' : ''}
+                              </option>
+                            ))}
+                            </select>
+                          </label>
                         ) : (
-                          <Text size="xs" c="dimmed">
+                          <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
                             Preset list unavailable
-                          </Text>
+                          </span>
                         )}
-                        <Button
-                          variant="outline"
+                        <SemanticButton
+                          action="tryon:rerun-job"
+                          variant="secondary"
                           size="xs"
                           loading={busyJobId === row.jobId}
                           aria-label={`Rerun try-on job ${row.jobId}`}
                           onClick={() => void handleRerun(row.jobId, selectedSetupId)}
                         >
                           Rerun job
-                        </Button>
+                        </SemanticButton>
                       </>
                     );
                   })()}
-                </Stack>
+                </div>
               ) : null}
               {(row.status === 'done' && Boolean(row.result.publicResultUrl)) ? (
-                <Button
-                  variant="default"
+                <SemanticButton
+                  action="tryon:resend-result"
+                  variant="secondary"
                   size="xs"
                   loading={busyJobId === row.jobId}
                   aria-label={`Re-send try-on result ${row.jobId}`}
                   onClick={() => void handleReapplyResult(row.jobId)}
                 >
                   Resend to user
-                </Button>
+                </SemanticButton>
               ) : null}
-            </Stack>
+            </div>
           ),
         },
       ]}
@@ -536,10 +539,10 @@ export default function TryOnQueueTable({
           />
         </div>
       ) : (
-        <Text size="sm" c="dimmed" ta="center">
+        <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0, textAlign: 'center' }}>
           All {totalCount} matching jobs loaded.
-        </Text>
+        </p>
       )}
-    </Stack>
+    </div>
   );
 }

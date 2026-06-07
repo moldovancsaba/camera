@@ -1,9 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
-import { Button, Card, SimpleGrid, Stack, Text } from '@mantine/core';
-import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
+import {
+  AdminResourceEmptyState,
+  AdminResourceManager,
+  type AdminResourceAction,
+  type AdminResourceRecord,
+} from '@doneisbetter/gds-admin/client';
+import { StatusBadge } from '@doneisbetter/gds-core/client';
 import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface SerializedTryOnSuitRow {
@@ -19,65 +23,52 @@ export interface SerializedTryOnSuitRow {
 }
 
 export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTryOnSuitRow[] }) {
+  const records: Array<AdminResourceRecord & SerializedTryOnSuitRow> = suits.map((suit) => ({
+    ...suit,
+    id: suit.id,
+    title: suit.name,
+    description: suit.description || suit.leatherSuitId,
+    mediaSrc: suit.thumbnailUrl || suit.imageUrl,
+    mediaAlt: suit.name,
+    status: <StatusBadge {...getStatusBadgeProps(suit.isActive ? 'active' : 'inactive')} />,
+    metadata: [
+      { label: 'Catalog ID', value: suit.leatherSuitId },
+      { label: 'Event allowlists', value: String(suit.eventAssignmentCount) },
+      { label: 'Queue usage', value: String(suit.queueUsageCount) },
+    ],
+  }));
+  const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedTryOnSuitRow>> = [
+    {
+      id: 'edit',
+      label: 'Edit Garment',
+      kind: 'primary',
+      onSelect: (suit) => {
+        window.location.href = `/admin/tryon/suits/${suit.id}/edit`;
+      },
+    },
+    {
+      id: 'analytics',
+      label: 'Asset Builder',
+      kind: 'secondary',
+      onSelect: (suit) => {
+        window.location.href = `/admin/tryon/analytics?garment=${encodeURIComponent(suit.leatherSuitId)}`;
+      },
+    },
+  ];
+
   if (suits.length === 0) {
     return (
-      <Card p="xl">
-        <StateBlock
-          variant="empty"
+      <AdminResourceEmptyState
           title="No garments yet"
           description="Upload your first shared garment so try-on events can offer it to users."
           action={
-            <Button component={Link} href="/admin/tryon/suits/new">
+            <Link href="/admin/tryon/suits/new">
               Upload First Garment
-            </Button>
+            </Link>
           }
         />
-      </Card>
     );
   }
 
-  return (
-    <SimpleGrid cols={{ base: 1, sm: 2, lg: 3, xl: 4 }} spacing="lg">
-      {suits.map((suit) => (
-        <Card key={suit.id} p={0} style={{ overflow: 'hidden' }}>
-          <div style={{ position: 'relative', aspectRatio: '1 / 1' }}>
-            <Image
-              src={suit.thumbnailUrl || suit.imageUrl}
-              alt={suit.name}
-              fill
-              style={{ objectFit: 'contain', padding: 16 }}
-              unoptimized
-            />
-            <div style={{ position: 'absolute', top: 8, right: 8 }}>
-              <StatusBadge {...getStatusBadgeProps(suit.isActive ? 'active' : 'inactive')} />
-            </div>
-          </div>
-          <Stack gap="sm" p="md">
-            <Text fw={700} truncate="end">
-              {suit.name}
-            </Text>
-            {suit.description ? (
-              <Text size="sm" c="dimmed" lineClamp={2}>
-                {suit.description}
-              </Text>
-            ) : null}
-            <Stack gap={2}>
-              <Text size="xs" c="dimmed">
-                Catalog ID: {suit.leatherSuitId}
-              </Text>
-              <Text size="xs" c="dimmed">
-                Event allowlists: {suit.eventAssignmentCount}
-              </Text>
-              <Text size="xs" c="dimmed">
-                Queue usage: {suit.queueUsageCount}
-              </Text>
-            </Stack>
-            <Button component={Link} href={`/admin/tryon/suits/${suit.id}/edit`} fullWidth>
-              Edit Garment
-            </Button>
-          </Stack>
-        </Card>
-      ))}
-    </SimpleGrid>
-  );
+  return <AdminResourceManager records={records} state="ready" actions={actions} />;
 }

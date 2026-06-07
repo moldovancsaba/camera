@@ -10,17 +10,6 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ObjectId } from 'mongodb';
 import { StatsStrip } from '@doneisbetter/gds-admin/server';
-import {
-  Breadcrumbs,
-  Button,
-  Card,
-  Code,
-  Group,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from '@mantine/core';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import StyleSections from '@/components/admin/StyleSections';
 import SlideshowManager from '@/components/admin/SlideshowManager';
@@ -34,6 +23,46 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
+
+function Stack({ children, gap = '1rem' }: { children: React.ReactNode; gap?: string | number; [key: string]: unknown }) {
+  return <div style={{ display: 'grid', gap }}>{children}</div>;
+}
+
+function Group({ children, justify }: { children: React.ReactNode; justify?: string; [key: string]: unknown }) {
+  return <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: justify }}>{children}</div>;
+}
+
+function SimpleGrid({ children }: { children: React.ReactNode; [key: string]: unknown }) {
+  return <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))' }}>{children}</div>;
+}
+
+function Text({ children, size, c, fw, ta }: { children: React.ReactNode; size?: string; c?: string; fw?: number; ta?: React.CSSProperties['textAlign']; [key: string]: unknown }) {
+  return <span style={{ color: c === 'dimmed' ? 'var(--gds-color-muted)' : undefined, display: 'block', fontSize: size === 'xs' ? '0.75rem' : size === 'sm' ? '0.875rem' : size, fontWeight: fw, textAlign: ta }}>{children}</span>;
+}
+
+function Title({ children, order = 2 }: { children: React.ReactNode; order?: 1 | 2 | 3 | 4; [key: string]: unknown }) {
+  if (order === 1) return <h1 style={{ margin: 0 }}>{children}</h1>;
+  if (order === 3) return <h3 style={{ margin: 0 }}>{children}</h3>;
+  if (order === 4) return <h4 style={{ margin: 0 }}>{children}</h4>;
+  return <h2 style={{ margin: 0 }}>{children}</h2>;
+}
+
+function Card({ children }: { children: React.ReactNode; [key: string]: unknown }) {
+  return <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', padding: '1rem' }}>{children}</section>;
+}
+
+function Code({ children }: { children: React.ReactNode; [key: string]: unknown }) {
+  return <code style={{ display: 'block', overflowWrap: 'anywhere' }}>{children}</code>;
+}
+
+function Button({ children, component, href }: { children: React.ReactNode; component?: typeof Link; href?: string; [key: string]: unknown }) {
+  const content = <span style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.75rem', display: 'inline-flex', fontWeight: 700, justifyContent: 'center', padding: '0.65rem 1rem', width: '100%' }}>{children}</span>;
+  return component === Link && href ? <Link href={href} style={{ textDecoration: 'none' }}>{content}</Link> : content;
+}
+
+function Breadcrumbs({ children }: { children: React.ReactNode }) {
+  return <nav aria-label="Breadcrumb" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>{children}</nav>;
+}
 
 interface EventFrameDetails {
   frameId: string;
@@ -76,6 +105,11 @@ interface EventDoc {
   logosOverridden?: boolean;
   frames?: EventFrameAssignment[];
   logos?: EventLogoAssignment[];
+  tryOn?: {
+    enabled?: boolean;
+    vettingEnabled?: boolean;
+    localAiQualityGateEnabled?: boolean;
+  };
 }
 
 interface PartnerDoc {
@@ -344,7 +378,7 @@ export default async function EventDetailPage({
               </Button>
             </Link>
             {typeof event.shortUrlSlug === 'string' && event.shortUrlSlug.trim() ? (
-              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--mantine-color-blue-2)' }}>
+              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--gds-color-border)' }}>
                 <Text size="sm" fw={600} mb="xs">
                   Short link
                 </Text>
@@ -388,6 +422,40 @@ export default async function EventDetailPage({
                 Optional: set a Greatest Hits link slug under <strong>Edit Event</strong>.
               </Text>
             )}
+          </Card>
+
+          <Card>
+            <Title order={3}>Local AI Services</Title>
+            <Text size="sm" c="dimmed" mt="xs" mb="md">
+              Event-level controls for vetting, asset health, and local AI quality checks.
+            </Text>
+            <Stack gap="xs" mb="md">
+              <EventInfoRow label="Try-on" value={event.tryOn?.enabled ? 'Enabled' : 'Disabled'} />
+              <EventInfoRow
+                label="Vetting"
+                value={event.tryOn?.vettingEnabled === false ? 'Auto-approve' : 'Manual review'}
+              />
+              <EventInfoRow
+                label="Quality gate"
+                value={event.tryOn?.localAiQualityGateEnabled ? 'Enabled' : 'Disabled'}
+              />
+            </Stack>
+            <Group grow>
+              <Button
+                component={Link}
+                href={`/admin/tryon/analytics?eventId=${encodeURIComponent(event.eventId)}`}
+                variant="light"
+              >
+                Asset Health Report
+              </Button>
+              <Button
+                component={Link}
+                href={`/admin/tryon/vetting?eventId=${encodeURIComponent(event.eventId)}`}
+                variant="light"
+              >
+                Open Vetting
+              </Button>
+            </Group>
           </Card>
         </Stack>
 
@@ -440,8 +508,8 @@ export default async function EventDetailPage({
       />
 
       <Card p={0}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
-          <Title order={2}>📷 Event Gallery</Title>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+          <Title order={2}>Event Gallery</Title>
           <Text c="dimmed" mt="xs">
             Photos visible in Event Slideshows ({submissions.length})
           </Text>

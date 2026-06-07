@@ -1,7 +1,7 @@
 'use client';
 
 import CaptureStageShell from '@/components/capture/CaptureStageShell';
-import { Button, Group } from '@mantine/core';
+import { Button, Group } from '@/components/gds/PublicPrimitives';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,

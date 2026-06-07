@@ -1,9 +1,11 @@
 'use client';
 
-import Link from 'next/link';
-import Image from 'next/image';
-import { Button, Card, Group, SimpleGrid, Stack, Text } from '@mantine/core';
-import { StateBlock } from '@doneisbetter/gds-core/client';
+import {
+  AdminResourceEmptyState,
+  AdminResourceManager,
+  type AdminResourceAction,
+  type AdminResourceRecord,
+} from '@doneisbetter/gds-admin/client';
 
 export interface SerializedSubmissionRow {
   id: string;
@@ -30,122 +32,58 @@ function resolveDisplayName(userName: string): string {
 
 export default function SubmissionsInventoryList({
   submissions,
-  totalCount,
 }: {
   submissions: SerializedSubmissionRow[];
   totalCount: number;
 }) {
+  const records: Array<AdminResourceRecord & SerializedSubmissionRow> = submissions.map((submission) => {
+    const displayName = resolveDisplayName(submission.userName);
+    return {
+      ...submission,
+      id: submission.id,
+      title: displayName,
+      description: submission.eventName || submission.partnerName || submission.frameName || 'Gallery item',
+      mediaSrc: submission.imageUrl,
+      mediaAlt: `Photo by ${displayName}`,
+      metadata: [
+        { label: 'Email', value: submission.userEmail },
+        { label: 'Frame', value: submission.frameName || 'frameless' },
+        { label: 'Created', value: submission.createdAtLabel },
+        submission.partnerName ? { label: 'Partner', value: submission.partnerName } : null,
+        submission.eventName ? { label: 'Event', value: submission.eventName } : null,
+        typeof submission.playCount === 'number' && submission.playCount > 0
+          ? { label: 'Slideshow plays', value: String(submission.playCount) }
+          : null,
+      ].filter((item): item is { label: string; value: string } => Boolean(item)),
+    };
+  });
+  const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedSubmissionRow>> = [
+    {
+      id: 'view',
+      label: 'View',
+      kind: 'primary',
+      onSelect: (submission) => {
+        window.location.href = `/share/${submission.id}`;
+      },
+    },
+    {
+      id: 'download',
+      label: 'Download',
+      kind: 'secondary',
+      onSelect: (submission) => {
+        window.open(submission.imageUrl, '_blank', 'noopener,noreferrer');
+      },
+    },
+  ];
+
   if (submissions.length === 0) {
     return (
-      <Card p="xl">
-        <StateBlock
-          variant="empty"
+      <AdminResourceEmptyState
           title="No gallery items yet"
           description="Waiting for users to create their first photos!"
         />
-      </Card>
     );
   }
 
-  return (
-    <Stack gap="md">
-      <Text size="sm" c="dimmed">
-        Showing {submissions.length} of {totalCount} gallery item{totalCount === 1 ? '' : 's'}
-      </Text>
-      <SimpleGrid cols={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing="lg">
-        {submissions.map((submission) => (
-          <Card key={submission.id} p={0} style={{ overflow: 'hidden' }}>
-            <Link href={`/share/${submission.id}`}>
-              <div style={{ position: 'relative' }}>
-                <Image
-                  src={submission.imageUrl}
-                  alt={`Photo by ${resolveDisplayName(submission.userName)}`}
-                  width={1200}
-                  height={1600}
-                  unoptimized
-                  style={{ width: '100%', height: 'auto' }}
-                />
-              </div>
-            </Link>
-            <Stack gap="sm" p="md">
-              <Text fw={700}>
-                {resolveDisplayName(submission.userName)}
-              </Text>
-              <Text size="sm" c="dimmed">
-                {submission.userEmail}
-              </Text>
-              <Stack gap={2}>
-                <Group justify="space-between" gap="xs">
-                  <Text size="xs" c="dimmed" tt="capitalize">
-                    {submission.frameName || 'frameless'}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    {submission.createdAtLabel}
-                  </Text>
-                </Group>
-                {submission.partnerAdminId && submission.partnerName ? (
-                  <Text size="xs" c="dimmed">
-                    Partner:{' '}
-                    <Text
-                      component={Link}
-                      href={`/admin/partners/${submission.partnerAdminId}`}
-                      span
-                      style={{ textDecoration: 'none' }}
-                    >
-                      {submission.partnerName}
-                    </Text>
-                  </Text>
-                ) : null}
-                {submission.eventAdminId && submission.eventName ? (
-                  <Text size="xs" c="dimmed">
-                    Event:{' '}
-                    <Text
-                      component={Link}
-                      href={`/admin/events/${submission.eventAdminId}`}
-                      span
-                      style={{ textDecoration: 'none' }}
-                    >
-                      {submission.eventName}
-                    </Text>
-                  </Text>
-                ) : null}
-                {!submission.partnerAdminId && !submission.eventAdminId ? (
-                  <Text size="xs" c="dimmed">
-                    General / unscoped gallery item
-                  </Text>
-                ) : null}
-              </Stack>
-              {typeof submission.playCount === 'number' && submission.playCount > 0 ? (
-                <Text
-                  size="xs"
-                  fw={700}
-                  ta="center"
-                  style={{ padding: '0.5rem', borderRadius: '0.5rem' }}
-                >
-                  Slideshow plays: {submission.playCount}
-                </Text>
-              ) : null}
-              <Group grow gap="sm">
-                <Button component={Link} href={`/share/${submission.id}`} fullWidth size="sm">
-                  View
-                </Button>
-                <Button
-                  component="a"
-                  href={submission.imageUrl}
-                  download
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  fullWidth
-                  variant="default"
-                  size="sm"
-                >
-                  Download
-                </Button>
-              </Group>
-            </Stack>
-          </Card>
-        ))}
-      </SimpleGrid>
-    </Stack>
-  );
+  return <AdminResourceManager records={records} state="ready" actions={actions} />;
 }

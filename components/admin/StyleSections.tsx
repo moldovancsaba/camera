@@ -5,16 +5,11 @@
  * Used on both partner detail and event detail pages.
  */
 
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
-import {
-  Button,
-  Card,
-  Group,
-  Stack,
-  Text,
-  Title,
-} from '@mantine/core';
+import { SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -41,7 +36,6 @@ interface LogoAssignment {
 interface ScenarioSummary {
   id: string;
   name: string;
-  icon: string;
 }
 
 interface StyleSectionsProps {
@@ -58,10 +52,10 @@ interface StyleSectionsProps {
 }
 
 const SCENARIOS: ScenarioSummary[] = [
-  { id: 'slideshow-transition', name: 'Slideshow Transitions', icon: '🔄' },
-  { id: 'onboarding-thankyou', name: 'Custom Pages', icon: '📝' },
-  { id: 'loading-slideshow', name: 'Loading Slideshow', icon: '⏳' },
-  { id: 'loading-capture', name: 'Loading Capture', icon: '📸' },
+  { id: 'slideshow-transition', name: 'Slideshow Transitions' },
+  { id: 'onboarding-thankyou', name: 'Custom Pages' },
+  { id: 'loading-slideshow', name: 'Loading Slideshow' },
+  { id: 'loading-capture', name: 'Loading Capture' },
 ];
 
 function ColorPreviewSwatch({ color }: { color: string }) {
@@ -72,7 +66,7 @@ function ColorPreviewSwatch({ color }: { color: string }) {
         height: 64,
         borderRadius: 16,
         backgroundColor: color,
-        border: '1px solid var(--mantine-color-gray-3)',
+        border: '1px solid var(--gds-color-border)',
         flexShrink: 0,
       }}
     />
@@ -80,26 +74,23 @@ function ColorPreviewSwatch({ color }: { color: string }) {
 }
 
 function ScenarioCountCard({
-  icon,
   name,
   count,
 }: {
-  icon: string;
   name: string;
   count: number;
 }) {
   return (
-    <Card withBorder radius="md" bg="var(--mantine-color-gray-0)">
-      <Stack gap="xs" align="center">
-        <Text fz={32}>{icon}</Text>
-        <Text size="xs" c="dimmed" ta="center">
+    <article style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+      <div style={{ alignItems: 'center', display: 'grid', gap: '0.5rem', justifyItems: 'center' }}>
+        <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', textAlign: 'center' }}>
           {name}
-        </Text>
-        <Text size="sm" fw={700}>
+        </span>
+        <strong style={{ fontSize: '0.875rem' }}>
           {count} active
-        </Text>
-      </Stack>
-    </Card>
+        </strong>
+      </div>
+    </article>
   );
 }
 
@@ -119,12 +110,12 @@ export default function StyleSections({
   const isEvent = type === 'event';
 
   return (
-    <Stack gap="lg">
-      <Card p={0}>
-        <Group justify="space-between" align="flex-start" p="xl" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+    <div style={{ display: 'grid', gap: '1.5rem' }}>
+      <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+        <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--gds-color-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
           <div>
-            <Group gap="sm" align="center">
-              <Title order={3}>{isPartner ? 'Default Brand Colors' : 'Brand Colors'}</Title>
+            <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <h3 style={{ margin: 0 }}>{isPartner ? 'Default Brand Colors' : 'Brand Colors'}</h3>
               {isEvent && partnerName ? (
                 <StyleInheritanceIndicator
                   styleField="brandColors"
@@ -133,79 +124,81 @@ export default function StyleSections({
                   partnerName={partnerName}
                 />
               ) : null}
-            </Group>
-            <Text size="sm" c="dimmed" mt="xs">
+            </div>
+            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
               {isPartner
                 ? 'Default colors for all child events (can be overridden)'
                 : 'Used throughout the event experience: buttons, inputs, checkboxes, and camera interface'}
-            </Text>
+            </p>
           </div>
           <Link href={isPartner ? `/admin/partners/${id}/edit` : `/admin/events/${id}/edit`} style={{ textDecoration: 'none' }}>
-            <Button>Edit Colors</Button>
+            <SemanticButton action="style-sections:edit-colors">Edit Colors</SemanticButton>
           </Link>
-        </Group>
+        </div>
 
-        <Stack p="xl" gap="lg">
-          <Group align="flex-start" gap="xl" wrap="wrap">
-            <Group align="center" gap="md" wrap="nowrap">
+        <div style={{ display: 'grid', gap: '1.5rem', padding: '1.5rem' }}>
+          <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
+            <div style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
               <ColorPreviewSwatch color={brandColor || CAMERA_DEFAULT_BRAND_COLOR} />
-              <Stack gap={4}>
-                <Text size="sm" fw={600}>
+              <div style={{ display: 'grid', gap: '0.25rem' }}>
+                <strong style={{ fontSize: '0.875rem' }}>
                   Primary Color
-                </Text>
-                <Text ff="monospace" fw={700}>
+                </strong>
+                <code style={{ fontWeight: 700 }}>
                   {brandColor || CAMERA_DEFAULT_BRAND_COLOR}
-                </Text>
-                <Text size="xs" c="dimmed">
+                </code>
+                <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
                   Buttons, camera button fill, focus states
-                </Text>
-              </Stack>
-            </Group>
+                </span>
+              </div>
+            </div>
 
-            <Group align="center" gap="md" wrap="nowrap">
+            <div style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
               <ColorPreviewSwatch color={brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR} />
-              <Stack gap={4}>
-                <Text size="sm" fw={600}>
+              <div style={{ display: 'grid', gap: '0.25rem' }}>
+                <strong style={{ fontSize: '0.875rem' }}>
                   Border/Accent Color
-                </Text>
-                <Text ff="monospace" fw={700}>
+                </strong>
+                <code style={{ fontWeight: 700 }}>
                   {brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR}
-                </Text>
-                <Text size="xs" c="dimmed">
+                </code>
+                <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
                   Input borders, checkboxes, camera button border
-                </Text>
-              </Stack>
-            </Group>
-          </Group>
-        </Stack>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        <div style={{ padding: '0 1.5rem 1.5rem', borderTop: '1px solid var(--mantine-color-gray-2)' }}>
-          <Text size="sm" fw={600} mb="sm" mt="lg">
+        <div style={{ padding: '1.5rem', borderTop: '1px solid var(--gds-color-border)' }}>
+          <strong style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
             Color Preview
-          </Text>
-          <Group>
-            <Button style={{ backgroundColor: brandColor || CAMERA_DEFAULT_BRAND_COLOR }} disabled>
+          </strong>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <button type="button" style={{ backgroundColor: brandColor || CAMERA_DEFAULT_BRAND_COLOR, border: 0, borderRadius: '0.75rem', padding: '0.75rem 1rem' }} disabled>
               Primary Button
-            </Button>
-            <Button
-              variant="outline"
+            </button>
+            <button
+              type="button"
               style={{
                 borderColor: brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR,
                 color: brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR,
+                borderRadius: '0.75rem',
+                padding: '0.75rem 1rem',
               }}
               disabled
             >
               Bordered Button
-            </Button>
-          </Group>
+            </button>
+          </div>
         </div>
-      </Card>
+      </section>
 
-      <Card p={0}>
-        <Group justify="space-between" align="flex-start" p="xl" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+      <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+        <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--gds-color-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
           <div>
-            <Group gap="sm" align="center">
-              <Title order={3}>{isPartner ? 'Default Frames' : 'Assigned Frames'}</Title>
+            <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <h3 style={{ margin: 0 }}>{isPartner ? 'Default Frames' : 'Assigned Frames'}</h3>
               {isEvent && partnerName ? (
                 <StyleInheritanceIndicator
                   styleField="frames"
@@ -214,28 +207,28 @@ export default function StyleSections({
                   partnerName={partnerName}
                 />
               ) : null}
-            </Group>
+            </div>
           </div>
           <Link href={isPartner ? `/admin/partners/${id}/frames` : `/admin/events/${id}/frames`} style={{ textDecoration: 'none' }}>
-            <Button>Manage Frames</Button>
+            <SemanticButton action="style-sections:manage-frames">Manage Frames</SemanticButton>
           </Link>
-        </Group>
+        </div>
 
         {frames.length === 0 ? (
-          <Stack align="center" gap="sm" p="xl">
-            <Text fz={48}>🖼️</Text>
-            <Text fw={700} fz="lg">
-              No frames assigned yet
-            </Text>
-            <Text c="dimmed" ta="center">
-              {isPartner
-                ? 'Set default frames that will be assigned to new events'
-                : 'Assign frames to this event to make them available for users'}
-            </Text>
-            <Link href={isPartner ? `/admin/partners/${id}/frames` : `/admin/events/${id}/frames`} style={{ textDecoration: 'none' }}>
-              <Button>Assign Frames</Button>
-            </Link>
-          </Stack>
+          <div style={{ padding: '1.5rem' }}>
+            <StateBlock
+              variant="empty"
+              title="No frames assigned yet"
+              description={isPartner
+                ? 'Set default frames that will be assigned to new events.'
+                : 'Assign frames to this event to make them available for users.'}
+              action={
+                <Link href={isPartner ? `/admin/partners/${id}/frames` : `/admin/events/${id}/frames`} style={{ textDecoration: 'none' }}>
+                  <SemanticButton action="style-sections:assign-frames">Assign Frames</SemanticButton>
+                </Link>
+              }
+            />
+          </div>
         ) : (
           <div style={{ padding: '1.5rem' }}>
             <div
@@ -251,45 +244,41 @@ export default function StyleSections({
                 const frameName = frameDetails.name || 'Unnamed Frame';
 
                 return (
-                  <Card key={index} withBorder radius="md" bg="var(--mantine-color-gray-0)">
-                    <Stack gap="sm" align="center">
+                  <article key={index} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+                    <div style={{ alignItems: 'center', display: 'grid', gap: '0.5rem', justifyItems: 'center' }}>
                       {thumbnailUrl ? (
                         <Image src={thumbnailUrl} alt={frameName} width={128} height={128} unoptimized style={{ maxWidth: '100%', height: 'auto', objectFit: 'contain' }} />
                       ) : (
-                        <Text fz={32}>🖼️</Text>
+                        <span aria-hidden>Image</span>
                       )}
-                      <Text size="sm" fw={600} ta="center" lineClamp={1}>
+                      <strong style={{ fontSize: '0.875rem', overflow: 'hidden', textAlign: 'center', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
                         {frameName}
-                      </Text>
-                      <Text size="xs" ff="monospace" c="dimmed" ta="center" lineClamp={1}>
+                      </strong>
+                      <code style={{ color: 'var(--gds-color-muted)', display: 'block', fontSize: '0.75rem', overflow: 'hidden', textAlign: 'center', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
                         {frameAssignment.frameId}
-                      </Text>
-                      <Text
-                        size="xs"
-                        fw={700}
-                        c={frameAssignment.isActive ? 'green.7' : 'gray.6'}
-                      >
-                        {frameAssignment.isActive ? '● Active' : '○ Inactive'}
-                      </Text>
-                    </Stack>
-                  </Card>
+                      </code>
+                      <strong style={{ fontSize: '0.75rem' }}>
+                        {frameAssignment.isActive ? 'Active' : 'Inactive'}
+                      </strong>
+                    </div>
+                  </article>
                 );
               })}
             </div>
-            <Group justify="center" mt="md">
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
               <Link href={isPartner ? `/admin/partners/${id}/edit#frames` : `/admin/events/${id}/frames`} style={{ textDecoration: 'none' }}>
-                <Button variant="subtle">Manage frame assignments →</Button>
+                <SemanticButton action="style-sections:manage-frame-assignments" variant="secondary">Manage frame assignments →</SemanticButton>
               </Link>
-            </Group>
+            </div>
           </div>
         )}
-      </Card>
+      </section>
 
-      <Card p={0}>
-        <Group justify="space-between" align="flex-start" p="xl" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+      <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+        <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--gds-color-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
           <div>
-            <Group gap="sm" align="center">
-              <Title order={3}>{isPartner ? 'Default Logos' : 'Event Logos'}</Title>
+            <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <h3 style={{ margin: 0 }}>{isPartner ? 'Default Logos' : 'Event Logos'}</h3>
               {isEvent && partnerName ? (
                 <StyleInheritanceIndicator
                   styleField="logos"
@@ -298,28 +287,28 @@ export default function StyleSections({
                   partnerName={partnerName}
                 />
               ) : null}
-            </Group>
+            </div>
           </div>
           <Link href={isPartner ? `/admin/partners/${id}/logos` : `/admin/events/${id}/logos`} style={{ textDecoration: 'none' }}>
-            <Button>Manage Logos</Button>
+            <SemanticButton action="style-sections:manage-logos">Manage Logos</SemanticButton>
           </Link>
-        </Group>
+        </div>
 
         {logos.length === 0 ? (
-          <Stack align="center" gap="sm" p="xl">
-            <Text fz={48}>🎨</Text>
-            <Text fw={700} fz="lg">
-              No logos assigned yet
-            </Text>
-            <Text c="dimmed" ta="center">
-              {isPartner
-                ? 'Set default logos that will be assigned to new events'
-                : 'Assign logos to display on different screens (transitions, loading, custom pages)'}
-            </Text>
-            <Link href={isPartner ? `/admin/partners/${id}/logos` : `/admin/events/${id}/logos`} style={{ textDecoration: 'none' }}>
-              <Button>Assign Logos</Button>
-            </Link>
-          </Stack>
+          <div style={{ padding: '1.5rem' }}>
+            <StateBlock
+              variant="empty"
+              title="No logos assigned yet"
+              description={isPartner
+                ? 'Set default logos that will be assigned to new events.'
+                : 'Assign logos to display on different screens.'}
+              action={
+                <Link href={isPartner ? `/admin/partners/${id}/logos` : `/admin/events/${id}/logos`} style={{ textDecoration: 'none' }}>
+                  <SemanticButton action="style-sections:assign-logos">Assign Logos</SemanticButton>
+                </Link>
+              }
+            />
+          </div>
         ) : (
           <div style={{ padding: '1.5rem' }}>
             <div
@@ -331,17 +320,17 @@ export default function StyleSections({
             >
               {SCENARIOS.map((scenario) => {
                 const count = logos.filter((logo) => logo.scenario === scenario.id && logo.isActive).length;
-                return <ScenarioCountCard key={scenario.id} icon={scenario.icon} name={scenario.name} count={count} />;
+                return <ScenarioCountCard key={scenario.id} name={scenario.name} count={count} />;
               })}
             </div>
-            <Group justify="center" mt="md">
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
               <Link href={isPartner ? `/admin/partners/${id}/edit#logos` : `/admin/events/${id}/logos`} style={{ textDecoration: 'none' }}>
-                <Button variant="subtle">Manage logo assignments →</Button>
+                <SemanticButton action="style-sections:manage-logo-assignments" variant="secondary">Manage logo assignments →</SemanticButton>
               </Link>
-            </Group>
+            </div>
           </div>
         )}
-      </Card>
-    </Stack>
+      </section>
+    </div>
   );
 }

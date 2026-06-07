@@ -14,7 +14,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { Badge, Card, Container, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { Badge, Card, Container, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import { getSession } from '@/lib/auth/session';
 import { buildUserManagementPropsFromSubmissions } from '@/lib/admin/build-user-management-props';
 import UserManagementActions from '@/components/admin/UserManagementActions';

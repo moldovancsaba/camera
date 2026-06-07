@@ -21,7 +21,7 @@
 
 import Image from 'next/image';
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
-import { Button } from '@mantine/core';
+import { Button } from '@/components/gds/PublicPrimitives';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,

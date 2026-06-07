@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { Badge, Button } from '@mantine/core';
 import { PageHeader as GdsPageHeader } from '@doneisbetter/gds-admin/client';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 
@@ -25,13 +24,13 @@ export default function WorkspaceHeader({
   const primaryActionSlot =
     actions ??
     (primaryAction ? (
-      <Button
-        component={Link}
+      <Link
         href={primaryAction.href}
-        leftSection={primaryAction.iconKey ? <AdminIcon iconKey={primaryAction.iconKey} size={16} /> : undefined}
+        style={{ alignItems: 'center', display: 'inline-flex', gap: 8 }}
       >
+        {primaryAction.iconKey ? <AdminIcon iconKey={primaryAction.iconKey} size={16} /> : null}
         {primaryAction.label}
-      </Button>
+      </Link>
     ) : null);
 
   return (
@@ -39,7 +38,7 @@ export default function WorkspaceHeader({
       eyebrow={eyebrow}
       title={title}
       description={description}
-      status={status ? <Badge>{status}</Badge> : undefined}
+      status={status ? <span>{status}</span> : undefined}
       primaryAction={primaryActionSlot}
     />
   );

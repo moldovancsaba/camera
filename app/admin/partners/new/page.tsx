@@ -8,10 +8,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Card, Checkbox, Stack, Text, TextInput, Textarea } from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
-import EditorScaffold from '@/components/gds/EditorScaffold';
+import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { FormSection } from '@doneisbetter/gds-admin/client';
+import { InlineAlert, SemanticButton } from '@doneisbetter/gds-core/client';
 
 interface CreatePartnerResponse {
   partner?: { _id?: string };
@@ -75,48 +74,63 @@ export default function NewPartnerPage() {
     >
 
       {error ? (
-        <Alert icon={<IconAlertCircle size={16} />}>
-          <Text fw={700}>Error</Text>
-          <Text size="sm">{error}</Text>
-        </Alert>
+        <InlineAlert title="Error" message={error} severity="error" />
       ) : null}
 
       <form onSubmit={handleSubmit}>
-        <Stack gap="lg">
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
           <FormSection title="Basic Information">
-            <TextInput
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Partner Name *
+              <input
               name="name"
-              label="Partner Name *"
               required
               placeholder="e.g., AC Milan, Red Bull, Nike"
-              description="The name of the partner organization or brand"
+              aria-describedby="partner-name-description"
+              style={{ minHeight: 44, padding: '0 0.75rem' }}
             />
-            <Textarea name="description" label="Description" rows={3} placeholder="Optional description..." />
+              <span id="partner-name-description" style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>
+                The name of the partner organization or brand.
+              </span>
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Description
+              <textarea name="description" rows={3} placeholder="Optional description..." style={{ padding: '0.75rem' }} />
+            </label>
           </FormSection>
 
           <FormSection title="Contact Information">
-            <TextInput name="contactName" label="Contact Person" placeholder="e.g., John Doe" />
-            <TextInput name="contactEmail" type="email" label="Contact Email" placeholder="e.g., contact@partner.com" />
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Contact Person
+              <input name="contactName" placeholder="e.g., John Doe" style={{ minHeight: 44, padding: '0 0.75rem' }} />
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Contact Email
+              <input name="contactEmail" type="email" placeholder="e.g., contact@partner.com" style={{ minHeight: 44, padding: '0 0.75rem' }} />
+            </label>
           </FormSection>
 
-          <Card>
-            <Stack gap="xs">
-              <Checkbox name="isActive" defaultChecked label="Make partner active (visible and usable)" />
-              <Text size="sm" c="dimmed">
+          <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+            <div style={{ display: 'grid', gap: '0.5rem' }}>
+              <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
+                <input type="checkbox" name="isActive" defaultChecked />
+                Make partner active (visible and usable)
+              </label>
+              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
                 Inactive partners will not be available for event creation
-              </Text>
-            </Stack>
-          </Card>
+              </p>
+            </div>
+          </section>
 
-          <Stack gap="sm">
-            <Button type="submit" loading={isSubmitting}>
+          <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <SemanticButton action="partners:create" type="submit" loading={isSubmitting}>
               {isSubmitting ? 'Creating...' : 'Create Partner'}
-            </Button>
-            <Button variant="default" onClick={() => router.back()}>
+            </SemanticButton>
+            <SemanticButton action="partners:cancel-create" variant="secondary" onClick={() => router.back()}>
               Cancel
-            </Button>
-          </Stack>
-        </Stack>
+            </SemanticButton>
+          </div>
+        </div>
       </form>
     </EditorScaffold>
   );

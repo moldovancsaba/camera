@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { NavLink } from '@mantine/core';
+import { SidebarNavItem } from '@doneisbetter/gds-core/client';
 
 interface SemanticNavLinkProps {
   href: string;
@@ -21,7 +21,7 @@ export default function SemanticNavLink({
   onClick,
 }: SemanticNavLinkProps) {
   return (
-    <NavLink
+    <SidebarNavItem
       component={Link}
       href={href}
       onClick={() => {
@@ -30,16 +30,8 @@ export default function SemanticNavLink({
       }}
       active={active}
       label={label}
-      leftSection={icon}
-      variant={active ? 'light' : 'subtle'}
-      styles={{
-        root: {
-          borderRadius: 14,
-        },
-        label: {
-          fontWeight: active ? 700 : 600,
-        },
-      }}
+      icon={icon}
+      aria-current={active ? 'page' : undefined}
     />
   );
 }

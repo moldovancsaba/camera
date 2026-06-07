@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { AspectRatio, Box } from '@mantine/core';
+import { AspectRatio, Box } from '@/components/gds/PublicPrimitives';
 import { MediaCard as GdsMediaCard } from '@doneisbetter/gds-core/client';
 
 interface MediaPreviewCardProps {

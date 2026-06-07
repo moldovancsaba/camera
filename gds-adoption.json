@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "gdsVersion": "3.0.0",
+  "gdsVersion": "3.4.3",
   "productArchetype": "hybrid",
   "supportedEntryPoints": [
     "@doneisbetter/gds-theme/client",
@@ -21,29 +21,38 @@
     "ResponsiveDataView",
     "AccessSummary",
     "MediaCard",
+    "MediaPreviewCard",
     "EditorScaffold",
-    "PlaybackSurface"
+    "PlaybackSurface",
+    "AdminResourceManager",
+    "AdminAnalyticsTable",
+    "AdminReviewLayout",
+    "AdminModal",
+    "AdminDetailDrawer",
+    "AdminCrudForm",
+    "AdminFormSection",
+    "AdminFormStatus",
+    "AdminFormActions",
+    "SemanticButton",
+    "ConfirmDialog",
+    "GdsConfirmProvider",
+    "GdsToastProvider",
+    "GdsNotificationProvider",
+    "OverlayManagerProvider",
+    "ReportingSection",
+    "GdsChart",
+    "StatsSection",
+    "PublicCaptureFlow",
+    "ShareButtonGroup",
+    "PlaybackControls",
+    "PlaybackOverlayControls"
   ],
   "localAdapters": [
     {
-      "contract": "DataTableAdapter",
-      "path": "components/gds/DataTable.tsx",
-      "status": "active"
-    },
-    {
-      "contract": "ResponsiveDataViewAdapter",
-      "path": "components/gds/ResponsiveDataView.tsx",
-      "status": "active"
-    },
-    {
-      "contract": "EditorScaffoldAdapter",
-      "path": "components/gds/EditorScaffold.tsx",
-      "status": "active"
-    },
-    {
       "contract": "RootProviderAdapter",
       "path": "components/gds/CameraGdsProvider.tsx",
-      "status": "active"
+      "status": "app-provider-composition",
+      "exitCondition": "Keep only while Camera needs one root composition point for official GDS providers."
     }
   ],
   "approvedExceptions": [
@@ -74,7 +83,7 @@
       "exitCondition": "Keep narrowing until only the irreducible hardware-preview and frame-compositing region remains outside direct package ownership.",
       "status": "approved",
       "owner": "camera-platform",
-      "reviewDate": "2026-05-26"
+      "reviewDate": "2026-06-07"
     },
     {
       "surface": "Legacy public token layer",
@@ -103,7 +112,7 @@
       "exitCondition": "Delete the remaining public helper layer once capture/public surfaces no longer require local helper classes.",
       "status": "temporary",
       "owner": "camera-platform",
-      "reviewDate": "2026-05-26"
+      "reviewDate": "2026-06-07"
     },
     {
       "surface": "Landing page custom CSS",
@@ -145,7 +154,7 @@
       "exitCondition": "Long-lived approved exception unless GDS formalizes a creator-authored experience-theming contract.",
       "status": "approved",
       "owner": "camera-platform",
-      "reviewDate": "2026-05-26"
+      "reviewDate": "2026-06-07"
     },
     {
       "surface": "Slideshow player",
@@ -173,7 +182,7 @@
       "exitCondition": "Keep narrowing until only the timing-sensitive queue, fullscreen behavior, and media internals remain outside direct package ownership.",
       "status": "approved",
       "owner": "camera-platform",
-      "reviewDate": "2026-05-26"
+      "reviewDate": "2026-06-07"
     }
   ],
   "compliance": {
@@ -189,9 +198,23 @@
       "components/gds",
       "lib/gds"
     ],
-    "bannedImports": []
+    "bannedImports": [],
+    "plannedBannedImports": [
+      {
+        "import": "@mantine/core",
+        "scope": [
+          "app/admin/**",
+          "components/gds/**"
+        ],
+        "allow": [
+          "components/gds/styles.ts",
+          "components/gds/SemanticNavLink.tsx"
+        ],
+        "reason": "Admin and GDS-boundary surfaces must consume official GDS primitives first. Mantine remains allowed only as leaf/runtime implementation under explicit exceptions."
+      }
+    ]
   },
-  "migrationStatus": "partial",
+  "migrationStatus": "direct-consumption-in-progress",
   "owner": "camera-platform",
-  "lastReviewedAt": "2026-06-01"
+  "lastReviewedAt": "2026-06-07"
 }

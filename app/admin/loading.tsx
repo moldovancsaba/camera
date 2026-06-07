@@ -1,34 +1,43 @@
 'use client';
 
-import { Card, SimpleGrid, Skeleton, Stack } from '@mantine/core';
-
 export default function AdminLoading() {
+  const skeleton = (style: React.CSSProperties) => (
+    <div
+      style={{
+        animation: 'pulse 1.4s ease-in-out infinite',
+        background: 'var(--mantine-color-gray-2)',
+        borderRadius: 'var(--mantine-radius-md)',
+        ...style,
+      }}
+    />
+  );
+
   return (
-    <Stack gap="xl">
-      <Stack gap="sm">
-        <Skeleton height={12} width={120} radius="xl" />
-        <Skeleton height={36} width={240} radius="md" />
-        <Skeleton height={18} width={420} radius="md" />
-      </Stack>
+    <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
+      <div style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)' }}>
+        {skeleton({ height: 12, width: 120 })}
+        {skeleton({ height: 36, width: 240 })}
+        {skeleton({ height: 18, maxWidth: 420, width: '100%' })}
+      </div>
 
-      <SimpleGrid cols={{ base: 1, md: 3 }}>
+      <div style={{ display: 'grid', gap: 'var(--mantine-spacing-md)', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
         {[1, 2, 3].map((item) => (
-          <Card key={item}>
-            <Skeleton height={64} radius="md" />
-          </Card>
+          <section key={item} style={{ border: '1px solid var(--mantine-color-gray-3)', borderRadius: 'var(--mantine-radius-md)', padding: 'var(--mantine-spacing-md)' }}>
+            {skeleton({ height: 64 })}
+          </section>
         ))}
-      </SimpleGrid>
+      </div>
 
-      <Card>
-        <Stack gap="md">
-          <Skeleton height={24} width={180} radius="md" />
-          <SimpleGrid cols={{ base: 1, md: 2, xl: 4 }}>
+      <section style={{ border: '1px solid var(--mantine-color-gray-3)', borderRadius: 'var(--mantine-radius-md)', padding: 'var(--mantine-spacing-md)' }}>
+        <div style={{ display: 'grid', gap: 'var(--mantine-spacing-md)' }}>
+          {skeleton({ height: 24, width: 180 })}
+          <div style={{ display: 'grid', gap: 'var(--mantine-spacing-md)', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
             {[1, 2, 3, 4].map((item) => (
-              <Skeleton key={item} height={96} radius="md" />
+              <div key={item}>{skeleton({ height: 96 })}</div>
             ))}
-          </SimpleGrid>
-        </Stack>
-      </Card>
-    </Stack>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }

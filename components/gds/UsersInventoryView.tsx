@@ -6,7 +6,6 @@ import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
 import UserManagementActions from '@/components/admin/UserManagementActions';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
-import { Box, Card, Group, Stack, Text } from '@mantine/core';
 import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface SerializedAdminUserRow {
@@ -72,27 +71,39 @@ export default function UsersInventoryView({
       dbError={dbError}
     >
       {users.length === 0 ? (
-        <Card p="xl">
+        <section style={{ padding: 'var(--mantine-spacing-xl)' }}>
           <StateBlock variant="empty" title="No users yet" description="Waiting for first submissions" />
-        </Card>
+        </section>
       ) : (
-        <Stack gap="lg">
+        <div style={{ display: 'grid', gap: 'var(--mantine-spacing-lg)' }}>
           <AuthorizationMatrix description="Use this matrix when deciding whether a user belongs in global SSO admin management or in partner-scoped Camera assignments." />
 
-          <Card withBorder>
-            <Text size="sm">
+          <section
+            style={{
+              border: '1px solid var(--mantine-color-gray-3)',
+              borderRadius: 'var(--mantine-radius-md)',
+              padding: 'var(--mantine-spacing-md)',
+            }}
+          >
+            <p style={{ margin: 0 }}>
               This page manages global Camera access today. Partner-level permissions are not modeled separately yet, so guest and participation records below are derived from submissions rather than a dedicated partner access table.
-            </Text>
-          </Card>
+            </p>
+          </section>
 
-          <Card p={0} style={{ overflow: 'hidden' }}>
+          <section
+            style={{
+              border: '1px solid var(--mantine-color-gray-3)',
+              borderRadius: 'var(--mantine-radius-md)',
+              overflow: 'hidden',
+            }}
+          >
             <div style={{ borderBottom: '1px solid var(--mantine-color-gray-2)', padding: '1rem 1.5rem' }}>
-              <Text fw={700} fz="lg">
+              <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
                 Directory and Participation History
-              </Text>
-              <Text mt={4} size="sm" c="dimmed">
+              </h2>
+              <p style={{ color: 'var(--mantine-color-dimmed)', margin: '4px 0 0' }}>
                 Operators can manage global roles and status here while still seeing how each identity shows up in event participation.
-              </Text>
+              </p>
             </div>
             <div>
               {users.map((user, index) => (
@@ -103,63 +114,58 @@ export default function UsersInventoryView({
                     borderBottom: '1px solid var(--mantine-color-gray-2)',
                   }}
                 >
-                  <Group align="flex-start" justify="space-between" gap="md" wrap="wrap">
-                    <Box style={{ flex: 1, minWidth: 0 }}>
-                      <Group gap="xs" wrap="wrap" mb="sm">
-                        <Text
-                          component={Link}
+                  <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-md)', justifyContent: 'space-between' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-xs)', marginBottom: 'var(--mantine-spacing-sm)' }}>
+                        <Link
                           href={user.profileHref}
-                          fw={600}
-                          style={{ textDecoration: 'none' }}
-                          truncate
+                          style={{ fontWeight: 600, minWidth: 0, overflow: 'hidden', textDecoration: 'none', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                         >
                           {user.name || 'Anonymous'}
-                        </Text>
+                        </Link>
                         {user.isAnonymous ? <StatusBadge {...getStatusBadgeProps('info', 'Anonymous')} /> : null}
                         {user.type === 'administrator' ? <StatusBadge {...getStatusBadgeProps('info', 'Admin')} /> : null}
                         {user.type === 'pseudo' && !user.mergedWith ? <StatusBadge {...getStatusBadgeProps('info', 'Pseudo')} /> : null}
                         {!user.isActive ? <StatusBadge {...getStatusBadgeProps('inactive')} /> : null}
                         {user.mergedWith ? <StatusBadge {...getStatusBadgeProps('active', 'Merged')} /> : null}
-                      </Group>
-                      <Stack gap={2}>
-                        <Text size="sm" fw={500}>
+                      </div>
+                      <div style={{ display: 'grid', gap: 2 }}>
+                        <p style={{ fontWeight: 500, margin: 0 }}>
                           {user.accessLabel}
-                        </Text>
-                        <Text size="sm" c="dimmed" truncate>
+                        </p>
+                        <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {user.emailDisplay}
-                        </Text>
+                        </p>
                         {user.partnerAccess.length > 0 ? (
-                          <Text size="sm" c="dimmed">
+                          <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0 }}>
                             Partner access:{' '}
                             {user.partnerAccess.slice(0, 2).map((assignment, idx) => (
                               <span key={assignment.accessId}>
                                 {idx > 0 ? ', ' : ''}
-                                <Text
-                                  component={Link}
+                                <Link
                                   href={`/admin/partners?search=${encodeURIComponent(assignment.partnerName)}`}
-                                  span
                                   style={{ textDecoration: 'none' }}
                                 >
                                   {assignment.partnerName}
-                                </Text>{' '}
+                                </Link>{' '}
                                 ({assignment.appKey}/{assignment.role})
                               </span>
                             ))}
                             {user.partnerAccess.length > 2 ? ` +${user.partnerAccess.length - 2} more` : ''}
-                          </Text>
+                          </p>
                         ) : null}
-                        <Text size="sm" c="dimmed" truncate>
+                        <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {user.photosCount} photos
-                        </Text>
-                        <Text size="sm" c="dimmed" truncate>
+                        </p>
+                        <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           Last Event: {user.eventName || 'Unknown Event'}
-                        </Text>
-                        <Text size="sm" c="dimmed" truncate>
+                        </p>
+                        <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           Registered: {user.collectedAtLabel}
-                        </Text>
-                      </Stack>
-                    </Box>
-                    <Box style={{ width: '100%', maxWidth: 320 }}>
+                        </p>
+                      </div>
+                    </div>
+                    <div style={{ width: '100%', maxWidth: 320 }}>
                       <UserManagementActions
                         user={{
                           email: user.email,
@@ -171,13 +177,13 @@ export default function UsersInventoryView({
                         }}
                         currentUserEmail={currentUserEmail}
                       />
-                    </Box>
-                  </Group>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
-          </Card>
-        </Stack>
+          </section>
+        </div>
       )}
     </AdminListPageShell>
   );

@@ -16,7 +16,7 @@
 
 import { useState, useEffect, use, useCallback } from 'react';
 import Image from 'next/image';
-import { Button } from '@mantine/core';
+import { Button } from '@/components/gds/PublicPrimitives';
 import CameraCapture from '@/components/camera/CameraCapture';
 import ShareOverlay from '@/components/capture/ShareOverlay';
 import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoAreYouPage';

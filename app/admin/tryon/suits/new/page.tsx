@@ -2,17 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Alert,
-  Button,
-  Checkbox,
-  Stack,
-  TextInput,
-  Textarea,
-} from '@mantine/core';
-import { IconAlertCircle, IconTrash } from '@tabler/icons-react';
-import { UploadDropzone } from '@doneisbetter/gds-core/client';
-import EditorScaffold from '@/components/gds/EditorScaffold';
+import { IconTrash } from '@tabler/icons-react';
+import { InlineAlert, SemanticButton, UploadDropzone } from '@doneisbetter/gds-core/client';
+import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { FormSection } from '@doneisbetter/gds-admin/client';
 import MediaCard from '@/components/media/MediaPreviewCard';
 
@@ -86,7 +78,7 @@ export default function NewTryOnSuitPage() {
       description="Upload a try-on garment asset that Camera will host and the local try-on worker will download."
     >
       <form onSubmit={handleSubmit}>
-        <Stack gap="lg">
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
           <FormSection title="Garment image *">
             {preview ? (
               <MediaCard
@@ -94,9 +86,9 @@ export default function NewTryOnSuitPage() {
                 alt="Garment preview"
                 caption={file?.name}
                 action={
-                  <Button variant="light" leftSection={<IconTrash size={16} />} onClick={clearFile}>
+                  <SemanticButton action="garments:remove-upload" variant="secondary" leftSection={<IconTrash size={16} />} onClick={clearFile}>
                     Remove
-                  </Button>
+                  </SemanticButton>
                 }
               />
             ) : (
@@ -109,39 +101,51 @@ export default function NewTryOnSuitPage() {
               />
             )}
             {error ? (
-              <Alert icon={<IconAlertCircle size={16} />}>
-                {error}
-              </Alert>
+              <InlineAlert title="Garment upload failed" message={error} severity="error" />
             ) : null}
           </FormSection>
 
           <FormSection title="Garment details">
-            <TextInput name="name" label="Title *" required placeholder="e.g., Honda Castrol 2026" />
-            <Textarea name="description" label="Description" rows={3} placeholder="Optional operator notes..." />
-            <TextInput
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Title *
+              <input name="name" required placeholder="e.g., Honda Castrol 2026" style={{ minHeight: 44, padding: '0 0.75rem' }} />
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Description
+              <textarea name="description" rows={3} placeholder="Optional operator notes..." style={{ padding: '0.75rem' }} />
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Catalog ID
+              <input
               name="leatherSuitId"
-              label="Catalog ID"
               placeholder="Optional. Leave empty to auto-generate from title."
             />
-            <TextInput
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Asset version
+              <input
               name="assetVersion"
-              label="Asset version"
               defaultValue="1"
               inputMode="numeric"
               placeholder="1"
+              style={{ minHeight: 44, padding: '0 0.75rem' }}
             />
-            <Checkbox name="isActive" defaultChecked value="true" label="Active (available for event assignment)" />
+            </label>
+            <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
+              <input type="checkbox" name="isActive" defaultChecked value="true" />
+              Active (available for event assignment)
+            </label>
           </FormSection>
 
-          <Stack gap="sm">
-            <Button type="submit" loading={isUploading} disabled={!preview}>
+          <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <SemanticButton action="garments:create" type="submit" loading={isUploading} disabled={!preview}>
               {isUploading ? 'Uploading…' : 'Create Garment'}
-            </Button>
-            <Button variant="default" onClick={() => router.push('/admin/tryon/suits')}>
+            </SemanticButton>
+            <SemanticButton action="garments:cancel-create" variant="secondary" onClick={() => router.push('/admin/tryon/suits')}>
               Cancel
-            </Button>
-          </Stack>
-        </Stack>
+            </SemanticButton>
+          </div>
+        </div>
       </form>
     </EditorScaffold>
   );

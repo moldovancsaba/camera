@@ -1,28 +1,28 @@
 'use client';
 
-import { Alert, List, Text } from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
+import { InlineAlert } from '@doneisbetter/gds-core/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 
 export default function DatabaseConnectionAlert({ diagnosis }: { diagnosis: MongoConnectionDiagnosis }) {
   const { rawMessage, summary, hints } = diagnosis;
 
   return (
-    <Alert icon={<IconAlertCircle size={16} />}>
-      <Text fw={700}>Database connection error</Text>
-      <Text size="sm" mt="xs">
-        {summary}
-      </Text>
-      <Text size="xs" mt="xs" ff="monospace" style={{ wordBreak: 'break-all' }}>
-        {rawMessage}
-      </Text>
+    <InlineAlert
+      severity="error"
+      title="Database connection error"
+      message={
+        <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)' }}>
+          <p style={{ margin: 0 }}>{summary}</p>
+          <code style={{ wordBreak: 'break-all' }}>{rawMessage}</code>
       {hints.length > 0 ? (
-        <List size="sm" mt="sm">
+            <ul style={{ margin: 0, paddingInlineStart: '1.25rem' }}>
           {hints.map((hint, index) => (
-            <List.Item key={index}>{hint}</List.Item>
+                <li key={index}>{hint}</li>
           ))}
-        </List>
+            </ul>
       ) : null}
-    </Alert>
+        </div>
+      }
+    />
   );
 }

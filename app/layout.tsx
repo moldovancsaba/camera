@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { ColorSchemeScript } from "@mantine/core";
 import { Geist, Geist_Mono } from "next/font/google";
 import '@/components/gds/styles';
 import "./globals.css";
@@ -34,7 +33,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <ColorSchemeScript defaultColorScheme="light" />
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
       </head>
       <body

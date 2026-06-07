@@ -1,6 +1,5 @@
 'use client';
 
-import { Stack } from '@mantine/core';
 import { ConsumerDashboardGrid, ProductCard } from '@doneisbetter/gds-core/client';
 import { StatsStrip } from '@doneisbetter/gds-admin/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
@@ -21,7 +20,7 @@ export default function AdminDashboardView({
   dbError?: MongoConnectionDiagnosis | null;
 }) {
   return (
-    <Stack gap="xl">
+    <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
       <WorkspaceHeader
         eyebrow="Camera Core"
         title="Dashboard"
@@ -41,7 +40,7 @@ export default function AdminDashboardView({
             ].map(({ label, value }) => ({ label, value }))}
           />
 
-          <Stack gap="lg">
+          <div style={{ display: 'grid', gap: 'var(--mantine-spacing-lg)' }}>
           <ConsumerDashboardGrid columns={3}>
             {[
               {
@@ -99,9 +98,9 @@ export default function AdminDashboardView({
               </a>
             ))}
           </ConsumerDashboardGrid>
-          </Stack>
+          </div>
         </>
       ) : null}
-    </Stack>
+    </div>
   );
 }

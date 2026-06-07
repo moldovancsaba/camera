@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Group, Text } from '@mantine/core';
+import { SemanticButton, useGdsConfirm, useGdsToasts } from '@doneisbetter/gds-core/client';
 
 interface StyleInheritanceIndicatorProps {
   styleField: 'brandColors' | 'frames' | 'logos';
@@ -25,6 +25,8 @@ export default function StyleInheritanceIndicator({
 }: StyleInheritanceIndicatorProps) {
   const router = useRouter();
   const [isResetting, setIsResetting] = useState(false);
+  const { confirm } = useGdsConfirm();
+  const { notifyError } = useGdsToasts();
 
   const fieldNames = {
     brandColors: 'Brand Colors',
@@ -37,7 +39,12 @@ export default function StyleInheritanceIndicator({
   }
 
   const handleReset = async () => {
-    if (!confirm(`Reset ${fieldNames[styleField]} to ${partnerName}'s default?`)) {
+    const confirmed = await confirm({
+      title: 'Reset style inheritance',
+      message: `Reset ${fieldNames[styleField]} to ${partnerName}'s default?`,
+      confirmAction: 'reset',
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -56,25 +63,25 @@ export default function StyleInheritanceIndicator({
 
       router.refresh();
     } catch (error: unknown) {
-      alert(`Error: ${getErrorMessage(error)}`);
+      notifyError({ title: 'Reset failed', message: getErrorMessage(error) });
     } finally {
       setIsResetting(false);
     }
   };
 
   return (
-    <Group gap="xs">
-      <Text size="lg" title={isOverridden ? 'Custom' : `Using ${partnerName} default`}>
+    <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-xs)' }}>
+      <span title={isOverridden ? 'Custom' : `Using ${partnerName} default`}>
         {isOverridden ? '🔴' : '🟢'}
-      </Text>
-      <Text size="xs" c="dimmed">
+      </span>
+      <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)' }}>
         {isOverridden ? 'Custom' : `From ${partnerName}`}
-      </Text>
+      </span>
       {isOverridden ? (
-        <Button variant="subtle" size="compact-xs" onClick={handleReset} loading={isResetting}>
+        <SemanticButton action="reset" size="xs" onClick={() => void handleReset()} loading={isResetting}>
           {isResetting ? 'Resetting...' : 'Reset to Partner Default'}
-        </Button>
+        </SemanticButton>
       ) : null}
-    </Group>
+    </div>
   );
 }

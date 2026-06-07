@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test';
 
+type BootstrapPayload = {
+  e2eRunId?: string;
+};
+
+let bootstrapRunId = '';
+
 async function devLogin(page: import('@playwright/test').Page, params: Record<string, string>) {
   const search = new URLSearchParams(params);
   await page.goto(`/api/auth/dev-login?${search.toString()}`);
@@ -7,7 +13,21 @@ async function devLogin(page: import('@playwright/test').Page, params: Record<st
 
 test.describe('admin access smoke', () => {
   test.beforeEach(async ({ request }) => {
-    await request.post('/api/e2e/bootstrap');
+    const bootstrap = await request.post('/api/e2e/bootstrap');
+    expect(bootstrap.ok()).toBeTruthy();
+    const bootstrapPayload = (await bootstrap.json()) as BootstrapPayload;
+    bootstrapRunId = bootstrapPayload.e2eRunId?.trim() ?? '';
+  });
+
+  test.afterEach(async ({ request }) => {
+    if (!bootstrapRunId) return;
+
+    await request.post('/api/e2e/cleanup', {
+      data: {
+        e2eRunId: bootstrapRunId,
+      },
+    });
+    bootstrapRunId = '';
   });
 
   test('global admin sees full admin navigation', async ({ page }) => {

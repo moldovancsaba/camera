@@ -12,7 +12,7 @@ import Image from 'next/image';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import PublicShell from '@/components/public/PublicPageShell';
-import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import { listApprovedShareVariants } from '@/lib/tryon/publication';
 import {
   DEFAULT_PENDING_TRYON_MESSAGE,

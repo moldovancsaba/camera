@@ -1,7 +1,6 @@
 'use client';
 
-import { Stack, Text, Title } from '@mantine/core';
-import DataTable from '@/components/gds/DataTable';
+import { AdminAnalyticsTable } from '@doneisbetter/gds-admin/client';
 import type {
   TryOnAnalyticsRow,
   TryOnPresetPerformanceRow,
@@ -9,54 +8,54 @@ import type {
 
 function AnalyticsTable({ title, rows }: { title: string; rows: TryOnAnalyticsRow[] }) {
   return (
-    <Stack gap="sm">
-      <Title order={3}>{title}</Title>
+    <section style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)' }}>
+      <h3 style={{ margin: 0 }}>{title}</h3>
       {rows.length > 0 ? (
-        <DataTable
-          data={rows}
+        <AdminAnalyticsTable<TryOnAnalyticsRow & Record<string, unknown>>
+          rows={rows as Array<TryOnAnalyticsRow & Record<string, unknown>>}
           getRowKey={(row) => row.key}
           columns={[
-            { key: 'label', label: 'Name' },
-            { key: 'total', label: 'Total' },
-            { key: 'approved', label: 'Approved' },
-            { key: 'rejected', label: 'Rejected' },
-            { key: 'service', label: 'Service' },
-            { key: 'greatest', label: 'Greatest' },
+            { key: 'label', header: 'Name', accessor: (row) => row.label, rowHeader: true },
+            { key: 'total', header: 'Total', accessor: (row) => row.total, numeric: true },
+            { key: 'approved', header: 'Approved', accessor: (row) => row.approved, numeric: true, metricTone: 'positive' },
+            { key: 'rejected', header: 'Rejected', accessor: (row) => row.rejected, numeric: true, metricTone: 'negative' },
+            { key: 'service', header: 'Service', accessor: (row) => row.service, numeric: true, metricTone: 'warning' },
+            { key: 'greatest', header: 'Greatest', accessor: (row) => row.greatest, numeric: true, metricTone: 'positive' },
           ]}
         />
       ) : (
-        <Text c="dimmed">No try-on decisions match this filter.</Text>
+        <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0 }}>No try-on decisions match this filter.</p>
       )}
-    </Stack>
+    </section>
   );
 }
 
 function PresetPerformanceTable({ rows }: { rows: TryOnPresetPerformanceRow[] }) {
   return (
-    <Stack gap="sm">
-      <Title order={3}>Preset Performance</Title>
+    <section style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)' }}>
+      <h3 style={{ margin: 0 }}>Preset Performance</h3>
       {rows.length > 0 ? (
-        <DataTable
-          data={rows}
+        <AdminAnalyticsTable<TryOnPresetPerformanceRow & Record<string, unknown>>
+          rows={rows as Array<TryOnPresetPerformanceRow & Record<string, unknown>>}
           getRowKey={(row) => row.setupId}
           columns={[
-            { key: 'setupName', label: 'Preset' },
-            { key: 'jobs', label: 'Jobs' },
-            { key: 'done', label: 'Done' },
-            { key: 'failed', label: 'Failed' },
-            { key: 'retryWait', label: 'Retry' },
-            { key: 'providerTimeouts', label: 'Timeouts' },
-            { key: 'approved', label: 'Approved' },
-            { key: 'rejected', label: 'Rejected' },
-            { key: 'service', label: 'Service' },
-            { key: 'great', label: 'Great' },
-            { key: 'approvalRate', label: 'Approval Rate', render: (row) => `${row.approvalRate}%` },
+            { key: 'setupName', header: 'Preset', accessor: (row) => row.setupName, rowHeader: true },
+            { key: 'jobs', header: 'Jobs', accessor: (row) => row.jobs, numeric: true },
+            { key: 'done', header: 'Done', accessor: (row) => row.done, numeric: true, metricTone: 'positive' },
+            { key: 'failed', header: 'Failed', accessor: (row) => row.failed, numeric: true, metricTone: 'negative' },
+            { key: 'retryWait', header: 'Retry', accessor: (row) => row.retryWait, numeric: true, metricTone: 'warning' },
+            { key: 'providerTimeouts', header: 'Timeouts', accessor: (row) => row.providerTimeouts, numeric: true, metricTone: 'warning' },
+            { key: 'approved', header: 'Approved', accessor: (row) => row.approved, numeric: true, metricTone: 'positive' },
+            { key: 'rejected', header: 'Rejected', accessor: (row) => row.rejected, numeric: true, metricTone: 'negative' },
+            { key: 'service', header: 'Service', accessor: (row) => row.service, numeric: true, metricTone: 'warning' },
+            { key: 'great', header: 'Great', accessor: (row) => row.great, numeric: true, metricTone: 'positive' },
+            { key: 'approvalRate', header: 'Approval Rate', accessor: (row) => `${row.approvalRate}%`, numeric: true },
           ]}
         />
       ) : (
-        <Text c="dimmed">No preset performance data matches this filter.</Text>
+        <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0 }}>No preset performance data matches this filter.</p>
       )}
-    </Stack>
+    </section>
   );
 }
 

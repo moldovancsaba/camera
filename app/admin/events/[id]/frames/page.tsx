@@ -9,19 +9,8 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import {
-  Alert,
-  Breadcrumbs,
-  Button,
-  Card,
-  Group,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
+import { InlineAlert, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
 
 interface EventFrameAssignment {
   frameId: string;
@@ -159,23 +148,15 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
   };
 
   if (isLoading) {
-    return (
-      <Stack align="center" justify="center" mih="50vh">
-        <Text fz={40}>⏳</Text>
-        <Text c="dimmed">Loading frames...</Text>
-      </Stack>
-    );
+    return <StateBlock variant="loading" title="Loading frames..." />;
   }
 
   if (error || !event) {
     return (
-      <Stack gap="lg">
-        <Alert icon={<IconAlertCircle size={16} />}>
-          <Text fw={700}>Error</Text>
-          <Text size="sm">{error || 'Event not found'}</Text>
-        </Alert>
+      <div style={{ display: 'grid', gap: '1rem' }}>
+        <InlineAlert title="Error" message={error || 'Event not found'} severity="error" />
         <Link href="/admin/events">← Back to Events</Link>
-      </Stack>
+      </div>
     );
   }
 
@@ -183,12 +164,14 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
   const unassignedFrames = availableFrames.filter((frame) => !assignedFrameIds.includes(frame.frameId));
 
   return (
-    <Stack gap="xl">
-      <Breadcrumbs>
+    <div style={{ display: 'grid', gap: '2rem' }}>
+      <nav aria-label="Breadcrumb">
         <Link href="/admin/events">Events</Link>
+        <span aria-hidden> / </span>
         <Link href={`/admin/events/${eventId}`}>{event.name}</Link>
-        <Text>Frames</Text>
-      </Breadcrumbs>
+        <span aria-hidden> / </span>
+        <span>Frames</span>
+      </nav>
 
       <WorkspaceHeader
         eyebrow="Events"
@@ -196,98 +179,98 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
         description={`Assign and manage frames for ${event.name}`}
       />
 
-      <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
-        <Card p={0}>
-          <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
-            <Title order={3}>Assigned Frames ({assignedFrames.length})</Title>
+      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))' }}>
+        <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+          <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+            <h3 style={{ margin: 0 }}>Assigned Frames ({assignedFrames.length})</h3>
           </div>
-          <Stack gap="sm" p="lg">
+          <div style={{ display: 'grid', gap: '0.75rem', padding: '1rem' }}>
             {assignedFrames.length === 0 ? (
-              <Text c="dimmed" ta="center" py="xl">
+              <p style={{ color: 'var(--gds-color-muted)', margin: '2rem 0', textAlign: 'center' }}>
                 No frames assigned yet
-              </Text>
+              </p>
             ) : (
               assignedFrames.map((frameAssignment) => {
                 const frame = availableFrames.find((availableFrame) => availableFrame.frameId === frameAssignment.frameId);
                 return (
-                  <Card key={frameAssignment.frameId} withBorder radius="md" bg="var(--mantine-color-gray-0)">
-                    <Group justify="space-between" align="center">
-                      <Group gap="md">
+                  <article key={frameAssignment.frameId} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.75rem', padding: '0.75rem' }}>
+                    <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
+                      <div style={{ alignItems: 'center', display: 'flex', gap: '0.75rem' }}>
                         {frame?.thumbnailUrl ? (
                           <Image src={frame.thumbnailUrl} alt={frame.name} width={64} height={64} unoptimized style={{ width: 64, height: 'auto', objectFit: 'contain' }} />
                         ) : (
-                          <Text fz={28}>🖼️</Text>
+                          <span aria-hidden>Image</span>
                         )}
                         <div>
-                          <Text size="sm" fw={600}>
+                          <strong style={{ fontSize: '0.875rem' }}>
                             {frame?.name || frameAssignment.frameId}
-                          </Text>
-                          <Text size="xs" c="dimmed" ff="monospace">
+                          </strong>
+                          <code style={{ color: 'var(--gds-color-muted)', display: 'block', fontSize: '0.75rem' }}>
                             {frameAssignment.frameId}
-                          </Text>
+                          </code>
                         </div>
-                      </Group>
-                      <Group gap="sm">
-                        <Button
-                          variant="light"
-                          color={frameAssignment.isActive ? 'green' : 'gray'}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <SemanticButton
+                          action="event-frames:toggle"
+                          variant="secondary"
                           size="xs"
                           onClick={() => void handleToggleFrame(frameAssignment.frameId)}
                         >
-                          {frameAssignment.isActive ? '● Active' : '○ Inactive'}
-                        </Button>
-                        <Button variant="subtle" size="xs" onClick={() => void handleRemoveFrame(frameAssignment.frameId)}>
+                          {frameAssignment.isActive ? 'Active' : 'Inactive'}
+                        </SemanticButton>
+                        <SemanticButton action="event-frames:remove" variant="danger" size="xs" onClick={() => void handleRemoveFrame(frameAssignment.frameId)}>
                           Remove
-                        </Button>
-                      </Group>
-                    </Group>
-                  </Card>
+                        </SemanticButton>
+                      </div>
+                    </div>
+                  </article>
                 );
               })
             )}
-          </Stack>
-        </Card>
-
-        <Card p={0}>
-          <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
-            <Title order={3}>Available Frames ({unassignedFrames.length})</Title>
           </div>
-          <Stack gap="sm" p="lg">
+        </section>
+
+        <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+          <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+            <h3 style={{ margin: 0 }}>Available Frames ({unassignedFrames.length})</h3>
+          </div>
+          <div style={{ display: 'grid', gap: '0.75rem', padding: '1rem' }}>
             {unassignedFrames.length === 0 ? (
-              <Text c="dimmed" ta="center" py="xl">
+              <p style={{ color: 'var(--gds-color-muted)', margin: '2rem 0', textAlign: 'center' }}>
                 All frames are assigned
-              </Text>
+              </p>
             ) : (
               unassignedFrames.map((frame) => (
-                <Card key={frame.frameId} withBorder radius="md" bg="var(--mantine-color-gray-0)">
-                  <Group justify="space-between" align="center">
-                    <Group gap="md">
+                <article key={frame.frameId} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.75rem', padding: '0.75rem' }}>
+                  <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
+                    <div style={{ alignItems: 'center', display: 'flex', gap: '0.75rem' }}>
                       {frame.thumbnailUrl ? (
                         <Image src={frame.thumbnailUrl} alt={frame.name} width={64} height={64} unoptimized style={{ width: 64, height: 'auto', objectFit: 'contain' }} />
                       ) : (
-                        <Text fz={28}>🖼️</Text>
+                        <span aria-hidden>Image</span>
                       )}
                       <div>
-                        <Text size="sm" fw={600}>
+                        <strong style={{ fontSize: '0.875rem' }}>
                           {frame.name}
-                        </Text>
-                        <Text size="xs" c="dimmed">
+                        </strong>
+                        <span style={{ color: 'var(--gds-color-muted)', display: 'block', fontSize: '0.75rem' }}>
                           {frame.hashtags?.join(', ') || 'No hashtags'}
-                        </Text>
+                        </span>
                       </div>
-                    </Group>
-                    <Button size="xs" onClick={() => void handleAssignFrame(frame.frameId)}>
+                    </div>
+                    <SemanticButton action="event-frames:assign" size="xs" onClick={() => void handleAssignFrame(frame.frameId)}>
                       Assign
-                    </Button>
-                  </Group>
-                </Card>
+                    </SemanticButton>
+                  </div>
+                </article>
               ))
             )}
-          </Stack>
-        </Card>
-      </SimpleGrid>
+          </div>
+        </section>
+      </div>
 
       <Link href={`/admin/events/${eventId}`}>← Back to Event</Link>
-    </Stack>
+    </div>
   );
 }

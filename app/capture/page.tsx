@@ -14,7 +14,7 @@ import CameraCapture from '@/components/camera/CameraCapture';
 import FileUpload from '@/components/camera/FileUpload';
 import ShareOverlay from '@/components/capture/ShareOverlay';
 import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
-import { Button } from '@mantine/core';
+import { Button } from '@/components/gds/PublicPrimitives';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 
 

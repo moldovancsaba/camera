@@ -8,28 +8,10 @@ import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import {
-  Alert,
-  Anchor,
-  AspectRatio,
-  Box,
-  Breadcrumbs,
-  Button,
-  Checkbox,
-  Code,
-  Grid,
-  Group,
-  NativeSelect,
-  Stack,
-  Text,
-  TextInput,
-  Textarea,
-} from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
 import { notifications } from '@/lib/gds/notifications';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import { FormSection } from '@doneisbetter/gds-admin/client';
-import { StateBlock } from '@doneisbetter/gds-core/client';
+import { InlineAlert, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
 import { confirmDestructive } from '@/lib/gds/confirm-destructive';
 
 interface FrameRecord {
@@ -145,22 +127,25 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
         title="Frame not found"
         description={error || undefined}
         action={
-          <Button component={Link} href="/admin/frames" variant="light">
+          <Link href="/admin/frames" style={{ textDecoration: 'none' }}>
+          <SemanticButton action="frames:back-to-list" variant="secondary">
             Back to frames
-          </Button>
+          </SemanticButton>
+          </Link>
         }
       />
     );
   }
 
   return (
-    <Stack gap="xl" maw={960} mx="auto">
-      <Breadcrumbs>
-        <Anchor component={Link} href="/admin/frames" size="sm">
+    <div style={{ display: 'grid', gap: '2rem', margin: '0 auto', maxWidth: 960 }}>
+      <nav aria-label="Breadcrumb">
+        <Link href="/admin/frames">
           Frames
-        </Anchor>
-        <Text size="sm">Edit</Text>
-      </Breadcrumbs>
+        </Link>
+        <span aria-hidden> / </span>
+        <span>Edit</span>
+      </nav>
 
       <WorkspaceHeader
         eyebrow="Camera Core"
@@ -169,82 +154,73 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
       />
 
       {error ? (
-        <Alert icon={<IconAlertCircle size={16} />}>
-          <Text fw={700}>Error</Text>
-          <Text size="sm">{error}</Text>
-        </Alert>
+        <InlineAlert title="Error" message={error} severity="error" />
       ) : null}
 
       <form onSubmit={handleSubmit}>
-        <Stack gap="lg">
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
           <FormSection title="Frame preview" description="To change the image, delete this frame and upload a new one.">
-            <AspectRatio ratio={1} maw={320}>
-              <Box style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
+            <div style={{ aspectRatio: '1 / 1', borderRadius: 12, maxWidth: 320, overflow: 'hidden', position: 'relative' }}>
                 <Image src={frame.thumbnailUrl || frame.imageUrl} alt={frame.name} fill style={{ objectFit: 'contain', padding: 24 }} unoptimized />
-              </Box>
-            </AspectRatio>
+            </div>
           </FormSection>
 
           <FormSection title="Frame details">
-            <TextInput name="name" label="Frame name" required defaultValue={frame.name} />
-            <Textarea name="description" label="Description" rows={3} defaultValue={frame.description} />
-            <NativeSelect
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Frame name
+              <input name="name" required defaultValue={frame.name} style={{ minHeight: 44, padding: '0 0.75rem' }} />
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Description
+              <textarea name="description" rows={3} defaultValue={frame.description} style={{ padding: '0.75rem' }} />
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Category
+              <select
               name="category"
-              label="Category"
               defaultValue={frame.category || 'general'}
-              data={[
-                { value: 'general', label: 'General' },
-                { value: 'holiday', label: 'Holiday' },
-                { value: 'birthday', label: 'Birthday' },
-                { value: 'wedding', label: 'Wedding' },
-                { value: 'corporate', label: 'Corporate' },
-              ]}
-            />
-            <Checkbox name="isActive" defaultChecked={frame.isActive} label="Make frame active (visible to users)" />
+              style={{ minHeight: 44, padding: '0 0.75rem' }}
+            >
+                <option value="general">General</option>
+                <option value="holiday">Holiday</option>
+                <option value="birthday">Birthday</option>
+                <option value="wedding">Wedding</option>
+                <option value="corporate">Corporate</option>
+              </select>
+            </label>
+            <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
+              <input type="checkbox" name="isActive" defaultChecked={frame.isActive} />
+              Make frame active (visible to users)
+            </label>
           </FormSection>
 
           <FormSection title="Technical information">
-            <Grid>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm" c="dimmed">
-                  Frame ID
-                </Text>
-                <Code block>{frame.frameId || 'Not assigned'}</Code>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm" c="dimmed">
-                  MongoDB ID
-                </Text>
-                <Code block>{frame._id}</Code>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm">
-                  Dimensions: {frame.width || 'N/A'} × {frame.height || 'N/A'} px
-                </Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm">
-                  File size: {frame.fileSize ? `${(frame.fileSize / 1024).toFixed(2)} KB` : 'N/A'}
-                </Text>
-              </Grid.Col>
-            </Grid>
-            <Anchor href={frame.imageUrl} target="_blank" rel="noopener noreferrer" size="sm">
+            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' }}>
+              <div><span>Frame ID</span><code style={{ display: 'block' }}>{frame.frameId || 'Not assigned'}</code></div>
+              <div><span>MongoDB ID</span><code style={{ display: 'block' }}>{frame._id}</code></div>
+              <div>Dimensions: {frame.width || 'N/A'} × {frame.height || 'N/A'} px</div>
+              <div>File size: {frame.fileSize ? `${(frame.fileSize / 1024).toFixed(2)} KB` : 'N/A'}</div>
+            </div>
+            <a href={frame.imageUrl} target="_blank" rel="noopener noreferrer">
               Open image URL
-            </Anchor>
+            </a>
           </FormSection>
 
-          <Group justify="space-between">
-            <Group>
-              <Button type="submit" loading={isSaving}>
+          <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <SemanticButton action="frames:save" type="submit" loading={isSaving}>
                 {isSaving ? 'Saving…' : 'Save changes'}
-              </Button>
-              <Button component={Link} href="/admin/frames" variant="default">
+              </SemanticButton>
+              <Link href="/admin/frames" style={{ textDecoration: 'none' }}>
+              <SemanticButton action="frames:cancel-edit" variant="secondary">
                 Cancel
-              </Button>
-            </Group>
-            <Button
+              </SemanticButton>
+              </Link>
+            </div>
+            <SemanticButton
+              action="frames:delete"
               type="button"
-              variant="light"
+              variant="danger"
               loading={isDeleting}
               disabled={isDeleting}
               onClick={() =>
@@ -257,10 +233,10 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
               }
             >
               Delete frame
-            </Button>
-          </Group>
-        </Stack>
+            </SemanticButton>
+          </div>
+        </div>
       </form>
-    </Stack>
+    </div>
   );
 }

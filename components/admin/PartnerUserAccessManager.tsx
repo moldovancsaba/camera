@@ -1,21 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Alert,
-  Badge,
-  Button,
-  Card,
-  Grid,
-  Group,
-  Select,
-  SimpleGrid,
-  Stack,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
-import { IconAlertCircle, IconCheck, IconUserPlus } from '@tabler/icons-react';
+import { InlineAlert, LabelTag, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
 
 type PartnerAppKey = 'events';
 type PartnerAccessRole = 'viewer' | 'manager' | 'admin';
@@ -144,141 +130,143 @@ export default function PartnerUserAccessManager({
   }
 
   return (
-    <Card p={0}>
-      <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
-        <Title order={3}>Partner User Access</Title>
-        <Text size="sm" c="dimmed" mt="xs">
+    <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+      <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <h3 style={{ margin: 0 }}>Partner User Access</h3>
+        <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
           Manage partner-scoped app access separately from global Camera roles. This is the source of truth for who
           can operate this partner inside Events.
-        </Text>
+        </p>
       </div>
 
-      <Stack gap="lg" p="xl">
-        <Grid>
-          <Grid.Col span={{ base: 12, xl: 5 }}>
-            <TextInput
-              label="User email"
+      <div style={{ display: 'grid', gap: '1.5rem', padding: '1.5rem' }}>
+        <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))' }}>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              User email
+              <input
               placeholder="user@example.com"
               value={userEmail}
               onChange={(event) => setUserEmail(event.currentTarget.value)}
+              style={{ minHeight: 44, padding: '0 0.75rem' }}
             />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4, xl: 3 }}>
-            <TextInput
-              label="Display name"
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Display name
+              <input
               placeholder="Optional"
               value={userName}
               onChange={(event) => setUserName(event.currentTarget.value)}
+              style={{ minHeight: 44, padding: '0 0.75rem' }}
             />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4, xl: 2 }}>
-            <Select label="App" data={[{ value: 'events', label: 'Events' }]} value={appKey} readOnly />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4, xl: 2 }}>
-            <Select
-              label="Role"
-              data={[
-                { value: 'viewer', label: 'Viewer' },
-                { value: 'manager', label: 'Manager' },
-                { value: 'admin', label: 'Admin' },
-              ]}
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              App
+              <select value={appKey} disabled style={{ minHeight: 44, padding: '0 0.75rem' }}>
+                <option value="events">Events</option>
+              </select>
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Role
+              <select
               value={role}
-              onChange={(value) => setRole((value as PartnerAccessRole) || 'manager')}
-            />
-          </Grid.Col>
-        </Grid>
+              onChange={(event) => setRole((event.currentTarget.value as PartnerAccessRole) || 'manager')}
+              style={{ minHeight: 44, padding: '0 0.75rem' }}
+            >
+                <option value="viewer">Viewer</option>
+                <option value="manager">Manager</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+        </div>
 
-        <Group justify="space-between" align="flex-start">
-          <Text size="xs" c="dimmed" maw={760}>
+        <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
+          <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0, maxWidth: 760 }}>
             If the user has not appeared in Camera yet, the email assignment is still saved and will match later when
             they sign in or create activity.
-          </Text>
-          <Button
-            color="amber"
-            leftSection={<IconUserPlus size={16} />}
+          </p>
+          <SemanticButton
+            action="partner-users:add-access"
             onClick={() => void handleCreate()}
             loading={isSubmitting}
             disabled={!userEmail.trim()}
           >
             Add Access
-          </Button>
-        </Group>
+          </SemanticButton>
+        </div>
 
         {message ? (
-          <Alert icon={<IconCheck size={16} />}>
-            {message}
-          </Alert>
+          <InlineAlert title="Partner access updated" message={message} severity="success" />
         ) : null}
         {error ? (
-          <Alert icon={<IconAlertCircle size={16} />}>
-            {error}
-          </Alert>
+          <InlineAlert title="Partner access failed" message={error} severity="error" />
         ) : null}
 
         {assignments.length === 0 ? (
-          <Card withBorder radius="md" p="xl" bg="var(--mantine-color-gray-0)">
-            <Text size="sm" c="dimmed" ta="center">
-              No partner user assignments yet.
-            </Text>
-          </Card>
+          <StateBlock variant="empty" title="No partner user assignments yet" />
         ) : (
-          <Stack gap="md">
+          <div style={{ display: 'grid', gap: '1rem' }}>
             {assignments.map((assignment) => (
-              <Card key={assignment.accessId} withBorder radius="md" bg="var(--mantine-color-gray-0)">
-                <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
-                  <Stack gap={4}>
-                    <Group gap="sm">
-                      <Text fw={700}>{assignment.userName?.trim() || assignment.userEmail}</Text>
-                      <Badge color={assignment.isActive ? 'green' : 'gray'}>
-                        {assignment.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </Group>
-                    <Text size="sm" c="dimmed">
+              <article key={assignment.accessId} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+                <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))' }}>
+                  <div style={{ display: 'grid', gap: '0.25rem' }}>
+                    <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <strong>{assignment.userName?.trim() || assignment.userEmail}</strong>
+                      <LabelTag tone={assignment.isActive ? 'success' : 'neutral'} label={assignment.isActive ? 'Active' : 'Inactive'} />
+                    </div>
+                    <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem' }}>
                       {assignment.userEmail}
-                    </Text>
-                    <Text size="xs" c="dimmed">
+                    </span>
+                    <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
                       Updated {new Date(assignment.updatedAt).toLocaleString()}
-                    </Text>
-                  </Stack>
+                    </span>
+                  </div>
 
-                  <Stack gap="sm">
-                    <SimpleGrid cols={{ base: 1, md: 3 }}>
-                      <Select
-                        data={Object.entries(APP_LABELS).map(([value, label]) => ({ value, label }))}
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))' }}>
+                      <select
                         value={assignment.appKey}
-                        onChange={(value) =>
-                          void patchAssignment(assignment.accessId, { appKey: value as PartnerAppKey })
+                        onChange={(event) =>
+                          void patchAssignment(assignment.accessId, { appKey: event.currentTarget.value as PartnerAppKey })
                         }
-                      />
-                      <Select
-                        data={Object.entries(ROLE_LABELS).map(([value, label]) => ({ value, label }))}
+                        style={{ minHeight: 40, padding: '0 0.75rem' }}
+                      >
+                        {Object.entries(APP_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))}
+                      </select>
+                      <select
                         value={assignment.role}
-                        onChange={(value) =>
-                          void patchAssignment(assignment.accessId, { role: value as PartnerAccessRole })
+                        onChange={(event) =>
+                          void patchAssignment(assignment.accessId, { role: event.currentTarget.value as PartnerAccessRole })
                         }
-                      />
-                      <Group grow>
-                        <Button
-                          variant={assignment.isActive ? 'light' : 'filled'}
-                          color={assignment.isActive ? 'gray' : 'green'}
+                        style={{ minHeight: 40, padding: '0 0.75rem' }}
+                      >
+                        {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))}
+                      </select>
+                      <div style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}>
+                        <SemanticButton
+                          action={assignment.isActive ? 'partner-users:deactivate' : 'partner-users:activate'}
+                          variant="secondary"
                           onClick={() =>
                             void patchAssignment(assignment.accessId, { isActive: !assignment.isActive })
                           }
                         >
                           {assignment.isActive ? 'Deactivate' : 'Activate'}
-                        </Button>
-                        <Button variant="light" onClick={() => void removeAssignment(assignment.accessId)}>
+                        </SemanticButton>
+                        <SemanticButton action="partner-users:remove" variant="danger" onClick={() => void removeAssignment(assignment.accessId)}>
                           Remove
-                        </Button>
-                      </Group>
-                    </SimpleGrid>
-                  </Stack>
-                </SimpleGrid>
-              </Card>
+                        </SemanticButton>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
             ))}
-          </Stack>
+          </div>
         )}
-      </Stack>
-    </Card>
+      </div>
+    </section>
   );
 }

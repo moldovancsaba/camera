@@ -6,8 +6,8 @@ These rules define how Mantine-backed GDS primitives should be introduced and us
 
 Current SSOT alignment target:
 
-- GDS version: `2.6.4`
-- Camera aligns to the shared contracts through the published `@doneisbetter/*` npm packages plus temporary local adapters where coverage or compatibility is still incomplete
+- GDS version: `3.4.3`
+- Camera aligns to the shared contracts through the published `@doneisbetter/*` npm packages. Local adapters are compatibility shims only, not design-system authority.
 
 Compliance artifact:
 
@@ -56,11 +56,11 @@ Every new GDS primitive should define:
 
 ## Usage Rules
 
-1. Prefer GDS primitives over direct Mantine composition in admin pages.
-2. Use direct Mantine composition when building or refining a primitive, not when bypassing one.
+1. Use GDS primitives over direct Mantine composition in admin pages.
+2. Use direct Mantine composition only inside approved GDS package code, runtime exceptions, or explicitly documented leaf implementation gaps.
 3. Keep domain-specific logic out of foundation primitives.
 4. Keep visual tokens inside the Mantine theme or documented system-level props rather than scattered per page.
-5. Direct `@mantine/core` imports are allowed for leaf composition under the GDS runtime, but no local barrel or wrapper may act as a second UI authority.
+5. Direct `@mantine/core` imports are not allowed in new admin page-level surfaces. Existing imports are migration debt unless listed as an approved exception.
 
 ## Exception Rules
 
@@ -255,3 +255,13 @@ When touching an admin screen:
 4. only build a new local composition if the need is domain-specific
 
 The default response to repeated UI structure should be to strengthen the GDS, not to duplicate more layout code.
+
+## Latest Package Contracts To Prefer
+
+- Admin inventory: `AdminResourceManager`, `AdminResourceGrid`, `AdminResourceCard`, `AdminResourceToolbar`
+- Admin tables: `AdminDataTable`, `AdminAnalyticsTable`, `ResponsiveDataView`
+- Admin review: `AdminReviewLayout`, `AdminModal`, `AdminDetailDrawer`
+- Admin forms: `AdminCrudForm`, `AdminFormSection`, `AdminFormStatus`, `AdminFormActions`, `AdminTextInput`, `AdminTextarea`, `AdminSelect`, `AdminCheckbox`, `AdminFileUpload`
+- Feedback and overlays: `GdsConfirmProvider`, `GdsToastProvider`, `GdsNotificationProvider`, `OverlayManagerProvider`, `ConfirmDialog`, `SemanticButton`
+- Analytics: `ReportingSection`, `GdsChart`, `StatsSection`
+- Public/runtime narrowing: `PublicCaptureFlow`, `PublicIdentityStep`, `PublicConsentStep`, `PublicAcceptStep`, `PublicShareOverlay`, `ShareButtonGroup`, `PlaybackControls`, `PlaybackOverlayControls`

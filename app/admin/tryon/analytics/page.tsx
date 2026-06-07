@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import { Button, Group, Stack, Text } from '@mantine/core';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
@@ -95,18 +94,18 @@ export default async function AdminTryOnAnalyticsPage({
     >
       {dbError ? <DatabaseConnectionAlert diagnosis={dbError} /> : null}
       {analytics ? (
-        <Stack gap="xl">
-          <Text c="dimmed">
+        <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0 }}>
             Reporting over {analytics.scannedResultCount} archived try-on decision{analytics.scannedResultCount === 1 ? '' : 's'}.
-          </Text>
-          <Group gap="sm">
-            <Button component="a" href={exportHref('csv', { bucket, eventId, from, to })}>
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-sm)' }}>
+            <a href={exportHref('csv', { bucket, eventId, from, to })}>
               Export CSV
-            </Button>
-            <Button component="a" href={exportHref('json', { bucket, eventId, from, to })} variant="light">
+            </a>
+            <a href={exportHref('json', { bucket, eventId, from, to })}>
               Export JSON
-            </Button>
-          </Group>
+            </a>
+          </div>
           <HourlyOutcomeChart rows={analytics.hourlyOutcomes} />
           <TryOnAnalyticsTables
             byPreset={analytics.byPreset}
@@ -114,7 +113,7 @@ export default async function AdminTryOnAnalyticsPage({
             byEvent={analytics.byEvent}
             presetPerformance={analytics.presetPerformance}
           />
-        </Stack>
+        </div>
       ) : null}
     </AdminListPageShell>
   );

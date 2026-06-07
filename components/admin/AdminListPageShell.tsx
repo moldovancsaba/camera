@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { Button, Group, Stack, TextInput } from '@mantine/core';
 import { StatsStrip } from '@doneisbetter/gds-admin/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
@@ -49,7 +48,7 @@ export default function AdminListPageShell({
   children,
 }: AdminListPageShellProps) {
   return (
-    <Stack gap="xl">
+    <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
       <WorkspaceHeader
         eyebrow={eyebrow}
         title={title}
@@ -65,62 +64,72 @@ export default function AdminListPageShell({
       {!dbError ? beforeToolbar : null}
 
       {search ? (
-        <Stack gap="xs">
+        <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)' }}>
           {toolbarHint ? (
-            <Group>
+            <div style={{ alignItems: 'center', display: 'flex', gap: 'var(--mantine-spacing-xs)' }}>
               <AdminIcon iconKey="search" size={16} />
               <span style={{ fontSize: 'var(--mantine-font-size-sm)', color: 'var(--mantine-color-dimmed)' }}>
                 {toolbarHint}
               </span>
-            </Group>
+            </div>
           ) : null}
           <GdsDataToolbar
             searchSlot={
-              <Stack gap="md" style={{ flex: 1 }}>
-                <Group align="flex-end" wrap="wrap" gap="md" style={{ flex: 1 }}>
+              <div style={{ display: 'grid', flex: 1, gap: 'var(--mantine-spacing-md)' }}>
+                <div style={{ alignItems: 'end', display: 'flex', flex: 1, flexWrap: 'wrap', gap: 'var(--mantine-spacing-md)' }}>
                   <form style={{ flex: 1, minWidth: 240 }}>
-                    <Group align="flex-end" wrap="wrap">
-                      <TextInput
-                        name="search"
-                        defaultValue={search.defaultValue}
-                        label={search.label}
-                        placeholder={search.placeholder}
-                        leftSection={<AdminIcon iconKey="search" size={16} />}
-                        style={{ flex: 1, minWidth: 220 }}
-                      />
+                    <div style={{ alignItems: 'end', display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-sm)' }}>
+                      <label style={{ display: 'grid', flex: '1 1 220px', gap: 6, fontWeight: 600 }}>
+                        {search.label}
+                        <span style={{ alignItems: 'center', display: 'flex', gap: 8 }}>
+                          <AdminIcon iconKey="search" size={16} />
+                          <input
+                            name="search"
+                            defaultValue={search.defaultValue}
+                            placeholder={search.placeholder}
+                            style={{
+                              border: '1px solid var(--mantine-color-gray-4)',
+                              borderRadius: 8,
+                              flex: 1,
+                              minWidth: 0,
+                              padding: '10px 12px',
+                            }}
+                          />
+                        </span>
+                      </label>
                       {search.hiddenFields
                         ? Object.entries(search.hiddenFields).map(([name, value]) => (
                             <input key={name} type="hidden" name={name} value={value} />
                           ))
                         : null}
-                      <Button type="submit">
+                      <button type="submit">
                         Search
-                      </Button>
+                      </button>
                       {search.defaultValue || toolbarFilters?.length ? (
-                        <Button component={Link} href={search.clearHref} variant="default">
+                        <Link href={search.clearHref}>
                           Clear
-                        </Button>
+                        </Link>
                       ) : null}
-                    </Group>
+                    </div>
                   </form>
-                </Group>
-              </Stack>
+                </div>
+              </div>
             }
             activeFilters={toolbarFilters?.map((chip) => ({ label: `${chip.label}: ${chip.value}` }))}
             createAction={
               toolbarTrailing ? (
-                <Button component={Link} href={toolbarTrailing.href} variant="light">
+                <Link href={toolbarTrailing.href}>
                   {toolbarTrailing.label}
-                </Button>
+                </Link>
               ) : undefined
             }
           />
-        </Stack>
+        </div>
       ) : null}
 
       {dbError ? <DatabaseConnectionAlert diagnosis={dbError} /> : null}
 
       {!dbError ? children : null}
-    </Stack>
+    </div>
   );
 }

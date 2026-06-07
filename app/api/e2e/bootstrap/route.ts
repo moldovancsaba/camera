@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { blockDangerousApiInProduction } from '@/lib/api/production-guard';
 import { upsertPartnerUserAccess } from '@/lib/partners/access';
+import { assertDisposableE2EDatabase, buildE2ERunId } from '@/lib/e2e/safety';
 
 const E2E_PARTNER_ID = 'e2e-partner';
 const E2E_PARTNER_NAME = 'E2E Partner';
@@ -27,8 +28,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
+  try {
+    assertDisposableE2EDatabase('E2E bootstrap');
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 403 });
+  }
+
   const db = await connectToDatabase();
   const now = generateTimestamp();
+  const e2eRunId = buildE2ERunId();
+  const e2eSource = 'system:e2e-bootstrap';
 
   let partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: E2E_PARTNER_ID });
   if (!partner) {
@@ -40,6 +49,10 @@ export async function POST(request: Request) {
       defaultFrames: [],
       defaultLogos: [],
       createdBy: 'system:e2e',
+      metadata: {
+        source: e2eSource,
+        e2eRunId,
+      },
       createdAt: now,
       updatedAt: now,
     });
@@ -60,6 +73,10 @@ export async function POST(request: Request) {
       customPages: [],
       showLogo: false,
       createdBy: 'system:e2e',
+      metadata: {
+        source: e2eSource,
+        e2eRunId,
+      },
       createdAt: now,
       updatedAt: now,
     });
@@ -77,6 +94,21 @@ export async function POST(request: Request) {
     isActive: true,
     createdBy: 'system:e2e',
   });
+  await db.collection(COLLECTIONS.PARTNER_USER_ACCESS).updateOne(
+    {
+      partnerId: E2E_PARTNER_ID,
+      userEmail: 'partner-events-manager@camera.local',
+      appKey: 'events',
+    },
+    {
+      $set: {
+        metadata: {
+          source: e2eSource,
+          e2eRunId,
+        },
+      },
+    }
+  );
 
   const moderationEventId = `e2e-moderation-${Date.now()}`;
   const moderationEvent = await db.collection(COLLECTIONS.EVENTS).insertOne({
@@ -95,6 +127,10 @@ export async function POST(request: Request) {
       allowedLeatherSuitIds: [],
       includeApprovedResultsInSlideshows: false,
       resultSlideshowMode: 'disabled',
+    },
+    metadata: {
+      source: e2eSource,
+      e2eRunId,
     },
     createdBy: 'system:e2e',
     createdAt: now,
@@ -132,6 +168,8 @@ export async function POST(request: Request) {
         finalHeight: 1920,
         finalFileSize: 1000,
         emailSent: false,
+        source: e2eSource,
+        e2eRunId,
       },
       shareCount: 0,
       downloadCount: 0,
@@ -171,6 +209,7 @@ export async function POST(request: Request) {
         finalHeight: 1920,
         finalFileSize: 1000,
         emailSent: false,
+        e2eRunId,
       },
       shareCount: 0,
       downloadCount: 0,
@@ -213,6 +252,10 @@ export async function POST(request: Request) {
       includeApprovedResultsInSlideshows: true,
       resultSlideshowMode: 'approved_results_only',
     },
+    metadata: {
+      source: e2eSource,
+      e2eRunId,
+    },
     createdBy: 'system:e2e',
     createdAt: now,
     updatedAt: now,
@@ -232,6 +275,10 @@ export async function POST(request: Request) {
     playMode: 'loop',
     orderMode: 'fixed',
     submissionSourceMode: 'originals_only',
+    metadata: {
+      source: e2eSource,
+      e2eRunId,
+    },
     createdBy: 'system:e2e',
     createdAt: now,
     updatedAt: now,
@@ -267,6 +314,7 @@ export async function POST(request: Request) {
         finalHeight: 1080,
         finalFileSize: 1000,
         emailSent: false,
+        e2eRunId,
       },
       shareCount: 0,
       downloadCount: 0,
@@ -304,6 +352,7 @@ export async function POST(request: Request) {
         finalHeight: 1080,
         finalFileSize: 1000,
         emailSent: false,
+        e2eRunId,
       },
       shareCount: 0,
       downloadCount: 0,
@@ -328,6 +377,7 @@ export async function POST(request: Request) {
     moderationEventMongoId: moderationEvent.insertedId.toString(),
     moderationEventId,
     moderationResultSubmissionMongoId: resultSubmissionId.toString(),
+    e2eRunId,
     playlistEventId,
     playlistSlideshowId,
     playlistOriginalSubmissionMongoId: playlistOriginalId.toString(),

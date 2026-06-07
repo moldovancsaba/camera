@@ -4,27 +4,11 @@ import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import {
-  Alert,
-  Anchor,
-  AspectRatio,
-  Box,
-  Breadcrumbs,
-  Button,
-  Checkbox,
-  Code,
-  Grid,
-  Group,
-  Stack,
-  Text,
-  TextInput,
-  Textarea,
-} from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
 import { notifications } from '@/lib/gds/notifications';
-import EditorScaffold from '@/components/gds/EditorScaffold';
+import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { FormSection } from '@doneisbetter/gds-admin/client';
-import { StateBlock } from '@doneisbetter/gds-core/client';
+import { InlineAlert, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
+import { confirmDestructive } from '@/lib/gds/confirm-destructive';
 
 interface TryOnSuitRecord {
   _id: string;
@@ -109,10 +93,6 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this garment? This cannot be undone.')) {
-      return;
-    }
-
     setIsDeleting(true);
     setError(null);
 
@@ -147,9 +127,11 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
         title="Garment not found"
         description={error || undefined}
         action={
-          <Button component={Link} href="/admin/tryon/suits" variant="light">
+          <Link href="/admin/tryon/suits" style={{ textDecoration: 'none' }}>
+          <SemanticButton action="garments:back-to-list" variant="secondary">
             Back to garments
-          </Button>
+          </SemanticButton>
+          </Link>
         }
       />
     );
@@ -163,26 +145,24 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
       title="Edit Garment"
       description="Update garment details and publishing state."
       breadcrumbs={
-        <Breadcrumbs>
-          <Anchor component={Link} href="/admin/tryon/suits" size="sm">
+        <nav aria-label="Breadcrumb">
+          <Link href="/admin/tryon/suits">
             Garments
-          </Anchor>
-          <Text size="sm">Edit</Text>
-        </Breadcrumbs>
+          </Link>
+          <span aria-hidden> / </span>
+          <span>Edit</span>
+        </nav>
       }
       maxWidth={960}
     >
       {error ? (
-        <Alert icon={<IconAlertCircle size={16} />}>
-          {error}
-        </Alert>
+        <InlineAlert title="Error" message={error} severity="error" />
       ) : null}
 
       <form onSubmit={handleSubmit}>
-        <Stack gap="lg">
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
           <FormSection title="Garment preview" description="To change the image, delete this garment and upload a new one.">
-            <AspectRatio ratio={1} maw={320}>
-              <Box style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
+            <div style={{ aspectRatio: '1 / 1', borderRadius: 12, maxWidth: 320, overflow: 'hidden', position: 'relative' }}>
                 {preview ? (
                   <Image
                     src={preview}
@@ -192,81 +172,84 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
                     unoptimized
                   />
                 ) : null}
-              </Box>
-            </AspectRatio>
+            </div>
           </FormSection>
 
           <FormSection title="Technical information">
-            <Grid>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm" c="dimmed">Catalog ID</Text>
-                <Code block>{suit.leatherSuitId}</Code>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm" c="dimmed">MongoDB ID</Text>
-                <Code block>{suit._id}</Code>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm">Asset version: {suit.assetVersion || 1}</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm">File size: {suit.fileSize ? `${(suit.fileSize / 1024).toFixed(2)} KB` : 'N/A'}</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm">MIME type: {suit.mimeType || 'N/A'}</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm">Queue usage: {suit.usageCount || 0}</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm">Created: {suit.createdAt ? new Date(suit.createdAt).toLocaleString() : 'N/A'}</Text>
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Text size="sm">Updated: {suit.updatedAt ? new Date(suit.updatedAt).toLocaleString() : 'N/A'}</Text>
-              </Grid.Col>
-            </Grid>
+            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' }}>
+              <div><span>Catalog ID</span><code style={{ display: 'block' }}>{suit.leatherSuitId}</code></div>
+              <div><span>MongoDB ID</span><code style={{ display: 'block' }}>{suit._id}</code></div>
+              <div>Asset version: {suit.assetVersion || 1}</div>
+              <div>File size: {suit.fileSize ? `${(suit.fileSize / 1024).toFixed(2)} KB` : 'N/A'}</div>
+              <div>MIME type: {suit.mimeType || 'N/A'}</div>
+              <div>Queue usage: {suit.usageCount || 0}</div>
+              <div>Created: {suit.createdAt ? new Date(suit.createdAt).toLocaleString() : 'N/A'}</div>
+              <div>Updated: {suit.updatedAt ? new Date(suit.updatedAt).toLocaleString() : 'N/A'}</div>
+            </div>
             {suit.imageUrl ? (
-              <Anchor href={suit.imageUrl} target="_blank" rel="noopener noreferrer" size="sm">
+              <a href={suit.imageUrl} target="_blank" rel="noopener noreferrer">
                 Open asset image URL
-              </Anchor>
+              </a>
             ) : null}
             {suit.thumbnailUrl ? (
-              <Anchor href={suit.thumbnailUrl} target="_blank" rel="noopener noreferrer" size="sm">
+              <a href={suit.thumbnailUrl} target="_blank" rel="noopener noreferrer">
                 Open thumbnail URL
-              </Anchor>
+              </a>
             ) : null}
           </FormSection>
 
           <FormSection title="Garment details">
-            <TextInput name="name" label="Title *" required defaultValue={suit.name} />
-            <Textarea name="description" label="Description" rows={3} defaultValue={suit.description || ''} />
-            <TextInput
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Title *
+              <input name="name" required defaultValue={suit.name} style={{ minHeight: 44, padding: '0 0.75rem' }} />
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Description
+              <textarea name="description" rows={3} defaultValue={suit.description || ''} style={{ padding: '0.75rem' }} />
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Asset version
+              <input
               name="assetVersion"
-              label="Asset version"
               defaultValue={String(suit.assetVersion || 1)}
               inputMode="numeric"
+              style={{ minHeight: 44, padding: '0 0.75rem' }}
             />
-            <Checkbox
-              name="active"
-              defaultChecked={suit.active ?? suit.isActive}
-              label="Active (available for assignment to events)"
-            />
+            </label>
+            <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
+              <input type="checkbox" name="active" defaultChecked={suit.active ?? suit.isActive} />
+              Active (available for assignment to events)
+            </label>
           </FormSection>
 
-          <Group justify="space-between">
-            <Group>
-              <Button type="submit" loading={isSaving}>
+          <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <SemanticButton action="garments:save" type="submit" loading={isSaving}>
                 {isSaving ? 'Saving…' : 'Save Changes'}
-              </Button>
-              <Button component={Link} href="/admin/tryon/suits" variant="default">
+              </SemanticButton>
+              <Link href="/admin/tryon/suits" style={{ textDecoration: 'none' }}>
+              <SemanticButton action="garments:cancel-edit" variant="secondary">
                 Cancel
-              </Button>
-            </Group>
-            <Button variant="light" loading={isDeleting} onClick={() => void handleDelete()}>
+              </SemanticButton>
+              </Link>
+            </div>
+            <SemanticButton
+              action="garments:delete"
+              variant="danger"
+              loading={isDeleting}
+              onClick={() =>
+                confirmDestructive({
+                  title: 'Delete garment',
+                  message: 'Are you sure you want to delete this garment? This cannot be undone.',
+                  targetName: suit.name,
+                  onConfirm: () => void handleDelete(),
+                })
+              }
+            >
               Delete Garment
-            </Button>
-          </Group>
-        </Stack>
+            </SemanticButton>
+          </div>
+        </div>
       </form>
     </EditorScaffold>
   );

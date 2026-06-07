@@ -8,17 +8,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Alert,
-  Button,
-  Checkbox,
-  Stack,
-  TextInput,
-  Textarea,
-} from '@mantine/core';
-import { IconAlertCircle, IconTrash } from '@tabler/icons-react';
-import { UploadDropzone } from '@doneisbetter/gds-core/client';
-import EditorScaffold from '@/components/gds/EditorScaffold';
+import { IconTrash } from '@tabler/icons-react';
+import { InlineAlert, SemanticButton, UploadDropzone } from '@doneisbetter/gds-core/client';
+import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { FormSection } from '@doneisbetter/gds-admin/client';
 import MediaCard from '@/components/media/MediaPreviewCard';
 
@@ -94,7 +86,7 @@ export default function NewLogoPage() {
     >
 
       <form onSubmit={handleSubmit}>
-        <Stack gap="lg">
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
           <FormSection title="Logo Image *">
             {preview ? (
               <MediaCard
@@ -102,9 +94,9 @@ export default function NewLogoPage() {
                 alt="Logo preview"
                 caption={file?.name}
                 action={
-                  <Button variant="light" leftSection={<IconTrash size={16} />} onClick={clearFile}>
+                  <SemanticButton action="logos:remove-upload" variant="secondary" leftSection={<IconTrash size={16} />} onClick={clearFile}>
                     Remove
-                  </Button>
+                  </SemanticButton>
                 }
               />
             ) : (
@@ -118,27 +110,34 @@ export default function NewLogoPage() {
             )}
 
             {error ? (
-              <Alert icon={<IconAlertCircle size={16} />}>
-                {error}
-              </Alert>
+              <InlineAlert title="Logo upload failed" message={error} severity="error" />
             ) : null}
           </FormSection>
 
           <FormSection title="Logo Details">
-            <TextInput name="name" label="Logo Name *" required placeholder="e.g., AC Milan Logo 2025" />
-            <Textarea name="description" label="Description" rows={3} placeholder="Optional description..." />
-            <Checkbox name="isActive" defaultChecked value="true" label="Active (available for assignment to events)" />
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Logo Name *
+              <input name="name" required placeholder="e.g., AC Milan Logo 2025" style={{ minHeight: 44, padding: '0 0.75rem' }} />
+            </label>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Description
+              <textarea name="description" rows={3} placeholder="Optional description..." style={{ padding: '0.75rem' }} />
+            </label>
+            <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
+              <input type="checkbox" name="isActive" defaultChecked value="true" />
+              Active (available for assignment to events)
+            </label>
           </FormSection>
 
-          <Stack gap="sm">
-            <Button variant="default" onClick={() => router.push('/admin/logos')}>
+          <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <SemanticButton action="logos:cancel-create" variant="secondary" onClick={() => router.push('/admin/logos')}>
               Cancel
-            </Button>
-            <Button type="submit" loading={isUploading}>
+            </SemanticButton>
+            <SemanticButton action="logos:create" type="submit" loading={isUploading}>
               {isUploading ? 'Uploading…' : 'Upload Logo'}
-            </Button>
-          </Stack>
-        </Stack>
+            </SemanticButton>
+          </div>
+        </div>
       </form>
     </EditorScaffold>
   );
