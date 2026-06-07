@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import {
+  AdminResourceCard,
   AdminResourceEmptyState,
-  AdminResourceManager,
   type AdminResourceAction,
   type AdminResourceRecord,
 } from '@doneisbetter/gds-admin/client';
+import { SimpleGrid } from '@mantine/core';
 import { StatusBadge } from '@doneisbetter/gds-core/client';
 import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
@@ -43,32 +44,6 @@ export default function EventsInventoryList({
       { label: 'Vetting', value: String(event.pendingTryOnVettingCount) },
     ].filter((item): item is { label: string; value: string } => Boolean(item)),
   }));
-  const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedEventRow>> = [
-    {
-      id: 'view',
-      label: 'View',
-      kind: 'primary',
-      onSelect: (event) => {
-        window.location.href = `/admin/events/${event.id}`;
-      },
-    },
-    {
-      id: 'edit',
-      label: 'Edit',
-      kind: 'secondary',
-      onSelect: (event) => {
-        window.location.href = `/admin/events/${event.id}/edit`;
-      },
-    },
-    {
-      id: 'vetting',
-      label: 'Vetting',
-      kind: 'secondary',
-      onSelect: (event) => {
-        window.location.href = `/admin/tryon/vetting?eventId=${encodeURIComponent(event.id)}`;
-      },
-    },
-  ];
 
   if (events.length === 0) {
     return (
@@ -86,5 +61,38 @@ export default function EventsInventoryList({
     );
   }
 
-  return <AdminResourceManager records={records} state="ready" actions={actions} />;
+  return (
+    <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
+      {records.map((event) => {
+        const actions: Array<AdminResourceAction<typeof event>> = [
+          {
+            id: 'view',
+            label: 'View',
+            kind: 'primary',
+            onSelect: () => {
+              window.location.href = `/admin/events/${event.id}`;
+            },
+          },
+          {
+            id: 'edit',
+            label: 'Edit',
+            kind: 'secondary',
+            onSelect: () => {
+              window.location.href = `/admin/events/${event.id}/edit`;
+            },
+          },
+          {
+            id: 'vetting',
+            label: `Vetting (${event.pendingTryOnVettingCount})`,
+            kind: 'secondary',
+            onSelect: () => {
+              window.location.href = `/admin/tryon/vetting?eventId=${encodeURIComponent(event.id)}`;
+            },
+          },
+        ];
+
+        return <AdminResourceCard key={event.id} record={event} actions={actions} />;
+      })}
+    </SimpleGrid>
+  );
 }
