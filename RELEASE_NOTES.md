@@ -41,6 +41,8 @@ This document tracks all completed tasks and version releases in chronological o
 - Added failed-job queue recovery controls (retry/rerun/resent result).
 - Added image preloading for moderation screens and reduced image loading friction.
 - Completed hourly chart refinements with togglable outcome bars and chart clarity improvements.
+- Added section-scoped analytics exports (`all`, `hourly`, `preset`, `garment`, `event`, `preset_performance`) with matching UI controls.
+- Updated hourly outcome chart to grouped classic bar format and removed hour text from the axis so day boundaries are the only time markers.
 - Clarified terms pipeline to include accepted resubmission update emails.
 - Added analytics export command and reporting schema documentation.
 - Added dedicated low-level design and admin operation guides.

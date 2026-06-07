@@ -13,11 +13,6 @@ const OUTCOMES: Array<{ key: OutcomeKey; label: string; color: string }> = [
   { key: 'failed', label: 'Failed', color: 'var(--mantine-color-orange-6)' },
 ];
 
-function pct(value: number, total: number): string {
-  if (total <= 0 || value <= 0) return '0%';
-  return `${Math.max(4, Math.round((value / total) * 1000) / 10)}%`;
-}
-
 function barHeight(value: number, maxTotal: number): string {
   if (value <= 0) return '0px';
   return `${Math.max(24, Math.round((value / maxTotal) * 220))}px`;
@@ -100,7 +95,7 @@ export default function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeR
               alignItems: 'end',
               borderBottom: '1px solid var(--mantine-color-gray-3)',
               display: 'flex',
-              gap: 2,
+              gap: 1,
               minHeight: 270,
               overscrollBehaviorX: 'contain',
               overflowX: 'auto',
@@ -108,11 +103,14 @@ export default function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeR
               scrollSnapType: 'x proximity',
               WebkitOverflowScrolling: 'touch',
             }}
-          >
+            >
             {chartRows.map((row, index) => {
               const currentDay = row.hour.slice(0, 10);
               const previousDay = chartRows[index - 1]?.hour.slice(0, 10);
               const showDay = index === 0 || currentDay !== previousDay;
+              const visibleBars = OUTCOMES.filter((outcome) => visible[outcome.key]);
+              const barColumnWidth = Math.max(1, visibleBars.length) * 16;
+              const rowMaxValue = Math.max(...visibleBars.map((outcome) => row[outcome.key]), 0);
               return (
                 <div
                   key={row.hour}
@@ -120,7 +118,7 @@ export default function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeR
                     alignItems: 'center',
                     borderLeft: showDay && index > 0 ? '1px solid var(--mantine-color-gray-3)' : undefined,
                     display: 'flex',
-                    flex: '0 0 16px',
+                    flex: `0 0 ${barColumnWidth}px`,
                     flexDirection: 'column',
                     gap: 6,
                     paddingLeft: showDay && index > 0 ? 4 : 0,
@@ -132,25 +130,29 @@ export default function HourlyOutcomeChart({ rows }: { rows: TryOnHourlyOutcomeR
                     aria-label={`${row.label}: approved ${row.approved}, declined ${row.rejected}, service ${row.service}, failed ${row.failed}`}
                     role="img"
                     style={{
-                      alignItems: 'stretch',
-                      background: 'var(--mantine-color-gray-1)',
-                      borderRadius: '7px 7px 3px 3px',
-                      display: 'flex',
-                      flexDirection: 'column-reverse',
-                      height: barHeight(row.visibleTotal, maxTotal),
-                      overflow: 'hidden',
-                      width: 12,
+                    alignItems: 'stretch',
+                    background: 'var(--mantine-color-gray-1)',
+                    display: 'flex',
+                    flexDirection: 'row',
+                    height: barHeight(rowMaxValue, maxTotal),
+                    overflow: 'hidden',
+                    width: Math.max(1, visibleBars.length) * 14,
+                    gap: 2,
                     }}
                   >
-                    {OUTCOMES.map((outcome) =>
-                      visible[outcome.key] ? (
-                        <div
-                          key={outcome.key}
-                          title={`${outcome.label}: ${row[outcome.key]}`}
-                          style={{ background: outcome.color, height: pct(row[outcome.key], row.visibleTotal) }}
-                        />
-                      ) : null
-                    )}
+                    {visibleBars.map((outcome) => (
+                      <div
+                        key={outcome.key}
+                        title={`${outcome.label}: ${row[outcome.key]}`}
+                        style={{
+                          alignSelf: 'flex-end',
+                          background: outcome.color,
+                          borderRadius: '3px',
+                          height: barHeight(row[outcome.key], maxTotal),
+                          width: 12,
+                        }}
+                      />
+                    ))}
                   </div>
                   <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', lineHeight: 1.1, minHeight: 24, textAlign: 'center' }}>
                     {showDay ? dayLabel(row.hour) : ''}

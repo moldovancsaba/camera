@@ -39,22 +39,23 @@ Supported query:
 
 - `format=csv|json` (default `csv`)
 - `bucket`, `eventId`, `from`, `to` as above
+- `section=all|hourly|preset|garment|event|preset_performance` (default `all`)
 
-CSV format contains the same logical sections used by the UI.
+CSV format defaults to all sections unless `section` is set.
 
 ## 2) Dashboard behavior (`/admin/tryon/analytics`)
 
 - `/admin/tryon/analytics` shows:
   - Totals by approved/rejected/service/great
-  - stacked hourly outcome chart
+  - grouped hourly outcome chart
   - tables by preset, garment, event
   - preset performance table with approval/retry/timeout diagnostics
-  - CSV/JSON exports
+  - per-section CSV/JSON exports
 
 ### Hourly chart behavior
 
-- The chart is a stacked bar view with one bar per hour.
-- Stacked segments are `Approved`, `Declined`, `Service`, and `Failed`.
+- The chart is a grouped bar view with one group per hour.
+- Group bars are `Approved`, `Declined`, `Service`, and `Failed`.
 - Day labels appear only at day boundaries to reduce visual noise.
 - Segment visibility can be toggled by clicking segment buttons (`Approved`, `Declined`, `Service`, `Failed`).
 - The segment controls are true hide/show toggles and affect all chart bars.

@@ -18,12 +18,18 @@ function bucketParam(value: string): TryOnAnalyticsBucket | '' {
   return value === 'approved' || value === 'rejected' || value === 'service' || value === 'greatest' ? value : '';
 }
 
-function exportHref(format: 'csv' | 'json', params: { bucket: string; eventId: string; from: string; to: string }): string {
+type ExportSection = 'all' | 'hourly' | 'preset' | 'garment' | 'event' | 'preset_performance';
+
+function exportHref(
+  format: 'csv' | 'json',
+  params: { bucket: string; eventId: string; from: string; to: string; section?: ExportSection }
+): string {
   const query = new URLSearchParams({ format });
   if (params.bucket) query.set('bucket', params.bucket);
   if (params.eventId) query.set('eventId', params.eventId);
   if (params.from) query.set('from', params.from);
   if (params.to) query.set('to', params.to);
+  if (params.section && params.section !== 'all') query.set('section', params.section);
   return `/api/admin/tryon-analytics/export?${query.toString()}`;
 }
 
@@ -99,11 +105,26 @@ export default async function AdminTryOnAnalyticsPage({
             Reporting over {analytics.scannedResultCount} archived try-on decision{analytics.scannedResultCount === 1 ? '' : 's'}.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-sm)' }}>
-            <a href={exportHref('csv', { bucket, eventId, from, to })}>
-              Export CSV
+            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'all' })}>
+              Export All (CSV)
             </a>
-            <a href={exportHref('json', { bucket, eventId, from, to })}>
-              Export JSON
+            <a href={exportHref('json', { bucket, eventId, from, to, section: 'all' })}>
+              Export All (JSON)
+            </a>
+            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'hourly' })}>
+              Export Hourly
+            </a>
+            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'preset' })}>
+              Export By Preset
+            </a>
+            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'garment' })}>
+              Export By Garment
+            </a>
+            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'event' })}>
+              Export By Event
+            </a>
+            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'preset_performance' })}>
+              Export Preset Performance
             </a>
           </div>
           <HourlyOutcomeChart rows={analytics.hourlyOutcomes} />
