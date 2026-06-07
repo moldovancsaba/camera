@@ -1,11 +1,12 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import Link from 'next/link';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@/lib/gds/notifications';
 import { confirmDestructive } from '@/lib/gds/confirm-destructive';
-import { EmptyState, InlineAlert, LabelTag, SemanticButton } from '@doneisbetter/gds-core/client';
+import { EmptyState, InlineAlert, LabelTag } from '@doneisbetter/gds-core/client';
 
 export interface LandingPageListItem {
   _id: string;

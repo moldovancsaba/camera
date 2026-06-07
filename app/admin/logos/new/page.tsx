@@ -1,5 +1,6 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 /**
  * Add New Logo Page
  *
@@ -9,7 +10,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { IconTrash } from '@tabler/icons-react';
-import { InlineAlert, SemanticButton, UploadDropzone } from '@doneisbetter/gds-core/client';
+import { InlineAlert, UploadDropzone } from '@doneisbetter/gds-core/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { FormSection } from '@doneisbetter/gds-admin/client';
 import MediaCard from '@/components/media/MediaPreviewCard';

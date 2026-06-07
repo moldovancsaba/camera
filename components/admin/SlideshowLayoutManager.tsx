@@ -1,8 +1,9 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import Link from 'next/link';
-import { EmptyState, LabelTag, SemanticButton } from '@doneisbetter/gds-core/client';
+import { EmptyState, LabelTag } from '@doneisbetter/gds-core/client';
 
 export interface SlideshowLayoutListItem {
   _id: string;

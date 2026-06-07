@@ -1,10 +1,11 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import type { FormEvent, ReactNode } from 'react';
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { InlineAlert, SemanticButton, UploadDropzone } from '@doneisbetter/gds-core/client';
+import { InlineAlert, UploadDropzone } from '@doneisbetter/gds-core/client';
 import type { LandingPageEditorActionPreset } from '@/lib/admin/build-landing-page-editor-props';
 import type { LandingPageCssPresetOption } from '@/lib/landing-page-css-presets';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';

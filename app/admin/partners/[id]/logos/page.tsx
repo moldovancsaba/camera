@@ -1,5 +1,6 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 /**
  * Partner Default Logos Management Page
  *
@@ -11,7 +12,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
-import { InlineAlert, LabelTag, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
+import { InlineAlert, LabelTag, StateBlock } from '@doneisbetter/gds-core/client';
 
 interface DefaultLogoAssignment {
   logoId: string;

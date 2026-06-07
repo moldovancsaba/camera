@@ -12,8 +12,9 @@
 
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
-import { InlineAlert, LabelTag, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
+import { InlineAlert, LabelTag, StateBlock } from '@doneisbetter/gds-core/client';
 import { CustomPageType, type CustomPage, generateId, generateTimestamp } from '@/lib/db/schemas';
 
 export interface CustomPagesManagerProps {

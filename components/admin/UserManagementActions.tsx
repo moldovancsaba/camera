@@ -1,11 +1,12 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 /**
  * User Management Actions Component
  */
 
 import { useState } from 'react';
-import { InlineAlert, SemanticButton } from '@doneisbetter/gds-core/client';
+import { InlineAlert } from '@doneisbetter/gds-core/client';
 
 interface UserManagementActionsProps {
   user: {

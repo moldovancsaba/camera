@@ -1,10 +1,11 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AdminModal, AdminReviewLayout, ResponsiveDataView } from '@doneisbetter/gds-admin/client';
-import { SemanticButton, StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
+import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
 

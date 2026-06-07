@@ -1,12 +1,13 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 /**
  * Admin-only: upload files into the event gallery (creates submissions via API).
  * Supports drag/drop, multi-file batches, folder import, and client-side resize/compression.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { InlineAlert, LabelTag, SemanticButton } from '@doneisbetter/gds-core/client';
+import { InlineAlert, LabelTag } from '@doneisbetter/gds-core/client';
 
 interface Props {
   eventMongoId: string;

@@ -1,9 +1,10 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import React, { useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { InlineAlert, SemanticButton } from '@doneisbetter/gds-core/client';
+import { InlineAlert } from '@doneisbetter/gds-core/client';
 import { FormSection } from '@doneisbetter/gds-admin/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import {

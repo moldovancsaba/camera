@@ -1,5 +1,6 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 /**
  * Slideshow Manager Component
  *
@@ -9,7 +10,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
-import { EmptyState, LabelTag, SemanticButton } from '@doneisbetter/gds-core/client';
+import { EmptyState, LabelTag } from '@doneisbetter/gds-core/client';
 
 interface Slideshow {
   _id: string;

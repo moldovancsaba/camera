@@ -6,6 +6,7 @@
 
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -13,7 +14,7 @@ import Image from 'next/image';
 import { notifications } from '@/lib/gds/notifications';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { FormSection } from '@doneisbetter/gds-admin/client';
-import { InlineAlert, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
+import { InlineAlert, StateBlock } from '@doneisbetter/gds-core/client';
 import { confirmDestructive } from '@/lib/gds/confirm-destructive';
 
 interface LogoRecord {

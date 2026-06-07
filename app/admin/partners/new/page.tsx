@@ -1,5 +1,6 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 /**
  * Add New Partner Page
  *
@@ -10,7 +11,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { FormSection } from '@doneisbetter/gds-admin/client';
-import { InlineAlert, SemanticButton } from '@doneisbetter/gds-core/client';
+import { InlineAlert } from '@doneisbetter/gds-core/client';
 
 interface CreatePartnerResponse {
   partner?: { _id?: string };

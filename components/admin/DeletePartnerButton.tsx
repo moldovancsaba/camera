@@ -1,8 +1,9 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { InlineAlert, SemanticButton, useGdsConfirm, useGdsToasts } from '@doneisbetter/gds-core/client';
+import { InlineAlert, useGdsConfirm, useGdsToasts } from '@doneisbetter/gds-core/client';
 
 interface DeletePartnerButtonProps {
   partnerId: string;

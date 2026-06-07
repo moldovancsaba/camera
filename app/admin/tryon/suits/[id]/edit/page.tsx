@@ -1,5 +1,6 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -7,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { notifications } from '@/lib/gds/notifications';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { FormSection } from '@doneisbetter/gds-admin/client';
-import { InlineAlert, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
+import { InlineAlert, StateBlock } from '@doneisbetter/gds-core/client';
 import { confirmDestructive } from '@/lib/gds/confirm-destructive';
 
 interface TryOnSuitRecord {

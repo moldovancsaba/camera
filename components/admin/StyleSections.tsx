@@ -7,9 +7,10 @@
 
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import Link from 'next/link';
 import Image from 'next/image';
-import { SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
+import { StateBlock } from '@doneisbetter/gds-core/client';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,

@@ -1,5 +1,6 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 /**
  * Event Frame Management Page
  *
@@ -10,7 +11,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
-import { InlineAlert, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
+import { InlineAlert, StateBlock } from '@doneisbetter/gds-core/client';
 
 interface EventFrameAssignment {
   frameId: string;

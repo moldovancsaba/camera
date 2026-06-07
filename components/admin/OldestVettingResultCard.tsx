@@ -1,8 +1,8 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { SemanticButton } from '@doneisbetter/gds-core/client';
 import type { ModerationRow } from '@/components/admin/TryOnResultModerationTable';
 
 function resolveDisplayName(value: string): string {

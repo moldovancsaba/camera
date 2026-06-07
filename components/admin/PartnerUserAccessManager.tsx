@@ -1,7 +1,8 @@
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
-import { InlineAlert, LabelTag, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
+import { InlineAlert, LabelTag, StateBlock } from '@doneisbetter/gds-core/client';
 
 type PartnerAppKey = 'events';
 type PartnerAccessRole = 'viewer' | 'manager' | 'admin';

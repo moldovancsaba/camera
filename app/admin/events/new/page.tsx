@@ -4,13 +4,14 @@
 
 'use client';
 
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import PartnerSearchDropdown from '@/components/admin/PartnerSearchDropdown';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
 import { FormSection } from '@doneisbetter/gds-admin/client';
-import { InlineAlert, SemanticButton, StateBlock } from '@doneisbetter/gds-core/client';
+import { InlineAlert, StateBlock } from '@doneisbetter/gds-core/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import MediaCard from '@/components/media/MediaPreviewCard';
 import type { TryOnSuitOption } from '@/lib/tryon/suits';
