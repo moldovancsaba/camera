@@ -25,6 +25,21 @@ import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
 
 export async function GET(request: NextRequest) {
   try {
+    if (process.env.NODE_ENV !== 'production' && !process.env.SSO_BASE_URL) {
+      const origin = request.nextUrl.origin;
+      const devLoginUrl = new URL('/api/auth/dev-login', origin);
+      devLoginUrl.searchParams.set('role', 'superadmin');
+      
+      const captureEventId = request.cookies.get('captureEventId')?.value;
+      if (captureEventId) {
+        devLoginUrl.searchParams.set('redirectTo', `/capture/${captureEventId}`);
+      } else {
+        devLoginUrl.searchParams.set('redirectTo', '/admin');
+      }
+      console.log(`[Dev Mode] Intercepted login request, redirecting to mock login bypass: ${devLoginUrl.toString()}`);
+      return NextResponse.redirect(devLoginUrl.toString());
+    }
+
     await checkRateLimit(request, RATE_LIMITS.LOGIN_INIT);
 
     const { searchParams } = new URL(request.url);

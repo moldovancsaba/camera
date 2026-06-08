@@ -9,7 +9,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ObjectId } from 'mongodb';
-import { StatsStrip } from '@doneisbetter/gds-admin/server';
+import { StatsStrip } from '@/components/gds/ClientWrappers';
 import { Breadcrumbs, Button, Card, Code, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import StyleSections from '@/components/admin/StyleSections';
