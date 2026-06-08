@@ -1,12 +1,41 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.12.0
+**Current Version**: 2.13.0
 **Last Updated**: 2026-06-08
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
+
+---
+
+## [v2.13.0] — 2026-06-08
+
+**Type**: Patch/Reliability
+
+### Summary
+Reliability hardening session. All 12 Playwright E2E tests pass. Production build is clean. All static checks pass.
+
+### Changes
+
+- **Removed `middleware.ts`**: Eliminated conflict with `proxy.ts`. Next.js 16 requires only one proxy/middleware file at the root; `proxy.ts` is the canonical convention.
+- **E2E serial execution**: Added `workers: 1` to `playwright.config.ts` to prevent shared-MongoDB test contention between parallel test workers. Tests now run serially.
+- **E2E auto env overrides**: `playwright.config.ts` now sets `MONGODB_DB=camera_test` and `CAMERA_TRYON_INTERNAL_SECRET=dev-tryon-secret` as default overrides when spinning up the web server.
+- **Graceful image inspection**: `inspectTryOnResultAsset` in `lib/tryon/frame-composition.ts` now catches fetch failures and returns a minimal asset with `null` dimensions instead of propagating a 500 error. Completion records are always written.
+- **Try-on results query fix**: `GET /api/admin/tryon-results?reviewStatus=approved` now correctly finds archived approved results without requiring `archive=approved`. A new query branch handles terminal review states automatically.
+- **E2E cleanup scope**: Partner user access deletion in `/api/e2e/cleanup` is now scoped to the current `e2eRunId`, preventing cross-test data deletion races.
+- **API error boundaries**: `app/api/frames/[id]/route.ts` and `app/api/partners/[partnerId]/toggle/route.ts` wrapped with `withErrorHandler` for consistent typed error responses.
+- **E2E test fix**: Corrected `partnerMongoId` vs `partnerId` query parameter bug in `tests/e2e/partner-api-auth.spec.ts`.
+- **TypeScript**: Added missing `ObjectId` import in `lib/tryon/setup-resolution.ts`; resolved `any` type cast.
+- **Documentation**: Updated E2E safety gate and env override docs in `README.md` and `docs/DOCUMENTATION.md`.
+
+### Verification
+- `npm run type-check` — 0 errors
+- `npm run gds:check` — compliance + boundary pass
+- `npm run lint` — 0 warnings
+- `npm run build` — clean production build (40 static pages, 119 dynamic routes)
+- `npm run test:e2e` — 12/12 pass
 
 ---
 

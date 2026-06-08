@@ -127,6 +127,7 @@ Operational note:
 - A stale tracker snapshot is a known source of process drift. Refresh this section at handoff time instead of preserving old issue IDs.
 - 2026-06-07 handoff note: GDS 3.4.3 issue snapshot for `#69`-`#78` is recorded in `docs/GDS_3_4_3_ALIGNMENT_PLAN.md` and board-sync details are recorded in `docs/GDS_3_4_3_GITHUB_BOARD_HANDOVER.md`. GitHub Project v2 status edits were initially blocked by GraphQL rate limit until 2026-06-07 15:54:46 CEST; after reset, issue comments were posted and `#69` plus `#73` were moved to `Review (ALMOST)`.
 - 2026-06-07 release-gate note: `docs/GDS_RELEASE_GATE.md` and `.github/workflows/gds-release-gate.yml` define the canonical npm-based validation lane for GDS compliance, type-check, lint, and build.
+- 2026-06-08 reliability hardening: E2E suite passes 12/12 tests serially. Key fixes: middleware.ts conflict removed, parallel DB contention resolved (workers:1), inspectTryOnResultAsset graceful degradation, tryon-results reviewStatus=approved query corrected, API error boundary coverage extended. Committed as 9454b40 and bumped to v2.13.0.
 
 ### Do not drift again
 

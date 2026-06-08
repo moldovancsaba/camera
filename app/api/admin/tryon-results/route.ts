@@ -1,3 +1,23 @@
+/**
+ * Try-On Results Moderation API
+ *
+ * GET  /api/admin/tryon-results
+ *   Returns paginated try-on result submissions for admin moderation.
+ *
+ *   Query param decision matrix:
+ *   - (no archive param)                       → active pending queue (archived=false, reviewStatus=pending_review)
+ *   - reviewStatus=pending_review               → same as above
+ *   - reviewStatus=approved                     → approved archive bucket (archived=true, bucket=approved)
+ *   - reviewStatus=rejected                     → rejected archive bucket (archived=true, bucket=rejected)
+ *   - archive=approved|rejected|service         → explicit archive bucket (superseded results excluded)
+ *   - archive=greatest                          → approved bucket filtered to tryOnGreat=true
+ *   - archive=superseded                        → results superseded by quality reruns
+ *   - archive=approved + reviewStatus=X         → archive bucket narrowed by reviewStatus
+ *
+ * All mutation endpoints (approve/reject/great/service) are co-located under
+ * app/api/admin/tryon-results/[submissionId]/*
+ */
+
 import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';

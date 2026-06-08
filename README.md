@@ -1,6 +1,6 @@
 # Camera
 
-**Version**: 2.12.0  
+**Version**: 2.13.0  
 **Last Updated**: 2026-06-08  
 **Status**: Production system
 
@@ -170,6 +170,16 @@ Current package note:
 - Camera now runs on Mantine `8.3.x`, matching the current GDS peer contract
 - Camera no longer carries the old local `AppButton` or `components/gds/ui` barrel authority; leaf controls import Mantine directly under the GDS runtime where needed
 - public landing pages keep an explicit creator-CSS exception so pages like `/landing/*` can preserve custom themed presentation independent of the admin GDS chrome
+
+## E2E test reliability
+
+All 12 Playwright E2E tests pass serially against a dedicated `camera_test` MongoDB database.
+
+- Tests run with `workers: 1` to prevent shared-database contention between concurrent test cases.
+- The `/api/e2e/bootstrap` and `/api/e2e/cleanup` routes are gated by `assertDisposableE2EDatabase()` — requests are rejected with `403` unless `MONGODB_DB` contains a safe keyword (`e2e`, `test`, `dev`, `local`, `sandbox`, `staging`).
+- `playwright.config.ts` automatically sets `MONGODB_DB=camera_test` and `CAMERA_TRYON_INTERNAL_SECRET=dev-tryon-secret` when spawning the web server via `PLAYWRIGHT_START_WEB_SERVER=true`.
+- `inspectTryOnResultAsset` degrades gracefully on unreachable image URLs — completion records are still written with `null` dimensions rather than returning a 500.
+- `GET /api/admin/tryon-results?reviewStatus=approved` correctly finds approved (archived) results without requiring the `archive=approved` parameter.
 
 ## Try-on pipeline
 

@@ -1,6 +1,6 @@
 # Architecture
 
-**Version**: 2.12.0  
+**Version**: 2.13.0  
 **Last Updated**: 2026-06-08
 
 This document describes the current production architecture of Camera as implemented in the repository today.
@@ -117,6 +117,7 @@ Partner detail pages are the primary daily operational surface. They expose:
 - Reruns always create a new job and require fresh human approval before being sent to the user.
 - Moderation archive buckets are `approved`, `rejected`, and `service`; `greatest` is a derived approval+great view.
 - Failed job states are not included in active queue SLA counts.
+- Worker completion endpoint degrades gracefully on unreachable result image URLs; dimensions are stored as null and the result still enters the pending review queue.
 
 ## 5. Authorization architecture
 
@@ -158,13 +159,14 @@ Purpose:
 - global admins retain bypass
 - global inventory pages remain global-admin-only
 - partner/app pages enforce partner-scoped access where implemented
+- all API routes use withErrorHandler to catch uncaught exceptions and return typed 4xx/5xx responses
 
 Reference:
-- [docs/AUTHORIZATION.md](/Users/Shared/Projects/moldovancsaba/camera/docs/AUTHORIZATION.md)
+- [docs/AUTHORIZATION.md](/Users/Shared/Projects/camera/docs/AUTHORIZATION.md)
 
 ## 6. Middleware and routing behavior
 
-Root edge proxy in [proxy.ts](/Users/Shared/Projects/moldovancsaba/camera/proxy.ts) does three important jobs:
+Root edge proxy in [proxy.ts](/Users/Shared/Projects/camera/proxy.ts) does three important jobs:
 
 1. gate `/admin` by valid serialized session state
 2. rescue OAuth callback parameters returned to the wrong path
@@ -205,7 +207,7 @@ Examples:
 - `partner.partnerId`
 - `frame.frameId`
 
-This is intentional. Do not collapse it into a single rule. See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/moldovancsaba/camera/docs/MONGODB_CONVENTIONS.md).
+This is intentional. Do not collapse it into a single rule. See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CONVENTIONS.md).
 
 ## 8. Main collections
 
@@ -225,7 +227,7 @@ Core collections:
 - `leather_suits`
 - `tryon_jobs`
 
-Schema definitions live in [lib/db/schemas.ts](/Users/Shared/Projects/moldovancsaba/camera/lib/db/schemas.ts).
+Schema definitions live in [lib/db/schemas.ts](/Users/Shared/Projects/camera/lib/db/schemas.ts).
 
 ## 9. Submission pipeline
 
@@ -259,7 +261,7 @@ Key properties:
 - composite layouts through `slideshow_layouts`
 
 Reference:
-- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/moldovancsaba/camera/docs/SLIDESHOW_LOGIC.md)
+- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/camera/docs/SLIDESHOW_LOGIC.md)
 
 ## 11. API surface summary
 
@@ -300,9 +302,9 @@ npm run env:verify
 
 ## 13. Canonical references
 
-- [README.md](/Users/Shared/Projects/moldovancsaba/camera/README.md)
-- [TECH_STACK.md](/Users/Shared/Projects/moldovancsaba/camera/TECH_STACK.md)
-- [docs/AUTHORIZATION.md](/Users/Shared/Projects/moldovancsaba/camera/docs/AUTHORIZATION.md)
-- [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/moldovancsaba/camera/docs/MONGODB_CONVENTIONS.md)
-- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/moldovancsaba/camera/docs/SLIDESHOW_LOGIC.md)
-- [docs/DOCUMENTATION.md](/Users/Shared/Projects/moldovancsaba/camera/docs/DOCUMENTATION.md)
+- [README.md](/Users/Shared/Projects/camera/README.md)
+- [TECH_STACK.md](/Users/Shared/Projects/camera/TECH_STACK.md)
+- [docs/AUTHORIZATION.md](/Users/Shared/Projects/camera/docs/AUTHORIZATION.md)
+- [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CONVENTIONS.md)
+- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/camera/docs/SLIDESHOW_LOGIC.md)
+- [docs/DOCUMENTATION.md](/Users/Shared/Projects/camera/docs/DOCUMENTATION.md)

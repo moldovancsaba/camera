@@ -1,3 +1,19 @@
+/**
+ * Try-On Frame Composition
+ *
+ * Provides two exported functions:
+ *
+ * - `inspectTryOnResultAsset(url)` — fetches the result image, reads its
+ *   dimensions and MIME type, and returns a `TryOnResultAsset`. If the fetch
+ *   fails (e.g. a non-existent or unreachable URL used in E2E tests) the
+ *   function degrades gracefully: a warning is logged and an asset with null
+ *   dimensions is returned. Completion records are always written.
+ *
+ * - `applyFrameToTryOnResult(resultUrl, frameUrl, ...)` — composites a
+ *   try-on result with an event frame using sharp, uploads the composed image
+ *   to imgbb, and returns the final `TryOnResultAsset`.
+ */
+
 import sharp from 'sharp';
 import { uploadImage, type UploadResult } from '@/lib/imgbb/upload';
 

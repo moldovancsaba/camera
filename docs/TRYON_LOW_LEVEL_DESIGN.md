@@ -1,6 +1,6 @@
 # Try-On Low-Level Design
 
-**Version**: 2.11.0
+**Version**: 2.13.0
 **Last Updated**: 2026-06-08
 
 ## 1. Objective and scope
@@ -124,6 +124,7 @@ Core modules:
    - `isShareVisible = false`
    - `isSlideshowEligible = false`
 5. For admin-initiated reruns, completion always enforces pending review regardless of event policy.
+6. If the result image URL is unreachable at completion time, the asset is stored with null dimensions and a server warning is logged. The result still enters the pending review queue.
 
 ### 5.2 HIL gate semantics
 
@@ -165,6 +166,7 @@ When admin requests rerun from a result card or a queue action:
 
 - `GET /api/admin/tryon-results`
   - query: `reviewStatus`, `archive`, `eventId`, `partnerId`, `suitId`, `offset`, `limit`
+  - When `reviewStatus=approved` or `reviewStatus=rejected` is passed without `archive=`, the route automatically queries the corresponding archive bucket.
   - defaults to active pending queue with `offset=0`, `limit=24`.
 - `POST /api/admin/tryon-results/{submissionId}/approve`
 - `POST /api/admin/tryon-results/{submissionId}/reject`

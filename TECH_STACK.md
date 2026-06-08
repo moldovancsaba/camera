@@ -1,6 +1,6 @@
 # Tech Stack
 
-**Version**: 2.11.0  
+**Version**: 2.13.0  
 **Last Updated**: 2026-06-08
 
 This document records the current technical stack in use and the parts of the product each technology supports.
@@ -130,6 +130,7 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 - `eslint-config-next` 16
 - `tsx`
 - `tsc --noEmit`
+- `playwright` — E2E test suite running 12 serial tests against a dedicated test database
 
 ## Useful scripts
 
