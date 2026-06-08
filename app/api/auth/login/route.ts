@@ -23,26 +23,42 @@ import { encodeSignedOAuthPkceState, getOAuthPkceStateSigningKey } from '@/lib/a
 import { parseLoginProvider } from '@/lib/auth/social-login';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
 
+function resolveDevLoginRedirect(request: NextRequest): string {
+  const { searchParams } = request.nextUrl;
+  const redirectToParam = searchParams.get('redirectTo')?.trim();
+  if (redirectToParam?.startsWith('/')) {
+    return redirectToParam;
+  }
+
+  const captureEventId = request.cookies.get('captureEventId')?.value?.trim();
+  if (captureEventId) {
+    return `/capture/${captureEventId}`;
+  }
+
+  return '/';
+}
+
+function resolveDevLoginRole(redirectTo: string): 'admin' | 'user' {
+  return redirectTo.startsWith('/admin') ? 'admin' : 'user';
+}
+
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = request.nextUrl;
+
     if (process.env.NODE_ENV !== 'production' && !process.env.SSO_BASE_URL) {
       const origin = request.nextUrl.origin;
+      const redirectTo = resolveDevLoginRedirect(request);
       const devLoginUrl = new URL('/api/auth/dev-login', origin);
-      devLoginUrl.searchParams.set('role', 'superadmin');
-      
-      const captureEventId = request.cookies.get('captureEventId')?.value;
-      if (captureEventId) {
-        devLoginUrl.searchParams.set('redirectTo', `/capture/${captureEventId}`);
-      } else {
-        devLoginUrl.searchParams.set('redirectTo', '/admin');
-      }
-      console.log(`[Dev Mode] Intercepted login request, redirecting to mock login bypass: ${devLoginUrl.toString()}`);
+      devLoginUrl.searchParams.set('redirectTo', redirectTo);
+      devLoginUrl.searchParams.set('role', resolveDevLoginRole(redirectTo));
+      devLoginUrl.searchParams.set('access', 'true');
+      console.log(`[Dev Mode] SSO is not configured; using dev-login and returning to ${redirectTo}`);
       return NextResponse.redirect(devLoginUrl.toString());
     }
 
     await checkRateLimit(request, RATE_LIMITS.LOGIN_INIT);
 
-    const { searchParams } = new URL(request.url);
     const fromLogout = searchParams.get('from_logout') === 'true';
     const provider = parseLoginProvider(searchParams.get('provider'));
     const redirectUri = getOAuthCallbackRedirectUri(request);

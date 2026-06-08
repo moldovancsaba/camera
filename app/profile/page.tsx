@@ -44,7 +44,7 @@ export default async function ProfilePage() {
   const session = await getSession();
 
   if (!session) {
-    redirect(await authEntryPathForCurrentHost());
+    redirect(await authEntryPathForCurrentHost('/profile'));
   }
 
   // Fetch user's submissions

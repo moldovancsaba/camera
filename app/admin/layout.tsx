@@ -2,6 +2,7 @@
  * Admin layout: sidebar + main content.
  */
 
+import { headers } from 'next/headers';
 import { getSession } from '@/lib/auth/session';
 import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -17,9 +18,11 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const session = await getSession();
+  const requestHeaders = await headers();
+  const returnPath = requestHeaders.get('x-camera-return-path')?.trim() || '/admin';
 
   if (!session) {
-    redirect(await authEntryPathForCurrentHost());
+    redirect(await authEntryPathForCurrentHost(returnPath));
   }
 
   if (session.appAccess === false) {

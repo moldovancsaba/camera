@@ -57,19 +57,28 @@ export function proxy(request: NextRequest) {
   }
 
   const loginPath = '/api/auth/login';
+  const returnPath = `${pathname}${request.nextUrl.search}`;
 
   const serialized = readSerializedSessionFromCookieGet((name) => request.cookies.get(name)?.value);
   if (!serialized) {
-    return NextResponse.redirect(new URL(loginPath, request.url));
+    const loginUrl = new URL(loginPath, request.url);
+    loginUrl.searchParams.set('redirectTo', returnPath);
+    return NextResponse.redirect(loginUrl);
   }
 
   const gate = parseMiddlewareAuthGate(serialized);
   if (!gate.allow) {
-    const target = gate.toLogin ? loginPath : '/';
-    return NextResponse.redirect(new URL(target, request.url));
+    if (gate.toLogin) {
+      const loginUrl = new URL(loginPath, request.url);
+      loginUrl.searchParams.set('redirectTo', returnPath);
+      return NextResponse.redirect(loginUrl);
+    }
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  response.headers.set('x-camera-return-path', returnPath);
+  return response;
 }
 
 export const config = {
