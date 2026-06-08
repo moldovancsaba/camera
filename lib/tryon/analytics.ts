@@ -313,3 +313,274 @@ export async function collectTryOnAnalytics(
     scannedResultCount: docs.length,
   };
 }
+
+export interface MultiEventUserRow {
+  email: string;
+  eventsCount: number;
+  events: string[];
+  submissionCount: number;
+}
+
+export interface CrossEventAnalyticsResult {
+  totalUniqueEmails: number;
+  totalUniqueCustomerEmails: number;
+  oneEventCount: number;
+  twoEventsCount: number;
+  threeOrMoreEventsCount: number;
+  oneEventPercent: number;
+  twoEventsPercent: number;
+  threeOrMoreEventsPercent: number;
+  multiEventUsers: MultiEventUserRow[];
+}
+
+export async function collectCrossEventUserAnalytics(
+  db: Db
+): Promise<CrossEventAnalyticsResult> {
+  const events = await db.collection(COLLECTIONS.EVENTS).find({}, { projection: { eventId: 1, name: 1 } }).toArray();
+  const eventIdToNameMap = new Map<string, string>();
+  for (const e of events) {
+    if (e.eventId) {
+      eventIdToNameMap.set(e.eventId, e.name);
+    }
+  }
+
+  const aggregationResult = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).aggregate([
+    { $match: { isArchived: { $ne: true } } },
+    {
+      $project: {
+        email: {
+          $let: {
+            vars: {
+              rawEmail: {
+                $ifNull: [
+                  "$userEmail",
+                  "$userInfo.email",
+                  "$metadata.emailRecipient",
+                  ""
+                ]
+              }
+            },
+            in: {
+              $cond: [
+                { $eq: [ { $type: "$$rawEmail" }, "string" ] },
+                { $trim: { input: { $toLower: "$$rawEmail" } } },
+                ""
+              ]
+            }
+          }
+        },
+        eventIds: {
+          $setUnion: [
+            { $cond: [ { $ifNull: ["$eventId", false] }, ["$eventId"], [] ] },
+            { $cond: [ { $isArray: "$eventIds" }, "$eventIds", [] ] }
+          ]
+        }
+      }
+    },
+    {
+      $facet: {
+        allUniqueEmails: [
+          { $match: { email: { $ne: "" } } },
+          { $group: { _id: "$email" } },
+          { $count: "count" }
+        ],
+        cleanCustomers: [
+          {
+            $match: {
+              email: {
+                $nin: ["", null, "anonymous@event", "m@m.m", "moldovancsaba@gmail.com"],
+                $not: /@seyuselfies\.com$|\.seyuselfies\.com$/
+              },
+              "eventIds.0": { $exists: true }
+            }
+          },
+          {
+            $group: {
+              _id: "$email",
+              eventIds: { $push: "$eventIds" },
+              submissionCount: { $sum: 1 }
+            }
+          },
+          {
+            $project: {
+              email: "$_id",
+              submissionCount: 1,
+              events: {
+                $reduce: {
+                  input: "$eventIds",
+                  initialValue: [],
+                  in: { $setUnion: ["$$value", "$$this"] }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]).next() as unknown as {
+    allUniqueEmails: Array<{ count: number }>;
+    cleanCustomers: Array<{
+      email: string;
+      submissionCount: number;
+      events: string[];
+    }>;
+  } | null;
+
+  const allUniqueEmailsCount = aggregationResult?.allUniqueEmails?.[0]?.count || 0;
+  const cleanCustomers = aggregationResult?.cleanCustomers || [];
+
+  let oneEventCount = 0;
+  let twoEventsCount = 0;
+  let threeOrMoreEventsCount = 0;
+  const multiEventUsers: MultiEventUserRow[] = [];
+
+  for (const customer of cleanCustomers) {
+    const eventsCount = customer.events.length;
+    if (eventsCount === 1) {
+      oneEventCount++;
+    } else if (eventsCount === 2) {
+      twoEventsCount++;
+    } else if (eventsCount >= 3) {
+      threeOrMoreEventsCount++;
+    }
+
+    if (eventsCount > 1) {
+      const eventNames = customer.events.map(id => eventIdToNameMap.get(id) || id);
+      multiEventUsers.push({
+        email: customer.email,
+        eventsCount,
+        events: eventNames,
+        submissionCount: customer.submissionCount
+      });
+    }
+  }
+
+  // Sort multiEventUsers by eventsCount (descending), then submissionCount (descending)
+  multiEventUsers.sort((a, b) => b.eventsCount - a.eventsCount || b.submissionCount - a.submissionCount);
+
+  const totalUsers = cleanCustomers.length;
+  const oneEventPercent = totalUsers > 0 ? Math.round((oneEventCount / totalUsers) * 100) : 0;
+  const twoEventsPercent = totalUsers > 0 ? Math.round((twoEventsCount / totalUsers) * 100) : 0;
+  const threeOrMoreEventsPercent = totalUsers > 0 ? Math.round((threeOrMoreEventsCount / totalUsers) * 100) : 0;
+
+  return {
+    totalUniqueEmails: allUniqueEmailsCount,
+    totalUniqueCustomerEmails: totalUsers,
+    oneEventCount,
+    twoEventsCount,
+    threeOrMoreEventsCount,
+    oneEventPercent,
+    twoEventsPercent,
+    threeOrMoreEventsPercent,
+    multiEventUsers,
+  };
+}
+
+export interface EventSpecificStats {
+  totalSubmissions: number;
+  tryOnCount: number;
+  originalCount: number;
+  uniqueEmailsCount: number;
+  cleanCustomerEmailsCount: number;
+}
+
+export async function collectEventSpecificStats(
+  db: Db,
+  eventId: string
+): Promise<EventSpecificStats> {
+  const aggregationResult = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).aggregate([
+    {
+      $match: {
+        $and: [
+          { $or: [{ eventId }, { eventIds: { $in: [eventId] } }] },
+          { isArchived: { $ne: true } }
+        ]
+      }
+    },
+    {
+      $project: {
+        submissionKind: 1,
+        email: {
+          $let: {
+            vars: {
+              rawEmail: {
+                $ifNull: [
+                  "$userEmail",
+                  "$userInfo.email",
+                  "$metadata.emailRecipient",
+                  ""
+                ]
+              }
+            },
+            in: {
+              $cond: [
+                { $eq: [ { $type: "$$rawEmail" }, "string" ] },
+                { $trim: { input: { $toLower: "$$rawEmail" } } },
+                ""
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      $facet: {
+        counts: [
+          {
+            $group: {
+              _id: null,
+              totalSubmissions: { $sum: 1 },
+              tryOnCount: {
+                $sum: {
+                  $cond: [ { $eq: ["$submissionKind", "tryon_result"] }, 1, 0 ]
+                }
+              },
+              originalCount: {
+                $sum: {
+                  $cond: [ { $ne: ["$submissionKind", "tryon_result"] }, 1, 0 ]
+                }
+              }
+            }
+          }
+        ],
+        uniqueEmails: [
+          { $match: { email: { $ne: "" } } },
+          { $group: { _id: "$email" } },
+          { $count: "count" }
+        ],
+        cleanCustomerEmails: [
+          {
+            $match: {
+              email: {
+                $nin: ["", null, "anonymous@event", "m@m.m", "moldovancsaba@gmail.com"],
+                $not: /@seyuselfies\.com$|\.seyuselfies\.com$/
+              }
+            }
+          },
+          { $group: { _id: "$email" } },
+          { $count: "count" }
+        ]
+      }
+    }
+  ]).next() as unknown as {
+    counts: Array<{
+      totalSubmissions: number;
+      tryOnCount: number;
+      originalCount: number;
+    }>;
+    uniqueEmails: Array<{ count: number }>;
+    cleanCustomerEmails: Array<{ count: number }>;
+  } | null;
+
+  const counts = aggregationResult?.counts?.[0] || { totalSubmissions: 0, tryOnCount: 0, originalCount: 0 };
+  const uniqueEmailsCount = aggregationResult?.uniqueEmails?.[0]?.count || 0;
+  const cleanCustomerEmailsCount = aggregationResult?.cleanCustomerEmails?.[0]?.count || 0;
+
+  return {
+    totalSubmissions: counts.totalSubmissions,
+    tryOnCount: counts.tryOnCount,
+    originalCount: counts.originalCount,
+    uniqueEmailsCount,
+    cleanCustomerEmailsCount,
+  };
+}

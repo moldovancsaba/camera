@@ -4,6 +4,8 @@ import { AdminAnalyticsTable } from '@doneisbetter/gds-admin/client';
 import type {
   TryOnAnalyticsRow,
   TryOnPresetPerformanceRow,
+  CrossEventAnalyticsResult,
+  MultiEventUserRow,
 } from '@/lib/tryon/analytics';
 
 function AnalyticsTable({ title, rows }: { title: string; rows: TryOnAnalyticsRow[] }) {
@@ -59,16 +61,43 @@ function PresetPerformanceTable({ rows }: { rows: TryOnPresetPerformanceRow[] })
   );
 }
 
+function CrossEventAnalyticsSection({ crossEvent }: { crossEvent: CrossEventAnalyticsResult }) {
+  return (
+    <section style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)', marginTop: 'var(--mantine-spacing-xl)' }}>
+      <h3 style={{ margin: 0 }}>🔄 Multi-Event Customers</h3>
+      <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0 }}>
+        Active customers who registered across more than one event (excluding system/test accounts).
+      </p>
+      {crossEvent.multiEventUsers.length > 0 ? (
+        <AdminAnalyticsTable<MultiEventUserRow & Record<string, unknown>>
+          rows={crossEvent.multiEventUsers as Array<MultiEventUserRow & Record<string, unknown>>}
+          getRowKey={(row) => row.email}
+          columns={[
+            { key: 'email', header: 'Email Address', accessor: (row) => row.email, rowHeader: true },
+            { key: 'eventsCount', header: 'Events', accessor: (row) => row.eventsCount, numeric: true },
+            { key: 'events', header: 'Events Participated', accessor: (row) => row.events.join(', ') },
+            { key: 'submissionCount', header: 'Images Generated', accessor: (row) => row.submissionCount, numeric: true },
+          ]}
+        />
+      ) : (
+        <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0 }}>No customers have participated in multiple events yet.</p>
+      )}
+    </section>
+  );
+}
+
 export default function TryOnAnalyticsTables({
   byPreset,
   byGarment,
   byEvent,
   presetPerformance,
+  crossEvent,
 }: {
   byPreset: TryOnAnalyticsRow[];
   byGarment: TryOnAnalyticsRow[];
   byEvent: TryOnAnalyticsRow[];
   presetPerformance: TryOnPresetPerformanceRow[];
+  crossEvent?: CrossEventAnalyticsResult | null;
 }) {
   return (
     <>
@@ -76,6 +105,7 @@ export default function TryOnAnalyticsTables({
       <AnalyticsTable title="By Preset" rows={byPreset} />
       <AnalyticsTable title="By Garment" rows={byGarment} />
       <AnalyticsTable title="By Event" rows={byEvent} />
+      {crossEvent ? <CrossEventAnalyticsSection crossEvent={crossEvent} /> : null}
     </>
   );
 }

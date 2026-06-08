@@ -1,7 +1,7 @@
 # Try-On Admin Guide
 
-**Version**: 2.10.0
-**Last Updated**: 2026-06-06
+**Version**: 2.11.0
+**Last Updated**: 2026-06-08
 
 This guide covers day-to-day operator workflows for the Try-On app surfaces.
 

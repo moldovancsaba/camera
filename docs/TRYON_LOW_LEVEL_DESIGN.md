@@ -1,7 +1,7 @@
 # Try-On Low-Level Design
 
-**Version**: 2.10.0
-**Last Updated**: 2026-06-06
+**Version**: 2.11.0
+**Last Updated**: 2026-06-08
 
 ## 1. Objective and scope
 

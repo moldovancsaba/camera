@@ -1,7 +1,7 @@
 # Try-On analytics and data operations
 
-**Version**: 2.10.0  
-**Last Updated**: 2026-06-06
+**Version**: 2.11.0  
+**Last Updated**: 2026-06-08
 
 ## Scope
 
@@ -95,3 +95,18 @@ The strict variant exits non-zero on unresolved garment references, identity gap
 - Provider/runtime timeouts increase `providerTimeouts` in preset performance.
 - Repeated failures that are not transient should be moved to rerun/recovery and then rerun moderation from queue/failing-job paths.
 - A completed result that appears in unexpected buckets should be checked in audit history before rerun; do not modify history fields directly.
+
+## 6) Database Aggregation Performance Design
+
+To ensure fast page load times and avoid blocking the Next.js single-threaded event loop, all analytics aggregation is offloaded directly to the MongoDB engine using `$facet` aggregation pipelines.
+
+### Cross-Event Analytics (`collectCrossEventUserAnalytics`)
+App-wide analytics aggregates all submissions (`isArchived !== true`) into:
+1. `allUniqueEmails`: A `$group` of all emails to get a total unique email count.
+2. `cleanCustomers`: Filters out internal domains and developer emails (`anonymous@event`, `moldovancsaba@gmail.com`, `david.bozsik@seyuselfies.com`, `mate.pecsi@seyuselfies.com`, `m@m.m`, and `seyuselfies.com` domains), groups by email to combine event participations (via `$push` and `$reduce` / `$setUnion` to flatten unique events), and counts submissions.
+
+### Event-Specific Engagement (`collectEventSpecificStats`)
+Event-level analytics counts total submissions, AI try-ons, original captures, unique emails, and clean customer emails for a specific event ID. It utilizes a single `$facet` pipeline to compute all counts concurrently in the database:
+- `counts`: Groups matching submissions to count total, try-on, and original captures.
+- `uniqueEmails`: Groups and counts all non-empty emails.
+- `cleanCustomerEmails`: Groups and counts emails matching the clean customer filter criteria.

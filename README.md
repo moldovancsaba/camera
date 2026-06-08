@@ -1,7 +1,7 @@
 # Camera
 
-**Version**: 2.10.0  
-**Last Updated**: 2026-06-07  
+**Version**: 2.11.0  
+**Last Updated**: 2026-06-08  
 **Status**: Production system
 
 Camera is a Next.js platform for branded photo capture, event galleries, slideshow playback, partner operations, and reusable shared resources on the same identity, media, and MongoDB foundations.
@@ -162,9 +162,8 @@ Reusable exception guidance:
 
 Current package note:
 
-- Camera is aligned to the GDS **3.4.3 contracts**
-- Camera now consumes the `@doneisbetter/*` package line at the provider/theme/compliance boundary
-- Camera now pins the temporary supported GitHub release-asset tarballs for `@doneisbetter/*` because npm publication is not live yet
+- Camera is aligned to the GDS **3.4.7 contracts**
+- Camera now consumes the `@doneisbetter/*` package line directly via npm dependencies at the provider/theme/compliance boundary
 - Camera now runs on Mantine `8.3.x`, matching the current GDS peer contract
 - Camera no longer carries the old local `AppButton` or `components/gds/ui` barrel authority; leaf controls import Mantine directly under the GDS runtime where needed
 - public landing pages keep an explicit creator-CSS exception so pages like `/landing/*` can preserve custom themed presentation independent of the admin GDS chrome

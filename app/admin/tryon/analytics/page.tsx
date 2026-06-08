@@ -7,7 +7,11 @@ import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert'
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import {
   collectTryOnAnalytics,
+  collectCrossEventUserAnalytics,
+  collectEventSpecificStats,
   type TryOnAnalyticsBucket,
+  type CrossEventAnalyticsResult,
+  type EventSpecificStats,
 } from '@/lib/tryon/analytics';
 import HourlyOutcomeChart from '@/components/admin/HourlyOutcomeChart';
 import TryOnAnalyticsTables from '@/components/admin/TryOnAnalyticsTables';
@@ -50,6 +54,8 @@ export default async function AdminTryOnAnalyticsPage({
   const to = typeof resolvedSearchParams.to === 'string' ? resolvedSearchParams.to.trim() : '';
 
   let analytics = null;
+  let crossEventAnalytics: CrossEventAnalyticsResult | null = null;
+  let eventStats: EventSpecificStats | null = null;
   let dbError = null;
 
   try {
@@ -60,6 +66,12 @@ export default async function AdminTryOnAnalyticsPage({
       from: from || undefined,
       to: to || undefined,
     });
+
+    if (!eventId) {
+      crossEventAnalytics = await collectCrossEventUserAnalytics(db);
+    } else {
+      eventStats = await collectEventSpecificStats(db, eventId);
+    }
   } catch (error) {
     console.error('Error loading try-on analytics:', error);
     dbError = serializeMongoError(error);
@@ -71,12 +83,19 @@ export default async function AdminTryOnAnalyticsPage({
       title="Try-On Analytics"
       primaryAction={{ href: '/admin/tryon', label: 'Open Try-On App' }}
       stats={
-        analytics
+        eventStats
           ? [
-              { label: 'Approved', value: analytics.totals.approved, iconKey: 'photo' },
-              { label: 'Rejected', value: analytics.totals.rejected, iconKey: 'photo' },
-              { label: 'Service', value: analytics.totals.service, iconKey: 'photo' },
-              { label: 'Greatest', value: analytics.totals.greatest, iconKey: 'world' },
+              { label: 'Total Images', value: eventStats.totalSubmissions, iconKey: 'photo' },
+              { label: 'AI Try-ons', value: eventStats.tryOnCount, iconKey: 'photo' },
+              { label: 'Original Captures', value: eventStats.originalCount, iconKey: 'photo' },
+              { label: 'Customer Emails', value: eventStats.cleanCustomerEmailsCount, iconKey: 'users' },
+            ]
+          : crossEventAnalytics
+          ? [
+              { label: 'Customer Emails', value: crossEventAnalytics.totalUniqueCustomerEmails, iconKey: 'users' },
+              { label: 'Active in 1 Event', value: `${crossEventAnalytics.oneEventCount} (${crossEventAnalytics.oneEventPercent}%)`, iconKey: 'photo' },
+              { label: 'Active in 2 Events', value: `${crossEventAnalytics.twoEventsCount} (${crossEventAnalytics.twoEventsPercent}%)`, iconKey: 'photo' },
+              { label: 'Active in 3+ Events', value: `${crossEventAnalytics.threeOrMoreEventsCount} (${crossEventAnalytics.threeOrMoreEventsPercent}%)`, iconKey: 'photo' },
             ]
           : undefined
       }
@@ -133,6 +152,7 @@ export default async function AdminTryOnAnalyticsPage({
             byGarment={analytics.byGarment}
             byEvent={analytics.byEvent}
             presetPerformance={analytics.presetPerformance}
+            crossEvent={crossEventAnalytics}
           />
         </div>
       ) : null}

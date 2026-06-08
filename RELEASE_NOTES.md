@@ -1,8 +1,8 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.10.0
-**Last Updated**: 2026-06-06
+**Current Version**: 2.11.0
+**Last Updated**: 2026-06-08
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
@@ -10,7 +10,20 @@ This document tracks all completed tasks and version releases in chronological o
 
 ---
 
-## [unreleased] — 2026-06-06
+## [v2.11.0] — 2026-06-08
+
+### Optimization & Fix — Database aggregations, GDS 3.4.7 upgrade, and mobile navigation collapse
+
+**Status**: Complete  
+**Release Type**: Performance optimization & layout fixing
+
+#### Summary
+
+- **Database Performance Offloading**: Replaced in-memory JavaScript loops and raw collection loading in `collectCrossEventUserAnalytics` and `collectEventSpecificStats` with highly optimized MongoDB aggregation pipelines using `$facet` and project expressions, improving page rendering speeds from seconds to milliseconds.
+- **Event Engagement Analytics Card**: Added a dedicated **📊 Event Engagement & Statistics** card on the event detail page (`app/admin/events/[id]/page.tsx`) showing live counts of total images, AI try-ons, original framed captures, unique email addresses, and clean customer emails.
+- **StatsStrip Integration**: Updated the event detail page header `StatsStrip` to display real-time, non-limited values.
+- **GDS Upgrade**: Upgraded `@doneisbetter/gds-*` packages to the stable `3.4.7` release.
+- **Mobile Navigation Auto-Collapse**: Added a React `useEffect` pathname change listener in `AdminChrome.tsx` to programmatically collapse the mobile navigation drawer when navigations occur.
 
 ### Fix — Admin inventory stats now use database totals
 

@@ -24,6 +24,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
+import { collectEventSpecificStats, type EventSpecificStats } from '@/lib/tryon/analytics';
 
 interface EventFrameDetails {
   frameId: string;
@@ -146,6 +147,7 @@ export default async function EventDetailPage({
   let slideshows: SlideshowDoc[] = [];
   let slideshowLayouts: SlideshowLayoutDoc[] = [];
   let landingPages: LandingPageDoc[] = [];
+  let eventStats: EventSpecificStats | null = null;
   let dbError: string | null = null;
   const session = await getSession();
   let canManageEvent = isGlobalAdminSession(session);
@@ -164,6 +166,7 @@ export default async function EventDetailPage({
     }
 
     partner = (await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId })) as PartnerDoc | null;
+    eventStats = await collectEventSpecificStats(db, event.eventId);
 
     const inactiveEmails = await getInactiveUserEmails();
 
@@ -280,7 +283,9 @@ export default async function EventDetailPage({
       <StatsStrip
         stats={[
           { label: 'Frames', value: event.frames?.length || 0 },
-          { label: 'Photos', value: submissions.length },
+          { label: 'Total Images', value: eventStats?.totalSubmissions || 0 },
+          { label: 'AI Try-ons', value: eventStats?.tryOnCount || 0 },
+          { label: 'Customer Emails', value: eventStats?.cleanCustomerEmailsCount || 0 },
         ]}
       />
 
@@ -294,6 +299,21 @@ export default async function EventDetailPage({
             <Text size="xs" c="dimmed" mt={4}>
               {partner ? <Link href={`/admin/partners/${partner._id}`}>View Partner →</Link> : 'Partner details unavailable'}
             </Text>
+          </Card>
+
+          <Card>
+            <Title order={3}>📊 Event Engagement & Statistics</Title>
+            {eventStats ? (
+              <Stack gap="sm" mt="md">
+                <EventInfoRow label="Total Images" value={eventStats.totalSubmissions} />
+                <EventInfoRow label="AI Try-ons" value={eventStats.tryOnCount} />
+                <EventInfoRow label="Original Captures" value={eventStats.originalCount} />
+                <EventInfoRow label="Unique Emails" value={eventStats.uniqueEmailsCount} />
+                <EventInfoRow label="Customer Emails" value={eventStats.cleanCustomerEmailsCount} />
+              </Stack>
+            ) : (
+              <Text size="sm" c="dimmed" mt="md">Statistics unavailable</Text>
+            )}
           </Card>
 
           <Card>

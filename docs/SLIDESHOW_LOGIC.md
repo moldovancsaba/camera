@@ -1,7 +1,7 @@
 # Slideshow Logic
 
-**Version**: 2.10.0  
-**Last Updated**: 2026-05-26
+**Version**: 2.11.0  
+**Last Updated**: 2026-06-08
 
 This document describes the current slideshow system: admin configuration, playlist generation, public playback, and composite slideshow layouts.
 

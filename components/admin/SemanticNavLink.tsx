@@ -8,7 +8,6 @@ interface SemanticNavLinkProps {
   label: string;
   icon: React.ReactNode;
   active: boolean;
-  onNavigate?: () => void;
   onClick?: () => void;
 }
 
@@ -17,7 +16,6 @@ export default function SemanticNavLink({
   label,
   icon,
   active,
-  onNavigate,
   onClick,
 }: SemanticNavLinkProps) {
   return (
@@ -26,7 +24,6 @@ export default function SemanticNavLink({
       href={href}
       onClick={() => {
         onClick?.();
-        onNavigate?.();
       }}
       active={active}
       label={label}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AppShell as GdsAppShell } from '@doneisbetter/gds-admin/client';
@@ -40,16 +41,7 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
-function closeMobileNavigation() {
-  if (typeof window === 'undefined' || window.matchMedia('(min-width: 48em)').matches) {
-    return;
-  }
-
-  window.setTimeout(() => {
-    const toggle = document.querySelector<HTMLButtonElement>('button[aria-label="Toggle navigation"]');
-    toggle?.click();
-  }, 0);
-}
+// closeMobileNavigation has been removed because GdsAppShell handles mobile menu collapse natively
 
 export default function AdminChrome({
   session,
@@ -57,6 +49,13 @@ export default function AdminChrome({
   children,
 }: AdminChromeProps) {
   const pathname = usePathname();
+
+  useEffect(() => {
+    const toggleButton = document.querySelector('button[aria-label="Toggle navigation"]');
+    if (toggleButton && toggleButton.getAttribute('aria-expanded') === 'true') {
+      (toggleButton as HTMLButtonElement).click();
+    }
+  }, [pathname]);
 
   const coreItems: NavItem[] = [];
   if (navigationAccess.isGlobalAdmin) {
@@ -108,10 +107,10 @@ export default function AdminChrome({
 
   const primaryNavigation = (
     <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
-      <NavSection title="Apps" items={appItems} pathname={pathname} onNavigate={closeMobileNavigation} />
-      <NavSection title="Core" items={coreItems} pathname={pathname} onNavigate={closeMobileNavigation} />
+      <NavSection title="Apps" items={appItems} pathname={pathname} />
+      <NavSection title="Core" items={coreItems} pathname={pathname} />
       {resourceItems.length > 0 ? (
-        <NavSection title="Resource Inventory" items={resourceItems} pathname={pathname} onNavigate={closeMobileNavigation} />
+        <NavSection title="Resource Inventory" items={resourceItems} pathname={pathname} />
       ) : null}
     </div>
   );
@@ -186,12 +185,10 @@ function NavSection({
   title,
   items,
   pathname,
-  onNavigate,
 }: {
   title: string;
   items: NavItem[];
   pathname: string;
-  onNavigate: () => void;
 }) {
   if (items.length === 0) return null;
 
@@ -210,7 +207,6 @@ function NavSection({
               active={active}
               label={item.label}
               icon={item.icon}
-              onNavigate={onNavigate}
             />
           );
         })}
