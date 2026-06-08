@@ -975,7 +975,7 @@ export default function TryOnResultModerationTable({
                     {row.userEmail}
                   </Text>
                 ) : null}
-                <Text size="xs" c="dimmed">
+                <Text size="xs" c="dimmed" suppressHydrationWarning>
                   {new Date(row.createdAt).toLocaleString()}
                 </Text>
               </Stack>
@@ -1026,7 +1026,7 @@ export default function TryOnResultModerationTable({
                   {visibilityLabel(row)}
                 </Text>
                 {row.approvedAt ? (
-                  <Text size="xs" c="dimmed">
+                  <Text size="xs" c="dimmed" suppressHydrationWarning>
                     Approved {new Date(row.approvedAt).toLocaleString()}
                   </Text>
                 ) : null}
@@ -1161,7 +1161,7 @@ export default function TryOnResultModerationTable({
                     <Text size="sm" fw={700}>
                       {event.action.replace(/_/g, ' ')}
                     </Text>
-                    <Text size="xs" c="dimmed">
+                    <Text size="xs" c="dimmed" suppressHydrationWarning>
                       {event.actorEmail} · {new Date(event.createdAt).toLocaleString()}
                     </Text>
                     {event.reason ? (

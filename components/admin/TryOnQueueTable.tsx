@@ -348,7 +348,7 @@ export default function TryOnQueueTable({
           render: (row) => (
             <>
               <strong>{row.jobId}</strong>
-              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
+              <p suppressHydrationWarning style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
                 Created {new Date(row.createdAt).toLocaleString()}
               </p>
               <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
@@ -428,7 +428,7 @@ export default function TryOnQueueTable({
                 Attempts {row.processing.attemptCount}
               </p>
               {row.processing.nextAttemptAt ? (
-                <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
+                <p suppressHydrationWarning style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
                   Next {new Date(row.processing.nextAttemptAt).toLocaleString()}
                 </p>
               ) : null}
