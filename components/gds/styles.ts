@@ -1,4 +1,3 @@
-import '@mantine/core/styles.css';
-import '@mantine/notifications/styles.css';
+import './gds-theme.css';
 
 export {};
