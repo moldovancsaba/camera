@@ -10,7 +10,7 @@ import TryOnResultModerationTable, { type ModerationRow } from '@/components/adm
 import TryOnQueueTable, { type QueueRow } from '@/components/admin/TryOnQueueTable';
 import { listActiveTryOnSetups, type TryOnSetup } from '@/lib/tryon/setup-resolution';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
-import { ConsumerDashboardGrid, ProductCard } from '@doneisbetter/gds-core/client';
+import { ConsumerDashboardGrid, ProductCard } from '@/components/gds/ClientWrappers';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 import { normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
 import { isActionableIdentityGap, resolveTryOnSubmissionIdentity } from '@/lib/tryon/identity';

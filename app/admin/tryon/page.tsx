@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { ConsumerDashboardGrid, ProductCard } from '@doneisbetter/gds-core/client';
+import { ConsumerDashboardGrid, ProductCard } from '@/components/gds/ClientWrappers';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
