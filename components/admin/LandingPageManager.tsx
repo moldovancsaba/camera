@@ -4,9 +4,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import Link from 'next/link';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
-import { notifications } from '@/lib/gds/notifications';
-import { confirmDestructive } from '@/lib/gds/confirm-destructive';
-import { EmptyState, InlineAlert, LabelTag } from '@doneisbetter/gds-core/client';
+import { EmptyState, InlineAlert, LabelTag, useGdsConfirm, useGdsToasts } from '@doneisbetter/gds-core/client';
 
 export interface LandingPageListItem {
   _id: string;
@@ -29,6 +27,8 @@ export default function LandingPageManager({
 }: Props) {
   const [landingPages, setLandingPages] = useState(initialLandingPages);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDestructive } = useGdsConfirm();
+  const { notifySuccess, notifyError } = useGdsToasts();
 
   const handleDelete = async (mongoId: string) => {
     setError(null);
@@ -39,18 +39,29 @@ export default function LandingPageManager({
         throw new Error(err.error || 'Failed to delete landing page');
       }
       setLandingPages((prev) => prev.filter((page) => page._id !== mongoId));
-      notifications.show({ title: 'Landing page deleted', message: 'Experience page removed.' });
+      notifySuccess({ title: 'Landing page deleted', message: 'Experience page removed.' });
     } catch (deleteError) {
       const message = deleteError instanceof Error ? deleteError.message : 'Failed to delete landing page';
       setError(message);
-      notifications.show({ title: 'Delete failed', message });
+      notifyError({ title: 'Delete failed', message });
+    }
+  };
+
+  const confirmDelete = async (page: LandingPageListItem) => {
+    const confirmed = await confirmDestructive({
+      title: 'Delete landing page',
+      message: 'Are you sure you want to delete this landing page?',
+      targetName: page.title?.trim() || page.slug,
+    });
+    if (confirmed) {
+      await handleDelete(page._id);
     }
   };
 
   const copyUrl = (slug: string) => {
     const url = `${window.location.origin}/landing/${slug}`;
     void navigator.clipboard.writeText(url);
-    notifications.show({ title: 'URL copied', message: 'Landing page URL copied to clipboard.' });
+    notifySuccess({ title: 'URL copied', message: 'Landing page URL copied to clipboard.' });
   };
 
   return (
@@ -104,14 +115,7 @@ export default function LandingPageManager({
                   variant="danger"
                   size="xs"
                   aria-label="Delete"
-                  onClick={() =>
-                    confirmDestructive({
-                      title: 'Delete landing page',
-                      message: 'Are you sure you want to delete this landing page?',
-                      targetName: page.title?.trim() || page.slug,
-                      onConfirm: () => void handleDelete(page._id),
-                    })
-                  }
+                  onClick={() => void confirmDelete(page)}
                 >
                   <IconTrash size={16} />
                 </SemanticButton>

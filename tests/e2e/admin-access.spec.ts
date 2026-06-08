@@ -70,6 +70,21 @@ test.describe('admin access smoke', () => {
     await expect(sidebarNav.getByRole('link', { name: 'Users' })).toHaveCount(0);
   });
 
+  test('partner-scoped Events viewer can open events but not global users', async ({ page }) => {
+    await devLogin(page, {
+      role: 'user',
+      access: 'true',
+      email: 'partner-events-viewer@camera.local',
+      name: 'Partner Events Viewer',
+      userId: 'e2e-partner-events-viewer',
+      redirectTo: '/admin/events',
+    });
+
+    await expect(page).toHaveURL(/\/admin\/events$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Events' })).toBeVisible();
+    await expect(page.getByRole('navigation').getByRole('link', { name: 'Users' })).toHaveCount(0);
+  });
+
   test('partner-scoped manager is redirected away from global users', async ({ page }) => {
     await devLogin(page, {
       role: 'user',

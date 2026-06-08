@@ -6,12 +6,13 @@ import { normalizeLandingPageSlugInput } from '@/lib/landing-pages';
 import { upsertLandingPageCssPreset } from '@/lib/landing-page-css-presets';
 import {
   withErrorHandler,
-  requireAdmin,
+  requireAuth,
   apiBadRequest,
   apiCreated,
   apiNotFound,
   apiSuccess,
 } from '@/lib/api';
+import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
 
 const MAX_MARKDOWN_CHARS = 100_000;
 const MAX_CUSTOM_CSS_CHARS = 40_000;
@@ -91,13 +92,14 @@ function serializeLandingPage(doc: Record<string, unknown>) {
 }
 
 export const GET = withErrorHandler(async (request: NextRequest) => {
-  await requireAdmin();
+  const session = await requireAuth();
   const eventMongoId = request.nextUrl.searchParams.get('eventMongoId');
   if (!eventMongoId || !ObjectId.isValid(eventMongoId)) {
     throw apiBadRequest('Valid eventMongoId is required.');
   }
 
   const db = await connectToDatabase();
+  await assertGlobalAdminOrPartnerEventAccess(db, session, eventMongoId, 'viewer');
   const landingPages = await db
     .collection(COLLECTIONS.LANDING_PAGES)
     .find({ eventMongoId })
@@ -110,13 +112,16 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 });
 
 export const POST = withErrorHandler(async (request: NextRequest) => {
-  const session = await requireAdmin();
+  const session = await requireAuth();
   const body = await request.json();
   const eventMongoId = String(body.eventMongoId ?? '');
 
   if (!ObjectId.isValid(eventMongoId)) {
     throw apiBadRequest('Valid eventMongoId is required.');
   }
+
+  const db = await connectToDatabase();
+  await assertGlobalAdminOrPartnerEventAccess(db, session, eventMongoId, 'manager');
 
   const slugNorm = normalizeLandingPageSlugInput(body.slug);
   if (!slugNorm.ok) {
@@ -133,7 +138,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     throw apiBadRequest('targetId is required.');
   }
 
-  const db = await connectToDatabase();
   const duplicate = await db.collection(COLLECTIONS.LANDING_PAGES).findOne({ slug: slugNorm.slug });
   if (duplicate) {
     throw apiBadRequest('This landing page slug is already in use.');

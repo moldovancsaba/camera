@@ -13,7 +13,7 @@ import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import { ConsumerDashboardGrid, ProductCard } from '@doneisbetter/gds-core/client';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 import { normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
-import { resolveTryOnSubmissionIdentity } from '@/lib/tryon/identity';
+import { isActionableIdentityGap, resolveTryOnSubmissionIdentity } from '@/lib/tryon/identity';
 
 export const dynamic = 'force-dynamic';
 
@@ -127,7 +127,14 @@ export default async function AdminTryOnResultsPage({
   const archive = typeof resolvedSearchParams?.archive === 'string' ? resolvedSearchParams.archive.trim() : '';
   const failed = typeof resolvedSearchParams?.failed === 'string' ? resolvedSearchParams.failed.trim() : '';
   const resultPageLimit = 24;
-  const archiveBucket = archive === 'approved' || archive === 'rejected' || archive === 'service' || archive === 'greatest' ? archive : '';
+  const archiveBucket =
+    archive === 'approved' ||
+    archive === 'rejected' ||
+    archive === 'service' ||
+    archive === 'greatest' ||
+    archive === 'superseded'
+      ? archive
+      : '';
   const failedJobsMode = failed === '1' || failed.toLowerCase() === 'true';
   const pageTitle = failedJobsMode
     ? 'Failed Try-On Jobs'
@@ -139,6 +146,8 @@ export default async function AdminTryOnResultsPage({
         ? 'Service'
       : archiveBucket === 'rejected'
         ? 'Rejected'
+      : archiveBucket === 'superseded'
+        ? 'Superseded by Rerun'
         : 'Vetting';
   const pageStatus = failedJobsMode
     ? 'Failed Jobs'
@@ -150,6 +159,8 @@ export default async function AdminTryOnResultsPage({
         ? 'Service'
       : archiveBucket === 'rejected'
       ? 'Rejected'
+      : archiveBucket === 'superseded'
+        ? 'Superseded'
         : 'Vetting';
 
   let rows: ModerationRow[] = [];
@@ -159,6 +170,7 @@ export default async function AdminTryOnResultsPage({
   let archivedRejectedCount = 0;
   let archivedServiceCount = 0;
   let greatestHitsCount = 0;
+  let archivedSupersededCount = 0;
   let failedJobCount = 0;
   let failedJobRows: QueueRow[] = [];
   let resultTotalCount = 0;
@@ -174,9 +186,15 @@ export default async function AdminTryOnResultsPage({
       query['tryOnModerationArchive.archived'] = true;
       query['tryOnModerationArchive.bucket'] = 'approved';
       query['metadata.tryOnGreat'] = true;
+    } else if (archiveBucket === 'superseded') {
+      query['tryOnModerationArchive.archived'] = true;
+      query['tryOnModerationArchive.reason'] = 'quality_rerun_superseded';
     } else if (archiveBucket) {
       query['tryOnModerationArchive.archived'] = true;
       query['tryOnModerationArchive.bucket'] = archiveBucket;
+      if (archiveBucket === 'rejected') {
+        query['tryOnModerationArchive.reason'] = { $ne: 'quality_rerun_superseded' };
+      }
     } else {
       query['tryOnModerationArchive.archived'] = { $ne: true };
       query.reviewStatus = reviewStatus || 'pending_review';
@@ -218,7 +236,7 @@ export default async function AdminTryOnResultsPage({
       ];
     }
 
-    const [docs, resultTotal, pending, archivedApproved, archivedRejected, archivedService, greatestHits, failedJobs, failedJobsTotal] = await Promise.all([
+    const [docs, resultTotal, pending, archivedApproved, archivedRejected, archivedService, greatestHits, archivedSuperseded, failedJobs, failedJobsTotal] = await Promise.all([
       db
         .collection<Submission>(COLLECTIONS.SUBMISSIONS)
         .find(query)
@@ -240,6 +258,12 @@ export default async function AdminTryOnResultsPage({
         submissionKind: 'tryon_result',
         'tryOnModerationArchive.archived': true,
         'tryOnModerationArchive.bucket': 'rejected',
+        'tryOnModerationArchive.reason': { $ne: 'quality_rerun_superseded' },
+      }),
+      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
+        submissionKind: 'tryon_result',
+        'tryOnModerationArchive.archived': true,
+        'tryOnModerationArchive.reason': 'quality_rerun_superseded',
       }),
       db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
         submissionKind: 'tryon_result',
@@ -268,6 +292,7 @@ export default async function AdminTryOnResultsPage({
     archivedRejectedCount = archivedRejected;
     archivedServiceCount = archivedService;
     greatestHitsCount = greatestHits;
+    archivedSupersededCount = archivedSuperseded;
     failedJobCount = failedJobsTotal;
     resultTotalCount = resultTotal;
     failedJobRows = failedJobs.map(toQueueRow).filter((row): row is QueueRow => Boolean(row));
@@ -360,6 +385,10 @@ export default async function AdminTryOnResultsPage({
           reason: event.reason ?? null,
         })),
         setup: toModerationSetup(sourceJob),
+        archiveReason: doc.tryOnModerationArchive?.reason ?? null,
+        archiveSupersededByJobId: doc.tryOnModerationArchive?.supersededByJobId ?? null,
+        archiveSupersededAt: doc.tryOnModerationArchive?.supersededAt ?? null,
+        identityGapActionable: isActionableIdentityGap(doc, source),
       };
     });
   } catch (error) {
@@ -464,6 +493,12 @@ export default async function AdminTryOnResultsPage({
                 href: '/admin/tryon-results?archive=rejected',
                 title: `Rejected (${archivedRejectedCount})`,
                 description: 'Browse declined items that were archived out of the active vetting queue.',
+                iconKey: 'photo' as AdminIconKey,
+              },
+              {
+                href: '/admin/tryon-results?archive=superseded',
+                title: `Superseded (${archivedSupersededCount})`,
+                description: 'Quality reruns that replaced a prior result and left the active vetting queue.',
                 iconKey: 'photo' as AdminIconKey,
               },
               {

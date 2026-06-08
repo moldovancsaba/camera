@@ -8,7 +8,6 @@ const root = cwd();
 const scannedRoots = ['app/admin', 'components/gds'];
 const bannedImports = new Set(['@mantine/core']);
 const allowlist = new Set([
-  'components/gds/EventsInventoryList.tsx',
   'components/gds/styles.ts',
 ]);
 const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.mts']);

@@ -74,6 +74,7 @@ export const POST = withErrorHandler(async (
           bucket: 'rejected',
           archivedAt: now,
           archivedBy: session.user.email,
+          reason: 'manual_reject',
         },
         'metadata.tryOnGreat': false,
         'metadata.tryOnService': false,

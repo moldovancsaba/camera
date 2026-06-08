@@ -9,11 +9,17 @@ import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { notifications } from '@/lib/gds/notifications';
-import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
-import { FormSection } from '@doneisbetter/gds-admin/client';
-import { InlineAlert, StateBlock } from '@doneisbetter/gds-core/client';
-import { confirmDestructive } from '@/lib/gds/confirm-destructive';
+import EditorScaffold from '@/components/admin/AdminEditorScaffold';
+import {
+  AdminCheckbox,
+  AdminCrudForm,
+  AdminFormSection,
+  AdminSelect,
+  AdminTextInput,
+  AdminTextarea,
+  FormSection,
+} from '@doneisbetter/gds-admin/client';
+import { InlineAlert, StateBlock, useGdsConfirm, useGdsToasts } from '@doneisbetter/gds-core/client';
 
 interface FrameRecord {
   _id: string;
@@ -33,6 +39,14 @@ interface FrameRecord {
   createdBy?: string;
 }
 
+const CATEGORY_OPTIONS = [
+  { value: 'general', label: 'General' },
+  { value: 'holiday', label: 'Holiday' },
+  { value: 'birthday', label: 'Birthday' },
+  { value: 'wedding', label: 'Wedding' },
+  { value: 'corporate', label: 'Corporate' },
+];
+
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Frame request failed';
 }
@@ -41,10 +55,16 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
   const router = useRouter();
   const { id } = use(params);
   const [frame, setFrame] = useState<FrameRecord | null>(null);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('general');
+  const [isActive, setIsActive] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDestructive } = useGdsConfirm();
+  const { notifyError } = useGdsToasts();
 
   useEffect(() => {
     async function fetchFrame() {
@@ -52,7 +72,12 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
         const response = await fetch(`/api/frames/${id}`);
         if (!response.ok) throw new Error('Frame not found');
         const data = await response.json();
-        setFrame(data.frame);
+        const nextFrame = data.frame as FrameRecord;
+        setFrame(nextFrame);
+        setName(nextFrame.name);
+        setDescription(nextFrame.description ?? '');
+        setCategory(nextFrame.category || 'general');
+        setIsActive(Boolean(nextFrame.isActive));
       } catch (err: unknown) {
         setError(getErrorMessage(err));
       } finally {
@@ -63,24 +88,21 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
     void fetchFrame();
   }, [id]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setIsSaving(true);
     setError(null);
-
-    const formData = new FormData(e.currentTarget);
-    const updateData = {
-      name: formData.get('name'),
-      description: formData.get('description'),
-      category: formData.get('category'),
-      isActive: formData.get('isActive') === 'on',
-    };
 
     try {
       const response = await fetch(`/api/frames/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updateData),
+        body: JSON.stringify({
+          name,
+          description,
+          category,
+          isActive,
+        }),
       });
 
       if (!response.ok) {
@@ -112,8 +134,20 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
     } catch (err: unknown) {
       const message = getErrorMessage(err);
       setError(message);
-      notifications.show({ title: 'Delete failed', message, color: 'red' });
+      notifyError({ title: 'Delete failed', message });
       setIsDeleting(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!frame) return;
+    const confirmed = await confirmDestructive({
+      title: 'Delete frame',
+      message: 'Are you sure you want to delete this frame? This cannot be undone.',
+      targetName: frame.name,
+    });
+    if (confirmed) {
+      await handleDelete();
     }
   };
 
@@ -129,9 +163,9 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
         description={error || undefined}
         action={
           <Link href="/admin/frames" style={{ textDecoration: 'none' }}>
-          <SemanticButton action="frames:back-to-list" variant="secondary">
-            Back to frames
-          </SemanticButton>
+            <SemanticButton action="frames:back-to-list" variant="secondary">
+              Back to frames
+            </SemanticButton>
           </Link>
         }
       />
@@ -139,63 +173,48 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
   }
 
   return (
-    <div style={{ display: 'grid', gap: '2rem', margin: '0 auto', maxWidth: 960 }}>
-      <nav aria-label="Breadcrumb">
-        <Link href="/admin/frames">
-          Frames
-        </Link>
-        <span aria-hidden> / </span>
-        <span>Edit</span>
-      </nav>
-
-      <WorkspaceHeader
-        eyebrow="Camera Core"
-        title="Edit Frame"
-        description="Update frame details and settings."
-      />
-
-      {error ? (
-        <InlineAlert title="Error" message={error} severity="error" />
-      ) : null}
+    <EditorScaffold
+      eyebrow="Camera Core"
+      title="Edit Frame"
+      description="Update frame details and settings."
+      breadcrumbs={
+        <nav aria-label="Breadcrumb">
+          <Link href="/admin/frames">Frames</Link>
+          <span aria-hidden> / </span>
+          <span>Edit</span>
+        </nav>
+      }
+      maxWidth={960}
+    >
+      {error ? <InlineAlert title="Error" message={error} severity="error" /> : null}
 
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
+        <AdminCrudForm title="Frame settings" description="Update metadata for this frame resource.">
           <FormSection title="Frame preview" description="To change the image, delete this frame and upload a new one.">
             <div style={{ aspectRatio: '1 / 1', borderRadius: 12, maxWidth: 320, overflow: 'hidden', position: 'relative' }}>
-                <Image src={frame.thumbnailUrl || frame.imageUrl} alt={frame.name} fill style={{ objectFit: 'contain', padding: 24 }} unoptimized />
+              <Image src={frame.thumbnailUrl || frame.imageUrl} alt={frame.name} fill style={{ objectFit: 'contain', padding: 24 }} unoptimized />
             </div>
           </FormSection>
 
-          <FormSection title="Frame details">
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Frame name
-              <input name="name" required defaultValue={frame.name} style={{ minHeight: 44, padding: '0 0.75rem' }} />
-            </label>
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Description
-              <textarea name="description" rows={3} defaultValue={frame.description} style={{ padding: '0.75rem' }} />
-            </label>
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Category
-              <select
+          <AdminFormSection title="Frame details">
+            <AdminTextInput name="name" label="Frame name" value={name} onChange={setName} required />
+            <AdminTextarea name="description" label="Description" value={description} onChange={setDescription} />
+            <AdminSelect
               name="category"
-              defaultValue={frame.category || 'general'}
-              style={{ minHeight: 44, padding: '0 0.75rem' }}
-            >
-                <option value="general">General</option>
-                <option value="holiday">Holiday</option>
-                <option value="birthday">Birthday</option>
-                <option value="wedding">Wedding</option>
-                <option value="corporate">Corporate</option>
-              </select>
-            </label>
-            <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
-              <input type="checkbox" name="isActive" defaultChecked={frame.isActive} />
-              Make frame active (visible to users)
-            </label>
-          </FormSection>
+              label="Category"
+              value={category}
+              onChange={(value) => setCategory(value ?? 'general')}
+              data={CATEGORY_OPTIONS}
+            />
+            <AdminCheckbox
+              name="isActive"
+              label="Make frame active (visible to users)"
+              checked={isActive}
+              onChange={setIsActive}
+            />
+          </AdminFormSection>
 
-          <FormSection title="Technical information">
+          <AdminFormSection title="Technical information">
             <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' }}>
               <div><span>Frame ID</span><code style={{ display: 'block' }}>{frame.frameId || 'Not assigned'}</code></div>
               <div><span>MongoDB ID</span><code style={{ display: 'block' }}>{frame._id}</code></div>
@@ -205,7 +224,7 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
             <a href={frame.imageUrl} target="_blank" rel="noopener noreferrer">
               Open image URL
             </a>
-          </FormSection>
+          </AdminFormSection>
 
           <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
@@ -213,9 +232,9 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
                 {isSaving ? 'Saving…' : 'Save changes'}
               </SemanticButton>
               <Link href="/admin/frames" style={{ textDecoration: 'none' }}>
-              <SemanticButton action="frames:cancel-edit" variant="secondary">
-                Cancel
-              </SemanticButton>
+                <SemanticButton action="frames:cancel-edit" variant="secondary">
+                  Cancel
+                </SemanticButton>
               </Link>
             </div>
             <SemanticButton
@@ -224,20 +243,13 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
               variant="danger"
               loading={isDeleting}
               disabled={isDeleting}
-              onClick={() =>
-                confirmDestructive({
-                  title: 'Delete frame',
-                  message: 'Are you sure you want to delete this frame? This cannot be undone.',
-                  targetName: frame.name,
-                  onConfirm: () => void handleDelete(),
-                })
-              }
+              onClick={() => void confirmDelete()}
             >
               Delete frame
             </SemanticButton>
           </div>
-        </div>
+        </AdminCrudForm>
       </form>
-    </div>
+    </EditorScaffold>
   );
 }

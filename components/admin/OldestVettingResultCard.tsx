@@ -1,6 +1,7 @@
 'use client';
 
 import SemanticButton from '@/components/gds/CameraSemanticButton';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { ModerationRow } from '@/components/admin/TryOnResultModerationTable';
@@ -121,15 +122,19 @@ export default function OldestVettingResultCard({ row }: { row: ModerationRow })
           overflow: 'hidden',
         }}
       >
-        <img
+        <Image
           src={row.imageUrl}
           alt="Oldest waiting try-on result"
+          width={800}
+          height={1000}
+          unoptimized
           style={{
             aspectRatio: '4 / 5',
             background: 'var(--mantine-color-gray-0)',
             display: 'block',
             objectFit: 'contain',
             width: '100%',
+            height: 'auto',
           }}
         />
         <div style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)', padding: 'var(--mantine-spacing-md)' }}>

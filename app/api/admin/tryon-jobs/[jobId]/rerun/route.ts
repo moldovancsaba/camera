@@ -21,7 +21,8 @@ function normalizeSetupId(value: string | null | undefined): string | null {
 
 function buildRerunJob(job: TryOnJob, setupIdOverride?: string | null): TryOnJob {
   const createdAt = nowIso();
-  const { _id: _sourceId, ...template } = job;
+  const { _id: omittedMongoId, ...template } = job;
+  void omittedMongoId;
 
   return {
     ...template,
@@ -217,6 +218,9 @@ export const POST = withErrorHandler(async (
     recoveryOutcome: 'new_job_queued',
     createdAt: rerunJob.createdAt,
     rerunRequestedBy: session.user.email,
+    oldResultArchived: Boolean(priorResult?._id),
+    oldResultArchiveReason: priorResult?._id ? 'quality_rerun_superseded' : null,
+    oldResultSubmissionId: priorResult?._id?.toString() ?? null,
     message: 'A new job was queued with the selected settings. The result will require human approval before publication.',
   });
 });

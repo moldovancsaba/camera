@@ -1,20 +1,48 @@
 import { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { requireAuth, apiForbidden, withErrorHandler } from '@/lib/api';
+import { requireAuth, apiBadRequest, apiForbidden, withErrorHandler } from '@/lib/api';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
-import { collectTryOnAnalytics, type TryOnAnalyticsBucket } from '@/lib/tryon/analytics';
+import { collectTryOnAnalytics, type TryOnAnalyticsBucket, type TryOnFunnelMetrics } from '@/lib/tryon/analytics';
 
-type ExportSection = 'all' | 'hourly' | 'preset' | 'garment' | 'event' | 'preset_performance';
+type ExportSection = 'all' | 'hourly' | 'preset' | 'garment' | 'event' | 'preset_performance' | 'funnel';
 
 function bucketParam(value: string | null): TryOnAnalyticsBucket | '' {
   return value === 'approved' || value === 'rejected' || value === 'service' || value === 'greatest' ? value : '';
 }
 
-function sectionParam(value: string | null): ExportSection | '' {
-  return value === 'hourly' || value === 'preset' || value === 'garment' || value === 'event' || value === 'preset_performance' || value === 'all'
-    ? value
-    : '';
+function sectionParam(value: string | null): ExportSection | null {
+  if (!value || value === 'all') return 'all';
+  if (
+    value === 'hourly' ||
+    value === 'preset' ||
+    value === 'garment' ||
+    value === 'event' ||
+    value === 'preset_performance' ||
+    value === 'funnel'
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function funnelRows(funnel: TryOnFunnelMetrics): unknown[][] {
+  return [
+    ['submitted', funnel.submitted],
+    ['queued', funnel.queued],
+    ['processing', funnel.processing],
+    ['generated', funnel.generated],
+    ['approved', funnel.approved],
+    ['declined', funnel.declined],
+    ['service', funnel.service],
+    ['superseded_rerun', funnel.supersededRerun],
+    ['failed', funnel.failed],
+  ];
+}
+
+function exportFilename(section: ExportSection): string {
+  const date = new Date().toISOString().slice(0, 10);
+  return section === 'all' ? `tryon-analytics-all-${date}.csv` : `tryon-analytics-${section}-${date}.csv`;
 }
 
 function csvEscape(value: unknown): string {
@@ -38,7 +66,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   }
   const { searchParams } = request.nextUrl;
   const format = searchParams.get('format') === 'json' ? 'json' : 'csv';
-  const exportSection = sectionParam(searchParams.get('section'));
+  const rawSection = searchParams.get('section');
+  const exportSection = sectionParam(rawSection);
+  if (rawSection && exportSection === null) {
+    throw apiBadRequest('Unsupported export section');
+  }
+  const resolvedSection = exportSection ?? 'all';
   const db = await connectToDatabase();
   const analytics = await collectTryOnAnalytics(db, {
     bucket: bucketParam(searchParams.get('bucket')),
@@ -47,21 +80,24 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     to: searchParams.get('to')?.trim() || undefined,
   });
   if (format === 'json') {
-    const payload = exportSection === 'all' || exportSection === '' || exportSection === undefined
-      ? analytics
-      : exportSection === 'hourly'
-        ? { hourlyOutcomes: analytics.hourlyOutcomes }
-        : exportSection === 'preset'
-          ? { byPreset: analytics.byPreset }
-          : exportSection === 'garment'
-            ? { byGarment: analytics.byGarment }
-            : exportSection === 'event'
-              ? { byEvent: analytics.byEvent }
-              : { presetPerformance: analytics.presetPerformance };
+    const payload =
+      resolvedSection === 'all'
+        ? analytics
+        : resolvedSection === 'hourly'
+          ? { hourlyOutcomes: analytics.hourlyOutcomes }
+          : resolvedSection === 'preset'
+            ? { byPreset: analytics.byPreset }
+            : resolvedSection === 'garment'
+              ? { byGarment: analytics.byGarment }
+              : resolvedSection === 'event'
+                ? { byEvent: analytics.byEvent }
+                : resolvedSection === 'funnel'
+                  ? { funnel: analytics.funnel, totals: analytics.totals }
+                  : { presetPerformance: analytics.presetPerformance };
     return NextResponse.json({ data: payload });
   }
   const sections: Array<{ key: string; headers: string[]; rows: unknown[][] }> = [];
-  if (exportSection === '' || exportSection === 'all' || exportSection === 'hourly') {
+  if (resolvedSection === 'all' || resolvedSection === 'hourly') {
     sections.push({
       key: 'hourly_outcomes',
       headers: ['hour', 'label', 'approved', 'declined', 'service', 'failed', 'total'],
@@ -70,7 +106,14 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       ]),
     });
   }
-  if (exportSection === '' || exportSection === 'all' || exportSection === 'preset_performance') {
+  if (resolvedSection === 'all' || resolvedSection === 'funnel') {
+    sections.push({
+      key: 'funnel',
+      headers: ['stage', 'count'],
+      rows: funnelRows(analytics.funnel),
+    });
+  }
+  if (resolvedSection === 'all' || resolvedSection === 'preset_performance') {
     sections.push({
       key: 'preset_performance',
       headers: ['preset', 'jobs', 'done', 'failed', 'retry', 'timeouts', 'approved', 'declined', 'service', 'great', 'approval_rate'],
@@ -79,7 +122,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       ]),
     });
   }
-  if (exportSection === '' || exportSection === 'all' || exportSection === 'garment') {
+  if (resolvedSection === 'all' || resolvedSection === 'garment') {
     sections.push({
       key: 'by_garment',
       headers: ['garment', 'total', 'approved', 'declined', 'service', 'greatest'],
@@ -88,7 +131,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       ]),
     });
   }
-  if (exportSection === '' || exportSection === 'all' || exportSection === 'event') {
+  if (resolvedSection === 'all' || resolvedSection === 'event') {
     sections.push({
       key: 'by_event',
       headers: ['event', 'total', 'approved', 'declined', 'service', 'greatest'],
@@ -97,7 +140,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       ]),
     });
   }
-  if (exportSection === '' || exportSection === 'all' || exportSection === 'preset') {
+  if (resolvedSection === 'all' || resolvedSection === 'preset') {
     sections.push({
       key: 'by_preset',
       headers: ['preset', 'total', 'approved', 'declined', 'service', 'greatest'],
@@ -110,7 +153,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   return new NextResponse(body, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="tryon-analytics-${new Date().toISOString().slice(0, 10)}.csv"`,
+      'Content-Disposition': `attachment; filename="${exportFilename(resolvedSection)}"`,
     },
   });
 });

@@ -6,12 +6,15 @@ import { normalizeLandingPageSlugInput } from '@/lib/landing-pages';
 import { upsertLandingPageCssPreset } from '@/lib/landing-page-css-presets';
 import {
   withErrorHandler,
-  requireAdmin,
+  requireAuth,
   apiBadRequest,
   apiNoContent,
   apiNotFound,
   apiSuccess,
 } from '@/lib/api';
+import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
+import type { PartnerAccessRole } from '@/lib/db/schemas';
+import type { Session } from '@/lib/auth/session';
 
 const MAX_MARKDOWN_CHARS = 100_000;
 const MAX_CUSTOM_CSS_CHARS = 40_000;
@@ -22,6 +25,33 @@ function serializeLandingPage(doc: Record<string, unknown>) {
     ...doc,
     _id: String(doc._id),
   };
+}
+
+async function loadLandingPageWithAccess(
+  db: Awaited<ReturnType<typeof connectToDatabase>>,
+  session: Session,
+  landingPageId: string,
+  minRole: PartnerAccessRole
+) {
+  if (!ObjectId.isValid(landingPageId)) {
+    throw apiBadRequest('Invalid landing page ID.');
+  }
+
+  const landingPage = await db
+    .collection(COLLECTIONS.LANDING_PAGES)
+    .findOne({ _id: new ObjectId(landingPageId) });
+
+  if (!landingPage) {
+    throw apiNotFound('Landing page');
+  }
+
+  const eventMongoId = String(landingPage.eventMongoId ?? '');
+  if (!ObjectId.isValid(eventMongoId)) {
+    throw apiBadRequest('Landing page is missing a valid event reference.');
+  }
+
+  await assertGlobalAdminOrPartnerEventAccess(db, session, eventMongoId, minRole);
+  return landingPage as Record<string, unknown>;
 }
 
 function textOrNull(value: unknown): string | null {
@@ -91,26 +121,16 @@ async function resolveTarget(
 }
 
 export const GET = withErrorHandler(async (
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) => {
-  await requireAdmin();
+  const session = await requireAuth();
   const { id } = await context.params;
-  if (!ObjectId.isValid(id)) {
-    throw apiBadRequest('Invalid landing page ID.');
-  }
-
   const db = await connectToDatabase();
-  const landingPage = await db
-    .collection(COLLECTIONS.LANDING_PAGES)
-    .findOne({ _id: new ObjectId(id) });
-
-  if (!landingPage) {
-    throw apiNotFound('Landing page');
-  }
+  const landingPage = await loadLandingPageWithAccess(db, session, id, 'viewer');
 
   return apiSuccess({
-    landingPage: serializeLandingPage(landingPage as Record<string, unknown>),
+    landingPage: serializeLandingPage(landingPage),
   });
 });
 
@@ -118,20 +138,10 @@ export const PATCH = withErrorHandler(async (
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) => {
-  const session = await requireAdmin();
+  const session = await requireAuth();
   const { id } = await context.params;
-  if (!ObjectId.isValid(id)) {
-    throw apiBadRequest('Invalid landing page ID.');
-  }
-
   const db = await connectToDatabase();
-  const existing = await db
-    .collection(COLLECTIONS.LANDING_PAGES)
-    .findOne({ _id: new ObjectId(id) });
-
-  if (!existing) {
-    throw apiNotFound('Landing page');
-  }
+  const existing = await loadLandingPageWithAccess(db, session, id, 'manager');
 
   const body = await request.json();
   const updates: Record<string, unknown> = {
@@ -247,16 +257,13 @@ export const PATCH = withErrorHandler(async (
 });
 
 export const DELETE = withErrorHandler(async (
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) => {
-  await requireAdmin();
+  const session = await requireAuth();
   const { id } = await context.params;
-  if (!ObjectId.isValid(id)) {
-    throw apiBadRequest('Invalid landing page ID.');
-  }
-
   const db = await connectToDatabase();
+  await loadLandingPageWithAccess(db, session, id, 'manager');
   const result = await db
     .collection(COLLECTIONS.LANDING_PAGES)
     .deleteOne({ _id: new ObjectId(id) });

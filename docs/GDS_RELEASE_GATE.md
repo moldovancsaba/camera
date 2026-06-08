@@ -42,13 +42,9 @@ The manifest enforces the active GDS boundary:
 - raw product-specific visual systems must stay inside approved exception surfaces
 - every temporary exception must include owner, reason, review date, and exit condition
 
-## Current Import Exception
+## Current Import Exceptions
 
-`components/gds/EventsInventoryList.tsx` may import Mantine `SimpleGrid` while `AdminResourceManager` actions remain list-level and cannot label per-row actions like `Vetting (N)`.
-
-Exit condition:
-
-- remove this exception once the official GDS resource manager supports row-derived action labels, or move this card grid into an official package primitive.
+- `components/gds/styles.ts` may import Mantine leaf primitives for shared admin styling tokens.
 
 ## Rollback
 

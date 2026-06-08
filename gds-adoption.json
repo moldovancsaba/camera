@@ -207,8 +207,7 @@
           "components/gds/**"
         ],
         "allow": [
-          "components/gds/styles.ts",
-          "components/gds/EventsInventoryList.tsx"
+          "components/gds/styles.ts"
         ],
         "reason": "Admin and GDS-boundary surfaces must consume official GDS primitives first. Mantine remains allowed only as leaf/runtime implementation under explicit exceptions."
       }

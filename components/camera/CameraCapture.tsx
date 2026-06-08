@@ -554,7 +554,13 @@ export default function CameraCapture({
     }
 
     autoStartAttemptedRef.current = true;
-    void startCamera(facingMode);
+    // Defer so the effect body does not synchronously trigger setState during render commit.
+    const timer = window.setTimeout(() => {
+      void startCamera(facingMode);
+    }, 0);
+    return () => window.clearTimeout(timer);
+    // startCamera is intentionally omitted: auto-start runs once per mount via autoStartAttemptedRef.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart, facingMode]);
 
   /**

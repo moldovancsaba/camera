@@ -15,6 +15,8 @@ import {
 } from '@/lib/tryon/analytics';
 import HourlyOutcomeChart from '@/components/admin/HourlyOutcomeChart';
 import TryOnAnalyticsTables from '@/components/admin/TryOnAnalyticsTables';
+import TryOnFunnelChart from '@/components/admin/TryOnFunnelChart';
+import TryOnAnalyticsFilterForm from '@/components/admin/TryOnAnalyticsFilterForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +24,7 @@ function bucketParam(value: string): TryOnAnalyticsBucket | '' {
   return value === 'approved' || value === 'rejected' || value === 'service' || value === 'greatest' ? value : '';
 }
 
-type ExportSection = 'all' | 'hourly' | 'preset' | 'garment' | 'event' | 'preset_performance';
+type ExportSection = 'all' | 'hourly' | 'preset' | 'garment' | 'event' | 'preset_performance' | 'funnel';
 
 function exportHref(
   format: 'csv' | 'json',
@@ -83,7 +85,14 @@ export default async function AdminTryOnAnalyticsPage({
       title="Try-On Analytics"
       primaryAction={{ href: '/admin/tryon', label: 'Open Try-On App' }}
       stats={
-        eventStats
+        analytics
+          ? [
+              { label: 'Approved', value: analytics.totals.approved, iconKey: 'photo' as const },
+              { label: 'Declined', value: analytics.totals.rejected, iconKey: 'photo' as const },
+              { label: 'Service', value: analytics.totals.service, iconKey: 'photo' as const },
+              { label: 'Superseded', value: analytics.totals.supersededRerun, iconKey: 'photo' as const },
+            ]
+          : eventStats
           ? [
               { label: 'Total Images', value: eventStats.totalSubmissions, iconKey: 'photo' },
               { label: 'AI Try-ons', value: eventStats.tryOnCount, iconKey: 'photo' },
@@ -120,32 +129,23 @@ export default async function AdminTryOnAnalyticsPage({
       {dbError ? <DatabaseConnectionAlert diagnosis={dbError} /> : null}
       {analytics ? (
         <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
+          <TryOnAnalyticsFilterForm bucket={bucket} eventId={eventId} from={from} to={to} />
           <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0 }}>
             Reporting over {analytics.scannedResultCount} archived try-on decision{analytics.scannedResultCount === 1 ? '' : 's'}.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-sm)' }}>
-            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'all' })}>
-              Export All (CSV)
-            </a>
-            <a href={exportHref('json', { bucket, eventId, from, to, section: 'all' })}>
-              Export All (JSON)
-            </a>
-            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'hourly' })}>
-              Export Hourly
-            </a>
-            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'preset' })}>
-              Export By Preset
-            </a>
-            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'garment' })}>
-              Export By Garment
-            </a>
-            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'event' })}>
-              Export By Event
-            </a>
-            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'preset_performance' })}>
-              Export Preset Performance
-            </a>
+            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'all' })}>Export All (CSV)</a>
+            <a href={exportHref('json', { bucket, eventId, from, to, section: 'all' })}>Export All (JSON)</a>
+            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'funnel' })}>Export Funnel (CSV)</a>
+            <a href={exportHref('json', { bucket, eventId, from, to, section: 'funnel' })}>Export Funnel (JSON)</a>
+            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'hourly' })}>Export Hourly</a>
+            <a href={exportHref('json', { bucket, eventId, from, to, section: 'hourly' })}>Export Hourly (JSON)</a>
+            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'preset' })}>Export By Preset</a>
+            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'garment' })}>Export By Garment</a>
+            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'event' })}>Export By Event</a>
+            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'preset_performance' })}>Export Preset Performance</a>
           </div>
+          <TryOnFunnelChart funnel={analytics.funnel} />
           <HourlyOutcomeChart rows={analytics.hourlyOutcomes} />
           <TryOnAnalyticsTables
             byPreset={analytics.byPreset}

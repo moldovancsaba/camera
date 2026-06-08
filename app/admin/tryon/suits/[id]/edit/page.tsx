@@ -5,11 +5,9 @@ import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { notifications } from '@/lib/gds/notifications';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { FormSection } from '@doneisbetter/gds-admin/client';
-import { InlineAlert, StateBlock } from '@doneisbetter/gds-core/client';
-import { confirmDestructive } from '@/lib/gds/confirm-destructive';
+import { InlineAlert, StateBlock, useGdsConfirm, useGdsToasts } from '@doneisbetter/gds-core/client';
 
 interface TryOnSuitRecord {
   _id: string;
@@ -42,6 +40,8 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDestructive } = useGdsConfirm();
+  const { notifyError } = useGdsToasts();
 
   useEffect(() => {
     async function fetchSuit() {
@@ -112,8 +112,20 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
     } catch (err: unknown) {
       const message = getErrorMessage(err);
       setError(message);
-      notifications.show({ title: 'Delete failed', message, color: 'red' });
+      notifyError({ title: 'Delete failed', message });
       setIsDeleting(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!suit) return;
+    const confirmed = await confirmDestructive({
+      title: 'Delete garment',
+      message: 'Are you sure you want to delete this garment? This cannot be undone.',
+      targetName: suit.name,
+    });
+    if (confirmed) {
+      await handleDelete();
     }
   };
 
@@ -238,14 +250,7 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
               action="garments:delete"
               variant="danger"
               loading={isDeleting}
-              onClick={() =>
-                confirmDestructive({
-                  title: 'Delete garment',
-                  message: 'Are you sure you want to delete this garment? This cannot be undone.',
-                  targetName: suit.name,
-                  onConfirm: () => void handleDelete(),
-                })
-              }
+              onClick={() => void confirmDelete()}
             >
               Delete Garment
             </SemanticButton>

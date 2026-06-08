@@ -14,23 +14,23 @@ import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { ObjectId, type Document, type UpdateFilter } from 'mongodb';
-import { withErrorHandler, requireAdmin, apiSuccess, apiBadRequest, apiNotFound } from '@/lib/api';
+import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiNotFound } from '@/lib/api';
+import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
 
 export const DELETE = withErrorHandler(async (
   request: NextRequest,
   context?: { params?: Promise<{ eventId: string; submissionId: string }> }
 ) => {
-  // Auth: Admin only
-  const session = await requireAdmin();
-
+  const session = await requireAuth();
   const { eventId, submissionId } = await context!.params!;
+
+  const db = await connectToDatabase();
+  await assertGlobalAdminOrPartnerEventAccess(db, session, eventId, 'manager');
 
   // Validate ObjectId format
   if (!ObjectId.isValid(submissionId)) {
     throw apiBadRequest('Invalid submission ID format');
   }
-
-  const db = await connectToDatabase();
 
   // CRITICAL: eventId in URL is MongoDB _id, but submissions store event UUID
   // First, get the event to find its UUID eventId field

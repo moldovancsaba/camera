@@ -72,6 +72,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   return apiSuccess(response);
 });
 
-export const GET = withErrorHandler(async (_request: NextRequest) => {
+export const GET = withErrorHandler(async () => {
   throw apiBadRequest('Try-on completion endpoint requires POST');
 });

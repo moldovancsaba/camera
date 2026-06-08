@@ -1,303 +1,155 @@
 /**
  * Partner API - Individual Operations
- * 
- * GET: Get single partner details
- * PATCH: Update partner (includes cascade to child events for default styles)
- * DELETE: Delete partner (prevents deletion if has active events)
+ *
+ * GET: Get single partner details (global admin or assigned partner workspace)
+ * PATCH: Update partner (global admin only)
+ * DELETE: Delete partner (global admin only)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { updateChildEventsFromPartner } from '@/lib/db/events';
-import { requireAdmin } from '@/lib/api';
+import {
+  withErrorHandler,
+  requireAuth,
+  requireAdmin,
+  apiSuccess,
+  apiBadRequest,
+  apiError,
+  apiNotFound,
+} from '@/lib/api';
+import { assertPartnerMongoWorkspaceAccess } from '@/lib/partners/authorization';
 
-/**
- * GET /api/partners/[id]
- * Get single partner details with aggregated statistics
- */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ partnerId: string }> }
+export const GET = withErrorHandler(async (
+  _request: NextRequest,
+  context: { params: Promise<{ partnerId: string }> }
+) => {
+  const session = await requireAuth();
+  const { partnerId } = await context.params;
+  const db = await connectToDatabase();
+  const { partner, eventCount, frameCount } = await loadPartnerWithStats(db, session, partnerId);
+
+  return apiSuccess({
+    partner: {
+      ...partner,
+      eventCount,
+      frameCount,
+    },
+  });
+});
+
+async function loadPartnerWithStats(
+  db: Awaited<ReturnType<typeof connectToDatabase>>,
+  session: Awaited<ReturnType<typeof requireAuth>>,
+  partnerMongoId: string
 ) {
-  try {
-    const { partnerId } = await params;
+  const { partner, partnerId } = await assertPartnerMongoWorkspaceAccess(db, session, partnerMongoId, 'viewer');
 
-    // Validate MongoDB ObjectId format
-    if (!ObjectId.isValid(partnerId)) {
-      return NextResponse.json(
-        { error: 'Invalid partner ID' },
-        { status: 400 }
-      );
-    }
+  const eventCount = await db.collection(COLLECTIONS.EVENTS).countDocuments({ partnerId });
+  const frameCount = await db.collection(COLLECTIONS.FRAMES).countDocuments({ partnerId });
 
-    const db = await connectToDatabase();
-    
-    // Get partner document
-    const partner = await db
-      .collection(COLLECTIONS.PARTNERS)
-      .findOne({ _id: new ObjectId(partnerId) });
-
-    if (!partner) {
-      return NextResponse.json(
-        { error: 'Partner not found' },
-        { status: 404 }
-      );
-    }
-
-    // Get event count for this partner
-    const eventCount = await db
-      .collection(COLLECTIONS.EVENTS)
-      .countDocuments({ partnerId: partner.partnerId });
-
-    // Get frame count for this partner (partner-specific and event-specific frames)
-    const frameCount = await db
-      .collection(COLLECTIONS.FRAMES)
-      .countDocuments({ partnerId: partner.partnerId });
-
-    return NextResponse.json({
-      partner: {
-        ...partner,
-        eventCount,
-        frameCount,
-      },
-    });
-  } catch (error) {
-    console.error('Error fetching partner:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch partner' },
-      { status: 500 }
-    );
-  }
+  return { partner, partnerId, eventCount, frameCount };
 }
 
-/**
- * PATCH /api/partners/[id]
- * Update partner details (global admin only)
- * 
- * Updatable fields:
- * - name
- * - description
- * - contactEmail
- * - contactName
- * - logoUrl
- * - isActive
- */
-export async function PATCH(
+export const PATCH = withErrorHandler(async (
   request: NextRequest,
-  { params }: { params: Promise<{ partnerId: string }> }
-) {
-  try {
-    await requireAdmin();
+  context: { params: Promise<{ partnerId: string }> }
+) => {
+  await requireAdmin();
+  const { partnerId } = await context.params;
 
-    const { partnerId } = await params;
-
-    // Validate MongoDB ObjectId format
-    if (!ObjectId.isValid(partnerId)) {
-      return NextResponse.json(
-        { error: 'Invalid partner ID' },
-        { status: 400 }
-      );
-    }
-
-    const body = await request.json();
-    const { 
-      name, 
-      description, 
-      contactEmail, 
-      contactName, 
-      logoUrl, 
-      isActive,
-      defaultBrandColors,
-      defaultFrames,
-      defaultLogos,
-    } = body;
-
-    // Build update object with only provided fields
-    // This allows partial updates without overwriting unspecified fields
-    const updates: Record<string, unknown> = {
-      updatedAt: generateTimestamp(),
-    };
-
-    if (name !== undefined) {
-      if (name.trim() === '') {
-        return NextResponse.json(
-          { error: 'Partner name cannot be empty' },
-          { status: 400 }
-        );
-      }
-      updates.name = name.trim();
-    }
-
-    if (description !== undefined) {
-      updates.description = description?.trim() || null;
-    }
-
-    if (contactEmail !== undefined) {
-      updates.contactEmail = contactEmail?.trim() || null;
-    }
-
-    if (contactName !== undefined) {
-      updates.contactName = contactName?.trim() || null;
-    }
-
-    if (logoUrl !== undefined) {
-      updates.logoUrl = logoUrl?.trim() || null;
-    }
-
-    if (isActive !== undefined) {
-      updates.isActive = Boolean(isActive);
-    }
-
-    // Default style fields
-    // These will cascade to child events
-    if (defaultBrandColors !== undefined) {
-      updates.defaultBrandColors = defaultBrandColors;
-    }
-
-    if (defaultFrames !== undefined) {
-      updates.defaultFrames = defaultFrames;
-    }
-
-    if (defaultLogos !== undefined) {
-      updates.defaultLogos = defaultLogos;
-    }
-
-    const db = await connectToDatabase();
-    
-    // Get partner to check partnerId before update
-    const existingPartner = await db
-      .collection(COLLECTIONS.PARTNERS)
-      .findOne({ _id: new ObjectId(partnerId) });
-
-    if (!existingPartner) {
-      return NextResponse.json(
-        { error: 'Partner not found' },
-        { status: 404 }
-      );
-    }
-
-    // Update partner document
-    const result = await db
-      .collection(COLLECTIONS.PARTNERS)
-      .findOneAndUpdate(
-        { _id: new ObjectId(partnerId) },
-        { $set: updates },
-        { returnDocument: 'after' }
-      );
-
-    if (!result) {
-      return NextResponse.json(
-        { error: 'Partner not found' },
-        { status: 404 }
-      );
-    }
-
-    // Cascade style changes to child events
-    // Only if any default style fields were updated
-    let cascadeResult;
-    if (defaultBrandColors !== undefined || defaultFrames !== undefined || defaultLogos !== undefined) {
-      const cascadeUpdates: Record<string, unknown> = {};
-      
-      if (defaultBrandColors !== undefined) {
-        cascadeUpdates.defaultBrandColors = defaultBrandColors;
-      }
-      if (defaultFrames !== undefined) {
-        cascadeUpdates.defaultFrames = defaultFrames;
-      }
-      if (defaultLogos !== undefined) {
-        cascadeUpdates.defaultLogos = defaultLogos;
-      }
-
-      cascadeResult = await updateChildEventsFromPartner(
-        existingPartner.partnerId,
-        cascadeUpdates
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      partner: result,
-      cascade: cascadeResult, // Include cascade stats if defaults were updated
-    });
-  } catch (error) {
-    console.error('Error updating partner:', error);
-    return NextResponse.json(
-      { error: 'Failed to update partner' },
-      { status: 500 }
-    );
+  if (!ObjectId.isValid(partnerId)) {
+    throw apiBadRequest('Invalid partner ID');
   }
-}
 
-/**
- * DELETE /api/partners/[id]
- * Delete partner (global admin only)
- * 
- * Prevents deletion if partner has active events
- * This maintains referential integrity in the database
- */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ partnerId: string }> }
-) {
-  try {
-    await requireAdmin();
+  const body = await request.json();
+  const {
+    name,
+    description,
+    contactEmail,
+    contactName,
+    logoUrl,
+    isActive,
+    defaultBrandColors,
+    defaultFrames,
+    defaultLogos,
+  } = body;
 
-    const { partnerId } = await params;
+  const updates: Record<string, unknown> = {
+    updatedAt: generateTimestamp(),
+  };
 
-    // Validate MongoDB ObjectId format
-    if (!ObjectId.isValid(partnerId)) {
-      return NextResponse.json(
-        { error: 'Invalid partner ID' },
-        { status: 400 }
-      );
+  if (name !== undefined) {
+    if (String(name).trim() === '') {
+      throw apiBadRequest('Partner name cannot be empty');
     }
-
-    const db = await connectToDatabase();
-    
-    // Get partner to check existence and get partnerId
-    const partner = await db
-      .collection(COLLECTIONS.PARTNERS)
-      .findOne({ _id: new ObjectId(partnerId) });
-
-    if (!partner) {
-      return NextResponse.json(
-        { error: 'Partner not found' },
-        { status: 404 }
-      );
-    }
-
-    // Check for existing events
-    // Prevent deletion if partner has events to maintain data integrity
-    const eventCount = await db
-      .collection(COLLECTIONS.EVENTS)
-      .countDocuments({ partnerId: partner.partnerId });
-
-    if (eventCount > 0) {
-      return NextResponse.json(
-        { 
-          error: 'Cannot delete partner with existing events',
-          eventCount,
-        },
-        { status: 409 }
-      );
-    }
-
-    // Delete partner
-    await db
-      .collection(COLLECTIONS.PARTNERS)
-      .deleteOne({ _id: new ObjectId(partnerId) });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Partner deleted successfully',
-    });
-  } catch (error) {
-    console.error('Error deleting partner:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete partner' },
-      { status: 500 }
-    );
+    updates.name = String(name).trim();
   }
-}
+  if (description !== undefined) updates.description = description?.trim() || null;
+  if (contactEmail !== undefined) updates.contactEmail = contactEmail?.trim() || null;
+  if (contactName !== undefined) updates.contactName = contactName?.trim() || null;
+  if (logoUrl !== undefined) updates.logoUrl = logoUrl?.trim() || null;
+  if (isActive !== undefined) updates.isActive = Boolean(isActive);
+  if (defaultBrandColors !== undefined) updates.defaultBrandColors = defaultBrandColors;
+  if (defaultFrames !== undefined) updates.defaultFrames = defaultFrames;
+  if (defaultLogos !== undefined) updates.defaultLogos = defaultLogos;
+
+  const db = await connectToDatabase();
+  const existingPartner = await db.collection(COLLECTIONS.PARTNERS).findOne({ _id: new ObjectId(partnerId) });
+  if (!existingPartner) {
+    throw apiNotFound('Partner');
+  }
+
+  const result = await db.collection(COLLECTIONS.PARTNERS).findOneAndUpdate(
+    { _id: new ObjectId(partnerId) },
+    { $set: updates },
+    { returnDocument: 'after' }
+  );
+
+  if (!result) {
+    throw apiNotFound('Partner');
+  }
+
+  let cascadeResult;
+  if (defaultBrandColors !== undefined || defaultFrames !== undefined || defaultLogos !== undefined) {
+    const cascadeUpdates: Record<string, unknown> = {};
+    if (defaultBrandColors !== undefined) cascadeUpdates.defaultBrandColors = defaultBrandColors;
+    if (defaultFrames !== undefined) cascadeUpdates.defaultFrames = defaultFrames;
+    if (defaultLogos !== undefined) cascadeUpdates.defaultLogos = defaultLogos;
+    cascadeResult = await updateChildEventsFromPartner(existingPartner.partnerId, cascadeUpdates);
+  }
+
+  return apiSuccess({
+    partner: result,
+    cascade: cascadeResult,
+  });
+});
+
+export const DELETE = withErrorHandler(async (
+  _request: NextRequest,
+  context: { params: Promise<{ partnerId: string }> }
+) => {
+  await requireAdmin();
+  const { partnerId } = await context.params;
+
+  if (!ObjectId.isValid(partnerId)) {
+    throw apiBadRequest('Invalid partner ID');
+  }
+
+  const db = await connectToDatabase();
+  const partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ _id: new ObjectId(partnerId) });
+  if (!partner) {
+    throw apiNotFound('Partner');
+  }
+
+  const eventCount = await db.collection(COLLECTIONS.EVENTS).countDocuments({ partnerId: partner.partnerId });
+  if (eventCount > 0) {
+    throw apiError('Cannot delete partner with existing events', 409, { eventCount });
+  }
+
+  await db.collection(COLLECTIONS.PARTNERS).deleteOne({ _id: new ObjectId(partnerId) });
+
+  return apiSuccess({ message: 'Partner deleted successfully' });
+});

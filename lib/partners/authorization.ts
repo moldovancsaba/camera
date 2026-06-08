@@ -1,6 +1,7 @@
 import type { Db } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import type { Session } from '@/lib/auth/session';
+import { apiBadRequest, apiForbidden, apiNotFound } from '@/lib/api/responses';
 import { COLLECTIONS, type PartnerAccessRole, type PartnerAppKey } from '@/lib/db/schemas';
 import { getPartnerAccessForIdentity, listPartnerUserAccess } from '@/lib/partners/access';
 
@@ -133,6 +134,83 @@ export async function getPartnerScopedAccessForEventUuid(
   }
   const access = await getPartnerScopedAccessForPartner(db, session, partnerId, 'events', minRole);
   return { ...access, partnerId };
+}
+
+export type PartnerAccessContext = {
+  role: PartnerAccessRole | null;
+  partnerId: string | null;
+};
+
+/**
+ * Throws 403 when the session lacks partner-scoped Events access for an event Mongo _id.
+ */
+export async function assertPartnerEventAccess(
+  db: Db,
+  session: Session,
+  eventMongoId: string,
+  minRole: PartnerAccessRole = 'viewer'
+): Promise<PartnerAccessContext> {
+  const access = await getPartnerScopedAccessForEvent(db, eventMongoId, session, minRole);
+  if (!access.allowed) {
+    throw apiForbidden(`Partner-level Events ${minRole} access is required`);
+  }
+  return { role: access.role, partnerId: access.partnerId };
+}
+
+/**
+ * Global admins bypass; partner-scoped users must meet minRole for the event.
+ */
+export async function assertGlobalAdminOrPartnerEventAccess(
+  db: Db,
+  session: Session,
+  eventMongoId: string,
+  minRole: PartnerAccessRole = 'manager'
+): Promise<PartnerAccessContext> {
+  if (isGlobalAdminSession(session)) {
+    const access = await getPartnerScopedAccessForEvent(db, eventMongoId, session, 'viewer');
+    return { role: 'admin', partnerId: access.partnerId };
+  }
+  return assertPartnerEventAccess(db, session, eventMongoId, minRole);
+}
+
+/**
+ * Throws 403 when the session cannot access a partner workspace (any active assignment).
+ */
+export async function assertPartnerWorkspaceAccess(
+  db: Db,
+  session: Session,
+  partnerUuid: string,
+  minRole: PartnerAccessRole = 'viewer'
+): Promise<PartnerAccessContext> {
+  if (isGlobalAdminSession(session)) {
+    return { role: 'admin', partnerId: partnerUuid };
+  }
+  const access = await getPartnerScopedAccessForPartner(db, session, partnerUuid, undefined, minRole);
+  if (!access.allowed) {
+    throw apiForbidden(`Partner-level ${minRole} access is required`);
+  }
+  return { role: access.role, partnerId: partnerUuid };
+}
+
+/**
+ * Resolve a partner by Mongo _id and enforce workspace access.
+ */
+export async function assertPartnerMongoWorkspaceAccess(
+  db: Db,
+  session: Session,
+  partnerMongoId: string,
+  minRole: PartnerAccessRole = 'viewer'
+): Promise<{ partner: Record<string, unknown>; role: PartnerAccessRole | null; partnerId: string }> {
+  if (!ObjectId.isValid(partnerMongoId)) {
+    throw apiBadRequest('Invalid partner ID');
+  }
+  const partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ _id: new ObjectId(partnerMongoId) });
+  if (!partner) {
+    throw apiNotFound('Partner');
+  }
+  const partnerId = String(partner.partnerId);
+  const access = await assertPartnerWorkspaceAccess(db, session, partnerId, minRole);
+  return { partner: partner as Record<string, unknown>, role: access.role, partnerId };
 }
 
 export async function getAdminNavigationAccess(db: Db, session: Session) {

@@ -10,6 +10,7 @@ type Correction = {
   userName?: string;
   userEmail?: string;
   reason?: string;
+  classificationStatus?: 'reviewed_unrecoverable' | 'manual_corrected';
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -40,7 +41,8 @@ async function main() {
     }
     const userName = typeof correction.userName === 'string' ? correction.userName.trim() : '';
     const userEmail = typeof correction.userEmail === 'string' ? correction.userEmail.trim() : '';
-    if (!userName && !userEmail) {
+    const classificationStatus = correction.classificationStatus;
+    if (!userName && !userEmail && classificationStatus !== 'reviewed_unrecoverable') {
       skipped.push({ resultSubmissionId: correction.resultSubmissionId, reason: 'missing_user_name_or_email' });
       continue;
     }
@@ -48,19 +50,35 @@ async function main() {
       skipped.push({ resultSubmissionId: correction.resultSubmissionId, reason: 'invalid_or_placeholder_email' });
       continue;
     }
+    const now = new Date().toISOString();
     const patch: Record<string, unknown> = {
-      updatedAt: new Date().toISOString(),
-      'metadata.identityManuallyCorrectedAt': new Date().toISOString(),
-      'metadata.identityManuallyCorrectedReason': correction.reason ?? null,
+      updatedAt: now,
     };
-    if (userName) patch.userName = userName;
-    if (userEmail) patch.userEmail = userEmail;
-    if (userName || userEmail) {
-      patch.userInfo = {
-        ...(userName ? { name: userName } : {}),
-        ...(userEmail ? { email: userEmail } : {}),
-        collectedAt: new Date().toISOString(),
+    if (classificationStatus === 'reviewed_unrecoverable') {
+      patch['metadata.tryOnIdentityClassification'] = {
+        status: 'reviewed_unrecoverable',
+        reviewedAt: now,
+        reviewedBy: 'script:apply-tryon-identity-corrections',
+        reason: correction.reason ?? null,
       };
+    } else {
+      patch['metadata.identityManuallyCorrectedAt'] = now;
+      patch['metadata.identityManuallyCorrectedReason'] = correction.reason ?? null;
+      patch['metadata.tryOnIdentityClassification'] = {
+        status: classificationStatus === 'manual_corrected' ? 'manual_corrected' : 'manual_corrected',
+        reviewedAt: now,
+        reviewedBy: 'script:apply-tryon-identity-corrections',
+        reason: correction.reason ?? null,
+      };
+      if (userName) patch.userName = userName;
+      if (userEmail) patch.userEmail = userEmail;
+      if (userName || userEmail) {
+        patch.userInfo = {
+          ...(userName ? { name: userName } : {}),
+          ...(userEmail ? { email: userEmail } : {}),
+          collectedAt: now,
+        };
+      }
     }
     if (apply) {
       const result = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(

@@ -7,11 +7,13 @@
 import { NextRequest } from 'next/server';
 import {
   withErrorHandler,
-  requireAdmin,
+  requireAuth,
   validateRequiredFields,
   apiSuccess,
   apiBadRequest,
 } from '@/lib/api';
+import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
+import { connectToDatabase } from '@/lib/db/mongodb';
 import { resetEventStyleToDefault } from '@/lib/db/events';
 
 /**
@@ -32,10 +34,10 @@ export const POST = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) => {
-  // Check authentication and authorization
-  await requireAdmin();
-
+  const session = await requireAuth();
   const { eventId } = await params;
+  const db = await connectToDatabase();
+  await assertGlobalAdminOrPartnerEventAccess(db, session, eventId, 'manager');
   
   // Parse request body
   const body = await request.json();

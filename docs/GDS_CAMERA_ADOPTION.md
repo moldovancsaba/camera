@@ -1,6 +1,6 @@
 # Camera GDS Adoption
 
-**Version**: 2.11.0  
+**Version**: 2.12.0  
 **Last Updated**: 2026-06-08
 
 ## SSOT statement
@@ -108,8 +108,6 @@ Camera exceptions follow the shared structure from [docs/GDS_EXCEPTION_STANDARD.
 | Residual public surface helper layer (`app/globals.css` helper classes and `--app-panel-*` tokens) | Migration bridge | Limited public/capture helper styling outside `/admin/**` | No second shell system, no admin reuse, no raw package bypass, accessibility and contrast still enforced | Remove once public/capture surfaces no longer depend on local helper classes |
 | Landing page custom CSS (`landing_pages.customCss`, public `/landing/[slug]`) | Product-authored experience | Creator-authored presentation inside the landing experience surface only | GDS-governed admin/editor chrome, safe rendering order, accessibility baseline for shared controls and consent surfaces | Long-lived approved exception unless GDS later formalizes creator-authored experience theming |
 | Slideshow player (`components/slideshow/**`, `/slideshow/**`) | Runtime constraint | Timing-sensitive queue orchestration, fullscreen behavior, and media-first presentation | GDS runtime boundary, `PlaybackSurface` framing, surrounding admin configuration surfaces, visible error/empty states, keyboard-safe exit where applicable | Keep narrowing until only timing-sensitive queue, fullscreen behavior, and media internals remain outside direct package ownership |
-| Event inventory per-row vetting action (`components/gds/EventsInventoryList.tsx`) | Package coverage gap | Mantine `SimpleGrid` only, around package `AdminResourceCard` | Official GDS resource cards, status badges, metadata, accessible action labels | Remove when `AdminResourceManager` supports row-derived action labels such as `Vetting (N)` |
-
 ## Published package capability snapshot
 
 Camera is currently pinned to the latest verified published release bundle, `@doneisbetter/*` **3.4.3**.

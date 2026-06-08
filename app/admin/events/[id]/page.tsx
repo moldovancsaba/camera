@@ -154,11 +154,14 @@ export default async function EventDetailPage({
 
   try {
     const db = await connectToDatabase();
-    const eventAccess = await getPartnerScopedAccessForEvent(db, id, session!, 'manager');
+    const eventAccess = await getPartnerScopedAccessForEvent(db, id, session!, 'viewer');
     if (!eventAccess.allowed) {
       redirect('/admin/events');
     }
-    canManageEvent = true;
+    canManageEvent =
+      isGlobalAdminSession(session) ||
+      eventAccess.role === 'manager' ||
+      eventAccess.role === 'admin';
 
     event = (await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(id) })) as EventDoc | null;
     if (!event) {
@@ -500,6 +503,7 @@ export default async function EventDetailPage({
           eventName={event.name}
           initialSubmissions={JSON.parse(JSON.stringify(submissions))}
           slideshows={JSON.parse(JSON.stringify(slideshows))}
+          canManage={canManageEvent}
         />
       </Card>
     </Stack>

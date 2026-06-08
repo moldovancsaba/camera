@@ -14,23 +14,24 @@ import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { ObjectId } from 'mongodb';
-import { withErrorHandler, requireAdmin, apiSuccess, apiBadRequest, apiNotFound } from '@/lib/api';
+import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiNotFound } from '@/lib/api';
+import { assertPartnerWorkspaceAccess, isGlobalAdminSession } from '@/lib/partners/authorization';
 
 export const DELETE = withErrorHandler(async (
-  request: NextRequest,
+  _request: NextRequest,
   context?: { params?: Promise<{ partnerId: string; submissionId: string }> }
 ) => {
-  // Auth: Admin only
-  const session = await requireAdmin();
-
+  const session = await requireAuth();
   const { partnerId, submissionId } = await context!.params!;
 
-  // Validate ObjectId format
   if (!ObjectId.isValid(submissionId)) {
     throw apiBadRequest('Invalid submission ID format');
   }
 
   const db = await connectToDatabase();
+  if (!isGlobalAdminSession(session)) {
+    await assertPartnerWorkspaceAccess(db, session, partnerId, 'manager');
+  }
 
   // Find the submission
   const submission = await db

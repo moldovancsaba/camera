@@ -1,11 +1,13 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { Box, Button, Group, Paper, Select, Stack, Text, UnstyledButton } from '@/components/gds/PublicPrimitives';
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AdminModal, AdminReviewLayout, ResponsiveDataView } from '@doneisbetter/gds-admin/client';
-import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
+import { StateBlock, StatusBadge, useGdsToasts } from '@doneisbetter/gds-core/client';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
 
@@ -46,6 +48,7 @@ export interface ModerationRow {
   archiveReason?: string | null;
   archiveSupersededByJobId?: string | null;
   archiveSupersededAt?: string | null;
+  identityGapActionable?: boolean;
   recentAudit?: Array<{
     eventId: string;
     action: string;
@@ -129,8 +132,15 @@ function reviewTone(status: ModerationRow['reviewStatus']): CameraStatusTone {
   return 'warning' as const;
 }
 
-function reviewLabel(status: ModerationRow['reviewStatus']) {
-  return status.replace(/_/g, ' ');
+function reviewLabel(row: ModerationRow) {
+  if (row.archiveReason === 'quality_rerun_superseded') {
+    return 'superseded by rerun';
+  }
+  return row.reviewStatus.replace(/_/g, ' ');
+}
+
+function isSupersededRow(row: ModerationRow): boolean {
+  return row.archiveReason === 'quality_rerun_superseded';
 }
 
 function scopeLabel(row: ModerationRow) {
@@ -236,6 +246,7 @@ function toModerationRow(value: unknown): ModerationRow | null {
     archiveReason: typeof row.archiveReason === 'string' ? row.archiveReason : null,
     archiveSupersededByJobId: typeof row.archiveSupersededByJobId === 'string' ? row.archiveSupersededByJobId : null,
     archiveSupersededAt: typeof row.archiveSupersededAt === 'string' ? row.archiveSupersededAt : null,
+    identityGapActionable: Boolean(row.identityGapActionable),
     setup: row.setup && typeof row.setup === 'object' && typeof row.setup.setupId === 'string' ? row.setup : null,
   };
 }
@@ -458,46 +469,62 @@ function ModerationActions({
 }) {
   const isApproved = row.reviewStatus === 'approved';
   const isRejected = row.reviewStatus === 'rejected';
+  const archivedReadOnly = isSupersededRow(row);
 
   return (
     <Stack gap="xs" style={{ width: '100%' }}>
+      {archivedReadOnly ? (
+        <Text size="xs" c="dimmed">
+          Superseded by rerun job{' '}
+          {row.archiveSupersededByJobId ? (
+            <Link href={`/admin/tryon/queue?search=${encodeURIComponent(row.archiveSupersededByJobId)}`}>
+              {row.archiveSupersededByJobId}
+            </Link>
+          ) : (
+            'unknown'
+          )}
+          .
+        </Text>
+      ) : null}
       <Group justify="stretch" gap="xs" grow wrap="nowrap">
-        <Button
-          variant="light"
+        <SemanticButton
+          action="tryon:approve"
           loading={busyId === `${row.id}:approve`}
-          disabled={isApproved}
+          disabled={isApproved || archivedReadOnly}
           aria-label={isApproved ? 'Try-on result approved' : 'Approve try-on result'}
           onClick={() => void onDecision(row.id, 'approve')}
         >
           {isApproved ? 'Approved' : 'Approve'}
-        </Button>
-        <Button
-          variant="light"
+        </SemanticButton>
+        <SemanticButton
+          action="tryon:reject"
           loading={busyId === `${row.id}:reject`}
-          disabled={isRejected}
+          disabled={isRejected || archivedReadOnly}
           aria-label={isRejected ? 'Try-on result rejected' : 'Reject try-on result'}
           onClick={() => void onDecision(row.id, 'reject')}
         >
           {isRejected ? 'Rejected' : 'Reject'}
-        </Button>
+        </SemanticButton>
       </Group>
       <Group justify="stretch" gap="xs" grow wrap="nowrap">
-        <Button
-          variant={row.isGreat ? 'default' : 'outline'}
+        <SemanticButton
+          action="tryon:great"
           loading={busyId === `${row.id}:great`}
+          disabled={archivedReadOnly}
           aria-label={row.isGreat ? 'Remove from Greatest Hits' : 'Mark try-on result as Great'}
           onClick={() => void onGreat(row)}
         >
           {row.isGreat ? 'Remove Great' : 'Great'}
-        </Button>
-        <Button
-          variant="outline"
+        </SemanticButton>
+        <SemanticButton
+          action="tryon:service"
           loading={busyId === `${row.id}:service`}
+          disabled={archivedReadOnly}
           aria-label="Mark try-on result as Service"
           onClick={() => void onService(row)}
         >
           Service
-        </Button>
+        </SemanticButton>
       </Group>
       <Button
         component="a"
@@ -533,6 +560,7 @@ export default function TryOnResultModerationTable({
   emptyDescription?: string;
 }) {
   const router = useRouter();
+  const { notifySuccess, notifyError } = useGdsToasts();
   const [displayRows, setDisplayRows] = useState(rows);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
@@ -696,10 +724,19 @@ export default function TryOnResultModerationTable({
     try {
       setBusyId(`${rowId}:${action}`);
       await postDecision(rowId, action);
+      notifySuccess({
+        title: action === 'approve' ? 'Approved' : 'Rejected',
+        message: action === 'approve' ? 'Try-on result approved.' : 'Try-on result rejected.',
+      });
       if (activeRowId === rowId) {
         setActiveRowId(null);
       }
       router.refresh();
+    } catch (error) {
+      notifyError({
+        title: 'Moderation failed',
+        message: error instanceof Error ? error.message : 'Moderation action failed.',
+      });
     } finally {
       setBusyId(null);
     }
@@ -709,10 +746,19 @@ export default function TryOnResultModerationTable({
     try {
       setBusyId(`${row.id}:great`);
       await postGreat(row.id, row.isGreat);
+      notifySuccess({
+        title: row.isGreat ? 'Great removed' : 'Marked Great',
+        message: row.isGreat ? 'Removed from Greatest Hits.' : 'Marked as Great.',
+      });
       if (activeRowId === row.id && !row.isGreat) {
         setActiveRowId(null);
       }
       router.refresh();
+    } catch (error) {
+      notifyError({
+        title: 'Great action failed',
+        message: error instanceof Error ? error.message : 'Great action failed.',
+      });
     } finally {
       setBusyId(null);
     }
@@ -722,10 +768,16 @@ export default function TryOnResultModerationTable({
     try {
       setBusyId(`${row.id}:service`);
       await postService(row.id);
+      notifySuccess({ title: 'Service', message: 'Marked as Service.' });
       if (activeRowId === row.id) {
         setActiveRowId(null);
       }
       router.refresh();
+    } catch (error) {
+      notifyError({
+        title: 'Service action failed',
+        message: error instanceof Error ? error.message : 'Service action failed.',
+      });
     } finally {
       setBusyId(null);
     }
@@ -956,7 +1008,17 @@ export default function TryOnResultModerationTable({
             label: 'Review Status',
             render: (row) => (
               <Stack gap="xs" align="flex-start">
-                <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row.reviewStatus))} />
+                <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row))} />
+                {isSupersededRow(row) && row.archiveSupersededByJobId ? (
+                  <Text size="xs">
+                    <Link href={`/admin/tryon/queue?search=${encodeURIComponent(row.archiveSupersededByJobId)}`}>
+                      View superseding job
+                    </Link>
+                  </Text>
+                ) : null}
+                {row.identityGapActionable ? (
+                  <StatusBadge {...getStatusBadgeProps('warning', 'Identity gap')} />
+                ) : null}
                 {row.isGreat ? (
                   <StatusBadge {...getStatusBadgeProps('active', 'Great')} />
                 ) : null}
@@ -1012,7 +1074,7 @@ export default function TryOnResultModerationTable({
           >
             {renderPresetControls(row)}
             <Stack gap="xs" align="flex-start">
-              <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row.reviewStatus))} />
+              <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row))} />
               {row.isGreat ? (
                 <StatusBadge {...getStatusBadgeProps('active', 'Great')} />
               ) : null}
@@ -1078,7 +1140,7 @@ export default function TryOnResultModerationTable({
             </Stack>
             {renderPresetControls(activeRow)}
             <Stack gap="xs" align="flex-start">
-              <StatusBadge {...getStatusBadgeProps(reviewTone(activeRow.reviewStatus), reviewLabel(activeRow.reviewStatus))} />
+              <StatusBadge {...getStatusBadgeProps(reviewTone(activeRow.reviewStatus), reviewLabel(activeRow))} />
               {activeRow.isGreat ? (
                 <StatusBadge {...getStatusBadgeProps('active', 'Great')} />
               ) : null}

@@ -1,6 +1,6 @@
 {
   "name": "camera",
-  "version": "2.11.0",
+  "version": "2.12.0",
   "description": "Professional web application for capturing photos with graphical frames, social sharing, event slideshows, and user profile management",
   "type": "module",
   "private": true,
@@ -30,6 +30,8 @@
     "tryon:apply-identity-corrections:apply": "tsx scripts/apply-tryon-identity-corrections.ts --apply",
     "tryon:audit-data-integrity": "tsx scripts/audit-tryon-data-integrity.ts",
     "tryon:audit-data-integrity:strict": "tsx scripts/audit-tryon-data-integrity.ts --strict",
+    "tryon:backfill-superseded-archive-reason": "tsx scripts/backfill-tryon-superseded-archive-reason.ts",
+    "tryon:backfill-superseded-archive-reason:apply": "tsx scripts/backfill-tryon-superseded-archive-reason.ts --apply",
     "tryon:enable-frame-composition": "tsx scripts/enable-tryon-frame-composition.ts",
     "tryon:worker": "tsx scripts/tryon-worker.ts",
     "postinstall": "node scripts/patch-baseline-browser-mapping.mjs",

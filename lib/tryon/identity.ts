@@ -1,4 +1,10 @@
-import type { Submission } from '@/lib/db/schemas';
+import type { Submission, TryOnIdentityClassification, TryOnIdentityClassificationStatus } from '@/lib/db/schemas';
+
+const IDENTITY_CLASSIFICATION_STATUSES: TryOnIdentityClassificationStatus[] = [
+  'source_recoverable',
+  'manual_corrected',
+  'reviewed_unrecoverable',
+];
 
 export interface TryOnIdentity {
   name: string;
@@ -30,6 +36,28 @@ function firstUsableEmail(values: Array<string | null | undefined>): string | nu
   }
 
   return null;
+}
+
+export function getTryOnIdentityClassification(
+  doc: Pick<Submission, 'metadata'>
+): TryOnIdentityClassification | null {
+  const value = doc.metadata?.tryOnIdentityClassification;
+  if (!value || typeof value !== 'object') return null;
+  const status = (value as TryOnIdentityClassification).status;
+  if (!IDENTITY_CLASSIFICATION_STATUSES.includes(status)) return null;
+  return value as TryOnIdentityClassification;
+}
+
+export function isActionableIdentityGap(
+  resultSubmission: Pick<Submission, 'userInfo' | 'userName' | 'userEmail' | 'metadata'>,
+  sourceSubmission?: Pick<Submission, 'userInfo' | 'userName' | 'userEmail'> | null
+): boolean {
+  const classification = getTryOnIdentityClassification(resultSubmission);
+  if (classification?.status === 'reviewed_unrecoverable' || classification?.status === 'manual_corrected') {
+    return false;
+  }
+  const identity = resolveTryOnSubmissionIdentity(resultSubmission, sourceSubmission);
+  return identity.name === 'Guest' && !identity.email;
 }
 
 export function resolveTryOnSubmissionIdentity(

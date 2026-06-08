@@ -20,6 +20,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireAdmin();
     const { id } = await params;
     const db = await connectToDatabase();
     const frame = await db.collection('frames').findOne({ _id: new ObjectId(id) });

@@ -69,9 +69,13 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     query['tryOnModerationArchive.archived'] = true;
     query['tryOnModerationArchive.bucket'] = 'approved';
     query['metadata.tryOnGreat'] = true;
+  } else if (archive === 'superseded') {
+    query['tryOnModerationArchive.archived'] = true;
+    query['tryOnModerationArchive.reason'] = 'quality_rerun_superseded';
   } else if (archive === 'approved' || archive === 'rejected' || archive === 'service') {
     query['tryOnModerationArchive.archived'] = true;
     query['tryOnModerationArchive.bucket'] = archive;
+    query['tryOnModerationArchive.reason'] = { $ne: 'quality_rerun_superseded' };
   } else {
     query['tryOnModerationArchive.archived'] = { $ne: true };
     query.reviewStatus = reviewStatus || 'pending_review';

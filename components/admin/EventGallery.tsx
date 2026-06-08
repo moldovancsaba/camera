@@ -41,6 +41,7 @@ interface EventGalleryProps {
   eventName: string;
   initialSubmissions: SubmissionRecord[];
   slideshows: SlideshowRecord[];
+  canManage?: boolean;
 }
 
 type RemoveState = {
@@ -100,7 +101,8 @@ export default function EventGallery({
   eventId,
   eventName,
   initialSubmissions,
-  slideshows
+  slideshows,
+  canManage = true,
 }: EventGalleryProps) {
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -232,10 +234,12 @@ export default function EventGallery({
   if (submissions.length === 0) {
     return (
       <div style={{ display: 'grid', gap: '1.5rem', padding: '1.5rem' }}>
-        <EventGalleryUpload
-          eventMongoId={eventId}
-          onUploaded={handleUploaded}
-        />
+        {canManage ? (
+          <EventGalleryUpload
+            eventMongoId={eventId}
+            onUploaded={handleUploaded}
+          />
+        ) : null}
         <StateBlock
           variant="empty"
           title="No submissions yet"
@@ -252,11 +256,14 @@ export default function EventGallery({
 
   return (
     <div style={{ display: 'grid', gap: '1.5rem', padding: '1.5rem' }}>
-      <EventGalleryUpload
-        eventMongoId={eventId}
-        onUploaded={handleUploaded}
-      />
+      {canManage ? (
+        <EventGalleryUpload
+          eventMongoId={eventId}
+          onUploaded={handleUploaded}
+        />
+      ) : null}
 
+      {canManage ? (
       <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', padding: '1rem' }}>
         <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
           <div style={{ display: 'grid', gap: '0.25rem' }}>
@@ -320,6 +327,7 @@ export default function EventGallery({
           </div>
         ) : null}
       </section>
+      ) : null}
 
       <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))' }}>
         {submissions.map((submission) => {
@@ -336,6 +344,7 @@ export default function EventGallery({
             >
               <div style={{ display: 'grid' }}>
                 <div style={{ position: 'relative' }}>
+                  {canManage ? (
                   <input
                     type="checkbox"
                     checked={selected}
@@ -343,6 +352,7 @@ export default function EventGallery({
                     aria-label={selected ? 'Deselect image' : 'Select image'}
                     style={{ position: 'absolute', zIndex: 1, insetBlockStart: 8, insetInlineStart: 8 }}
                   />
+                  ) : null}
                   <Link href={`/share/${submission._id}`}>
                   <Image
                   src={submission.imageUrl || submission.finalImageUrl || 'data:image/gif;base64,R0lGODlhAQABAAAAACw='}
@@ -396,40 +406,42 @@ export default function EventGallery({
                       Download
                       </SemanticButton>
                     </a>
-                    {singleConfirm ? (
-                      <>
+                    {canManage ? (
+                      singleConfirm ? (
+                        <>
+                          <SemanticButton
+                            action="event-gallery:confirm-remove"
+                            type="button"
+                            onClick={() => void removeFromEvent([submissionId])}
+                            disabled={busy}
+                            size="xs"
+                            variant="danger"
+                          >
+                            {busy ? 'Removing…' : 'Confirm remove'}
+                          </SemanticButton>
+                          <SemanticButton
+                            action="event-gallery:cancel-remove"
+                            type="button"
+                            onClick={cancelSingleConfirm}
+                            disabled={busy}
+                            size="xs"
+                            variant="secondary"
+                          >
+                            Cancel
+                          </SemanticButton>
+                        </>
+                      ) : (
                         <SemanticButton
-                          action="event-gallery:confirm-remove"
+                          action="event-gallery:start-remove"
                           type="button"
-                          onClick={() => void removeFromEvent([submissionId])}
-                          disabled={busy}
+                          onClick={() => startSingleConfirm(submissionId)}
                           size="xs"
                           variant="danger"
                         >
-                          {busy ? 'Removing…' : 'Confirm remove'}
+                          Remove from Event
                         </SemanticButton>
-                        <SemanticButton
-                          action="event-gallery:cancel-remove"
-                          type="button"
-                          onClick={cancelSingleConfirm}
-                          disabled={busy}
-                          size="xs"
-                          variant="secondary"
-                        >
-                          Cancel
-                        </SemanticButton>
-                      </>
-                    ) : (
-                      <SemanticButton
-                        action="event-gallery:start-remove"
-                        type="button"
-                        onClick={() => startSingleConfirm(submissionId)}
-                        size="xs"
-                        variant="danger"
-                      >
-                        Remove from Event
-                      </SemanticButton>
-                    )}
+                      )
+                    ) : null}
                   </div>
                 </div>
               </div>

@@ -20,14 +20,28 @@ export interface TryOnAnalyticsRow {
   total: number;
 }
 
+export interface TryOnFunnelMetrics {
+  submitted: number;
+  queued: number;
+  processing: number;
+  generated: number;
+  approved: number;
+  declined: number;
+  service: number;
+  supersededRerun: number;
+  failed: number;
+}
+
 export interface TryOnAnalyticsResult {
   totals: {
     approved: number;
     rejected: number;
     service: number;
     greatest: number;
+    supersededRerun: number;
     total: number;
   };
+  funnel: TryOnFunnelMetrics;
   byPreset: TryOnAnalyticsRow[];
   byGarment: TryOnAnalyticsRow[];
   byEvent: TryOnAnalyticsRow[];
@@ -75,6 +89,67 @@ function increment(
   if (great) {
     row.greatest += 1;
   }
+}
+
+function isSupersededArchive(doc: Submission): boolean {
+  return doc.tryOnModerationArchive?.reason === 'quality_rerun_superseded';
+}
+
+export async function collectTryOnFunnelMetrics(
+  db: Db,
+  filters: TryOnAnalyticsFilters = {}
+): Promise<TryOnFunnelMetrics> {
+  const jobMatch = buildJobMatch(filters);
+  const resultMatch = buildMatch(filters);
+
+  const [jobCounts, resultCount, archivedOutcomes] = await Promise.all([
+    db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).aggregate<{ _id: string; count: number }>([
+      { $match: jobMatch },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]).toArray(),
+    db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
+      submissionKind: 'tryon_result',
+      ...(filters.eventId
+        ? { $or: [{ eventId: filters.eventId }, { eventIds: { $in: [filters.eventId] } }] }
+        : {}),
+    }),
+    db.collection<Submission>(COLLECTIONS.SUBMISSIONS).find(resultMatch).limit(5000).toArray(),
+  ]);
+
+  const statusMap = new Map(jobCounts.map((row) => [row._id, row.count]));
+  const submitted = Array.from(statusMap.values()).reduce((sum, count) => sum + count, 0);
+  const queued = (statusMap.get('queued') ?? 0) + (statusMap.get('retry_wait') ?? 0);
+  const processing =
+    (statusMap.get('claimed') ?? 0) +
+    (statusMap.get('processing') ?? 0) +
+    (statusMap.get('uploading_result') ?? 0) +
+    (statusMap.get('notifying_camera') ?? 0);
+  const failed = statusMap.get('failed') ?? 0;
+
+  const funnel: TryOnFunnelMetrics = {
+    submitted,
+    queued,
+    processing,
+    generated: resultCount,
+    approved: 0,
+    declined: 0,
+    service: 0,
+    supersededRerun: 0,
+    failed,
+  };
+
+  for (const doc of archivedOutcomes) {
+    if (isSupersededArchive(doc)) {
+      funnel.supersededRerun += 1;
+      continue;
+    }
+    const bucket = doc.tryOnModerationArchive?.bucket;
+    if (bucket === 'approved') funnel.approved += 1;
+    else if (bucket === 'rejected') funnel.declined += 1;
+    else if (bucket === 'service') funnel.service += 1;
+  }
+
+  return funnel;
 }
 
 function getOrCreate(map: Map<string, TryOnAnalyticsRow>, key: string, label: string) {
@@ -216,9 +291,15 @@ export async function collectTryOnAnalytics(
   const byGarment = new Map<string, TryOnAnalyticsRow>();
   const byEvent = new Map<string, TryOnAnalyticsRow>();
   const hourlyOutcomes = new Map<string, TryOnHourlyOutcomeRow>();
-  const totals = { approved: 0, rejected: 0, service: 0, greatest: 0, total: 0 };
+  const totals = { approved: 0, rejected: 0, service: 0, greatest: 0, supersededRerun: 0, total: 0 };
 
   for (const doc of docs) {
+    if (isSupersededArchive(doc)) {
+      totals.supersededRerun += 1;
+      totals.total += 1;
+      continue;
+    }
+
     const bucket = doc.tryOnModerationArchive?.bucket;
     if (bucket !== 'approved' && bucket !== 'rejected' && bucket !== 'service') continue;
 
@@ -303,8 +384,11 @@ export async function collectTryOnAnalytics(
     presetPerformanceMap.set(outcome.key, row);
   }
 
+  const funnel = await collectTryOnFunnelMetrics(db, filters);
+
   return {
     totals,
+    funnel,
     byPreset: sortRows(Array.from(byPreset.values())),
     byGarment: sortRows(Array.from(byGarment.values())),
     byEvent: sortRows(Array.from(byEvent.values())),

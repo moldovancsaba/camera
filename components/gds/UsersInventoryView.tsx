@@ -5,6 +5,7 @@ import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
 import UserManagementActions from '@/components/admin/UserManagementActions';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
+import { AdminDataTable } from '@doneisbetter/gds-admin/client';
 import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
 import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
@@ -32,6 +33,8 @@ export interface SerializedAdminUserRow {
   }>;
 }
 
+type UserTableRow = SerializedAdminUserRow & Record<string, unknown>;
+
 export default function UsersInventoryView({
   users,
   search,
@@ -50,6 +53,11 @@ export default function UsersInventoryView({
   };
   dbError?: MongoConnectionDiagnosis | null;
 }) {
+  const rows: UserTableRow[] = users.map((user, index) => ({
+    ...user,
+    id: `${user.email}-${index}`,
+  }));
+
   return (
     <AdminListPageShell
       eyebrow="Camera Core"
@@ -90,99 +98,83 @@ export default function UsersInventoryView({
             </p>
           </section>
 
-          <section
-            style={{
-              border: '1px solid var(--mantine-color-gray-3)',
-              borderRadius: 'var(--mantine-radius-md)',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ borderBottom: '1px solid var(--mantine-color-gray-2)', padding: '1rem 1.5rem' }}>
-              <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
-                Directory and Participation History
-              </h2>
-              <p style={{ color: 'var(--mantine-color-dimmed)', margin: '4px 0 0' }}>
-                Operators can manage global roles and status here while still seeing how each identity shows up in event participation.
-              </p>
-            </div>
-            <div>
-              {users.map((user, index) => (
-                <div
-                  key={`${user.email}-${index}`}
-                  style={{
-                    padding: '1rem 1.5rem',
-                    borderBottom: '1px solid var(--mantine-color-gray-2)',
-                  }}
-                >
-                  <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-md)', justifyContent: 'space-between' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-xs)', marginBottom: 'var(--mantine-spacing-sm)' }}>
-                        <Link
-                          href={user.profileHref}
-                          style={{ fontWeight: 600, minWidth: 0, overflow: 'hidden', textDecoration: 'none', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                        >
-                          {user.name || 'Anonymous'}
-                        </Link>
-                        {user.isAnonymous ? <StatusBadge {...getStatusBadgeProps('info', 'Anonymous')} /> : null}
-                        {user.type === 'administrator' ? <StatusBadge {...getStatusBadgeProps('info', 'Admin')} /> : null}
-                        {user.type === 'pseudo' && !user.mergedWith ? <StatusBadge {...getStatusBadgeProps('info', 'Pseudo')} /> : null}
-                        {!user.isActive ? <StatusBadge {...getStatusBadgeProps('inactive')} /> : null}
-                        {user.mergedWith ? <StatusBadge {...getStatusBadgeProps('active', 'Merged')} /> : null}
-                      </div>
-                      <div style={{ display: 'grid', gap: 2 }}>
-                        <p style={{ fontWeight: 500, margin: 0 }}>
-                          {user.accessLabel}
-                        </p>
-                        <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {user.emailDisplay}
-                        </p>
-                        {user.partnerAccess.length > 0 ? (
-                          <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0 }}>
-                            Partner access:{' '}
-                            {user.partnerAccess.slice(0, 2).map((assignment, idx) => (
-                              <span key={assignment.accessId}>
-                                {idx > 0 ? ', ' : ''}
-                                <Link
-                                  href={`/admin/partners?search=${encodeURIComponent(assignment.partnerName)}`}
-                                  style={{ textDecoration: 'none' }}
-                                >
-                                  {assignment.partnerName}
-                                </Link>{' '}
-                                ({assignment.appKey}/{assignment.role})
-                              </span>
-                            ))}
-                            {user.partnerAccess.length > 2 ? ` +${user.partnerAccess.length - 2} more` : ''}
-                          </p>
-                        ) : null}
-                        <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {user.photosCount} photos
-                        </p>
-                        <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          Last Event: {user.eventName || 'Unknown Event'}
-                        </p>
-                        <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          Registered: {user.collectedAtLabel}
-                        </p>
-                      </div>
+          <AdminDataTable<UserTableRow>
+            rows={rows}
+            state="ready"
+            getRowKey={(row) => String(row.id)}
+            columns={[
+              {
+                key: 'identity',
+                header: 'Identity',
+                rowHeader: true,
+                accessor: (row) => (
+                  <div>
+                    <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-xs)' }}>
+                      <Link href={row.profileHref} style={{ fontWeight: 600, textDecoration: 'none' }}>
+                        {row.name || 'Anonymous'}
+                      </Link>
+                      {row.isAnonymous ? <StatusBadge {...getStatusBadgeProps('info', 'Anonymous')} /> : null}
+                      {row.type === 'administrator' ? <StatusBadge {...getStatusBadgeProps('info', 'Admin')} /> : null}
+                      {row.type === 'pseudo' && !row.mergedWith ? <StatusBadge {...getStatusBadgeProps('info', 'Pseudo')} /> : null}
+                      {!row.isActive ? <StatusBadge {...getStatusBadgeProps('inactive')} /> : null}
+                      {row.mergedWith ? <StatusBadge {...getStatusBadgeProps('active', 'Merged')} /> : null}
                     </div>
-                    <div style={{ width: '100%', maxWidth: 320 }}>
-                      <UserManagementActions
-                        user={{
-                          email: user.email,
-                          name: user.name,
-                          type: user.type,
-                          role: user.role,
-                          isActive: user.isActive,
-                          mergedWith: user.mergedWith,
-                        }}
-                        currentUserEmail={currentUserEmail}
-                      />
-                    </div>
+                    <p style={{ color: 'var(--mantine-color-dimmed)', margin: '4px 0 0' }}>{row.accessLabel}</p>
+                    <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0 }}>{row.emailDisplay}</p>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
+                ),
+              },
+              {
+                key: 'participation',
+                header: 'Participation',
+                accessor: (row) => (
+                  <div style={{ display: 'grid', gap: 2 }}>
+                    <span>{row.photosCount} photos</span>
+                    <span style={{ color: 'var(--mantine-color-dimmed)' }}>
+                      Last event: {row.eventName || 'Unknown Event'}
+                    </span>
+                    <span style={{ color: 'var(--mantine-color-dimmed)' }}>Registered: {row.collectedAtLabel}</span>
+                  </div>
+                ),
+              },
+              {
+                key: 'actions',
+                header: 'Actions',
+                accessor: (row) => (
+                  <UserManagementActions
+                    user={{
+                      email: row.email,
+                      name: row.name,
+                      type: row.type,
+                      role: row.role,
+                      isActive: row.isActive,
+                      mergedWith: row.mergedWith,
+                    }}
+                    currentUserEmail={currentUserEmail}
+                  />
+                ),
+              },
+            ]}
+            renderMobileCard={(row) => (
+              <div style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)' }}>
+                <Link href={row.profileHref} style={{ fontWeight: 700, textDecoration: 'none' }}>
+                  {row.name || 'Anonymous'}
+                </Link>
+                <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0 }}>{row.emailDisplay}</p>
+                <UserManagementActions
+                  user={{
+                    email: row.email,
+                    name: row.name,
+                    type: row.type,
+                    role: row.role,
+                    isActive: row.isActive,
+                    mergedWith: row.mergedWith,
+                  }}
+                  currentUserEmail={currentUserEmail}
+                />
+              </div>
+            )}
+          />
         </div>
       )}
     </AdminListPageShell>

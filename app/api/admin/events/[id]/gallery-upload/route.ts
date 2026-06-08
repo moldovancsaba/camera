@@ -11,12 +11,13 @@ import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { uploadImage } from '@/lib/imgbb/upload';
 import {
   withErrorHandler,
-  requireAdmin,
+  requireAuth,
   apiCreated,
   apiBadRequest,
   apiNotFound,
   checkRateLimit,
 } from '@/lib/api';
+import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
 
 const MAX_BYTES = 32 * 1024 * 1024; // imgbb limit
 const ADMIN_GALLERY_UPLOAD_RATE_LIMIT = {
@@ -30,7 +31,7 @@ export const POST = withErrorHandler(
     request: NextRequest,
     context?: { params?: Promise<{ id: string }> }
   ) => {
-    const session = await requireAdmin(request);
+    const session = await requireAuth(request);
     await checkRateLimit(request, ADMIN_GALLERY_UPLOAD_RATE_LIMIT);
 
     const { id: eventMongoId } = await context!.params!;
@@ -38,6 +39,9 @@ export const POST = withErrorHandler(
     if (!ObjectId.isValid(eventMongoId)) {
       throw apiBadRequest('Invalid event id');
     }
+
+    const db = await connectToDatabase();
+    await assertGlobalAdminOrPartnerEventAccess(db, session, eventMongoId, 'manager');
 
     const formData = await request.formData();
     const file = formData.get('file');
@@ -68,8 +72,6 @@ export const POST = withErrorHandler(
       heightRaw != null && heightRaw !== ''
         ? Math.max(1, parseInt(String(heightRaw), 10) || 0)
         : 0;
-
-    const db = await connectToDatabase();
 
     const event = await db
       .collection(COLLECTIONS.EVENTS)

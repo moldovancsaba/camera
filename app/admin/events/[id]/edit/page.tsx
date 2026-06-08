@@ -25,7 +25,7 @@ import {
   Textarea,
   TextInput,
 } from '@/components/gds/PublicPrimitives';
-import { notifications } from '@/lib/gds/notifications';
+import { useGdsToasts } from '@doneisbetter/gds-core/client';
 import { type CustomPage } from '@/lib/db/schemas';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
@@ -133,6 +133,7 @@ export default function EditEventPage({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { notifySuccess } = useGdsToasts();
   const [mongoId, setMongoId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1031,11 +1032,7 @@ export default function EditEventPage({
               setEvent(eventData);
             }
 
-            notifications.show({
-              title: 'Pages saved',
-              message: 'Custom page flow updated successfully.',
-              color: 'green',
-            });
+            notifySuccess({ title: 'Pages saved', message: 'Custom page flow updated successfully.' });
           } catch (err: unknown) {
             throw new Error(getErrorMessage(err));
           }

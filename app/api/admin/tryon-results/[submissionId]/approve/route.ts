@@ -16,6 +16,7 @@ import {
   dispatchTryOnResubmissionApprovalEmailForSubmission,
 } from '@/lib/email/submission-result-email';
 import { appendTryOnModerationEvent, snapshotTryOnModerationState } from '@/lib/tryon/moderation-audit';
+import { resolveSubmissionPublicImageUrl } from '@/lib/submissions/public-image';
 
 function sanitizeMetadataPatch(metadataPatch?: Record<string, unknown> | null): Record<string, unknown> {
   if (!metadataPatch) return {};
@@ -115,6 +116,7 @@ export const POST = withErrorHandler(async (
           bucket: 'approved',
           archivedAt: now,
           archivedBy: session.user.email,
+          reason: 'approved',
         },
         'metadata.tryOnService': false,
         updatedAt: now,
@@ -129,7 +131,7 @@ export const POST = withErrorHandler(async (
       submissionId,
       resultSubmission.sourceJobId ?? '',
       resultSubmission.tryOnLeatherSuitId ?? '',
-      resultSubmission.imageUrl ?? resultSubmission.finalImageUrl ?? null,
+      resolveSubmissionPublicImageUrl(resultSubmission),
       'approved',
       true,
       slideshowEligible
@@ -141,7 +143,7 @@ export const POST = withErrorHandler(async (
     requested: true,
     leatherSuitId: resultSubmission.tryOnLeatherSuitId ?? null,
     jobId: resultSubmission.sourceJobId ?? null,
-    resultUrl: resultSubmission.imageUrl ?? resultSubmission.finalImageUrl ?? null,
+    resultUrl: resolveSubmissionPublicImageUrl(resultSubmission),
     reviewStatus: 'approved',
     shareVisible: true,
     slideshowEligible,

@@ -10,13 +10,14 @@ import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { uploadImage } from '@/lib/imgbb/upload';
 import {
   withErrorHandler,
-  requireAdmin,
+  requireAuth,
   apiCreated,
   apiBadRequest,
   apiNotFound,
   checkRateLimit,
   RATE_LIMITS,
 } from '@/lib/api';
+import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
 
 const MAX_BYTES = 32 * 1024 * 1024;
 
@@ -25,7 +26,7 @@ export const POST = withErrorHandler(
     request: NextRequest,
     context: { params: Promise<{ slideshowId: string }> }
   ) => {
-    await requireAdmin(request);
+    const session = await requireAuth(request);
     await checkRateLimit(request, RATE_LIMITS.UPLOAD);
 
     const { slideshowId } = await context.params;
@@ -59,6 +60,14 @@ export const POST = withErrorHandler(
 
     if (!slideshow) {
       throw apiNotFound('Slideshow not found');
+    }
+
+    const eventUuid = typeof slideshow.eventId === 'string' ? slideshow.eventId : '';
+    const event = eventUuid
+      ? await db.collection(COLLECTIONS.EVENTS).findOne({ eventId: eventUuid })
+      : null;
+    if (event?._id) {
+      await assertGlobalAdminOrPartnerEventAccess(db, session, event._id.toString(), 'manager');
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

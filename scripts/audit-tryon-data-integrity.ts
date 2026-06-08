@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb';
 import { loadEnvFromFiles } from './load-env-from-files';
 import { connectToDatabase, closeConnection } from '@/lib/db/mongodb';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
-import { isTryOnPlaceholderEmail } from '@/lib/tryon/identity';
+import { getTryOnIdentityClassification, isActionableIdentityGap, isTryOnPlaceholderEmail } from '@/lib/tryon/identity';
 
 function hasGuestIdentity(doc: Submission): boolean {
   const nameValue = doc.userInfo?.name ?? doc.userName;
@@ -58,6 +58,28 @@ async function main() {
     const source = doc.sourceSubmissionId ? sourceMap.get(doc.sourceSubmissionId) : null;
     return hasUsableIdentity(source);
   });
+  const reviewedUnrecoverable = guestDocs.filter((doc) => getTryOnIdentityClassification(doc)?.status === 'reviewed_unrecoverable');
+  const unreviewedActionable = guestDocs.filter((doc) => {
+    const source = doc.sourceSubmissionId ? sourceMap.get(doc.sourceSubmissionId) : null;
+    return isActionableIdentityGap(doc, source);
+  });
+  const supersededMissingReason = await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).find({
+    submissionKind: 'tryon_result',
+    $and: [
+      {
+        $or: [
+          { 'metadata.tryOnSupersededByRerun': true },
+          { 'metadata.tryOnSupersededByJobId': { $type: 'string' } },
+        ],
+      },
+      {
+        $or: [
+          { 'tryOnModerationArchive.reason': { $exists: false } },
+          { 'tryOnModerationArchive.reason': null },
+        ],
+      },
+    ],
+  }, { projection: { _id: 1 } }).limit(100).toArray();
   const doneJobsMissingResults = await db.collection(COLLECTIONS.TRYON_JOBS).aggregate([
     { $match: { status: 'done' } },
     { $lookup: { from: COLLECTIONS.SUBMISSIONS, localField: 'jobId', foreignField: 'sourceJobId', as: 'result' } },
@@ -80,6 +102,12 @@ async function main() {
       placeholderTotal: guestDocs.length,
       sourceRecoverable: sourceRecoverable.length,
       unrecoverable: guestDocs.length - sourceRecoverable.length,
+      reviewedUnrecoverable: reviewedUnrecoverable.length,
+      unreviewedActionable: unreviewedActionable.length,
+    },
+    moderationArchive: {
+      supersededMissingReason: supersededMissingReason.length,
+      samples: supersededMissingReason,
     },
     publicationLinks: {
       doneJobsMissingResultSubmission: doneJobsMissingResults.length,
@@ -93,9 +121,10 @@ async function main() {
   console.log(JSON.stringify(summary, null, 2));
   const hasFailures =
     Object.values(unknownGarments).some((rows) => rows.length > 0) ||
-    sourceRecoverable.length > 0 ||
+    unreviewedActionable.length > 0 ||
     doneJobsMissingResults.length > 0 ||
-    inconsistentModeration.length > 0;
+    inconsistentModeration.length > 0 ||
+    supersededMissingReason.length > 0;
   if (strict && hasFailures) process.exit(1);
 }
 

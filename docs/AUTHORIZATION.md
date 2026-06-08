@@ -1,6 +1,6 @@
 # Authorization Guide
 
-**Version**: 2.11.0  
+**Version**: 2.12.0  
 **Last Updated**: 2026-06-08
 
 This is the current authorization model for Camera.
@@ -156,6 +156,9 @@ These now follow the same partner-aware policy and should require global admin o
 - event logo assignment routes
 - slideshow CRUD routes
 - slideshow-layout CRUD routes
+- landing page CRUD routes (partner Events manager)
+- event gallery upload and submission removal routes (partner Events manager)
+- slideshow background image upload (partner Events manager)
 
 ## 7. Recommended check order
 

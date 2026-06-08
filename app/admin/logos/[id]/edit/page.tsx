@@ -11,11 +11,9 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { notifications } from '@/lib/gds/notifications';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { FormSection } from '@doneisbetter/gds-admin/client';
-import { InlineAlert, StateBlock } from '@doneisbetter/gds-core/client';
-import { confirmDestructive } from '@/lib/gds/confirm-destructive';
+import { InlineAlert, StateBlock, useGdsConfirm, useGdsToasts } from '@doneisbetter/gds-core/client';
 
 interface LogoRecord {
   _id: string;
@@ -47,6 +45,8 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirmDestructive } = useGdsConfirm();
+  const { notifyError } = useGdsToasts();
 
   useEffect(() => {
     async function fetchLogo() {
@@ -100,10 +100,6 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this logo? This cannot be undone.')) {
-      return;
-    }
-
     setIsDeleting(true);
     setError(null);
 
@@ -122,8 +118,20 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
     } catch (err: unknown) {
       const message = getErrorMessage(err);
       setError(message);
-      notifications.show({ title: 'Delete failed', message, color: 'red' });
+      notifyError({ title: 'Delete failed', message });
       setIsDeleting(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!logo) return;
+    const confirmed = await confirmDestructive({
+      title: 'Delete logo',
+      message: 'Are you sure you want to delete this logo? This cannot be undone.',
+      targetName: logo.name,
+    });
+    if (confirmed) {
+      await handleDelete();
     }
   };
 
@@ -235,14 +243,7 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
               variant="danger"
               loading={isDeleting}
               disabled={isDeleting}
-              onClick={() =>
-                confirmDestructive({
-                  title: 'Delete logo',
-                  message: 'Are you sure you want to delete this logo? This cannot be undone.',
-                  targetName: logo.name,
-                  onConfirm: () => void handleDelete(),
-                })
-              }
+              onClick={() => void confirmDelete()}
             >
               Delete Logo
             </SemanticButton>

@@ -1,7 +1,7 @@
 # Roadmap
 
-**Version Context**: 2.9.0  
-**Last Updated**: 2026-05-23
+**Version Context**: 2.12.0  
+**Last Updated**: 2026-06-08
 
 This file is forward-looking only. Gym / Workout / FunFitFan surfaces were removed from the codebase in 2026-05; items below reflect the Events-only platform unless noted.
 
@@ -9,9 +9,8 @@ This file is forward-looking only. Gym / Workout / FunFitFan surfaces were remov
 
 ### 1. Complete partner-scoped authorization rollout
 
-- finish enforcement on remaining admin/API paths not yet moved to the partner-aware model
-- verify viewer vs manager vs admin behavior consistently across Events partner assignments
-- add regression coverage around global-admin bypass and partner scoping
+- core API enforcement and viewer/manager regression specs are in place (v2.12.0)
+- remaining: expand matrix to every partner-touching route and document intentional global-only surfaces
 
 ### 2. Continue partner-first admin UX
 
@@ -33,13 +32,14 @@ This file is forward-looking only. Gym / Workout / FunFitFan surfaces were remov
 
 ### 5. Submission model cleanup
 
+- `resolveSubmissionPublicImageUrl()` introduced in v2.12.0; roll out to remaining read/write paths
 - reconcile broad TypeScript submission types with the actual persisted submission shape
 - reduce compatibility ambiguity around `imageUrl`, `finalImageUrl`, `eventId`, and `eventIds`
 
 ### 6. Slideshow operational hardening
 
+- playlist diagnostics and inactive slideshow/event guards added in v2.12.0
 - continue tuning playlist query cost
-- improve observability and operational diagnostics
 - review playlist fairness and layout-cell desynchronization under heavier load
 
 ## Longer-term platform direction

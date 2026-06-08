@@ -74,6 +74,7 @@ export const POST = withErrorHandler(async (
           bucket: 'service',
           archivedAt: now,
           archivedBy: session.user.email,
+          reason: 'service_photo',
         },
         'metadata.tryOnGreat': false,
         'metadata.tryOnService': true,

@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb';
 import { loadEnvFromFiles } from './load-env-from-files';
 import { connectToDatabase, closeConnection } from '@/lib/db/mongodb';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
-import { isTryOnPlaceholderEmail } from '@/lib/tryon/identity';
+import { getTryOnIdentityClassification, isTryOnPlaceholderEmail } from '@/lib/tryon/identity';
 
 type ReportRow = {
   resultSubmissionId: string;
@@ -17,6 +17,7 @@ type ReportRow = {
   sourceUserName: string | null;
   sourceUserEmail: string | null;
   classification: 'source_identity_available' | 'unrecoverable_guest_identity';
+  persistedClassificationStatus: string | null;
 };
 
 function csvEscape(value: unknown): string {
@@ -77,6 +78,7 @@ async function main() {
       sourceUserName: sourceName,
       sourceUserEmail: sourceEmail,
       classification: sourceName || sourceEmail ? 'source_identity_available' : 'unrecoverable_guest_identity',
+      persistedClassificationStatus: getTryOnIdentityClassification(doc)?.status ?? null,
     };
   });
 

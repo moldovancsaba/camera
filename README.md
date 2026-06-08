@@ -1,6 +1,6 @@
 # Camera
 
-**Version**: 2.11.0  
+**Version**: 2.12.0  
 **Last Updated**: 2026-06-08  
 **Status**: Production system
 

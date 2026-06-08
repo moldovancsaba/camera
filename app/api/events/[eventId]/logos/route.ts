@@ -11,6 +11,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { Document, ObjectId } from 'mongodb';
 import { COLLECTIONS, Event, Logo, LogoScenario, generateTimestamp } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
+import { optionalAuth } from '@/lib/api';
 import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError, apiForbidden } from '@/lib/api/responses';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
 
@@ -153,6 +154,18 @@ export async function GET(
     const event = await eventsCollection.findOne(buildEventLookupQuery(eventId));
     if (!event) {
       return apiNotFound('Event');
+    }
+
+    if (!event.isActive) {
+      const session = await optionalAuth(request);
+      if (!session) {
+        return apiNotFound('Event');
+      }
+      const eventMongoId = event._id.toString();
+      const eventAccess = await getPartnerScopedAccessForEvent(db, eventMongoId, session, 'viewer');
+      if (!eventAccess.allowed) {
+        return apiForbidden('Partner-level access is required to read logos for this event');
+      }
     }
 
     // Get full logo details for assigned logos

@@ -556,11 +556,6 @@ export default async function SharePage({ params }: Props) {
   }
 
   const headline = event?.name ?? 'Shared photo';
-  const displayName = resolveDisplayName(
-    readString(submission.userName),
-    readString(submission.userInfo?.name)
-  );
-
   return (
     <PublicShell size="lg">
       <Stack gap="xl">

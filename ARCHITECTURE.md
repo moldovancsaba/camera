@@ -1,6 +1,6 @@
 # Architecture
 
-**Version**: 2.11.0  
+**Version**: 2.12.0  
 **Last Updated**: 2026-06-08
 
 This document describes the current production architecture of Camera as implemented in the repository today.
@@ -160,11 +160,11 @@ Purpose:
 - partner/app pages enforce partner-scoped access where implemented
 
 Reference:
-- [docs/AUTHORIZATION.md](/Users/Shared/Projects/venturecogroup/camera/docs/AUTHORIZATION.md)
+- [docs/AUTHORIZATION.md](/Users/Shared/Projects/moldovancsaba/camera/docs/AUTHORIZATION.md)
 
 ## 6. Middleware and routing behavior
 
-Root edge proxy in [proxy.ts](/Users/Shared/Projects/venturecogroup/camera/proxy.ts) does three important jobs:
+Root edge proxy in [proxy.ts](/Users/Shared/Projects/moldovancsaba/camera/proxy.ts) does three important jobs:
 
 1. gate `/admin` by valid serialized session state
 2. rescue OAuth callback parameters returned to the wrong path
@@ -205,7 +205,7 @@ Examples:
 - `partner.partnerId`
 - `frame.frameId`
 
-This is intentional. Do not collapse it into a single rule. See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_CONVENTIONS.md).
+This is intentional. Do not collapse it into a single rule. See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/moldovancsaba/camera/docs/MONGODB_CONVENTIONS.md).
 
 ## 8. Main collections
 
@@ -225,7 +225,7 @@ Core collections:
 - `leather_suits`
 - `tryon_jobs`
 
-Schema definitions live in [lib/db/schemas.ts](/Users/Shared/Projects/venturecogroup/camera/lib/db/schemas.ts).
+Schema definitions live in [lib/db/schemas.ts](/Users/Shared/Projects/moldovancsaba/camera/lib/db/schemas.ts).
 
 ## 9. Submission pipeline
 
@@ -259,7 +259,7 @@ Key properties:
 - composite layouts through `slideshow_layouts`
 
 Reference:
-- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/venturecogroup/camera/docs/SLIDESHOW_LOGIC.md)
+- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/moldovancsaba/camera/docs/SLIDESHOW_LOGIC.md)
 
 ## 11. API surface summary
 
@@ -300,9 +300,9 @@ npm run env:verify
 
 ## 13. Canonical references
 
-- [README.md](/Users/Shared/Projects/venturecogroup/camera/README.md)
-- [TECH_STACK.md](/Users/Shared/Projects/venturecogroup/camera/TECH_STACK.md)
-- [docs/AUTHORIZATION.md](/Users/Shared/Projects/venturecogroup/camera/docs/AUTHORIZATION.md)
-- [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_CONVENTIONS.md)
-- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/venturecogroup/camera/docs/SLIDESHOW_LOGIC.md)
-- [docs/DOCUMENTATION.md](/Users/Shared/Projects/venturecogroup/camera/docs/DOCUMENTATION.md)
+- [README.md](/Users/Shared/Projects/moldovancsaba/camera/README.md)
+- [TECH_STACK.md](/Users/Shared/Projects/moldovancsaba/camera/TECH_STACK.md)
+- [docs/AUTHORIZATION.md](/Users/Shared/Projects/moldovancsaba/camera/docs/AUTHORIZATION.md)
+- [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/moldovancsaba/camera/docs/MONGODB_CONVENTIONS.md)
+- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/moldovancsaba/camera/docs/SLIDESHOW_LOGIC.md)
+- [docs/DOCUMENTATION.md](/Users/Shared/Projects/moldovancsaba/camera/docs/DOCUMENTATION.md)

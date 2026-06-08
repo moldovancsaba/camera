@@ -56,6 +56,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slideshowId: string }> }
 ) {
+  const startedAt = Date.now();
   try {
     await checkRateLimit(request, RATE_LIMITS.SLIDESHOW_PLAYLIST);
 
@@ -79,6 +80,20 @@ export async function GET(
       return NextResponse.json({ error: 'Slideshow not found' }, { status: 404 });
     }
 
+    if (slideshow.isActive === false) {
+      return NextResponse.json(
+        {
+          error: 'Slideshow is inactive',
+          playlist: [],
+          diagnostics: {
+            generationMs: Date.now() - startedAt,
+            inactiveSlideshow: true,
+          },
+        },
+        { status: 403, headers: PLAYLIST_NO_CACHE_HEADERS }
+      );
+    }
+
     // `bufferSize` = upcoming slides behind the current; total pipeline slots = upcoming + 1
     const upcomingSlots = Math.max(
       1,
@@ -98,6 +113,20 @@ export async function GET(
 
     if (!event) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
+
+    if (event.isActive === false) {
+      return NextResponse.json(
+        {
+          error: 'Event is inactive',
+          playlist: [],
+          diagnostics: {
+            generationMs: Date.now() - startedAt,
+            inactiveEvent: true,
+          },
+        },
+        { status: 403, headers: PLAYLIST_NO_CACHE_HEADERS }
+      );
     }
 
     const eventUuid = event.eventId;
@@ -310,6 +339,13 @@ export async function GET(
         },
         playlist: [],
         message: 'No submissions available for this event',
+        diagnostics: {
+          generationMs: Date.now() - startedAt,
+          candidatePoolSize: 0,
+          inactiveUsersFiltered: inactiveEmails.size,
+          excludedPlaylistImages: excludeObjectIds.length,
+          submissionSourceMode,
+        },
         },
         { headers: PLAYLIST_NO_CACHE_HEADERS }
       );
@@ -344,6 +380,15 @@ export async function GET(
       },
       playlist,
       totalSubmissions: submissions.length,
+      diagnostics: {
+        generationMs: Date.now() - startedAt,
+        candidatePoolSize: submissions.length,
+        inactiveUsersFiltered: inactiveEmails.size,
+        excludedPlaylistImages: excludeObjectIds.length,
+        submissionSourceMode,
+        playMode,
+        orderMode,
+      },
       },
       { headers: PLAYLIST_NO_CACHE_HEADERS }
     );

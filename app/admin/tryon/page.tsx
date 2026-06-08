@@ -118,6 +118,12 @@ export default async function AdminTryOnAppPage() {
                 description: 'Review approved, rejected, service, greatest, preset, garment, and event performance.',
                 iconKey: 'world' as AdminIconKey,
               },
+              {
+                href: '/admin/tryon/identity',
+                title: 'Identity Cleanup',
+                description: 'Review guest placeholders, correct identities, and mark unrecoverable rows as reviewed.',
+                iconKey: 'users' as AdminIconKey,
+              },
             ].map((item) => (
               <a
                 key={item.href}

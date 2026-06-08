@@ -590,12 +590,30 @@ export interface SubmissionTryOnRequestState {
   lastError?: string | null;
 }
 
+export type TryOnArchiveReason =
+  | 'approved'
+  | 'manual_reject'
+  | 'service_photo'
+  | 'quality_rerun_superseded';
+
+export type TryOnIdentityClassificationStatus =
+  | 'source_recoverable'
+  | 'manual_corrected'
+  | 'reviewed_unrecoverable';
+
+export interface TryOnIdentityClassification {
+  status: TryOnIdentityClassificationStatus;
+  reviewedAt?: string | null;
+  reviewedBy?: string | null;
+  reason?: string | null;
+}
+
 export interface TryOnModerationArchiveState {
   archived: boolean;
   bucket?: 'approved' | 'rejected' | 'service' | null;
   archivedAt?: string | null;
   archivedBy?: string | null;
-  reason?: string | null;
+  reason?: TryOnArchiveReason | null;
   supersededByJobId?: string | null;
   supersededAt?: string | null;
 }
@@ -720,6 +738,7 @@ export interface Submission {
     emailFailedAt?: string;          // ISO 8601 timestamp if delivery failed
     emailError?: string;             // Error message if email failed
     shareUrl?: string;               // Public share URL emailed to the user
+    tryOnIdentityClassification?: TryOnIdentityClassification;
   };
   
   // Sharing and engagement

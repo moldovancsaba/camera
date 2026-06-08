@@ -13,18 +13,22 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import {
   withErrorHandler,
-  requireAdmin,
+  requireAuth,
   apiSuccess,
   apiBadRequest,
   apiNotFound,
 } from '@/lib/api';
+import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
 
 export const POST = withErrorHandler(async (
   request: NextRequest,
   context?: { params?: Promise<{ eventId: string }> }
 ) => {
-  const session = await requireAdmin();
+  const session = await requireAuth();
   const { eventId } = await context!.params!;
+
+  const db = await connectToDatabase();
+  await assertGlobalAdminOrPartnerEventAccess(db, session, eventId, 'manager');
 
   const body = await request.json();
   const submissionIdsRaw: unknown[] = Array.isArray(body?.submissionIds) ? body.submissionIds : [];
@@ -44,7 +48,6 @@ export const POST = withErrorHandler(async (
     throw apiBadRequest('No valid submission IDs provided');
   }
 
-  const db = await connectToDatabase();
   const event = await db
     .collection(COLLECTIONS.EVENTS)
     .findOne({ _id: new ObjectId(eventId) });

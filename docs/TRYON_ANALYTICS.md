@@ -1,6 +1,6 @@
 # Try-On analytics and data operations
 
-**Version**: 2.11.0  
+**Version**: 2.12.0  
 **Last Updated**: 2026-06-08
 
 ## Scope
@@ -25,7 +25,8 @@ Query parameters:
 
 Response contract:
 
-- `totals`: aggregate by approved/rejected/service/greatest/total
+- `totals`: aggregate by approved/rejected/service/greatest/supersededRerun/total
+- `funnel`: pipeline counts (`submitted`, `queued`, `processing`, `generated`, `approved`, `declined`, `service`, `supersededRerun`, `failed`)
 - `byPreset`: decisions grouped by setup id/name
 - `byGarment`: decisions grouped by garment id/name
 - `byEvent`: decisions grouped by event
@@ -39,14 +40,18 @@ Supported query:
 
 - `format=csv|json` (default `csv`)
 - `bucket`, `eventId`, `from`, `to` as above
-- `section=all|hourly|preset|garment|event|preset_performance` (default `all`)
+- `section=all|hourly|preset|garment|event|preset_performance|funnel` (default `all`)
+
+Invalid `section` values return HTTP 400. CSV filenames include the section slug.
 
 CSV format defaults to all sections unless `section` is set.
 
 ## 2) Dashboard behavior (`/admin/tryon/analytics`)
 
 - `/admin/tryon/analytics` shows:
-  - Totals by approved/rejected/service/great
+  - Filter form for bucket, event, and date range
+  - Totals by approved/rejected/service/superseded rerun
+  - Pipeline funnel chart
   - grouped hourly outcome chart
   - tables by preset, garment, event
   - preset performance table with approval/retry/timeout diagnostics

@@ -94,10 +94,23 @@ export async function POST(request: Request) {
     isActive: true,
     createdBy: 'system:e2e',
   });
-  await db.collection(COLLECTIONS.PARTNER_USER_ACCESS).updateOne(
+  await upsertPartnerUserAccess(db, {
+    partnerId: E2E_PARTNER_ID,
+    partnerName: E2E_PARTNER_NAME,
+    userEmail: 'partner-events-viewer@camera.local',
+    userName: 'Partner Events Viewer',
+    userId: 'e2e-partner-events-viewer',
+    appKey: 'events',
+    role: 'viewer',
+    isActive: true,
+    createdBy: 'system:e2e',
+  });
+  await db.collection(COLLECTIONS.PARTNER_USER_ACCESS).updateMany(
     {
       partnerId: E2E_PARTNER_ID,
-      userEmail: 'partner-events-manager@camera.local',
+      userEmail: {
+        $in: ['partner-events-manager@camera.local', 'partner-events-viewer@camera.local'],
+      },
       appKey: 'events',
     },
     {
@@ -139,6 +152,75 @@ export async function POST(request: Request) {
 
   const sourceSubmissionId = new ObjectId();
   const resultSubmissionId = new ObjectId();
+  const moderationJobId = `e2e-job-${Date.now()}`;
+  const moderationSetupId = 'e2e-default-setup';
+
+  await db.collection(COLLECTIONS.TRYON_SETUPS).updateOne(
+    { setupId: moderationSetupId },
+    {
+      $set: {
+        setupId: moderationSetupId,
+        name: 'E2E Default Setup',
+        description: 'E2E rerun lifecycle setup',
+        active: true,
+        isDefault: true,
+        rank: 0,
+        config: { processing_profile: 'default' },
+        metadata: { source: e2eSource, e2eRunId },
+        updatedAt: now,
+      },
+      $setOnInsert: {
+        createdAt: now,
+      },
+    },
+    { upsert: true }
+  );
+
+  await db.collection(COLLECTIONS.TRYON_JOBS).insertOne({
+    jobId: moderationJobId,
+    requestHash: `e2e-hash-${moderationJobId}`,
+    status: 'done',
+    stage: 'done',
+    pipeline: 'motogp_leather_magic',
+    pipelineVersion: 'e2e',
+    source: {
+      app: 'camera',
+      submissionId: sourceSubmissionId.toString(),
+      imageUrl: 'https://i.ibb.co/source.jpg',
+      eventId: moderationEventId,
+      partnerId: E2E_PARTNER_ID,
+      userId: 'e2e-user',
+    },
+    request: {
+      leatherSuitId: 'e2e-suit',
+      setupId: moderationSetupId,
+    },
+    processing: {
+      attemptCount: 1,
+      nextAttemptAt: now,
+      workerId: 'e2e-worker',
+      finishedAt: now,
+      resolvedSetup: {
+        setupId: moderationSetupId,
+        setupName: 'E2E Default Setup',
+        setupProfile: 'default',
+        setupSource: 'global.default',
+      },
+    },
+    result: {
+      publicResultUrl: 'https://i.ibb.co/result.jpg',
+      imgbbDeleteUrl: null,
+      provider: 'imgbb',
+    },
+    error: {
+      code: null,
+      message: null,
+      details: null,
+    },
+    createdAt: now,
+    updatedAt: now,
+  });
+
   await db.collection(COLLECTIONS.SUBMISSIONS).insertMany([
     {
       _id: sourceSubmissionId,
@@ -220,7 +302,7 @@ export async function POST(request: Request) {
       updatedAt: now,
       submissionKind: 'tryon_result',
       sourceSubmissionId: sourceSubmissionId.toString(),
-      sourceJobId: `e2e-job-${Date.now()}`,
+      sourceJobId: moderationJobId,
       tryOnLeatherSuitId: 'e2e-suit',
       reviewStatus: 'pending_review',
       isShareVisible: false,
@@ -377,6 +459,8 @@ export async function POST(request: Request) {
     moderationEventMongoId: moderationEvent.insertedId.toString(),
     moderationEventId,
     moderationResultSubmissionMongoId: resultSubmissionId.toString(),
+    moderationSourceJobId: moderationJobId,
+    moderationSetupId,
     e2eRunId,
     playlistEventId,
     playlistSlideshowId,

@@ -1,12 +1,37 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.11.0
+**Current Version**: 2.12.0
 **Last Updated**: 2026-06-08
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
+
+---
+
+## [v2.12.0] — 2026-06-08
+
+### Hardening — Partner authorization, Try-On lifecycle, GDS admin, and slideshow diagnostics
+
+**Status**: Complete  
+**Release Type**: Security hardening + operator workflow + GDS migration
+
+#### Summary
+
+- **Partner authorization**: Added scoped helpers (`assertPartnerEventAccess`, `assertPartnerWorkspaceAccess`, etc.) and closed unauthenticated or global-only holes on partner detail, frame read, inactive-event logos, landing pages, gallery upload, submission removal, reset-style, and slideshow background APIs. Viewers can read events but cannot manage gallery uploads.
+- **Try-On lifecycle (#61–#68)**: Canonical archive reasons on all moderation routes; superseded rerun visibility in vetting and analytics; pipeline funnel metrics/UI/exports; identity classification metadata with `/admin/tryon/identity` admin workflow; backfill and integrity scripts.
+- **GDS admin (#70–#75)**: Events inventory on `AdminResourceManager`; users on `AdminDataTable`; frame editor on `AdminCrudForm`; moderation actions on `SemanticButton` + `useGdsToasts`; removed legacy `confirm-destructive` and `modals` bridges.
+- **Slideshow**: Playlist API returns 403 for inactive slideshows/events and exposes generation diagnostics.
+- **Submission images**: Added `resolveSubmissionPublicImageUrl()` helper (rollout started on approve route).
+- **E2E**: `partner-api-auth.spec.ts`, `tryon-rerun-lifecycle.spec.ts`, `tryon-analytics-smoke.spec.ts`, expanded `admin-access.spec.ts`.
+
+#### Verification
+
+- `npm run type-check`
+- `npm run lint`
+- `npm run build`
+- `npm run gds:check`
 
 ---
 
