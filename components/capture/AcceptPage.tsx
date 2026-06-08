@@ -14,7 +14,7 @@
 
 import { useState } from 'react';
 import CaptureStageShell from '@/components/capture/CaptureStageShell';
-import { Alert, Button, Card, Checkbox, Group, Stack } from '@/components/gds/PublicPrimitives';
+import { Alert, Button, Card, Checkbox, Group, Stack } from '@mantine/core';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -100,7 +100,7 @@ export default function AcceptPage({
           <Checkbox
             id={`accept-${pageId}`}
             checked={accepted}
-            onChange={(event: React.ChangeEvent<HTMLInputElement>) => handleCheckboxChange(event.currentTarget.checked)}
+            onChange={(event) => handleCheckboxChange(event.currentTarget.checked)}
             label={config.checkboxText}
             aria-label="Accept terms"
             aria-invalid={Boolean(error)}

@@ -1,7 +1,7 @@
 'use client';
 
 import { PublicFlowShell } from '@doneisbetter/gds-core/client';
-import { Alert, Anchor, Button, Group, Stack, Text, TextInput } from '@/components/gds/PublicPrimitives';
+import { Alert, Anchor, Button, Group, Stack, Text, TextInput } from '@mantine/core';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
 
 interface TryOnStatus {

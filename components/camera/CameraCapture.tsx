@@ -21,7 +21,7 @@
 
 import Image from 'next/image';
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
-import { Button } from '@/components/gds/PublicPrimitives';
+import { Button } from '@mantine/core';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -554,7 +554,6 @@ export default function CameraCapture({
     }
 
     autoStartAttemptedRef.current = true;
-    // Defer so the effect body does not synchronously trigger setState during render commit.
     const timer = window.setTimeout(() => {
       void startCamera(facingMode);
     }, 0);

@@ -15,7 +15,7 @@
 import { useState } from 'react';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import CaptureStageShell from '@/components/capture/CaptureStageShell';
-import { Button, Divider, Group, Stack, Text, TextInput, Title } from '@/components/gds/PublicPrimitives';
+import { Button, Divider, Group, Stack, Text, TextInput, Title } from '@mantine/core';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -142,7 +142,7 @@ export default function WhoAreYouPage({
           <TextInput
             label={config.nameLabel}
             value={name}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            onChange={(e) => {
               setName(e.currentTarget.value);
               if (errors.name) {
                 setErrors((current) => ({ ...current, name: undefined }));
@@ -161,7 +161,7 @@ export default function WhoAreYouPage({
             label={config.emailLabel}
             type="email"
             value={email}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            onChange={(e) => {
               setEmail(e.currentTarget.value);
               if (errors.email) {
                 setErrors((current) => ({ ...current, email: undefined }));

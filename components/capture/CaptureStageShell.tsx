@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { PublicFlowShell, type PublicFlowStageStatus } from '@doneisbetter/gds-core/client';
-import { Stack } from '@/components/gds/PublicPrimitives';
+import { Stack } from '@mantine/core';
 
 interface CaptureStageShellProps {
   title: string;

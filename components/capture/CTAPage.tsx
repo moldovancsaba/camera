@@ -19,7 +19,7 @@
 
 import { useState } from 'react';
 import CaptureStageShell from '@/components/capture/CaptureStageShell';
-import { Button, Group, Stack, Text } from '@/components/gds/PublicPrimitives';
+import { Button, Group, Stack, Text } from '@mantine/core';
 import { CAMERA_DEFAULT_CTA_BRAND_COLOR } from '@/lib/gds/tokens/colors';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
 
