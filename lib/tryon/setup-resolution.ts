@@ -230,12 +230,11 @@ export async function listActiveTryOnSetups(db: Db): Promise<TryOnSetup[]> {
     .sort({ isDefault: -1, rank: 1, setupId: 1 })
     .toArray();
 
-  if (setups.length > 0) {
-    return setups;
-  }
-
-  const fallback = await ensureLegacyFallbackSetup(db);
-  return [fallback];
+  const activeSetups = setups.length > 0 ? setups : [await ensureLegacyFallbackSetup(db)];
+  return activeSetups.map((s) => ({
+    ...s,
+    _id: s._id ? (s._id.toString() as any) : undefined,
+  }));
 }
 
 export async function getCameraSetupPreference(
