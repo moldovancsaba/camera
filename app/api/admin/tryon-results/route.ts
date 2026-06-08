@@ -76,12 +76,20 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     query['tryOnModerationArchive.archived'] = true;
     query['tryOnModerationArchive.bucket'] = archive;
     query['tryOnModerationArchive.reason'] = { $ne: 'quality_rerun_superseded' };
+  } else if (reviewStatus === 'approved' || reviewStatus === 'rejected') {
+    // Terminal review states: results are stored in the archive bucket.
+    // Allow callers to find them with just reviewStatus= without needing archive=.
+    query['tryOnModerationArchive.archived'] = true;
+    query['tryOnModerationArchive.bucket'] = reviewStatus;
+    query['tryOnModerationArchive.reason'] = { $ne: 'quality_rerun_superseded' };
+    query.reviewStatus = reviewStatus;
   } else {
     query['tryOnModerationArchive.archived'] = { $ne: true };
     query.reviewStatus = reviewStatus || 'pending_review';
   }
 
   if ((archive === 'approved' || archive === 'rejected' || archive === 'service' || archive === 'greatest') && reviewStatus) {
+
     query.reviewStatus = reviewStatus;
   }
   if (eventId) {

@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 type BootstrapPayload = {
   partnerId: string;
+  partnerMongoId: string;
   eventMongoId: string;
   e2eRunId?: string;
 };
@@ -33,7 +34,7 @@ async function withBootstrap<T>(request: import('@playwright/test').APIRequestCo
 test.describe('partner API authorization', () => {
   test('unauthenticated partner and frame reads are rejected', async ({ request }) => {
     await withBootstrap(request, async (bootstrapPayload) => {
-      const partnerResponse = await request.get(`/api/partners/${bootstrapPayload.partnerId}`);
+      const partnerResponse = await request.get(`/api/partners/${bootstrapPayload.partnerMongoId}`);
       expect(partnerResponse.status()).toBe(401);
 
       const frameResponse = await request.get('/api/frames/000000000000000000000001');
@@ -53,7 +54,7 @@ test.describe('partner API authorization', () => {
         redirectTo: '/admin/events',
       });
 
-      const partnerResponse = await request.get(`/api/partners/${bootstrapPayload.partnerId}`);
+      const partnerResponse = await request.get(`/api/partners/${bootstrapPayload.partnerMongoId}`);
       expect(partnerResponse.ok()).toBeTruthy();
 
       const frameResponse = await request.get('/api/frames/000000000000000000000001');
@@ -72,7 +73,7 @@ test.describe('partner API authorization', () => {
         redirectTo: '/admin',
       });
 
-      const partnerResponse = await request.get(`/api/partners/${bootstrapPayload.partnerId}`);
+      const partnerResponse = await request.get(`/api/partners/${bootstrapPayload.partnerMongoId}`);
       expect(partnerResponse.ok()).toBeTruthy();
     });
   });

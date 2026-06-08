@@ -100,6 +100,9 @@ npm run test:e2e
 
 Notes:
 
+- **E2E Test Safety Gate**: The route `/api/e2e/bootstrap` calls `assertDisposableE2EDatabase()`. To prevent accidental staging or production database deletion, E2E tests and cleanups are blocked unless `MONGODB_DB` contains a safe keyword (e.g. `e2e`, `test`, `dev`, `local`, `sandbox`, `staging`).
+- **Automatic Test Overrides**: `playwright.config.ts` automatically overrides `MONGODB_DB=camera_test` and `CAMERA_TRYON_INTERNAL_SECRET=dev-tryon-secret` when spinning up the web server automatically via `PLAYWRIGHT_START_WEB_SERVER=true`.
+- **Manual Web Server Setup**: If running E2E tests against an already running dev server (`PLAYWRIGHT_START_WEB_SERVER=false`), you must ensure your running dev server was started with a test database (e.g., `MONGODB_DB=camera_test` or `camera_dev`) and a configured `CAMERA_TRYON_INTERNAL_SECRET`, otherwise the E2E bootstrap endpoint will return `403 Forbidden`.
 - Playwright smoke tests use development-only bootstrap/login routes.
 - Set `PLAYWRIGHT_START_WEB_SERVER=true` if you want the test runner to launch `next dev` automatically.
 

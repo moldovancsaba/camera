@@ -1,6 +1,6 @@
 # Documentation Maintenance
 
-**Last Updated**: 2026-06-07
+**Last Updated**: 2026-06-08
 
 The running code is the source of truth. Documentation must be updated from the implementation, not from memory.
 
@@ -133,3 +133,23 @@ Operational note:
 - Do not treat the board as the source of truth when it disagrees with code and docs.
 - Sync issue bodies/comments first, then sync Projects item statuses.
 - Record temporary blockers like API rate limits directly in the canonical docs when handoff is required.
+
+## 10. E2E Testing and safety gates
+
+### Safety gate checks
+To prevent accidental data loss in staging or production environments, dangerous endpoints like `/api/e2e/bootstrap` and `/api/e2e/cleanup` run `assertDisposableE2EDatabase()`. This function throws a `403 Forbidden` error if `MONGODB_DB` does not contain one of the following safe keywords: `e2e`, `test`, `dev`, `local`, `sandbox`, or `staging`.
+
+### Automatic test configuration
+When E2E tests are executed using:
+```bash
+npm run test:e2e
+```
+Playwright is configured (via `playwright.config.ts`) to automatically initialize process environment variables:
+- `MONGODB_DB=camera_test`
+- `CAMERA_TRYON_INTERNAL_SECRET=dev-tryon-secret`
+
+If `PLAYWRIGHT_START_WEB_SERVER=true` is used, Playwright spins up a dedicated Next.js instance on port `3100` explicitly passing these environment overrides.
+
+### Manual configuration
+If you run tests against an already running dev server on port `3000` (e.g., setting `PLAYWRIGHT_PORT=3000`), you must ensure that your dev server was started with a safe database name (e.g. `camera_test` or `camera_dev`) and the correct callback secret, otherwise test bootstraps will fail.
+

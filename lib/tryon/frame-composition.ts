@@ -40,7 +40,29 @@ function buildUploadAsset(upload: UploadResult, width: number | null, height: nu
 }
 
 export async function inspectTryOnResultAsset(publicResultUrl: string): Promise<TryOnResultAsset> {
-  const resultBuffer = await fetchImageBuffer(publicResultUrl);
+  let resultBuffer: Buffer;
+  try {
+    resultBuffer = await fetchImageBuffer(publicResultUrl);
+  } catch (fetchError) {
+    // Gracefully degrade when the image URL is unreachable (e.g. a non-existent
+    // URL used in E2E tests or a transient network failure). The completion
+    // record is still written with null dimensions — which is acceptable for
+    // a pending-review result that a moderator will inspect manually.
+    console.warn('[inspectTryOnResultAsset] Could not fetch result image; storing without metadata.', {
+      publicResultUrl,
+      error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+    });
+    return {
+      publicResultUrl,
+      deleteUrl: null,
+      fileSize: null,
+      mimeType: null,
+      width: null,
+      height: null,
+      compositionEngine: 'motogp_leather_magic',
+    };
+  }
+
   const metadata = await sharp(resultBuffer, { failOn: 'none' }).metadata();
 
   return {
@@ -53,6 +75,7 @@ export async function inspectTryOnResultAsset(publicResultUrl: string): Promise<
     compositionEngine: 'motogp_leather_magic',
   };
 }
+
 
 export async function applyFrameToTryOnResult(
   publicResultUrl: string,

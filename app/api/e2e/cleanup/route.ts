@@ -5,7 +5,6 @@ import { blockDangerousApiInProduction } from '@/lib/api/production-guard';
 import { assertDisposableE2EDatabase } from '@/lib/e2e/safety';
 
 const E2E_PARTNER_ID = 'e2e-partner';
-const E2E_PARTNER_EVENTS_MANAGER = 'partner-events-manager@camera.local';
 const E2E_SOURCE = 'system:e2e-bootstrap';
 
 function normalizeRunId(value: unknown): string | null {
@@ -65,8 +64,8 @@ export async function POST(request: Request) {
   const partnerAccessResult = await db
     .collection(COLLECTIONS.PARTNER_USER_ACCESS)
     .deleteMany({
-      userEmail: E2E_PARTNER_EVENTS_MANAGER,
       partnerId: E2E_PARTNER_ID,
+      ...cleanupFilter,
     });
 
   const submissionsResult = await db

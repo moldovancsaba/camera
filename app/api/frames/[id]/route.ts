@@ -6,100 +6,104 @@
  * DELETE: Delete frame (global admin only)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { ObjectId } from 'mongodb';
-import { requireAdmin } from '@/lib/api';
+import {
+  requireAdmin,
+  withErrorHandler,
+  apiSuccess,
+  apiNotFound,
+  apiBadRequest,
+} from '@/lib/api';
 
 /**
  * GET /api/frames/[id]
  * Get a single frame by ID
  */
-export async function GET(
+export const GET = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await requireAdmin();
-    const { id } = await params;
-    const db = await connectToDatabase();
-    const frame = await db.collection('frames').findOne({ _id: new ObjectId(id) });
+) => {
+  await requireAdmin();
+  const { id } = await params;
 
-    if (!frame) {
-      return NextResponse.json({ error: 'Frame not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ frame });
-  } catch (error) {
-    console.error('Error fetching frame:', error);
-    return NextResponse.json({ error: 'Failed to fetch frame' }, { status: 500 });
+  if (!ObjectId.isValid(id)) {
+    throw apiBadRequest('Invalid frame ID');
   }
-}
+
+  const db = await connectToDatabase();
+  const frame = await db.collection('frames').findOne({ _id: new ObjectId(id) });
+
+  if (!frame) {
+    throw apiNotFound('Frame');
+  }
+
+  return apiSuccess({ frame });
+});
 
 /**
  * PUT /api/frames/[id]
  * Update a frame (global admin only)
  */
-export async function PUT(
+export const PUT = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    await requireAdmin();
+) => {
+  const { id } = await params;
+  await requireAdmin();
 
-    const body = await request.json();
-    const { name, description, category, isActive } = body;
-
-    const db = await connectToDatabase();
-    
-    const updateData: Record<string, string | boolean> = {
-      updatedAt: new Date().toISOString(),
-    };
-
-    if (name !== undefined) updateData.name = name;
-    if (description !== undefined) updateData.description = description;
-    if (category !== undefined) updateData.category = category;
-    if (isActive !== undefined) updateData.isActive = isActive;
-
-    const result = await db.collection('frames').updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateData }
-    );
-
-    if (result.matchedCount === 0) {
-      return NextResponse.json({ error: 'Frame not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error updating frame:', error);
-    return NextResponse.json({ error: 'Failed to update frame' }, { status: 500 });
+  if (!ObjectId.isValid(id)) {
+    throw apiBadRequest('Invalid frame ID');
   }
-}
+
+  const body = await request.json();
+  const { name, description, category, isActive } = body;
+
+  const db = await connectToDatabase();
+  
+  const updateData: Record<string, string | boolean> = {
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (name !== undefined) updateData.name = name;
+  if (description !== undefined) updateData.description = description;
+  if (category !== undefined) updateData.category = category;
+  if (isActive !== undefined) updateData.isActive = isActive;
+
+  const result = await db.collection('frames').updateOne(
+    { _id: new ObjectId(id) },
+    { $set: updateData }
+  );
+
+  if (result.matchedCount === 0) {
+    throw apiNotFound('Frame');
+  }
+
+  return apiSuccess({ success: true });
+});
 
 /**
  * DELETE /api/frames/[id]
  * Delete a frame (global admin only)
  */
-export async function DELETE(
+export const DELETE = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    await requireAdmin();
+) => {
+  const { id } = await params;
+  await requireAdmin();
 
-    const db = await connectToDatabase();
-    const result = await db.collection('frames').deleteOne({ _id: new ObjectId(id) });
-
-    if (result.deletedCount === 0) {
-      return NextResponse.json({ error: 'Frame not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting frame:', error);
-    return NextResponse.json({ error: 'Failed to delete frame' }, { status: 500 });
+  if (!ObjectId.isValid(id)) {
+    throw apiBadRequest('Invalid frame ID');
   }
-}
+
+  const db = await connectToDatabase();
+  const result = await db.collection('frames').deleteOne({ _id: new ObjectId(id) });
+
+  if (result.deletedCount === 0) {
+    throw apiNotFound('Frame');
+  }
+
+  return apiSuccess({ success: true });
+});

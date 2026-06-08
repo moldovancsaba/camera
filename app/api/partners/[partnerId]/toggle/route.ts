@@ -5,11 +5,17 @@
  * Used for quick status changes from listing page without full update form
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
-import { requireAdmin } from '@/lib/api';
+import {
+  requireAdmin,
+  withErrorHandler,
+  apiSuccess,
+  apiBadRequest,
+  apiNotFound,
+} from '@/lib/api';
 
 /**
  * PATCH /api/partners/[id]/toggle
@@ -18,64 +24,50 @@ import { requireAdmin } from '@/lib/api';
  * This endpoint provides a quick way to toggle status from the listing page
  * without needing to load the full edit form, enabling better UX
  */
-export async function PATCH(
+export const PATCH = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ partnerId: string }> }
-) {
-  try {
-    await requireAdmin();
+) => {
+  await requireAdmin();
 
-    const { partnerId } = await params;
+  const { partnerId } = await params;
 
-    // Validate MongoDB ObjectId format
-    if (!ObjectId.isValid(partnerId)) {
-      return NextResponse.json(
-        { error: 'Invalid partner ID' },
-        { status: 400 }
-      );
-    }
-
-    const db = await connectToDatabase();
-    
-    // Get current partner to toggle its isActive state
-    const partner = await db
-      .collection(COLLECTIONS.PARTNERS)
-      .findOne({ _id: new ObjectId(partnerId) });
-
-    if (!partner) {
-      return NextResponse.json(
-        { error: 'Partner not found' },
-        { status: 404 }
-      );
-    }
-
-    // Toggle isActive status
-    const newIsActive = !partner.isActive;
-
-    // Update partner document
-    const result = await db
-      .collection(COLLECTIONS.PARTNERS)
-      .findOneAndUpdate(
-        { _id: new ObjectId(partnerId) },
-        { 
-          $set: { 
-            isActive: newIsActive,
-            updatedAt: generateTimestamp(),
-          },
-        },
-        { returnDocument: 'after' }
-      );
-
-    return NextResponse.json({
-      success: true,
-      partner: result,
-      isActive: newIsActive,
-    });
-  } catch (error) {
-    console.error('Error toggling partner status:', error);
-    return NextResponse.json(
-      { error: 'Failed to toggle partner status' },
-      { status: 500 }
-    );
+  // Validate MongoDB ObjectId format
+  if (!ObjectId.isValid(partnerId)) {
+    throw apiBadRequest('Invalid partner ID');
   }
-}
+
+  const db = await connectToDatabase();
+  
+  // Get current partner to toggle its isActive state
+  const partner = await db
+    .collection(COLLECTIONS.PARTNERS)
+    .findOne({ _id: new ObjectId(partnerId) });
+
+  if (!partner) {
+    throw apiNotFound('Partner');
+  }
+
+  // Toggle isActive status
+  const newIsActive = !partner.isActive;
+
+  // Update partner document
+  const result = await db
+    .collection(COLLECTIONS.PARTNERS)
+    .findOneAndUpdate(
+      { _id: new ObjectId(partnerId) },
+      { 
+        $set: { 
+          isActive: newIsActive,
+          updatedAt: generateTimestamp(),
+        },
+      },
+      { returnDocument: 'after' }
+    );
+
+  return apiSuccess({
+    success: true,
+    partner: result,
+    isActive: newIsActive,
+  });
+});

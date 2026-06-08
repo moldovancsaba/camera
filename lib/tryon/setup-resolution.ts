@@ -1,4 +1,4 @@
-import type { Db } from 'mongodb';
+import type { Db, ObjectId } from 'mongodb';
 import { nowIso } from '@/lib/tryon/time';
 import {
   COLLECTIONS,
@@ -233,7 +233,7 @@ export async function listActiveTryOnSetups(db: Db): Promise<TryOnSetup[]> {
   const activeSetups = setups.length > 0 ? setups : [await ensureLegacyFallbackSetup(db)];
   return activeSetups.map((s) => ({
     ...s,
-    _id: s._id ? (s._id.toString() as any) : undefined,
+    _id: s._id ? (s._id.toString() as unknown as ObjectId) : undefined,
   }));
 }
 
