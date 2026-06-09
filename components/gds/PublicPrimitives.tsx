@@ -1,7 +1,7 @@
 'use client';
 
-import { ElementType, ReactNode } from 'react';
-import { Stack, Text } from '@mantine/core';
+import { ReactNode } from 'react';
+import { Stack, Text, ColorInput } from '@mantine/core';
 
 export {
   Button,
@@ -47,7 +47,6 @@ export function Field({ label, children, helper }: { label: ReactNode; children:
 }
 
 export function ColorField({ id, label, value, onChange, helper }: { id?: string; label: ReactNode; value?: string; onChange?: (val: string) => void; helper?: ReactNode }) {
-  const { ColorInput } = require('@mantine/core');
   return (
     <Field label={label} helper={helper}>
       <ColorInput id={id} value={value} onChange={onChange} />
