@@ -9,6 +9,7 @@ const scannedRoots = ['app/admin', 'components/gds'];
 const bannedImports = new Set(['@mantine/core']);
 const allowlist = new Set([
   'components/gds/styles.ts',
+  'components/gds/PublicPrimitives.tsx',
 ]);
 const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.mts']);
 const importPattern = /(?:import|export)\s+(?:[^'"]+\s+from\s+)?['"]([^'"]+)['"]/g;

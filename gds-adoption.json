@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "gdsVersion": "3.4.3",
+  "gdsVersion": "3.4.7",
   "productArchetype": "hybrid",
   "supportedEntryPoints": [
     "@doneisbetter/gds-theme/client",
@@ -53,6 +53,12 @@
       "path": "components/gds/CameraGdsProvider.tsx",
       "status": "app-provider-composition",
       "exitCondition": "Keep only while Camera needs one root composition point for official GDS providers."
+    },
+    {
+      "contract": "PublicPrimitivesAdapter",
+      "path": "components/gds/PublicPrimitives.tsx",
+      "status": "compatibility-adapter",
+      "exitCondition": "Keep as the adapter mapping public primitives to standard Mantine components."
     }
   ],
   "approvedExceptions": [
