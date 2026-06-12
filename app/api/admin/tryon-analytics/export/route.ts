@@ -6,6 +6,7 @@ import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { collectTryOnAnalytics, type TryOnAnalyticsBucket, type TryOnFunnelMetrics } from '@/lib/tryon/analytics';
 
 type ExportSection = 'all' | 'hourly' | 'preset' | 'garment' | 'event' | 'preset_performance' | 'funnel';
+type ExportFormat = 'csv' | 'json';
 
 function bucketParam(value: string | null): TryOnAnalyticsBucket | '' {
   return value === 'approved' || value === 'rejected' || value === 'service' || value === 'greatest' ? value : '';
@@ -19,9 +20,10 @@ function sectionParam(value: string | null): ExportSection | null {
     value === 'garment' ||
     value === 'event' ||
     value === 'preset_performance' ||
+    value === 'preset-performance' ||
     value === 'funnel'
   ) {
-    return value;
+    return value === 'preset-performance' ? 'preset_performance' : value;
   }
   return null;
 }
@@ -40,9 +42,12 @@ function funnelRows(funnel: TryOnFunnelMetrics): unknown[][] {
   ];
 }
 
-function exportFilename(section: ExportSection): string {
+function exportFilename(section: ExportSection, format: ExportFormat): string {
   const date = new Date().toISOString().slice(0, 10);
-  return section === 'all' ? `tryon-analytics-all-${date}.csv` : `tryon-analytics-${section}-${date}.csv`;
+  const extension = format === 'json' ? 'json' : 'csv';
+  return section === 'all'
+    ? `tryon-analytics-all-${date}.${extension}`
+    : `tryon-analytics-${section}-${date}.${extension}`;
 }
 
 function csvEscape(value: unknown): string {
@@ -65,7 +70,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     throw apiForbidden('Global admin access is required');
   }
   const { searchParams } = request.nextUrl;
-  const format = searchParams.get('format') === 'json' ? 'json' : 'csv';
+  const format: ExportFormat = searchParams.get('format') === 'json' ? 'json' : 'csv';
   const rawSection = searchParams.get('section');
   const exportSection = sectionParam(rawSection);
   if (rawSection && exportSection === null) {
@@ -94,7 +99,14 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
                 : resolvedSection === 'funnel'
                   ? { funnel: analytics.funnel, totals: analytics.totals }
                   : { presetPerformance: analytics.presetPerformance };
-    return NextResponse.json({ data: payload });
+    return NextResponse.json(
+      { data: payload },
+      {
+        headers: {
+          'Content-Disposition': `attachment; filename="${exportFilename(resolvedSection, 'json')}"`,
+        },
+      }
+    );
   }
   const sections: Array<{ key: string; headers: string[]; rows: unknown[][] }> = [];
   if (resolvedSection === 'all' || resolvedSection === 'hourly') {
@@ -153,7 +165,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   return new NextResponse(body, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${exportFilename(resolvedSection)}"`,
+      'Content-Disposition': `attachment; filename="${exportFilename(resolvedSection, 'csv')}"`,
     },
   });
 });

@@ -41,16 +41,18 @@ Supported query:
 - `format=csv|json` (default `csv`)
 - `bucket`, `eventId`, `from`, `to` as above
 - `section=all|hourly|preset|garment|event|preset_performance|funnel` (default `all`)
+- `section=preset-performance` is accepted as an alias for `preset_performance`
 
 Invalid `section` values return HTTP 400. CSV filenames include the section slug.
 
-CSV format defaults to all sections unless `section` is set.
+CSV format defaults to all sections unless `section` is set. JSON responses also return a section-specific attachment filename.
 
 ## 2) Dashboard behavior (`/admin/tryon/analytics`)
 
 - `/admin/tryon/analytics` shows:
   - Filter form for bucket, event, and date range
   - Totals by approved/rejected/service/superseded rerun
+  - Section-specific export cards with CSV and JSON download actions
   - Pipeline funnel chart
   - grouped hourly outcome chart
   - tables by preset, garment, event

@@ -17,26 +17,12 @@ import HourlyOutcomeChart from '@/components/admin/HourlyOutcomeChart';
 import TryOnAnalyticsTables from '@/components/admin/TryOnAnalyticsTables';
 import TryOnFunnelChart from '@/components/admin/TryOnFunnelChart';
 import TryOnAnalyticsFilterForm from '@/components/admin/TryOnAnalyticsFilterForm';
+import TryOnAnalyticsExportControls from '@/components/admin/TryOnAnalyticsExportControls';
 
 export const dynamic = 'force-dynamic';
 
 function bucketParam(value: string): TryOnAnalyticsBucket | '' {
   return value === 'approved' || value === 'rejected' || value === 'service' || value === 'greatest' ? value : '';
-}
-
-type ExportSection = 'all' | 'hourly' | 'preset' | 'garment' | 'event' | 'preset_performance' | 'funnel';
-
-function exportHref(
-  format: 'csv' | 'json',
-  params: { bucket: string; eventId: string; from: string; to: string; section?: ExportSection }
-): string {
-  const query = new URLSearchParams({ format });
-  if (params.bucket) query.set('bucket', params.bucket);
-  if (params.eventId) query.set('eventId', params.eventId);
-  if (params.from) query.set('from', params.from);
-  if (params.to) query.set('to', params.to);
-  if (params.section && params.section !== 'all') query.set('section', params.section);
-  return `/api/admin/tryon-analytics/export?${query.toString()}`;
 }
 
 export default async function AdminTryOnAnalyticsPage({
@@ -133,18 +119,56 @@ export default async function AdminTryOnAnalyticsPage({
           <p style={{ color: 'var(--mantine-color-dimmed)', margin: 0 }}>
             Reporting over {analytics.scannedResultCount} archived try-on decision{analytics.scannedResultCount === 1 ? '' : 's'}.
           </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-sm)' }}>
-            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'all' })}>Export All (CSV)</a>
-            <a href={exportHref('json', { bucket, eventId, from, to, section: 'all' })}>Export All (JSON)</a>
-            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'funnel' })}>Export Funnel (CSV)</a>
-            <a href={exportHref('json', { bucket, eventId, from, to, section: 'funnel' })}>Export Funnel (JSON)</a>
-            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'hourly' })}>Export Hourly</a>
-            <a href={exportHref('json', { bucket, eventId, from, to, section: 'hourly' })}>Export Hourly (JSON)</a>
-            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'preset' })}>Export By Preset</a>
-            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'garment' })}>Export By Garment</a>
-            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'event' })}>Export By Event</a>
-            <a href={exportHref('csv', { bucket, eventId, from, to, section: 'preset_performance' })}>Export Preset Performance</a>
-          </div>
+          <TryOnAnalyticsExportControls
+            bucket={bucket}
+            eventId={eventId}
+            from={from}
+            to={to}
+            sections={[
+              {
+                key: 'all',
+                label: 'All sections',
+                description: 'Full operational export with every analytics table and chart source.',
+                available: analytics.scannedResultCount > 0,
+              },
+              {
+                key: 'funnel',
+                label: 'Funnel',
+                description: 'Pipeline counts from submitted through failed and superseded reruns.',
+                available: analytics.funnel.submitted > 0 || analytics.funnel.failed > 0,
+              },
+              {
+                key: 'hourly',
+                label: 'Hourly outcomes',
+                description: 'Hour-by-hour approved, declined, service, and failed totals.',
+                available: analytics.hourlyOutcomes.length > 0,
+              },
+              {
+                key: 'preset',
+                label: 'By preset',
+                description: 'Moderation outcomes grouped by try-on preset.',
+                available: analytics.byPreset.length > 0,
+              },
+              {
+                key: 'preset_performance',
+                label: 'Preset performance',
+                description: 'Preset throughput, retry, timeout, and approval diagnostics.',
+                available: analytics.presetPerformance.length > 0,
+              },
+              {
+                key: 'garment',
+                label: 'By garment',
+                description: 'Moderation outcomes grouped by leather suit catalog entry.',
+                available: analytics.byGarment.length > 0,
+              },
+              {
+                key: 'event',
+                label: 'By event',
+                description: 'Moderation outcomes grouped by event.',
+                available: analytics.byEvent.length > 0,
+              },
+            ]}
+          />
           <TryOnFunnelChart funnel={analytics.funnel} />
           <HourlyOutcomeChart rows={analytics.hourlyOutcomes} />
           <TryOnAnalyticsTables
