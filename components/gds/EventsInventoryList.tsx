@@ -44,15 +44,12 @@ export default function EventsInventoryList({
     ].filter((item): item is { label: string; value: string } => Boolean(item)),
   }));
 
+  // "View" is intentionally NOT a primary action: GDS AdminResourceCard forces
+  // every non-danger primary/secondary action to the "edit" semantic, so a
+  // primary 'view' rendered as a second button labelled "Edit". Viewing is wired
+  // through onPreview below (the card's eye/Preview affordance), leaving a single
+  // "Edit" secondary button.
   const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedEventRow>> = [
-    {
-      id: 'view',
-      label: 'View',
-      kind: 'primary',
-      onSelect: (event) => {
-        window.location.href = `/admin/events/${event.id}`;
-      },
-    },
     {
       id: 'edit',
       label: 'Edit',
@@ -62,9 +59,14 @@ export default function EventsInventoryList({
       },
     },
     {
+      // Rendered as an icon action, not a second 'secondary' text button: the GDS
+      // AdminResourceCard collapses every non-danger secondary action to the "edit"
+      // semantic id, so two secondary actions would render as two identical "Edit"
+      // buttons sharing the React key `secondary-edit`. Icon actions get their own
+      // slot and keep this affordance distinct.
       id: 'vetting',
       label: 'Vetting',
-      kind: 'secondary',
+      kind: 'icon',
       disabled: (event) => event.pendingTryOnVettingCount <= 0,
       onSelect: (event) => {
         window.location.href = `/admin/tryon/vetting?eventId=${encodeURIComponent(event.id)}`;
@@ -88,5 +90,14 @@ export default function EventsInventoryList({
     );
   }
 
-  return <AdminResourceManager records={records} state="ready" actions={actions} />;
+  return (
+    <AdminResourceManager
+      records={records}
+      state="ready"
+      actions={actions}
+      onPreview={(event) => {
+        window.location.href = `/admin/events/${event.id}`;
+      }}
+    />
+  );
 };
