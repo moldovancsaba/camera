@@ -17,6 +17,7 @@ import SlideshowManager from '@/components/admin/SlideshowManager';
 import SlideshowLayoutManager from '@/components/admin/SlideshowLayoutManager';
 import LandingPageManager from '@/components/admin/LandingPageManager';
 import EventGallery from '@/components/admin/EventGallery';
+import EventExportControls from '@/components/admin/EventExportControls';
 import DeleteEventButton from '@/components/admin/DeleteEventButton';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
@@ -506,6 +507,8 @@ export default async function EventDetailPage({
           canManage={canManageEvent}
         />
       </Card>
+
+      {canManageEvent ? <EventExportControls eventId={id} /> : null}
     </Stack>
   );
 }
