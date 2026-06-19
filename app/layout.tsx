@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
-import '@/components/gds/styles';
+import '@mantine/core/styles.css';
+import '@mantine/notifications/styles.css';
+import '@/components/gds/gds-theme.css';
 import "./globals.css";
 import Providers from './providers';
 

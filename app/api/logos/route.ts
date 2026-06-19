@@ -11,6 +11,7 @@
  */
 
 import { NextRequest } from 'next/server';
+import sharp from 'sharp';
 import type { Filter } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { uploadImage } from '@/lib/imgbb/upload';
@@ -131,10 +132,19 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const uploadResult = await uploadImage(base64, { name: `logo-${Date.now()}` });
   console.log('Upload successful:', uploadResult.imageUrl);
 
-  // Get image dimensions (for display calculations)
-  // Note: We rely on imgbb metadata, but could add image-size library for validation
-  const width = 0; // TODO: Extract from image if needed
-  const height = 0; // TODO: Extract from image if needed
+  // Get image dimensions (for display calculations).
+  // Extracted from the uploaded buffer via sharp so callers get real dimensions
+  // instead of placeholders. Wrapped defensively: dimension metadata is best-effort
+  // and must never block a successful upload (e.g. unusual SVG without intrinsic size).
+  let width = 0;
+  let height = 0;
+  try {
+    const metadata = await sharp(buffer).metadata();
+    width = metadata.width ?? 0;
+    height = metadata.height ?? 0;
+  } catch (error) {
+    console.warn('Logo upload - failed to read image dimensions, defaulting to 0:', error);
+  }
 
   // Save to database
   console.log('Connecting to database...');
@@ -145,8 +155,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     description,
     imageUrl: uploadResult.imageUrl,
     thumbnailUrl: uploadResult.thumbnailUrl,
-    width,  // Placeholder - can be extracted from image
-    height, // Placeholder - can be extracted from image
+    width,  // Extracted from the uploaded image via sharp (0 if unavailable)
+    height, // Extracted from the uploaded image via sharp (0 if unavailable)
     fileSize: uploadResult.fileSize,
     mimeType: uploadResult.mimeType,
     isActive,
