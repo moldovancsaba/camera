@@ -50,29 +50,26 @@ export default function LandingPagesPageView({
       { label: 'Updated', value: page.updatedAtLabel },
     ],
   }));
+  // GDS AdminResourceCard renders every non-danger primary/secondary action with
+  // the "edit" label, and ignores onPreview when a primary action exists. To avoid
+  // multiple identical "Edit" buttons we keep no primary action (the public landing
+  // page opens via onPreview's Preview affordance), a single 'edit' secondary, and
+  // "Open Event" as an icon action (its own slot).
   const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedLandingPageRow>> = [
-    {
-      id: 'event',
-      label: 'Open Event',
-      kind: 'secondary',
-      onSelect: (page) => {
-        window.location.href = `/admin/events/${page.eventMongoId}`;
-      },
-    },
     {
       id: 'edit',
       label: 'Edit',
-      kind: 'primary',
+      kind: 'secondary',
       onSelect: (page) => {
         window.location.href = `/admin/events/${page.eventMongoId}/landing-pages/${page.id}`;
       },
     },
     {
-      id: 'open',
-      label: 'Open',
-      kind: 'secondary',
+      id: 'event',
+      label: 'Open Event',
+      kind: 'icon',
       onSelect: (page) => {
-        window.open(`/landing/${page.slug}`, '_blank', 'noopener,noreferrer');
+        window.location.href = `/admin/events/${page.eventMongoId}`;
       },
     },
   ];
@@ -131,7 +128,14 @@ export default function LandingPagesPageView({
       ) : null}
 
       {!dbError && landingPages.length > 0 ? (
-        <AdminResourceManager records={records} state="ready" actions={actions} />
+        <AdminResourceManager
+          records={records}
+          state="ready"
+          actions={actions}
+          onPreview={(page) => {
+            window.open(`/landing/${page.slug}`, '_blank', 'noopener,noreferrer');
+          }}
+        />
       ) : null}
     </div>
   );

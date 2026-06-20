@@ -37,27 +37,24 @@ export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTr
       { label: 'Queue usage', value: String(suit.queueUsageCount) },
     ],
   }));
+  // GDS AdminResourceCard renders every non-danger primary/secondary action with
+  // the "edit" label, and ignores onPreview when a primary action exists. To avoid
+  // multiple identical "Edit" buttons we keep no primary action (the garment image
+  // opens via onPreview's Preview affordance), a single 'edit' secondary, and the
+  // Asset Builder as an icon action (its own slot).
   const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedTryOnSuitRow>> = [
     {
       id: 'edit',
       label: 'Edit Garment',
-      kind: 'primary',
+      kind: 'secondary',
       onSelect: (suit) => {
         window.location.href = `/admin/tryon/suits/${suit.id}/edit`;
       },
     },
     {
-      id: 'download',
-      label: 'Download',
-      kind: 'secondary',
-      onSelect: (suit) => {
-        window.open(suit.imageUrl, '_blank', 'noopener,noreferrer');
-      },
-    },
-    {
       id: 'analytics',
       label: 'Asset Builder',
-      kind: 'secondary',
+      kind: 'icon',
       onSelect: (suit) => {
         window.location.href = `/admin/tryon/analytics?garment=${encodeURIComponent(suit.leatherSuitId)}`;
       },
@@ -78,5 +75,14 @@ export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTr
     );
   }
 
-  return <AdminResourceManager records={records} state="ready" actions={actions} />;
+  return (
+    <AdminResourceManager
+      records={records}
+      state="ready"
+      actions={actions}
+      onPreview={(suit) => {
+        window.open(suit.imageUrl, '_blank', 'noopener,noreferrer');
+      }}
+    />
+  );
 }
