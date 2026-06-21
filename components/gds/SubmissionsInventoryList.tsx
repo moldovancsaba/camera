@@ -25,8 +25,11 @@ function isLegacyGuestName(value: string): boolean {
   return value.trim().toLowerCase() === 'event guest';
 }
 
-function resolveDisplayName(userName: string): string {
-  const normalized = userName.trim();
+function resolveDisplayName(userName: string | null | undefined): string {
+  // Defensive: some submission docs (e.g. anonymous/legacy or worker-created rows)
+  // have no userName, so guard before calling string methods to avoid an RSC
+  // render crash on the admin submissions page.
+  const normalized = (userName ?? '').trim();
   return normalized && !isLegacyGuestName(normalized) ? normalized : 'Guest';
 }
 

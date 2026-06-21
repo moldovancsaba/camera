@@ -213,9 +213,9 @@ export default async function AdminSubmissionsPage({
       const event = submission.eventId ? eventById.get(submission.eventId) : undefined;
       submissionRows.push({
         id,
-        imageUrl: submission.imageUrl,
-        userName: submission.userName,
-        userEmail: submission.userEmail,
+        imageUrl: submission.imageUrl ?? '',
+        userName: submission.userName ?? '',
+        userEmail: submission.userEmail ?? '',
         frameName: submission.frameName ?? null,
         createdAtLabel: formatDateTime(submission.createdAt),
         playCount: submission.playCount,
