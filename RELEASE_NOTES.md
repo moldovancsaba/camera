@@ -1,12 +1,70 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.13.0
-**Last Updated**: 2026-06-08
+**Current Version**: 2.14.0
+**Last Updated**: 2026-06-21
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
+
+---
+
+## [v2.14.0] — 2026-06-21
+
+**Type**: Minor — feature + production hotfix + dependency security
+
+### Summary
+Added per-event data exports, fixed a production Server-Components render crash on the event
+detail page, removed duplicate "Edit" buttons across admin inventory cards, patched
+dependency vulnerabilities, and captured the deploy process.
+
+### Features
+
+- **Event data exports** (`/admin/events/[id]`, manager-gated):
+  - `GET /api/admin/events/[id]/export/emails` — deduplicated CSV of all email addresses
+    collected from SSO sign-ins and the guest onboarding form.
+  - `GET /api/admin/events/[id]/export/images?format=csv|zip` — originals, finals, and
+    derived try-on results. CSV lists every image URL with metadata; ZIP streams the actual
+    files from imgbb (capped at 500 via `archiver`, per-image failures logged to `_errors.txt`).
+  - Shared logic in `lib/events/event-export.ts`; UI in `components/admin/EventExportControls.tsx`.
+  - New LLD: `docs/EVENT_EXPORTS.md`. Adds `archiver` dependency.
+
+### Fixes
+
+- **Production "Oops" crash (digest 4053814135)**: the event detail page (a Server Component)
+  passed `component={Link}` to client `Button`s, which RSC cannot serialize
+  ("Functions cannot be passed directly to Client Components"). Switched the affected Server
+  Components (`app/admin/events/[id]/page.tsx`, `app/users/[name]/page.tsx`,
+  `app/profile/page.tsx`) to `component="a"`.
+- **Duplicate "Edit" buttons** on Events, Try-On Suits, and Landing Pages inventory cards:
+  GDS `AdminResourceCard` renders every non-danger action as "Edit" and ignores `onPreview`
+  when a primary action exists. Reworked each list to use `onPreview` for the view action, a
+  single `edit` secondary, and `icon` actions for the rest.
+- **Logo dimensions**: `POST /api/logos` now extracts real `width`/`height` from the upload
+  via `sharp` instead of hard-coded `0` placeholders (best-effort, never blocks upload).
+- **GDS CSS imports** finalized: Mantine + GDS theme CSS imported in `app/layout.tsx`;
+  obsolete `components/gds/styles.ts` removed.
+
+### Dependencies / security
+
+- Bumped `next` `16.0.10 → ^16.2.9` (and `eslint-config-next`), resolving high-severity
+  advisories (Middleware/Proxy bypass, SSRF, Server Actions CSRF bypass, multiple DoS).
+- `npm audit fix` for transitive deps (axios, @babel/core, ajv, brace-expansion).
+- Vulnerability count 13 → 3 (remaining are dev/build-only and only "fixable" by downgrading
+  Next or affect the Windows dev server).
+
+### Ops / docs
+
+- Added `RUNBOOK.md` (manual `vercel --prod` deploy + verify + auto-deploy repair) and a
+  guarded `.github/workflows/deploy-production.yml` (inert until Vercel secrets are set).
+- Documented the RSC server/client boundary rule in `README.md` and `ARCHITECTURE.md`.
+
+### Verification
+- `npm run type-check` — 0 errors
+- `npm run lint` — 0 warnings
+- `npm run build` — clean production build
+- Production verified live: `/admin/events` renders, runtime logs clean (no digest 4053814135)
 
 ---
 

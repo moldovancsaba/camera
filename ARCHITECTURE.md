@@ -1,7 +1,7 @@
 # Architecture
 
-**Version**: 2.13.0  
-**Last Updated**: 2026-06-08
+**Version**: 2.14.0  
+**Last Updated**: 2026-06-21
 
 This document describes the current production architecture of Camera as implemented in the repository today.
 
@@ -277,19 +277,34 @@ Major API groups:
 - slideshow layouts: `/api/slideshow-layouts/**`
 - landing pages: `/api/landing-pages/**`
 - admin users/submissions utilities: `/api/admin/**`
+- event data exports: `/api/admin/events/[id]/export/emails` and `/api/admin/events/[id]/export/images` (manager-gated; CSV + ZIP, shared logic in `lib/events/event-export.ts`)
 - go-short redirects: `/api/go-short/**`
 
 The exact route list should be taken from `app/api/**/route.ts`, not from memory.
+
+### Server/Client component boundary (RSC)
+
+Pages are Server Components by default. A Server Component must not pass a component
+*function* as a prop to a client component (e.g. `component={Link}` on a Mantine/GDS
+`Button`/`Card`) — React Server Components cannot serialize a function across the
+server→client boundary and the render throws "Functions cannot be passed directly to
+Client Components" in production. In Server Components, use `component="a"` (a string) for
+links, or render `<Link><Button/></Link>`. `component={Link}` is valid only inside
+`'use client'` files. This class of crash surfaces as the global error boundary
+(`app/error.tsx`) with a digest; read the real cause from Vercel runtime logs.
 
 ## 12. Deployment and operations
 
 Expected environment shape:
 
-- Next.js app deployed on Vercel or equivalent
+- Next.js app deployed on Vercel (project `narimato/04_camera`, domain `camera.messmass.com`)
 - MongoDB Atlas for persistence
 - imgbb for raster hosting
 - SSO host reachable over HTTPS
 - optional Upstash Redis for shared rate limits
+
+Production is currently shipped manually with `npx vercel@latest --prod` (git pushes do not
+auto-deploy). Deploy/verify/auto-deploy-repair steps: [RUNBOOK.md](/Users/Shared/Projects/camera/RUNBOOK.md).
 
 Useful commands:
 

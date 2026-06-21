@@ -128,6 +128,7 @@ Operational note:
 - 2026-06-07 handoff note: GDS 3.4.3 issue snapshot for `#69`-`#78` is recorded in `docs/GDS_3_4_3_ALIGNMENT_PLAN.md` and board-sync details are recorded in `docs/GDS_3_4_3_GITHUB_BOARD_HANDOVER.md`. GitHub Project v2 status edits were initially blocked by GraphQL rate limit until 2026-06-07 15:54:46 CEST; after reset, issue comments were posted and `#69` plus `#73` were moved to `Review (ALMOST)`.
 - 2026-06-07 release-gate note: `docs/GDS_RELEASE_GATE.md` and `.github/workflows/gds-release-gate.yml` define the canonical npm-based validation lane for GDS compliance, type-check, lint, and build.
 - 2026-06-08 reliability hardening: E2E suite passes 12/12 tests serially. Key fixes: middleware.ts conflict removed, parallel DB contention resolved (workers:1), inspectTryOnResultAsset graceful degradation, tryon-results reviewStatus=approved query corrected, API error boundary coverage extended. Committed as 9454b40 and bumped to v2.13.0.
+- 2026-06-21 v2.14.0: Added per-event email/image exports (`docs/EVENT_EXPORTS.md`). Fixed the production Server-Components render crash (digest 4053814135) caused by `component={Link}` in Server Components — see the RSC boundary rule in `ARCHITECTURE.md` §11. Removed duplicate "Edit" buttons on Events/Try-On Suits/Landing Pages cards. Bumped Next `16.0.10 → 16.2.9` (security). Added `RUNBOOK.md` documenting manual `vercel --prod` deploys, since git pushes do not currently auto-deploy. Tracker: closed `#68` (analytics section exports, delivered in 9e63bfa).
 
 ### Do not drift again
 

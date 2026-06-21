@@ -1,7 +1,7 @@
 # Tech Stack
 
-**Version**: 2.13.0  
-**Last Updated**: 2026-06-08
+**Version**: 2.14.0  
+**Last Updated**: 2026-06-21
 
 This document records the current technical stack in use and the parts of the product each technology supports.
 
@@ -114,6 +114,15 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 
 - outbound HTTP requests where used, especially external service integrations
 
+### `sharp`
+
+- server-side image inspection (e.g. extracting uploaded logo dimensions)
+
+### `archiver`
+
+- streams the per-event image ZIP export (`/api/admin/events/[id]/export/images?format=zip`)
+  as a Node stream converted to a web `ReadableStream`, capped at 500 files
+
 ### Local try-on worker integration
 
 - Camera writes queue state to MongoDB Atlas
@@ -131,6 +140,14 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 - `tsx`
 - `tsc --noEmit`
 - `playwright` — E2E test suite running 12 serial tests against a dedicated test database
+
+## Hosting and deployment
+
+- Vercel (project `narimato/04_camera`); production domain `camera.messmass.com`
+- Next pinned at `16.2.9` (the `16.0.10 → 16.2.9` bump in v2.14.0 carried RSC/render and
+  security fixes)
+- production is shipped manually via `npx vercel@latest --prod` — git pushes do not currently
+  auto-deploy; see [RUNBOOK.md](/Users/Shared/Projects/camera/RUNBOOK.md)
 
 ## Useful scripts
 

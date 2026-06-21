@@ -1,7 +1,7 @@
 # Camera
 
-**Version**: 2.13.0  
-**Last Updated**: 2026-06-08  
+**Version**: 2.14.0  
+**Last Updated**: 2026-06-21  
 **Status**: Production system
 
 Camera is a Next.js platform for branded photo capture, event galleries, slideshow playback, partner operations, and reusable shared resources on the same identity, media, and MongoDB foundations.
@@ -46,6 +46,7 @@ The admin UX is organized around that model:
 - `/admin/events` — Events inventory
 - `/admin/tryon` — Try-On App workspace
 - `/admin/frames`, `/admin/logos`, `/admin/submissions`, `/admin/users` — global inventory / audit pages
+- `/admin/events/[id]` — event detail with manager-gated email + image exports
 
 ## Core behavior
 
@@ -57,6 +58,20 @@ The admin UX is organized around that model:
 4. Client-side compositing applies the selected frame where applicable.
 5. `POST /api/submissions` uploads the final raster to imgbb and stores metadata in MongoDB.
 6. Submission becomes available to share pages, galleries, and slideshow playlists.
+
+### Event data exports
+
+The event detail page (`/admin/events/[id]`) offers manager-gated exports of the data
+collected for an event:
+
+- **Email addresses** — `GET /api/admin/events/[id]/export/emails` returns a deduplicated
+  CSV of every address collected from SSO sign-ins and the guest onboarding form.
+- **Images** — `GET /api/admin/events/[id]/export/images?format=csv|zip` covers originals,
+  finals, and derived try-on results. `csv` (default) lists every image URL with metadata;
+  `zip` streams the actual files from imgbb, capped at 500 files (larger events use the CSV).
+
+Shared logic lives in `lib/events/event-export.ts`. Access requires partner-scoped Events
+`manager` (global admins included). See [docs/EVENT_EXPORTS.md](/Users/Shared/Projects/camera/docs/EVENT_EXPORTS.md).
 
 ### Slideshows
 
@@ -111,6 +126,19 @@ Default local URL:
 ```text
 http://localhost:3000
 ```
+
+## Deployment
+
+Production is hosted on Vercel (`camera.messmass.com`). Pushing to `main` does **not**
+currently auto-deploy — ship with `npx vercel@latest --prod` from a clean checkout of
+`main`. A guarded GitHub Actions workflow (`.github/workflows/deploy-production.yml`) can
+restore push-to-deploy once `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` secrets are
+set. Full deploy + verify + auto-deploy-repair steps are in [RUNBOOK.md](/Users/Shared/Projects/camera/RUNBOOK.md).
+
+> **RSC note:** Server Components must not pass a component *function* (e.g. `component={Link}`)
+> as a prop to a client component — it triggers a "Functions cannot be passed directly to
+> Client Components" render crash in production. Use `component="a"` for links in Server
+> Components; `component={Link}` is only valid inside `'use client'` files.
 
 ## Runtime stack
 
@@ -213,6 +241,8 @@ Canonical docs:
 - [docs/AUTHORIZATION.md](/Users/Shared/Projects/camera/docs/AUTHORIZATION.md)
 - [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CONVENTIONS.md)
 - [docs/MONGODB_ATLAS.md](/Users/Shared/Projects/camera/docs/MONGODB_ATLAS.md)
+- [docs/EVENT_EXPORTS.md](/Users/Shared/Projects/camera/docs/EVENT_EXPORTS.md)
+- [RUNBOOK.md](/Users/Shared/Projects/camera/RUNBOOK.md)
 - [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/camera/docs/SLIDESHOW_LOGIC.md)
 - [docs/DOCUMENTATION.md](/Users/Shared/Projects/camera/docs/DOCUMENTATION.md)
 - [docs/TRYON_LOW_LEVEL_DESIGN.md](/Users/Shared/Projects/camera/docs/TRYON_LOW_LEVEL_DESIGN.md)
