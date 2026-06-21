@@ -1,11 +1,30 @@
 # Tasklist
 
-**Version Context**: 2.12.0  
-**Last Updated**: 2026-06-08
+**Version Context**: 2.14.0  
+**Last Updated**: 2026-06-21
 
 This file should contain only active near-term execution items. Historical delivery belongs in `RELEASE_NOTES.md`.
 
 ## Active tasks
+
+### Event data exports (v2.14.0)
+
+- status: complete on 2026-06-21
+- outcome:
+  - manager-gated email + image exports on `/admin/events/[id]` (CSV + capped ZIP)
+  - shared logic in `lib/events/event-export.ts`; LLD in `docs/EVENT_EXPORTS.md`
+  - GitHub #79 (closed)
+
+### Production stability + deploy (v2.14.0)
+
+- status: complete on 2026-06-21
+- outcome:
+  - fixed Server-Components render crash (digest 4053814135) from `component={Link}` in
+    Server Components; RSC boundary rule documented (`ARCHITECTURE.md` §11). GitHub #80 (closed)
+  - removed duplicate "Edit" buttons on Events/Try-On Suits/Landing Pages cards (#71 ongoing)
+  - Next `16.0.10 → 16.2.9` security bump; vulnerabilities 13 → 3
+  - `RUNBOOK.md` + guarded deploy workflow; production deploys are manual via `vercel --prod`
+- follow-up: restore Vercel auto-deploy (GitHub App access / production branch) — owner action
 
 ### Documentation refresh
 

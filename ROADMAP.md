@@ -1,7 +1,7 @@
 # Roadmap
 
-**Version Context**: 2.12.0  
-**Last Updated**: 2026-06-08
+**Version Context**: 2.14.0  
+**Last Updated**: 2026-06-21
 
 This file is forward-looking only. Gym / Workout / FunFitFan surfaces were removed from the codebase in 2026-05; items below reflect the Events-only platform unless noted.
 
