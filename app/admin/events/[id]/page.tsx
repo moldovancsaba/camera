@@ -427,14 +427,14 @@ export default async function EventDetailPage({
             </Stack>
             <Group grow>
               <Button
-                component={Link}
+                component="a"
                 href={`/admin/tryon/analytics?eventId=${encodeURIComponent(event.eventId)}`}
                 variant="light"
               >
                 Asset Health Report
               </Button>
               <Button
-                component={Link}
+                component="a"
                 href={`/admin/tryon/vetting?eventId=${encodeURIComponent(event.eventId)}`}
                 variant="light"
               >

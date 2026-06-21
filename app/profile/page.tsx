@@ -86,13 +86,13 @@ export default async function ProfilePage() {
               {session.user.name || session.user.email}
             </Text>
           </div>
-          <Button component={Link} href="/" variant="subtle">
+          <Button component="a" href="/" variant="subtle">
             ← Back
           </Button>
         </Group>
 
         <Group>
-          <Button component={Link} href="/capture">
+          <Button component="a" href="/capture">
             📸 Take New Photo
           </Button>
         </Group>
@@ -109,7 +109,7 @@ export default async function ProfilePage() {
             title="No photos yet"
             description="Start creating amazing photos with frames!"
             action={
-              <Button component={Link} href="/capture">
+              <Button component="a" href="/capture">
                 Take Your First Photo
               </Button>
             }
@@ -150,7 +150,7 @@ export default async function ProfilePage() {
                       <Button component="a" href={submission.imageUrl} download target="_blank" rel="noopener noreferrer" size="xs">
                         💾 Download
                       </Button>
-                      <Button component={Link} href={`/share/${submission._id}`} variant="default" size="xs">
+                      <Button component="a" href={`/share/${submission._id}`} variant="default" size="xs">
                         🔗 Share
                       </Button>
                     </Group>

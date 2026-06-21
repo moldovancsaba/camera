@@ -427,7 +427,7 @@ export default async function UserProfilePage({ params }: PageProps) {
             {user.submissions.map((submission) => (
               <Card
                 key={submission._id.toString()}
-                component={Link}
+                component="a"
                 href={`/share/${submission._id}`}
                 p={0}
                 withBorder
