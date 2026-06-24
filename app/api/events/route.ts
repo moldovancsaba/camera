@@ -47,6 +47,7 @@ function normalizeEventNotificationSettings(value: unknown) {
       notificationPolicy.subjectTemplateAfterTryOnResubmissionApproved || null,
     submissionResultEmailBodyAfterTryOnResubmissionApproved:
       notificationPolicy.bodyTemplateAfterTryOnResubmissionApproved || null,
+    submissionResultEmailSenderName: notificationPolicy.senderName,
     submissionResultEmailSendAfterSave: notificationPolicy.sendAfterSave,
     submissionResultEmailSendAfterRelatedPhotosReady: notificationPolicy.sendAfterRelatedPhotosReady,
     submissionResultEmailSendAfterTryOnResubmissionApproved:

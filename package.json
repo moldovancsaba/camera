@@ -42,6 +42,7 @@
     "db:migrate-email-body-defaults": "tsx scripts/migrate-event-email-body-defaults.ts",
     "db:migrate-email-body-defaults:apply": "tsx scripts/migrate-event-email-body-defaults.ts --apply",
     "db:backfill-event-terms-url": "tsx scripts/backfill-event-terms-url.ts",
+    "db:backfill-event-email-sender-name": "tsx scripts/backfill-event-email-sender-name.ts",
     "email:send-today": "tsx scripts/send-today-submission-emails.ts"
   },
   "keywords": [

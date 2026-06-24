@@ -1,4 +1,5 @@
 export const DEFAULT_SUBMISSION_EMAIL_SUBJECT = 'Your photo from {event}';
+export const DEFAULT_SUBMISSION_EMAIL_SENDER_NAME = 'The Selfie';
 
 export const DEFAULT_EVENT_TERMS_URL = 'https://seyuselfies.com/en/policies/';
 

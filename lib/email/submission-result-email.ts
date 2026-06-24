@@ -5,13 +5,17 @@ import { listApprovedShareVariants } from '@/lib/tryon/publication';
 import { sendSubmissionResultEmail, type SubmissionNotificationResult, type SubmissionNotificationInput } from '@/lib/email/submission-notification';
 import { sanitizeEmail } from '@/lib/security/sanitize';
 import { getConfiguredSiteUrl } from '@/lib/site-url';
-import { DEFAULT_EVENT_TERMS_URL } from '@/lib/email/submission-template-defaults';
+import {
+  DEFAULT_EVENT_TERMS_URL,
+  DEFAULT_SUBMISSION_EMAIL_SENDER_NAME,
+} from '@/lib/email/submission-template-defaults';
 
 export interface SubmissionEmailPolicy {
   enabled: boolean;
   sendAfterSave: boolean;
   sendAfterRelatedPhotosReady: boolean;
   sendAfterTryOnResubmissionApproved: boolean;
+  senderName: string;
   subjectTemplate?: string | null;
   bodyTemplate?: string | null;
   subjectTemplateAfterSave?: string | null;
@@ -56,6 +60,10 @@ function readTemplate(value: unknown, maxLength: number, normalizeNewlines = fal
     ? trimmed.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
     : trimmed;
   return normalized.slice(0, maxLength);
+}
+
+function readSenderName(value: unknown): string {
+  return typeof value === 'string' && value.trim() ? value.trim() : DEFAULT_SUBMISSION_EMAIL_SENDER_NAME;
 }
 
 function hasTryOnVariantUrl(variant: {
@@ -142,6 +150,7 @@ export function normalizeSubmissionEmailPolicy(value: unknown): SubmissionEmailP
       : false,
     subjectTemplate: legacySubject || null,
     bodyTemplate: legacyBody || null,
+    senderName: readSenderName(source.submissionResultEmailSenderName),
     subjectTemplateAfterSave,
     bodyTemplateAfterSave,
     subjectTemplateAfterRelatedPhotosReady,
@@ -422,6 +431,7 @@ export function buildSubmissionEmailInput(
     eventName,
     shareUrl,
     termsUrl: policy.termsUrl,
+    senderName: policy.senderName,
     subjectTemplate,
     bodyTemplate,
   };

@@ -85,6 +85,7 @@ export default function AdminChrome({
         { href: '/admin/frames', label: 'Global Frames', icon: <IconFrame size={18} /> },
         { href: '/admin/logos', label: 'Global Logos', icon: <IconPhoto size={18} /> },
         { href: '/admin/landing-pages', label: 'Landing Pages', icon: <IconWorld size={18} /> },
+        { href: '/admin/slideshows', label: 'Slideshows', icon: <IconPhotoScan size={18} /> },
         { href: '/admin/submissions', label: 'Global Galleries', icon: <IconPhotoScan size={18} /> },
       ]
     : [];

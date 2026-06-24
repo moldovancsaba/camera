@@ -4,6 +4,7 @@ import {
   DEFAULT_EVENT_TERMS_URL,
   DEFAULT_SUBMISSION_EMAIL_BODY,
   DEFAULT_SUBMISSION_EMAIL_SUBJECT,
+  DEFAULT_SUBMISSION_EMAIL_SENDER_NAME,
 } from '@/lib/email/submission-template-defaults';
 
 export interface SubmissionNotificationInput {
@@ -12,6 +13,7 @@ export interface SubmissionNotificationInput {
   eventName?: string | null;
   shareUrl: string;
   termsUrl?: string | null;
+  senderName?: string | null;
   subjectTemplate?: string | null;
   bodyTemplate?: string | null;
 }
@@ -40,14 +42,16 @@ function getEmailApiKey(): string {
   return (process.env.RESEND_API_KEY || process.env.RESEND || process.env.EMAIL_API_KEY || '').trim();
 }
 
-function getEmailFrom(): string {
+function getEmailFrom(senderName?: string | null): string {
   const configuredFrom = (process.env.CAMERA_EMAIL_FROM || '').trim();
   if (!configuredFrom) {
     return '';
   }
 
-  const senderName = (process.env.CAMERA_EMAIL_FROM_NAME || 'MotoGP Leather Magic').trim();
-  const escapedName = senderName.replace(/["\\]/g, (char) => `\\${char}`);
+  const resolvedSenderName =
+    (typeof senderName === 'string' && senderName.trim()) ||
+    DEFAULT_SUBMISSION_EMAIL_SENDER_NAME;
+  const escapedName = resolvedSenderName.replace(/["\\]/g, (char) => `\\${char}`);
 
   if (configuredFrom.includes('<') && configuredFrom.includes('>')) {
     const match = configuredFrom.match(/<\s*([^>]+)\s*>/);
@@ -153,7 +157,7 @@ export async function sendSubmissionResultEmail(
     return { sent: false, skipped: true, reason: 'missing_api_key' };
   }
 
-  const from = getEmailFrom();
+  const from = getEmailFrom(input.senderName);
   if (!from) {
     console.error('[email] Submission result email skipped: missing configured sender address', {
       eventName: input.eventName || null,

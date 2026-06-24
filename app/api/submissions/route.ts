@@ -62,6 +62,7 @@ interface SubmissionEventDocument {
     submissionResultEmailBodyAfterRelatedPhotosReady?: string | null;
     submissionResultEmailSubjectAfterTryOnResubmissionApproved?: string | null;
     submissionResultEmailBodyAfterTryOnResubmissionApproved?: string | null;
+    submissionResultEmailSenderName?: string | null;
   };
   tryOn?: {
     enabled?: boolean;

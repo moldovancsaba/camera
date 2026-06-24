@@ -52,6 +52,7 @@ import {
 import {
   DEFAULT_SUBMISSION_EMAIL_BODY,
   DEFAULT_SUBMISSION_EMAIL_SUBJECT,
+  DEFAULT_SUBMISSION_EMAIL_SENDER_NAME,
   DEFAULT_EVENT_TERMS_URL,
   DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY,
   DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT,
@@ -98,6 +99,7 @@ interface EventRecord {
     submissionResultEmailBodyAfterRelatedPhotosReady?: string | null;
     submissionResultEmailSubjectAfterTryOnResubmissionApproved?: string | null;
     submissionResultEmailBodyAfterTryOnResubmissionApproved?: string | null;
+    submissionResultEmailSenderName?: string | null;
     termsUrl?: string | null;
   };
   visualSettings?: {
@@ -173,6 +175,9 @@ export default function EditEventPage({
     submissionResultEmailBodyAfterTryOnResubmissionApproved,
     setSubmissionResultEmailBodyAfterTryOnResubmissionApproved,
   ] = useState(DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY);
+  const [submissionResultEmailSenderName, setSubmissionResultEmailSenderName] = useState(
+    DEFAULT_SUBMISSION_EMAIL_SENDER_NAME
+  );
   const [termsUrl, setTermsUrl] = useState(DEFAULT_EVENT_TERMS_URL);
   const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
   const [includeOriginalCapture, setIncludeOriginalCapture] = useState(
@@ -298,6 +303,10 @@ export default function EditEventPage({
         setSubmissionResultEmailBodyAfterTryOnResubmissionApproved(
           eventData.notifications?.submissionResultEmailBodyAfterTryOnResubmissionApproved ||
             DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY
+        );
+        setSubmissionResultEmailSenderName(
+          eventData.notifications?.submissionResultEmailSenderName ||
+            DEFAULT_SUBMISSION_EMAIL_SENDER_NAME
         );
         setTermsUrl(eventData.notifications?.termsUrl || DEFAULT_EVENT_TERMS_URL);
         setButtonSize(normalizeEventButtonSize(eventData.visualSettings?.buttonSize));
@@ -513,6 +522,7 @@ export default function EditEventPage({
         submissionResultEmailBodyAfterRelatedPhotosReady,
         submissionResultEmailSubjectAfterTryOnResubmissionApproved,
         submissionResultEmailBodyAfterTryOnResubmissionApproved,
+        submissionResultEmailSenderName,
         termsUrl,
       },
       visualSettings: {
@@ -730,6 +740,13 @@ export default function EditEventPage({
             title="Email module"
             description="Optional email module. It does not add a visible page to the capture flow; it sends after a submission is saved."
           >
+            <TextInput
+              label="Sender display name"
+              value={submissionResultEmailSenderName}
+              onChange={(event) => setSubmissionResultEmailSenderName(event.currentTarget.value)}
+              description="Shown as the display name in the Resend From header."
+              placeholder={DEFAULT_SUBMISSION_EMAIL_SENDER_NAME}
+            />
             <Checkbox
               checked={submissionResultEmailSendAfterSave}
               onChange={(event) => setSubmissionResultEmailSendAfterSave(event.currentTarget.checked)}
