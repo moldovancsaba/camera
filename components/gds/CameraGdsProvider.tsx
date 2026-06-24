@@ -15,7 +15,11 @@ export default function CameraGdsProvider({
   children: React.ReactNode;
 }) {
   return (
-    <GdsProvider defaultColorScheme="light">
+    <GdsProvider
+      defaultColorScheme="light"
+      cssVariablesSelector=":root"
+      applyDocumentColorScheme
+    >
       <GdsTelemetryProvider>
         <GdsNotificationProvider>
           <GdsToastProvider>

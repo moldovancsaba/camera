@@ -1,11 +1,11 @@
 # Camera GDS Adoption
 
-**Version**: 2.12.0  
-**Last Updated**: 2026-06-08
+**Version**: 2.13.0  
+**Last Updated**: 2026-06-24
 
 ## SSOT statement
 
-[sovereignsquad/general-design-system](https://github.com/sovereignsquad/general-design-system) (SSOT docs and published bundle now **v3.4.7**) is the single source of truth for design, UI, and UX across the portfolio.
+[sovereignsquad/general-design-system](https://github.com/sovereignsquad/general-design-system) (SSOT docs and published bundle now **v3.5.0**) is the single source of truth for design, UI, and UX across the portfolio.
 
 This file and other Camera docs describe only **implementation adapters**, migration state, validation commands, and approved exceptions. If a Camera-local UI document conflicts with the GDS repository, **the GDS repository wins**.
 
@@ -25,7 +25,7 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 |---------|----------------|
 | App Router client boundary | `app/providers.tsx` |
 | Theme | package-direct `@doneisbetter/gds-theme/server` default `gdsTheme` |
-| Root provider | `components/gds/CameraGdsProvider.tsx` wrapping `@doneisbetter/gds-theme/client` `GdsProvider` without local theme extension |
+| Root provider | `components/gds/CameraGdsProvider.tsx` wrapping `@doneisbetter/gds-theme/client` `GdsProvider` without local theme extension; v3.5 document color-scheme and root CSS variable selector are enabled |
 | Notifications | Root `GdsNotificationProvider` / `GdsToastProvider` from `@doneisbetter/gds-core/client` plus `showGdsNotification` from `@doneisbetter/gds-theme/client` |
 | Modals / confirm | Root `GdsConfirmProvider` / `OverlayManagerProvider` from `@doneisbetter/gds-core/client`; legacy `lib/gds/confirm-destructive.tsx` remains a migration bridge |
 | Adoption manifest | `gds-adoption.json` |
@@ -55,7 +55,7 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | App shell (admin) | `components/admin/AdminChrome.tsx` | Domain-owned composition over package `AppShell` |
 | Page header / workspace header | `components/admin/WorkspaceHeader.tsx` | Domain-owned composition over package `PageHeader` |
 | Admin list page assembly | `components/admin/AdminListPageShell.tsx` | Domain-owned composition over package admin surfaces |
-| Media preview card | `components/media/MediaPreviewCard.tsx` | Domain-owned composition over package/Core primitives |
+| Media preview card | `components/media/MediaPreviewCard.tsx` | Thin compatibility adapter over package `MediaPreviewCard`; numeric Camera ratios are normalized to approved GDS ratios |
 | Try-On app workspace | `app/admin/tryon/**` composed from local GDS primitives | Active |
 | Auth / public capture shell | `components/capture/CaptureStageShell.tsx`, `components/capture/**`, `app/capture/**` | Active — `PublicFlowShell` for onboarding/share stages plus capture-specific runtime composition |
 | Landing legal pages | `components/public/LandingLegalDocument.tsx`, `app/landing/[slug]/{privacy,terms}/page.tsx` | Active — `ArticleShell` inside package-backed public utility surface |
@@ -110,13 +110,22 @@ Camera exceptions follow the shared structure from [docs/GDS_EXCEPTION_STANDARD.
 | Slideshow player (`components/slideshow/**`, `/slideshow/**`) | Runtime constraint | Timing-sensitive queue orchestration, fullscreen behavior, and media-first presentation | GDS runtime boundary, `PlaybackSurface` framing, surrounding admin configuration surfaces, visible error/empty states, keyboard-safe exit where applicable | Keep narrowing until only timing-sensitive queue, fullscreen behavior, and media internals remain outside direct package ownership |
 ## Published package capability snapshot
 
-Camera is currently pinned to the latest verified published release bundle, `@doneisbetter/*` **3.4.3**.
+Camera is currently pinned to the latest verified published release bundle, `@doneisbetter/*` **3.5.0**.
 
 ### Available now in the published package line
 
 - public/editorial primitives: `PublicShell`, `PublicFlowShell`, `ArticleShell`, `DocsPageShell`, `AuthShell`, `BrowseSurface`, `EditorialHero`, `FeatureBand`, `ConsumerSection`, `ConsumerDashboardGrid`, `MediaField`, `PublicBrandFooter`, `MapPanel`, `PlaybackSurface`
 - admin/ops primitives: `AppShell`, `PageHeader`, `WorkspaceHeader`, `ResponsiveDataView`, `StatsStrip`, `ContentOpsEditor`, `ContentOpsSection`, `ContentOpsActionBar`, `FormSection`, `AdminResourceManager`, `AdminResourceGrid`, `AdminResourceCard`, `AdminDataTable`, `AdminAnalyticsTable`, `AdminReviewLayout`, `AdminModal`, `AdminDetailDrawer`, `AdminCrudForm`, `AdminFormSection`, `AdminFormStatus`, `AdminFormActions`
 - shared state and utility primitives: `EmptyState`, `StateBlock`, `StatusBadge`, `AccessSummary`, `MediaCard`, `MediaPreviewCard`, `ProductCard`, `ActionBar`, `SemanticButton`, `ConfirmDialog`, `GdsConfirmProvider`, `GdsToastProvider`, `GdsNotificationProvider`, `OverlayManagerProvider`, `ReportingSection`, `GdsChart`, `StatsSection`, `PublicCaptureFlow`, `ShareButtonGroup`, `PlaybackControls`, `PlaybackOverlayControls`
+
+### v3.5.0 additions relevant to Camera
+
+- Asset workflow contracts: `GdsAssetManager`, `GdsAssetPreviewCard`, `useGdsAssetUploadQueue`, `createGdsAssetAdapter`, and `validateGdsAsset`.
+- Table/resource workflow contracts: `GdsDataTable`, `useGdsDataTable`, `GdsResourceManager`, and `createGdsResourceAdapter`.
+- Form orchestration contracts: `useGdsFormOrchestration`, `GdsValidationSummary`, `GdsSchemaForm`, and schema conversion helpers.
+- Settings/page templates: `GdsSettingsTemplate`, `GdsAdminDashboardTemplate`, `GdsAnalyticsTemplate`, `GdsCrudEditorTemplate`, and page/layout template helpers.
+- Runtime accessibility and resilience contracts: `GdsAccessGate`, notification audit/live policies, accessibility evidence validation, media fallback/frame primitives, and reduced-motion helpers.
+- Layout and formatting primitives: `GdsStack`, `GdsGrid`, `GdsSplit`, `GdsContainer`, `GdsBox`, localized date/number/currency/plural/relative-time helpers, `SearchableSelect`, `NumberStepper`, and `BottomTabBar`.
 
 ## Core rules
 
@@ -146,7 +155,7 @@ Camera now uses the real `@doneisbetter/*` package line through the temporary su
 Current state:
 
 - Camera runtime: Mantine `8.3.6`, React `19.2.0`
-- Shared `@doneisbetter/*` packages: version `3.4.3`, Mantine `^7.9.0 || ^8.3.0 || ^9.0.0`, React `^18.2.0 || ^19.0.0`
+- Shared `@doneisbetter/*` packages: version `3.5.0`, Mantine `^7.9.0 || ^8.3.0 || ^9.0.0`, React `^18.2.0 || ^19.0.0`
 
 Required rule:
 

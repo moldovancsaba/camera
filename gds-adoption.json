@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "gdsVersion": "3.4.7",
+  "gdsVersion": "3.5.0",
   "productArchetype": "hybrid",
   "supportedEntryPoints": [
     "@doneisbetter/gds-theme/client",
@@ -222,5 +222,5 @@
   },
   "migrationStatus": "direct-consumption-in-progress",
   "owner": "camera-platform",
-  "lastReviewedAt": "2026-06-07"
+  "lastReviewedAt": "2026-06-24"
 }

@@ -1,8 +1,9 @@
 'use client';
 
-import Image from 'next/image';
-import { AspectRatio, Box } from '@/components/gds/PublicPrimitives';
-import { MediaCard as GdsMediaCard } from '@doneisbetter/gds-core/client';
+import {
+  MediaPreviewCard as GdsMediaPreviewCard,
+  type MediaPreviewAspectRatio,
+} from '@doneisbetter/gds-core/client';
 
 interface MediaPreviewCardProps {
   src: string;
@@ -14,6 +15,22 @@ interface MediaPreviewCardProps {
   padding?: number;
 }
 
+function resolveAspectRatio(ratio: number): MediaPreviewAspectRatio {
+  if (Math.abs(ratio - 16 / 9) < 0.01) {
+    return '16:9';
+  }
+
+  if (Math.abs(ratio - 4 / 3) < 0.01) {
+    return '4:3';
+  }
+
+  if (Math.abs(ratio - 3 / 4) < 0.01) {
+    return '3:4';
+  }
+
+  return '1:1';
+}
+
 export default function MediaPreviewCard({
   src,
   alt,
@@ -21,26 +38,19 @@ export default function MediaPreviewCard({
   action,
   ratio = 1,
   fit = 'contain',
-  padding = 24,
 }: MediaPreviewCardProps) {
   return (
-    <GdsMediaCard
-      title={caption || alt}
-      description={caption ? alt : undefined}
-      image={
-        <AspectRatio ratio={ratio}>
-          <Box style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
-            <Image
-              src={src}
-              alt={alt}
-              fill
-              unoptimized
-              style={{ objectFit: fit, padding }}
-            />
-          </Box>
-        </AspectRatio>
-      }
-      overlay={action}
-    />
+    <div style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)' }}>
+      <GdsMediaPreviewCard
+        title={caption || alt}
+        src={src}
+        alt={alt}
+        caption={caption ? alt : undefined}
+        fit={fit}
+        aspectRatio={resolveAspectRatio(ratio)}
+        state="ready"
+      />
+      {action ? <div>{action}</div> : null}
+    </div>
   );
 }
