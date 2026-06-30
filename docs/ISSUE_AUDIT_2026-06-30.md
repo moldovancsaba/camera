@@ -1,0 +1,99 @@
+# GitHub Issue Audit — 2026-06-30
+
+**Repository**: `moldovancsaba/camera`
+**Audited against**: `package.json` v2.14.0, branch `claude/repo-sandbox-issue-audit-le5tsk` (base `main` @ `c0b8b54`)
+**Scope**: 23 open issues (60 closed). Each open issue was cross-referenced against the current code, docs, and `TASKLIST.md`.
+
+> Method: the verdicts below are based on direct inspection of the running code (routes, `lib/`, components, tests), not on issue text alone. `npm ci` and `npm run type-check` both pass clean on this checkout.
+
+---
+
+## 1. Headline finding — the tracker is stale
+
+The board does not reflect the code. `docs/DOCUMENTATION.md` §9 explicitly warns that "a stale tracker snapshot is a known source of process drift" — that is exactly the current state.
+
+- **`TASKLIST.md` already declares the work done.** It records the Try-On lifecycle/analytics/identity batch (**#61–#68**) as "complete on 2026-06-08" and the GDS admin migration (**#70–#75**) as "largely complete on 2026-06-08" — yet all of those issues are still **OPEN** on GitHub.
+- **The code confirms it.** The contracts, routes, components, and scripts those issues ask for exist in the repository today (evidence per-issue below).
+- **Net effect:** of 23 open issues, ~6 are fully implemented, ~8 are substantially implemented (verify-then-close), ~8 are genuinely actionable, and 1 has a premise that has since been invalidated.
+
+**Recommended first action:** reconcile the board before any further planning. Closing/relabeling the already-delivered issues will shrink the "open" backlog from 23 to roughly 8 real items.
+
+---
+
+## 2. Verdict summary
+
+| Verdict | Count | Issues |
+|---|---|---|
+| **CLOSE** — implemented & verified in code | 6 | #61, #64, #65, #66, #67, #81 |
+| **VERIFY & CLOSE** — substantially done, minor spec gap | 8 | #58, #59, #62, #63, #70, #71, #72, #82 |
+| **KEEP OPEN** — genuinely actionable | 8 | #60, #74, #75, #76, #77, #83, #84, #85 |
+| **RECONCILE** — premise changed since filing | 1 | #78 |
+
+Label hygiene across the 23: every issue carries exactly one priority (p0×5, p1×15, p2×3) — good. But **no issue has an assignee or milestone**, and dependency relationships are encoded only as free-text "Depends on #N" lines, not native GitHub sub-issues — making the board hard to sequence mechanically.
+
+---
+
+## 3. Cross-cutting issues (not tied to a single ticket)
+
+1. **CI was removed, which breaks #78's premise and several docs.** Commit `c0b8b54` ("Remove GitHub Actions workflows", 2026-06-29) deleted both `.github/workflows/deploy-production.yml` and `.github/workflows/gds-release-gate.yml`. There is now **no CI** in the repo, but `README.md`, `docs/GDS_RELEASE_GATE.md`, `docs/GDS_CAMERA_ADOPTION.md`, and `docs/DOCUMENTATION.md` still describe the GDS release gate / push-to-deploy workflow as if it runs. The `gds:check` npm script still exists but nothing invokes it automatically. **Reconcile the docs and decide whether the gate moves to a pre-commit/local lane or is restored.**
+2. **GDS version drift across three sources.** `README.md` says GDS **3.4.7**, the GDS issues (#70–#78) were written against **3.4.3** contracts, and `package.json` ships `@doneisbetter/gds-* ^3.5.0` (latest commit: "align camera with GDS 3.5"). Issues authored against 3.4.3 may reference primitives/names that have since moved. Re-validate the GDS epic against the 3.5 contract before resuming it.
+3. **`pnpm` vs `npm` framing.** Issues #58 and #60 specify `pnpm test:e2e:safe`, but the repo's canonical package manager is **npm** (`package-lock.json` present; README states npm is canonical). A `pnpm-workspace.yaml` exists but scripts run under npm. Reframe those issues to npm.
+4. **PII test gap is real.** The v2.14.0 email/image export routes (`/api/admin/events/[id]/export/*`) ship personal data and have **no automated test** (#84) — this is the most material genuinely-open risk on the board.
+
+---
+
+## 4. Per-issue findings
+
+### Cluster A — Try-On rerun / E2E / analytics / identity (#58–#67, filed 2026-06-06)
+`TASKLIST.md` marks #61–#68 complete on 2026-06-08.
+
+| Issue | Verdict | Evidence in code |
+|---|---|---|
+| **#58** Disposable DB guard | VERIFY & CLOSE | `lib/e2e/safety.ts` implements `assertDisposableE2EDatabase()` + `isDisposableE2EDatabaseName()`, wired into `app/api/e2e/bootstrap` & `cleanup`. **Spec gap:** file is `safety.ts` not `lib/e2e/db-guard.ts`; rejects via thrown error/403 not `409`; uses a keyword list (`e2e/test/dev/local/sandbox/staging`) rather than the strict `camera_e2e`/`camera-test` + `ALLOW_E2E_ATLAS_WRITES` override the issue specifies. Core safety intent is met — close, or re-scope to "tighten to exact contract." |
+| **#59** Fixture lifecycle cleanup | VERIFY & CLOSE | `buildE2ERunId()` in `lib/e2e/safety.ts`; `app/api/e2e/cleanup/route.ts` filters by `metadata.e2eRunId` and reports per-collection `deletedCount`. Confirm bootstrap stamps every fixture record, then close. |
+| **#60** Safe one-command runner | **KEEP OPEN** | No `test:e2e:safe` script exists in `package.json` (only `test:e2e` / `test:e2e:headed`). Genuinely undone. Reframe `pnpm` → `npm`. |
+| **#61** Superseded state contract | **CLOSE** | `quality_rerun_superseded` / `supersededByJobId` present in `lib/db/schemas.ts`, `lib/tryon/analytics.ts`, `lib/tryon/moderation-audit.ts`, and `app/api/admin/tryon-jobs/[jobId]/rerun/route.ts`. Backfill script `tryon:backfill-superseded-archive-reason` exists. |
+| **#62** Superseded admin visibility | VERIFY & CLOSE | `components/admin/TryOnResultModerationTable.tsx` + rerun route surface superseded state. Confirm the badge/filter UX matches the ask, then close. |
+| **#63** Rerun HiTL E2E | VERIFY & CLOSE | `tests/e2e/tryon-rerun-lifecycle.spec.ts` (98 lines) + `tryon-policy.spec.ts` exist; `TASKLIST.md` lists them as delivered. Confirm the spec asserts "rerun never auto-approves," then close. |
+| **#64** Identity classification contract | **CLOSE** | `lib/tryon/identity.ts` + `lib/db/schemas.ts` define the classification; operator scripts `tryon:backfill-identity`, `tryon:apply-identity-corrections`, `tryon:report-unrecoverable-identities` exist. |
+| **#65** Identity admin review workflow | **CLOSE** | `app/admin/tryon/identity/page.tsx` + `app/api/admin/tryon-identities/route.ts` & `[submissionId]/route.ts` implement list/correct/mark-unrecoverable. |
+| **#66** Funnel contract | **CLOSE** | Funnel metrics implemented in `lib/tryon/analytics.ts`; export route `app/api/admin/tryon-analytics/export/route.ts`. |
+| **#67** Funnel UI | **CLOSE** | `components/admin/TryOnFunnelChart.tsx` + `app/admin/tryon/analytics/page.tsx`; `tests/e2e/tryon-analytics-smoke.spec.ts` covers it. |
+
+### Cluster B — GDS migration epic (#70–#78, filed 2026-06-07)
+`TASKLIST.md` marks #70–#75 "largely complete on 2026-06-08." Re-validate against GDS **3.5** (issues were written for 3.4.3).
+
+| Issue | Verdict | Evidence in code |
+|---|---|---|
+| **#70** Adapter removal (foundation) | VERIFY & CLOSE | 3 of the 4 named adapters are **gone**: `components/gds/DataTable.tsx`, `ResponsiveDataView.tsx`, `EditorScaffold.tsx` no longer exist. `CameraGdsProvider.tsx` remains (likely intentional as the theme/provider boundary). Confirm the remaining provider is the intended end-state, then close. |
+| **#71** Admin resources → resource manager | VERIFY & CLOSE | Inventory screens migrated: `components/gds/{Events,Frames,Logos,Users,Submissions,Slideshows,Partners,LandingPages,TryOnSuits}InventoryList/View.tsx`. |
+| **#72** Try-on moderation GDS | VERIFY (likely partial) | `TryOnResultModerationTable.tsx` + `components/gds/CameraSemanticButton.tsx` exist. Confirm full vetting/approved/rejected/service/failed coverage before closing. |
+| **#74** Admin forms GDS | **KEEP OPEN** (partial) | Frames editor on `AdminCrudForm` (`app/admin/frames/[id]/edit/page.tsx`). But `TASKLIST.md` "Admin UX follow-through" lists **logos editor `AdminCrudForm` parity still active** — so #74 is not finished. |
+| **#75** Operator feedback centralization | VERIFY | GDS notification primitives exist in `lib/gds`; `useGdsToasts` referenced. Confirm shell-level providers replace all scattered local feedback, then close-or-keep. |
+| **#76** Public surfaces GDS | **KEEP OPEN** (partial) | `components/gds/PublicPrimitives.tsx` + `components/public/*` exist but the full capture/share/recovery/playback primitive adoption is incomplete; `TASKLIST.md` lists #76–#77 as active. |
+| **#77** Media cards GDS | **KEEP OPEN** (partial) | `components/media/MediaPreviewCard.tsx` exists; migration to official GDS card primitives (object-fit contain, no crop) is not confirmed complete. |
+| **#78** Compliance enforcement / CI guardrails / exception register | **RECONCILE** | Premise broken: the CI lane this issue depends on was **deleted** in `c0b8b54`. `scripts/check-gds-boundaries.mjs` + `gds:check` exist but run nothing automatically. Decide the enforcement model (local/pre-commit vs restored CI), update the exception register, and rewrite the issue against that reality + GDS 3.5. Depends on #71/#72/#74/#75/#76/#77 (mostly done). |
+
+### Cluster C — Production crash hardening (#81–#85, filed 2026-06-21)
+
+| Issue | Verdict | Evidence in code |
+|---|---|---|
+| **#81** Authenticated admin smoke test | **CLOSE** | `tests/e2e/admin-smoke.spec.ts` exists and does exactly the ask: dev-login as global admin, renders `/admin`, `/admin/events`, `/admin/events/[id]`, `.../edit`, partners, frames, logos, submissions, users, tryon, landing-pages, `/profile`, asserting the error boundary is absent — with an explicit "RSC component-prop regression guard." Commit `1b50664` references (#81). |
+| **#82** RSC boundary audit | VERIFY & CLOSE (or narrow) | The 3 offending Server Components from #80 are fixed. The only remaining `component={Link}` usages (`app/capture/page.tsx`, `app/error.tsx`, `app/admin/events/new/page.tsx`, `app/admin/events/[id]/edit/page.tsx`) are all in `'use client'` files, where it is **valid**. No Server-Component offenders remain. The runtime guard (#81's smoke test) covers regressions. **Only remaining ask:** a static lint rule banning function props from Server→Client. Narrow the issue to that, or close as covered. |
+| **#83** Observability / alerting | **KEEP OPEN** | No Sentry/structured-log sink found wired to `app/error.tsx` or server catch paths. Genuinely undone; aligns with ROADMAP "Observability and governance." |
+| **#84** Export route tests | **KEEP OPEN** (high value) | No tests cover `/api/admin/events/[id]/export/emails` or `/export/images`. These ship PII (email CSV) and large ZIPs (500-file cap) — untested. **Highest-priority genuinely-open item.** |
+| **#85** Dev-route prod-unreachability test | **KEEP OPEN** | `app/api/auth/dev-login/route.ts` exists; existing specs *use* it to authenticate but none asserts it returns 404 in production with `ALLOW_DANGEROUS_DEV_ROUTES` unset. Genuinely undone; security-relevant. |
+
+---
+
+## 5. Recommended actions, in order
+
+1. **Reconcile the board (cheap, high impact).** Close the 6 verified-done issues (#61, #64, #65, #66, #67, #81) with a comment pointing at the delivering commit/file. Verify-then-close the 8 in the "VERIFY & CLOSE" column.
+2. **Fix the doc/CI contradiction.** Update `README.md` + GDS docs to reflect that GitHub Actions workflows were removed (`c0b8b54`), and rewrite **#78** around the actual enforcement model.
+3. **Normalize the GDS epic to 3.5.** Re-validate #70–#77 against `@doneisbetter/gds-* 3.5.0`; close what's done (#70, #71, likely #72/#75), keep the genuinely-partial ones (#74 logos editor, #76, #77).
+4. **Work the real backlog (~8 items).** Priority order by risk: **#84** (untested PII exports) → **#85** (dev-route prod guard) → **#83** (observability) → **#60** (safe e2e runner) → GDS finish (#74, #76, #77) → **#82** (lint rule).
+5. **Hygiene going forward.** Add milestones, use GitHub native sub-issues for the dependency chains, and close issues in the same change that delivers them (the §9 discipline the docs already mandate).
+
+---
+
+*Generated from a sandbox checkout on 2026-06-30. `npm ci` + `npm run type-check` pass clean. No code was modified; this document is analysis only.*
