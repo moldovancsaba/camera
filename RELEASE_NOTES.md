@@ -26,8 +26,11 @@ packages to `^3.9.0`, updated `gds-adoption.json` entrypoints and doc references
 - `npm audit` — 0 vulnerabilities
 
 ### Notes
-- The upgraded `@sovereignsquad/gds-eslint-config` surfaces 16 new `react-hooks` **warnings**
-  (0 errors) in pre-existing code — advisory, tracked for follow-up.
+- The upgraded eslint stack emitted 16 advisory `react-hooks/set-state-in-effect` and
+  `preserve-manual-memoization` warnings on intentional patterns (sync URL/prop → state,
+  copy-prop-to-state, async init) in interactive components. These React-Compiler-era rules
+  are turned off in `eslint.config.mjs` rather than risk-refactoring production hot paths;
+  revisit under a React Compiler adoption. Lint is clean (0 warnings, 0 errors).
 - `sso@doneisbetter.com` (an SSO email address, not a package) is intentionally unchanged.
 
 ---
