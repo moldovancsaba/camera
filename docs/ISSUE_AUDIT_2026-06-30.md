@@ -14,9 +14,9 @@ The board does not reflect the code. `docs/DOCUMENTATION.md` §9 explicitly warn
 
 - **`TASKLIST.md` already declares the work done.** It records the Try-On lifecycle/analytics/identity batch (**#61–#68**) as "complete on 2026-06-08" and the GDS admin migration (**#70–#75**) as "largely complete on 2026-06-08" — yet all of those issues are still **OPEN** on GitHub.
 - **The code confirms it.** The contracts, routes, components, and scripts those issues ask for exist in the repository today (evidence per-issue below).
-- **Net effect:** of 23 open issues, ~6 are fully implemented, ~8 are substantially implemented (verify-then-close), ~8 are genuinely actionable, and 1 has a premise that has since been invalidated.
+- **Net effect (all verdicts now code-verified):** of 23 open issues, **13 are fully implemented**, 2 meet their intent with only a spec detail differing, **7 are genuinely actionable**, and 1 (#78) has a premise that has since been invalidated.
 
-**Recommended first action:** reconcile the board before any further planning. Closing/relabeling the already-delivered issues will shrink the "open" backlog from 23 to roughly 8 real items.
+**Recommended first action:** reconcile the board before any further planning. Closing the already-delivered issues shrinks the "open" backlog from 23 to roughly 8 real items (7 actionable + the #78 rewrite).
 
 ---
 
@@ -24,10 +24,12 @@ The board does not reflect the code. `docs/DOCUMENTATION.md` §9 explicitly warn
 
 | Verdict | Count | Issues |
 |---|---|---|
-| **CLOSE** — implemented & verified in code | 6 | #61, #64, #65, #66, #67, #81 |
-| **VERIFY & CLOSE** — substantially done, minor spec gap | 8 | #58, #59, #62, #63, #70, #71, #72, #82 |
-| **KEEP OPEN** — genuinely actionable | 8 | #60, #74, #75, #76, #77, #83, #84, #85 |
+| **CLOSE** — implemented & verified in code | 13 | #59, #61, #62, #63, #64, #65, #66, #67, #70, #71, #72, #75¹, #81 |
+| **CLOSE or re-scope** — intent met, spec detail differs | 2 | #58 (guard shape), #82 (only lint rule remains) |
+| **KEEP OPEN** — genuinely actionable | 7 | #60, #74, #76, #77, #83, #84, #85 |
 | **RECONCILE** — premise changed since filing | 1 | #78 |
+
+¹ #75 has one residual: two raw `window.confirm` calls in `components/admin/TryOnQueueTable.tsx:300,313` should move to `GdsConfirmProvider`. Everything else is centralized.
 
 Label hygiene across the 23: every issue carries exactly one priority (p0×5, p1×15, p2×3) — good. But **no issue has an assignee or milestone**, and dependency relationships are encoded only as free-text "Depends on #N" lines, not native GitHub sub-issues — making the board hard to sequence mechanically.
 
@@ -50,11 +52,11 @@ Label hygiene across the 23: every issue carries exactly one priority (p0×5, p1
 | Issue | Verdict | Evidence in code |
 |---|---|---|
 | **#58** Disposable DB guard | VERIFY & CLOSE | `lib/e2e/safety.ts` implements `assertDisposableE2EDatabase()` + `isDisposableE2EDatabaseName()`, wired into `app/api/e2e/bootstrap` & `cleanup`. **Spec gap:** file is `safety.ts` not `lib/e2e/db-guard.ts`; rejects via thrown error/403 not `409`; uses a keyword list (`e2e/test/dev/local/sandbox/staging`) rather than the strict `camera_e2e`/`camera-test` + `ALLOW_E2E_ATLAS_WRITES` override the issue specifies. Core safety intent is met — close, or re-scope to "tighten to exact contract." |
-| **#59** Fixture lifecycle cleanup | VERIFY & CLOSE | `buildE2ERunId()` in `lib/e2e/safety.ts`; `app/api/e2e/cleanup/route.ts` filters by `metadata.e2eRunId` and reports per-collection `deletedCount`. Confirm bootstrap stamps every fixture record, then close. |
+| **#59** Fixture lifecycle cleanup | **CLOSE** | `buildE2ERunId()` in `lib/e2e/safety.ts`; **verified**: `app/api/e2e/bootstrap/route.ts` stamps `metadata.e2eRunId` on every fixture record (partners, events, access, submissions, slideshows, jobs, …) and `cleanup/route.ts` filters by it, reporting per-collection `deletedCount`. |
 | **#60** Safe one-command runner | **KEEP OPEN** | No `test:e2e:safe` script exists in `package.json` (only `test:e2e` / `test:e2e:headed`). Genuinely undone. Reframe `pnpm` → `npm`. |
 | **#61** Superseded state contract | **CLOSE** | `quality_rerun_superseded` / `supersededByJobId` present in `lib/db/schemas.ts`, `lib/tryon/analytics.ts`, `lib/tryon/moderation-audit.ts`, and `app/api/admin/tryon-jobs/[jobId]/rerun/route.ts`. Backfill script `tryon:backfill-superseded-archive-reason` exists. |
-| **#62** Superseded admin visibility | VERIFY & CLOSE | `components/admin/TryOnResultModerationTable.tsx` + rerun route surface superseded state. Confirm the badge/filter UX matches the ask, then close. |
-| **#63** Rerun HiTL E2E | VERIFY & CLOSE | `tests/e2e/tryon-rerun-lifecycle.spec.ts` (98 lines) + `tryon-policy.spec.ts` exist; `TASKLIST.md` lists them as delivered. Confirm the spec asserts "rerun never auto-approves," then close. |
+| **#62** Superseded admin visibility | **CLOSE** | **Verified** in `TryOnResultModerationTable.tsx`: "superseded by rerun" label (`:136-137`), `isSupersededRow()` filter (`:142`), read-only archived state (`:472`), and a "Superseded by rerun job" badge linking `archiveSupersededByJobId` to the queue (`:478-481`, `:1012-1014`). |
+| **#63** Rerun HiTL E2E | **CLOSE** | **Verified** in `tests/e2e/tryon-rerun-lifecycle.spec.ts`: asserts `oldResultArchiveReason === 'quality_rerun_superseded'` (`:55`) and the new result has `reviewStatus === 'pending_review'` (`:84`) — i.e. rerun never auto-approves — plus approved-list checks (`:92`). |
 | **#64** Identity classification contract | **CLOSE** | `lib/tryon/identity.ts` + `lib/db/schemas.ts` define the classification; operator scripts `tryon:backfill-identity`, `tryon:apply-identity-corrections`, `tryon:report-unrecoverable-identities` exist. |
 | **#65** Identity admin review workflow | **CLOSE** | `app/admin/tryon/identity/page.tsx` + `app/api/admin/tryon-identities/route.ts` & `[submissionId]/route.ts` implement list/correct/mark-unrecoverable. |
 | **#66** Funnel contract | **CLOSE** | Funnel metrics implemented in `lib/tryon/analytics.ts`; export route `app/api/admin/tryon-analytics/export/route.ts`. |
@@ -65,11 +67,11 @@ Label hygiene across the 23: every issue carries exactly one priority (p0×5, p1
 
 | Issue | Verdict | Evidence in code |
 |---|---|---|
-| **#70** Adapter removal (foundation) | VERIFY & CLOSE | 3 of the 4 named adapters are **gone**: `components/gds/DataTable.tsx`, `ResponsiveDataView.tsx`, `EditorScaffold.tsx` no longer exist. `CameraGdsProvider.tsx` remains (likely intentional as the theme/provider boundary). Confirm the remaining provider is the intended end-state, then close. |
-| **#71** Admin resources → resource manager | VERIFY & CLOSE | Inventory screens migrated: `components/gds/{Events,Frames,Logos,Users,Submissions,Slideshows,Partners,LandingPages,TryOnSuits}InventoryList/View.tsx`. |
-| **#72** Try-on moderation GDS | VERIFY (likely partial) | `TryOnResultModerationTable.tsx` + `components/gds/CameraSemanticButton.tsx` exist. Confirm full vetting/approved/rejected/service/failed coverage before closing. |
+| **#70** Adapter removal (foundation) | **CLOSE** | 3 of the 4 named adapters are **gone**: `components/gds/DataTable.tsx`, `ResponsiveDataView.tsx`, `EditorScaffold.tsx` no longer exist. **Verified**: the remaining `CameraGdsProvider.tsx` is a thin composition of official packages — `GdsProvider` (`@doneisbetter/gds-theme`) wrapping `GdsTelemetry/Notification/Toast/OverlayManager/Confirm` providers — i.e. the intended provider boundary, not a bespoke adapter. |
+| **#71** Admin resources → resource manager | **CLOSE** | Inventory screens migrated: `components/gds/{Events,Frames,Logos,Users,Submissions,Slideshows,Partners,LandingPages,TryOnSuits}InventoryList/View.tsx`. |
+| **#72** Try-on moderation GDS | **CLOSE** | **Verified**: `TryOnResultModerationTable.tsx` carries 11 `CameraSemanticButton`/`useGdsToasts`/`useGdsConfirm` call sites; semantic actions/toasts also in `TryOnQueueTable.tsx`, tryon suits pages, and the wider admin action components. HiTL rule proven by #63's spec. (Two legacy `window.confirm`s remain in `TryOnQueueTable.tsx` — tracked under #75's residual.) |
 | **#74** Admin forms GDS | **KEEP OPEN** (partial) | Frames editor on `AdminCrudForm` (`app/admin/frames/[id]/edit/page.tsx`). But `TASKLIST.md` "Admin UX follow-through" lists **logos editor `AdminCrudForm` parity still active** — so #74 is not finished. |
-| **#75** Operator feedback centralization | VERIFY | GDS notification primitives exist in `lib/gds`; `useGdsToasts` referenced. Confirm shell-level providers replace all scattered local feedback, then close-or-keep. |
+| **#75** Operator feedback centralization | **CLOSE** (1 residual) | **Verified**: `CameraGdsProvider.tsx` mounts exactly the providers the issue asks for — `GdsNotificationProvider`, `GdsToastProvider`, `OverlayManagerProvider`, `GdsConfirmProvider` — at the shell. No direct `@mantine/notifications`/`@mantine/modals` usage outside the GDS layer (only the required CSS import in `app/layout.tsx`). **Residual**: two raw `window.confirm` calls in `components/admin/TryOnQueueTable.tsx:300,313` should move to `useGdsConfirm`. Close and fold the residual into a small follow-up. |
 | **#76** Public surfaces GDS | **KEEP OPEN** (partial) | `components/gds/PublicPrimitives.tsx` + `components/public/*` exist but the full capture/share/recovery/playback primitive adoption is incomplete; `TASKLIST.md` lists #76–#77 as active. |
 | **#77** Media cards GDS | **KEEP OPEN** (partial) | `components/media/MediaPreviewCard.tsx` exists; migration to official GDS card primitives (object-fit contain, no crop) is not confirmed complete. |
 | **#78** Compliance enforcement / CI guardrails / exception register | **RECONCILE** | Premise broken: the CI lane this issue depends on was **deleted** in `c0b8b54`. `scripts/check-gds-boundaries.mjs` + `gds:check` exist but run nothing automatically. Decide the enforcement model (local/pre-commit vs restored CI), update the exception register, and rewrite the issue against that reality + GDS 3.5. Depends on #71/#72/#74/#75/#76/#77 (mostly done). |
@@ -88,9 +90,9 @@ Label hygiene across the 23: every issue carries exactly one priority (p0×5, p1
 
 ## 5. Recommended actions, in order
 
-1. **Reconcile the board (cheap, high impact).** Close the 6 verified-done issues (#61, #64, #65, #66, #67, #81) with a comment pointing at the delivering commit/file. Verify-then-close the 8 in the "VERIFY & CLOSE" column.
+1. **Reconcile the board (cheap, high impact).** Close the 13 verified-done issues (#59, #61, #62, #63, #64, #65, #66, #67, #70, #71, #72, #75, #81) with a comment pointing at the delivering commit/file. Close-or-re-scope #58 (guard shape differs from spec) and #82 (only the lint rule remains).
 2. **Fix the doc/CI contradiction.** Update `README.md` + GDS docs to reflect that GitHub Actions workflows were removed (`c0b8b54`), and rewrite **#78** around the actual enforcement model.
-3. **Normalize the GDS epic to 3.5.** Re-validate #70–#77 against `@doneisbetter/gds-* 3.5.0`; close what's done (#70, #71, likely #72/#75), keep the genuinely-partial ones (#74 logos editor, #76, #77).
+3. **Normalize the GDS epic to 3.5.** #70, #71, #72, #75 verified done — close them; keep the genuinely-partial ones (#74 logos editor, #76, #77) and re-validate their primitive names against `@doneisbetter/gds-* 3.5.0` before resuming.
 4. **Work the real backlog (~8 items).** Priority order by risk: **#84** (untested PII exports) → **#85** (dev-route prod guard) → **#83** (observability) → **#60** (safe e2e runner) → GDS finish (#74, #76, #77) → **#82** (lint rule).
 5. **Hygiene going forward.** Add milestones, use GitHub native sub-issues for the dependency chains, and close issues in the same change that delivers them (the §9 discipline the docs already mandate).
 
