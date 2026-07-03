@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { defineConfig, globalIgnores } from "eslint/config";
-import { createGdsConfig, resolveAllowedImports } from "@doneisbetter/gds-eslint-config";
+import { createGdsConfig, resolveAllowedImports } from "@sovereignsquad/gds-eslint-config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 

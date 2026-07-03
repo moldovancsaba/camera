@@ -10,7 +10,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { InlineAlert, StateBlock } from '@doneisbetter/gds-core/client';
+import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import EventGalleryUpload from './EventGalleryUpload';
 
 interface SlideshowPlayInfo {

@@ -4,8 +4,8 @@ import React, { useMemo, useRef, useState, type ChangeEvent, type ReactNode } fr
 import Link from 'next/link';
 import { Anchor, Breadcrumbs, Button, Card, Checkbox, ColorField, Field, Group, Image, NumberInput, Radio, Select, SimpleGrid, Stack, Text, TextInput } from '@/components/gds/PublicPrimitives';
 import { useRouter } from 'next/navigation';
-import { InlineAlert } from '@doneisbetter/gds-core/client';
-import { FormSection } from '@doneisbetter/gds-admin/client';
+import { InlineAlert } from '@sovereignsquad/gds-core/client';
+import { FormSection } from '@sovereignsquad/gds-admin/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import {
   SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,

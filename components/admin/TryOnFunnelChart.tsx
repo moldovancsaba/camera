@@ -1,6 +1,6 @@
 'use client';
 
-import { ReportingSection } from '@doneisbetter/gds-core/client';
+import { ReportingSection } from '@sovereignsquad/gds-core/client';
 import type { TryOnFunnelMetrics } from '@/lib/tryon/analytics';
 
 function pct(value: number, base: number): string {

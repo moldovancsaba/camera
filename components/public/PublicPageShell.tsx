@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Box } from '@/components/gds/PublicPrimitives';
-import { PublicShell as GdsPublicShell, SectionPanel } from '@doneisbetter/gds-core/client';
+import { PublicShell as GdsPublicShell, SectionPanel } from '@sovereignsquad/gds-core/client';
 
 export interface PublicPageShellProps {
   children: React.ReactNode;

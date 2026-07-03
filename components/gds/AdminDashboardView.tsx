@@ -1,7 +1,7 @@
 'use client';
 
-import { ConsumerDashboardGrid, ProductCard } from '@doneisbetter/gds-core/client';
-import { StatsStrip } from '@doneisbetter/gds-admin/client';
+import { ConsumerDashboardGrid, ProductCard } from '@sovereignsquad/gds-core/client';
+import { StatsStrip } from '@sovereignsquad/gds-admin/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';

@@ -7,7 +7,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { InlineAlert, LabelTag } from '@doneisbetter/gds-core/client';
+import { InlineAlert, LabelTag } from '@sovereignsquad/gds-core/client';
 
 interface Props {
   eventMongoId: string;

@@ -5,11 +5,11 @@ import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Anchor, Breadcrumbs, Button, Card, Checkbox, Field, Group, Radio, Select, SimpleGrid, Stack, Text, Textarea, TextInput } from '@/components/gds/PublicPrimitives';
 import { useRouter } from 'next/navigation';
-import { InlineAlert, UploadDropzone } from '@doneisbetter/gds-core/client';
+import { InlineAlert, UploadDropzone } from '@sovereignsquad/gds-core/client';
 import type { LandingPageEditorActionPreset } from '@/lib/admin/build-landing-page-editor-props';
 import type { LandingPageCssPresetOption } from '@/lib/landing-page-css-presets';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
-import { FormSection } from '@doneisbetter/gds-admin/client';
+import { FormSection } from '@sovereignsquad/gds-admin/client';
 import MediaCard from '@/components/media/MediaPreviewCard';
 
 interface TargetOption {

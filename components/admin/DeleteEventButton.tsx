@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SemanticButton, useGdsConfirm, useGdsToasts } from '@doneisbetter/gds-core/client';
+import { SemanticButton, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
 
 interface DeleteEventButtonProps {
   eventId: string;

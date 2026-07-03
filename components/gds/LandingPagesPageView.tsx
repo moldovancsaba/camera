@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { StatusBadge } from '@doneisbetter/gds-core/client';
+import { StatusBadge } from '@sovereignsquad/gds-core/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
@@ -10,7 +10,7 @@ import {
   AdminResourceManager,
   type AdminResourceAction,
   type AdminResourceRecord,
-} from '@doneisbetter/gds-admin/client';
+} from '@sovereignsquad/gds-admin/client';
 import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface SerializedLandingPageRow {

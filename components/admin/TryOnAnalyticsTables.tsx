@@ -1,6 +1,6 @@
 'use client';
 
-import { AdminAnalyticsTable } from '@doneisbetter/gds-admin/client';
+import { AdminAnalyticsTable } from '@sovereignsquad/gds-admin/client';
 import type {
   TryOnAnalyticsRow,
   TryOnPresetPerformanceRow,

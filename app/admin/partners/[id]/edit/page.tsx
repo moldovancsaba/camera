@@ -11,8 +11,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
-import { FormSection } from '@doneisbetter/gds-admin/client';
-import { InlineAlert, StateBlock } from '@doneisbetter/gds-core/client';
+import { FormSection } from '@sovereignsquad/gds-admin/client';
+import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,

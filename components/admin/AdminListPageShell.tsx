@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { StatsStrip } from '@doneisbetter/gds-admin/client';
+import { StatsStrip } from '@sovereignsquad/gds-admin/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
-import { DataToolbar as GdsDataToolbar } from '@doneisbetter/gds-core/client';
+import { DataToolbar as GdsDataToolbar } from '@sovereignsquad/gds-core/client';
 import { AdminIcon } from '@/lib/gds/admin-icon-key';
 import type { AdminIconKey } from '@/lib/gds/admin-icon-key';
 import type { CameraStatItem } from '@/lib/gds/presentation';

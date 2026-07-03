@@ -1,6 +1,6 @@
 # Tech Stack
 
-**Version**: 2.14.0  
+**Version**: 2.15.0  
 **Last Updated**: 2026-06-21
 
 This document records the current technical stack in use and the parts of the product each technology supports.

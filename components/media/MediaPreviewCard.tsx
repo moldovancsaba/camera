@@ -3,7 +3,7 @@
 import {
   MediaPreviewCard as GdsMediaPreviewCard,
   type MediaPreviewAspectRatio,
-} from '@doneisbetter/gds-core/client';
+} from '@sovereignsquad/gds-core/client';
 
 interface MediaPreviewCardProps {
   src: string;

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { PageHeader as GdsPageHeader } from '@doneisbetter/gds-admin/client';
+import { PageHeader as GdsPageHeader } from '@sovereignsquad/gds-admin/client';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 
 interface WorkspaceHeaderProps {

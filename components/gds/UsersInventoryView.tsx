@@ -5,8 +5,8 @@ import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import AuthorizationMatrix from '@/components/admin/AuthorizationMatrix';
 import UserManagementActions from '@/components/admin/UserManagementActions';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
-import { AdminDataTable } from '@doneisbetter/gds-admin/client';
-import { StateBlock, StatusBadge } from '@doneisbetter/gds-core/client';
+import { AdminDataTable } from '@sovereignsquad/gds-admin/client';
+import { StateBlock, StatusBadge } from '@sovereignsquad/gds-core/client';
 import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface SerializedAdminUserRow {

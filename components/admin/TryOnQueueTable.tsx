@@ -4,8 +4,8 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DataTable } from '@doneisbetter/gds-admin/client';
-import { StatusBadge, StateBlock } from '@doneisbetter/gds-core/client';
+import { DataTable } from '@sovereignsquad/gds-admin/client';
+import { StatusBadge, StateBlock } from '@sovereignsquad/gds-core/client';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
 

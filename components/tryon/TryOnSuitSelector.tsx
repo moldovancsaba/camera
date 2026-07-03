@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import MediaCard from '@/components/media/MediaPreviewCard';
-import { StateBlock } from '@doneisbetter/gds-core/client';
+import { StateBlock } from '@sovereignsquad/gds-core/client';
 import { Alert, Button, Group, Select, Stack, Text } from '@/components/gds/PublicPrimitives';
 
 interface TryOnSuitOption {

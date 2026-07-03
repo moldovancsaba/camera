@@ -4,7 +4,7 @@
  * Google / Facebook entry points — same SSO OAuth flow as Amanoba (`provider` on authorize URL).
  */
 
-import { SocialAuthButtons } from '@doneisbetter/gds-core/client';
+import { SocialAuthButtons } from '@sovereignsquad/gds-core/client';
 
 import { socialLoginHref, type SocialLoginProvider } from '@/lib/auth/social-login';
 

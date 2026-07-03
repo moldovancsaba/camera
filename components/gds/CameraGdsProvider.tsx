@@ -6,8 +6,8 @@ import {
   GdsTelemetryProvider,
   GdsToastProvider,
   OverlayManagerProvider,
-} from '@doneisbetter/gds-core/client';
-import { GdsProvider } from '@doneisbetter/gds-theme/client';
+} from '@sovereignsquad/gds-core/client';
+import { GdsProvider } from '@sovereignsquad/gds-theme/client';
 
 export default function CameraGdsProvider({
   children,

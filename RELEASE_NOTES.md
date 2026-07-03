@@ -1,12 +1,34 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.14.0
+**Current Version**: 2.15.0
 **Last Updated**: 2026-06-21
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
+
+---
+
+## [v2.15.0] — 2026-06-21
+
+**Type**: Minor — design-system migration
+
+### Summary
+Migrated the General Design System from the `@doneisbetter/*` scope (v3.5.0) to
+`@sovereignsquad/*` (v3.9.0). Mechanical scope rename per the upstream guide — no API
+changes. Rewrote all `@doneisbetter/gds*` imports to `@sovereignsquad/`, bumped the five GDS
+packages to `^3.9.0`, updated `gds-adoption.json` entrypoints and doc references, clean reinstall.
+
+### Verification
+- `npm run gds:check` — compliance + boundary pass
+- `npm run type-check` — 0 errors · `npm run build` — clean · `npm run test:e2e` — 15/15 pass
+- `npm audit` — 0 vulnerabilities
+
+### Notes
+- The upgraded `@sovereignsquad/gds-eslint-config` surfaces 16 new `react-hooks` **warnings**
+  (0 errors) in pre-existing code — advisory, tracked for follow-up.
+- `sso@doneisbetter.com` (an SSO email address, not a package) is intentionally unchanged.
 
 ---
 
@@ -134,7 +156,7 @@ Reliability hardening session. All 12 Playwright E2E tests pass. Production buil
 - **Database Performance Offloading**: Replaced in-memory JavaScript loops and raw collection loading in `collectCrossEventUserAnalytics` and `collectEventSpecificStats` with highly optimized MongoDB aggregation pipelines using `$facet` and project expressions, improving page rendering speeds from seconds to milliseconds.
 - **Event Engagement Analytics Card**: Added a dedicated **📊 Event Engagement & Statistics** card on the event detail page (`app/admin/events/[id]/page.tsx`) showing live counts of total images, AI try-ons, original framed captures, unique email addresses, and clean customer emails.
 - **StatsStrip Integration**: Updated the event detail page header `StatsStrip` to display real-time, non-limited values.
-- **GDS Upgrade**: Upgraded `@doneisbetter/gds-*` packages to the stable `3.4.7` release.
+- **GDS Upgrade**: Upgraded `@sovereignsquad/gds-*` packages to the stable `3.4.7` release.
 - **Mobile Navigation Auto-Collapse**: Added a React `useEffect` pathname change listener in `AdminChrome.tsx` to programmatically collapse the mobile navigation drawer when navigations occur.
 
 ### Fix — Admin inventory stats now use database totals

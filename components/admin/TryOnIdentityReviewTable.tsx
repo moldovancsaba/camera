@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Group, Stack, Text, TextInput } from '@/components/gds/PublicPrimitives';
-import { ResponsiveDataView } from '@doneisbetter/gds-admin/client';
-import { StatusBadge } from '@doneisbetter/gds-core/client';
+import { ResponsiveDataView } from '@sovereignsquad/gds-admin/client';
+import { StatusBadge } from '@sovereignsquad/gds-core/client';
 import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface IdentityReviewRow {

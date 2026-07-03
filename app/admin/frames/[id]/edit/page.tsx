@@ -18,8 +18,8 @@ import {
   AdminTextInput,
   AdminTextarea,
   FormSection,
-} from '@doneisbetter/gds-admin/client';
-import { InlineAlert, StateBlock, useGdsConfirm, useGdsToasts } from '@doneisbetter/gds-core/client';
+} from '@sovereignsquad/gds-admin/client';
+import { InlineAlert, StateBlock, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
 
 interface FrameRecord {
   _id: string;

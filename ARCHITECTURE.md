@@ -1,6 +1,6 @@
 # Architecture
 
-**Version**: 2.14.0  
+**Version**: 2.15.0  
 **Last Updated**: 2026-06-21
 
 This document describes the current production architecture of Camera as implemented in the repository today.

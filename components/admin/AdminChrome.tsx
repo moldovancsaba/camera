@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { AppShell as GdsAppShell } from '@doneisbetter/gds-admin/client';
+import { AppShell as GdsAppShell } from '@sovereignsquad/gds-admin/client';
 import {
   IconBrandDatabricks,
   IconBuildingStore,

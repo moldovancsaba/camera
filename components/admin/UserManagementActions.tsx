@@ -6,7 +6,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
  */
 
 import { useState } from 'react';
-import { InlineAlert } from '@doneisbetter/gds-core/client';
+import { InlineAlert } from '@sovereignsquad/gds-core/client';
 
 interface UserManagementActionsProps {
   user: {

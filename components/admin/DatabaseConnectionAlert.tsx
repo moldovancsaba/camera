@@ -1,6 +1,6 @@
 'use client';
 
-import { InlineAlert } from '@doneisbetter/gds-core/client';
+import { InlineAlert } from '@sovereignsquad/gds-core/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 
 export default function DatabaseConnectionAlert({ diagnosis }: { diagnosis: MongoConnectionDiagnosis }) {

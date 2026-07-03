@@ -6,7 +6,7 @@
 
 This document defines the required release gate for Camera changes that touch UI, admin workflows, public flows, or GDS package boundaries.
 
-Camera uses the Sovereign Squad General Design System through the published `@doneisbetter/*` package line. The machine-readable contract is [gds-adoption.json](/Users/Shared/Projects/camera/gds-adoption.json).
+Camera uses the Sovereign Squad General Design System through the published `@sovereignsquad/*` package line. The machine-readable contract is [gds-adoption.json](/Users/Shared/Projects/camera/gds-adoption.json).
 
 ## Package Manager
 
