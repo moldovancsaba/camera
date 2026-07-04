@@ -1,4 +1,5 @@
-// Reset all playCount values to 0 for testing
+// LEGACY testing utility. Hardcodes db 'camera' and predates the MONGODB_DB
+// convention — review before running against Atlas.
 import { MongoClient } from 'mongodb';
 
 const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';

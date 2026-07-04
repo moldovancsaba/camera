@@ -1,5 +1,7 @@
 # GDS 3.4.3 GitHub Board Handover
 
+> **Historical document** (GDS 3.4.3 era). Camera now targets the 3.5 package line — see [ISSUE_AUDIT_2026-06-30.md](ISSUE_AUDIT_2026-06-30.md). Kept for tracker history; do not treat as current runtime truth.
+
 **Last updated**: 2026-06-07 15:56 CEST  
 **Repository**: `moldovancsaba/camera`  
 **Project board**: `moldovancsaba` Project `#24`, `{camera} - From IDEA to LIVE`  

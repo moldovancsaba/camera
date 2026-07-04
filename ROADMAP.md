@@ -1,11 +1,18 @@
 # Roadmap
 
-**Version Context**: 2.14.0  
-**Last Updated**: 2026-06-21
+**Version Context**: 2.15.0  
+**Last Updated**: 2026-07-04
 
 This file is forward-looking only. Gym / Workout / FunFitFan surfaces were removed from the codebase in 2026-05; items below reflect the Events-only platform unless noted.
 
 ## Near-term priorities
+
+### 0. Tracker, observability, and release-gate decisions (v2.15.0 carry-over)
+
+- reconcile the GitHub board against `docs/ISSUE_AUDIT_2026-06-30.md` (13 delivered issues still open)
+- decide the error-observability sink (Sentry vs. structured Vercel logging) and wire `app/error.tsx` + server catch paths (#83)
+- decide whether to restore GitHub Actions or formalize the local release gate (#78; workflows removed in `c0b8b54`)
+- finish the GDS UI migrations: logos editor parity (#74), public surfaces (#76), media cards (#77)
 
 ### 1. Complete partner-scoped authorization rollout
 

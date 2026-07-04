@@ -233,4 +233,4 @@ Camera currently uses this standard for:
 - creator-authored landing-page CSS
 - slideshow playback
 
-See [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_CAMERA_ADOPTION.md) and [gds-adoption.json](/Users/Shared/Projects/venturecogroup/camera/gds-adoption.json).
+See [docs/GDS_CAMERA_ADOPTION.md](GDS_CAMERA_ADOPTION.md) and [gds-adoption.json](../gds-adoption.json).

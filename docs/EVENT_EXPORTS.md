@@ -1,7 +1,7 @@
 # Event Data Exports — Low-Level Design
 
-**Version**: 2.14.0
-**Last Updated**: 2026-06-21
+**Version**: 2.15.0
+**Last Updated**: 2026-07-04
 
 Manager-gated exports of the data collected for a single event, surfaced on the event
 detail page (`/admin/events/[id]`).
@@ -64,3 +64,7 @@ last_submitted_at`. Filename: `event-<slug>-emails-<date>.csv`.
 
 See [MONGODB_CONVENTIONS.md](./MONGODB_CONVENTIONS.md) and the `Submission` interface in
 `lib/db/schemas.ts`.
+
+## Test coverage
+
+`tests/e2e/event-exports.spec.ts` (added v2.15.0) covers the access matrix (401 unauthenticated, 403 viewer, 403 unassigned, 404 missing event, global-admin allow), email-CSV deduplication, the image-CSV column contract, and the ZIP-on-empty-event 400. Run via `npm run test:e2e:safe`.

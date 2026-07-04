@@ -1,4 +1,5 @@
-// MongoDB Migration Script
+// LEGACY one-off migration utility (eventId -> eventIds). Hardcodes db 'camera'
+// and predates the MONGODB_DB convention — review before running against Atlas.
 import { MongoClient } from 'mongodb';
 
 async function migrate() {

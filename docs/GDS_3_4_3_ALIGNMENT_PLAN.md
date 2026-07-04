@@ -1,5 +1,7 @@
 # Camera GDS 3.4.3 Alignment Plan
 
+> **Historical document** (GDS 3.4.3 era). Camera now targets the 3.5 package line — see [GDS_3_5_ADOPTION_PLAN.md](GDS_3_5_ADOPTION_PLAN.md). Kept for tracker history; do not treat as current runtime truth.
+
 **Last updated**: 2026-06-07
 
 ## Objective

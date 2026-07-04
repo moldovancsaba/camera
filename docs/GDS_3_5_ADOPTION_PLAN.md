@@ -9,9 +9,9 @@ Move Camera from GDS 3.4.x package consumption to the published `@doneisbetter/*
 ## Implemented in this adoption pass
 
 - Upgraded `@doneisbetter/gds-admin`, `@doneisbetter/gds-core`, `@doneisbetter/gds-theme`, `@doneisbetter/gds-compliance`, and `@doneisbetter/gds-eslint-config` to `3.5.0`.
-- Updated [gds-adoption.json](/Users/Shared/Projects/camera/gds-adoption.json) to declare GDS `3.5.0` and the current review date.
-- Enabled the GDS 3.5 root provider options in [CameraGdsProvider.tsx](/Users/Shared/Projects/camera/components/gds/CameraGdsProvider.tsx): document color-scheme application and root CSS variable targeting.
-- Replaced the local media preview image/layout composition in [MediaPreviewCard.tsx](/Users/Shared/Projects/camera/components/media/MediaPreviewCard.tsx) with the package `MediaPreviewCard` primitive.
+- Updated [gds-adoption.json](../gds-adoption.json) to declare GDS `3.5.0` and the current review date.
+- Enabled the GDS 3.5 root provider options in [CameraGdsProvider.tsx](../components/gds/CameraGdsProvider.tsx): document color-scheme application and root CSS variable targeting.
+- Replaced the local media preview image/layout composition in [MediaPreviewCard.tsx](../components/media/MediaPreviewCard.tsx) with the package `MediaPreviewCard` primitive.
 - Preserved the Camera-facing media preview adapter API so existing upload, editor, and catalog pages continue to compile without page-by-page rewrites.
 
 ## New 3.5 capabilities to adopt next
@@ -33,7 +33,7 @@ Implementation:
 - Add a Camera adapter using `createGdsAssetAdapter` for existing asset upload endpoints.
 - Use `validateGdsAsset` for MIME, size, alt-text, caption, and display-mode policy before upload.
 - Use `GdsAssetPreviewCard` where no custom action overlay is required.
-- Keep [MediaPreviewCard.tsx](/Users/Shared/Projects/camera/components/media/MediaPreviewCard.tsx) only for legacy action overlay compatibility until GDS exposes equivalent action behavior.
+- Keep [MediaPreviewCard.tsx](../components/media/MediaPreviewCard.tsx) only for legacy action overlay compatibility until GDS exposes equivalent action behavior.
 
 Operational behavior:
 

@@ -1,7 +1,7 @@
 # Authorization Guide
 
-**Version**: 2.12.0  
-**Last Updated**: 2026-06-08
+**Version**: 2.15.0  
+**Last Updated**: 2026-07-04
 
 This is the current authorization model for Camera.
 
@@ -191,7 +191,7 @@ For partner-scoped checks, compose them with:
 
 Those live in:
 
-- [lib/partners/authorization.ts](/Users/Shared/Projects/venturecogroup/camera/lib/partners/authorization.ts)
+- [lib/partners/authorization.ts](../lib/partners/authorization.ts)
 
 ### Why not use `@/lib/auth/session` `requireAdmin` in APIs
 
@@ -224,12 +224,12 @@ Resolve the event, then resolve partner-scoped authorization from the event’s 
 
 ## 11. Files to check when changing authorization
 
-- [proxy.ts](/Users/Shared/Projects/venturecogroup/camera/proxy.ts)
-- [app/admin/layout.tsx](/Users/Shared/Projects/venturecogroup/camera/app/admin/layout.tsx)
-- [lib/auth/middleware-session-gate.ts](/Users/Shared/Projects/venturecogroup/camera/lib/auth/middleware-session-gate.ts)
-- [lib/api/middleware.ts](/Users/Shared/Projects/venturecogroup/camera/lib/api/middleware.ts)
-- [lib/partners/access.ts](/Users/Shared/Projects/venturecogroup/camera/lib/partners/access.ts)
-- [lib/partners/authorization.ts](/Users/Shared/Projects/venturecogroup/camera/lib/partners/authorization.ts)
+- [proxy.ts](../proxy.ts)
+- [app/admin/layout.tsx](../app/admin/layout.tsx)
+- [lib/auth/middleware-session-gate.ts](../lib/auth/middleware-session-gate.ts)
+- [lib/api/middleware.ts](../lib/api/middleware.ts)
+- [lib/partners/access.ts](../lib/partners/access.ts)
+- [lib/partners/authorization.ts](../lib/partners/authorization.ts)
 
 ## 12. Review checklist
 

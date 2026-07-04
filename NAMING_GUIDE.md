@@ -102,6 +102,6 @@ Do not use ambiguous names like `role` by itself when both SSO and partner-scope
 
 ## Canonical references
 
-- [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_CONVENTIONS.md)
-- [docs/AUTHORIZATION.md](/Users/Shared/Projects/venturecogroup/camera/docs/AUTHORIZATION.md)
-- [ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/ARCHITECTURE.md)
+- [docs/MONGODB_CONVENTIONS.md](docs/MONGODB_CONVENTIONS.md)
+- [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)

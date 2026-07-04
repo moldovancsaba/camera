@@ -1,5 +1,8 @@
 # LEARNINGS.md
 
+> **Historical document.** Not canonical runtime documentation — see `README.md`, `ARCHITECTURE.md`, and `docs/*` for current behavior.
+
+
 **Project**: Camera — Photo Frame Webapp
 **Current Version**: 2.0.1
 **Last Updated**: 2025-11-08T17:53:00.000Z

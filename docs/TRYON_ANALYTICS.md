@@ -1,7 +1,7 @@
 # Try-On analytics and data operations
 
-**Version**: 2.12.0  
-**Last Updated**: 2026-06-08
+**Version**: 2.15.0  
+**Last Updated**: 2026-07-04
 
 ## Scope
 
@@ -80,15 +80,15 @@ CSV format defaults to all sections unless `section` is set. JSON responses also
 - Use the unrecoverable identity report when guest/placeholder identity remains visible:
 
 ```bash
-pnpm tryon:report-unrecoverable-identities
-pnpm tryon:report-unrecoverable-identities:csv
+npm run tryon:report-unrecoverable-identities
+npm run tryon:report-unrecoverable-identities:csv
 ```
 
 - Run recurring integrity audits:
 
 ```bash
-pnpm tryon:audit-data-integrity
-pnpm tryon:audit-data-integrity:strict
+npm run tryon:audit-data-integrity
+npm run tryon:audit-data-integrity:strict
 ```
 
 The strict variant exits non-zero on unresolved garment references, identity gaps, missing done result links, or moderation consistency issues.

@@ -1,18 +1,20 @@
 # Camera GDS Release Gate
 
-**Last Updated**: 2026-06-07
+> **Status (2026-07-04)**: the GitHub Actions workflow that ran this gate was removed in commit `c0b8b54`. The command sequence below remains the canonical release validation, currently executed locally/manually before release. Restoring an automated lane is tracked in GitHub issue #78.
+
+**Last Updated**: 2026-07-04
 
 ## Purpose
 
 This document defines the required release gate for Camera changes that touch UI, admin workflows, public flows, or GDS package boundaries.
 
-Camera uses the Sovereign Squad General Design System through the published `@doneisbetter/*` package line. The machine-readable contract is [gds-adoption.json](/Users/Shared/Projects/camera/gds-adoption.json).
+Camera uses the Sovereign Squad General Design System through the published `@doneisbetter/*` package line. The machine-readable contract is [gds-adoption.json](../gds-adoption.json).
 
 ## Package Manager
 
 `npm` is the canonical release and CI package manager for Camera because this repository carries `package-lock.json`.
 
-Local `pnpm` runs may be used for developer convenience only when they do not modify repository artifacts. Release verification and GitHub Actions use:
+Local `pnpm` runs may be used for developer convenience only when they do not modify repository artifacts. Release verification uses:
 
 ```bash
 npm ci
@@ -20,7 +22,7 @@ npm ci
 
 ## Required Checks
 
-The GitHub Actions workflow [gds-release-gate.yml](/Users/Shared/Projects/camera/.github/workflows/gds-release-gate.yml) runs on pull requests to `main` and pushes to `main`.
+The GitHub Actions workflow [gds-release-gate.yml](.github/workflows/gds-release-gate.yml) runs on pull requests to `main` and pushes to `main`.
 
 Required commands:
 
@@ -52,5 +54,5 @@ If the release gate blocks a production fix:
 
 1. Identify whether the failure is manifest validation, GDS compliance, type-check, lint, or build.
 2. Revert only the failing change if the product behavior is not required.
-3. If the change is required, add a narrow exception to [gds-adoption.json](/Users/Shared/Projects/camera/gds-adoption.json) with owner, reason, review date, and exit condition.
+3. If the change is required, add a narrow exception to [gds-adoption.json](../gds-adoption.json) with owner, reason, review date, and exit condition.
 4. Re-run the full release gate before merge.

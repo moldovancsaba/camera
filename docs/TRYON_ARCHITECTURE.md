@@ -1,7 +1,7 @@
 # Try-On Architecture
 
-**Version**: 2.11.0  
-**Last Updated**: 2026-06-08
+**Version**: 2.15.0  
+**Last Updated**: 2026-07-04
 
 ## Purpose
 

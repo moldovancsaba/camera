@@ -1,3 +1,5 @@
+// LEGACY inspection utility. Hardcodes db 'camera' and predates the MONGODB_DB
+// convention — review before running against Atlas.
 import { MongoClient } from 'mongodb';
 
 const uri = process.env.MONGODB_URI;

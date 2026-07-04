@@ -1,7 +1,7 @@
 # Slideshow Logic
 
-**Version**: 2.11.0  
-**Last Updated**: 2026-06-08
+**Version**: 2.15.0  
+**Last Updated**: 2026-07-04
 
 This document describes the current slideshow system: admin configuration, playlist generation, public playback, and composite slideshow layouts.
 
@@ -113,13 +113,13 @@ Then additional behavior may apply:
 
 The exact grouping behavior is implemented in:
 
-- [lib/slideshow/playlist.ts](/Users/Shared/Projects/venturecogroup/camera/lib/slideshow/playlist.ts)
+- [lib/slideshow/playlist.ts](../lib/slideshow/playlist.ts)
 
 ## 10. Browser playback
 
 Primary player:
 
-- [components/slideshow/SlideshowPlayerCore.tsx](/Users/Shared/Projects/venturecogroup/camera/components/slideshow/SlideshowPlayerCore.tsx)
+- [components/slideshow/SlideshowPlayerCore.tsx](../components/slideshow/SlideshowPlayerCore.tsx)
 
 Behavior:
 
@@ -181,10 +181,10 @@ Update this file when changing:
 
 ## 15. Canonical references
 
-- [lib/slideshow/playlist.ts](/Users/Shared/Projects/venturecogroup/camera/lib/slideshow/playlist.ts)
-- [components/slideshow/SlideshowPlayerCore.tsx](/Users/Shared/Projects/venturecogroup/camera/components/slideshow/SlideshowPlayerCore.tsx)
-- [app/api/slideshows/[slideshowId]/playlist/route.ts](/Users/Shared/Projects/venturecogroup/camera/app/api/slideshows/[slideshowId]/playlist/route.ts)
-- [app/api/slideshows/[slideshowId]/played/route.ts](/Users/Shared/Projects/venturecogroup/camera/app/api/slideshows/[slideshowId]/played/route.ts)
-- [app/api/slideshow-layouts/route.ts](/Users/Shared/Projects/venturecogroup/camera/app/api/slideshow-layouts/route.ts)
-- [app/slideshow/[slideshowId]/page.tsx](/Users/Shared/Projects/venturecogroup/camera/app/slideshow/[slideshowId]/page.tsx)
-- [app/slideshow-layout/[layoutId]/page.tsx](/Users/Shared/Projects/venturecogroup/camera/app/slideshow-layout/[layoutId]/page.tsx)
+- [lib/slideshow/playlist.ts](../lib/slideshow/playlist.ts)
+- [components/slideshow/SlideshowPlayerCore.tsx](../components/slideshow/SlideshowPlayerCore.tsx)
+- [app/api/slideshows/[slideshowId]/playlist/route.ts](../app/api/slideshows/[slideshowId]/playlist/route.ts)
+- [app/api/slideshows/[slideshowId]/played/route.ts](../app/api/slideshows/[slideshowId]/played/route.ts)
+- [app/api/slideshow-layouts/route.ts](../app/api/slideshow-layouts/route.ts)
+- [app/slideshow/[slideshowId]/page.tsx](../app/slideshow/[slideshowId]/page.tsx)
+- [app/slideshow-layout/[layoutId]/page.tsx](../app/slideshow-layout/[layoutId]/page.tsx)

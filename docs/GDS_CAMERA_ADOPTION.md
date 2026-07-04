@@ -1,7 +1,7 @@
 # Camera GDS Adoption
 
-**Version**: 2.13.0  
-**Last Updated**: 2026-06-24
+**Version**: 2.15.0  
+**Last Updated**: 2026-07-04
 
 ## SSOT statement
 
@@ -13,7 +13,7 @@ Local checkout path (when available): `/Users/Shared/Projects/general-design-sys
 
 Exception standard:
 
-- reusable exception contract: [docs/GDS_EXCEPTION_STANDARD.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_EXCEPTION_STANDARD.md)
+- reusable exception contract: [docs/GDS_EXCEPTION_STANDARD.md](GDS_EXCEPTION_STANDARD.md)
 
 ## Purpose
 
@@ -29,7 +29,7 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | Notifications | Root `GdsNotificationProvider` / `GdsToastProvider` from `@doneisbetter/gds-core/client` plus `showGdsNotification` from `@doneisbetter/gds-theme/client` |
 | Modals / confirm | Root `GdsConfirmProvider` / `OverlayManagerProvider` from `@doneisbetter/gds-core/client`; legacy `lib/gds/confirm-destructive.tsx` remains a migration bridge |
 | Adoption manifest | `gds-adoption.json` |
-| Release gate | `.github/workflows/gds-release-gate.yml`, [docs/GDS_RELEASE_GATE.md](/Users/Shared/Projects/camera/docs/GDS_RELEASE_GATE.md) |
+| Release gate | `.github/workflows/gds-release-gate.yml`, [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md) |
 
 ## Pattern adapter inventory
 
@@ -100,7 +100,7 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 
 ## Approved exceptions
 
-Camera exceptions follow the shared structure from [docs/GDS_EXCEPTION_STANDARD.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_EXCEPTION_STANDARD.md).
+Camera exceptions follow the shared structure from [docs/GDS_EXCEPTION_STANDARD.md](GDS_EXCEPTION_STANDARD.md).
 
 | Surface | Category | Boundary | What is still mandatory | Exit condition |
 |---------|----------|----------|--------------------------|----------------|
@@ -165,7 +165,7 @@ Required rule:
 
 ## Formal compliance path
 
-Camera now declares its governed local adapter state in [gds-adoption.json](/Users/Shared/Projects/venturecogroup/camera/gds-adoption.json).
+Camera now declares its governed local adapter state in [gds-adoption.json](../gds-adoption.json).
 
 Current compliance position:
 
@@ -194,12 +194,12 @@ npm run lint
 npm run build
 ```
 
-The same commands run in GitHub Actions through [docs/GDS_RELEASE_GATE.md](/Users/Shared/Projects/camera/docs/GDS_RELEASE_GATE.md).
+The same commands run in GitHub Actions through [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md).
 
 ## References
 
-- [docs/GDS_COMPONENT_RULES.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_COMPONENT_RULES.md)
-- [docs/GDS_3_4_3_ALIGNMENT_PLAN.md](/Users/Shared/Projects/camera/docs/GDS_3_4_3_ALIGNMENT_PLAN.md)
+- [docs/GDS_COMPONENT_RULES.md](GDS_COMPONENT_RULES.md)
+- [docs/GDS_3_4_3_ALIGNMENT_PLAN.md](GDS_3_4_3_ALIGNMENT_PLAN.md)
 - [GDS FOUNDATION](https://github.com/sovereignsquad/general-design-system/blob/main/FOUNDATION.md)
 - [GDS COMPONENTS_AND_PATTERNS](https://github.com/sovereignsquad/general-design-system/blob/main/COMPONENTS_AND_PATTERNS.md)
 - [GDS GOVERNANCE_AND_ADOPTION](https://github.com/sovereignsquad/general-design-system/blob/main/GOVERNANCE_AND_ADOPTION.md)

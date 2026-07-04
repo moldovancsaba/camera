@@ -1,7 +1,7 @@
 # Tech Stack
 
-**Version**: 2.14.0  
-**Last Updated**: 2026-06-21
+**Version**: 2.15.0  
+**Last Updated**: 2026-07-04
 
 This document records the current technical stack in use and the parts of the product each technology supports.
 
@@ -123,10 +123,20 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 - streams the per-event image ZIP export (`/api/admin/events/[id]/export/images?format=zip`)
   as a Node stream converted to a web `ReadableStream`, capped at 500 files
 
+### `resend`
+
+- transactional email delivery (submission notifications and try-on result emails)
+- per-event template overrides and sender-name settings; defaults in `lib/email/submission-template-defaults.ts`
+
+### `@doneisbetter/gds-*` and Mantine 8.3
+
+- `gds-core` / `gds-admin` / `gds-theme` `^3.5.0` provide the design-system runtime, admin primitives, and theming
+- `gds-compliance` and `gds-eslint-config` back the `gds:check` / `gds:validate-manifest` gate
+
 ### Local try-on worker integration
 
 - Camera writes queue state to MongoDB Atlas
-- the official worker lives in `/Users/Shared/Projects/try-on`
+- the official worker lives in the separate try-on worker repository (cloned alongside this repo on operator machines)
 - Camera finalizes generated assets through signed internal callbacks instead of running the processor in-process
 
 ### `@upstash/ratelimit` and `@upstash/redis`
@@ -139,7 +149,7 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 - `eslint-config-next` 16
 - `tsx`
 - `tsc --noEmit`
-- `playwright` — E2E test suite running 12 serial tests against a dedicated test database
+- `playwright` — E2E suite (23 tests across 7 spec files) run serially against a dedicated test database; `npm run test:e2e:safe` preflights env + the disposable-DB guard
 
 ## Hosting and deployment
 
@@ -147,7 +157,7 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 - Next pinned at `16.2.9` (the `16.0.10 → 16.2.9` bump in v2.14.0 carried RSC/render and
   security fixes)
 - production is shipped manually via `npx vercel@latest --prod` — git pushes do not currently
-  auto-deploy; see [RUNBOOK.md](/Users/Shared/Projects/camera/RUNBOOK.md)
+  auto-deploy; see [RUNBOOK.md](RUNBOOK.md)
 
 ## Useful scripts
 
@@ -160,6 +170,8 @@ npm run type-check
 npm run db:ensure-indexes
 npm run db:verify-uri
 npm run env:verify
+npm run test:e2e:safe
+npm run verify:production-guards
 ```
 
 ## Current tradeoffs

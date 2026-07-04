@@ -1,7 +1,7 @@
 # MongoDB Conventions
 
-**Version**: 2.11.0  
-**Last Updated**: 2026-06-08
+**Version**: 2.15.0  
+**Last Updated**: 2026-07-04
 
 This repository uses a mixed identifier model. Any document claiming that every reference must use Mongo `_id` is obsolete.
 
@@ -194,6 +194,6 @@ Before changing code that touches IDs:
 
 ## 11. Related docs
 
-- [README.md](/Users/Shared/Projects/venturecogroup/camera/README.md)
-- [ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/ARCHITECTURE.md)
-- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/venturecogroup/camera/docs/SLIDESHOW_LOGIC.md)
+- [README.md](../README.md)
+- [ARCHITECTURE.md](../ARCHITECTURE.md)
+- [docs/SLIDESHOW_LOGIC.md](SLIDESHOW_LOGIC.md)

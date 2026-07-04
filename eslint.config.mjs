@@ -5,10 +5,7 @@ import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
 const gdsManifest = JSON.parse(readFileSync(new URL("./gds-adoption.json", import.meta.url), "utf8"));
-const gdsAllowedImports = [
-  ...resolveAllowedImports(gdsManifest),
-  "@/components/ui/AppButton",
-];
+const gdsAllowedImports = [...resolveAllowedImports(gdsManifest)];
 const scopedGdsConfig = createGdsConfig({ allowedImports: gdsAllowedImports }).map((entry) => ({
   ...entry,
   files: [

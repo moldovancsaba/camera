@@ -1,7 +1,7 @@
 # Architecture
 
-**Version**: 2.14.0  
-**Last Updated**: 2026-06-21
+**Version**: 2.15.0  
+**Last Updated**: 2026-07-04
 
 This document describes the current production architecture of Camera as implemented in the repository today.
 
@@ -48,12 +48,16 @@ Browser / Public Screens
 - MongoDB access and schema helpers in `lib/db/*`
 - slideshow generation in `lib/slideshow/*`
 - partner-scoped access helpers in `lib/partners/*`
+- try-on queue, moderation, analytics, and identity in `lib/tryon/*`
+- transactional email (templates, per-event sender name) in `lib/email/*`
+- event export logic in `lib/events/*`
 
 ### External services
 
 - MongoDB Atlas
 - imgbb
 - external SSO service
+- Resend (transactional email)
 - optional Upstash Redis for shared rate limiting
 
 ## 3. Route model
@@ -76,6 +80,8 @@ Browser / Public Screens
 - `/admin/tryon/**`
 - `/admin/frames/**`
 - `/admin/logos/**`
+- `/admin/slideshows`
+- `/admin/landing-pages/**`
 - `/admin/submissions`
 - `/admin/users`
 
@@ -162,11 +168,11 @@ Purpose:
 - all API routes use withErrorHandler to catch uncaught exceptions and return typed 4xx/5xx responses
 
 Reference:
-- [docs/AUTHORIZATION.md](/Users/Shared/Projects/camera/docs/AUTHORIZATION.md)
+- [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md)
 
 ## 6. Middleware and routing behavior
 
-Root edge proxy in [proxy.ts](/Users/Shared/Projects/camera/proxy.ts) does three important jobs:
+Root edge proxy in [proxy.ts](proxy.ts) does three important jobs:
 
 1. gate `/admin` by valid serialized session state
 2. rescue OAuth callback parameters returned to the wrong path
@@ -207,7 +213,7 @@ Examples:
 - `partner.partnerId`
 - `frame.frameId`
 
-This is intentional. Do not collapse it into a single rule. See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CONVENTIONS.md).
+This is intentional. Do not collapse it into a single rule. See [docs/MONGODB_CONVENTIONS.md](docs/MONGODB_CONVENTIONS.md).
 
 ## 8. Main collections
 
@@ -227,7 +233,7 @@ Core collections:
 - `leather_suits`
 - `tryon_jobs`
 
-Schema definitions live in [lib/db/schemas.ts](/Users/Shared/Projects/camera/lib/db/schemas.ts).
+Schema definitions live in [lib/db/schemas.ts](lib/db/schemas.ts).
 
 ## 9. Submission pipeline
 
@@ -261,7 +267,7 @@ Key properties:
 - composite layouts through `slideshow_layouts`
 
 Reference:
-- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/camera/docs/SLIDESHOW_LOGIC.md)
+- [docs/SLIDESHOW_LOGIC.md](docs/SLIDESHOW_LOGIC.md)
 
 ## 11. API surface summary
 
@@ -304,7 +310,7 @@ Expected environment shape:
 - optional Upstash Redis for shared rate limits
 
 Production is currently shipped manually with `npx vercel@latest --prod` (git pushes do not
-auto-deploy). Deploy/verify/auto-deploy-repair steps: [RUNBOOK.md](/Users/Shared/Projects/camera/RUNBOOK.md).
+auto-deploy). Deploy/verify/auto-deploy-repair steps: [RUNBOOK.md](RUNBOOK.md).
 
 Useful commands:
 
@@ -317,9 +323,9 @@ npm run env:verify
 
 ## 13. Canonical references
 
-- [README.md](/Users/Shared/Projects/camera/README.md)
-- [TECH_STACK.md](/Users/Shared/Projects/camera/TECH_STACK.md)
-- [docs/AUTHORIZATION.md](/Users/Shared/Projects/camera/docs/AUTHORIZATION.md)
-- [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CONVENTIONS.md)
-- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/camera/docs/SLIDESHOW_LOGIC.md)
-- [docs/DOCUMENTATION.md](/Users/Shared/Projects/camera/docs/DOCUMENTATION.md)
+- [README.md](README.md)
+- [TECH_STACK.md](TECH_STACK.md)
+- [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md)
+- [docs/MONGODB_CONVENTIONS.md](docs/MONGODB_CONVENTIONS.md)
+- [docs/SLIDESHOW_LOGIC.md](docs/SLIDESHOW_LOGIC.md)
+- [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)

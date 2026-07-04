@@ -1,12 +1,70 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.14.0
-**Last Updated**: 2026-06-21
+**Current Version**: 2.15.0
+**Last Updated**: 2026-07-04
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
+
+---
+
+## [v2.15.0] — 2026-07-04
+
+**Type**: Minor — features + test/safety hardening + GDS 3.5 + tracker audit + documentation refresh
+
+### Summary
+Rolls up everything shipped since v2.14.0: the global slideshow inventory page, per-event
+email sender settings, GDS 3.5 alignment, the authenticated admin smoke suite, a full
+GitHub issue audit with backlog fixes (safe E2E runner, production-guard verification,
+export-route tests), and a repository-wide documentation refresh.
+
+### Features
+
+- **`/admin/slideshows`** — global slideshow inventory page on the GDS
+  `SlideshowsInventoryList`, added to the admin navigation.
+- **Per-event email sender settings** — events can override the transactional email
+  sender name (`lib/email/*`); backfill via `npm run db:backfill-event-email-sender-name`.
+- **GDS 3.5 alignment** — `@doneisbetter/*` packages bumped to `^3.5.0`
+  (`docs/GDS_3_5_ADOPTION_PLAN.md`); `CameraGdsProvider` composes the official
+  notification/toast/confirm/overlay providers.
+- **Admin smoke suite (#81)** — `tests/e2e/admin-smoke.spec.ts` renders every admin
+  surface as an authenticated global admin and asserts the error boundary is absent;
+  fixed a `/admin/submissions` crash found by the suite.
+
+### Test & safety hardening (issue audit follow-through)
+
+- **`npm run test:e2e:safe` (#60)** — one-command E2E runner: env preflight, disposable-DB
+  guard (single source of truth with the bootstrap route), managed web server, no orphan
+  processes.
+- **`npm run verify:production-guards` (#85)** — proves dev-login/e2e/debug routes return
+  404 in production (`NODE_ENV=production`, `ALLOW_DANGEROUS_DEV_ROUTES` unset) and that
+  all 9 dangerous route files call `blockDangerousApiInProduction`.
+- **Export route tests (#84)** — `tests/e2e/event-exports.spec.ts`: 401/403/404 access
+  matrix, email-CSV dedup, image-CSV column contract, ZIP-on-empty 400.
+- **GDS confirm parity (#75)** — replaced the last two `window.confirm` calls
+  (`TryOnQueueTable` rerun/reapply) with `useGdsConfirm`.
+
+### Tracker & documentation
+
+- **Issue audit** (`docs/ISSUE_AUDIT_2026-06-30.md`) — all 23 open issues cross-checked
+  against code: 13 verified delivered, 2 met-in-intent, 7 actionable, 1 (#78) invalidated
+  by the GitHub Actions removal (`c0b8b54`).
+- **Docs refresh** — absolute machine paths converted to repo-relative links across all
+  docs; GDS version references corrected to 3.5; CI claims corrected after workflow
+  removal; E2E counts updated (23 tests / 7 specs); `pnpm` references normalized to npm;
+  version headers aligned to 2.15.0.
+
+### Dependencies
+
+- Dependency audit fixes (lockfile-level, 2026-06-24); `resend` in active use for
+  transactional email.
+
+### Verification
+
+- `npm run type-check`, `npm run lint`, `npm run verify:production-guards` all pass.
+- Playwright suite requires a MongoDB-backed environment (`npm run test:e2e:safe`).
 
 ---
 

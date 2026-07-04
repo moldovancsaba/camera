@@ -1,5 +1,8 @@
 # Seyu 2.0 – SaaS version — Business & vendor requirements
 
+> **Historical document.** Not canonical runtime documentation — see `README.md`, `ARCHITECTURE.md`, and `docs/*` for current behavior.
+
+
 **Source**: Vendor brief to propose a dedicated product delivery team.  
 **Purpose**: Baseline for product scope, delivery discipline, and vendor evaluation.  
 **Note**: Section 25 ended mid-sentence in the source document; a short completion is appended in brackets for readability.

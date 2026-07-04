@@ -19,8 +19,8 @@ The repository now includes:
 
 Use these instead:
 
-- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/venturecogroup/camera/docs/SLIDESHOW_LOGIC.md)
-- [ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/ARCHITECTURE.md)
+- [docs/SLIDESHOW_LOGIC.md](SLIDESHOW_LOGIC.md)
+- [ARCHITECTURE.md](../ARCHITECTURE.md)
 
 ## Why this file still exists
 

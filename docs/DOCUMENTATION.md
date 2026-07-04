@@ -1,6 +1,6 @@
 # Documentation Maintenance
 
-**Last Updated**: 2026-06-08
+**Last Updated**: 2026-07-04
 
 The running code is the source of truth. Documentation must be updated from the implementation, not from memory.
 
@@ -8,19 +8,19 @@ The running code is the source of truth. Documentation must be updated from the 
 
 Use these as the maintained operational set:
 
-- [README.md](/Users/Shared/Projects/camera/README.md)
-- [ARCHITECTURE.md](/Users/Shared/Projects/camera/ARCHITECTURE.md)
-- [TECH_STACK.md](/Users/Shared/Projects/camera/TECH_STACK.md)
-- [docs/AUTHORIZATION.md](/Users/Shared/Projects/camera/docs/AUTHORIZATION.md)
-- [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CONVENTIONS.md)
-- [docs/MONGODB_ATLAS.md](/Users/Shared/Projects/camera/docs/MONGODB_ATLAS.md)
-- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/camera/docs/SLIDESHOW_LOGIC.md)
-- [docs/TRYON_ARCHITECTURE.md](/Users/Shared/Projects/camera/docs/TRYON_ARCHITECTURE.md)
-- [docs/TRYON_OPERATIONS.md](/Users/Shared/Projects/camera/docs/TRYON_OPERATIONS.md)
-- [docs/TRYON_LOW_LEVEL_DESIGN.md](/Users/Shared/Projects/camera/docs/TRYON_LOW_LEVEL_DESIGN.md)
-- [docs/TRYON_ADMIN_GUIDE.md](/Users/Shared/Projects/camera/docs/TRYON_ADMIN_GUIDE.md)
-- [docs/TRYON_ANALYTICS.md](/Users/Shared/Projects/camera/docs/TRYON_ANALYTICS.md)
-- [docs/GDS_RELEASE_GATE.md](/Users/Shared/Projects/camera/docs/GDS_RELEASE_GATE.md)
+- [README.md](../README.md)
+- [ARCHITECTURE.md](../ARCHITECTURE.md)
+- [TECH_STACK.md](../TECH_STACK.md)
+- [docs/AUTHORIZATION.md](AUTHORIZATION.md)
+- [docs/MONGODB_CONVENTIONS.md](MONGODB_CONVENTIONS.md)
+- [docs/MONGODB_ATLAS.md](MONGODB_ATLAS.md)
+- [docs/SLIDESHOW_LOGIC.md](SLIDESHOW_LOGIC.md)
+- [docs/TRYON_ARCHITECTURE.md](TRYON_ARCHITECTURE.md)
+- [docs/TRYON_OPERATIONS.md](TRYON_OPERATIONS.md)
+- [docs/TRYON_LOW_LEVEL_DESIGN.md](TRYON_LOW_LEVEL_DESIGN.md)
+- [docs/TRYON_ADMIN_GUIDE.md](TRYON_ADMIN_GUIDE.md)
+- [docs/TRYON_ANALYTICS.md](TRYON_ANALYTICS.md)
+- [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md)
 
 Historical and planning docs may exist, but they are not canonical runtime documentation unless explicitly refreshed.
 
@@ -128,6 +128,7 @@ Operational note:
 - 2026-06-07 handoff note: GDS 3.4.3 issue snapshot for `#69`-`#78` is recorded in `docs/GDS_3_4_3_ALIGNMENT_PLAN.md` and board-sync details are recorded in `docs/GDS_3_4_3_GITHUB_BOARD_HANDOVER.md`. GitHub Project v2 status edits were initially blocked by GraphQL rate limit until 2026-06-07 15:54:46 CEST; after reset, issue comments were posted and `#69` plus `#73` were moved to `Review (ALMOST)`.
 - 2026-06-07 release-gate note: `docs/GDS_RELEASE_GATE.md` and `.github/workflows/gds-release-gate.yml` define the canonical npm-based validation lane for GDS compliance, type-check, lint, and build.
 - 2026-06-08 reliability hardening: E2E suite passes 12/12 tests serially. Key fixes: middleware.ts conflict removed, parallel DB contention resolved (workers:1), inspectTryOnResultAsset graceful degradation, tryon-results reviewStatus=approved query corrected, API error boundary coverage extended. Committed as 9454b40 and bumped to v2.13.0.
+- 2026-07-04 v2.15.0: Repository-wide docs refresh. Absolute machine paths converted to repo-relative links; GDS references corrected to the 3.5 package line; CI claims corrected after GitHub Actions workflows were removed (`c0b8b54`) — the GDS release gate now runs locally/manually. Issue audit recorded in `docs/ISSUE_AUDIT_2026-06-30.md` (13 open issues verified already delivered). New: `npm run test:e2e:safe` (safe E2E runner, #60), `npm run verify:production-guards` (#85), `tests/e2e/event-exports.spec.ts` (#84), GDS confirm parity in the try-on queue (#75). E2E suite is now 23 tests across 7 spec files.
 - 2026-06-21 v2.14.0: Added per-event email/image exports (`docs/EVENT_EXPORTS.md`). Fixed the production Server-Components render crash (digest 4053814135) caused by `component={Link}` in Server Components — see the RSC boundary rule in `ARCHITECTURE.md` §11. Removed duplicate "Edit" buttons on Events/Try-On Suits/Landing Pages cards. Bumped Next `16.0.10 → 16.2.9` (security). Added `RUNBOOK.md` documenting manual `vercel --prod` deploys, since git pushes do not currently auto-deploy. Tracker: closed `#68` (analytics section exports, delivered in 9e63bfa).
 
 ### Do not drift again

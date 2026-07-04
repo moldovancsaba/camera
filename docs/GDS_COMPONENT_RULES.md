@@ -6,13 +6,13 @@ These rules define how Mantine-backed GDS primitives should be introduced and us
 
 Current SSOT alignment target:
 
-- GDS version: `3.4.3`
+- GDS version: `3.5.x` (`@doneisbetter/* ^3.5.0` in `package.json`, the canonical source)
 - Camera aligns to the shared contracts through the published `@doneisbetter/*` npm packages. Local adapters are compatibility shims only, not design-system authority.
 
 Compliance artifact:
 
-- [gds-adoption.json](/Users/Shared/Projects/venturecogroup/camera/gds-adoption.json) is the machine-readable declaration of Camera's active contract coverage, exceptions, and migration state.
-- [docs/GDS_RELEASE_GATE.md](/Users/Shared/Projects/camera/docs/GDS_RELEASE_GATE.md) defines the required CI/release validation commands.
+- [gds-adoption.json](../gds-adoption.json) is the machine-readable declaration of Camera's active contract coverage, exceptions, and migration state.
+- [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md) defines the required release validation commands (currently run locally; the CI lane was removed in `c0b8b54`).
 
 ## Primitive Categories
 
@@ -67,7 +67,7 @@ The active manifest enforces the `@mantine/core` import boundary for `app/admin/
 
 ## Exception Rules
 
-Use [docs/GDS_EXCEPTION_STANDARD.md](/Users/Shared/Projects/venturecogroup/camera/docs/GDS_EXCEPTION_STANDARD.md) whenever a surface cannot consume direct package contracts.
+Use [docs/GDS_EXCEPTION_STANDARD.md](GDS_EXCEPTION_STANDARD.md) whenever a surface cannot consume direct package contracts.
 
 Exception requirements:
 

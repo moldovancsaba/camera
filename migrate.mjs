@@ -1,3 +1,5 @@
+// LEGACY one-off migration utility. Hardcodes its database name and predates
+// the MONGODB_DB convention — review before running against Atlas.
 import { MongoClient } from 'mongodb';
 
 const uri = process.env.MONGODB_URI;

@@ -40,7 +40,7 @@ The repo maintains indexes for the live query patterns in:
 
 Index definitions live in:
 
-- [lib/db/ensure-indexes.ts](/Users/Shared/Projects/venturecogroup/camera/lib/db/ensure-indexes.ts)
+- [lib/db/ensure-indexes.ts](../lib/db/ensure-indexes.ts)
 
 ## 4. Current operational hotspots
 
@@ -114,12 +114,12 @@ Check:
 
 Atlas operations should follow:
 
-- [lib/db/schemas.ts](/Users/Shared/Projects/venturecogroup/camera/lib/db/schemas.ts)
+- [lib/db/schemas.ts](../lib/db/schemas.ts)
 - actual route persistence code in `app/api/**/route.ts`
 
 Do not assume the broad TypeScript schema alone describes the hot runtime write shape.
 
 ## 8. Related docs
 
-- [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/venturecogroup/camera/docs/MONGODB_CONVENTIONS.md)
-- [ARCHITECTURE.md](/Users/Shared/Projects/venturecogroup/camera/ARCHITECTURE.md)
+- [docs/MONGODB_CONVENTIONS.md](MONGODB_CONVENTIONS.md)
+- [ARCHITECTURE.md](../ARCHITECTURE.md)

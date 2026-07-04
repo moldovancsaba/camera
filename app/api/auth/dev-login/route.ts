@@ -1,10 +1,12 @@
 /**
  * Development Mock Login
- * 
- * Temporary bypass for SSO authentication during development.
- * This creates a mock session without requiring SSO.
- * 
- * WARNING: This should be removed or disabled in production.
+ *
+ * Bypass for SSO authentication during development and E2E tests.
+ * Creates a mock session without requiring SSO.
+ *
+ * Production safety: blocked by blockDangerousApiInProduction() — returns 404
+ * under NODE_ENV=production unless ALLOW_DANGEROUS_DEV_ROUTES='true' (private
+ * staging only). Verified by `npm run verify:production-guards`.
  */
 
 import { NextResponse } from 'next/server';

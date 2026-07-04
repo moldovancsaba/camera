@@ -1,71 +1,49 @@
 # Tasklist
 
-**Version Context**: 2.14.0  
-**Last Updated**: 2026-06-21
+**Version Context**: 2.15.0  
+**Last Updated**: 2026-07-04
 
 This file should contain only active near-term execution items. Historical delivery belongs in `RELEASE_NOTES.md`.
 
 ## Active tasks
 
-### Event data exports (v2.14.0)
+### Tracker reconciliation (from `docs/ISSUE_AUDIT_2026-06-30.md`)
 
-- status: complete on 2026-06-21
-- outcome:
-  - manager-gated email + image exports on `/admin/events/[id]` (CSV + capped ZIP)
-  - shared logic in `lib/events/event-export.ts`; LLD in `docs/EVENT_EXPORTS.md`
-  - GitHub #79 (closed)
+- status: pending — owner action on GitHub
+- scope:
+  - close the 13 verified-delivered issues (#59, #61, #62, #63, #64, #65, #66, #67, #70, #71, #72, #75, #81) with evidence comments
+  - close-or-re-scope #58 (guard shape differs from spec) and #82 (only a lint rule remains)
+  - rewrite #78 around the post-CI enforcement model (workflows removed in `c0b8b54`)
 
-### Production stability + deploy (v2.14.0)
+### Observability (#83)
 
-- status: complete on 2026-06-21
-- outcome:
-  - fixed Server-Components render crash (digest 4053814135) from `component={Link}` in
-    Server Components; RSC boundary rule documented (`ARCHITECTURE.md` §11). GitHub #80 (closed)
-  - removed duplicate "Edit" buttons on Events/Try-On Suits/Landing Pages cards (#71 ongoing)
-  - Next `16.0.10 → 16.2.9` security bump; vulnerabilities 13 → 3
-  - `RUNBOOK.md` + guarded deploy workflow; production deploys are manual via `vercel --prod`
-- follow-up: restore Vercel auto-deploy (GitHub App access / production branch) — owner action
+- status: blocked on a decision — Sentry vs. structured Vercel logging as the error sink
+- scope: wire `app/error.tsx` and server catch paths to the chosen sink; alert on new server errors
 
-### Documentation refresh
-
-- status: complete on 2026-05-20
-- outcome:
-  - canonical docs rewritten around the current Camera Core + Apps model
-  - Mongo identifier guidance corrected
-  - authorization docs aligned to the partner-scoped access model
-  - roadmap/tasklist metadata normalized
-
-### Partner-scoped authorization follow-through
-
-- status: largely complete on 2026-06-08
-- outcome:
-  - partner/manager APIs scoped to Events partner assignments
-  - auth holes closed on partner detail, frame read, and inactive-event logos
-  - viewer role can read events but not manage gallery uploads
-  - E2E coverage: `admin-access.spec.ts`, `partner-api-auth.spec.ts`
-
-### Try-On lifecycle, analytics, and identity (issues #61–#68)
-
-- status: complete on 2026-06-08
-- outcome:
-  - superseded rerun archive contract, vetting visibility, funnel metrics/UI/exports
-  - identity classification metadata, `/admin/tryon/identity`, operator scripts
-  - E2E: `tryon-rerun-lifecycle.spec.ts`, `tryon-analytics-smoke.spec.ts`
-
-### GDS admin migration (#70–#75)
-
-- status: largely complete on 2026-06-08
-- outcome:
-  - events/users inventory on `AdminResourceManager` / `AdminDataTable`
-  - frame editor on `AdminCrudForm`; moderation on `SemanticButton` + `useGdsToasts`
-  - legacy `confirm-destructive` and `modals` bridges removed
-
-### Admin UX follow-through
+### GDS UI follow-through (#74, #76, #77)
 
 - status: active
 - focus:
-  - logos editor `AdminCrudForm` parity with frames
-  - public capture/share primitive adoption (#76–#77)
+  - logos editor `AdminCrudForm` parity with frames (#74)
+  - public capture/share primitive adoption (#76)
+  - media card primitives with non-cropping behavior (#77)
+  - re-validate primitive names against `@doneisbetter/* 3.5` before resuming
+
+### Release gate / CI decision (#78)
+
+- status: blocked on a decision — restore GitHub Actions or formalize the local gate
+- current state: `gds:check`, type-check, lint, and build run locally/manually only
+
+### E2E suite execution
+
+- status: pending — run `npm run test:e2e:safe` in a MongoDB-backed environment to execute
+  the new `event-exports.spec.ts` (written and lint/type-clean, not yet executed)
+
+## Recently completed (v2.15.0 — see RELEASE_NOTES.md)
+
+- issue audit + backlog fixes: #60 safe runner, #85 production-guard verification,
+  #84 export-route tests, #75 GDS confirm parity
+- documentation refresh: relative links, GDS 3.5 references, CI claims, version headers
 
 ## Notes
 

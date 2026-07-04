@@ -7,7 +7,7 @@ the Vercel project `narimato/04_camera` is not receiving GitHub push events, so
 every release must be shipped manually from a clean checkout of `main`:
 
 ```bash
-cd /Users/Shared/Projects/camera
+cd <path-to-your-camera-checkout>
 git checkout main && git pull
 npx vercel@latest --prod
 ```

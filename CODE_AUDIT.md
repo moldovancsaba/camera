@@ -1,5 +1,8 @@
 # CODE_AUDIT.md
 
+> **Historical document.** Not canonical runtime documentation — see `README.md`, `ARCHITECTURE.md`, and `docs/*` for current behavior.
+
+
 **Project**: Camera — Photo Frame Webapp  
 **Audit Date**: 2025-11-06T19:05:13.000Z  
 **Version Before Audit**: 1.5.0  

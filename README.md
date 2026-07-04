@@ -1,7 +1,7 @@
 # Camera
 
-**Version**: 2.14.0  
-**Last Updated**: 2026-06-21  
+**Version**: 2.15.0  
+**Last Updated**: 2026-07-04  
 **Status**: Production system
 
 Camera is a Next.js platform for branded photo capture, event galleries, slideshow playback, partner operations, and reusable shared resources on the same identity, media, and MongoDB foundations.
@@ -46,6 +46,8 @@ The admin UX is organized around that model:
 - `/admin/events` — Events inventory
 - `/admin/tryon` — Try-On App workspace
 - `/admin/frames`, `/admin/logos`, `/admin/submissions`, `/admin/users` — global inventory / audit pages
+- `/admin/slideshows` — global slideshow inventory
+- `/admin/landing-pages` — landing page inventory
 - `/admin/events/[id]` — event detail with manager-gated email + image exports
 
 ## Core behavior
@@ -71,7 +73,7 @@ collected for an event:
   `zip` streams the actual files from imgbb, capped at 500 files (larger events use the CSV).
 
 Shared logic lives in `lib/events/event-export.ts`. Access requires partner-scoped Events
-`manager` (global admins included). See [docs/EVENT_EXPORTS.md](/Users/Shared/Projects/camera/docs/EVENT_EXPORTS.md).
+`manager` (global admins included). See [docs/EVENT_EXPORTS.md](docs/EVENT_EXPORTS.md).
 
 ### Slideshows
 
@@ -97,7 +99,7 @@ Current operational rules:
 - partner-scoped users can access only their assigned partner/app surfaces
 - global inventory pages remain global-admin-only
 
-See [docs/AUTHORIZATION.md](/Users/Shared/Projects/camera/docs/AUTHORIZATION.md).
+See [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md).
 
 ## Quick start
 
@@ -140,7 +142,7 @@ Production is hosted on Vercel (`camera.messmass.com`). Pushing to `main` does *
 currently auto-deploy — ship with `npx vercel@latest --prod` from a clean checkout of
 `main`. GitHub Actions workflows (including the guarded push-to-deploy lane) were removed
 in 2026-06 (commit `c0b8b54`); restoring auto-deploy is a Vercel GitHub App configuration
-task. Full deploy + verify + auto-deploy-repair steps are in [RUNBOOK.md](/Users/Shared/Projects/camera/RUNBOOK.md).
+task. Full deploy + verify + auto-deploy-repair steps are in [RUNBOOK.md](RUNBOOK.md).
 
 > **RSC note:** Server Components must not pass a component *function* (e.g. `component={Link}`)
 > as a prop to a client component — it triggers a "Functions cannot be passed directly to
@@ -156,9 +158,10 @@ task. Full deploy + verify + auto-deploy-repair steps are in [RUNBOOK.md](/Users
 - MongoDB Atlas
 - SSO OAuth2/OIDC + PKCE
 - imgbb for raster hosting
+- Resend for transactional email (per-event templates and sender name)
 - optional Upstash Redis for shared rate limits
 
-See [TECH_STACK.md](/Users/Shared/Projects/camera/TECH_STACK.md).
+See [TECH_STACK.md](TECH_STACK.md).
 
 ## Data model highlights
 
@@ -173,7 +176,7 @@ See [TECH_STACK.md](/Users/Shared/Projects/camera/TECH_STACK.md).
 - `leather_suits` — selectable try-on garment catalog (legacy collection and API names are preserved)
 - `tryon_jobs` — async local try-on queue and worker lifecycle
 
-See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CONVENTIONS.md) and [ARCHITECTURE.md](/Users/Shared/Projects/camera/ARCHITECTURE.md).
+See [docs/MONGODB_CONVENTIONS.md](docs/MONGODB_CONVENTIONS.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Important conventions
 
@@ -186,17 +189,17 @@ See [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CON
 
 ## Design system
 
-Camera admin UI follows the portfolio [General Design System](https://github.com/sovereignsquad/general-design-system) through the published `@doneisbetter/*` package line. Local adapter details, migration state, exceptions, and the formal adoption manifest: [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/camera/docs/GDS_CAMERA_ADOPTION.md) and [gds-adoption.json](/Users/Shared/Projects/camera/gds-adoption.json).
+Camera admin UI follows the portfolio [General Design System](https://github.com/sovereignsquad/general-design-system) through the published `@doneisbetter/*` package line. Local adapter details, migration state, exceptions, and the formal adoption manifest: [docs/GDS_CAMERA_ADOPTION.md](docs/GDS_CAMERA_ADOPTION.md) and [gds-adoption.json](gds-adoption.json).
 
 GDS release gate:
 
 - `npm` is the canonical CI/release package manager because `package-lock.json` is present
 - GitHub Actions workflows were removed in 2026-06 (commit `c0b8b54`); the gate is currently run locally/manually via `npm run gds:validate-manifest && npm run gds:check && npm run type-check && npm run lint && npm run build`
-- release-gate details are maintained in [docs/GDS_RELEASE_GATE.md](/Users/Shared/Projects/camera/docs/GDS_RELEASE_GATE.md) (describes the former CI lane; treat the command list, not the CI wiring, as current)
+- release-gate details are maintained in [docs/GDS_RELEASE_GATE.md](docs/GDS_RELEASE_GATE.md) (describes the former CI lane; treat the command list, not the CI wiring, as current)
 
 Reusable exception guidance:
 
-- [docs/GDS_EXCEPTION_STANDARD.md](/Users/Shared/Projects/camera/docs/GDS_EXCEPTION_STANDARD.md) defines the general exception model that Camera uses and that other GDS consumers can adopt
+- [docs/GDS_EXCEPTION_STANDARD.md](docs/GDS_EXCEPTION_STANDARD.md) defines the general exception model that Camera uses and that other GDS consumers can adopt
 
 Current package note:
 
@@ -208,7 +211,10 @@ Current package note:
 
 ## E2E test reliability
 
-All 12 Playwright E2E tests pass serially against a dedicated `camera_test` MongoDB database.
+The Playwright E2E suite (23 tests across 7 spec files, including admin smoke rendering and
+the manager-gated export contract) runs serially against a dedicated `camera_test` MongoDB
+database. `npm run test:e2e:safe` is the recommended entry point — it preflights the
+environment and enforces the disposable-database guard before any test runs.
 
 - Tests run with `workers: 1` to prevent shared-database contention between concurrent test cases.
 - The `/api/e2e/bootstrap` and `/api/e2e/cleanup` routes are gated by `assertDisposableE2EDatabase()` — requests are rejected with `403` unless `MONGODB_DB` contains a safe keyword (`e2e`, `test`, `dev`, `local`, `sandbox`, `staging`).
@@ -232,33 +238,33 @@ Camera can optionally enqueue asynchronous try-on jobs after a capture is saved.
 
 Operational docs:
 
-- [docs/TRYON_ARCHITECTURE.md](/Users/Shared/Projects/camera/docs/TRYON_ARCHITECTURE.md)
-- [docs/TRYON_OPERATIONS.md](/Users/Shared/Projects/camera/docs/TRYON_OPERATIONS.md)
+- [docs/TRYON_ARCHITECTURE.md](docs/TRYON_ARCHITECTURE.md)
+- [docs/TRYON_OPERATIONS.md](docs/TRYON_OPERATIONS.md)
 
 ## Documentation map
 
 Canonical docs:
 
-- [ARCHITECTURE.md](/Users/Shared/Projects/camera/ARCHITECTURE.md)
-- [TECH_STACK.md](/Users/Shared/Projects/camera/TECH_STACK.md)
-- [docs/GDS_CAMERA_ADOPTION.md](/Users/Shared/Projects/camera/docs/GDS_CAMERA_ADOPTION.md)
-- [docs/GDS_COMPONENT_RULES.md](/Users/Shared/Projects/camera/docs/GDS_COMPONENT_RULES.md)
-- [docs/GDS_RELEASE_GATE.md](/Users/Shared/Projects/camera/docs/GDS_RELEASE_GATE.md)
-- [docs/GDS_3_4_3_ALIGNMENT_PLAN.md](/Users/Shared/Projects/camera/docs/GDS_3_4_3_ALIGNMENT_PLAN.md)
-- [docs/AUTHORIZATION.md](/Users/Shared/Projects/camera/docs/AUTHORIZATION.md)
-- [docs/MONGODB_CONVENTIONS.md](/Users/Shared/Projects/camera/docs/MONGODB_CONVENTIONS.md)
-- [docs/MONGODB_ATLAS.md](/Users/Shared/Projects/camera/docs/MONGODB_ATLAS.md)
-- [docs/EVENT_EXPORTS.md](/Users/Shared/Projects/camera/docs/EVENT_EXPORTS.md)
-- [RUNBOOK.md](/Users/Shared/Projects/camera/RUNBOOK.md)
-- [docs/SLIDESHOW_LOGIC.md](/Users/Shared/Projects/camera/docs/SLIDESHOW_LOGIC.md)
-- [docs/DOCUMENTATION.md](/Users/Shared/Projects/camera/docs/DOCUMENTATION.md)
-- [docs/TRYON_LOW_LEVEL_DESIGN.md](/Users/Shared/Projects/camera/docs/TRYON_LOW_LEVEL_DESIGN.md)
-- [docs/TRYON_ADMIN_GUIDE.md](/Users/Shared/Projects/camera/docs/TRYON_ADMIN_GUIDE.md)
-- [docs/TRYON_ANALYTICS.md](/Users/Shared/Projects/camera/docs/TRYON_ANALYTICS.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [TECH_STACK.md](TECH_STACK.md)
+- [docs/GDS_CAMERA_ADOPTION.md](docs/GDS_CAMERA_ADOPTION.md)
+- [docs/GDS_COMPONENT_RULES.md](docs/GDS_COMPONENT_RULES.md)
+- [docs/GDS_RELEASE_GATE.md](docs/GDS_RELEASE_GATE.md)
+- [docs/GDS_3_4_3_ALIGNMENT_PLAN.md](docs/GDS_3_4_3_ALIGNMENT_PLAN.md)
+- [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md)
+- [docs/MONGODB_CONVENTIONS.md](docs/MONGODB_CONVENTIONS.md)
+- [docs/MONGODB_ATLAS.md](docs/MONGODB_ATLAS.md)
+- [docs/EVENT_EXPORTS.md](docs/EVENT_EXPORTS.md)
+- [RUNBOOK.md](RUNBOOK.md)
+- [docs/SLIDESHOW_LOGIC.md](docs/SLIDESHOW_LOGIC.md)
+- [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)
+- [docs/TRYON_LOW_LEVEL_DESIGN.md](docs/TRYON_LOW_LEVEL_DESIGN.md)
+- [docs/TRYON_ADMIN_GUIDE.md](docs/TRYON_ADMIN_GUIDE.md)
+- [docs/TRYON_ANALYTICS.md](docs/TRYON_ANALYTICS.md)
 
 Tracker handover:
 
-- GitHub issue and Projects-board handoff status is documented in [docs/DOCUMENTATION.md](/Users/Shared/Projects/camera/docs/DOCUMENTATION.md) under `GitHub tracker handover`.
+- GitHub issue and Projects-board handoff status is documented in [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md) under `GitHub tracker handover`.
 
 Historical or planning-heavy docs should not be treated as runtime truth unless they were refreshed recently:
 
