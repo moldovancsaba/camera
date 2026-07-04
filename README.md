@@ -110,7 +110,14 @@ npm run type-check
 Optional smoke coverage:
 
 ```bash
-npm run test:e2e
+npm run test:e2e        # assumes env is already safe/configured
+npm run test:e2e:safe   # preflights env + disposable-DB guard, manages the web server
+```
+
+Production-guard guarantee (dev-login and E2E routes must be unreachable in production):
+
+```bash
+npm run verify:production-guards
 ```
 
 Notes:
@@ -131,9 +138,9 @@ http://localhost:3000
 
 Production is hosted on Vercel (`camera.messmass.com`). Pushing to `main` does **not**
 currently auto-deploy — ship with `npx vercel@latest --prod` from a clean checkout of
-`main`. A guarded GitHub Actions workflow (`.github/workflows/deploy-production.yml`) can
-restore push-to-deploy once `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` secrets are
-set. Full deploy + verify + auto-deploy-repair steps are in [RUNBOOK.md](/Users/Shared/Projects/camera/RUNBOOK.md).
+`main`. GitHub Actions workflows (including the guarded push-to-deploy lane) were removed
+in 2026-06 (commit `c0b8b54`); restoring auto-deploy is a Vercel GitHub App configuration
+task. Full deploy + verify + auto-deploy-repair steps are in [RUNBOOK.md](/Users/Shared/Projects/camera/RUNBOOK.md).
 
 > **RSC note:** Server Components must not pass a component *function* (e.g. `component={Link}`)
 > as a prop to a client component — it triggers a "Functions cannot be passed directly to
@@ -184,8 +191,8 @@ Camera admin UI follows the portfolio [General Design System](https://github.com
 GDS release gate:
 
 - `npm` is the canonical CI/release package manager because `package-lock.json` is present
-- GitHub Actions runs `npm ci`, GDS manifest validation, GDS compliance, type-check, lint, and build on `main` changes
-- release-gate details are maintained in [docs/GDS_RELEASE_GATE.md](/Users/Shared/Projects/camera/docs/GDS_RELEASE_GATE.md)
+- GitHub Actions workflows were removed in 2026-06 (commit `c0b8b54`); the gate is currently run locally/manually via `npm run gds:validate-manifest && npm run gds:check && npm run type-check && npm run lint && npm run build`
+- release-gate details are maintained in [docs/GDS_RELEASE_GATE.md](/Users/Shared/Projects/camera/docs/GDS_RELEASE_GATE.md) (describes the former CI lane; treat the command list, not the CI wiring, as current)
 
 Reusable exception guidance:
 
@@ -193,7 +200,7 @@ Reusable exception guidance:
 
 Current package note:
 
-- Camera is aligned to the GDS **3.4.7 contracts**
+- Camera is aligned to the GDS **3.5 contracts** (`@doneisbetter/* ^3.5.0` in `package.json`, the canonical source)
 - Camera now consumes the `@doneisbetter/*` package line directly via npm dependencies at the provider/theme/compliance boundary
 - Camera now runs on Mantine `8.3.x`, matching the current GDS peer contract
 - Camera no longer carries the old local `AppButton` or `components/gds/ui` barrel authority; leaf controls import Mantine directly under the GDS runtime where needed

@@ -56,8 +56,9 @@ ALLOW_DANGEROUS_DEV_ROUTES=true PORT=3001 npm start
 ## Health checks (any environment)
 
 ```bash
-npm run type-check   # tsc --noEmit
+npm run type-check                  # tsc --noEmit
 npm run lint
 npm run build
+npm run verify:production-guards    # dev-login/e2e routes blocked in production
 npm audit            # 3 known dev-only/unfixable-without-downgrade advisories as of 2026-06
 ```

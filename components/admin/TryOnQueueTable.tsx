@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DataTable } from '@doneisbetter/gds-admin/client';
-import { StatusBadge, StateBlock } from '@doneisbetter/gds-core/client';
+import { StatusBadge, StateBlock, useGdsConfirm } from '@doneisbetter/gds-core/client';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
 
@@ -230,6 +230,7 @@ export default function TryOnQueueTable({
   search = '',
 }: TryOnQueueTableProps) {
   const router = useRouter();
+  const { confirm } = useGdsConfirm();
   const [displayRows, setDisplayRows] = useState(rows);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [busyJobId, setBusyJobId] = useState<string | null>(null);
@@ -297,7 +298,12 @@ export default function TryOnQueueTable({
   }
 
   async function handleRerun(jobId: string, setupId?: string) {
-    if (!window.confirm('Rerun creates a new queued job with the selected preset. The new result will require human approval before it can be sent to the user. Continue?')) {
+    const confirmed = await confirm({
+      title: 'Rerun try-on job',
+      message:
+        'Rerun creates a new queued job with the selected preset. The new result will require human approval before it can be sent to the user.',
+    });
+    if (!confirmed) {
       return;
     }
     try {
@@ -310,7 +316,12 @@ export default function TryOnQueueTable({
   }
 
   async function handleReapplyResult(jobId: string) {
-    if (!window.confirm('Reapply repairs publication links from the completed result. It does not auto-approve pending results. Continue?')) {
+    const confirmed = await confirm({
+      title: 'Reapply try-on result',
+      message:
+        'Reapply repairs publication links from the completed result. It does not auto-approve pending results.',
+    });
+    if (!confirmed) {
       return;
     }
     try {
