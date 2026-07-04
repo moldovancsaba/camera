@@ -10,7 +10,7 @@ This is written to be usable by:
 
 - the GDS team when reviewing consumer gaps
 - Camera
-- other products adopting `@doneisbetter/*`
+- other products adopting `@sovereignsquad/*`
 
 If this document conflicts with the SSOT repository, the SSOT repository wins.
 
@@ -115,7 +115,7 @@ Every approved exception should define:
     "Custom timing and gesture handling"
   ],
   "mustStillUse": [
-    "@doneisbetter/* provider and theme runtime",
+    "@sovereignsquad/* provider and theme runtime",
     "documented theme tokens where practical",
     "GDS admin surfaces for surrounding configuration screens"
   ],

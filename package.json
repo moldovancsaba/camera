@@ -1,6 +1,6 @@
 {
   "name": "camera",
-  "version": "2.15.0",
+  "version": "2.16.0",
   "description": "Professional web application for capturing photos with graphical frames, social sharing, event slideshows, and user profile management",
   "type": "module",
   "private": true,
@@ -68,9 +68,9 @@
   "homepage": "https://github.com/moldovancsaba/camera",
   "license": "MIT",
   "dependencies": {
-    "@doneisbetter/gds-admin": "^3.5.0",
-    "@doneisbetter/gds-core": "^3.5.0",
-    "@doneisbetter/gds-theme": "^3.5.0",
+    "@sovereignsquad/gds-admin": "^3.9.0",
+    "@sovereignsquad/gds-core": "^3.9.0",
+    "@sovereignsquad/gds-theme": "^3.9.0",
     "@mantine/core": "^8.3.6",
     "@mantine/dropzone": "^8.3.6",
     "@mantine/hooks": "^8.3.6",
@@ -89,8 +89,8 @@
     "sharp": "^0.34.5"
   },
   "devDependencies": {
-    "@doneisbetter/gds-compliance": "^3.5.0",
-    "@doneisbetter/gds-eslint-config": "^3.5.0",
+    "@sovereignsquad/gds-compliance": "^3.9.0",
+    "@sovereignsquad/gds-eslint-config": "^3.9.0",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@types/archiver": "^6.0.4",

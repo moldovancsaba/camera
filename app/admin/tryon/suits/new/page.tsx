@@ -4,9 +4,9 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { IconTrash } from '@tabler/icons-react';
-import { InlineAlert, UploadDropzone } from '@doneisbetter/gds-core/client';
+import { InlineAlert, UploadDropzone } from '@sovereignsquad/gds-core/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
-import { FormSection } from '@doneisbetter/gds-admin/client';
+import { FormSection } from '@sovereignsquad/gds-admin/client';
 import MediaCard from '@/components/media/MediaPreviewCard';
 
 function getErrorMessage(error: unknown): string {

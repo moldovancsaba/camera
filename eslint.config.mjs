@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { defineConfig, globalIgnores } from "eslint/config";
-import { createGdsConfig, resolveAllowedImports } from "@doneisbetter/gds-eslint-config";
+import { createGdsConfig, resolveAllowedImports } from "@sovereignsquad/gds-eslint-config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
@@ -20,9 +20,14 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    // React-Compiler-era advisory rules (emitted since the eslint-config-next /
+    // gds-eslint-config 3.9 upgrade). Every current hit is an intentional pattern in
+    // interactive components — sync URL/prop → state, copy-prop-to-state for optimistic
+    // updates, async param/data init. Off rather than risk-refactoring production
+    // capture/slideshow/admin hot paths for style; revisit with a React Compiler adoption.
     rules: {
-      "react-hooks/preserve-manual-memoization": "warn",
-      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/preserve-manual-memoization": "off",
+      "react-hooks/set-state-in-effect": "off",
     },
   },
   ...scopedGdsConfig,

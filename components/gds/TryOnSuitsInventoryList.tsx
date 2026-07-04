@@ -6,8 +6,8 @@ import {
   AdminResourceManager,
   type AdminResourceAction,
   type AdminResourceRecord,
-} from '@doneisbetter/gds-admin/client';
-import { StatusBadge } from '@doneisbetter/gds-core/client';
+} from '@sovereignsquad/gds-admin/client';
+import { StatusBadge } from '@sovereignsquad/gds-core/client';
 import { getStatusBadgeProps } from '@/lib/gds/presentation';
 
 export interface SerializedTryOnSuitRow {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ReportingSection } from '@doneisbetter/gds-core/client';
+import { ReportingSection } from '@sovereignsquad/gds-core/client';
 import type { TryOnHourlyOutcomeRow } from '@/lib/tryon/analytics';
 
 type OutcomeKey = 'approved' | 'rejected' | 'service' | 'failed';

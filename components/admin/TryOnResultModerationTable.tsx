@@ -6,8 +6,8 @@ import { Box, Button, Group, Paper, Select, Stack, Text, UnstyledButton } from '
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AdminModal, AdminReviewLayout, ResponsiveDataView } from '@doneisbetter/gds-admin/client';
-import { StateBlock, StatusBadge, useGdsToasts } from '@doneisbetter/gds-core/client';
+import { AdminModal, AdminReviewLayout, ResponsiveDataView } from '@sovereignsquad/gds-admin/client';
+import { StateBlock, StatusBadge, useGdsToasts } from '@sovereignsquad/gds-core/client';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
 

@@ -4,7 +4,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import Link from 'next/link';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
-import { EmptyState, InlineAlert, LabelTag, useGdsConfirm, useGdsToasts } from '@doneisbetter/gds-core/client';
+import { EmptyState, InlineAlert, LabelTag, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
 
 export interface LandingPageListItem {
   _id: string;

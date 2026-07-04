@@ -24,7 +24,7 @@ import {
   expandPlaylistToLength,
   type Slide as PlaylistSlide,
 } from '@/lib/slideshow/playlist';
-import { PlaybackSurface } from '@doneisbetter/gds-core/client';
+import { PlaybackSurface } from '@sovereignsquad/gds-core/client';
 import {
   CAMERA_STAGE_BLACK,
   SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,

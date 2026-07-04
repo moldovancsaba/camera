@@ -1,6 +1,6 @@
 # Event Data Exports — Low-Level Design
 
-**Version**: 2.15.0
+**Version**: 2.16.0
 **Last Updated**: 2026-07-04
 
 Manager-gated exports of the data collected for a single event, surfaced on the event

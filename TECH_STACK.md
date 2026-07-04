@@ -1,6 +1,6 @@
 # Tech Stack
 
-**Version**: 2.15.0  
+**Version**: 2.16.0  
 **Last Updated**: 2026-07-04
 
 This document records the current technical stack in use and the parts of the product each technology supports.
@@ -128,9 +128,9 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 - transactional email delivery (submission notifications and try-on result emails)
 - per-event template overrides and sender-name settings; defaults in `lib/email/submission-template-defaults.ts`
 
-### `@doneisbetter/gds-*` and Mantine 8.3
+### `@sovereignsquad/gds-*` and Mantine 8.3
 
-- `gds-core` / `gds-admin` / `gds-theme` `^3.5.0` provide the design-system runtime, admin primitives, and theming
+- `gds-core` / `gds-admin` / `gds-theme` `^3.9.0` provide the design-system runtime, admin primitives, and theming
 - `gds-compliance` and `gds-eslint-config` back the `gds:check` / `gds:validate-manifest` gate
 
 ### Local try-on worker integration

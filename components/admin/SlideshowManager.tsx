@@ -10,7 +10,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import Link from 'next/link';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
-import { EmptyState, LabelTag } from '@doneisbetter/gds-core/client';
+import { EmptyState, LabelTag } from '@sovereignsquad/gds-core/client';
 
 interface Slideshow {
   _id: string;

@@ -1,6 +1,6 @@
 'use client';
 
-import { EditorScaffold, WorkspaceHeader } from '@doneisbetter/gds-admin/client';
+import { EditorScaffold, WorkspaceHeader } from '@sovereignsquad/gds-admin/client';
 import type { ReactNode } from 'react';
 
 interface AdminEditorScaffoldProps {

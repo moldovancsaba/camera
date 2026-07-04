@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { SidebarNavItem } from '@doneisbetter/gds-core/client';
+import { SidebarNavItem } from '@sovereignsquad/gds-core/client';
 
 interface SemanticNavLinkProps {
   href: string;

@@ -5,7 +5,7 @@ import {
   AdminResourceManager,
   type AdminResourceAction,
   type AdminResourceRecord,
-} from '@doneisbetter/gds-admin/client';
+} from '@sovereignsquad/gds-admin/client';
 
 export interface SerializedSubmissionRow {
   id: string;

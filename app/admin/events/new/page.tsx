@@ -23,8 +23,8 @@ import {
 } from '@/components/gds/PublicPrimitives';
 import PartnerSearchDropdown from '@/components/admin/PartnerSearchDropdown';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
-import { FormSection } from '@doneisbetter/gds-admin/client';
-import { InlineAlert, StateBlock } from '@doneisbetter/gds-core/client';
+import { FormSection } from '@sovereignsquad/gds-admin/client';
+import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import MediaCard from '@/components/media/MediaPreviewCard';
 import type { TryOnSuitOption } from '@/lib/tryon/suits';

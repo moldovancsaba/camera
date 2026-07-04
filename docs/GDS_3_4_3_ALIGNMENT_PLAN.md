@@ -6,7 +6,7 @@
 
 ## Objective
 
-Move Camera toward 100% Sovereign Squad General Design System operation using the published `@doneisbetter/*` `3.4.3` package line while keeping the frontend stable, responsive, and lightweight.
+Move Camera toward 100% Sovereign Squad General Design System operation using the published `@sovereignsquad/*` `3.4.3` package line while keeping the frontend stable, responsive, and lightweight.
 
 This document is the implementation handover for GitHub issues `#69` through `#78`.
 
@@ -37,8 +37,8 @@ Project board sync:
 
 ## Baseline implemented
 
-- `@doneisbetter/gds-admin`, `@doneisbetter/gds-core`, and `@doneisbetter/gds-theme` upgraded to `3.4.3`.
-- `@doneisbetter/gds-compliance` and `@doneisbetter/gds-eslint-config` upgraded to `3.4.3`.
+- `@sovereignsquad/gds-admin`, `@sovereignsquad/gds-core`, and `@sovereignsquad/gds-theme` upgraded to `3.4.3`.
+- `@sovereignsquad/gds-compliance` and `@sovereignsquad/gds-eslint-config` upgraded to `3.4.3`.
 - Root Camera provider now composes official GDS feedback/overlay providers:
   - `GdsTelemetryProvider`
   - `GdsNotificationProvider`
@@ -260,7 +260,7 @@ Targeted manual smoke:
 ## Rollback
 
 1. Revert the migration PR.
-2. Restore previous `@doneisbetter/*` package versions.
+2. Restore previous `@sovereignsquad/*` package versions.
 3. Restore previous provider composition if GDS provider startup fails.
 4. Re-run type-check, lint, and build.
 5. Keep data migrations out of visual migration PRs unless explicitly required.

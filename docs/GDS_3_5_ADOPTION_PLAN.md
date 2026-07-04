@@ -4,11 +4,11 @@
 
 ## Objective
 
-Move Camera from GDS 3.4.x package consumption to the published `@doneisbetter/*` 3.5.0 contracts while reducing local UI composition, preserving runtime behavior, and keeping the release gate enforceable.
+Move Camera from GDS 3.4.x package consumption to the published `@sovereignsquad/*` 3.5.0 contracts while reducing local UI composition, preserving runtime behavior, and keeping the release gate enforceable.
 
 ## Implemented in this adoption pass
 
-- Upgraded `@doneisbetter/gds-admin`, `@doneisbetter/gds-core`, `@doneisbetter/gds-theme`, `@doneisbetter/gds-compliance`, and `@doneisbetter/gds-eslint-config` to `3.5.0`.
+- Upgraded `@sovereignsquad/gds-admin`, `@sovereignsquad/gds-core`, `@sovereignsquad/gds-theme`, `@sovereignsquad/gds-compliance`, and `@sovereignsquad/gds-eslint-config` to `3.5.0`.
 - Updated [gds-adoption.json](../gds-adoption.json) to declare GDS `3.5.0` and the current review date.
 - Enabled the GDS 3.5 root provider options in [CameraGdsProvider.tsx](../components/gds/CameraGdsProvider.tsx): document color-scheme application and root CSS variable targeting.
 - Replaced the local media preview image/layout composition in [MediaPreviewCard.tsx](../components/media/MediaPreviewCard.tsx) with the package `MediaPreviewCard` primitive.

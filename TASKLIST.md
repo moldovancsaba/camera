@@ -1,6 +1,6 @@
 # Tasklist
 
-**Version Context**: 2.15.0  
+**Version Context**: 2.16.0  
 **Last Updated**: 2026-07-04
 
 This file should contain only active near-term execution items. Historical delivery belongs in `RELEASE_NOTES.md`.
@@ -27,7 +27,7 @@ This file should contain only active near-term execution items. Historical deliv
   - logos editor `AdminCrudForm` parity with frames (#74)
   - public capture/share primitive adoption (#76)
   - media card primitives with non-cropping behavior (#77)
-  - re-validate primitive names against `@doneisbetter/* 3.5` before resuming
+  - re-validate primitive names against `@sovereignsquad/* 3.9` before resuming
 
 ### Release gate / CI decision (#78)
 

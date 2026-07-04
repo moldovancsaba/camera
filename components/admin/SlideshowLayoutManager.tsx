@@ -3,7 +3,7 @@
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import Link from 'next/link';
-import { EmptyState, LabelTag } from '@doneisbetter/gds-core/client';
+import { EmptyState, LabelTag } from '@sovereignsquad/gds-core/client';
 
 export interface SlideshowLayoutListItem {
   _id: string;

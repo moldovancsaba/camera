@@ -3,7 +3,7 @@
 import {
   SemanticButton as GdsSemanticButton,
   type SemanticButtonProps,
-} from '@doneisbetter/gds-core/client';
+} from '@sovereignsquad/gds-core/client';
 import { cameraAdminVocabularyPacks } from '@/lib/gds/camera-admin-vocabulary';
 
 export default function CameraSemanticButton({

@@ -25,12 +25,12 @@ import {
   Textarea,
   TextInput,
 } from '@/components/gds/PublicPrimitives';
-import { useGdsToasts } from '@doneisbetter/gds-core/client';
+import { useGdsToasts } from '@sovereignsquad/gds-core/client';
 import { type CustomPage } from '@/lib/db/schemas';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
-import { FormSection } from '@doneisbetter/gds-admin/client';
-import { InlineAlert, StateBlock } from '@doneisbetter/gds-core/client';
+import { FormSection } from '@sovereignsquad/gds-admin/client';
+import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import type { TryOnSetup } from '@/lib/db/schemas';
 import {

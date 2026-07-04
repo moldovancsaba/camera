@@ -1,4 +1,4 @@
-import { GdsIcons, createGdsVocabularyPack } from '@doneisbetter/gds-core/client';
+import { GdsIcons, createGdsVocabularyPack } from '@sovereignsquad/gds-core/client';
 
 const savedFeedback = { icon: GdsIcons.Check, color: 'teal', messageId: 'gds.feedback.saved' } as const;
 const deletedFeedback = { icon: GdsIcons.Delete, color: 'red', messageId: 'gds.feedback.deleted' } as const;

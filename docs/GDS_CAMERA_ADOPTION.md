@@ -1,6 +1,6 @@
 # Camera GDS Adoption
 
-**Version**: 2.15.0  
+**Version**: 2.16.0  
 **Last Updated**: 2026-07-04
 
 ## SSOT statement
@@ -24,10 +24,10 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | Concern | Camera adapter |
 |---------|----------------|
 | App Router client boundary | `app/providers.tsx` |
-| Theme | package-direct `@doneisbetter/gds-theme/server` default `gdsTheme` |
-| Root provider | `components/gds/CameraGdsProvider.tsx` wrapping `@doneisbetter/gds-theme/client` `GdsProvider` without local theme extension; v3.5 document color-scheme and root CSS variable selector are enabled |
-| Notifications | Root `GdsNotificationProvider` / `GdsToastProvider` from `@doneisbetter/gds-core/client` plus `showGdsNotification` from `@doneisbetter/gds-theme/client` |
-| Modals / confirm | Root `GdsConfirmProvider` / `OverlayManagerProvider` from `@doneisbetter/gds-core/client`; legacy `lib/gds/confirm-destructive.tsx` remains a migration bridge |
+| Theme | package-direct `@sovereignsquad/gds-theme/server` default `gdsTheme` |
+| Root provider | `components/gds/CameraGdsProvider.tsx` wrapping `@sovereignsquad/gds-theme/client` `GdsProvider` without local theme extension; v3.5 document color-scheme and root CSS variable selector are enabled |
+| Notifications | Root `GdsNotificationProvider` / `GdsToastProvider` from `@sovereignsquad/gds-core/client` plus `showGdsNotification` from `@sovereignsquad/gds-theme/client` |
+| Modals / confirm | Root `GdsConfirmProvider` / `OverlayManagerProvider` from `@sovereignsquad/gds-core/client`; legacy `lib/gds/confirm-destructive.tsx` remains a migration bridge |
 | Adoption manifest | `gds-adoption.json` |
 | Release gate | `.github/workflows/gds-release-gate.yml`, [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md) |
 
@@ -36,19 +36,19 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | GDS pattern family | Camera adapter | Status |
 |--------------------|----------------|--------|
 | Semantic navigation link | `components/admin/SemanticNavLink.tsx` | Domain navigation composition; replace with package nav contract when compatible |
-| Metric strip | direct `@doneisbetter/gds-admin` import | Package-direct |
-| Info card | direct `@doneisbetter/gds-core` import | Package-direct |
+| Metric strip | direct `@sovereignsquad/gds-admin` import | Package-direct |
+| Info card | direct `@sovereignsquad/gds-core` import | Package-direct |
 | Action entry grid | `components/gds/AdminDashboardView.tsx`, `app/admin/tryon/page.tsx`, `app/admin/tryon-results/page.tsx` | Package-direct |
 | Data toolbar | `components/admin/AdminListPageShell.tsx` | Package-direct |
 | Responsive data view | `components/gds/EventsInventoryList.tsx`, `components/gds/PartnersInventoryList.tsx`, `components/admin/TryOnResultModerationTable.tsx` | Package-direct `ResponsiveDataView` |
 | Data table | `components/gds/LandingPagesPageView.tsx`, `components/admin/TryOnQueueTable.tsx` | Package-direct `DataTable`; analytics tables use package `AdminAnalyticsTable` |
-| Empty state | direct `@doneisbetter/gds-core` import | Package-direct |
-| Access summary | direct `@doneisbetter/gds-core` import | Package-direct |
-| Status badge | direct `@doneisbetter/gds-core` import | Package-direct |
-| State block | direct `@doneisbetter/gds-core` import | Package-direct |
-| Form section | direct `@doneisbetter/gds-admin` import | Package-direct |
+| Empty state | direct `@sovereignsquad/gds-core` import | Package-direct |
+| Access summary | direct `@sovereignsquad/gds-core` import | Package-direct |
+| Status badge | direct `@sovereignsquad/gds-core` import | Package-direct |
+| State block | direct `@sovereignsquad/gds-core` import | Package-direct |
+| Form section | direct `@sovereignsquad/gds-admin` import | Package-direct |
 | Editor scaffold | `app/admin/{events,events/[id],partners,partners/[id],frames,logos,tryon}/**` | Domain composition `components/admin/AdminEditorScaffold.tsx` over package `EditorScaffold` and `WorkspaceHeader` |
-| Upload dropzone | direct `@doneisbetter/gds-core` import | Package-direct |
+| Upload dropzone | direct `@sovereignsquad/gds-core` import | Package-direct |
 | Destructive confirm | `lib/gds/confirm-destructive.tsx` | Active — delete/remove admin actions |
 | Root provider adapter | `components/gds/CameraGdsProvider.tsx` | Active |
 | Public shell | `components/public/PublicPageShell.tsx` | Domain-owned composition over package `PublicShell` |
@@ -110,7 +110,7 @@ Camera exceptions follow the shared structure from [docs/GDS_EXCEPTION_STANDARD.
 | Slideshow player (`components/slideshow/**`, `/slideshow/**`) | Runtime constraint | Timing-sensitive queue orchestration, fullscreen behavior, and media-first presentation | GDS runtime boundary, `PlaybackSurface` framing, surrounding admin configuration surfaces, visible error/empty states, keyboard-safe exit where applicable | Keep narrowing until only timing-sensitive queue, fullscreen behavior, and media internals remain outside direct package ownership |
 ## Published package capability snapshot
 
-Camera is currently pinned to the latest verified published release bundle, `@doneisbetter/*` **3.5.0**.
+Camera is currently pinned to the latest verified published release bundle, `@sovereignsquad/*` **3.5.0**.
 
 ### Available now in the published package line
 
@@ -146,21 +146,21 @@ Camera is currently pinned to the latest verified published release bundle, `@do
 6. Statuses, permissions, enablement language — active
 7. Landing-page editor alignment — creator CSS contract preserved; editor and legal utility surfaces use GDS-backed shells
 8. Public capture shell migration — active; onboarding and share stages now use `PublicFlowShell` while live capture and preview orchestration remain the intentional runtime exception
-9. Replace the remaining thin adapter families one contract family at a time with direct `@doneisbetter/gds-*` consumption where package typing and behavior make the bridge unnecessary
+9. Replace the remaining thin adapter families one contract family at a time with direct `@sovereignsquad/gds-*` consumption where package typing and behavior make the bridge unnecessary
 
 ## Shared package alignment
 
-Camera now uses the real `@doneisbetter/*` package line through the temporary supported GitHub release-asset tarballs.
+Camera now uses the real `@sovereignsquad/*` package line through the temporary supported GitHub release-asset tarballs.
 
 Current state:
 
 - Camera runtime: Mantine `8.3.6`, React `19.2.0`
-- Shared `@doneisbetter/*` packages: version `3.5.0`, Mantine `^7.9.0 || ^8.3.0 || ^9.0.0`, React `^18.2.0 || ^19.0.0`
+- Shared `@sovereignsquad/*` packages: version `3.5.0`, Mantine `^7.9.0 || ^8.3.0 || ^9.0.0`, React `^18.2.0 || ^19.0.0`
 
 Required rule:
 
 - Camera must align to the **contracts and patterns** from the GDS repository
-- Camera must consume the published `@doneisbetter/*` packages at the provider/theme/compliance boundary
+- Camera must consume the published `@sovereignsquad/*` packages at the provider/theme/compliance boundary
 - Camera must continue shrinking local adapters as central package coverage and compatibility improve
 
 ## Formal compliance path

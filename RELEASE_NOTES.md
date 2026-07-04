@@ -1,7 +1,7 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.15.0
+**Current Version**: 2.16.0
 **Last Updated**: 2026-07-04
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
@@ -10,9 +10,9 @@ This document tracks all completed tasks and version releases in chronological o
 
 ---
 
-## [v2.15.0] — 2026-07-04
+## [v2.16.0] — 2026-07-04
 
-**Type**: Minor — features + test/safety hardening + GDS 3.5 + tracker audit + documentation refresh
+**Type**: Minor — features + test/safety hardening + tracker audit + documentation refresh
 
 ### Summary
 Rolls up everything shipped since v2.14.0: the global slideshow inventory page, per-event
@@ -26,9 +26,8 @@ export-route tests), and a repository-wide documentation refresh.
   `SlideshowsInventoryList`, added to the admin navigation.
 - **Per-event email sender settings** — events can override the transactional email
   sender name (`lib/email/*`); backfill via `npm run db:backfill-event-email-sender-name`.
-- **GDS 3.5 alignment** — `@doneisbetter/*` packages bumped to `^3.5.0`
-  (`docs/GDS_3_5_ADOPTION_PLAN.md`); `CameraGdsProvider` composes the official
-  notification/toast/confirm/overlay providers.
+- **GDS runtime** — `CameraGdsProvider` composes the official notification/toast/
+  confirm/overlay providers (GDS package line now `@sovereignsquad/* ^3.9.0`, see v2.15.0).
 - **Admin smoke suite (#81)** — `tests/e2e/admin-smoke.spec.ts` renders every admin
   surface as an authenticated global admin and asserts the error boundary is absent;
   fixed a `/admin/submissions` crash found by the suite.
@@ -52,7 +51,7 @@ export-route tests), and a repository-wide documentation refresh.
   against code: 13 verified delivered, 2 met-in-intent, 7 actionable, 1 (#78) invalidated
   by the GitHub Actions removal (`c0b8b54`).
 - **Docs refresh** — absolute machine paths converted to repo-relative links across all
-  docs; GDS version references corrected to 3.5; CI claims corrected after workflow
+  docs; GDS version references corrected to the current package line; CI claims corrected after workflow
   removal; E2E counts updated (23 tests / 7 specs); `pnpm` references normalized to npm;
   version headers aligned to 2.15.0.
 
@@ -65,6 +64,28 @@ export-route tests), and a repository-wide documentation refresh.
 
 - `npm run type-check`, `npm run lint`, `npm run verify:production-guards` all pass.
 - Playwright suite requires a MongoDB-backed environment (`npm run test:e2e:safe`).
+## [v2.15.0] — 2026-06-21
+
+**Type**: Minor — design-system migration
+
+### Summary
+Migrated the General Design System from the `@doneisbetter/*` scope (v3.5.0) to
+`@sovereignsquad/*` (v3.9.0). Mechanical scope rename per the upstream guide — no API
+changes. Rewrote all `@doneisbetter/gds*` imports to `@sovereignsquad/`, bumped the five GDS
+packages to `^3.9.0`, updated `gds-adoption.json` entrypoints and doc references, clean reinstall.
+
+### Verification
+- `npm run gds:check` — compliance + boundary pass
+- `npm run type-check` — 0 errors · `npm run build` — clean · `npm run test:e2e` — 15/15 pass
+- `npm audit` — 0 vulnerabilities
+
+### Notes
+- The upgraded eslint stack emitted 16 advisory `react-hooks/set-state-in-effect` and
+  `preserve-manual-memoization` warnings on intentional patterns (sync URL/prop → state,
+  copy-prop-to-state, async init) in interactive components. These React-Compiler-era rules
+  are turned off in `eslint.config.mjs` rather than risk-refactoring production hot paths;
+  revisit under a React Compiler adoption. Lint is clean (0 warnings, 0 errors).
+- `sso@doneisbetter.com` (an SSO email address, not a package) is intentionally unchanged.
 
 ---
 
@@ -192,7 +213,7 @@ Reliability hardening session. All 12 Playwright E2E tests pass. Production buil
 - **Database Performance Offloading**: Replaced in-memory JavaScript loops and raw collection loading in `collectCrossEventUserAnalytics` and `collectEventSpecificStats` with highly optimized MongoDB aggregation pipelines using `$facet` and project expressions, improving page rendering speeds from seconds to milliseconds.
 - **Event Engagement Analytics Card**: Added a dedicated **📊 Event Engagement & Statistics** card on the event detail page (`app/admin/events/[id]/page.tsx`) showing live counts of total images, AI try-ons, original framed captures, unique email addresses, and clean customer emails.
 - **StatsStrip Integration**: Updated the event detail page header `StatsStrip` to display real-time, non-limited values.
-- **GDS Upgrade**: Upgraded `@doneisbetter/gds-*` packages to the stable `3.4.7` release.
+- **GDS Upgrade**: Upgraded `@sovereignsquad/gds-*` packages to the stable `3.4.7` release.
 - **Mobile Navigation Auto-Collapse**: Added a React `useEffect` pathname change listener in `AdminChrome.tsx` to programmatically collapse the mobile navigation drawer when navigations occur.
 
 ### Fix — Admin inventory stats now use database totals
