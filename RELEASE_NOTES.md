@@ -1,12 +1,52 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.16.0
+**Current Version**: 2.17.0
 **Last Updated**: 2026-07-04
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
+
+---
+
+## [v2.17.0] — 2026-07-04
+
+**Type**: Minor — observability + release gate + GDS form parity (audit follow-through)
+
+### Summary
+Closes the last self-serve items from the issue audit: structured error
+observability (#83), a formalized one-command release gate (#78), and GDS
+admin-form parity for the logos editor (#74).
+
+### Features
+
+- **Structured error observability (#83)** — `lib/observability/logger.ts` emits
+  single-line JSON records (level/event/message/digest/stack/context) to
+  stdout/stderr, ingestible and alertable by Vercel or any log drain with no
+  external SDK. Wired into the API error boundary (`withErrorHandler`,
+  `safeAsync`, `dbOperation`). New `/api/observability/client-error` beacon +
+  `app/error.tsx` `sendBeacon` push client/RSC crashes (keyed by digest) into
+  the same server-side stream.
+- **Formalized release gate (#78)** — `npm run release:check` runs the full gate
+  fail-fast: GDS manifest + compliance + boundary, type-check, lint (incl. the
+  #82 RSC rule), production-guard verification, and build. Replaces the removed
+  GitHub Actions lane with a documented local command (`docs/GDS_RELEASE_GATE.md`).
+- **Logos editor GDS parity (#74)** — `/admin/logos/[id]/edit` migrated to the
+  official `AdminCrudForm` / `AdminFormSection` / `AdminTextInput` / `AdminTextarea`
+  / `AdminCheckbox` primitives with controlled state, matching the frames editor.
+  Event edit/new email-template editing was already GDS-based.
+
+### Verification
+
+- `npm run release:check` passes end-to-end (exit 0): manifest, compliance,
+  type-check, lint, production-guards (14/14), build.
+- Logger output verified as valid single-line JSON with digest/stack/context.
+
+### Notes
+
+- Create/`new` admin pages (frames, logos, partners, suits) remain on raw inputs
+  uniformly — a separate consistency pass, out of #74's edit-parity scope.
 
 ---
 

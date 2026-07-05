@@ -19,6 +19,29 @@ export default function Error({
 }) {
   useEffect(() => {
     console.error('Application error:', error);
+    // Beacon the crash to the server so it lands in structured logs / alerting
+    // (#83). In production only `digest` is populated on the client; that's
+    // enough to correlate with the full server-side stack Next already logs.
+    try {
+      const body = JSON.stringify({
+        digest: error.digest,
+        message: error.message,
+        url: typeof window !== 'undefined' ? window.location.href : undefined,
+      });
+      const endpoint = '/api/observability/client-error';
+      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+        navigator.sendBeacon(endpoint, new Blob([body], { type: 'application/json' }));
+      } else {
+        void fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch {
+      // Never let error reporting throw inside the error boundary.
+    }
   }, [error]);
 
   return (

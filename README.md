@@ -1,6 +1,6 @@
 # Camera
 
-**Version**: 2.16.0  
+**Version**: 2.17.0  
 **Last Updated**: 2026-07-04  
 **Status**: Production system
 
@@ -120,6 +120,13 @@ Production-guard guarantee (dev-login and E2E routes must be unreachable in prod
 
 ```bash
 npm run verify:production-guards
+```
+
+Release gate — run before every production release (GDS manifest + compliance, type-check,
+lint, production-guard verification, and build, fail-fast):
+
+```bash
+npm run release:check
 ```
 
 Notes:

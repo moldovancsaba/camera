@@ -1,6 +1,6 @@
 # Camera GDS Release Gate
 
-> **Status (2026-07-04)**: the GitHub Actions workflow that ran this gate was removed in commit `c0b8b54`. The command sequence below remains the canonical release validation, currently executed locally/manually before release. Restoring an automated lane is tracked in GitHub issue #78.
+> **Status (2026-07-04)**: the GitHub Actions workflow that ran this gate was removed in commit `c0b8b54`. Per the #78 decision, the gate is now a **formalized local/manual lane**: run `npm run release:check` before every production release (and before merging UI/admin/public/GDS changes). It chains the full sequence below and exits non-zero on the first failure. Re-adding a CI workflow later is optional and would simply invoke the same script.
 
 **Last Updated**: 2026-07-04
 
@@ -22,18 +22,26 @@ npm ci
 
 ## Required Checks
 
-The GitHub Actions workflow [gds-release-gate.yml](.github/workflows/gds-release-gate.yml) runs on pull requests to `main` and pushes to `main`.
-
-Required commands:
+Run the whole gate with one command before a production release:
 
 ```bash
 npm ci
-npm run gds:validate-manifest
-npm run gds:check
-npm run type-check
-npm run lint
-npm run build
+npm run release:check
 ```
+
+`release:check` runs, in order and fail-fast:
+
+```bash
+npm run gds:validate-manifest   # GDS manifest is well-formed
+npm run gds:check               # GDS compliance + import-boundary check
+npm run type-check              # tsc --noEmit
+npm run lint                    # eslint . (incl. the RSC boundary rule, #82)
+npm run verify:production-guards # dev/e2e/debug routes 404 in production (#85)
+npm run build                   # production build
+```
+
+Not included in `release:check` (require a live MongoDB, run separately when the
+change touches those surfaces): `npm run test:e2e:safe`.
 
 ## Compliance Rules
 

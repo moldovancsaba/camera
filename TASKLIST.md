@@ -1,6 +1,6 @@
 # Tasklist
 
-**Version Context**: 2.16.0  
+**Version Context**: 2.17.0  
 **Last Updated**: 2026-07-04
 
 This file should contain only active near-term execution items. Historical delivery belongs in `RELEASE_NOTES.md`.
@@ -15,36 +15,38 @@ This file should contain only active near-term execution items. Historical deliv
   - kept open with status comments: #84 (tests merged, awaiting first green run), #78 (premise note posted; needs CI-vs-local decision)
   - untouched (accurate as filed): #74, #76, #77, #83
 
-### Observability (#83)
+### GDS UI follow-through (#76, #77)
 
-- status: blocked on a decision — Sentry vs. structured Vercel logging as the error sink
-- scope: wire `app/error.tsx` and server catch paths to the chosen sink; alert on new server errors
-
-### GDS UI follow-through (#74, #76, #77)
-
-- status: active
+- status: active — best done with visual verification
 - focus:
-  - logos editor `AdminCrudForm` parity with frames (#74)
   - public capture/share primitive adoption (#76)
   - media card primitives with non-cropping behavior (#77)
   - re-validate primitive names against `@sovereignsquad/* 3.9` before resuming
+- note: #74 (logos editor `AdminCrudForm` parity) delivered in v2.17.0
 
-### Release gate / CI decision (#78)
+### Admin create-page consistency (new)
 
-- status: blocked on a decision — restore GitHub Actions or formalize the local gate
-- current state: `gds:check`, type-check, lint, and build run locally/manually only
-- note: premise/status comment posted on #78 (2026-07-04)
+- status: backlog — the `new`/create admin pages (frames, logos, partners, suits) remain on
+  raw `<input>`/`<textarea>` uniformly; migrate to `AdminCrudForm` primitives for parity with
+  the edit pages. Separate from #74 (which was edit-page parity).
 
-### E2E suite execution
+### E2E suite execution (#84)
 
 - status: pending — run `npm run test:e2e:safe` in a MongoDB-backed environment to execute
-  the new `event-exports.spec.ts` (written and lint/type-clean, not yet executed)
+  `event-exports.spec.ts` (written and lint/type-clean, not yet executed); close #84 on first green run
 
-## Recently completed (v2.15.0 — see RELEASE_NOTES.md)
+## Recently completed (v2.17.0 — see RELEASE_NOTES.md)
+
+- **#83 observability**: structured logger (`lib/observability/logger.ts`) wired into the API
+  error boundary + client-error beacon (`/api/observability/client-error` ← `app/error.tsx`)
+- **#78 release gate**: formalized as `npm run release:check` (decision: local gate, not CI)
+- **#74 GDS forms**: logos editor migrated to `AdminCrudForm` parity with frames
+
+## Recently completed (v2.15.0–v2.16.0 — see RELEASE_NOTES.md)
 
 - issue audit + backlog fixes: #60 safe runner, #85 production-guard verification,
-  #84 export-route tests, #75 GDS confirm parity
-- documentation refresh: relative links, GDS 3.5 references, CI claims, version headers
+  #84 export-route tests, #75 GDS confirm parity, #82 RSC lint guard
+- tracker reconciliation (23 → 6 open) and repository-wide documentation refresh
 
 ## Notes
 

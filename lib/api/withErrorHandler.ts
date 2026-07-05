@@ -22,6 +22,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { apiError } from './responses';
+import { reportServerError } from '@/lib/observability/logger';
 
 /**
  * Route handler function type
@@ -89,22 +90,23 @@ export function withErrorHandler<T extends RouteHandler>(handler: T): T {
         return error;
       }
       
-      // Handle standard JavaScript errors
+      // Handle standard JavaScript errors — structured, queryable, alertable
       if (error instanceof Error) {
-        console.error('API Error:', {
-          message: error.message,
-          stack: error.stack,
+        reportServerError('api.error', error, {
           url: request.url,
           method: request.method,
         });
-        
+
         // Return generic 500 error
         // Don't expose internal error details to client
         return apiError('Internal server error', 500);
       }
-      
+
       // Handle unknown error types
-      console.error('Unknown Error:', error);
+      reportServerError('api.unknown_error', error, {
+        url: request.url,
+        method: request.method,
+      });
       return apiError('An unexpected error occurred', 500);
     }
   }) as T;
@@ -136,7 +138,7 @@ export async function safeAsync<T>(
   try {
     return await fn();
   } catch (error) {
-    console.error('Safe async error:', error);
+    reportServerError('async.safe_async_failed', error);
     return fallback;
   }
 }
@@ -166,7 +168,7 @@ export async function dbOperation<T>(
   try {
     return await fn();
   } catch (error) {
-    console.error(`Database operation failed [${operation}]:`, error);
+    reportServerError('db.operation_failed', error, { operation });
     throw apiError(`Database operation failed: ${operation}`, 500);
   }
 }

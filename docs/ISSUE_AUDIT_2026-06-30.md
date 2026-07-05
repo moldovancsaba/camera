@@ -130,3 +130,13 @@ The board actions recommended above were carried out:
 - **Untouched, accurate as filed (4):** #74, #76, #77, #83.
 
 Open-issue count: **23 → 6**.
+
+### v2.17.0 delivery (2026-07-04)
+
+Three of the "kept open / actionable" items were then implemented and closed:
+
+- **#83** — structured logger (`lib/observability/logger.ts`) wired into the API error boundary + a `/api/observability/client-error` beacon from `app/error.tsx`. Decision: structured stdout/Vercel logging, not Sentry.
+- **#78** — release gate formalized as `npm run release:check`. Decision: local gate, not restored CI.
+- **#74** — logos editor migrated to `AdminCrudForm` parity with frames.
+
+Remaining open: **#76**, **#77** (GDS public-surface/media-card UI — visual work) and **#84** (export tests merged; closes on first green `test:e2e:safe` run). Open-issue count: **6 → 3**.

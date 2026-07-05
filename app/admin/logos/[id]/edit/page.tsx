@@ -1,7 +1,9 @@
 /**
  * Edit Logo Page
- * 
- * Full CRUD - Update logo details and toggle active status.
+ *
+ * Full CRUD — update logo details and toggle active status.
+ * Uses the official GDS admin form primitives (AdminCrudForm / AdminFormSection /
+ * AdminTextInput / AdminTextarea / AdminCheckbox) at parity with the frames editor.
  */
 
 'use client';
@@ -12,7 +14,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
-import { FormSection } from '@sovereignsquad/gds-admin/client';
+import {
+  AdminCheckbox,
+  AdminCrudForm,
+  AdminFormSection,
+  AdminTextInput,
+  AdminTextarea,
+  FormSection,
+} from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
 
 interface LogoRecord {
@@ -41,6 +50,9 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
   const router = useRouter();
   const { id } = use(params);
   const [logo, setLogo] = useState<LogoRecord | null>(null);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [isActive, setIsActive] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -55,8 +67,11 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
         if (!response.ok) throw new Error('Logo not found');
         const data = await response.json();
         // Handle wrapped response
-        const logoData = data.logo || data.data?.logo || data;
+        const logoData = (data.logo || data.data?.logo || data) as LogoRecord;
         setLogo(logoData);
+        setName(logoData.name);
+        setDescription(logoData.description ?? '');
+        setIsActive(Boolean(logoData.isActive));
       } catch (err: unknown) {
         setError(getErrorMessage(err));
       } finally {
@@ -67,23 +82,20 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
     void fetchLogo();
   }, [id]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setIsSaving(true);
     setError(null);
-
-    const formData = new FormData(e.currentTarget);
-    const updateData = {
-      name: formData.get('name'),
-      description: formData.get('description'),
-      isActive: formData.get('isActive') === 'on',
-    };
 
     try {
       const response = await fetch(`/api/logos/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updateData),
+        body: JSON.stringify({
+          name,
+          description,
+          isActive,
+        }),
       });
 
       if (!response.ok) {
@@ -147,9 +159,9 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
         description={error || undefined}
         action={
           <Link href="/admin/logos" style={{ textDecoration: 'none' }}>
-          <SemanticButton action="logos:back-to-list" variant="secondary">
-            Back to logos
-          </SemanticButton>
+            <SemanticButton action="logos:back-to-list" variant="secondary">
+              Back to logos
+            </SemanticButton>
           </Link>
         }
       />
@@ -163,34 +175,41 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
       description="Update logo details and settings."
       breadcrumbs={
         <nav aria-label="Breadcrumb">
-          <Link href="/admin/logos">
-            Logos
-          </Link>
+          <Link href="/admin/logos">Logos</Link>
           <span aria-hidden> / </span>
           <span>Edit</span>
         </nav>
       }
       maxWidth={960}
     >
-      {error ? (
-        <InlineAlert title="Error" message={error} severity="error" />
-      ) : null}
+      {error ? <InlineAlert title="Error" message={error} severity="error" /> : null}
 
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
+        <AdminCrudForm title="Logo settings" description="Update metadata for this logo resource.">
           <FormSection title="Logo preview" description="To change the image, delete this logo and upload a new one.">
             <div style={{ aspectRatio: '1 / 1', borderRadius: 12, maxWidth: 320, overflow: 'hidden', position: 'relative' }}>
-                <Image
-                  src={logo.thumbnailUrl || logo.imageUrl}
-                  alt={logo.name}
-                  fill
-                  style={{ objectFit: 'contain', padding: 24 }}
-                  unoptimized
-                />
+              <Image
+                src={logo.thumbnailUrl || logo.imageUrl}
+                alt={logo.name}
+                fill
+                style={{ objectFit: 'contain', padding: 24 }}
+                unoptimized
+              />
             </div>
           </FormSection>
 
-          <FormSection title="Technical information">
+          <AdminFormSection title="Logo details">
+            <AdminTextInput name="name" label="Logo name" value={name} onChange={setName} required />
+            <AdminTextarea name="description" label="Description" value={description} onChange={setDescription} />
+            <AdminCheckbox
+              name="isActive"
+              label="Make logo active (available for assignment to events)"
+              checked={isActive}
+              onChange={setIsActive}
+            />
+          </AdminFormSection>
+
+          <AdminFormSection title="Technical information">
             <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' }}>
               <div><span>Logo ID</span><code style={{ display: 'block' }}>{logo.logoId || 'Not assigned'}</code></div>
               <div><span>MongoDB ID</span><code style={{ display: 'block' }}>{logo._id}</code></div>
@@ -209,32 +228,17 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
                 Open thumbnail URL
               </a>
             ) : null}
-          </FormSection>
-
-          <FormSection title="Logo details">
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Logo Name *
-              <input name="name" required defaultValue={logo.name} style={{ minHeight: 44, padding: '0 0.75rem' }} />
-            </label>
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Description
-              <textarea name="description" rows={3} defaultValue={logo.description} style={{ padding: '0.75rem' }} />
-            </label>
-            <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
-              <input type="checkbox" name="isActive" defaultChecked={logo.isActive} />
-              Make logo active (available for assignment to events)
-            </label>
-          </FormSection>
+          </AdminFormSection>
 
           <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
               <SemanticButton action="logos:save" type="submit" loading={isSaving}>
-                {isSaving ? 'Saving…' : 'Save Changes'}
+                {isSaving ? 'Saving…' : 'Save changes'}
               </SemanticButton>
               <Link href="/admin/logos" style={{ textDecoration: 'none' }}>
-              <SemanticButton action="logos:cancel-edit" variant="secondary">
-                Cancel
-              </SemanticButton>
+                <SemanticButton action="logos:cancel-edit" variant="secondary">
+                  Cancel
+                </SemanticButton>
               </Link>
             </div>
             <SemanticButton
@@ -245,10 +249,10 @@ export default function EditLogoPage({ params }: { params: Promise<{ id: string 
               disabled={isDeleting}
               onClick={() => void confirmDelete()}
             >
-              Delete Logo
+              Delete logo
             </SemanticButton>
           </div>
-        </div>
+        </AdminCrudForm>
       </form>
     </EditorScaffold>
   );

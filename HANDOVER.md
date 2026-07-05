@@ -1,16 +1,27 @@
 # Handover
 
-**Version**: 2.16.0
+**Version**: 2.17.0
 **Last Updated**: 2026-07-04
 
 ## Production status
 
 - Live and healthy at `camera.messmass.com` (Vercel `narimato/04_camera`).
 - **Deployed commit: `1b50664`** (v2.14.0 — RSC fix, exports, submissions fix).
-- ⚠️ **`main` is ahead of production**: the GDS 3.9 migration (`b9b4304`), the lint
-  cleanup (`229290a`), and the v2.16.0 audit/hardening/docs work are committed but
-  **NOT deployed**. Ship with `npx vercel@latest --prod` when ready (see `RUNBOOK.md`).
-  Git push does **not** auto-deploy.
+- ⚠️ **`main` is far ahead of production**: the GDS 3.9 migration (`b9b4304`), the lint
+  cleanup (`229290a`), and the v2.16.0–v2.17.0 audit/hardening/observability/docs work are
+  committed but **NOT deployed**. Ship with `npx vercel@latest --prod` when ready (see
+  `RUNBOOK.md`). Git push does **not** auto-deploy. Run `npm run release:check` first.
+
+## Shipped in v2.17.0 (2026-07-04)
+
+- **Structured observability (#83)** — `lib/observability/logger.ts` (JSON to stdout/stderr,
+  alertable via Vercel/log drain, no external SDK); wired into `withErrorHandler` /
+  `safeAsync` / `dbOperation` and a `/api/observability/client-error` beacon from
+  `app/error.tsx` so client/RSC crashes reach server logs keyed by digest.
+- **Formalized release gate (#78)** — `npm run release:check` runs the full gate fail-fast
+  (decision: local gate, not restored CI). Documented in `docs/GDS_RELEASE_GATE.md`.
+- **Logos editor GDS parity (#74)** — `/admin/logos/[id]/edit` migrated to `AdminCrudForm`
+  primitives, matching frames.
 
 ## Shipped in v2.16.0 (2026-07-04)
 
@@ -52,9 +63,10 @@ lint/type-clean but **not yet executed** (sandbox had no MongoDB) — run
 
 - **Deploy v2.16.0** to production (owner go / `vercel --prod`).
 - **Restore Vercel auto-deploy** — GitHub App repo access + production branch (owner, dashboard). Until then deploys are manual.
-- ~~Reconcile the GitHub board~~ — **done 2026-07-04**: 17 issues closed with evidence comments; board is down to 6 open (#74, #76, #77, #78, #83, #84).
-- Tracked issues still open: **#83** error observability (needs a sink decision) ·
-  **#74/#76/#77** GDS UI · **#78** release-gate model (rewrite).
+- ~~Reconcile the GitHub board~~ — **done 2026-07-04**: 17 issues closed; then #74/#78/#83 delivered in v2.17.0 and closed. Board down to **3 open** (#76, #77 GDS UI · #84 export tests awaiting first green run).
+- **#84**: run `npm run test:e2e:safe` once against MongoDB (expect 23/23), then close.
+- **#76/#77**: remaining GDS public-surface + media-card migrations — best with visual verification.
+- Admin create/`new` pages still use raw inputs uniformly (frames included) — separate consistency pass, tracked in `TASKLIST.md`.
 - 16 `react-hooks` advisory rules (`set-state-in-effect`, `preserve-manual-memoization`) are **off** in `eslint.config.mjs` — revisit under a React Compiler adoption.
 
 ## Docs map

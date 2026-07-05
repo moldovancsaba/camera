@@ -1,6 +1,6 @@
 # Architecture
 
-**Version**: 2.16.0  
+**Version**: 2.17.0  
 **Last Updated**: 2026-07-04
 
 This document describes the current production architecture of Camera as implemented in the repository today.
@@ -41,6 +41,7 @@ Browser / Public Screens
 - Next.js route handlers under `app/api/**`
 - root edge proxy in `proxy.ts`
 - shared API helpers in `lib/api/*`
+- structured error logging in `lib/observability/*` (see §5)
 
 ### Domain / business logic
 
@@ -169,6 +170,19 @@ Purpose:
 
 Reference:
 - [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md)
+
+### Observability
+
+- `lib/observability/logger.ts` emits single-line JSON records
+  (`level`/`event`/`message`/`digest`/`stack`/`context`) to stdout/stderr —
+  ingestible and alertable by Vercel or any log drain, with no external SDK.
+- `withErrorHandler`, `safeAsync`, and `dbOperation` report through it
+  (`api.error`, `db.operation_failed`, …) instead of ad-hoc `console.error`.
+- The global client error boundary (`app/error.tsx`) beacons crashes to
+  `POST /api/observability/client-error`, which re-emits them as server-side
+  records keyed by the digest the user sees — so client/RSC render crashes reach
+  the same alertable stream. This is the durable follow-up to the v2.14.0
+  digest-4053814135 incident, which was invisible until logs were tailed by hand.
 
 ## 6. Middleware and routing behavior
 
