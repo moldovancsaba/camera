@@ -44,6 +44,10 @@ export-route tests), and a repository-wide documentation refresh.
   matrix, email-CSV dedup, image-CSV column contract, ZIP-on-empty 400.
 - **GDS confirm parity (#75)** — replaced the last two `window.confirm` calls
   (`TryOnQueueTable` rerun/reapply) with `useGdsConfirm`.
+- **RSC boundary lint guard (#82)** — custom ESLint rule
+  (`camera-rsc/no-component-fn-prop-in-server-files`) errors on function-valued
+  `component` props in `app/**` files without `'use client'`, statically preventing
+  the digest-4053814135 crash class. Verified against a planted violation.
 
 ### Tracker & documentation
 

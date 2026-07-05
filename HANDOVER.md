@@ -25,6 +25,8 @@
   email-CSV dedup, image-CSV contract, ZIP-on-empty 400 (8 tests).
 - **GDS confirm parity (#75)** — last two `window.confirm` calls (try-on queue
   rerun/reapply) replaced with `useGdsConfirm`.
+- **RSC boundary lint guard (#82)** — custom ESLint rule errors on function-valued
+  `component` props in Server Component files under `app/**`.
 - **Docs refresh** — relative links repo-wide, CI claims corrected (workflows removed in
   `c0b8b54`), E2E counts updated (23 tests / 7 specs), version headers aligned, historical
   docs bannered, `/admin/slideshows` + email sender settings documented.
@@ -51,8 +53,8 @@ lint/type-clean but **not yet executed** (sandbox had no MongoDB) — run
 - **Deploy v2.16.0** to production (owner go / `vercel --prod`).
 - **Restore Vercel auto-deploy** — GitHub App repo access + production branch (owner, dashboard). Until then deploys are manual.
 - **Reconcile the GitHub board** per `docs/ISSUE_AUDIT_2026-06-30.md` (close 13 delivered issues).
-- Tracked issues still open: **#82** RSC boundary lint guard · **#83** error observability
-  (needs a sink decision) · **#74/#76/#77** GDS UI · **#78** release-gate model (rewrite).
+- Tracked issues still open: **#83** error observability (needs a sink decision) ·
+  **#74/#76/#77** GDS UI · **#78** release-gate model (rewrite).
 - 16 `react-hooks` advisory rules (`set-state-in-effect`, `preserve-manual-memoization`) are **off** in `eslint.config.mjs` — revisit under a React Compiler adoption.
 
 ## Docs map

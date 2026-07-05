@@ -16,9 +16,58 @@ const scopedGdsConfig = createGdsConfig({ allowedImports: gdsAllowedImports }).m
   ],
 }));
 
+// RSC boundary guard (GitHub #82): in a Server Component (no 'use client'
+// directive), a function-valued `component` prop cannot be serialized across
+// the server→client boundary — Mantine/GDS polymorphic targets are all client
+// components, so this crashes production renders with "Functions cannot be
+// passed directly to Client Components" (see the v2.14.0 digest-4053814135
+// incident). Use component="a" (a string) in Server Components instead.
+const rscBoundaryPlugin = {
+  rules: {
+    "no-component-fn-prop-in-server-files": {
+      meta: {
+        type: "problem",
+        docs: {
+          description:
+            "Disallow function-valued `component` props in files without a 'use client' directive",
+        },
+        messages: {
+          fnComponentProp:
+            "Server Component passes a function as `component` — RSC cannot serialize it and the render crashes in production. Use component=\"a\" or move this JSX into a 'use client' file.",
+        },
+        schema: [],
+      },
+      create(context) {
+        const source = context.sourceCode.getText();
+        const isClientFile = /^\s*['"]use client['"]/m.test(source.slice(0, 500));
+        if (isClientFile) {
+          return {};
+        }
+        return {
+          JSXAttribute(node) {
+            if (node.name?.name !== "component") return;
+            const value = node.value;
+            if (!value || value.type !== "JSXExpressionContainer") return;
+            const expression = value.expression;
+            if (expression.type === "Literal") return;
+            context.report({ node, messageId: "fnComponentProp" });
+          },
+        };
+      },
+    },
+  },
+};
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    files: ["app/**/*.tsx"],
+    plugins: { "camera-rsc": rscBoundaryPlugin },
+    rules: {
+      "camera-rsc/no-component-fn-prop-in-server-files": "error",
+    },
+  },
   {
     // React-Compiler-era advisory rules (emitted since the eslint-config-next /
     // gds-eslint-config 3.9 upgrade). Every current hit is an intentional pattern in
