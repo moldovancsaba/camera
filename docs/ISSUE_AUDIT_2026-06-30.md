@@ -118,3 +118,15 @@ The following fixes were implemented on `claude/repo-sandbox-issue-audit-le5tsk`
 Still open after this branch: **#83** (observability sink — needs a Sentry-vs-Vercel-logging decision), **#74/#76/#77** (remaining GDS UI migrations), **#78** (rewrite around the post-CI enforcement model), and the board reconciliation itself.
 
 > **Post-audit note (2026-07-04):** package scope references above reflect audit time (`@doneisbetter/* 3.5`). `main` has since migrated to `@sovereignsquad/* ^3.9.0` (commit `b9b4304`); read the GDS package names accordingly.
+
+---
+
+## 7. Reconciliation executed (2026-07-04)
+
+The board actions recommended above were carried out:
+
+- **Closed as completed with evidence comments (17):** #58, #59, #60, #61, #62, #63, #64, #65, #66, #67, #70, #71, #72, #75, #81, #82, #85.
+- **Kept open with status comments (2):** #84 (test suite merged in v2.16.0; closes on its first green `npm run test:e2e:safe` run), #78 (premise note posted; awaits the restore-CI vs. formalize-local-gate decision).
+- **Untouched, accurate as filed (4):** #74, #76, #77, #83.
+
+Open-issue count: **23 → 6**.

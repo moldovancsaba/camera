@@ -52,7 +52,7 @@ lint/type-clean but **not yet executed** (sandbox had no MongoDB) — run
 
 - **Deploy v2.16.0** to production (owner go / `vercel --prod`).
 - **Restore Vercel auto-deploy** — GitHub App repo access + production branch (owner, dashboard). Until then deploys are manual.
-- **Reconcile the GitHub board** per `docs/ISSUE_AUDIT_2026-06-30.md` (close 13 delivered issues).
+- ~~Reconcile the GitHub board~~ — **done 2026-07-04**: 17 issues closed with evidence comments; board is down to 6 open (#74, #76, #77, #78, #83, #84).
 - Tracked issues still open: **#83** error observability (needs a sink decision) ·
   **#74/#76/#77** GDS UI · **#78** release-gate model (rewrite).
 - 16 `react-hooks` advisory rules (`set-state-in-effect`, `preserve-manual-memoization`) are **off** in `eslint.config.mjs` — revisit under a React Compiler adoption.

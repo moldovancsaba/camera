@@ -9,11 +9,11 @@ This file should contain only active near-term execution items. Historical deliv
 
 ### Tracker reconciliation (from `docs/ISSUE_AUDIT_2026-06-30.md`)
 
-- status: pending — owner action on GitHub
-- scope:
-  - close the 13 verified-delivered issues (#59, #61, #62, #63, #64, #65, #66, #67, #70, #71, #72, #75, #81) with evidence comments
-  - close-or-re-scope #58 (guard shape differs from spec) and #82 (only a lint rule remains)
-  - rewrite #78 around the post-CI enforcement model (workflows removed in `c0b8b54`)
+- status: **complete on 2026-07-04** — board reduced from 23 to 6 open issues
+- outcome:
+  - closed with evidence comments: #58, #59, #60, #61, #62, #63, #64, #65, #66, #67, #70, #71, #72, #75, #81, #82, #85 (17 issues)
+  - kept open with status comments: #84 (tests merged, awaiting first green run), #78 (premise note posted; needs CI-vs-local decision)
+  - untouched (accurate as filed): #74, #76, #77, #83
 
 ### Observability (#83)
 
@@ -33,6 +33,7 @@ This file should contain only active near-term execution items. Historical deliv
 
 - status: blocked on a decision — restore GitHub Actions or formalize the local gate
 - current state: `gds:check`, type-check, lint, and build run locally/manually only
+- note: premise/status comment posted on #78 (2026-07-04)
 
 ### E2E suite execution
 
