@@ -2,12 +2,12 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Box, Button, Group, Paper, Select, Stack, Text, UnstyledButton } from '@/components/gds/PublicPrimitives';
+import { Button, Group, Paper, Select, Stack, Text, UnstyledButton } from '@/components/gds/PublicPrimitives';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AdminModal, AdminReviewLayout, ResponsiveDataView } from '@sovereignsquad/gds-admin/client';
-import { StateBlock, StatusBadge, useGdsToasts } from '@sovereignsquad/gds-core/client';
+import { GdsMediaFrame, StateBlock, StatusBadge, useGdsToasts } from '@sovereignsquad/gds-core/client';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
 
@@ -325,7 +325,8 @@ function PreviewStrip({
   onOriginalMissing?: () => void;
 }) {
   const renderImage = (src: string | null, alt: string, onFailure?: () => void) => (
-    <Box
+    <GdsMediaFrame
+      fit="contain"
       style={{
         position: 'relative',
         width: 'min(100%, 400px)',
@@ -344,7 +345,7 @@ function PreviewStrip({
         objectFit="contain"
         onFailure={onFailure}
       />
-    </Box>
+    </GdsMediaFrame>
   );
 
   const content = (
@@ -402,7 +403,8 @@ function ReviewImagePanel({
       <Text size="sm" fw={600}>
         {label}
       </Text>
-      <Box
+      <GdsMediaFrame
+        fit="contain"
         style={{
           position: 'relative',
           width: '100%',
@@ -422,13 +424,14 @@ function ReviewImagePanel({
           objectFit="contain"
           onFailure={onFailure}
         />
-      </Box>
+      </GdsMediaFrame>
       {showSecondary && secondarySrc ? (
         <Stack gap="xs">
           <Text size="xs" c="dimmed">
             Original image
           </Text>
-          <Box
+          <GdsMediaFrame
+            fit="contain"
             style={{
               position: 'relative',
               width: '100%',
@@ -447,7 +450,7 @@ function ReviewImagePanel({
               objectFit="contain"
               onFailure={onSecondaryFailure}
             />
-          </Box>
+          </GdsMediaFrame>
         </Stack>
       ) : null}
     </Stack>

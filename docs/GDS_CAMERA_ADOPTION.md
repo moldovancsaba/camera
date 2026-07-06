@@ -56,6 +56,8 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | Page header / workspace header | `components/admin/WorkspaceHeader.tsx` | Domain-owned composition over package `PageHeader` |
 | Admin list page assembly | `components/admin/AdminListPageShell.tsx` | Domain-owned composition over package admin surfaces |
 | Media preview card | `components/media/MediaPreviewCard.tsx` | Thin compatibility adapter over package `MediaPreviewCard`; numeric Camera ratios are normalized to approved GDS ratios |
+| Media / result cards | `components/admin/EventGallery.tsx`, `components/admin/OldestVettingResultCard.tsx` | Package-direct `ListingCard`; image supplied as a ReactNode so `object-fit: contain` (non-cropping) is preserved, and semantic/loading action buttons are kept via the footer `actions` slot |
+| Media frame | `components/admin/TryOnResultModerationTable.tsx` (preview strip + review panel image frames) | Package-direct `GdsMediaFrame` with `fit="contain"` around the non-cropping preview images |
 | Try-On app workspace | `app/admin/tryon/**` composed from local GDS primitives | Active |
 | Auth / public capture shell | `components/capture/CaptureStageShell.tsx`, `components/capture/**`, `app/capture/**` | Active — `PublicFlowShell` for onboarding/share stages plus capture-specific runtime composition |
 | Landing legal pages | `components/public/LandingLegalDocument.tsx`, `app/landing/[slug]/{privacy,terms}/page.tsx` | Active — `ArticleShell` inside package-backed public utility surface |
@@ -116,7 +118,7 @@ Camera is currently pinned to the latest verified published release bundle, `@so
 
 - public/editorial primitives: `PublicShell`, `PublicFlowShell`, `ArticleShell`, `DocsPageShell`, `AuthShell`, `BrowseSurface`, `EditorialHero`, `FeatureBand`, `ConsumerSection`, `ConsumerDashboardGrid`, `MediaField`, `PublicBrandFooter`, `MapPanel`, `PlaybackSurface`
 - admin/ops primitives: `AppShell`, `PageHeader`, `WorkspaceHeader`, `ResponsiveDataView`, `StatsStrip`, `ContentOpsEditor`, `ContentOpsSection`, `ContentOpsActionBar`, `FormSection`, `AdminResourceManager`, `AdminResourceGrid`, `AdminResourceCard`, `AdminDataTable`, `AdminAnalyticsTable`, `AdminReviewLayout`, `AdminModal`, `AdminDetailDrawer`, `AdminCrudForm`, `AdminFormSection`, `AdminFormStatus`, `AdminFormActions`
-- shared state and utility primitives: `EmptyState`, `StateBlock`, `StatusBadge`, `AccessSummary`, `MediaCard`, `MediaPreviewCard`, `ProductCard`, `ActionBar`, `SemanticButton`, `ConfirmDialog`, `GdsConfirmProvider`, `GdsToastProvider`, `GdsNotificationProvider`, `OverlayManagerProvider`, `ReportingSection`, `GdsChart`, `StatsSection`, `PublicCaptureFlow`, `ShareButtonGroup`, `PlaybackControls`, `PlaybackOverlayControls`
+- shared state and utility primitives: `EmptyState`, `StateBlock`, `StatusBadge`, `AccessSummary`, `MediaCard`, `MediaPreviewCard`, `ListingCard`, `GdsMediaFrame`, `ProductCard`, `ActionBar`, `SemanticButton`, `ConfirmDialog`, `GdsConfirmProvider`, `GdsToastProvider`, `GdsNotificationProvider`, `OverlayManagerProvider`, `ReportingSection`, `GdsChart`, `StatsSection`, `PublicCaptureFlow`, `ShareButtonGroup`, `PlaybackControls`, `PlaybackOverlayControls`
 
 ### v3.5.0 additions relevant to Camera
 

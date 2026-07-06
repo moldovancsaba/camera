@@ -10,6 +10,33 @@ This document tracks all completed tasks and version releases in chronological o
 
 ---
 
+## [v2.18.0] — 2026-07-06
+
+**Type**: Minor — GDS media-card adoption (#77) + branching model
+
+### Summary
+Migrated the remaining bespoke admin media/image cards to official GDS 3.9 primitives,
+preserving non-cropping image behavior and existing runtime behavior:
+- `components/admin/OldestVettingResultCard.tsx` and `components/admin/EventGallery.tsx` now use
+  package-direct `ListingCard` — the image is supplied as a ReactNode so `object-fit: contain`
+  and exact aspect ratios are preserved, and semantic/loading action buttons and confirm flows are
+  kept via the footer `actions` slot. "Oldest waiting" is carried in the title eyebrow (ListingCard's
+  `featured` badge text is hardcoded).
+- `components/admin/TryOnResultModerationTable.tsx` preview/review image frames now use package-direct
+  `GdsMediaFrame` (`fit="contain"`) in place of bespoke `Box` frames.
+- Registered `ListingCard` and `GdsMediaFrame` in `gds-adoption.json` and updated `docs/GDS_CAMERA_ADOPTION.md`.
+
+Also formalized the branching model — three long-lived branches only (`main`/`preview`/`dev`);
+see `docs/BRANCHING.md`.
+
+### Verification
+- `npm run release:check` — pass (gds manifest+compliance+boundary, type-check, lint, production-guards, build).
+- Adversarial diff review confirmed the non-crop contract holds and found no functional/a11y regressions.
+- ⚠️ Pending: live visual + keyboard/screen-reader verification of these `/admin` (SSO) surfaces
+  before issue #77 is closed.
+
+---
+
 ## [v2.17.0] — 2026-07-04
 
 **Type**: Minor — observability + release gate + GDS form parity (audit follow-through)

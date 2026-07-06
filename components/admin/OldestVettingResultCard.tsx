@@ -1,6 +1,7 @@
 'use client';
 
 import SemanticButton from '@/components/gds/CameraSemanticButton';
+import { ListingCard, type ListingMetadataRow } from '@sovereignsquad/gds-core/client';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -103,96 +104,84 @@ export default function OldestVettingResultCard({ row }: { row: ModerationRow })
     }
   }
 
+  // ponytail: 4:5 ratio kept inside the image node — ListingCard.mediaRatio only offers 1:1/4:3/16:9,
+  // but image is a ReactNode so objectFit:contain preserves the non-cropping contract regardless.
+  // Event and garment kept as separate rows: ListingCard's metadata value side has no
+  // truncation, so a combined "event · garment" string can overflow the nowrap row.
+  const metadata: ListingMetadataRow[] = [];
+  if (shouldShowEmail(row.userEmail)) {
+    metadata.push({ id: 'email', label: 'Email', value: row.userEmail, tone: 'muted' });
+  }
+  metadata.push({ id: 'event', label: 'Event', value: row.eventName || 'Unscoped event' });
+  metadata.push({ id: 'garment', label: 'Garment', value: garmentLabel(row), tone: 'muted' });
+  metadata.push({ id: 'created', label: 'Created', value: new Date(row.createdAt).toLocaleString(), tone: 'muted' });
+
   return (
-    <div
-      style={{
-        background: 'linear-gradient(135deg, var(--mantine-color-violet-2), var(--mantine-color-cyan-1))',
-        borderRadius: 24,
-        boxShadow:
-          '0 18px 42px color-mix(in srgb, var(--mantine-color-violet-7) 18%, transparent), 0 0 0 1px color-mix(in srgb, var(--mantine-color-violet-7) 18%, transparent)',
-        color: 'inherit',
-        marginBottom: 'var(--mantine-spacing-xl)',
-        padding: 3,
-      }}
-    >
-      <div
-        style={{
-          background: 'var(--mantine-color-body)',
-          borderRadius: 21,
-          overflow: 'hidden',
-        }}
-      >
-        <Image
-          src={row.imageUrl}
-          alt="Oldest waiting try-on result"
-          width={800}
-          height={1000}
-          unoptimized
-          style={{
-            aspectRatio: '4 / 5',
-            background: 'var(--mantine-color-gray-0)',
-            display: 'block',
-            objectFit: 'contain',
-            width: '100%',
-            height: 'auto',
-          }}
-        />
-        <div style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)', padding: 'var(--mantine-spacing-md)' }}>
-          <div style={{ display: 'grid', gap: 2 }}>
-            <strong style={{ fontSize: 'var(--mantine-font-size-xs)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+    <div style={{ marginBottom: 'var(--mantine-spacing-xl)' }}>
+      <ListingCard
+        // "Oldest waiting" carried in the title eyebrow, not `featured` — ListingCard's
+        // featured badge text is hardcoded to "Featured" and would drop the domain meaning.
+        title={
+          <span style={{ display: 'grid', gap: 2 }}>
+            <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               Oldest waiting
-            </strong>
-            <strong style={{ fontSize: 'var(--mantine-font-size-lg)' }}>
-              {resolveDisplayName(row.userName)}
-            </strong>
-            {shouldShowEmail(row.userEmail) ? (
-              <span style={{ color: 'var(--mantine-color-dimmed)' }}>
-                {row.userEmail}
-              </span>
-            ) : null}
-            <span style={{ color: 'var(--mantine-color-dimmed)' }}>
-              {row.eventName || 'Unscoped event'} · {garmentLabel(row)}
             </span>
-            <span style={{ color: 'var(--mantine-color-dimmed)' }}>
-              Created {new Date(row.createdAt).toLocaleString()}
-            </span>
-          </div>
-          <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)' }}>
-            <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)', gridTemplateColumns: '1fr 1fr' }}>
-              <SemanticButton
-                action="tryon:approve"
-                loading={busyAction === 'approve'}
-                onClick={() => void handleDecision('approve')}
-              >
-                Approve
-              </SemanticButton>
-              <SemanticButton
-                action="tryon:reject"
-                loading={busyAction === 'reject'}
-                onClick={() => void handleDecision('reject')}
-              >
-                Reject
-              </SemanticButton>
-            </div>
-            <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)', gridTemplateColumns: '1fr 1fr' }}>
-              <SemanticButton
-                action="tryon:great"
-                loading={busyAction === 'great'}
-                onClick={() => void handleGreat()}
-              >
-                {row.isGreat ? 'Remove Great' : 'Great'}
-              </SemanticButton>
-              <SemanticButton
-                action="tryon:service"
-                loading={busyAction === 'service'}
-                onClick={() => void handleService()}
-              >
-                Service
-              </SemanticButton>
-            </div>
-          </div>
-        </div>
-      </div>
+            {resolveDisplayName(row.userName)}
+          </span>
+        }
+        image={
+          <Image
+            src={row.imageUrl}
+            alt="Oldest waiting try-on result"
+            width={800}
+            height={1000}
+            unoptimized
+            style={{
+              aspectRatio: '4 / 5',
+              background: 'var(--mantine-color-gray-0)',
+              display: 'block',
+              objectFit: 'contain',
+              width: '100%',
+              height: 'auto',
+            }}
+          />
+        }
+        metadata={metadata}
+        actions={[
+          <SemanticButton
+            key="approve"
+            action="tryon:approve"
+            loading={busyAction === 'approve'}
+            onClick={() => void handleDecision('approve')}
+          >
+            Approve
+          </SemanticButton>,
+          <SemanticButton
+            key="reject"
+            action="tryon:reject"
+            loading={busyAction === 'reject'}
+            onClick={() => void handleDecision('reject')}
+          >
+            Reject
+          </SemanticButton>,
+          <SemanticButton
+            key="great"
+            action="tryon:great"
+            loading={busyAction === 'great'}
+            onClick={() => void handleGreat()}
+          >
+            {row.isGreat ? 'Remove Great' : 'Great'}
+          </SemanticButton>,
+          <SemanticButton
+            key="service"
+            action="tryon:service"
+            loading={busyAction === 'service'}
+            onClick={() => void handleService()}
+          >
+            Service
+          </SemanticButton>,
+        ]}
+      />
     </div>
   );
 }

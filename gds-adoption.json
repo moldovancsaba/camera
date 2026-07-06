@@ -22,6 +22,8 @@
     "AccessSummary",
     "MediaCard",
     "MediaPreviewCard",
+    "ListingCard",
+    "GdsMediaFrame",
     "EditorScaffold",
     "PlaybackSurface",
     "AdminResourceManager",

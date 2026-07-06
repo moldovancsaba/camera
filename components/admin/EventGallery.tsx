@@ -9,8 +9,8 @@
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
-import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
+import { useMemo, useState, type ReactNode } from 'react';
+import { InlineAlert, ListingCard, StateBlock, type ListingMetadataRow } from '@sovereignsquad/gds-core/client';
 import EventGalleryUpload from './EventGalleryUpload';
 
 interface SlideshowPlayInfo {
@@ -337,115 +337,114 @@ export default function EventGallery({
           const busy = removeState.busyIds.includes(submissionId);
           const displayName = getDisplayName(submission);
 
-          return (
-            <article
-              key={submissionId}
-              style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', overflow: 'hidden' }}
+          const metadata: ListingMetadataRow[] = [
+            { id: 'captured', label: 'Captured', value: formatDateTime(submission.createdAt), tone: 'muted' },
+          ];
+          if (typeof submission.playCount === 'number' && submission.playCount > 0) {
+            metadata.push({ id: 'plays', label: 'Played', value: `${submission.playCount} times`, tone: 'muted' });
+          }
+          if (submission.slideshowPlays) {
+            for (const slideshow of slideshows) {
+              const plays = submission.slideshowPlays?.[slideshow.slideshowId];
+              if (!plays || plays.count === 0) continue;
+              metadata.push({ id: `ss-${slideshow.slideshowId}`, label: slideshow.name, value: `${plays.count}x`, tone: 'muted' });
+            }
+          }
+
+          // Footer affordances kept as ReactNodes so SemanticButton loading/variant/confirm-flow survives.
+          // ListingCard lays actions out in a wrapping Group and caps at 4 (throws at >4): View +
+          // Download + the confirm/cancel pair = exactly 4, so do not add a 5th footer affordance here.
+          // fullWidth is intentionally omitted — ListingCard wraps each action in a shrink-to-fit span.
+          const actions: ReactNode[] = [
+            <Link key="view" href={`/share/${submission._id}`} style={{ textDecoration: 'none' }}>
+              <SemanticButton action="event-gallery:view-submission" size="xs" variant="secondary">View</SemanticButton>
+            </Link>,
+            <a
+              key="download"
+              href={submission.imageUrl || submission.finalImageUrl || undefined}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-disabled={!submission.imageUrl && !submission.finalImageUrl}
+              style={{ pointerEvents: !submission.imageUrl && !submission.finalImageUrl ? 'none' : undefined, textDecoration: 'none' }}
             >
-              <div style={{ display: 'grid' }}>
+              <SemanticButton action="event-gallery:download-submission" size="xs" variant="secondary" disabled={!submission.imageUrl && !submission.finalImageUrl}>
+                Download
+              </SemanticButton>
+            </a>,
+          ];
+          if (canManage) {
+            if (singleConfirm) {
+              actions.push(
+                <SemanticButton
+                  key="confirm-remove"
+                  action="event-gallery:confirm-remove"
+                  type="button"
+                  onClick={() => void removeFromEvent([submissionId])}
+                  disabled={busy}
+                  size="xs"
+                  variant="danger"
+                >
+                  {busy ? 'Removing…' : 'Confirm remove'}
+                </SemanticButton>,
+                <SemanticButton
+                  key="cancel-remove"
+                  action="event-gallery:cancel-remove"
+                  type="button"
+                  onClick={cancelSingleConfirm}
+                  disabled={busy}
+                  size="xs"
+                  variant="secondary"
+                >
+                  Cancel
+                </SemanticButton>
+              );
+            } else {
+              actions.push(
+                <SemanticButton
+                  key="start-remove"
+                  action="event-gallery:start-remove"
+                  type="button"
+                  onClick={() => startSingleConfirm(submissionId)}
+                  size="xs"
+                  variant="danger"
+                >
+                  Remove from Event
+                </SemanticButton>
+              );
+            }
+          }
+
+          return (
+            <ListingCard
+              key={submissionId}
+              title={displayName}
+              image={
                 <div style={{ position: 'relative' }}>
                   {canManage ? (
-                  <input
-                    type="checkbox"
-                    checked={selected}
-                    onChange={() => toggleSelected(submissionId)}
-                    aria-label={selected ? 'Deselect image' : 'Select image'}
-                    style={{ position: 'absolute', zIndex: 1, insetBlockStart: 8, insetInlineStart: 8 }}
-                  />
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => toggleSelected(submissionId)}
+                      aria-label={selected ? 'Deselect image' : 'Select image'}
+                      style={{ position: 'absolute', zIndex: 1, insetBlockStart: 8, insetInlineStart: 8 }}
+                    />
                   ) : null}
                   <Link href={`/share/${submission._id}`}>
-                  <Image
-                  src={submission.imageUrl || submission.finalImageUrl || 'data:image/gif;base64,R0lGODlhAQABAAAAACw='}
-                  alt={`Photo of ${displayName}`}
-                  width={800}
-                  height={800}
-                  unoptimized
-                      style={{ width: '100%', height: 'auto', display: 'block' }}
-                />
-              </Link>
+                    <Image
+                      src={submission.imageUrl || submission.finalImageUrl || 'data:image/gif;base64,R0lGODlhAQABAAAAACw='}
+                      alt={`Photo of ${displayName}`}
+                      width={800}
+                      height={800}
+                      unoptimized
+                      style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }}
+                    />
+                  </Link>
                 </div>
-
-                <div style={{ display: 'grid', gap: '0.5rem', padding: '0.75rem' }}>
-                  <strong style={{ fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {displayName}
-                  </strong>
-                  <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
-                    {formatDateTime(submission.createdAt)}
-                  </span>
-                  {typeof submission.playCount === 'number' && submission.playCount > 0 ? (
-                    <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>Played {submission.playCount} times</span>
-                  ) : null}
-
-                  {submission.slideshowPlays && Object.keys(submission.slideshowPlays).length > 0 && (
-                    <div style={{ display: 'grid', gap: 2 }}>
-                      {slideshows.map((slideshow) => {
-                        const plays = submission.slideshowPlays?.[slideshow.slideshowId];
-                        if (!plays || plays.count === 0) return null;
-                        return (
-                          <span key={slideshow.slideshowId} style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
-                            {slideshow.name}: {plays.count}x
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  <div style={{ display: 'grid', gap: '0.5rem' }}>
-                    <Link href={`/share/${submission._id}`} style={{ textDecoration: 'none' }}>
-                      <SemanticButton action="event-gallery:view-submission" fullWidth size="xs" variant="secondary">View</SemanticButton>
-                    </Link>
-                    <a
-                      href={submission.imageUrl || submission.finalImageUrl || undefined}
-                      download
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-disabled={!submission.imageUrl && !submission.finalImageUrl}
-                      style={{ pointerEvents: !submission.imageUrl && !submission.finalImageUrl ? 'none' : undefined, textDecoration: 'none' }}
-                    >
-                      <SemanticButton action="event-gallery:download-submission" fullWidth size="xs" variant="secondary" disabled={!submission.imageUrl && !submission.finalImageUrl}>
-                      Download
-                      </SemanticButton>
-                    </a>
-                    {canManage ? (
-                      singleConfirm ? (
-                        <>
-                          <SemanticButton
-                            action="event-gallery:confirm-remove"
-                            type="button"
-                            onClick={() => void removeFromEvent([submissionId])}
-                            disabled={busy}
-                            size="xs"
-                            variant="danger"
-                          >
-                            {busy ? 'Removing…' : 'Confirm remove'}
-                          </SemanticButton>
-                          <SemanticButton
-                            action="event-gallery:cancel-remove"
-                            type="button"
-                            onClick={cancelSingleConfirm}
-                            disabled={busy}
-                            size="xs"
-                            variant="secondary"
-                          >
-                            Cancel
-                          </SemanticButton>
-                        </>
-                      ) : (
-                        <SemanticButton
-                          action="event-gallery:start-remove"
-                          type="button"
-                          onClick={() => startSingleConfirm(submissionId)}
-                          size="xs"
-                          variant="danger"
-                        >
-                          Remove from Event
-                        </SemanticButton>
-                      )
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            </article>
+              }
+              metadata={metadata}
+              actions={actions}
+            />
           );
         })}
       </div>
