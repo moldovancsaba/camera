@@ -1,7 +1,14 @@
 # Handover
 
-**Version**: 2.17.0
-**Last Updated**: 2026-07-04
+**Version**: 2.18.0
+**Last Updated**: 2026-07-06
+
+## Branching
+
+Three long-lived branches only — `main` (production), `preview` (release candidate),
+`dev` (development). No feature or per-task branches; promote `dev → preview → main`.
+Policy: [docs/BRANCHING.md](docs/BRANCHING.md). Consolidated to this model on 2026-07-06 —
+for now only `main` exists; create `preview`/`dev` off `main` when the workflow needs them.
 
 ## Production status
 

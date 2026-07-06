@@ -326,6 +326,10 @@ Expected environment shape:
 Production is currently shipped manually with `npx vercel@latest --prod` (git pushes do not
 auto-deploy). Deploy/verify/auto-deploy-repair steps: [RUNBOOK.md](RUNBOOK.md).
 
+**Branching model:** three long-lived branches only — `main` (production), `preview` (release
+candidate), `dev` (development); promote `dev → preview → main`. Full policy in
+[docs/BRANCHING.md](docs/BRANCHING.md).
+
 Useful commands:
 
 ```bash
@@ -338,6 +342,7 @@ npm run env:verify
 ## 13. Canonical references
 
 - [README.md](README.md)
+- [docs/BRANCHING.md](docs/BRANCHING.md)
 - [TECH_STACK.md](TECH_STACK.md)
 - [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md)
 - [docs/MONGODB_CONVENTIONS.md](docs/MONGODB_CONVENTIONS.md)

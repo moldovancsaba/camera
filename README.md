@@ -143,6 +143,12 @@ Default local URL:
 http://localhost:3000
 ```
 
+## Branching model
+
+Three long-lived branches only — `main` (production), `preview` (release candidate),
+`dev` (development). No feature or per-task branches. Promote upward: `dev → preview → main`.
+Full policy in [docs/BRANCHING.md](docs/BRANCHING.md).
+
 ## Deployment
 
 Production is hosted on Vercel (`camera.messmass.com`). Pushing to `main` does **not**
@@ -252,6 +258,7 @@ Operational docs:
 
 Canonical docs:
 
+- [docs/BRANCHING.md](docs/BRANCHING.md)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [TECH_STACK.md](TECH_STACK.md)
 - [docs/GDS_CAMERA_ADOPTION.md](docs/GDS_CAMERA_ADOPTION.md)

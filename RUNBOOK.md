@@ -1,5 +1,11 @@
 # Operations Runbook
 
+## Branching model
+
+Three long-lived branches only — `main` (production), `preview` (release candidate),
+`dev` (development). No feature or per-task branches. Promote upward: `dev → preview → main`,
+then deploy `main`. Full policy in [docs/BRANCHING.md](docs/BRANCHING.md).
+
 ## Deploying to production
 
 **Important:** pushing to `main` on GitHub does **not** auto-deploy. As of 2026-06,
