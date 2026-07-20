@@ -39,13 +39,16 @@ export async function upsertOrganization(input: { messmassOrganizationId?: strin
   return { organizationId: doc.organizationId, name: doc.name, created: true, linked: false };
 }
 
-export async function upsertPartner(input: { messmassPartnerId?: string; name: string; logoUrl?: string; organizationId?: string }) {
+export async function upsertPartner(input: { messmassPartnerId?: string; name: string; logoUrl?: string; organizationId?: string; cameraPartnerId?: string }) {
   const db = await connectToDatabase();
   const name = String(input.name || '').trim();
   const now = generateTimestamp();
-  let partner = input.messmassPartnerId
-    ? await db.collection(COLLECTIONS.PARTNERS).findOne({ messmassPartnerId: input.messmassPartnerId })
+  // Adoption targets a specific existing camera partner by id; else link by
+  // messmass id, else by name (case-insensitive), else create.
+  let partner = input.cameraPartnerId
+    ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: input.cameraPartnerId })
     : null;
+  if (!partner && input.messmassPartnerId) partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ messmassPartnerId: input.messmassPartnerId });
   if (!partner && name) partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ name: ci(name) });
   if (partner) {
     const set: Record<string, unknown> = { updatedAt: now };
@@ -73,11 +76,27 @@ export async function findPartners(query: { name?: string; messmassPartnerId?: s
   return docs.map((p) => ({ partnerId: p.partnerId, name: p.name, messmassPartnerId: p.messmassPartnerId ?? null, organizationId: p.organizationId ?? null }));
 }
 
-export async function provisionEvent(input: { messmassEventId: string; messmassPartnerId?: string; partnerId?: string; eventName: string; eventDate?: string }) {
+export async function provisionEvent(input: { messmassEventId: string; messmassPartnerId?: string; partnerId?: string; eventName: string; eventDate?: string; cameraEventId?: string }) {
   const db = await connectToDatabase();
   const now = generateTimestamp();
   if (!input.messmassEventId) {
     throw apiBadRequest('messmassEventId is required');
+  }
+  // Adoption: an existing camera event (created in camera before messmass knew
+  // about it) is being linked to a newly-created messmass event. Stamp the
+  // messmass id onto it instead of creating a duplicate. Never clobber an event
+  // already linked to a different messmass event.
+  if (input.cameraEventId) {
+    const target = await db.collection(COLLECTIONS.EVENTS).findOne({ eventId: input.cameraEventId });
+    if (!target) throw apiNotFound('camera event (adopt target)');
+    const alreadyLinked = target.messmassEventId && target.messmassEventId !== input.messmassEventId;
+    if (!target.messmassEventId) {
+      await db.collection(COLLECTIONS.EVENTS).updateOne(
+        { _id: target._id },
+        { $set: { messmassEventId: input.messmassEventId, updatedAt: now } },
+      );
+    }
+    return { eventId: target.eventId, mongoId: String(target._id), partnerId: target.partnerId, created: false, adopted: !alreadyLinked };
   }
   // Idempotent: one camera event per messmass event.
   const existing = await db.collection(COLLECTIONS.EVENTS).findOne({ messmassEventId: input.messmassEventId });
