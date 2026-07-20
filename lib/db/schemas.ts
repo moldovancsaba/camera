@@ -31,6 +31,7 @@ import type { SlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
  * Centralized constant to ensure consistency across the application
  */
 export const COLLECTIONS = {
+  ORGANIZATIONS: 'organizations',
   PARTNERS: 'partners',
   EVENTS: 'events',
   FRAMES: 'frames',
@@ -67,12 +68,29 @@ export const COLLECTIONS = {
  * 
  * Example: AC Milan, Red Bull, Nike
  */
+/**
+ * Organization — the parent entity that groups partners (mirrors messmass
+ * organisations). messmass is the source of truth; camera receives them via the
+ * provisioning API and stamps messmassOrganizationId for a shared identity.
+ */
+export interface Organization {
+  _id?: ObjectId;
+  organizationId: string;            // Unique organization identifier (UUID)
+  name: string;
+  messmassOrganizationId?: string;   // Cross-ref to the messmass organisation (_id)
+  source?: string;                   // 'messmass' when provisioned from messmass
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Partner {
   _id?: ObjectId;                    // MongoDB document ID
   partnerId: string;                 // Unique partner identifier (UUID)
   name: string;                      // Partner name (e.g., "AC Milan")
   description?: string;              // Optional partner description
   isActive: boolean;                 // Whether partner is currently active
+  organizationId?: string;           // Parent organization (Organization.organizationId)
+  messmassPartnerId?: string;        // Cross-ref to the messmass partner (_id) — shared identity
   
   // Contact and metadata
   contactEmail?: string;             // Partner contact email
@@ -227,6 +245,7 @@ export interface Event {
   // Partner relationship
   partnerId: string;                 // Reference to parent partner
   partnerName: string;               // Cached partner name for display and filtering
+  messmassEventId?: string;          // Cross-ref to the messmass event/project (_id) — shared identity; read by fanmass
   
   // Event details
   eventDate?: string;                // Optional event date (ISO 8601 timestamp)
