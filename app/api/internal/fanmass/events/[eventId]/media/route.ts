@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { apiSuccess, withErrorHandler } from '@/lib/api';
+import { apiSuccess, withErrorHandler, checkRateLimit, RATE_LIMITS } from '@/lib/api';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { assertInternalFanmassSecret } from '@/lib/fanmass/internal';
 
@@ -20,6 +20,7 @@ export const GET = withErrorHandler(async (
   context: { params: Promise<{ eventId: string }> },
 ) => {
   assertInternalFanmassSecret(request);
+  await checkRateLimit(request, RATE_LIMITS.INTERNAL_READ);
 
   const { eventId } = await context.params;
   const sp = request.nextUrl.searchParams;

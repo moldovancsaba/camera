@@ -299,6 +299,7 @@ Major API groups:
 - admin users/submissions utilities: `/api/admin/**`
 - event data exports: `/api/admin/events/[id]/export/emails` and `/api/admin/events/[id]/export/images` (manager-gated; CSV + ZIP, shared logic in `lib/events/event-export.ts`)
 - go-short redirects: `/api/go-short/**`
+- internal service-to-service: `/api/internal/messmass/**` (messmass provisions organisations/partners/events; messmass is master), `/api/internal/fanmass/**` (fanmass pulls events + media, read-only), `/api/internal/tryon/**` (try-on worker callbacks) — each gated by its own shared secret, not a user session. See [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md).
 
 The exact route list should be taken from `app/api/**/route.ts`, not from memory.
 
@@ -348,3 +349,4 @@ npm run env:verify
 - [docs/MONGODB_CONVENTIONS.md](docs/MONGODB_CONVENTIONS.md)
 - [docs/SLIDESHOW_LOGIC.md](docs/SLIDESHOW_LOGIC.md)
 - [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)
+- [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md)

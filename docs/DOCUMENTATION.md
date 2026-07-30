@@ -21,6 +21,7 @@ Use these as the maintained operational set:
 - [docs/TRYON_ADMIN_GUIDE.md](TRYON_ADMIN_GUIDE.md)
 - [docs/TRYON_ANALYTICS.md](TRYON_ANALYTICS.md)
 - [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md)
+- [docs/MESSMASS_FANMASS_INTEGRATION.md](MESSMASS_FANMASS_INTEGRATION.md)
 
 Historical and planning docs may exist, but they are not canonical runtime documentation unless explicitly refreshed.
 

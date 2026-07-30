@@ -87,6 +87,16 @@ export const RATE_LIMITS = {
 
   /** OAuth login start (/api/auth/login) — curb redirect storms per IP */
   LOGIN_INIT: { max: 25, windowMs: 15 * 60 * 1000 },
+
+  /**
+   * Server-to-server internal routes (messmass provisioning, fanmass reads).
+   * Callers are authenticated by shared secret, not end users — this tier
+   * exists to catch a misbehaving caller (retry storm, bad cron) rather than
+   * to police untrusted traffic; kept generous relative to the ~15min fanmass
+   * poll and per-event messmass provisioning cadence.
+   */
+  INTERNAL_READ: { max: 120, windowMs: 60 * 1000 },
+  INTERNAL_WRITE: { max: 60, windowMs: 60 * 1000 },
 } as const;
 
 /**

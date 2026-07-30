@@ -254,6 +254,14 @@ Operational docs:
 - [docs/TRYON_ARCHITECTURE.md](docs/TRYON_ARCHITECTURE.md)
 - [docs/TRYON_OPERATIONS.md](docs/TRYON_OPERATIONS.md)
 
+## messmass + fanmass integration
+
+Camera is provisioned by **messmass** (event reporting/partner management —
+the master for organisations/partners/events) and read by **fanmass** (image
+analytics — brand/sponsor/fan recognition). Both are server-to-server,
+secret-authenticated routes under `/api/internal/**`; Camera never calls out
+to either app. See [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md).
+
 ## Documentation map
 
 Canonical docs:
@@ -275,6 +283,7 @@ Canonical docs:
 - [docs/TRYON_LOW_LEVEL_DESIGN.md](docs/TRYON_LOW_LEVEL_DESIGN.md)
 - [docs/TRYON_ADMIN_GUIDE.md](docs/TRYON_ADMIN_GUIDE.md)
 - [docs/TRYON_ANALYTICS.md](docs/TRYON_ANALYTICS.md)
+- [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md)
 
 Tracker handover:
 

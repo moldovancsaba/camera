@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { apiSuccess, withErrorHandler } from '@/lib/api';
+import { apiSuccess, withErrorHandler, checkRateLimit, RATE_LIMITS } from '@/lib/api';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { assertInternalFanmassSecret } from '@/lib/fanmass/internal';
 
@@ -14,11 +14,13 @@ import { assertInternalFanmassSecret } from '@/lib/fanmass/internal';
  * Response: { success, data: { events: [{ eventId, name, partnerId, partnerName,
  *            messmassEventId, isActive, eventDate }] } }
  *
- * messmassEventId falls back to eventId because the camera Event model has no
- * dedicated messmass id; if one is added later this endpoint surfaces it.
+ * messmassEventId falls back to eventId for events created directly in camera
+ * (no messmass link). Events provisioned by messmass (lib/messmass/provision.ts)
+ * carry a real messmassEventId, which is used here in preference to eventId.
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   assertInternalFanmassSecret(request);
+  await checkRateLimit(request, RATE_LIMITS.INTERNAL_READ);
 
   const includeAll = request.nextUrl.searchParams.get('all') === 'true';
   const db = await connectToDatabase();

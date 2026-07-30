@@ -1,11 +1,12 @@
 import { NextRequest } from 'next/server';
-import { apiSuccess, withErrorHandler } from '@/lib/api';
+import { apiSuccess, withErrorHandler, checkRateLimit, RATE_LIMITS } from '@/lib/api';
 import { assertInternalMessmassSecret } from '@/lib/messmass/internal';
 import { findPartners, upsertPartner } from '@/lib/messmass/provision';
 
 // GET /api/internal/messmass/partners?name=&messmassPartnerId=  — lookup for the linker
 export const GET = withErrorHandler(async (request: NextRequest) => {
   assertInternalMessmassSecret(request);
+  await checkRateLimit(request, RATE_LIMITS.INTERNAL_READ);
   const sp = request.nextUrl.searchParams;
   const partners = await findPartners({
     name: sp.get('name') || undefined,
@@ -18,6 +19,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 // Create/link a camera partner (hybrid: by messmass id, then by name, then create).
 export const POST = withErrorHandler(async (request: NextRequest) => {
   assertInternalMessmassSecret(request);
+  await checkRateLimit(request, RATE_LIMITS.INTERNAL_WRITE);
   const body = await request.json().catch(() => ({}));
   const partner = await upsertPartner({
     name: body.name,
