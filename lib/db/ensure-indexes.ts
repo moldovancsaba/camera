@@ -51,6 +51,24 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
     }
   };
 
+  // --- organizations (messmass provisioning master lookup) ---
+  await track(COLLECTIONS.ORGANIZATIONS, () =>
+    db.collection(COLLECTIONS.ORGANIZATIONS).createIndex(
+      { organizationId: 1 },
+      {
+        unique: true,
+        name: 'organizations_organizationId_unique',
+        partialFilterExpression: { organizationId: { $type: 'string' } },
+      }
+    )
+  );
+  await track(COLLECTIONS.ORGANIZATIONS, () =>
+    db.collection(COLLECTIONS.ORGANIZATIONS).createIndex(
+      { messmassOrganizationId: 1 },
+      { sparse: true, name: 'organizations_messmassOrganizationId_sparse' }
+    )
+  );
+
   // --- partners ---
   await track(COLLECTIONS.PARTNERS, () =>
     db.collection(COLLECTIONS.PARTNERS).createIndex(
@@ -64,6 +82,12 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
   );
   await track(COLLECTIONS.PARTNERS, () =>
     db.collection(COLLECTIONS.PARTNERS).createIndex({ isActive: 1, createdAt: -1 }, { name: 'partners_isActive_createdAt' })
+  );
+  await track(COLLECTIONS.PARTNERS, () =>
+    db.collection(COLLECTIONS.PARTNERS).createIndex(
+      { messmassPartnerId: 1 },
+      { sparse: true, name: 'partners_messmassPartnerId_sparse' }
+    )
   );
 
   // --- events ---
@@ -91,6 +115,15 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
         sparse: true,
         name: 'events_shortUrlSlug_unique_sparse',
       }
+    )
+  );
+  // Unique: provisionEvent() treats messmassEventId as "one camera event per
+  // messmass event" — enforce that invariant at the DB level too, not just in
+  // the findOne-then-insert app logic (which has a race under concurrent calls).
+  await track(COLLECTIONS.EVENTS, () =>
+    db.collection(COLLECTIONS.EVENTS).createIndex(
+      { messmassEventId: 1 },
+      { unique: true, sparse: true, name: 'events_messmassEventId_unique_sparse' }
     )
   );
 
