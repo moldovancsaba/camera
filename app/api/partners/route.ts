@@ -18,6 +18,7 @@ import {
   apiCreated,
 } from '@/lib/api';
 import { isGlobalAdminSession, listAccessiblePartnerIds } from '@/lib/partners/authorization';
+import { pushPartnerToMessmass } from '@/lib/messmassClient';
 
 /**
  * GET /api/partners
@@ -126,10 +127,33 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   const result = await db.collection(COLLECTIONS.PARTNERS).insertOne(partner);
 
+  // WHAT: Push camera-native partners to messmass so they show up there too.
+  // WHY: Bidirectional sync -- messmass already pushes its partners to camera
+  //   on event creation; this is the reverse direction. Best-effort: a failed
+  //   push never blocks partner creation in camera.
+  let messmassPartnerId: string | undefined;
+  try {
+    const pushed = await pushPartnerToMessmass({
+      cameraPartnerId: partner.partnerId,
+      name: partner.name,
+      logoUrl: partner.logoUrl,
+    });
+    if (pushed) {
+      messmassPartnerId = pushed.id;
+      await db.collection(COLLECTIONS.PARTNERS).updateOne(
+        { _id: result.insertedId },
+        { $set: { messmassPartnerId } }
+      );
+    }
+  } catch {
+    // non-fatal
+  }
+
   return apiCreated({
     partner: {
       _id: result.insertedId,
       ...partner,
+      ...(messmassPartnerId ? { messmassPartnerId } : {}),
     },
   });
 });

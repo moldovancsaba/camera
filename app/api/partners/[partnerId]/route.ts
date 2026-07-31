@@ -21,6 +21,7 @@ import {
   apiNotFound,
 } from '@/lib/api';
 import { assertPartnerMongoWorkspaceAccess } from '@/lib/partners/authorization';
+import { pushPartnerToMessmass } from '@/lib/messmassClient';
 
 export const GET = withErrorHandler(async (
   _request: NextRequest,
@@ -110,6 +111,30 @@ export const PATCH = withErrorHandler(async (
 
   if (!result) {
     throw apiNotFound('Partner');
+  }
+
+  // WHAT: Push updates to messmass for camera-native partners only.
+  // WHY: A partner with source === 'messmass' originated FROM messmass -- pushing
+  //   it back would be a no-op round-trip at best and a stale-data overwrite at
+  //   worst. Only genuinely camera-native partners (created here, or previously
+  //   linked from here) get their edits propagated onward.
+  if (existingPartner.source !== 'messmass') {
+    try {
+      const pushed = await pushPartnerToMessmass({
+        cameraPartnerId: result.partnerId,
+        name: result.name,
+        logoUrl: result.logoUrl,
+      });
+      if (pushed && !result.messmassPartnerId) {
+        await db.collection(COLLECTIONS.PARTNERS).updateOne(
+          { _id: result._id },
+          { $set: { messmassPartnerId: pushed.id } }
+        );
+        result.messmassPartnerId = pushed.id;
+      }
+    } catch {
+      // non-fatal
+    }
   }
 
   let cascadeResult;
