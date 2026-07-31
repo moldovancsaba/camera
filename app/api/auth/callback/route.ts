@@ -26,6 +26,29 @@ import {
 } from '@/lib/auth/session';
 import { decodeSignedOAuthPkceState, getOAuthPkceStateSigningKey } from '@/lib/auth/oauth-pkce-state';
 import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
+import { pushSsoSessionToMessmass } from '@/lib/messmassClient';
+
+/**
+ * WHAT: Best-effort -- also log this user into messmass, so one SSO login
+ *     covers both apps (see SESSION_COOKIE_DOMAIN=.messmass.com above +
+ *     lib/messmassClient.ts:pushSsoSessionToMessmass).
+ * WHY: Never let this block or fail camera's own login -- messmass being
+ *     unreachable, or this user simply not having messmass access, are
+ *     both fine outcomes; the user just won't be auto-logged into messmass.
+ */
+async function appendMessmassSessionCookies(
+  response: NextResponse,
+  tokens: { access_token: string; refresh_token: string; expires_in: number }
+): Promise<void> {
+  try {
+    const messmassCookies = await pushSsoSessionToMessmass(tokens);
+    for (const cookie of messmassCookies || []) {
+      response.headers.append('set-cookie', cookie);
+    }
+  } catch (error) {
+    console.warn('⚠ Cross-app messmass session push failed (non-fatal):', error);
+  }
+}
 
 /** Prefer capture URL when capture resume cookies exist so users see a clear error in context. */
 function redirectOAuthFailure(
@@ -203,6 +226,7 @@ export async function GET(request: NextRequest) {
 
       await createSession(user, tokens, { appRole, appAccess }, response);
       console.log('✓ Session created');
+      await appendMessmassSessionCookies(response, tokens);
       return response;
     }
 
@@ -212,6 +236,7 @@ export async function GET(request: NextRequest) {
     clearPendingSessionCookieOnResponse(homeResponse);
     await createSession(user, tokens, { appRole, appAccess }, homeResponse);
     console.log('✓ Session created');
+    await appendMessmassSessionCookies(homeResponse, tokens);
     return homeResponse;
     
   } catch (error) {
