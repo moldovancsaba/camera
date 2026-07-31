@@ -1,5 +1,5 @@
-import { Resend } from 'resend';
 import { sanitizeEmail } from '@/lib/security/sanitize';
+import { getResendApiKey, sendEmail } from '@/lib/email/send';
 import {
   DEFAULT_EVENT_TERMS_URL,
   DEFAULT_SUBMISSION_EMAIL_BODY,
@@ -37,10 +37,6 @@ export type SubmissionNotificationResult =
       recipientEmail: string;
       error: string;
     };
-
-function getEmailApiKey(): string {
-  return (process.env.RESEND_API_KEY || process.env.RESEND || process.env.EMAIL_API_KEY || '').trim();
-}
 
 function getEmailFrom(senderName?: string | null): string {
   const configuredFrom = (process.env.CAMERA_EMAIL_FROM || '').trim();
@@ -99,44 +95,6 @@ function renderTemplate(
     .replace(/\{terms\}/gi, values.termsUrl);
 }
 
-function summarizeResendError(error: unknown): string {
-  if (error && typeof error === 'object') {
-    const details: string[] = [];
-    const typedError = error as Record<string, unknown>;
-
-    if (typeof typedError.message === 'string' && typedError.message.trim()) {
-      details.push(typedError.message.trim());
-    }
-    if (typeof typedError.name === 'string' && typedError.name.trim()) {
-      details.push(`[${typedError.name.trim()}]`);
-    }
-
-    const statusCode = typedError.statusCode ?? typedError.status;
-    if (typeof statusCode === 'number' && Number.isFinite(statusCode)) {
-      details.push(`HTTP ${statusCode}`);
-    } else if (typeof statusCode === 'string' && statusCode.trim()) {
-      details.push(`HTTP ${statusCode.trim()}`);
-    }
-
-    if (typeof typedError.code === 'string' && typedError.code.trim()) {
-      details.push(`code=${typedError.code.trim()}`);
-    }
-    if (typeof typedError.type === 'string' && typedError.type.trim()) {
-      details.push(`type=${typedError.type.trim()}`);
-    }
-
-    if (details.length > 0) {
-      return details.join(' ');
-    }
-  }
-
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-
-  return 'Resend rejected the email';
-}
-
 export async function sendSubmissionResultEmail(
   input: SubmissionNotificationInput
 ): Promise<SubmissionNotificationResult> {
@@ -148,7 +106,7 @@ export async function sendSubmissionResultEmail(
     return { sent: false, skipped: true, reason: 'missing_recipient' };
   }
 
-  const apiKey = getEmailApiKey();
+  const apiKey = getResendApiKey();
   if (!apiKey) {
     console.warn('[email] Submission result email skipped: RESEND API key missing', {
       eventName: input.eventName || null,
@@ -182,64 +140,44 @@ export async function sendSubmissionResultEmail(
   );
   const safeBody = escapeHtml(bodyText).replace(/\n/g, '<br />');
 
-  try {
-    const resend = new Resend(apiKey);
-    const response = await resend.emails.send({
-      from,
-      to: recipientEmail,
-      subject,
-      text: bodyText,
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.5;">
-          <p>${safeBody}</p>
-        </div>
-      `,
-    });
+  const result = await sendEmail({
+    from,
+    to: recipientEmail,
+    subject,
+    text: bodyText,
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+        <p>${safeBody}</p>
+      </div>
+    `,
+  });
 
-    if (response.error) {
-      const errorMessage = summarizeResendError(response.error);
-      console.error('[email] Submission result email rejected by Resend', {
-        eventName: input.eventName || null,
-        recipientEmail,
-        from,
-        resendError: response.error,
-        error: errorMessage,
-      });
-      return {
-        sent: false,
-        skipped: false,
-        provider: 'resend',
-        recipientEmail,
-        error: errorMessage,
-      };
-    }
-
-    console.info('[email] Submission result email queued successfully', {
-      eventName: input.eventName || null,
-      recipientEmail,
-      messageId: response.data?.id,
-    });
-
-    return {
-      sent: true,
-      provider: 'resend',
-      messageId: response.data?.id ?? null,
-      recipientEmail,
-    };
-  } catch (error) {
-    const errorMessage = summarizeResendError(error);
+  if (!result.sent) {
     console.error('[email] Submission result email failed', {
       eventName: input.eventName || null,
       recipientEmail,
       from,
-      error: errorMessage,
+      error: result.error,
     });
     return {
       sent: false,
       skipped: false,
       provider: 'resend',
       recipientEmail,
-      error: errorMessage,
+      error: result.error,
     };
   }
+
+  console.info('[email] Submission result email queued successfully', {
+    eventName: input.eventName || null,
+    recipientEmail,
+    messageId: result.messageId,
+  });
+
+  return {
+    sent: true,
+    provider: 'resend',
+    messageId: result.messageId,
+    recipientEmail,
+  };
 }

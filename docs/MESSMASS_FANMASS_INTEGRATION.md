@@ -13,11 +13,12 @@ session reuse.
 
 ```text
 messmass  --(provision org/partner/event)-->  camera
+messmass  --(send email)-------------------->  camera
 camera    <--(poll: events, then media)---    fanmass
 ```
 
 Camera never calls messmass or fanmass outbound; it only serves authenticated
-requests from them. Rate limits are enforced per route (§4) but callers are not
+requests from them. Rate limits are enforced per route (§5) but callers are not
 end users, so 429s should read as "a caller is misbehaving," not "a user hit a
 public limit."
 
@@ -51,7 +52,7 @@ Response: `{ partner: { partnerId, name, created, linked } }`
 
 ### `POST /api/internal/messmass/events`
 Body: `{ messmassEventId, eventName, eventDate?, messmassPartnerId? | partnerId? }`
-Idempotent on `messmassEventId` (unique+sparse index, see §5) — a second call
+Idempotent on `messmassEventId` (unique+sparse index, see §6) — a second call
 with the same id returns the existing event rather than creating a duplicate.
 Requires the partner to already exist (404 `camera partner (provision the
 partner first)` otherwise) — provision the org, then the partner, then the
@@ -104,24 +105,56 @@ Response: `{ eventId, media: [{ captureId, url, createdAt }] }`.
 shared secret — deliberate, so the secret is never exposed to a third-party
 host. Do not "fix" this by trying to authenticate the imgbb fetch.
 
-## 3. What Camera does NOT do
+## 3. Shared email service (messmass/fanmass → camera)
 
-- Camera does not call messmass or fanmass. Both integrations are inbound-only
-  to Camera.
+Camera is the only app in the SEYU stack with a Resend integration and a
+verified sending domain. Rather than messmass (or fanmass, if it ever needs
+email) keeping a separate Resend account/dependency/error-handling path, they
+call this endpoint — added 2026-07-30 as part of a cross-app SSO + email
+unification effort (plan doc kept outside the individual app repos).
+
+**Auth**: `assertInternalMessmassSecret()` OR `assertInternalFanmassSecret()`
+([app/api/internal/email/send/route.ts](../app/api/internal/email/send/route.ts)) —
+either caller's existing secret works; this is the same trust boundary as §1/§2,
+not a new one.
+
+### `POST /api/internal/email/send`
+Body: `{ to, subject, html, text?, fromName?, fromLocalPart? }` — `to`,
+`subject`, `html` required. `fromName` sets the display name (defaults to the
+calling app's name); `fromLocalPart` sets the address local-part (defaults to
+`notifications`). The **domain is always Camera's own verified Resend
+domain** (parsed from `CAMERA_EMAIL_FROM`) — callers can't send from an
+arbitrary unverified address, only customize the display name and local-part
+under Camera's domain.
+Response: `{ sent: true, messageId } | { sent: false, error }` — always HTTP
+200 for a well-formed request; `sent: false` means Resend rejected the send or
+isn't configured. Treat as a soft failure (log it), not something to retry
+forever.
+
+Shared send primitive: [lib/email/send.ts](../lib/email/send.ts) — also used
+internally by Camera's own submission-result email
+([lib/email/submission-notification.ts](../lib/email/submission-notification.ts)),
+so the actual "call Resend, interpret the response" logic exists exactly once
+in Camera, not duplicated between the internal API and Camera's own feature.
+
+## 4. What Camera does NOT do
+
+- Camera does not call messmass or fanmass. Every integration in §1-§3 is
+  inbound-only to Camera.
 - Camera does not know about `launchmass` — no code, config, or data path
   connects them.
 - Camera does not resolve the analytics fanmass produces; that data flows
   fanmass → messmass directly (`messmass.fanmass.analytics-summary.v1`,
   documented in the messmass repo), bypassing Camera entirely.
 
-## 4. Rate limiting
+## 5. Rate limiting
 
-All 5 routes above are rate-limited (added 2026-07-30; previously
-unprotected) via the shared token-bucket limiter
+All 6 routes above are rate-limited via the shared token-bucket limiter
 ([lib/api/rateLimiter.ts](../lib/api/rateLimiter.ts)):
 
 - `RATE_LIMITS.INTERNAL_READ` — 120 requests/minute (the two `GET` routes)
-- `RATE_LIMITS.INTERNAL_WRITE` — 60 requests/minute (the three `POST` routes)
+- `RATE_LIMITS.INTERNAL_WRITE` — 60 requests/minute (the four `POST` routes,
+  including email send)
 
 These tiers exist to catch a misbehaving caller (retry storm, bad cron, buggy
 poll loop) — not to police untrusted public traffic, since every caller here
@@ -129,9 +162,7 @@ is already secret-authenticated. A `429` on these routes means the *calling
 app* (messmass or fanmass) is retrying too aggressively, not that a rate limit
 config needs loosening for a legitimate one-off burst.
 
-## 5. Data model / indexes
-
-Added 2026-07-30 (previously these were full collection scans):
+## 6. Data model / indexes
 
 - `organizations.organizationId` — unique
 - `organizations.messmassOrganizationId` — sparse
@@ -141,23 +172,24 @@ Added 2026-07-30 (previously these were full collection scans):
   findOne-then-insert app logic)
 
 Defined in [lib/db/ensure-indexes.ts](../lib/db/ensure-indexes.ts), applied via
-`npm run db:ensure-indexes`.
+`npm run db:ensure-indexes`. The email service (§3) touches no database.
 
-## 6. Required environment variables
+## 7. Required environment variables
 
 See `.env.example` for the full list; the integration-specific ones:
 
 | Var | Direction | Purpose |
 |---|---|---|
-| `CAMERA_MESSMASS_INTERNAL_SECRET` | messmass → camera | Auth for §1 routes |
-| `CAMERA_FANMASS_INTERNAL_SECRET` | fanmass → camera | Auth for §2 routes |
+| `CAMERA_MESSMASS_INTERNAL_SECRET` | messmass → camera | Auth for §1 routes and §3 (email) |
+| `CAMERA_FANMASS_INTERNAL_SECRET` | fanmass → camera | Auth for §2 routes and §3 (email) |
+| `RESEND_API_KEY`, `CAMERA_EMAIL_FROM` | (Camera's own) | Required for §3 to actually send; without them every call returns `sent: false` |
 
-Both routes return 403 if their respective secret is unset — there is no
-"integration disabled, skip silently" mode on the Camera side (unlike
-messmass, which treats an unconfigured `CAMERA_BASE_URL`/secret as
+Both internal-auth routes return 403 if their respective secret is unset —
+there is no "integration disabled, skip silently" mode on the Camera side
+(unlike messmass, which treats an unconfigured `CAMERA_BASE_URL`/secret as
 `camera_not_configured` and skips provisioning without erroring).
 
-## 7. Testing locally
+## 8. Testing locally
 
 There is no dedicated e2e coverage for these routes yet (`tests/e2e/` has no
 messmass/fanmass spec). To exercise them manually:
@@ -175,9 +207,15 @@ curl -X POST http://localhost:3000/api/internal/messmass/organizations \
 # 3. Pull events (fanmass side)
 curl http://localhost:3000/api/internal/fanmass/events \
   -H "x-fanmass-secret: $CAMERA_FANMASS_INTERNAL_SECRET"
+
+# 4. Send an email (messmass or fanmass side)
+curl -X POST http://localhost:3000/api/internal/email/send \
+  -H "x-messmass-secret: $CAMERA_MESSMASS_INTERNAL_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"to":"you@example.com","subject":"Test","html":"<p>hi</p>","fromName":"messmass"}'
 ```
 
-## 8. See also
+## 9. See also
 
 - [ARCHITECTURE.md §8](../ARCHITECTURE.md) — main collections
 - [lib/db/schemas.ts](../lib/db/schemas.ts) — full record shapes
