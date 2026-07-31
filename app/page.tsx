@@ -82,7 +82,16 @@ export default async function Home({
             </Button>
           </>
         ) : (
-          <SocialLoginButtons fromLogout={justLoggedOut} variant="home" />
+          <>
+            <Button
+              component="a"
+              href={justLoggedOut ? '/api/auth/login?from_logout=true' : '/api/auth/login'}
+              size="lg"
+            >
+              Sign in with DoneIsBetter
+            </Button>
+            <SocialLoginButtons fromLogout={justLoggedOut} variant="home" />
+          </>
         )}
       </Stack>
     </AuthShell>
