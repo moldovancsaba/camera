@@ -1,3 +1,5 @@
+'use client';
+
 // app/admin/login/page.tsx - dedicated SSO-only admin sign-in entry point.
 // WHAT: The only page that decides "sign in via SSO" for camera's admin
 //     area. Auto-redirects straight to SSO when there's nothing to explain;
@@ -6,13 +8,27 @@
 //     coupling the admin auth flow to a page that should just be a plain
 //     public landing page -- mirrors messmass's app/admin/login/page.tsx,
 //     the proven pattern for this shared SSO ecosystem.
+//
+// WHAT: This is a client component that decides where to go via a client
+//     fetch + window.location.replace(), NOT a Server Component redirect()
+//     call.
+// WHY: A Server Component redirect() issued after an `await` (here it was
+//     `await getSession()`) can't send a real HTTP 3xx -- Next.js falls
+//     back to a 200 response carrying an RSC "soft redirect" digest, which
+//     the client router then has to follow. When that soft redirect's
+//     target is itself a Route Handler (/api/auth/login) that issues a
+//     further HTTP redirect to an external origin (SSO), the client
+//     router's RSC-fetch-based navigation doesn't reliably follow it --
+//     this manifested in production as this page reloading itself
+//     indefinitely without ever reaching SSO. window.location.replace()
+//     triggers a genuine top-level browser navigation, which follows
+//     cross-origin HTTP redirects the normal way with no special handling
+//     needed. This is exactly the pattern messmass's equivalent page
+//     already uses.
 
-import { redirect } from 'next/navigation';
-import { getSession } from '@/lib/auth/session';
+import { useEffect, useState } from 'react';
 import { AuthShell } from '@/components/gds/ClientWrappers';
 import { Button, Stack, Text } from '@/components/gds/PublicPrimitives';
-
-export const dynamic = 'force-dynamic';
 
 function oauthErrorHint(code: string | undefined): string | null {
   if (!code) return null;
@@ -28,52 +44,69 @@ function oauthErrorHint(code: string | undefined): string | null {
   return null;
 }
 
-export default async function AdminLoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string; message?: string }>;
-}) {
-  const session = await getSession();
-  // WHAT: only treat this as "already signed in, skip to /admin" when the
-  //     session actually has access.
-  // WHY: camera's OAuth callback (unlike messmass's) still creates a
-  //     session for a user without app access -- it just carries
-  //     appAccess: false. Redirecting that session straight back to
-  //     /admin here would immediately fail the admin layout's own access
-  //     check, which redirects back to this exact page: a loop.
-  if (session && session.appAccess !== false) {
-    redirect('/admin');
-  }
+export default function AdminLoginPage() {
+  const [redirecting, setRedirecting] = useState(true);
+  const [signInError, setSignInError] = useState<React.ReactNode>(null);
 
-  const params = await searchParams;
-  const oauthError = params.error;
-  let oauthMessage: string | null = null;
-  if (params.message) {
-    try {
-      oauthMessage = decodeURIComponent(params.message);
-    } catch {
-      oauthMessage = params.message;
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get('error') ?? undefined;
+    let oauthMessage: string | null = null;
+    const rawMessage = params.get('message');
+    if (rawMessage) {
+      try {
+        oauthMessage = decodeURIComponent(rawMessage);
+      } catch {
+        oauthMessage = rawMessage;
+      }
     }
-  }
 
-  // Nothing to explain -- go straight to the real sign-in page. The
-  // post-logout cookie (set by /api/auth/logout) makes /api/auth/login add
-  // prompt=login automatically when this follows a logout, without needing
-  // a query param threaded through here.
-  if (!oauthError && !oauthMessage) {
-    redirect('/api/auth/login');
-  }
+    const check = async () => {
+      try {
+        const res = await fetch('/api/auth/session');
+        const data = await res.json();
+        // WHAT: only treat this as "already signed in, skip to /admin" when
+        //     the session actually has access.
+        // WHY: camera's OAuth callback (unlike messmass's) still creates a
+        //     session for a user without app access -- it just carries
+        //     appAccess: false. Sending that session to /admin here would
+        //     immediately fail the admin layout's own access check, which
+        //     redirects back to this exact page: a loop.
+        if (data.authenticated && data.appAccess !== false) {
+          window.location.replace('/admin');
+          return;
+        }
+      } catch {
+        // Treat an unreachable session check as "not signed in" and fall
+        // through to the sign-in path below.
+      }
 
-  const oauthHint = oauthErrorHint(oauthError);
-  const signInError = (
-    <Stack gap="xs">
-      {oauthMessage ? <Text>{oauthMessage}</Text> : null}
-      {!oauthMessage && oauthError && (
-        <Text tt="capitalize">{oauthError.replace(/_/g, ' ')}</Text>
-      )}
-      {oauthHint ? <Text>{oauthHint}</Text> : null}
-    </Stack>
-  );
+      // Nothing to explain -- go straight to the real sign-in page. The
+      // post-logout cookie (set by /api/auth/logout) makes /api/auth/login
+      // add prompt=login automatically when this follows a logout, without
+      // needing a query param threaded through here.
+      if (!oauthError && !oauthMessage) {
+        window.location.replace('/api/auth/login');
+        return;
+      }
+
+      const oauthHint = oauthErrorHint(oauthError);
+      setSignInError(
+        <Stack gap="xs">
+          {oauthMessage ? <Text>{oauthMessage}</Text> : null}
+          {!oauthMessage && oauthError && (
+            <Text tt="capitalize">{oauthError.replace(/_/g, ' ')}</Text>
+          )}
+          {oauthHint ? <Text>{oauthHint}</Text> : null}
+        </Stack>
+      );
+      setRedirecting(false);
+    };
+
+    check();
+  }, []);
+
+  if (redirecting) return null;
 
   return (
     <AuthShell title="Camera" description="Sign in with your approved account." intent="sign-in" error={signInError}>
