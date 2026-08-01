@@ -52,8 +52,12 @@ export default async function Home({
 
   // Nothing to explain -- the real sign-in page lives at sso.doneisbetter.com,
   // and every app in the stack sends users there directly rather than
-  // rendering its own login screen.
-  if (!session && !oauthError && !oauthMessage) {
+  // rendering its own login screen. EXCEPTION: right after logout, land here
+  // instead of bouncing straight back into SSO -- /api/auth/logout already
+  // revoked this app's SSO tokens, but SSO's own browser session is still
+  // live, so an immediate auto-redirect would silently sign the user back in
+  // and make logout look like it did nothing.
+  if (!session && !oauthError && !oauthMessage && !justLoggedOut) {
     redirect(loginUrl);
   }
 
