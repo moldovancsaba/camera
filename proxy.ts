@@ -34,6 +34,19 @@ function oauthCallbackRescueIfNeeded(request: NextRequest): NextResponse | null 
   return null;
 }
 
+// WHAT: Forward the current pathname to Server Components as a request
+//     header. Next.js has no server-side equivalent of usePathname(), and
+//     app/admin/layout.tsx (a Server Component) needs to know whether it's
+//     rendering /admin/login specifically, to skip its own auth redirect
+//     for that one route -- otherwise the layout (which wraps every
+//     /admin/* page, /admin/login included) would redirect an
+//     unauthenticated visit to /admin/login... which redirects to itself.
+function passThroughWithPathname(request: NextRequest, pathname: string): NextResponse {
+  const headers = new Headers(request.headers);
+  headers.set('x-camera-pathname', pathname);
+  return NextResponse.next({ request: { headers } });
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = request.headers.get('host');
@@ -52,8 +65,10 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  if (!pathname.startsWith('/admin')) {
-    return NextResponse.next();
+  // /admin/login itself must stay outside the gate below -- it's the
+  // redirect target, and gating it too would redirect it to itself.
+  if (!pathname.startsWith('/admin') || pathname.startsWith('/admin/login')) {
+    return passThroughWithPathname(request, pathname);
   }
 
   // WHAT: /admin/login is the single place that decides how to reach SSO
@@ -79,7 +94,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/admin/login?error=no_access', request.url));
   }
 
-  return NextResponse.next();
+  return passThroughWithPathname(request, pathname);
 }
 
 export const config = {

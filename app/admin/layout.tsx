@@ -2,6 +2,7 @@
  * Admin layout: sidebar + main content.
  */
 
+import { headers } from 'next/headers';
 import { getSession } from '@/lib/auth/session';
 import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -27,6 +28,18 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // WHAT: This layout wraps every /admin/* page, /admin/login included --
+  //     Next.js has no way to exclude one child route from an ancestor
+  //     layout. /admin/login must render unauthenticated (it's the sign-in
+  //     page itself), so skip this layout's auth gate for it specifically;
+  //     it does its own session check. Without this, an unauthenticated
+  //     visit here would redirect to /admin/login, which this same layout
+  //     wraps, which would redirect to itself.
+  const requestHeaders = await headers();
+  if (requestHeaders.get('x-camera-pathname')?.startsWith('/admin/login')) {
+    return children;
+  }
+
   const session = await getSession();
 
   if (!session) {
