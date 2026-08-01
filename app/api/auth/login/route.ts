@@ -59,7 +59,17 @@ export async function GET(request: NextRequest) {
 
     await checkRateLimit(request, RATE_LIMITS.LOGIN_INIT);
 
-    const fromLogout = searchParams.get('from_logout') === 'true';
+    // WHAT: force re-auth (prompt=login) whenever this follows a logout,
+    //     via either an explicit ?from_logout=true OR the post-logout
+    //     cookie set by /api/auth/logout.
+    // WHY: the cookie covers every path back into this route (a dashboard
+    //     link, /admin/login's own auto-redirect, a bookmark) -- not just
+    //     callers that explicitly pass ?from_logout=true. Revoking this
+    //     app's SSO tokens at logout doesn't end SSO's own browser
+    //     session, so without this, signing back in right after logout
+    //     can look like logout never happened.
+    const justLoggedOut = Boolean(request.cookies.get('post-logout')?.value);
+    const fromLogout = justLoggedOut || searchParams.get('from_logout') === 'true';
     const provider = parseLoginProvider(searchParams.get('provider'));
     const redirectUri = getOAuthCallbackRedirectUri(request);
 
@@ -76,6 +86,9 @@ export async function GET(request: NextRequest) {
       });
       const response = NextResponse.redirect(authUrl);
       setPendingSessionCookie(response, { state });
+      if (justLoggedOut) {
+        response.cookies.set('post-logout', '', { maxAge: 0, path: '/' });
+      }
       console.log(
         `✓ Initiating OAuth (confidential, no PKCE)${fromLogout ? ' (force re-auth after logout)' : ''}${provider ? ` (provider=${provider})` : ''}, redirecting to SSO`
       );
@@ -106,6 +119,9 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.redirect(authUrl);
     if (!signingKey) {
       setPendingSessionCookie(response, { codeVerifier, state });
+    }
+    if (justLoggedOut) {
+      response.cookies.set('post-logout', '', { maxAge: 0, path: '/' });
     }
     return response;
   } catch (error) {
