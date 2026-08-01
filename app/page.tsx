@@ -5,8 +5,8 @@
  * Shows login status and provides authentication controls.
  */
 
+import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/session';
-import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import { AuthShell } from '@/components/gds/ClientWrappers';
 import { Button, Stack, Text } from '@mantine/core';
 
@@ -47,6 +47,16 @@ export default async function Home({
       oauthMessage = params.message;
     }
   }
+
+  const loginUrl = justLoggedOut ? '/api/auth/login?from_logout=true' : '/api/auth/login';
+
+  // Nothing to explain -- the real sign-in page lives at sso.doneisbetter.com,
+  // and every app in the stack sends users there directly rather than
+  // rendering its own login screen.
+  if (!session && !oauthError && !oauthMessage) {
+    redirect(loginUrl);
+  }
+
   const oauthHint = oauthErrorHint(oauthError);
   const signInError = oauthError && !session ? (
     <Stack gap="xs">
@@ -82,16 +92,9 @@ export default async function Home({
             </Button>
           </>
         ) : (
-          <>
-            <Button
-              component="a"
-              href={justLoggedOut ? '/api/auth/login?from_logout=true' : '/api/auth/login'}
-              size="lg"
-            >
-              Sign in with DoneIsBetter
-            </Button>
-            <SocialLoginButtons fromLogout={justLoggedOut} variant="home" />
-          </>
+          <Button component="a" href={loginUrl} size="lg" fullWidth>
+            Sign In
+          </Button>
         )}
       </Stack>
     </AuthShell>
