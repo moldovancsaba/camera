@@ -2,7 +2,6 @@
  * Admin layout: sidebar + main content.
  */
 
-import { headers } from 'next/headers';
 import { getSession } from '@/lib/auth/session';
 import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -12,21 +11,30 @@ import AdminShell from '@/components/admin/AdminChrome';
 
 export const dynamic = 'force-dynamic';
 
+// WHAT: Where an authenticated-but-not-authorized session lands.
+// WHY: camera's OAuth callback (unlike messmass's) still creates a session
+//     for a user without app access -- it just carries appAccess: false.
+//     Sending that case back to "/" would bounce straight into
+//     /admin/login, which sees a valid session and redirects to /admin,
+//     which fails this same check again: an infinite loop. /admin/login
+//     knows to NOT treat a no-access session as "already signed in" (see
+//     its own session.appAccess check) specifically so this redirect is
+//     safe to land there instead.
+const NO_ACCESS_REDIRECT = '/admin/login?error=no_access';
+
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const session = await getSession();
-  const requestHeaders = await headers();
-  const returnPath = requestHeaders.get('x-camera-return-path')?.trim() || '/admin';
 
   if (!session) {
-    redirect(await authEntryPathForCurrentHost(returnPath));
+    redirect(await authEntryPathForCurrentHost());
   }
 
   if (session.appAccess === false) {
-    redirect('/');
+    redirect(NO_ACCESS_REDIRECT);
   }
 
   let navigationAccess = {
@@ -41,12 +49,12 @@ export default async function AdminLayout({
   } catch (error) {
     console.error('Error resolving admin navigation access:', error);
     if (!navigationAccess.isGlobalAdmin) {
-      redirect('/');
+      redirect(NO_ACCESS_REDIRECT);
     }
   }
 
   if (!navigationAccess.isGlobalAdmin && !navigationAccess.hasAnyPartnerAccess) {
-    redirect('/');
+    redirect(NO_ACCESS_REDIRECT);
   }
 
   return (

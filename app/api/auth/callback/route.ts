@@ -66,8 +66,10 @@ function redirectOAuthFailure(
     url.searchParams.set('message', encodeURIComponent(message));
     res = NextResponse.redirect(url);
   } else {
+    // /admin/login is the single place that surfaces a sign-in error --
+    // the homepage is a plain public landing page and doesn't render one.
     res = NextResponse.redirect(
-      new URL(`/?error=${errorCode}&message=${encodeURIComponent(message)}`, request.url)
+      new URL(`/admin/login?error=${errorCode}&message=${encodeURIComponent(message)}`, request.url)
     );
   }
   if (options?.clearPendingSession) {
@@ -230,14 +232,17 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    console.log('✓ Redirecting to homepage');
+    console.log('✓ Redirecting to admin');
 
-    const homeResponse = NextResponse.redirect(new URL('/', request.url));
-    clearPendingSessionCookieOnResponse(homeResponse);
-    await createSession(user, tokens, { appRole, appAccess }, homeResponse);
+    // /admin, not "/" -- the homepage is a plain public landing page now
+    // and doesn't render anything session-aware; the destination after a
+    // successful admin sign-in is the admin area itself.
+    const adminResponse = NextResponse.redirect(new URL('/admin', request.url));
+    clearPendingSessionCookieOnResponse(adminResponse);
+    await createSession(user, tokens, { appRole, appAccess }, adminResponse);
     console.log('✓ Session created');
-    await appendMessmassSessionCookies(homeResponse, tokens);
-    return homeResponse;
+    await appendMessmassSessionCookies(adminResponse, tokens);
+    return adminResponse;
     
   } catch (error) {
     console.error('✗ OAuth callback failed:', error);

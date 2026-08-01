@@ -10,6 +10,7 @@ import {
   IconCamera,
   IconFrame,
   IconLayoutDashboard,
+  IconLogout,
   IconPhoto,
   IconPhotoScan,
   IconSparkles,
@@ -147,6 +148,21 @@ export default function AdminChrome({
           </div>
         </div>
       </Link>
+      <a href="/api/auth/logout" style={{ borderRadius: 12, color: 'inherit', display: 'block', padding: 'var(--mantine-spacing-sm)', textDecoration: 'none' }}>
+        <div style={{ alignItems: 'center', display: 'flex', gap: 'var(--mantine-spacing-sm)' }}>
+          <span style={{ alignItems: 'center', background: 'var(--mantine-color-red-light)', borderRadius: 999, display: 'inline-flex', height: 34, justifyContent: 'center', width: 34 }}>
+            <IconLogout size={18} />
+          </span>
+          <div>
+            <strong>
+              Logout
+            </strong>
+            <div style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)' }}>
+              End your admin session
+            </div>
+          </div>
+        </div>
+      </a>
       <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', textAlign: 'center' }}>
         v{APP_VERSION}
       </code>

@@ -56,29 +56,30 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const loginPath = '/api/auth/login';
-  const returnPath = `${pathname}${request.nextUrl.search}`;
+  // WHAT: /admin/login is the single place that decides how to reach SSO
+  //     (mirrors messmass). Redirecting straight to /api/auth/login here
+  //     bypassed it entirely, and its own "not allowed, don't retry"
+  //     fallback used to point at "/" -- fine on its own, but redirecting
+  //     an unauthenticated/expired session to /api/auth/login directly
+  //     from the edge, in parallel with page-level checks doing the same
+  //     via /admin/login, is exactly the kind of redirect-target drift
+  //     that produces loops when the two disagree.
+  const loginPath = '/admin/login';
 
   const serialized = readSerializedSessionFromCookieGet((name) => request.cookies.get(name)?.value);
   if (!serialized) {
-    const loginUrl = new URL(loginPath, request.url);
-    loginUrl.searchParams.set('redirectTo', returnPath);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(new URL(loginPath, request.url));
   }
 
   const gate = parseMiddlewareAuthGate(serialized);
   if (!gate.allow) {
     if (gate.toLogin) {
-      const loginUrl = new URL(loginPath, request.url);
-      loginUrl.searchParams.set('redirectTo', returnPath);
-      return NextResponse.redirect(loginUrl);
+      return NextResponse.redirect(new URL(loginPath, request.url));
     }
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/admin/login?error=no_access', request.url));
   }
 
-  const response = NextResponse.next();
-  response.headers.set('x-camera-return-path', returnPath);
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
