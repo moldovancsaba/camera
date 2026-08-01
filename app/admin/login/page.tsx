@@ -62,30 +62,40 @@ export default function AdminLoginPage() {
     }
 
     const check = async () => {
-      try {
-        const res = await fetch('/api/auth/session');
-        const data = await res.json();
-        // WHAT: only treat this as "already signed in, skip to /admin" when
-        //     the session actually has access.
-        // WHY: camera's OAuth callback (unlike messmass's) still creates a
-        //     session for a user without app access -- it just carries
-        //     appAccess: false. Sending that session to /admin here would
-        //     immediately fail the admin layout's own access check, which
-        //     redirects back to this exact page: a loop.
-        if (data.authenticated && data.appAccess !== false) {
-          window.location.replace('/admin');
-          return;
-        }
-      } catch {
-        // Treat an unreachable session check as "not signed in" and fall
-        // through to the sign-in path below.
-      }
-
-      // Nothing to explain -- go straight to the real sign-in page. The
-      // post-logout cookie (set by /api/auth/logout) makes /api/auth/login
-      // add prompt=login automatically when this follows a logout, without
-      // needing a query param threaded through here.
+      // WHAT: an error/message param always wins over the "already signed
+      //     in" fast path below -- never fetched or overridden by it.
+      // WHY: this page can be reached with ?error=no_access after the edge
+      //     or the admin layout already decided this exact session
+      //     shouldn't be on /admin. If the "already signed in" check below
+      //     ran first and disagreed (e.g. from a stale cached cookie
+      //     value), it would silently bounce straight back to /admin,
+      //     which would bounce back here again: an infinite loop. Trusting
+      //     an explicit error param unconditionally makes that fail safe
+      //     (a visible error screen) instead of failing spinny.
       if (!oauthError && !oauthMessage) {
+        try {
+          const res = await fetch('/api/auth/session');
+          const data = await res.json();
+          // WHAT: only treat this as "already signed in, skip to /admin"
+          //     when the session actually has access.
+          // WHY: camera's OAuth callback (unlike messmass's) still creates
+          //     a session for a user without app access -- it just carries
+          //     appAccess: false. Sending that session to /admin here would
+          //     immediately fail the admin layout's own access check,
+          //     which redirects back to this exact page: a loop.
+          if (data.authenticated && data.appAccess !== false) {
+            window.location.replace('/admin');
+            return;
+          }
+        } catch {
+          // Treat an unreachable session check as "not signed in" and fall
+          // through to the sign-in path below.
+        }
+
+        // Nothing to explain -- go straight to the real sign-in page. The
+        // post-logout cookie (set by /api/auth/logout) makes
+        // /api/auth/login add prompt=login automatically when this follows
+        // a logout, without needing a query param threaded through here.
         window.location.replace('/api/auth/login');
         return;
       }

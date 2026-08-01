@@ -86,12 +86,14 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(loginPath, request.url));
   }
 
+  // WHAT: Only gates on session presence/expiry here -- app-access denial is
+  //     decided by app/admin/layout.tsx instead, from a live DB read.
+  // WHY: see middleware-session-gate.ts -- gating on this cookie's cached
+  //     appAccess field here caused a real infinite reload loop when that
+  //     snapshot went stale relative to the live session.
   const gate = parseMiddlewareAuthGate(serialized);
   if (!gate.allow) {
-    if (gate.toLogin) {
-      return NextResponse.redirect(new URL(loginPath, request.url));
-    }
-    return NextResponse.redirect(new URL('/admin/login?error=no_access', request.url));
+    return NextResponse.redirect(new URL(loginPath, request.url));
   }
 
   return passThroughWithPathname(request, pathname);
