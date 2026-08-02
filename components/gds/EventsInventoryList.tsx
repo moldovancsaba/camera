@@ -7,8 +7,7 @@ import {
   type AdminResourceAction,
   type AdminResourceRecord,
 } from '@sovereignsquad/gds-admin/client';
-import { StatusBadge } from '@sovereignsquad/gds-core/client';
-import { getStatusBadgeProps } from '@/lib/gds/presentation';
+import { getStatusChipContent } from '@/lib/gds/statusChipContent';
 
 export interface SerializedEventRow {
   id: string;
@@ -34,7 +33,7 @@ export default function EventsInventoryList({
     id: event.id,
     title: event.name,
     description: event.description || event.location || event.partnerName,
-    status: <StatusBadge {...getStatusBadgeProps(event.isActive ? 'active' : 'inactive')} />,
+    status: getStatusChipContent({ tone: event.isActive ? 'active' : 'inactive' }),
     metadata: [
       { label: 'Partner', value: event.partnerName },
       event.location ? { label: 'Location', value: event.location } : null,

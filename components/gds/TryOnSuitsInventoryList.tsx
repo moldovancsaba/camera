@@ -7,8 +7,7 @@ import {
   type AdminResourceAction,
   type AdminResourceRecord,
 } from '@sovereignsquad/gds-admin/client';
-import { StatusBadge } from '@sovereignsquad/gds-core/client';
-import { getStatusBadgeProps } from '@/lib/gds/presentation';
+import { getStatusChipContent } from '@/lib/gds/statusChipContent';
 
 export interface SerializedTryOnSuitRow {
   id: string;
@@ -30,7 +29,7 @@ export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTr
     description: suit.description || suit.leatherSuitId,
     mediaSrc: suit.thumbnailUrl || suit.imageUrl,
     mediaAlt: suit.name,
-    status: <StatusBadge {...getStatusBadgeProps(suit.isActive ? 'active' : 'inactive')} />,
+    status: getStatusChipContent({ tone: suit.isActive ? 'active' : 'inactive' }),
     metadata: [
       { label: 'Catalog ID', value: suit.leatherSuitId },
       { label: 'Event allowlists', value: String(suit.eventAssignmentCount) },

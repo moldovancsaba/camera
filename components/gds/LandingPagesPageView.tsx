@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { StatusBadge } from '@sovereignsquad/gds-core/client';
 import type { MongoConnectionDiagnosis } from '@/lib/db/mongo-errors';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
@@ -11,7 +10,7 @@ import {
   type AdminResourceAction,
   type AdminResourceRecord,
 } from '@sovereignsquad/gds-admin/client';
-import { getStatusBadgeProps } from '@/lib/gds/presentation';
+import { getStatusChipContent } from '@/lib/gds/statusChipContent';
 
 export interface SerializedLandingPageRow {
   id: string;
@@ -42,7 +41,7 @@ export default function LandingPagesPageView({
     id: page.id,
     title: page.title?.trim() || page.slug,
     description: `/landing/${page.slug}`,
-    status: <StatusBadge {...getStatusBadgeProps(page.isActive ? 'active' : 'inactive')} />,
+    status: getStatusChipContent({ tone: page.isActive ? 'active' : 'inactive' }),
     metadata: [
       { label: 'Partner', value: page.partnerName || 'Unknown partner' },
       { label: 'Event', value: page.eventName },
