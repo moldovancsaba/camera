@@ -4,8 +4,8 @@
 
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.0.1
-**Last Updated**: 2025-11-08T17:53:00.000Z
+**Current Version**: 2.19.0
+**Last Updated**: 2026-08-02T00:00:00.000Z
 **Current Status**: Historical lessons archive. The current runtime model is documented in `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document records actual issues encountered during development, their solutions, and strategic decisions made. It serves as a knowledge base to prevent repeated mistakes and guide future development.
@@ -669,6 +669,60 @@ const capturePhoto = async () => {
 
 ---
 
+### [FRONT-006] Admin sign-in infinite-reload loop — 2026-08-02T00:00:00.000Z
+
+**Issue**: `/admin/login` reloaded itself indefinitely in production, never reaching SSO. Two independent, stacked bugs, both found via direct HTTP/curl tracing rather than a real browser (this environment cannot reliably drive Playwright/Chromium against `*.messmass.com`).
+
+**Context**:
+- `/admin/login` decided where to send the user with a Server Component `redirect()` called after `await getSession()`.
+- The edge gate (`proxy.ts`) and the layout/session-check (`getSession()`) disagreed about a session's `appAccess` after it changed post-login.
+
+**Solution**:
+1. A `redirect()` issued after an `await` in a Server Component can't be delivered as a real HTTP 3xx — Next.js falls back to a 200 response carrying an RSC "soft redirect" digest for the client router to follow. When that digest's target itself redirects cross-origin (to SSO), the client router's RSC-fetch-based navigation doesn't reliably follow the hop. Fix: make the page a client component that decides via `fetch('/api/auth/session')` and navigates with `window.location.replace()` — a genuine top-level browser navigation, which follows cross-origin redirects the normal way. (PR #100)
+2. The `v:2` session-pointer cookie caches `appAccess` as a snapshot taken at login and never refreshes for the life of a 30-day session. The edge gate trusted that cached snapshot while the layout/`/api/auth/session` always read the live database value — when access changed after login, the two disagreed and bounced the session between `/admin` and `/admin/login` forever. Fix: only gate on session presence/expiry at the edge; access denial is enforced once, by the layout, from a live read. (PR #101)
+
+**Key Decisions**:
+- Prefer `window.location.replace()` over `router.push()`/Server Component `redirect()` for any navigation whose target might itself redirect cross-origin.
+- Never let two independent gates (edge + layout) both make the same access decision from different data freshness — pick exactly one authoritative source.
+
+**Lessons Learned**:
+- A Next.js "soft redirect" (200 + RSC digest, sometimes with a `<meta http-equiv="refresh">` fallback) is invisible to curl-based testing unless you inspect the raw response body — it looks like a normal 200 unless you know to look for the digest.
+- A cached value baked into a long-lived cookie (30 days here) can silently drift from the live source of truth it was copied from; treat any such cache as a staleness bug waiting to happen, not just a performance optimization.
+- Real production reports beat synthetic reproduction attempts — this bug never reproduced against a fresh test account with a session created moments earlier; it needed a session whose access had changed *after* login to surface.
+
+**Impact**:
+- **Critical fix**: unblocked admin sign-in in production.
+- See also [FRONT-007] below (a related but distinct bug surface found while verifying this fix) and `ARCHITECTURE.md` §5–§6, `RELEASE_NOTES.md` v2.19.0.
+
+---
+
+### [FRONT-007] GDS `AdminResourceCard`/`MediaPreviewCard` limitations — 2026-08-02T00:00:00.000Z
+
+**Issue**: Three separate, real UI bugs across every admin resource list (Partners, Events, Frames, Logos, Slideshows, Landing Pages, Try-On Suits, Submissions) traced to the same two vendored `@sovereignsquad/gds-admin`/`gds-core` (v3.9.0, only published version) components: duplicate/mislabelled "Edit" buttons, a status badge nested inside another badge, and a mandatory empty image placeholder on records with no image.
+
+**Context**:
+- Discovered via user-reported screenshots showing two identical "Edit" buttons and a doubled pill on the Partners admin list.
+- Confirmed root cause by reading the vendored package's **compiled source** (`node_modules/@sovereignsquad/gds-admin/dist/client.js`, `gds-core/dist/client.js`) — not documented behavior, not visible from the published type definitions.
+
+**Solution**:
+1. `AdminResourceCard` hardcodes every non-danger `primary`/`secondary` action to the "edit" semantic label, discarding the caller's own `label`. Fix: never give a record two non-danger text actions — route a second one through `onPreview` (renders "Preview") or `kind: 'icon'` (label becomes `aria-label` only). (PR #103)
+2. `MediaPreviewCard`'s `status` slot already wraps its content in a `Badge`; passing another `<StatusBadge>` (itself a Badge) nests two. Fix: pass colored text, never another Badge — `lib/gds/statusChipContent.tsx`. (PR #104)
+3. `MediaPreviewCard` always renders an image block, falling back to an empty "No media" placeholder when a record has no image, with no prop to skip it. Fix: built `components/gds/ResourceListGrid.tsx`, a from-scratch no-media card grid composed from approved primitives, for the four lists that never have real images. (PR #105)
+
+**Key Decisions**:
+- Workarounds live in Camera's own code, not the vendored package — documented in `docs/GDS_CAMERA_ADOPTION.md` under "Known package limitations" so future `AdminResourceManager` consumers don't reintroduce any of the three.
+- Did not fork or patch `node_modules` — changes there don't survive `npm install` and would violate the project's GDS-governance model.
+
+**Lessons Learned**:
+- When a shared design-system package's documented API doesn't explain observed behavior, read its actual compiled output before guessing — the type definitions alone hid all three of these.
+- A fix applied ad hoc in one consumer (`EventsInventoryList.tsx`/`TryOnSuitsInventoryList.tsx` already had the action-label workaround) doesn't help sibling consumers unless it's written down somewhere they'll actually be read before shipping something similar — hence the new `docs/GDS_CAMERA_ADOPTION.md` section.
+
+**Impact**:
+- Fixed real, user-visible bugs across every admin resource list.
+- Revealed that issues `#71` ("convert inventory pages to resource manager primitives") and `#77` ("media cards — official image card primitives and non-cropping behavior") had been closed as done while these bugs were still live in exactly the surface they covered — see the follow-up GitHub issue for this finding.
+
+---
+
 ## Process
 
 ### [PROC-001] Version Control Protocol Establishment — 2025-11-03T18:31:18.000Z
@@ -1000,15 +1054,15 @@ _Use this template for new learnings:_
 
 ## Statistics
 
-**Total Learnings**: 12
+**Total Learnings**: 14
 - Development: 2
 - Design: 0
 - Backend: 3
-- Frontend: 5
+- Frontend: 7
 - Process: 3
 - Other: 1
 
-**Last Updated**: 2025-11-09T12:35:00.000Z
+**Last Updated**: 2026-08-02T00:00:00.000Z
 
 ---
 
