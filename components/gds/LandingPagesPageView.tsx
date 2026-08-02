@@ -6,10 +6,10 @@ import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert'
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import {
   AdminResourceEmptyState,
-  AdminResourceManager,
   type AdminResourceAction,
   type AdminResourceRecord,
 } from '@sovereignsquad/gds-admin/client';
+import { ResourceListGrid } from '@/components/gds/ResourceListGrid';
 import { getStatusChipContent } from '@/lib/gds/statusChipContent';
 
 export interface SerializedLandingPageRow {
@@ -49,11 +49,8 @@ export default function LandingPagesPageView({
       { label: 'Updated', value: page.updatedAtLabel },
     ],
   }));
-  // GDS AdminResourceCard renders every non-danger primary/secondary action with
-  // the "edit" label, and ignores onPreview when a primary action exists. To avoid
-  // multiple identical "Edit" buttons we keep no primary action (the public landing
-  // page opens via onPreview's Preview affordance), a single 'edit' secondary, and
-  // "Open Event" as an icon action (its own slot).
+  // Viewing the public landing page goes through onPreview below rather than
+  // a second action; "Open Event" is a separate icon action.
   const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedLandingPageRow>> = [
     {
       id: 'edit',
@@ -127,9 +124,8 @@ export default function LandingPagesPageView({
       ) : null}
 
       {!dbError && landingPages.length > 0 ? (
-        <AdminResourceManager
+        <ResourceListGrid
           records={records}
-          state="ready"
           actions={actions}
           onPreview={(page) => {
             window.open(`/landing/${page.slug}`, '_blank', 'noopener,noreferrer');

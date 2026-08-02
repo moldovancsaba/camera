@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import {
   AdminResourceEmptyState,
-  AdminResourceManager,
   type AdminResourceAction,
   type AdminResourceRecord,
 } from '@sovereignsquad/gds-admin/client';
+import { ResourceListGrid } from '@/components/gds/ResourceListGrid';
 import { getStatusChipContent } from '@/lib/gds/statusChipContent';
 
 export interface SerializedPartnerRow {
@@ -36,13 +36,8 @@ export default function PartnersInventoryList({ partners }: { partners: Serializ
       { label: 'Created', value: partner.createdAtLabel },
     ],
   }));
-  // "View" is intentionally NOT a primary action: GDS AdminResourceCard forces
-  // every non-danger primary/secondary action to the "edit" semantic, so a
-  // primary 'view' rendered as a second button labelled "Edit" (both buttons
-  // showing "Edit" side by side, one of them actually navigating to the view
-  // page). Viewing is wired through onPreview below instead, leaving a single
-  // correctly-labelled "Edit" secondary button. Same pattern as
-  // EventsInventoryList.tsx.
+  // Viewing goes through onPreview below rather than a second action, keeping
+  // a single "Edit" button per card.
   const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedPartnerRow>> = [
     {
       id: 'edit',
@@ -69,9 +64,8 @@ export default function PartnersInventoryList({ partners }: { partners: Serializ
   }
 
   return (
-    <AdminResourceManager
+    <ResourceListGrid
       records={records}
-      state="ready"
       actions={actions}
       onPreview={(partner) => {
         window.location.href = `/admin/partners/${partner.id}`;
