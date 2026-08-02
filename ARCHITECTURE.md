@@ -369,7 +369,21 @@ npm run db:ensure-indexes
 npm run env:verify
 ```
 
-## 13. Canonical references
+## 13. Guided tour system
+
+A from-scratch spotlight/backdrop product tour (no vendored GDS or third-party equivalent exists — see `docs/GDS_CAMERA_ADOPTION.md` "Approved exceptions"), shared by the admin panel and the public capture flow via one engine.
+
+- `lib/tour/useTourController.ts` — step-sequencing hook: `start`/`next`/`back`/`skip`, registers with the root `OverlayManagerProvider` (`components/gds/CameraGdsProvider.tsx`) as a `popover` overlay so it coordinates with confirm dialogs/toasts instead of running an independent stack.
+- `components/tour/TourOverlay.tsx` — presentational renderer: measures the target via `getBoundingClientRect()`, spotlights it with a `box-shadow` cutout, positions a `role="dialog"` tooltip. Polls briefly (up to ~3s) for a target that hasn't mounted yet before concluding it genuinely won't appear and auto-skipping the step — needed because some targets (e.g. the capture flow's shutter button) only exist once an async operation (camera stream) resolves; without the poll, a step whose target briefly doesn't exist yet would silently skip instead of waiting for it.
+- `components/tour/TourReplayButton.tsx` — clears the tour's `localStorage` key and restarts it.
+- `lib/tour/storage.ts` — `camera-tour:<tourId>` keys, plain `localStorage`, mirrors `components/landing/LandingPageCookieConsent.tsx`'s existing pattern (no new state framework).
+- `lib/tour/config/adminTourSteps.tsx`, `lib/tour/config/captureTourSteps.tsx` — per-surface step lists.
+
+**Targeting convention**: add `data-tour-id="<surface>-<element>"` to any element a tour should spotlight. `components/admin/SemanticNavLink.tsx` takes an optional `tourId` prop for this; elsewhere it's a plain attribute on the target (Mantine/GDS components generally forward unknown props to their root DOM node). Reuse an existing `aria-label` selector instead of adding a redundant `data-tour-id` where one already uniquely identifies the target (e.g. `[aria-label="Capture photo"]` on the camera shutter).
+
+**Admin** (`admin:v1`) mounts once in `components/admin/AdminChrome.tsx`, auto-starting on first visit, filtered by the same `navigationAccess` the layout already computes (a partner-only admin sees a shorter tour than a global admin). **Capture** (`capture:select-frame:v1` / `capture:photo:v1` / `capture:preview:v1`) is three phase-scoped mini-tours rather than one linear tour in `app/capture/[eventId]/page.tsx`, because the underlying DOM is conditionally mounted per flow `step` — there's no single moment all targets coexist. Each mini-tour auto-starts when its phase becomes active and self-skips steps whose target will never exist for the current event (e.g. the frame-picker step for a single-frame event, which auto-selects and skips straight past `select-frame`).
+
+## 14. Canonical references
 
 - [README.md](README.md)
 - [docs/BRANCHING.md](docs/BRANCHING.md)

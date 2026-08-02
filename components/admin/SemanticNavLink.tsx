@@ -9,6 +9,9 @@ interface SemanticNavLinkProps {
   icon: React.ReactNode;
   active: boolean;
   onClick?: () => void;
+  /** Guided-tour target id (lib/tour). Wraps the link in a plain div rather
+   *  than prop-drilling data-tour-id into SidebarNavItem's own type surface. */
+  tourId?: string;
 }
 
 export default function SemanticNavLink({
@@ -17,8 +20,9 @@ export default function SemanticNavLink({
   icon,
   active,
   onClick,
+  tourId,
 }: SemanticNavLinkProps) {
-  return (
+  const link = (
     <SidebarNavItem
       component={Link}
       href={href}
@@ -31,4 +35,6 @@ export default function SemanticNavLink({
       aria-current={active ? 'page' : undefined}
     />
   );
+
+  return tourId ? <div data-tour-id={tourId}>{link}</div> : link;
 }

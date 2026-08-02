@@ -19,6 +19,10 @@ import {
 } from '@tabler/icons-react';
 import { APP_VERSION } from '@/lib/app-version';
 import SemanticNavLink from '@/components/admin/SemanticNavLink';
+import TourOverlay from '@/components/tour/TourOverlay';
+import TourReplayButton from '@/components/tour/TourReplayButton';
+import { useTourController } from '@/lib/tour/useTourController';
+import { getAdminTourSteps } from '@/lib/tour/config/adminTourSteps';
 
 interface AdminChromeProps {
   session: {
@@ -40,6 +44,7 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
+  tourId?: string;
 }
 
 // closeMobileNavigation has been removed because GdsAppShell handles mobile menu collapse natively
@@ -50,6 +55,7 @@ export default function AdminChrome({
   children,
 }: AdminChromeProps) {
   const pathname = usePathname();
+  const tourController = useTourController('admin:v1', getAdminTourSteps(navigationAccess), { autoStart: true });
 
   useEffect(() => {
     const toggleButton = document.querySelector('button[aria-label="Toggle navigation"]');
@@ -64,6 +70,7 @@ export default function AdminChrome({
       href: '/admin',
       label: 'Dashboard',
       icon: <IconLayoutDashboard size={18} />,
+      tourId: 'admin-nav-dashboard',
     });
   }
   if (navigationAccess.hasAnyPartnerAccess) {
@@ -71,6 +78,7 @@ export default function AdminChrome({
       href: '/admin/partners',
       label: 'Partners',
       icon: <IconBuildingStore size={18} />,
+      tourId: 'admin-nav-partners',
     });
   }
   if (navigationAccess.isGlobalAdmin) {
@@ -78,6 +86,7 @@ export default function AdminChrome({
       href: '/admin/users',
       label: 'Users',
       icon: <IconUsers size={18} />,
+      tourId: 'admin-nav-users',
     });
   }
 
@@ -97,6 +106,7 @@ export default function AdminChrome({
       href: '/admin/events',
       label: 'Events',
       icon: <IconBrandDatabricks size={18} />,
+      tourId: 'admin-nav-events',
     });
   }
   if (navigationAccess.isGlobalAdmin) {
@@ -104,6 +114,7 @@ export default function AdminChrome({
       href: '/admin/tryon',
       label: 'Try-On App',
       icon: <IconSparkles size={18} />,
+      tourId: 'admin-nav-tryon',
     });
   }
 
@@ -112,13 +123,15 @@ export default function AdminChrome({
       <NavSection title="Apps" items={appItems} pathname={pathname} />
       <NavSection title="Core" items={coreItems} pathname={pathname} />
       {resourceItems.length > 0 ? (
-        <NavSection title="Resource Inventory" items={resourceItems} pathname={pathname} />
+        <div data-tour-id="admin-resource-inventory">
+          <NavSection title="Resource Inventory" items={resourceItems} pathname={pathname} />
+        </div>
       ) : null}
     </div>
   );
 
   const accountPanel = (
-    <div style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)' }}>
+    <div data-tour-id="admin-account-panel" style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)' }}>
       <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'nowrap', gap: 'var(--mantine-spacing-sm)' }}>
         <span style={{ alignItems: 'center', background: 'var(--mantine-color-blue-light)', borderRadius: 999, display: 'inline-flex', height: 36, justifyContent: 'center', width: 36 }}>
           <IconUsers size={18} />
@@ -163,6 +176,9 @@ export default function AdminChrome({
           </div>
         </div>
       </a>
+      <div style={{ borderRadius: 12, padding: 'var(--mantine-spacing-sm)' }}>
+        <TourReplayButton tourId="admin:v1" controller={tourController} label="Show admin tour" />
+      </div>
       <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)', textAlign: 'center' }}>
         v{APP_VERSION}
       </code>
@@ -171,6 +187,7 @@ export default function AdminChrome({
 
   return (
     <div data-camera-admin>
+      <TourOverlay controller={tourController} />
       <GdsAppShell
         logoText="Camera"
         headerContext="Admin Panel"
@@ -224,6 +241,7 @@ function NavSection({
               active={active}
               label={item.label}
               icon={item.icon}
+              tourId={item.tourId}
             />
           );
         })}
