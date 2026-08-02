@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import {
   AdminResourceEmptyState,
-  AdminResourceManager,
   type AdminResourceAction,
   type AdminResourceRecord,
 } from '@sovereignsquad/gds-admin/client';
+import { ResourceListGrid } from '@/components/gds/ResourceListGrid';
 import { getStatusChipContent } from '@/lib/gds/statusChipContent';
 
 export interface SerializedSlideshowRow {
@@ -89,9 +89,8 @@ export default function SlideshowsInventoryList({
   }
 
   return (
-    <AdminResourceManager
+    <ResourceListGrid
       records={records}
-      state="ready"
       actions={actions}
       onPreview={(slideshow) => {
         window.open(`/slideshow/${slideshow.slideshowId}`, '_blank', 'noopener,noreferrer');

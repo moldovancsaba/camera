@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import {
   AdminResourceEmptyState,
-  AdminResourceManager,
   type AdminResourceAction,
   type AdminResourceRecord,
 } from '@sovereignsquad/gds-admin/client';
+import { ResourceListGrid } from '@/components/gds/ResourceListGrid';
 import { getStatusChipContent } from '@/lib/gds/statusChipContent';
 
 export interface SerializedEventRow {
@@ -43,11 +43,9 @@ export default function EventsInventoryList({
     ].filter((item): item is { label: string; value: string } => Boolean(item)),
   }));
 
-  // "View" is intentionally NOT a primary action: GDS AdminResourceCard forces
-  // every non-danger primary/secondary action to the "edit" semantic, so a
-  // primary 'view' rendered as a second button labelled "Edit". Viewing is wired
-  // through onPreview below (the card's eye/Preview affordance), leaving a single
-  // "Edit" secondary button.
+  // Viewing goes through onPreview below rather than a second action, keeping
+  // a single "Edit" button per card. "Vetting" is a separate icon action so
+  // it stays visually distinct from "Edit".
   const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedEventRow>> = [
     {
       id: 'edit',
@@ -58,11 +56,6 @@ export default function EventsInventoryList({
       },
     },
     {
-      // Rendered as an icon action, not a second 'secondary' text button: the GDS
-      // AdminResourceCard collapses every non-danger secondary action to the "edit"
-      // semantic id, so two secondary actions would render as two identical "Edit"
-      // buttons sharing the React key `secondary-edit`. Icon actions get their own
-      // slot and keep this affordance distinct.
       id: 'vetting',
       label: 'Vetting',
       kind: 'icon',
@@ -90,9 +83,8 @@ export default function EventsInventoryList({
   }
 
   return (
-    <AdminResourceManager
+    <ResourceListGrid
       records={records}
-      state="ready"
       actions={actions}
       onPreview={(event) => {
         window.location.href = `/admin/events/${event.id}`;
