@@ -1,11 +1,28 @@
 # Tasklist
 
-**Version Context**: 2.19.0  
+**Version Context**: 2.20.0  
 **Last Updated**: 2026-08-02
 
 This file should contain only active near-term execution items. Historical delivery belongs in `RELEASE_NOTES.md`.
 
 ## Active tasks
+
+### CameraCapture autoStart unreliable under `next dev` (new — see LEARNINGS.md FRONT-008)
+
+- status: found, not fixed — out of scope for the guided-tour work that surfaced it
+- what's wrong: `CameraCapture.tsx`'s `autoStart` effect guards against
+  double-invocation with a `useRef` flag that survives React StrictMode's
+  dev-only mount→cleanup→remount cycle, while its `setTimeout(startCamera, 0)`
+  does not — the first mount's cleanup cancels the pending timer, and the
+  second (real) mount's effect body sees the ref already `true` and returns
+  early. Net effect: `autoStart` never calls `startCamera()` under `next dev`.
+- not yet verified whether this reproduces in a production build (StrictMode's
+  double-invoke is dev-only, so it may not) — that's the first thing to check
+  before attempting a fix
+- likely fix shape: don't gate the *scheduling* of the timer on a ref that
+  survives remounts; either drop the `setTimeout(..., 0)` indirection (call
+  `startCamera` directly in the effect body) or reset the ref in the cleanup
+  function too
 
 ### GDS AdminResourceCard/MediaPreviewCard limitations (new — see RELEASE_NOTES.md v2.19.0)
 

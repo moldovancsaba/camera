@@ -4,7 +4,7 @@
 
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.19.0
+**Current Version**: 2.20.0
 **Last Updated**: 2026-08-02T00:00:00.000Z
 **Current Status**: Historical lessons archive. The current runtime model is documented in `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
@@ -723,6 +723,34 @@ const capturePhoto = async () => {
 
 ---
 
+### [FRONT-008] Guided tour engine: a functional-updater side-effect bug, and a pre-existing camera auto-start bug found while verifying it — 2026-08-02T00:00:00.000Z
+
+**Issue**: Building the new admin + capture guided-tour spotlight overlay (`lib/tour/*`, `components/tour/*`) surfaced two distinct real bugs during live browser verification — one in the new tour engine itself, one pre-existing and unrelated in `components/camera/CameraCapture.tsx`.
+
+**Context**:
+- Live-verifying the admin tour's "click Next through every step to Done" path (not exercised by the initial happy-path test, which only advanced one step then skipped) threw a React dev warning: `Cannot update a component (OverlayManagerProvider) while rendering a different component (EventCapturePage)`.
+- Live-verifying the capture-flow's photo-step tour against a mocked event exposed that the shutter button's target never mounted in this environment; tracing why led to a StrictMode double-effect-invoke bug in `CameraCapture.tsx`, unrelated to the tour work.
+
+**Solution**:
+1. `useTourController`'s `next()` called `finish()` (which has side effects: closes/unregisters overlay state belonging to a *different* component, `OverlayManagerProvider`) from inside the functional updater passed to `setCurrentIndex(...)`. React can invoke that updater during another component's render pass, which is exactly what the warning describes. Fix: read `currentIndex` from the hook's closure instead of a functional updater, so `setCurrentIndex(nextIndex)` becomes a plain, side-effect-free call and `finish()` is invoked directly from `next()`'s own body instead.
+2. `TourOverlay`'s original design treated "target not found" as permanent and skipped the step immediately. For a target that mounts asynchronously shortly after the step opens (e.g. the shutter button, gated on `getUserMedia` resolving), this either skipped a step that was about to become valid, or — after adding a retry loop to fix that — rendered a full-screen backdrop+centered tooltip for up to ~3s before silently vanishing on a step that genuinely wasn't going to appear (a visible flash-then-disappear regression). Fix: track a separate `measuring` boolean; render nothing at all while polling, only render the dialog once the target is found (or close/skip silently once retries are exhausted) — see `components/tour/TourOverlay.tsx`.
+3. Found, but explicitly **not fixed** (out of scope for this feature): `CameraCapture.tsx`'s `autoStart` effect guards against double-invocation with a `useRef` flag that survives React StrictMode's dev-only mount→cleanup→remount cycle, while its `setTimeout(startCamera, 0)` does not — the first mount's cleanup cancels the pending timer, and the second (real) mount's effect body sees the ref already `true` and returns early without scheduling a new one. Net effect: `autoStart` never actually calls `startCamera()` under `next dev` (StrictMode is dev-only, so this should not affect production builds, but this was not verified against a production build). This is why the capture-photo tour's shutter-button step could never be observed live in this session; every live check instead confirmed the *next* step (`Change frame`) opened correctly with the retry-then-skip mechanism from point 2, and separately confirmed the underlying engine fix (point 1) via the full click-through path on the structurally identical admin tour.
+
+**Key Decisions**:
+- Never pass a function with side effects on state outside its own hook into a `setState` functional updater — React does not guarantee an updater runs only once, or only outside another component's render.
+- A tour step's target may exist a little later than the step opens; treat "not found yet" and "will never exist" as genuinely different cases rather than collapsing them into one immediate skip.
+
+**Lessons Learned**:
+- A happy-path tour test (open → advance one step → skip) does not exercise the same code path as advancing through every step to completion — the two call different internal functions (`skip()` vs. `next()` on the last step) and only one of them had the bug.
+- When a live-verification blocker turns out to be a different, unrelated component, resist the urge to "just fix it too" — flag it (here, in this entry, plus the retry-then-skip mechanism it happened to validate) and stay inside the feature's actual scope.
+
+**Impact**:
+- Fixed a real bug that would have broken any tour whose user clicks through to the final step (i.e. the common path) in dev, and likely in production too since `finish()`'s side effects don't depend on StrictMode.
+- Fixed a real, if narrower, UX regression (flash-then-vanish backdrop) introduced by the retry fix itself, before it shipped.
+- Documented, without fixing, a separate pre-existing `CameraCapture.tsx` bug worth a dedicated look if `autoStart` is ever reported broken in production dev-testing workflows.
+
+---
+
 ## Process
 
 ### [PROC-001] Version Control Protocol Establishment — 2025-11-03T18:31:18.000Z
@@ -1054,11 +1082,11 @@ _Use this template for new learnings:_
 
 ## Statistics
 
-**Total Learnings**: 14
+**Total Learnings**: 15
 - Development: 2
 - Design: 0
 - Backend: 3
-- Frontend: 7
+- Frontend: 8
 - Process: 3
 - Other: 1
 

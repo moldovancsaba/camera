@@ -91,7 +91,7 @@ export default function ShareOverlay({
               <Stack gap="md">
                 {showShareActions && shareUrl ? (
                   <>
-                    <Group align="stretch" gap="sm" wrap="nowrap">
+                    <Group align="stretch" gap="sm" wrap="nowrap" data-tour-id="capture-share-copy-link">
                       <TextInput
                         value={shareUrl}
                         readOnly
@@ -116,6 +116,7 @@ export default function ShareOverlay({
                       target="_blank"
                       rel="noopener noreferrer"
                       underline="never"
+                      data-tour-id="capture-share-view-photo"
                     >
                       <Button component="span" size={buttonSize} radius="xl" fullWidth>
                         {viewPhotoButtonText}

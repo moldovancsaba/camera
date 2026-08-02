@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "gdsVersion": "3.5.0",
+  "gdsVersion": "3.9.0",
   "productArchetype": "hybrid",
   "supportedEntryPoints": [
     "@sovereignsquad/gds-theme/client",
@@ -221,6 +221,58 @@
       "status": "temporary",
       "owner": "camera-platform",
       "reviewDate": "2026-07-07"
+    },
+    {
+      "surface": "Guided tour spotlight overlay",
+      "category": "package-coverage-gap",
+      "scope": [
+        "lib/tour/types.ts",
+        "lib/tour/storage.ts",
+        "lib/tour/useTourController.ts",
+        "lib/tour/config/adminTourSteps.tsx",
+        "lib/tour/config/captureTourSteps.tsx",
+        "components/tour/TourOverlay.tsx",
+        "components/tour/TourOverlay.module.css",
+        "components/tour/TourReplayButton.tsx"
+      ],
+      "reason": "Published @sovereignsquad/gds-core 3.9.0 (the only published version) exports no Tour/Spotlight/Coachmark/Walkthrough contract. Its closest near-misses are the wrong shape: GdsWizardStepper is an inline form wizard with no overlay/targeting concept, and the only exported overlay-positioning primitive, Tooltip, is a plain hover-triggered label -- the wrong shape for a controlled, keyboard-driven, multi-step spotlight tour used on both the admin panel and the public capture flow.",
+      "allowedImplementation": [
+        "Custom full-viewport spotlight/backdrop rendering, measured against real DOM targets via getBoundingClientRect()",
+        "Custom fixed-position tooltip placement math (no Floating UI/Popover dependency needed for v1)",
+        "Custom step-sequencing state and localStorage persistence"
+      ],
+      "mustStillUse": [
+        "GDS provider/theme runtime",
+        "OverlayManagerProvider registration for stacking/collision behavior with other overlays",
+        "GDS-approved Button/Text/Stack/Group primitives (via components/gds/PublicPrimitives.tsx) for tour controls",
+        "data-tour-id targets on real, already GDS-composed elements -- never a parallel UI"
+      ],
+      "mustNotDo": [
+        "Import @mantine/core directly outside components/gds/PublicPrimitives.tsx",
+        "Introduce a second overlay/modal stack that bypasses OverlayManagerProvider",
+        "Reuse the tour's spotlight styling as a general-purpose overlay pattern for unrelated features"
+      ],
+      "a11yRequirements": [
+        "Focus trap within the active tooltip while a tour step is open",
+        "Full keyboard operation: Tab cycles within the tooltip, Enter/Space activates the focused control, Escape exits the tour",
+        "aria-live polite announcement of each step's title on change",
+        "prefers-reduced-motion disables the spotlight-move transition",
+        "Focus returns to the pre-tour element on exit"
+      ],
+      "testingRequirements": [
+        "Production build and type-check pass",
+        "Manual QA per admin role (global admin, partner-only admin) verifying step filtering",
+        "Manual QA for the capture flow with single-frame and multi-frame events",
+        "Manual keyboard-only walkthrough of both tours"
+      ],
+      "observabilityRequirements": [
+        "Emit a GDS telemetry event (GdsTelemetryProvider) on tour start/step/skip/complete",
+        "console.error and auto-skip a step whose target cannot be found in the DOM"
+      ],
+      "exitCondition": "Replace the custom spotlight/backdrop and step engine when @sovereignsquad/gds-core publishes a Tour/Spotlight contract.",
+      "status": "approved",
+      "owner": "camera-platform",
+      "reviewDate": "2026-11-02"
     }
   ],
   "compliance": {
@@ -245,7 +297,8 @@
           "components/gds/**"
         ],
         "allow": [
-          "components/gds/styles.ts"
+          "components/gds/styles.ts",
+          "components/gds/PublicPrimitives.tsx"
         ],
         "reason": "Admin and GDS-boundary surfaces must consume official GDS primitives first. Mantine remains allowed only as leaf/runtime implementation under explicit exceptions."
       }

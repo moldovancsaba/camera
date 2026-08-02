@@ -19,6 +19,14 @@ import Image from 'next/image';
 import { Button } from '@mantine/core';
 import CameraCapture from '@/components/camera/CameraCapture';
 import ShareOverlay from '@/components/capture/ShareOverlay';
+import TourOverlay from '@/components/tour/TourOverlay';
+import TourReplayButton from '@/components/tour/TourReplayButton';
+import { useTourController } from '@/lib/tour/useTourController';
+import {
+  getCaptureSelectFrameSteps,
+  getCapturePhotoSteps,
+  getCapturePreviewSteps,
+} from '@/lib/tour/config/captureTourSteps';
 import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoAreYouPage';
 import AcceptPage, { type AcceptPageData } from '@/components/capture/AcceptPage';
 import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
@@ -280,6 +288,18 @@ export default function EventCapturePage({
       ? `Check out my photo from ${event.name.trim()}!`
       : 'Check out my photo!';
   const eventButtonSize = normalizeEventButtonSize(event?.visualSettings?.buttonSize);
+
+  const selectFrameTour = useTourController('capture:select-frame:v1', getCaptureSelectFrameSteps(), {
+    autoStart: step === 'select-frame',
+  });
+  const photoTour = useTourController(
+    'capture:photo:v1',
+    getCapturePhotoSteps({ hasMultipleFrames: frames.length > 1 }),
+    { autoStart: step === 'capture-photo' }
+  );
+  const previewTour = useTourController('capture:preview:v1', getCapturePreviewSteps(), {
+    autoStart: step === 'preview' && !!shareUrl && showSharePage,
+  });
 
   // Check for SSO resume after authentication
   useEffect(() => {
@@ -1135,6 +1155,9 @@ export default function EventCapturePage({
 
   return (
     <div className="fixed inset-0 flex flex-col landscape:flex-row bg-transparent">
+      <TourOverlay controller={selectFrameTour} />
+      <TourOverlay controller={photoTour} />
+      <TourOverlay controller={previewTour} />
       {signInError && (
         <div
           className="flex-shrink-0 z-50 mx-3 mt-3 rounded-lg border   px-3 py-2 text-sm  shadow-md    landscape:mx-2 landscape:mt-2"
@@ -1186,6 +1209,15 @@ export default function EventCapturePage({
               <h1 className="text-base font-bold  ">
                 {event.name}
               </h1>
+              {(step === 'select-frame' || step === 'capture-photo') && (
+                <div className="mt-2 flex justify-center landscape:hidden">
+                  <TourReplayButton
+                    tourId={step === 'select-frame' ? 'capture:select-frame:v1' : 'capture:photo:v1'}
+                    controller={step === 'select-frame' ? selectFrameTour : photoTour}
+                    label="Show tour"
+                  />
+                </div>
+              )}
             </div>
             {/* Progress Steps - Hide in landscape for camera */}
             <div className="flex items-center justify-center gap-2 landscape:flex-col landscape:gap-4 landscape:hidden">
@@ -1242,7 +1274,10 @@ export default function EventCapturePage({
         {/* Step 1: Frame Selection - Fit to screen keeping aspect ratio */}
         {step === 'select-frame' && (
           <div className="h-full flex items-center justify-center p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-6xl">
+            <div
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-6xl"
+              data-tour-id="capture-frame-grid"
+            >
               {frames.map((frame) => (
                 <div key={frame.frameId} className="flex items-center justify-center">
                   <button
@@ -1277,6 +1312,7 @@ export default function EventCapturePage({
                   size={eventButtonSize}
                   radius="md"
                   variant="light"
+                  data-tour-id="capture-change-frame-button"
                 >
                   {changeButtonText}
                 </Button>
@@ -1391,6 +1427,9 @@ export default function EventCapturePage({
                     onShareSocial={handleShareSocial}
                     onNext={handleMoveToThankYou}
                   />
+                  <div className="mt-2 flex justify-center">
+                    <TourReplayButton tourId="capture:preview:v1" controller={previewTour} label="Show tour" />
+                  </div>
                 </div>
               )}
 

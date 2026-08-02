@@ -1,12 +1,66 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.19.0
+**Current Version**: 2.20.0
 **Last Updated**: 2026-08-02
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
+
+---
+
+## [v2.20.0] — 2026-08-02
+
+**Type**: Minor — guided tour (spotlight onboarding overlay) for admin panel + capture flow
+
+### Summary
+A from-scratch product-tour engine (dark backdrop, spotlight cutout, step-by-step
+tooltip) — no vendored GDS or third-party equivalent exists, so this ships as a
+documented `package-coverage-gap` GDS exception. One reusable engine drives two
+first-party tours: the admin panel's navigation/account panel, and the public
+capture flow's three phase-scoped mini-tours (frame selection, photo capture,
+share/preview). See `ARCHITECTURE.md` §13 for the system overview and the
+`data-tour-id` targeting convention.
+
+### Features
+
+- **Tour engine** (`lib/tour/*`, `components/tour/*`) — `useTourController`
+  (step sequencing, registers with the existing `OverlayManagerProvider` so it
+  coordinates with confirm dialogs/toasts), `TourOverlay` (spotlight/backdrop/
+  tooltip renderer, with a bounded retry before concluding a step's target
+  genuinely won't mount), `TourReplayButton`. Persists "seen" state per tour to
+  `localStorage`, mirroring the existing `LandingPageCookieConsent` pattern.
+- **Admin tour** (`admin:v1`) — auto-starts once per browser in
+  `components/admin/AdminChrome.tsx`, filtered by the same `navigationAccess`
+  the layout already computes (a partner-only admin sees a shorter tour). Manual
+  replay from the account panel.
+- **Capture tour** — three independent mini-tours
+  (`capture:select-frame:v1` / `capture:photo:v1` / `capture:preview:v1`) in
+  `app/capture/[eventId]/page.tsx`, each auto-starting when its flow phase
+  becomes active and self-skipping steps whose target won't exist for the
+  current event (e.g. frame selection for a single-frame event). Contextual
+  replay controls near the flow header and the share panel.
+
+### Fixes found while building this
+
+- `useTourController`'s `next()` called a side-effecting `finish()` (which
+  closes/unregisters a *different* component's overlay state) from inside a
+  `setState` functional updater — React can invoke that updater during another
+  component's render, which threw a real dev warning on the "click through to
+  the last step" path. Fixed by reading `currentIndex` from the hook's closure
+  instead. See `LEARNINGS.md` [FRONT-008].
+- `TourOverlay`'s target-retry logic could flash a full-screen backdrop for up
+  to ~3s on a step that was never going to mount. Fixed with a `measuring`
+  state that renders nothing while polling. See `LEARNINGS.md` [FRONT-008].
+
+### Known pre-existing issue found, not fixed
+
+- `components/camera/CameraCapture.tsx`'s `autoStart` prop does not reliably
+  call `startCamera()` under `next dev` due to a React StrictMode
+  double-effect-invoke interaction (dev-only; not verified against a
+  production build). Out of scope for this feature — documented in
+  `LEARNINGS.md` [FRONT-008] for a future dedicated fix.
 
 ---
 
