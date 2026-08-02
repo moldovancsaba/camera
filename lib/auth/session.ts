@@ -46,6 +46,40 @@ function sessionCookieDomain(): string | undefined {
 }
 
 /**
+ * Every session-cookie domain scope this app has used in production,
+ * regardless of the currently configured one.
+ *
+ * WHAT: `sessionCookieDomain()` reflects only the *current* value of
+ *     SESSION_COOKIE_DOMAIN. A cookie set under a *previous* value of that
+ *     env var (host-only, or a different shared domain) is a completely
+ *     distinct cookie to the browser -- same name, different Domain
+ *     attribute -- and setting/clearing a cookie for the current domain
+ *     does not touch it.
+ * WHY: this produced a real bug: a host-only `camera_session` cookie left
+ *     over from before SESSION_COOKIE_DOMAIN was set to `.messmass.com`
+ *     kept coexisting with the new shared-domain one on whichever host it
+ *     was originally set on, sending an ambiguous/stale duplicate in the
+ *     Cookie header there while sibling hosts that never had the host-only
+ *     variant read cleanly. Sweeping every known variant on every
+ *     login/logout makes that self-heal instead of staying stuck for the
+ *     life of a 30-day cookie.
+ */
+function sessionCookieDomainsToClear(): (string | undefined)[] {
+  return Array.from(new Set([sessionCookieDomain(), undefined, '.messmass.com']));
+}
+
+function blankSessionCookieOptions(domain: string | undefined) {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    maxAge: 0,
+    path: '/' as const,
+    ...(domain ? { domain } : {}),
+  };
+}
+
+/**
  * OAuth PKCE pending cookie: must survive the cross-site round-trip from our origin → IdP → `/api/auth/callback`.
  * Chrome (incl. strict tracking / third-party cookie modes) is pickier than Safari about `SameSite=Lax` on that hop;
  * `SameSite=None` + `Secure` is the standard pattern for short-lived OAuth handoff cookies (prod is always HTTPS).
@@ -138,23 +172,19 @@ export async function createSession(
   /** Chrome rejects ~>4096 bytes per cookie; Safari is looser — split when needed. */
   const SINGLE_COOKIE_MAX_CHARS = 3600;
 
+  // WHAT: sweeps the primary cookie name too, not just the numbered chunks,
+  //     across every domain variant this app has ever used -- see
+  //     sessionCookieDomainsToClear(). Must run before the new primary
+  //     cookie is set below so a stale variant on another domain can never
+  //     shadow it.
   const clearChunks = (target: 'response' | 'store', res?: NextResponse, store?: Awaited<ReturnType<typeof cookies>>) => {
-    for (const name of chunkCookieSuffixesToClear()) {
-      if (target === 'response' && res) {
-        res.cookies.set(name, '', { ...cookieOptions, maxAge: 0 });
-      } else if (store) {
-        const domain = sessionCookieDomain();
-        if (domain) {
-          store.set(name, '', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 0,
-            path: '/',
-            domain,
-          });
-        } else {
-          store.delete(name);
+    const names = [SESSION_COOKIE_NAME, ...chunkCookieSuffixesToClear()];
+    for (const name of names) {
+      for (const clearDomain of sessionCookieDomainsToClear()) {
+        if (target === 'response' && res) {
+          res.cookies.set(name, '', blankSessionCookieOptions(clearDomain));
+        } else if (store) {
+          store.set(name, '', blankSessionCookieOptions(clearDomain));
         }
       }
     }
@@ -282,17 +312,9 @@ export async function clearSession(): Promise<void> {
     }
   }
 
-  const domain = sessionCookieDomain();
-  const secure = process.env.NODE_ENV === 'production';
-  const blank = { httpOnly: true, secure, sameSite: 'lax' as const, maxAge: 0, path: '/' as const };
-
   for (const name of [SESSION_COOKIE_NAME, ...chunkCookieSuffixesToClear()]) {
-    if (domain) {
-      store.set(name, '', { ...blank, domain });
-    } else if (name === SESSION_COOKIE_NAME) {
-      store.delete(SESSION_COOKIE_NAME);
-    } else {
-      store.delete(name);
+    for (const domain of sessionCookieDomainsToClear()) {
+      store.set(name, '', blankSessionCookieOptions(domain));
     }
   }
   console.log('✓ Session cleared');

@@ -117,10 +117,20 @@ any auth code here:
   cookie or, if `shouldUseMongoWebSessions()`, a Mongo-backed session document) —
   unlike messmass, which originally discarded them after the OAuth callback and had
   to add a separate cookie to keep them around for revocation.
-- **`SESSION_COOKIE_DOMAIN`** is opt-in (`lib/auth/session.ts` `sessionCookieDomain()`)
-  — unset by default, meaning the session cookie is host-only unless an operator
-  explicitly sets it to `.messmass.com`. Don't assume it's shared-domain scoped
-  without checking the actual deployment env.
+- **`SESSION_COOKIE_DOMAIN` is set to `.messmass.com` in production** — confirmed
+  by inspecting a live `Set-Cookie: camera_session=...` response header, not
+  assumed. `sessionCookieDomain()` (`lib/auth/session.ts`) reads it and defaults
+  to host-only (unset) only when the env var itself is unset (e.g. local dev) —
+  don't assume either scoping without checking the actual deployment env.
+  Because it's shared-domain in prod, `camera_session` is genuinely visible on
+  every `*.messmass.com` host (`camera.messmass.com`, `go.messmass.com`, etc.).
+  A cookie set under a *previous* value of this env var (host-only, before it was
+  set to `.messmass.com`) is a distinct cookie to the browser and does not get
+  cleared by code that only clears the *current* domain scope — this produced a
+  real bug (a stale host-only `camera_session` coexisting with the shared-domain
+  one, sent as an ambiguous duplicate only on the host it was originally set on).
+  `sessionCookieDomainsToClear()` in `lib/auth/session.ts` sweeps every domain
+  variant on every login/logout specifically to self-heal this.
 
 ## 5. Local dev-server / testing gotchas (verified this session)
 
