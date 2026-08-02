@@ -65,7 +65,8 @@ Browser / Public Screens
 
 ### Public routes
 
-- `/` — Camera home
+- `/` — plain public landing page, no session logic (v2.19.0, PR #98). Never
+  redirects or renders auth state; its only job is a CTA to `/admin/login`.
 - `/capture/[eventId]` — event capture flow
 - `/capture` — legacy generic capture flow
 - `/share/[id]` — public submission share page
@@ -75,6 +76,8 @@ Browser / Public Screens
 
 ### Admin routes
 
+- `/admin/login` — the single SSO sign-in entry point (client component;
+  see §6). Not wrapped by the admin layout's own auth gate.
 - `/admin`
 - `/admin/partners/**`
 - `/admin/events/**`
@@ -161,8 +164,16 @@ Purpose:
 
 ### Current enforcement model
 
-- edge middleware allows any valid session with `appAccess !== false` into `/admin`
-- admin layout resolves global admin vs partner-scoped access
+- edge middleware (`proxy.ts`) gates `/admin` on session presence/expiry
+  only — it deliberately does **not** check `appAccess` there. The `v:2`
+  session-pointer cookie caches `appAccess` at login time and never
+  refreshes for the life of a 30-day session; gating on that cached value at
+  the edge caused a real infinite-reload bug when it went stale relative to
+  the live database value (v2.19.0, PR #101). `appAccess` denial is enforced
+  once, by the layout below, from a live read.
+- admin layout (`app/admin/layout.tsx`) resolves global admin vs
+  partner-scoped access from a live `getSession()`/`getAdminNavigationAccess()`
+  read, and is the sole place that redirects on `appAccess === false`
 - global admins retain bypass
 - global inventory pages remain global-admin-only
 - partner/app pages enforce partner-scoped access where implemented
@@ -188,9 +199,27 @@ Reference:
 
 Root edge proxy in [proxy.ts](proxy.ts) does three important jobs:
 
-1. gate `/admin` by valid serialized session state
+1. gate `/admin` by session presence/expiry (not `appAccess` — see §5); explicitly
+   passes `/admin/login` through unchecked, since it's the redirect target and
+   does its own session check
 2. rescue OAuth callback parameters returned to the wrong path
 3. resolve GO short links on `GO_SHORT_HOSTNAMES` to `/api/go-short/[slug]` capture redirects
+
+`/admin/login` (`app/admin/login/page.tsx`) is a client component, not a
+Server Component `redirect()`. A Server Component `redirect()` called after
+an `await` (e.g. a session read) can only be delivered as an RSC "soft
+redirect" digest rather than a real HTTP 3xx; when that digest's target
+itself redirects cross-origin (to SSO), the client router doesn't reliably
+follow the hop. `/admin/login` instead decides via `fetch('/api/auth/session')`
+and navigates with `window.location.replace()` — a genuine top-level
+navigation — matching messmass's equivalent page (v2.19.0, PR #100).
+
+`app/admin/layout.tsx` wraps every route under `app/admin/`, `/admin/login`
+included — Next.js has no way to exclude one child route from an ancestor
+layout. The layout skips its own auth check when the edge-injected
+`x-camera-pathname` request header (set by `proxy.ts`'s `passThroughWithPathname`)
+is `/admin/login`, since that page already does its own session check and
+doesn't want the authenticated `AdminShell` chrome (v2.19.0, PR #99).
 
 ## 7. Data architecture
 

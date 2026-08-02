@@ -1,12 +1,146 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.17.0
-**Last Updated**: 2026-07-04
+**Current Version**: 2.19.0
+**Last Updated**: 2026-08-02
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
+
+---
+
+## [v2.19.0] — 2026-08-02
+
+**Type**: Minor — cross-app SSO/messmass integration + admin sign-in architecture hardening
+
+### Summary
+Two work streams. First, deepened the shared-ecosystem integration with messmass:
+a shared internal email service, bidirectional partner sync, a mojibake-text
+repair endpoint, and a shared SSO session so one login covers both apps.
+Second — and larger — a full rework of camera's admin sign-in flow after a
+reported login/logout loop, plus four related GDS admin-UI bugs found and
+fixed along the way (PRs #90–#105).
+
+### Features — SSO / messmass integration
+
+- **Shared internal email service (#90)** — `POST /api/internal/email/send`,
+  authenticated by either the messmass or fanmass internal secret, so only
+  camera's verified Resend domain sends cross-app email. `lib/email/send.ts`
+  extracted the actual Resend call/response primitive so camera's own
+  submission-notification feature and the new endpoint share one implementation.
+- **Bidirectional partner sync (#91)** — `lib/messmassClient.ts` pushes
+  camera-native partner creates/updates to messmass's inbound endpoint (the
+  reverse of messmass's existing push into camera). Partners synced in from
+  messmass are never pushed back, so there's no ping-pong loop; push is
+  best-effort and never blocks the local write if messmass is unreachable.
+- **Mojibake repair (#92)** — `GET /api/admin/fix-mojibake-text` (admin-gated,
+  dry-run by default) repairs UTF-8-as-Windows-1252 corruption in
+  `partners`/`organizations`/`events` name fields synced in from messmass,
+  using the same provably-safe round-trip algorithm as messmass's sibling fix.
+- **Shared SSO session with messmass (#93)** — camera's OAuth callback now
+  best-effort pushes its tokens to a new messmass-side mirror endpoint and
+  forwards the resulting `Set-Cookie`, so one SSO login covers both apps
+  without a second OAuth click. Requires `SESSION_COOKIE_DOMAIN=.messmass.com`
+  in production (existing support in `lib/auth/session.ts`, newly exercised).
+  The new `POST /api/internal/messmass/sso-session` independently re-verifies
+  forwarded tokens against SSO before minting a session — the shared secret
+  alone only proves the request came from messmass, not that the tokens are
+  valid.
+- **Consistent SSO login button (#94)**, **redirect straight to SSO (#95)**,
+  **land on homepage after logout (#96)** — three incremental fixes making
+  camera's pre-SSO screens match messmass's: a plain "Sign In" entry point,
+  no app-rendered login chooser duplicating SSO's own form, and a working
+  post-logout landing instead of bouncing straight back into SSO. Superseded
+  by the full architecture change below (#98) but kept as real history — each
+  was a genuine incremental improvement at the time.
+
+### Features — admin sign-in architecture + bug fixes
+
+- **Standing operating rules (#97)** — added `CLAUDE.md`, grounding read-first
+  discipline, the AI-branding ban, the real local quality gate
+  (`npm run release:check` — this repo has no GitHub Actions CI), and SSO
+  ecosystem tribal knowledge actually verified this session.
+- **Split homepage and admin sign-in (#98)** — mirrored messmass's proven
+  pattern: `/` is now a plain public landing page with no session logic ever;
+  `/admin/login` (new) is the single place that decides how to reach SSO.
+  Along the way, fixed a real loop vector where a session with no app access
+  (camera, unlike messmass, still mints one) used to bounce between `/`,
+  `/admin/login`, and `/admin`.
+- **Fixed a self-redirect loop from #98 (#99)** — `/admin/login` was still
+  wrapped by the auth-gated `app/admin/layout.tsx` (Next.js can't exclude one
+  child route from an ancestor layout), so an unauthenticated visit to
+  `/admin/login` redirected to itself, forever. Fixed via an edge-injected
+  `x-camera-pathname` header the layout uses to skip its own gate for that
+  one route.
+- **Moved `/admin/login`'s redirect client-side (#100)** — its Server
+  Component `redirect()`, called after `await getSession()`, could only be
+  delivered as an RSC "soft redirect" digest rather than a real HTTP 3xx; when
+  that digest's target itself redirected cross-origin (to SSO), the client
+  router didn't reliably follow the hop — production symptom was
+  `/admin/login` reloading itself indefinitely, never reaching SSO. Reworked
+  as a client component using `fetch()` + `window.location.replace()` (a
+  genuine top-level navigation), matching messmass's own `/admin/login`.
+- **Fixed stale cached `appAccess` causing a second loop (#101)** — the
+  `v:2` session-pointer cookie caches `appAccess` at login time and never
+  refreshes for the life of a 30-day session; the edge gate trusted that
+  snapshot while the layout/`/api/auth/session` always read the live
+  database value. When access changed after login, the two disagreed and
+  bounced the session between `/admin` and `/admin/login` forever. Fixed by
+  only gating on session presence/expiry at the edge — access decisions now
+  live solely with the layout's live read.
+- **Session-cookie domain sweep (#102)** — confirmed `SESSION_COOKIE_DOMAIN`
+  is actually set to `.messmass.com` in production (CLAUDE.md previously
+  assumed host-only; corrected). A `camera_session` cookie set under a
+  *previous* value of that setting is a distinct cookie the current code
+  never cleared, explaining a real report of one account working on
+  `go.messmass.com` but not `camera.messmass.com`. Login/logout now sweep
+  every known domain variant so a stale leftover self-heals.
+  `docs/GDS_CAMERA_ADOPTION.md`/`CLAUDE.md` corrected to match.
+- **Fixed duplicate/mislabelled "Edit" buttons (#103)** — `AdminResourceCard`
+  (`@sovereignsquad/gds-admin`) forces every non-danger action to the "edit"
+  label regardless of its real purpose (confirmed by reading the vendored
+  package's compiled source). Partners ("View" + "Edit") and Submissions
+  ("View" + "Download") both rendered two identically-labelled "Edit"
+  buttons. Fixed using the same `onPreview`/icon-action workaround
+  `EventsInventoryList`/`TryOnSuitsInventoryList` had already found.
+- **Fixed doubled status pill on every resource card (#104)** — the same
+  card's `status` slot already wraps its content in a `Badge`; every
+  `InventoryList` was passing a whole `StatusBadge` (itself a Badge) into it,
+  so every card admin-wide rendered a badge nested inside a badge. New
+  `getStatusChipContent()` (`lib/gds/statusChipContent.tsx`) renders colored
+  text instead, so the library's own single pill is the only one on screen.
+- **Dropped the unused image placeholder (#105)** — the card component
+  always renders an image block, falling back to an empty "No media" box
+  when a record has no image (Partners, Events, Slideshows, Landing Pages
+  never have one; the library has no prop to omit it). New `ResourceListGrid`
+  (`components/gds/ResourceListGrid.tsx`) is a from-scratch resource card
+  grid with no media slot, composed from the same approved
+  `gds-core`/`PublicPrimitives` building blocks — and, being camera's own
+  component, renders each action's real label rather than the vendored
+  card's hardcoded "edit" text.
+
+### Verification
+- Every PR: `npx tsc --noEmit`, `npm run lint` clean; anything touching
+  `app/admin`/`components/gds` also ran the full `npm run release:check`
+  chain.
+- The admin sign-in rework (#98–#102) was verified end-to-end against
+  **production** with a real test SSO account and a real credential-driven
+  OAuth flow (curl-replicated PKCE round trips, since this environment
+  cannot reliably drive a real browser against `*.messmass.com`): cold
+  login → `/admin`, logout → clean landing page, immediate relogin →
+  automatic `prompt=login` → real SSO login form → clean relogin, with no
+  loop at any step.
+
+### Notes
+- All 16 PR descriptions in this range (#90–#105) originally carried an AI
+  attribution footer added before `CLAUDE.md`'s branding ban existed;
+  stripped retroactively per that ban's own retroactive-fix clause.
+- `#71` ("convert inventory pages to resource manager primitives") and `#77`
+  ("media cards — official image card primitives and non-cropping behavior")
+  were previously closed as done, but #103–#105 found real, user-visible bugs
+  in exactly the adopted code those issues covered. See the new issue filed
+  against this finding for detail.
 
 ---
 

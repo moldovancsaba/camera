@@ -1,7 +1,7 @@
 # Camera GDS Adoption
 
-**Version**: 2.16.0  
-**Last Updated**: 2026-07-04
+**Version**: 2.19.0  
+**Last Updated**: 2026-08-02
 
 ## SSOT statement
 
@@ -40,7 +40,9 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | Info card | direct `@sovereignsquad/gds-core` import | Package-direct |
 | Action entry grid | `components/gds/AdminDashboardView.tsx`, `app/admin/tryon/page.tsx`, `app/admin/tryon-results/page.tsx` | Package-direct |
 | Data toolbar | `components/admin/AdminListPageShell.tsx` | Package-direct |
-| Responsive data view | `components/gds/EventsInventoryList.tsx`, `components/gds/PartnersInventoryList.tsx`, `components/admin/TryOnResultModerationTable.tsx` | Package-direct `ResponsiveDataView` |
+| Admin resource cards, with media (Frames/Logos/Try-On Suits/Submissions) | `components/gds/FramesInventoryList.tsx`, `LogosInventoryList.tsx`, `TryOnSuitsInventoryList.tsx`, `SubmissionsInventoryList.tsx` | Package-direct `AdminResourceManager`/`AdminResourceCard` (`MediaPreviewCard` under the hood) — see [Known package limitations](#known-package-limitations-adminresourcecard--mediapreviewcard) below for two workarounds every consumer of this primitive must follow |
+| Admin resource cards, no media (Partners/Events/Slideshows/Landing Pages) | `components/gds/ResourceListGrid.tsx`, consumed by `PartnersInventoryList.tsx`, `EventsInventoryList.tsx`, `SlideshowsInventoryList.tsx`, `LandingPagesPageView.tsx` | Domain-owned composition over approved `gds-core`/`PublicPrimitives` building blocks (`Card`, `Group`, `Stack`, `Text`, `Button`, `GdsIcons`) — not `AdminResourceManager`, because that primitive always renders a media block with no prop to omit it (v2.19.0, PR #105) |
+| Responsive data view | `components/admin/TryOnResultModerationTable.tsx` | Package-direct `ResponsiveDataView` |
 | Data table | `components/gds/LandingPagesPageView.tsx`, `components/admin/TryOnQueueTable.tsx` | Package-direct `DataTable`; analytics tables use package `AdminAnalyticsTable` |
 | Empty state | direct `@sovereignsquad/gds-core` import | Package-direct |
 | Access summary | direct `@sovereignsquad/gds-core` import | Package-direct |
@@ -110,9 +112,51 @@ Camera exceptions follow the shared structure from [docs/GDS_EXCEPTION_STANDARD.
 | Residual public surface helper layer (`app/globals.css` helper classes and `--app-panel-*` tokens) | Migration bridge | Limited public/capture helper styling outside `/admin/**` | No second shell system, no admin reuse, no raw package bypass, accessibility and contrast still enforced | Remove once public/capture surfaces no longer depend on local helper classes |
 | Landing page custom CSS (`landing_pages.customCss`, public `/landing/[slug]`) | Product-authored experience | Creator-authored presentation inside the landing experience surface only | GDS-governed admin/editor chrome, safe rendering order, accessibility baseline for shared controls and consent surfaces | Long-lived approved exception unless GDS later formalizes creator-authored experience theming |
 | Slideshow player (`components/slideshow/**`, `/slideshow/**`) | Runtime constraint | Timing-sensitive queue orchestration, fullscreen behavior, and media-first presentation | GDS runtime boundary, `PlaybackSurface` framing, surrounding admin configuration surfaces, visible error/empty states, keyboard-safe exit where applicable | Keep narrowing until only timing-sensitive queue, fullscreen behavior, and media internals remain outside direct package ownership |
+
+## Known package limitations: `AdminResourceCard` / `MediaPreviewCard`
+
+Confirmed by reading the compiled source of `@sovereignsquad/gds-admin@3.9.0`
+and `@sovereignsquad/gds-core@3.9.0` (the only published version of either
+package as of this writing — no newer version exists to check). Not
+reproducible from the public type definitions alone; found while
+investigating two real production bug reports (v2.19.0, PRs #103–#105).
+
+1. **Every non-danger `primary`/`secondary` action renders as "Edit".**
+   `AdminResourceCard` hardcodes `action: primary.kind === "danger" ? "delete" : "edit"`
+   for both slots — it discards the caller's own `label` string entirely, and
+   there's no way to pass a different semantic action id (`gds-core`'s
+   `ActionBar`/vocabulary supports many, e.g. `eye`/"View", but
+   `AdminResourceCard` never forwards one). Any resource list with more than
+   one non-danger action (e.g. "View" + "Edit") renders two buttons that
+   both say "Edit". Workaround: give the record exactly one non-danger
+   `primary`/`secondary` action (usually the real edit action) and route
+   anything else through `onPreview` (renders as "Preview") or a `kind: 'icon'`
+   action (renders as a subtle icon with the real label as `aria-label` only —
+   not visible text).
+2. **The `status` slot double-wraps a `Badge`.** `MediaPreviewCard` renders
+   `status ? <Badge variant="light">{status}</Badge> : null` — passing an
+   already-built `<StatusBadge>` (itself a `Badge`) produces a badge nested
+   inside a badge, a visibly doubled pill. Workaround: pass plain
+   (optionally colored) text/nodes into `status`, never another `Badge`-like
+   component. `lib/gds/statusChipContent.tsx`'s `getStatusChipContent()` is
+   the approved helper for this.
+3. **The media/image block cannot be omitted.** `MediaPreviewCard` always
+   renders an `AspectRatio` block — either the real image, or a "No media"
+   placeholder `StateBlock` when no `src`/`thumbnailSrc` is given. There is
+   no prop to skip this. Records with no image at all (Partners, Events,
+   Slideshows, Landing Pages) must use `components/gds/ResourceListGrid.tsx`
+   instead of `AdminResourceManager` — a from-scratch, no-media card grid
+   composed from approved primitives (see the pattern-adapter table above).
+
+None of these are fixable from inside Camera's boundary — they're vendored
+package behavior. If `sovereignsquad/general-design-system` is reachable,
+file an upstream issue/PR; until then, any new `AdminResourceManager`
+consumer must follow the workarounds above or it will silently reintroduce
+one of these three bugs.
+
 ## Published package capability snapshot
 
-Camera is currently pinned to the latest verified published release bundle, `@sovereignsquad/*` **3.5.0**.
+Camera is currently pinned to the latest verified published release bundle, `@sovereignsquad/*` **3.9.0**.
 
 ### Available now in the published package line
 
