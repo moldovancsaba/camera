@@ -7,8 +7,7 @@ import {
   type AdminResourceAction,
   type AdminResourceRecord,
 } from '@sovereignsquad/gds-admin/client';
-import { StatusBadge } from '@sovereignsquad/gds-core/client';
-import { getStatusBadgeProps } from '@/lib/gds/presentation';
+import { getStatusChipContent } from '@/lib/gds/statusChipContent';
 
 export interface SerializedSlideshowRow {
   id: string;
@@ -38,7 +37,7 @@ export default function SlideshowsInventoryList({
     id: slideshow.id,
     title: slideshow.name,
     description: `/slideshow/${slideshow.slideshowId}`,
-    status: <StatusBadge {...getStatusBadgeProps(slideshow.isActive ? 'active' : 'inactive')} />,
+    status: getStatusChipContent({ tone: slideshow.isActive ? 'active' : 'inactive' }),
     metadata: [
       { label: 'Event', value: slideshow.eventName },
       { label: 'Partner', value: slideshow.partnerName || 'Unknown partner' },

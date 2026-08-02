@@ -7,8 +7,7 @@ import {
   type AdminResourceAction,
   type AdminResourceRecord,
 } from '@sovereignsquad/gds-admin/client';
-import { StatusBadge } from '@sovereignsquad/gds-core/client';
-import { getStatusBadgeProps } from '@/lib/gds/presentation';
+import { getStatusChipContent } from '@/lib/gds/statusChipContent';
 
 export interface SerializedLogoRow {
   id: string;
@@ -34,7 +33,7 @@ export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow
     description: logo.description || 'Shared logo',
     mediaSrc: logo.imageUrl,
     mediaAlt: logo.name,
-    status: <StatusBadge {...getStatusBadgeProps(logo.isActive ? 'active' : 'inactive')} />,
+    status: getStatusChipContent({ tone: logo.isActive ? 'active' : 'inactive' }),
     metadata: [
       { label: 'Partner defaults', value: String(logo.partnerDefaultCount) },
       { label: 'Event assignments', value: String(logo.eventAssignmentCount) },

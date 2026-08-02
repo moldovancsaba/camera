@@ -7,8 +7,7 @@ import {
   type AdminResourceAction,
   type AdminResourceRecord,
 } from '@sovereignsquad/gds-admin/client';
-import { StatusBadge } from '@sovereignsquad/gds-core/client';
-import { getStatusBadgeProps } from '@/lib/gds/presentation';
+import { getStatusChipContent } from '@/lib/gds/statusChipContent';
 
 export interface SerializedPartnerRow {
   id: string;
@@ -28,7 +27,7 @@ export default function PartnersInventoryList({ partners }: { partners: Serializ
     id: partner.id,
     title: partner.name,
     description: partner.description || partner.partnerId,
-    status: <StatusBadge {...getStatusBadgeProps(partner.isActive ? 'active' : 'inactive')} />,
+    status: getStatusChipContent({ tone: partner.isActive ? 'active' : 'inactive' }),
     metadata: [
       { label: 'Partner ID', value: partner.partnerId },
       { label: 'Events', value: String(partner.eventCount) },

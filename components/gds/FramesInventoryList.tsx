@@ -7,8 +7,7 @@ import {
   type AdminResourceAction,
   type AdminResourceRecord,
 } from '@sovereignsquad/gds-admin/client';
-import { StatusBadge } from '@sovereignsquad/gds-core/client';
-import { getStatusBadgeProps } from '@/lib/gds/presentation';
+import { getStatusChipContent } from '@/lib/gds/statusChipContent';
 
 export interface SerializedFrameRow {
   id: string;
@@ -35,16 +34,12 @@ export default function FramesInventoryList({ frames }: { frames: SerializedFram
     description: frame.description || frame.category || 'Shared frame',
     mediaSrc: frame.imageUrl,
     mediaAlt: frame.name,
-    status: (
-      <>
-        <StatusBadge
-          {...getStatusBadgeProps(
-            frame.scope === 'event' ? 'active' : frame.scope === 'partner' ? 'info' : 'inactive',
-            frame.scope === 'global' ? 'Global' : frame.scope === 'partner' ? 'Partner' : 'Event'
-          )}
-        />
-        <StatusBadge {...getStatusBadgeProps(frame.isActive ? 'active' : 'inactive')} />
-      </>
+    status: getStatusChipContent(
+      {
+        tone: frame.scope === 'event' ? 'active' : frame.scope === 'partner' ? 'info' : 'inactive',
+        label: frame.scope === 'global' ? 'Global' : frame.scope === 'partner' ? 'Partner' : 'Event',
+      },
+      { tone: frame.isActive ? 'active' : 'inactive' }
     ),
     metadata: [
       { label: 'Category', value: frame.category || 'general' },
