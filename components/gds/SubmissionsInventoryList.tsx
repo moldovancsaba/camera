@@ -60,19 +60,20 @@ export default function SubmissionsInventoryList({
       ].filter((item): item is { label: string; value: string } => Boolean(item)),
     };
   });
+  // WHAT: 'view' isn't a primary/secondary action, and 'download' is an icon
+  //     action, not a second secondary.
+  // WHY: GDS AdminResourceCard forces every non-danger primary/secondary
+  //     action to the "edit" semantic (fixed id, ignores our custom label) --
+  //     with both as text actions, "View" and "Download" rendered as two
+  //     identical "Edit" buttons, neither of which actually edits anything.
+  //     Viewing goes through onPreview below (its own "Preview" affordance);
+  //     download becomes an icon action so it isn't mislabelled "Edit"
+  //     either. Same pattern as EventsInventoryList.tsx / TryOnSuitsInventoryList.tsx.
   const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedSubmissionRow>> = [
-    {
-      id: 'view',
-      label: 'View',
-      kind: 'primary',
-      onSelect: (submission) => {
-        window.location.href = `/share/${submission.id}`;
-      },
-    },
     {
       id: 'download',
       label: 'Download',
-      kind: 'secondary',
+      kind: 'icon',
       onSelect: (submission) => {
         window.open(submission.imageUrl, '_blank', 'noopener,noreferrer');
       },
@@ -88,5 +89,14 @@ export default function SubmissionsInventoryList({
     );
   }
 
-  return <AdminResourceManager records={records} state="ready" actions={actions} />;
+  return (
+    <AdminResourceManager
+      records={records}
+      state="ready"
+      actions={actions}
+      onPreview={(submission) => {
+        window.location.href = `/share/${submission.id}`;
+      }}
+    />
+  );
 }
