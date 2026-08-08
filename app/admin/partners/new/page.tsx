@@ -10,7 +10,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
-import { FormSection } from '@sovereignsquad/gds-admin/client';
+import { AdminCheckbox, AdminCrudForm, AdminFormSection, AdminTextInput, AdminTextarea } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert } from '@sovereignsquad/gds-core/client';
 
 interface CreatePartnerResponse {
@@ -27,20 +27,18 @@ export default function NewPartnerPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [isActive, setIsActive] = useState(true);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
-    const formData = new FormData(e.currentTarget);
-    const data = {
-      name: formData.get('name') as string,
-      description: formData.get('description') as string,
-      contactEmail: formData.get('contactEmail') as string,
-      contactName: formData.get('contactName') as string,
-      isActive: formData.get('isActive') === 'on',
-    };
+    const data = { name, description, contactEmail, contactName, isActive };
 
     try {
       const response = await fetch('/api/partners', {
@@ -79,49 +77,34 @@ export default function NewPartnerPage() {
       ) : null}
 
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
-          <FormSection title="Basic Information">
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Partner Name *
-              <input
+        <AdminCrudForm title="Partner details" description="Create a new partner organization.">
+          <AdminFormSection title="Basic information">
+            <AdminTextInput
               name="name"
+              label="Partner name"
+              value={name}
+              onChange={setName}
               required
               placeholder="e.g., AC Milan, Red Bull, Nike"
-              aria-describedby="partner-name-description"
-              style={{ minHeight: 44, padding: '0 0.75rem' }}
+              description="The name of the partner organization or brand."
             />
-              <span id="partner-name-description" style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>
-                The name of the partner organization or brand.
-              </span>
-            </label>
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Description
-              <textarea name="description" rows={3} placeholder="Optional description..." style={{ padding: '0.75rem' }} />
-            </label>
-          </FormSection>
+            <AdminTextarea name="description" label="Description" value={description} onChange={setDescription} placeholder="Optional description..." />
+          </AdminFormSection>
 
-          <FormSection title="Contact Information">
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Contact Person
-              <input name="contactName" placeholder="e.g., John Doe" style={{ minHeight: 44, padding: '0 0.75rem' }} />
-            </label>
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Contact Email
-              <input name="contactEmail" type="email" placeholder="e.g., contact@partner.com" style={{ minHeight: 44, padding: '0 0.75rem' }} />
-            </label>
-          </FormSection>
+          <AdminFormSection title="Contact information">
+            <AdminTextInput name="contactName" label="Contact person" value={contactName} onChange={setContactName} placeholder="e.g., John Doe" />
+            <AdminTextInput name="contactEmail" label="Contact email" type="email" value={contactEmail} onChange={setContactEmail} placeholder="e.g., contact@partner.com" />
+          </AdminFormSection>
 
-          <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
-            <div style={{ display: 'grid', gap: '0.5rem' }}>
-              <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
-                <input type="checkbox" name="isActive" defaultChecked />
-                Make partner active (visible and usable)
-              </label>
-              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
-                Inactive partners will not be available for event creation
-              </p>
-            </div>
-          </section>
+          <AdminFormSection title="Status">
+            <AdminCheckbox
+              name="isActive"
+              label="Make partner active (visible and usable)"
+              description="Inactive partners will not be available for event creation"
+              checked={isActive}
+              onChange={setIsActive}
+            />
+          </AdminFormSection>
 
           <div style={{ display: 'grid', gap: '0.75rem' }}>
             <SemanticButton action="partners:create" type="submit" loading={isSubmitting}>
@@ -131,7 +114,7 @@ export default function NewPartnerPage() {
               Cancel
             </SemanticButton>
           </div>
-        </div>
+        </AdminCrudForm>
       </form>
     </EditorScaffold>
   );

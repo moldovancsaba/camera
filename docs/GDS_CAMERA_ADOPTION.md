@@ -1,7 +1,7 @@
 # Camera GDS Adoption
 
-**Version**: 2.19.0  
-**Last Updated**: 2026-08-02
+**Version**: 2.22.0  
+**Last Updated**: 2026-08-08
 
 ## SSOT statement
 
@@ -214,6 +214,14 @@ Current state:
 This is **not** a formal SSOT version adoption -- `gds-adoption.json`'s `gdsVersion` field is left at `3.9.0` deliberately, since that still reflects the last officially published version this manifest is meant to track. `npm run gds:validate-manifest` passes either way (it checks contract/structural compliance, not installed package versions, so it doesn't catch this kind of drift).
 
 **What it unblocked:** `components/admin/HashtagInput.tsx`'s selected-hashtag removable chips now use `ChoiceChip` from `@sovereignsquad/gds-core` instead of a hand-rolled `<button>`. Note this component is not currently rendered anywhere in the app (no call sites found) -- the change is verified via a temporary scratch route (deleted before commit), not a live page.
+
+### 2026-08-08: create-page forms migrated to `AdminCrudForm`
+
+The four `new`/create admin pages (frames, logos, partners, try-on suits) -- the backlog item open since v2.17.0 (`TASKLIST.md`) -- now render their fields through `AdminCrudForm`/`AdminFormSection`/`AdminTextInput`/`AdminTextarea`/`AdminSelect`/`AdminCheckbox` instead of raw `<input>`/`<textarea>`/`<select>`, matching the frames/logos edit-page pattern from #74. Image-upload sections keep plain `FormSection` since they aren't a field group.
+
+Verified live via `/api/auth/dev-login` + headless Chromium against the app's real dev server: all four pages render correctly and their fields are genuinely controlled (typing and checkbox toggling confirmed against React state, not just static markup).
+
+**Correction to the record while doing this:** the backlog note this closes said "migrate to `AdminCrudForm` primitives for parity with the edit pages" as if all four edit pages were already on `AdminCrudForm`. Checked directly -- only frames/logos edit pages actually are (#74's real scope); `partners`/`tryon/suits` edit pages are still on `FormSection` + raw inputs. That's a real, separate gap this change does not touch -- noted in `TASKLIST.md`, not filed as a numbered issue yet.
 
 **Full type-check + lint + build were re-run clean against the vendored packages** (not just this one file), since the version bump is app-wide. See `LEARNINGS.md` for the vendoring approach and its tradeoffs.
 

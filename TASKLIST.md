@@ -1,7 +1,7 @@
 # Tasklist
 
-**Version Context**: 2.20.0  
-**Last Updated**: 2026-08-02
+**Version Context**: 2.22.0  
+**Last Updated**: 2026-08-08
 
 This file should contain only active near-term execution items. Historical delivery belongs in `RELEASE_NOTES.md`.
 
@@ -45,17 +45,20 @@ This file should contain only active near-term execution items. Historical deliv
   prematurely; see the new GitHub issue filed against this finding rather
   than reopening them directly
 
-### Admin create-page consistency (from v2.17.0 cycle, still open)
-
-- status: backlog — the `new`/create admin pages (frames, logos, partners, suits) remain on
-  raw `<input>`/`<textarea>` uniformly; migrate to `AdminCrudForm` primitives for parity with
-  the edit pages. Separate from #74 (which was edit-page parity, delivered in v2.17.0).
-
 ### E2E suite execution (#84 — closed, verify still holds)
 
 - status: #84 was closed in an earlier cycle; if `event-exports.spec.ts` hasn't
   actually been run green in a MongoDB-backed environment since, re-verify
   before trusting that closure
+
+## Recently completed (v2.22.0 — see RELEASE_NOTES.md)
+
+- **Admin create-page consistency**: the four `new`/create admin pages (frames, logos,
+  partners, try-on suits) migrated from raw `<input>`/`<textarea>`/`<select>` to
+  `AdminCrudForm`/`AdminFormSection`/`Admin*` field primitives, closing the backlog item
+  open since v2.17.0. Noted while doing this: `partners`/`tryon/suits` **edit** pages are
+  still on `FormSection` + raw inputs (only frames/logos edit pages are actually on
+  `AdminCrudForm`, from #74) — that's a separate, not-yet-filed gap, not covered here.
 
 ## Recently completed (v2.19.0 — see RELEASE_NOTES.md)
 
