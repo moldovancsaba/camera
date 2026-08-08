@@ -1,14 +1,39 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.20.0
-**Last Updated**: 2026-08-02
+**Current Version**: 2.21.0
+**Last Updated**: 2026-08-08
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
 
 ---
+
+## [v2.21.0] — 2026-08-08
+
+**Type**: Minor — vendor GDS `4.1.3` (unpublished), migrate `HashtagInput` chips to `ChoiceChip`
+
+### Summary
+`@sovereignsquad/gds-core`/`gds-theme`/`gds-admin` are pinned at `file:vendor/gds/*.tgz`
+instead of the published `3.9.0` registry install — `3.9.0` remains the only version ever
+published to any registry, but real, buildable newer work exists at git tag `gds-v4.1.3`
+in the source repo. `gds-admin` moved too since it pins an exact peer dependency on the
+other two. Not a formal SSOT version adoption — `gds-adoption.json`'s `gdsVersion` stays
+at `3.9.0` deliberately. See `docs/GDS_CAMERA_ADOPTION.md` and `LEARNINGS.md` for the
+full detail and tradeoffs.
+
+### Changed
+- `components/admin/HashtagInput.tsx` — selected-hashtag removable chips now use GDS's
+  `ChoiceChip` instead of a hand-rolled `<button>`. This component has no current call
+  sites in the app; verified via a temporary scratch route, not a live page.
+
+### Verification
+- `npx tsc --noEmit`, `npm run lint`, `npm run build` all clean (app-wide, since the
+  dependency bump affects every GDS consumer, not just the file above)
+- `npm run gds:validate-manifest` / `npm run gds:check` both still pass
+- Visual verification via headless Chromium on a temporary scratch route (deleted before
+  commit): chips render with the app's theme colors applied, remove-on-click works
 
 ## [v2.20.0] — 2026-08-02
 

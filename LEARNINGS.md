@@ -104,13 +104,30 @@ This document records actual issues encountered during development, their soluti
 
 ## Design
 
-_No entries yet. Design learnings will be documented as UI/UX work begins._
+### [DESIGN-001] Vendoring an unpublished GDS version from its git tag — 2026-08-08T14:48:00.000Z
 
-**Expected Topics**:
-- Camera capture UI for mobile vs desktop
-- Frame selection interface design
-- Real-time preview performance considerations
-- Accessibility in image-heavy interfaces
+**Issue**: `@sovereignsquad/gds-core`/`gds-theme`/`gds-admin` were confirmed stuck at `3.9.0` on every registry (npmjs and GitHub Packages, both checked directly), but real newer work — a first-party guided-tour component among it — exists in the source repo's git history up to tag `gds-v4.1.3`, never published anywhere installable.
+
+**Context**:
+- `git ls-remote --tags` (plain git protocol, no auth, no repo-access grant needed for a public repo) confirmed the tag is real.
+- A shallow clone + monorepo `npm install` + `npm run build --workspace=<pkg>` (just `tsup` under the hood for each package) produced real `dist/` output — confirmed buildable *before* touching this repo, in an isolated scratch directory.
+- `npm pack` in each package directory turned the build output into ordinary tarballs — no registry, no token, no `.npmrc` involved.
+- `gds-admin@3.9.0` pins an *exact* peer dependency on `gds-core`/`gds-theme` (`"3.9.0"`, not a range) — bumping only two of the three packages would have left a real, avoidable peer mismatch, so all three had to be vendored together even though only `gds-core` was actually needed for the immediate change.
+
+**Solution**:
+- Committed the tarballs under `vendor/gds/*.tgz`, referenced via `file:` dependencies in `package.json` instead of the registry install.
+- Deliberately left `gds-adoption.json`'s `gdsVersion` field at `3.9.0` — that field tracks the officially published SSOT version, and a vendored build isn't a formal adoption decision; re-running `npm run gds:validate-manifest` confirmed it passes either way, since it checks contract/structural compliance, not installed package versions (so it won't catch this kind of drift on its own).
+- Migrated `components/admin/HashtagInput.tsx`'s hand-rolled removable-chip `<button>`s to GDS's `ChoiceChip`, the first real usage of the vendored packages.
+
+**Lessons Learned**:
+- A package being "not published" and a package being "not real" are different facts — `git ls-remote --tags` is a cheap, no-auth way to check which one you're actually dealing with before giving up.
+- Vendoring a from-source `npm pack` build is a legitimate, auditable stopgap for a confirmed-real-but-unpublished version — markedly different from installing raw git source directly into an app (no build step, unverified, pulls the whole monorepo). It's still not a substitute for a real publish: no semver range, no `npm outdated` signal, and it needs re-vendoring by hand once the real thing ships.
+- A monorepo package's *peer* dependencies can force vendoring siblings you don't actually need for your own change — check them before assuming a single-package bump is isolated.
+- A compliance/manifest validator passing is not the same claim as "the installed version matches what the manifest declares" — read what a validator actually checks before treating a green run as proof of a specific fact.
+
+**Strategic Justification**:
+- Confirmed via direct registry queries and a live build, not assumed from a fetched page or a message — the same discipline used earlier when a claimed GDS registry migration turned out not to hold up under direct verification (see the sibling `launchmass` project's `LEARNINGS.md` for that episode).
+- Scoped narrowly: this vendors the packages and migrates one (currently unrendered) component, not a formal SSOT version bump or a rewrite of the adoption manifest's exception reasoning — those are separate, bigger decisions for whoever owns this repo's GDS governance.
 
 ---
 

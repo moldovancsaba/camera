@@ -205,6 +205,18 @@ Current state:
 - Camera runtime: Mantine `8.3.6`, React `19.2.0`
 - Shared `@sovereignsquad/*` packages: version `3.5.0`, Mantine `^7.9.0 || ^8.3.0 || ^9.0.0`, React `^18.2.0 || ^19.0.0`
 
+**Note on the version above:** this line has drifted from the actual `gdsVersion` (`3.9.0`) already declared in `gds-adoption.json` -- flagging here rather than fixing, since correcting it is a separate documentation pass, not part of this change.
+
+### 2026-08-08: `gds-core`/`gds-theme`/`gds-admin` vendored at `4.1.3`
+
+`package.json` now points `@sovereignsquad/gds-core`, `gds-theme`, and `gds-admin` at `file:vendor/gds/*.tgz` instead of the published `3.9.0` registry install -- this affects every consumer of those packages app-wide, not just the change below. Why: `3.9.0` remains the only version ever published to either registry (npmjs or GitHub Packages, both checked directly), but real, buildable newer work exists at git tag `gds-v4.1.3` in the source repo. The tarballs under `vendor/gds/` are a from-source `tsup` build of that tag, packaged via `npm pack` -- confirmed buildable and clean before use, not a raw git-source install. `gds-admin` had to move too: it pins an *exact* peer dependency on `gds-core`/`gds-theme` (`"3.9.0"`, not a range), so bumping only two of the three would have left a real peer mismatch.
+
+This is **not** a formal SSOT version adoption -- `gds-adoption.json`'s `gdsVersion` field is left at `3.9.0` deliberately, since that still reflects the last officially published version this manifest is meant to track. `npm run gds:validate-manifest` passes either way (it checks contract/structural compliance, not installed package versions, so it doesn't catch this kind of drift).
+
+**What it unblocked:** `components/admin/HashtagInput.tsx`'s selected-hashtag removable chips now use `ChoiceChip` from `@sovereignsquad/gds-core` instead of a hand-rolled `<button>`. Note this component is not currently rendered anywhere in the app (no call sites found) -- the change is verified via a temporary scratch route (deleted before commit), not a live page.
+
+**Full type-check + lint + build were re-run clean against the vendored packages** (not just this one file), since the version bump is app-wide. See `LEARNINGS.md` for the vendoring approach and its tradeoffs.
+
 Required rule:
 
 - Camera must align to the **contracts and patterns** from the GDS repository
