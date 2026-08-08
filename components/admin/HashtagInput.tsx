@@ -12,6 +12,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { ChoiceChip } from '@sovereignsquad/gds-core';
 
 interface HashtagInputProps {
   value: string[];
@@ -145,19 +146,16 @@ export default function HashtagInput({
       >
         {/* Selected hashtags as chips */}
         {value.map((hashtag) => (
-          <button
+          <ChoiceChip
             key={hashtag}
-            type="button"
             aria-label={`Remove ${hashtag}`}
+            label={
+              <>
+                #{hashtag} <span aria-hidden>×</span>
+              </>
+            }
             onClick={() => removeHashtag(hashtag)}
-            style={{
-              border: '1px solid var(--gds-color-border)',
-              borderRadius: '999px',
-              padding: '0.25rem 0.6rem',
-            }}
-          >
-            #{hashtag} <span aria-hidden>×</span>
-          </button>
+          />
         ))}
 
         {/* Input field */}
