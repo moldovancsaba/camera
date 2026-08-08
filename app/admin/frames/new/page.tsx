@@ -12,8 +12,24 @@ import { useRouter } from 'next/navigation';
 import { IconTrash } from '@tabler/icons-react';
 import { InlineAlert, UploadDropzone } from '@sovereignsquad/gds-core/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
-import { FormSection } from '@sovereignsquad/gds-admin/client';
+import {
+  AdminCheckbox,
+  AdminCrudForm,
+  AdminFormSection,
+  AdminSelect,
+  AdminTextInput,
+  AdminTextarea,
+  FormSection,
+} from '@sovereignsquad/gds-admin/client';
 import MediaCard from '@/components/media/MediaPreviewCard';
+
+const CATEGORY_OPTIONS = [
+  { value: 'general', label: 'General' },
+  { value: 'holiday', label: 'Holiday' },
+  { value: 'birthday', label: 'Birthday' },
+  { value: 'wedding', label: 'Wedding' },
+  { value: 'corporate', label: 'Corporate' },
+];
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Failed to upload frame';
@@ -25,6 +41,10 @@ export default function NewFramePage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('general');
+  const [isActive, setIsActive] = useState(true);
 
   const handleFileChange = (selectedFile: File | null) => {
     if (!selectedFile) return;
@@ -53,7 +73,11 @@ export default function NewFramePage() {
     setIsUploading(true);
     setError(null);
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData();
+    formData.set('name', name);
+    formData.set('description', description);
+    formData.set('category', category);
+    formData.set('isActive', isActive ? 'true' : 'false');
     if (file) {
       formData.set('file', file);
     }
@@ -86,9 +110,8 @@ export default function NewFramePage() {
     >
 
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
-          <FormSection title="Frame Image *">
-            <input type="hidden" name="file-placeholder" value={file?.name || ''} />
+        <AdminCrudForm title="Frame details" description="Upload an image and set the frame's metadata.">
+          <FormSection title="Frame preview">
             {preview ? (
               <MediaCard
                 src={preview}
@@ -114,34 +137,23 @@ export default function NewFramePage() {
             ) : null}
           </FormSection>
 
-          <FormSection title="Frame Details">
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Frame Name *
-              <input name="name" required placeholder="e.g., Holiday Frame 2024" style={{ minHeight: 44, padding: '0 0.75rem' }} />
-            </label>
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Description
-              <textarea name="description" rows={3} placeholder="Optional description..." style={{ padding: '0.75rem' }} />
-            </label>
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Category
-              <select
+          <AdminFormSection title="Frame details">
+            <AdminTextInput name="name" label="Frame name" value={name} onChange={setName} required placeholder="e.g., Holiday Frame 2024" />
+            <AdminTextarea name="description" label="Description" value={description} onChange={setDescription} placeholder="Optional description..." />
+            <AdminSelect
               name="category"
-              defaultValue="general"
-              style={{ minHeight: 44, padding: '0 0.75rem' }}
-            >
-                <option value="general">General</option>
-                <option value="holiday">Holiday</option>
-                <option value="birthday">Birthday</option>
-                <option value="wedding">Wedding</option>
-                <option value="corporate">Corporate</option>
-              </select>
-            </label>
-            <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
-              <input type="checkbox" name="isActive" defaultChecked value="true" />
-              Make frame active (visible to users)
-            </label>
-          </FormSection>
+              label="Category"
+              value={category}
+              onChange={(value) => setCategory(value ?? 'general')}
+              data={CATEGORY_OPTIONS}
+            />
+            <AdminCheckbox
+              name="isActive"
+              label="Make frame active (visible to users)"
+              checked={isActive}
+              onChange={setIsActive}
+            />
+          </AdminFormSection>
 
           <div style={{ display: 'grid', gap: '0.75rem' }}>
             <SemanticButton action="frames:create" type="submit" loading={isUploading} disabled={!preview}>
@@ -151,7 +163,7 @@ export default function NewFramePage() {
               Cancel
             </SemanticButton>
           </div>
-        </div>
+        </AdminCrudForm>
       </form>
     </EditorScaffold>
   );

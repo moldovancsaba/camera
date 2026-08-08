@@ -6,7 +6,14 @@ import { useRouter } from 'next/navigation';
 import { IconTrash } from '@tabler/icons-react';
 import { InlineAlert, UploadDropzone } from '@sovereignsquad/gds-core/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
-import { FormSection } from '@sovereignsquad/gds-admin/client';
+import {
+  AdminCheckbox,
+  AdminCrudForm,
+  AdminFormSection,
+  AdminTextInput,
+  AdminTextarea,
+  FormSection,
+} from '@sovereignsquad/gds-admin/client';
 import MediaCard from '@/components/media/MediaPreviewCard';
 
 function getErrorMessage(error: unknown): string {
@@ -19,6 +26,11 @@ export default function NewTryOnSuitPage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [leatherSuitId, setLeatherSuitId] = useState('');
+  const [assetVersion, setAssetVersion] = useState('1');
+  const [isActive, setIsActive] = useState(true);
 
   const handleFileChange = (selectedFile: File | null) => {
     if (!selectedFile) return;
@@ -48,7 +60,12 @@ export default function NewTryOnSuitPage() {
     setIsUploading(true);
     setError(null);
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData();
+    formData.set('name', name);
+    formData.set('description', description);
+    formData.set('leatherSuitId', leatherSuitId);
+    formData.set('assetVersion', assetVersion);
+    formData.set('isActive', isActive ? 'true' : 'false');
     if (file) {
       formData.set('file', file);
     }
@@ -79,8 +96,8 @@ export default function NewTryOnSuitPage() {
       description="Upload a try-on garment asset that Camera will host and the local try-on worker will download."
     >
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
-          <FormSection title="Garment image *">
+        <AdminCrudForm title="Garment details" description="Upload an image and set the garment's metadata.">
+          <FormSection title="Garment preview">
             {preview ? (
               <MediaCard
                 src={preview}
@@ -106,37 +123,31 @@ export default function NewTryOnSuitPage() {
             ) : null}
           </FormSection>
 
-          <FormSection title="Garment details">
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Title *
-              <input name="name" required placeholder="e.g., Honda Castrol 2026" style={{ minHeight: 44, padding: '0 0.75rem' }} />
-            </label>
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Description
-              <textarea name="description" rows={3} placeholder="Optional operator notes..." style={{ padding: '0.75rem' }} />
-            </label>
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Catalog ID
-              <input
+          <AdminFormSection title="Garment details">
+            <AdminTextInput name="name" label="Title" value={name} onChange={setName} required placeholder="e.g., Honda Castrol 2026" />
+            <AdminTextarea name="description" label="Description" value={description} onChange={setDescription} placeholder="Optional operator notes..." />
+            <AdminTextInput
               name="leatherSuitId"
+              label="Catalog ID"
+              value={leatherSuitId}
+              onChange={setLeatherSuitId}
               placeholder="Optional. Leave empty to auto-generate from title."
             />
-            </label>
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Asset version
-              <input
+            <AdminTextInput
               name="assetVersion"
-              defaultValue="1"
+              label="Asset version"
+              value={assetVersion}
+              onChange={setAssetVersion}
               inputMode="numeric"
               placeholder="1"
-              style={{ minHeight: 44, padding: '0 0.75rem' }}
             />
-            </label>
-            <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
-              <input type="checkbox" name="isActive" defaultChecked value="true" />
-              Active (available for event assignment)
-            </label>
-          </FormSection>
+            <AdminCheckbox
+              name="isActive"
+              label="Active (available for event assignment)"
+              checked={isActive}
+              onChange={setIsActive}
+            />
+          </AdminFormSection>
 
           <div style={{ display: 'grid', gap: '0.75rem' }}>
             <SemanticButton action="garments:create" type="submit" loading={isUploading} disabled={!preview}>
@@ -146,7 +157,7 @@ export default function NewTryOnSuitPage() {
               Cancel
             </SemanticButton>
           </div>
-        </div>
+        </AdminCrudForm>
       </form>
     </EditorScaffold>
   );

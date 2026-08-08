@@ -12,7 +12,14 @@ import { useRouter } from 'next/navigation';
 import { IconTrash } from '@tabler/icons-react';
 import { InlineAlert, UploadDropzone } from '@sovereignsquad/gds-core/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
-import { FormSection } from '@sovereignsquad/gds-admin/client';
+import {
+  AdminCheckbox,
+  AdminCrudForm,
+  AdminFormSection,
+  AdminTextInput,
+  AdminTextarea,
+  FormSection,
+} from '@sovereignsquad/gds-admin/client';
 import MediaCard from '@/components/media/MediaPreviewCard';
 
 function getErrorMessage(error: unknown): string {
@@ -25,6 +32,9 @@ export default function NewLogoPage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [isActive, setIsActive] = useState(true);
 
   const handleFileChange = (selectedFile: File | null) => {
     if (!selectedFile) return;
@@ -54,7 +64,10 @@ export default function NewLogoPage() {
     setIsUploading(true);
     setError(null);
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData();
+    formData.set('name', name);
+    formData.set('description', description);
+    formData.set('isActive', isActive ? 'true' : 'false');
     if (file) {
       formData.set('file', file);
     }
@@ -87,8 +100,8 @@ export default function NewLogoPage() {
     >
 
       <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
-          <FormSection title="Logo Image *">
+        <AdminCrudForm title="Logo details" description="Upload an image and set the logo's metadata.">
+          <FormSection title="Logo preview">
             {preview ? (
               <MediaCard
                 src={preview}
@@ -115,20 +128,16 @@ export default function NewLogoPage() {
             ) : null}
           </FormSection>
 
-          <FormSection title="Logo Details">
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Logo Name *
-              <input name="name" required placeholder="e.g., AC Milan Logo 2025" style={{ minHeight: 44, padding: '0 0.75rem' }} />
-            </label>
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Description
-              <textarea name="description" rows={3} placeholder="Optional description..." style={{ padding: '0.75rem' }} />
-            </label>
-            <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
-              <input type="checkbox" name="isActive" defaultChecked value="true" />
-              Active (available for assignment to events)
-            </label>
-          </FormSection>
+          <AdminFormSection title="Logo details">
+            <AdminTextInput name="name" label="Logo name" value={name} onChange={setName} required placeholder="e.g., AC Milan Logo 2025" />
+            <AdminTextarea name="description" label="Description" value={description} onChange={setDescription} placeholder="Optional description..." />
+            <AdminCheckbox
+              name="isActive"
+              label="Active (available for assignment to events)"
+              checked={isActive}
+              onChange={setIsActive}
+            />
+          </AdminFormSection>
 
           <div style={{ display: 'grid', gap: '0.75rem' }}>
             <SemanticButton action="logos:cancel-create" variant="secondary" onClick={() => router.push('/admin/logos')}>
@@ -138,7 +147,7 @@ export default function NewLogoPage() {
               {isUploading ? 'Uploading…' : 'Upload Logo'}
             </SemanticButton>
           </div>
-        </div>
+        </AdminCrudForm>
       </form>
     </EditorScaffold>
   );

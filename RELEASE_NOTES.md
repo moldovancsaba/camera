@@ -1,7 +1,7 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.21.0
+**Current Version**: 2.22.0
 **Last Updated**: 2026-08-08
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
@@ -9,6 +9,37 @@
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
 
 ---
+
+## [v2.22.0] — 2026-08-08
+
+**Type**: Minor — migrate admin create-page forms to `AdminCrudForm`
+
+### Summary
+Closes the backlog item tracked in `TASKLIST.md` since the v2.17.0 cycle: the four
+`new`/create admin pages (frames, logos, partners, try-on suits) were the last surface
+still on raw `<input>`/`<textarea>`/`<select>` markup, unlike their `edit` counterparts
+(frames/logos already on `AdminCrudForm` since #74; partners/suits `edit` pages remain
+on `FormSection` + raw inputs and are a separate, not-yet-scoped gap).
+
+### Changed
+- `app/admin/frames/new/page.tsx`, `app/admin/logos/new/page.tsx`,
+  `app/admin/partners/new/page.tsx`, `app/admin/tryon/suits/new/page.tsx` — form fields
+  now render through `AdminCrudForm`/`AdminFormSection`/`AdminTextInput`/`AdminTextarea`/
+  `AdminSelect`/`AdminCheckbox` (`@sovereignsquad/gds-admin/client`), matching the
+  frames/logos edit-page pattern. Image upload sections keep plain `FormSection` (not a
+  form-field group). Submission switched from reading uncontrolled DOM values via
+  `FormData(event.currentTarget)`/`FormData.get()` to controlled React state, since the
+  Admin* field primitives are controlled-only (no native `name` attribute passed
+  through to the underlying Mantine input) — request payloads (multipart `FormData` for
+  the three upload pages, JSON for partners) are unchanged.
+
+### Verification
+- `npm run release:check` (manifest validate → GDS boundary check → type-check → lint →
+  production guards → build) clean
+- Live-rendered all four pages via `/api/auth/dev-login` + headless Chromium: fields
+  render with correct labels/placeholders, typing and checkbox toggling work against
+  controlled state, no console errors beyond an expected sandbox-only MongoDB
+  connection timeout (no Atlas egress from this environment) unrelated to the change
 
 ## [v2.21.0] — 2026-08-08
 
