@@ -21,6 +21,7 @@ interface SubmissionRecord {
   _id: string;
   imageUrl?: string;
   finalImageUrl?: string;
+  previewImageUrl?: string | null;
   userName?: string;
   userInfo?: {
     name?: string | null;
@@ -432,7 +433,7 @@ export default function EventGallery({
                   ) : null}
                   <Link href={`/share/${submission._id}`}>
                     <Image
-                      src={submission.imageUrl || submission.finalImageUrl || 'data:image/gif;base64,R0lGODlhAQABAAAAACw='}
+                      src={submission.previewImageUrl || submission.imageUrl || submission.finalImageUrl || 'data:image/gif;base64,R0lGODlhAQABAAAAACw='}
                       alt={`Photo of ${displayName}`}
                       width={800}
                       height={800}

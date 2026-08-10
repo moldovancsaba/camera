@@ -294,6 +294,33 @@ return {
 
 ---
 
+### [BACK-004] Grid Pages Loading Full-Size Images — Added `previewImageUrl` — 2026-08-10T00:00:00.000Z
+
+**Issue**: Pages showing many photos at once (greatest-hits, admin galleries/lists, profile,
+user gallery, share-page related photos) loaded the full-size `imageUrl`/`finalImageUrl` for
+every thumbnail — slow on pages with dozens+ of photos.
+
+**Solution**: Added `Submission.previewImageUrl` — a small (max 480px, JPEG q78)
+aspect-preserving downscale generated with `sharp` and uploaded to imgbb as a separate asset
+(`lib/tryon/frame-composition.ts`'s `uploadPreviewVariant`). Grid/list views now render
+`previewImageUrl ?? imageUrl`; single-photo detail views (share page hero, downloads) keep the
+full-size original untouched. `scripts/backfill-preview-image-urls.ts` re-derives previews for
+submissions that predate this field.
+
+**Key decision — did NOT reuse imgbb's own `thumb`/`medium` fields**: BACK-001 (above) found
+imgbb's auto-generated `medium`/`display_url` visually wrong for framed result photos and
+banned their use. That finding was never conclusively re-verified (imgbb doesn't document how
+those variants are generated), so rather than re-litigate it, preview generation is done
+ourselves with `sharp` — deterministic, aspect-preserving, and already a project dependency.
+Costs one extra imgbb upload per submission with a preview.
+
+**Scope note**: only submission-derived surfaces got a preview (tryon results via
+`frame-composition.ts`, backfilled via the script above). `TryOnJob.source.imageUrl` (queue
+table thumbnails) and original-submission "original image" thumbnails were left full-size —
+smaller/secondary surfaces, not worth extending the upload pipeline further for.
+
+---
+
 ## Frontend
 
 ### [FRONT-001] Camera Mirror Effect for Selfies — 2025-11-05T18:47:41.000Z

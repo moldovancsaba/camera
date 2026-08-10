@@ -10,6 +10,7 @@ import {
 export interface SerializedSubmissionRow {
   id: string;
   imageUrl: string;
+  previewImageUrl?: string | null;
   userName: string;
   userEmail: string;
   frameName?: string | null;
@@ -46,7 +47,7 @@ export default function SubmissionsInventoryList({
       id: submission.id,
       title: displayName,
       description: submission.eventName || submission.partnerName || submission.frameName || 'Gallery item',
-      mediaSrc: submission.imageUrl,
+      mediaSrc: submission.previewImageUrl || submission.imageUrl,
       mediaAlt: `Photo by ${displayName}`,
       metadata: [
         { label: 'Email', value: submission.userEmail },

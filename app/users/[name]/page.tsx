@@ -89,6 +89,7 @@ interface SubmissionRecord {
   createdAt: string;
   consents?: ConsentRecord[];
   imageUrl?: string;
+  previewImageUrl?: string | null;
   frameName?: string;
   playCount?: number;
 }
@@ -117,6 +118,7 @@ interface UserProfileView {
   submissions: Array<{
     _id: { toString(): string };
     imageUrl: string;
+    previewImageUrl?: string | null;
     frameName?: string;
     eventName?: string;
     createdAt: string;
@@ -251,6 +253,7 @@ export default async function UserProfilePage({ params }: PageProps) {
       submissions: submissions.map((sub) => ({
         _id: sub._id,
         imageUrl: sub.imageUrl || 'data:image/gif;base64,R0lGODlhAQABAAAAACw=',
+        previewImageUrl: sub.previewImageUrl ?? null,
         frameName: sub.frameName,
         eventName: sub.eventName,
         createdAt: sub.createdAt,
@@ -436,7 +439,7 @@ export default async function UserProfilePage({ params }: PageProps) {
                 <Stack gap="xs">
                   <div style={{ position: 'relative', aspectRatio: '1' }}>
                     <Image
-                      src={submission.imageUrl || '/placeholder-image.svg'}
+                      src={submission.previewImageUrl || submission.imageUrl || '/placeholder-image.svg'}
                       alt={`Photo with ${submission.frameName}`}
                       fill
                       unoptimized

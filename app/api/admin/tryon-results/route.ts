@@ -214,6 +214,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
           normalizeImgbbDirectUrl(doc.finalImageUrl ?? null) ??
           normalizeImgbbDirectUrl(doc.imageUrl ?? null) ??
           '',
+        previewImageUrl: normalizeImgbbDirectUrl(doc.previewImageUrl ?? null),
         originalImageUrl:
           normalizeImgbbDirectUrl(source?.imageUrl ?? null) ??
           normalizeImgbbDirectUrl(source?.finalImageUrl ?? null),

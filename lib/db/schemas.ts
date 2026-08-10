@@ -668,6 +668,7 @@ export interface Submission {
   
   // Image URLs (all hosted on imgbb.com)
   imageUrl?: string;                 // Legacy/current primary public image URL used by share/slideshow/admin surfaces
+  previewImageUrl?: string | null;   // Smaller downscaled imgbb image for grid/list thumbnails; fall back to imageUrl/finalImageUrl when absent
   deleteUrl?: string;                // ImgBB delete URL when the image is managed by Camera
   originalImageUrl: string;          // User's original photo
   finalImageUrl: string;             // Composed photo with frame

@@ -176,7 +176,7 @@ async function resolveTryOnResultAsset(
 
 function isUnchangedDerivedSubmission(
   existing: Submission,
-  resolvedAsset: { publicResultUrl: string; compositionEngine: string; width?: number | null; height?: number | null; fileSize?: number | null; mimeType?: string | null; deleteUrl: string | null; },
+  resolvedAsset: { publicResultUrl: string; previewUrl?: string | null; compositionEngine: string; width?: number | null; height?: number | null; fileSize?: number | null; mimeType?: string | null; deleteUrl: string | null; },
   resolvedRawResultUrl: string | null
 ): boolean {
   const existingMetadata = existing.metadata && typeof existing.metadata === 'object'
@@ -208,6 +208,7 @@ function isUnchangedDerivedSubmission(
   return (
     existing.imageUrl === resolvedAsset.publicResultUrl &&
     existing.finalImageUrl === resolvedAsset.publicResultUrl &&
+    (existing.previewImageUrl ?? null) === (resolvedAsset.previewUrl ?? null) &&
     existing.deleteUrl === resolvedAsset.deleteUrl &&
     existingCompositionEngine === resolvedAsset.compositionEngine &&
     existingRawResultUrl === resolvedRawResultUrl &&
@@ -310,6 +311,7 @@ export async function applyTryOnCompletion(
   const derivedSet: Record<string, unknown> = {
     imageUrl: resolvedAsset.publicResultUrl,
     finalImageUrl: resolvedAsset.publicResultUrl,
+    previewImageUrl: resolvedAsset.previewUrl ?? null,
     deleteUrl: resolvedAsset.deleteUrl ?? payload.deleteUrl ?? null,
     fileSize: resolvedAsset.fileSize ?? null,
     mimeType: resolvedAsset.mimeType ?? null,

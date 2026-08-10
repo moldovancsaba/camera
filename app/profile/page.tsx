@@ -18,6 +18,7 @@ import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/co
 interface ProfileSubmission {
   _id: ObjectId;
   imageUrl: string;
+  previewImageUrl?: string | null;
   frameName?: string;
   createdAt: string;
 }
@@ -65,6 +66,7 @@ export default async function ProfilePage() {
             {
               _id: submission._id,
               imageUrl: submission.imageUrl,
+              previewImageUrl: typeof submission.previewImageUrl === 'string' ? submission.previewImageUrl : null,
               frameName: typeof submission.frameName === 'string' ? submission.frameName : undefined,
               createdAt: submission.createdAt,
             },
@@ -132,7 +134,7 @@ export default async function ProfilePage() {
                   <Link href={`/share/${submission._id}`}>
                     <div style={{ borderRadius: 8, overflow: 'hidden' }}>
                       <Image
-                        src={submission.imageUrl}
+                        src={submission.previewImageUrl || submission.imageUrl}
                         alt={`Photo with ${submission.frameName}`}
                         width={800}
                         height={800}

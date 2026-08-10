@@ -361,6 +361,7 @@ export default async function AdminTryOnResultsPage({
           normalizeImgbbDirectUrl(doc.finalImageUrl ?? null) ??
           normalizeImgbbDirectUrl(doc.imageUrl ?? null) ??
           '',
+        previewImageUrl: normalizeImgbbDirectUrl(doc.previewImageUrl ?? null),
         originalImageUrl:
           normalizeImgbbDirectUrl(source?.imageUrl ?? null) ??
           normalizeImgbbDirectUrl(source?.finalImageUrl ?? null) ??

@@ -19,6 +19,7 @@ import { uploadImage, type UploadResult } from '@/lib/imgbb/upload';
 
 export interface TryOnResultAsset {
   publicResultUrl: string;
+  previewUrl: string | null;
   deleteUrl: string | null;
   fileSize: number | null;
   mimeType: string | null;
@@ -27,7 +28,9 @@ export interface TryOnResultAsset {
   compositionEngine: string;
 }
 
-async function fetchImageBuffer(url: string): Promise<Buffer> {
+const PREVIEW_MAX_DIMENSION = 480;
+
+export async function fetchImageBuffer(url: string): Promise<Buffer> {
   const response = await fetch(url, {
     signal: AbortSignal.timeout(30000),
     headers: {
@@ -43,9 +46,44 @@ async function fetchImageBuffer(url: string): Promise<Buffer> {
   return Buffer.from(arrayBuffer);
 }
 
-function buildUploadAsset(upload: UploadResult, width: number | null, height: number | null): TryOnResultAsset {
+// Downscales via sharp (aspect-preserving, no crop) rather than trusting imgbb's own
+// undocumented thumb/medium generation — see LEARNINGS.md BACK-001 for why the latter
+// was previously distrusted for framed result photos.
+export async function uploadPreviewVariant(buffer: Buffer, uploadName: string): Promise<string | null> {
+  try {
+    const previewBuffer = await sharp(buffer, { failOn: 'none' })
+      .resize({
+        width: PREVIEW_MAX_DIMENSION,
+        height: PREVIEW_MAX_DIMENSION,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .jpeg({ quality: 78 })
+      .toBuffer();
+
+    const upload = await uploadImage(previewBuffer.toString('base64'), {
+      name: `${uploadName}-preview`,
+      validatePublicUrl: false,
+    });
+    return upload.imageUrl;
+  } catch (error) {
+    console.warn('[uploadPreviewVariant] Failed to generate/upload preview image; grid views will fall back to full size.', {
+      uploadName,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+function buildUploadAsset(
+  upload: UploadResult,
+  previewUrl: string | null,
+  width: number | null,
+  height: number | null
+): TryOnResultAsset {
   return {
     publicResultUrl: upload.imageUrl,
+    previewUrl,
     deleteUrl: upload.deleteUrl ?? null,
     fileSize: upload.fileSize ?? null,
     mimeType: upload.mimeType ?? null,
@@ -70,6 +108,7 @@ export async function inspectTryOnResultAsset(publicResultUrl: string): Promise<
     });
     return {
       publicResultUrl,
+      previewUrl: null,
       deleteUrl: null,
       fileSize: null,
       mimeType: null,
@@ -79,10 +118,14 @@ export async function inspectTryOnResultAsset(publicResultUrl: string): Promise<
     };
   }
 
-  const metadata = await sharp(resultBuffer, { failOn: 'none' }).metadata();
+  const [metadata, previewUrl] = await Promise.all([
+    sharp(resultBuffer, { failOn: 'none' }).metadata(),
+    uploadPreviewVariant(resultBuffer, `tryon-preview-${Date.now()}`),
+  ]);
 
   return {
     publicResultUrl,
+    previewUrl,
     deleteUrl: null,
     fileSize: resultBuffer.byteLength || null,
     mimeType: metadata.format ? `image/${metadata.format}` : null,
@@ -151,9 +194,10 @@ export async function applyFrameToTryOnResult(
     .png()
     .toBuffer();
 
-  const upload = await uploadImage(composedBuffer.toString('base64'), {
-    name: uploadName,
-  });
+  const [upload, previewUrl] = await Promise.all([
+    uploadImage(composedBuffer.toString('base64'), { name: uploadName }),
+    uploadPreviewVariant(composedBuffer, uploadName),
+  ]);
 
-  return buildUploadAsset(upload, outputWidth, outputHeight);
+  return buildUploadAsset(upload, previewUrl, outputWidth, outputHeight);
 }
