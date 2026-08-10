@@ -3,6 +3,7 @@ import type { EventSharePageSettings } from '@/lib/events/share-page-settings';
 export interface ShareVariantCard {
   id: string;
   imageUrl: string;
+  previewImageUrl?: string | null;
   label: string;
   isTryOn?: boolean;
 }

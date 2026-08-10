@@ -32,6 +32,7 @@ export interface ModerationRow {
   id: string;
   sourceJobId: string | null;
   imageUrl: string;
+  previewImageUrl: string | null;
   originalImageUrl: string | null;
   userName: string;
   userEmail: string;
@@ -227,6 +228,7 @@ function toModerationRow(value: unknown): ModerationRow | null {
     id: row.id,
     sourceJobId: typeof row.sourceJobId === 'string' ? row.sourceJobId : null,
     imageUrl: row.imageUrl,
+    previewImageUrl: typeof row.previewImageUrl === 'string' ? row.previewImageUrl : null,
     originalImageUrl: typeof row.originalImageUrl === 'string' ? row.originalImageUrl : null,
     userName: typeof row.userName === 'string' ? row.userName : 'Guest',
     userEmail: typeof row.userEmail === 'string' ? row.userEmail : '',
@@ -350,7 +352,7 @@ function PreviewStrip({
 
   const content = (
     <Stack gap="xs">
-      {renderImage(row.imageUrl, 'Final try-on result', onResultMissing)}
+      {renderImage(row.previewImageUrl ?? row.imageUrl, 'Final try-on result', onResultMissing)}
       {row.originalImageUrl ? (
         <Stack gap={2}>
           <Text size="xs" c="dimmed">

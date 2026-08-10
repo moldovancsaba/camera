@@ -17,6 +17,7 @@ export const dynamic = 'force-dynamic';
 interface SubmissionGalleryItem {
   _id?: unknown;
   imageUrl: string;
+  previewImageUrl?: string | null;
   userName: string;
   userEmail: string;
   partnerId?: string | null;
@@ -214,6 +215,7 @@ export default async function AdminSubmissionsPage({
       submissionRows.push({
         id,
         imageUrl: submission.imageUrl ?? '',
+        previewImageUrl: submission.previewImageUrl ?? null,
         userName: submission.userName ?? '',
         userEmail: submission.userEmail ?? '',
         frameName: submission.frameName ?? null,

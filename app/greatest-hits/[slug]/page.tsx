@@ -14,6 +14,7 @@ interface Props {
 interface GreatestHitCard {
   id: string;
   imageUrl: string;
+  previewImageUrl: string;
   userName: string;
   eventName: string;
   createdAt: string | null;
@@ -78,9 +79,11 @@ async function loadGreatestHits(slug: string) {
         normalizeImgbbDirectUrl(submission.finalImageUrl ?? null) ??
         normalizeImgbbDirectUrl(submission.imageUrl ?? null);
       if (!imageUrl || !submission._id) return null;
+      const previewImageUrl = normalizeImgbbDirectUrl(submission.previewImageUrl ?? null) ?? imageUrl;
       return {
         id: submission._id.toString(),
         imageUrl,
+        previewImageUrl,
         userName: displayName(submission.userName),
         eventName: readString(submission.eventName) ?? event.name,
         createdAt: readString(submission.approvedAt) ?? readString(submission.createdAt),
@@ -145,7 +148,7 @@ export default async function GreatestHitsPage({ params }: Props) {
                         }}
                       >
                         <Image
-                          src={hit.imageUrl}
+                          src={hit.previewImageUrl}
                           alt={`${hit.userName} greatest hit`}
                           fill
                           unoptimized

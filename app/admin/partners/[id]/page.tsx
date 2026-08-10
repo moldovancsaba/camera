@@ -91,6 +91,7 @@ interface SubmissionDoc {
   _id: ObjectId;
   imageUrl?: string;
   finalImageUrl?: string;
+  previewImageUrl?: string | null;
   userName?: string;
   userEmail?: string;
   eventName?: string;
@@ -579,7 +580,7 @@ export default async function PartnerDetailPage({
                   }}
                 >
                   <Image
-                    src={submission.imageUrl || submission.finalImageUrl || ''}
+                    src={submission.previewImageUrl || submission.imageUrl || submission.finalImageUrl || ''}
                     alt={`Photo by ${resolveDisplayName(submission.userName)}`}
                     width={1200}
                     height={1600}

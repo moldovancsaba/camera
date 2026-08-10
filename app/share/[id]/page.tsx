@@ -33,6 +33,7 @@ interface Props {
 interface ShareSubmission {
   id?: string;
   imageUrl?: string;
+  previewImageUrl?: string | null;
   userName?: string;
   userInfo?: {
     name?: string | null;
@@ -75,6 +76,7 @@ interface TryOnVariantLike {
   };
   imageUrl?: string | null;
   finalImageUrl?: string | null;
+  previewImageUrl?: string | null;
   tryOnLeatherSuitId?: string | null;
   createdAt?: string | null;
   approvedAt?: string | null;
@@ -187,6 +189,7 @@ function buildTryOnVariantCards(
     ? variant.metadata as { compositionEngine?: unknown; tryOnRawResultUrl?: unknown }
     : {};
   const resultUrl = readString(variant.imageUrl) || readString(variant.finalImageUrl);
+  const previewUrl = readString(variant.previewImageUrl);
   const rawResultUrl = readString(metadata.tryOnRawResultUrl);
   const isFramed = (() => {
     if (metadata.compositionEngine === 'motogp_leather_magic_framed') {
@@ -211,6 +214,7 @@ function buildTryOnVariantCards(
       cards.push({
         id: `${id}:tryon-framed`,
         imageUrl: resultUrl,
+        previewImageUrl: previewUrl,
         label: `${suitLabel} - with frame`,
         isTryOn: true,
       });
@@ -220,6 +224,7 @@ function buildTryOnVariantCards(
       cards.push({
         id: `${id}:tryon-result`,
         imageUrl: resultUrl,
+        previewImageUrl: previewUrl,
         label: suitLabel,
         isTryOn: true,
       });
@@ -454,6 +459,7 @@ export default async function SharePage({ params }: Props) {
         _id: { toString: () => variant._id.toString() },
         imageUrl: variant.imageUrl,
         finalImageUrl: variant.finalImageUrl,
+        previewImageUrl: variant.previewImageUrl ?? null,
         tryOnLeatherSuitId: variant.tryOnLeatherSuitId ?? null,
         createdAt: typeof variant.createdAt === 'string' ? variant.createdAt : null,
         approvedAt: typeof variant.approvedAt === 'string' ? variant.approvedAt : null,
@@ -473,6 +479,7 @@ export default async function SharePage({ params }: Props) {
               _id: { toString: () => currentSubmissionId },
               imageUrl: submission.imageUrl,
               finalImageUrl: submission.imageUrl,
+              previewImageUrl: submission.previewImageUrl ?? null,
               createdAt: submission.createdAt,
               tryOnLeatherSuitId: submission.tryOnLeatherSuitId,
               metadata: {
@@ -654,7 +661,7 @@ export default async function SharePage({ params }: Props) {
                     style={{ textDecoration: 'none', color: 'inherit', overflow: 'hidden' }}
                   >
                     <div style={{ position: 'relative', aspectRatio: '1' }}>
-                      <Image src={variant.imageUrl} alt={variant.label} fill unoptimized className="object-cover" />
+                      <Image src={variant.previewImageUrl || variant.imageUrl} alt={variant.label} fill unoptimized className="object-cover" />
                     </div>
                     <div style={{ padding: '0.875rem' }}>
                       <Text fw={600} size="sm">

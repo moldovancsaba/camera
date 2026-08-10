@@ -67,12 +67,14 @@ export default function OldestVettingResultCard({ row }: { row: ModerationRow })
   const router = useRouter();
   const [busyAction, setBusyAction] = useState<'approve' | 'great' | 'reject' | 'service' | null>(null);
 
+  const previewSrc = row.previewImageUrl ?? row.imageUrl;
+
   useEffect(() => {
-    if (!row.imageUrl) return;
+    if (!previewSrc) return;
     const image = document.createElement('img');
     image.decoding = 'async';
-    image.src = row.imageUrl;
-  }, [row.imageUrl]);
+    image.src = previewSrc;
+  }, [previewSrc]);
 
   async function handleDecision(action: 'approve' | 'reject') {
     try {
@@ -131,7 +133,7 @@ export default function OldestVettingResultCard({ row }: { row: ModerationRow })
         }
         image={
           <Image
-            src={row.imageUrl}
+            src={previewSrc}
             alt="Oldest waiting try-on result"
             width={800}
             height={1000}

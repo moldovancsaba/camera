@@ -83,6 +83,7 @@ interface SubmissionDoc {
   _id: ObjectId;
   imageUrl?: string;
   finalImageUrl?: string;
+  previewImageUrl?: string | null;
   userName?: string;
   userEmail?: string;
   eventName?: string;
