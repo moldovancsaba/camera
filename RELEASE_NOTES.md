@@ -1,14 +1,43 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.22.0
-**Last Updated**: 2026-08-08
+**Current Version**: 2.23.0
+**Last Updated**: 2026-08-12
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
 
 ---
+
+## [v2.23.0] — 2026-08-12
+
+**Type**: Minor — bump vendored GDS `4.1.3` → `6.0.0` (still unpublished)
+
+### Summary
+`@sovereignsquad/gds-core`/`gds-theme`/`gds-admin` bumped from the vendored `4.1.3`
+tarballs (v2.21.0) to freshly built `6.0.0` tarballs — `3.9.0` remains the only version
+ever published to any registry, but the source repo's tag history has moved well past
+`4.1.3` (`4.1.5`…`4.1.11`, then major bumps `5.0.0` and `6.0.0`). Checked the upstream
+`CHANGELOG.md` and `DEPRECATIONS_AND_MIGRATIONS.md` between the two tags before
+upgrading: exactly two documented breaking changes across both major bumps —
+`ReferenceThemeExplorer` relocated to a dedicated import subpath (5.0.0), and a
+`class-usa` brand-theme token rename (6.0.0). Grepped this repo's actual source (not
+build output) for both; zero references to either. Not a formal SSOT version adoption —
+`gds-adoption.json`'s `gdsVersion` stays at `3.9.0` deliberately, same as the prior
+vendoring change.
+
+### Changed
+- `vendor/gds/*.tgz` rebuilt from git tag `gds-v6.0.0` (`tsup` build, `npm pack`),
+  replacing the `4.1.3` tarballs.
+- `package.json` — the three `@sovereignsquad/gds-*` deps repointed to the new tarballs.
+
+### Verification
+- `npm run release:check` (manifest validate → GDS boundary check → type-check → lint →
+  production guards → build) clean.
+- Live-rendered `/admin/frames/new` (the most GDS-surface-dense page touched by recent
+  work) via `/api/auth/dev-login` + headless Chromium — pixel-identical to the 4.1.3
+  render, no new console errors.
 
 ## [v2.22.0] — 2026-08-08
 
