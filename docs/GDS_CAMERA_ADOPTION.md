@@ -1,7 +1,7 @@
 # Camera GDS Adoption
 
-**Version**: 2.22.0  
-**Last Updated**: 2026-08-08
+**Version**: 2.23.0  
+**Last Updated**: 2026-08-12
 
 ## SSOT statement
 
@@ -224,6 +224,27 @@ Verified live via `/api/auth/dev-login` + headless Chromium against the app's re
 **Correction to the record while doing this:** the backlog note this closes said "migrate to `AdminCrudForm` primitives for parity with the edit pages" as if all four edit pages were already on `AdminCrudForm`. Checked directly -- only frames/logos edit pages actually are (#74's real scope); `partners`/`tryon/suits` edit pages are still on `FormSection` + raw inputs. That's a real, separate gap this change does not touch -- noted in `TASKLIST.md`, not filed as a numbered issue yet.
 
 **Full type-check + lint + build were re-run clean against the vendored packages** (not just this one file), since the version bump is app-wide. See `LEARNINGS.md` for the vendoring approach and its tradeoffs.
+
+### 2026-08-12: vendored GDS bumped `4.1.3` → `6.0.0`
+
+`3.9.0` is still the only version ever published to any registry. The source repo's tag
+history has moved well past `4.1.3` since the prior vendoring change: `4.1.5` through
+`4.1.11`, then two major bumps, `5.0.0` and `6.0.0`. Checked the actual risk before
+upgrading rather than assuming a major bump means broad breakage: the upstream
+`CHANGELOG.md`/`DEPRECATIONS_AND_MIGRATIONS.md` document exactly two breaking changes
+across both majors -- `ReferenceThemeExplorer` relocated to a dedicated import subpath
+(5.0.0), and a `class-usa` brand-theme token rename (6.0.0). Neither surface is
+referenced anywhere in this repo's actual source (grepped, not assumed) -- Camera
+doesn't use `ReferenceThemeExplorer` (a playground/demo component) or the `class-usa`
+brand lane at all.
+
+`gds-adoption.json`'s `gdsVersion` stays at `3.9.0` deliberately, same rationale as the
+prior vendoring change -- this is a scoped dependency bump, not a formal SSOT version
+adoption.
+
+Verified live via `/api/auth/dev-login` + headless Chromium against `/admin/frames/new`
+(the most GDS-surface-dense page touched by recent work): pixel-identical render to the
+`4.1.3` version, no new console errors. `npm run release:check` clean.
 
 Required rule:
 
