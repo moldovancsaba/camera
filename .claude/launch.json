@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "camera-e2e",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "MONGODB_DB=camera_test CAMERA_TRYON_INTERNAL_SECRET=dev-tryon-secret PORT=3000 npm run dev"],
+      "port": 3000
+    }
+  ]
+}
