@@ -19,7 +19,7 @@ function messageOf(err: unknown): string {
 }
 
 /**
- * Parse host from mongodb+srv://user:pass@host/... (password redacted in logic only).
+ * Parse host from REDACTED_ROTATE_ME_2026-08-14 (password redacted in logic only).
  */
 export function extractMongoUriHost(uri: string): string | null {
   const m = uri.trim().match(/@([^/?]+)/);
