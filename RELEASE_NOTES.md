@@ -1,14 +1,50 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.23.0
-**Last Updated**: 2026-08-12
+**Current Version**: 2.24.0
+**Last Updated**: 2026-08-17
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
 
 ---
+
+## [v2.24.0] — 2026-08-17
+
+**Type**: Minor — bump vendored GDS `6.0.0` → `6.2.0` (still unpublished to
+this repo's install path; consumed via the same GitHub Release tarball
+vendoring as v2.23.0)
+
+### Summary
+`@sovereignsquad/gds-core`/`gds-theme`/`gds-admin` bumped from the vendored
+`6.0.0` tarballs (v2.23.0) to `6.2.0` — the source repo shipped `6.1.0` and
+`6.2.0` since. Checked `CHANGELOG.md` and `DEPRECATIONS_AND_MIGRATIONS.md` in
+the GDS repo across the full 6.0.0→6.2.0 range before upgrading: zero new
+breaking changes recorded past 6.0.0 (the two documented breaking changes,
+`ReferenceThemeExplorer`'s relocation and the `class-usa` palette rename,
+both landed at or before 6.0.0 and were already accounted for in that
+bump). `gds-adoption.json`'s `gdsVersion` stays at `3.9.0` deliberately,
+same pattern as every prior vendoring change in this repo.
+
+### Changed
+- `vendor/gds/*.tgz` — the three `@sovereignsquad/gds-*` tarballs replaced
+  with `gds-v6.2.0`'s GitHub Release assets.
+- `package.json` — the three deps repointed to the new tarballs.
+
+### Verification
+- `npx tsc --noEmit`, `npm run gds:validate-manifest`, `npm run gds:check`
+  (compliance + boundary), `npm run verify:production-guards`, and
+  `npm run build` all clean.
+- `npm run lint` / `npm run release:check` were **not** clean, but not
+  because of this change — both trip over a pre-existing, unrelated stray
+  git worktree at `.claude/worktrees/imgbb-image-loading-b7e1ca/` whose own
+  leftover `.next` build output isn't excluded from ESLint's glob. Confirmed
+  this predates this change (the worktree's HEAD is `f1ced72`, several
+  commits behind `main`) — not touched here, since it may hold someone
+  else's in-progress work; worth a separate fix (either exclude
+  `.claude/worktrees/**` in `eslint.config.mjs`, or clean up the worktree if
+  it's actually abandoned).
 
 ## [v2.23.0] — 2026-08-12
 
