@@ -1,82 +1,91 @@
 # Handover
 
-**Version**: 2.18.0
-**Last Updated**: 2026-07-06
+**Version**: 2.23.0
+**Last Updated**: 2026-08-17
+
+This file had drifted five weeks stale (still describing v2.18.0 / deployed
+commit `1b50664`) — `RELEASE_NOTES.md` (kept current on every release) was the
+real source of truth in the meantime. Rewritten from `RELEASE_NOTES.md`,
+`TASKLIST.md`, and `git log` to reflect actual current state.
 
 ## Branching
 
 Three long-lived branches only — `main` (production), `preview` (release candidate),
 `dev` (development). No feature or per-task branches; promote `dev → preview → main`.
-Policy: [docs/BRANCHING.md](docs/BRANCHING.md). Consolidated to this model on 2026-07-06 —
-for now only `main` exists; create `preview`/`dev` off `main` when the workflow needs them.
+Policy: [docs/BRANCHING.md](docs/BRANCHING.md). In practice only `main` exists —
+`preview`/`dev` get created off `main` when the workflow needs them.
 
 ## Production status
 
 - Live and healthy at `camera.messmass.com` (Vercel `narimato/04_camera`).
-- **Deployed commit: `1b50664`** (v2.14.0 — RSC fix, exports, submissions fix).
-- ⚠️ **`main` is far ahead of production**: the GDS 3.9 migration (`b9b4304`), the lint
-  cleanup (`229290a`), and the v2.16.0–v2.17.0 audit/hardening/observability/docs work are
-  committed but **NOT deployed**. Ship with `npx vercel@latest --prod` when ready (see
-  `RUNBOOK.md`). Git push does **not** auto-deploy. Run `npm run release:check` first.
+- **Deployed commit is not verified as part of this rewrite** — no Vercel CLI/API
+  access available to confirm which commit is actually live vs. `main` HEAD
+  (`9e41425`). Git push does **not** auto-deploy; ship with
+  `npx vercel@latest --prod` when ready (see `RUNBOOK.md`), and run
+  `npm run release:check` first. Treat the deployed commit as unknown until
+  someone checks the Vercel dashboard directly — don't assume it matches `main`.
+- Working tree is clean, local `main` matches `origin/main`.
 
-## Shipped in v2.17.0 (2026-07-04)
+## Shipped since the last handover (v2.19.0 → v2.23.0)
 
-- **Structured observability (#83)** — `lib/observability/logger.ts` (JSON to stdout/stderr,
-  alertable via Vercel/log drain, no external SDK); wired into `withErrorHandler` /
-  `safeAsync` / `dbOperation` and a `/api/observability/client-error` beacon from
-  `app/error.tsx` so client/RSC crashes reach server logs keyed by digest.
-- **Formalized release gate (#78)** — `npm run release:check` runs the full gate fail-fast
-  (decision: local gate, not restored CI). Documented in `docs/GDS_RELEASE_GATE.md`.
-- **Logos editor GDS parity (#74)** — `/admin/logos/[id]/edit` migrated to `AdminCrudForm`
-  primitives, matching frames.
+- **v2.23.0** — bumped vendored GDS `4.1.3` → `6.0.0` (still unpublished to any
+  registry; `gds-adoption.json`'s `gdsVersion` deliberately stays at `3.9.0`,
+  same pattern as prior vendoring bumps). Checked upstream breaking-change docs
+  between the tags; zero references to either breaking change in this repo.
+- **v2.22.0** — the four admin create/`new` pages (frames, logos, partners,
+  try-on suits) migrated from raw `<input>`/`<textarea>`/`<select>` to
+  `AdminCrudForm`/`Admin*` primitives, closing a backlog item open since
+  v2.17.0. Their **edit** counterparts for partners/tryon-suits are still on
+  raw `FormSection` + inputs — separate, not-yet-scoped gap.
+- **v2.21.0** — vendored GDS `4.1.3`, migrated `HashtagInput` chips to `ChoiceChip`.
+- Between v2.20.0 and v2.21.0 (PR #110, no version bump) — expanded the
+  AI-attribution branding policy to cover the full workflow surface.
+- **v2.20.0** — guided tour (spotlight onboarding overlay) for admin panel +
+  capture flow (#109): a from-scratch engine (no vendored GDS/third-party
+  equivalent exists, documented `package-coverage-gap` exception), driving
+  the admin nav/account panel tour and the public capture flow's three
+  phase-scoped mini-tours.
+- **v2.19.0** — SSO integration + admin sign-in rework; GDS card fixes.
+- Preview-image thumbnails for grid/list photo views (sharp downscale + imgbb
+  upload).
+- `.gitignore` broadened to cover all `.env*` variants, and one commit
+  (`9e41425`, `main` tip) redacts credentials that had leaked onto the branch —
+  if you're investigating repo secret hygiene, start there.
 
-## Shipped in v2.16.0 (2026-07-04)
+## Verification (current `main`, per RELEASE_NOTES.md v2.23.0 entry)
 
-- **Issue audit** — all 23 open issues cross-checked against code
-  (`docs/ISSUE_AUDIT_2026-06-30.md`): 13 verified already delivered, 2 met-in-intent,
-  7 actionable, 1 (#78) premise invalidated by the CI removal. Board reconciliation pending.
-- **`npm run test:e2e:safe` (#60)** — one-command E2E runner with env preflight,
-  disposable-DB guard, managed web server, no orphan processes.
-- **`npm run verify:production-guards` (#85)** — proves dev-login/e2e/debug routes 404 in
-  production and that all 9 dangerous route files call the guard (14/14 checks pass).
-- **Export-route tests (#84)** — `tests/e2e/event-exports.spec.ts`: access matrix,
-  email-CSV dedup, image-CSV contract, ZIP-on-empty 400 (8 tests).
-- **GDS confirm parity (#75)** — last two `window.confirm` calls (try-on queue
-  rerun/reapply) replaced with `useGdsConfirm`.
-- **RSC boundary lint guard (#82)** — custom ESLint rule errors on function-valued
-  `component` props in Server Component files under `app/**`.
-- **Docs refresh** — relative links repo-wide, CI claims corrected (workflows removed in
-  `c0b8b54`), E2E counts updated (23 tests / 7 specs), version headers aligned, historical
-  docs bannered, `/admin/slideshows` + email sender settings documented.
+`npm run release:check` (manifest validate → GDS boundary check → type-check →
+lint → production guards → build) clean as of the v2.23.0 commit. Not
+independently re-run as part of this handover rewrite.
 
-## Shipped in v2.15.0 (2026-06-21 → 2026-06-24)
+## Open follow-ups (from TASKLIST.md, 2026-08-08)
 
-- **Event data exports** — manager-gated email + image (CSV/ZIP) on `/admin/events/[id]`. See `docs/EVENT_EXPORTS.md`. (#79)
-- **Production RSC crash fix** — `component={Link}` in Server Components → `component="a"` (digest 4053814135). Rule in `ARCHITECTURE.md` §11. (#80)
-- **Admin smoke tests** (`tests/e2e/admin-smoke.spec.ts`) — caught + fixed a second crash on `/admin/submissions`. (#81)
-- **`/admin/slideshows`** inventory page and **per-event email sender settings**.
-- **Deps** — Next `16.0.10 → 16.2.9` (security); 0 vulnerabilities.
-- **GDS migration** — `@doneisbetter/* (3.5) → @sovereignsquad/* (3.9)`, mechanical scope rename, no API changes.
-
-## Verification (current `main`)
-
-`gds:check` ✅ · `type-check` ✅ · `lint` clean (0/0) · `build` ✅ ·
-`verify:production-guards` 14/14 ✅ · `npm audit` 0 vulns.
-E2E: 15/15 passing pre-merge; 8 new export tests added in v2.16.0 are written and
-lint/type-clean but **not yet executed** (sandbox had no MongoDB) — run
-`npm run test:e2e:safe` locally to confirm 23/23.
-
-## Open follow-ups
-
-- **Deploy v2.16.0** to production (owner go / `vercel --prod`).
-- **Restore Vercel auto-deploy** — GitHub App repo access + production branch (owner, dashboard). Until then deploys are manual.
-- ~~Reconcile the GitHub board~~ — **done 2026-07-04**: 17 issues closed; then #74/#78/#83 delivered in v2.17.0 and closed. Board down to **3 open** (#76, #77 GDS UI · #84 export tests awaiting first green run).
-- **#84**: run `npm run test:e2e:safe` once against MongoDB (expect 23/23), then close.
-- **#76/#77**: remaining GDS public-surface + media-card migrations — best with visual verification.
-- Admin create/`new` pages still use raw inputs uniformly (frames included) — separate consistency pass, tracked in `TASKLIST.md`.
-- 16 `react-hooks` advisory rules (`set-state-in-effect`, `preserve-manual-memoization`) are **off** in `eslint.config.mjs` — revisit under a React Compiler adoption.
+- **`CameraCapture` `autoStart` unreliable under `next dev`** (FRONT-008) —
+  found, not fixed. A `useRef` double-invoke guard survives React StrictMode's
+  dev-only mount→cleanup→remount cycle, but the `setTimeout(startCamera, 0)`
+  it guards does not, so the first mount's cleanup cancels the pending timer
+  and the real mount sees the ref already `true` and returns early —
+  `autoStart` never fires under `next dev`. Not yet verified whether this
+  reproduces in a production build. Likely fix: don't gate the timer's
+  *scheduling* on a ref that survives remounts.
+- **GDS `AdminResourceCard`/`MediaPreviewCard` limitations** — mostly worked
+  around this cycle (forced "edit" label on actions, double-wrapped `Badge`
+  in the `status` slot, no way to omit the media block for imageless
+  records). These are workarounds in camera's own code, not upstream fixes —
+  file against `sovereignsquad/general-design-system` if reachable. Any new
+  list/grid component must follow the same patterns or it'll reintroduce one
+  of these bugs.
+- **partners/tryon-suits edit pages** — still raw `FormSection` + inputs,
+  unlike their now-migrated `new` counterparts and the already-migrated
+  frames/logos edit pages.
+- **E2E export suite (#84)** — was closed in an earlier cycle; re-verify it's
+  actually been run green against a MongoDB-backed environment before
+  trusting that closure.
+- 16 `react-hooks` advisory ESLint rules (`set-state-in-effect`,
+  `preserve-manual-memoization`) still off in `eslint.config.mjs` — revisit
+  under a React Compiler adoption.
 
 ## Docs map
 
 `README.md` · `ARCHITECTURE.md` · `TECH_STACK.md` · `RUNBOOK.md` · `RELEASE_NOTES.md` ·
-`TASKLIST.md` · `ROADMAP.md` · `docs/EVENT_EXPORTS.md` · `docs/ISSUE_AUDIT_2026-06-30.md` · `docs/*`.
+`TASKLIST.md` · `ROADMAP.md` · `docs/*`.
