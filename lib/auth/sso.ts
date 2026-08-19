@@ -283,45 +283,6 @@ export async function exchangeCodeForToken(
   return response.json();
 }
 
-/**
- * Refresh access token using refresh token
- * Called when access token expires
- * 
- * @param refreshToken - Current refresh token
- * @returns New token response
- */
-export async function refreshAccessToken(
-  refreshToken: string
-): Promise<TokenResponse> {
-  const config = SSO_CONFIG();
-  const endpoints = SSO_ENDPOINTS();
-  
-  const params = new URLSearchParams({
-    grant_type: 'refresh_token',
-    refresh_token: refreshToken,
-    client_id: config.clientId,
-  });
-
-  const secret = process.env.SSO_CLIENT_SECRET?.trim();
-  if (secret && shouldUseConfidentialOAuth()) {
-    params.set('client_secret', secret);
-  }
-
-  const response = await fetch(endpoints.token, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: params.toString(),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Token refresh failed: ${response.status} ${error}`);
-  }
-
-  return response.json();
-}
 
 /**
  * Decode ID token (JWT) to extract user information
