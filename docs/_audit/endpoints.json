@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-08-19T16:53:02+00:00",
+  "generated": "2026-08-19T23:52:44+00:00",
   "repo": "camera",
-  "head": "97c1f67",
+  "head": "642ccef",
   "counts": {
-   "endpoints": 90,
+   "endpoints": 84,
    "collections": 6,
-   "env": 61,
+   "env": 62,
    "outbound-hosts": 16,
-   "docs": 82
+   "docs": 86
   }
  },
  "items": [
@@ -410,36 +410,6 @@
    "no_auth_marker": true
   },
   {
-   "path": "/api/debug/event-logos",
-   "methods": [
-    "GET"
-   ],
-   "file": "app/api/debug/event-logos/route.ts",
-   "auth_markers": [],
-   "no_auth_marker": true
-  },
-  {
-   "path": "/api/debug/submissions",
-   "methods": [
-    "GET"
-   ],
-   "file": "app/api/debug/submissions/route.ts",
-   "auth_markers": [
-    "requireAuth",
-    "withErrorHandler"
-   ],
-   "no_auth_marker": false
-  },
-  {
-   "path": "/api/debug/users",
-   "methods": [
-    "GET"
-   ],
-   "file": "app/api/debug/users/route.ts",
-   "auth_markers": [],
-   "no_auth_marker": true
-  },
-  {
    "path": "/api/e2e/bootstrap",
    "methods": [
     "POST"
@@ -771,15 +741,6 @@
    "no_auth_marker": true
   },
   {
-   "path": "/api/migrate/submissions",
-   "methods": [
-    "GET"
-   ],
-   "file": "app/api/migrate/submissions/route.ts",
-   "auth_markers": [],
-   "no_auth_marker": true
-  },
-  {
    "path": "/api/observability/client-error",
    "methods": [
     "POST"
@@ -976,24 +937,6 @@
     "withErrorHandler"
    ],
    "no_auth_marker": false
-  },
-  {
-   "path": "/api/test-db",
-   "methods": [
-    "GET"
-   ],
-   "file": "app/api/test-db/route.ts",
-   "auth_markers": [],
-   "no_auth_marker": true
-  },
-  {
-   "path": "/api/test-frames",
-   "methods": [
-    "GET"
-   ],
-   "file": "app/api/test-frames/route.ts",
-   "auth_markers": [],
-   "no_auth_marker": true
   },
   {
    "path": "/api/tryon/setups/[setupId]/use",
