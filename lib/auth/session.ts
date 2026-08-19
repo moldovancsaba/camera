@@ -8,8 +8,8 @@
  * camera#119 (needs a dual-read session migration verified in a browser).
  * 
  * Features:
- * - 30-day sliding expiration (extends on each request)
- * - Automatic token refresh before expiration
+ * - 30-day expiration fixed at creation (getSession does NOT extend it; no
+ *   sliding refresh exists in code)
  * - Secure HttpOnly cookies
  * - CSRF protection via state parameter
  * 
