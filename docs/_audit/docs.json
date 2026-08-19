@@ -1,0 +1,344 @@
+{
+ "_meta": {
+  "generated": "2026-08-19T16:53:02+00:00",
+  "repo": "camera",
+  "head": "97c1f67",
+  "counts": {
+   "endpoints": 90,
+   "collections": 6,
+   "env": 61,
+   "outbound-hosts": 16,
+   "docs": 82
+  }
+ },
+ "items": [
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/ARCHITECTURE.md",
+   "title": "Architecture"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/CLAUDE.md",
+   "title": "CLAUDE.md \u2014 Standing Operating Rules"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/CODE_AUDIT.md",
+   "title": "CODE_AUDIT.md"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/HANDOVER.md",
+   "title": "Handover"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/LEARNINGS.md",
+   "title": "LEARNINGS.md"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/NAMING_GUIDE.md",
+   "title": "Naming Guide"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/README.md",
+   "title": "Camera"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/RELEASE_NOTES.md",
+   "title": "RELEASE_NOTES.md"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/ROADMAP.md",
+   "title": "Roadmap"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/RUNBOOK.md",
+   "title": "Operations Runbook"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/TASKLIST.md",
+   "title": "Tasklist"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/TECH_STACK.md",
+   "title": "Tech Stack"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/WARP.DEV_AI_CONVERSATION.md",
+   "title": "Multi-Level Submission Management Implementation"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/business_requirements.md",
+   "title": "Seyu 2.0 \u2013 SaaS version \u2014 Business & vendor requirements"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/AUTHORIZATION.md",
+   "title": "Authorization Guide"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/BRANCHING.md",
+   "title": "Branching model"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/DOCUMENTATION.md",
+   "title": "Documentation Maintenance"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/EMAIL_TEMPLATES.md",
+   "title": "Email template verification"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/EVENT_EXPORTS.md",
+   "title": "Event Data Exports \u2014 Low-Level Design"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/GDS_3_4_3_ALIGNMENT_PLAN.md",
+   "title": "Camera GDS 3.4.3 Alignment Plan"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/GDS_3_4_3_GITHUB_BOARD_HANDOVER.md",
+   "title": "GDS 3.4.3 GitHub Board Handover"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/GDS_3_5_ADOPTION_PLAN.md",
+   "title": "GDS 3.5 Adoption Plan"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/GDS_CAMERA_ADOPTION.md",
+   "title": "Camera GDS Adoption"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/GDS_COMPONENT_RULES.md",
+   "title": "Camera GDS Component Rules"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/GDS_EXCEPTION_STANDARD.md",
+   "title": "GDS Exception Standard"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/GDS_RELEASE_GATE.md",
+   "title": "Camera GDS Release Gate"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/ISSUE_AUDIT_2026-06-30.md",
+   "title": "GitHub Issue Audit \u2014 2026-06-30"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/MESSMASS_FANMASS_INTEGRATION.md",
+   "title": "messmass + fanmass integration"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/MONGODB_ATLAS.md",
+   "title": "MongoDB Atlas"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/MONGODB_CONVENTIONS.md",
+   "title": "MongoDB Conventions"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/NEXT_AGENT_PROMPT.md",
+   "title": "Next-Agent Handover Prompt"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/PLAN_SLIDESHOW_LAYOUT.md",
+   "title": "Slideshow Layout Plan"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/SLIDESHOW_LOGIC.md",
+   "title": "Slideshow Logic"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/TRYON_ADMIN_GUIDE.md",
+   "title": "Try-On Admin Guide"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/TRYON_ANALYTICS.md",
+   "title": "Try-On analytics and data operations"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/TRYON_ARCHITECTURE.md",
+   "title": "Try-On Architecture"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/TRYON_LOW_LEVEL_DESIGN.md",
+   "title": "Try-On Low-Level Design"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/TRYON_OPERATIONS.md",
+   "title": "Try-On Operations"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/TRYON_RECOVERY_RUNBOOK.md",
+   "title": "Try-On recovery runbook"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/TRYON_VETTING_WORKFLOW_PLAN.md",
+   "title": "Try-On Vetting Workflow Plan"
+  },
+  {
+   "file": ".claude/worktrees/imgbb-image-loading-b7e1ca/docs/landing-page-css-handoff.md",
+   "title": "Landing Page CSS Handoff"
+  },
+  {
+   "file": "ARCHITECTURE.md",
+   "title": "Architecture"
+  },
+  {
+   "file": "CLAUDE.md",
+   "title": "CLAUDE.md \u2014 Standing Operating Rules"
+  },
+  {
+   "file": "CODE_AUDIT.md",
+   "title": "CODE_AUDIT.md"
+  },
+  {
+   "file": "HANDOVER.md",
+   "title": "Handover"
+  },
+  {
+   "file": "LEARNINGS.md",
+   "title": "LEARNINGS.md"
+  },
+  {
+   "file": "NAMING_GUIDE.md",
+   "title": "Naming Guide"
+  },
+  {
+   "file": "README.md",
+   "title": "Camera"
+  },
+  {
+   "file": "RELEASE_NOTES.md",
+   "title": "RELEASE_NOTES.md"
+  },
+  {
+   "file": "ROADMAP.md",
+   "title": "Roadmap"
+  },
+  {
+   "file": "RUNBOOK.md",
+   "title": "Operations Runbook"
+  },
+  {
+   "file": "TASKLIST.md",
+   "title": "Tasklist"
+  },
+  {
+   "file": "TECH_STACK.md",
+   "title": "Tech Stack"
+  },
+  {
+   "file": "WARP.DEV_AI_CONVERSATION.md",
+   "title": "Multi-Level Submission Management Implementation"
+  },
+  {
+   "file": "business_requirements.md",
+   "title": "Seyu 2.0 \u2013 SaaS version \u2014 Business & vendor requirements"
+  },
+  {
+   "file": "docs/AUTHORIZATION.md",
+   "title": "Authorization Guide"
+  },
+  {
+   "file": "docs/BRANCHING.md",
+   "title": "Branching model"
+  },
+  {
+   "file": "docs/DOCUMENTATION.md",
+   "title": "Documentation Maintenance"
+  },
+  {
+   "file": "docs/EMAIL_TEMPLATES.md",
+   "title": "Email template verification"
+  },
+  {
+   "file": "docs/EVENT_EXPORTS.md",
+   "title": "Event Data Exports \u2014 Low-Level Design"
+  },
+  {
+   "file": "docs/GDS_3_4_3_ALIGNMENT_PLAN.md",
+   "title": "Camera GDS 3.4.3 Alignment Plan"
+  },
+  {
+   "file": "docs/GDS_3_4_3_GITHUB_BOARD_HANDOVER.md",
+   "title": "GDS 3.4.3 GitHub Board Handover"
+  },
+  {
+   "file": "docs/GDS_3_5_ADOPTION_PLAN.md",
+   "title": "GDS 3.5 Adoption Plan"
+  },
+  {
+   "file": "docs/GDS_CAMERA_ADOPTION.md",
+   "title": "Camera GDS Adoption"
+  },
+  {
+   "file": "docs/GDS_COMPONENT_RULES.md",
+   "title": "Camera GDS Component Rules"
+  },
+  {
+   "file": "docs/GDS_EXCEPTION_STANDARD.md",
+   "title": "GDS Exception Standard"
+  },
+  {
+   "file": "docs/GDS_RELEASE_GATE.md",
+   "title": "Camera GDS Release Gate"
+  },
+  {
+   "file": "docs/ISSUE_AUDIT_2026-06-30.md",
+   "title": "GitHub Issue Audit \u2014 2026-06-30"
+  },
+  {
+   "file": "docs/MESSMASS_FANMASS_INTEGRATION.md",
+   "title": "messmass + fanmass integration"
+  },
+  {
+   "file": "docs/MONGODB_ATLAS.md",
+   "title": "MongoDB Atlas"
+  },
+  {
+   "file": "docs/MONGODB_CONVENTIONS.md",
+   "title": "MongoDB Conventions"
+  },
+  {
+   "file": "docs/NEXT_AGENT_PROMPT.md",
+   "title": "Next-Agent Handover Prompt"
+  },
+  {
+   "file": "docs/PLAN_SLIDESHOW_LAYOUT.md",
+   "title": "Slideshow Layout Plan"
+  },
+  {
+   "file": "docs/SLIDESHOW_LOGIC.md",
+   "title": "Slideshow Logic"
+  },
+  {
+   "file": "docs/TRYON_ADMIN_GUIDE.md",
+   "title": "Try-On Admin Guide"
+  },
+  {
+   "file": "docs/TRYON_ANALYTICS.md",
+   "title": "Try-On analytics and data operations"
+  },
+  {
+   "file": "docs/TRYON_ARCHITECTURE.md",
+   "title": "Try-On Architecture"
+  },
+  {
+   "file": "docs/TRYON_LOW_LEVEL_DESIGN.md",
+   "title": "Try-On Low-Level Design"
+  },
+  {
+   "file": "docs/TRYON_OPERATIONS.md",
+   "title": "Try-On Operations"
+  },
+  {
+   "file": "docs/TRYON_RECOVERY_RUNBOOK.md",
+   "title": "Try-On recovery runbook"
+  },
+  {
+   "file": "docs/TRYON_VETTING_WORKFLOW_PLAN.md",
+   "title": "Try-On Vetting Workflow Plan"
+  },
+  {
+   "file": "docs/landing-page-css-handoff.md",
+   "title": "Landing Page CSS Handoff"
+  }
+ ]
+}

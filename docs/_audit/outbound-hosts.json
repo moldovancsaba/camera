@@ -1,0 +1,32 @@
+{
+ "_meta": {
+  "generated": "2026-08-19T16:53:02+00:00",
+  "repo": "camera",
+  "head": "97c1f67",
+  "counts": {
+   "endpoints": 90,
+   "collections": 6,
+   "env": 61,
+   "outbound-hosts": 16,
+   "docs": 82
+  }
+ },
+ "items": [
+  "api.imgbb.com",
+  "camera.doneisbetter.com",
+  "camera.messmass.com",
+  "fonts.googleapis.com",
+  "fonts.gstatic.com",
+  "go.messmass.com",
+  "i.ibb.co",
+  "imgbb.com",
+  "nextjs.org",
+  "seyuselfies.com",
+  "sso.doneisbetter.com",
+  "twitter.com",
+  "wa.me",
+  "www.facebook.com",
+  "www.linkedin.com",
+  "www.w3.org"
+ ]
+}
