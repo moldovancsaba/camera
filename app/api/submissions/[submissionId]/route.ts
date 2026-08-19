@@ -145,8 +145,12 @@ export const PATCH = withErrorHandler(async (
     throw apiBadRequest('Invalid request payload');
   }
 
-  // Optional auth keeps admin and diagnostics consistent with existing public submission flows.
-  await optionalAuth(request);
+  // SECURITY (camera#119): this is the public capture finalize, so the fan is not
+  // authenticated. The previous code discarded the auth result, letting anyone with
+  // a submission ObjectId overwrite name/email and re-trigger email indefinitely.
+  // We preserve the public FIRST write but block later tampering: once userInfo is
+  // set, only an authenticated admin may change it.
+  const session = await optionalAuth(request);
 
   const db = await connectToDatabase();
   const objectId = new ObjectId(submissionId);
@@ -157,6 +161,12 @@ export const PATCH = withErrorHandler(async (
 
   if (!submission) {
     throw apiNotFound('Submission not found');
+  }
+
+  const alreadyFinalized = Boolean((submission as Submission).userInfo?.collectedAt);
+  const isAdmin = Boolean(session && (session.appRole === 'admin' || session.appRole === 'superadmin'));
+  if (alreadyFinalized && !isAdmin) {
+    throw apiForbidden('This submission has already been finalized.');
   }
 
   const now = new Date().toISOString();

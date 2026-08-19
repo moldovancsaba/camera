@@ -2,7 +2,10 @@
  * Session Management
  * 
  * Manages user sessions with 30-day sliding expiration.
- * Sessions are stored in encrypted cookies for security.
+ * Sessions are stored in httpOnly, Secure, SameSite cookies. The payload is
+ * base64url-encoded JSON (NOT encrypted); confidentiality relies on the cookie
+ * flags and TLS. At-rest cookie encryption is tracked as remaining hardening in
+ * camera#119 (needs a dual-read session migration verified in a browser).
  * 
  * Features:
  * - 30-day sliding expiration (extends on each request)

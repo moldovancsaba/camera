@@ -1,8 +1,24 @@
 # RELEASE_NOTES.md
 
+## v12.2.0 — Fleet version unification + Wave 0 security
+
+- **Fleet version unification**: adopts the single shared version 12.2.0 that all
+  four SEYU apps (messmass, camera, fanmass, try-on) now carry and bump in lockstep.
+  See messmass `docs/_audit/fleet-version-policy.md`.
+- **Security (camera#119)**:
+  - `GET /api/internal/tryon/sync` no longer trusts the spoofable `x-vercel-cron`
+    header; it requires the internal try-on secret or Vercel's own
+    `Authorization: Bearer <CRON_SECRET>` (operator must set `CRON_SECRET` in Vercel
+    for the backstop cron to run; the completion webhook is the primary path).
+  - `PATCH /api/submissions/[id]` preserves the public first finalize but blocks
+    later tampering: once `userInfo` is set, only an authenticated admin may change it.
+  - Corrected the false "sessions are encrypted" comment in `lib/auth/session.ts`
+    (payload is base64url JSON; at-rest encryption remains tracked in camera#119).
+
+
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.26.0
-**Last Updated**: 2026-08-19
+**Current Version**: 12.2.0
+**Last Updated**: 2026-08-20
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 

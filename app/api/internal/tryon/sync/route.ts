@@ -38,11 +38,20 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 });
 
 export const GET = withErrorHandler(async (request: NextRequest) => {
+  // SECURITY (camera#119): the previous branch trusted a client-settable
+  // `x-vercel-cron` header, so anyone could trigger this. Now require EITHER the
+  // internal try-on secret (service calls) OR Vercel's own `Authorization: Bearer
+  // <CRON_SECRET>` (which Vercel injects into cron invocations when CRON_SECRET is
+  // set). Neither is spoofable; if CRON_SECRET is unset the cron path fails closed.
   const requestSecret = request.headers.get('x-camera-tryon-secret')?.trim();
   if (requestSecret) {
     assertInternalTryOnSecret(request);
-  } else if (request.headers.get('x-vercel-cron') !== '1') {
-    throw apiForbidden('x-vercel-cron header is required for unauthenticated sync');
+  } else {
+    const cronSecret = process.env.CRON_SECRET;
+    const auth = request.headers.get('authorization');
+    if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
+      throw apiForbidden('valid cron authorization is required for unauthenticated sync');
+    }
   }
 
   const searchParams = request.nextUrl.searchParams;
