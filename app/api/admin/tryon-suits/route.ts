@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import type { Filter } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { uploadImage } from '@/lib/imgbb/upload';
-import { COLLECTIONS, generateId, type LeatherSuit } from '@/lib/db/schemas';
+import { COLLECTIONS, generateId, type GarmentType, type LeatherSuit, type SleeveStyle } from '@/lib/db/schemas';
 import {
   apiBadRequest,
   apiCreated,
@@ -11,6 +11,28 @@ import {
   requireAdmin,
   withErrorHandler,
 } from '@/lib/api';
+
+const GARMENT_TYPES: GarmentType[] = ['motorsport_suit', 'jersey', 'top', 'bottom'];
+const SLEEVE_STYLES: SleeveStyle[] = ['sleeveless', 'short_sleeve', 'long_sleeve'];
+// One-word tag per type, used only to keep an auto-generated catalog ID
+// legible (e.g. "jersey_home_kit_v1" instead of the old hardcoded
+// "motogp_home_kit_v1" for a garment that isn't a motorsport suit at all).
+const GARMENT_TYPE_ID_PREFIX: Record<GarmentType, string> = {
+  motorsport_suit: 'motogp',
+  jersey: 'jersey',
+  top: 'top',
+  bottom: 'bottom',
+};
+
+function normalizeGarmentType(value: unknown): GarmentType {
+  return typeof value === 'string' && (GARMENT_TYPES as string[]).includes(value)
+    ? (value as GarmentType)
+    : 'motorsport_suit';
+}
+
+function normalizeSleeveStyle(value: unknown): SleeveStyle | null {
+  return typeof value === 'string' && (SLEEVE_STYLES as string[]).includes(value) ? (value as SleeveStyle) : null;
+}
 
 function normalizeString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -25,9 +47,9 @@ function slugifyTitle(value: string): string {
     .replace(/_{2,}/g, '_');
 }
 
-async function buildUniqueLeatherSuitId(baseName: string, assetVersion: number): Promise<string> {
+async function buildUniqueLeatherSuitId(baseName: string, assetVersion: number, garmentType: GarmentType): Promise<string> {
   const slug = slugifyTitle(baseName) || generateId().replace(/[^a-z0-9]+/gi, '_').toLowerCase();
-  const baseId = `motogp_${slug}_v${assetVersion}`;
+  const baseId = `${GARMENT_TYPE_ID_PREFIX[garmentType]}_${slug}_v${assetVersion}`;
   const db = await connectToDatabase();
   const exists = await db.collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS).findOne(
     { leatherSuitId: baseId },
@@ -117,6 +139,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     const assetVersionRaw = normalizeString(formData.get('assetVersion'));
     const assetVersion = Number.isFinite(Number(assetVersionRaw)) ? Math.max(1, Number(assetVersionRaw)) : 1;
     const isActive = formData.get('isActive') === 'true';
+    const garmentType = normalizeGarmentType(formData.get('garmentType'));
+    const sleeveStyle = normalizeSleeveStyle(formData.get('sleeveStyle'));
 
     if (!file || !(file instanceof File)) {
       throw apiBadRequest('Suit image file is required');
@@ -130,7 +154,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       throw apiBadRequest('Only PNG, JPG, and WebP files are allowed');
     }
 
-    const leatherSuitId = providedId || (await buildUniqueLeatherSuitId(name, assetVersion));
+    const leatherSuitId = providedId || (await buildUniqueLeatherSuitId(name, assetVersion, garmentType));
     const existing = await db.collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS).findOne(
       { leatherSuitId },
       { projection: { _id: 1 } }
@@ -147,7 +171,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       leatherSuitId,
       name,
       description: description || null,
-      category: 'motogp_full_body_leather',
+      garmentType,
+      sleeveStyle,
       assetKey: leatherSuitId,
       assetVersion,
       imageUrl: uploadResult.imageUrl,
@@ -191,7 +216,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     leatherSuitId,
     name,
     description: normalizeString(body.description || body.notes) || null,
-    category: 'motogp_full_body_leather',
+    garmentType: normalizeGarmentType(body.garmentType),
+    sleeveStyle: normalizeSleeveStyle(body.sleeveStyle),
     assetKey: normalizeString(body.assetKey) || leatherSuitId,
     assetVersion,
     imageUrl: normalizeString(body.imageUrl || body.sourceImageUrl || body.previewUrl) || null,

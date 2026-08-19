@@ -6,8 +6,25 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
-import { FormSection } from '@sovereignsquad/gds-admin/client';
+import { AdminSelect, FormSection } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
+import type { GarmentType, SleeveStyle } from '@/lib/db/schemas';
+
+const GARMENT_TYPE_OPTIONS: { value: GarmentType; label: string }[] = [
+  { value: 'motorsport_suit', label: 'Motorsport suit (full body)' },
+  { value: 'jersey', label: 'Jersey (single-piece top)' },
+  { value: 'top', label: 'Top (paired with a bottom for an outfit)' },
+  { value: 'bottom', label: 'Bottom (paired with a top for an outfit)' },
+];
+
+const SLEEVE_STYLE_OPTIONS: { value: SleeveStyle; label: string }[] = [
+  { value: 'sleeveless', label: 'Sleeveless — show bare arms' },
+  { value: 'short_sleeve', label: 'Short sleeve' },
+  { value: 'long_sleeve', label: 'Long sleeve' },
+];
+
+// Only upper-body garments have a sleeve to configure.
+const SLEEVE_RELEVANT_TYPES: GarmentType[] = ['jersey', 'top'];
 
 interface TryOnSuitRecord {
   _id: string;
@@ -24,6 +41,11 @@ interface TryOnSuitRecord {
   usageCount?: number;
   isActive?: boolean;
   active?: boolean;
+  // Existing records predate this field entirely - every garment created
+  // before this change is, in practice, a motorsport suit (the system's
+  // only product to date), so that's the fallback when it's missing.
+  garmentType?: GarmentType;
+  sleeveStyle?: SleeveStyle | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -40,6 +62,9 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [garmentType, setGarmentType] = useState<GarmentType>('motorsport_suit');
+  const [sleeveStyle, setSleeveStyle] = useState<SleeveStyle>('sleeveless');
+  const sleeveRelevant = SLEEVE_RELEVANT_TYPES.includes(garmentType);
   const { confirmDestructive } = useGdsConfirm();
   const { notifyError } = useGdsToasts();
 
@@ -49,7 +74,10 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
         const response = await fetch(`/api/admin/tryon-suits/${id}`);
         if (!response.ok) throw new Error('Garment not found');
         const data = await response.json();
-        setSuit(data.suit || data.data?.suit || data);
+        const loaded: TryOnSuitRecord = data.suit || data.data?.suit || data;
+        setSuit(loaded);
+        setGarmentType(loaded.garmentType || 'motorsport_suit');
+        setSleeveStyle(loaded.sleeveStyle || 'sleeveless');
       } catch (err: unknown) {
         setError(getErrorMessage(err));
       } finally {
@@ -71,6 +99,8 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
       description: formData.get('description'),
       assetVersion: formData.get('assetVersion'),
       active: formData.get('active') === 'on',
+      garmentType,
+      sleeveStyle: sleeveRelevant ? sleeveStyle : null,
     };
 
     try {
@@ -220,6 +250,22 @@ export default function EditTryOnSuitPage({ params }: { params: Promise<{ id: st
               Description
               <textarea name="description" rows={3} defaultValue={suit.description || ''} style={{ padding: '0.75rem' }} />
             </label>
+            <AdminSelect
+              name="garmentType"
+              label="Garment type"
+              value={garmentType}
+              onChange={(value) => setGarmentType((value as GarmentType) ?? 'motorsport_suit')}
+              data={GARMENT_TYPE_OPTIONS}
+            />
+            {sleeveRelevant ? (
+              <AdminSelect
+                name="sleeveStyle"
+                label="Sleeve style"
+                value={sleeveStyle}
+                onChange={(value) => setSleeveStyle((value as SleeveStyle) ?? 'sleeveless')}
+                data={SLEEVE_STYLE_OPTIONS}
+              />
+            ) : null}
             <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
               Asset version
               <input

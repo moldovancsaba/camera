@@ -6,14 +6,16 @@ export interface TryOnSuitOption {
   name: string;
   description?: string | null;
   previewUrl?: string | null;
-  category: LeatherSuit['category'];
+  garmentType: LeatherSuit['garmentType'];
+  sleeveStyle?: LeatherSuit['sleeveStyle'];
 }
 
 export interface LeatherSuitSeed {
   leatherSuitId: string;
   name: string;
   description?: string | null;
-  category: LeatherSuit['category'];
+  garmentType: LeatherSuit['garmentType'];
+  sleeveStyle?: LeatherSuit['sleeveStyle'];
   assetKey: string;
   assetVersion?: number;
   imageUrl?: string | null;
@@ -53,7 +55,8 @@ export async function listActiveTryOnSuitOptions(db: Db): Promise<TryOnSuitOptio
       leatherSuitId: 1,
       name: 1,
       previewUrl: 1,
-      category: 1,
+      garmentType: 1,
+      sleeveStyle: 1,
     })
     .toArray();
 
@@ -65,7 +68,10 @@ export async function listActiveTryOnSuitOptions(db: Db): Promise<TryOnSuitOptio
             name: suit.name,
             description: typeof suit.description === 'string' ? suit.description : suit.metadata?.notes || null,
             previewUrl: getLeatherSuitPreviewUrl(suit),
-            category: suit.category,
+            // Existing records predate this field - fall back to the
+            // system's original (and, until now, only) product.
+            garmentType: suit.garmentType || 'motorsport_suit',
+            sleeveStyle: suit.sleeveStyle ?? null,
           },
         ]
       : []
@@ -108,7 +114,8 @@ export async function listActiveTryOnSuitOptionsForEvent(
       leatherSuitId: 1,
       name: 1,
       previewUrl: 1,
-      category: 1,
+      garmentType: 1,
+      sleeveStyle: 1,
     })
     .toArray();
 
@@ -120,7 +127,10 @@ export async function listActiveTryOnSuitOptionsForEvent(
             name: suit.name,
             description: typeof suit.description === 'string' ? suit.description : suit.metadata?.notes || null,
             previewUrl: getLeatherSuitPreviewUrl(suit),
-            category: suit.category,
+            // Existing records predate this field - fall back to the
+            // system's original (and, until now, only) product.
+            garmentType: suit.garmentType || 'motorsport_suit',
+            sleeveStyle: suit.sleeveStyle ?? null,
           },
         ]
       : []
@@ -169,7 +179,8 @@ export async function upsertLeatherSuitsFromSeed(
         $set: {
           name: seed.name,
           description: seed.description ?? seed.metadata?.notes ?? null,
-          category: seed.category,
+          garmentType: seed.garmentType,
+          sleeveStyle: seed.sleeveStyle ?? null,
           assetKey: seed.assetKey,
           assetVersion: seed.assetVersion ?? 1,
           imageUrl: seed.imageUrl ?? seed.sourceImageUrl ?? seed.previewUrl ?? null,

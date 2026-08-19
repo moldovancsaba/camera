@@ -375,7 +375,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           }
         }
 
-        await assertValidLeatherSuitId(db, tryOnRequest.leatherSuitId);
+        const selectedGarment = await assertValidLeatherSuitId(db, tryOnRequest.leatherSuitId);
 
         const sourceBase64 = tryOnRequest.sourceImageData.split(',')[1];
         if (!sourceBase64) {
@@ -397,6 +397,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           submissionId,
           imageUrl: sourceUpload.imageUrl,
           leatherSuitId: tryOnRequest.leatherSuitId,
+          garmentType: selectedGarment.garmentType || 'motorsport_suit',
+          sleeveStyle: selectedGarment.sleeveStyle ?? null,
           setupId: resolvedSetupId,
           cameraId: tryOnRequest.cameraId,
           eventId: typeof eventId === 'string' ? eventId : null,

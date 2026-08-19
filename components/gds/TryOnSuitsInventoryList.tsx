@@ -8,6 +8,20 @@ import {
   type AdminResourceRecord,
 } from '@sovereignsquad/gds-admin/client';
 import { getStatusChipContent } from '@/lib/gds/statusChipContent';
+import type { GarmentType, SleeveStyle } from '@/lib/db/schemas';
+
+const GARMENT_TYPE_LABELS: Record<GarmentType, string> = {
+  motorsport_suit: 'Motorsport suit',
+  jersey: 'Jersey',
+  top: 'Top',
+  bottom: 'Bottom',
+};
+
+const SLEEVE_STYLE_LABELS: Record<SleeveStyle, string> = {
+  sleeveless: 'Sleeveless (bare arms)',
+  short_sleeve: 'Short sleeve',
+  long_sleeve: 'Long sleeve',
+};
 
 export interface SerializedTryOnSuitRow {
   id: string;
@@ -19,6 +33,8 @@ export interface SerializedTryOnSuitRow {
   isActive: boolean;
   eventAssignmentCount: number;
   queueUsageCount: number;
+  garmentType: GarmentType;
+  sleeveStyle?: SleeveStyle | null;
 }
 
 export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTryOnSuitRow[] }) {
@@ -32,6 +48,8 @@ export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTr
     status: getStatusChipContent({ tone: suit.isActive ? 'active' : 'inactive' }),
     metadata: [
       { label: 'Catalog ID', value: suit.leatherSuitId },
+      { label: 'Garment type', value: GARMENT_TYPE_LABELS[suit.garmentType] || suit.garmentType },
+      ...(suit.sleeveStyle ? [{ label: 'Sleeve', value: SLEEVE_STYLE_LABELS[suit.sleeveStyle] }] : []),
       { label: 'Event allowlists', value: String(suit.eventAssignmentCount) },
       { label: 'Queue usage', value: String(suit.queueUsageCount) },
     ],

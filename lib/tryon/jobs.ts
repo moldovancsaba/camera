@@ -1,6 +1,8 @@
 import type { Db, ObjectId, WithId } from 'mongodb';
 import {
   COLLECTIONS,
+  type GarmentType,
+  type SleeveStyle,
   type Submission,
   type SubmissionTryOnRequestState,
   type SubmissionTryOnRequestStatus,
@@ -20,6 +22,8 @@ export interface CreateTryOnJobInput {
   submissionId: string;
   imageUrl: string;
   leatherSuitId: string;
+  garmentType?: GarmentType | null;
+  sleeveStyle?: SleeveStyle | null;
   setupId?: string | null;
   cameraId?: string | null;
   eventId?: string | null;
@@ -92,6 +96,8 @@ export function buildQueuedTryOnJob(input: CreateTryOnJobInput): TryOnJob {
     request: {
       leatherSuitId: normalizedSuitId,
       setupId: normalizedSetupId,
+      garmentType: input.garmentType ?? null,
+      sleeveStyle: input.sleeveStyle ?? null,
     },
     processing: {
       attemptCount: 0,

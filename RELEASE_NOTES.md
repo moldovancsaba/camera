@@ -1,12 +1,46 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.24.0
-**Last Updated**: 2026-08-17
+**Current Version**: 2.25.0
+**Last Updated**: 2026-08-19
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
+
+---
+
+## [v2.25.0] — 2026-08-19
+
+**Type**: Minor — garment types on the try-on catalog (#115)
+
+### Summary
+The try-on garment catalog can now say what a garment *is*: a new
+`garmentType` field (`motorsport_suit | jersey | top | bottom`) replaces the
+single-literal `category: 'motogp_full_body_leather'` that was hardcoded on
+every create and exposed nowhere, plus a `sleeveStyle` field
+(`sleeveless | short_sleeve | long_sleeve`) for upper-body pieces —
+`sleeveless` is the signal the try-on pipeline will use to render bare arms
+(moldovancsaba/try-on#38). Both fields are operator-editable on the
+Create/Edit Garment admin screens (GDS `AdminSelect`; the sleeve selector
+only appears for jersey/top), surface on the admin list and the capture-flow
+picker, and are snapshotted onto every try-on job at creation so a later
+catalog edit can't retroactively change an already-queued render.
+
+### Changed
+- `lib/db/schemas.ts` — `GarmentType`/`SleeveStyle` types; `LeatherSuit.garmentType`/`sleeveStyle` (replacing `category`); `TryOnJobRequest` snapshot fields.
+- `app/api/admin/tryon-suits/route.ts` + `[leatherSuitId]/route.ts` — accept + allowlist-validate both fields on all create/update paths; auto-generated catalog IDs take a type-derived prefix (`jersey_…`, `top_…`, `bottom_…`, `motogp_…`).
+- `app/admin/tryon/suits/new/page.tsx` + `[id]/edit/page.tsx` — Garment type + conditional Sleeve style selectors.
+- `components/gds/TryOnSuitsInventoryList.tsx`, `app/admin/tryon-suits/page.tsx` — type/sleeve metadata on list rows.
+- `lib/tryon/suits.ts`, `components/tryon/TryOnSuitSelector.tsx` — options carry `garmentType`; picker shows a human label.
+- `lib/tryon/jobs.ts`, `app/api/submissions/route.ts` — job-creation snapshot.
+- `config/leather-suits.example.json` — seed shape updated.
+
+### Compatibility
+No migration: every read site falls back to `motorsport_suit`/`null` for
+records and jobs that predate the fields (all pre-existing garments are, in
+fact, motorsport suits). `requestHash` inputs unchanged — dedup behavior
+identical.
 
 ---
 

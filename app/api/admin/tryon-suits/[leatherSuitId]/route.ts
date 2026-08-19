@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { ObjectId, type Document, type UpdateFilter } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { COLLECTIONS, type LeatherSuit } from '@/lib/db/schemas';
+import { COLLECTIONS, type GarmentType, type LeatherSuit, type SleeveStyle } from '@/lib/db/schemas';
 import {
   apiBadRequest,
   apiNoContent,
@@ -14,6 +14,9 @@ import {
 interface RouteContext {
   params: Promise<{ leatherSuitId: string }>;
 }
+
+const GARMENT_TYPES: GarmentType[] = ['motorsport_suit', 'jersey', 'top', 'bottom'];
+const SLEEVE_STYLES: SleeveStyle[] = ['sleeveless', 'short_sleeve', 'long_sleeve'];
 
 function normalizeString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -80,6 +83,12 @@ export const PUT = withErrorHandler(async (request: NextRequest, context: RouteC
     updateData.assetVersion = Number.isFinite(parsed) ? Math.max(1, parsed) : 1;
   }
   if (body.active !== undefined) updateData.active = Boolean(body.active);
+  if (body.garmentType !== undefined && (GARMENT_TYPES as string[]).includes(body.garmentType)) {
+    updateData.garmentType = body.garmentType;
+  }
+  if (body.sleeveStyle !== undefined) {
+    updateData.sleeveStyle = (SLEEVE_STYLES as string[]).includes(body.sleeveStyle) ? body.sleeveStyle : null;
+  }
 
   const result = await db.collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS).findOneAndUpdate(
     query,

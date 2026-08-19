@@ -833,14 +833,28 @@ export interface TryOnModerationEvent {
 // TRY-ON COLLECTIONS
 // ============================================================================
 
-export type LeatherSuitCategory = 'motogp_full_body_leather';
+// WHAT: What kind of garment this is, and (for upper-body pieces) how the
+//     model should treat the wearer's arms.
+// WHY: This system originally shipped for exactly one product (MotoGP
+//     racing leathers) with a single hardcoded category. 'top'/'bottom'
+//     are deliberately two separate piece types rather than a combined
+//     'soccer_kit' value - a kit is just a top + a bottom selected
+//     together at render time (two sequential renders, composited), not a
+//     new garment shape of its own.
+export type GarmentType = 'motorsport_suit' | 'jersey' | 'top' | 'bottom';
+
+// WHAT: Only meaningful for 'jersey'/'top' garments. 'sleeveless' tells the
+//     try-on pipeline to synthesize bare skin on the arms rather than leave
+//     whatever sleeve was in the source photo untouched.
+export type SleeveStyle = 'sleeveless' | 'short_sleeve' | 'long_sleeve';
 
 export interface LeatherSuit {
   _id?: ObjectId;
   leatherSuitId: string;
   name: string;
   description?: string | null;
-  category: LeatherSuitCategory;
+  garmentType: GarmentType;
+  sleeveStyle?: SleeveStyle | null;
   assetKey: string;
   assetVersion: number;
   imageUrl?: string | null;
@@ -941,6 +955,16 @@ export interface TryOnJobRequest {
   leatherSuitId: string;
   setupId?: string | null;
   rerunOfJobId?: string | null;
+  // Snapshot of the garment's own type/sleeve at job-creation time, so a
+  // later edit to the catalog entry can't retroactively change how an
+  // already-queued (or already-rendered) job was supposed to look. The
+  // try-on worker does not act on these yet - that's the follow-up phase.
+  // A 'top'+'bottom' outfit job (two garments in one result) isn't
+  // representable here yet either - deliberately deferred until the
+  // try-on side's actual compositing mechanism is built, rather than
+  // guessing at a second-garment-id shape it might not end up needing.
+  garmentType?: GarmentType | null;
+  sleeveStyle?: SleeveStyle | null;
 }
 
 export interface TryOnJobResolvedSetup {

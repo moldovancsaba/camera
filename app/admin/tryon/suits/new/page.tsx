@@ -10,11 +10,29 @@ import {
   AdminCheckbox,
   AdminCrudForm,
   AdminFormSection,
+  AdminSelect,
   AdminTextInput,
   AdminTextarea,
   FormSection,
 } from '@sovereignsquad/gds-admin/client';
 import MediaCard from '@/components/media/MediaPreviewCard';
+import type { GarmentType, SleeveStyle } from '@/lib/db/schemas';
+
+const GARMENT_TYPE_OPTIONS: { value: GarmentType; label: string }[] = [
+  { value: 'motorsport_suit', label: 'Motorsport suit (full body)' },
+  { value: 'jersey', label: 'Jersey (single-piece top)' },
+  { value: 'top', label: 'Top (paired with a bottom for an outfit)' },
+  { value: 'bottom', label: 'Bottom (paired with a top for an outfit)' },
+];
+
+const SLEEVE_STYLE_OPTIONS: { value: SleeveStyle; label: string }[] = [
+  { value: 'sleeveless', label: 'Sleeveless — show bare arms' },
+  { value: 'short_sleeve', label: 'Short sleeve' },
+  { value: 'long_sleeve', label: 'Long sleeve' },
+];
+
+// Only upper-body garments have a sleeve to configure.
+const SLEEVE_RELEVANT_TYPES: GarmentType[] = ['jersey', 'top'];
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Failed to upload garment';
@@ -31,6 +49,9 @@ export default function NewTryOnSuitPage() {
   const [leatherSuitId, setLeatherSuitId] = useState('');
   const [assetVersion, setAssetVersion] = useState('1');
   const [isActive, setIsActive] = useState(true);
+  const [garmentType, setGarmentType] = useState<GarmentType>('motorsport_suit');
+  const [sleeveStyle, setSleeveStyle] = useState<SleeveStyle>('sleeveless');
+  const sleeveRelevant = SLEEVE_RELEVANT_TYPES.includes(garmentType);
 
   const handleFileChange = (selectedFile: File | null) => {
     if (!selectedFile) return;
@@ -66,6 +87,10 @@ export default function NewTryOnSuitPage() {
     formData.set('leatherSuitId', leatherSuitId);
     formData.set('assetVersion', assetVersion);
     formData.set('isActive', isActive ? 'true' : 'false');
+    formData.set('garmentType', garmentType);
+    if (sleeveRelevant) {
+      formData.set('sleeveStyle', sleeveStyle);
+    }
     if (file) {
       formData.set('file', file);
     }
@@ -126,6 +151,22 @@ export default function NewTryOnSuitPage() {
           <AdminFormSection title="Garment details">
             <AdminTextInput name="name" label="Title" value={name} onChange={setName} required placeholder="e.g., Honda Castrol 2026" />
             <AdminTextarea name="description" label="Description" value={description} onChange={setDescription} placeholder="Optional operator notes..." />
+            <AdminSelect
+              name="garmentType"
+              label="Garment type"
+              value={garmentType}
+              onChange={(value) => setGarmentType((value as GarmentType) ?? 'motorsport_suit')}
+              data={GARMENT_TYPE_OPTIONS}
+            />
+            {sleeveRelevant ? (
+              <AdminSelect
+                name="sleeveStyle"
+                label="Sleeve style"
+                value={sleeveStyle}
+                onChange={(value) => setSleeveStyle((value as SleeveStyle) ?? 'sleeveless')}
+                data={SLEEVE_STYLE_OPTIONS}
+              />
+            ) : null}
             <AdminTextInput
               name="leatherSuitId"
               label="Catalog ID"

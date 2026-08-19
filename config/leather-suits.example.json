@@ -2,7 +2,7 @@
   {
     "leatherSuitId": "motogp_honda_castrol_2026_v1",
     "name": "Honda Castrol 2026",
-    "category": "motogp_full_body_leather",
+    "garmentType": "motorsport_suit",
     "assetKey": "motogp_honda_castrol_2026_v1",
     "assetVersion": 1,
     "assetRelativePath": "motogp/honda-castrol-2026.png",

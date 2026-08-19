@@ -5,11 +5,18 @@ import MediaCard from '@/components/media/MediaPreviewCard';
 import { StateBlock } from '@sovereignsquad/gds-core/client';
 import { Alert, Button, Group, Select, Stack, Text } from '@/components/gds/PublicPrimitives';
 
+const GARMENT_TYPE_LABELS: Record<string, string> = {
+  motorsport_suit: 'motorsport suit',
+  jersey: 'jersey',
+  top: 'top',
+  bottom: 'bottom',
+};
+
 interface TryOnSuitOption {
   id: string;
   name: string;
   previewUrl?: string | null;
-  category: string;
+  garmentType: string;
 }
 
 interface TryOnSuitSelectorProps {
@@ -124,7 +131,7 @@ export default function TryOnSuitSelector({
           <Group justify="space-between" align="center">
             <Text fw={600}>{selectedSuit.name}</Text>
             <Text size="xs" c="dimmed">
-              {selectedSuit.category.replace(/_/g, ' ')}
+              {GARMENT_TYPE_LABELS[selectedSuit.garmentType] || selectedSuit.garmentType.replace(/_/g, ' ')}
             </Text>
           </Group>
           {selectedSuit.previewUrl ? (

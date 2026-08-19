@@ -104,6 +104,10 @@ export default async function AdminTryOnSuitsPage({
           isActive: Boolean(suit.active),
           eventAssignmentCount: eventAssignmentCountBySuit.get(suit.leatherSuitId) || 0,
           queueUsageCount: queueUsageBySuit.get(suit.leatherSuitId) || 0,
+          // Existing records predate this field; every garment created
+          // before this change is, in practice, a motorsport suit.
+          garmentType: suit.garmentType || 'motorsport_suit',
+          sleeveStyle: suit.sleeveStyle ?? null,
         },
       ];
     });
