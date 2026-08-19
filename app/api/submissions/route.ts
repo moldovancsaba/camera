@@ -44,6 +44,7 @@ interface TryOnRequestDetails {
   sourceImageData: string | null;
   setupId?: string | null;
   cameraId?: string | null;
+  outfitBottomLeatherSuitId?: string | null;
 }
 
 interface SubmissionEventDocument {
@@ -104,6 +105,7 @@ function normalizeTryOnRequest(body: Record<string, unknown>): TryOnRequestDetai
   const sourceImageRaw = body.tryOnSourceImageData ?? body.try_on_source_image_data;
   const setupIdRaw = body.setupId ?? body.setup_id;
   const cameraIdRaw = body.cameraId ?? body.camera_id;
+  const outfitBottomRaw = body.outfitBottomLeatherSuitId ?? body.outfit_bottom_leather_suit_id;
 
   const leatherSuitId =
     typeof leatherSuitIdRaw === 'string' && leatherSuitIdRaw.trim() ? leatherSuitIdRaw.trim() : null;
@@ -114,6 +116,8 @@ function normalizeTryOnRequest(body: Record<string, unknown>): TryOnRequestDetai
     typeof setupIdRaw === 'string' && setupIdRaw.trim() ? setupIdRaw.trim() : null;
   const cameraId =
     typeof cameraIdRaw === 'string' && cameraIdRaw.trim() ? cameraIdRaw.trim() : null;
+  const outfitBottomLeatherSuitId =
+    typeof outfitBottomRaw === 'string' && outfitBottomRaw.trim() ? outfitBottomRaw.trim() : null;
 
   return {
     requested,
@@ -121,6 +125,7 @@ function normalizeTryOnRequest(body: Record<string, unknown>): TryOnRequestDetai
     sourceImageData,
     setupId,
     cameraId,
+    outfitBottomLeatherSuitId,
   };
 }
 
@@ -373,9 +378,40 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           ) {
             throw new Error('leather_suit_not_allowed_for_event');
           }
+          if (tryOnRequest.outfitBottomLeatherSuitId) {
+            // Outfit pairing (try-on#39 contract, implemented here per
+            // camera#116). The flag is read from the event document at
+            // submit time, never trusted from the client; the allowlist
+            // rule applies to BOTH pieces.
+            if (eventPolicyForTryOn?.tryOn?.outfitEnabled !== true) {
+              throw new Error('outfit_not_enabled_for_event');
+            }
+            if (
+              allowedSuitIds.length > 0 &&
+              !allowedSuitIds.includes(tryOnRequest.outfitBottomLeatherSuitId)
+            ) {
+              throw new Error('leather_suit_not_allowed_for_event');
+            }
+          }
+        } else if (tryOnRequest.outfitBottomLeatherSuitId) {
+          // Outfit selection is an event-scoped feature; the eventless
+          // capture flow has no outfitEnabled policy to validate against.
+          throw new Error('outfit_not_enabled_for_event');
         }
 
         const selectedGarment = await assertValidLeatherSuitId(db, tryOnRequest.leatherSuitId);
+        if (tryOnRequest.outfitBottomLeatherSuitId) {
+          // Server-side type pairing, mirroring the worker's own claim-time
+          // validation (defense in depth): the primary garment must be a
+          // 'top' and the paired piece a 'bottom'.
+          if ((selectedGarment.garmentType || 'motorsport_suit') !== 'top') {
+            throw new Error('outfit_top_type_required');
+          }
+          const bottomGarment = await assertValidLeatherSuitId(db, tryOnRequest.outfitBottomLeatherSuitId);
+          if (bottomGarment.garmentType !== 'bottom') {
+            throw new Error('outfit_bottom_type_mismatch');
+          }
+        }
 
         const sourceBase64 = tryOnRequest.sourceImageData.split(',')[1];
         if (!sourceBase64) {
@@ -399,6 +435,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           leatherSuitId: tryOnRequest.leatherSuitId,
           garmentType: selectedGarment.garmentType || 'motorsport_suit',
           sleeveStyle: selectedGarment.sleeveStyle ?? null,
+          outfitBottomLeatherSuitId: tryOnRequest.outfitBottomLeatherSuitId ?? null,
           setupId: resolvedSetupId,
           cameraId: tryOnRequest.cameraId,
           eventId: typeof eventId === 'string' ? eventId : null,

@@ -330,6 +330,8 @@ export const PATCH = withErrorHandler(async (
       enabled: Boolean(tryOn?.enabled),
       setupId: tryOnSetupId,
       allowedLeatherSuitIds,
+      // Outfit pairing kill switch (camera#116) - strictly opt-in, default off.
+      outfitEnabled: tryOn?.outfitEnabled === true,
       applyFrameToReturnedResults: Boolean(tryOn?.applyFrameToReturnedResults),
       vettingEnabled: tryOn?.vettingEnabled !== false,
       localAiQualityGateEnabled: Boolean(tryOn?.localAiQualityGateEnabled),

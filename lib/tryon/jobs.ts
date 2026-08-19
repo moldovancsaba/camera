@@ -24,6 +24,7 @@ export interface CreateTryOnJobInput {
   leatherSuitId: string;
   garmentType?: GarmentType | null;
   sleeveStyle?: SleeveStyle | null;
+  outfitBottomLeatherSuitId?: string | null;
   setupId?: string | null;
   cameraId?: string | null;
   eventId?: string | null;
@@ -70,6 +71,10 @@ export function buildQueuedTryOnJob(input: CreateTryOnJobInput): TryOnJob {
     typeof input.setupId === 'string' && input.setupId.trim() ? input.setupId.trim() : null;
   const normalizedCameraId =
     typeof input.cameraId === 'string' && input.cameraId.trim() ? input.cameraId.trim() : null;
+  const normalizedBottomId =
+    typeof input.outfitBottomLeatherSuitId === 'string' && input.outfitBottomLeatherSuitId.trim()
+      ? input.outfitBottomLeatherSuitId.trim()
+      : null;
 
   return {
     jobId: createTryOnJobId(),
@@ -77,7 +82,8 @@ export function buildQueuedTryOnJob(input: CreateTryOnJobInput): TryOnJob {
       normalizedSubmissionId,
       normalizedSuitId,
       TRYON_PIPELINE_VERSION,
-      normalizedSetupId
+      normalizedSetupId,
+      normalizedBottomId
     ),
     status: 'queued',
     stage: 'queued',
@@ -98,6 +104,7 @@ export function buildQueuedTryOnJob(input: CreateTryOnJobInput): TryOnJob {
       setupId: normalizedSetupId,
       garmentType: input.garmentType ?? null,
       sleeveStyle: input.sleeveStyle ?? null,
+      outfitBottomLeatherSuitId: normalizedBottomId,
     },
     processing: {
       attemptCount: 0,

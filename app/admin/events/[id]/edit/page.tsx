@@ -80,6 +80,7 @@ interface EventRecord {
     enabled?: boolean;
     setupId?: string | null;
     allowedLeatherSuitIds?: string[];
+    outfitEnabled?: boolean;
     applyFrameToReturnedResults?: boolean;
     vettingEnabled?: boolean;
     localAiQualityGateEnabled?: boolean;
@@ -148,6 +149,7 @@ export default function EditEventPage({
   const [brandBorderColor, setBrandBorderColor] = useState(CAMERA_DEFAULT_BRAND_BORDER_COLOR);
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
+  const [tryOnOutfitEnabled, setTryOnOutfitEnabled] = useState(false);
   const [tryOnSetupId, setTryOnSetupId] = useState('');
   const [tryOnSetups, setTryOnSetups] = useState<TryOnSetup[]>([]);
   const [submissionResultEmailSendAfterSave, setSubmissionResultEmailSendAfterSave] = useState(true);
@@ -244,6 +246,7 @@ export default function EditEventPage({
         setBrandColor(eventData.brandColor || CAMERA_DEFAULT_BRAND_COLOR);
         setBrandBorderColor(eventData.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR);
         setTryOnEnabled(Boolean(eventData.tryOn?.enabled));
+        setTryOnOutfitEnabled(eventData.tryOn?.outfitEnabled === true);
         setTryOnSetupId(eventData.tryOn?.setupId || '');
         setApplyFrameToReturnedResults(Boolean(eventData.tryOn?.applyFrameToReturnedResults));
         setTryOnVettingEnabled(eventData.tryOn?.vettingEnabled !== false);
@@ -503,6 +506,7 @@ export default function EditEventPage({
         enabled: tryOnEnabled,
         setupId: cameraId ? null : (tryOnSetupId || null),
         allowedLeatherSuitIds: selectedSuitIds,
+        outfitEnabled: tryOnOutfitEnabled,
         applyFrameToReturnedResults,
         vettingEnabled: tryOnVettingEnabled,
         localAiQualityGateEnabled,
@@ -953,6 +957,13 @@ export default function EditEventPage({
               onChange={(nextEvent) => setApplyFrameToReturnedResults(nextEvent.currentTarget.checked)}
               disabled={!tryOnEnabled}
               label="Apply the selected Camera frame to returned try-on results"
+            />
+            <Checkbox
+              checked={tryOnOutfitEnabled}
+              onChange={(nextEvent) => setTryOnOutfitEnabled(nextEvent.currentTarget.checked)}
+              disabled={!tryOnEnabled}
+              label="Enable outfit (top + bottom) selection"
+              description="Lets a fan pair a top-type garment with a bottom in one try-on. Both pieces must be in the allowed-garments list (or the list left empty). Outfit renders take roughly twice as long."
             />
             <Select
               label="Approved result slideshow publication"

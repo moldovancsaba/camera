@@ -4,11 +4,21 @@ export function buildTryOnRequestHash(
   submissionId: string,
   leatherSuitId: string,
   pipelineVersion: string,
-  setupId?: string | null
+  setupId?: string | null,
+  outfitBottomLeatherSuitId?: string | null
 ): string {
   const normalizedSetupId = typeof setupId === 'string' && setupId.trim() ? setupId.trim() : null;
+  const normalizedBottomId =
+    typeof outfitBottomLeatherSuitId === 'string' && outfitBottomLeatherSuitId.trim()
+      ? outfitBottomLeatherSuitId.trim()
+      : null;
+  // Null-safe by construction (try-on#39's contract requirement): without a
+  // bottom the hash input is byte-identical to the pre-outfit implementation,
+  // so no existing dedup behavior shifts on deploy — while a top-only job and
+  // a top+bottom job for the same submission can never collide.
+  const base = `${submissionId}:${leatherSuitId}:${pipelineVersion}:${normalizedSetupId || ''}`;
   return createHash('sha256')
-    .update(`${submissionId}:${leatherSuitId}:${pipelineVersion}:${normalizedSetupId || ''}`)
+    .update(normalizedBottomId ? `${base}:outfit-bottom:${normalizedBottomId}` : base)
     .digest('hex');
 }
 

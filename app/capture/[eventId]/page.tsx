@@ -72,6 +72,7 @@ interface EventData {
     enabled: boolean;
     setupId?: string | null;
     allowedLeatherSuitIds?: string[];
+    outfitEnabled?: boolean;
   };
   notifications?: {
     submissionResultEmailEnabled?: boolean;
@@ -233,6 +234,7 @@ export default function EventCapturePage({
   const [flowPhase, setFlowPhase] = useState<'onboarding' | 'capture' | 'thankyou'>('onboarding');
   const [signInError, setSignInError] = useState<{ code: string; message: string } | null>(null);
   const [selectedTryOnSuitId, setSelectedTryOnSuitId] = useState<string | null>(null);
+  const [selectedTryOnBottomSuitId, setSelectedTryOnBottomSuitId] = useState<string | null>(null);
   const [tryOnResult, setTryOnResult] = useState<TryOnSubmissionResult | null>(null);
   const [cameraId, setCameraId] = useState<string | null>(null);
   
@@ -669,6 +671,7 @@ export default function EventCapturePage({
         imageHeight: number;
         requestTryOn?: boolean;
         leatherSuitId?: string | null;
+        outfitBottomLeatherSuitId?: string | null;
         tryOnSourceImageData?: string | null;
         setupId?: string | null;
         cameraId?: string | null;
@@ -690,6 +693,9 @@ export default function EventCapturePage({
         submissionData.requestTryOn = true;
         submissionData.leatherSuitId = selectedTryOnSuitId;
         submissionData.tryOnSourceImageData = capturedImage;
+        if (selectedTryOnBottomSuitId && event?.tryOn?.outfitEnabled) {
+          submissionData.outfitBottomLeatherSuitId = selectedTryOnBottomSuitId;
+        }
       }
       
       // Add collected data from custom pages
@@ -1370,6 +1376,9 @@ export default function EventCapturePage({
                         onChange={setSelectedTryOnSuitId}
                         disabled={isSaving}
                         eventMongoId={eventId}
+                        outfitEnabled={event?.tryOn?.outfitEnabled === true}
+                        selectedBottomSuitId={selectedTryOnBottomSuitId}
+                        onBottomChange={setSelectedTryOnBottomSuitId}
                       />
                     </div>
                   ) : null}

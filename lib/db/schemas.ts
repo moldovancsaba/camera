@@ -255,6 +255,7 @@ export interface Event {
     enabled: boolean;                // Whether local AI try-on can be requested from capture flows
     setupId?: string | null;         // Optional default try-on setup selected for this event
     allowedLeatherSuitIds?: string[]; // Optional allowlist for the public suit picker
+    outfitEnabled?: boolean;         // Whether top+bottom outfit pairing is offered in the capture flow (default false — also the instant, no-deploy kill switch for the feature)
     applyFrameToReturnedResults?: boolean; // Whether Camera should re-apply the selected frame after the try-on worker uploads the generated result
     vettingEnabled?: boolean;        // Whether generated try-on results require admin review before publication
     localAiQualityGateEnabled?: boolean; // Whether local AI pre-vetting triage can auto-screen event try-on results before manual review
@@ -958,13 +959,15 @@ export interface TryOnJobRequest {
   // Snapshot of the garment's own type/sleeve at job-creation time, so a
   // later edit to the catalog entry can't retroactively change how an
   // already-queued (or already-rendered) job was supposed to look. The
-  // try-on worker does not act on these yet - that's the follow-up phase.
-  // A 'top'+'bottom' outfit job (two garments in one result) isn't
-  // representable here yet either - deliberately deferred until the
-  // try-on side's actual compositing mechanism is built, rather than
-  // guessing at a second-garment-id shape it might not end up needing.
+  // try-on worker resolves render category/mask mode from these
+  // (try-on#37/#38).
   garmentType?: GarmentType | null;
   sleeveStyle?: SleeveStyle | null;
+  // Two-piece outfit (try-on#39's contract, TRYON_ATLAS_CONTRACT.md):
+  // presence makes this an outfit job — leatherSuitId is the 'top' piece,
+  // this is the 'bottom'. The worker renders two sequential passes and
+  // publishes one result; it re-validates both pieces' types at claim time.
+  outfitBottomLeatherSuitId?: string | null;
 }
 
 export interface TryOnJobResolvedSetup {

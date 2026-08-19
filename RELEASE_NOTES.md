@@ -1,12 +1,43 @@
 # RELEASE_NOTES.md
 
 **Project**: Camera — Photo Frame Webapp
-**Current Version**: 2.25.0
+**Current Version**: 2.26.0
 **Last Updated**: 2026-08-19
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document tracks all completed tasks and version releases in chronological order, following semantic versioning format.
+
+---
+
+## [v2.26.0] — 2026-08-19
+
+**Type**: Minor — outfit (top + bottom) selection in the capture flow (#116)
+
+### Summary
+A fan can now pair a `top`-type garment with a `bottom` in one try-on job,
+per the outfit contract owned by try-on#39: `request.leatherSuitId` carries
+the top, a new additive `request.outfitBottomLeatherSuitId` carries the
+bottom, and the try-on worker renders two sequential passes into one result.
+The bottom picker appears only when a top-type garment is selected AND the
+event's new `tryOn.outfitEnabled` flag (default off — the instant,
+no-deploy kill switch) is on; skipping it submits a normal single-garment
+job. Server-side validation mirrors the worker's own claim-time rules
+(top must be `top`, bottom must be `bottom`, both active and
+event-allowlisted, flag re-read from the event document at submit time) —
+the client filter is never the boundary. The request-dedup hash now
+incorporates the bottom id when present, null-safely: for every no-bottom
+input the hash is byte-identical to the previous implementation (locked by
+`scripts/verify-tryon-hash-regression.ts`), so no existing dedup behavior
+shifts, while a top-only job and a top+bottom job for the same submission
+can never collide.
+
+### Changed
+- `components/tryon/TryOnSuitSelector.tsx` — conditional "Complete the outfit" bottom picker (GDS PublicPrimitives Select + previews + wait-time note); pairing resets when the top changes.
+- `app/api/submissions/route.ts` — `outfitBottomLeatherSuitId` intake + named validations (`outfit_not_enabled_for_event`, `outfit_top_type_required`, `outfit_bottom_type_mismatch`; allowlist rule applies to both pieces).
+- `lib/tryon/hash.ts` — null-safe hash extension; `lib/tryon/jobs.ts` — field threading; `lib/db/schemas.ts` — `TryOnJobRequest.outfitBottomLeatherSuitId`, `Event.tryOn.outfitEnabled`.
+- `app/admin/events/[id]/edit/page.tsx` + `app/api/events/[eventId]/route.ts` — "Enable outfit (top + bottom) selection" checkbox, default off.
+- `scripts/verify-tryon-hash-regression.ts` — hash regression lock (run: `npx tsx scripts/verify-tryon-hash-regression.ts`).
 
 ---
 
