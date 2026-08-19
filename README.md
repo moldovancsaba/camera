@@ -1,6 +1,6 @@
 # Camera
 
-**Version**: 2.17.0  
+**Version**: 12.2.0  
 **Last Updated**: 2026-07-04  
 **Status**: Production system
 
@@ -259,7 +259,7 @@ Operational docs:
 Camera is provisioned by **messmass** (event reporting/partner management —
 the master for organisations/partners/events) and read by **fanmass** (image
 analytics — brand/sponsor/fan recognition). Both are server-to-server,
-secret-authenticated routes under `/api/internal/**`; Camera never calls out
+secret-authenticated routes under `/api/internal/**`; Camera calls messmass outbound for partner push + sso-session mint (lib/messmassClient.ts); it otherwise only serves
 to either app. See [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md).
 
 ## Documentation map

@@ -1,6 +1,6 @@
 # Authorization Guide
 
-**Version**: 2.16.0  
+**Version**: 12.2.0  
 **Last Updated**: 2026-07-04
 
 This is the current authorization model for Camera.
@@ -116,8 +116,11 @@ These come from SSO and apply to the Camera app as a whole.
 
 Root `proxy.ts`:
 
-- validates serialized session for `/admin`
-- rejects when `appAccess === false`
+- validates the serialized session for `/admin` (presence + `expiresAt`/`sid` only)
+- does NOT check `appAccess` at the edge — that check is a per-route concern
+  (`lib/auth/middleware-session-gate.ts` reads only session validity). This
+  matches `ARCHITECTURE.md`; an earlier version of this doc claimed the proxy
+  rejects on `appAccess === false`, which the code never did.
 - no longer requires global admin role at the edge
 
 ### Layout gate

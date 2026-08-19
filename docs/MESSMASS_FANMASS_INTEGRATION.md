@@ -1,6 +1,6 @@
 # messmass + fanmass integration
 
-**Version**: 2.18.0
+**Version**: 12.2.0
 **Last Updated**: 2026-07-30
 
 Camera sits between two other apps in the SEYU fan-engagement stack: **messmass**
@@ -17,7 +17,10 @@ messmass  --(send email)-------------------->  camera
 camera    <--(poll: events, then media)---    fanmass
 ```
 
-Camera never calls messmass or fanmass outbound; it only serves authenticated
+Camera is mostly inbound but DOES call messmass outbound in two cases (see §4): it
+pushes partners it creates natively to `POST {MESSMASS_BASE_URL}/api/integrations/camera/partners`
+and mints a cross-app session via `POST .../api/integrations/camera/sso-session`
+(lib/messmassClient.ts). It otherwise serves authenticated
 requests from them. Rate limits are enforced per route (§5) but callers are not
 end users, so 429s should read as "a caller is misbehaving," not "a user hit a
 public limit."
@@ -139,8 +142,9 @@ in Camera, not duplicated between the internal API and Camera's own feature.
 
 ## 4. What Camera does NOT do
 
-- Camera does not call messmass or fanmass. Every integration in §1-§3 is
-  inbound-only to Camera.
+- Camera is inbound for the §1-§3 routes, but see §4: camera → messmass partner
+  push and sso-session mint are outbound (lib/messmassClient.ts), and camera is
+  the fleet's email transport (POST /api/internal/email/send). Not inbound-only.
 - Camera does not know about `launchmass` — no code, config, or data path
   connects them.
 - Camera does not resolve the analytics fanmass produces; that data flows

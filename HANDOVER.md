@@ -1,6 +1,6 @@
 # Handover
 
-**Version**: 2.23.0
+**Version**: 12.2.0
 **Last Updated**: 2026-08-17
 
 This file had drifted five weeks stale (still describing v2.18.0 / deployed
