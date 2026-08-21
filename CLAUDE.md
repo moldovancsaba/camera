@@ -184,3 +184,18 @@ Update the relevant existing doc (`ARCHITECTURE.md` for structural changes,
 `RUNBOOK.md` for operational changes, `LEARNINGS.md` for gotchas worth remembering)
 and this file in the same change set whenever the behavior or workflow they
 describe changes.
+
+## Next.js App Router: two `page.tsx` resolving to the same route fails silently
+
+A production outage in a sibling project (the `management` engine repo, 2026-08-20) traced back to this:
+a plain `src/app/page.tsx` and a route-group `src/app/(somegroup)/page.tsx` both resolved to `/` — route
+groups (`(name)`) do not add a path segment, so this is a genuine collision. **Next.js does not error on
+this at build time.** It silently picks one file and ignores the other; which one wins is not a
+documented contract. The shadowed page becomes completely unreachable with no build warning, no lint
+error, no runtime log. Here it surfaced as an infinite redirect loop between `/` and `/login`, only after
+a real user completed a real login — every local check had exercised the winning file only.
+
+**Rule**: before adding any new `page.tsx`, grep for existing pages whose route-group-stripped path
+matches the new one — a green build proves nothing about this. Consider a route-collision check script in
+CI if this project grows enough App Router pages that this becomes plausible (see
+`management/scripts/check-route-collisions.mjs` for a working, proven implementation to copy).
