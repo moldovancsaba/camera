@@ -1,11 +1,11 @@
 # Camera GDS Adoption
 
-**Version**: 12.2.0  
-**Last Updated**: 2026-08-12
+**Version**: 12.2.1  
+**Last Updated**: 2026-08-21
 
 ## SSOT statement
 
-[sovereignsquad/general-design-system](https://github.com/sovereignsquad/general-design-system) (SSOT docs and published bundle now **v3.5.0**) is the single source of truth for design, UI, and UX across the portfolio.
+[sovereignsquad/general-design-system](https://github.com/sovereignsquad/general-design-system) (SSOT docs and published bundle now **v6.3.0**) is the single source of truth for design, UI, and UX across the portfolio.
 
 This file and other Camera docs describe only **implementation adapters**, migration state, validation commands, and approved exceptions. If a Camera-local UI document conflicts with the GDS repository, **the GDS repository wins**.
 
@@ -113,7 +113,7 @@ Camera exceptions follow the shared structure from [docs/GDS_EXCEPTION_STANDARD.
 | Residual public surface helper layer (`app/globals.css` helper classes and `--app-panel-*` tokens) | Migration bridge | Limited public/capture helper styling outside `/admin/**` | No second shell system, no admin reuse, no raw package bypass, accessibility and contrast still enforced | Remove once public/capture surfaces no longer depend on local helper classes |
 | Landing page custom CSS (`landing_pages.customCss`, public `/landing/[slug]`) | Product-authored experience | Creator-authored presentation inside the landing experience surface only | GDS-governed admin/editor chrome, safe rendering order, accessibility baseline for shared controls and consent surfaces | Long-lived approved exception unless GDS later formalizes creator-authored experience theming |
 | Slideshow player (`components/slideshow/**`, `/slideshow/**`) | Runtime constraint | Timing-sensitive queue orchestration, fullscreen behavior, and media-first presentation | GDS runtime boundary, `PlaybackSurface` framing, surrounding admin configuration surfaces, visible error/empty states, keyboard-safe exit where applicable | Keep narrowing until only timing-sensitive queue, fullscreen behavior, and media internals remain outside direct package ownership |
-| Guided tour spotlight overlay (`components/tour/**`, `lib/tour/**`) | Package coverage gap | Full-viewport spotlight/backdrop rendering, step sequencing, tooltip position math — no Tour/Spotlight contract or usable positioning primitive exists in `@sovereignsquad/gds-core` 3.9.0 (only exported overlay primitive is `Tooltip`, a plain hover label) | `OverlayManagerProvider` registration for stacking with other overlays, GDS-approved primitives via `components/gds/PublicPrimitives.tsx` for tour controls, keyboard/focus/reduced-motion accessibility baseline | Replace the custom spotlight/backdrop and step engine once GDS publishes a Tour/Spotlight contract |
+| Guided tour spotlight overlay (`components/tour/**`, `lib/tour/**`) | Package coverage gap | Full-viewport spotlight/backdrop rendering, step sequencing, tooltip position math — no Tour/Spotlight contract or usable positioning primitive exists in `@sovereignsquad/gds-core` 6.3.0 either (only exported overlay primitive is `Tooltip`, a plain hover label) — confirmed still true at 6.3.0, not just stale from the 3.9.0 era | `OverlayManagerProvider` registration for stacking with other overlays, GDS-approved primitives via `components/gds/PublicPrimitives.tsx` for tour controls, keyboard/focus/reduced-motion accessibility baseline | Replace the custom spotlight/backdrop and step engine once GDS publishes a Tour/Spotlight contract |
 
 ## Known package limitations: `AdminResourceCard` / `MediaPreviewCard`
 
@@ -158,7 +158,7 @@ one of these three bugs.
 
 ## Published package capability snapshot
 
-Camera is currently pinned to the latest verified published release bundle, `@sovereignsquad/*` **3.9.0**.
+Camera is currently pinned to the latest verified published release bundle, `@sovereignsquad/*` **6.3.0**.
 
 ### Available now in the published package line
 
@@ -203,9 +203,9 @@ Camera now uses the real `@sovereignsquad/*` package line through the temporary 
 Current state:
 
 - Camera runtime: Mantine `8.3.6`, React `19.2.0`
-- Shared `@sovereignsquad/*` packages: version `3.5.0`, Mantine `^7.9.0 || ^8.3.0 || ^9.0.0`, React `^18.2.0 || ^19.0.0`
+- Shared `@sovereignsquad/*` packages: version `6.3.0`, Mantine `^7.9.0` in-repo build target (consumer-smoke-tested against `8.3.6`/`9.2.1`), React `^18.2.0 || ^19.0.0`
 
-**Note on the version above:** this line has drifted from the actual `gdsVersion` (`3.9.0`) already declared in `gds-adoption.json` -- flagging here rather than fixing, since correcting it is a separate documentation pass, not part of this change.
+`gds-adoption.json`'s `gdsVersion` now correctly tracks this (see the 2026-08-21 entry below) -- Camera's runtime already sits inside GDS's validated peer matrix (Mantine `8.3.6` + React `19.2.0` is one of the two exact combinations GDS's own `verify:mantine` tests against), so no framework bump was needed alongside this one.
 
 ### 2026-08-08: `gds-core`/`gds-theme`/`gds-admin` vendored at `4.1.3`
 
@@ -241,6 +241,37 @@ brand lane at all.
 `gds-adoption.json`'s `gdsVersion` stays at `3.9.0` deliberately, same rationale as the
 prior vendoring change -- this is a scoped dependency bump, not a formal SSOT version
 adoption.
+
+### 2026-08-17: vendored GDS bumped `6.0.0` → `6.2.0`
+
+Checked `CHANGELOG.md`/`DEPRECATIONS_AND_MIGRATIONS.md` across the full range: zero new
+breaking changes past `6.0.0`. `type-check`, `gds:check`, `verify:production-guards`, and
+`build` all clean (see commit `65e6c13`). `gds-adoption.json`'s `gdsVersion` was left at
+`3.9.0` again here, same rationale.
+
+### 2026-08-21: vendored GDS bumped `6.2.0` → `6.3.0`, and `gdsVersion` now tracks it for real
+
+The rationale behind leaving `gdsVersion` deliberately stale at `3.9.0` through every prior
+bump was that `3.9.0` was "the last officially published version this manifest is meant to
+track" -- every newer tarball since `4.1.3` was a from-source rebuild, not a real release.
+That condition no longer holds. GDS now ships real, tagged, GitHub Release bundles
+(`release-bundles.yml`, triggered on `gds-v*` tags) -- the vendored `6.3.0` tarballs here
+are the actual `gds-v6.3.0` release assets downloaded via `gh release download`, not a
+local rebuild. `gdsVersion` is updated to `6.3.0` to match, same as messmass's manifest,
+since there's no longer a real published-vs-vendored gap to track separately.
+
+Also vendored `gds-compliance` and `gds-eslint-config` (previously resolving from GDS's
+permanently-frozen `3.9.0` line on the public npmjs.org registry, since 6.x was never
+published there) as `file:vendor/gds/*.tgz` tarballs, matching the other three packages --
+these are dev-only tooling (lint config, compliance checker), not runtime UI, so this
+doesn't touch anything user-facing.
+
+Checked the two documented breaking changes across the entire `3.9.0`→`6.3.0` span
+(`ReferenceThemeExplorer` relocation at `5.0.0`, `class-usa` token rename at `6.0.0`) --
+neither is referenced anywhere in this repo (grepped, not assumed). Full local gate
+(`type-check`, `lint`, `test`, `build`) run clean in an isolated git worktree before this
+was pushed, plus a live-browser verification pass across representative real routes
+(admin dashboard, event capture flow, a share page, a slideshow) before landing.
 
 Verified live via `/api/auth/dev-login` + headless Chromium against `/admin/frames/new`
 (the most GDS-surface-dense page touched by recent work): pixel-identical render to the

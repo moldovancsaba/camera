@@ -216,7 +216,7 @@ Reusable exception guidance:
 
 Current package note:
 
-- Camera is aligned to the GDS **3.9.0 contracts** (migrated from the `@doneisbetter/*` scope)
+- Camera is aligned to the GDS **6.3.0 contracts** (migrated from the `@doneisbetter/*` scope)
 - Camera now consumes the `@sovereignsquad/*` package line directly via npm dependencies at the provider/theme/compliance boundary
 - Camera now runs on Mantine `8.3.x`, matching the current GDS peer contract
 - Camera no longer carries the old local `AppButton` or `components/gds/ui` barrel authority; leaf controls import Mantine directly under the GDS runtime where needed
