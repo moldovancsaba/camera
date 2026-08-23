@@ -1,5 +1,17 @@
 # RELEASE_NOTES.md
 
+## v12.2.3 — Dependency security updates
+
+- `next` `^16.2.9` → `^16.2.11`.
+- `nanoid` → `3.3.18`, `js-yaml` → `4.3.1`, `brace-expansion` → `1.1.18` via
+  `npm audit fix` (all transitive).
+- Applied as one lockfile update rather than four branch merges: every
+  Dependabot branch rewrites `package-lock.json`, so merging them in sequence
+  conflicts repeatedly for the same end state.
+- Four advisories remain (2 high, 2 moderate) that need
+  `npm audit fix --force` and a breaking upgrade; left for a maintenance
+  window. type-check and build green.
+
 ## v12.2.2 — Node 24, first CI gate
 
 - **Node 24**: `engines.node` moves from `18.x || 20.x || 22.x` to

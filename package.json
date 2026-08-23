@@ -1,6 +1,6 @@
 {
   "name": "camera",
-  "version": "12.2.2",
+  "version": "12.2.3",
   "description": "Professional web application for capturing photos with graphical frames, social sharing, event slideshows, and user profile management",
   "type": "module",
   "private": true,
@@ -85,7 +85,7 @@
     "axios": "^1.7.0",
     "dayjs": "^1.11.21",
     "mongodb": "^6.8.0",
-    "next": "^16.2.9",
+    "next": "^16.2.11",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "resend": "^6.12.4",
