@@ -1,5 +1,17 @@
 # RELEASE_NOTES.md
 
+## v12.2.2 — Node 24, first CI gate
+
+- **Node 24**: `engines.node` moves from `18.x || 20.x || 22.x` to
+  `>=24.0.0 <25.0.0` and a `.nvmrc` is added, matching messmass and sso. The old
+  range permitted Node 18, which is past end of life. Next 16.2.10 declares
+  `engines.node: ">=20.9.0"`, so 24 is in range unchanged.
+- **CI (first ever)**: `.github/workflows/ci.yml` runs `type-check` and `build`
+  on push and PR to main. camera previously had no workflow at all.
+  Deliberately scoped: `lint`, `gds:check` and `release:check` currently exit 1
+  (1256 eslint errors plus forbidden-color findings) and are left out until that
+  backlog is burned down rather than wired in permanently red.
+
 ## v12.2.0 — Fleet version unification + Wave 0 security
 
 - **Fleet version unification**: adopts the single shared version 12.2.0 that all

@@ -1,0 +1,34 @@
+name: CI
+
+# WHAT: the minimum build gate for camera.
+# WHY: camera had no CI at all while being one of the most actively deployed
+#      apps in the fleet, so nothing caught a broken build before Vercel did.
+# SCOPE: type-check and build only, deliberately. `npm run lint`,
+#      `gds:check` and `release:check` currently exit 1 (1256 eslint errors and
+#      a set of forbidden-color findings). Wiring them in today would make main
+#      permanently red, which trains everyone to ignore the badge. They belong
+#      here the moment that backlog is burned down -- see the CI section of
+#      HANDOVER.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - run: npm run type-check
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
