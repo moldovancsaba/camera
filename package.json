@@ -1,6 +1,6 @@
 {
   "name": "camera",
-  "version": "12.2.3",
+  "version": "12.2.4",
   "description": "Professional web application for capturing photos with graphical frames, social sharing, event slideshows, and user profile management",
   "type": "module",
   "private": true,
@@ -89,7 +89,7 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "resend": "^6.12.4",
-    "sharp": "^0.34.5"
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

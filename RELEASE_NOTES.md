@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## v12.2.4 — sharp security bump
+
+- `sharp` `^0.34.5` → `^0.35.3`, closing the remaining high-severity runtime
+  advisory. It is a declared direct dependency, so this is a plain bump;
+  type-check and build both pass.
+- Still open and deliberately deferred to a maintenance window: `postcss`
+  (transitive, pinned at 8.5.15 by a parent, needs an npm `overrides` entry
+  to lift) and two moderate advisories.
+
 ## v12.2.3 — Dependency security updates
 
 - `next` `^16.2.9` → `^16.2.11`.
