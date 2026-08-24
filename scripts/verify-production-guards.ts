@@ -32,12 +32,6 @@ const DANGEROUS_ROUTE_FILES = [
   'app/api/auth/dev-login/route.ts',
   'app/api/e2e/bootstrap/route.ts',
   'app/api/e2e/cleanup/route.ts',
-  'app/api/debug/users/route.ts',
-  'app/api/debug/submissions/route.ts',
-  'app/api/debug/event-logos/route.ts',
-  'app/api/test-frames/route.ts',
-  'app/api/test-db/route.ts',
-  'app/api/migrate/submissions/route.ts',
 ];
 
 let failures = 0;
@@ -111,7 +105,7 @@ function verifyRouteWiring(): void {
     try {
       source = readFileSync(absolutePath, 'utf8');
     } catch {
-      check(`${routeFile} exists`, false, 'listed as dangerous but file is missing — update the list');
+      check(`${routeFile} is present`, false, 'listed here as dangerous, but the file does not exist — delete the entry');
       continue;
     }
     const imported = source.includes('blockDangerousApiInProduction');

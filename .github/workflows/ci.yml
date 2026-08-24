@@ -1,14 +1,21 @@
 name: CI
 
-# WHAT: the minimum build gate for camera.
+# WHAT: camera's build gate, running the repo's own release standard.
 # WHY: camera had no CI at all while being one of the most actively deployed
 #      apps in the fleet, so nothing caught a broken build before Vercel did.
-# SCOPE: type-check and build only, deliberately. `npm run lint`,
-#      `gds:check` and `release:check` currently exit 1 (1256 eslint errors and
-#      a set of forbidden-color findings). Wiring them in today would make main
-#      permanently red, which trains everyone to ignore the badge. They belong
-#      here the moment that backlog is burned down -- see the CI section of
-#      HANDOVER.md.
+#
+# This runs `release:check`, which is already defined in package.json as the
+# chain camera holds itself to before a release:
+#   gds:validate-manifest -> gds:check -> type-check -> lint
+#   -> verify:production-guards -> build
+#
+# An earlier version of this file ran only type-check and build, on the belief
+# that lint carried 1256 errors and gds:check a set of forbidden-color
+# findings. Both were false: every one of those findings came from
+# .claude/worktrees, a leftover agent worktree holding a second checkout of
+# this repo. It is gitignored, so CI never had it and never would have seen
+# them -- the backlog only ever existed on one developer's machine. eslint now
+# ignores that path, and camera's real source lints clean.
 
 on:
   push:
@@ -20,7 +27,7 @@ jobs:
   verify:
     name: Verify
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,7 +35,6 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci
-      - run: npm run type-check
-      - run: npm run build
+      - run: npm run release:check
         env:
           NEXT_TELEMETRY_DISABLED: '1'

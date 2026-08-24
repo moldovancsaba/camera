@@ -1,5 +1,23 @@
 # RELEASE_NOTES.md
 
+## v12.2.5 — CI now runs the full release:check; the lint "backlog" was never real
+
+- **eslint ignores `.claude/**`.** Every one of the 1256 lint errors and all
+  the `gds:check` forbidden-color findings came from
+  `.claude/worktrees/imgbb-image-loading-b7e1ca`, a leftover agent worktree
+  holding a second checkout of this repo. It is gitignored, so CI never had
+  it. camera's real source lints clean and always did. The note in v12.2.2
+  and the earlier claim of a lint backlog were both wrong.
+- **`verify:production-guards` list trimmed.** It still listed six dev routes
+  deleted in `070058e` (`debug/users`, `debug/submissions`,
+  `debug/event-logos`, `test-frames`, `test-db`, `migrate/submissions`), and
+  failed because they were absent. Only the three that exist remain. The
+  failure message, which read "exists — listed as dangerous but file is
+  missing", now says what it means.
+- **CI runs `npm run release:check`** — gds:validate-manifest, gds:check,
+  type-check, lint, verify:production-guards, build — instead of the minimal
+  type-check + build gate it shipped with two days ago.
+
 ## v12.2.4 — sharp security bump
 
 - `sharp` `^0.34.5` → `^0.35.3`, closing the remaining high-severity runtime

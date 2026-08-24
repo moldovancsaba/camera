@@ -89,6 +89,12 @@ const eslintConfig = defineConfig([
     "playwright-report/**",
     "test-results/**",
     "next-env.d.ts",
+    // Agent worktrees: .claude/ holds full checkouts of this repo, so linting it
+    // reports every finding a second time against files that are not source.
+    // It is gitignored, so CI never checks it out and never saw these -- this
+    // only ever poisoned local runs, and it made `npm run lint` look like it had
+    // 1256 real errors when the real source has none.
+    ".claude/**",
   ]),
 ]);
 
