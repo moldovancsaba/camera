@@ -99,6 +99,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
+        href: '/admin/tryon/setups',
+        label: 'AI Setups',
+        description: 'Try-on processing presets (previously editable only by hand in the database).',
+        iconKey: 'sparkles',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
+      {
         href: '/admin/landing-pages',
         label: 'Landing Pages',
         description: 'Cross-event landing page inventory.',

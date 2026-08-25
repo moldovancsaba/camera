@@ -1,5 +1,50 @@
 # RELEASE_NOTES.md
 
+## v12.2.10 — Phase 3 of the admin UX audit: AI Setups get a real CRUD, event forms gain parity
+
+Four smaller fixes from the audit's "investigate everything, not just the
+seven complaints" instruction, each verified against the real database.
+
+- **AI Setups (`tryon_setups`) had zero admin UI** — operators were told to
+  edit MongoDB directly to add a processing-preset variant. New
+  `/admin/tryon/setups` list/create/edit, plus duplicate and archive
+  (archive, not delete -- old jobs reference setups by id). Confirmed
+  against production: 7 real setups already exist
+  (`default_motogp`, `motogp_low`, `google_edge_tryon`, `motogp_textsafe`,
+  `motogp_logo_max`, `segmind_idm_vton`, `fal_ai_tryon`), none seeded by
+  this change. Two stale "edit MongoDB directly" / "use the seed/import
+  workflow" messages elsewhere in the try-on setup pickers now point here
+  instead.
+- **`events/new` was missing fields `events/[id]/edit` already had:**
+  loading text, outfit (top+bottom) selection, and the local AI
+  pre-vetting quality gate. All three were silently absent from the
+  create API too (`app/api/events/route.ts` never read `loadingText` or
+  `tryOn.outfitEnabled` from the request body at all) -- fixed there as
+  well, not just in the form. Brand colors were deliberately **not**
+  added to create: they inherit from the partner at creation by design
+  (`inheritPartnerDefaults`), so a color picker there would have silently
+  discarded whatever the operator chose. `customPages` also stays
+  edit-only -- it needs a real event id to save against.
+- **The event-pages editor's separate save button now has a one-line
+  note above it** ("saves separately from the fields above") -- the split
+  was already visually clear (two different buttons, two containers) but
+  had no explicit warning, so editing both and saving only one silently
+  dropped the other.
+- **The hidden `?cameraId=` mode is now documented, not silent.** Both
+  event forms show a one-line note explaining the per-camera setup
+  override exists and how it's reached, next to the setup picker. It's
+  still URL-only (no camera list page to promote it into) -- undiscoverable
+  and undocumented are different problems, and this fixes the one that
+  doesn't require designing a new camera-management surface.
+
+### Verified
+Full gate green: gds:validate-manifest, gds:check, type-check, lint,
+verify:production-guards, build. Data-layer verification against real
+production data: setup id generation doesn't collide with any of the 7
+existing setups; a full insert → list → archive → unarchive → delete
+cycle through the exact logic the new API routes run; confirmed
+`loadingText` is a real, already-populated field on existing events.
+
 ## v12.2.9 — Phase 2 of the admin UX audit: event workspace tabs and a safer vetting cluster
 
 Two of the audit's complaints, resolved together: "operations hidden behind

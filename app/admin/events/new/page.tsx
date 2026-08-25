@@ -12,6 +12,7 @@ import {
   Breadcrumbs,
   Button,
   Checkbox,
+  Code,
   FileInput,
   Grid,
   Group,
@@ -80,6 +81,8 @@ export default function NewEventPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
+  const [tryOnOutfitEnabled, setTryOnOutfitEnabled] = useState(false);
+  const [localAiQualityGateEnabled, setLocalAiQualityGateEnabled] = useState(false);
   const [submissionResultEmailEnabled, setSubmissionResultEmailEnabled] = useState(false);
   const [submissionResultEmailSendAfterSave, setSubmissionResultEmailSendAfterSave] = useState(true);
   const [submissionResultEmailSendAfterRelatedPhotosReady, setSubmissionResultEmailSendAfterRelatedPhotosReady] =
@@ -317,6 +320,7 @@ export default function NewEventPage() {
       description: formData.get('description') as string,
       eventDate: formData.get('eventDate') as string,
       location: formData.get('location') as string,
+      loadingText: formData.get('loadingText') as string,
       shortUrlSlug: (formData.get('shortUrlSlug') as string) ?? '',
       greatestHitsSlug: (formData.get('greatestHitsSlug') as string) ?? '',
       isActive: formData.get('isActive') === 'on',
@@ -326,8 +330,10 @@ export default function NewEventPage() {
         enabled: tryOnEnabled,
         setupId: cameraId ? null : (tryOnSetupId || null),
         allowedLeatherSuitIds: selectedSuitIds,
+        outfitEnabled: tryOnOutfitEnabled,
         applyFrameToReturnedResults,
         vettingEnabled: tryOnVettingEnabled,
+        localAiQualityGateEnabled,
         includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
         resultSlideshowMode,
       },
@@ -469,6 +475,13 @@ export default function NewEventPage() {
               data={EVENT_BUTTON_SIZE_OPTIONS}
               value={buttonSize}
               onChange={(value) => setButtonSize((value as EventButtonSize) || DEFAULT_EVENT_BUTTON_SIZE)}
+            />
+
+            <TextInput
+              name="loadingText"
+              label="Loading text"
+              defaultValue="Loading event..."
+              description="Text shown while the event is loading."
             />
 
             {logoPreview ? (
@@ -705,10 +718,24 @@ export default function NewEventPage() {
               description="When disabled, completed try-on results are approved automatically and become visible on the user's result page."
             />
             <Checkbox
+              checked={localAiQualityGateEnabled}
+              onChange={(event) => setLocalAiQualityGateEnabled(event.currentTarget.checked)}
+              disabled={!tryOnEnabled || !tryOnVettingEnabled}
+              label="Enable local AI pre-vetting quality gate"
+              description="Allows the local AI service to triage generated results before manual vetting, while admins keep final approval control."
+            />
+            <Checkbox
               checked={applyFrameToReturnedResults}
               onChange={(event) => setApplyFrameToReturnedResults(event.currentTarget.checked)}
               disabled={!tryOnEnabled}
               label="Apply the selected Camera frame to returned try-on results"
+            />
+            <Checkbox
+              checked={tryOnOutfitEnabled}
+              onChange={(event) => setTryOnOutfitEnabled(event.currentTarget.checked)}
+              disabled={!tryOnEnabled}
+              label="Enable outfit (top + bottom) selection"
+              description="Lets a fan pair a top-type garment with a bottom in one try-on. Both pieces must be in the allowed-garments list (or the list left empty). Outfit renders take roughly twice as long."
             />
             <Select
               label="Approved result slideshow publication"
@@ -747,9 +774,16 @@ export default function NewEventPage() {
               disabled={!tryOnEnabled || isLoadingTryOnSetups || isSavingTryOnSetup}
             />
             {tryOnSetups.length === 1 && !cameraId ? (
-              <InlineAlert title="Only one setup available" message="Only one active try-on setup profile is available. Add additional profiles to MongoDB tryon_setups to expose more options." severity="warning" />
+              <InlineAlert title="Only one setup available" message="Only one active try-on setup profile is available. Add more under Admin → AI Setups to expose more options." severity="warning" />
             ) : tryOnSetups.length === 0 ? (
-              <InlineAlert title="No setup profiles" message="No active try-on setup profiles found. Use the seed/import workflow to populate tryon_setups first." severity="error" />
+              <InlineAlert title="No setup profiles" message="No active try-on setup profiles found. Create one under Admin → AI Setups first." severity="error" />
+            ) : null}
+            {!cameraId ? (
+              <Text size="xs" c="dimmed">
+                A setup can also be scoped to one physical camera by opening this form with a{' '}
+                <Code>?cameraId=</Code> link (used by camera hardware provisioning). That mode isn&apos;t
+                needed for normal event setup.
+              </Text>
             ) : null}
             <Select
               label="Allowed garments"

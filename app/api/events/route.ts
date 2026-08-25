@@ -142,7 +142,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   // Parse request body
   const body = await request.json();
-  const { name, partnerId, description, eventDate, location, isActive, logoUrl, showLogo, shortUrlSlug, greatestHitsSlug, tryOn, notifications, visualSettings, sharePage } =
+  const { name, partnerId, description, eventDate, location, loadingText, isActive, logoUrl, showLogo, shortUrlSlug, greatestHitsSlug, tryOn, notifications, visualSettings, sharePage } =
     body;
 
   // Validate required fields
@@ -229,6 +229,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     partnerName: partner.name,
     eventDate: eventDate?.trim() || undefined,
     location: location?.trim() || undefined,
+    loadingText: loadingText?.trim() || undefined,
     isActive: isActive !== undefined ? Boolean(isActive) : true,
     logoUrl: logoUrl?.trim() || undefined,
     showLogo: Boolean(showLogo),
@@ -251,6 +252,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
             .filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
             .map((value: string) => value.trim())
         : [],
+      outfitEnabled: Boolean(tryOn?.outfitEnabled),
       applyFrameToReturnedResults: Boolean(tryOn?.applyFrameToReturnedResults),
       vettingEnabled: tryOn?.vettingEnabled !== false,
       localAiQualityGateEnabled: Boolean(tryOn?.localAiQualityGateEnabled),

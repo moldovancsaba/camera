@@ -137,6 +137,16 @@ export const cameraAdminVocabularyPacks = [
     'cancel-edit': { defaultMessage: 'Cancel edit', icon: GdsIcons.Cancel, feedback: openedFeedback },
     delete: { defaultMessage: 'Delete garment', icon: GdsIcons.Delete, feedback: deletedFeedback },
   }),
+  createGdsVocabularyPack('tryon-setups', {
+    create: { defaultMessage: 'Create setup', icon: GdsIcons.Add, feedback: savedFeedback },
+    'cancel-create': { defaultMessage: 'Cancel create', icon: GdsIcons.Cancel, feedback: openedFeedback },
+    'back-to-list': { defaultMessage: 'Back to setups', icon: GdsIcons.Back, feedback: openedFeedback },
+    save: { defaultMessage: 'Save setup', icon: GdsIcons.Save, feedback: savedFeedback },
+    'cancel-edit': { defaultMessage: 'Cancel edit', icon: GdsIcons.Cancel, feedback: openedFeedback },
+    duplicate: { defaultMessage: 'Duplicate setup', icon: GdsIcons.Add, feedback: savedFeedback },
+    archive: { defaultMessage: 'Archive setup', icon: GdsIcons.Delete, feedback: deletedFeedback },
+    unarchive: { defaultMessage: 'Unarchive setup', icon: GdsIcons.Check, feedback: savedFeedback },
+  }),
   createGdsVocabularyPack('frames', {
     'remove-upload': { defaultMessage: 'Remove upload', icon: GdsIcons.Delete, feedback: deletedFeedback },
     create: { defaultMessage: 'Create frame', icon: GdsIcons.Add, feedback: savedFeedback },

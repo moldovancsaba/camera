@@ -15,6 +15,7 @@ import {
   Breadcrumbs,
   Button,
   Checkbox,
+  Code,
   ColorInput,
   FileInput,
   Grid,
@@ -934,9 +935,16 @@ export default function EditEventPage({
               onChange={(value) => handleTryOnSetupChange(value)}
             />
             {tryOnSetups.length === 1 && !cameraId ? (
-              <InlineAlert title="Only one setup available" message="Only one active try-on setup profile is available. Add additional profiles to MongoDB tryon_setups to expose more options." severity="warning" />
+              <InlineAlert title="Only one setup available" message="Only one active try-on setup profile is available. Add more under Admin → AI Setups to expose more options." severity="warning" />
             ) : tryOnSetups.length === 0 ? (
-              <InlineAlert title="No setup profiles" message="No active try-on setup profiles found. Use the seed/import workflow to populate tryon_setups first." severity="error" />
+              <InlineAlert title="No setup profiles" message="No active try-on setup profiles found. Create one under Admin → AI Setups first." severity="error" />
+            ) : null}
+            {!cameraId ? (
+              <Text size="xs" c="dimmed">
+                A setup can also be scoped to one physical camera by opening this form with a{' '}
+                <Code>?cameraId=</Code> link (used by camera hardware provisioning). That mode isn&apos;t
+                needed for normal event setup.
+              </Text>
             ) : null}
             <Checkbox
               checked={tryOnVettingEnabled}
@@ -1029,6 +1037,10 @@ export default function EditEventPage({
         </Stack>
       </form>
 
+      <Text size="sm" c="dimmed" mt="xl" mb="xs">
+        Event Pages below save separately from the fields above — its own &quot;Save Pages&quot; button, not
+        &quot;Save changes&quot;. Save both sections if you&apos;ve edited both.
+      </Text>
       <CustomPagesManager
         key={customPages.length}
         eventId={mongoId}

@@ -2,6 +2,7 @@ import type { Db, ObjectId } from 'mongodb';
 import { nowIso } from '@/lib/tryon/time';
 import {
   COLLECTIONS,
+  generateId,
   type TryOnJobResolvedSetup,
   type TryOnSetup,
   type TryOnSetupPreference,
@@ -247,6 +248,29 @@ export async function getCameraSetupPreference(
   return db
     .collection<TryOnSetupPreference>(COLLECTIONS.CAMERA_SETUP_PREFERENCES)
     .findOne({ cameraId: normalized });
+}
+
+function slugifySetupId(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .replace(/_{2,}/g, '_');
+}
+
+// WHAT: Turns a human title into a unique setupId, appending _2/_3/... on
+// collision. WHY: shared by the setups CRUD's create and duplicate routes --
+// both need the exact same collision-safe generation, not two copies of it.
+export async function buildUniqueSetupId(db: Db, baseName: string): Promise<string> {
+  const slug = slugifySetupId(baseName) || generateId().replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+  let candidate = slug;
+  let suffix = 2;
+  while (await db.collection<TryOnSetup>(COLLECTIONS.TRYON_SETUPS).findOne({ setupId: candidate }, { projection: { _id: 1 } })) {
+    candidate = `${slug}_${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
 }
 
 export { LEGACY_SETUP_ID };
