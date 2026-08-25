@@ -1,5 +1,54 @@
 # RELEASE_NOTES.md
 
+## v12.2.9 — Phase 2 of the admin UX audit: event workspace tabs and a safer vetting cluster
+
+Two of the audit's complaints, resolved together: "operations hidden behind
+the try-on app, disconnected from the event" and "no confirm before
+publishing a result to the guest."
+
+- **Event workspace tabs.** `/admin/events/[id]/vetting`, `/queue`, and
+  `/analytics` are new routes nested under the event, each a thin delegate
+  to the existing global page (same component, same query logic -- just the
+  event id supplied from the route instead of `?eventId=`). A small tab bar
+  (`EventWorkspaceTabs`) ties Overview/Vetting/Queue/Analytics together; the
+  event's own Overview page now links to all three instead of two, and
+  neither the "Open Vetting" nor a Queue link existed there consistently
+  before.
+- **A real event picker.** The global (unscoped) vetting/queue/analytics
+  pages now show a searchable `EventPicker` that jumps straight into an
+  event's scoped view by name -- previously the only way in was arriving
+  with `?eventId=` already set by something else. Reuses the existing
+  `/api/events?search=` endpoint; no new API surface.
+- **The queue gained event scoping entirely.** `/admin/tryon/queue` had no
+  concept of `?eventId=` at all -- every count tile, the job list, and
+  infinite-scroll pagination (`/api/admin/tryon-jobs`) now resolve and
+  respect it, the same dual-namespace resolution vetting and analytics
+  already used.
+- **Approve/Reject now confirm before acting.** Approve publishes to the
+  guest immediately with no undo; Reject archives the result out of the
+  active queue. Both previously fired on a single click, no more friction
+  than the Great/Service toggles beside them. Reject's confirm dialog has an
+  optional reason field wired to the `notes` param every reject endpoint
+  already accepted server-side but no UI ever sent.
+- **Rerun defaults to a different preset than the one that failed,** in both
+  vetting and the queue's own rerun picker -- previously both defaulted back
+  to the exact preset that produced the result the operator is trying to
+  fix. The two surfaces also now say the same thing ("Rerun"), replacing
+  vetting's "Submit again" / queue's "Rerun job".
+- **Rerun and Approve/Reject/Great/Service are one action cluster now,**
+  not two separate table columns with User/Event/Garment between them in
+  the desktop table (the audit's literal "model swap is hidden in a table
+  column" complaint) -- merged in the table, and reordered to sit together
+  in the card layout and the detail modal.
+
+### Verified
+Full gate green: gds:validate-manifest, gds:check, type-check, lint,
+verify:production-guards, build. Data-layer verification against real
+production data: UUID and Mongo-_id scope resolution agree; the queue's new
+event filter returns a real bounded subset (509 of 534 jobs for a sample
+event); the event-picker's name-search query surfaces the event it's meant
+to find.
+
 ## v12.2.8 — Phase 1 of the admin UX audit: a real post-login dashboard and one nav config
 
 The audit's #1 complaint was "messmass has a better dashboard when the admin

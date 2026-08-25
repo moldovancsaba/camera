@@ -20,6 +20,7 @@ import TryOnAnalyticsTables from '@/components/admin/TryOnAnalyticsTables';
 import TryOnFunnelChart from '@/components/admin/TryOnFunnelChart';
 import TryOnAnalyticsFilterForm from '@/components/admin/TryOnAnalyticsFilterForm';
 import TryOnAnalyticsExportControls from '@/components/admin/TryOnAnalyticsExportControls';
+import EventPicker from '@/components/admin/EventPicker';
 
 export const dynamic = 'force-dynamic';
 
@@ -134,6 +135,7 @@ export default async function AdminTryOnAnalyticsPage({
           : '/admin/tryon/vetting',
         label: 'Open Vetting',
       }}
+      beforeToolbar={!eventId ? <EventPicker basePath="/admin/tryon/analytics" /> : undefined}
       dbError={dbError}
     >
       {dbError ? <DatabaseConnectionAlert diagnosis={dbError} /> : null}

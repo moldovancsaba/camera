@@ -446,19 +446,14 @@ export default async function EventDetailPage({
               />
             </Stack>
             <Group grow>
-              <Button
-                component="a"
-                href={`/admin/tryon/analytics?eventId=${encodeURIComponent(event.eventId)}`}
-                variant="light"
-              >
-                Asset Health Report
-              </Button>
-              <Button
-                component="a"
-                href={`/admin/tryon/vetting?eventId=${encodeURIComponent(event.eventId)}`}
-                variant="light"
-              >
+              <Button component="a" href={`/admin/events/${id}/vetting`} variant="light">
                 Open Vetting
+              </Button>
+              <Button component="a" href={`/admin/events/${id}/queue`} variant="light">
+                Open Queue
+              </Button>
+              <Button component="a" href={`/admin/events/${id}/analytics`} variant="light">
+                Asset Health Report
               </Button>
             </Group>
           </Card>

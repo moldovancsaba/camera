@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Button, Group, Paper, Select, Stack, Text, UnstyledButton } from '@/components/gds/PublicPrimitives';
+import { Button, Group, Paper, Select, Stack, Text, Textarea, UnstyledButton } from '@/components/gds/PublicPrimitives';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -74,11 +74,11 @@ interface ModerationListQuery {
   search?: string;
 }
 
-async function postDecision(id: string, action: 'approve' | 'reject') {
+async function postDecision(id: string, action: 'approve' | 'reject', notes?: string) {
   const response = await fetch(`/api/admin/tryon-results/${id}/${action}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({}),
+    body: JSON.stringify(notes ? { notes } : {}),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -462,13 +462,13 @@ function ReviewImagePanel({
 function ModerationActions({
   row,
   busyId,
-  onDecision,
+  onRequestDecision,
   onGreat,
   onService,
 }: {
   row: ModerationRow;
   busyId: string | null;
-  onDecision: (rowId: string, action: 'approve' | 'reject') => Promise<void>;
+  onRequestDecision: (row: ModerationRow, action: 'approve' | 'reject') => void;
   onGreat: (row: ModerationRow) => Promise<void>;
   onService: (row: ModerationRow) => Promise<void>;
 }) {
@@ -497,7 +497,7 @@ function ModerationActions({
           loading={busyId === `${row.id}:approve`}
           disabled={isApproved || archivedReadOnly}
           aria-label={isApproved ? 'Try-on result approved' : 'Approve try-on result'}
-          onClick={() => void onDecision(row.id, 'approve')}
+          onClick={() => onRequestDecision(row, 'approve')}
         >
           {isApproved ? 'Approved' : 'Approve'}
         </SemanticButton>
@@ -506,7 +506,7 @@ function ModerationActions({
           loading={busyId === `${row.id}:reject`}
           disabled={isRejected || archivedReadOnly}
           aria-label={isRejected ? 'Try-on result rejected' : 'Reject try-on result'}
-          onClick={() => void onDecision(row.id, 'reject')}
+          onClick={() => onRequestDecision(row, 'reject')}
         >
           {isRejected ? 'Rejected' : 'Reject'}
         </SemanticButton>
@@ -574,6 +574,8 @@ export default function TryOnResultModerationTable({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedSetupByRow, setSelectedSetupByRow] = useState<Record<string, string>>({});
   const [rerunFeedbackByRow, setRerunFeedbackByRow] = useState<Record<string, string>>({});
+  const [pendingDecision, setPendingDecision] = useState<{ row: ModerationRow; action: 'approve' | 'reject' } | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
   const [assetHealth, setAssetHealth] = useState<
     Record<string, { resultMissing?: boolean; originalMissing?: boolean }>
   >({});
@@ -725,10 +727,10 @@ export default function TryOnResultModerationTable({
     return null;
   }
 
-  async function handleDecision(rowId: string, action: 'approve' | 'reject') {
+  async function handleDecision(rowId: string, action: 'approve' | 'reject', notes?: string) {
     try {
       setBusyId(`${rowId}:${action}`);
-      await postDecision(rowId, action);
+      await postDecision(rowId, action, notes);
       notifySuccess({
         title: action === 'approve' ? 'Approved' : 'Rejected',
         message: action === 'approve' ? 'Try-on result approved.' : 'Try-on result rejected.',
@@ -736,6 +738,7 @@ export default function TryOnResultModerationTable({
       if (activeRowId === rowId) {
         setActiveRowId(null);
       }
+      setPendingDecision(null);
       router.refresh();
     } catch (error) {
       notifyError({
@@ -745,6 +748,22 @@ export default function TryOnResultModerationTable({
     } finally {
       setBusyId(null);
     }
+  }
+
+  // WHAT: Approve/Reject now go through a confirm step instead of firing on
+  // click. WHY: Approve emails the guest immediately with no undo, but
+  // previously had no more friction than Great/Service; Reject archives the
+  // result out of the active queue. The dialog stays open with the entered
+  // reason intact if the request fails, so the operator can retry.
+  function requestDecision(row: ModerationRow, action: 'approve' | 'reject') {
+    setRejectReason('');
+    setPendingDecision({ row, action });
+  }
+
+  function confirmPendingDecision() {
+    if (!pendingDecision) return;
+    const { row, action } = pendingDecision;
+    void handleDecision(row.id, action, action === 'reject' ? rejectReason.trim() || undefined : undefined);
   }
 
   async function handleGreat(row: ModerationRow) {
@@ -792,10 +811,12 @@ export default function TryOnResultModerationTable({
     if (selectedSetupByRow[row.id]) {
       return selectedSetupByRow[row.id];
     }
-    if (row.setup?.setupId && setupOptions.some((setup) => setup.setupId === row.setup?.setupId)) {
-      return row.setup.setupId;
-    }
-    return defaultSetupId;
+    // Default to a preset OTHER than the one that produced this result -- an
+    // operator opening the rerun picker is almost always here because the
+    // original preset's output wasn't good enough. Only fall back to the same
+    // one (or the catalog default) when there is no alternative to offer.
+    const alternative = setupOptions.find((setup) => setup.setupId !== row.setup?.setupId);
+    return alternative?.setupId ?? row.setup?.setupId ?? defaultSetupId;
   }
 
   async function handleRerun(row: ModerationRow) {
@@ -888,10 +909,10 @@ export default function TryOnResultModerationTable({
           size="xs"
           loading={busyId === `${row.id}:rerun`}
           disabled={!row.sourceJobId || setupOptions.length === 0}
-          aria-label={`Submit try-on job again for ${resolveDisplayName(row.userName)}`}
+          aria-label={`Rerun try-on job for ${resolveDisplayName(row.userName)}`}
           onClick={() => void handleRerun(row)}
         >
-          Submit again
+          Rerun
         </Button>
         {feedback ? (
           <Text size="xs" c="teal">
@@ -963,10 +984,17 @@ export default function TryOnResultModerationTable({
             ),
           },
           {
+            // WHAT: Approve/Reject/Great/Service and the rerun preset picker
+            // in one column. WHY: they used to be two columns apart with
+            // User/Event/Garment between them -- the audit's "model swap is
+            // hidden" complaint was literally true for this table layout.
             key: 'quickActions',
             label: 'Actions',
             render: (row) => (
-              <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} onService={handleService} />
+              <Stack gap="xs">
+                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} />
+                {renderPresetControls(row)}
+              </Stack>
             ),
           },
           {
@@ -1002,11 +1030,6 @@ export default function TryOnResultModerationTable({
             key: 'suit',
             label: 'Garment',
             render: (row) => <Text size="sm">{garmentLabel(row)}</Text>,
-          },
-          {
-            key: 'preset',
-            label: 'Preset Used',
-            render: (row) => renderPresetControls(row),
           },
           {
             key: 'status',
@@ -1073,11 +1096,11 @@ export default function TryOnResultModerationTable({
             }
             actions={
               <Stack gap="xs">
-                <ModerationActions row={row} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} onService={handleService} />
+                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} />
+                {renderPresetControls(row)}
               </Stack>
             }
           >
-            {renderPresetControls(row)}
             <Stack gap="xs" align="flex-start">
               <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row))} />
               {row.isGreat ? (
@@ -1144,6 +1167,7 @@ export default function TryOnResultModerationTable({
               </Text>
             </Stack>
             {renderPresetControls(activeRow)}
+            <ModerationActions row={activeRow} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} />
             <Stack gap="xs" align="flex-start">
               <StatusBadge {...getStatusBadgeProps(reviewTone(activeRow.reviewStatus), reviewLabel(activeRow))} />
               {activeRow.isGreat ? (
@@ -1182,7 +1206,45 @@ export default function TryOnResultModerationTable({
                 </Text>
               )}
             </Stack>
-            <ModerationActions row={activeRow} busyId={busyId} onDecision={handleDecision} onGreat={handleGreat} onService={handleService} />
+          </Stack>
+        ) : null}
+      </AdminModal>
+
+      <AdminModal
+        opened={Boolean(pendingDecision)}
+        onClose={() => setPendingDecision(null)}
+        title={pendingDecision?.action === 'reject' ? 'Reject try-on result' : 'Approve try-on result'}
+        size="md"
+      >
+        {pendingDecision ? (
+          <Stack gap="md">
+            <Text size="sm">
+              {pendingDecision.action === 'approve'
+                ? `This publishes the result to ${resolveDisplayName(pendingDecision.row.userName)} immediately -- there is no undo.`
+                : `This rejects the result for ${resolveDisplayName(pendingDecision.row.userName)} and archives it out of the active queue.`}
+            </Text>
+            {pendingDecision.action === 'reject' ? (
+              <Textarea
+                label="Reason (optional)"
+                placeholder="Why is this being rejected? Visible in the result's audit history."
+                value={rejectReason}
+                onChange={(event) => setRejectReason(event.currentTarget.value)}
+                minRows={2}
+                autosize
+              />
+            ) : null}
+            <Group justify="flex-end" gap="xs">
+              <Button variant="subtle" onClick={() => setPendingDecision(null)}>
+                Cancel
+              </Button>
+              <SemanticButton
+                action={pendingDecision.action === 'approve' ? 'tryon:approve' : 'tryon:reject'}
+                loading={busyId === `${pendingDecision.row.id}:${pendingDecision.action}`}
+                onClick={() => confirmPendingDecision()}
+              >
+                {pendingDecision.action === 'approve' ? 'Approve' : 'Reject'}
+              </SemanticButton>
+            </Group>
           </Stack>
         ) : null}
       </AdminModal>

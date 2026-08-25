@@ -51,6 +51,7 @@ interface TryOnQueueTableProps {
   totalCount?: number;
   statusFilter?: string;
   search?: string;
+  eventId?: string;
 }
 
 function toneForStatus(status: string): CameraStatusTone {
@@ -230,6 +231,7 @@ export default function TryOnQueueTable({
   totalCount = rows.length,
   statusFilter = '',
   search = '',
+  eventId = '',
 }: TryOnQueueTableProps) {
   const router = useRouter();
   const { confirm } = useGdsConfirm();
@@ -257,6 +259,7 @@ export default function TryOnQueueTable({
       });
       if (statusFilter) params.set('status', statusFilter);
       if (search) params.set('search', search);
+      if (eventId) params.set('eventId', eventId);
 
       const response = await fetch(`/api/admin/tryon-jobs?${params.toString()}`, { cache: 'no-store' });
       const payload = await response.json().catch(() => ({}));
@@ -273,7 +276,7 @@ export default function TryOnQueueTable({
     } finally {
       setIsLoadingMore(false);
     }
-  }, [displayRows.length, hasMore, isLoadingMore, search, statusFilter]);
+  }, [displayRows.length, eventId, hasMore, isLoadingMore, search, statusFilter]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -483,12 +486,19 @@ export default function TryOnQueueTable({
               {(row.status === 'failed' || row.status === 'retry_wait' || row.status === 'done') ? (
                 <div style={{ display: 'grid', gap: '0.5rem' }}>
                   {(() => {
+                    // Default to a preset OTHER than the one this job already used --
+                    // an operator rerunning a failed job is almost always here because
+                    // that preset didn't work. Same fallback order as vetting's rerun
+                    // picker: only repeat it (or fall to the catalog default) when
+                    // there's no alternative to offer.
+                    const usedSetupId = row.processing.resolvedSetup?.setupId ?? row.request.setupId ?? null;
+                    const alternativeSetupId = setupOptions.find((setup) => setup.setupId !== usedSetupId)?.setupId;
                     const selectedSetupId =
                       selectedSetupByJob[row.jobId] ??
-                      (row.processing.resolvedSetup?.setupId ??
-                        (row.request.setupId && setupOptions.some((setup) => setup.setupId === row.request.setupId)
-                          ? row.request.setupId
-                          : defaultSetupId));
+                      alternativeSetupId ??
+                      (usedSetupId && setupOptions.some((setup) => setup.setupId === usedSetupId)
+                        ? usedSetupId
+                        : defaultSetupId);
                     return (
                       <>
                         {setupOptions.length > 0 ? (
@@ -522,7 +532,7 @@ export default function TryOnQueueTable({
                           aria-label={`Rerun try-on job ${row.jobId}`}
                           onClick={() => void handleRerun(row.jobId, selectedSetupId)}
                         >
-                          Rerun job
+                          Rerun
                         </SemanticButton>
                       </>
                     );

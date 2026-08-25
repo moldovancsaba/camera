@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { requireAuth, apiForbidden, apiSuccess, withErrorHandler } from '@/lib/api';
 import { COLLECTIONS, type TryOnJob } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
+import { resolveTryOnAnalyticsEventScope } from '@/lib/tryon/analytics';
 
 function toQueueRow(job: Partial<TryOnJob>) {
   return {
@@ -57,12 +58,23 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = request.nextUrl;
   const status = searchParams.get('status')?.trim();
   const search = searchParams.get('search')?.trim();
+  const eventId = searchParams.get('eventId')?.trim();
   const offset = Math.max(0, Number.parseInt(searchParams.get('offset') || '0', 10) || 0);
   const limit = Math.max(1, Math.min(100, Number.parseInt(searchParams.get('limit') || '100', 10) || 100));
+
+  const db = await connectToDatabase();
 
   const query: Record<string, unknown> = {};
   if (status) {
     query.status = status;
+  }
+  // Keeps the event scope alive across infinite-scroll pages -- without this
+  // the queue's "load more" silently widened back to every event's jobs.
+  if (eventId) {
+    const eventScope = await resolveTryOnAnalyticsEventScope(db, eventId);
+    if (eventScope.eventMongoId) {
+      query['source.eventMongoId'] = eventScope.eventMongoId;
+    }
   }
   if (search) {
     query.$or = [
@@ -74,7 +86,6 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ];
   }
 
-  const db = await connectToDatabase();
   const [jobs, total] = await Promise.all([
     db
       .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)

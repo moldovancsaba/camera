@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import type { Filter } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS, type TryOnJob } from '@/lib/db/schemas';
@@ -10,6 +9,8 @@ import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import TryOnQueueTable, { type QueueRow } from '@/components/admin/TryOnQueueTable';
 import { buildTryOnQueueStatusCountsQuery } from '@/lib/tryon/queue-status';
 import { resolveEventNamesByMongoId } from '@/lib/tryon/event-names';
+import { resolveTryOnAnalyticsEventScope, type TryOnAnalyticsEventScope } from '@/lib/tryon/analytics';
+import EventPicker from '@/components/admin/EventPicker';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,7 +82,7 @@ function toQueueRow(job: Partial<TryOnJob>): QueueRow | null {
 export default async function AdminTryOnQueuePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ status?: string; search?: string }>;
+  searchParams?: Promise<{ status?: string; search?: string; eventId?: string }>;
 }) {
   const session = await getSession();
   if (!isGlobalAdminSession(session)) {
@@ -91,6 +92,7 @@ export default async function AdminTryOnQueuePage({
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const statusFilter = (typeof resolvedSearchParams?.status === 'string' ? resolvedSearchParams.status.trim() : '') as QueueStatusFilter;
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
+  const rawEventId = typeof resolvedSearchParams?.eventId === 'string' ? resolvedSearchParams.eventId.trim() : '';
 
   let rows: QueueRow[] = [];
   let dbError = null;
@@ -99,15 +101,28 @@ export default async function AdminTryOnQueuePage({
   let queuedJobCount = 0;
   let retryWaitJobCount = 0;
   let failedJobCount = 0;
+  let eventScope: TryOnAnalyticsEventScope = {};
+  let eventId = rawEventId;
 
   try {
     const db = await connectToDatabase();
     setupOptions = await listActiveTryOnSetups(db);
 
-    const query: Filter<TryOnJob> = {};
+    // Same dual-namespace resolution vetting and analytics already use --
+    // queue links can arrive with either the event UUID or its Mongo _id.
+    if (rawEventId) {
+      eventScope = await resolveTryOnAnalyticsEventScope(db, rawEventId);
+      eventId = eventScope.eventId ?? rawEventId;
+    }
+
+    const query: Record<string, unknown> = {};
 
     if (statusFilter) {
       query.status = statusFilter;
+    }
+
+    if (eventScope.eventMongoId) {
+      query['source.eventMongoId'] = eventScope.eventMongoId;
     }
 
     if (search) {
@@ -149,6 +164,20 @@ export default async function AdminTryOnQueuePage({
     dbError = serializeMongoError(error);
   }
 
+  // Every link this page emits carries the active event scope forward, the
+  // same convention vetting uses so "Retrying only" and search don't silently
+  // drop an operator back into the all-events queue.
+  const queueHref = (params: Record<string, string> = {}, { includeEvent = true } = {}) => {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value) qs.set(key, value);
+    }
+    if (includeEvent && eventId) qs.set('eventId', eventId);
+    const suffix = qs.toString();
+    return suffix ? `/admin/tryon/queue?${suffix}` : '/admin/tryon/queue';
+  };
+  const eventRemoveHref = queueHref(statusFilter ? { status: statusFilter } : {}, { includeEvent: false });
+
   return (
     <AdminListPageShell
       eyebrow="Apps"
@@ -168,14 +197,25 @@ export default async function AdminTryOnQueuePage({
         defaultValue: search,
         label: 'Search queue',
         placeholder: 'Search job id, submission id, garment id, setup id, or source image URL',
-        clearHref: statusFilter ? `/admin/tryon/queue?status=${encodeURIComponent(statusFilter)}` : '/admin/tryon/queue',
-        hiddenFields: statusFilter ? { status: statusFilter } : undefined,
+        clearHref: queueHref(statusFilter ? { status: statusFilter } : {}),
+        hiddenFields: {
+          ...(statusFilter ? { status: statusFilter } : {}),
+          ...(eventId ? { eventId } : {}),
+        },
       }}
-      toolbarFilters={statusFilter ? [{ label: 'Status', value: formatStatusLabel(statusFilter) }] : undefined}
-      toolbarTrailing={{ href: '/admin/tryon/queue?status=retry_wait', label: 'Retrying only' }}
+      toolbarFilters={
+        statusFilter || eventId
+          ? [
+              ...(statusFilter ? [{ label: 'Status', value: formatStatusLabel(statusFilter) }] : []),
+              ...(eventId ? [{ label: 'Event', value: eventScope.eventName ?? eventId, removeHref: eventRemoveHref }] : []),
+            ]
+          : undefined
+      }
+      toolbarTrailing={{ href: queueHref({ status: 'retry_wait' }), label: 'Retrying only' }}
+      beforeToolbar={!eventId ? <EventPicker basePath="/admin/tryon/queue" /> : undefined}
       dbError={dbError}
     >
-      <TryOnQueueTable rows={rows} setupOptions={setupOptions} totalCount={totalJobCount} statusFilter={statusFilter} search={search} />
+      <TryOnQueueTable rows={rows} setupOptions={setupOptions} totalCount={totalJobCount} statusFilter={statusFilter} search={search} eventId={eventId} />
     </AdminListPageShell>
   );
 }
