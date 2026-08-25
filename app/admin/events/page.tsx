@@ -121,6 +121,8 @@ export default async function EventsPage({
       eventReferenceById.set(id, refs);
       eventRows.push({
         id,
+        eventUuid:
+          typeof event.eventId === 'string' && event.eventId.trim().length > 0 ? event.eventId : null,
         name: event.name || 'Untitled event',
         description: event.description ?? null,
         partnerName: event.partnerName || '—',

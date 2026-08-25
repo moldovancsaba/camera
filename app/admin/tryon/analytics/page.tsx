@@ -9,9 +9,11 @@ import {
   collectTryOnAnalytics,
   collectCrossEventUserAnalytics,
   collectEventSpecificStats,
+  resolveTryOnAnalyticsEventScope,
   type TryOnAnalyticsBucket,
   type CrossEventAnalyticsResult,
   type EventSpecificStats,
+  type TryOnAnalyticsEventScope,
 } from '@/lib/tryon/analytics';
 import HourlyOutcomeChart from '@/components/admin/HourlyOutcomeChart';
 import TryOnAnalyticsTables from '@/components/admin/TryOnAnalyticsTables';
@@ -45,12 +47,21 @@ export default async function AdminTryOnAnalyticsPage({
   let crossEventAnalytics: CrossEventAnalyticsResult | null = null;
   let eventStats: EventSpecificStats | null = null;
   let dbError = null;
+  let eventScope: TryOnAnalyticsEventScope = {};
 
   try {
     const db = await connectToDatabase();
+    // WHAT: Resolve the event reference to both key namespaces before filtering.
+    // WHY: Submissions are UUID-keyed and jobs are Mongo-id-keyed; passing the raw
+    // reference to both (the previous behavior) left half of every event-filtered
+    // funnel silently at zero — whichever half was keyed by the other namespace.
+    if (eventId) {
+      eventScope = await resolveTryOnAnalyticsEventScope(db, eventId);
+    }
     analytics = await collectTryOnAnalytics(db, {
       bucket,
-      eventId: eventId || undefined,
+      eventId: eventScope.eventId ?? (eventId || undefined),
+      eventMongoId: eventScope.eventMongoId,
       from: from || undefined,
       to: to || undefined,
     });
@@ -58,7 +69,7 @@ export default async function AdminTryOnAnalyticsPage({
     if (!eventId) {
       crossEventAnalytics = await collectCrossEventUserAnalytics(db);
     } else {
-      eventStats = await collectEventSpecificStats(db, eventId);
+      eventStats = await collectEventSpecificStats(db, eventScope.eventId ?? eventId);
     }
   } catch (error) {
     console.error('Error loading try-on analytics:', error);
@@ -95,21 +106,34 @@ export default async function AdminTryOnAnalyticsPage({
           : undefined
       }
       toolbarFilters={
-        [
-          ...(bucket ? [{ label: 'Bucket', value: bucket }] : []),
-          ...(eventId ? [{ label: 'Event', value: eventId }] : []),
-          ...(from ? [{ label: 'From', value: from }] : []),
-          ...(to ? [{ label: 'To', value: to }] : []),
-        ].length
+        bucket || eventId || from || to
           ? [
               ...(bucket ? [{ label: 'Bucket', value: bucket }] : []),
-              ...(eventId ? [{ label: 'Event', value: eventId }] : []),
+              ...(eventId
+                ? [
+                    {
+                      label: 'Event',
+                      value: eventScope.eventName ?? eventId,
+                      // Drop only the event scope, keep bucket/date filters.
+                      removeHref: `/admin/tryon/analytics?${new URLSearchParams({
+                        ...(bucket ? { bucket } : {}),
+                        ...(from ? { from } : {}),
+                        ...(to ? { to } : {}),
+                      }).toString()}`,
+                    },
+                  ]
+                : []),
               ...(from ? [{ label: 'From', value: from }] : []),
               ...(to ? [{ label: 'To', value: to }] : []),
             ]
           : undefined
       }
-      toolbarTrailing={{ href: '/admin/tryon-results', label: 'Open Vetting' }}
+      toolbarTrailing={{
+        href: eventId
+          ? `/admin/tryon/vetting?eventId=${encodeURIComponent(eventScope.eventId ?? eventId)}`
+          : '/admin/tryon/vetting',
+        label: 'Open Vetting',
+      }}
       dbError={dbError}
     >
       {dbError ? <DatabaseConnectionAlert diagnosis={dbError} /> : null}

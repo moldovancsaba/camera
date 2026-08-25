@@ -57,8 +57,13 @@ export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTr
   // GDS AdminResourceCard renders every non-danger primary/secondary action with
   // the "edit" label, and ignores onPreview when a primary action exists. To avoid
   // multiple identical "Edit" buttons we keep no primary action (the garment image
-  // opens via onPreview's Preview affordance), a single 'edit' secondary, and the
-  // Asset Builder as an icon action (its own slot).
+  // opens via onPreview's Preview affordance) and a single 'edit' secondary.
+  // WHAT: The former "Asset Builder" icon action is removed, not repointed.
+  // WHY: It linked to /admin/tryon/analytics?garment=..., but the analytics page
+  // has no garment filter at all — the param was silently dropped and the
+  // operator landed on unfiltered global analytics under a label promising a
+  // per-garment view. A dead affordance is worse than none; per-garment
+  // analytics is roadmapped separately.
   const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedTryOnSuitRow>> = [
     {
       id: 'edit',
@@ -66,14 +71,6 @@ export default function TryOnSuitsInventoryList({ suits }: { suits: SerializedTr
       kind: 'secondary',
       onSelect: (suit) => {
         window.location.href = `/admin/tryon/suits/${suit.id}/edit`;
-      },
-    },
-    {
-      id: 'analytics',
-      label: 'Asset Builder',
-      kind: 'icon',
-      onSelect: (suit) => {
-        window.location.href = `/admin/tryon/analytics?garment=${encodeURIComponent(suit.leatherSuitId)}`;
       },
     },
   ];

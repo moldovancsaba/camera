@@ -1,5 +1,48 @@
 # RELEASE_NOTES.md
 
+## v12.2.7 — Phase 0 of the admin UX audit: seven event-scope bugs in try-on operations
+
+First delivery from the operator-journey UX audit (roadmap Phases 1–5 to
+follow). All verified against real production data before shipping — the
+"OLD query = 0, FIXED query = 16" contrast below is a real event's real
+numbers (Brain Bar 2026 x AUDI F1).
+
+- **Events-list Vetting action sent the wrong id namespace.** It linked
+  vetting with the event's Mongo `_id`, but submissions are keyed by the
+  event UUID — so the badge (which counts across both namespaces) showed a
+  non-zero number while the click produced an empty list. Old query matched
+  0 results; fixed query matches 16 on the same event. The row model now
+  carries the UUID (`SerializedEventRow.eventUuid`) and vetting also
+  defensively canonicalizes whichever namespace arrives
+  (`resolveTryOnAnalyticsEventScope`).
+- **Event-filtered analytics always had one half at zero.** One `eventId`
+  string was applied to UUID-keyed submissions AND Mongo-id-keyed jobs
+  (`source.eventMongoId`); whichever namespace was passed, the other
+  collection's filter could never match. Verified: old single-key funnel
+  showed submitted=0 for an event with 18 jobs. `TryOnAnalyticsFilters` now
+  carries both keys; page + both API routes resolve them once per request.
+- **Vetting's count tiles ignored the event filter** — global counts above a
+  scoped list. All seven tiles (and the failed-jobs count) now respect the
+  active scope.
+- **"Clear" and "Pending only" silently dropped the event scope.** Every
+  link the vetting page emits now goes through one scoped href builder.
+- **The event filter chip showed a raw id and couldn't be cleared.** It now
+  shows the event's name with a remove affordance that drops only the event
+  scope (GDS DataToolbar's own onRemove, newly wired through
+  AdminListPageShell).
+- **Dead "Asset Builder" action removed** from the garment list — it linked
+  to `/admin/tryon/analytics?garment=…` but the analytics page has no
+  garment filter; the operator landed on unfiltered global analytics.
+  Per-garment analytics is roadmapped, not faked.
+- **Queue rows rendered the raw event Mongo hex.** Both queue views now
+  batch-resolve and show the event's name (new `lib/tryon/event-names.ts`).
+  Also fixes that line's `--gds-color-muted`, a token GDS never defined.
+- **Route canonicalization:** every internal link now targets
+  `/admin/tryon/vetting` (the nav's path); previously the page's own tabs
+  and toolbar hardcoded the legacy `/admin/tryon-results`, silently
+  URL-hopping anyone who entered via the nav. The legacy path still renders
+  as before.
+
 ## v12.2.5 — CI now runs the full release:check; the lint "backlog" was never real
 
 - **eslint ignores `.claude/**`.** Every one of the 1256 lint errors and all

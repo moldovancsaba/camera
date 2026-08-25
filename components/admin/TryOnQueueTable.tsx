@@ -17,7 +17,9 @@ export interface QueueRow {
   source: {
     submissionId: string;
     imageUrl: string;
-  eventMongoId?: string | null;
+    eventMongoId?: string | null;
+    // Resolved server-side from eventMongoId; the raw hex is unreadable.
+    eventName?: string | null;
   };
   request: {
     leatherSuitId: string;
@@ -401,9 +403,12 @@ export default function TryOnQueueTable({
               <span style={{ display: '-webkit-box', fontSize: '0.875rem', overflow: 'hidden', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>
                 {row.source.imageUrl}
               </span>
-              {row.source.eventMongoId ? (
-                <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
-                  Event {row.source.eventMongoId}
+              {row.source.eventName || row.source.eventMongoId ? (
+                // --gds-color-muted (the previous token here) is not a variable GDS
+                // defines; it resolved to nothing. Mantine's dimmed token is what the
+                // rest of this admin uses for secondary text.
+                <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
+                  Event {row.source.eventName ?? row.source.eventMongoId}
                 </span>
               ) : null}
             </div>

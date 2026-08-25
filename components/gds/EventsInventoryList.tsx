@@ -11,6 +11,12 @@ import { getStatusChipContent } from '@/lib/gds/statusChipContent';
 
 export interface SerializedEventRow {
   id: string;
+  // WHAT: The event's UUID (`events.eventId`), distinct from `id` (Mongo _id hex).
+  // WHY: Submissions are keyed by the UUID, so any link that filters submissions
+  // (vetting, analytics) must carry this — linking with the Mongo id produced a
+  // filtered list that could never match anything while the badge count (which
+  // matches both namespaces) showed a non-zero number.
+  eventUuid: string | null;
   name: string;
   description?: string | null;
   partnerName: string;
@@ -61,7 +67,7 @@ export default function EventsInventoryList({
       kind: 'icon',
       disabled: (event) => event.pendingTryOnVettingCount <= 0,
       onSelect: (event) => {
-        window.location.href = `/admin/tryon/vetting?eventId=${encodeURIComponent(event.id)}`;
+        window.location.href = `/admin/tryon/vetting?eventId=${encodeURIComponent(event.eventUuid ?? event.id)}`;
       },
     },
   ];

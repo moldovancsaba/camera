@@ -87,7 +87,7 @@ export default async function AdminTryOnIdentityPage({
         { label: 'Visible rows', value: rows.length, iconKey: 'users' },
         { label: 'Actionable gaps', value: actionableCount, iconKey: 'users' },
       ]}
-      toolbarTrailing={{ href: '/admin/tryon-results', label: 'Open Vetting' }}
+      toolbarTrailing={{ href: '/admin/tryon/vetting', label: 'Open Vetting' }}
       dbError={dbError}
     >
       {dbError ? <DatabaseConnectionAlert diagnosis={dbError} /> : null}

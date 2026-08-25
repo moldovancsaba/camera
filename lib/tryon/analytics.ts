@@ -1,13 +1,69 @@
-import type { Db } from 'mongodb';
+import { ObjectId, type Db } from 'mongodb';
 import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob } from '@/lib/db/schemas';
 
 export type TryOnAnalyticsBucket = 'approved' | 'rejected' | 'service' | 'greatest';
 
 export interface TryOnAnalyticsFilters {
   bucket?: TryOnAnalyticsBucket | '';
+  // WHAT: two distinct event keys, because the two collections this module reads
+  // are keyed differently: submissions carry the event UUID (`eventId`/`eventIds`),
+  // while try-on jobs carry the event's Mongo _id (`source.eventMongoId`).
+  // WHY: a single `eventId` applied to both (the previous shape) guaranteed that
+  // one half of every event-filtered report was silently empty — whichever
+  // namespace the caller happened to pass, the other collection's filter could
+  // never match. Callers should resolve both via resolveTryOnAnalyticsEventScope.
   eventId?: string;
+  eventMongoId?: string;
   from?: string;
   to?: string;
+}
+
+export interface TryOnAnalyticsEventScope {
+  eventId?: string;
+  eventMongoId?: string;
+  eventName?: string;
+}
+
+// WHAT: Resolve a raw event reference (UUID or Mongo _id hex — callers link with
+// both, historically) to the canonical pair of keys plus the display name.
+// WHY: One lookup here lets every analytics consumer filter each collection by
+// its own key and show the event's name instead of a raw id.
+export async function resolveTryOnAnalyticsEventScope(
+  db: Db,
+  rawEventId: string
+): Promise<TryOnAnalyticsEventScope> {
+  const raw = rawEventId.trim();
+  if (!raw) return {};
+  const clauses: Record<string, unknown>[] = [{ eventId: raw }];
+  if (ObjectId.isValid(raw)) {
+    clauses.push({ _id: new ObjectId(raw) });
+  }
+  const event = await db
+    .collection(COLLECTIONS.EVENTS)
+    .findOne({ $or: clauses }, { projection: { eventId: 1, name: 1 } });
+  if (!event) {
+    // Unknown reference: keep the raw value on both keys so behavior degrades to
+    // the old "filter matches nothing it can't match" rather than silently
+    // widening to all events.
+    return { eventId: raw, eventMongoId: ObjectId.isValid(raw) ? raw : undefined };
+  }
+  return {
+    eventId: typeof event.eventId === 'string' ? event.eventId : raw,
+    eventMongoId: event._id ? String(event._id) : undefined,
+    eventName: typeof event.name === 'string' ? event.name : undefined,
+  };
+}
+
+// WHAT: The submission-side event clause, matching either stored namespace.
+// WHY: Submissions normally carry the UUID, but matching both keys costs nothing
+// and keeps this list consistent with the events-list badge aggregation, which
+// also counts across both.
+function submissionEventClause(filters: TryOnAnalyticsFilters): Record<string, unknown> | null {
+  const refs = [filters.eventId, filters.eventMongoId].filter(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0
+  );
+  if (refs.length === 0) return null;
+  return { $or: [{ eventId: { $in: refs } }, { eventIds: { $elemMatch: { $in: refs } } }] };
 }
 
 export interface TryOnAnalyticsRow {
@@ -109,9 +165,7 @@ export async function collectTryOnFunnelMetrics(
     ]).toArray(),
     db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
       submissionKind: 'tryon_result',
-      ...(filters.eventId
-        ? { $or: [{ eventId: filters.eventId }, { eventIds: { $in: [filters.eventId] } }] }
-        : {}),
+      ...(submissionEventClause(filters) ?? {}),
     }),
     db.collection<Submission>(COLLECTIONS.SUBMISSIONS).find(resultMatch).limit(5000).toArray(),
   ]);
@@ -223,8 +277,9 @@ function buildMatch(filters: TryOnAnalyticsFilters) {
     match['tryOnModerationArchive.bucket'] = { $in: ['approved', 'rejected', 'service'] };
   }
 
-  if (filters.eventId) {
-    match.$or = [{ eventId: filters.eventId }, { eventIds: { $in: [filters.eventId] } }];
+  const eventClause = submissionEventClause(filters);
+  if (eventClause) {
+    Object.assign(match, eventClause);
   }
 
   const archivedAt: Record<string, string> = {};
@@ -239,8 +294,11 @@ function buildMatch(filters: TryOnAnalyticsFilters) {
 
 function buildJobMatch(filters: TryOnAnalyticsFilters) {
   const match: Record<string, unknown> = {};
-  if (filters.eventId) {
-    match['source.eventMongoId'] = filters.eventId;
+  // Jobs are keyed by the event's Mongo _id, not the UUID. Fall back to
+  // filters.eventId only for legacy callers that pass a single reference.
+  const jobEventId = filters.eventMongoId ?? filters.eventId;
+  if (jobEventId) {
+    match['source.eventMongoId'] = jobEventId;
   }
 
   const createdAt: Record<string, string> = {};

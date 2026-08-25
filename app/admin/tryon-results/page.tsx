@@ -9,6 +9,8 @@ import OldestVettingResultCard from '@/components/admin/OldestVettingResultCard'
 import TryOnResultModerationTable, { type ModerationRow } from '@/components/admin/TryOnResultModerationTable';
 import TryOnQueueTable, { type QueueRow } from '@/components/admin/TryOnQueueTable';
 import { listActiveTryOnSetups, type TryOnSetup } from '@/lib/tryon/setup-resolution';
+import { resolveTryOnAnalyticsEventScope, type TryOnAnalyticsEventScope } from '@/lib/tryon/analytics';
+import { resolveEventNamesByMongoId } from '@/lib/tryon/event-names';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import { ConsumerDashboardGrid, ProductCard } from '@/components/gds/ClientWrappers';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
@@ -123,7 +125,7 @@ export default async function AdminTryOnResultsPage({
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const reviewStatus = typeof resolvedSearchParams?.reviewStatus === 'string' ? resolvedSearchParams.reviewStatus.trim() : '';
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
-  const eventId = typeof resolvedSearchParams?.eventId === 'string' ? resolvedSearchParams.eventId.trim() : '';
+  const rawEventId = typeof resolvedSearchParams?.eventId === 'string' ? resolvedSearchParams.eventId.trim() : '';
   const archive = typeof resolvedSearchParams?.archive === 'string' ? resolvedSearchParams.archive.trim() : '';
   const failed = typeof resolvedSearchParams?.failed === 'string' ? resolvedSearchParams.failed.trim() : '';
   const resultPageLimit = 24;
@@ -175,10 +177,32 @@ export default async function AdminTryOnResultsPage({
   let failedJobRows: QueueRow[] = [];
   let resultTotalCount = 0;
   let setupOptions: TryOnSetup[] = [];
+  let eventScope: TryOnAnalyticsEventScope = {};
+  // Canonical UUID carried by every scoped link on this page; falls back to the
+  // raw param so an unresolvable reference still round-trips instead of vanishing.
+  let eventId = rawEventId;
 
   try {
     const db = await connectToDatabase();
     setupOptions = await listActiveTryOnSetups(db);
+
+    // WHAT: Resolve the incoming event reference (links historically carried
+    // either the UUID or the Mongo _id) to both canonical keys plus the name.
+    // WHY: Submissions are UUID-keyed and jobs are Mongo-id-keyed; resolving once
+    // lets the list, every count tile, and the failed-jobs view all scope
+    // correctly, and lets the filter chip show the event's name instead of a hex.
+    if (rawEventId) {
+      eventScope = await resolveTryOnAnalyticsEventScope(db, rawEventId);
+      eventId = eventScope.eventId ?? rawEventId;
+    }
+    const eventRefs = [eventScope.eventId, eventScope.eventMongoId].filter(
+      (value): value is string => typeof value === 'string' && value.trim().length > 0
+    );
+    const submissionEventClause =
+      eventRefs.length > 0
+        ? { $or: [{ eventId: { $in: eventRefs } }, { eventIds: { $elemMatch: { $in: eventRefs } } }] }
+        : null;
+
     const query: Record<string, unknown> = {
       submissionKind: 'tryon_result',
     };
@@ -202,8 +226,8 @@ export default async function AdminTryOnResultsPage({
     if (archiveBucket && reviewStatus) {
       query.reviewStatus = reviewStatus;
     }
-    if (eventId) {
-      query.$or = [{ eventId }, { eventIds: { $in: [eventId] } }];
+    if (submissionEventClause) {
+      query.$or = submissionEventClause.$or;
     }
     if (search) {
       const regex = { $regex: escapeRegex(search), $options: 'i' };
@@ -224,6 +248,9 @@ export default async function AdminTryOnResultsPage({
     }
 
     const failedJobsQuery: Record<string, unknown> = { status: 'failed' };
+    if (eventScope.eventMongoId) {
+      failedJobsQuery['source.eventMongoId'] = eventScope.eventMongoId;
+    }
     if (search) {
       const regex = { $regex: escapeRegex(search), $options: 'i' };
       failedJobsQuery.$or = [
@@ -236,6 +263,13 @@ export default async function AdminTryOnResultsPage({
       ];
     }
 
+    // WHAT: The event scope applied to every count tile below.
+    // WHY: The tiles previously counted globally even while the list was
+    // event-filtered — "Vetting (412)" above a 3-row scoped list. A tile's number
+    // must describe the same universe as the list it links to.
+    const scopedCount = (base: Record<string, unknown>): Record<string, unknown> =>
+      submissionEventClause ? { ...base, ...submissionEventClause } : base;
+
     const [docs, resultTotal, pending, archivedApproved, archivedRejected, archivedService, greatestHits, archivedSuperseded, failedJobs, failedJobsTotal] = await Promise.all([
       db
         .collection<Submission>(COLLECTIONS.SUBMISSIONS)
@@ -244,38 +278,38 @@ export default async function AdminTryOnResultsPage({
         .limit(resultPageLimit)
         .toArray() as Promise<Array<Submission & { _id: { toString(): string } }>>,
       db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments(query),
-      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
+      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments(scopedCount({
         submissionKind: 'tryon_result',
         reviewStatus: 'pending_review',
         'tryOnModerationArchive.archived': { $ne: true },
-      }),
-      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
+      })),
+      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments(scopedCount({
         submissionKind: 'tryon_result',
         'tryOnModerationArchive.archived': true,
         'tryOnModerationArchive.bucket': 'approved',
-      }),
-      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
+      })),
+      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments(scopedCount({
         submissionKind: 'tryon_result',
         'tryOnModerationArchive.archived': true,
         'tryOnModerationArchive.bucket': 'rejected',
         'tryOnModerationArchive.reason': { $ne: 'quality_rerun_superseded' },
-      }),
-      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
+      })),
+      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments(scopedCount({
         submissionKind: 'tryon_result',
         'tryOnModerationArchive.archived': true,
         'tryOnModerationArchive.reason': 'quality_rerun_superseded',
-      }),
-      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
+      })),
+      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments(scopedCount({
         submissionKind: 'tryon_result',
         'tryOnModerationArchive.archived': true,
         'tryOnModerationArchive.bucket': 'service',
-      }),
-      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
+      })),
+      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments(scopedCount({
         submissionKind: 'tryon_result',
         'tryOnModerationArchive.archived': true,
         'tryOnModerationArchive.bucket': 'approved',
         'metadata.tryOnGreat': true,
-      }),
+      })),
       failedJobsMode
         ? db
             .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
@@ -284,7 +318,10 @@ export default async function AdminTryOnResultsPage({
             .limit(50)
             .toArray()
         : Promise.resolve([]),
-      db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments({ status: 'failed' }),
+      db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments({
+        status: 'failed',
+        ...(eventScope.eventMongoId ? { 'source.eventMongoId': eventScope.eventMongoId } : {}),
+      }),
     ]);
 
     pendingCount = pending;
@@ -296,6 +333,17 @@ export default async function AdminTryOnResultsPage({
     failedJobCount = failedJobsTotal;
     resultTotalCount = resultTotal;
     failedJobRows = failedJobs.map(toQueueRow).filter((row): row is QueueRow => Boolean(row));
+    if (failedJobRows.length > 0) {
+      const eventNames = await resolveEventNamesByMongoId(
+        db,
+        failedJobRows.map((row) => row.source.eventMongoId)
+      );
+      failedJobRows = failedJobRows.map((row) =>
+        row.source.eventMongoId && eventNames.has(row.source.eventMongoId)
+          ? { ...row, source: { ...row.source, eventName: eventNames.get(row.source.eventMongoId) ?? null } }
+          : row
+      );
+    }
 
     const sourceObjectIds = docs
       .map((doc) => doc.sourceSubmissionId)
@@ -399,6 +447,42 @@ export default async function AdminTryOnResultsPage({
 
   const oldestWaitingRow = !failedJobsMode && !archiveBucket ? rows[0] : null;
 
+  // WHAT: Every link this page emits goes through here so the active event scope
+  // survives navigation, on the canonical /admin/tryon/vetting path.
+  // WHY: The previous hardcoded links (a) silently dropped ?eventId= on "Clear"
+  // and "Pending only", dumping a scoped operator back into the all-events
+  // firehose, and (b) pointed at the legacy /admin/tryon-results path, silently
+  // URL-hopping anyone who entered via /admin/tryon/vetting.
+  const vettingHref = (params: Record<string, string> = {}, { includeEvent = true } = {}) => {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value) qs.set(key, value);
+    }
+    if (includeEvent && eventId) qs.set('eventId', eventId);
+    const suffix = qs.toString();
+    return suffix ? `/admin/tryon/vetting?${suffix}` : '/admin/tryon/vetting';
+  };
+  // The chip's × drops only the event scope, keeping every other active filter.
+  const eventRemoveHref = vettingHref(
+    {
+      ...(failedJobsMode ? { failed: '1' } : {}),
+      ...(archiveBucket ? { archive: archiveBucket } : {}),
+      ...(reviewStatus ? { reviewStatus } : {}),
+      ...(search ? { search } : {}),
+    },
+    { includeEvent: false }
+  );
+
+  const activeFilterChips = [
+    ...(failedJobsMode ? [{ label: 'Queue', value: 'failed jobs' }] : []),
+    ...(archiveBucket ? [{ label: 'Archive', value: archiveBucket }] : []),
+    ...(reviewStatus ? [{ label: 'Review Status', value: reviewStatus.replace(/_/g, ' ') }] : []),
+    ...(eventId
+      ? [{ label: 'Event', value: eventScope.eventName ?? eventId, removeHref: eventRemoveHref }]
+      : []),
+    ...(search ? [{ label: 'Search', value: search }] : []),
+  ];
+
   return (
     <AdminListPageShell
       eyebrow="Apps"
@@ -415,10 +499,10 @@ export default async function AdminTryOnResultsPage({
         label: 'Search queue',
         placeholder: 'Search by user, email, event, partner, garment, or job',
         clearHref: failedJobsMode
-          ? '/admin/tryon-results?failed=1'
+          ? vettingHref({ failed: '1' })
           : archiveBucket
-            ? `/admin/tryon-results?archive=${archiveBucket}`
-            : '/admin/tryon-results',
+            ? vettingHref({ archive: archiveBucket })
+            : vettingHref(),
         hiddenFields: {
           ...(reviewStatus ? { reviewStatus } : {}),
           ...(eventId ? { eventId } : {}),
@@ -433,29 +517,11 @@ export default async function AdminTryOnResultsPage({
           ? 'Search archived try-on decisions or return to the active review queue.'
           : 'Search the queue directly or jump to the pending-only review view.'
       }
-      toolbarFilters={
-        [
-          ...(failedJobsMode ? [{ label: 'Queue', value: 'failed jobs' }] : []),
-          ...(archiveBucket ? [{ label: 'Archive', value: archiveBucket }] : []),
-          ...(reviewStatus ? [{ label: 'Review Status', value: reviewStatus.replace(/_/g, ' ') }] : []),
-          ...(eventId ? [{ label: 'Event', value: eventId }] : []),
-          ...(search ? [{ label: 'Search', value: search }] : []),
-        ].length > 0
-          ? [
-              ...(failedJobsMode ? [{ label: 'Queue', value: 'failed jobs' }] : []),
-              ...(archiveBucket ? [{ label: 'Archive', value: archiveBucket }] : []),
-              ...(reviewStatus ? [{ label: 'Review Status', value: reviewStatus.replace(/_/g, ' ') }] : []),
-              ...(eventId ? [{ label: 'Event', value: eventId }] : []),
-              ...(search ? [{ label: 'Search', value: search }] : []),
-            ]
-          : undefined
-      }
+      toolbarFilters={activeFilterChips.length > 0 ? activeFilterChips : undefined}
       toolbarTrailing={{
         href: archiveBucket || failedJobsMode
-          ? '/admin/tryon-results'
-          : search
-            ? `/admin/tryon-results?reviewStatus=pending_review&search=${encodeURIComponent(search)}`
-            : '/admin/tryon-results?reviewStatus=pending_review',
+          ? vettingHref()
+          : vettingHref({ reviewStatus: 'pending_review', ...(search ? { search } : {}) }),
         label: archiveBucket || failedJobsMode ? 'Vetting' : 'Pending only',
       }}
       beforeToolbar={
@@ -467,43 +533,43 @@ export default async function AdminTryOnResultsPage({
           <ConsumerDashboardGrid columns={3}>
             {[
               {
-                href: '/admin/tryon-results',
+                href: vettingHref(),
                 title: `Vetting (${pendingCount})`,
                 description: 'Open the live moderation queue for pending try-on results.',
                 iconKey: 'photoScan' as AdminIconKey,
               },
               {
-                href: '/admin/tryon-results?failed=1',
+                href: vettingHref({ failed: '1' }),
                 title: `Failed Jobs (${failedJobCount})`,
                 description: 'Review failed try-on jobs, inspect their failure reason, and send them back to the worker.',
                 iconKey: 'photo' as AdminIconKey,
               },
               {
-                href: '/admin/tryon-results?archive=approved',
+                href: vettingHref({ archive: 'approved' }),
                 title: `Approved (${archivedApprovedCount})`,
                 description: 'Browse approved items that were archived out of the active vetting queue.',
                 iconKey: 'world' as AdminIconKey,
               },
               {
-                href: '/admin/tryon-results?archive=greatest',
+                href: vettingHref({ archive: 'greatest' }),
                 title: `Greatest Hits (${greatestHitsCount})`,
                 description: 'Best-of selected approved try-on results for event highlights.',
                 iconKey: 'world' as AdminIconKey,
               },
               {
-                href: '/admin/tryon-results?archive=rejected',
+                href: vettingHref({ archive: 'rejected' }),
                 title: `Rejected (${archivedRejectedCount})`,
                 description: 'Browse declined items that were archived out of the active vetting queue.',
                 iconKey: 'photo' as AdminIconKey,
               },
               {
-                href: '/admin/tryon-results?archive=superseded',
+                href: vettingHref({ archive: 'superseded' }),
                 title: `Superseded (${archivedSupersededCount})`,
                 description: 'Quality reruns that replaced a prior result and left the active vetting queue.',
                 iconKey: 'photo' as AdminIconKey,
               },
               {
-                href: '/admin/tryon-results?archive=service',
+                href: vettingHref({ archive: 'service' }),
                 title: `Service (${archivedServiceCount})`,
                 description: 'Browse service photos separated from rejected and approved analytics.',
                 iconKey: 'photo' as AdminIconKey,

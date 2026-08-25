@@ -9,6 +9,7 @@ import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import TryOnQueueTable, { type QueueRow } from '@/components/admin/TryOnQueueTable';
 import { buildTryOnQueueStatusCountsQuery } from '@/lib/tryon/queue-status';
+import { resolveEventNamesByMongoId } from '@/lib/tryon/event-names';
 
 export const dynamic = 'force-dynamic';
 
@@ -133,6 +134,12 @@ export default async function AdminTryOnQueuePage({
     ]);
 
     rows = jobs.map(toQueueRow).filter((row): row is QueueRow => Boolean(row));
+    const eventNames = await resolveEventNamesByMongoId(db, rows.map((row) => row.source.eventMongoId));
+    rows = rows.map((row) =>
+      row.source.eventMongoId && eventNames.has(row.source.eventMongoId)
+        ? { ...row, source: { ...row.source, eventName: eventNames.get(row.source.eventMongoId) ?? null } }
+        : row
+    );
     totalJobCount = totalJobs;
     queuedJobCount = queuedJobs;
     retryWaitJobCount = retryWaitJobs;

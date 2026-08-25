@@ -25,7 +25,10 @@ export interface AdminListPageShellProps {
     hiddenFields?: Record<string, string>;
   };
   toolbarHint?: string;
-  toolbarFilters?: { label: string; value: string }[];
+  // removeHref: when set, the chip renders GDS's remove affordance and clearing
+  // it navigates there — so a scope like an event filter can be dropped without
+  // also discarding every other active filter.
+  toolbarFilters?: { label: string; value: string; removeHref?: string }[];
   toolbarTrailing?: { href: string; label: string };
   beforeToolbar?: React.ReactNode;
   dbError?: MongoConnectionDiagnosis | null;
@@ -115,7 +118,16 @@ export default function AdminListPageShell({
                 </div>
               </div>
             }
-            activeFilters={toolbarFilters?.map((chip) => ({ label: `${chip.label}: ${chip.value}` }))}
+            activeFilters={toolbarFilters?.map((chip) => ({
+              label: `${chip.label}: ${chip.value}`,
+              ...(chip.removeHref
+                ? {
+                    onRemove: () => {
+                      window.location.href = chip.removeHref as string;
+                    },
+                  }
+                : {}),
+            }))}
             createAction={
               toolbarTrailing ? (
                 <Link href={toolbarTrailing.href}>

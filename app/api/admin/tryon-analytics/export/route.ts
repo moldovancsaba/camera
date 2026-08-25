@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { requireAuth, apiBadRequest, apiForbidden, withErrorHandler } from '@/lib/api';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
-import { collectTryOnAnalytics, type TryOnAnalyticsBucket, type TryOnFunnelMetrics } from '@/lib/tryon/analytics';
+import { collectTryOnAnalytics, resolveTryOnAnalyticsEventScope, type TryOnAnalyticsBucket, type TryOnFunnelMetrics } from '@/lib/tryon/analytics';
 
 type ExportSection = 'all' | 'hourly' | 'preset' | 'garment' | 'event' | 'preset_performance' | 'funnel';
 type ExportFormat = 'csv' | 'json';
@@ -78,9 +78,14 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   }
   const resolvedSection = exportSection ?? 'all';
   const db = await connectToDatabase();
+  // Resolve the event reference to both key namespaces (submissions: UUID,
+  // jobs: Mongo _id) so neither half of the export silently filters to zero.
+  const rawEventId = searchParams.get('eventId')?.trim() || '';
+  const eventScope = rawEventId ? await resolveTryOnAnalyticsEventScope(db, rawEventId) : {};
   const analytics = await collectTryOnAnalytics(db, {
     bucket: bucketParam(searchParams.get('bucket')),
-    eventId: searchParams.get('eventId')?.trim() || undefined,
+    eventId: eventScope.eventId ?? (rawEventId || undefined),
+    eventMongoId: eventScope.eventMongoId,
     from: searchParams.get('from')?.trim() || undefined,
     to: searchParams.get('to')?.trim() || undefined,
   });
