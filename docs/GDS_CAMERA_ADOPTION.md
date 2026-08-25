@@ -300,10 +300,10 @@ change, not a version bump), CI (`.github/workflows/ci.yml`) exports the secret 
 `verify:production-guards` -> `build`) verified clean against a real `npm ci` against the
 registry before this landed.
 
-Still needed, outside this session's reach: the same token as a `GITHUB_TOKEN` project
-environment variable in Vercel (this repo deploys manually via `npx vercel@latest --prod`,
-which builds remotely on Vercel's own infrastructure and needs the credential there too) --
-Vercel dashboard/CLI access wasn't available here.
+The same token is also set as a `GITHUB_TOKEN` project environment variable in Vercel
+(Production and Preview, 2026-08-25) -- this repo deploys manually via
+`npx vercel@latest --prod`, which builds remotely on Vercel's own infrastructure and needed
+the credential there too. Confirmed live: the latest Vercel deployment is `READY`.
 
 ## Formal compliance path
 
