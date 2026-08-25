@@ -246,6 +246,7 @@ export interface Event {
   partnerId: string;                 // Reference to parent partner
   partnerName: string;               // Cached partner name for display and filtering
   messmassEventId?: string;          // Cross-ref to the messmass event/project (_id) — shared identity; read by fanmass
+  savetheworldEventId?: string;      // Cross-ref to the savetheworld provisioning call — shared identity, idempotency key
   
   // Event details
   eventDate?: string;                // Optional event date (ISO 8601 timestamp)

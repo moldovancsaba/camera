@@ -126,6 +126,13 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       { unique: true, sparse: true, name: 'events_messmassEventId_unique_sparse' }
     )
   );
+  // Same invariant as messmassEventId above, for the savetheworld provisioning API.
+  await track(COLLECTIONS.EVENTS, () =>
+    db.collection(COLLECTIONS.EVENTS).createIndex(
+      { savetheworldEventId: 1 },
+      { unique: true, sparse: true, name: 'events_savetheworldEventId_unique_sparse' }
+    )
+  );
 
   // --- frames ---
   await track(COLLECTIONS.FRAMES, () =>
