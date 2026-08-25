@@ -53,6 +53,10 @@ interface EventDoc {
   partnerId: string;
   partnerName: string;
   name: string;
+  // Cross-ref to the messmass project this event belongs to (lib/db/schemas.ts
+  // Event.messmassEventId) — read by fanmass, stored on this document already,
+  // just never linked to before.
+  messmassEventId?: string;
   description?: string;
   eventDate?: string;
   location?: string;
@@ -268,6 +272,21 @@ export default async function EventDetailPage({
         status={event.isActive ? 'Active' : 'Inactive'}
         actions={
           <>
+            {event.messmassEventId ? (
+              // WHAT: messmass has stored this event's camera identity since
+              // provisioning (lib/db/schemas.ts Event.messmassEventId) but never
+              // linked back. The reverse of the "Open in Camera" link added to
+              // messmass's events list.
+              <a
+                href="https://messmass.com/admin/events"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: 'none' }}
+                title={`${event.name} was provisioned from messmass — open its events list`}
+              >
+                <Button variant="light">Open in messmass</Button>
+              </a>
+            ) : null}
             {canManageEvent ? (
               <Link href={`/admin/events/${id}/edit`} style={{ textDecoration: 'none' }}>
                 <Button>Edit Event</Button>

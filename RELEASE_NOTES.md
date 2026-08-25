@@ -1,5 +1,36 @@
 # RELEASE_NOTES.md
 
+## v12.2.8 — Phase 1 of the admin UX audit: a real post-login dashboard and one nav config
+
+The audit's #1 complaint was "messmass has a better dashboard when the admin
+arrives after login, camera misses this support." `/admin` used to redirect
+every non-global-admin straight to `/admin/partners` and show global admins
+three inventory counts and five flat links — no queue, vetting, or worker
+signal, even though `/admin/tryon` already computed all of it.
+
+- **`/admin` is now a real landing page for every admin, not just global
+  ones.** Partner-scoped admins used to be redirected away with nothing;
+  they now see the same attention layout scoped to their own partner's
+  events (worker health stays global-admin-only — it's infrastructure, not
+  partner data).
+- **The dashboard shows what needs attention, not just inventory counts.**
+  Pending vetting, active queue depth, worker health, and an active-events
+  list (each with its own pending count) via new `MetricCard`s, computed by
+  `lib/tryon/dashboard-metrics.ts` — extracted from `/admin/tryon`'s
+  existing queries instead of duplicating them a third time.
+- **One nav config, not three.** `AdminChrome`'s sidebar and the dashboard's
+  own hardcoded link grid used to be maintained separately and could
+  silently disagree. `lib/adminNavigation.ts` is now the single source for
+  both, five sections (Overview / Events / Operations / Libraries / Access),
+  each item gated by the same `isVisible(access)` role check.
+- **"Try-On App" is relabeled "Operations."** The audit's other complaint —
+  daily operations (vetting, analytics, cleanup) are event work, not a
+  sub-app — is a framing fix here; the event-scoped workspace tabs that
+  properly resolve it are Phase 2.
+- **Event detail pages link to their messmass counterpart** when
+  `messmassEventId` is set (`app/admin/events/[id]/page.tsx`), mirroring the
+  new messmass → camera link shipped the same day.
+
 ## v12.2.7 — Phase 0 of the admin UX audit: seven event-scope bugs in try-on operations
 
 First delivery from the operator-journey UX audit (roadmap Phases 1–5 to

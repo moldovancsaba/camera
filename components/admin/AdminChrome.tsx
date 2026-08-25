@@ -4,25 +4,15 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AppShell as GdsAppShell } from '@sovereignsquad/gds-admin/client';
-import {
-  IconBrandDatabricks,
-  IconBuildingStore,
-  IconCamera,
-  IconFrame,
-  IconLayoutDashboard,
-  IconLogout,
-  IconPhoto,
-  IconPhotoScan,
-  IconSparkles,
-  IconUsers,
-  IconWorld,
-} from '@tabler/icons-react';
+import { IconCamera, IconLogout, IconUsers } from '@tabler/icons-react';
 import { APP_VERSION } from '@/lib/app-version';
 import SemanticNavLink from '@/components/admin/SemanticNavLink';
 import TourOverlay from '@/components/tour/TourOverlay';
 import TourReplayButton from '@/components/tour/TourReplayButton';
 import { useTourController } from '@/lib/tour/useTourController';
 import { getAdminTourSteps } from '@/lib/tour/config/adminTourSteps';
+import { getVisibleAdminNavSections, type AdminNavigationAccess } from '@/lib/adminNavigation';
+import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 
 interface AdminChromeProps {
   session: {
@@ -32,19 +22,8 @@ interface AdminChromeProps {
     };
     appRole?: 'none' | 'user' | 'admin' | 'superadmin';
   };
-  navigationAccess: {
-    isGlobalAdmin: boolean;
-    hasAnyPartnerAccess: boolean;
-    hasEventsAccess: boolean;
-  };
+  navigationAccess: AdminNavigationAccess;
   children: React.ReactNode;
-}
-
-interface NavItem {
-  href: string;
-  label: string;
-  icon: React.ReactNode;
-  tourId?: string;
 }
 
 // closeMobileNavigation has been removed because GdsAppShell handles mobile menu collapse natively
@@ -64,69 +43,29 @@ export default function AdminChrome({
     }
   }, [pathname]);
 
-  const coreItems: NavItem[] = [];
-  if (navigationAccess.isGlobalAdmin) {
-    coreItems.push({
-      href: '/admin',
-      label: 'Dashboard',
-      icon: <IconLayoutDashboard size={18} />,
-      tourId: 'admin-nav-dashboard',
-    });
-  }
-  if (navigationAccess.hasAnyPartnerAccess) {
-    coreItems.push({
-      href: '/admin/partners',
-      label: 'Partners',
-      icon: <IconBuildingStore size={18} />,
-      tourId: 'admin-nav-partners',
-    });
-  }
-  if (navigationAccess.isGlobalAdmin) {
-    coreItems.push({
-      href: '/admin/users',
-      label: 'Users',
-      icon: <IconUsers size={18} />,
-      tourId: 'admin-nav-users',
-    });
-  }
-
-  const resourceItems: NavItem[] = navigationAccess.isGlobalAdmin
-    ? [
-        { href: '/admin/frames', label: 'Global Frames', icon: <IconFrame size={18} /> },
-        { href: '/admin/logos', label: 'Global Logos', icon: <IconPhoto size={18} /> },
-        { href: '/admin/landing-pages', label: 'Landing Pages', icon: <IconWorld size={18} /> },
-        { href: '/admin/slideshows', label: 'Slideshows', icon: <IconPhotoScan size={18} /> },
-        { href: '/admin/submissions', label: 'Global Galleries', icon: <IconPhotoScan size={18} /> },
-      ]
-    : [];
-
-  const appItems: NavItem[] = [];
-  if (navigationAccess.hasEventsAccess) {
-    appItems.push({
-      href: '/admin/events',
-      label: 'Events',
-      icon: <IconBrandDatabricks size={18} />,
-      tourId: 'admin-nav-events',
-    });
-  }
-  if (navigationAccess.isGlobalAdmin) {
-    appItems.push({
-      href: '/admin/tryon',
-      label: 'Try-On App',
-      icon: <IconSparkles size={18} />,
-      tourId: 'admin-nav-tryon',
-    });
-  }
+  // WHAT: One nav config (lib/adminNavigation.ts) drives both this sidebar and
+  // the dashboard's landing grid — see that file's header comment for why.
+  const sections = getVisibleAdminNavSections(navigationAccess);
 
   const primaryNavigation = (
     <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
-      <NavSection title="Apps" items={appItems} pathname={pathname} />
-      <NavSection title="Core" items={coreItems} pathname={pathname} />
-      {resourceItems.length > 0 ? (
-        <div data-tour-id="admin-resource-inventory">
-          <NavSection title="Resource Inventory" items={resourceItems} pathname={pathname} />
+      {sections.map((section) => (
+        <div
+          key={section.title}
+          data-tour-id={section.title === 'Libraries' ? 'admin-resource-inventory' : undefined}
+        >
+          <NavSection
+            title={section.title}
+            items={section.items.map((item) => ({
+              href: item.href,
+              label: item.label,
+              icon: <AdminIcon iconKey={item.iconKey as AdminIconKey} size={18} />,
+              tourId: item.tourId,
+            }))}
+            pathname={pathname}
+          />
         </div>
-      ) : null}
+      ))}
     </div>
   );
 
@@ -215,13 +154,20 @@ export default function AdminChrome({
   );
 }
 
+interface RenderedNavItem {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  tourId?: string;
+}
+
 function NavSection({
   title,
   items,
   pathname,
 }: {
   title: string;
-  items: NavItem[];
+  items: RenderedNavItem[];
   pathname: string;
 }) {
   if (items.length === 0) return null;

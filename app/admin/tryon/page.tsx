@@ -7,14 +7,9 @@ import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
-import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob, type TryOnWorkerHeartbeat } from '@/lib/db/schemas';
-import { activeTryOnQueueTotal, formatActiveTryOnQueueSummary, WORKER_OWNED_TRYON_QUEUE_STATUSES } from '@/lib/tryon/queue-status';
-import {
-  formatTryOnWorkerHealthDescription,
-  formatTryOnWorkerHealthTitle,
-  summarizeTryOnWorkerHealth,
-  type TryOnWorkerHealthSummary,
-} from '@/lib/tryon/worker-health';
+import { formatActiveTryOnQueueSummary } from '@/lib/tryon/queue-status';
+import { formatTryOnWorkerHealthDescription, formatTryOnWorkerHealthTitle } from '@/lib/tryon/worker-health';
+import { collectTryOnDashboardMetrics, type TryOnDashboardMetrics } from '@/lib/tryon/dashboard-metrics';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,57 +20,29 @@ export default async function AdminTryOnAppPage() {
   }
 
   let dbError = null;
-  let queueCounts: Record<string, number> = {};
-  let activeSuitCount = 0;
-  let totalSuitCount = 0;
-  let pendingVettingCount = 0;
-  let workerHealth: TryOnWorkerHealthSummary | null = null;
+  let metrics: TryOnDashboardMetrics | null = null;
 
   try {
     const db = await connectToDatabase();
-    const [queueStatusCounts, activeSuits, totalSuits, pendingVetting, runningJobs, latestHeartbeat] = await Promise.all([
-      db
-        .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
-        .aggregate<{ _id: string; count: number }>([
-          { $group: { _id: '$status', count: { $sum: 1 } } },
-        ])
-        .toArray(),
-      db.collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS).countDocuments({ active: true }),
-      db.collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS).countDocuments({}),
-      db.collection<Submission>(COLLECTIONS.SUBMISSIONS).countDocuments({
-        submissionKind: 'tryon_result',
-        reviewStatus: 'pending_review',
-        'tryOnModerationArchive.archived': { $ne: true },
-      }),
-      db
-        .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
-        .find({ status: { $in: [...WORKER_OWNED_TRYON_QUEUE_STATUSES] } })
-        .sort({ updatedAt: -1 })
-        .limit(10)
-        .toArray(),
-      db
-        .collection<TryOnWorkerHeartbeat>(COLLECTIONS.TRYON_WORKER_HEARTBEATS)
-        .find({})
-        .sort({ updatedAt: -1 })
-        .limit(1)
-        .next(),
-    ]);
-
-    queueCounts = Object.fromEntries(queueStatusCounts.map((item) => [item._id, item.count]));
-    activeSuitCount = activeSuits;
-    totalSuitCount = totalSuits;
-    pendingVettingCount = pendingVetting;
-    workerHealth = summarizeTryOnWorkerHealth(runningJobs, activeTryOnQueueTotal(queueCounts), latestHeartbeat);
+    metrics = await collectTryOnDashboardMetrics(db);
   } catch (error) {
     console.error('Error loading try-on app workspace:', error);
     dbError = serializeMongoError(error);
   }
 
+  const queueCounts = metrics?.queueCounts ?? {};
+  const activeQueueTotal = metrics?.activeQueueTotal ?? 0;
+  const activeSuitCount = metrics?.activeSuitCount ?? 0;
+  const totalSuitCount = metrics?.totalSuitCount ?? 0;
+  const pendingVettingCount = metrics?.pendingVettingCount ?? 0;
+  const workerHealth = metrics?.workerHealth ?? null;
+
   return (
     <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
       <WorkspaceHeader
         eyebrow="Apps"
-        title="Try-On App"
+        title="Operations"
+        description="Try-on queue, vetting, analytics, and cleanup — the daily work connected to every event."
         status="Global Admin"
         primaryAction={{ href: '/admin/tryon/queue', label: 'Open Queue' }}
       />
@@ -88,7 +55,7 @@ export default async function AdminTryOnAppPage() {
             {[
               {
                 href: '/admin/tryon/queue',
-                title: `Queue Status (${activeTryOnQueueTotal(queueCounts)})`,
+                title: `Queue Status (${activeQueueTotal})`,
                 description: formatActiveTryOnQueueSummary(queueCounts),
                 iconKey: 'photoScan' as AdminIconKey,
               },

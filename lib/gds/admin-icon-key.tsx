@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  IconBrandDatabricks,
   IconBuildingStore,
   IconCalendarEvent,
   IconFrame,
@@ -9,6 +10,7 @@ import {
   IconPhotoScan,
   IconPlus,
   IconSearch,
+  IconSparkles,
   IconUser,
   IconUsers,
   IconUserShield,
@@ -16,6 +18,7 @@ import {
 } from '@tabler/icons-react';
 
 export type AdminIconKey =
+  | 'brandDatabricks'
   | 'buildingStore'
   | 'calendarEvent'
   | 'frame'
@@ -24,12 +27,14 @@ export type AdminIconKey =
   | 'photoScan'
   | 'plus'
   | 'search'
+  | 'sparkles'
   | 'user'
   | 'users'
   | 'userShield'
   | 'world';
 
 const iconMap = {
+  brandDatabricks: IconBrandDatabricks,
   buildingStore: IconBuildingStore,
   calendarEvent: IconCalendarEvent,
   frame: IconFrame,
@@ -38,6 +43,7 @@ const iconMap = {
   photoScan: IconPhotoScan,
   plus: IconPlus,
   search: IconSearch,
+  sparkles: IconSparkles,
   user: IconUser,
   users: IconUsers,
   userShield: IconUserShield,
