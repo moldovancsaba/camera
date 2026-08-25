@@ -177,7 +177,7 @@ export default function UserManagementActions({ user, currentUserEmail }: UserMa
           aria-modal="true"
           aria-labelledby="merge-pseudo-user-title"
           style={{
-            background: 'var(--gds-color-overlay)',
+            background: 'var(--gds-overlay-scrim)',
             inset: 0,
             display: 'grid',
             placeItems: 'center',
@@ -188,10 +188,10 @@ export default function UserManagementActions({ user, currentUserEmail }: UserMa
         >
           <div
             style={{
-              background: 'var(--gds-color-surface)',
-              border: '1px solid var(--gds-color-border)',
+              background: 'var(--gds-overlay-surface)',
+              border: '1px solid var(--gds-border-card)',
               borderRadius: 'var(--gds-radius-lg, 1rem)',
-              boxShadow: 'var(--gds-shadow-xl))',
+              boxShadow: 'var(--gds-shadow-xl)',
               display: 'grid',
               gap: '1rem',
               maxWidth: 520,

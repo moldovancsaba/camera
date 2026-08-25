@@ -463,9 +463,9 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
           role="dialog"
           aria-modal="true"
           aria-labelledby="custom-page-editor-title"
-          style={{ background: 'var(--gds-color-overlay)', inset: 0, display: 'grid', placeItems: 'center', padding: '1rem', position: 'fixed', zIndex: 1000 }}
+          style={{ background: 'var(--gds-overlay-scrim)', inset: 0, display: 'grid', placeItems: 'center', padding: '1rem', position: 'fixed', zIndex: 1000 }}
         >
-          <div style={{ background: 'var(--gds-color-surface)', border: '1px solid var(--gds-color-border)', borderRadius: '1rem', maxHeight: '90vh', maxWidth: 760, overflowY: 'auto', padding: '1.5rem', width: '100%' }}>
+          <div style={{ background: 'var(--gds-overlay-surface)', border: '1px solid var(--gds-border-card)', borderRadius: '1rem', maxHeight: '90vh', maxWidth: 760, overflowY: 'auto', padding: '1.5rem', width: '100%' }}>
           <h2 id="custom-page-editor-title" style={{ marginTop: 0 }}>{editingPage ? `Edit ${editingPage.pageType} Page` : 'Edit Page'}</h2>
           {editingPage ? (
             <PageEditModal
