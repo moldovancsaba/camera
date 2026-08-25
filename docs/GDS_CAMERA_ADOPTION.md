@@ -1,7 +1,7 @@
 # Camera GDS Adoption
 
 **Version**: 12.2.1  
-**Last Updated**: 2026-08-21
+**Last Updated**: 2026-08-25
 
 ## SSOT statement
 
@@ -282,6 +282,28 @@ Required rule:
 - Camera must align to the **contracts and patterns** from the GDS repository
 - Camera must consume the published `@sovereignsquad/*` packages at the provider/theme/compliance boundary
 - Camera must continue shrinking local adapters as central package coverage and compatibility improve
+
+### 2026-08-25: vendored `file:` tarballs replaced with the documented GitHub Packages registry install
+
+The original blocker for vendoring -- "3.9.0 remains the only version ever published ...
+6.x was never published there" -- no longer holds and hasn't for a while: GDS has published
+current versions to GitHub Packages (`npm.pkg.github.com`) since well before `6.3.0`,
+confirmed by installing `6.3.0` directly from that registry this session. What actually kept
+Camera on vendored tarballs was a missing `read:packages`-scoped credential, the same gap
+that separately blocked `sso`, `messmass`. A `GDS_PACKAGES_TOKEN` repository secret is now
+provisioned. `.npmrc` (previously absent) carries the `@sovereignsquad` registry block,
+`package.json` pins the exact versions that were vendored (`6.3.0` -- an install-mechanism
+change, not a version bump), CI (`.github/workflows/ci.yml`) exports the secret as
+`GITHUB_TOKEN` for the install step, and `vendor/gds/` is deleted.
+
+`npm run release:check` (`gds:validate-manifest` -> `gds:check` -> `type-check` -> `lint` ->
+`verify:production-guards` -> `build`) verified clean against a real `npm ci` against the
+registry before this landed.
+
+Still needed, outside this session's reach: the same token as a `GITHUB_TOKEN` project
+environment variable in Vercel (this repo deploys manually via `npx vercel@latest --prod`,
+which builds remotely on Vercel's own infrastructure and needs the credential there too) --
+Vercel dashboard/CLI access wasn't available here.
 
 ## Formal compliance path
 
