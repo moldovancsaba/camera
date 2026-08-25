@@ -1,5 +1,46 @@
 # RELEASE_NOTES.md
 
+## v12.2.11 — Phase 4 of the admin UX audit: change a result's frame or garment without a full rerun
+
+The audit's closing complaint: "no option to change the frame on the final
+result the same way as the try-on model, but sometimes it would be useful,
+or the garment or other elements."
+
+- **Change frame, no AI rerun.** New `POST
+  /api/admin/tryon-results/[id]/reframe` recomposites an existing result
+  with a different frame -- the same compositing step the worker already
+  runs once, not a regeneration. Always starts from the raw (unframed)
+  worker output, so reframing twice doesn't stack frames. Exposed as a
+  "Change frame" control in vetting's result detail view. The only
+  precedent (`scripts/reframe-tryon-results.ts`) is a bulk backfill CLI
+  that always re-applies the SAME frame -- this is the first way to pick a
+  *different* one.
+- **Garment swap on rerun**, the roadmap's approved "yes" — the rerun API
+  already took a `setupId` override; it now also takes `leatherSuitId`,
+  exposed as a second picker beside the preset picker everywhere rerun
+  already appears. Defaults to the *same* garment (unlike the preset
+  picker, which defaults to a different one) -- a bad result is a preset
+  problem far more often than a garment problem, so this is an explicit
+  override, not a nudge.
+- **Found and fixed while building this:** `lib/db/schemas.ts`'s `Frame`
+  interface (`ownershipLevel`, `fileUrl`, `width`/`height`) describes a
+  frame model that was never actually migrated to. Confirmed against
+  production: all 10 real frame documents have no `ownershipLevel` and
+  use `imageUrl`, not `fileUrl` -- `app/api/frames/route.ts` itself
+  already reads the collection loosely, not through that interface. Both
+  new frame-reading call sites here follow the same loose pattern instead
+  of trusting the aspirational type. The interface itself is untouched --
+  reconciling it is a separate, larger cleanup.
+
+### Verified
+Full gate green: gds:validate-manifest, gds:check, type-check, lint,
+verify:production-guards, build. Data-layer verification against real
+production data caught the Frame schema drift above before shipping (the
+picker would otherwise have rendered empty against all 10 real frames);
+after the fix, confirmed 10 active frames with real image URLs, 13 active
+garments, a real job with a real alternative garment to switch to, and a
+real result submission resolving a valid base image for reframing.
+
 ## v12.2.10 — Phase 3 of the admin UX audit: AI Setups get a real CRUD, event forms gain parity
 
 Four smaller fixes from the audit's "investigate everything, not just the

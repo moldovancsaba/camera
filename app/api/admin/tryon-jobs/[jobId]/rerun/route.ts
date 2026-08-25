@@ -5,7 +5,7 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { requireAuth, apiBadRequest, apiForbidden, apiNotFound, apiSuccess, withErrorHandler } from '@/lib/api';
-import { COLLECTIONS, type Submission, type TryOnJob, type TryOnSetup } from '@/lib/db/schemas';
+import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob, type TryOnSetup } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { appendTryOnModerationEvent, snapshotTryOnModerationState } from '@/lib/tryon/moderation-audit';
 
@@ -19,7 +19,7 @@ function normalizeSetupId(value: string | null | undefined): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
-function buildRerunJob(job: TryOnJob, setupIdOverride?: string | null): TryOnJob {
+function buildRerunJob(job: TryOnJob, setupIdOverride?: string | null, leatherSuitIdOverride?: string | null): TryOnJob {
   const createdAt = nowIso();
   const { _id: omittedMongoId, ...template } = job;
   void omittedMongoId;
@@ -51,6 +51,7 @@ function buildRerunJob(job: TryOnJob, setupIdOverride?: string | null): TryOnJob
       ...job.request,
       rerunOfJobId: job.jobId,
       ...(setupIdOverride ? { setupId: setupIdOverride } : {}),
+      ...(leatherSuitIdOverride ? { leatherSuitId: leatherSuitIdOverride } : {}),
     },
     error: {
       code: null,
@@ -99,6 +100,23 @@ export const POST = withErrorHandler(async (
     }
   }
 
+  const requestedLeatherSuitId = normalizeSetupId(
+    typeof body === 'object' &&
+    body !== null &&
+    'leatherSuitId' in body &&
+    typeof (body as { leatherSuitId?: unknown }).leatherSuitId === 'string'
+      ? (body as { leatherSuitId: string }).leatherSuitId
+      : undefined
+  );
+  if (requestedLeatherSuitId) {
+    const suit = await db
+      .collection<LeatherSuit>(COLLECTIONS.LEATHER_SUITS)
+      .findOne({ leatherSuitId: requestedLeatherSuitId, active: true });
+    if (!suit) {
+      throw apiBadRequest(`leatherSuitId "${requestedLeatherSuitId}" is not active or does not exist`);
+    }
+  }
+
   if (
     sourceJob.status === 'processing' ||
     sourceJob.status === 'claimed' ||
@@ -118,7 +136,7 @@ export const POST = withErrorHandler(async (
     throw apiBadRequest('Original job is missing source or request details required for rerun');
   }
 
-  const rerunJob = buildRerunJob(sourceJob, requestedSetupId);
+  const rerunJob = buildRerunJob(sourceJob, requestedSetupId, requestedLeatherSuitId);
 
   const inserted = await db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).insertOne(rerunJob);
   const priorResult = await db
@@ -183,7 +201,7 @@ export const POST = withErrorHandler(async (
     await patchSubmissionTryOnState(db, submissionObjectId, {
       status: 'queued',
       requested: true,
-      leatherSuitId: sourceJob.request.leatherSuitId,
+      leatherSuitId: rerunJob.request.leatherSuitId,
       jobId: rerunJob.jobId,
       sourceImageUrl: sourceJob.source.imageUrl,
       sourceDeleteUrl: null,
@@ -211,6 +229,7 @@ export const POST = withErrorHandler(async (
     jobId: rerunJob.jobId,
     sourceJobId: normalizedJobId,
     setupId: rerunJob.request.setupId ?? null,
+    leatherSuitId: rerunJob.request.leatherSuitId,
     rerunOfJobId: sourceJob.jobId,
     status: 'queued',
     stage: 'queued',

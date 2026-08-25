@@ -10,6 +10,12 @@ import { AdminModal, AdminReviewLayout, ResponsiveDataView } from '@sovereignsqu
 import { GdsMediaFrame, StateBlock, StatusBadge, useGdsToasts } from '@sovereignsquad/gds-core/client';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
+import type { TryOnSuitOption } from '@/lib/tryon/suits';
+
+interface FrameOption {
+  frameId: string;
+  name: string;
+}
 
 declare global {
   interface Window {
@@ -110,11 +116,11 @@ async function postService(id: string) {
   }
 }
 
-async function postRerun(sourceJobId: string, setupId?: string) {
+async function postRerun(sourceJobId: string, setupId?: string, leatherSuitId?: string) {
   const response = await fetch(`/api/admin/tryon-jobs/${sourceJobId}/rerun`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(setupId ? { setupId } : {}),
+    body: JSON.stringify({ ...(setupId ? { setupId } : {}), ...(leatherSuitId ? { leatherSuitId } : {}) }),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -124,6 +130,22 @@ async function postRerun(sourceJobId: string, setupId?: string) {
   return {
     jobId: typeof payload.data?.jobId === 'string' ? payload.data.jobId : null,
     setupId: typeof payload.data?.setupId === 'string' ? payload.data.setupId : null,
+  };
+}
+
+async function postReframe(submissionId: string, frameId: string) {
+  const response = await fetch(`/api/admin/tryon-results/${submissionId}/reframe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ frameId }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to change frame');
+  }
+  return {
+    imageUrl: typeof payload.data?.imageUrl === 'string' ? payload.data.imageUrl : null,
+    frameName: typeof payload.data?.frameName === 'string' ? payload.data.frameName : frameId,
   };
 }
 
@@ -550,6 +572,8 @@ function ModerationActions({
 export default function TryOnResultModerationTable({
   rows,
   setupOptions = [],
+  suitOptions = [],
+  frameOptions = [],
   totalCount = rows.length,
   listQuery = {},
   autoRefresh = false,
@@ -558,6 +582,8 @@ export default function TryOnResultModerationTable({
 }: {
   rows: ModerationRow[];
   setupOptions?: TryOnSetup[];
+  suitOptions?: TryOnSuitOption[];
+  frameOptions?: FrameOption[];
   totalCount?: number;
   listQuery?: ModerationListQuery;
   autoRefresh?: boolean;
@@ -573,9 +599,13 @@ export default function TryOnResultModerationTable({
   const [lastRefreshLabel, setLastRefreshLabel] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedSetupByRow, setSelectedSetupByRow] = useState<Record<string, string>>({});
+  const [selectedSuitByRow, setSelectedSuitByRow] = useState<Record<string, string>>({});
   const [rerunFeedbackByRow, setRerunFeedbackByRow] = useState<Record<string, string>>({});
   const [pendingDecision, setPendingDecision] = useState<{ row: ModerationRow; action: 'approve' | 'reject' } | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [selectedFrameId, setSelectedFrameId] = useState('');
+  const [isReframing, setIsReframing] = useState(false);
+  const [reframeFeedback, setReframeFeedback] = useState<string | null>(null);
   const [assetHealth, setAssetHealth] = useState<
     Record<string, { resultMissing?: boolean; originalMissing?: boolean }>
   >({});
@@ -584,6 +614,11 @@ export default function TryOnResultModerationTable({
   const preloadedImageUrlsRef = useRef(new Set<string>());
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const LIST_LIMIT = 24;
+
+  useEffect(() => {
+    setSelectedFrameId('');
+    setReframeFeedback(null);
+  }, [activeRowId]);
 
   const activeRow = displayRows.find((row) => row.id === activeRowId) ?? null;
   const setupsById = useMemo(() => makeSetupDisplayMap(setupOptions), [setupOptions]);
@@ -819,13 +854,21 @@ export default function TryOnResultModerationTable({
     return alternative?.setupId ?? row.setup?.setupId ?? defaultSetupId;
   }
 
+  // Garment defaults to the SAME one the result already used -- unlike the
+  // preset, a bad result is much more often a preset problem than a garment
+  // problem, so this is an explicit override, not a nudge toward changing it.
+  function selectedSuitIdForRow(row: ModerationRow) {
+    return selectedSuitByRow[row.id] ?? row.tryOnLeatherSuitId ?? '';
+  }
+
   async function handleRerun(row: ModerationRow) {
     if (!row.sourceJobId) return;
 
     const selectedSetupId = selectedSetupIdForRow(row);
+    const selectedSuitId = selectedSuitIdForRow(row);
     try {
       setBusyId(`${row.id}:rerun`);
-      const result = await postRerun(row.sourceJobId, selectedSetupId || undefined);
+      const result = await postRerun(row.sourceJobId, selectedSetupId || undefined, selectedSuitId || undefined);
       const setupLabel = getSetupLabel(
         setupsById,
         selectedSetupId ? { setupId: selectedSetupId } : row.setup
@@ -850,6 +893,28 @@ export default function TryOnResultModerationTable({
     }
   }
 
+  // WHAT: Recomposites an existing result with a different frame -- no AI
+  // rerun, just the same fast compositing step the local worker already
+  // does once. WHY: the audit found no way to change a finished result's
+  // frame at all; the only precedent (scripts/reframe-tryon-results.ts) is
+  // a bulk backfill CLI that always re-applies the SAME frame, not a
+  // different one an operator picks.
+  async function handleReframe(row: ModerationRow) {
+    if (!selectedFrameId) return;
+    setIsReframing(true);
+    setReframeFeedback(null);
+    try {
+      const result = await postReframe(row.id, selectedFrameId);
+      setReframeFeedback(`Frame changed to ${result.frameName}.`);
+      notifySuccess({ title: 'Frame changed', message: `Frame changed to ${result.frameName}.` });
+      router.refresh();
+    } catch (error) {
+      notifyError({ title: 'Reframe failed', message: error instanceof Error ? error.message : 'Failed to change frame.' });
+    } finally {
+      setIsReframing(false);
+    }
+  }
+
   function toggleSound() {
     setSoundEnabled((enabled) => {
       if (!enabled) {
@@ -861,6 +926,7 @@ export default function TryOnResultModerationTable({
 
   function renderPresetControls(row: ModerationRow) {
     const selectedSetupId = selectedSetupIdForRow(row);
+    const selectedSuitId = selectedSuitIdForRow(row);
     const presetLabel = getSetupLabel(setupsById, row.setup);
     const detailLabel = setupDetailLabel(row);
     const feedback = rerunFeedbackByRow[row.id];
@@ -904,6 +970,21 @@ export default function TryOnResultModerationTable({
             Preset list unavailable
           </Text>
         )}
+        {suitOptions.length > 0 ? (
+          <Select
+            label="Rerun garment"
+            data={suitOptions.map((suit) => ({ value: suit.id, label: suit.name }))}
+            value={selectedSuitId || null}
+            onChange={(nextSuitId) => {
+              if (typeof nextSuitId === 'string') {
+                setSelectedSuitByRow((state) => ({ ...state, [row.id]: nextSuitId }));
+              }
+            }}
+            size="xs"
+            checkIconPosition="left"
+            disabled={busyId === `${row.id}:rerun`}
+          />
+        ) : null}
         <Button
           variant="outline"
           size="xs"
@@ -1167,6 +1248,40 @@ export default function TryOnResultModerationTable({
               </Text>
             </Stack>
             {renderPresetControls(activeRow)}
+            {frameOptions.length > 0 ? (
+              <Stack gap="xs" align="stretch">
+                <Text fw={700} size="sm">
+                  Change frame
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Recomposites this result with a different frame -- no AI rerun, just the same
+                  compositing step the worker already runs once.
+                </Text>
+                <Select
+                  label="Frame"
+                  data={frameOptions.map((frame) => ({ value: frame.frameId, label: frame.name }))}
+                  value={selectedFrameId || null}
+                  onChange={(value) => setSelectedFrameId(value ?? '')}
+                  size="xs"
+                  checkIconPosition="left"
+                  disabled={isReframing}
+                />
+                <Button
+                  variant="outline"
+                  size="xs"
+                  loading={isReframing}
+                  disabled={!selectedFrameId}
+                  onClick={() => void handleReframe(activeRow)}
+                >
+                  Apply Frame
+                </Button>
+                {reframeFeedback ? (
+                  <Text size="xs" c="teal">
+                    {reframeFeedback}
+                  </Text>
+                ) : null}
+              </Stack>
+            ) : null}
             <ModerationActions row={activeRow} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} />
             <Stack gap="xs" align="flex-start">
               <StatusBadge {...getStatusBadgeProps(reviewTone(activeRow.reviewStatus), reviewLabel(activeRow))} />

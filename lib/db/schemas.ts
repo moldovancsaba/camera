@@ -801,7 +801,8 @@ export type TryOnModerationAction =
   | 'service'
   | 'great'
   | 'remove_great'
-  | 'rerun';
+  | 'rerun'
+  | 'reframe';
 
 export interface TryOnModerationStateSnapshot {
   reviewStatus?: 'pending_review' | 'approved' | 'rejected' | null;

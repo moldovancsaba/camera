@@ -9,6 +9,7 @@ import OldestVettingResultCard from '@/components/admin/OldestVettingResultCard'
 import TryOnResultModerationTable, { type ModerationRow } from '@/components/admin/TryOnResultModerationTable';
 import TryOnQueueTable, { type QueueRow } from '@/components/admin/TryOnQueueTable';
 import { listActiveTryOnSetups, type TryOnSetup } from '@/lib/tryon/setup-resolution';
+import { listActiveTryOnSuitOptions, type TryOnSuitOption } from '@/lib/tryon/suits';
 import { resolveTryOnAnalyticsEventScope, type TryOnAnalyticsEventScope } from '@/lib/tryon/analytics';
 import { resolveEventNamesByMongoId } from '@/lib/tryon/event-names';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
@@ -178,6 +179,8 @@ export default async function AdminTryOnResultsPage({
   let failedJobRows: QueueRow[] = [];
   let resultTotalCount = 0;
   let setupOptions: TryOnSetup[] = [];
+  let suitOptions: TryOnSuitOption[] = [];
+  let frameOptions: Array<{ frameId: string; name: string }> = [];
   let eventScope: TryOnAnalyticsEventScope = {};
   // Canonical UUID carried by every scoped link on this page; falls back to the
   // raw param so an unresolvable reference still round-trips instead of vanishing.
@@ -186,6 +189,28 @@ export default async function AdminTryOnResultsPage({
   try {
     const db = await connectToDatabase();
     setupOptions = await listActiveTryOnSetups(db);
+    suitOptions = await listActiveTryOnSuitOptions(db);
+    // WHAT: Active frames for the "Change frame" picker on a result.
+    // WHY: the `Frame` interface in lib/db/schemas.ts (ownershipLevel,
+    // fileUrl, width/height) describes a frame model that was never actually
+    // migrated to -- real documents (confirmed against production) have no
+    // ownershipLevel and use imageUrl, not fileUrl, matching how
+    // app/api/frames/route.ts itself already reads this collection: loosely
+    // typed, not through the Frame interface. Only 10 frames exist total, so
+    // showing every active one (rather than scoping by event) is a real,
+    // complete picker, not a shortcut.
+    frameOptions = (
+      await db
+        .collection(COLLECTIONS.FRAMES)
+        .find({ isActive: true })
+        .project({ frameId: 1, name: 1, imageUrl: 1 })
+        .sort({ name: 1 })
+        .toArray()
+    ).flatMap((frame) =>
+      typeof frame.frameId === 'string' && typeof frame.name === 'string' && typeof frame.imageUrl === 'string'
+        ? [{ frameId: frame.frameId, name: frame.name }]
+        : []
+    );
 
     // WHAT: Resolve the incoming event reference (links historically carried
     // either the UUID or the Mongo _id) to both canonical keys plus the name.
@@ -613,6 +638,8 @@ export default async function AdminTryOnResultsPage({
           rows={rows}
           totalCount={resultTotalCount}
           setupOptions={setupOptions}
+          suitOptions={suitOptions}
+          frameOptions={frameOptions}
           listQuery={{
             reviewStatus: reviewStatus || (archiveBucket ? '' : 'pending_review'),
             archive: archiveBucket,
