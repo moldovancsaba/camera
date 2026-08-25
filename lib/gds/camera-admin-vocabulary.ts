@@ -147,6 +147,11 @@ export const cameraAdminVocabularyPacks = [
     archive: { defaultMessage: 'Archive setup', icon: GdsIcons.Delete, feedback: deletedFeedback },
     unarchive: { defaultMessage: 'Unarchive setup', icon: GdsIcons.Check, feedback: savedFeedback },
   }),
+  createGdsVocabularyPack('tryon-maintenance', {
+    'refresh-worker': { defaultMessage: 'Refresh worker health', icon: GdsIcons.Refresh, feedback: openedFeedback },
+    'run-audit': { defaultMessage: 'Run data integrity audit', icon: GdsIcons.Check, feedback: openedFeedback },
+    'reconcile-apply': { defaultMessage: 'Apply reconciliation', icon: GdsIcons.Check, feedback: savedFeedback },
+  }),
   createGdsVocabularyPack('frames', {
     'remove-upload': { defaultMessage: 'Remove upload', icon: GdsIcons.Delete, feedback: deletedFeedback },
     create: { defaultMessage: 'Create frame', icon: GdsIcons.Add, feedback: savedFeedback },

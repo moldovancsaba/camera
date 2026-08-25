@@ -71,6 +71,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         tourId: 'admin-nav-tryon',
         isVisible: (access) => access.isGlobalAdmin,
       },
+      {
+        href: '/admin/tryon/maintenance',
+        label: 'Maintenance',
+        description: 'Worker health, data integrity audit, and job reconciliation.',
+        iconKey: 'tool',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
     ],
   },
   {

@@ -11,6 +11,7 @@ import {
   IconPlus,
   IconSearch,
   IconSparkles,
+  IconTool,
   IconUser,
   IconUsers,
   IconUserShield,
@@ -28,6 +29,7 @@ export type AdminIconKey =
   | 'plus'
   | 'search'
   | 'sparkles'
+  | 'tool'
   | 'user'
   | 'users'
   | 'userShield'
@@ -44,6 +46,7 @@ const iconMap = {
   plus: IconPlus,
   search: IconSearch,
   sparkles: IconSparkles,
+  tool: IconTool,
   user: IconUser,
   users: IconUsers,
   userShield: IconUserShield,

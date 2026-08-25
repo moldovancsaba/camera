@@ -1,5 +1,46 @@
 # RELEASE_NOTES.md
 
+## v12.2.12 — Phase 5 of the admin UX audit: a Maintenance console (final phase)
+
+The roadmap's last phase. New **Maintenance** page under Operations
+(`/admin/tryon/maintenance`), three sections:
+
+- **Worker health**, wiring `/api/admin/tryon-worker-health` -- complete
+  and correct since it shipped, but had zero UI callers until now. Shows
+  live state, active/stale job counts, last heartbeat, and up to 10
+  currently-claimed jobs. Distinct from the dashboard's Worker tile
+  (Phase 1): that's a one-line state summary, this is the detail behind it.
+- **Data integrity audit**, a new read-only `GET
+  /api/admin/tryon-maintenance/audit` reimplementing
+  `scripts/audit-tryon-data-integrity.ts`'s checks (unknown garment
+  references, guest-identity gaps, archive/moderation inconsistencies,
+  done jobs missing a result). The script itself is untouched --
+  `scripts/*.ts` files run their own `main()`/`process.exit()` on import,
+  so they can't be reused as a library; reimplementing was the only option,
+  and safe here because every query is read-only.
+- **Reconcile done jobs**, dry-run first: preview always available,
+  applying requires an extra confirm naming the batch size. New `POST
+  /api/admin/tryon-maintenance/reconcile` scopes down
+  `scripts/reconcile-tryon-done-jobs.ts` to a small, capped batch (max 50,
+  not the script's unbounded `--all`) sized for one HTTP request -- but the
+  actual write, `applyCompletionFromJobResult`, is imported and shared
+  with the script, not reimplemented, so there is exactly one place that
+  logic lives.
+- Explicitly **not** built: UI for the other ~9 one-time backfill/
+  migration scripts (schema migrations, one-time corrections) -- those
+  aren't ongoing maintenance operations and stay CLI-only, per the
+  roadmap's own scope.
+
+### Verified
+Full gate green: gds:validate-manifest, gds:check, type-check, lint,
+verify:production-guards, build. Data-layer verification (read-only, no
+writes) against real production data: worker health computes correctly
+(idle, 0 active jobs); the audit's exact query set runs clean and surfaces
+a real, previously-invisible backlog (47 guest-identity submissions, all
+unreviewed and actionable -- a genuine finding for a future session, not
+addressed here); 0 done jobs currently missing a result (healthy); the
+reconcile dry-run's candidate query returns 10 real done jobs.
+
 ## v12.2.11 — Phase 4 of the admin UX audit: change a result's frame or garment without a full rerun
 
 The audit's closing complaint: "no option to change the frame on the final
