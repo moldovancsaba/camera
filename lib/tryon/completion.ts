@@ -7,7 +7,7 @@ import {
 } from '@/lib/db/schemas';
 import { nowIso } from '@/lib/tryon/time';
 import { apiBadRequest, apiForbidden, apiNotFound } from '@/lib/api';
-import { normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
+import { detectImageProvider, normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
 import { buildDerivedTryOnSubmission, buildTryOnPublicationSummary, upsertSubmissionTryOnPublicationLink } from '@/lib/tryon/publication';
 import { patchSubmissionTryOnState } from '@/lib/tryon/jobs';
 import { shouldApprovedTryOnBeSlideshowEligible } from '@/lib/tryon/slideshow-policy';
@@ -297,7 +297,7 @@ export async function applyTryOnCompletion(
         result: {
           publicResultUrl: resolvedAsset.publicResultUrl,
           imgbbDeleteUrl: resolvedAsset.deleteUrl ?? payload.deleteUrl ?? null,
-          provider: 'imgbb',
+          provider: detectImageProvider(resolvedAsset.publicResultUrl),
         },
         error: {
           code: null,
@@ -370,7 +370,7 @@ export async function applyTryOnCompletion(
       sourceDeleteUrl: sourceSubmission.tryOnRequest?.sourceDeleteUrl ?? null,
       resultUrl: resolvedAsset.publicResultUrl,
       resultDeleteUrl: resolvedAsset.deleteUrl ?? payload.deleteUrl ?? null,
-      resultProvider: 'imgbb',
+      resultProvider: detectImageProvider(resolvedAsset.publicResultUrl),
       reviewStatus: sourceReviewState.reviewStatus,
       shareVisible: sourceReviewState.shareVisible,
       slideshowEligible: sourceReviewState.slideshowEligible,
@@ -446,7 +446,7 @@ export async function applyTryOnCompletion(
     sourceDeleteUrl: sourceSubmission.tryOnRequest?.sourceDeleteUrl ?? null,
     resultUrl: resolvedAsset.publicResultUrl,
     resultDeleteUrl: resolvedAsset.deleteUrl ?? payload.deleteUrl ?? null,
-    resultProvider: 'imgbb',
+    resultProvider: detectImageProvider(resolvedAsset.publicResultUrl),
     reviewStatus: publication.reviewStatus,
     shareVisible: publication.shareVisible,
     slideshowEligible: publication.slideshowEligible,

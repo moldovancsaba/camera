@@ -3,7 +3,7 @@
 import NextImage from 'next/image';
 import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { Alert, Badge, Box, Button, Card, Center, Stack, Text } from '@mantine/core';
-import { validateImage } from '@/lib/imgbb/upload';
+import { validateImage } from '@/lib/imgbb/validate';
 
 export interface FileUploadProps {
   onUpload: (file: File, preview: string) => void;

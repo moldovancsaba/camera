@@ -141,7 +141,7 @@ export async function runTryOnWorkerOnce(config: WorkerRuntimeConfig): Promise<v
 
     await markTryOnJobStage(db, job.jobId, 'uploading_result', 'uploading_result');
     const upload = await publishResult(execution.outputPath);
-    await markTryOnJobDone(db, job.jobId, upload.imageUrl, upload.deleteUrl);
+    await markTryOnJobDone(db, job.jobId, upload.imageUrl, upload.deleteUrl, upload.provider, upload.mirrorImageUrl);
     await archiveTryOnWorkspace(env.queueRoot, job.jobId, 'done');
 
     const freshJob = await getTryOnJobByJobId(db, job.jobId);
@@ -160,7 +160,8 @@ export async function runTryOnWorkerOnce(config: WorkerRuntimeConfig): Promise<v
             sourceImageUrl: freshJob.source.imageUrl,
             resultUrl: upload.imageUrl,
             resultDeleteUrl: upload.deleteUrl ?? null,
-            resultProvider: 'imgbb',
+            resultProvider: upload.provider,
+            resultMirrorUrl: upload.mirrorImageUrl,
             reviewStatus: 'pending_review',
             shareVisible: false,
             slideshowEligible: false,
@@ -213,6 +214,7 @@ export async function runTryOnWorkerOnce(config: WorkerRuntimeConfig): Promise<v
             resultUrl: freshJob.result.publicResultUrl ?? null,
             resultDeleteUrl: freshJob.result.imgbbDeleteUrl ?? null,
             resultProvider: freshJob.result.provider ?? null,
+            resultMirrorUrl: freshJob.result.imgbbMirrorUrl ?? null,
             reviewStatus: null,
             shareVisible: false,
             slideshowEligible: false,

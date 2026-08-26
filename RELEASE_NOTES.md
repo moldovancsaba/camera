@@ -1,5 +1,57 @@
 # RELEASE_NOTES.md
 
+## v12.2.14 — feat(storage): Vercel Blob becomes primary image storage, imgbb demoted to best-effort mirror
+
+Follow-through on the "separate finding, not fixed here" flagged in v12.2.13:
+imgbb was silently deleting images within hours, not the documented 180-day
+policy -- consistent with imgbb's known pattern of closing high-volume
+anonymous-API accounts without notice. Every image in Camera (submissions,
+frames, logos, try-on results) went through imgbb alone; no fallback, no
+mirror.
+
+### Changed
+`lib/imgbb/upload.ts`'s `uploadImage()` now uploads to Vercel Blob (required
+primary) and imgbb (best-effort secondary mirror) concurrently. A mirror
+failure is logged and swallowed -- it never fails the call, and a missing
+imgbb key is now a valid (if degraded) configuration. All 11 existing call
+sites needed zero changes; only the upload strategy inside changed.
+
+Four read/render-path fixes were needed alongside the upload swap, all
+confirmed launch-blocking by direct code read before being fixed -- each
+hardcoded `i.ibb.co`/`imgbb.com` and would have broken the instant a Blob URL
+reached it:
+- `lib/imgbb/url.ts` -- `normalizeImgbbDirectUrl`/`isRenderableImgbbImageUrl`
+  rejected any non-imgbb host, which would have hard-thrown
+  `applyTryOnCompletion` on every try-on completion.
+- `lib/tryon/staging.ts` -- the local worker's SSRF source-host allowlist
+  defaulted to `i.ibb.co` only; every Blob-hosted source image would have
+  been rejected with `source_host_not_allowlisted`.
+- `next.config.ts` -- `images.remotePatterns` and the CSP
+  `img-src`/`connect-src` directives listed only imgbb hosts; Blob images
+  would not have rendered anywhere in the app.
+
+`resultProvider`/`provider` fields (`lib/db/schemas.ts`) widened from
+`'imgbb' | null` to `'imgbb' | 'blob' | null`. New optional
+`resultMirrorUrl`/`imgbbMirrorUrl` fields record the imgbb mirror URL when it
+succeeds, as a manual recovery path if Blob ever has a bad day. Existing
+documents keep their historical `'imgbb'` value untouched -- forward-only, no
+backfill.
+
+`scripts/verify-env.ts` and `scripts/verify-tryon-prereqs.ts` both gained a
+real Vercel Blob upload probe (`BLOB_READ_WRITE_TOKEN`, now required); the
+imgbb probe is informational only from here on, not a blocking check.
+
+### Deployment (manual steps required before this can go live)
+1. Create the Blob store in the Vercel dashboard as **Public** access (fixed
+   permanently at creation) and connect it to the camera project.
+2. Copy the generated `BLOB_READ_WRITE_TOKEN` into the local try-on worker
+   machine's `.env` and restart `tryon-worker.ts` -- it runs off-Vercel, so it
+   needs the static token; Vercel-deployed code authenticates automatically
+   via OIDC.
+
+Deploying before step 1/2 are done would break every image upload in
+production, since Blob is now required rather than optional.
+
 ## v12.2.13 — fix(admin): a rerun that fails no longer hides its predecessor's result
 
 Reported live during today's FIBA 3x3 event: an operator changed a result's

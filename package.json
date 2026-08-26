@@ -1,6 +1,6 @@
 {
   "name": "camera",
-  "version": "12.2.13",
+  "version": "12.2.14",
   "description": "Professional web application for capturing photos with graphical frames, social sharing, event slideshows, and user profile management",
   "type": "module",
   "private": true,
@@ -81,6 +81,7 @@
     "@tabler/icons-react": "^3.44.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.37.0",
+    "@vercel/blob": "^2.8.0",
     "archiver": "^7.0.1",
     "axios": "^1.7.0",
     "dayjs": "^1.11.21",

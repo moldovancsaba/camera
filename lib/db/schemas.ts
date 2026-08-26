@@ -605,7 +605,8 @@ export interface SubmissionTryOnRequestState {
   sourceImageId?: string | null;
   resultUrl?: string | null;
   resultDeleteUrl?: string | null;
-  resultProvider?: 'imgbb' | null;
+  resultProvider?: 'imgbb' | 'blob' | null;
+  resultMirrorUrl?: string | null;
   reviewStatus?: 'pending_review' | 'approved' | 'rejected' | null;
   shareVisible?: boolean;
   slideshowEligible?: boolean;
@@ -995,7 +996,8 @@ export interface TryOnJobProcessingState {
 export interface TryOnJobResult {
   publicResultUrl?: string | null;
   imgbbDeleteUrl?: string | null;
-  provider?: 'imgbb' | null;
+  provider?: 'imgbb' | 'blob' | null;
+  imgbbMirrorUrl?: string | null;
 }
 
 export interface TryOnJobError {

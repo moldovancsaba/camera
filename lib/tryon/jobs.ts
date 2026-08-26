@@ -56,7 +56,8 @@ export interface SubmissionTryOnStatePatch {
   sourceImageId?: string | null;
   resultUrl?: string | null;
   resultDeleteUrl?: string | null;
-  resultProvider?: 'imgbb' | null;
+  resultProvider?: 'imgbb' | 'blob' | null;
+  resultMirrorUrl?: string | null;
   reviewStatus?: 'pending_review' | 'approved' | 'rejected' | null;
   shareVisible?: boolean;
   slideshowEligible?: boolean;
@@ -216,6 +217,7 @@ export async function patchSubmissionTryOnState(
     resultUrl: patch.resultUrl ?? null,
     resultDeleteUrl: patch.resultDeleteUrl ?? null,
     resultProvider: patch.resultProvider ?? null,
+    resultMirrorUrl: patch.resultMirrorUrl ?? null,
     reviewStatus: patch.reviewStatus ?? null,
     shareVisible: patch.shareVisible ?? false,
     slideshowEligible: patch.slideshowEligible ?? false,
@@ -476,7 +478,9 @@ export async function markTryOnJobDone(
   db: Db,
   jobId: string,
   publicResultUrl: string,
-  deleteUrl?: string | null
+  deleteUrl?: string | null,
+  provider?: 'imgbb' | 'blob' | null,
+  mirrorUrl?: string | null
 ): Promise<void> {
   const now = nowIso();
   await db.collection(COLLECTIONS.TRYON_JOBS).updateOne(
@@ -491,7 +495,8 @@ export async function markTryOnJobDone(
         result: {
           publicResultUrl,
           imgbbDeleteUrl: deleteUrl ?? null,
-          provider: 'imgbb',
+          provider: provider ?? 'blob',
+          imgbbMirrorUrl: mirrorUrl ?? null,
         },
         error: {
           code: null,

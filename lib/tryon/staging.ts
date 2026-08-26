@@ -2,6 +2,7 @@ import { access, copyFile, mkdir, readFile, rename, writeFile } from 'node:fs/pr
 import path from 'node:path';
 import type { Db, WithId } from 'mongodb';
 import { COLLECTIONS, type LeatherSuit, type TryOnJob } from '@/lib/db/schemas';
+import { isBlobStorageHostname } from '@/lib/imgbb/url';
 import { nowIso } from '@/lib/tryon/time';
 import { getLeatherSuitProcessingUrl } from '@/lib/tryon/suits';
 
@@ -16,9 +17,10 @@ export interface StagedTryOnJob {
 
 export function assertAllowedSourceHost(imageUrl: string, allowlist: string[]): void {
   const hostname = new URL(imageUrl).hostname.toLowerCase();
-  if (!allowlist.includes(hostname)) {
-    throw new Error(`source_host_not_allowlisted:${hostname}`);
+  if (allowlist.includes(hostname) || isBlobStorageHostname(hostname)) {
+    return;
   }
+  throw new Error(`source_host_not_allowlisted:${hostname}`);
 }
 
 export async function resolveLocalSuitAsset(

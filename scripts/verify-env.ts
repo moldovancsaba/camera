@@ -4,9 +4,11 @@
  * Usage (repo root):
  *   npx tsx scripts/verify-env.ts
  *
- * Tests: MongoDB (Camera), SSO OAuth discovery, ImgBB API, optional Upstash Redis (rate limits).
+ * Tests: MongoDB (Camera), SSO OAuth discovery, Vercel Blob, ImgBB API (mirror,
+ * optional), optional Upstash Redis (rate limits).
  */
 
+import { del, put } from '@vercel/blob';
 import { Redis } from '@upstash/redis';
 import { MongoClient } from 'mongodb';
 
@@ -50,9 +52,30 @@ async function testSSOOAuth(issuerUrl: string): Promise<boolean> {
   }
 }
 
-/** 1×1 transparent PNG — ImgBB requires an image field, not just the API key. */
-const IMGBB_PROBE_IMAGE_BASE64 =
+/** 1×1 transparent PNG — both probes below need an actual image, not just the credential. */
+const PROBE_IMAGE_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+async function testVercelBlob(token: string): Promise<boolean> {
+  if (!token || token === 'your_vercel_blob_token_here') {
+    console.log(`✗ BLOB_READ_WRITE_TOKEN: not configured`);
+    return false;
+  }
+  try {
+    const blob = await put(
+      `verify-env-probe-${Date.now()}.png`,
+      Buffer.from(PROBE_IMAGE_BASE64, 'base64'),
+      { access: 'public', addRandomSuffix: true, contentType: 'image/png', token }
+    );
+    await del(blob.url, { token }).catch(() => {});
+    console.log(`✓ Vercel Blob: token valid (test object uploaded and cleaned up)`);
+    return true;
+  } catch (e) {
+    const err = e as Error;
+    console.log(`✗ Vercel Blob: ${err.message}`);
+    return false;
+  }
+}
 
 async function testImgBB(apiKey: string): Promise<boolean> {
   if (!apiKey || apiKey === 'your_imgbb_api_key_here') {
@@ -62,7 +85,7 @@ async function testImgBB(apiKey: string): Promise<boolean> {
   try {
     const form = new FormData();
     form.append('key', apiKey);
-    form.append('image', IMGBB_PROBE_IMAGE_BASE64);
+    form.append('image', PROBE_IMAGE_BASE64);
     const res = await fetch('https://api.imgbb.com/1/upload', {
       method: 'POST',
       body: form,
@@ -122,13 +145,21 @@ async function main() {
     results.push({ name: 'SSO_BASE_URL', pass: false });
   }
 
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+  if (blobToken) {
+    const passed = await testVercelBlob(blobToken);
+    results.push({ name: 'BLOB_READ_WRITE_TOKEN', pass: passed });
+  } else {
+    console.log('○ BLOB_READ_WRITE_TOKEN: not set (required -- Vercel Blob is primary image storage)');
+    results.push({ name: 'BLOB_READ_WRITE_TOKEN', pass: false });
+  }
+
   const imgbbKey = process.env.IMGBB_API_KEY?.trim();
   if (imgbbKey) {
     const passed = await testImgBB(imgbbKey);
-    results.push({ name: 'IMGBB_API_KEY', pass: passed });
+    results.push({ name: 'IMGBB_API_KEY (mirror, optional)', pass: passed });
   } else {
-    console.log('○ IMGBB_API_KEY: not set');
-    results.push({ name: 'IMGBB_API_KEY', pass: false });
+    console.log('○ IMGBB_API_KEY: not set (optional -- best-effort mirror only, uploads still work without it)');
   }
 
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL?.trim();

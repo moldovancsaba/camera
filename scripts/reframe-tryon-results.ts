@@ -417,7 +417,7 @@ async function reframeExistingTryOnResult(
           'processing.finishedAt': now,
           'result.publicResultUrl': framed.publicResultUrl,
           'result.imgbbDeleteUrl': framed.deleteUrl ?? null,
-          'result.provider': 'imgbb',
+          'result.provider': 'blob',
         },
       }
     );
@@ -430,7 +430,7 @@ async function reframeExistingTryOnResult(
 
   if (!options.dryRun) {
     sourceSet['tryOnRequest.resultDeleteUrl'] = framed.deleteUrl ?? null;
-    sourceSet['tryOnRequest.resultProvider'] = 'imgbb';
+    sourceSet['tryOnRequest.resultProvider'] = 'blob';
   }
 
   if (!options.dryRun) {

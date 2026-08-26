@@ -5,6 +5,7 @@
  *   npx tsx scripts/verify-tryon-prereqs.ts
  */
 
+import { del, put } from '@vercel/blob';
 import { MongoClient } from 'mongodb';
 import { loadEnvFromFiles } from './load-env-from-files';
 import { getConfiguredSiteUrl } from '@/lib/site-url';
@@ -15,6 +16,16 @@ async function testMongo(uri: string, dbName: string): Promise<MongoClient> {
   await client.db('admin').command({ ping: 1 });
   await client.db(dbName).collection('leather_suits').estimatedDocumentCount();
   return client;
+}
+
+async function testVercelBlob(token: string): Promise<boolean> {
+  const blob = await put(
+    `verify-tryon-prereqs-probe-${Date.now()}.png`,
+    Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64'),
+    { access: 'public', addRandomSuffix: true, contentType: 'image/png', token }
+  );
+  await del(blob.url, { token }).catch(() => {});
+  return true;
 }
 
 async function testImgBB(apiKey: string): Promise<boolean> {
@@ -43,6 +54,7 @@ async function main() {
 
   const mongoUri = process.env.MONGODB_URI?.trim() || '';
   const mongoDb = process.env.MONGODB_DB?.trim() || '';
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN?.trim() || '';
   const imgbbKey = process.env.IMGBB_API_KEY?.trim() || '';
   const internalSecret = process.env.CAMERA_TRYON_INTERNAL_SECRET?.trim() || '';
   const appUrl = getConfiguredSiteUrl();
@@ -52,8 +64,13 @@ async function main() {
   checks.push(printResult(Boolean(mongoUri), 'MONGODB_URI', mongoUri ? 'configured' : 'missing'));
   checks.push(printResult(Boolean(mongoDb), 'MONGODB_DB', mongoDb || 'missing'));
   checks.push(
-    printResult(Boolean(imgbbKey), 'IMGBB_API_KEY', imgbbKey ? 'configured' : 'missing')
+    printResult(Boolean(blobToken), 'BLOB_READ_WRITE_TOKEN', blobToken ? 'configured' : 'missing')
   );
+  if (imgbbKey) {
+    printResult(true, 'IMGBB_API_KEY', 'configured (best-effort mirror, optional)');
+  } else {
+    console.log('○ IMGBB_API_KEY: not set (optional -- best-effort mirror only, try-on still works without it)');
+  }
   checks.push(
     printResult(
       Boolean(internalSecret),
@@ -87,9 +104,14 @@ async function main() {
       );
     }
 
+    if (blobToken) {
+      const ok = await testVercelBlob(blobToken).catch(() => false);
+      checks.push(printResult(ok, 'Vercel Blob', ok ? 'token accepted' : 'token rejected'));
+    }
+
     if (imgbbKey) {
       const ok = await testImgBB(imgbbKey);
-      checks.push(printResult(ok, 'ImgBB', ok ? 'API key accepted' : 'API key rejected'));
+      printResult(ok, 'ImgBB', ok ? 'API key accepted (mirror)' : 'API key rejected (mirror only, non-blocking)');
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown error';

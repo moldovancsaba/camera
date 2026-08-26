@@ -7,16 +7,21 @@ process.env.BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA ??= 'true';
  * Next.js configuration for Camera webapp
  * 
  * Key configurations:
- * - Image domains for imgbb.com CDN
+ * - Image domains for Vercel Blob (primary) and imgbb.com (mirror)
  * - Security headers (HSTS, CSP, X-Frame-Options)
  * - Performance optimizations (compression, caching)
  * - TypeScript strict mode enforcement
  */
 const nextConfig: NextConfig = {
   transpilePackages: ['@sovereignsquad/gds-theme', '@sovereignsquad/gds-core', '@sovereignsquad/gds-admin'],
-  // Image configuration for imgbb.com CDN
+  // Image configuration: Vercel Blob (primary) + imgbb.com CDN (mirror)
   images: {
     remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.public.blob.vercel-storage.com',
+        pathname: '/**',
+      },
       {
         protocol: 'https',
         hostname: 'i.ibb.co',
@@ -86,9 +91,9 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Next.js requires unsafe-inline/eval
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Tailwind requires unsafe-inline, Google Fonts for Material Icons
-              "img-src 'self' data: https://i.ibb.co https://imgbb.com blob:",
+              "img-src 'self' data: https://*.public.blob.vercel-storage.com https://i.ibb.co https://imgbb.com blob:",
               "font-src 'self' data: https://fonts.gstatic.com", // Google Fonts CDN for Material Icons
-              "connect-src 'self' https://sso.doneisbetter.com https://api.imgbb.com",
+              "connect-src 'self' https://sso.doneisbetter.com https://*.public.blob.vercel-storage.com https://api.imgbb.com",
               "frame-ancestors 'self'",
               "base-uri 'self'",
               "form-action 'self' https://sso.doneisbetter.com",
