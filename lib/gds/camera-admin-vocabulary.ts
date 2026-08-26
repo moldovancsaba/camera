@@ -28,6 +28,7 @@ export const cameraAdminVocabularyPacks = [
     'retry-job': { defaultMessage: 'Retry job', icon: GdsIcons.Refresh, feedback: savedFeedback },
     'rerun-job': { defaultMessage: 'Rerun job', icon: GdsIcons.Refresh, feedback: savedFeedback },
     'resend-result': { defaultMessage: 'Resend result', icon: GdsIcons.Send, feedback: savedFeedback },
+    'restore-orphaned-result': { defaultMessage: 'Restore prior result', icon: GdsIcons.Refresh, feedback: savedFeedback },
   }),
   createGdsVocabularyPack('tryon-moderation', {
     action: { defaultMessage: 'Moderation action', icon: GdsIcons.Check, feedback: savedFeedback },

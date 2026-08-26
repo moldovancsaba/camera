@@ -1,5 +1,51 @@
 # RELEASE_NOTES.md
 
+## v12.2.13 — fix(admin): a rerun that fails no longer hides its predecessor's result
+
+Reported live during today's FIBA 3x3 event: an operator changed a result's
+garment and reran it, and the result queue showed nothing where the old
+(imperfect but real) result used to be.
+
+### Root cause
+The rerun endpoint archives the predecessor result the moment a rerun is
+*requested* -- before the new job has actually produced anything. That's
+been true since the endpoint existed, not introduced by this week's
+garment-swap work, but Phase 2/4 made reruns easy enough that it's now hit
+far more often. If the new job then fails, the archived predecessor is
+orphaned: hidden from the pending queue, with nothing to replace it.
+
+### Fixed
+The Failed Jobs view now detects this exact situation (a failed job whose
+predecessor's result was auto-archived specifically because of it) and
+offers a **Restore Prior Result** action -- brings the archived result back
+to Vetting, pending review again. New `POST
+/api/admin/tryon-results/[id]/restore`, guarded to only ever restore
+records archived for that specific auto-supersede reason -- it will not
+touch a result an operator genuinely rejected.
+
+### Separate finding, not fixed here
+Investigating today's report also surfaced that **imgbb is not reliably
+persisting images** -- confirmed directly: a source photo and three
+different result images from the last ~19 hours are now 404 on imgbb,
+including the one this fix would have restored for the specific
+submission reported today. This is not time-based expiry (some 17-hour-old
+images survive, some 12-hour-old ones don't) and our code never calls
+imgbb's delete endpoint (confirmed -- `deleteImage()` in
+`lib/imgbb/upload.ts` has zero callers anywhere in the codebase). This
+looks like an imgbb-side reliability/retention characteristic, not
+something a code patch fixes -- flagging for a real decision on image
+storage, not fixing silently. Practical effect for today: the specific
+guest whose source photo is gone cannot be rerun at all (the worker has
+nothing left to download) and needs to retake their photo.
+
+### Verified
+Full gate green: gds:validate-manifest, gds:check, type-check, lint,
+verify:production-guards, build. Data-layer verification against real
+production data: the new orphan-detection query, run against the actual
+live Failed Jobs list (20 failed jobs in scope), found exactly the one
+real affected submission and no false positives; confirmed the restore
+endpoint's guard condition matches that record.
+
 ## v12.2.12 — Phase 5 of the admin UX audit: a Maintenance console (final phase)
 
 The roadmap's last phase. New **Maintenance** page under Operations

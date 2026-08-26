@@ -41,6 +41,10 @@ export interface QueueRow {
     code?: string | null;
     message?: string | null;
   };
+  // Set when this job is a rerun whose predecessor's result was archived
+  // (superseded) the moment the rerun was requested, and the rerun then
+  // failed -- leaving that result hidden with nothing to replace it.
+  orphanedResultSubmissionId?: string | null;
 }
 
 type QueueTableRow = QueueRow & Record<string, unknown>;
@@ -114,6 +118,18 @@ async function reapplyResult(jobId: string) {
     throw new Error(payload.error || 'Failed to resend try-on result');
   }
   return payload.data?.message || payload.message || 'Result reapplied.';
+}
+
+async function restoreOrphanedResult(submissionId: string) {
+  const response = await fetch(`/api/admin/tryon-results/${submissionId}/restore`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to restore result');
+  }
+  return 'Prior result restored to Vetting for review.';
 }
 
 function recoveryHint(row: QueueRow): string {
@@ -338,6 +354,24 @@ export default function TryOnQueueTable({
     }
   }
 
+  async function handleRestoreOrphaned(jobId: string, submissionId: string) {
+    const confirmed = await confirm({
+      title: 'Restore prior result',
+      message:
+        'This rerun failed without producing a new result. Restoring brings its predecessor back to Vetting, pending review again.',
+    });
+    if (!confirmed) {
+      return;
+    }
+    try {
+      setBusyJobId(jobId);
+      setRecoveryMessage(await restoreOrphanedResult(submissionId));
+      router.refresh();
+    } finally {
+      setBusyJobId(null);
+    }
+  }
+
   if (displayRows.length === 0) {
     return (
       <StateBlock
@@ -481,6 +515,18 @@ export default function TryOnQueueTable({
                   onClick={() => void handleRetry(row.jobId)}
                 >
                   Retry job
+                </SemanticButton>
+              ) : null}
+              {row.status === 'failed' && row.orphanedResultSubmissionId ? (
+                <SemanticButton
+                  action="tryon:restore-orphaned-result"
+                  variant="secondary"
+                  size="xs"
+                  loading={busyJobId === row.jobId}
+                  aria-label={`Restore the result this failed rerun was meant to replace`}
+                  onClick={() => void handleRestoreOrphaned(row.jobId, row.orphanedResultSubmissionId as string)}
+                >
+                  Restore Prior Result
                 </SemanticButton>
               ) : null}
               {(row.status === 'failed' || row.status === 'retry_wait' || row.status === 'done') ? (

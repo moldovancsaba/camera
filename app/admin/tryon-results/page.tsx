@@ -369,6 +369,28 @@ export default async function AdminTryOnResultsPage({
           ? { ...row, source: { ...row.source, eventName: eventNames.get(row.source.eventMongoId) ?? null } }
           : row
       );
+
+      // WHAT: A rerun archives its predecessor's result the moment it's
+      // requested, before the new job has actually produced anything. If
+      // the rerun then fails, that archived result is orphaned -- hidden
+      // with nothing having replaced it. Surface a restore action for
+      // exactly that case.
+      const orphanedResults = await db
+        .collection<Submission>(COLLECTIONS.SUBMISSIONS)
+        .find(
+          { 'tryOnModerationArchive.supersededByJobId': { $in: failedJobRows.map((row) => row.jobId) } },
+          { projection: { _id: 1, 'tryOnModerationArchive.supersededByJobId': 1 } }
+        )
+        .toArray();
+      const orphanBySupersedingJobId = new Map(
+        orphanedResults
+          .filter((doc) => typeof doc.tryOnModerationArchive?.supersededByJobId === 'string')
+          .map((doc) => [doc.tryOnModerationArchive!.supersededByJobId as string, doc._id.toString()])
+      );
+      failedJobRows = failedJobRows.map((row) => ({
+        ...row,
+        orphanedResultSubmissionId: orphanBySupersedingJobId.get(row.jobId) ?? null,
+      }));
     }
 
     const sourceObjectIds = docs
