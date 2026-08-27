@@ -93,8 +93,10 @@ async function retryJob(jobId: string) {
   return payload.data?.message || payload.message || 'Job queued for retry.';
 }
 
-async function rerunJob(jobId: string, setupId?: string) {
-  const payload = setupId ? { setupId } : {};
+async function rerunJob(jobId: string, setupId?: string, sourceImageData?: string) {
+  const payload: Record<string, string> = {};
+  if (setupId) payload.setupId = setupId;
+  if (sourceImageData) payload.sourceImageData = sourceImageData;
   const response = await fetch(`/api/admin/tryon-jobs/${jobId}/rerun`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -146,12 +148,40 @@ function recoveryHint(row: QueueRow): string {
 }
 
 function SourceImagePreview({ row }: { row: QueueRow }) {
+  // WHY the error state: imgbb deletes uploads without notice, so a failed
+  // job's source URL often 404s. A silent broken-image icon reads as a UI
+  // bug; naming the situation points the operator at "Replace photo & rerun".
+  const [unreachable, setUnreachable] = useState(false);
   const imageUrl = row.source.imageUrl.trim();
   if (!imageUrl) {
     return (
       <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem' }}>
         No source image
       </span>
+    );
+  }
+
+  if (unreachable) {
+    return (
+      <div
+        style={{
+          border: '1px dashed var(--gds-color-border)',
+          borderRadius: 12,
+          display: 'grid',
+          gap: '0.35rem',
+          maxWidth: 240,
+          padding: '0.75rem',
+        }}
+      >
+        <strong style={{ fontSize: '0.75rem' }}>Source image unreachable</strong>
+        <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
+          The host no longer serves this file (deleted or expired upload). Use
+          &ldquo;Replace photo &amp; rerun&rdquo; to upload it again.
+        </span>
+        <a href={imageUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem' }}>
+          Open original URL
+        </a>
+      </div>
     );
   }
 
@@ -175,6 +205,7 @@ function SourceImagePreview({ row }: { row: QueueRow }) {
           sizes="96px"
           style={{ objectFit: 'contain' }}
           unoptimized
+          onError={() => setUnreachable(true)}
         />
       </div>
       <a href={imageUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem' }}>
@@ -354,6 +385,34 @@ export default function TryOnQueueTable({
     }
   }
 
+  async function handleReplaceSource(jobId: string, setupId: string | undefined, file: File) {
+    if (file.size > 10 * 1024 * 1024) {
+      setRecoveryMessage('That photo is larger than 10 MB - please pick a smaller file.');
+      return;
+    }
+    const confirmed = await confirm({
+      title: 'Replace photo & rerun',
+      message:
+        'Uploads the selected photo as the new source image and queues a new job with the selected preset. Use this when the original source image is no longer reachable at its host.',
+    });
+    if (!confirmed) return;
+    try {
+      setBusyJobId(jobId);
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('Could not read the selected file'));
+        reader.readAsDataURL(file);
+      });
+      setRecoveryMessage(await rerunJob(jobId, setupId, dataUrl));
+      router.refresh();
+    } catch (error) {
+      setRecoveryMessage(error instanceof Error ? error.message : 'Failed to replace the source photo');
+    } finally {
+      setBusyJobId(null);
+    }
+  }
+
   async function handleRestoreOrphaned(jobId: string, submissionId: string) {
     const confirmed = await confirm({
       title: 'Restore prior result',
@@ -404,6 +463,12 @@ export default function TryOnQueueTable({
               <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
                 Submission {row.source.submissionId}
               </p>
+              {/* On phones only the first columns fit without horizontal
+                  scrolling, so the source preview lives here rather than in
+                  the (off-screen) Source column. */}
+              <div style={{ marginTop: '0.5rem' }}>
+                <SourceImagePreview row={row} />
+              </div>
             </>
           ),
         },
@@ -428,83 +493,7 @@ export default function TryOnQueueTable({
                   </span>
                 </div>
               ) : null}
-            </>
-          ),
-        },
-        {
-          key: 'source',
-          label: 'Source',
-          render: (row) => (
-            <div style={{ display: 'grid', gap: '0.5rem' }}>
-              <SourceImagePreview row={row} />
-              <span style={{ display: '-webkit-box', fontSize: '0.875rem', overflow: 'hidden', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>
-                {row.source.imageUrl}
-              </span>
-              {row.source.eventName || row.source.eventMongoId ? (
-                // --gds-color-muted (the previous token here) is not a variable GDS
-                // defines; it resolved to nothing. Mantine's dimmed token is what the
-                // rest of this admin uses for secondary text.
-                <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
-                  Event {row.source.eventName ?? row.source.eventMongoId}
-                </span>
-              ) : null}
-            </div>
-          ),
-        },
-        {
-          key: 'suit',
-          label: 'Garment',
-          render: (row) => <span style={{ fontSize: '0.875rem' }}>{row.request.leatherSuitId}</span>,
-        },
-        {
-          key: 'preset',
-          label: 'Preset',
-          render: (row) => {
-            const setupForDisplay = row.processing.resolvedSetup
-              ? {
-                  setupId: row.processing.resolvedSetup.setupId,
-                  setupName: row.processing.resolvedSetup.setupName,
-                }
-              : typeof row.request.setupId === 'string'
-                ? { setupId: row.request.setupId }
-                : null;
-            return <span style={{ fontSize: '0.875rem' }}>{getSetupLabel(setupsById, setupForDisplay)}</span>;
-          },
-        },
-        {
-          key: 'worker',
-          label: 'Worker',
-          render: (row) => (
-            <>
-              <span style={{ fontSize: '0.875rem' }}>{row.processing.workerId || 'Unclaimed'}</span>
-              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
-                Attempts {row.processing.attemptCount}
-              </p>
-              {row.processing.nextAttemptAt ? (
-                <p suppressHydrationWarning style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
-                  Next {new Date(row.processing.nextAttemptAt).toLocaleString()}
-                </p>
-              ) : null}
-            </>
-          ),
-        },
-        {
-          key: 'result',
-          label: 'Result',
-          render: (row) => (
-            <div style={{ alignItems: 'flex-start', display: 'grid', gap: '0.5rem' }}>
-              <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
-                {recoveryHint(row)}
-              </span>
-              {row.result.publicResultUrl ? (
-                <a href={row.result.publicResultUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.875rem' }}>
-                  Open result
-                </a>
-              ) : (
-                <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem' }}>
-                  No result yet
-                </span>
-              )}
+              <div style={{ display: 'grid', gap: '0.5rem', justifyItems: 'start', marginTop: '0.75rem' }}>
               {(row.status === 'failed' || row.status === 'retry_wait') ? (
                 <SemanticButton
                   action="tryon:retry-job"
@@ -580,6 +569,23 @@ export default function TryOnQueueTable({
                         >
                           Rerun
                         </SemanticButton>
+                        {(row.status === 'failed' || row.status === 'retry_wait') ? (
+                          <label style={{ display: 'grid', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 700 }}>
+                            Replace photo &amp; rerun
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              disabled={busyJobId === row.jobId}
+                              aria-label={`Upload a replacement source photo for job ${row.jobId} and rerun`}
+                              onChange={(event) => {
+                                const file = event.currentTarget.files?.[0] ?? null;
+                                event.currentTarget.value = '';
+                                if (file) void handleReplaceSource(row.jobId, selectedSetupId, file);
+                              }}
+                              style={{ fontSize: '0.75rem', maxWidth: 220 }}
+                            />
+                          </label>
+                        ) : null}
                       </>
                     );
                   })()}
@@ -597,6 +603,83 @@ export default function TryOnQueueTable({
                   Resend to user
                 </SemanticButton>
               ) : null}
+              </div>
+            </>
+          ),
+        },
+        {
+          key: 'source',
+          label: 'Source',
+          render: (row) => (
+            <div style={{ display: 'grid', gap: '0.5rem' }}>
+              <span style={{ display: '-webkit-box', fontSize: '0.875rem', overflow: 'hidden', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>
+                {row.source.imageUrl}
+              </span>
+              {row.source.eventName || row.source.eventMongoId ? (
+                // --gds-color-muted (the previous token here) is not a variable GDS
+                // defines; it resolved to nothing. Mantine's dimmed token is what the
+                // rest of this admin uses for secondary text.
+                <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
+                  Event {row.source.eventName ?? row.source.eventMongoId}
+                </span>
+              ) : null}
+            </div>
+          ),
+        },
+        {
+          key: 'suit',
+          label: 'Garment',
+          render: (row) => <span style={{ fontSize: '0.875rem' }}>{row.request.leatherSuitId}</span>,
+        },
+        {
+          key: 'preset',
+          label: 'Preset',
+          render: (row) => {
+            const setupForDisplay = row.processing.resolvedSetup
+              ? {
+                  setupId: row.processing.resolvedSetup.setupId,
+                  setupName: row.processing.resolvedSetup.setupName,
+                }
+              : typeof row.request.setupId === 'string'
+                ? { setupId: row.request.setupId }
+                : null;
+            return <span style={{ fontSize: '0.875rem' }}>{getSetupLabel(setupsById, setupForDisplay)}</span>;
+          },
+        },
+        {
+          key: 'worker',
+          label: 'Worker',
+          render: (row) => (
+            <>
+              <span style={{ fontSize: '0.875rem' }}>{row.processing.workerId || 'Unclaimed'}</span>
+              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
+                Attempts {row.processing.attemptCount}
+              </p>
+              {row.processing.nextAttemptAt ? (
+                <p suppressHydrationWarning style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
+                  Next {new Date(row.processing.nextAttemptAt).toLocaleString()}
+                </p>
+              ) : null}
+            </>
+          ),
+        },
+        {
+          key: 'result',
+          label: 'Result',
+          render: (row) => (
+            <div style={{ alignItems: 'flex-start', display: 'grid', gap: '0.5rem' }}>
+              <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
+                {recoveryHint(row)}
+              </span>
+              {row.result.publicResultUrl ? (
+                <a href={row.result.publicResultUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.875rem' }}>
+                  Open result
+                </a>
+              ) : (
+                <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem' }}>
+                  No result yet
+                </span>
+              )}
             </div>
           ),
         },

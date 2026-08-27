@@ -1,4 +1,5 @@
 import { createTryOnJobId } from '@/lib/tryon/hash';
+import { uploadImage } from '@/lib/imgbb/upload';
 import { nowIso } from '@/lib/tryon/time';
 import { patchSubmissionTryOnState, buildSubmissionTryOnLink, upsertSubmissionTryOnLink } from '@/lib/tryon/jobs';
 import { NextRequest } from 'next/server';
@@ -19,13 +20,22 @@ function normalizeSetupId(value: string | null | undefined): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
-function buildRerunJob(job: TryOnJob, setupIdOverride?: string | null, leatherSuitIdOverride?: string | null): TryOnJob {
+function buildRerunJob(
+  job: TryOnJob,
+  setupIdOverride?: string | null,
+  leatherSuitIdOverride?: string | null,
+  sourceImageUrlOverride?: string | null
+): TryOnJob {
   const createdAt = nowIso();
   const { _id: omittedMongoId, ...template } = job;
   void omittedMongoId;
 
   return {
     ...template,
+    source: {
+      ...job.source,
+      ...(sourceImageUrlOverride ? { imageUrl: sourceImageUrlOverride } : {}),
+    },
     jobId: createTryOnJobId(),
     requestHash: buildRerunRequestHash(job.requestHash),
     status: 'queued',
@@ -125,18 +135,49 @@ export const POST = withErrorHandler(async (
     throw apiBadRequest(`Only non-active jobs can be rerun. Current status: ${sourceJob.status}`);
   }
 
+  // Optional replacement source photo. WHY: imgbb has deleted source images
+  // within hours (the rot that drove the Blob migration), and a job whose
+  // source 404s can never succeed again -- retry and plain rerun both refetch
+  // the same dead URL. The operator uploads the photo again; it goes through
+  // the same uploadImage() path as capture (Blob primary), and the rerun job
+  // points at the fresh URL.
+  const rawSourceImageData =
+    typeof body === 'object' &&
+    body !== null &&
+    'sourceImageData' in body &&
+    typeof (body as { sourceImageData?: unknown }).sourceImageData === 'string'
+      ? (body as { sourceImageData: string }).sourceImageData.trim()
+      : '';
+  let replacementUpload: Awaited<ReturnType<typeof uploadImage>> | null = null;
+  if (rawSourceImageData) {
+    const base64 = rawSourceImageData.includes(',')
+      ? rawSourceImageData.split(',')[1]
+      : rawSourceImageData;
+    if (!base64) {
+      throw apiBadRequest('sourceImageData must be a base64 image data URL');
+    }
+    replacementUpload = await uploadImage(base64, {
+      name: `tryon-source-replace-${normalizedJobId}`,
+    });
+  }
+
   if (
     typeof sourceJob.source?.submissionId !== 'string' ||
     !sourceJob.source.submissionId.trim() ||
-    typeof sourceJob.source?.imageUrl !== 'string' ||
-    !sourceJob.source.imageUrl.trim() ||
+    (!replacementUpload &&
+      (typeof sourceJob.source?.imageUrl !== 'string' || !sourceJob.source.imageUrl.trim())) ||
     typeof sourceJob.request?.leatherSuitId !== 'string' ||
     !sourceJob.request.leatherSuitId.trim()
   ) {
     throw apiBadRequest('Original job is missing source or request details required for rerun');
   }
 
-  const rerunJob = buildRerunJob(sourceJob, requestedSetupId, requestedLeatherSuitId);
+  const rerunJob = buildRerunJob(
+    sourceJob,
+    requestedSetupId,
+    requestedLeatherSuitId,
+    replacementUpload?.imageUrl ?? null
+  );
 
   const inserted = await db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).insertOne(rerunJob);
   const priorResult = await db
@@ -203,9 +244,9 @@ export const POST = withErrorHandler(async (
       requested: true,
       leatherSuitId: rerunJob.request.leatherSuitId,
       jobId: rerunJob.jobId,
-      sourceImageUrl: sourceJob.source.imageUrl,
-      sourceDeleteUrl: null,
-      sourceImageId: null,
+      sourceImageUrl: rerunJob.source.imageUrl,
+      sourceDeleteUrl: replacementUpload?.deleteUrl ?? null,
+      sourceImageId: replacementUpload?.imageId ?? null,
       resultUrl: null,
       resultDeleteUrl: null,
       resultProvider: null,
@@ -235,11 +276,15 @@ export const POST = withErrorHandler(async (
     stage: 'queued',
     recoveryAction: 'rerun',
     recoveryOutcome: 'new_job_queued',
+    sourceReplaced: Boolean(replacementUpload),
+    sourceImageUrl: rerunJob.source.imageUrl,
     createdAt: rerunJob.createdAt,
     rerunRequestedBy: session.user.email,
     oldResultArchived: Boolean(priorResult?._id),
     oldResultArchiveReason: priorResult?._id ? 'quality_rerun_superseded' : null,
     oldResultSubmissionId: priorResult?._id?.toString() ?? null,
-    message: 'A new job was queued with the selected settings. The result will require human approval before publication.',
+    message: replacementUpload
+      ? 'A new job was queued with the uploaded replacement photo. The result will require human approval before publication.'
+      : 'A new job was queued with the selected settings. The result will require human approval before publication.',
   });
 });

@@ -1,5 +1,30 @@
 # RELEASE_NOTES.md
 
+## v12.2.16 — failed jobs: source photo visible up front, dead sources replaceable
+
+Reported live from a phone: the Failed Jobs view showed only Job and Status
+before horizontal scrolling, so the source image and every recovery action sat
+off-screen — and the one failed FIBA job's source image 404s at imgbb (the rot
+that drove the v12.2.14 Blob migration), which no amount of Retry or Rerun can
+fix since both refetch the same dead URL.
+
+- The source image preview now lives in the Job column (first, always
+  visible), and the whole recovery cluster (Retry, Rerun with preset picker,
+  Restore Prior Result) moved from the far-right Result column into the
+  Status column, next to the failure reason. The Result column keeps the
+  hint text and result link.
+- The preview detects an unreachable source (the image fails to load) and
+  says so — "deleted or expired upload" — instead of a silent broken-image
+  icon, pointing at the new recovery path.
+- New "Replace photo & rerun" on failed/retry-wait jobs: the operator picks
+  an image file (10 MB cap), it uploads through the same uploadImage() path
+  as capture (Vercel Blob primary), and the rerun endpoint queues a new job
+  pointing at the fresh URL. `POST .../rerun` gained an optional
+  `sourceImageData` (base64 data URL) for this; the submission's try-on
+  state records the new source URL and upload ids. Everything else about
+  rerun (supersede bookkeeping, human approval before publication) is
+  unchanged.
+
 ## v12.2.15 — the Frame type described a document shape that never existed; 45 guest identities triaged; AI Setups crash fixed; garment-type setup defaults
 
 Four changes, all driven by checking the database rather than the code's own
