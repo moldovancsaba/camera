@@ -24,6 +24,27 @@ interface PartnerListItem {
   createdAt?: unknown;
 }
 
+// WHAT: Distinct frames assigned to these partners' events. WHY: the old
+// stat counted frames by a partnerId field no frame document has (confirmed
+// against production in v12.2.15), so it was structurally always zero.
+// Assignment lives on the event (event.frames[]), so the truthful partner
+// frame count follows the events.
+async function countDistinctAssignedFrames(
+  db: Awaited<ReturnType<typeof connectToDatabase>>,
+  partnerIds: string[]
+): Promise<number> {
+  const result = (await db
+    .collection(COLLECTIONS.EVENTS)
+    .aggregate([
+      { $match: { partnerId: { $in: partnerIds } } },
+      { $unwind: '$frames' },
+      { $group: { _id: '$frames.frameId' } },
+      { $count: 'count' },
+    ])
+    .toArray()) as Array<{ count: number }>;
+  return result[0]?.count ?? 0;
+}
+
 export default async function PartnersPage({
   searchParams,
 }: {
@@ -80,7 +101,7 @@ export default async function PartnersPage({
           })
         : Promise.resolve(0),
       matchingPartnerIds.length > 0
-        ? db.collection(COLLECTIONS.FRAMES).countDocuments({ partnerId: { $in: matchingPartnerIds } })
+        ? countDistinctAssignedFrames(db, matchingPartnerIds)
         : Promise.resolve(0),
     ]);
     matchingPartnerCount = matchingPartnerIds.length;
@@ -94,7 +115,7 @@ export default async function PartnersPage({
       if (!id || !partnerId) continue;
 
       const eventCount = await db.collection(COLLECTIONS.EVENTS).countDocuments({ partnerId });
-      const frameCount = await db.collection(COLLECTIONS.FRAMES).countDocuments({ partnerId });
+      const frameCount = await countDistinctAssignedFrames(db, [partnerId]);
       const userAccessCount = await db
         .collection(COLLECTIONS.PARTNER_USER_ACCESS)
         .countDocuments({ partnerId, isActive: true });

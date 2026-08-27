@@ -77,7 +77,7 @@ export default async function FramesPage({
           ],
         }
       : {};
-    const [frameDocs, totalFrames, activeFrames, assignments] = await Promise.all([
+    const [frameDocs, totalFrames, activeFrames, matchingFrameIdDocs, eventAssignments] = await Promise.all([
       db
         .collection<Frame>(COLLECTIONS.FRAMES)
         .find(query)
@@ -86,21 +86,29 @@ export default async function FramesPage({
         .toArray(),
       db.collection<Frame>(COLLECTIONS.FRAMES).countDocuments(query),
       db.collection<Frame>(COLLECTIONS.FRAMES).countDocuments({ ...query, isActive: true }),
-      // Left untyped and reported rather than "fixed": frames carry no
-      // usageCount, so this total is structurally always 0. Making the stat
-      // truthful means deciding what it should count, which is a product
-      // question, not a typing one.
       db
-        .collection(COLLECTIONS.FRAMES)
-        .aggregate<{ total: number }>([
-          { $match: query },
-          { $group: { _id: null, total: { $sum: { $ifNull: ['$usageCount', 0] } } } },
+        .collection<Frame>(COLLECTIONS.FRAMES)
+        .find(query, { projection: { frameId: 1 } })
+        .toArray(),
+      // Assignments live on the event (event.frames[]), not on the frame --
+      // the old stat summed a usageCount field no frame document has, so it
+      // was structurally always zero (v12.2.15 finding). This counts real
+      // event-frame assignments.
+      db
+        .collection(COLLECTIONS.EVENTS)
+        .aggregate<{ _id: string; count: number }>([
+          { $unwind: '$frames' },
+          { $group: { _id: '$frames.frameId', count: { $sum: 1 } } },
         ])
         .toArray(),
     ]);
+    const assignmentsByFrameId = new Map(eventAssignments.map((entry) => [entry._id, entry.count]));
     matchingFrameCount = totalFrames;
     activeFrameCount = activeFrames;
-    assignmentCount = assignments[0]?.total ?? 0;
+    assignmentCount = matchingFrameIdDocs.reduce(
+      (sum, frame) => sum + (assignmentsByFrameId.get(frame.frameId) ?? 0),
+      0
+    );
     const frames = frameDocs as unknown as FrameListItem[];
 
     const partnerIds = Array.from(
@@ -156,7 +164,7 @@ export default async function FramesPage({
         imageUrl: frame.imageUrl,
         isActive: Boolean(frame.isActive),
         scope,
-        usageCount: frame.usageCount || 0,
+        usageCount: (frame.frameId ? assignmentsByFrameId.get(frame.frameId) : 0) ?? 0,
         partnerId: frame.partnerId ?? null,
         partnerName: partner?.name ?? null,
         partnerAdminId: mongoIdString(partner?._id),

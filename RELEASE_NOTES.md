@@ -1,5 +1,21 @@
 # RELEASE_NOTES.md
 
+## v12.2.17 — the two always-zero stats now count real assignments
+
+Closes the "reported not fixed" items from v12.2.15. Both stats counted
+fields no frame document has (`partnerId`, `usageCount`), so both were
+structurally always zero. Assignment actually lives on the event
+(`event.frames[]`), so the stats now follow the events:
+
+- Partner "Frames" (list page, per-partner rows, and the partner detail API)
+  = distinct frames assigned to that partner's events.
+- Frames page "Assignments" (stat tile and per-frame count) = real
+  event-frame assignments, per frame and total for the current filter.
+
+Verified against production before shipping: 14 assignments across 8
+distinct frames, with per-partner counts matching (AS Roma 1, MotoGP 1,
+FIBA 3X3 1, ...) where every number used to be 0.
+
 ## v12.2.16 — failed jobs: source photo visible up front, dead sources replaceable
 
 Reported live from a phone: the Failed Jobs view showed only Job and Status

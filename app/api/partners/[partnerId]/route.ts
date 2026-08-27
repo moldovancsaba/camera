@@ -49,7 +49,19 @@ async function loadPartnerWithStats(
   const { partner, partnerId } = await assertPartnerMongoWorkspaceAccess(db, session, partnerMongoId, 'viewer');
 
   const eventCount = await db.collection(COLLECTIONS.EVENTS).countDocuments({ partnerId });
-  const frameCount = await db.collection(COLLECTIONS.FRAMES).countDocuments({ partnerId });
+  // Frames carry no partnerId (v12.2.15 finding) -- assignment lives on the
+  // event, so the truthful count is distinct frames assigned to this
+  // partner's events.
+  const frameCountResult = (await db
+    .collection(COLLECTIONS.EVENTS)
+    .aggregate([
+      { $match: { partnerId } },
+      { $unwind: '$frames' },
+      { $group: { _id: '$frames.frameId' } },
+      { $count: 'count' },
+    ])
+    .toArray()) as Array<{ count: number }>;
+  const frameCount = frameCountResult[0]?.count ?? 0;
 
   return { partner, partnerId, eventCount, frameCount };
 }
