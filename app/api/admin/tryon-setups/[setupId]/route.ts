@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, type TryOnSetup, type TryOnSetupConfig } from '@/lib/db/schemas';
 import { apiBadRequest, apiNotFound, apiSuccess, requireAdmin, withErrorHandler } from '@/lib/api';
+import { normalizeDefaultForGarmentTypes } from '@/lib/tryon/setup-resolution';
 
 interface RouteContext {
   params: Promise<{ setupId: string }>;
@@ -12,8 +13,8 @@ function normalizeString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function buildConfig(body: Record<string, unknown>, existing: TryOnSetupConfig): TryOnSetupConfig {
-  const config: TryOnSetupConfig = { ...existing };
+function buildConfig(body: Record<string, unknown>, existing?: TryOnSetupConfig): TryOnSetupConfig {
+  const config: TryOnSetupConfig = { ...(existing ?? {}) };
   if (body.processingProfile !== undefined || body.processing_profile !== undefined) {
     const value = normalizeString(body.processingProfile ?? body.processing_profile);
     config.processing_profile = value || undefined;
@@ -72,6 +73,9 @@ export const PUT = withErrorHandler(async (request: NextRequest, context: RouteC
   if (body.active !== undefined) updateData.active = Boolean(body.active);
   if (body.isDefault !== undefined) updateData.isDefault = Boolean(body.isDefault);
   if (body.rank !== undefined && Number.isFinite(Number(body.rank))) updateData.rank = Number(body.rank);
+  if (body.defaultForGarmentTypes !== undefined) {
+    updateData.defaultForGarmentTypes = normalizeDefaultForGarmentTypes(body.defaultForGarmentTypes);
+  }
   updateData.config = buildConfig(body, setup.config);
 
   const result = await db.collection<TryOnSetup>(COLLECTIONS.TRYON_SETUPS).findOneAndUpdate(

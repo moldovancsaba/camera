@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb';
 import { redirect } from 'next/navigation';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
-import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob, type TryOnModerationEvent } from '@/lib/db/schemas';
+import { COLLECTIONS, type Frame, type LeatherSuit, type Submission, type TryOnJob, type TryOnModerationEvent } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import OldestVettingResultCard from '@/components/admin/OldestVettingResultCard';
@@ -190,18 +190,11 @@ export default async function AdminTryOnResultsPage({
     const db = await connectToDatabase();
     setupOptions = await listActiveTryOnSetups(db);
     suitOptions = await listActiveTryOnSuitOptions(db);
-    // WHAT: Active frames for the "Change frame" picker on a result.
-    // WHY: the `Frame` interface in lib/db/schemas.ts (ownershipLevel,
-    // fileUrl, width/height) describes a frame model that was never actually
-    // migrated to -- real documents (confirmed against production) have no
-    // ownershipLevel and use imageUrl, not fileUrl, matching how
-    // app/api/frames/route.ts itself already reads this collection: loosely
-    // typed, not through the Frame interface. Only 10 frames exist total, so
-    // showing every active one (rather than scoping by event) is a real,
-    // complete picker, not a shortcut.
+    // Active frames for the "Change frame" picker on a result. Frames are flat
+    // and global -- there is no per-event scoping to apply here.
     frameOptions = (
       await db
-        .collection(COLLECTIONS.FRAMES)
+        .collection<Frame>(COLLECTIONS.FRAMES)
         .find({ isActive: true })
         .project({ frameId: 1, name: 1, imageUrl: 1 })
         .sort({ name: 1 })

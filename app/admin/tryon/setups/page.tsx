@@ -62,8 +62,9 @@ export default async function AdminTryOnSetupsPage({
       cameraId: setup.cameraId ?? null,
       isActive: Boolean(setup.active),
       isDefault: Boolean(setup.isDefault),
-      profile: setup.config.processing_profile ?? setup.config.processingProfile ?? null,
-      category: setup.config.category ?? null,
+      profile: setup.config?.processing_profile ?? setup.config?.processingProfile ?? null,
+      category: setup.config?.category ?? null,
+      defaultForGarmentTypes: Array.isArray(setup.defaultForGarmentTypes) ? setup.defaultForGarmentTypes : null,
     }));
   } catch (error) {
     console.error('Error fetching try-on setups:', error);

@@ -410,119 +410,35 @@ export interface Logo {
 // ============================================================================
 
 /**
- * Frame Ownership Level
- * Determines the scope and visibility of a frame
- * 
- * Why three levels:
- * - Global: Platform-wide frames available to everyone
- * - Partner: Branded frames specific to an organization
- * - Event: Custom frames for a specific event
- * 
- * Visibility cascade:
- * 1. Global frames visible to all, can be deactivated per partner/event
- * 2. Partner frames visible only to that partner's events, can be deactivated per event
- * 3. Event frames visible only to that specific event
- */
-export enum FrameOwnershipLevel {
-  GLOBAL = 'global',       // Available to all partners and events
-  PARTNER = 'partner',     // Available only to specific partner's events
-  EVENT = 'event',         // Available only to specific event
-}
-
-/**
- * Frame Type
- * Defines the format/technology used for the frame
- */
-export enum FrameType {
-  PNG = 'png',           // PNG image overlay
-  SVG = 'svg',           // SVG vector graphic
-  CANVAS = 'canvas',     // HTML Canvas-based frame
-}
-
-/**
- * Frame Status
- * Controls whether frame is available for user selection
- */
-export enum FrameStatus {
-  ACTIVE = 'active',     // Available for selection
-  INACTIVE = 'inactive', // Hidden from users
-  DRAFT = 'draft',       // Work in progress
-}
-
-/**
  * Frame Document Interface
- * Represents a graphical frame template in the database
- * 
- * Frame Visibility Rules:
- * 1. Global frames (ownershipLevel: 'global'):
- *    - No partnerId/eventId
- *    - Visible to all by default
- *    - Can be deactivated per partner via partnerActivation map
- *    - Can be deactivated per event via event.frames[].isActive
- * 
- * 2. Partner frames (ownershipLevel: 'partner'):
- *    - Has partnerId, no eventId
- *    - Visible only to that partner's events
- *    - Can be deactivated per event via event.frames[].isActive
- * 
- * 3. Event frames (ownershipLevel: 'event'):
- *    - Has both partnerId and eventId
- *    - Visible only to that specific event
- *    - Controlled by frame.isActive
+ * Represents a graphical frame template in the database.
+ *
+ * This describes what frame documents ACTUALLY contain, verified against every
+ * document in the collection and against the only code path that creates one
+ * (`app/api/frames/route.ts` POST, which writes exactly these fields). Keep
+ * those in agreement: a frame query typed against fields no document has
+ * silently returns nothing rather than failing, which is the exact bug this
+ * shape replaced.
+ *
+ * Frames are flat and global — there is no ownership hierarchy, no per-partner
+ * activation, and no stored dimensions. Per-event frame selection lives on the
+ * event (`Event.frames[]`), not here.
  */
 export interface Frame {
   _id?: ObjectId;                    // MongoDB document ID
   frameId: string;                   // Unique frame identifier (UUID)
   name: string;                      // Human-readable frame name
-  description?: string;              // Optional frame description
-  type: FrameType;                   // Frame format (png, svg, canvas)
-  fileUrl: string;                   // imgbb.com URL for frame asset
-  thumbnailUrl: string;              // imgbb.com URL for frame thumbnail
-  width: number;                     // Frame width in pixels
-  height: number;                    // Frame height in pixels
-  
-  // Hashtags replace the old single category field
-  // Multiple hashtags enable better filtering and searchability
-  hashtags: string[];                // Searchable hashtags (e.g., ['sports', 'football', 'milan'])
-  
-  // Ownership and hierarchy
-  ownershipLevel: FrameOwnershipLevel; // Global, partner-specific, or event-specific
-  partnerId: string | null;          // Partner ID if ownershipLevel is 'partner' or 'event', null for global
-  partnerName: string | null;        // Cached partner name for display (null for global frames)
-  eventId: string | null;            // Event ID if ownershipLevel is 'event', null otherwise
-  eventName: string | null;          // Cached event name for display (null for global/partner frames)
-  
-  // Partner-level activation overrides for global frames
-  // Only applicable when ownershipLevel is 'global'
-  // Maps partnerId to activation status
-  // If partner is not in map, frame is active for that partner by default
-  // If partner is in map with isActive: false, frame is hidden from that partner
-  partnerActivation: {
-    [partnerId: string]: {
-      isActive: boolean;             // Whether frame is active for this partner
-      updatedAt: string;             // ISO 8601 timestamp of last activation change
-      updatedBy?: string;            // Admin user ID who changed activation
-    };
-  };
-  
-  // Metadata
-  metadata: {
-    tags?: string[];                 // Additional tags for internal organization (deprecated, use hashtags)
-    aspectRatio?: string;            // e.g., "16:9", "4:3", "1:1"
-    canvasConfig?: Record<string, unknown>; // Canvas-specific configuration if type is 'canvas'
-  };
-  
-  status: FrameStatus;               // Frame availability status (active/inactive/draft)
-  isActive: boolean;                 // Global active status (master switch)
-  
-  // Admin tracking
+  description: string;               // Operator notes; may be an empty string
+  category: string;                  // Grouping label; defaults to 'general' on create
+  imageUrl: string;                  // imgbb.com URL for the frame asset
+  deleteUrl: string;                 // imgbb.com deletion URL for the asset
+  imageId: string;                   // imgbb.com asset identifier
+  fileSize: number | null;           // Asset size in bytes; null when imgbb omits it
+  mimeType: string;                  // e.g. "image/png"
+  isActive: boolean;                 // Whether the frame is offered for selection
   createdBy: string;                 // Admin user ID from SSO
   createdAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
-  
-  // Usage statistics
-  usageCount?: number;               // Number of times frame has been used
-  lastUsedAt?: string;               // ISO 8601 timestamp of last use
 }
 
 // ============================================================================
@@ -931,7 +847,14 @@ export interface TryOnSetup {
   active: boolean;
   isDefault: boolean;
   rank: number;
-  config: TryOnSetupConfig;
+  config?: TryOnSetupConfig;
+  // WHAT: garment types this setup is the submit-time default for. WHY: a
+  // setup's parameters are shaped around a garment silhouette (a full-body
+  // leather-suit prompt painted fake sleeves onto FIBA's short-sleeve
+  // jerseys), so the right default follows the garment, not the event. More
+  // specific beats more general: this wins over the event's generic
+  // tryOn.setupId when the guest made no explicit choice.
+  defaultForGarmentTypes?: GarmentType[] | null;
   createdAt: string;
   updatedAt: string;
 }

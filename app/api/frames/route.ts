@@ -9,7 +9,7 @@ import { NextRequest } from 'next/server';
 import type { Filter } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { uploadImage } from '@/lib/imgbb/upload';
-import { generateId } from '@/lib/db/schemas';
+import { generateId, type Frame, type NewFrame } from '@/lib/db/schemas';
 import {
   withErrorHandler,
   requireAdmin,
@@ -32,16 +32,16 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const db = await connectToDatabase();
     
     // Build query
-  const query: Filter<{ category?: string; isActive?: boolean }> = {};
+  const query: Filter<Frame> = {};
     if (category) query.category = category;
     if (active !== null) query.isActive = active === 'true';
 
     // Get total count
-    const total = await db.collection('frames').countDocuments(query);
+    const total = await db.collection<Frame>('frames').countDocuments(query);
 
     // Get paginated results
     const frames = await db
-      .collection('frames')
+      .collection<Frame>('frames')
       .find(query)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
@@ -133,7 +133,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   // Save to database
   const db = await connectToDatabase();
-  const frame = {
+  const frame: NewFrame = {
     frameId: generateId(),
     name,
     description,
@@ -149,7 +149,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     updatedAt: new Date().toISOString(),
   };
 
-  const result = await db.collection('frames').insertOne(frame);
+  const result = await db.collection<Frame>('frames').insertOne(frame);
 
   return apiCreated({
     frame: {

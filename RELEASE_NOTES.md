@@ -1,5 +1,135 @@
 # RELEASE_NOTES.md
 
+## v12.2.15 — the Frame type described a document shape that never existed; 45 guest identities triaged; AI Setups crash fixed; garment-type setup defaults
+
+Four changes, all driven by checking the database rather than the code's own
+claims about it.
+
+### The `Frame` interface was a fiction with zero consumers
+
+`lib/db/schemas.ts` declared `ownershipLevel`, `fileUrl`, `thumbnailUrl`,
+`width`, `height`, `hashtags`, `partnerId`, `partnerName`, `eventId`,
+`eventName`, `status`, `partnerActivation`, `metadata`, and `usageCount`.
+**Not one of those exists on any frame document.** Verified against all 10
+documents in the collection and against the only code path that creates one
+(`app/api/frames/route.ts` POST), which writes a completely different set.
+Meanwhile `category` — which every document does have — was not in the
+interface at all, having been described in a comment as replaced by
+`hashtags` that never arrived.
+
+Nothing imported the type, so nothing failed; every real frame reader worked
+untyped instead. That is exactly how it went unnoticed, and it had already
+caused one real bug: the v12.2.11 "Change frame" picker, written against the
+declared shape, matched zero of the 10 live frames.
+
+- `Frame` now describes the verified 14-field shape.
+- `FrameOwnershipLevel`, `FrameType`, and `FrameStatus` are deleted — all
+  three were referenced only by the fields that do not exist.
+- The type is now **applied** at the readers and the writer, so the schema and
+  the database cannot drift apart again silently: `app/api/frames/route.ts`
+  (the create path is typed `NewFrame`, making writer and schema provably
+  agree), `app/api/frames/[id]/route.ts`, `app/admin/frames/page.tsx`,
+  `app/admin/tryon-results/page.tsx`, and the reframe endpoint.
+
+### Found while doing it, reported not fixed
+
+Three surfaces query frames by fields no document has, so they are
+structurally always zero: the partner frame counts in
+`app/admin/partners/page.tsx` and `app/api/partners/[partnerId]/route.ts`
+(by `partnerId`, which also has an index in `lib/db/ensure-indexes.ts`), and
+the "Assignments" stat on the frames list (sums `usageCount`). Making those
+truthful means deciding what they should count — a product question, not a
+typing one, so they are left working-as-before and flagged here.
+
+### 45 unrecoverable guest identities triaged
+
+The v12.2.12 maintenance audit surfaced a backlog of try-on results whose
+guest identity resolves to "Guest" with no email. Checked properly: 48
+actionable, and **zero** had a recoverable identity in any of the eight
+places one could hide, or on the try-on job.
+
+An earlier reading of this — that these events never asked for identity — was
+wrong. Both events run an active `who-are-you` page with guest registration
+enabled, and identity capture works: 89% of all captures carry a real
+identity (395/409 at MotoGP). These are the minority who skipped an optional
+form, not a systemic failure.
+
+45 records (MotoGP Balaton Park 2026) are stamped `reviewed_unrecoverable`.
+The stamp writes only `metadata.tryOnIdentityClassification` — `userName`,
+`userEmail`, and `userInfo` are untouched, and it is reversible. Verified
+after the fact: 45 stamped, 0 with altered identity fields.
+
+3 records (FIBA 3X3 2026 TRYON) sat minutes after identified test captures by
+the same operator at the same event on the same day, so they were deliberately
+**not** stamped `reviewed_unrecoverable` pending owner confirmation. The owner
+has since confirmed all three are his own test captures. They are corrected
+with his real identity (`manual_corrected`, not `reviewed_unrecoverable` --
+these are known, not unrecoverable) via the same non-destructive
+`apply-tryon-identity-corrections.ts` path, dry-run verified before applying.
+No other record carries this identity.
+
+No placeholder identity was attached to any guest record. Attributing a
+stranger's photo to a known address would replace an honest "unknown" with
+false data, would make the record read as legitimately identified, and — since
+MotoGP has result emails enabled — could send mail about other people's photos.
+
+### AI Setups list page threw on real data — `config` wasn't actually required
+
+Reported live: `/admin/tryon/setups` crashed with
+`TypeError: Cannot read properties of undefined (reading 'processing_profile')`.
+`TryOnSetup.config` was typed as required, but 4 of the 7 real documents
+(`motogp_low`, `motogp_textsafe`, `motogp_logo_max`, `google_edge_tryon`) have
+no `config` field at all — confirmed against production. Same shape of bug as
+the `Frame` fiction above: the type claimed something the database never
+guaranteed, and the one place that read it unguarded broke the moment reality
+disagreed.
+
+Worse than a list-page crash: `lib/tryon/setup-resolution.ts`'s
+`resolveProfile()` reads `config` the same unguarded way during real job
+resolution, so any camera assigned to one of those 4 setups would have failed
+an actual try-on job, not just the admin view.
+
+- `TryOnSetup.config` is now optional, matching the database.
+- Every reader (`resolveProfile`, the setups list page, the setup edit page,
+  the setup PUT route's `buildConfig`) now handles a missing config instead
+  of assuming one.
+- Not fixed and not investigated further: why those 4 setups have no config
+  while all 7 share the same `updatedAt` from a recent bulk write that added
+  `provider`/`revision` fields nothing in this codebase currently reads. That
+  looks like in-progress work elsewhere touching this collection; backfilling
+  or altering that data here would risk clobbering it blind.
+
+### Setups can now be the default for a garment type
+
+Root-caused from four FIBA results (two clean, two with the jersey's side-panel
+print smeared down the arms as fake sleeves): all four ran the identical
+pipeline — same garment, same `fal_ai_tryon` setup, same worker, minutes apart
+— so the difference was the source photos. Arms hanging against the torso get
+swallowed by the garment mask, and the `fal_ai_tryon` setup invites that: its
+config is `category: "dresses"` with a garment prompt written for full-body
+MotoGP leather suits ("head-to-toe coverage"), applied to a short-sleeve
+basketball jersey.
+
+The structural gap: a setup's parameters are shaped around a garment
+silhouette, but nothing tied setups to garment types — events pin one generic
+`tryOn.setupId` for every garment they offer.
+
+- `TryOnSetup.defaultForGarmentTypes` (new field, edited as checkboxes on the
+  AI Setups create/edit pages, shown on the list): guest captures whose
+  garment has a checked type use that setup automatically. Precedence at
+  submit time: explicit request `setupId` → garment-type default → event
+  `tryOn.setupId` → none. More specific beats more general; an operator's
+  explicit per-capture choice still beats everything.
+- New seeded setup `fal_ai_tryon_jersey` ("Fal.ai Jersey (Tops)"), the default
+  for `jersey` garments: same FAL profile but `category: "tops"` and a
+  jersey-specific garment description that pins sleeves above the elbow and
+  forbids extending the garment onto the arms.
+- Caveat, flagged not fixed: the Mac Studio worker is a separate codebase that
+  has never written `processing.resolvedSetup` on any of the 543 jobs, so
+  whether it honors an unknown `setupId` (vs. routing by the config's
+  `processing_profile`, which is unchanged here) must be verified with one
+  rerun before trusting the new default at a live event.
+
 ## v12.2.14 — feat(storage): Vercel Blob becomes primary image storage, imgbb demoted to best-effort mirror
 
 Follow-through on the "separate finding, not fixed here" flagged in v12.2.13:

@@ -38,6 +38,7 @@ import {
   upsertSubmissionTryOnLink,
 } from '@/lib/tryon/jobs';
 import { assertValidLeatherSuitId } from '@/lib/tryon/suits';
+import { findDefaultSetupForGarmentType } from '@/lib/tryon/setup-resolution';
 interface TryOnRequestDetails {
   requested: boolean;
   leatherSuitId: string | null;
@@ -400,6 +401,15 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         }
 
         const selectedGarment = await assertValidLeatherSuitId(db, tryOnRequest.leatherSuitId);
+
+        // Garment-type default (defaultForGarmentTypes on a setup): more
+        // specific than the event's generic tryOn.setupId, so it wins over it
+        // when the request itself named no setup. A full-body leather-suit
+        // setup on the event must not drive a short-sleeve jersey render.
+        const garmentDefaultSetup = !tryOnRequest.setupId
+          ? await findDefaultSetupForGarmentType(db, selectedGarment.garmentType || 'motorsport_suit')
+          : null;
+        const finalSetupId = tryOnRequest.setupId ?? garmentDefaultSetup?.setupId ?? resolvedSetupId;
         if (tryOnRequest.outfitBottomLeatherSuitId) {
           // Server-side type pairing, mirroring the worker's own claim-time
           // validation (defense in depth): the primary garment must be a
@@ -436,7 +446,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           garmentType: selectedGarment.garmentType || 'motorsport_suit',
           sleeveStyle: selectedGarment.sleeveStyle ?? null,
           outfitBottomLeatherSuitId: tryOnRequest.outfitBottomLeatherSuitId ?? null,
-          setupId: resolvedSetupId,
+          setupId: finalSetupId,
           cameraId: tryOnRequest.cameraId,
           eventId: typeof eventId === 'string' ? eventId : null,
           eventMongoId: eventDocument?._id ? getSubmissionMongoIdString(eventDocument._id) : null,

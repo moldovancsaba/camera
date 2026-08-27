@@ -9,6 +9,7 @@
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { ObjectId } from 'mongodb';
+import { type Frame } from '@/lib/db/schemas';
 import {
   requireAdmin,
   withErrorHandler,
@@ -33,7 +34,7 @@ export const GET = withErrorHandler(async (
   }
 
   const db = await connectToDatabase();
-  const frame = await db.collection('frames').findOne({ _id: new ObjectId(id) });
+  const frame = await db.collection<Frame>('frames').findOne({ _id: new ObjectId(id) });
 
   if (!frame) {
     throw apiNotFound('Frame');
@@ -71,7 +72,7 @@ export const PUT = withErrorHandler(async (
   if (category !== undefined) updateData.category = category;
   if (isActive !== undefined) updateData.isActive = isActive;
 
-  const result = await db.collection('frames').updateOne(
+  const result = await db.collection<Frame>('frames').updateOne(
     { _id: new ObjectId(id) },
     { $set: updateData }
   );
@@ -99,7 +100,7 @@ export const DELETE = withErrorHandler(async (
   }
 
   const db = await connectToDatabase();
-  const result = await db.collection('frames').deleteOne({ _id: new ObjectId(id) });
+  const result = await db.collection<Frame>('frames').deleteOne({ _id: new ObjectId(id) });
 
   if (result.deletedCount === 0) {
     throw apiNotFound('Frame');

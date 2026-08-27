@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, type TryOnSetup, type TryOnSetupConfig } from '@/lib/db/schemas';
-import { buildUniqueSetupId } from '@/lib/tryon/setup-resolution';
+import { buildUniqueSetupId, normalizeDefaultForGarmentTypes } from '@/lib/tryon/setup-resolution';
 import { apiBadRequest, apiCreated, apiSuccess, requireAdmin, withErrorHandler } from '@/lib/api';
 
 function normalizeString(value: unknown): string {
@@ -97,6 +97,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     isDefault: Boolean(body.isDefault),
     rank: Number.isFinite(Number(body.rank)) ? Number(body.rank) : 0,
     config: buildConfig(body),
+    defaultForGarmentTypes: normalizeDefaultForGarmentTypes(body.defaultForGarmentTypes),
     createdAt: now,
     updatedAt: now,
   };

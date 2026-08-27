@@ -6,6 +6,14 @@ import { useRouter } from 'next/navigation';
 import { InlineAlert } from '@sovereignsquad/gds-core/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { AdminCheckbox, AdminCrudForm, AdminFormSection, AdminTextInput, AdminTextarea } from '@sovereignsquad/gds-admin/client';
+import type { GarmentType } from '@/lib/db/schemas';
+
+const GARMENT_TYPE_OPTIONS: Array<{ value: GarmentType; label: string }> = [
+  { value: 'motorsport_suit', label: 'Motorsport suit' },
+  { value: 'jersey', label: 'Jersey' },
+  { value: 'top', label: 'Top' },
+  { value: 'bottom', label: 'Bottom' },
+];
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Failed to create setup';
@@ -21,6 +29,13 @@ export default function NewTryOnSetupPage() {
   const [active, setActive] = useState(true);
   const [isDefault, setIsDefault] = useState(false);
   const [cameraId, setCameraId] = useState('');
+  const [defaultForGarmentTypes, setDefaultForGarmentTypes] = useState<GarmentType[]>([]);
+
+  const toggleGarmentType = (type: GarmentType, checked: boolean) => {
+    setDefaultForGarmentTypes((current) =>
+      checked ? [...current.filter((t) => t !== type), type] : current.filter((t) => t !== type)
+    );
+  };
 
   const [processingProfile, setProcessingProfile] = useState('');
   const [category, setCategory] = useState('');
@@ -49,6 +64,7 @@ export default function NewTryOnSetupPage() {
           active,
           isDefault,
           cameraId,
+          defaultForGarmentTypes,
           processingProfile,
           category,
           sleeveLength,
@@ -101,6 +117,21 @@ export default function NewTryOnSetupPage() {
               onChange={setCameraId}
               placeholder="Leave blank for a global setup available to every camera"
             />
+          </AdminFormSection>
+
+          <AdminFormSection
+            title="Default for garment types"
+            description="Guest captures with a garment of a checked type use this setup automatically. This is more specific than the event's setup choice, so it wins over it; an explicitly requested setup still wins over both."
+          >
+            {GARMENT_TYPE_OPTIONS.map((option) => (
+              <AdminCheckbox
+                key={option.value}
+                name={`garmentType_${option.value}`}
+                label={option.label}
+                checked={defaultForGarmentTypes.includes(option.value)}
+                onChange={(checked) => toggleGarmentType(option.value, checked)}
+              />
+            ))}
           </AdminFormSection>
 
           <AdminFormSection title="Processing configuration">

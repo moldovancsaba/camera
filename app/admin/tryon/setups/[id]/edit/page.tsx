@@ -7,7 +7,14 @@ import { useRouter } from 'next/navigation';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { AdminCheckbox, FormSection } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
-import type { TryOnSetupConfig } from '@/lib/db/schemas';
+import type { GarmentType, TryOnSetupConfig } from '@/lib/db/schemas';
+
+const GARMENT_TYPE_OPTIONS: Array<{ value: GarmentType; label: string }> = [
+  { value: 'motorsport_suit', label: 'Motorsport suit' },
+  { value: 'jersey', label: 'Jersey' },
+  { value: 'top', label: 'Top' },
+  { value: 'bottom', label: 'Bottom' },
+];
 
 interface TryOnSetupRecord {
   _id: string;
@@ -19,6 +26,7 @@ interface TryOnSetupRecord {
   isDefault: boolean;
   rank: number;
   config: TryOnSetupConfig;
+  defaultForGarmentTypes?: GarmentType[] | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -37,7 +45,14 @@ export default function EditTryOnSetupPage({ params }: { params: Promise<{ id: s
   const [isArchiving, setIsArchiving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showMask, setShowMask] = useState(true);
+  const [defaultForGarmentTypes, setDefaultForGarmentTypes] = useState<GarmentType[]>([]);
   const { confirm } = useGdsConfirm();
+
+  const toggleGarmentType = (type: GarmentType, checked: boolean) => {
+    setDefaultForGarmentTypes((current) =>
+      checked ? [...current.filter((t) => t !== type), type] : current.filter((t) => t !== type)
+    );
+  };
   const { notifyError, notifySuccess } = useGdsToasts();
 
   useEffect(() => {
@@ -49,6 +64,7 @@ export default function EditTryOnSetupPage({ params }: { params: Promise<{ id: s
         const loaded: TryOnSetupRecord = data.setup || data.data?.setup || data;
         setSetup(loaded);
         setShowMask(loaded.config?.show_mask !== false);
+        setDefaultForGarmentTypes(Array.isArray(loaded.defaultForGarmentTypes) ? loaded.defaultForGarmentTypes : []);
       } catch (err: unknown) {
         setError(getErrorMessage(err));
       } finally {
@@ -70,6 +86,7 @@ export default function EditTryOnSetupPage({ params }: { params: Promise<{ id: s
       cameraId: formData.get('cameraId'),
       active: formData.get('active') === 'on',
       isDefault: formData.get('isDefault') === 'on',
+      defaultForGarmentTypes,
       processingProfile: formData.get('processingProfile'),
       category: formData.get('category'),
       sleeveLength: formData.get('sleeveLength'),
@@ -222,15 +239,32 @@ export default function EditTryOnSetupPage({ params }: { params: Promise<{ id: s
             </label>
           </FormSection>
 
+          <FormSection title="Default for garment types">
+            <p style={{ margin: 0 }}>
+              Guest captures with a garment of a checked type use this setup automatically. This is
+              more specific than the event&apos;s setup choice, so it wins over it; an explicitly
+              requested setup still wins over both.
+            </p>
+            {GARMENT_TYPE_OPTIONS.map((option) => (
+              <AdminCheckbox
+                key={option.value}
+                name={`garmentType_${option.value}`}
+                label={option.label}
+                checked={defaultForGarmentTypes.includes(option.value)}
+                onChange={(checked) => toggleGarmentType(option.value, checked)}
+              />
+            ))}
+          </FormSection>
+
           <FormSection title="Processing configuration">
             {([
-              ['processingProfile', 'Processing profile', setup.config.processing_profile ?? setup.config.processingProfile ?? '', 'text'],
-              ['category', 'Category', setup.config.category ?? '', 'text'],
-              ['sleeveLength', 'Sleeve length', setup.config.sleeve_length ?? '', 'text'],
-              ['pantLength', 'Pant length', setup.config.pant_length ?? '', 'text'],
-              ['resolution', 'Resolution', setup.config.resolution ?? '', 'text'],
-              ['steps', 'Steps', setup.config.steps !== undefined ? String(setup.config.steps) : '', 'numeric'],
-              ['guidance', 'Guidance', setup.config.guidance !== undefined ? String(setup.config.guidance) : '', 'decimal'],
+              ['processingProfile', 'Processing profile', setup.config?.processing_profile ?? setup.config?.processingProfile ?? '', 'text'],
+              ['category', 'Category', setup.config?.category ?? '', 'text'],
+              ['sleeveLength', 'Sleeve length', setup.config?.sleeve_length ?? '', 'text'],
+              ['pantLength', 'Pant length', setup.config?.pant_length ?? '', 'text'],
+              ['resolution', 'Resolution', setup.config?.resolution ?? '', 'text'],
+              ['steps', 'Steps', setup.config?.steps !== undefined ? String(setup.config.steps) : '', 'numeric'],
+              ['guidance', 'Guidance', setup.config?.guidance !== undefined ? String(setup.config.guidance) : '', 'decimal'],
             ] as const).map(([name, label, defaultValue, inputMode]) => (
               <label key={name} style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
                 {label}
@@ -239,9 +273,9 @@ export default function EditTryOnSetupPage({ params }: { params: Promise<{ id: s
             ))}
             <AdminCheckbox name="showMask" label="Show mask" checked={showMask} onChange={setShowMask} />
             {([
-              ['maskSharpness', 'Mask sharpness', setup.config.mask_sharpness !== undefined ? String(setup.config.mask_sharpness) : '', 'numeric'],
-              ['maskPadding', 'Mask padding', setup.config.mask_padding !== undefined ? String(setup.config.mask_padding) : '', 'numeric'],
-              ['detailBoost', 'Detail boost', setup.config.detail_boost !== undefined ? String(setup.config.detail_boost) : '', 'decimal'],
+              ['maskSharpness', 'Mask sharpness', setup.config?.mask_sharpness !== undefined ? String(setup.config.mask_sharpness) : '', 'numeric'],
+              ['maskPadding', 'Mask padding', setup.config?.mask_padding !== undefined ? String(setup.config.mask_padding) : '', 'numeric'],
+              ['detailBoost', 'Detail boost', setup.config?.detail_boost !== undefined ? String(setup.config.detail_boost) : '', 'decimal'],
             ] as const).map(([name, label, defaultValue, inputMode]) => (
               <label key={name} style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
                 {label}

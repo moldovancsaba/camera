@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { requireAuth, apiBadRequest, apiForbidden, apiNotFound, apiSuccess, withErrorHandler } from '@/lib/api';
-import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
+import { COLLECTIONS, type Frame, type Submission } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { applyFrameToTryOnResult } from '@/lib/tryon/frame-composition';
 import {
@@ -60,22 +60,16 @@ export const POST = withErrorHandler(async (
     throw apiBadRequest('Try-on result has no image to reframe');
   }
 
-  // WHAT: Read loosely, not through the `Frame` interface. WHY: that
-  // interface (ownershipLevel, fileUrl, width/height) describes a frame
-  // model real documents were never migrated to -- confirmed against
-  // production, every frame uses imageUrl and has no width/height stored;
-  // app/api/frames/route.ts itself already reads this collection the same
-  // untyped way. applyFrameToTryOnResult reads real dimensions from the
-  // image itself when none are passed in.
-  const frame = await db.collection(COLLECTIONS.FRAMES).findOne({ frameId, isActive: true });
-  const frameImageUrl = typeof frame?.imageUrl === 'string' ? frame.imageUrl : null;
-  if (!frame || !frameImageUrl) {
+  // Frames carry no stored dimensions, so applyFrameToTryOnResult reads them
+  // from the image itself when none are passed in.
+  const frame = await db.collection<Frame>(COLLECTIONS.FRAMES).findOne({ frameId, isActive: true });
+  if (!frame?.imageUrl) {
     throw apiBadRequest(`frameId "${frameId}" is not active or does not exist`);
   }
 
   const framed = await applyFrameToTryOnResult(
     baseRawUrl,
-    frameImageUrl,
+    frame.imageUrl,
     `tryon-reframe-${submissionId}`
   );
 

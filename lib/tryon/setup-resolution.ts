@@ -3,10 +3,33 @@ import { nowIso } from '@/lib/tryon/time';
 import {
   COLLECTIONS,
   generateId,
+  type GarmentType,
   type TryOnJobResolvedSetup,
   type TryOnSetup,
   type TryOnSetupPreference,
 } from '@/lib/db/schemas';
+
+const GARMENT_TYPE_VALUES: GarmentType[] = ['motorsport_suit', 'jersey', 'top', 'bottom'];
+
+export function normalizeDefaultForGarmentTypes(value: unknown): GarmentType[] | null {
+  if (!Array.isArray(value)) return null;
+  const picked = GARMENT_TYPE_VALUES.filter((t) => value.includes(t));
+  return picked.length > 0 ? picked : null;
+}
+
+// Lowest rank wins if an operator marks two setups default for the same type.
+export async function findDefaultSetupForGarmentType(
+  db: Db,
+  garmentType: GarmentType | null | undefined
+): Promise<TryOnSetup | null> {
+  if (!garmentType) return null;
+  return db
+    .collection<TryOnSetup>(COLLECTIONS.TRYON_SETUPS)
+    .find({ active: true, defaultForGarmentTypes: garmentType })
+    .sort({ rank: 1, setupId: 1 })
+    .limit(1)
+    .next();
+}
 
 export type { TryOnSetup };
 
@@ -31,11 +54,11 @@ function normalizeCameraId(value: string | null | undefined): string | null {
 
 function resolveProfile(config: TryOnSetup['config']): string | null {
   const direct =
-    typeof config.processingProfile === 'string' && config.processingProfile.trim().length > 0
+    typeof config?.processingProfile === 'string' && config.processingProfile.trim().length > 0
       ? config.processingProfile.trim()
       : '';
   const legacy =
-    typeof config.processing_profile === 'string' && config.processing_profile.trim().length > 0
+    typeof config?.processing_profile === 'string' && config.processing_profile.trim().length > 0
       ? config.processing_profile.trim()
       : '';
   return direct || legacy || null;

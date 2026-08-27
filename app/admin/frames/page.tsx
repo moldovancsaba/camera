@@ -4,7 +4,7 @@
 
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
-import { COLLECTIONS } from '@/lib/db/schemas';
+import { COLLECTIONS, type Frame } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { redirect } from 'next/navigation';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
@@ -79,13 +79,17 @@ export default async function FramesPage({
       : {};
     const [frameDocs, totalFrames, activeFrames, assignments] = await Promise.all([
       db
-        .collection(COLLECTIONS.FRAMES)
+        .collection<Frame>(COLLECTIONS.FRAMES)
         .find(query)
         .sort({ createdAt: -1 })
         .limit(20)
         .toArray(),
-      db.collection(COLLECTIONS.FRAMES).countDocuments(query),
-      db.collection(COLLECTIONS.FRAMES).countDocuments({ ...query, isActive: true }),
+      db.collection<Frame>(COLLECTIONS.FRAMES).countDocuments(query),
+      db.collection<Frame>(COLLECTIONS.FRAMES).countDocuments({ ...query, isActive: true }),
+      // Left untyped and reported rather than "fixed": frames carry no
+      // usageCount, so this total is structurally always 0. Making the stat
+      // truthful means deciding what it should count, which is a product
+      // question, not a typing one.
       db
         .collection(COLLECTIONS.FRAMES)
         .aggregate<{ total: number }>([
