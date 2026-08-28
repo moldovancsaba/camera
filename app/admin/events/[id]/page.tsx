@@ -449,6 +449,9 @@ export default async function EventDetailPage({
               <Button component="a" href={`/admin/events/${id}/vetting`} variant="light">
                 Open Vetting
               </Button>
+              <Button component="a" href={`/admin/events/${id}/vetting?archive=greatest`} variant="light">
+                Manage Greatest Hits
+              </Button>
               <Button component="a" href={`/admin/events/${id}/queue`} variant="light">
                 Open Queue
               </Button>
