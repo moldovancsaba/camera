@@ -537,11 +537,20 @@ function ModerationActions({
         <SemanticButton
           action="tryon:great"
           loading={busyId === `${row.id}:great`}
-          disabled={archivedReadOnly}
-          aria-label={row.isGreat ? 'Remove from Greatest Hits' : 'Mark try-on result as Great'}
+          disabled={row.isGreat || archivedReadOnly}
+          aria-label={row.isGreat ? 'Try-on result marked Great' : 'Mark try-on result as Great'}
           onClick={() => void onGreat(row)}
         >
-          {row.isGreat ? 'Remove Great' : 'Great'}
+          {row.isGreat ? 'Marked Great' : 'Great'}
+        </SemanticButton>
+        <SemanticButton
+          action="tryon:remove-great"
+          loading={busyId === `${row.id}:great`}
+          disabled={!row.isGreat || archivedReadOnly}
+          aria-label="Remove from Greatest Hits"
+          onClick={() => void onGreat(row)}
+        >
+          Remove Great
         </SemanticButton>
         <SemanticButton
           action="tryon:service"

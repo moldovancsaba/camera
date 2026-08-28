@@ -170,9 +170,21 @@ export default function OldestVettingResultCard({ row }: { row: ModerationRow })
             key="great"
             action="tryon:great"
             loading={busyAction === 'great'}
+            disabled={row.isGreat}
+            aria-label={row.isGreat ? 'Try-on result marked Great' : 'Mark try-on result as Great'}
             onClick={() => void handleGreat()}
           >
-            {row.isGreat ? 'Remove Great' : 'Great'}
+            {row.isGreat ? 'Marked Great' : 'Great'}
+          </SemanticButton>,
+          <SemanticButton
+            key="remove-great"
+            action="tryon:remove-great"
+            loading={busyAction === 'great'}
+            disabled={!row.isGreat}
+            aria-label="Remove from Greatest Hits"
+            onClick={() => void handleGreat()}
+          >
+            Remove Great
           </SemanticButton>,
           <SemanticButton
             key="service"
