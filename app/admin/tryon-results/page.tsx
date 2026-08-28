@@ -711,10 +711,10 @@ export default async function AdminTryOnResultsPage({
       dbError={dbError}
     >
       {failedJobsMode ? (
-        <TryOnQueueTable rows={failedJobRows} setupOptions={setupOptions} />
+        <TryOnQueueTable rows={failedJobRows} setupOptions={setupOptions} suitOptions={suitOptions} />
       ) : null}
       {queueMode ? (
-        <TryOnQueueTable rows={queueRows} setupOptions={setupOptions} />
+        <TryOnQueueTable rows={queueRows} setupOptions={setupOptions} suitOptions={suitOptions} />
       ) : null}
       {!failedJobsMode && !queueMode ? (
         <TryOnResultModerationTable

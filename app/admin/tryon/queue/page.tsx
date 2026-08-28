@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS, type TryOnJob } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { listActiveTryOnSetups, type TryOnSetup } from '@/lib/tryon/setup-resolution';
+import { listActiveTryOnSuitOptions, type TryOnSuitOption } from '@/lib/tryon/suits';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import TryOnQueueTable, { type QueueRow } from '@/components/admin/TryOnQueueTable';
@@ -97,6 +98,7 @@ export default async function AdminTryOnQueuePage({
   let rows: QueueRow[] = [];
   let dbError = null;
   let setupOptions: TryOnSetup[] = [];
+  let suitOptions: TryOnSuitOption[] = [];
   let totalJobCount = 0;
   let queuedJobCount = 0;
   let retryWaitJobCount = 0;
@@ -107,6 +109,7 @@ export default async function AdminTryOnQueuePage({
   try {
     const db = await connectToDatabase();
     setupOptions = await listActiveTryOnSetups(db);
+    suitOptions = await listActiveTryOnSuitOptions(db);
 
     // Same dual-namespace resolution vetting and analytics already use --
     // queue links can arrive with either the event UUID or its Mongo _id.
@@ -215,7 +218,7 @@ export default async function AdminTryOnQueuePage({
       beforeToolbar={!eventId ? <EventPicker basePath="/admin/tryon/queue" /> : undefined}
       dbError={dbError}
     >
-      <TryOnQueueTable rows={rows} setupOptions={setupOptions} totalCount={totalJobCount} statusFilter={statusFilter} search={search} eventId={eventId} />
+      <TryOnQueueTable rows={rows} setupOptions={setupOptions} suitOptions={suitOptions} totalCount={totalJobCount} statusFilter={statusFilter} search={search} eventId={eventId} />
     </AdminListPageShell>
   );
 }

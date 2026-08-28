@@ -8,6 +8,7 @@ import { DataTable } from '@sovereignsquad/gds-admin/client';
 import { StatusBadge, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
+import type { TryOnSuitOption } from '@/lib/tryon/suits';
 
 export interface QueueRow {
   jobId: string;
@@ -52,6 +53,7 @@ type QueueTableRow = QueueRow & Record<string, unknown>;
 interface TryOnQueueTableProps {
   rows: QueueRow[];
   setupOptions?: TryOnSetup[];
+  suitOptions?: TryOnSuitOption[];
   totalCount?: number;
   statusFilter?: string;
   search?: string;
@@ -95,9 +97,10 @@ async function retryJob(jobId: string) {
   return payload.data?.message || payload.message || 'Job queued for retry.';
 }
 
-async function rerunJob(jobId: string, setupId?: string, sourceImageData?: string) {
+async function rerunJob(jobId: string, setupId?: string, leatherSuitId?: string, sourceImageData?: string) {
   const payload: Record<string, string> = {};
   if (setupId) payload.setupId = setupId;
+  if (leatherSuitId) payload.leatherSuitId = leatherSuitId;
   if (sourceImageData) payload.sourceImageData = sourceImageData;
   const response = await fetch(`/api/admin/tryon-jobs/${jobId}/rerun`, {
     method: 'POST',
@@ -290,6 +293,7 @@ function toQueueRow(value: unknown): QueueRow | null {
 export default function TryOnQueueTable({
   rows,
   setupOptions = [],
+  suitOptions = [],
   totalCount = rows.length,
   statusFilter = '',
   search = '',
@@ -302,6 +306,7 @@ export default function TryOnQueueTable({
   const [busyJobId, setBusyJobId] = useState<string | null>(null);
   const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
   const [selectedSetupByJob, setSelectedSetupByJob] = useState<Record<string, string>>({});
+  const [selectedSuitByJob, setSelectedSuitByJob] = useState<Record<string, string>>({});
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const setupsById = useMemo(() => makeSetupDisplayMap(setupOptions), [setupOptions]);
   const defaultSetupId = setupOptions[0]?.setupId ?? '';
@@ -364,18 +369,18 @@ export default function TryOnQueueTable({
     }
   }
 
-  async function handleRerun(jobId: string, setupId?: string) {
+  async function handleRerun(jobId: string, setupId?: string, leatherSuitId?: string) {
     const confirmed = await confirm({
       title: 'Rerun try-on job',
       message:
-        'Rerun creates a new queued job with the selected preset. The new result will require human approval before it can be sent to the user.',
+        'Rerun creates a new queued job with the selected preset and garment. The new result will require human approval before it can be sent to the user.',
     });
     if (!confirmed) {
       return;
     }
     try {
       setBusyJobId(jobId);
-      setRecoveryMessage(await rerunJob(jobId, setupId));
+      setRecoveryMessage(await rerunJob(jobId, setupId, leatherSuitId));
       router.refresh();
     } finally {
       setBusyJobId(null);
@@ -417,7 +422,7 @@ export default function TryOnQueueTable({
     }
   }
 
-  async function handleReplaceSource(jobId: string, setupId: string | undefined, file: File) {
+  async function handleReplaceSource(jobId: string, setupId: string | undefined, leatherSuitId: string | undefined, file: File) {
     if (file.size > 10 * 1024 * 1024) {
       setRecoveryMessage('That photo is larger than 10 MB - please pick a smaller file.');
       return;
@@ -425,7 +430,7 @@ export default function TryOnQueueTable({
     const confirmed = await confirm({
       title: 'Replace photo & rerun',
       message:
-        'Uploads the selected photo as the new source image and queues a new job with the selected preset. Use this when the original source image is no longer reachable at its host.',
+        'Uploads the selected photo as the new source image and queues a new job with the selected preset and garment. Use this when the original source image is no longer reachable at its host.',
     });
     if (!confirmed) return;
     try {
@@ -436,7 +441,7 @@ export default function TryOnQueueTable({
         reader.onerror = () => reject(new Error('Could not read the selected file'));
         reader.readAsDataURL(file);
       });
-      setRecoveryMessage(await rerunJob(jobId, setupId, dataUrl));
+      setRecoveryMessage(await rerunJob(jobId, setupId, leatherSuitId, dataUrl));
       router.refresh();
     } catch (error) {
       setRecoveryMessage(error instanceof Error ? error.message : 'Failed to replace the source photo');
@@ -578,6 +583,7 @@ export default function TryOnQueueTable({
                       (usedSetupId && setupOptions.some((setup) => setup.setupId === usedSetupId)
                         ? usedSetupId
                         : defaultSetupId);
+                    const selectedSuitId = selectedSuitByJob[row.jobId] ?? row.request.leatherSuitId ?? '';
                     return (
                       <>
                         {setupOptions.length > 0 ? (
@@ -603,13 +609,32 @@ export default function TryOnQueueTable({
                             Preset list unavailable
                           </span>
                         )}
+                        {suitOptions.length > 0 ? (
+                          <label style={{ display: 'grid', gap: '0.35rem', fontSize: '0.75rem', fontWeight: 700 }}>
+                            Rerun garment
+                            <select
+                            value={selectedSuitId}
+                            onChange={(event) => {
+                              setSelectedSuitByJob((state) => ({ ...state, [row.jobId]: event.currentTarget.value }));
+                            }}
+                            disabled={busyJobId === row.jobId}
+                            style={{ minHeight: 36, minWidth: 180 }}
+                          >
+                            {suitOptions.map((suit) => (
+                              <option key={suit.id} value={suit.id}>
+                                {suit.name}
+                              </option>
+                            ))}
+                            </select>
+                          </label>
+                        ) : null}
                         <SemanticButton
                           action="tryon:rerun-job"
                           variant="secondary"
                           size="xs"
                           loading={busyJobId === row.jobId}
                           aria-label={`Rerun try-on job ${row.jobId}`}
-                          onClick={() => void handleRerun(row.jobId, selectedSetupId)}
+                          onClick={() => void handleRerun(row.jobId, selectedSetupId, selectedSuitId || undefined)}
                         >
                           Rerun
                         </SemanticButton>
@@ -624,7 +649,7 @@ export default function TryOnQueueTable({
                               onChange={(event) => {
                                 const file = event.currentTarget.files?.[0] ?? null;
                                 event.currentTarget.value = '';
-                                if (file) void handleReplaceSource(row.jobId, selectedSetupId, file);
+                                if (file) void handleReplaceSource(row.jobId, selectedSetupId, selectedSuitId || undefined, file);
                               }}
                               style={{ fontSize: '0.75rem', maxWidth: 220 }}
                             />
