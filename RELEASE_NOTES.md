@@ -1,5 +1,24 @@
 # RELEASE_NOTES.md
 
+## v12.2.19 — actions next to the image, a Queue garment picker, and View/Remove/Fix
+
+More from the same live-event feedback loop as v12.2.18.
+
+- Reported from a phone: the moderation card stacked media, metadata, and
+  status text above the action buttons (`AdminReviewLayout`'s fixed
+  vertical order), so Approve/Great/Remove sat below a scroll of text
+  instead of next to the thumbnail. The card now uses a custom layout --
+  image on one side, the action stack directly beside it, metadata below.
+- New actions alongside Approve/Reject/Great/Remove Great/Service/Download:
+  **View** (opens the result full-size), **Fix** (links to the Queue page
+  for this job, where Cancel/Retry/Replace-photo already live), and
+  **Remove** -- a real permanent delete of the try-on result, same
+  semantics as the raw Submissions gallery's "Start remove", behind a
+  confirm dialog.
+- The Queue table's rerun only had a preset picker; the Vetting table's
+  rerun already let picking a different garment too. Queue now has the
+  same garment select.
+
 ## v12.2.18 — live Queue view, job Cancel, and a Great/Remove Great fix
 
 Incident response from a live FIBA 3X3 event where jersey renders were taking
