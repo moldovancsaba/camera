@@ -1,5 +1,21 @@
 # RELEASE_NOTES.md
 
+## v12.2.20 — hand-pick Greatest Hits into a slideshow
+
+Every slideshow's `submissionSourceMode` is policy-driven (all approved
+results, or all originals, event-wide) -- there was no way to curate a
+specific set of images for one slideshow's rotation.
+
+- New `Slideshow.manualSubmissionIds`. The playlist route now additionally
+  includes any pinned submission regardless of `submissionSourceMode`
+  (same-event guarded, so a result can't get pinned into another event's
+  slideshow by mistake).
+- On an event-scoped Vetting page, a Great result gets an "Add to
+  slideshow" picker (only shows once the page is scoped to one event,
+  since slideshows are per-event).
+- Unpin isn't built yet -- the endpoint supports it (`pin: false` does
+  `$pull`) but there's no UI for it this round.
+
 ## v12.2.19 — actions next to the image, a Queue garment picker, and View/Remove/Fix
 
 More from the same live-event feedback loop as v12.2.18.
