@@ -507,7 +507,8 @@ export type SubmissionTryOnRequestStatus =
   | 'done'
   | 'failed'
   | 'deduplicated'
-  | 'enqueue_failed';
+  | 'enqueue_failed'
+  | 'cancelled';
 
 export interface SubmissionTryOnRequestState {
   requested: boolean;
@@ -806,7 +807,8 @@ export type TryOnJobStatus =
   | 'notifying_camera'
   | 'retry_wait'
   | 'done'
-  | 'failed';
+  | 'failed'
+  | 'cancelled';
 
 export type TryOnJobStage =
   | 'queued'
@@ -818,7 +820,8 @@ export type TryOnJobStage =
   | 'uploaded_result'
   | 'notifying_camera'
   | 'done'
-  | 'failed';
+  | 'failed'
+  | 'cancelled';
 
 export type TryOnSetupSource = 'job.assigned' | 'camera.last' | 'global.default' | 'legacy';
 

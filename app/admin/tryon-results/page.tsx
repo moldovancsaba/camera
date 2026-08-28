@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb';
 import { redirect } from 'next/navigation';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
-import { COLLECTIONS, type Frame, type LeatherSuit, type Submission, type TryOnJob, type TryOnModerationEvent } from '@/lib/db/schemas';
+import { COLLECTIONS, type Frame, type LeatherSuit, type Submission, type TryOnJob, type TryOnJobStatus, type TryOnModerationEvent } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import OldestVettingResultCard from '@/components/admin/OldestVettingResultCard';
@@ -117,7 +117,7 @@ function toModerationSetup(job: TryOnJob | null | undefined): ModerationRow['set
 export default async function AdminTryOnResultsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ reviewStatus?: string; search?: string; archive?: string; failed?: string; eventId?: string }>;
+  searchParams?: Promise<{ reviewStatus?: string; search?: string; archive?: string; failed?: string; queue?: string; eventId?: string }>;
 }) {
   const session = await getSession();
   if (!isGlobalAdminSession(session)) {
@@ -130,6 +130,7 @@ export default async function AdminTryOnResultsPage({
   const rawEventId = typeof resolvedSearchParams?.eventId === 'string' ? resolvedSearchParams.eventId.trim() : '';
   const archive = typeof resolvedSearchParams?.archive === 'string' ? resolvedSearchParams.archive.trim() : '';
   const failed = typeof resolvedSearchParams?.failed === 'string' ? resolvedSearchParams.failed.trim() : '';
+  const queueParam = typeof resolvedSearchParams?.queue === 'string' ? resolvedSearchParams.queue.trim() : '';
   const resultPageLimit = 24;
   const archiveBucket =
     archive === 'approved' ||
@@ -140,8 +141,11 @@ export default async function AdminTryOnResultsPage({
       ? archive
       : '';
   const failedJobsMode = failed === '1' || failed.toLowerCase() === 'true';
+  const queueMode = !failedJobsMode && (queueParam === '1' || queueParam.toLowerCase() === 'true');
   const pageTitle = failedJobsMode
     ? 'Failed Try-On Jobs'
+    : queueMode
+      ? 'Try-On Queue'
     : archiveBucket === 'greatest'
       ? 'Greatest Hits'
     : archiveBucket === 'approved'
@@ -155,6 +159,8 @@ export default async function AdminTryOnResultsPage({
         : 'Vetting';
   const pageStatus = failedJobsMode
     ? 'Failed Jobs'
+    : queueMode
+      ? 'Queue'
     : archiveBucket === 'greatest'
       ? 'Greatest Hits'
     : archiveBucket === 'approved'
@@ -177,6 +183,8 @@ export default async function AdminTryOnResultsPage({
   let archivedSupersededCount = 0;
   let failedJobCount = 0;
   let failedJobRows: QueueRow[] = [];
+  let queueCount = 0;
+  let queueRows: QueueRow[] = [];
   let resultTotalCount = 0;
   let setupOptions: TryOnSetup[] = [];
   let suitOptions: TryOnSuitOption[] = [];
@@ -282,6 +290,26 @@ export default async function AdminTryOnResultsPage({
       ];
     }
 
+    // WHAT: Jobs that have not reached a terminal state yet -- these are what
+    // will show up in Vetting once the worker finishes them (or in Failed
+    // Jobs if they don't). Oldest first: that's the order the worker claims
+    // them in, so this view answers "what's ahead of mine."
+    const activeJobStatuses: TryOnJobStatus[] = ['queued', 'claimed', 'processing', 'uploading_result', 'notifying_camera', 'retry_wait'];
+    const queueQuery: Record<string, unknown> = { status: { $in: activeJobStatuses } };
+    if (eventScope.eventMongoId) {
+      queueQuery['source.eventMongoId'] = eventScope.eventMongoId;
+    }
+    if (search) {
+      const regex = { $regex: escapeRegex(search), $options: 'i' };
+      queueQuery.$or = [
+        { jobId: regex },
+        { 'source.submissionId': regex },
+        { 'request.leatherSuitId': regex },
+        { 'request.setupId': regex },
+        { 'source.imageUrl': regex },
+      ];
+    }
+
     // WHAT: The event scope applied to every count tile below.
     // WHY: The tiles previously counted globally even while the list was
     // event-filtered — "Vetting (412)" above a 3-row scoped list. A tile's number
@@ -289,7 +317,7 @@ export default async function AdminTryOnResultsPage({
     const scopedCount = (base: Record<string, unknown>): Record<string, unknown> =>
       submissionEventClause ? { ...base, ...submissionEventClause } : base;
 
-    const [docs, resultTotal, pending, archivedApproved, archivedRejected, archivedService, greatestHits, archivedSuperseded, failedJobs, failedJobsTotal] = await Promise.all([
+    const [docs, resultTotal, pending, archivedApproved, archivedRejected, archivedService, greatestHits, archivedSuperseded, failedJobs, failedJobsTotal, queueJobs, queueTotal] = await Promise.all([
       db
         .collection<Submission>(COLLECTIONS.SUBMISSIONS)
         .find(query)
@@ -341,6 +369,18 @@ export default async function AdminTryOnResultsPage({
         status: 'failed',
         ...(eventScope.eventMongoId ? { 'source.eventMongoId': eventScope.eventMongoId } : {}),
       }),
+      queueMode
+        ? db
+            .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
+            .find(queueQuery)
+            .sort({ createdAt: 1 })
+            .limit(50)
+            .toArray()
+        : Promise.resolve([]),
+      db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).countDocuments({
+        status: { $in: activeJobStatuses },
+        ...(eventScope.eventMongoId ? { 'source.eventMongoId': eventScope.eventMongoId } : {}),
+      }),
     ]);
 
     pendingCount = pending;
@@ -350,7 +390,20 @@ export default async function AdminTryOnResultsPage({
     greatestHitsCount = greatestHits;
     archivedSupersededCount = archivedSuperseded;
     failedJobCount = failedJobsTotal;
+    queueCount = queueTotal;
     resultTotalCount = resultTotal;
+    queueRows = queueJobs.map(toQueueRow).filter((row): row is QueueRow => Boolean(row));
+    if (queueRows.length > 0) {
+      const queueEventNames = await resolveEventNamesByMongoId(
+        db,
+        queueRows.map((row) => row.source.eventMongoId)
+      );
+      queueRows = queueRows.map((row) =>
+        row.source.eventMongoId && queueEventNames.has(row.source.eventMongoId)
+          ? { ...row, source: { ...row.source, eventName: queueEventNames.get(row.source.eventMongoId) ?? null } }
+          : row
+      );
+    }
     failedJobRows = failedJobs.map(toQueueRow).filter((row): row is QueueRow => Boolean(row));
     if (failedJobRows.length > 0) {
       const eventNames = await resolveEventNamesByMongoId(
@@ -486,7 +539,7 @@ export default async function AdminTryOnResultsPage({
     dbError = serializeMongoError(error);
   }
 
-  const oldestWaitingRow = !failedJobsMode && !archiveBucket ? rows[0] : null;
+  const oldestWaitingRow = !failedJobsMode && !queueMode && !archiveBucket ? rows[0] : null;
 
   // WHAT: Every link this page emits goes through here so the active event scope
   // survives navigation, on the canonical /admin/tryon/vetting path.
@@ -516,6 +569,7 @@ export default async function AdminTryOnResultsPage({
 
   const activeFilterChips = [
     ...(failedJobsMode ? [{ label: 'Queue', value: 'failed jobs' }] : []),
+    ...(queueMode ? [{ label: 'View', value: 'live queue' }] : []),
     ...(archiveBucket ? [{ label: 'Archive', value: archiveBucket }] : []),
     ...(reviewStatus ? [{ label: 'Review Status', value: reviewStatus.replace(/_/g, ' ') }] : []),
     ...(eventId
@@ -541,6 +595,8 @@ export default async function AdminTryOnResultsPage({
         placeholder: 'Search by user, email, event, partner, garment, or job',
         clearHref: failedJobsMode
           ? vettingHref({ failed: '1' })
+          : queueMode
+            ? vettingHref({ queue: '1' })
           : archiveBucket
             ? vettingHref({ archive: archiveBucket })
             : vettingHref(),
@@ -549,21 +605,24 @@ export default async function AdminTryOnResultsPage({
           ...(eventId ? { eventId } : {}),
           ...(archiveBucket ? { archive: archiveBucket } : {}),
           ...(failedJobsMode ? { failed: '1' } : {}),
+          ...(queueMode ? { queue: '1' } : {}),
         },
       }}
       toolbarHint={
         failedJobsMode
           ? 'Search failed try-on jobs or return to the active review queue.'
+          : queueMode
+          ? 'Jobs waiting on the worker, oldest first -- this is what will land in Vetting next.'
           : archiveBucket
           ? 'Search archived try-on decisions or return to the active review queue.'
           : 'Search the queue directly or jump to the pending-only review view.'
       }
       toolbarFilters={activeFilterChips.length > 0 ? activeFilterChips : undefined}
       toolbarTrailing={{
-        href: archiveBucket || failedJobsMode
+        href: archiveBucket || failedJobsMode || queueMode
           ? vettingHref()
           : vettingHref({ reviewStatus: 'pending_review', ...(search ? { search } : {}) }),
-        label: archiveBucket || failedJobsMode ? 'Vetting' : 'Pending only',
+        label: archiveBucket || failedJobsMode || queueMode ? 'Vetting' : 'Pending only',
       }}
       beforeToolbar={
         <>
@@ -574,6 +633,12 @@ export default async function AdminTryOnResultsPage({
 
           <ConsumerDashboardGrid columns={3}>
             {[
+              {
+                href: vettingHref({ queue: '1' }),
+                title: `Queue (${queueCount})`,
+                description: 'Jobs waiting on the worker, oldest first -- what will land in Vetting next.',
+                iconKey: 'photoScan' as AdminIconKey,
+              },
               {
                 href: vettingHref(),
                 title: `Vetting (${pendingCount})`,
@@ -648,7 +713,10 @@ export default async function AdminTryOnResultsPage({
       {failedJobsMode ? (
         <TryOnQueueTable rows={failedJobRows} setupOptions={setupOptions} />
       ) : null}
-      {!failedJobsMode ? (
+      {queueMode ? (
+        <TryOnQueueTable rows={queueRows} setupOptions={setupOptions} />
+      ) : null}
+      {!failedJobsMode && !queueMode ? (
         <TryOnResultModerationTable
           rows={rows}
           totalCount={resultTotalCount}

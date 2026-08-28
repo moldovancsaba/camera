@@ -71,6 +71,8 @@ function toneForStatus(status: string): CameraStatusTone {
     case 'processing':
     case 'uploading_result':
       return 'info';
+    case 'cancelled':
+      return 'inactive';
     default:
       return 'inactive';
   }
@@ -107,6 +109,19 @@ async function rerunJob(jobId: string, setupId?: string, sourceImageData?: strin
     throw new Error(responsePayload.error || 'Failed to rerun try-on job');
   }
   return responsePayload.data?.message || responsePayload.message || 'New rerun job queued.';
+}
+
+async function cancelJob(jobId: string) {
+  const response = await fetch(`/api/admin/tryon-jobs/${jobId}/cancel`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to cancel try-on job');
+  }
+  return payload.data?.message || payload.message || 'Job cancelled.';
 }
 
 async function reapplyResult(jobId: string) {
@@ -367,6 +382,23 @@ export default function TryOnQueueTable({
     }
   }
 
+  async function handleCancel(jobId: string) {
+    const confirmed = await confirm({
+      title: 'Cancel try-on job',
+      message: 'This job will never be picked up by the worker. This cannot be undone.',
+    });
+    if (!confirmed) {
+      return;
+    }
+    try {
+      setBusyJobId(jobId);
+      setRecoveryMessage(await cancelJob(jobId));
+      router.refresh();
+    } finally {
+      setBusyJobId(null);
+    }
+  }
+
   async function handleReapplyResult(jobId: string) {
     const confirmed = await confirm({
       title: 'Reapply try-on result',
@@ -504,6 +536,18 @@ export default function TryOnQueueTable({
                   onClick={() => void handleRetry(row.jobId)}
                 >
                   Retry job
+                </SemanticButton>
+              ) : null}
+              {(row.status === 'queued' || row.status === 'retry_wait') ? (
+                <SemanticButton
+                  action="tryon:cancel-job"
+                  variant="secondary"
+                  size="xs"
+                  loading={busyJobId === row.jobId}
+                  aria-label={`Cancel try-on job ${row.jobId}`}
+                  onClick={() => void handleCancel(row.jobId)}
+                >
+                  Cancel job
                 </SemanticButton>
               ) : null}
               {row.status === 'failed' && row.orphanedResultSubmissionId ? (
