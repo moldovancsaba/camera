@@ -2,7 +2,7 @@ import { ObjectId } from 'mongodb';
 import { redirect } from 'next/navigation';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
-import { COLLECTIONS, type Frame, type LeatherSuit, type Submission, type TryOnJob, type TryOnJobStatus, type TryOnModerationEvent } from '@/lib/db/schemas';
+import { COLLECTIONS, type Frame, type LeatherSuit, type Slideshow, type Submission, type TryOnJob, type TryOnJobStatus, type TryOnModerationEvent } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import OldestVettingResultCard from '@/components/admin/OldestVettingResultCard';
@@ -188,6 +188,7 @@ export default async function AdminTryOnResultsPage({
   let resultTotalCount = 0;
   let setupOptions: TryOnSetup[] = [];
   let suitOptions: TryOnSuitOption[] = [];
+  let slideshowOptions: Array<{ id: string; name: string }> = [];
   let frameOptions: Array<{ frameId: string; name: string }> = [];
   let eventScope: TryOnAnalyticsEventScope = {};
   // Canonical UUID carried by every scoped link on this page; falls back to the
@@ -221,6 +222,23 @@ export default async function AdminTryOnResultsPage({
     if (rawEventId) {
       eventScope = await resolveTryOnAnalyticsEventScope(db, rawEventId);
       eventId = eventScope.eventId ?? rawEventId;
+    }
+
+    // Slideshows are per-event, so the "pin to slideshow" picker only makes
+    // sense once this page is scoped to one event.
+    if (eventScope.eventId) {
+      slideshowOptions = (
+        await db
+          .collection<Slideshow>(COLLECTIONS.SLIDESHOWS)
+          .find({ eventId: eventScope.eventId })
+          .project({ slideshowId: 1, name: 1 })
+          .sort({ name: 1 })
+          .toArray()
+      ).flatMap((slideshow) =>
+        typeof slideshow.slideshowId === 'string' && typeof slideshow.name === 'string'
+          ? [{ id: slideshow.slideshowId, name: slideshow.name }]
+          : []
+      );
     }
     const eventRefs = [eventScope.eventId, eventScope.eventMongoId].filter(
       (value): value is string => typeof value === 'string' && value.trim().length > 0
@@ -722,6 +740,7 @@ export default async function AdminTryOnResultsPage({
           totalCount={resultTotalCount}
           setupOptions={setupOptions}
           suitOptions={suitOptions}
+          slideshowOptions={slideshowOptions}
           frameOptions={frameOptions}
           listQuery={{
             reviewStatus: reviewStatus || (archiveBucket ? '' : 'pending_review'),

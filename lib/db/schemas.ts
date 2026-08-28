@@ -1023,6 +1023,8 @@ export interface Slideshow {
   orderMode?: 'fixed' | 'random';
   /** Source selection policy for original captures vs approved try-on outputs. */
   submissionSourceMode?: 'originals_only' | 'approved_tryon_only' | 'originals_and_approved_tryon';
+  /** Submission _ids (as strings) manually pinned into this slideshow's rotation, in addition to whatever submissionSourceMode already matches. */
+  manualSubmissionIds?: string[];
 
   /** Failover gradient (top-right → bottom-left): CSS hex colors */
   backgroundPrimaryColor?: string;

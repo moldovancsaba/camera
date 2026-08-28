@@ -155,6 +155,16 @@ export async function GET(
       );
     }
 
+    // WHAT: submissions an admin explicitly pinned into this slideshow (see
+    // POST .../tryon-results/[id]/pin-to-slideshow), on top of whatever
+    // submissionSourceMode already matches. WHY: the source modes are all
+    // policy-driven (every approved result, or every original) -- there was
+    // no way to hand-curate a specific set of Greatest Hits into one
+    // slideshow's rotation.
+    const manualObjectIds = Array.isArray(slideshow.manualSubmissionIds)
+      ? slideshow.manualSubmissionIds.filter((id): id is string => typeof id === 'string' && ObjectId.isValid(id)).map((id) => new ObjectId(id))
+      : [];
+
     const eventIdKeys = submissionEventIdKeys(event as Event);
     const submissionSourceMode = resolveSubmissionSourceModeForSlideshow(
       event as
@@ -237,7 +247,18 @@ export async function GET(
       if (excludeOids.length > 0) {
         and.push({ _id: { $nin: excludeOids } });
       }
-      return { $and: and };
+      const baseFilter = { $and: and };
+      if (manualObjectIds.length === 0) {
+        return baseFilter;
+      }
+      const pinnedAnd: object[] = [
+        { _id: { $in: manualObjectIds } },
+        { isArchived: { $ne: true } },
+      ];
+      if (excludeOids.length > 0) {
+        pinnedAnd.push({ _id: { $nin: excludeOids } });
+      }
+      return { $or: [baseFilter, { $and: pinnedAnd }] };
     };
 
     const fetchSubmissionsSorted = async (excludeOids: ObjectId[]) => {

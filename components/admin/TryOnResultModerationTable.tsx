@@ -116,6 +116,18 @@ async function postService(id: string) {
   }
 }
 
+async function postPinToSlideshow(id: string, slideshowId: string) {
+  const response = await fetch(`/api/admin/tryon-results/${id}/pin-to-slideshow`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slideshowId, pin: true }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to add to slideshow');
+  }
+}
+
 async function postRemove(id: string) {
   const response = await fetch(`/api/admin/tryon-results/${id}/remove`, {
     method: 'POST',
@@ -500,6 +512,10 @@ function ModerationActions({
   onGreat,
   onService,
   onRemove,
+  slideshowOptions = [],
+  selectedSlideshowId,
+  onSelectSlideshow,
+  onPinToSlideshow,
 }: {
   row: ModerationRow;
   busyId: string | null;
@@ -507,6 +523,10 @@ function ModerationActions({
   onGreat: (row: ModerationRow) => Promise<void>;
   onService: (row: ModerationRow) => Promise<void>;
   onRemove: (row: ModerationRow) => Promise<void>;
+  slideshowOptions?: Array<{ id: string; name: string }>;
+  selectedSlideshowId?: string;
+  onSelectSlideshow?: (slideshowId: string) => void;
+  onPinToSlideshow?: (row: ModerationRow, slideshowId: string) => Promise<void>;
 }) {
   const isApproved = row.reviewStatus === 'approved';
   const isRejected = row.reviewStatus === 'rejected';
@@ -576,6 +596,32 @@ function ModerationActions({
           Service
         </SemanticButton>
       </Group>
+      {row.isGreat && slideshowOptions.length > 0 ? (
+        <Group justify="stretch" gap="xs" grow wrap="nowrap">
+          <Select
+            label="Add to slideshow"
+            data={slideshowOptions.map((option) => ({ value: option.id, label: option.name }))}
+            value={selectedSlideshowId || null}
+            onChange={(nextSlideshowId) => {
+              if (typeof nextSlideshowId === 'string') {
+                onSelectSlideshow?.(nextSlideshowId);
+              }
+            }}
+            size="xs"
+            checkIconPosition="left"
+            disabled={busyId === `${row.id}:pin`}
+          />
+          <SemanticButton
+            action="tryon:pin-to-slideshow"
+            loading={busyId === `${row.id}:pin`}
+            disabled={!selectedSlideshowId}
+            aria-label="Add this result to the selected slideshow"
+            onClick={() => selectedSlideshowId && void onPinToSlideshow?.(row, selectedSlideshowId)}
+          >
+            Add to slideshow
+          </SemanticButton>
+        </Group>
+      ) : null}
       <Group justify="stretch" gap="xs" grow wrap="nowrap">
         <Button
           component="a"
@@ -628,6 +674,7 @@ export default function TryOnResultModerationTable({
   rows,
   setupOptions = [],
   suitOptions = [],
+  slideshowOptions = [],
   frameOptions = [],
   totalCount = rows.length,
   listQuery = {},
@@ -638,6 +685,7 @@ export default function TryOnResultModerationTable({
   rows: ModerationRow[];
   setupOptions?: TryOnSetup[];
   suitOptions?: TryOnSuitOption[];
+  slideshowOptions?: Array<{ id: string; name: string }>;
   frameOptions?: FrameOption[];
   totalCount?: number;
   listQuery?: ModerationListQuery;
@@ -656,6 +704,7 @@ export default function TryOnResultModerationTable({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedSetupByRow, setSelectedSetupByRow] = useState<Record<string, string>>({});
   const [selectedSuitByRow, setSelectedSuitByRow] = useState<Record<string, string>>({});
+  const [selectedSlideshowByRow, setSelectedSlideshowByRow] = useState<Record<string, string>>({});
   const [rerunFeedbackByRow, setRerunFeedbackByRow] = useState<Record<string, string>>({});
   const [pendingDecision, setPendingDecision] = useState<{ row: ModerationRow; action: 'approve' | 'reject' } | null>(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -880,6 +929,23 @@ export default function TryOnResultModerationTable({
       notifyError({
         title: 'Remove failed',
         message: error instanceof Error ? error.message : 'Failed to remove try-on result.',
+      });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handlePinToSlideshow(row: ModerationRow, slideshowId: string) {
+    if (!slideshowId) return;
+    try {
+      setBusyId(`${row.id}:pin`);
+      await postPinToSlideshow(row.id, slideshowId);
+      const slideshowName = slideshowOptions.find((option) => option.id === slideshowId)?.name ?? slideshowId;
+      notifySuccess({ title: 'Added to slideshow', message: `Queued into ${slideshowName}.` });
+    } catch (error) {
+      notifyError({
+        title: 'Add to slideshow failed',
+        message: error instanceof Error ? error.message : 'Failed to add to slideshow.',
       });
     } finally {
       setBusyId(null);
@@ -1158,7 +1224,7 @@ export default function TryOnResultModerationTable({
             label: 'Actions',
             render: (row) => (
               <Stack gap="xs">
-                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} />
+                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} slideshowOptions={slideshowOptions} selectedSlideshowId={selectedSlideshowByRow[row.id] || ''} onSelectSlideshow={(nextId) => setSelectedSlideshowByRow((state) => ({ ...state, [row.id]: nextId }))} onPinToSlideshow={handlePinToSlideshow} />
                 {renderPresetControls(row)}
               </Stack>
             ),
@@ -1251,7 +1317,7 @@ export default function TryOnResultModerationTable({
                 />
               </div>
               <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
-                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} />
+                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} slideshowOptions={slideshowOptions} selectedSlideshowId={selectedSlideshowByRow[row.id] || ''} onSelectSlideshow={(nextId) => setSelectedSlideshowByRow((state) => ({ ...state, [row.id]: nextId }))} onPinToSlideshow={handlePinToSlideshow} />
               </Stack>
             </Group>
             <Stack gap="xs" mt="sm">
@@ -1369,7 +1435,7 @@ export default function TryOnResultModerationTable({
                 ) : null}
               </Stack>
             ) : null}
-            <ModerationActions row={activeRow} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} />
+            <ModerationActions row={activeRow} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} slideshowOptions={slideshowOptions} selectedSlideshowId={selectedSlideshowByRow[activeRow.id] || ''} onSelectSlideshow={(nextId) => setSelectedSlideshowByRow((state) => ({ ...state, [activeRow.id]: nextId }))} onPinToSlideshow={handlePinToSlideshow} />
             <Stack gap="xs" align="flex-start">
               <StatusBadge {...getStatusBadgeProps(reviewTone(activeRow.reviewStatus), reviewLabel(activeRow))} />
               {activeRow.isGreat ? (
