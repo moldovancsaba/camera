@@ -6,8 +6,8 @@ import { Button, Group, Paper, Select, Stack, Text, Textarea, UnstyledButton } f
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AdminModal, AdminReviewLayout, ResponsiveDataView } from '@sovereignsquad/gds-admin/client';
-import { GdsMediaFrame, StateBlock, StatusBadge, useGdsToasts } from '@sovereignsquad/gds-core/client';
+import { AdminModal, ResponsiveDataView } from '@sovereignsquad/gds-admin/client';
+import { GdsMediaFrame, StateBlock, StatusBadge, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
 import type { TryOnSuitOption } from '@/lib/tryon/suits';
@@ -113,6 +113,18 @@ async function postService(id: string) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(payload.error || 'Failed to mark try-on result as Service');
+  }
+}
+
+async function postRemove(id: string) {
+  const response = await fetch(`/api/admin/tryon-results/${id}/remove`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || 'Failed to remove try-on result');
   }
 }
 
@@ -487,12 +499,14 @@ function ModerationActions({
   onRequestDecision,
   onGreat,
   onService,
+  onRemove,
 }: {
   row: ModerationRow;
   busyId: string | null;
   onRequestDecision: (row: ModerationRow, action: 'approve' | 'reject') => void;
   onGreat: (row: ModerationRow) => Promise<void>;
   onService: (row: ModerationRow) => Promise<void>;
+  onRemove: (row: ModerationRow) => Promise<void>;
 }) {
   const isApproved = row.reviewStatus === 'approved';
   const isRejected = row.reviewStatus === 'rejected';
@@ -562,18 +576,50 @@ function ModerationActions({
           Service
         </SemanticButton>
       </Group>
-      <Button
-        component="a"
-        href={row.imageUrl}
-        download
-        target="_blank"
-        rel="noopener noreferrer"
+      <Group justify="stretch" gap="xs" grow wrap="nowrap">
+        <Button
+          component="a"
+          href={row.imageUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          variant="light"
+          disabled={!row.imageUrl}
+        >
+          View
+        </Button>
+        <Button
+          component="a"
+          href={row.imageUrl}
+          download
+          target="_blank"
+          rel="noopener noreferrer"
+          variant="light"
+          disabled={!row.imageUrl}
+        >
+          Download
+        </Button>
+      </Group>
+      {row.sourceJobId ? (
+        <Button
+          component="a"
+          href={`/admin/tryon/queue?search=${encodeURIComponent(row.sourceJobId)}`}
+          variant="light"
+          fullWidth
+        >
+          Fix (open in Queue)
+        </Button>
+      ) : null}
+      <SemanticButton
+        action="tryon:remove"
+        loading={busyId === `${row.id}:remove`}
         variant="light"
-        disabled={!row.imageUrl}
+        color="red"
         fullWidth
+        aria-label="Permanently remove this try-on result"
+        onClick={() => void onRemove(row)}
       >
-        Download
-      </Button>
+        Remove
+      </SemanticButton>
     </Stack>
   );
 }
@@ -601,6 +647,7 @@ export default function TryOnResultModerationTable({
 }) {
   const router = useRouter();
   const { notifySuccess, notifyError } = useGdsToasts();
+  const { confirm } = useGdsConfirm();
   const [displayRows, setDisplayRows] = useState(rows);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
@@ -808,6 +855,35 @@ export default function TryOnResultModerationTable({
     if (!pendingDecision) return;
     const { row, action } = pendingDecision;
     void handleDecision(row.id, action, action === 'reject' ? rejectReason.trim() || undefined : undefined);
+  }
+
+  async function handleRemove(row: ModerationRow) {
+    const confirmed = await confirm({
+      title: 'Remove try-on result',
+      message: 'This permanently deletes this result. It will not appear in any bucket again. This cannot be undone.',
+    });
+    if (!confirmed) return;
+    try {
+      setBusyId(`${row.id}:remove`);
+      await postRemove(row.id);
+      notifySuccess({ title: 'Removed', message: 'Try-on result permanently removed.' });
+      setDisplayRows((current) => {
+        const next = current.filter((item) => item.id !== row.id);
+        knownRowIdsRef.current = new Set(next.map((item) => item.id));
+        return next;
+      });
+      if (activeRowId === row.id) {
+        setActiveRowId(null);
+      }
+      router.refresh();
+    } catch (error) {
+      notifyError({
+        title: 'Remove failed',
+        message: error instanceof Error ? error.message : 'Failed to remove try-on result.',
+      });
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function handleGreat(row: ModerationRow) {
@@ -1082,7 +1158,7 @@ export default function TryOnResultModerationTable({
             label: 'Actions',
             render: (row) => (
               <Stack gap="xs">
-                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} />
+                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} />
                 {renderPresetControls(row)}
               </Stack>
             ),
@@ -1158,44 +1234,45 @@ export default function TryOnResultModerationTable({
           },
         ]}
         renderCard={(row) => (
-          <AdminReviewLayout
-            media={
-              <PreviewStrip
-                row={row}
-                clickable
-                onOpen={() => setActiveRowId(row.id)}
-                onResultMissing={() => markAssetMissing(row.id, 'resultMissing')}
-                onOriginalMissing={() => markAssetMissing(row.id, 'originalMissing')}
-              />
-            }
-            metadata={
-              <Stack gap="xs">
-                <Text fw={700}>{resolveDisplayName(row.userName)}</Text>
-                {shouldShowEmail(row.userEmail) ? (
-                  <Text size="sm" c="dimmed">
-                    {row.userEmail}
-                  </Text>
-                ) : null}
-                <Text size="xs" c="dimmed">
-                  {scopeLabel(row)} · {row.partnerName || 'No partner'}
-                </Text>
-                <Text size="xs" c="dimmed">
-                  {garmentLabel(row)}
-                </Text>
+          // WHAT: Actions live directly beside the image, not stacked below
+          // metadata and status like AdminReviewLayout's fixed vertical order
+          // put them. WHY: on a phone-width card, "below everything" meant
+          // scrolling past name/event/garment/badges before Approve/Great/
+          // Remove ever appeared -- reported live as unusable mid-event.
+          <Paper p="md" radius="md" withBorder>
+            <Group align="flex-start" wrap="nowrap" gap="md">
+              <div style={{ width: 150, flexShrink: 0 }}>
+                <PreviewStrip
+                  row={row}
+                  clickable
+                  onOpen={() => setActiveRowId(row.id)}
+                  onResultMissing={() => markAssetMissing(row.id, 'resultMissing')}
+                  onOriginalMissing={() => markAssetMissing(row.id, 'originalMissing')}
+                />
+              </div>
+              <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
+                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} />
               </Stack>
-            }
-            actions={
-              <Stack gap="xs">
-                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} />
-                {renderPresetControls(row)}
-              </Stack>
-            }
-          >
-            <Stack gap="xs" align="flex-start">
-              <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row))} />
-              {row.isGreat ? (
-                <StatusBadge {...getStatusBadgeProps('active', 'Great')} />
+            </Group>
+            <Stack gap="xs" mt="sm">
+              <Text fw={700}>{resolveDisplayName(row.userName)}</Text>
+              {shouldShowEmail(row.userEmail) ? (
+                <Text size="sm" c="dimmed">
+                  {row.userEmail}
+                </Text>
               ) : null}
+              <Text size="xs" c="dimmed">
+                {scopeLabel(row)} · {row.partnerName || 'No partner'}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {garmentLabel(row)}
+              </Text>
+              <Group gap="xs">
+                <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row))} />
+                {row.isGreat ? (
+                  <StatusBadge {...getStatusBadgeProps('active', 'Great')} />
+                ) : null}
+              </Group>
               <Text size="xs" c="dimmed">
                 {visibilityLabel(row)}
               </Text>
@@ -1204,8 +1281,9 @@ export default function TryOnResultModerationTable({
                   {assetHealthLabel(row.id)}
                 </Text>
               ) : null}
+              {renderPresetControls(row)}
             </Stack>
-          </AdminReviewLayout>
+          </Paper>
         )}
         getRowKey={(row) => row.id}
       />
@@ -1291,7 +1369,7 @@ export default function TryOnResultModerationTable({
                 ) : null}
               </Stack>
             ) : null}
-            <ModerationActions row={activeRow} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} />
+            <ModerationActions row={activeRow} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} />
             <Stack gap="xs" align="flex-start">
               <StatusBadge {...getStatusBadgeProps(reviewTone(activeRow.reviewStatus), reviewLabel(activeRow))} />
               {activeRow.isGreat ? (

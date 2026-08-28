@@ -31,6 +31,10 @@ export const cameraAdminVocabularyPacks = [
     'cancel-job': { defaultMessage: 'Cancel job', icon: GdsIcons.Cancel, feedback: deletedFeedback },
     'resend-result': { defaultMessage: 'Resend result', icon: GdsIcons.Send, feedback: savedFeedback },
     'restore-orphaned-result': { defaultMessage: 'Restore prior result', icon: GdsIcons.Refresh, feedback: savedFeedback },
+    view: { defaultMessage: 'View', icon: GdsIcons.Eye, feedback: openedFeedback },
+    remove: { defaultMessage: 'Remove', icon: GdsIcons.Delete, feedback: deletedFeedback },
+    fix: { defaultMessage: 'Fix', icon: GdsIcons.Refresh, feedback: openedFeedback },
+    'pin-to-slideshow': { defaultMessage: 'Add to slideshow', icon: GdsIcons.Add, feedback: savedFeedback },
   }),
   createGdsVocabularyPack('tryon-moderation', {
     action: { defaultMessage: 'Moderation action', icon: GdsIcons.Check, feedback: savedFeedback },
