@@ -1,5 +1,32 @@
 # RELEASE_NOTES.md
 
+## v12.2.18 — live Queue view, job Cancel, and a Great/Remove Great fix
+
+Incident response from a live FIBA 3X3 event where jersey renders were taking
+~29 minutes instead of seconds (root cause was on the try-on worker: a new
+Mongo-only setup lost its config on load and silently fell back to the
+MotoGP local pipeline -- fixed in that repo, not this one).
+
+- New "Queue" tile on the Vetting hub (`?queue=1`): jobs that haven't reached
+  a terminal state yet (queued/claimed/processing/uploading/notifying/retry_wait),
+  oldest first -- this is what will land in Vetting or Failed Jobs next.
+- New Cancel action for queued/retry_wait jobs (not yet claimed by the
+  worker -- cancelling an actively-claimed job would race the worker's own
+  writes, so that stays out of scope). New `TryOnJobStatus`/`TryOnJobStage`
+  value `cancelled`.
+- Great/Remove Great is now two buttons in the moderation table, each
+  disabled based on `isGreat`, matching how Approve/Reject already behave --
+  the old single toggle button never disabled once a result was already
+  Great, so repeat clicks kept re-firing the action with no feedback that
+  it had already landed.
+- Two self-inflicted follow-up fixes shipped the same session: `ListingCard`
+  caps actions at 4, so the same Great/Remove-Great split briefly broke the
+  "oldest waiting" card on the Vetting hub (5 actions) -- that one card
+  reverted to a single toggle button. And `SemanticButton` validates its
+  `action` prop against a runtime vocabulary registry that tsc doesn't
+  check -- `tryon:remove-great` and `tryon:cancel-job` were used before
+  being registered, crashing both new views until registered.
+
 ## v12.2.17 — the two always-zero stats now count real assignments
 
 Closes the "reported not fixed" items from v12.2.15. Both stats counted
