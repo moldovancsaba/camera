@@ -51,7 +51,48 @@ export const COLLECTIONS = {
   PARTNER_USER_ACCESS: 'partner_user_access',
   /** Server-side OAuth/session payload; browser holds only a small pointer cookie (`v:2`). */
   WEB_SESSIONS: 'web_sessions',
+  ADMIN_SETTINGS: 'admin_settings',
 } as const;
+
+// ============================================================================
+// ADMIN SETTINGS COLLECTION
+// ============================================================================
+
+/**
+ * Which elements render on the Vetting moderation card. One global document
+ * (settingId: 'card-display') -- there is no per-admin-user preference
+ * system in this app, so this is a shared, app-wide default for every admin.
+ * Every field defaults to true (current behavior) so shipping this changes
+ * nothing until an admin explicitly turns something off.
+ */
+export interface AdminCardDisplaySettings {
+  _id?: ObjectId;
+  settingId: 'card-display';
+  metadata: {
+    email: boolean;
+    eventPartner: boolean;
+    garmentName: boolean;
+  };
+  status: {
+    reviewBadge: boolean;
+    greatBadge: boolean;
+    visibilityLabel: boolean;
+    assetHealth: boolean;
+  };
+  actions: {
+    approveReject: boolean;
+    great: boolean;
+    service: boolean;
+    view: boolean;
+    download: boolean;
+    fix: boolean;
+    remove: boolean;
+    rerunControls: boolean;
+    pinToSlideshow: boolean;
+  };
+  updatedAt: string;
+  updatedBy: string | null;
+}
 
 // ============================================================================
 // PARTNERS COLLECTION

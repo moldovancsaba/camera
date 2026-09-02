@@ -10,6 +10,7 @@ import TryOnResultModerationTable, { type ModerationRow } from '@/components/adm
 import TryOnQueueTable, { type QueueRow } from '@/components/admin/TryOnQueueTable';
 import { listActiveTryOnSetups, type TryOnSetup } from '@/lib/tryon/setup-resolution';
 import { listActiveTryOnSuitOptions, type TryOnSuitOption } from '@/lib/tryon/suits';
+import { DEFAULT_CARD_DISPLAY_SETTINGS, getCardDisplaySettings } from '@/lib/admin/card-display-settings';
 import { resolveTryOnAnalyticsEventScope, type TryOnAnalyticsEventScope } from '@/lib/tryon/analytics';
 import { resolveEventNamesByMongoId } from '@/lib/tryon/event-names';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
@@ -189,6 +190,7 @@ export default async function AdminTryOnResultsPage({
   let setupOptions: TryOnSetup[] = [];
   let suitOptions: TryOnSuitOption[] = [];
   let slideshowOptions: Array<{ id: string; name: string }> = [];
+  let cardDisplaySettings = DEFAULT_CARD_DISPLAY_SETTINGS;
   let frameOptions: Array<{ frameId: string; name: string }> = [];
   let eventScope: TryOnAnalyticsEventScope = {};
   // Canonical UUID carried by every scoped link on this page; falls back to the
@@ -199,6 +201,7 @@ export default async function AdminTryOnResultsPage({
     const db = await connectToDatabase();
     setupOptions = await listActiveTryOnSetups(db);
     suitOptions = await listActiveTryOnSuitOptions(db);
+    cardDisplaySettings = await getCardDisplaySettings(db);
     // Active frames for the "Change frame" picker on a result. Frames are flat
     // and global -- there is no per-event scoping to apply here.
     frameOptions = (
@@ -741,6 +744,7 @@ export default async function AdminTryOnResultsPage({
           setupOptions={setupOptions}
           suitOptions={suitOptions}
           slideshowOptions={slideshowOptions}
+          cardDisplaySettings={cardDisplaySettings}
           frameOptions={frameOptions}
           listQuery={{
             reviewStatus: reviewStatus || (archiveBucket ? '' : 'pending_review'),

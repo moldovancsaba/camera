@@ -11,6 +11,10 @@ import { GdsMediaFrame, StateBlock, StatusBadge, useGdsConfirm, useGdsToasts } f
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
 import type { TryOnSuitOption } from '@/lib/tryon/suits';
+import type { AdminCardDisplaySettings } from '@/lib/db/schemas';
+import { DEFAULT_CARD_DISPLAY_SETTINGS } from '@/lib/admin/card-display-settings';
+
+type CardDisplaySettings = Omit<AdminCardDisplaySettings, '_id'>;
 
 interface FrameOption {
   frameId: string;
@@ -516,6 +520,7 @@ function ModerationActions({
   selectedSlideshowId,
   onSelectSlideshow,
   onPinToSlideshow,
+  cardDisplaySettings = DEFAULT_CARD_DISPLAY_SETTINGS,
 }: {
   row: ModerationRow;
   busyId: string | null;
@@ -527,6 +532,7 @@ function ModerationActions({
   selectedSlideshowId?: string;
   onSelectSlideshow?: (slideshowId: string) => void;
   onPinToSlideshow?: (row: ModerationRow, slideshowId: string) => Promise<void>;
+  cardDisplaySettings?: CardDisplaySettings;
 }) {
   const isApproved = row.reviewStatus === 'approved';
   const isRejected = row.reviewStatus === 'rejected';
@@ -547,56 +553,66 @@ function ModerationActions({
           .
         </Text>
       ) : null}
-      <Group justify="stretch" gap="xs" grow wrap="nowrap">
-        <SemanticButton
-          action="tryon:approve"
-          loading={busyId === `${row.id}:approve`}
-          disabled={isApproved || archivedReadOnly}
-          aria-label={isApproved ? 'Try-on result approved' : 'Approve try-on result'}
-          onClick={() => onRequestDecision(row, 'approve')}
-        >
-          {isApproved ? 'Approved' : 'Approve'}
-        </SemanticButton>
-        <SemanticButton
-          action="tryon:reject"
-          loading={busyId === `${row.id}:reject`}
-          disabled={isRejected || archivedReadOnly}
-          aria-label={isRejected ? 'Try-on result rejected' : 'Reject try-on result'}
-          onClick={() => onRequestDecision(row, 'reject')}
-        >
-          {isRejected ? 'Rejected' : 'Reject'}
-        </SemanticButton>
-      </Group>
-      <Group justify="stretch" gap="xs" grow wrap="nowrap">
-        <SemanticButton
-          action="tryon:great"
-          loading={busyId === `${row.id}:great`}
-          disabled={row.isGreat || archivedReadOnly}
-          aria-label={row.isGreat ? 'Try-on result marked Great' : 'Mark try-on result as Great'}
-          onClick={() => void onGreat(row)}
-        >
-          {row.isGreat ? 'Marked Great' : 'Great'}
-        </SemanticButton>
-        <SemanticButton
-          action="tryon:remove-great"
-          loading={busyId === `${row.id}:great`}
-          disabled={!row.isGreat || archivedReadOnly}
-          aria-label="Remove from Greatest Hits"
-          onClick={() => void onGreat(row)}
-        >
-          Remove Great
-        </SemanticButton>
-        <SemanticButton
-          action="tryon:service"
-          loading={busyId === `${row.id}:service`}
-          disabled={archivedReadOnly}
-          aria-label="Mark try-on result as Service"
-          onClick={() => void onService(row)}
-        >
-          Service
-        </SemanticButton>
-      </Group>
-      {row.isGreat && slideshowOptions.length > 0 ? (
+      {cardDisplaySettings.actions.approveReject ? (
+        <Group justify="stretch" gap="xs" grow wrap="nowrap">
+          <SemanticButton
+            action="tryon:approve"
+            loading={busyId === `${row.id}:approve`}
+            disabled={isApproved || archivedReadOnly}
+            aria-label={isApproved ? 'Try-on result approved' : 'Approve try-on result'}
+            onClick={() => onRequestDecision(row, 'approve')}
+          >
+            {isApproved ? 'Approved' : 'Approve'}
+          </SemanticButton>
+          <SemanticButton
+            action="tryon:reject"
+            loading={busyId === `${row.id}:reject`}
+            disabled={isRejected || archivedReadOnly}
+            aria-label={isRejected ? 'Try-on result rejected' : 'Reject try-on result'}
+            onClick={() => onRequestDecision(row, 'reject')}
+          >
+            {isRejected ? 'Rejected' : 'Reject'}
+          </SemanticButton>
+        </Group>
+      ) : null}
+      {cardDisplaySettings.actions.great || cardDisplaySettings.actions.service ? (
+        <Group justify="stretch" gap="xs" grow wrap="nowrap">
+          {cardDisplaySettings.actions.great ? (
+            <>
+              <SemanticButton
+                action="tryon:great"
+                loading={busyId === `${row.id}:great`}
+                disabled={row.isGreat || archivedReadOnly}
+                aria-label={row.isGreat ? 'Try-on result marked Great' : 'Mark try-on result as Great'}
+                onClick={() => void onGreat(row)}
+              >
+                {row.isGreat ? 'Marked Great' : 'Great'}
+              </SemanticButton>
+              <SemanticButton
+                action="tryon:remove-great"
+                loading={busyId === `${row.id}:great`}
+                disabled={!row.isGreat || archivedReadOnly}
+                aria-label="Remove from Greatest Hits"
+                onClick={() => void onGreat(row)}
+              >
+                Remove Great
+              </SemanticButton>
+            </>
+          ) : null}
+          {cardDisplaySettings.actions.service ? (
+            <SemanticButton
+              action="tryon:service"
+              loading={busyId === `${row.id}:service`}
+              disabled={archivedReadOnly}
+              aria-label="Mark try-on result as Service"
+              onClick={() => void onService(row)}
+            >
+              Service
+            </SemanticButton>
+          ) : null}
+        </Group>
+      ) : null}
+      {row.isGreat && slideshowOptions.length > 0 && cardDisplaySettings.actions.pinToSlideshow ? (
         <Group justify="stretch" gap="xs" grow wrap="nowrap">
           <Select
             label="Add to slideshow"
@@ -622,30 +638,36 @@ function ModerationActions({
           </SemanticButton>
         </Group>
       ) : null}
-      <Group justify="stretch" gap="xs" grow wrap="nowrap">
-        <Button
-          component="a"
-          href={row.imageUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          variant="light"
-          disabled={!row.imageUrl}
-        >
-          View
-        </Button>
-        <Button
-          component="a"
-          href={row.imageUrl}
-          download
-          target="_blank"
-          rel="noopener noreferrer"
-          variant="light"
-          disabled={!row.imageUrl}
-        >
-          Download
-        </Button>
-      </Group>
-      {row.sourceJobId ? (
+      {cardDisplaySettings.actions.view || cardDisplaySettings.actions.download ? (
+        <Group justify="stretch" gap="xs" grow wrap="nowrap">
+          {cardDisplaySettings.actions.view ? (
+            <Button
+              component="a"
+              href={row.imageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="light"
+              disabled={!row.imageUrl}
+            >
+              View
+            </Button>
+          ) : null}
+          {cardDisplaySettings.actions.download ? (
+            <Button
+              component="a"
+              href={row.imageUrl}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="light"
+              disabled={!row.imageUrl}
+            >
+              Download
+            </Button>
+          ) : null}
+        </Group>
+      ) : null}
+      {row.sourceJobId && cardDisplaySettings.actions.fix ? (
         <Button
           component="a"
           href={`/admin/tryon/queue?search=${encodeURIComponent(row.sourceJobId)}`}
@@ -655,17 +677,19 @@ function ModerationActions({
           Fix (open in Queue)
         </Button>
       ) : null}
-      <SemanticButton
-        action="tryon:remove"
-        loading={busyId === `${row.id}:remove`}
-        variant="light"
-        color="red"
-        fullWidth
-        aria-label="Permanently remove this try-on result"
-        onClick={() => void onRemove(row)}
-      >
-        Remove
-      </SemanticButton>
+      {cardDisplaySettings.actions.remove ? (
+        <SemanticButton
+          action="tryon:remove"
+          loading={busyId === `${row.id}:remove`}
+          variant="light"
+          color="red"
+          fullWidth
+          aria-label="Permanently remove this try-on result"
+          onClick={() => void onRemove(row)}
+        >
+          Remove
+        </SemanticButton>
+      ) : null}
     </Stack>
   );
 }
@@ -675,6 +699,7 @@ export default function TryOnResultModerationTable({
   setupOptions = [],
   suitOptions = [],
   slideshowOptions = [],
+  cardDisplaySettings = DEFAULT_CARD_DISPLAY_SETTINGS,
   frameOptions = [],
   totalCount = rows.length,
   listQuery = {},
@@ -686,6 +711,7 @@ export default function TryOnResultModerationTable({
   setupOptions?: TryOnSetup[];
   suitOptions?: TryOnSuitOption[];
   slideshowOptions?: Array<{ id: string; name: string }>;
+  cardDisplaySettings?: CardDisplaySettings;
   frameOptions?: FrameOption[];
   totalCount?: number;
   listQuery?: ModerationListQuery;
@@ -1224,8 +1250,8 @@ export default function TryOnResultModerationTable({
             label: 'Actions',
             render: (row) => (
               <Stack gap="xs">
-                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} slideshowOptions={slideshowOptions} selectedSlideshowId={selectedSlideshowByRow[row.id] || ''} onSelectSlideshow={(nextId) => setSelectedSlideshowByRow((state) => ({ ...state, [row.id]: nextId }))} onPinToSlideshow={handlePinToSlideshow} />
-                {renderPresetControls(row)}
+                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} slideshowOptions={slideshowOptions} selectedSlideshowId={selectedSlideshowByRow[row.id] || ''} onSelectSlideshow={(nextId) => setSelectedSlideshowByRow((state) => ({ ...state, [row.id]: nextId }))} onPinToSlideshow={handlePinToSlideshow} cardDisplaySettings={cardDisplaySettings} />
+                {cardDisplaySettings.actions.rerunControls ? renderPresetControls(row) : null}
               </Stack>
             ),
           },
@@ -1235,7 +1261,7 @@ export default function TryOnResultModerationTable({
             render: (row) => (
               <Stack gap={2}>
                 <Text fw={700}>{resolveDisplayName(row.userName)}</Text>
-                {shouldShowEmail(row.userEmail) ? (
+                {cardDisplaySettings.metadata.email && shouldShowEmail(row.userEmail) ? (
                   <Text size="sm" c="dimmed">
                     {row.userEmail}
                   </Text>
@@ -1249,26 +1275,29 @@ export default function TryOnResultModerationTable({
           {
             key: 'scope',
             label: 'Event / Partner',
-            render: (row) => (
-              <Stack gap={2}>
-                <Text>{scopeLabel(row)}</Text>
-                <Text size="sm" c="dimmed">
-                  {row.partnerName || 'No partner'}
-                </Text>
-              </Stack>
-            ),
+            render: (row) =>
+              cardDisplaySettings.metadata.eventPartner ? (
+                <Stack gap={2}>
+                  <Text>{scopeLabel(row)}</Text>
+                  <Text size="sm" c="dimmed">
+                    {row.partnerName || 'No partner'}
+                  </Text>
+                </Stack>
+              ) : null,
           },
           {
             key: 'suit',
             label: 'Garment',
-            render: (row) => <Text size="sm">{garmentLabel(row)}</Text>,
+            render: (row) => (cardDisplaySettings.metadata.garmentName ? <Text size="sm">{garmentLabel(row)}</Text> : null),
           },
           {
             key: 'status',
             label: 'Review Status',
             render: (row) => (
               <Stack gap="xs" align="flex-start">
-                <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row))} />
+                {cardDisplaySettings.status.reviewBadge ? (
+                  <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row))} />
+                ) : null}
                 {isSupersededRow(row) && row.archiveSupersededByJobId ? (
                   <Text size="xs">
                     <Link href={`/admin/tryon/queue?search=${encodeURIComponent(row.archiveSupersededByJobId)}`}>
@@ -1279,18 +1308,20 @@ export default function TryOnResultModerationTable({
                 {row.identityGapActionable ? (
                   <StatusBadge {...getStatusBadgeProps('warning', 'Identity gap')} />
                 ) : null}
-                {row.isGreat ? (
+                {row.isGreat && cardDisplaySettings.status.greatBadge ? (
                   <StatusBadge {...getStatusBadgeProps('active', 'Great')} />
                 ) : null}
-                <Text size="xs" c="dimmed">
-                  {visibilityLabel(row)}
-                </Text>
+                {cardDisplaySettings.status.visibilityLabel ? (
+                  <Text size="xs" c="dimmed">
+                    {visibilityLabel(row)}
+                  </Text>
+                ) : null}
                 {row.approvedAt ? (
                   <Text size="xs" c="dimmed" suppressHydrationWarning>
                     Approved {new Date(row.approvedAt).toLocaleString()}
                   </Text>
                 ) : null}
-                {assetHealthLabel(row.id) ? (
+                {cardDisplaySettings.status.assetHealth && assetHealthLabel(row.id) ? (
                   <Text size="xs" c="dimmed">
                     {assetHealthLabel(row.id)}
                   </Text>
@@ -1317,37 +1348,45 @@ export default function TryOnResultModerationTable({
                 />
               </div>
               <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
-                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} slideshowOptions={slideshowOptions} selectedSlideshowId={selectedSlideshowByRow[row.id] || ''} onSelectSlideshow={(nextId) => setSelectedSlideshowByRow((state) => ({ ...state, [row.id]: nextId }))} onPinToSlideshow={handlePinToSlideshow} />
+                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} slideshowOptions={slideshowOptions} selectedSlideshowId={selectedSlideshowByRow[row.id] || ''} onSelectSlideshow={(nextId) => setSelectedSlideshowByRow((state) => ({ ...state, [row.id]: nextId }))} onPinToSlideshow={handlePinToSlideshow} cardDisplaySettings={cardDisplaySettings} />
               </Stack>
             </Group>
             <Stack gap="xs" mt="sm">
               <Text fw={700}>{resolveDisplayName(row.userName)}</Text>
-              {shouldShowEmail(row.userEmail) ? (
+              {cardDisplaySettings.metadata.email && shouldShowEmail(row.userEmail) ? (
                 <Text size="sm" c="dimmed">
                   {row.userEmail}
                 </Text>
               ) : null}
-              <Text size="xs" c="dimmed">
-                {scopeLabel(row)} · {row.partnerName || 'No partner'}
-              </Text>
-              <Text size="xs" c="dimmed">
-                {garmentLabel(row)}
-              </Text>
+              {cardDisplaySettings.metadata.eventPartner ? (
+                <Text size="xs" c="dimmed">
+                  {scopeLabel(row)} · {row.partnerName || 'No partner'}
+                </Text>
+              ) : null}
+              {cardDisplaySettings.metadata.garmentName ? (
+                <Text size="xs" c="dimmed">
+                  {garmentLabel(row)}
+                </Text>
+              ) : null}
               <Group gap="xs">
-                <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row))} />
-                {row.isGreat ? (
+                {cardDisplaySettings.status.reviewBadge ? (
+                  <StatusBadge {...getStatusBadgeProps(reviewTone(row.reviewStatus), reviewLabel(row))} />
+                ) : null}
+                {row.isGreat && cardDisplaySettings.status.greatBadge ? (
                   <StatusBadge {...getStatusBadgeProps('active', 'Great')} />
                 ) : null}
               </Group>
-              <Text size="xs" c="dimmed">
-                {visibilityLabel(row)}
-              </Text>
-              {assetHealthLabel(row.id) ? (
+              {cardDisplaySettings.status.visibilityLabel ? (
+                <Text size="xs" c="dimmed">
+                  {visibilityLabel(row)}
+                </Text>
+              ) : null}
+              {cardDisplaySettings.status.assetHealth && assetHealthLabel(row.id) ? (
                 <Text size="xs" c="dimmed">
                   {assetHealthLabel(row.id)}
                 </Text>
               ) : null}
-              {renderPresetControls(row)}
+              {cardDisplaySettings.actions.rerunControls ? renderPresetControls(row) : null}
             </Stack>
           </Paper>
         )}
@@ -1388,19 +1427,23 @@ export default function TryOnResultModerationTable({
             />
             <Stack gap={4}>
               <Text fw={700}>{resolveDisplayName(activeRow.userName)}</Text>
-              {shouldShowEmail(activeRow.userEmail) ? (
+              {cardDisplaySettings.metadata.email && shouldShowEmail(activeRow.userEmail) ? (
                 <Text size="sm" c="dimmed">
                   {activeRow.userEmail}
                 </Text>
               ) : null}
-              <Text size="sm">
-                {scopeLabel(activeRow)} · {activeRow.partnerName || 'No partner'}
-              </Text>
-              <Text size="sm" c="dimmed">
-                {garmentLabel(activeRow)}
-              </Text>
+              {cardDisplaySettings.metadata.eventPartner ? (
+                <Text size="sm">
+                  {scopeLabel(activeRow)} · {activeRow.partnerName || 'No partner'}
+                </Text>
+              ) : null}
+              {cardDisplaySettings.metadata.garmentName ? (
+                <Text size="sm" c="dimmed">
+                  {garmentLabel(activeRow)}
+                </Text>
+              ) : null}
             </Stack>
-            {renderPresetControls(activeRow)}
+            {cardDisplaySettings.actions.rerunControls ? renderPresetControls(activeRow) : null}
             {frameOptions.length > 0 ? (
               <Stack gap="xs" align="stretch">
                 <Text fw={700} size="sm">
@@ -1435,16 +1478,20 @@ export default function TryOnResultModerationTable({
                 ) : null}
               </Stack>
             ) : null}
-            <ModerationActions row={activeRow} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} slideshowOptions={slideshowOptions} selectedSlideshowId={selectedSlideshowByRow[activeRow.id] || ''} onSelectSlideshow={(nextId) => setSelectedSlideshowByRow((state) => ({ ...state, [activeRow.id]: nextId }))} onPinToSlideshow={handlePinToSlideshow} />
+            <ModerationActions row={activeRow} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} slideshowOptions={slideshowOptions} selectedSlideshowId={selectedSlideshowByRow[activeRow.id] || ''} onSelectSlideshow={(nextId) => setSelectedSlideshowByRow((state) => ({ ...state, [activeRow.id]: nextId }))} onPinToSlideshow={handlePinToSlideshow} cardDisplaySettings={cardDisplaySettings} />
             <Stack gap="xs" align="flex-start">
-              <StatusBadge {...getStatusBadgeProps(reviewTone(activeRow.reviewStatus), reviewLabel(activeRow))} />
-              {activeRow.isGreat ? (
+              {cardDisplaySettings.status.reviewBadge ? (
+                <StatusBadge {...getStatusBadgeProps(reviewTone(activeRow.reviewStatus), reviewLabel(activeRow))} />
+              ) : null}
+              {activeRow.isGreat && cardDisplaySettings.status.greatBadge ? (
                 <StatusBadge {...getStatusBadgeProps('active', 'Great')} />
               ) : null}
-              <Text size="sm" c="dimmed">
-                {visibilityLabel(activeRow)}
-              </Text>
-              {assetHealthLabel(activeRow.id) ? (
+              {cardDisplaySettings.status.visibilityLabel ? (
+                <Text size="sm" c="dimmed">
+                  {visibilityLabel(activeRow)}
+                </Text>
+              ) : null}
+              {cardDisplaySettings.status.assetHealth && assetHealthLabel(activeRow.id) ? (
                 <Text size="sm" c="dimmed">
                   {assetHealthLabel(activeRow.id)}
                 </Text>

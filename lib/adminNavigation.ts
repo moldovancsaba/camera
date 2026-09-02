@@ -136,6 +136,19 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
     ],
   },
   {
+    title: 'Settings',
+    description: 'App-wide admin UI preferences, shared by every admin.',
+    items: [
+      {
+        href: '/admin/settings/card-display',
+        label: 'Vetting Card Display',
+        description: 'Choose which fields and action buttons appear on the Vetting moderation card.',
+        iconKey: 'adjustments',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
+    ],
+  },
+  {
     title: 'Access',
     description: 'Partners and the people who work in them.',
     items: [

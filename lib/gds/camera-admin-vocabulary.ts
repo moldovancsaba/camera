@@ -154,6 +154,9 @@ export const cameraAdminVocabularyPacks = [
     archive: { defaultMessage: 'Archive setup', icon: GdsIcons.Delete, feedback: deletedFeedback },
     unarchive: { defaultMessage: 'Unarchive setup', icon: GdsIcons.Check, feedback: savedFeedback },
   }),
+  createGdsVocabularyPack('card-display-settings', {
+    save: { defaultMessage: 'Save', icon: GdsIcons.Save, feedback: savedFeedback },
+  }),
   createGdsVocabularyPack('tryon-maintenance', {
     'refresh-worker': { defaultMessage: 'Refresh worker health', icon: GdsIcons.Refresh, feedback: openedFeedback },
     'run-audit': { defaultMessage: 'Run data integrity audit', icon: GdsIcons.Check, feedback: openedFeedback },

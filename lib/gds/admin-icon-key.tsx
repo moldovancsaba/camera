@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  IconAdjustments,
   IconBrandDatabricks,
   IconBuildingStore,
   IconCalendarEvent,
@@ -19,6 +20,7 @@ import {
 } from '@tabler/icons-react';
 
 export type AdminIconKey =
+  | 'adjustments'
   | 'brandDatabricks'
   | 'buildingStore'
   | 'calendarEvent'
@@ -36,6 +38,7 @@ export type AdminIconKey =
   | 'world';
 
 const iconMap = {
+  adjustments: IconAdjustments,
   brandDatabricks: IconBrandDatabricks,
   buildingStore: IconBuildingStore,
   calendarEvent: IconCalendarEvent,
