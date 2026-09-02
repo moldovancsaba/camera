@@ -1,5 +1,16 @@
 # RELEASE_NOTES.md
 
+## v12.2.21 — Vetting Card Display settings menu
+
+New standalone settings page — the first cross-cutting admin-preferences
+surface in this app (`/admin/settings/card-display`, new "Settings" nav
+section): checkboxes for every metadata field, status indicator, and
+action button on the Vetting moderation card, persisted globally (one
+`admin_settings` document — no per-admin-user preference system exists to
+scope it further). Every field defaults to on, so shipping this changes
+nothing until someone unchecks something. The card, the plain table row,
+and the review modal all read the same settings and gate identically.
+
 ## v12.2.20 — hand-pick Greatest Hits into a slideshow
 
 Every slideshow's `submissionSourceMode` is policy-driven (all approved
