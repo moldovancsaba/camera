@@ -33,7 +33,10 @@ import {
   resolveSlideshowStageAspect,
   type SlideshowStageSource,
 } from '@/lib/slideshow/stage-aspect';
-import { resolveSubmissionSourceModeForSlideshow } from '@/lib/tryon/slideshow-policy';
+import {
+  resolveSubmissionSourceModeForSlideshow,
+  type SubmissionSourceMode,
+} from '@/lib/tryon/slideshow-policy';
 
 /** Playlist is personalized (random / instanceKey); never cache across clients or layout cells. */
 export const dynamic = 'force-dynamic';
@@ -41,6 +44,130 @@ export const dynamic = 'force-dynamic';
 const PLAYLIST_NO_CACHE_HEADERS = {
   'Cache-Control': 'private, no-store, must-revalidate',
 } as const;
+
+function hiddenFromEventsClause(eventIdKeys: string[]): object {
+  return {
+    $or: [
+      { hiddenFromEvents: { $exists: false } },
+      { hiddenFromEvents: { $nin: eventIdKeys } },
+    ],
+  };
+}
+
+function accountActiveClause(inactiveEmails: Iterable<string>): object {
+  return {
+    $and: [
+      {
+        $or: [
+          { userEmail: { $nin: Array.from(inactiveEmails) } },
+          { userId: 'anonymous' },
+        ],
+      },
+      {
+        $or: [
+          { 'userInfo.isActive': { $ne: false } },
+          { userInfo: { $exists: false } },
+        ],
+      },
+    ],
+  };
+}
+
+/** A pinned tryon_result still needs to have cleared review; a pinned original never carries reviewStatus at all. */
+function pinnedReviewStateClause(): object {
+  return {
+    $or: [
+      { submissionKind: { $exists: false } },
+      { submissionKind: 'original' },
+      { $and: [{ submissionKind: 'tryon_result' }, { reviewStatus: 'approved' }] },
+    ],
+  };
+}
+
+export interface BuildPlaylistMatchFilterOptions {
+  eventIdKeys: string[];
+  inactiveEmails: Iterable<string>;
+  submissionSourceMode: SubmissionSourceMode;
+  manualObjectIds: ObjectId[];
+  excludeOids: ObjectId[];
+}
+
+/**
+ * Build match filter: event + optional exclude + archived/hidden + active users only.
+ * The pinned branch only ever ADDS eligibility on top of submissionSourceMode's kind
+ * restriction (e.g. bringing in an 'original' under approved_tryon_only) -- it re-checks
+ * the same moderation state, hiddenFromEvents, and account-standing as baseFilter, so a
+ * pin can never bypass those.
+ */
+export function buildPlaylistMatchFilter({
+  eventIdKeys,
+  inactiveEmails,
+  submissionSourceMode,
+  manualObjectIds,
+  excludeOids,
+}: BuildPlaylistMatchFilterOptions): object {
+  const and: object[] = [
+    {
+      $or: [
+        { eventId: { $in: eventIdKeys } },
+        { eventIds: { $in: eventIdKeys } },
+      ],
+    },
+    { isArchived: { $ne: true } },
+    hiddenFromEventsClause(eventIdKeys),
+    accountActiveClause(inactiveEmails),
+  ];
+  if (submissionSourceMode === 'approved_tryon_only') {
+    and.push({
+      submissionKind: 'tryon_result',
+      reviewStatus: 'approved',
+      isSlideshowEligible: true,
+    });
+  } else if (submissionSourceMode === 'originals_and_approved_tryon') {
+    and.push({
+      $or: [
+        {
+          $and: [
+            { submissionKind: 'tryon_result' },
+            { reviewStatus: 'approved' },
+            { isSlideshowEligible: true },
+          ],
+        },
+        {
+          $or: [
+            { submissionKind: { $exists: false } },
+            { submissionKind: 'original' },
+          ],
+        },
+      ],
+    });
+  } else {
+    and.push({
+      $or: [
+        { submissionKind: { $exists: false } },
+        { submissionKind: 'original' },
+      ],
+    });
+  }
+  if (excludeOids.length > 0) {
+    and.push({ _id: { $nin: excludeOids } });
+  }
+  const baseFilter = { $and: and };
+  if (manualObjectIds.length === 0) {
+    return baseFilter;
+  }
+  const pinnedAnd: object[] = [
+    { _id: { $in: manualObjectIds } },
+    { isArchived: { $ne: true } },
+    hiddenFromEventsClause(eventIdKeys),
+    accountActiveClause(inactiveEmails),
+    pinnedReviewStateClause(),
+  ];
+  if (excludeOids.length > 0) {
+    pinnedAnd.push({ _id: { $nin: excludeOids } });
+  }
+  return { $or: [baseFilter, { $and: pinnedAnd }] };
+}
 
 /**
  * GET /api/slideshows/[slideshowId]/playlist?limit=N&exclude=id1,id2,id3
@@ -160,7 +287,11 @@ export async function GET(
     // submissionSourceMode already matches. WHY: the source modes are all
     // policy-driven (every approved result, or every original) -- there was
     // no way to hand-curate a specific set of Greatest Hits into one
-    // slideshow's rotation.
+    // slideshow's rotation. A pin only ever ADDS eligibility on top of the
+    // sourceMode's kind restriction: buildPlaylistMatchFilter's pinned branch
+    // re-checks isArchived, hiddenFromEvents, account standing, and review
+    // state exactly like the base filter, so a pin can never bypass
+    // moderation, per-event visibility, or account deactivation.
     const manualObjectIds = Array.isArray(slideshow.manualSubmissionIds)
       ? slideshow.manualSubmissionIds.filter((id): id is string => typeof id === 'string' && ObjectId.isValid(id)).map((id) => new ObjectId(id))
       : [];
@@ -179,87 +310,14 @@ export async function GET(
       slideshow as { submissionSourceMode?: unknown }
     );
 
-    // Build match filter: event + optional exclude + archived/hidden + active users only
-    const buildMatchFilter = (excludeOids: ObjectId[]) => {
-      const and: object[] = [
-        {
-          $or: [
-            { eventId: { $in: eventIdKeys } },
-            { eventIds: { $in: eventIdKeys } },
-          ],
-        },
-        { isArchived: { $ne: true } },
-        {
-          $or: [
-            { hiddenFromEvents: { $exists: false } },
-            { hiddenFromEvents: { $nin: eventIdKeys } },
-          ],
-        },
-        {
-          $and: [
-            {
-              $or: [
-                { userEmail: { $nin: Array.from(inactiveEmails) } },
-                { userId: 'anonymous' },
-              ],
-            },
-            {
-              $or: [
-                { 'userInfo.isActive': { $ne: false } },
-                { userInfo: { $exists: false } },
-              ],
-            },
-          ],
-        },
-      ];
-      if (submissionSourceMode === 'approved_tryon_only') {
-        and.push({
-          submissionKind: 'tryon_result',
-          reviewStatus: 'approved',
-          isSlideshowEligible: true,
-        });
-      } else if (submissionSourceMode === 'originals_and_approved_tryon') {
-        and.push({
-          $or: [
-            {
-              $and: [
-                { submissionKind: 'tryon_result' },
-                { reviewStatus: 'approved' },
-                { isSlideshowEligible: true },
-              ],
-            },
-            {
-              $or: [
-                { submissionKind: { $exists: false } },
-                { submissionKind: 'original' },
-              ],
-            },
-          ],
-        });
-      } else {
-        and.push({
-          $or: [
-            { submissionKind: { $exists: false } },
-            { submissionKind: 'original' },
-          ],
-        });
-      }
-      if (excludeOids.length > 0) {
-        and.push({ _id: { $nin: excludeOids } });
-      }
-      const baseFilter = { $and: and };
-      if (manualObjectIds.length === 0) {
-        return baseFilter;
-      }
-      const pinnedAnd: object[] = [
-        { _id: { $in: manualObjectIds } },
-        { isArchived: { $ne: true } },
-      ];
-      if (excludeOids.length > 0) {
-        pinnedAnd.push({ _id: { $nin: excludeOids } });
-      }
-      return { $or: [baseFilter, { $and: pinnedAnd }] };
-    };
+    const buildMatchFilter = (excludeOids: ObjectId[]) =>
+      buildPlaylistMatchFilter({
+        eventIdKeys,
+        inactiveEmails,
+        submissionSourceMode,
+        manualObjectIds,
+        excludeOids,
+      });
 
     const fetchSubmissionsSorted = async (excludeOids: ObjectId[]) => {
       const matchFilter = buildMatchFilter(excludeOids);
