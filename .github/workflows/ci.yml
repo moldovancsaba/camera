@@ -6,8 +6,14 @@ name: CI
 #
 # This runs `release:check`, which is already defined in package.json as the
 # chain camera holds itself to before a release:
-#   gds:validate-manifest -> gds:check -> type-check -> lint
+#   gds:validate-manifest -> gds:check -> type-check -> lint -> test:unit
 #   -> verify:production-guards -> build
+#
+# test:unit runs only DB-free, pure-function unit tests (node:test via tsx,
+# no live Mongo connection) -- deliberately not the Playwright e2e specs under
+# tests/e2e/, which need a disposable test database this CI job doesn't
+# provision. Wiring those in is a separate, larger decision (needs Actions
+# secrets + a disposable-DB provisioning story), not solved here.
 #
 # An earlier version of this file ran only type-check and build, on the belief
 # that lint carried 1256 errors and gds:check a set of forbidden-color

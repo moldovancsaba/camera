@@ -12,7 +12,7 @@
     "gds:validate-manifest": "gds-compliance validate-manifest --manifest ./gds-adoption.json",
     "gds:check": "gds-compliance check --manifest ./gds-adoption.json && node scripts/check-gds-boundaries.mjs",
     "type-check": "tsc --noEmit",
-    "release:check": "npm run gds:validate-manifest && npm run gds:check && npm run type-check && npm run lint && npm run verify:production-guards && npm run build",
+    "release:check": "npm run gds:validate-manifest && npm run gds:check && npm run type-check && npm run lint && npm run test:unit && npm run verify:production-guards && npm run build",
     "test:unit": "tsx \"app/api/slideshows/[slideshowId]/playlist/route.test.ts\"",
     "test:e2e": "BROWSERSLIST_IGNORE_OLD_DATA=true BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA=true playwright test",
     "test:e2e:safe": "BROWSERSLIST_IGNORE_OLD_DATA=true BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA=true tsx scripts/run-e2e-safe.ts",
