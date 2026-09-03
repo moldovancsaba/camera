@@ -49,10 +49,22 @@ export const POST = withErrorHandler(async (
   }
   // Same-event guard: a result belongs to one event's Greatest Hits, and a
   // slideshow belongs to one event -- pinning across events would silently
-  // surface one event's guest photo in another's rotation.
+  // surface one event's guest photo in another's rotation. Empty eventIds is
+  // fail-closed, not skipped: it's ambiguous between a genuinely general
+  // (never event-tied) submission and one just hidden-from-partner via
+  // app/api/partners/[partnerId]/submissions/[submissionId]/route.ts, which
+  // clears eventIds specifically to remove it from event-scoped surfaces --
+  // this route can't tell the two apart, and the event-scoped Vetting page
+  // never surfaces either case today (its query requires an eventIds match),
+  // so rejecting here costs no real workflow.
   const resultEventKeys = [result.eventId, result.eventIds].flat().filter(Boolean);
-  if (slideshow.eventId && resultEventKeys.length > 0 && !resultEventKeys.includes(slideshow.eventId)) {
-    throw apiBadRequest('That slideshow belongs to a different event than this result');
+  if (slideshow.eventId) {
+    if (resultEventKeys.length === 0) {
+      throw apiBadRequest('Result has no event reference; cannot verify it belongs to this slideshow\'s event');
+    }
+    if (!resultEventKeys.includes(slideshow.eventId)) {
+      throw apiBadRequest('That slideshow belongs to a different event than this result');
+    }
   }
 
   const now = nowIso();

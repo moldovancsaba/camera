@@ -18,6 +18,7 @@ mock.module('@/lib/partners/authorization', {
 type UpdateResult = { matchedCount: number };
 
 let slideshowFindOneResult: Record<string, unknown> | null;
+let submissionEventFields: Record<string, unknown> = {};
 let updateOneResult: UpdateResult;
 let updateOneCalls: Array<{ filter: unknown; update: unknown }>;
 
@@ -27,7 +28,7 @@ mock.module('@/lib/db/mongodb', {
       collection(name: string) {
         if (name === COLLECTIONS.SUBMISSIONS) {
           return {
-            findOne: async () => ({ _id: new ObjectId(submissionId), submissionKind: 'tryon_result' }),
+            findOne: async () => ({ _id: new ObjectId(submissionId), submissionKind: 'tryon_result', ...submissionEventFields }),
           };
         }
         if (name === COLLECTIONS.SLIDESHOWS) {
@@ -62,6 +63,7 @@ test('pin against an existing slideshow succeeds', async () => {
   slideshowFindOneResult = { slideshowId };
   updateOneResult = { matchedCount: 1 };
   updateOneCalls = [];
+  submissionEventFields = {};
 
   const response = await POST(buildRequest({ slideshowId, pin: true }), buildContext());
   assert.equal(response.status, 200);
@@ -75,6 +77,7 @@ test('pin against a slideshow deleted just before the write throws instead of ap
   slideshowFindOneResult = { slideshowId };
   updateOneResult = { matchedCount: 0 };
   updateOneCalls = [];
+  submissionEventFields = {};
 
   const response = await POST(buildRequest({ slideshowId, pin: true }), buildContext());
   assert.equal(response.status, 404);
@@ -87,6 +90,7 @@ test('unpin against an existing slideshow succeeds', async () => {
   slideshowFindOneResult = { slideshowId };
   updateOneResult = { matchedCount: 1 };
   updateOneCalls = [];
+  submissionEventFields = {};
 
   const response = await POST(buildRequest({ slideshowId, pin: false }), buildContext());
   assert.equal(response.status, 200);
@@ -100,10 +104,63 @@ test('unpin against a slideshow deleted just before the write throws instead of 
   slideshowFindOneResult = { slideshowId };
   updateOneResult = { matchedCount: 0 };
   updateOneCalls = [];
+  submissionEventFields = {};
 
   const response = await POST(buildRequest({ slideshowId, pin: false }), buildContext());
   assert.equal(response.status, 404);
   const json = await response.json();
   assert.equal(json.success, false);
+  assert.equal(updateOneCalls.length, 1);
+});
+
+test('result with no event reference is rejected from an event-scoped slideshow', async () => {
+  slideshowFindOneResult = { slideshowId, eventId: 'event-a' };
+  submissionEventFields = { eventId: null, eventIds: [] };
+  updateOneResult = { matchedCount: 1 };
+  updateOneCalls = [];
+
+  const response = await POST(buildRequest({ slideshowId, pin: true }), buildContext());
+  assert.equal(response.status, 400);
+  const json = await response.json();
+  assert.equal(json.success, false);
+  assert.equal(updateOneCalls.length, 0);
+});
+
+test('result matching the slideshow event still succeeds', async () => {
+  slideshowFindOneResult = { slideshowId, eventId: 'event-a' };
+  submissionEventFields = { eventId: 'event-a', eventIds: ['event-a'] };
+  updateOneResult = { matchedCount: 1 };
+  updateOneCalls = [];
+
+  const response = await POST(buildRequest({ slideshowId, pin: true }), buildContext());
+  assert.equal(response.status, 200);
+  const json = await response.json();
+  assert.equal(json.success, true);
+  assert.equal(updateOneCalls.length, 1);
+});
+
+test('result belonging to a different event is still rejected', async () => {
+  slideshowFindOneResult = { slideshowId, eventId: 'event-a' };
+  submissionEventFields = { eventId: 'event-b', eventIds: ['event-b'] };
+  updateOneResult = { matchedCount: 1 };
+  updateOneCalls = [];
+
+  const response = await POST(buildRequest({ slideshowId, pin: true }), buildContext());
+  assert.equal(response.status, 400);
+  const json = await response.json();
+  assert.equal(json.success, false);
+  assert.equal(updateOneCalls.length, 0);
+});
+
+test('result with no event reference still succeeds against a slideshow with no event scope', async () => {
+  slideshowFindOneResult = { slideshowId };
+  submissionEventFields = { eventId: null, eventIds: [] };
+  updateOneResult = { matchedCount: 1 };
+  updateOneCalls = [];
+
+  const response = await POST(buildRequest({ slideshowId, pin: true }), buildContext());
+  assert.equal(response.status, 200);
+  const json = await response.json();
+  assert.equal(json.success, true);
   assert.equal(updateOneCalls.length, 1);
 });
