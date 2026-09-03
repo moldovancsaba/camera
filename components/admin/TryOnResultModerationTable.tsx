@@ -697,6 +697,9 @@ function ModerationActions({
       {cardDisplaySettings.actions.view || cardDisplaySettings.actions.download ? (
         <Group justify="stretch" gap="xs" grow wrap="nowrap">
           {cardDisplaySettings.actions.view ? (
+            // Intentionally plain Button, not SemanticButton -- SemanticButtonProps
+            // has no `component` prop (confirmed: passing component="a" is a
+            // TS2322 error), so it can't render as a link. See camera#146.
             <Button
               component="a"
               href={row.imageUrl}
@@ -724,6 +727,8 @@ function ModerationActions({
         </Group>
       ) : null}
       {row.sourceJobId && cardDisplaySettings.actions.fix ? (
+        // Intentionally plain Button, not SemanticButton -- see the View button
+        // above; camera#146.
         <Button
           component="a"
           href={`/admin/tryon/queue?search=${encodeURIComponent(row.sourceJobId)}`}
