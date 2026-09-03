@@ -36,6 +36,14 @@ export const POST = withErrorHandler(async (
     throw apiNotFound('Try-on result');
   }
 
+  const deleteResult = await db
+    .collection(COLLECTIONS.SUBMISSIONS)
+    .deleteOne({ _id: new ObjectId(submissionId) });
+
+  if (deleteResult.deletedCount === 0) {
+    throw new Error('Failed to remove try-on result');
+  }
+
   await appendTryOnModerationEvent(db, {
     resultSubmissionId: submissionId,
     resultSubmission,
@@ -52,14 +60,6 @@ export const POST = withErrorHandler(async (
     }),
     reason: 'Permanently removed by admin',
   });
-
-  const deleteResult = await db
-    .collection(COLLECTIONS.SUBMISSIONS)
-    .deleteOne({ _id: new ObjectId(submissionId) });
-
-  if (deleteResult.deletedCount === 0) {
-    throw new Error('Failed to remove try-on result');
-  }
 
   if (resultSubmission.sourceSubmissionId && ObjectId.isValid(resultSubmission.sourceSubmissionId)) {
     await patchSubmissionTryOnState(db, new ObjectId(resultSubmission.sourceSubmissionId), {
