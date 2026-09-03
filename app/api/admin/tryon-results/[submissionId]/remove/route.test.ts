@@ -5,20 +5,6 @@ import { ObjectId } from 'mongodb';
 import { SubmissionMethod, SubmissionStatus, type Submission } from '@/lib/db/schemas';
 import type { Session } from '@/lib/auth/session';
 
-// This file runs standalone (tsx, not the `--test` CLI runner, since node's
-// runner glob-parses the `[submissionId]` path segment as a character class
-// and finds nothing) -- so nothing here calls process.exit for us. '@/lib/api'
-// transitively starts an unref-less rate-limiter cleanup setInterval on
-// import, which would otherwise hold this process open forever. Neutralize
-// that before anything imports it, real usage is unaffected since this only
-// patches this test process's global.
-const realSetInterval = global.setInterval;
-global.setInterval = ((...args: Parameters<typeof setInterval>) => {
-  const timer = realSetInterval(...args);
-  timer.unref?.();
-  return timer;
-}) as typeof setInterval;
-
 const apiReal = await import('@/lib/api');
 const auditReal = await import('@/lib/tryon/moderation-audit');
 

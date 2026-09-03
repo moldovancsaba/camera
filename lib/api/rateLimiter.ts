@@ -331,7 +331,12 @@ export function resetRateLimit(identifier: string, url?: string): number {
 // Note: In serverless environments, this may not run reliably
 // Consider using a scheduled function or cron job instead
 if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
+  const cleanupInterval = setInterval(() => {
     cleanupBuckets();
   }, 60 * 60 * 1000); // Every hour
+  // WHY: unref so this housekeeping timer alone never keeps a process alive --
+  // a long-running server stays up for its own reasons (listening socket)
+  // regardless; a standalone script or test process that merely imports this
+  // module would otherwise hang forever waiting on this timer.
+  cleanupInterval.unref?.();
 }
