@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { Document, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { requireAuth, apiBadRequest, apiForbidden, apiNotFound, apiSuccess, withErrorHandler } from '@/lib/api';
 import { COLLECTIONS, type Slideshow, type Submission } from '@/lib/db/schemas';
@@ -69,13 +69,13 @@ export const POST = withErrorHandler(async (
 
   const now = nowIso();
   const writeResult = pin
-    ? await db.collection(COLLECTIONS.SLIDESHOWS).updateOne(
+    ? await db.collection<Slideshow>(COLLECTIONS.SLIDESHOWS).updateOne(
         { slideshowId },
         { $addToSet: { manualSubmissionIds: submissionId }, $set: { updatedAt: now } }
       )
-    : await db.collection(COLLECTIONS.SLIDESHOWS).updateOne(
+    : await db.collection<Slideshow>(COLLECTIONS.SLIDESHOWS).updateOne(
         { slideshowId },
-        { $pull: { manualSubmissionIds: submissionId } as Document, $set: { updatedAt: now } }
+        { $pull: { manualSubmissionIds: submissionId }, $set: { updatedAt: now } }
       );
 
   if (writeResult.matchedCount === 0) {
