@@ -60,6 +60,7 @@ export interface ModerationRow {
   archiveSupersededByJobId?: string | null;
   archiveSupersededAt?: string | null;
   identityGapActionable?: boolean;
+  pinnedSlideshows?: Array<{ slideshowId: string; slideshowName: string }>;
   recentAudit?: Array<{
     eventId: string;
     action: string;
@@ -120,15 +121,19 @@ async function postService(id: string) {
   }
 }
 
-async function postPinToSlideshow(id: string, slideshowId: string) {
+async function postPinToSlideshow(id: string, slideshowId: string, pin: boolean = true) {
   const response = await fetch(`/api/admin/tryon-results/${id}/pin-to-slideshow`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ slideshowId, pin: true }),
+    body: JSON.stringify({ slideshowId, pin }),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload.error || 'Failed to add to slideshow');
+    const error = new Error(payload.error || (pin ? 'Failed to add to slideshow' : 'Failed to unpin from slideshow')) as Error & {
+      status?: number;
+    };
+    error.status = response.status;
+    throw error;
   }
 }
 
@@ -299,6 +304,15 @@ function toModerationRow(value: unknown): ModerationRow | null {
     archiveSupersededByJobId: typeof row.archiveSupersededByJobId === 'string' ? row.archiveSupersededByJobId : null,
     archiveSupersededAt: typeof row.archiveSupersededAt === 'string' ? row.archiveSupersededAt : null,
     identityGapActionable: Boolean(row.identityGapActionable),
+    pinnedSlideshows: Array.isArray(row.pinnedSlideshows)
+      ? row.pinnedSlideshows.filter(
+          (entry): entry is { slideshowId: string; slideshowName: string } =>
+            Boolean(entry) &&
+            typeof entry === 'object' &&
+            typeof (entry as { slideshowId?: unknown }).slideshowId === 'string' &&
+            typeof (entry as { slideshowName?: unknown }).slideshowName === 'string'
+        )
+      : [],
     setup: row.setup && typeof row.setup === 'object' && typeof row.setup.setupId === 'string' ? row.setup : null,
   };
 }
@@ -520,6 +534,7 @@ function ModerationActions({
   selectedSlideshowId,
   onSelectSlideshow,
   onPinToSlideshow,
+  onUnpinFromSlideshow,
   cardDisplaySettings = DEFAULT_CARD_DISPLAY_SETTINGS,
 }: {
   row: ModerationRow;
@@ -532,6 +547,7 @@ function ModerationActions({
   selectedSlideshowId?: string;
   onSelectSlideshow?: (slideshowId: string) => void;
   onPinToSlideshow?: (row: ModerationRow, slideshowId: string) => Promise<void>;
+  onUnpinFromSlideshow?: (row: ModerationRow, slideshowId: string, slideshowName: string) => Promise<void>;
   cardDisplaySettings?: CardDisplaySettings;
 }) {
   const isApproved = row.reviewStatus === 'approved';
@@ -637,6 +653,24 @@ function ModerationActions({
             Add to slideshow
           </SemanticButton>
         </Group>
+      ) : null}
+      {cardDisplaySettings.actions.pinToSlideshow && row.pinnedSlideshows && row.pinnedSlideshows.length > 0 ? (
+        <Stack gap="xs" style={{ width: '100%' }}>
+          {row.pinnedSlideshows.map((pinned) => (
+            <SemanticButton
+              key={pinned.slideshowId}
+              action="tryon:pin-to-slideshow"
+              variant="light"
+              color="red"
+              fullWidth
+              loading={busyId === `${row.id}:unpin:${pinned.slideshowId}`}
+              aria-label={`Unpin from ${pinned.slideshowName}`}
+              onClick={() => void onUnpinFromSlideshow?.(row, pinned.slideshowId, pinned.slideshowName)}
+            >
+              {`Unpin from ${pinned.slideshowName}`}
+            </SemanticButton>
+          ))}
+        </Stack>
       ) : null}
       {cardDisplaySettings.actions.view || cardDisplaySettings.actions.download ? (
         <Group justify="stretch" gap="xs" grow wrap="nowrap">
@@ -845,7 +879,18 @@ export default function TryOnResultModerationTable({
       const hasNewRows = nextRows.some((row: ModerationRow) => !previousIds.has(row.id));
 
       knownRowIdsRef.current = new Set(nextRows.map((row: ModerationRow) => row.id));
-      setDisplayRows(nextRows);
+      setDisplayRows((current) => {
+        // WHAT: The polling list endpoint doesn't carry pinnedSlideshows (that
+        // lookup only runs in page.tsx's initial server render). WHY: without
+        // this, every 15s poll would silently wipe the Unpin controls this
+        // page just rendered -- carry the last known value per row forward
+        // instead of trusting the poll's absence of the field as "unpinned".
+        const previousPinnedByRowId = new Map(current.map((row) => [row.id, row.pinnedSlideshows]));
+        return nextRows.map((row) => ({
+          ...row,
+          pinnedSlideshows: previousPinnedByRowId.get(row.id) ?? row.pinnedSlideshows ?? [],
+        }));
+      });
       setLastRefreshLabel(new Date().toLocaleTimeString());
 
       if (hasNewRows) {
@@ -965,13 +1010,49 @@ export default function TryOnResultModerationTable({
     if (!slideshowId) return;
     try {
       setBusyId(`${row.id}:pin`);
-      await postPinToSlideshow(row.id, slideshowId);
+      await postPinToSlideshow(row.id, slideshowId, true);
       const slideshowName = slideshowOptions.find((option) => option.id === slideshowId)?.name ?? slideshowId;
       notifySuccess({ title: 'Added to slideshow', message: `Queued into ${slideshowName}.` });
     } catch (error) {
       notifyError({
         title: 'Add to slideshow failed',
         message: error instanceof Error ? error.message : 'Failed to add to slideshow.',
+      });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function removePinnedSlideshow(rowId: string, slideshowId: string) {
+    setDisplayRows((current) =>
+      current.map((item) =>
+        item.id === rowId
+          ? { ...item, pinnedSlideshows: (item.pinnedSlideshows ?? []).filter((entry) => entry.slideshowId !== slideshowId) }
+          : item
+      )
+    );
+  }
+
+  async function handleUnpinFromSlideshow(row: ModerationRow, slideshowId: string, slideshowName: string) {
+    const confirmed = await confirm({
+      title: 'Unpin from slideshow',
+      message: `Remove this result from ${slideshowName}'s rotation? It will stop appearing there immediately.`,
+    });
+    if (!confirmed) return;
+    try {
+      setBusyId(`${row.id}:unpin:${slideshowId}`);
+      await postPinToSlideshow(row.id, slideshowId, false);
+      notifySuccess({ title: 'Unpinned', message: `Removed from ${slideshowName}.` });
+      removePinnedSlideshow(row.id, slideshowId);
+    } catch (error) {
+      // A slideshow deleted after this page loaded can no longer hold a pin --
+      // treat its 404 as confirmation the entry is already gone, not a failure.
+      if ((error as { status?: number } | undefined)?.status === 404) {
+        removePinnedSlideshow(row.id, slideshowId);
+      }
+      notifyError({
+        title: 'Unpin failed',
+        message: error instanceof Error ? error.message : 'Failed to unpin from slideshow.',
       });
     } finally {
       setBusyId(null);
@@ -1250,7 +1331,7 @@ export default function TryOnResultModerationTable({
             label: 'Actions',
             render: (row) => (
               <Stack gap="xs">
-                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} slideshowOptions={slideshowOptions} selectedSlideshowId={selectedSlideshowByRow[row.id] || ''} onSelectSlideshow={(nextId) => setSelectedSlideshowByRow((state) => ({ ...state, [row.id]: nextId }))} onPinToSlideshow={handlePinToSlideshow} cardDisplaySettings={cardDisplaySettings} />
+                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} slideshowOptions={slideshowOptions} selectedSlideshowId={selectedSlideshowByRow[row.id] || ''} onSelectSlideshow={(nextId) => setSelectedSlideshowByRow((state) => ({ ...state, [row.id]: nextId }))} onPinToSlideshow={handlePinToSlideshow} onUnpinFromSlideshow={handleUnpinFromSlideshow} cardDisplaySettings={cardDisplaySettings} />
                 {cardDisplaySettings.actions.rerunControls ? renderPresetControls(row) : null}
               </Stack>
             ),
@@ -1348,7 +1429,7 @@ export default function TryOnResultModerationTable({
                 />
               </div>
               <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
-                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} slideshowOptions={slideshowOptions} selectedSlideshowId={selectedSlideshowByRow[row.id] || ''} onSelectSlideshow={(nextId) => setSelectedSlideshowByRow((state) => ({ ...state, [row.id]: nextId }))} onPinToSlideshow={handlePinToSlideshow} cardDisplaySettings={cardDisplaySettings} />
+                <ModerationActions row={row} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} slideshowOptions={slideshowOptions} selectedSlideshowId={selectedSlideshowByRow[row.id] || ''} onSelectSlideshow={(nextId) => setSelectedSlideshowByRow((state) => ({ ...state, [row.id]: nextId }))} onPinToSlideshow={handlePinToSlideshow} onUnpinFromSlideshow={handleUnpinFromSlideshow} cardDisplaySettings={cardDisplaySettings} />
               </Stack>
             </Group>
             <Stack gap="xs" mt="sm">
@@ -1478,7 +1559,7 @@ export default function TryOnResultModerationTable({
                 ) : null}
               </Stack>
             ) : null}
-            <ModerationActions row={activeRow} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} slideshowOptions={slideshowOptions} selectedSlideshowId={selectedSlideshowByRow[activeRow.id] || ''} onSelectSlideshow={(nextId) => setSelectedSlideshowByRow((state) => ({ ...state, [activeRow.id]: nextId }))} onPinToSlideshow={handlePinToSlideshow} cardDisplaySettings={cardDisplaySettings} />
+            <ModerationActions row={activeRow} busyId={busyId} onRequestDecision={requestDecision} onGreat={handleGreat} onService={handleService} onRemove={handleRemove} slideshowOptions={slideshowOptions} selectedSlideshowId={selectedSlideshowByRow[activeRow.id] || ''} onSelectSlideshow={(nextId) => setSelectedSlideshowByRow((state) => ({ ...state, [activeRow.id]: nextId }))} onPinToSlideshow={handlePinToSlideshow} onUnpinFromSlideshow={handleUnpinFromSlideshow} cardDisplaySettings={cardDisplaySettings} />
             <Stack gap="xs" align="flex-start">
               {cardDisplaySettings.status.reviewBadge ? (
                 <StatusBadge {...getStatusBadgeProps(reviewTone(activeRow.reviewStatus), reviewLabel(activeRow))} />

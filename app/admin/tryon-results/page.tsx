@@ -513,6 +513,26 @@ export default async function AdminTryOnResultsPage({
       }
     }
 
+    // WHAT: One query for every visible row's pin state, not one per row --
+    // manualSubmissionIds lives on Slideshow, never on the submission itself.
+    const pinnedSlideshowDocs = resultIds.length
+      ? await db
+          .collection<Slideshow>(COLLECTIONS.SLIDESHOWS)
+          .find({ manualSubmissionIds: { $in: resultIds } })
+          .project({ slideshowId: 1, name: 1, manualSubmissionIds: 1 })
+          .toArray()
+      : [];
+    const pinnedSlideshowsByResultId = new Map<string, Array<{ slideshowId: string; slideshowName: string }>>();
+    for (const slideshow of pinnedSlideshowDocs) {
+      if (typeof slideshow.slideshowId !== 'string' || typeof slideshow.name !== 'string') continue;
+      for (const submissionId of slideshow.manualSubmissionIds ?? []) {
+        if (!resultIds.includes(submissionId)) continue;
+        const current = pinnedSlideshowsByResultId.get(submissionId) ?? [];
+        current.push({ slideshowId: slideshow.slideshowId, slideshowName: slideshow.name });
+        pinnedSlideshowsByResultId.set(submissionId, current);
+      }
+    }
+
     rows = docs.map((doc) => {
       const source = doc.sourceSubmissionId ? sourceMap.get(doc.sourceSubmissionId) : undefined;
       const sourceJob = doc.sourceJobId ? sourceJobMap.get(doc.sourceJobId) : undefined;
@@ -553,6 +573,7 @@ export default async function AdminTryOnResultsPage({
         archiveSupersededByJobId: doc.tryOnModerationArchive?.supersededByJobId ?? null,
         archiveSupersededAt: doc.tryOnModerationArchive?.supersededAt ?? null,
         identityGapActionable: isActionableIdentityGap(doc, source),
+        pinnedSlideshows: pinnedSlideshowsByResultId.get(doc._id.toString()) ?? [],
       };
     });
   } catch (error) {
