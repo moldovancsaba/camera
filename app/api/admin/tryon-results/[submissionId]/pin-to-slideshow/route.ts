@@ -56,16 +56,18 @@ export const POST = withErrorHandler(async (
   }
 
   const now = nowIso();
-  if (pin) {
-    await db.collection(COLLECTIONS.SLIDESHOWS).updateOne(
-      { slideshowId },
-      { $addToSet: { manualSubmissionIds: submissionId }, $set: { updatedAt: now } }
-    );
-  } else {
-    await db.collection(COLLECTIONS.SLIDESHOWS).updateOne(
-      { slideshowId },
-      { $pull: { manualSubmissionIds: submissionId } as Document, $set: { updatedAt: now } }
-    );
+  const writeResult = pin
+    ? await db.collection(COLLECTIONS.SLIDESHOWS).updateOne(
+        { slideshowId },
+        { $addToSet: { manualSubmissionIds: submissionId }, $set: { updatedAt: now } }
+      )
+    : await db.collection(COLLECTIONS.SLIDESHOWS).updateOne(
+        { slideshowId },
+        { $pull: { manualSubmissionIds: submissionId } as Document, $set: { updatedAt: now } }
+      );
+
+  if (writeResult.matchedCount === 0) {
+    throw apiNotFound('Slideshow no longer exists');
   }
 
   return apiSuccess({ submissionId, slideshowId, pinned: pin });
