@@ -49,6 +49,7 @@ The admin UX is organized around that model:
 - `/admin/slideshows` — global slideshow inventory
 - `/admin/landing-pages` — landing page inventory
 - `/admin/events/[id]` — event detail with manager-gated email + image exports
+- `/admin/settings/card-display` — global Vetting card-display preferences (which fields/actions render on the moderation card)
 
 ## Core behavior
 
@@ -188,6 +189,7 @@ See [TECH_STACK.md](TECH_STACK.md).
 - `partner_user_access` — partner-scoped app assignments
 - `leather_suits` — selectable try-on garment catalog (legacy collection and API names are preserved)
 - `tryon_jobs` — async local try-on queue and worker lifecycle
+- `admin_settings` — global admin-preference documents (e.g. Vetting card-display settings), one per `settingId`, not per-admin-user
 
 See [docs/MONGODB_CONVENTIONS.md](docs/MONGODB_CONVENTIONS.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
 

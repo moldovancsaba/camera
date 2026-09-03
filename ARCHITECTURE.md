@@ -120,6 +120,22 @@ Partner detail pages are the primary daily operational surface. They expose:
 - Events inventory and event instance detail
 - Try-On App workspace, live queue, garment catalog, and vetting queue
 
+### Cross-cutting admin preferences
+
+The first admin-preferences surface not scoped to a specific partner, event, or app: a top-level
+"Settings" nav entry (`/admin/settings/card-display`) reads and writes a single global document
+via `GET`/`PATCH /api/admin/settings/card-display`:
+
+```
+Admin browser -> GET/PATCH /api/admin/settings/card-display
+  -> lib/admin/card-display-settings.ts (getCardDisplaySettings, DEFAULT_CARD_DISPLAY_SETTINGS)
+  -> admin_settings collection, single document keyed by settingId:'card-display'
+  -> read by every admin session rendering the Vetting/moderation card
+```
+
+Global, not per-admin-user -- one admin's change affects what every admin sees. Defaults to all
+fields/actions visible; the settings only ever narrow what renders, never add new capability.
+
 ### Try-On hard contracts
 
 - Queue processing and moderation are coordinated through `lib/db/schemas.ts`.
@@ -275,6 +291,7 @@ Core collections:
 - `web_sessions`
 - `leather_suits`
 - `tryon_jobs`
+- `admin_settings`
 
 Schema definitions live in [lib/db/schemas.ts](lib/db/schemas.ts).
 
