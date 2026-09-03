@@ -273,6 +273,29 @@
       "status": "approved",
       "owner": "camera-platform",
       "reviewDate": "2026-11-02"
+    },
+    {
+      "surface": "Try-on moderation review card",
+      "category": "package-coverage-gap",
+      "scope": [
+        "components/admin/TryOnResultModerationTable.tsx"
+      ],
+      "reason": "AdminReviewLayout's fixed vertical media/metadata/content/actions order structurally cannot put actions beside the image, which mobile-usability testing (reported live from a phone mid-event) required; the file already uses package-direct ResponsiveDataView and GdsMediaFrame for its other two pattern choices.",
+      "allowedImplementation": [
+        "Custom Paper+Group composition over PublicPrimitives for the review card's layout"
+      ],
+      "mustStillUse": [
+        "PublicPrimitives adapter (no raw @mantine/core import)",
+        "SemanticButton for governed actions",
+        "GdsMediaFrame for the image itself"
+      ],
+      "mustNotDo": [
+        "Reuse this custom layout as a default pattern for unrelated admin cards"
+      ],
+      "exitCondition": "Adopt AdminReviewLayout if a future version supports a configurable actions-beside-media order.",
+      "status": "approved",
+      "owner": "camera-platform",
+      "reviewDate": "2026-09-03"
     }
   ],
   "compliance": {
