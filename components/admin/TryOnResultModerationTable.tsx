@@ -199,6 +199,28 @@ function isSupersededRow(row: ModerationRow): boolean {
   return row.archiveReason === 'quality_rerun_superseded';
 }
 
+export function renderModerationStatusExtras(row: ModerationRow) {
+  return (
+    <>
+      {isSupersededRow(row) && row.archiveSupersededByJobId ? (
+        <Text size="xs">
+          <Link href={`/admin/tryon/queue?search=${encodeURIComponent(row.archiveSupersededByJobId)}`}>
+            View superseding job
+          </Link>
+        </Text>
+      ) : null}
+      {row.identityGapActionable ? (
+        <StatusBadge {...getStatusBadgeProps('warning', 'Identity gap')} />
+      ) : null}
+      {row.approvedAt ? (
+        <Text size="xs" c="dimmed" suppressHydrationWarning>
+          Approved {new Date(row.approvedAt).toLocaleString()}
+        </Text>
+      ) : null}
+    </>
+  );
+}
+
 function scopeLabel(row: ModerationRow) {
   return row.eventName || 'Unscoped event';
 }
@@ -1456,6 +1478,7 @@ export default function TryOnResultModerationTable({
                 {row.isGreat && cardDisplaySettings.status.greatBadge ? (
                   <StatusBadge {...getStatusBadgeProps('active', 'Great')} />
                 ) : null}
+                {renderModerationStatusExtras(row)}
               </Group>
               {cardDisplaySettings.status.visibilityLabel ? (
                 <Text size="xs" c="dimmed">
@@ -1567,6 +1590,7 @@ export default function TryOnResultModerationTable({
               {activeRow.isGreat && cardDisplaySettings.status.greatBadge ? (
                 <StatusBadge {...getStatusBadgeProps('active', 'Great')} />
               ) : null}
+              {renderModerationStatusExtras(activeRow)}
               {cardDisplaySettings.status.visibilityLabel ? (
                 <Text size="sm" c="dimmed">
                   {visibilityLabel(activeRow)}
