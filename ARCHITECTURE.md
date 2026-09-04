@@ -373,8 +373,9 @@ Expected environment shape:
 Production is currently shipped manually with `npx vercel@latest --prod` (git pushes do not
 auto-deploy). Deploy/verify/auto-deploy-repair steps: [RUNBOOK.md](RUNBOOK.md).
 
-**Branching model:** three long-lived branches only — `main` (production), `preview` (release
-candidate), `dev` (development); promote `dev → preview → main`. Full policy in
+**Branching model:** single long-lived branch `main` (production), plus short-lived
+per-task branches (`feature/*`, `fix/*`, `chore/*`, `dependabot/*`, …) merged in via
+PR and deleted; no `dev`/`preview` branch exists. Full policy in
 [docs/BRANCHING.md](docs/BRANCHING.md).
 
 Useful commands:

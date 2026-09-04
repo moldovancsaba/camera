@@ -146,9 +146,10 @@ http://localhost:3000
 
 ## Branching model
 
-Three long-lived branches only — `main` (production), `preview` (release candidate),
-`dev` (development). No feature or per-task branches. Promote upward: `dev → preview → main`.
-Full policy in [docs/BRANCHING.md](docs/BRANCHING.md).
+Single long-lived branch `main` (production), plus short-lived per-task
+branches (`feature/*`, `fix/*`, `chore/*`, `dependabot/*`, …) merged into it
+via PR and then deleted. There is no `dev` or `preview` branch — an earlier
+three-branch plan was never adopted. Full policy in [docs/BRANCHING.md](docs/BRANCHING.md).
 
 ## Deployment
 
@@ -209,8 +210,8 @@ Camera admin UI follows the portfolio [General Design System](https://github.com
 GDS release gate:
 
 - `npm` is the canonical CI/release package manager because `package-lock.json` is present
-- GitHub Actions workflows were removed in 2026-06 (commit `c0b8b54`); the gate is currently run locally/manually via `npm run gds:validate-manifest && npm run gds:check && npm run type-check && npm run lint && npm run build`
-- release-gate details are maintained in [docs/GDS_RELEASE_GATE.md](docs/GDS_RELEASE_GATE.md) (describes the former CI lane; treat the command list, not the CI wiring, as current)
+- GitHub Actions workflows were removed in 2026-06 (commit `c0b8b54`) and then reintroduced: `.github/workflows/ci.yml` now runs `npm run release:check` (gds manifest + compliance + boundary, type-check, lint, `test:unit`, production-guards, build) on every push/PR
+- release-gate details are maintained in [docs/GDS_RELEASE_GATE.md](docs/GDS_RELEASE_GATE.md); the command list and the CI wiring are both current
 
 Reusable exception guidance:
 

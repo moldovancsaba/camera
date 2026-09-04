@@ -2,9 +2,10 @@
 
 ## Branching model
 
-Three long-lived branches only — `main` (production), `preview` (release candidate),
-`dev` (development). No feature or per-task branches. Promote upward: `dev → preview → main`,
-then deploy `main`. Full policy in [docs/BRANCHING.md](docs/BRANCHING.md).
+Single long-lived branch `main` (production), plus short-lived per-task branches
+(`feature/*`, `fix/*`, `chore/*`, `dependabot/*`, …) merged in via PR and then
+deleted; no `dev`/`preview` branch exists. Deploy from `main`. Full policy in
+[docs/BRANCHING.md](docs/BRANCHING.md).
 
 ## Deploying to production
 

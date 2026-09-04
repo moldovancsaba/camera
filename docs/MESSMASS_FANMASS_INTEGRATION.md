@@ -1,7 +1,8 @@
 # messmass + fanmass integration
 
-**Version**: 12.2.0
-**Last Updated**: 2026-07-30
+**Version**: 12.2.21
+**Last Updated**: 2026-09-03
+_Verified @ a87d78f_
 
 Camera sits between two other apps in the SEYU fan-engagement stack: **messmass**
 (event reporting/partner management, the master for organisations/partners/events)
@@ -19,11 +20,16 @@ camera    <--(poll: events, then media)---    fanmass
 
 Camera is mostly inbound but DOES call messmass outbound in two cases (see §4): it
 pushes partners it creates natively to `POST {MESSMASS_BASE_URL}/api/integrations/camera/partners`
+(`pushPartnerToMessmass`, [lib/messmassClient.ts:64-87](../lib/messmassClient.ts),
+called from [app/api/partners/route.ts:136](../app/api/partners/route.ts) and
+[app/api/partners/[partnerId]/route.ts:135](../app/api/partners/%5BpartnerId%5D/route.ts))
 and mints a cross-app session via `POST .../api/integrations/camera/sso-session`
-(lib/messmassClient.ts). It otherwise serves authenticated
-requests from them. Rate limits are enforced per route (§5) but callers are not
-end users, so 429s should read as "a caller is misbehaving," not "a user hit a
-public limit."
+(`pushSsoSessionToMessmass`, [lib/messmassClient.ts:36-62](../lib/messmassClient.ts),
+called from [app/api/auth/callback/route.ts:44](../app/api/auth/callback/route.ts)).
+It otherwise serves authenticated requests from them, including the reverse
+sso-session mint documented at the end of §1. Rate limits are enforced per
+route (§5) but callers are not end users, so 429s should read as "a caller is
+misbehaving," not "a user hit a public limit."
 
 ## 1. messmass → camera: provisioning (messmass is master)
 
@@ -74,6 +80,21 @@ through the `*Overridden` flags.
 - `organizations.messmassOrganizationId`
 - `partners.messmassPartnerId`
 - `events.messmassEventId` (unique, sparse — one Camera event per messmass event)
+
+### `POST /api/internal/messmass/sso-session`
+Reverse-direction sibling of `pushSsoSessionToMessmass` (§4): messmass forwards
+the SSO access/refresh tokens a user just used to log into messmass, and this
+route mints a **real Camera session** for that same user
+([app/api/internal/messmass/sso-session/route.ts](../app/api/internal/messmass/sso-session/route.ts)),
+so logging into either app produces a working session on both (requires
+`SESSION_COOKIE_DOMAIN=.messmass.com`). The shared secret alone does not
+authorize this — the route independently re-verifies the forwarded access
+token against SSO itself (`getUserInfo` + `getAppPermission`, using Camera's
+own `SSO_CLIENT_ID`) before minting anything, so a leaked secret only lets a
+caller mint sessions for users who currently hold a live SSO token, not
+impersonate anyone (route:17-25).
+Body: `{ accessToken, refreshToken?, expiresIn? }`.
+Response: `{ success: true, appRole } | { success: false, error: 'no_access' }` (403).
 
 ## 2. fanmass → camera: read-only pull
 
@@ -153,12 +174,13 @@ in Camera, not duplicated between the internal API and Camera's own feature.
 
 ## 5. Rate limiting
 
-All 6 routes above are rate-limited via the shared token-bucket limiter
+All 8 routes above are rate-limited via the shared token-bucket limiter
 ([lib/api/rateLimiter.ts](../lib/api/rateLimiter.ts)):
 
-- `RATE_LIMITS.INTERNAL_READ` — 120 requests/minute (the two `GET` routes)
-- `RATE_LIMITS.INTERNAL_WRITE` — 60 requests/minute (the four `POST` routes,
-  including email send)
+- `RATE_LIMITS.INTERNAL_READ` — 120 requests/minute (the three `GET` routes:
+  partners lookup, fanmass events, fanmass media)
+- `RATE_LIMITS.INTERNAL_WRITE` — 60 requests/minute (the five `POST` routes:
+  organizations, partners, events, sso-session, email send)
 
 These tiers exist to catch a misbehaving caller (retry storm, bad cron, buggy
 poll loop) — not to police untrusted public traffic, since every caller here
@@ -184,8 +206,9 @@ See `.env.example` for the full list; the integration-specific ones:
 
 | Var | Direction | Purpose |
 |---|---|---|
-| `CAMERA_MESSMASS_INTERNAL_SECRET` | messmass → camera | Auth for §1 routes and §3 (email) |
+| `CAMERA_MESSMASS_INTERNAL_SECRET` | messmass → camera **and** camera → messmass | Auth for §1 routes (including sso-session) and §3 (email); also the secret camera sends outbound in §4's `pushPartnerToMessmass`/`pushSsoSessionToMessmass` calls (same shared secret both directions) |
 | `CAMERA_FANMASS_INTERNAL_SECRET` | fanmass → camera | Auth for §2 routes and §3 (email) |
+| `MESSMASS_BASE_URL` | camera → messmass | Base URL camera calls outbound for the §4 partner-push and sso-session-mint requests ([lib/messmassClient.ts](../lib/messmassClient.ts):14) |
 | `RESEND_API_KEY`, `CAMERA_EMAIL_FROM` | (Camera's own) | Required for §3 to actually send; without them every call returns `sent: false` |
 
 Both internal-auth routes return 403 if their respective secret is unset —

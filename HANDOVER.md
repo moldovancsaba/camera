@@ -10,10 +10,11 @@ real source of truth in the meantime. Rewritten from `RELEASE_NOTES.md`,
 
 ## Branching
 
-Three long-lived branches only — `main` (production), `preview` (release candidate),
-`dev` (development). No feature or per-task branches; promote `dev → preview → main`.
-Policy: [docs/BRANCHING.md](docs/BRANCHING.md). In practice only `main` exists —
-`preview`/`dev` get created off `main` when the workflow needs them.
+Single long-lived branch `main` (production), plus short-lived per-task branches
+(`feature/*`, `fix/*`, `chore/*`, `dependabot/*`, …) merged in via PR and then
+deleted. There is no `dev`/`preview` branch — an earlier three-branch plan was
+never adopted (`git branch -a` has zero `dev`/`preview` refs). Policy:
+[docs/BRANCHING.md](docs/BRANCHING.md).
 
 ## Production status
 

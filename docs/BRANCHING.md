@@ -1,44 +1,41 @@
 # Branching model
 
-Camera uses **exactly three long-lived branches**. No feature branches, no fix
-branches, no per-task or per-agent branches — with two developers, extra
-branches are churn we do not need.
+**Version**: 12.2.21
+**Last Updated**: 2026-09-03
+_Verified @ a87d78f_
 
-| Branch | Role | Meaning |
-|--------|------|---------|
-| `main` | **Production** | Production source of truth. Ships to production manually via `npx vercel@latest --prod`. A git push to `main` does **not** auto-deploy (see [RUNBOOK.md](../RUNBOOK.md)). Keep it deployable at all times. |
-| `preview` | **Release candidate** | Pre-production / staging validation. Changes promoted from `dev` land here for release-candidate verification before they reach `main`. |
-| `dev` | **Development** | Active development and integration. All day-to-day work happens here. |
+Camera uses a **single long-lived branch, `main`**, plus short-lived feature/fix
+branches that exist only until their PR merges. There is no `dev` or `preview`
+branch — an earlier draft of this policy proposed a three-branch model
+(`main`/`preview`/`dev`) that was never adopted; only `main` was ever created,
+and this document previously kept describing the unadopted plan as current
+practice. `git branch -a` confirms the real shape: one local/remote `main`,
+zero `dev`/`preview` refs, and 30+ per-task branches (`feature/*`, `fix/*`,
+`chore/*`, `docs/*`, `dependabot/*`, `claude/*`) each merged into `main` and
+then left in place or deleted.
+
+| Branch | Role |
+|--------|------|
+| `main` | **Production.** Single source of truth. Ships to production manually via `npx vercel@latest --prod` — a git push to `main` does **not** auto-deploy (see [RUNBOOK.md](../RUNBOOK.md)). Keep it deployable at all times. |
+| `feature/*`, `fix/*`, `chore/*`, `docs/*`, `claude/*`, … | **Ephemeral task branches.** Cut from `main` for one PR, named for the change (`feature/…`, `fix/…`, `chore/…`), merged back into `main` via GitHub PR (31 merge commits in history as of this writing), then safe to delete. No fixed prefix list is enforced — the names above are what's actually in use. |
+| `dependabot/*` | Automated dependency-bump branches opened by Dependabot, merged the same way. |
 
 ## Flow
 
-Promote **upward only**:
-
-```
-dev  →  preview  →  main
-```
-
-1. Do all work on `dev`.
-2. When a set of changes is ready for release-candidate validation, merge `dev` → `preview`.
-3. After the RC passes verification, merge `preview` → `main`, then deploy `main` to production.
+1. Branch from `main` for a task: `git checkout -b feature/my-change`.
+2. Do the work, push, open a PR against `main`.
+3. Run the release gate before merging: `npm run release:check`
+   (gds manifest + compliance + boundary, type-check, lint, test:unit,
+   production-guards, build — also enforced by `.github/workflows/ci.yml`;
+   see [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md)).
+4. Merge the PR into `main`; delete the task branch.
+5. Deploy `main` to production manually (`npx vercel@latest --prod`) when ready — merging does not auto-deploy.
 
 ## Rules
 
-- Only `main`, `preview`, and `dev` exist. **Do not create additional branches.**
-- Do not commit directly to `main` except release promotions from `preview`.
+- `main` is the only long-lived branch. Do not create `dev` or `preview` —
+  they are not part of the real workflow and nothing consumes them.
+- Prefer small, short-lived task branches over long-running ones; merge and
+  delete promptly rather than accumulating parallel branches.
 - Keep `main` deployable at all times.
-- Run the release gate before promoting to `main`: `npm run release:check`
-  (gds manifest + compliance + boundary, type-check, lint, production-guards, build — see
-  [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md)).
-
-## Current state
-
-The repository has been consolidated to this model. For now **only `main` exists**;
-`preview` and `dev` are created off `main` when the workflow first needs them:
-
-```bash
-git checkout main
-git checkout -b dev     && git push -u origin dev
-git checkout main
-git checkout -b preview && git push -u origin preview
-```
+- Run the release gate (`npm run release:check`) before merging to `main`.

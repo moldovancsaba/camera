@@ -1,27 +1,40 @@
 # Documentation Maintenance
 
-**Last Updated**: 2026-07-04
+**Last Updated**: 2026-09-03
+_Verified @ a87d78f_
 
 The running code is the source of truth. Documentation must be updated from the implementation, not from memory.
 
 ## 1. Canonical documents
 
-Use these as the maintained operational set:
+**This is the canonical doc index.** `README.md`'s "Documentation map" and
+`ARCHITECTURE.md`'s doc list must list exactly this same set (reconciled
+2026-09-03 — the three previously disagreed; see camera#123). Use these as
+the maintained operational set:
 
 - [README.md](../README.md)
 - [ARCHITECTURE.md](../ARCHITECTURE.md)
 - [TECH_STACK.md](../TECH_STACK.md)
+- [RUNBOOK.md](../RUNBOOK.md)
+- [docs/BRANCHING.md](BRANCHING.md)
+- [docs/DOCUMENTATION.md](DOCUMENTATION.md)
 - [docs/AUTHORIZATION.md](AUTHORIZATION.md)
 - [docs/MONGODB_CONVENTIONS.md](MONGODB_CONVENTIONS.md)
 - [docs/MONGODB_ATLAS.md](MONGODB_ATLAS.md)
+- [docs/EVENT_EXPORTS.md](EVENT_EXPORTS.md)
 - [docs/SLIDESHOW_LOGIC.md](SLIDESHOW_LOGIC.md)
+- [docs/MESSMASS_FANMASS_INTEGRATION.md](MESSMASS_FANMASS_INTEGRATION.md)
+- [docs/GDS_CAMERA_ADOPTION.md](GDS_CAMERA_ADOPTION.md)
+- [docs/GDS_COMPONENT_RULES.md](GDS_COMPONENT_RULES.md)
+- [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md)
 - [docs/TRYON_ARCHITECTURE.md](TRYON_ARCHITECTURE.md)
 - [docs/TRYON_OPERATIONS.md](TRYON_OPERATIONS.md)
 - [docs/TRYON_LOW_LEVEL_DESIGN.md](TRYON_LOW_LEVEL_DESIGN.md)
 - [docs/TRYON_ADMIN_GUIDE.md](TRYON_ADMIN_GUIDE.md)
 - [docs/TRYON_ANALYTICS.md](TRYON_ANALYTICS.md)
-- [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md)
-- [docs/MESSMASS_FANMASS_INTEGRATION.md](MESSMASS_FANMASS_INTEGRATION.md)
+
+Everything else under `docs/` (planning docs, one-off handovers, superseded
+alignment plans) is historical — do not treat it as runtime truth.
 
 Historical and planning docs may exist, but they are not canonical runtime documentation unless explicitly refreshed.
 
@@ -131,6 +144,7 @@ Operational note:
 - 2026-06-08 reliability hardening: E2E suite passes 12/12 tests serially. Key fixes: middleware.ts conflict removed, parallel DB contention resolved (workers:1), inspectTryOnResultAsset graceful degradation, tryon-results reviewStatus=approved query corrected, API error boundary coverage extended. Committed as 9454b40 and bumped to v2.13.0.
 - 2026-07-04 v2.16.0: Repository-wide docs refresh (merged with the GDS 3.9 `@sovereignsquad` scope migration from main). Absolute machine paths converted to repo-relative links; GDS references corrected to the current package line (`@sovereignsquad/* ^3.9.0`); CI claims corrected after GitHub Actions workflows were removed (`c0b8b54`) — the GDS release gate now runs locally/manually. Issue audit recorded in `docs/ISSUE_AUDIT_2026-06-30.md` (13 open issues verified already delivered). New: `npm run test:e2e:safe` (safe E2E runner, #60), `npm run verify:production-guards` (#85), `tests/e2e/event-exports.spec.ts` (#84), GDS confirm parity in the try-on queue (#75). E2E suite is now 23 tests across 7 spec files.
 - 2026-06-21 v2.14.0: Added per-event email/image exports (`docs/EVENT_EXPORTS.md`). Fixed the production Server-Components render crash (digest 4053814135) caused by `component={Link}` in Server Components — see the RSC boundary rule in `ARCHITECTURE.md` §11. Removed duplicate "Edit" buttons on Events/Try-On Suits/Landing Pages cards. Bumped Next `16.0.10 → 16.2.9` (security). Added `RUNBOOK.md` documenting manual `vercel --prod` deploys, since git pushes do not currently auto-deploy. Tracker: closed `#68` (analytics section exports, delivered in 9e63bfa).
+- 2026-09-03 v12.2.21 (verified @ a87d78f): GitHub Actions reintroduced — `.github/workflows/ci.yml` runs `npm run release:check` on push/PR, superseding the 2026-06-07/2026-07-04 notes above that CI was removed and the gate ran only locally/manually (see README.md "GDS release gate"). Corrected `docs/MESSMASS_FANMASS_INTEGRATION.md` and `README.md`, which claimed Camera "never calls out" to messmass — it does, via `lib/messmassClient.ts` (partner push + sso-session mint); documented the previously-missing inbound `POST /api/internal/messmass/sso-session` route and fixed the internal-route count (3 GET + 5 POST, not 2+4). Corrected `docs/AUTHORIZATION.md`'s proxy `appAccess` claim to match `proxy.ts`/`lib/auth/middleware-session-gate.ts` (edge gates on session presence/expiry only; `appAccess` denial is enforced downstream in `app/admin/layout.tsx`) and `ARCHITECTURE.md`, which already had it right. Corrected `docs/BRANCHING.md` (and its echoes in `README.md`, `ARCHITECTURE.md`, `HANDOVER.md`, `RUNBOOK.md`) — the `main`/`preview`/`dev` three-branch model was never adopted; only `main` exists, with short-lived per-task branches merged via PR. Bumped stale version headers fleet-wide to match `package.json` (12.2.21).
 
 ### Do not drift again
 
