@@ -1,6 +1,6 @@
 # MongoDB Conventions
 
-**Version**: 12.2.0  
+**Version**: 12.2.21  
 **Last Updated**: 2026-07-04
 
 This repository uses a mixed identifier model. Any document claiming that every reference must use Mongo `_id` is obsolete.

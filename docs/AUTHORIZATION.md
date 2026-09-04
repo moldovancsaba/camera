@@ -1,6 +1,6 @@
 # Authorization Guide
 
-**Version**: 12.2.0  
+**Version**: 12.2.21  
 **Last Updated**: 2026-07-04
 
 This is the current authorization model for Camera.

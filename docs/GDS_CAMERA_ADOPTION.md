@@ -1,6 +1,6 @@
 # Camera GDS Adoption
 
-**Version**: 12.2.1  
+**Version**: 12.2.21  
 **Last Updated**: 2026-08-25
 
 ## SSOT statement
