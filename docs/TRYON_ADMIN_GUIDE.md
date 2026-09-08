@@ -1,6 +1,6 @@
 # Try-On Admin Guide
 
-**Version**: 12.2.21
+**Version**: 12.2.22
 **Last Updated**: 2026-07-04
 
 This guide covers day-to-day operator workflows for the Try-On app surfaces.
@@ -18,7 +18,7 @@ From here you can open:
 
 ## 2. Vetting workflow
 
-Vetting endpoint: `/admin/tryon-results`
+Vetting page: `/admin/tryon/vetting` (the legacy `/admin/tryon-results` URL redirects here)
 
 Default behavior:
 
@@ -80,7 +80,7 @@ Vetting supports three explicit result classes in `?archive=`:
 
 ## 3. Failed jobs view
 
-`/admin/tryon-results?failed=1`
+`/admin/tryon/vetting?failed=1`
 
 Failed jobs use job-level recovery:
 
@@ -105,7 +105,7 @@ Service photos are:
 
 ## 5. Archive navigation and filters
 
-Use query parameters from `/admin/tryon-results`:
+Use query parameters from `/admin/tryon/vetting`:
 
 - `archive=approved|rejected|service|greatest`
 - `failed=1`
@@ -128,7 +128,7 @@ The search bar supports:
 
 ## 7. Queue diagnostics
 
-`/admin/tryon/queue` and `/admin/tryon-results?failed=1` provide:
+`/admin/tryon/queue` and `/admin/tryon/vetting?failed=1` provide:
 
 - active statuses and worker health
 - failure hints (retry vs rerun semantics)

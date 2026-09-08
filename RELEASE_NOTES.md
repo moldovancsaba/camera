@@ -1,5 +1,61 @@
 # RELEASE_NOTES.md
 
+## v12.2.22 — fleet audit closeout: API reference, dead files, comment fixes, auth tests, inventory gate
+
+- **camera#124 — API reference complete.** `docs/_audit/api-reference.md` now
+  covers 98 of 98 routes in `docs/_audit/endpoints.json`: the 14 routes added
+  since the first edition (`admin/settings/card-display`, `tryon-jobs/[jobId]/cancel`,
+  `tryon-maintenance/{audit,reconcile}`, `tryon-results/[id]/{pin-to-slideshow,reframe,remove,restore}`,
+  `tryon-setups*`, `internal/savetheworld/*`) are documented with the guard
+  actually called, request/response shape and side effects; the six dev-only
+  routes deleted in 070058e are gone from the table. New "Deprecation
+  candidates" section lists the 11 routes with zero callers in this repo and
+  in the messmass/try-on/fanmass trees, each with the grep evidence. Nothing
+  was deleted on that basis.
+- **camera#125 — dead files.** Seven stale planning docs removed
+  (`GDS_3_4_3_ALIGNMENT_PLAN`, `GDS_3_4_3_GITHUB_BOARD_HANDOVER`,
+  `GDS_3_5_ADOPTION_PLAN`, `ISSUE_AUDIT_2026-06-30`, `NEXT_AGENT_PROMPT`,
+  `PLAN_SLIDESHOW_LAYOUT`, `TRYON_VETTING_WORKFLOW_PLAN`) and their inbound
+  links fixed. The moderation and garment pages were duplicated across two
+  live URLs each: the implementations move to their canonical
+  `app/admin/tryon/vetting/page.tsx` and `app/admin/tryon/suits/page.tsx`
+  (previously thin re-exports of the legacy files), and `/admin/tryon-results`
+  and `/admin/tryon-suits` become server-side redirects that forward the query
+  string, so `?failed=1` / `?archive=greatest` bookmarks still work.
+- **camera#126 — two comments corrected.** `lib/tryon/completion.ts` now
+  reports what `normalizeImgbbDirectUrl` accepts (`*.ibb.co` direct hosts and
+  `*.public.blob.vercel-storage.com`) instead of "i.ibb.co" only.
+  `lib/messmassClient.ts` no longer claims a `source !== 'messmass'` guard on
+  every call: partner create pushes unconditionally (a camera-created partner
+  has no `source`), the guard exists only on the update path.
+- **camera#122 — regression tests for the two fixed auth gaps.**
+  `app/api/internal/tryon/sync/route.test.ts` (spoofed `x-vercel-cron` 403,
+  no headers 403, unset `CRON_SECRET` 403, valid Bearer passes) and
+  `app/api/submissions/[submissionId]/route.test.ts` (anonymous first write
+  allowed, finalized + no session 403 with no write, finalized + admin
+  allowed). `CRON_SECRET` documented in `.env.example`.
+- **camera#122 — session cookie signed; forged admin cookie closed.**
+  `getSession()` used to parse the plain-JSON `camera_session` cookie and trust
+  every field in it, including `appRole` — a hand-written cookie could claim
+  `superadmin` and pass `requireAdmin()`. The plain cookie (the fallback when
+  the Mongo `web_sessions` store is unavailable, or `COOKIE_ONLY_SESSIONS=1`)
+  now carries an HMAC-SHA256 `sig` (`lib/auth/session-signing.ts`) and any
+  plain cookie whose signature is missing or invalid is rejected, no grace
+  window. Pointer cookies (the normal production form) are unchanged. Signing
+  key: `OAUTH_PKCE_STATE_SECRET`, else `SESSION_SECRET`, else
+  `SSO_CLIENT_SECRET`; with none set, no plain cookie is issued or accepted.
+  Six unit tests in `lib/auth/session-signing.test.ts`; `docs/AUTHORIZATION.md`
+  §9 documents the model. The cookie is still not encrypted: its contents are
+  readable by whoever holds it, so `HttpOnly` + `Secure` + TLS remain the
+  confidentiality boundary, now stated rather than implied.
+- **messmass#355 — inventory gate.** `npm run inventory:check`
+  (`scripts/fleet-audit-inventory.py --check`) runs in CI before
+  `release:check`; `docs/_audit/*.json` rebuilt from the tree; the fleet
+  `contract-first-rule.md` vendored into `docs/_audit/` and linked from
+  `README.md` and `docs/_audit/README.md`.
+- Drift register: §0 cron-trigger and PATCH rows, §1 W8, §5 comment rows and
+  §6 obsoletion rows marked resolved with the commits that closed them.
+
 ## v12.2.21 — Vetting Card Display settings menu
 
 New standalone settings page — the first cross-cutting admin-preferences

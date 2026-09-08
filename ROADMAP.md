@@ -9,7 +9,7 @@ This file is forward-looking only. Gym / Workout / FunFitFan surfaces were remov
 
 ### 0. Tracker, observability, and release-gate decisions (v2.15.0 carry-over)
 
-- reconcile the GitHub board against `docs/ISSUE_AUDIT_2026-06-30.md` (13 delivered issues still open)
+- reconcile the GitHub board against the 2026-06-30 issue audit (13 delivered issues still open; the audit file was removed in v12.2.22, its outcome is summarized in `RELEASE_NOTES.md` v2.16.0)
 - decide the error-observability sink (Sentry vs. structured Vercel logging) and wire `app/error.tsx` + server catch paths (#83)
 - decide whether to restore GitHub Actions or formalize the local release gate (#78; workflows removed in `c0b8b54`)
 - finish the GDS UI migrations: logos editor parity (#74), public surfaces (#76), media cards (#77)

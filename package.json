@@ -1,6 +1,6 @@
 {
   "name": "camera",
-  "version": "12.2.21",
+  "version": "12.2.22",
   "description": "Professional web application for capturing photos with graphical frames, social sharing, event slideshows, and user profile management",
   "type": "module",
   "private": true,
@@ -21,6 +21,7 @@
     "db:verify-uri": "tsx scripts/verify-mongo-uri.ts",
     "env:verify": "tsx scripts/verify-env.ts",
     "verify:production-guards": "tsx scripts/verify-production-guards.ts",
+    "inventory:check": "python3 scripts/fleet-audit-inventory.py --check",
     "email:test": "tsx scripts/send-test-email.ts",
     "tryon:seed-suits": "tsx scripts/seed-tryon-suits.ts",
     "tryon:verify": "tsx scripts/verify-tryon-prereqs.ts",

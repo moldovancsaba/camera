@@ -46,6 +46,7 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci
+      - run: npm run inventory:check
       - run: npm run release:check
         env:
           NEXT_TELEMETRY_DISABLED: '1'

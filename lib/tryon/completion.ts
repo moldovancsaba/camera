@@ -241,7 +241,7 @@ export async function applyTryOnCompletion(
 ): Promise<TryOnCompletionResult> {
   const publicResultUrl = normalizeImgbbDirectUrl(payload.publicResultUrl);
   if (!publicResultUrl) {
-    throw apiBadRequest('publicResultUrl must be a valid direct i.ibb.co image URL');
+    throw apiBadRequest('publicResultUrl must be an http(s) image URL on *.ibb.co (direct image host, not the ibb.co viewer) or *.public.blob.vercel-storage.com -- see lib/imgbb/url.ts normalizeImgbbDirectUrl');
   }
   if (!ObjectId.isValid(job.source.submissionId)) {
     throw apiBadRequest('Try-on job source submission is invalid');

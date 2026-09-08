@@ -1,4 +1,4 @@
-import AdminTryOnResultsPage from '@/app/admin/tryon-results/page';
+import AdminTryOnResultsPage from '@/app/admin/tryon/vetting/page';
 
 export const dynamic = 'force-dynamic';
 

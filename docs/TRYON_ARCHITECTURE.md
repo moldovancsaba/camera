@@ -1,6 +1,6 @@
 # Try-On Architecture
 
-**Version**: 12.2.21  
+**Version**: 12.2.22  
 **Last Updated**: 2026-07-04
 
 ## Purpose
@@ -11,7 +11,7 @@ Camera uses a strict separation between queue execution and published artifacts 
 
 - Intake creates a source submission and optional try-on request.
 - Worker executes queue jobs and returns completed image URLs via signed callback.
-- Administration uses `/admin/tryon-results` for moderation and `/admin/tryon` for queue/catalog operations.
+- Administration uses `/admin/tryon/vetting` for moderation and `/admin/tryon` for queue/catalog operations.
 - Analytics consumes only archived moderation outcomes for deterministic reporting.
 
 ## 2. Data flow
@@ -30,7 +30,7 @@ Camera uses a strict separation between queue execution and published artifacts 
    - preserves event, partner, and garment metadata
    - sets `reviewStatus = pending_review`
    - sets `isShareVisible = false`, `isSlideshowEligible = false` unless event policy explicitly bypasses moderation.
-5. Administrators moderate via `/admin/tryon-results`:
+5. Administrators moderate via `/admin/tryon/vetting`:
    - pending queue: `tryOnModerationArchive.archived !== true` and `reviewStatus='pending_review'`
    - archive modes: `approved`, `rejected`, `service`, `greatest`
 6. Manual recovery happens in job-level flows (`retry`, `rerun`, `reapply-result`) from the queue and moderation pages.

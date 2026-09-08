@@ -1,6 +1,6 @@
 # Try-On Low-Level Design
 
-**Version**: 12.2.21
+**Version**: 12.2.22
 **Last Updated**: 2026-07-04
 
 ## 1. Objective and scope
@@ -104,7 +104,7 @@ Archive bucket drives analytics and archive navigation.
 Core modules:
 
 - `app/api/admin/tryon-results/route.ts`
-- `app/admin/tryon-results/page.tsx`
+- `app/admin/tryon/vetting/page.tsx`
 - `components/admin/TryOnResultModerationTable.tsx`
 - `components/admin/OldestVettingResultCard.tsx`
 - `app/api/admin/tryon-jobs/[jobId]/*` recovery routes

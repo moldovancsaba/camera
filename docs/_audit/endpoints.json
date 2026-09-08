@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-08-19T23:52:44+00:00",
-  "repo": "camera",
-  "head": "642ccef",
+  "generated": "2026-09-08T05:31:58+00:00",
+  "repo": "camera-fleet",
+  "head": "35a5a84",
   "counts": {
-   "endpoints": 84,
+   "endpoints": 98,
    "collections": 6,
-   "env": 62,
-   "outbound-hosts": 16,
-   "docs": 86
+   "env": 64,
+   "outbound-hosts": 18,
+   "docs": 39
   }
  },
  "items": [
@@ -19,9 +19,10 @@
    ],
    "file": "app/api/admin/events/[id]/email-preview/route.ts",
    "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/admin/events/[id]/export/emails",
@@ -66,9 +67,10 @@
    ],
    "file": "app/api/admin/fix-mojibake-text/route.ts",
    "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/admin/migrate-frames",
@@ -77,9 +79,24 @@
    ],
    "file": "app/api/admin/migrate-frames/route.ts",
    "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/settings/card-display",
+   "methods": [
+    "GET",
+    "PATCH"
+   ],
+   "file": "app/api/admin/settings/card-display/route.ts",
+   "auth_markers": [
+    "isGlobalAdminSession",
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
   },
   {
    "path": "/api/admin/submissions/[submissionId]/archive",
@@ -88,9 +105,10 @@
    ],
    "file": "app/api/admin/submissions/[submissionId]/archive/route.ts",
    "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/admin/submissions/[submissionId]/restore",
@@ -99,9 +117,10 @@
    ],
    "file": "app/api/admin/submissions/[submissionId]/restore/route.ts",
    "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/admin/tryon-analytics/export",
@@ -148,6 +167,19 @@
     "GET"
    ],
    "file": "app/api/admin/tryon-identities/route.ts",
+   "auth_markers": [
+    "isGlobalAdminSession",
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/tryon-jobs/[jobId]/cancel",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/admin/tryon-jobs/[jobId]/cancel/route.ts",
    "auth_markers": [
     "isGlobalAdminSession",
     "requireAuth",
@@ -208,6 +240,32 @@
    "no_auth_marker": false
   },
   {
+   "path": "/api/admin/tryon-maintenance/audit",
+   "methods": [
+    "GET"
+   ],
+   "file": "app/api/admin/tryon-maintenance/audit/route.ts",
+   "auth_markers": [
+    "isGlobalAdminSession",
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/tryon-maintenance/reconcile",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/admin/tryon-maintenance/reconcile/route.ts",
+   "auth_markers": [
+    "isGlobalAdminSession",
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
    "path": "/api/admin/tryon-results/[submissionId]/approve",
    "methods": [
     "POST"
@@ -247,6 +305,32 @@
    "no_auth_marker": false
   },
   {
+   "path": "/api/admin/tryon-results/[submissionId]/pin-to-slideshow",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/admin/tryon-results/[submissionId]/pin-to-slideshow/route.ts",
+   "auth_markers": [
+    "isGlobalAdminSession",
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/tryon-results/[submissionId]/reframe",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/admin/tryon-results/[submissionId]/reframe/route.ts",
+   "auth_markers": [
+    "isGlobalAdminSession",
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
    "path": "/api/admin/tryon-results/[submissionId]/reject",
    "methods": [
     "POST"
@@ -260,11 +344,37 @@
    "no_auth_marker": false
   },
   {
+   "path": "/api/admin/tryon-results/[submissionId]/remove",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/admin/tryon-results/[submissionId]/remove/route.ts",
+   "auth_markers": [
+    "isGlobalAdminSession",
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
    "path": "/api/admin/tryon-results/[submissionId]/remove-great",
    "methods": [
     "POST"
    ],
    "file": "app/api/admin/tryon-results/[submissionId]/remove-great/route.ts",
+   "auth_markers": [
+    "isGlobalAdminSession",
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/tryon-results/[submissionId]/restore",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/admin/tryon-results/[submissionId]/restore/route.ts",
    "auth_markers": [
     "isGlobalAdminSession",
     "requireAuth",
@@ -299,6 +409,44 @@
    "no_auth_marker": false
   },
   {
+   "path": "/api/admin/tryon-setups/[setupId]/duplicate",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/admin/tryon-setups/[setupId]/duplicate/route.ts",
+   "auth_markers": [
+    "requireAdmin",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/tryon-setups/[setupId]",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/admin/tryon-setups/[setupId]/route.ts",
+   "auth_markers": [
+    "requireAdmin",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/tryon-setups",
+   "methods": [
+    "GET",
+    "POST"
+   ],
+   "file": "app/api/admin/tryon-setups/route.ts",
+   "auth_markers": [
+    "requireAdmin",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
    "path": "/api/admin/tryon-suits/[leatherSuitId]",
    "methods": [
     "GET",
@@ -307,9 +455,10 @@
    ],
    "file": "app/api/admin/tryon-suits/[leatherSuitId]/route.ts",
    "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/admin/tryon-suits",
@@ -319,9 +468,10 @@
    ],
    "file": "app/api/admin/tryon-suits/route.ts",
    "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/admin/tryon-worker-health",
@@ -342,8 +492,10 @@
     "PATCH"
    ],
    "file": "app/api/admin/users/[email]/role/route.ts",
-   "auth_markers": [],
-   "no_auth_marker": true
+   "auth_markers": [
+    "requireAdmin"
+   ],
+   "no_auth_marker": false
   },
   {
    "path": "/api/admin/users/[email]/status",
@@ -351,8 +503,10 @@
     "PATCH"
    ],
    "file": "app/api/admin/users/[email]/status/route.ts",
-   "auth_markers": [],
-   "no_auth_marker": true
+   "auth_markers": [
+    "requireAdmin"
+   ],
+   "no_auth_marker": false
   },
   {
    "path": "/api/admin/users/merge",
@@ -360,8 +514,10 @@
     "POST"
    ],
    "file": "app/api/admin/users/merge/route.ts",
-   "auth_markers": [],
-   "no_auth_marker": true
+   "auth_markers": [
+    "requireAdmin"
+   ],
+   "no_auth_marker": false
   },
   {
    "path": "/api/auth/callback",
@@ -548,9 +704,10 @@
    ],
    "file": "app/api/frames/[id]/route.ts",
    "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/frames",
@@ -560,9 +717,10 @@
    ],
    "file": "app/api/frames/route.ts",
    "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/go-short/[slug]",
@@ -665,6 +823,39 @@
    "no_auth_marker": true
   },
   {
+   "path": "/api/internal/savetheworld/events",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/internal/savetheworld/events/route.ts",
+   "auth_markers": [
+    "withErrorHandler"
+   ],
+   "no_auth_marker": true
+  },
+  {
+   "path": "/api/internal/savetheworld/partners",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/internal/savetheworld/partners/route.ts",
+   "auth_markers": [
+    "withErrorHandler"
+   ],
+   "no_auth_marker": true
+  },
+  {
+   "path": "/api/internal/savetheworld/pledges",
+   "methods": [
+    "GET"
+   ],
+   "file": "app/api/internal/savetheworld/pledges/route.ts",
+   "auth_markers": [
+    "withErrorHandler"
+   ],
+   "no_auth_marker": true
+  },
+  {
    "path": "/api/internal/tryon/complete",
    "methods": [
     "GET",
@@ -724,9 +915,10 @@
    ],
    "file": "app/api/logos/[id]/route.ts",
    "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/logos",
@@ -736,9 +928,10 @@
    ],
    "file": "app/api/logos/route.ts",
    "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/observability/client-error",
@@ -758,6 +951,7 @@
    ],
    "file": "app/api/partners/[partnerId]/route.ts",
    "auth_markers": [
+    "requireAdmin",
     "requireAuth",
     "withErrorHandler"
    ],
@@ -783,9 +977,10 @@
    ],
    "file": "app/api/partners/[partnerId]/toggle/route.ts",
    "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/partners/[partnerId]/users/[accessId]",
@@ -795,9 +990,10 @@
    ],
    "file": "app/api/partners/[partnerId]/users/[accessId]/route.ts",
    "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/partners/[partnerId]/users",
@@ -807,9 +1003,10 @@
    ],
    "file": "app/api/partners/[partnerId]/users/route.ts",
    "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/partners",
@@ -820,6 +1017,7 @@
    "file": "app/api/partners/route.ts",
    "auth_markers": [
     "isGlobalAdminSession",
+    "requireAdmin",
     "requireAuth",
     "withErrorHandler"
    ],

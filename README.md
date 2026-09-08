@@ -1,6 +1,6 @@
 # Camera
 
-**Version**: 12.2.21  
+**Version**: 12.2.22  
 **Last Updated**: 2026-07-04  
 **Status**: Production system
 
@@ -202,6 +202,7 @@ See [docs/MONGODB_CONVENTIONS.md](docs/MONGODB_CONVENTIONS.md) and [ARCHITECTURE
   - Public slideshow/submission matching uses the event UUID field
 - App authorization must use `session.appRole`, not `session.user.role`.
 - Partner-scoped authorization must be checked deliberately; it does not replace global app-role checks.
+- Cross-app surfaces (shared collections, internal endpoints, integration env vars) follow the fleet [contract-first rule](docs/_audit/contract-first-rule.md): update the contract doc and regenerate `docs/_audit/*.json` in the same change (`npm run inventory:check` gates CI).
 
 ## Design system
 
@@ -275,7 +276,6 @@ Canonical docs:
 - [docs/GDS_CAMERA_ADOPTION.md](docs/GDS_CAMERA_ADOPTION.md)
 - [docs/GDS_COMPONENT_RULES.md](docs/GDS_COMPONENT_RULES.md)
 - [docs/GDS_RELEASE_GATE.md](docs/GDS_RELEASE_GATE.md)
-- [docs/GDS_3_4_3_ALIGNMENT_PLAN.md](docs/GDS_3_4_3_ALIGNMENT_PLAN.md)
 - [docs/AUTHORIZATION.md](docs/AUTHORIZATION.md)
 - [docs/MONGODB_CONVENTIONS.md](docs/MONGODB_CONVENTIONS.md)
 - [docs/MONGODB_ATLAS.md](docs/MONGODB_ATLAS.md)

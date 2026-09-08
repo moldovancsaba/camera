@@ -4,11 +4,17 @@
  * /api/internal/messmass/* routes). Auth reuses the SAME shared secret both
  * directions (CAMERA_MESSMASS_INTERNAL_SECRET); only messmass's base URL is new.
  *
- * LOOP SAFETY: only called from camera's own native partner create/update
- * routes (app/api/partners/route.ts, app/api/partners/[partnerId]/route.ts),
- * and only for partners where source !== 'messmass'. Never called from
- * app/api/internal/messmass/partners/route.ts (the inbound receiver), so a
- * partner synced messmass -> camera can never round-trip back.
+ * LOOP SAFETY: only called from camera's own native partner routes.
+ * - Create (app/api/partners/route.ts POST) pushes unconditionally: a partner
+ *   created through camera's admin UI has no `source` field, so it is
+ *   camera-native by construction and there is nothing to check.
+ * - Update (app/api/partners/[partnerId]/route.ts PATCH) pushes only when
+ *   `existingPartner.source !== 'messmass'`; that is where the guard lives,
+ *   because an existing partner may have been provisioned from messmass.
+ * Never called from app/api/internal/messmass/partners/route.ts (the inbound
+ * receiver; lib/messmass/provision.ts stamps `source: 'messmass'` on every
+ * partner it creates), so a partner synced messmass -> camera can never
+ * round-trip back.
  */
 function base(): string {
   return (process.env.MESSMASS_BASE_URL || '').replace(/\/$/, '');

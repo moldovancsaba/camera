@@ -4,19 +4,36 @@ Generated 2026-08-19 against HEAD `9dff0ae` (audit at code `97c1f67`) by the
 fleet documentation audit (camera#118; method in messmass#344). Every claim
 carries file:line evidence. Verdicts: WRONG / STALE / MISSING / CURRENT.
 
+Contract-first enforcement live since 2026-09-08 (messmass#355):
+`npm run inventory:check` (scripts/fleet-audit-inventory.py --check) runs in
+`.github/workflows/ci.yml`; the rule text is in `contract-first-rule.md`.
+Route-level reference: `api-reference.md` (camera#124, 98 of 98 routes with
+the guard actually called, request/response shape, side effects, and a
+zero-caller deprecation list).
+
 ## 0. Behavior findings escalated out of the docs audit (see camera#119)
-- **`GET /api/internal/tryon/sync` trusts a spoofable header**: when
-  `x-camera-tryon-secret` is absent the only gate is `x-vercel-cron: 1`
-  (app/api/internal/tryon/sync/route.ts:44-46), which any caller can set —
-  an unauthenticated public trigger for job→submission materialization.
-- **`PATCH /api/submissions/[submissionId]` is effectively unauthenticated**:
-  `await optionalAuth(request)` result is discarded
-  (app/api/submissions/[submissionId]/route.ts:149); anyone with a submission
-  ObjectId can write `userInfo.name`/`userInfo.email` and finalize.
-- **Session cookies are neither encrypted nor signed** despite
+- ~~**`GET /api/internal/tryon/sync` trusts a spoofable header**~~ RESOLVED
+  (2f0c088): the `x-vercel-cron` branch is gone; GET requires either
+  `x-camera-tryon-secret` or `Authorization: Bearer <CRON_SECRET>` and fails
+  closed when `CRON_SECRET` is unset (sync/route.ts:42-56). Regression tests:
+  app/api/internal/tryon/sync/route.test.ts (spoofed header 403, no headers
+  403, unset secret 403, valid Bearer passes). `CRON_SECRET` documented in
+  .env.example (12.2.22).
+- ~~**`PATCH /api/submissions/[submissionId]` is effectively unauthenticated**~~
+  RESOLVED (2f0c088): the public FIRST write is preserved; once
+  `userInfo.collectedAt` is set, only an admin `appRole` may change it
+  (route.ts:158-171). Regression tests:
+  app/api/submissions/[submissionId]/route.test.ts (anon first write 200,
+  finalized+anon 403 with no write, finalized+admin 200).
+- ~~**Session cookies are neither encrypted nor signed** despite
   lib/auth/session.ts:5 claiming "encrypted": the cookie holds plain
   `JSON.stringify(session)` (:170), including access+refresh tokens in
-  cookie-only mode. `SESSION_SECRET` is used only for OAuth-state HMAC.
+  cookie-only mode. `SESSION_SECRET` is used only for OAuth-state HMAC.~~
+  FIXED 2026-09-08 (v12.2.22, camera#122): the plain cookie is HMAC-signed
+  (lib/auth/session-signing.ts) and unsigned/tampered cookies are rejected —
+  the unsigned form was a forgeable admin session. Production normally uses the
+  Mongo pointer cookie. Not encrypted, by decision: contents stay readable to
+  the holder; confidentiality is HttpOnly + Secure + TLS (docs/AUTHORIZATION.md §9).
 - **`POST /api/upload-logo`** is `requireAuth` only — any `appRole:'user'`
   can upload, while the sibling `POST /api/logos` is `requireAdmin`.
 - **`GET /api/migrate/submissions`** runs a destructive `updateMany` behind
@@ -44,8 +61,11 @@ carries file:line evidence. Verdicts: WRONG / STALE / MISSING / CURRENT.
   `git branch -a` shows 34 refs and neither `dev` nor `preview` exists.
 - **W7** docs/DOCUMENTATION.md:130 cites `.github/workflows/gds-release-gate.yml`;
   no `.github/` exists (README.md:210 correctly says workflows were removed).
-- **W8** lib/tryon/completion.ts:244 error says "direct i.ibb.co" but the
-  validator it guards (lib/imgbb/url.ts:11-27) accepts any `*.ibb.co`.
+- ~~**W8** lib/tryon/completion.ts:244 error says "direct i.ibb.co" but the
+  validator it guards (lib/imgbb/url.ts:11-27) accepts any `*.ibb.co`.~~
+  RESOLVED (12.2.22, camera#126): the message now names both accepted host
+  families (`*.ibb.co` direct hosts and `*.public.blob.vercel-storage.com`)
+  and points at `normalizeImgbbDirectUrl`.
 
 ## 2. STALE
 - Version headers frozen fleet-behind: README/ARCHITECTURE/TECH_STACK :3 = 2.17.0,
@@ -90,24 +110,38 @@ carries file:line evidence. Verdicts: WRONG / STALE / MISSING / CURRENT.
   request" — getSession never touches cookies), :9 ("automatic token refresh" —
   refreshAccessToken has zero callers), middleware.ts:104-114 (JSDoc for a
   function that doesn't exist), :36/:60 (`@param request` on functions that
-  `void request`), completion.ts:244 (see W8), messmassClient.ts:8-11 (claims a
-  `source!=='messmass'` guard that exists only on the update path).
+  `void request`). ~~completion.ts:244 (see W8)~~ RESOLVED (12.2.22, see W8).
+  ~~messmassClient.ts:8-11 (claims a `source!=='messmass'` guard that exists
+  only on the update path)~~ RESOLVED (12.2.22, camera#126): the header now
+  states that create (app/api/partners/route.ts) pushes unconditionally
+  because a camera-created partner has no `source`, and that the
+  `source !== 'messmass'` guard lives only on the update path
+  (app/api/partners/[partnerId]/route.ts:133).
 
 ## 6. Obsoletion queue
-- Root one-offs: check-submissions.mjs, migrate.js, migrate.mjs,
-  reset-playcounts.js — zero references.
-- `refreshAccessToken` (lib/auth/sso.ts:293-324) — zero callers.
-- `GET /api/migrate/submissions`, `/api/test-db`, `/api/test-frames`,
-  `/api/debug/{users,event-logos,submissions}` — prod-guarded leftovers.
-- `app/admin/tryon-results` + `tryon-suits` pages are re-exported by
+- ~~Root one-offs: check-submissions.mjs, migrate.js, migrate.mjs,
+  reset-playcounts.js — zero references.~~ REMOVED (070058e, camera#125).
+- ~~`refreshAccessToken` (lib/auth/sso.ts:293-324) — zero callers.~~ REMOVED (070058e).
+- ~~`GET /api/migrate/submissions`, `/api/test-db`, `/api/test-frames`,
+  `/api/debug/{users,event-logos,submissions}` — prod-guarded leftovers.~~
+  REMOVED (070058e); api-reference.md no longer lists them.
+- ~~`app/admin/tryon-results` + `tryon-suits` pages are re-exported by
   `app/admin/tryon/{vetting,suits}` — two live URLs per surface; legacy links
-  remain at identity/analytics pages.
-- WARP.DEV_AI_CONVERSATION.md.backup — committed backup file.
-- `.claude/worktrees/imgbb-image-loading-b7e1ca/` — 59 MB full duplicate checkout,
+  remain at identity/analytics pages.~~ RESOLVED (12.2.22, camera#125): the
+  implementations now live at `app/admin/tryon/{vetting,suits}/page.tsx`; the
+  legacy paths are server components that `redirect()` to the canonical URL
+  (query string forwarded), so old bookmarks keep working. Docs that named
+  `/admin/tryon-results` (TRYON_ADMIN_GUIDE, TRYON_ARCHITECTURE,
+  TRYON_LOW_LEVEL_DESIGN, GDS_CAMERA_ADOPTION) updated.
+- ~~WARP.DEV_AI_CONVERSATION.md.backup — committed backup file.~~ REMOVED (070058e).
+- ~~`.claude/worktrees/imgbb-image-loading-b7e1ca/` — 59 MB full duplicate checkout,
   untracked but not gitignored (a stray `git add -A` would commit it); also
-  poisons repo-wide greps.
-- Stale planning docs: docs/GDS_3_4_3_*, GDS_3_5_ADOPTION_PLAN, ISSUE_AUDIT_2026-06-30,
-  NEXT_AGENT_PROMPT, PLAN_SLIDESHOW_LAYOUT, TRYON_VETTING_WORKFLOW_PLAN.
+  poisons repo-wide greps.~~ RESOLVED: `.claude` gitignored in 070058e; the
+  directory is no longer present in the checkout (verified 2026-09-08).
+- ~~Stale planning docs: docs/GDS_3_4_3_*, GDS_3_5_ADOPTION_PLAN, ISSUE_AUDIT_2026-06-30,
+  NEXT_AGENT_PROMPT, PLAN_SLIDESHOW_LAYOUT, TRYON_VETTING_WORKFLOW_PLAN.~~
+  REMOVED (12.2.22, camera#125): all seven deleted; the links from README,
+  GDS_CAMERA_ADOPTION, ROADMAP and DOCUMENTATION were removed or annotated.
 - Dead env: SSO_REDIRECT_URI (sso.ts:6 says unused), FFF_HOSTNAMES /
   NEXT_PUBLIC_FFF_ORIGIN / FFF_SHARE_LINK_SECRET (zero readers; DOCUMENTATION.md:66
   says FunFitFan was removed).

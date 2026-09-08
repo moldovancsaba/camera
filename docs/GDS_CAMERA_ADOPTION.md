@@ -1,6 +1,6 @@
 # Camera GDS Adoption
 
-**Version**: 12.2.21  
+**Version**: 12.2.22  
 **Last Updated**: 2026-08-25
 
 ## SSOT statement
@@ -38,7 +38,7 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | Semantic navigation link | `components/admin/SemanticNavLink.tsx` | Domain navigation composition; replace with package nav contract when compatible |
 | Metric strip | direct `@sovereignsquad/gds-admin` import | Package-direct |
 | Info card | direct `@sovereignsquad/gds-core` import | Package-direct |
-| Action entry grid | `components/gds/AdminDashboardView.tsx`, `app/admin/tryon/page.tsx`, `app/admin/tryon-results/page.tsx` | Package-direct |
+| Action entry grid | `components/gds/AdminDashboardView.tsx`, `app/admin/tryon/page.tsx`, `app/admin/tryon/vetting/page.tsx` | Package-direct |
 | Data toolbar | `components/admin/AdminListPageShell.tsx` | Package-direct |
 | Admin resource cards, with media (Frames/Logos/Try-On Suits/Submissions) | `components/gds/FramesInventoryList.tsx`, `LogosInventoryList.tsx`, `TryOnSuitsInventoryList.tsx`, `SubmissionsInventoryList.tsx` | Package-direct `AdminResourceManager`/`AdminResourceCard` (`MediaPreviewCard` under the hood) — see [Known package limitations](#known-package-limitations-adminresourcecard--mediapreviewcard) below for two workarounds every consumer of this primitive must follow |
 | Admin resource cards, no media (Partners/Events/Slideshows/Landing Pages) | `components/gds/ResourceListGrid.tsx`, consumed by `PartnersInventoryList.tsx`, `EventsInventoryList.tsx`, `SlideshowsInventoryList.tsx`, `LandingPagesPageView.tsx` | Domain-owned composition over approved `gds-core`/`PublicPrimitives` building blocks (`Card`, `Group`, `Stack`, `Text`, `Button`, `GdsIcons`) — not `AdminResourceManager`, because that primitive always renders a media block with no prop to omit it (v2.19.0, PR #105) |
@@ -342,7 +342,6 @@ The same commands run in GitHub Actions through [docs/GDS_RELEASE_GATE.md](GDS_R
 ## References
 
 - [docs/GDS_COMPONENT_RULES.md](GDS_COMPONENT_RULES.md)
-- [docs/GDS_3_4_3_ALIGNMENT_PLAN.md](GDS_3_4_3_ALIGNMENT_PLAN.md)
 - [GDS FOUNDATION](https://github.com/sovereignsquad/general-design-system/blob/main/FOUNDATION.md)
 - [GDS COMPONENTS_AND_PATTERNS](https://github.com/sovereignsquad/general-design-system/blob/main/COMPONENTS_AND_PATTERNS.md)
 - [GDS GOVERNANCE_AND_ADOPTION](https://github.com/sovereignsquad/general-design-system/blob/main/GOVERNANCE_AND_ADOPTION.md)

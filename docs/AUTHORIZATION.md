@@ -1,7 +1,7 @@
 # Authorization Guide
 
-**Version**: 12.2.21  
-**Last Updated**: 2026-07-04
+**Version**: 12.2.22  
+**Last Updated**: 2026-09-08
 
 This is the current authorization model for Camera.
 
@@ -241,3 +241,27 @@ Resolve the event, then resolve partner-scoped authorization from the event’s 
 - if partner-scoped, verify `appKey`
 - verify read vs write role threshold
 - update docs when behavior changes
+
+## 9. Session cookie integrity
+
+`camera_session` has two forms (`lib/auth/session.ts`):
+
+- **Pointer cookie** (normal in production, whenever `MONGODB_URI` + `MONGODB_DB`
+  are set): `{ v, sid, expiresAt }` where `sid` is a 256-bit random id. The
+  session itself lives in the `web_sessions` collection; nothing in the cookie
+  can be edited to change who you are.
+- **Plain cookie** (fallback when the Mongo session store is unavailable, and
+  `COOKIE_ONLY_SESSIONS=1`): the session JSON, including `appRole`, plus an
+  HMAC-SHA256 `sig` over it (`lib/auth/session-signing.ts`). `getSession()`
+  returns `null` for any plain cookie whose signature is missing or does not
+  verify, so a hand-written cookie cannot claim a role. Before this rule the
+  plain cookie was trusted as parsed, which meant anyone could forge
+  `appRole: "superadmin"` (camera#122).
+
+Signing key: `OAUTH_PKCE_STATE_SECRET`, else `SESSION_SECRET`, else
+`SSO_CLIENT_SECRET` (the same resolver the OAuth state uses). With none of them
+set, login cannot issue a plain cookie and no plain cookie is accepted. The
+plain cookie is readable by whoever holds it (it is not encrypted); its
+confidentiality still rests on `HttpOnly`, `Secure` and TLS. Rotating the key
+signs everyone on a plain cookie out once; pointer-cookie sessions are
+unaffected.

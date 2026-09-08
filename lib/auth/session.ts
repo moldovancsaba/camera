@@ -2,10 +2,12 @@
  * Session Management
  * 
  * Manages user sessions with 30-day sliding expiration.
- * Sessions are stored in httpOnly, Secure, SameSite cookies. The payload is
- * base64url-encoded JSON (NOT encrypted); confidentiality relies on the cookie
- * flags and TLS. At-rest cookie encryption is tracked as remaining hardening in
- * camera#119 (needs a dual-read session migration verified in a browser).
+ * Sessions are stored in httpOnly, Secure, SameSite cookies. With a Mongo
+ * connection the cookie is only a random pointer to a `web_sessions` document.
+ * On the fallback path the cookie carries the session JSON itself: readable
+ * by whoever holds the cookie (not encrypted; confidentiality relies on the
+ * cookie flags and TLS) but HMAC-signed, so it cannot be forged or edited -
+ * see session-signing.ts (camera#122). Unsigned cookies are rejected.
  * 
  * Features:
  * - 30-day expiration fixed at creation (getSession does NOT extend it; no
@@ -24,6 +26,7 @@ import { cookies } from 'next/headers';
 import type { NextRequest, NextResponse } from 'next/server';
 import { Buffer } from 'node:buffer';
 import { SSOUser, TokenResponse } from './sso';
+import { serializeSignedSession, verifySignedSession } from './session-signing';
 import {
   SESSION_COOKIE_NAME,
   chunkCookieSuffixesToClear,
@@ -170,8 +173,6 @@ export async function createSession(
     ...(domain ? { domain } : {}),
   };
 
-  const payload = JSON.stringify(session);
-
   /** Chrome rejects ~>4096 bytes per cookie; Safari is looser — split when needed. */
   const SINGLE_COOKIE_MAX_CHARS = 3600;
 
@@ -211,6 +212,12 @@ export async function createSession(
       console.error('✗ Mongo web session save failed; falling back to cookie storage:', e);
     }
   }
+
+  // WHAT: Plain-cookie path carries the session itself, so it is signed.
+  // WHY: getSession() trusts nothing in a plain cookie that is not signed
+  //     (camera#122). Throws when no signing key is configured: no key, no
+  //     plain cookie, rather than silently issuing a forgeable one.
+  const payload = serializeSignedSession(session);
 
   if (payload.length <= SINGLE_COOKIE_MAX_CHARS) {
     if (response) {
@@ -277,7 +284,14 @@ export async function getSession(): Promise<Session | null> {
       return full as Session;
     }
 
-    const session = parsed as Session;
+    // WHAT: A plain cookie is only a session if its signature verifies.
+    // WHY: The cookie names the app role; before camera#122 a hand-written
+    //     cookie was accepted as-is and could claim `superadmin`.
+    const session = verifySignedSession<Session>(parsed);
+    if (!session) {
+      console.warn('Rejected session cookie: unsigned or tampered (sign in again to get a signed one)');
+      return null;
+    }
 
     // Check if session expired (30 days)
     const now = new Date();
