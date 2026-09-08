@@ -1,13 +1,13 @@
 {
  "_meta": {
-  "generated": "2026-09-08T11:22:49+00:00",
-  "repo": "camera-fleet",
-  "head": "06feb0c",
+  "generated": "2026-09-08T23:54:47+00:00",
+  "repo": "camera",
+  "head": "4913aea",
   "counts": {
    "endpoints": 98,
    "collections": 6,
-   "env": 64,
-   "outbound-hosts": 18,
+   "env": 65,
+   "outbound-hosts": 19,
    "docs": 39
   }
  },
@@ -825,6 +825,7 @@
   {
    "path": "/api/internal/savetheworld/events",
    "methods": [
+    "GET",
     "POST"
    ],
    "file": "app/api/internal/savetheworld/events/route.ts",
@@ -836,6 +837,7 @@
   {
    "path": "/api/internal/savetheworld/partners",
    "methods": [
+    "GET",
     "POST"
    ],
    "file": "app/api/internal/savetheworld/partners/route.ts",

@@ -5,7 +5,7 @@
  * messmass integration, minus the organization layer savetheworld has no use for.
  */
 import { connectToDatabase } from '@/lib/db/mongodb';
-import { COLLECTIONS, generateId, generateTimestamp } from '@/lib/db/schemas';
+import { COLLECTIONS, CustomPageType, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { inheritPartnerDefaults } from '@/lib/db/events';
 import { apiBadRequest, apiNotFound } from '@/lib/api';
 
@@ -49,15 +49,44 @@ export async function provisionEvent(input: { savetheworldEventId: string; partn
   if (!partner) throw apiNotFound('camera partner (provision the partner first)');
 
   const defaults = await inheritPartnerDefaults(partner.partnerId);
+  const eventId = generateId();
+
+  // If savetheworld's own per-event offers screen is configured, send the fan
+  // there straight after their selfie (auto-continue CTA page, matching the
+  // shape of real 'cta' customPages entries already in production). With the
+  // env var unset this stays a no-op -- customPages is [] exactly as before.
+  const savetheworldAppUrl = process.env.SAVETHEWORLD_APP_URL?.trim().replace(/\/$/, '') || '';
+  const customPages = savetheworldAppUrl
+    ? [
+        {
+          pageId: generateId(),
+          pageType: CustomPageType.CTA,
+          order: 0,
+          isActive: true,
+          config: {
+            title: 'Thank you!',
+            description: 'See what you can do next.',
+            buttonText: 'Next',
+            checkboxText: `${savetheworldAppUrl}/take-action/for/${eventId}`,
+            hasButton: false,
+            visitButtonText: 'Visit Now',
+            redirectingText: "Taking you to today's green actions…",
+          },
+          createdAt: now,
+          updatedAt: now,
+        },
+      ]
+    : [];
+
   const doc: Record<string, unknown> = {
-    eventId: generateId(),
+    eventId,
     name: String(input.eventName || '').trim() || 'Untitled event',
     partnerId: partner.partnerId,
     partnerName: partner.name,
     eventDate: input.eventDate || undefined,
     isActive: true,
     showLogo: false,
-    customPages: [],
+    customPages,
     submissionCount: 0,
     brandColor: defaults.brandColor,
     brandBorderColor: defaults.brandBorderColor,
@@ -73,5 +102,5 @@ export async function provisionEvent(input: { savetheworldEventId: string; partn
     updatedAt: now,
   };
   const res = await db.collection(COLLECTIONS.EVENTS).insertOne(doc);
-  return { eventId: doc.eventId as string, mongoId: String(res.insertedId), partnerId: partner.partnerId, created: true };
+  return { eventId, mongoId: String(res.insertedId), partnerId: partner.partnerId, created: true };
 }
