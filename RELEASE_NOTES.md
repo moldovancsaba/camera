@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## v12.2.24 — docs gate: freshness warnings only for this repo's own stamps
+
+- `scripts/fleet-audit-inventory.py` (vendored, messmass#355): the contract-freshness
+  warning now measures only stamps that name this repo (or the bare `verified @ <sha>`
+  form). Stamps naming a sibling repo were being looked up in this repo's history, where
+  a 7-character prefix can collide with an unrelated commit.
+
 ## v12.2.23 — docs gate: broken links fail, stale contract stamps warn
 
 - **messmass#355 — complete anti-rot gate.** The vendored
