@@ -14,7 +14,7 @@ import CameraCapture from '@/components/camera/CameraCapture';
 import FileUpload from '@/components/camera/FileUpload';
 import ShareOverlay from '@/components/capture/ShareOverlay';
 import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
-import { Button } from '@mantine/core';
+import { Button, Checkbox } from '@mantine/core';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 
 
@@ -97,6 +97,9 @@ export default function CapturePage() {
   const [frameIntrinsicAspect, setFrameIntrinsicAspect] = useState<number | null>(null);
   const [selectedTryOnSuitId, setSelectedTryOnSuitId] = useState<string | null>(null);
   const [tryOnResult, setTryOnResult] = useState<TryOnSubmissionResult | null>(null);
+  // Public pledge-wall opt-in: explicit consent control, defaults to UNCHECKED.
+  // A real photo of a real person only becomes publicly visible if the capturer checks this.
+  const [shareOptIn, setShareOptIn] = useState(false);
 
   // Fetch active frames
   useEffect(() => {
@@ -250,6 +253,7 @@ export default function CapturePage() {
           requestTryOn: Boolean(selectedTryOnSuitId),
           leatherSuitId: selectedTryOnSuitId,
           tryOnSourceImageData: selectedTryOnSuitId ? capturedImage : null,
+          shareOptIn,
         }),
       });
 
@@ -346,6 +350,7 @@ export default function CapturePage() {
     setShareUrl(null);
     setSelectedTryOnSuitId(null);
     setTryOnResult(null);
+    setShareOptIn(false);
     setStep('select-frame');
   };
 
@@ -510,6 +515,20 @@ export default function CapturePage() {
                         selectedSuitId={selectedTryOnSuitId}
                         onChange={setSelectedTryOnSuitId}
                         disabled={isSaving}
+                      />
+                    </div>
+                  ) : null}
+
+                  {!submissionId ? (
+                    <div className="app-surface-card app-surface-card-pad-sm">
+                      <Checkbox
+                        id="share-opt-in"
+                        checked={shareOptIn}
+                        onChange={(e) => setShareOptIn(e.currentTarget.checked)}
+                        label="Share my photo on the public pledge wall"
+                        aria-label="Share my photo on the public pledge wall"
+                        description="Leave unchecked to keep your photo private. Checking this makes it visible to everyone on the public pledge wall."
+                        styles={{ label: { lineHeight: 1.6 } }}
                       />
                     </div>
                   ) : null}

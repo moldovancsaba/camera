@@ -16,7 +16,7 @@
 
 import { useState, useEffect, use, useCallback } from 'react';
 import Image from 'next/image';
-import { Button } from '@mantine/core';
+import { Button, Checkbox } from '@mantine/core';
 import CameraCapture from '@/components/camera/CameraCapture';
 import ShareOverlay from '@/components/capture/ShareOverlay';
 import TourOverlay from '@/components/tour/TourOverlay';
@@ -237,6 +237,9 @@ export default function EventCapturePage({
   const [selectedTryOnBottomSuitId, setSelectedTryOnBottomSuitId] = useState<string | null>(null);
   const [tryOnResult, setTryOnResult] = useState<TryOnSubmissionResult | null>(null);
   const [cameraId, setCameraId] = useState<string | null>(null);
+  // Public pledge-wall opt-in: explicit consent control, defaults to UNCHECKED.
+  // A real photo of a real person only becomes publicly visible if the capturer checks this.
+  const [shareOptIn, setShareOptIn] = useState(false);
   
   const { onboardingPages, thankYouPages, takePhotoPage } = splitCustomPages(customPages);
 
@@ -677,6 +680,7 @@ export default function EventCapturePage({
         cameraId?: string | null;
         userInfo?: WhoAreYouPageData;
         consents?: CollectedData['consents'];
+        shareOptIn?: boolean;
       } = {
         imageData: compositeImage,
         frameId: selectedFrame?.frameId || null,  // Optional frame
@@ -687,6 +691,7 @@ export default function EventCapturePage({
         imageWidth: imageDimensions?.width || selectedFrame?.width || 1920,
         imageHeight: imageDimensions?.height || selectedFrame?.height || 1080,
         cameraId,
+        shareOptIn,
       };
 
       if (selectedTryOnSuitId && event?.tryOn?.enabled) {
@@ -864,8 +869,9 @@ export default function EventCapturePage({
     setStep('capture-photo');
     setSavedSubmissionId(null);
     setHasFinalizedSubmissionEmail(false);
+    setShareOptIn(false);
   };
-  
+
   // Custom page navigation handlers
 
   const enterCaptureStep = () => {
@@ -1382,6 +1388,17 @@ export default function EventCapturePage({
                       />
                     </div>
                   ) : null}
+                  <div className="rounded-2xl p-4 shadow-2xl">
+                    <Checkbox
+                      id="share-opt-in"
+                      checked={shareOptIn}
+                      onChange={(e) => setShareOptIn(e.currentTarget.checked)}
+                      label="Share my photo on the public pledge wall"
+                      aria-label="Share my photo on the public pledge wall"
+                      description="Leave unchecked to keep your photo private. Checking this makes it visible to everyone on this event's public pledge wall."
+                      styles={{ label: { lineHeight: 1.6 } }}
+                    />
+                  </div>
                   <Button
                     type="button"
                     onClick={handleSave}
