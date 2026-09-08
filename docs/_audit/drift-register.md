@@ -18,7 +18,7 @@ zero-caller deprecation list).
   closed when `CRON_SECRET` is unset (sync/route.ts:42-56). Regression tests:
   app/api/internal/tryon/sync/route.test.ts (spoofed header 403, no headers
   403, unset secret 403, valid Bearer passes). `CRON_SECRET` documented in
-  .env.example (12.3.30).
+  .env.example (12.3.31).
 - ~~**`PATCH /api/submissions/[submissionId]` is effectively unauthenticated**~~
   RESOLVED (2f0c088): the public FIRST write is preserved; once
   `userInfo.collectedAt` is set, only an admin `appRole` may change it
@@ -29,7 +29,7 @@ zero-caller deprecation list).
   lib/auth/session.ts:5 claiming "encrypted": the cookie holds plain
   `JSON.stringify(session)` (:170), including access+refresh tokens in
   cookie-only mode. `SESSION_SECRET` is used only for OAuth-state HMAC.~~
-  FIXED 2026-09-08 (v12.3.30, camera#122): the plain cookie is HMAC-signed
+  FIXED 2026-09-08 (v12.3.31, camera#122): the plain cookie is HMAC-signed
   (lib/auth/session-signing.ts) and unsigned/tampered cookies are rejected —
   the unsigned form was a forgeable admin session. Production normally uses the
   Mongo pointer cookie. Not encrypted, by decision: contents stay readable to
@@ -63,7 +63,7 @@ zero-caller deprecation list).
   no `.github/` exists (README.md:210 correctly says workflows were removed).
 - ~~**W8** lib/tryon/completion.ts:244 error says "direct i.ibb.co" but the
   validator it guards (lib/imgbb/url.ts:11-27) accepts any `*.ibb.co`.~~
-  RESOLVED (12.3.30, camera#126): the message now names both accepted host
+  RESOLVED (12.3.31, camera#126): the message now names both accepted host
   families (`*.ibb.co` direct hosts and `*.public.blob.vercel-storage.com`)
   and points at `normalizeImgbbDirectUrl`.
 
@@ -110,9 +110,9 @@ zero-caller deprecation list).
   request" — getSession never touches cookies), :9 ("automatic token refresh" —
   refreshAccessToken has zero callers), middleware.ts:104-114 (JSDoc for a
   function that doesn't exist), :36/:60 (`@param request` on functions that
-  `void request`). ~~completion.ts:244 (see W8)~~ RESOLVED (12.3.30, see W8).
+  `void request`). ~~completion.ts:244 (see W8)~~ RESOLVED (12.3.31, see W8).
   ~~messmassClient.ts:8-11 (claims a `source!=='messmass'` guard that exists
-  only on the update path)~~ RESOLVED (12.3.30, camera#126): the header now
+  only on the update path)~~ RESOLVED (12.3.31, camera#126): the header now
   states that create (app/api/partners/route.ts) pushes unconditionally
   because a camera-created partner has no `source`, and that the
   `source !== 'messmass'` guard lives only on the update path
@@ -127,7 +127,7 @@ zero-caller deprecation list).
   REMOVED (070058e); api-reference.md no longer lists them.
 - ~~`app/admin/tryon-results` + `tryon-suits` pages are re-exported by
   `app/admin/tryon/{vetting,suits}` — two live URLs per surface; legacy links
-  remain at identity/analytics pages.~~ RESOLVED (12.3.30, camera#125): the
+  remain at identity/analytics pages.~~ RESOLVED (12.3.31, camera#125): the
   implementations now live at `app/admin/tryon/{vetting,suits}/page.tsx`; the
   legacy paths are server components that `redirect()` to the canonical URL
   (query string forwarded), so old bookmarks keep working. Docs that named
@@ -140,7 +140,7 @@ zero-caller deprecation list).
   directory is no longer present in the checkout (verified 2026-09-08).
 - ~~Stale planning docs: docs/GDS_3_4_3_*, GDS_3_5_ADOPTION_PLAN, ISSUE_AUDIT_2026-06-30,
   NEXT_AGENT_PROMPT, PLAN_SLIDESHOW_LAYOUT, TRYON_VETTING_WORKFLOW_PLAN.~~
-  REMOVED (12.3.30, camera#125): all seven deleted; the links from README,
+  REMOVED (12.3.31, camera#125): all seven deleted; the links from README,
   GDS_CAMERA_ADOPTION, ROADMAP and DOCUMENTATION were removed or annotated.
 - Dead env: SSO_REDIRECT_URI (sso.ts:6 says unused), FFF_HOSTNAMES /
   NEXT_PUBLIC_FFF_ORIGIN / FFF_SHARE_LINK_SECRET (zero readers; DOCUMENTATION.md:66

@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## v12.3.31 — fleet: savetheworld on the map; scanner reads src/app
+
+- Vendored `scripts/fleet-audit-inventory.py` update: Next.js routes are found
+  under `src/app/api` as well as `app/api`. The fleet map now records
+  savetheworld as the verified caller of `/api/internal/savetheworld/pledges`
+  (edge E7). Fleet version 12.3.31.
+
 ## v12.3.30 — docs gate hardened for CI checkouts
 
 - Vendored `scripts/fleet-audit-inventory.py` update (messmass#355): links that
