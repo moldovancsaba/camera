@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## v12.3.29 — design-system packages from vendored release tarballs
+
+- `@sovereignsquad/gds-{core,theme,admin,compliance,eslint-config}` 6.3.0 are
+  committed under `vendor/gds/` (from the `gds-v6.3.0` release assets) and pinned
+  via `file:` specs plus `overrides`, as fanmass does. `.npmrc` removed; CI needs
+  no registry token. Trigger: since 2026-09-07 every CI `npm ci` failed with a
+  403 from GitHub Packages (org billing limit). Lockfile contains no GitHub
+  Packages URL; clean `npm ci` verified locally. Fleet version 12.3.29.
+
 ## v12.3.28 — fleet version re-aligned
 
 - All four SEYU apps carry 12.3.28 from this release. The 2026-08-20 lockstep
