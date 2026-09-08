@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## v12.3.30 — docs gate hardened for CI checkouts
+
+- Vendored `scripts/fleet-audit-inventory.py` update (messmass#355): links that
+  start with `/` resolve inside the repo only (never as a path on the author's
+  machine), and the contract-freshness measurement is skipped on shallow CI
+  checkouts instead of warning that every stamp is unknown. Fleet version 12.3.30.
+
 ## v12.3.29 — design-system packages from vendored release tarballs
 
 - `@sovereignsquad/gds-{core,theme,admin,compliance,eslint-config}` 6.3.0 are
