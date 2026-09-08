@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## v12.3.28 — fleet version re-aligned
+
+- All four SEYU apps carry 12.3.28 from this release. The 2026-08-20 lockstep
+  policy (`docs/_audit/fleet-version-policy.md` in messmass) had drifted: camera
+  was at 12.2.24 while messmass reached 12.3.27. Highest-wins, so camera jumps
+  to messmass's next number. No functional change.
+
 ## v12.2.24 — docs gate: freshness warnings only for this repo's own stamps
 
 - `scripts/fleet-audit-inventory.py` (vendored, messmass#355): the contract-freshness
