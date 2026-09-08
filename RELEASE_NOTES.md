@@ -1,5 +1,15 @@
 # RELEASE_NOTES.md
 
+## v12.2.23 — docs gate: broken links fail, stale contract stamps warn
+
+- **messmass#355 — complete anti-rot gate.** The vendored
+  `scripts/fleet-audit-inventory.py --check` (run by CI as
+  `npm run inventory:check`) now also fails on broken relative markdown links
+  in `docs/` and the root `*.md` files, and warns when a `verified @ <sha>`
+  stamp in `docs/_audit` is more than 30 commits behind HEAD. Editor-style
+  `path:line` references resolve to the file. `--self-test` proves both
+  failure modes fire. No camera links were broken.
+
 ## v12.2.22 — fleet audit closeout: API reference, dead files, comment fixes, auth tests, inventory gate
 
 - **camera#124 — API reference complete.** `docs/_audit/api-reference.md` now

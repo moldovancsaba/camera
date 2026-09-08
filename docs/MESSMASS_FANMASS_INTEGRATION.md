@@ -1,6 +1,6 @@
 # messmass + fanmass integration
 
-**Version**: 12.2.22
+**Version**: 12.2.23
 **Last Updated**: 2026-09-03
 _Verified @ a87d78f_
 
