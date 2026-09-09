@@ -6,6 +6,7 @@ import { assertInternalSavetheworldSecret } from '@/lib/savetheworld/internal';
 
 /**
  * GET /api/internal/savetheworld/pledges?eventId=<mongoId|eventId>&limit=<n>
+ * GET /api/internal/savetheworld/pledges?eventId=<mongoId|eventId>&submissionId=<id>
  *
  * Service-authed feed of pledge selfies for savetheworld's public "people
  * taking action" wall, newest first.
@@ -17,6 +18,14 @@ import { assertInternalSavetheworldSecret } from '@/lib/savetheworld/internal';
  * not `originalImageUrl` — the opposite of the fanmass feed, which wants the
  * raw photo for brand analytics and is never shown publicly.
  *
+ * When `submissionId` is present, this instead looks up that ONE submission
+ * directly by its `submissionId` field, bypassing the isShareVisible /
+ * submissionKind / finalImageUrl filters that gate the public wall listing —
+ * this path is for showing the capturer their OWN photo on their OWN private
+ * post-selfie screen, not for public display. It still requires the
+ * submission to match the given eventId, so one event's savetheworld
+ * integration can't fetch an arbitrary submission from a different event.
+ *
  * Response: { success, data: { pledges: [{ pledgeId, imageUrl, name, createdAt }] } }
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
@@ -25,6 +34,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const sp = request.nextUrl.searchParams;
   const eventId = sp.get('eventId')?.trim();
+  const submissionId = sp.get('submissionId')?.trim();
   const parsedLimit = Number.parseInt(sp.get('limit') || '', 10);
   const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 60) : 12;
 
@@ -33,6 +43,30 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   }
 
   const db = await connectToDatabase();
+
+  if (submissionId) {
+    // Private lookup: the capturer viewing their own just-saved submission.
+    // Still scoped to eventId so one event can't pull another event's submission.
+    const submission = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({
+      submissionId,
+      $or: [{ eventId }, { eventIds: eventId }],
+    });
+
+    if (!submission) {
+      return apiSuccess({ pledges: [] });
+    }
+
+    return apiSuccess({
+      pledges: [
+        {
+          pledgeId: submission.submissionId,
+          imageUrl: submission.previewImageUrl || submission.finalImageUrl,
+          name: submission.userName || null,
+          createdAt: submission.createdAt,
+        },
+      ],
+    });
+  }
 
   // Submissions link to an event via the legacy single-event mirror (eventId) or
   // the multi-event array (eventIds[]).

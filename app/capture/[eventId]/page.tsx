@@ -1075,7 +1075,7 @@ export default function EventCapturePage({
             onNext={(data) => handleConsentComplete(currentPage, data)}
           />
         );
-      
+
       case 'cta':
         return (
           <CTAPage
@@ -1093,6 +1093,7 @@ export default function EventCapturePage({
             brandColor={event.brandColor}
             brandBorderColor={event.brandBorderColor}
             buttonSize={eventButtonSize}
+            submissionId={savedSubmissionId ?? undefined}
             onNext={(data) => handleConsentComplete(currentPage, data)}
           />
         );

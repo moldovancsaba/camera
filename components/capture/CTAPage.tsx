@@ -47,6 +47,7 @@ export interface CTAPageProps {
   brandColor?: string;
   brandBorderColor?: string;
   buttonSize?: EventButtonSize;
+  submissionId?: string;
 }
 
 export default function CTAPage({
@@ -56,10 +57,13 @@ export default function CTAPage({
   logoUrl,
   brandColor = CAMERA_DEFAULT_CTA_BRAND_COLOR,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
+  submissionId,
 }: CTAPageProps) {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const hasButton = config.hasButton !== false;
-  const urlToVisit = config.checkboxText;
+  const urlToVisit = submissionId
+    ? `${config.checkboxText}${config.checkboxText.includes('?') ? '&' : '?'}submissionId=${submissionId}`
+    : config.checkboxText;
   const visitButtonText = config.visitButtonText || 'Visit Now';
   void config.redirectingText;
 
