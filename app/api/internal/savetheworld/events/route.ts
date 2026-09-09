@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, withErrorHandler, checkRateLimit, RATE_LIMITS } from '@/lib/api';
-import { assertInternalSavetheworldSecret } from '@/lib/savetheworld/internal';
+import { assertInternalSavetheworldSecret, buildCaptureUrl } from '@/lib/savetheworld/internal';
 import { provisionEvent } from '@/lib/savetheworld/provision';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
@@ -18,8 +18,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     eventName: body.eventName,
     eventDate: body.eventDate,
   });
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, '') || '';
-  const captureUrl = appUrl ? `${appUrl}/capture/${event.mongoId}` : null;
+  const captureUrl = buildCaptureUrl(event.mongoId);
   return apiSuccess({ event: { ...event, captureUrl } }, event.created ? 201 : 200);
 });
 
@@ -39,13 +38,18 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     .sort({ eventDate: -1 })
     .limit(200)
     .toArray();
-  const events = docs.map((e) => ({
-    eventId: e.eventId,
-    name: e.name,
-    partnerId: e.partnerId,
-    partnerName: e.partnerName,
-    eventDate: e.eventDate || null,
-    isActive: !!e.isActive,
-  }));
+  const events = docs.map((e) => {
+    const mongoId = String(e._id);
+    return {
+      eventId: e.eventId,
+      name: e.name,
+      partnerId: e.partnerId,
+      partnerName: e.partnerName,
+      eventDate: e.eventDate || null,
+      isActive: !!e.isActive,
+      mongoId,
+      captureUrl: buildCaptureUrl(mongoId),
+    };
+  });
   return apiSuccess({ events });
 });

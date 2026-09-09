@@ -19,3 +19,12 @@ export function assertInternalSavetheworldSecret(request: Request): void {
     throw apiForbidden('Invalid savetheworld internal secret');
   }
 }
+
+/**
+ * Public capture URL for a camera event, as shared with savetheworld.
+ * Returns null when NEXT_PUBLIC_APP_URL is not configured.
+ */
+export function buildCaptureUrl(mongoId: string): string | null {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, '') || '';
+  return appUrl ? `${appUrl}/capture/${mongoId}` : null;
+}
