@@ -36,3 +36,4 @@ yarn-error.log*
 .pnpm-debug.log*
 .env*
 .claude/
+.env.dryrun*
