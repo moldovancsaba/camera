@@ -97,9 +97,9 @@ export default function CapturePage() {
   const [frameIntrinsicAspect, setFrameIntrinsicAspect] = useState<number | null>(null);
   const [selectedTryOnSuitId, setSelectedTryOnSuitId] = useState<string | null>(null);
   const [tryOnResult, setTryOnResult] = useState<TryOnSubmissionResult | null>(null);
-  // Public pledge-wall opt-in: explicit consent control, defaults to UNCHECKED.
-  // A real photo of a real person only becomes publicly visible if the capturer checks this.
-  const [shareOptIn, setShareOptIn] = useState(false);
+  // Public pledge-wall opt-in: defaults to checked so fan photos appear on the event wall.
+  // The capturer can uncheck to keep their photo private.
+  const [shareOptIn, setShareOptIn] = useState(true);
 
   // Fetch active frames
   useEffect(() => {
@@ -527,7 +527,7 @@ export default function CapturePage() {
                         onChange={(e) => setShareOptIn(e.currentTarget.checked)}
                         label="Share my photo on the public pledge wall"
                         aria-label="Share my photo on the public pledge wall"
-                        description="Leave unchecked to keep your photo private. Checking this makes it visible to everyone on the public pledge wall."
+                        description="Your photo will appear on the public pledge wall. Uncheck to keep it private."
                         styles={{ label: { lineHeight: 1.6 } }}
                       />
                     </div>
