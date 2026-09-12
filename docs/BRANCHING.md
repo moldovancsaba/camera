@@ -1,6 +1,6 @@
 # Branching model
 
-**Version**: 12.3.32
+**Version**: 12.3.33
 **Last Updated**: 2026-09-03
 _Verified @ a87d78f_
 

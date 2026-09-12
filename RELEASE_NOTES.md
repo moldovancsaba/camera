@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## v12.3.33 — savetheworld events list: exact lookup by id
+
+- `GET /api/internal/savetheworld/events?eventId=<eventId or _id>` returns
+  exactly that event. The unfiltered list is capped at 200 rows sorted by
+  date; the savetheworld campaign event has no date, sorted last, and fell
+  outside the cap, so savetheworld's public event page answered 404. Fleet
+  version 12.3.33.
+
 ## v12.3.32 — savetheworld pledges feed returns the event total
 
 - `GET /api/internal/savetheworld/pledges` adds `total` (share-visible pledges
