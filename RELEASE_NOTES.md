@@ -1,5 +1,9 @@
 # RELEASE_NOTES.md
 
+## v12.3.35 — fleet lockstep
+
+- Version only (savetheworld feed cache change). Fleet version 12.3.35.
+
 ## v12.3.34 — savetheworld pledges feed accepts either event id
 
 - `GET /api/internal/savetheworld/pledges?eventId=` resolves the event by
