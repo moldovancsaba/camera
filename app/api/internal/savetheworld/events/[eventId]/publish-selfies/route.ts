@@ -9,14 +9,13 @@ import { assertInternalSavetheworldSecret } from '@/lib/savetheworld/internal';
  * POST /api/internal/savetheworld/events/[eventId]/publish-selfies
  *
  * Bulk-sets isShareVisible=true on every non-tryon fan submission for this
- * event that has a finalImageUrl but was not yet share-visible. Used when the
- * capture page defaulted shareOptIn to false and existing selfies need to be
- * retroactively published to the public pledge wall.
+ * event that was not yet share-visible. Used to retroactively publish selfies
+ * taken before shareOptIn defaulted to true.
  *
- * Accepts both camera's eventId UUID and Mongo _id (same resolution as the
- * pledges endpoint).
+ * Looks up the event by camera eventId, Mongo _id, OR savetheworldEventId so
+ * both the admin URL identifier and the public page identifier work.
  *
- * Response: { published: <count of documents updated> }
+ * Response: { published: <count updated>, total: <count matched before update> }
  */
 export const POST = withErrorHandler(async (
   request: NextRequest,
@@ -26,18 +25,25 @@ export const POST = withErrorHandler(async (
 
   const { eventId } = await context.params;
   if (!eventId) {
-    return apiSuccess({ published: 0 });
+    return apiSuccess({ published: 0, total: 0 });
   }
 
   const db = await connectToDatabase();
 
-  // Resolve the event document so we can match on all its identifiers.
+  // Resolve by ANY identifier: camera eventId UUID, Mongo _id, or savetheworldEventId.
+  const orClauses: Record<string, unknown>[] = [
+    { eventId },
+    { savetheworldEventId: eventId },
+  ];
+  if (ObjectId.isValid(eventId)) {
+    orClauses.push({ _id: new ObjectId(eventId) });
+  }
   const eventDoc = await db.collection(COLLECTIONS.EVENTS).findOne(
-    ObjectId.isValid(eventId)
-      ? { $or: [{ eventId }, { _id: new ObjectId(eventId) }] }
-      : { eventId },
+    { $or: orClauses },
     { projection: { eventId: 1 } },
   );
+
+  // Build the full set of identifiers submissions might carry.
   const eventKeys = Array.from(
     new Set(
       [eventId, eventDoc?.eventId, eventDoc ? String(eventDoc._id) : null].filter(
@@ -47,15 +53,22 @@ export const POST = withErrorHandler(async (
   );
   const eventMatch = { $or: [{ eventId: { $in: eventKeys } }, { eventIds: { $in: eventKeys } }] };
 
-  const result = await db.collection(COLLECTIONS.SUBMISSIONS).updateMany(
-    {
-      ...eventMatch,
-      submissionKind: { $ne: 'tryon_result' },
-      finalImageUrl: { $type: 'string' },
-      isShareVisible: { $ne: true },
-    },
-    { $set: { isShareVisible: true } },
-  );
+  // Any non-tryon submission that has at least one image URL and isn't published yet.
+  const filter = {
+    ...eventMatch,
+    submissionKind: { $ne: 'tryon_result' },
+    $or: [
+      { finalImageUrl: { $type: 'string' } },
+      { imageUrl: { $type: 'string' } },
+      { originalImageUrl: { $type: 'string' } },
+    ],
+    isShareVisible: { $ne: true },
+  };
 
-  return apiSuccess({ published: result.modifiedCount });
+  const [total, result] = await Promise.all([
+    db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({ ...eventMatch, submissionKind: { $ne: 'tryon_result' } }),
+    db.collection(COLLECTIONS.SUBMISSIONS).updateMany(filter, { $set: { isShareVisible: true } }),
+  ]);
+
+  return apiSuccess({ published: result.modifiedCount, total });
 });
