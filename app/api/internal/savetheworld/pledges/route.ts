@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { apiSuccess, withErrorHandler, checkRateLimit, RATE_LIMITS } from '@/lib/api';
 import { COLLECTIONS } from '@/lib/db/schemas';
@@ -46,12 +47,22 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const db = await connectToDatabase();
 
+  // Submissions carry camera's own eventId (UUID). savetheworld addresses the
+  // same event by either that UUID or the Mongo _id (the capture URL form), so
+  // resolve the event and match submissions on every identifier it has.
+  const eventDoc = await db.collection(COLLECTIONS.EVENTS).findOne(
+    ObjectId.isValid(eventId) ? { $or: [{ eventId }, { _id: new ObjectId(eventId) }] } : { eventId },
+    { projection: { eventId: 1 } }
+  );
+  const eventKeys = Array.from(new Set([eventId, eventDoc?.eventId, eventDoc ? String(eventDoc._id) : null].filter((k): k is string => Boolean(k))));
+  const eventMatch = { $or: [{ eventId: { $in: eventKeys } }, { eventIds: { $in: eventKeys } }] };
+
   if (submissionId) {
     // Private lookup: the capturer viewing their own just-saved submission.
     // Still scoped to eventId so one event can't pull another event's submission.
     const submission = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({
       submissionId,
-      $or: [{ eventId }, { eventIds: eventId }],
+      ...eventMatch,
     });
 
     if (!submission) {
@@ -73,7 +84,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   // Submissions link to an event via the legacy single-event mirror (eventId) or
   // the multi-event array (eventIds[]).
   const wallFilter = {
-    $or: [{ eventId }, { eventIds: eventId }],
+    ...eventMatch,
     submissionKind: { $ne: 'tryon_result' },
     isShareVisible: true,
     finalImageUrl: { $type: 'string' },

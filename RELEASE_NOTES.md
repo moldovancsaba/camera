@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## v12.3.34 — savetheworld pledges feed accepts either event id
+
+- `GET /api/internal/savetheworld/pledges?eventId=` resolves the event by
+  camera's eventId or its Mongo _id and matches submissions on every
+  identifier the event has. Submissions are keyed by the UUID, while
+  savetheworld's capture URL uses the _id, so the _id form returned an empty
+  wall and `total: 0` for an event with three published pledges. Fleet
+  version 12.3.34.
+
 ## v12.3.33 — savetheworld events list: exact lookup by id
 
 - `GET /api/internal/savetheworld/events?eventId=<eventId or _id>` returns
