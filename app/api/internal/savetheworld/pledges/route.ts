@@ -26,7 +26,9 @@ import { assertInternalSavetheworldSecret } from '@/lib/savetheworld/internal';
  * submission to match the given eventId, so one event's savetheworld
  * integration can't fetch an arbitrary submission from a different event.
  *
- * Response: { success, data: { pledges: [{ pledgeId, imageUrl, name, createdAt }] } }
+ * Response: { success, data: { pledges: [{ pledgeId, imageUrl, name, createdAt }], total } }
+ * `total` is the number of share-visible pledges for the event regardless of
+ * `limit` — savetheworld shows it as "people involved" on the event page.
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   assertInternalSavetheworldSecret(request);
@@ -70,17 +72,16 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   // Submissions link to an event via the legacy single-event mirror (eventId) or
   // the multi-event array (eventIds[]).
-  const submissions = await db
-    .collection(COLLECTIONS.SUBMISSIONS)
-    .find({
-      $or: [{ eventId }, { eventIds: eventId }],
-      submissionKind: { $ne: 'tryon_result' },
-      isShareVisible: true,
-      finalImageUrl: { $type: 'string' },
-    })
-    .sort({ createdAt: -1 })
-    .limit(limit)
-    .toArray();
+  const wallFilter = {
+    $or: [{ eventId }, { eventIds: eventId }],
+    submissionKind: { $ne: 'tryon_result' },
+    isShareVisible: true,
+    finalImageUrl: { $type: 'string' },
+  };
+  const [submissions, total] = await Promise.all([
+    db.collection(COLLECTIONS.SUBMISSIONS).find(wallFilter).sort({ createdAt: -1 }).limit(limit).toArray(),
+    db.collection(COLLECTIONS.SUBMISSIONS).countDocuments(wallFilter),
+  ]);
 
   return apiSuccess({
     pledges: submissions.map((s) => ({
@@ -89,5 +90,6 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       name: s.userName || null,
       createdAt: s.createdAt,
     })),
+    total,
   });
 });

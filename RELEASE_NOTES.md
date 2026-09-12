@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## v12.3.32 — savetheworld pledges feed returns the event total
+
+- `GET /api/internal/savetheworld/pledges` adds `total` (share-visible pledges
+  for the event, independent of `limit`) so savetheworld can show "people
+  involved" on its event pages. Same filter as the list; no new data exposed.
+  Fleet version 12.3.32.
+
 ## v12.3.31 — fleet: savetheworld on the map; scanner reads src/app
 
 - Vendored `scripts/fleet-audit-inventory.py` update: Next.js routes are found
