@@ -82,12 +82,15 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   }
 
   // Submissions link to an event via the legacy single-event mirror (eventId) or
-  // the multi-event array (eventIds[]).
+  // the multi-event array (eventIds[]). isShareVisible: { $ne: false } includes
+  // submissions created before the shareOptIn feature (field absent → null → not false).
   const wallFilter = {
-    ...eventMatch,
-    submissionKind: { $ne: 'tryon_result' },
-    isShareVisible: true,
-    finalImageUrl: { $type: 'string' },
+    $and: [
+      eventMatch,
+      { submissionKind: { $ne: 'tryon_result' } },
+      { isShareVisible: { $ne: false } },
+      { $or: [{ finalImageUrl: { $type: 'string' } }, { imageUrl: { $type: 'string' } }, { originalImageUrl: { $type: 'string' } }] },
+    ],
   };
   const [submissions, total] = await Promise.all([
     db.collection(COLLECTIONS.SUBMISSIONS).find(wallFilter).sort({ createdAt: -1 }).limit(limit).toArray(),
