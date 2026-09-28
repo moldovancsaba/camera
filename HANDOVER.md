@@ -1,6 +1,6 @@
 # Handover
 
-**Version**: 12.3.37
+**Version**: 12.3.38
 **Last Updated**: 2026-09-28
 
 `RELEASE_NOTES.md` is kept current on every release and is the detailed record;
@@ -9,7 +9,7 @@ this file is the short current-state summary. Previous rewrite: 2026-08-17
 
 ## Status 2026-09-28
 
-- **Version** 12.3.37 (fleet lockstep with messmass, fanmass, try-on,
+- **Version** 12.3.38 (fleet lockstep with messmass, fanmass, try-on,
   savetheworld).
 - **Production = git `main`.** Every push to `main` auto-deploys
   `narimato/04_camera` via the Vercel Git integration (verified 2026-09-28:

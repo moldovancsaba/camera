@@ -1,5 +1,9 @@
 # RELEASE_NOTES.md
 
+## v12.3.38 — fleet lockstep
+
+- Version only. messmass 12.3.38 fixes event-editor saves (an editor with no password could open but never save) and makes an editor that cannot save read-only; nothing changed in this repo.
+
 ## v12.3.37 — publish-selfies scoped to its event (privacy fix)
 
 - **Fixed:** `POST /api/internal/savetheworld/events/[eventId]/publish-selfies`
