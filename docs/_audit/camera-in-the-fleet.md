@@ -15,6 +15,14 @@ on Vercel.
   (or the 5-min `/api/internal/tryon/sync` backstop cron).
 - **camera → fanmass**: fanmass PULLS events + media from camera's
   `/api/internal/fanmass/*` (camera does not call fanmass).
+- **camera ↔ savetheworld** (edge E7 in the fleet map): savetheworld calls
+  camera's `/api/internal/savetheworld/*` with `x-savetheworld-secret`
+  (`CAMERA_SAVETHEWORLD_INTERNAL_SECRET`) to list/create partners and events,
+  read the public pledge wall (`GET /pledges`, including the private
+  `?submissionId=` lookup), and bulk-publish an event's selfies
+  (`POST /events/[eventId]/publish-selfies`). camera → savetheworld is a browser
+  handoff only: the post-selfie CTA opens `SAVETHEWORLD_APP_URL` carrying
+  `submissionId` (camera makes no server-side call to savetheworld).
 - **camera → SSO**: PKCE public client by default.
 
 Canonical cross-app map: messmass `docs/_audit/fleet-architecture.md`.

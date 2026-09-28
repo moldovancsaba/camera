@@ -1,21 +1,23 @@
 # messmass + fanmass integration
 
-**Version**: 12.3.36
-**Last Updated**: 2026-09-03
+**Version**: 12.3.37
+**Last Updated**: 2026-09-28
 _Verified @ a87d78f_
 
-Camera sits between two other apps in the SEYU fan-engagement stack: **messmass**
-(event reporting/partner management, the master for organisations/partners/events)
-and **fanmass** (image analytics — brand/sponsor/fan recognition on captured
-photos). Both integrations are server-to-server, authenticated by a shared
-secret, and live entirely under `app/api/internal/**`. Neither messmass nor
-fanmass has any other way into Camera's data — no shared database access, no
-session reuse.
+Camera integrates with three other apps in the SEYU fan-engagement stack:
+**messmass** (event reporting/partner management, the master for
+organisations/partners/events), **fanmass** (image analytics — brand/sponsor/fan
+recognition on captured photos), and **savetheworld** (pledge campaign app, §2a).
+All three integrations are server-to-server, authenticated by a shared secret,
+and live entirely under `app/api/internal/**`. None of them has any other way
+into Camera's data — no shared database access, no session reuse.
 
 ```text
-messmass  --(provision org/partner/event)-->  camera
-messmass  --(send email)-------------------->  camera
-camera    <--(poll: events, then media)---    fanmass
+messmass      --(provision org/partner/event)---------->  camera
+messmass      --(send email)---------------------------->  camera
+camera        <--(poll: events, then media)-----------    fanmass
+savetheworld  --(partners/events, pledge wall, publish)-->  camera
+camera        --(browser handoff: post-selfie CTA)----->  savetheworld
 ```
 
 Camera is mostly inbound but DOES call messmass outbound in two cases (see §4): it
@@ -125,9 +127,72 @@ try-on results, because fanmass measures brand exposure on the fan as
 photographed, not on the branded output. `limit` defaults to 200, capped at 500.
 Response: `{ eventId, media: [{ captureId, url, createdAt }] }`.
 
-`url` is a public imgbb (`i.ibb.co`) link, fetched by fanmass **without** the
-shared secret — deliberate, so the secret is never exposed to a third-party
-host. Do not "fix" this by trying to authenticate the imgbb fetch.
+`url` is a public image link — Vercel Blob (`*.public.blob.vercel-storage.com`)
+for photos stored since v12.2.14, imgbb (`i.ibb.co`) for older ones — fetched by
+fanmass **without** the shared secret — deliberate, so the secret is never
+exposed to a third-party host. Do not "fix" this by trying to authenticate the
+image fetch.
+
+## 2a. savetheworld → camera: pledge campaign
+
+savetheworld provisions its partners and events into Camera, reads the public
+pledge wall for its event pages, and can bulk-publish an event's fan selfies.
+
+**Auth**: `assertInternalSavetheworldSecret()` ([lib/savetheworld/internal.ts](../lib/savetheworld/internal.ts)) —
+header `x-savetheworld-secret: <secret>` or `Authorization: Bearer <secret>`,
+compared against `CAMERA_SAVETHEWORLD_INTERNAL_SECRET`. 403 if unset or wrong.
+A third, separate secret — not the messmass or fanmass one.
+
+**Identity model** ([lib/savetheworld/provision.ts](../lib/savetheworld/provision.ts)):
+partners link by case-insensitive name, else create; events are idempotent on
+`savetheworldEventId`. Created records are stamped `source: 'savetheworld'`.
+
+### `GET /api/internal/savetheworld/partners`
+Active partners, sorted by name. Response: `{ partners: [{ partnerId, name, logoUrl }] }`.
+Rate limit `INTERNAL_READ`.
+
+### `POST /api/internal/savetheworld/partners`
+Body: `{ name, logoUrl? }`. Response: `{ partner: { partnerId, name, created, linked } }`
+(201 when created). Rate limit `INTERNAL_WRITE`.
+
+### `GET /api/internal/savetheworld/events?partnerId=` | `?eventId=<eventId or Mongo _id>`
+Events sorted by `eventDate` descending, capped at 200; `?eventId` returns exactly
+that event regardless of the cap. Response: `{ events: [{ eventId, name, partnerId,
+partnerName, eventDate, isActive, mongoId, captureUrl }] }`. Rate limit `INTERNAL_READ`.
+
+### `POST /api/internal/savetheworld/events`
+Body: `{ savetheworldEventId, eventName, eventDate?, partnerId }`. Requires the
+partner to exist (404 otherwise). Inherits the partner's default design. When
+`SAVETHEWORLD_APP_URL` is set, a new event also gets a default `cta` custom page
+sending the fan to `{SAVETHEWORLD_APP_URL}/take-action/for/{eventId}` after the
+selfie ([lib/savetheworld/provision.ts:58](../lib/savetheworld/provision.ts)).
+Response: `{ event: { eventId, mongoId, partnerId, created, captureUrl } }`.
+Rate limit `INTERNAL_WRITE`.
+
+### `GET /api/internal/savetheworld/pledges?eventId=<Mongo _id or event UUID>&limit=<n>`
+The public pledge wall, newest first (`limit` default 12, max 60): non-tryon
+submissions of the event whose `isShareVisible` is not `false` (submissions
+predating the share opt-in have no field and count as visible) and that have any
+of `finalImageUrl`/`imageUrl`/`originalImageUrl`. Never returns `userEmail` or
+`userInfo`. Response: `{ pledges: [{ pledgeId, imageUrl, name, createdAt }], total }`.
+With `&submissionId=<id>` it instead returns that one submission of the event,
+bypassing the wall filters — a private lookup for the capturer's own post-selfie
+screen. Rate limit `INTERNAL_READ`.
+
+### `POST /api/internal/savetheworld/events/[eventId]/publish-selfies`
+Sets `isShareVisible: true` on the event's non-tryon submissions that have an
+image and are not yet visible (event resolved by `eventId`, Mongo `_id` or
+`savetheworldEventId`). Event-scoped since 12.3.37
+([lib/savetheworld/publishSelfies.ts](../lib/savetheworld/publishSelfies.ts)).
+Not rate-limited. It also flips an explicit `isShareVisible: false` (a fan who
+unticked sharing) — consent decision pending. Response: `{ published, total }`.
+
+### camera → savetheworld
+Browser handoff only: the post-selfie CTA page opens the `SAVETHEWORLD_APP_URL`
+link with `?submissionId=<id>` appended
+([components/capture/CTAPage.tsx](../components/capture/CTAPage.tsx)), so
+savetheworld can show the fan their own photo via the private pledges lookup.
+Camera makes no server-side call to savetheworld.
 
 ## 3. Shared email service (messmass/fanmass → camera)
 
@@ -174,8 +239,9 @@ in Camera, not duplicated between the internal API and Camera's own feature.
 
 ## 5. Rate limiting
 
-All 8 routes above are rate-limited via the shared token-bucket limiter
-([lib/api/rateLimiter.ts](../lib/api/rateLimiter.ts)):
+All 8 §1-§3 routes are rate-limited via the shared token-bucket limiter
+([lib/api/rateLimiter.ts](../lib/api/rateLimiter.ts)); the §2a savetheworld
+routes list their tier per route:
 
 - `RATE_LIMITS.INTERNAL_READ` — 120 requests/minute (the three `GET` routes:
   partners lookup, fanmass events, fanmass media)
@@ -208,10 +274,12 @@ See `.env.example` for the full list; the integration-specific ones:
 |---|---|---|
 | `CAMERA_MESSMASS_INTERNAL_SECRET` | messmass → camera **and** camera → messmass | Auth for §1 routes (including sso-session) and §3 (email); also the secret camera sends outbound in §4's `pushPartnerToMessmass`/`pushSsoSessionToMessmass` calls (same shared secret both directions) |
 | `CAMERA_FANMASS_INTERNAL_SECRET` | fanmass → camera | Auth for §2 routes and §3 (email) |
+| `CAMERA_SAVETHEWORLD_INTERNAL_SECRET` | savetheworld → camera | Auth for §2a routes |
+| `SAVETHEWORLD_APP_URL` | camera → savetheworld (browser) | Base URL for the default post-selfie CTA on newly provisioned savetheworld events (§2a); unset = no CTA |
 | `MESSMASS_BASE_URL` | camera → messmass | Base URL camera calls outbound for the §4 partner-push and sso-session-mint requests ([lib/messmassClient.ts](../lib/messmassClient.ts):14) |
 | `RESEND_API_KEY`, `CAMERA_EMAIL_FROM` | (Camera's own) | Required for §3 to actually send; without them every call returns `sent: false` |
 
-Both internal-auth routes return 403 if their respective secret is unset —
+Every internal-auth route returns 403 if its secret is unset —
 there is no "integration disabled, skip silently" mode on the Camera side
 (unlike messmass, which treats an unconfigured `CAMERA_BASE_URL`/secret as
 `camera_not_configured` and skips provisioning without erroring).

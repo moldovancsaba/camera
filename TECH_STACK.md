@@ -1,7 +1,7 @@
 # Tech Stack
 
-**Version**: 12.2.22  
-**Last Updated**: 2026-07-04
+**Version**: 12.3.37  
+**Last Updated**: 2026-09-28
 
 This document records the current technical stack in use and the parts of the product each technology supports.
 
@@ -39,7 +39,8 @@ This document records the current technical stack in use and the parts of the pr
 
 ### Node.js
 
-- supported by package `engines`: 18.x, 20.x, 22.x
+- `package.json` `engines.node`: `>=24.0.0 <25.0.0`; `.nvmrc`: `24`; CI (`.github/workflows/ci.yml`) uses Node 24 via `.nvmrc`
+- the Vercel project setting still shows Node 22.x, but builds run on 24 because `engines.node` overrides it (per the build log) — set the dashboard to 24.x
 
 ### MongoDB Atlas
 
@@ -54,7 +55,12 @@ Primary persistence layer for:
 - partner-scoped access assignments
 - server-side web session storage
 
-### imgbb
+### Vercel Blob (primary) and imgbb (mirror)
+
+Every image upload goes through `lib/imgbb/upload.ts` (name kept for callers):
+Vercel Blob (`@vercel/blob`) is the required primary store since v12.2.14
+(`f799da5`); imgbb is uploaded concurrently as a best-effort mirror and never
+fails the call. Photos stored before v12.2.14 still carry `i.ibb.co` URLs.
 
 Used for:
 
@@ -130,7 +136,7 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 
 ### `@sovereignsquad/gds-*` and Mantine 8.3
 
-- `gds-core` / `gds-admin` / `gds-theme` `^3.9.0` provide the design-system runtime, admin primitives, and theming
+- `gds-core` / `gds-admin` / `gds-theme` 6.3.0 provide the design-system runtime, admin primitives, and theming; all five `@sovereignsquad/gds-*` packages install from vendored release tarballs (`vendor/gds/*.tgz`, `file:` specs, since v12.3.29)
 - `gds-compliance` and `gds-eslint-config` back the `gds:check` / `gds:validate-manifest` gate
 
 ### Local try-on worker integration
@@ -138,6 +144,10 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 - Camera writes queue state to MongoDB Atlas
 - the official worker lives in the separate try-on worker repository (cloned alongside this repo on operator machines)
 - Camera finalizes generated assets through signed internal callbacks instead of running the processor in-process
+
+### `@vercel/blob`
+
+- primary image storage (see Vercel Blob above)
 
 ### `@upstash/ratelimit` and `@upstash/redis`
 
@@ -149,15 +159,15 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 - `eslint-config-next` 16
 - `tsx`
 - `tsc --noEmit`
-- `playwright` — E2E suite (23 tests across 7 spec files) run serially against a dedicated test database; `npm run test:e2e:safe` preflights env + the disposable-DB guard
+- `playwright` — E2E suite (24 tests across 8 spec files) run serially against a dedicated test database; `npm run test:e2e:safe` preflights env + the disposable-DB guard
 
 ## Hosting and deployment
 
 - Vercel (project `narimato/04_camera`); production domain `camera.messmass.com`
-- Next pinned at `16.2.9` (the `16.0.10 → 16.2.9` bump in v2.14.0 carried RSC/render and
-  security fixes)
-- production is shipped manually via `npx vercel@latest --prod` — git pushes do not currently
-  auto-deploy; see [RUNBOOK.md](RUNBOOK.md)
+- Next: `package.json` `^16.2.11`, lockfile resolves `16.3.2` (2 critical Dependabot
+  advisories open on it as of 2026-09-28; the Dependabot PR to `16.3.3` is open)
+- every push to `main` auto-deploys via the Vercel Git integration; the deploy does not wait
+  for GitHub Actions CI; see [RUNBOOK.md](RUNBOOK.md)
 
 ## Useful scripts
 
@@ -185,7 +195,7 @@ npm run verify:production-guards
 
 ### Known operational constraints
 
-- submission/media lifecycle depends on imgbb
+- submission/media lifecycle depends on Vercel Blob (imgbb only as mirror; older photos still served from `i.ibb.co`)
 - some collection shapes are compatibility-driven and broader than the hot runtime path actually persists
 - partner-scoped authorization is newer than the original global-admin model, so docs and code must be kept in sync deliberately
 

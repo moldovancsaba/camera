@@ -1,14 +1,14 @@
 # Camera GDS Release Gate
 
-> **Status (2026-07-04)**: the GitHub Actions workflow that ran this gate was removed in commit `c0b8b54`. Per the #78 decision, the gate is now a **formalized local/manual lane**: run `npm run release:check` before every production release (and before merging UI/admin/public/GDS changes). It chains the full sequence below and exits non-zero on the first failure. Re-adding a CI workflow later is optional and would simply invoke the same script.
+> **Status (2026-09-28)**: `.github/workflows/ci.yml` runs `npm run inventory:check` + `npm run release:check` on push/PR to `main` (reintroduced in v12.2.2 after the 2026-06 removal in `c0b8b54`). Vercel deploys are not gated on it — every push to `main` deploys whether CI passes or not — so run `npm run release:check` before every push to `main` (and before merging UI/admin/public/GDS changes). It chains the full sequence below and exits non-zero on the first failure.
 
-**Last Updated**: 2026-07-04
+**Last Updated**: 2026-09-28
 
 ## Purpose
 
 This document defines the required release gate for Camera changes that touch UI, admin workflows, public flows, or GDS package boundaries.
 
-Camera uses the Sovereign Squad General Design System through the published `@sovereignsquad/*` package line. The machine-readable contract is [gds-adoption.json](../gds-adoption.json).
+Camera uses the Sovereign Squad General Design System through the `@sovereignsquad/*` packages, installed from vendored release tarballs (`vendor/gds/*.tgz` via `file:` specs, 6.3.0, since v12.3.29) — no registry or token needed. The machine-readable contract is [gds-adoption.json](../gds-adoption.json).
 
 ## Package Manager
 
@@ -36,6 +36,7 @@ npm run gds:validate-manifest   # GDS manifest is well-formed
 npm run gds:check               # GDS compliance + import-boundary check
 npm run type-check              # tsc --noEmit
 npm run lint                    # eslint . (incl. the RSC boundary rule, #82)
+npm run test:unit               # DB-free unit tests (node:test via tsx)
 npm run verify:production-guards # dev/e2e/debug routes 404 in production (#85)
 npm run build                   # production build
 ```

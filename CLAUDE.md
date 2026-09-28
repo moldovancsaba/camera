@@ -78,20 +78,21 @@ rather than claim compliance.
 
 ## 2. Zero-tolerance quality gate before anything reaches `main`
 
-**This repo currently has no GitHub Actions CI workflow** (`.github/workflows/` is
-empty) — the only automated gate on a PR today is Vercel's own build step, which
-only catches build failures, not lint or type errors. That means local discipline
-is the actual gate; treat it as non-optional rather than assuming a red PR check
-will catch a mistake, because none currently will.
+**CI exists but does not gate deploys.** `.github/workflows/ci.yml` runs
+`npm run inventory:check` and `npm run release:check` on push/PR to `main`
+(required status check `Verify`), but Vercel deploys every push to `main` without
+waiting for it, and direct pushes to `main` bypass the PR requirement. A red CI
+run therefore does not stop a broken commit reaching production — local
+discipline is the actual gate; treat it as non-optional.
 
 Before every push, run: `npx tsc --noEmit` and `npm run lint`
 (`eslint .`, effectively zero-warning in practice) at minimum; `npm run build` for
 anything touching routing, config, or provider setup. For anything touching the
 GDS-adopted surface (`app/admin`, `components/gds`) or dev-only routes, run the full
 `npm run release:check` chain (`gds:validate-manifest` → `gds:check` +
-`scripts/check-gds-boundaries.mjs` → `type-check` → `lint` →
-`verify:production-guards` → `build`) — it's the closest thing this repo has to a
-real release gate and it's cheap to run.
+`scripts/check-gds-boundaries.mjs` → `type-check` → `lint` → `test:unit` →
+`verify:production-guards` → `build`) plus `npm run inventory:check` — the same
+checks CI runs, and cheap to run.
 
 Fix failures at the source; never suppress a lint rule, skip a test, or silence a
 warning to get green. If a clean run genuinely isn't achievable, stop and say so
@@ -113,15 +114,16 @@ check it.
   reuses the same name.
 - Before any push, self-check: type-check + lint (+ build/release:check when
   relevant) clean, no scratch/debug files staged, no AI branding per §1.
-- Open a PR, verify Vercel's deployment succeeded (there's no separate CI check to
-  wait on — see §2), then merge directly. Don't leave a green PR sitting unmerged
+- Open a PR, wait for the `Verify` CI check and Vercel's preview deployment to
+  succeed, then merge directly (merging deploys to production — Vercel does not
+  wait on CI, see §2). Don't leave a green PR sitting unmerged
   waiting for a human unless explicitly told to.
 - Clean up local test infrastructure (dev servers, scratch scripts) before
   considering a task done.
 
 ## 4. This repo's role in the shared SSO ecosystem
 
-camera, messmass, fanmass, and launchmass all authenticate against a single OIDC
+camera, messmass, fanmass, launchmass, and savetheworld all authenticate against a single OIDC
 provider at `sso.doneisbetter.com`. Tribal knowledge worth knowing before touching
 any auth code here:
 

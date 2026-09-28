@@ -1,6 +1,6 @@
 # Try-On Architecture
 
-**Version**: 12.3.35  
+**Version**: 12.3.37  
 **Last Updated**: 2026-07-04
 
 ## Purpose

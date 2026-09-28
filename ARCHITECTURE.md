@@ -1,7 +1,7 @@
 # Architecture
 
-**Version**: 12.2.22  
-**Last Updated**: 2026-07-04
+**Version**: 12.3.37  
+**Last Updated**: 2026-09-28
 
 This document describes the current production architecture of Camera as implemented in the repository today.
 
@@ -27,7 +27,7 @@ Browser / Public Screens
   -> Next.js App Router pages and client components
   -> API routes / edge middleware
   -> business logic in lib/*
-  -> MongoDB Atlas + imgbb + SSO
+  -> MongoDB Atlas + Vercel Blob (imgbb mirror) + SSO
 ```
 
 ### Browser and page layer
@@ -56,7 +56,7 @@ Browser / Public Screens
 ### External services
 
 - MongoDB Atlas
-- imgbb
+- Vercel Blob (primary image store since v12.2.14) and imgbb (best-effort mirror), both via `lib/imgbb/upload.ts`
 - external SSO service
 - Resend (transactional email)
 - optional Upstash Redis for shared rate limiting
@@ -278,6 +278,7 @@ This is intentional. Do not collapse it into a single rule. See [docs/MONGODB_CO
 
 Core collections:
 
+- `organizations`
 - `partners`
 - `events`
 - `frames`
@@ -286,11 +287,16 @@ Core collections:
 - `slideshows`
 - `slideshow_layouts`
 - `landing_pages`
+- `landing_page_css_presets`
 - `partner_user_access`
 - `users_cache`
 - `web_sessions`
 - `leather_suits`
 - `tryon_jobs`
+- `tryon_worker_heartbeats`
+- `tryon_moderation_events`
+- `tryon_setups`
+- `camera_setup_preferences`
 - `admin_settings`
 
 Schema definitions live in [lib/db/schemas.ts](lib/db/schemas.ts).
@@ -302,7 +308,7 @@ Primary path:
 1. capture page collects image and optional onboarding data
 2. client composites photo + frame where required
 3. `POST /api/submissions`
-4. server uploads raster to imgbb
+4. server uploads raster via `lib/imgbb/upload.ts` (Vercel Blob primary, imgbb best-effort mirror)
 5. server inserts Mongo submission document
 6. share, gallery, and slideshow flows consume that record
 
@@ -345,7 +351,7 @@ Major API groups:
 - admin users/submissions utilities: `/api/admin/**`
 - event data exports: `/api/admin/events/[id]/export/emails` and `/api/admin/events/[id]/export/images` (manager-gated; CSV + ZIP, shared logic in `lib/events/event-export.ts`)
 - go-short redirects: `/api/go-short/**`
-- internal service-to-service: `/api/internal/messmass/**` (messmass provisions organisations/partners/events; messmass is master), `/api/internal/fanmass/**` (fanmass pulls events + media, read-only), `/api/internal/tryon/**` (try-on worker callbacks) — each gated by its own shared secret, not a user session. See [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md).
+- internal service-to-service: `/api/internal/messmass/**` (messmass provisions organisations/partners/events; messmass is master), `/api/internal/fanmass/**` (fanmass pulls events + media, read-only), `/api/internal/tryon/**` (try-on worker callbacks), `/api/internal/savetheworld/**` (savetheworld provisions partners/events, reads the pledge wall, bulk-publishes an event's selfies; `x-savetheworld-secret`), `/api/internal/email/send` (shared cross-app email via Resend; accepts the messmass or fanmass caller secret) — each gated by a shared secret, not a user session. See [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md).
 
 The exact route list should be taken from `app/api/**/route.ts`, not from memory.
 
@@ -364,14 +370,15 @@ links, or render `<Link><Button/></Link>`. `component={Link}` is valid only insi
 
 Expected environment shape:
 
-- Next.js app deployed on Vercel (project `narimato/04_camera`, domain `camera.messmass.com`)
+- Next.js app deployed on Vercel (project `narimato/04_camera`, domains `camera.messmass.com`, `go.messmass.com`)
 - MongoDB Atlas for persistence
-- imgbb for raster hosting
+- Vercel Blob for raster hosting (primary since v12.2.14), imgbb as best-effort mirror
 - SSO host reachable over HTTPS
 - optional Upstash Redis for shared rate limits
 
-Production is currently shipped manually with `npx vercel@latest --prod` (git pushes do not
-auto-deploy). Deploy/verify/auto-deploy-repair steps: [RUNBOOK.md](RUNBOOK.md).
+Every push to `main` auto-deploys to production via the Vercel Git integration; the
+deploy is not gated on GitHub Actions CI, so run `npm run release:check` before pushing.
+Deploy/verify steps: [RUNBOOK.md](RUNBOOK.md).
 
 **Branching model:** single long-lived branch `main` (production), plus short-lived
 per-task branches (`feature/*`, `fix/*`, `chore/*`, `dependabot/*`, …) merged in via
