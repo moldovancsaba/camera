@@ -12,6 +12,13 @@
   and correctly. Filters now combine every clause with `$and`
   (`lib/savetheworld/publishSelfies.ts`) and refuse to build without event
   keys; `lib/savetheworld/publishSelfies.test.ts` pins it.
+- **Fixed:** `GET /api/internal/savetheworld/pledges` admitted submissions
+  that had only `imageUrl` or `originalImageUrl` (since v12.3.36) but returned
+  only `previewImageUrl || finalImageUrl`, so those reached savetheworld with
+  no image — 7 of 918 wall-eligible submissions (none yet on a
+  savetheworld-linked event). The wall now admits only submissions with a
+  displayable image and returns `previewImageUrl || finalImageUrl || imageUrl`;
+  the raw `originalImageUrl` is still never returned.
 - **Known issue (decision pending):** even when scoped, the endpoint flips
   `isShareVisible: false` as well as missing values, so it overrides a fan who
   explicitly unticked sharing at that event.
@@ -61,6 +68,14 @@
   for the event, independent of `limit`) so savetheworld can show "people
   involved" on its event pages. Same filter as the list; no new data exposed.
   Fleet version 12.3.32.
+- Also first shipped in this release (committed at 12.3.31 with no release
+  entry at the time; noted retroactively in v12.3.37): `89c436f` explicit share
+  opt-in on plain pledge captures; `16a2cd4` `GET /api/internal/savetheworld/events`
+  and `/partners`, plus a default post-selfie CTA on newly provisioned events
+  when `SAVETHEWORLD_APP_URL` is set; `fbe021b` `submissionId` handed off through
+  that CTA and the pledges feed's private `?submissionId=` lookup; `c2d791e`
+  `mongoId`/`captureUrl` on the `GET` events list; `4913aea` docs gate hard-fails
+  on stale or unresolvable contract stamps.
 
 ## v12.3.31 — fleet: savetheworld on the map; scanner reads src/app
 
@@ -775,6 +790,16 @@ numbers (Brain Bar 2026 x AUDI F1).
   type-check, lint, verify:production-guards, build — instead of the minimal
   type-check + build gate it shipped with two days ago.
 
+## v12.2.6 — admin modals used undefined CSS variables
+
+- `168eff3`: `CustomPagesManager`'s page-editor modal and
+  `UserManagementActions`' merge dialog used `--gds-color-overlay`,
+  `--gds-color-surface` and `--gds-color-border`, which GDS does not define, so
+  both rendered with no backdrop or panel background. Switched to
+  `--gds-overlay-scrim`, `--gds-overlay-surface` and `--gds-border-card`, and
+  fixed a stray `)` that invalidated a `box-shadow`. (Entry added retroactively
+  in v12.3.37.)
+
 ## v12.2.4 — sharp security bump
 
 - `sharp` `^0.34.5` → `^0.35.3`, closing the remaining high-severity runtime
@@ -808,6 +833,14 @@ numbers (Brain Bar 2026 x AUDI F1).
   (1256 eslint errors plus forbidden-color findings) and are left out until that
   backlog is burned down rather than wired in permanently red.
 
+## v12.2.1 — vendored GDS 6.2.0 → 6.3.0
+
+- `4782fb8`: vendored `@sovereignsquad/gds-{admin,core,theme}` bumped 6.2.0 →
+  6.3.0 (additive upstream), and `gds-compliance`/`gds-eslint-config` vendored
+  as `file:` tarballs for the first time instead of resolving from the frozen
+  3.9.0 line on npmjs.org. `gds-adoption.json`'s `gdsVersion` corrected from
+  the stale 3.9.0. (Entry added retroactively in v12.3.37.)
+
 ## v12.2.0 — Fleet version unification + Wave 0 security
 
 - **Fleet version unification**: adopts the single shared version 12.2.0 that all
@@ -822,11 +855,6 @@ numbers (Brain Bar 2026 x AUDI F1).
     later tampering: once `userInfo` is set, only an authenticated admin may change it.
   - Corrected the false "sessions are encrypted" comment in `lib/auth/session.ts`
     (payload is base64url JSON; at-rest encryption remains tracked in camera#119).
-
-
-**Project**: Camera — Photo Frame Webapp
-**Current Version**: 12.2.0
-**Last Updated**: 2026-08-20
 
 **Note**: This is historical release history, not the canonical runtime specification. For current behavior, use `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 

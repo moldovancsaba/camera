@@ -158,9 +158,11 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       // Custom page data
       userInfo,
       consents,
-      // Explicit public pledge-wall opt-in from the capture flow (defaults to false/unset
-      // when omitted -- never inferred, never backfilled). Only meaningful for plain
-      // ('original') captures; try-on results get isShareVisible from the moderation flow.
+      // Public pledge-wall share choice from the capture flow. The capture UI's checkbox
+      // defaults to checked (d9488b5); a request that omits shareOptIn stores false.
+      // POST /api/internal/savetheworld/events/[eventId]/publish-selfies can later set
+      // isShareVisible true in bulk for an event. Only meaningful for plain ('original')
+      // captures; try-on results get isShareVisible from the moderation flow.
       shareOptIn,
     } = body;
   const tryOnRequest = normalizeTryOnRequest(body);
@@ -256,8 +258,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       fileSize: uploadResult.fileSize,
       mimeType: uploadResult.mimeType,
       submissionKind: 'original',
-      // Public pledge-wall visibility: true only when the capturer explicitly opted in
-      // at capture time; unset/false otherwise (opt-in, never opt-out, never inferred).
+      // Public pledge-wall visibility: true only when shareOptIn === true in the request
+      // (the capture UI's checkbox defaults to checked); false otherwise. May later be
+      // bulk-set to true by publish-selfies (see the shareOptIn note above).
       isShareVisible: shareOptIn === true,
       // User info from onboarding pages
       ...(validatedUserInfo && { userInfo: validatedUserInfo }),

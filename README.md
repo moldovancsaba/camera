@@ -1,7 +1,7 @@
 # Camera
 
-**Version**: 12.3.35  
-**Last Updated**: 2026-07-04  
+**Version**: 12.3.37  
+**Last Updated**: 2026-09-28  
 **Status**: Production system
 
 Camera is a Next.js platform for branded photo capture, event galleries, slideshow playback, partner operations, and reusable shared resources on the same identity, media, and MongoDB foundations.
@@ -38,6 +38,9 @@ The admin UX is organized around that model:
 - `/slideshow/[slideshowId]` — public slideshow player
 - `/slideshow-layout/[layoutId]` — public composite slideshow layout player
 - `/landing/[slug]` — public landing page surface
+- `/greatest-hits/[slug]` — public Greatest Hits wall for an event (approved, share-visible try-on results marked great)
+- `/profile` — signed-in user's own submission gallery (redirects to sign-in without a session)
+- `/users/[name]` — user profile with submissions and event participation; Camera admins also get user management there
 
 ## Admin surfaces
 
@@ -59,7 +62,7 @@ The admin UX is organized around that model:
 2. Optional custom pages collect guest data, consent, or CTA actions.
 3. Browser captures or uploads an image.
 4. Client-side compositing applies the selected frame where applicable.
-5. `POST /api/submissions` uploads the final raster to imgbb and stores metadata in MongoDB.
+5. `POST /api/submissions` uploads the final raster via `lib/imgbb/upload.ts` (Vercel Blob primary, imgbb best-effort mirror, since v12.2.14) and stores metadata in MongoDB.
 6. Submission becomes available to share pages, galleries, and slideshow playlists.
 
 ### Event data exports
@@ -71,7 +74,7 @@ collected for an event:
   CSV of every address collected from SSO sign-ins and the guest onboarding form.
 - **Images** — `GET /api/admin/events/[id]/export/images?format=csv|zip` covers originals,
   finals, and derived try-on results. `csv` (default) lists every image URL with metadata;
-  `zip` streams the actual files from imgbb, capped at 500 files (larger events use the CSV).
+  `zip` streams the actual files from their stored URLs (Vercel Blob, or imgbb for older photos), capped at 500 files (larger events use the CSV).
 
 Shared logic lives in `lib/events/event-export.ts`. Access requires partner-scoped Events
 `manager` (global admins included). See [docs/EVENT_EXPORTS.md](docs/EVENT_EXPORTS.md).
@@ -153,11 +156,9 @@ three-branch plan was never adopted. Full policy in [docs/BRANCHING.md](docs/BRA
 
 ## Deployment
 
-Production is hosted on Vercel (`camera.messmass.com`). Pushing to `main` does **not**
-currently auto-deploy — ship with `npx vercel@latest --prod` from a clean checkout of
-`main`. GitHub Actions workflows (including the guarded push-to-deploy lane) were removed
-in 2026-06 (commit `c0b8b54`); restoring auto-deploy is a Vercel GitHub App configuration
-task. Full deploy + verify + auto-deploy-repair steps are in [RUNBOOK.md](RUNBOOK.md).
+Production is on Vercel (`narimato/04_camera`; `go.messmass.com`, `camera.messmass.com`).
+Pushing to `main` auto-deploys; Vercel does not wait for CI, so run
+`npm run release:check` first. Steps: [RUNBOOK.md](RUNBOOK.md).
 
 > **RSC note:** Server Components must not pass a component *function* (e.g. `component={Link}`)
 > as a prop to a client component — it triggers a "Functions cannot be passed directly to
@@ -172,7 +173,7 @@ task. Full deploy + verify + auto-deploy-repair steps are in [RUNBOOK.md](RUNBOO
 - Tailwind CSS 4
 - MongoDB Atlas
 - SSO OAuth2/OIDC + PKCE
-- imgbb for raster hosting
+- Vercel Blob for raster hosting (primary since v12.2.14), imgbb as best-effort mirror
 - Resend for transactional email (per-event templates and sender name)
 - optional Upstash Redis for shared rate limits
 
@@ -206,13 +207,13 @@ See [docs/MONGODB_CONVENTIONS.md](docs/MONGODB_CONVENTIONS.md) and [ARCHITECTURE
 
 ## Design system
 
-Camera admin UI follows the portfolio [General Design System](https://github.com/sovereignsquad/general-design-system) through the published `@sovereignsquad/*` package line. Local adapter details, migration state, exceptions, and the formal adoption manifest: [docs/GDS_CAMERA_ADOPTION.md](docs/GDS_CAMERA_ADOPTION.md) and [gds-adoption.json](gds-adoption.json).
+Camera admin UI follows the portfolio [General Design System](https://github.com/sovereignsquad/general-design-system) through the `@sovereignsquad/*` packages, installed from vendored release tarballs (`vendor/gds/*.tgz` via `file:` specs, since v12.3.29). Local adapter details, migration state, exceptions, and the formal adoption manifest: [docs/GDS_CAMERA_ADOPTION.md](docs/GDS_CAMERA_ADOPTION.md) and [gds-adoption.json](gds-adoption.json).
 
 GDS release gate:
 
 - `npm` is the canonical CI/release package manager because `package-lock.json` is present
 - GitHub Actions workflows were removed in 2026-06 (commit `c0b8b54`) and then reintroduced: `.github/workflows/ci.yml` now runs `npm run release:check` (gds manifest + compliance + boundary, type-check, lint, `test:unit`, production-guards, build) on every push/PR
-- release-gate details are maintained in [docs/GDS_RELEASE_GATE.md](docs/GDS_RELEASE_GATE.md); the command list and the CI wiring are both current
+- release-gate details are maintained in [docs/GDS_RELEASE_GATE.md](docs/GDS_RELEASE_GATE.md); CI (`.github/workflows/ci.yml`) runs `npm run inventory:check` then `npm run release:check` on push/PR to `main`, and Vercel deploys are not gated on it
 
 Reusable exception guidance:
 
@@ -221,14 +222,14 @@ Reusable exception guidance:
 Current package note:
 
 - Camera is aligned to the GDS **6.3.0 contracts** (migrated from the `@doneisbetter/*` scope)
-- Camera now consumes the `@sovereignsquad/*` package line directly via npm dependencies at the provider/theme/compliance boundary
+- Camera consumes the `@sovereignsquad/*` packages at the provider/theme/compliance boundary from vendored tarballs (`vendor/gds/*.tgz` via `file:` specs in `package.json`, since v12.3.29), not from a registry
 - Camera now runs on Mantine `8.3.x`, matching the current GDS peer contract
 - Camera no longer carries the old local `AppButton` or `components/gds/ui` barrel authority; leaf controls import Mantine directly under the GDS runtime where needed
 - public landing pages keep an explicit creator-CSS exception so pages like `/landing/*` can preserve custom themed presentation independent of the admin GDS chrome
 
 ## E2E test reliability
 
-The Playwright E2E suite (23 tests across 7 spec files, including admin smoke rendering and
+The Playwright E2E suite (24 tests across 8 spec files, including admin smoke rendering and
 the manager-gated export contract) runs serially against a dedicated `camera_test` MongoDB
 database. `npm run test:e2e:safe` is the recommended entry point — it preflights the
 environment and enforces the disposable-database guard before any test runs.
@@ -258,13 +259,21 @@ Operational docs:
 - [docs/TRYON_ARCHITECTURE.md](docs/TRYON_ARCHITECTURE.md)
 - [docs/TRYON_OPERATIONS.md](docs/TRYON_OPERATIONS.md)
 
-## messmass + fanmass integration
+## Fleet integrations
 
 Camera is provisioned by **messmass** (event reporting/partner management —
 the master for organisations/partners/events) and read by **fanmass** (image
 analytics — brand/sponsor/fan recognition). Both are server-to-server,
 secret-authenticated routes under `/api/internal/**`; Camera calls messmass outbound for partner push + sso-session mint (lib/messmassClient.ts); it otherwise only serves
-to either app. See [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md).
+to either app.
+
+**savetheworld** (pledge campaign app) provisions partners and events into
+Camera, reads the public pledge wall, and bulk-publishes an event's fan selfies
+via `/api/internal/savetheworld/*` (`x-savetheworld-secret` =
+`CAMERA_SAVETHEWORLD_INTERNAL_SECRET`). Camera hands fans to savetheworld via the
+post-selfie CTA when `SAVETHEWORLD_APP_URL` is set.
+
+See [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md).
 
 ## Documentation map
 

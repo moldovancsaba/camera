@@ -1,13 +1,13 @@
 {
  "_meta": {
-  "generated": "2026-09-28T09:02:32+00:00",
+  "generated": "2026-09-28T09:29:51+00:00",
   "repo": "camera",
-  "head": "06f3029",
+  "head": "ccd77d5",
   "counts": {
    "endpoints": 99,
    "collections": 6,
    "env": 65,
-   "outbound-hosts": 19,
+   "outbound-hosts": 18,
    "docs": 39
   }
  },
@@ -829,9 +829,10 @@
    ],
    "file": "app/api/internal/savetheworld/events/[eventId]/publish-selfies/route.ts",
    "auth_markers": [
+    "assertInternalSavetheworldSecret",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/internal/savetheworld/events",
@@ -841,9 +842,10 @@
    ],
    "file": "app/api/internal/savetheworld/events/route.ts",
    "auth_markers": [
+    "assertInternalSavetheworldSecret",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/internal/savetheworld/partners",
@@ -853,9 +855,10 @@
    ],
    "file": "app/api/internal/savetheworld/partners/route.ts",
    "auth_markers": [
+    "assertInternalSavetheworldSecret",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/internal/savetheworld/pledges",
@@ -864,9 +867,10 @@
    ],
    "file": "app/api/internal/savetheworld/pledges/route.ts",
    "auth_markers": [
+    "assertInternalSavetheworldSecret",
     "withErrorHandler"
    ],
-   "no_auth_marker": true
+   "no_auth_marker": false
   },
   {
    "path": "/api/internal/tryon/complete",

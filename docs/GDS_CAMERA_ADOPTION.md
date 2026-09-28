@@ -1,7 +1,7 @@
 # Camera GDS Adoption
 
-**Version**: 12.3.36  
-**Last Updated**: 2026-08-25
+**Version**: 12.3.37  
+**Last Updated**: 2026-09-28
 
 ## SSOT statement
 
@@ -29,7 +29,7 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | Notifications | Root `GdsNotificationProvider` / `GdsToastProvider` from `@sovereignsquad/gds-core/client` plus `showGdsNotification` from `@sovereignsquad/gds-theme/client` |
 | Modals / confirm | Root `GdsConfirmProvider` / `OverlayManagerProvider` from `@sovereignsquad/gds-core/client`; legacy `lib/gds/confirm-destructive.tsx` remains a migration bridge |
 | Adoption manifest | `gds-adoption.json` |
-| Release gate | `.github/workflows/gds-release-gate.yml`, [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md) |
+| Release gate | `.github/workflows/ci.yml` (`inventory:check` + `release:check`), [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md) |
 
 ## Pattern adapter inventory
 
@@ -305,6 +305,21 @@ The same token is also set as a `GITHUB_TOKEN` project environment variable in V
 (Production and Preview, 2026-08-25) -- this repo deploys manually via
 `npx vercel@latest --prod`, which builds remotely on Vercel's own infrastructure and needed
 the credential there too. Confirmed live: the latest Vercel deployment is `READY`.
+
+### 2026-09-08: back to vendored tarballs (v12.3.29, `6246dbf`)
+
+The registry install above lasted two weeks. From 2026-09-07 every CI `npm ci` failed with a
+403 from GitHub Packages (org Packages billing limit). `@sovereignsquad/gds-{core,theme,admin,compliance,eslint-config}`
+6.3.0 are again committed under `vendor/gds/` (from the `gds-v6.3.0` release assets) and
+installed via `file:vendor/gds/*.tgz` specs in `package.json`; `.npmrc` was removed, the
+lockfile contains no GitHub Packages URL, and CI (`.github/workflows/ci.yml`) needs no
+registry token. Same version (6.3.0) — an install-mechanism change only.
+
+Consequence: the `GITHUB_TOKEN` Vercel environment variable described in the 2026-08-25
+entry is no longer needed for the build (it was still present on the production
+environment on 2026-09-28). Removing it is a Vercel dashboard/owner action and has not been
+done. Production also no longer deploys manually — every push to `main` auto-deploys (see
+[RUNBOOK.md](../RUNBOOK.md)).
 
 ## Formal compliance path
 

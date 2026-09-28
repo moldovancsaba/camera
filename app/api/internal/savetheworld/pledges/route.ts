@@ -13,11 +13,15 @@ import { assertInternalSavetheworldSecret } from '@/lib/savetheworld/internal';
  * taking action" wall, newest first.
  *
  * Privacy boundary — these land on a public marketing page, so this returns
- * ONLY submissions the capturer published themselves (`isShareVisible`), and
- * never `userEmail`/`userInfo`. Display name only, and only when the user set
- * one. Uses `finalImageUrl` (the framed composite the user chose to share),
- * not `originalImageUrl` — the opposite of the fanmass feed, which wants the
- * raw photo for brand analytics and is never shown publicly.
+ * only non-tryon submissions whose `isShareVisible` is not `false` (explicitly
+ * unticked photos are excluded; submissions created before the share opt-in
+ * existed have no field and are treated as visible), and never
+ * `userEmail`/`userInfo`. Display name only, and only when the user set one.
+ * A submission qualifies only if it has a displayable image; the returned
+ * `imageUrl` is `previewImageUrl`, else `finalImageUrl` (the framed
+ * composite), else `imageUrl` (the primary public image), never
+ * `originalImageUrl` — the opposite of the fanmass feed, which wants the raw
+ * photo for brand analytics and is never shown publicly.
  *
  * When `submissionId` is present, this instead looks up that ONE submission
  * directly by its `submissionId` field, bypassing the isShareVisible /
@@ -73,7 +77,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       pledges: [
         {
           pledgeId: submission.submissionId,
-          imageUrl: submission.previewImageUrl || submission.finalImageUrl,
+          imageUrl: submission.previewImageUrl || submission.finalImageUrl || submission.imageUrl,
           name: submission.userName || null,
           createdAt: submission.createdAt,
         },
@@ -89,7 +93,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       eventMatch,
       { submissionKind: { $ne: 'tryon_result' } },
       { isShareVisible: { $ne: false } },
-      { $or: [{ finalImageUrl: { $type: 'string' } }, { imageUrl: { $type: 'string' } }, { originalImageUrl: { $type: 'string' } }] },
+      // Only fields this route will return; the raw originalImageUrl is never shown here.
+      { $or: [{ previewImageUrl: { $type: 'string' } }, { finalImageUrl: { $type: 'string' } }, { imageUrl: { $type: 'string' } }] },
     ],
   };
   const [submissions, total] = await Promise.all([
@@ -100,7 +105,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   return apiSuccess({
     pledges: submissions.map((s) => ({
       pledgeId: s.submissionId,
-      imageUrl: s.previewImageUrl || s.finalImageUrl,
+      imageUrl: s.previewImageUrl || s.finalImageUrl || s.imageUrl,
       name: s.userName || null,
       createdAt: s.createdAt,
     })),

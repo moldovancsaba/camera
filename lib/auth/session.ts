@@ -1,7 +1,7 @@
 /**
  * Session Management
  * 
- * Manages user sessions with 30-day sliding expiration.
+ * Manages user sessions with a fixed 30-day expiration (see Features below).
  * Sessions are stored in httpOnly, Secure, SameSite cookies. With a Mongo
  * connection the cookie is only a random pointer to a `web_sessions` document.
  * On the fallback path the cookie carries the session JSON itself: readable
