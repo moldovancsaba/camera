@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { apiSuccess, withErrorHandler } from '@/lib/api';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { assertInternalSavetheworldSecret } from '@/lib/savetheworld/internal';
+import { buildEventSubmissionsFilter, buildPublishSelfiesFilter } from '@/lib/savetheworld/publishSelfies';
 
 /**
  * POST /api/internal/savetheworld/events/[eventId]/publish-selfies
@@ -51,23 +52,15 @@ export const POST = withErrorHandler(async (
       ),
     ),
   );
-  const eventMatch = { $or: [{ eventId: { $in: eventKeys } }, { eventIds: { $in: eventKeys } }] };
 
-  // Any non-tryon submission that has at least one image URL and isn't published yet.
-  const filter = {
-    ...eventMatch,
-    submissionKind: { $ne: 'tryon_result' },
-    $or: [
-      { finalImageUrl: { $type: 'string' } },
-      { imageUrl: { $type: 'string' } },
-      { originalImageUrl: { $type: 'string' } },
-    ],
-    isShareVisible: { $ne: true },
-  };
-
+  // Both filters combine their clauses with $and (see lib/savetheworld/publishSelfies.ts):
+  // spreading the event $or next to the image-URL $or used to drop the event
+  // scope entirely, so the update ran across every event.
   const [total, result] = await Promise.all([
-    db.collection(COLLECTIONS.SUBMISSIONS).countDocuments({ ...eventMatch, submissionKind: { $ne: 'tryon_result' } }),
-    db.collection(COLLECTIONS.SUBMISSIONS).updateMany(filter, { $set: { isShareVisible: true } }),
+    db.collection(COLLECTIONS.SUBMISSIONS).countDocuments(buildEventSubmissionsFilter(eventKeys)),
+    db.collection(COLLECTIONS.SUBMISSIONS).updateMany(buildPublishSelfiesFilter(eventKeys), {
+      $set: { isShareVisible: true },
+    }),
   ]);
 
   return apiSuccess({ published: result.modifiedCount, total });

@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-09-12T14:54:06+00:00",
-  "repo": "camera-fleet",
-  "head": "a54c3a7",
+  "generated": "2026-09-28T09:02:32+00:00",
+  "repo": "camera",
+  "head": "06f3029",
   "counts": {
-   "endpoints": 98,
+   "endpoints": 99,
    "collections": 6,
    "env": 65,
    "outbound-hosts": 19,
@@ -817,6 +817,17 @@
     "POST"
    ],
    "file": "app/api/internal/messmass/sso-session/route.ts",
+   "auth_markers": [
+    "withErrorHandler"
+   ],
+   "no_auth_marker": true
+  },
+  {
+   "path": "/api/internal/savetheworld/events/[eventId]/publish-selfies",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/internal/savetheworld/events/[eventId]/publish-selfies/route.ts",
    "auth_markers": [
     "withErrorHandler"
    ],

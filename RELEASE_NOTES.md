@@ -1,5 +1,39 @@
 # RELEASE_NOTES.md
 
+## v12.3.37 — publish-selfies scoped to its event (privacy fix)
+
+- **Fixed:** `POST /api/internal/savetheworld/events/[eventId]/publish-selfies`
+  was not scoped to the event. Its update filter spread the event match
+  (`{ $or: [...] }`) and then set a second `$or` (the image-URL clauses) in the
+  same object literal; the second key replaced the first, so the event
+  condition vanished and the `updateMany` set `isShareVisible: true` on every
+  not-yet-visible non-tryon submission with an image, across **all** events.
+  The response still looked plausible because `total` was computed separately
+  and correctly. Filters now combine every clause with `$and`
+  (`lib/savetheworld/publishSelfies.ts`) and refuse to build without event
+  keys; `lib/savetheworld/publishSelfies.test.ts` pins it.
+- **Known issue (decision pending):** even when scoped, the endpoint flips
+  `isShareVisible: false` as well as missing values, so it overrides a fan who
+  explicitly unticked sharing at that event.
+- **Docs gate:** `docs/_audit/*.json` regenerated (the endpoint had never been
+  inventoried, which kept CI red on `main` since 386d3fe) and the route is now
+  in `docs/_audit/api-reference.md`. Fleet version 12.3.37.
+
+## v12.3.36 — pledge wall: fan selfies shared by default
+
+- Capture share checkbox now defaults to **checked**; unchecking keeps the
+  photo private (`app/capture/page.tsx`, `app/capture/[eventId]/page.tsx`).
+  `POST /api/submissions` still stores `isShareVisible: shareOptIn === true`.
+- New `POST /api/internal/savetheworld/events/[eventId]/publish-selfies`
+  (savetheworld secret): bulk-sets `isShareVisible: true` on the event's
+  non-tryon submissions that have an image; event resolved by `eventId`, Mongo
+  `_id` or `savetheworldEventId`; returns `{published, total}`. (Scoping bug
+  fixed in v12.3.37.)
+- `GET /api/internal/savetheworld/pledges` lists non-tryon submissions whose
+  `isShareVisible` is not `false` (pre-opt-in submissions without the field
+  appear) and that have any of `finalImageUrl`/`imageUrl`/`originalImageUrl`.
+  Fleet version 12.3.36. (Entry added retroactively in v12.3.37.)
+
 ## v12.3.35 — fleet lockstep
 
 - Version only (savetheworld feed cache change). Fleet version 12.3.35.
