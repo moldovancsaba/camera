@@ -1,5 +1,21 @@
 # RELEASE_NOTES.md
 
+## v12.3.38 — security dependency updates (fleet lockstep)
+
+- **Security:** `sharp` 0.35.3 → 0.35.5. Its bundled libheif had a high-severity
+  flaw, and anonymous `POST /api/submissions` passes caller-supplied image bytes to
+  `sharp(...).metadata()` (`lib/imgbb/upload.ts`), so this path was reachable in
+  production.
+- **Security:** `next` 16.3.2 → 16.3.7, which clears both critical advisories (image
+  optimizer AVIF RCE; Windows-hosted RCE, not applicable on Vercel).
+- **Security:** the `postcss` override moves from a vulnerable 8.5.15 to 8.5.23 (no
+  Dependabot PR could fix it, because the override pinned it). `@tiptap/*` is pinned
+  to 3.31.3 through overrides; it arrives only as an unused dependency of the vendored
+  GDS package. `undici`, `browserslist`, `js-yaml` and `baseline-browser-mapping`
+  are updated. `npm audit --omit=dev`: 0 vulnerabilities. This supersedes Dependabot
+  PRs #134, #149, #150, #151, #152 and #154.
+- Fleet version 12.3.38 (messmass 12.3.38 fixes event-editor saves).
+
 ## v12.3.37 — publish-selfies scoped to its event (privacy fix)
 
 - **Fixed:** `POST /api/internal/savetheworld/events/[eventId]/publish-selfies`
