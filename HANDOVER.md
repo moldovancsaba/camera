@@ -68,6 +68,12 @@ this file is the short current-state summary. Previous rewrite: 2026-08-17
     and the stray `phase0-ux-bugs` worktree deleted; PR #88 and issue #117 closed.
   - Branch protection on `main` now applies to admins and blocks force-pushes
     (was `enforce_admins: false`), so a red `Verify` check blocks the merge.
+- **Firewall (2026-09-30).** Vercel Firewall rule `fan-upload-flood-ceiling`
+  rate-limits `POST /api/submissions` to 100 requests a minute per IP, globally
+  (see `RUNBOOK.md` "Rate limits"). It is not in git. To recreate it:
+  `npx --yes vercel@latest firewall rules add fan-upload-flood-ceiling --project 04_camera --scope narimato --action rate_limit --condition '{"type":"path","op":"eq","value":"/api/submissions"}' --condition '{"type":"method","op":"eq","value":"POST"}' --rate-limit-algo fixed_window --rate-limit-window 60 --rate-limit-requests 100 --rate-limit-keys ip --rate-limit-action rate_limit --yes`,
+  then `firewall publish`. Verified live: of 130 rapid requests, 100 reached
+  camera and 30 were stopped by the firewall. Upstash is not planned.
 - **Dependabot**: 0 open alerts on 2026-09-29 (v12.3.38 updated `sharp`, `next`,
   the `postcss` override and the transitive packages).
 - **Design system**: GDS 6.3.0 installed from vendored release tarballs
