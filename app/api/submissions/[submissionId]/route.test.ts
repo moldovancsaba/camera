@@ -119,3 +119,99 @@ test('PATCH: a finalized submission with an admin session is allowed', async (t)
   assert.equal(res.status, 200);
   assert.equal(writes.length, 1);
 });
+
+// --- DELETE -----------------------------------------------------------------
+// WHAT: A try-on result is never hard-deleted through the generic route.
+// WHY: Its derived document is the sync backstop's completion marker
+//     (lib/tryon/sync.ts); deleting it without the admin remove route's
+//     moderation event lets the next cron run re-create the result.
+
+function buildUserSession(userId: string): Session {
+  return { ...buildAdminSession(), user: { id: userId, email: 'user@example.com' }, appRole: 'none', appAccess: false } as Session;
+}
+
+function buildTryOnResult() {
+  return {
+    _id: submissionObjectId,
+    submissionKind: 'tryon_result',
+    userId: 'user-1',
+    sourceSubmissionId: new ObjectId().toHexString(),
+    sourceJobId: 'job_20260911182715_abcd1234',
+    imageUrl: 'https://i.ibb.co/abc123/tryon-framed-1.png',
+  };
+}
+
+function mockDeleteDeps(
+  t: import('node:test').TestContext,
+  options: { session: Session; submission: Record<string, unknown> },
+  deletes: unknown[]
+) {
+  t.mock.module('@/lib/api', {
+    namedExports: { ...apiReal, requireAuth: async () => options.session },
+  });
+  t.mock.module('@/lib/db/mongodb', {
+    namedExports: {
+      connectToDatabase: async () => ({
+        collection: () => ({
+          findOne: async () => options.submission,
+          deleteOne: async (filter: unknown) => {
+            deletes.push(filter);
+            return { deletedCount: 1 };
+          },
+        }),
+      }),
+    },
+  });
+  t.mock.module('@/lib/email/submission-result-email', {
+    namedExports: { dispatchPendingSubmissionEmailForSubmission: async () => null },
+  });
+}
+
+function buildDelete(): NextRequest {
+  return new NextRequest(`http://localhost/api/submissions/${submissionId}`, { method: 'DELETE' });
+}
+
+test('DELETE: the owner of a try-on result gets 409 and nothing is deleted', async (t) => {
+  const deletes: unknown[] = [];
+  mockDeleteDeps(t, { session: buildUserSession('user-1'), submission: buildTryOnResult() }, deletes);
+
+  const { DELETE } = await importRouteModule('delete-tryon-owner');
+  const res = await DELETE(buildDelete(), { params: Promise.resolve({ submissionId }) });
+
+  assert.equal(res.status, 409);
+  assert.match((await res.json()).error, /api\/admin\/tryon-results\/\[submissionId\]\/remove/);
+  assert.equal(deletes.length, 0);
+});
+
+test('DELETE: an admin also gets 409 for a try-on result and nothing is deleted', async (t) => {
+  const deletes: unknown[] = [];
+  mockDeleteDeps(t, { session: buildAdminSession(), submission: buildTryOnResult() }, deletes);
+
+  const { DELETE } = await importRouteModule('delete-tryon-admin');
+  const res = await DELETE(buildDelete(), { params: Promise.resolve({ submissionId }) });
+
+  assert.equal(res.status, 409);
+  assert.equal(deletes.length, 0);
+});
+
+test('DELETE: someone who does not own the try-on result still gets 403, not 409', async (t) => {
+  const deletes: unknown[] = [];
+  mockDeleteDeps(t, { session: buildUserSession('user-2'), submission: buildTryOnResult() }, deletes);
+
+  const { DELETE } = await importRouteModule('delete-tryon-stranger');
+  const res = await DELETE(buildDelete(), { params: Promise.resolve({ submissionId }) });
+
+  assert.equal(res.status, 403);
+  assert.equal(deletes.length, 0);
+});
+
+test('DELETE: the owner can still delete their own photo submission', async (t) => {
+  const deletes: unknown[] = [];
+  mockDeleteDeps(t, { session: buildUserSession('user-1'), submission: buildSubmission(true) }, deletes);
+
+  const { DELETE } = await importRouteModule('delete-photo-owner');
+  const res = await DELETE(buildDelete(), { params: Promise.resolve({ submissionId }) });
+
+  assert.equal(res.status, 200);
+  assert.equal(deletes.length, 1);
+});

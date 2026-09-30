@@ -29,6 +29,14 @@ on:
   pull_request:
     branches: [main]
 
+# WHAT: The job's GITHUB_TOKEN can only read the repo.
+# WHY: Nothing here writes to GitHub (checkout, the npm cache and the report
+#      artifact use the Actions runtime token, not this one), and the job runs
+#      a downloaded third-party binary. Without this block the token takes the
+#      repo default, which can be write on push to main.
+permissions:
+  contents: read
+
 jobs:
   verify:
     name: Verify
@@ -40,6 +48,46 @@ jobs:
     # (v12.3.29: two days of 403s at npm ci were the trigger).
     steps:
       - uses: actions/checkout@v4
+
+      # WHAT: gitleaks over the checked-out tree, before anything is installed
+      #       or built (so node_modules and .next are never in scope).
+      # WHY: camera is public. GitHub push protection blocks provider-format
+      #      secrets (Atlas URIs, Resend, Vercel tokens), but camera's own
+      #      shared secrets (CAMERA_*_INTERNAL_SECRET, TRYON_SETUP_SELECTION_SECRET,
+      #      SESSION_SECRET, OAUTH_PKCE_STATE_SECRET, CRON_SECRET) and the imgbb
+      #      key are random strings with no provider pattern, so nothing caught
+      #      them. Same version and flags as try-on and fanmass CI (those two
+      #      do not verify the tarball yet).
+      #      --no-git scopes the scan to the working tree: it protects what is
+      #      being committed now. History is out of scope (a first run over years
+      #      of commits surfaces archaeology, not actionable findings).
+      #      --redact keeps matched values out of the log and of the report
+      #      artifact, which anyone can download on a public repo.
+      #      Known non-secrets are allowlisted, one reason each, in .gitleaks.toml.
+      #      The tarball is checked against a pinned SHA-256 before it is
+      #      unpacked, so a replaced release asset fails the job instead of
+      #      running. The hash is the linux_x64 line of the release's own
+      #      gitleaks_8.18.4_checksums.txt; change it together with the version.
+      - name: Secret scan
+        env:
+          GITLEAKS_VERSION: 8.18.4
+          GITLEAKS_SHA256: ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d
+        run: |
+          curl -sSfL -o /tmp/gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  /tmp/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          /tmp/gitleaks detect --source . --no-git --redact --no-banner \
+            --config .gitleaks.toml --report-path /tmp/gitleaks.json --exit-code 1
+
+      - name: Upload scan report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: /tmp/gitleaks.json
+          if-no-files-found: ignore
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'

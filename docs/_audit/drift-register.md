@@ -34,16 +34,29 @@ zero-caller deprecation list).
   the unsigned form was a forgeable admin session. Production normally uses the
   Mongo pointer cookie. Not encrypted, by decision: contents stay readable to
   the holder; confidentiality is HttpOnly + Secure + TLS (docs/AUTHORIZATION.md §13).
-- **`POST /api/upload-logo`** is `requireAuth` only — any `appRole:'user'`
-  can upload, while the sibling `POST /api/logos` is `requireAdmin`.
+- ~~**`POST /api/upload-logo`** is `requireAuth` only — any `appRole:'user'`
+  can upload, while the sibling `POST /api/logos` is `requireAdmin`.~~ FIXED
+  (v12.3.39, CAM-03): requireAuth, then `RATE_LIMITS.UPLOAD`, then a role
+  check — `appAccess:false` → 403; global admins pass; anyone else needs an
+  active `partner_user_access` Events manager/admin row. Decoded image capped at
+  4 MB (413). Decision recorded: partner Events managers are allowed, matching
+  the gallery-upload and slideshow background-image uploads (the callers are
+  the event forms and the landing-page editor, which they may use). Tests:
+  app/api/upload-logo/route.test.ts. Same batch: `GET /api/tryon/setups` and
+  the session path of `POST /api/tryon/setups/[setupId]/use` moved from
+  requireAuth to requireAdmin.
 - ~~**`GET /api/migrate/submissions`** runs a destructive `updateMany` behind
   only the production guard (reachable on any non-prod deploy);
   `GET /api/debug/users` dumps user emails/names, production-guard only.~~
   REMOVED (070058e, camera#125): `app/api/migrate/` and `app/api/debug/` no
   longer exist.
-- Sync-route bug: `?jobId=` path is dead — it requires `ObjectId.isValid()`
+- ~~Sync-route bug: `?jobId=` path is dead — it requires `ObjectId.isValid()`
   (sync/route.ts:75-79) but job ids are `job_<stamp>_<hex>` (lib/tryon/hash.ts:25-28),
-  never valid ObjectIds, so single-job sync always 400s.
+  never valid ObjectIds, so single-job sync always 400s.~~ FIXED (v12.3.39,
+  CAM-09): `jobId` is checked against `^job_\d{14}_[0-9a-f]{8}$`
+  (lib/tryon/sync.ts); tests in app/api/internal/tryon/sync/route.test.ts. The
+  same release made the backstop idempotent (CAM-02: only jobs with no
+  completion marker are applied).
 
 ## 1. WRONG (highest priority)
 - ~~**W1/W2 "Camera never calls out"**: docs/MESSMASS_FANMASS_INTEGRATION.md:20,141-143
@@ -62,17 +75,21 @@ zero-caller deprecation list).
 - ~~**W4** internal-route count: doc says 6 routes / 2 GETs; there are 3 GETs and
   5 POSTs across 7 files. Rate-limit values (120/60) are correct.~~ FIXED
   (v12.2.21): docs/MESSMASS_FANMASS_INTEGRATION.md §5 lists 3 GET + 5 POST.
-- **W5** `.env.example:99` points at `middleware.ts` — renamed to proxy.ts (Next 16).
+- ~~**W5** `.env.example:99` points at `middleware.ts` — renamed to proxy.ts (Next 16).~~
+  FIXED (v12.3.39): the multi-domain comment cites `lib/site-hosts.ts + proxy.ts`.
 - ~~**W6 branching policy**: docs/BRANCHING.md:27,36 (echoed README.md:146-150,
   ARCHITECTURE.md:359-361, HANDOVER.md:11-16) say "only main/preview/dev";
   `git branch -a` shows 34 refs and neither `dev` nor `preview` exists.~~ FIXED
   (v12.2.21): docs/BRANCHING.md and its echoes describe single-`main` practice.
-- **W7** (premise corrected 2026-09-28): `.github/` does exist again —
+- ~~**W7** (premise corrected 2026-09-28): `.github/` does exist again —
   `.github/workflows/ci.yml` since v12.2.2 — so "no `.github/`" is false. The
   nonexistent `.github/workflows/gds-release-gate.yml` is cited in
   docs/DOCUMENTATION.md's dated 2026-06-07 note (history, superseded by its
   2026-09-03 note) and was cited as current in docs/GDS_CAMERA_ADOPTION.md:32,
-  which the 2026-09-28 docs pass (12.3.37) points at `ci.yml`.
+  which the 2026-09-28 docs pass (12.3.37) points at `ci.yml`.~~ FIXED (12.3.37):
+  docs/GDS_CAMERA_ADOPTION.md:32 cites `.github/workflows/ci.yml`; the only
+  remaining mention is the dated history note at docs/DOCUMENTATION.md:158,
+  which stays as history.
 - ~~**W8** lib/tryon/completion.ts:244 error says "direct i.ibb.co" but the
   validator it guards (lib/imgbb/url.ts:11-27) accepts any `*.ibb.co`.~~
   RESOLVED (12.2.22, camera#126): the message now names both accepted host
@@ -100,9 +117,15 @@ zero-caller deprecation list).
   (only gds-compliance/eslint-config remain ^3.9.0).~~ FIXED (4782fb8, v12.2.1):
   gds-adoption.json:3 `gdsVersion` 6.3.0; README cites the 6.3.0 contracts;
   gds-compliance/eslint-config vendored at 6.3.0 too.
-- docs/DOCUMENTATION.md:131 "12/12 E2E tests"; 23 across 7 spec files
-  (self-corrected 1 line later at :132).
-- lib/db/schemas.ts:108 "Future: partner data will sync via external API" — shipped.
+- ~~docs/DOCUMENTATION.md:131 "12/12 E2E tests"; 23 across 7 spec files
+  (self-corrected 1 line later at :132).~~ RESOLVED: the claim now lives only in
+  the dated 2026-06-08 history note (docs/DOCUMENTATION.md:159); README.md:232
+  gives the current count (24 tests across 8 spec files, matching
+  tests/e2e/*.spec.ts on 2026-09-29).
+- ~~lib/db/schemas.ts:108 "Future: partner data will sync via external API" — shipped.~~
+  FIXED (v12.3.39): the Partner doc comment names the inbound route
+  (app/api/internal/messmass/partners) and the outbound client
+  (lib/messmassClient.ts).
 - ~~docs/TRYON_ARCHITECTURE.md:53-58 lists `category` on leather_suits; replaced by
   `garmentType`/`sleeveStyle` (v2.25.0/2.26.0).~~ FIXED: docs/TRYON_ARCHITECTURE.md
   no longer mentions `category` (grep, 2026-09-28).
@@ -114,14 +137,27 @@ zero-caller deprecation list).
   of that doc's §1.
 - ~~`MESSMASS_BASE_URL` absent from that doc's env table (present in .env.example:61).~~
   FIXED (v12.2.21): in that doc's §7 env table.
-- .env.example omits `TRYON_SETUP_SELECTION_SECRET`, all `TRYON_*` worker vars,
-  `SSO_MONGODB_URI`, `SSO_CAMERA_CLIENT_ID`, and several URL vars.
+- ~~.env.example omits `TRYON_SETUP_SELECTION_SECRET`, all `TRYON_*` worker vars,
+  `SSO_MONGODB_URI`, `SSO_CAMERA_CLIENT_ID`, and several URL vars.~~ FIXED
+  (v12.3.39): `.env.example` now lists `TRYON_SETUP_SELECTION_SECRET`, the
+  site-URL fallback chain of lib/site-url.ts, the `EMAIL_API_KEY` /
+  `EMAIL_TEST_TO` aliases, and an "operator scripts and test harness only"
+  block (`SSO_MONGODB_URI`, `SSO_CAMERA_CLIENT_ID`, `TRYON_SUIT_SEED_FILE`,
+  `EVENT_MONGO_ID`, `PLAYWRIGHT_*`). The `TRYON_*` worker vars left the code
+  with the in-repo worker (see §6); the try-on worker's own settings are in the
+  try-on repo's `.env.tryon-worker.example`. Every name in env.json is now in
+  `.env.example` except the two tool flags set inline by package.json scripts
+  (`BROWSERSLIST_IGNORE_OLD_DATA`, `BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA`).
 - ~~ARCHITECTURE.md:263-278 "Main collections" omits organizations, tryon_setups,
   camera_setup_preferences, tryon_worker_heartbeats, tryon_moderation_events,
   landing_page_css_presets.~~ FIXED in the 2026-09-28 docs pass (12.3.37):
   ARCHITECTURE.md §8 now matches `COLLECTIONS` in lib/db/schemas.ts:33-54.
-- Vercel cron (vercel.json:2-8) and the in-repo worker (npm run tryon:worker,
-  writes Mongo directly, skips the webhook) documented nowhere.
+- ~~Vercel cron (vercel.json:2-8) and the in-repo worker (npm run tryon:worker,
+  writes Mongo directly, skips the webhook) documented nowhere.~~ FIXED
+  (v12.3.39): RUNBOOK.md "Scheduled jobs and workers" documents the cron (path,
+  schedule, `CRON_SECRET` auth, disabled while the secret is unset, what a run
+  writes, manual runs), with a pointer from docs/TRYON_OPERATIONS.md. The
+  in-repo worker was removed (CAM-11, §6).
 
 ## 4. CURRENT (verified, for the record)
 - ARCHITECTURE.md:167-173 proxy/appAccess/x-camera-pathname — matches proxy.ts.
@@ -141,9 +177,11 @@ zero-caller deprecation list).
   token refresh); the remaining session.ts:4 "30-day sliding expiration" vs
   :13-14 "fixed at creation … no sliding refresh" contradiction was fixed in the
   2026-09-28 docs pass (comment now says fixed 30-day expiration).
-  Still open: lib/api/middleware.ts:104-114 (JSDoc for a
+  ~~Still open: lib/api/middleware.ts:104-114 (JSDoc for a
   function that doesn't exist), :36/:60 (`@param request` on functions that
-  `void request`). ~~completion.ts:244 (see W8)~~ RESOLVED (12.2.22, see W8).
+  `void request`).~~ FIXED (v12.3.39): the orphan `requireRole` JSDoc is gone
+  and the `@param request` tags say the argument is unused.
+  ~~completion.ts:244 (see W8)~~ RESOLVED (12.2.22, see W8).
   ~~messmassClient.ts:8-11 (claims a `source!=='messmass'` guard that exists
   only on the update path)~~ RESOLVED (12.2.22, camera#126): the header now
   states that create (app/api/partners/route.ts) pushes unconditionally
@@ -175,11 +213,19 @@ zero-caller deprecation list).
   NEXT_AGENT_PROMPT, PLAN_SLIDESHOW_LAYOUT, TRYON_VETTING_WORKFLOW_PLAN.~~
   REMOVED (12.2.22, camera#125): all seven deleted; the links from README,
   GDS_CAMERA_ADOPTION, ROADMAP and DOCUMENTATION were removed or annotated.
-- Dead env: SSO_REDIRECT_URI (sso.ts:6 says unused), FFF_HOSTNAMES /
+- ~~Dead env: SSO_REDIRECT_URI (sso.ts:6 says unused), FFF_HOSTNAMES /
   NEXT_PUBLIC_FFF_ORIGIN / FFF_SHARE_LINK_SECRET (zero readers; DOCUMENTATION.md:66
-  says FunFitFan was removed).
-- lib/tryon/env.ts:51 hardcodes `/Users/Shared/Projects/try-on/queue` as the
-  shipped default queueRoot.
+  says FunFitFan was removed).~~ REMOVED from `.env.example` (v12.3.39), together
+  with `CAMERA_EMAIL_FROM_NAME` (also zero readers; the sender name is stored
+  per event).
+- ~~lib/tryon/env.ts:51 hardcodes `/Users/Shared/Projects/try-on/queue` as the
+  shipped default queueRoot.~~ REMOVED (v12.3.39, CAM-11): the dormant
+  TypeScript worker is deleted — `lib/tryon/{worker,env,logging,processor,staging}.ts`,
+  `scripts/tryon-worker.ts` and the `tryon:worker` npm script. Before deletion
+  nothing outside those files imported them (git grep for each module path and
+  exported symbol). It claimed jobs with no target filter, so starting it
+  would have raced the Python worker, and it wrote Mongo directly instead of
+  calling the completion webhook.
 
 ## 7. New findings (2026-09-28 fleet alignment audit)
 - **publish-selfies was not scoped to its event** (FIXED 12.3.37, `ccd77d5`):
@@ -204,3 +250,49 @@ zero-caller deprecation list).
   text in api-reference.md and the code comments in app/api/submissions/route.ts
   and app/api/internal/savetheworld/pledges/route.ts were updated to describe
   current behavior; whether that behavior is intended is an owner decision.
+
+## 8. Carried forward from the v12.3.39 hardening batch (2026-09-29)
+Open items the batch found but did not change, each with a recommendation:
+- **Dead exports left by the worker removal.** Only the deleted worker called
+  `claimNextTryOnJob`, `heartbeatTryOnJob`, `recoverStaleTryOnJobs`,
+  `markTryOnJobStage`, `markTryOnJobDone`, `scheduleTryOnRetryOrFailure`,
+  `classifyTryOnFailure` and the `WorkerRuntimeConfig` type (lib/tryon/jobs.ts)
+  and `getLeatherSuitProcessingUrl` (lib/tryon/suits.ts).
+  `resolveTryOnSetupForJob` (lib/tryon/setup-resolution.ts) is now called only
+  by its own test. Recommendation: delete them in one follow-up, together with
+  their tests.
+- **`GET /api/tryon/setups` for partner Events managers.** It is now
+  admin-only, so a partner-scoped Events manager on the event create/edit form
+  gets 403 and an empty setup dropdown (the saved `tryOn.setupId` is kept on
+  save). Nobody is affected today: `partner_user_access` had 0 rows on
+  2026-09-29. Recommendation: if partner managers are onboarded, have the form
+  hide the setup picker for them rather than widening the route.
+- **Image optimizer hosts.** `images.remotePatterns` now allows only camera's
+  own Blob store and `i.ibb.co` (was any `*.public.blob.vercel-storage.com`
+  plus `imgbb.com`). `i.ibb.co` is an anonymous upload host, so it can still
+  be proxied through `/_next/image`; the CSP in next.config.ts still lists the
+  Blob wildcard and `imgbb.com`. Every next/image call site is `unoptimized`.
+  Recommendation: set `images.unoptimized: true` (or drop `i.ibb.co` once its
+  7,893 stored URLs move to Blob) and narrow the CSP to the same hosts.
+- **app/api/go-short/[slug]/route.ts:3** still says "middleware rewrites";
+  the file is proxy.ts since Next 16. Fix with the next edit of that route.
+- **Secret scanning settings.** `secret_scanning_non_provider_patterns` and
+  validity checks are off for this public repo (owner setting under Settings >
+  Code security). The new CI gitleaks step covers the working tree only;
+  history is out of scope by design.
+- **gitleaks has not run with the real binary.** It is not installed on the
+  development machine, so the tree was checked only with an offline
+  approximation of the 8.18.4 default rules (0 findings after the value
+  allowlist). The first CI run is the first real scan. Recommendation: if it
+  flags something, allowlist the exact value in `.gitleaks.toml`, never the
+  path. try-on and fanmass CI run the same download without the SHA-256 check
+  or a `permissions:` block; apply camera's version of the step there too.
+- **Re-applying a result that was reframed or already double-framed.** The
+  reframe route stores the new composite and the raw URL but not the chosen
+  frameId, so a later reapply-result composes the source submission's original
+  frame and undoes the admin's reframe. The 43 derived results whose
+  `metadata.tryOnRawResultUrl` already points at a `tryon-framed-` asset (CAM-02
+  read-only count) have no raw image left, so a reapply frames a framed image
+  again. Recommendation: store the reframe's frameId on the result and prefer
+  it on reapply; for the 43, restore the raw URL from the job history or skip
+  them in reapply.

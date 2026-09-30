@@ -105,7 +105,8 @@ export interface AdminCardDisplaySettings {
  * Why partners:
  * - Organizations need to manage their own events and frames
  * - Enables white-label frame collections per partner
- * - Future: partner data will sync via external API
+ * - Synced with messmass in both directions: inbound via app/api/internal/messmass/partners,
+ *   outbound (camera-native partners only) via lib/messmassClient.ts
  * 
  * Example: AC Milan, Red Bull, Nike
  */

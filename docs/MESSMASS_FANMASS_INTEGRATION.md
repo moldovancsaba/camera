@@ -1,6 +1,6 @@
 # messmass + fanmass integration
 
-**Version**: 12.3.38
+**Version**: 12.3.39
 **Last Updated**: 2026-09-28
 _Verified @ a87d78f_
 
@@ -97,6 +97,15 @@ caller mint sessions for users who currently hold a live SSO token, not
 impersonate anyone (route:17-25).
 Body: `{ accessToken, refreshToken?, expiresIn? }`.
 Response: `{ success: true, appRole } | { success: false, error: 'no_access' }` (403).
+Since v12.3.39 an SSO 401/403 on the permission read answers 403
+`{ success: false, error: 'sso_token_cannot_read_camera_permission' }` instead
+of a 500. That is the answer on every messmass login today: SSO lets a token
+read only its own client's permission records (sso `6fb1b6a7`, 2026-05-10),
+and the forwarded token was issued to messmass, so the shared session is never
+minted. messmass treats any non-OK answer as "no camera session", so its own
+login is unaffected. Minting it needs the permission read to use Camera's own
+`client_credentials` token, which requires that grant (with
+`manage_permissions`) to be enabled for Camera's SSO client (owner action).
 
 ## 2. fanmass → camera: read-only pull
 
@@ -283,6 +292,15 @@ Every internal-auth route returns 403 if its secret is unset —
 there is no "integration disabled, skip silently" mode on the Camera side
 (unlike messmass, which treats an unconfigured `CAMERA_BASE_URL`/secret as
 `camera_not_configured` and skips provisioning without erroring).
+
+Since v12.3.39 every rejection has the same body,
+`{"success":false,"error":"Forbidden"}`, whether the secret is unset on
+Camera, missing from the request, or wrong, and the comparison is constant-time
+([lib/security/safeEqual.ts](../lib/security/safeEqual.ts)). To tell those
+cases apart, read Camera's server log: an unset secret logs
+`[internal-auth] <gate>: <ENV_VAR> is not configured …` (error), a wrong one
+`… presented secret does not match <ENV_VAR> …` (warning); a request with no
+secret at all is not logged.
 
 ## 8. Testing locally
 

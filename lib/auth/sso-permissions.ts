@@ -31,8 +31,30 @@ export interface AppPermission {
 }
 
 /**
+ * A non-OK answer from SSO's permission endpoint (anything but 404, which
+ * getAppPermission maps to "no access").
+ *
+ * WHAT: Carries SSO's HTTP status, so a caller can tell "this token may not
+ *     read camera's permission record" (401/403) from an SSO outage.
+ * WHY: POST /api/internal/messmass/sso-session forwards messmass's own SSO
+ *     token. Since SSO scoped permission reads to the token's own client
+ *     (sso 6fb1b6a7, 2026-05-10), that token can never read camera's record,
+ *     and the plain Error turned every messmass login into a 500.
+ *     The message is unchanged, so existing catch-all callers behave as before.
+ */
+export class SsoPermissionError extends Error {
+  readonly status: number;
+
+  constructor(status: number, body: string) {
+    super(`Failed to get app permission: ${status} ${body}`);
+    this.name = 'SsoPermissionError';
+    this.status = status;
+  }
+}
+
+/**
  * Get user's permission for this app from SSO
- * 
+ *
  * @param userId - User's SSO ID (from ID token)
  * @param accessToken - Valid OAuth access token
  * @returns App permission with role and access status
@@ -69,9 +91,9 @@ export async function getAppPermission(
     }
     
     const error = await response.text();
-    throw new Error(`Failed to get app permission: ${response.status} ${error}`);
+    throw new SsoPermissionError(response.status, error);
   }
-  
+
   return response.json();
 }
 

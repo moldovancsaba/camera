@@ -5,8 +5,9 @@
  * 
  * Permanently deletes a submission from the database. This action cannot be
  * undone. Users can only delete their own submissions (verified by userId).
- * Admins can delete any submission.
- * 
+ * Admins can delete any submission except a try-on result (409; those go
+ * through POST /api/admin/tryon-results/[submissionId]/remove).
+ *
  * Note: Images on imgbb.com are not deleted, only the database record.
  * 
  * Auth: Requires user session (must own submission OR be admin)
@@ -24,6 +25,7 @@ import {
   apiBadRequest,
   apiNotFound,
   apiForbidden,
+  apiError,
   optionalAuth,
 } from '@/lib/api';
 import { dispatchPendingSubmissionEmailForSubmission } from '@/lib/email/submission-result-email';
@@ -108,6 +110,23 @@ export const DELETE = withErrorHandler(async (
   
   if (!isOwner && !isAdmin) {
     throw apiForbidden('You can only delete your own submissions');
+  }
+
+  // WHAT: Try-on results (the derived submission a completed job produces)
+  //     are not deleted here; the caller is sent to the admin remove route.
+  // WHY: That derived document is the try-on sync backstop's completion
+  //     marker (lib/tryon/sync.ts). Deleting it here would leave the job
+  //     `done` with a result URL and no marker, and no `remove` moderation
+  //     event, so the next cron run would re-create the result, auto-approved
+  //     and share-visible on events with vetting off. POST
+  //     /api/admin/tryon-results/[submissionId]/remove records the removal and
+  //     clears the source submission's try-on link. Nothing in camera's UI
+  //     calls this DELETE for a try-on result.
+  if (submission.submissionKind === 'tryon_result' || typeof submission.sourceJobId === 'string') {
+    throw apiError(
+      'Try-on results are removed with POST /api/admin/tryon-results/[submissionId]/remove, which records the removal',
+      409
+    );
   }
 
   // Permanently delete the submission

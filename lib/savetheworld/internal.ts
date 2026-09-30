@@ -1,22 +1,25 @@
 import { apiForbidden } from '@/lib/api';
+import { checkSharedSecret, logSharedSecretRejection } from '@/lib/security/safeEqual';
 
 /**
  * Service-to-service auth for the savetheworld provisioning API, mirroring
  * assertInternalMessmassSecret / assertInternalFanmassSecret. savetheworld
  * calls these endpoints with a shared secret to create/link camera records
  * for its pledge campaign. Accepts `x-savetheworld-secret` or Bearer.
+ *
+ * Constant-time compare, fails closed when the env secret is unset, and every
+ * rejection is a bare 403 "Forbidden"; the reason goes to the server log only
+ * (see lib/security/safeEqual.ts).
  */
 export function assertInternalSavetheworldSecret(request: Request): void {
-  const configured = process.env.CAMERA_SAVETHEWORLD_INTERNAL_SECRET?.trim();
-  if (!configured) {
-    throw apiForbidden('CAMERA_SAVETHEWORLD_INTERNAL_SECRET is not configured');
-  }
   const provided =
     request.headers.get('x-savetheworld-secret')?.trim() ||
     request.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim() ||
     '';
-  if (!provided || provided !== configured) {
-    throw apiForbidden('Invalid savetheworld internal secret');
+  const result = checkSharedSecret(process.env.CAMERA_SAVETHEWORLD_INTERNAL_SECRET?.trim(), provided);
+  if (result !== 'ok') {
+    logSharedSecretRejection('savetheworld internal API', 'CAMERA_SAVETHEWORLD_INTERNAL_SECRET', result);
+    throw apiForbidden();
   }
 }
 

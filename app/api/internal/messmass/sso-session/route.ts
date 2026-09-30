@@ -29,7 +29,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withErrorHandler, checkRateLimit, RATE_LIMITS, apiBadRequest, apiUnauthorized } from '@/lib/api';
 import { assertInternalMessmassSecret } from '@/lib/messmass/internal';
 import { getUserInfo, type TokenResponse } from '@/lib/auth/sso';
-import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
+import { getAppPermission, hasAppAccess, SsoPermissionError } from '@/lib/auth/sso-permissions';
 import { createSession } from '@/lib/auth/session';
 
 export const POST = withErrorHandler(async (request: NextRequest) => {
@@ -52,7 +52,31 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     throw apiUnauthorized('SSO did not return a user id for this token');
   }
 
-  const permission = await getAppPermission(user.id, accessToken);
+  // WHAT: An SSO 401/403 on the permission read is a 403 here, not a 500.
+  // WHY: SSO lets a token read only its own client's permission records
+  //     (sso 6fb1b6a7), and messmass forwards its own token, so this read is
+  //     refused on every messmass login. That is a known configuration gap,
+  //     not a server fault: it logged an error-level 500 per login. messmass
+  //     (lib/cameraClient.ts) treats any non-OK answer as "no camera session",
+  //     so its login is unaffected either way. The real fix reads the
+  //     permission with camera's own client_credentials token, which needs
+  //     that grant enabled for camera's SSO client (owner action).
+  //     Any other SSO failure still surfaces as a 500.
+  let permission;
+  try {
+    permission = await getAppPermission(user.id, accessToken);
+  } catch (error) {
+    if (error instanceof SsoPermissionError && (error.status === 401 || error.status === 403)) {
+      console.warn('[messmass-sso-session] SSO refused the permission read for this token', {
+        ssoStatus: error.status,
+      });
+      return NextResponse.json(
+        { success: false, error: 'sso_token_cannot_read_camera_permission' },
+        { status: 403 }
+      );
+    }
+    throw error;
+  }
   if (!hasAppAccess(permission)) {
     return NextResponse.json({ success: false, error: 'no_access' }, { status: 403 });
   }
