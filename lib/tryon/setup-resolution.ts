@@ -107,43 +107,25 @@ function legacyFallbackSeedConfig(): Omit<TryOnSetup, 'createdAt' | 'updatedAt'>
   };
 }
 
-async function ensureLegacyFallbackSetup(db: Db): Promise<TryOnSetup> {
+// WHAT: Inserts the legacy default_motogp setup only when no document with
+//     that setupId exists, then returns whatever is stored, as stored.
+// WHY (CAM-12): This used to $set name, active, isDefault, rank and config on
+//     every call, so resolving a job with no active default silently
+//     re-activated default_motogp and reset any edits to it (the live
+//     document already differs from this seed: "MotoGP High (Default)",
+//     rank 10). $setOnInsert never touches an existing document, including
+//     one an admin deactivated.
+async function seedLegacyFallbackSetupIfMissing(db: Db): Promise<TryOnSetup> {
   const seed = legacyFallbackSeedConfig();
+  const setups = db.collection<TryOnSetup>(COLLECTIONS.TRYON_SETUPS);
 
-  await db.collection<TryOnSetup>(COLLECTIONS.TRYON_SETUPS).updateOne(
+  await setups.updateOne(
     { setupId: seed.setupId },
-    {
-      $set: {
-        name: seed.name,
-        description: seed.description,
-        cameraId: seed.cameraId,
-        active: seed.active,
-        isDefault: seed.isDefault,
-        rank: seed.rank,
-        config: seed.config,
-        updatedAt: seed.updatedAt,
-      },
-      $setOnInsert: {
-        setupId: seed.setupId,
-        createdAt: seed.createdAt,
-      },
-    },
+    { $setOnInsert: seed },
     { upsert: true }
   );
 
-  const fallback = await db
-    .collection<TryOnSetup>(COLLECTIONS.TRYON_SETUPS)
-    .findOne({ setupId: seed.setupId });
-
-  if (!fallback) {
-    return {
-      ...seed,
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-    };
-  }
-
-  return fallback;
+  return (await setups.findOne({ setupId: seed.setupId })) ?? seed;
 }
 
 export async function resolveTryOnSetupForJob(
@@ -190,7 +172,7 @@ export async function resolveTryOnSetupForJob(
     return toResolvedSetup(defaultSetup, 'global.default');
   }
 
-  const legacy = await ensureLegacyFallbackSetup(db);
+  const legacy = await seedLegacyFallbackSetupIfMissing(db);
 
   return {
     setupId: legacy.setupId,
@@ -247,14 +229,24 @@ export async function upsertCameraSetupPreference(
   };
 }
 
+// WHAT: Reads the active setups and nothing else; an empty list when none
+//     are active.
+// WHY (CAM-12): This runs on GET /api/tryon/setups and on every render of the
+//     admin queue and vetting pages. It used to fall back to the legacy seed
+//     upsert when no setup was active, so a page view re-activated
+//     default_motogp and reset its name, rank and config. A read path must
+//     not write. It also must not invent a setup: one that is not active in
+//     the database is rejected by POST /api/tryon/setups/[setupId]/use and by
+//     the rerun route, while the UIs already handle an empty list (the event
+//     editor's "No active try-on setup profiles found" alert, the queue's
+//     "Preset list unavailable").
 export async function listActiveTryOnSetups(db: Db): Promise<TryOnSetup[]> {
-  const setups = await db
+  const activeSetups = await db
     .collection<TryOnSetup>(COLLECTIONS.TRYON_SETUPS)
     .find({ active: true })
     .sort({ isDefault: -1, rank: 1, setupId: 1 })
     .toArray();
 
-  const activeSetups = setups.length > 0 ? setups : [await ensureLegacyFallbackSetup(db)];
   return activeSetups.map((s) => ({
     ...s,
     _id: s._id ? (s._id.toString() as unknown as ObjectId) : undefined,

@@ -7,29 +7,43 @@ process.env.BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA ??= 'true';
  * Next.js configuration for Camera webapp
  * 
  * Key configurations:
- * - Image domains for Vercel Blob (primary) and imgbb.com (mirror)
+ * - Image hosts: camera's own Vercel Blob store (primary) and i.ibb.co (legacy/mirror)
  * - Security headers (HSTS, CSP, X-Frame-Options)
  * - Performance optimizations (compression, caching)
  * - TypeScript strict mode enforcement
  */
 const nextConfig: NextConfig = {
   transpilePackages: ['@sovereignsquad/gds-theme', '@sovereignsquad/gds-core', '@sovereignsquad/gds-admin'],
-  // Image configuration: Vercel Blob (primary) + imgbb.com CDN (mirror)
+  // WHAT: The exact remote hosts /_next/image may fetch and transform: camera's
+  //   own Vercel Blob store and imgbb's direct-image host, nothing else.
+  // WHY: '*.public.blob.vercel-storage.com' matched every Vercel customer's
+  //   Blob store and 'imgbb.com' is an open upload site, so anyone could use
+  //   camera's domain (and the team's billed optimizer quota) as an image proxy
+  //   for third-party content (SEC-05). The list is the measured set of hosts
+  //   in stored image URLs (submissions, try-on jobs, frames, logos, partners,
+  //   events, landing pages, slideshows, garments):
+  //   - bidx0njghn1voknt.public.blob.vercel-storage.com: the only Blob store
+  //     camera writes to (lib/imgbb/upload.ts put()); every Blob URL on record.
+  //   - i.ibb.co: legacy primary + current best-effort mirror; still holds most
+  //     stored frames, logos, partner logos and pre-Blob submissions. It is
+  //     also an anonymous upload host, so it stays a residual proxy surface
+  //     until that data moves to Blob or optimization is switched off.
+  //   'ibb.co' (viewer/delete pages, never an image; see normalizeImgbbDirectUrl)
+  //   and 'imgbb.com' (no stored URL uses it) are intentionally absent.
+  //   Every next/image call site currently passes `unoptimized`, so this list
+  //   does not affect rendering; it only bounds what the optimizer endpoint
+  //   will proxy. If the Blob store is ever replaced, add the new store's
+  //   hostname here (it is the host of any freshly uploaded image URL).
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '*.public.blob.vercel-storage.com',
+        hostname: 'bidx0njghn1voknt.public.blob.vercel-storage.com',
         pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'i.ibb.co',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'imgbb.com',
         pathname: '/**',
       },
     ],

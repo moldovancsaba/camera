@@ -31,8 +31,9 @@ import { apiUnauthorized, apiForbidden, apiBadRequest } from './responses';
 /**
  * Check if user is authenticated
  * Returns session if authenticated, throws error if not
- * 
- * @param request - Next.js request object
+ *
+ * @param request - Unused: the session is read from the request cookies via
+ *     getSession(). Kept optional so call sites that pass the request compile.
  * @returns Session object with user data
  * @throws Response with 401 status if not authenticated
  * 
@@ -58,8 +59,8 @@ export async function requireAuth(request?: NextRequest): Promise<Session> {
 /**
  * Check if user has admin role
  * Returns session if user is admin, throws error if not
- * 
- * @param request - Next.js request object
+ *
+ * @param request - Unused (see requireAuth); forwarded only for call-site symmetry.
  * @returns Session object with admin user data
  * @throws Response with 401 if not authenticated, 403 if not admin
  * 
@@ -89,10 +90,10 @@ export async function requireAdmin(request?: NextRequest): Promise<Session> {
 /**
  * Optional authentication
  * Returns session if authenticated, null if not (no error thrown)
- * 
- * @param request - Next.js request object
+ *
+ * @param request - Unused (see requireAuth).
  * @returns Session object or null
- * 
+ *
  * Why: Some endpoints need to behave differently for authenticated vs anonymous users
  * but don't require authentication. For example, public content with personalization.
  */
@@ -100,18 +101,6 @@ export async function optionalAuth(request?: NextRequest): Promise<Session | nul
   void request;
   return await getSession();
 }
-
-/**
- * Check if user has specific role(s)
- * 
- * @param roles - Single role or array of allowed roles
- * @param request - Next.js request object
- * @returns Session if user has one of the specified roles
- * @throws Response with 403 if user doesn't have required role
- * 
- * Why: Some endpoints may require specific roles beyond just 'admin'
- * This provides flexible role-based access control
- */
 
 /**
  * Validate required fields in request body

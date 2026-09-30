@@ -1,0 +1,40 @@
+# gitleaks configuration for camera (CI: .github/workflows/ci.yml, "Secret scan").
+#
+# WHAT: the default gitleaks rule set, plus a narrow allowlist of values that
+#       are known not to be credentials.
+# WHY:  camera is a public repo. GitHub push protection covers provider-format
+#       secrets; camera's own shared secrets are random strings that only a
+#       generic scan can catch, so every file stays in scope, test files
+#       included. Only the individual values below are exempt, each with the
+#       reason it is safe. Do not allowlist whole directories or file types.
+#
+# Fixture values in new tests should be self-describing (contain "test" and
+# no real secret) and, if gitleaks flags one, be added here by exact shape.
+#
+# NOTE: this uses the singular [allowlist] table. The [[allowlists]] array form
+# is only understood by gitleaks 8.19+, and CI pins 8.18.4; with the array form
+# the config parses but silently allowlists nothing.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Unit-test fixture secrets, a public OAuth client id, garment asset keys"
+regexes = [
+  # node:test stand-ins for shared secrets and signing keys
+  # (app/api/internal/email/send/route.test.ts, lib/security/safeEqual.test.ts,
+  # lib/auth/session-signing.test.ts). Never configured anywhere.
+  '''^(messmass|fanmass)-secret-for-test-[0-9]+$''',
+  '''^s3cr3t-value-[0-9a-f]+$''',
+  '''^test-signing-key-[0-9]+$''',
+  # camera's SSO OAuth client id, quoted in a 2.3.0 RELEASE_NOTES entry. It is a
+  # public PKCE client (token_endpoint_auth_method 'none'); the id travels in
+  # every authorize URL and grants nothing on its own.
+  '''^1e59b6a1-3c18-4141-9139-7a3dd0da62bf$''',
+  # Garment asset keys: "assetKey": "motogp_<team>_<year>_v<n>" is a garment
+  # slug (config/leather-suits.example.json), not a credential. Matched by
+  # value, not by file, so a real key pasted into that file is still caught.
+  '''^motogp_[a-z0-9_]+_v[0-9]+$''',
+]
+# No `paths` entry on purpose: a path allowlist stops scanning the whole file
+# for good. Exempt the exact value instead (anchored regex above).

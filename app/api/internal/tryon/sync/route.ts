@@ -1,37 +1,55 @@
 import { NextRequest } from 'next/server';
-import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { apiBadRequest, apiForbidden, apiSuccess, withErrorHandler } from '@/lib/api';
-import { COLLECTIONS, type TryOnJob } from '@/lib/db/schemas';
 import { assertInternalTryOnSecret, applyCompletionFromJobResult } from '@/lib/tryon/completion';
+import { checkSharedSecret, logSharedSecretRejection } from '@/lib/security/safeEqual';
+import {
+  isTryOnJobId,
+  isTryOnSyncStatus,
+  selectJobsPendingCompletion,
+} from '@/lib/tryon/sync';
 
 interface SyncPayload {
-  limit?: number;
-  jobId?: string;
+  limit: number;
+  // undefined when no job id was sent; anything else is validated in syncJobs.
+  jobId?: unknown;
   status?: string;
 }
 
-const allowedSyncStatuses = new Set(['done', 'retry_wait', 'failed']);
+const DEFAULT_LIMIT = 25;
+const MAX_LIMIT = 100;
 
-function parseLimit(rawValue: string | null): number {
-  const parsed = Number.parseInt(rawValue || '', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 100) : 25;
+// Accepts a number (POST body) or a numeric string (query). Anything else,
+// zero or negative falls back to the default; values above the cap are capped.
+function parseLimit(rawValue: unknown): number {
+  const parsed = typeof rawValue === 'number'
+    ? Math.floor(rawValue)
+    : Number.parseInt(typeof rawValue === 'string' ? rawValue : '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, MAX_LIMIT) : DEFAULT_LIMIT;
 }
 
-function parseStatus(rawValue: string | null): string {
+// An unknown status falls back to 'done' (the cron's own filter), as before.
+function parseStatus(rawValue: unknown): string {
   const candidate = typeof rawValue === 'string' ? rawValue.trim() : '';
-  if (!candidate) return '';
-  return allowedSyncStatuses.has(candidate) ? candidate : '';
+  return isTryOnSyncStatus(candidate) ? candidate : '';
+}
+
+// A blank or absent value means "no job id"; a non-string value is passed
+// through so validation rejects it rather than widening to a full sync.
+function parseJobId(rawValue: unknown): unknown {
+  if (rawValue === undefined || rawValue === null) return undefined;
+  if (typeof rawValue !== 'string') return rawValue;
+  return rawValue.trim() || undefined;
 }
 
 export const POST = withErrorHandler(async (request: NextRequest) => {
   assertInternalTryOnSecret(request);
-  const body = (await request.json().catch(() => ({}))) as Partial<SyncPayload>;
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown> | null;
   const searchParams = request.nextUrl.searchParams;
   const payload: SyncPayload = {
-    limit: body.limit ?? parseLimit(searchParams.get('limit')),
-    jobId: body.jobId || searchParams.get('jobId')?.trim(),
-    status: parseStatus(body.status?.toString() || searchParams.get('status')),
+    limit: parseLimit(body?.limit ?? searchParams.get('limit')),
+    jobId: parseJobId(body?.jobId) ?? parseJobId(searchParams.get('jobId')),
+    status: parseStatus(body?.status) || parseStatus(searchParams.get('status')),
   };
 
   return syncJobs(payload);
@@ -47,17 +65,26 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   if (requestSecret) {
     assertInternalTryOnSecret(request);
   } else {
-    const cronSecret = process.env.CRON_SECRET;
-    const auth = request.headers.get('authorization');
-    if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
-      throw apiForbidden('valid cron authorization is required for unauthenticated sync');
+    // Constant-time compare with a generic 403 body (CAM-05 / SEC-09); the
+    // reason is logged server-side only. CRON_SECRET being unset is the known,
+    // owner-pending state (CAM-17), so it is a warning on each cron run rather
+    // than an error.
+    const cronToken = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim() || '';
+    const cronCheck = checkSharedSecret(process.env.CRON_SECRET?.trim(), cronToken);
+    if (cronCheck !== 'ok') {
+      if (cronCheck === 'not_configured') {
+        console.warn('[internal-auth] try-on sync cron: CRON_SECRET is not configured; cron-triggered sync stays disabled (fail closed)');
+      } else {
+        logSharedSecretRejection('try-on sync cron', 'CRON_SECRET', cronCheck);
+      }
+      throw apiForbidden();
     }
   }
 
   const searchParams = request.nextUrl.searchParams;
   const payload: SyncPayload = {
     limit: parseLimit(searchParams.get('limit')),
-    jobId: searchParams.get('jobId')?.trim() || undefined,
+    jobId: parseJobId(searchParams.get('jobId')),
     status: parseStatus(searchParams.get('status')),
   };
 
@@ -65,34 +92,35 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 });
 
 async function syncJobs(payload: SyncPayload) {
-  const db = await connectToDatabase();
   const statusFilter = payload.status || 'done';
-  if (!allowedSyncStatuses.has(statusFilter)) {
+  if (!isTryOnSyncStatus(statusFilter)) {
     throw apiBadRequest('Invalid status');
   }
 
-  const query: Record<string, unknown> = {
-    status: statusFilter,
-    'result.publicResultUrl': { $type: 'string' },
-  };
-  if (payload.jobId?.trim()) {
-    query.jobId = payload.jobId.trim();
-  }
-
-  const limit = Math.min(Math.max(payload.limit || 25, 1), 100);
-
-  if (payload.jobId?.trim()) {
-    if (!ObjectId.isValid(payload.jobId.trim())) {
-      throw apiBadRequest('Invalid jobId');
+  // WHAT: A job id must look like one createTryOnJobId mints
+  //     (job_<yyyyMMddHHmmss>_<8 hex>). WHY (CAM-09): this used to demand a
+  //     Mongo ObjectId, which a job id never is, so every ?jobId= call was a 400.
+  let jobId: string | undefined;
+  if (payload.jobId !== undefined) {
+    if (!isTryOnJobId(payload.jobId)) {
+      throw apiBadRequest('Invalid jobId: expected job_<yyyyMMddHHmmss>_<8 hex chars>');
     }
+    jobId = payload.jobId;
   }
 
-  const jobs = await db
-    .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
-    .find(query)
-    .sort({ updatedAt: -1 })
-    .limit(limit)
-    .toArray();
+  const limit = payload.limit;
+  const db = await connectToDatabase();
+
+  // WHAT: Only jobs with no completion marker yet (lib/tryon/sync.ts).
+  // WHY (CAM-02): re-applying an applied job re-uploads and re-frames its
+  //     result on every run; a run with nothing new must not write anything.
+  //     Already-applied jobs are counted in `skipped`, including a ?jobId= that
+  //     was applied before (re-apply one with the admin reapply-result route).
+  const { jobs, alreadyApplied } = await selectJobsPendingCompletion(db, {
+    status: statusFilter,
+    jobId,
+    limit,
+  });
 
   const outcome = {
     scanned: jobs.length,
@@ -100,7 +128,7 @@ async function syncJobs(payload: SyncPayload) {
     updated: 0,
     unchanged: 0,
     failed: 0,
-    skipped: 0,
+    skipped: alreadyApplied,
     errors: [] as Array<{ jobId: string; reason: string }>,
   };
 
@@ -123,6 +151,6 @@ async function syncJobs(payload: SyncPayload) {
     status: statusFilter,
     outcomes: outcome,
     limit,
-    jobId: payload.jobId ?? null,
+    jobId: jobId ?? null,
   });
 }

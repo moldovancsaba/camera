@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { withErrorHandler, requireAuth, apiSuccess } from '@/lib/api';
+import { withErrorHandler, requireAdmin, apiSuccess } from '@/lib/api';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getCameraSetupPreference, listActiveTryOnSetups } from '@/lib/tryon/setup-resolution';
 
@@ -11,7 +11,13 @@ function readString(value: string | null): string | null {
 }
 
 export const GET = withErrorHandler(async (request: NextRequest) => {
-  await requireAuth(request);
+  // WHAT: Global admins only (appRole admin/superadmin with app access).
+  // WHY: Returns every active try-on setup config plus a camera's routing
+  //     preference -- AI Setups are global-admin configuration (the
+  //     /admin/tryon/setups CRUD and nav entry are global-admin-only). The
+  //     previous session-only check admitted any SSO account, guest capture
+  //     sessions included.
+  await requireAdmin(request);
 
   const db = await connectToDatabase();
   const setups = await listActiveTryOnSetups(db);

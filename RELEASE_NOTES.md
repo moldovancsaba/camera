@@ -1,5 +1,122 @@
 # RELEASE_NOTES.md
 
+## v12.3.39 — camera hardening: access, shared secrets, try-on backstop, docs
+
+- **Security (dependencies):** `brace-expansion` 2.1.4 → 2.1.7 (two nested copies under
+  `glob` and `readdir-glob`), clearing a high-severity CPU/stack DoS advisory published
+  2026-09-29 that `main` also carried. `npm audit --omit=dev`: 0 vulnerabilities.
+- **Security (access):** three routes admitted any signed-in SSO account, guest
+  capture sessions included. `POST /api/upload-logo` now runs requireAuth, then
+  the UPLOAD rate limit (10/min), then a role check: global admins, or an active
+  partner Events manager/admin assignment (the event forms and landing-page
+  editor that call it are open to partner managers, as are the sibling upload
+  routes). It also caps the decoded image at 4 MB (413) and answers 400 instead
+  of 500 for a missing or non-string `imageData`. `GET /api/tryon/setups` and the
+  session path of `POST /api/tryon/setups/[setupId]/use` now require an admin
+  session; the `x-camera-setup-secret` service path is unchanged. On that
+  route's admin path, `camera_setup_preferences.updatedBy` is the admin
+  session's email; a body `updatedBy` is honoured only on the service path.
+- **Security (shared secrets):** all six shared-secret checks (the try-on,
+  messmass, fanmass and savetheworld gates, the sync cron's `CRON_SECRET`, and
+  `TRYON_SETUP_SELECTION_SECRET`) compare in constant time through the new
+  `lib/security/safeEqual.ts` (SHA-256 digests into `crypto.timingSafeEqual`, so
+  neither content nor length leaks). Every rejection now returns the same 403
+  `{"success":false,"error":"Forbidden"}`. The old bodies named the unset env
+  var, which told an unauthenticated caller which secrets were configured. The
+  reason is logged server-side as `[internal-auth] …`, never the value. No fleet
+  repo parses the old strings.
+- **Try-on sync backstop** (`/api/internal/tryon/sync`, the `*/5` Vercel cron):
+  - `?jobId=` works. It used to demand a Mongo ObjectId, which no job id is, so
+    every call was a 400. It is now checked against the `job_<stamp>_<8 hex>`
+    shape before any DB access, and a non-string body `jobId` is a 400, not a 500.
+  - A run is idempotent. It used to re-apply the newest 50 `done` jobs every five
+    minutes, uploading new previews and framing already-framed results. It now
+    applies only jobs with no completion marker: a derived submission with that
+    `sourceJobId`, or a `remove` moderation event (`lib/tryon/sync.ts`).
+    `outcomes.skipped` counts the ones it skipped, and a run with nothing new
+    writes nothing.
+  - `applyCompletionFromJobResult` (used by reapply-result, the reconcile route
+    and `scripts/reconcile-tryon-done-jobs.ts`) starts from the stored raw
+    result URL, so it no longer stacks a second frame. When no frame is composed
+    on that run (frame record deleted, `applyFrameToReturnedResults` off, or the
+    composite failing), the current framed result is kept as stored instead of
+    being replaced by the raw image; a repeated completion webhook for the same
+    raw output behaves the same way (`lib/tryon/completion.test.ts`).
+  - `DELETE /api/submissions/[submissionId]` answers 409 for a try-on result
+    and points to `POST /api/admin/tryon-results/[submissionId]/remove`. The
+    generic delete wrote no `remove` moderation event, so a result deleted
+    there (by an admin, or by the guest who owns it) had no completion marker
+    and the next cron run would have re-created it. No camera UI called it for
+    a try-on result.
+  - This was the engineering precondition for turning the cron on. `CRON_SECRET`
+    is still unset in production, so the cron stays disabled until the owner
+    decides.
+- **Fixed (production 500):** `POST /api/internal/messmass/sso-session`
+  answered 500 (`api.error: Failed to get app permission: 403 …`) on every
+  messmass login. SSO lets a token read only its own client's permission
+  records (sso `6fb1b6a7`, 2026-05-10), and messmass forwards its own token.
+  An SSO 401/403 on that read now answers 403
+  `sso_token_cannot_read_camera_permission` (`SsoPermissionError` in
+  `lib/auth/sso-permissions.ts` carries the SSO status); other SSO failures stay
+  500. messmass already treats any non-OK answer as "no camera session". The
+  shared session still is not minted: that needs Camera's own
+  `client_credentials` grant enabled on SSO (owner action).
+- **Try-on setups:** `listActiveTryOnSetups` is a pure read and returns `[]`
+  when nothing is active. It used to upsert and re-activate `default_motogp`,
+  overwriting admin edits to that document. The job-resolution fallback seeds it
+  only when missing (`$setOnInsert`).
+- **Image optimizer:** `images.remotePatterns` allows only camera's own Blob
+  store and `i.ibb.co`. It used to allow any Vercel customer's
+  `*.public.blob.vercel-storage.com` store plus `imgbb.com`, all proxyable
+  through `/_next/image`. The hosts were measured on the live data first; every
+  `next/image` call site is `unoptimized`, so rendering is unaffected.
+- **Removed:** the dormant in-repo TypeScript try-on worker
+  (`lib/tryon/{worker,env,logging,processor,staging}.ts`, `scripts/tryon-worker.ts`,
+  `npm run tryon:worker`). Nothing else imported it. Started by mistake, it would
+  have claimed jobs alongside the Python worker in the try-on repo and written
+  Mongo directly, skipping the completion webhook. Its ten `TRYON_*` env vars
+  left the inventory with it.
+- **CI:** a gitleaks 8.18.4 secret scan of the working tree runs first in the
+  `Verify` job, as in try-on and fanmass CI. It exists because camera's own
+  random shared secrets have no provider pattern for GitHub push protection to
+  catch. Known non-secrets are allowlisted one by one, by exact value (anchored
+  regex), in `.gitleaks.toml`; no file is exempt by path. The gitleaks tarball
+  is checked against a pinned SHA-256 before it is unpacked, and the workflow's
+  `GITHUB_TOKEN` is read-only (`permissions: contents: read`). The scan has not
+  yet run against this tree with the real binary (it is not installed locally);
+  the first CI run is the first real scan.
+- **Docs:** `.env.example` fixes:
+  - cites `proxy.ts`, not `middleware.ts`;
+  - adds `TRYON_SETUP_SELECTION_SECRET`, the site-URL fallback chain, the email
+    aliases and a block of script- and test-only vars (`SSO_MONGODB_URI`,
+    `SSO_CAMERA_CLIENT_ID`, …);
+  - drops the dead `SSO_REDIRECT_URI`, `FFF_*` and `CAMERA_EMAIL_FROM_NAME`
+    lines.
+
+  `RUNBOOK.md` gains "Scheduled jobs and workers" (the cron, its `CRON_SECRET`
+  auth and disabled state, manual runs). `docs/_audit/api-reference.md` records
+  every contract change above. The drift register strikes W5, W7, the
+  upload-logo and sync-jobId findings, the `.env.example`, cron/worker, comment
+  and dead-env items, and lists what is carried forward (§8). The orphan
+  `requireRole` JSDoc and a stale "Future: partner sync" comment are fixed, and
+  `docs/_audit/*.json` is regenerated.
+- **Tests:** 10 new `node:test` files and a rewritten sync route test (145 unit
+  tests in 21 files, all passing).
+- **Known, not changed here:**
+  - `CRON_SECRET` is an owner decision.
+  - A partner-scoped Events manager now sees an empty try-on setup dropdown (0
+    such users today).
+  - `i.ibb.co` stays proxyable, and the CSP still lists the Blob wildcard and
+    `imgbb.com`.
+  - Dead exports the worker removal left in `lib/tryon/jobs.ts`, `suits.ts` and
+    `setup-resolution.ts`.
+
+  All are in drift-register §8.
+- **Version:** 12.3.39 in `package.json`, the lockfile root and every current
+  doc's `**Version**` stamp. Fleet policy (messmass
+  `docs/_audit/fleet-version-policy.md`) takes messmass, fanmass, try-on and
+  savetheworld to 12.3.39 in the same coordinated release.
+
 ## v12.3.38 — security dependency updates (fleet lockstep)
 
 - **Security:** `sharp` 0.35.3 → 0.35.5. Its bundled libheif had a high-severity

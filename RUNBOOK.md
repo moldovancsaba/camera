@@ -60,8 +60,55 @@ npm run verify:production-guards    # dev-login/e2e routes blocked in production
 npm audit
 ```
 
-As of 2026-09-28 GitHub Dependabot shows 2 critical, 5 high and 3 medium open
-alerts (`next` ×2 critical; high: `@tiptap/core`, `browserslist`, `js-yaml`,
-`postcss`, `sharp`; medium: `@tiptap/core`, `baseline-browser-mapping`,
-`postcss`). The Dependabot PRs had been failing CI on inventory drift since
-`386d3fe`; that was fixed in 12.3.37 (`ccd77d5`) and the rebased PRs pass CI.
+GitHub Dependabot showed 0 open alerts on 2026-09-29 (`gh api
+repos/moldovancsaba/camera/dependabot/alerts?state=open`): v12.3.38 (`61b45fa`)
+updated `sharp`, `next`, the `postcss` override and the transitive packages, and
+superseded the open Dependabot PRs.
+
+CI (`.github/workflows/ci.yml`, job `Verify`) also runs a gitleaks secret scan of
+the working tree before installing anything (since v12.3.39). A finding fails the
+job and uploads a redacted `gitleaks-report` artifact. A false positive is
+allowlisted by exact value (an anchored regex under `regexes`) in
+`.gitleaks.toml`, with the reason written next to it; never by path, because a
+path entry stops scanning that whole file.
+
+## Scheduled jobs and workers
+
+**Vercel Cron: try-on completion backstop.** `vercel.json` schedules
+`GET /api/internal/tryon/sync?status=done&limit=50` every 5 minutes
+(`*/5 * * * *`); Vercel runs crons against the production deployment only.
+
+- **Auth.** Vercel sends `Authorization: Bearer <CRON_SECRET>`. The route
+  compares it in constant time and fails closed: with `CRON_SECRET` unset every
+  cron call gets a generic 403 (`{"success":false,"error":"Forbidden"}`) and
+  logs `[internal-auth] try-on sync cron: CRON_SECRET is not configured` as a
+  warning.
+- **Current state: disabled.** `CRON_SECRET` is not set on project `04_camera`
+  (Vercel env names checked 2026-09-29), so the job 403s about 288 times a day
+  and nothing syncs. Whether to set it, or to drop the cron from `vercel.json`
+  while try-on is paused, is an open owner decision. Check with
+  `npx vercel@latest env ls production --scope narimato` (names only).
+- **What it does when enabled.** It applies completion only for `done` jobs that
+  have a stored `result.publicResultUrl` but no completion marker: no derived
+  `submissions` doc with `sourceJobId` = the job id, and no `remove` event in
+  `tryon_moderation_events` (`lib/tryon/sync.ts`). At most `limit` unapplied jobs
+  per run; a run with nothing new writes nothing. Before v12.3.39 it re-applied
+  the newest 50 jobs on every run (new uploads, frames stacked on framed
+  results), which is why the secret had to wait for that fix.
+- **Manual run.** `POST /api/internal/tryon/sync` with header
+  `x-camera-tryon-secret: <CAMERA_TRYON_INTERNAL_SECRET>` and body
+  `{"limit": 25}`, or `?jobId=job_<yyyyMMddHHmmss>_<8 hex>` for one job (any
+  other id shape is a 400). In the response, `outcomes.scanned` counts the
+  jobs attempted and `outcomes.skipped` the ones that were already applied. To
+  re-apply an already-applied job on purpose, use
+  `POST /api/admin/tryon-jobs/[jobId]/reapply-result` from an admin session.
+
+**Workers.** Camera runs no worker process. The try-on queue (`tryon_jobs`) is
+processed by the Python worker in the try-on repo
+(`scripts/tryon_queue_worker.py`, configured by that repo's
+`.env.tryon-worker.example`), which reports back through
+`POST /api/internal/tryon/complete`; that service is paused by the owner as of
+2026-09-29. The TypeScript worker that used to live here (`npm run tryon:worker`)
+was removed in v12.3.39: it claimed jobs with no target filter, so starting it
+would have raced the Python worker, and it wrote Mongo directly instead of
+going through the completion webhook.

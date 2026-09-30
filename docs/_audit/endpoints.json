@@ -1,12 +1,12 @@
 {
  "_meta": {
-  "generated": "2026-09-28T09:29:51+00:00",
+  "generated": "2026-09-29T20:38:52+00:00",
   "repo": "camera",
-  "head": "ccd77d5",
+  "head": "61b45fa",
   "counts": {
    "endpoints": 99,
    "collections": 6,
-   "env": 65,
+   "env": 55,
    "outbound-hosts": 18,
    "docs": 39
   }
@@ -1160,7 +1160,7 @@
    ],
    "file": "app/api/tryon/setups/[setupId]/use/route.ts",
    "auth_markers": [
-    "requireAuth",
+    "requireAdmin",
     "withErrorHandler"
    ],
    "no_auth_marker": false
@@ -1172,7 +1172,7 @@
    ],
    "file": "app/api/tryon/setups/route.ts",
    "auth_markers": [
-    "requireAuth",
+    "requireAdmin",
     "withErrorHandler"
    ],
    "no_auth_marker": false
@@ -1195,6 +1195,7 @@
    ],
    "file": "app/api/upload-logo/route.ts",
    "auth_markers": [
+    "isGlobalAdminSession",
     "requireAuth",
     "withErrorHandler"
    ],
