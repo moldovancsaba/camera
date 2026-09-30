@@ -47,7 +47,7 @@ The admin-only API `GET /api/admin/tryon-worker-health` returns the same summary
 
 Camera runs no worker process. `tryon_jobs` is processed by the Python worker in the try-on repo, which reports each result back through `POST /api/internal/tryon/complete`. The TypeScript worker that used to ship here (`npm run tryon:worker`) was removed in v12.3.39.
 
-A Vercel Cron (`vercel.json`) calls `GET /api/internal/tryon/sync?status=done&limit=50` every 5 minutes. It is a backstop for completions the webhook missed, it needs `CRON_SECRET`, and it is disabled while that secret is unset (the production state on 2026-09-29). Auth, current state, what a run writes, and how to run it by hand: [RUNBOOK.md, "Scheduled jobs and workers"](../RUNBOOK.md#scheduled-jobs-and-workers).
+A completion backstop cron used to call `GET /api/internal/tryon/sync?status=done&limit=50` every 5 minutes. It is paused and removed from `vercel.json` (v12.3.40) while try-on is paused; the route stays for manual or service-secret calls, and the RUNBOOK ("Scheduled jobs and workers") lists the three steps to restore it (set `CRON_SECRET`, restore the `vercel.json` entry, deploy).
 
 ## Failure classification
 

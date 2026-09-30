@@ -78,12 +78,13 @@ rather than claim compliance.
 
 ## 2. Zero-tolerance quality gate before anything reaches `main`
 
-**CI exists but does not gate deploys.** `.github/workflows/ci.yml` runs
-`npm run inventory:check` and `npm run release:check` on push/PR to `main`
-(required status check `Verify`), but Vercel deploys every push to `main` without
-waiting for it, and direct pushes to `main` bypass the PR requirement. A red CI
-run therefore does not stop a broken commit reaching production — local
-discipline is the actual gate; treat it as non-optional.
+**`main` is protected, including for admins (since 2026-09-30).** `main` requires a
+pull request and a passing `Verify` check (`.github/workflows/ci.yml`: `npm run
+inventory:check` and `npm run release:check`), admins cannot bypass it, and
+force-pushes are blocked, so a red CI run cannot reach `main` or production. Vercel
+still deploys whatever lands on `main` without waiting for Actions; the protection
+rule is what keeps a broken commit out. Open a PR for every change and run the gate
+locally first:
 
 Before every push, run: `npx tsc --noEmit` and `npm run lint`
 (`eslint .`, effectively zero-warning in practice) at minimum; `npm run build` for
