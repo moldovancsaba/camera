@@ -1,6 +1,6 @@
 # Branching model
 
-**Version**: 12.3.39
+**Version**: 12.3.40
 **Last Updated**: 2026-09-28
 _Verified @ a87d78f_
 
@@ -19,19 +19,21 @@ merged into `main` and then left in place or deleted.
 | `feature/*`, `feat/*`, `fix/*`, `chore/*`, `docs/*`, … | **Ephemeral task branches.** Cut from `main` for one change, named for the change (`feature/…`, `fix/…`, `chore/…`), merged back into `main`, then safe to delete. No fixed prefix list is enforced — the names above are what's in use. Branch names never carry an assistant/tool name (see `CLAUDE.md`). |
 | `dependabot/*` | Automated dependency-bump branches opened by Dependabot. |
 
-## Current practice (2026-09-28)
+## Current practice (2026-09-30)
 
-- `main` has a GitHub branch protection rule: pull request required (0
+- `main` has a GitHub branch protection rule: a pull request is required (0
   approvals) and the `Verify` status check (`.github/workflows/ci.yml`) must
-  pass, but it is not enforced for admins (`enforce_admins: false`).
-- In practice most changes are pushed directly to `main`, bypassing that rule:
-  of 76 first-parent commits on `main` since 2026-08-20, two arrived via
-  (squash-merged) PRs (#132, #133).
-- Because Vercel deploys every push regardless of CI, a direct push that fails
-  CI still reaches production (e.g. CI was red on `main` from `386d3fe` to
-  `06f3029` while each of those commits deployed).
-- Five `origin/claude/*` branches remain from earlier work; whether to delete or
-  rename them is an owner decision.
+  pass. Since 2026-09-30 it is enforced for admins (`enforce_admins: true`), it
+  requires the branch to be up to date, and force-pushes and deletions are off.
+  No bypass lists exist.
+- Before that date most changes were pushed directly to `main`: of 76
+  first-parent commits since 2026-08-20, two arrived via PRs (#132, #133), and
+  CI was red on `main` from `386d3fe` to `06f3029` while each of those commits
+  deployed. That can no longer happen.
+- Vercel deploys every commit that lands on `main` without waiting for CI, so the
+  protection rule is what stands between a red check and production.
+- Task branches are deleted after their PR merges. The 30 leftover merged
+  branches (five of them `claude/*`) were deleted on 2026-09-30.
 
 ## Recommended flow
 

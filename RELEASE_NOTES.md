@@ -1,5 +1,21 @@
 # RELEASE_NOTES.md
 
+## v12.3.40 — try-on sync cron removed while try-on is paused
+
+- **Changed:** the `*/5 * * * *` cron that called
+  `GET /api/internal/tryon/sync` is removed from `vercel.json`. `CRON_SECRET` was
+  never set on project `04_camera`, so every run got a 403 (about 288 a day) and
+  synced nothing, and the owner paused try-on on 2026-09-30. The route is
+  unchanged. `RUNBOOK.md` "Scheduled jobs and workers" lists the three steps to
+  restore it (set `CRON_SECRET`, restore the `vercel.json` entry, deploy).
+- **Docs:** `CLAUDE.md`, `RUNBOOK.md` and `docs/BRANCHING.md` now describe `main`
+  as protected for admins (enforced 2026-09-30, force-pushes off, no bypass
+  lists); `HANDOVER.md` records the owner decisions of 2026-09-30 (try-on off on
+  every event, separate messmass and camera logins, consent question closed,
+  domain and branch cleanup).
+- Fleet version 12.3.40 (version-only in messmass, fanmass, try-on and
+  savetheworld).
+
 ## v12.3.39 — camera hardening: access, shared secrets, try-on backstop, docs
 
 - **Security (dependencies):** `brace-expansion` 2.1.4 → 2.1.7 (two nested copies under

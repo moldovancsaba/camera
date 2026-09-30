@@ -1,7 +1,7 @@
 # Handover
 
-**Version**: 12.3.39
-**Last Updated**: 2026-09-29
+**Version**: 12.3.40
+**Last Updated**: 2026-09-30
 
 `RELEASE_NOTES.md` is kept current on every release and is the detailed record;
 this file is the short current-state summary. Previous rewrite: 2026-08-17
@@ -9,10 +9,10 @@ this file is the short current-state summary. Previous rewrite: 2026-08-17
 
 ## Status 2026-09-28
 
-- **Version** 12.3.39 (the v12.3.39 hardening batch below). Fleet policy
+- **Version** 12.3.40 (try-on cron removed; the v12.3.39 hardening batch is below). Fleet policy
   (messmass `docs/_audit/fleet-version-policy.md`) bumps messmass, fanmass,
   try-on and savetheworld to the same version in the same coordinated release;
-  12.3.38 was the last lockstep release.
+  12.3.38 was a camera-only security release; 12.3.39 and 12.3.40 are fleet releases.
 - **Production = git `main`.** Every push to `main` auto-deploys
   `narimato/04_camera` via the Vercel Git integration (verified 2026-09-28:
   latest READY production deployment `meta.githubCommitSha` = `ccd77d5` =
@@ -47,6 +47,27 @@ this file is the short current-state summary. Previous rewrite: 2026-08-17
   - `.env.example`, `RUNBOOK.md` and the audit docs are brought up to date.
 
   Details: `RELEASE_NOTES.md` v12.3.39. Follow-ups: `docs/_audit/drift-register.md` §8.
+- **Owner decisions 2026-09-30.**
+  - Try-on is paused: the local worker is stopped and `tryOn.enabled` is off on
+    every event (MotoGP Balaton Park 2026, Brain Bar 2026 x AUDI F1, FIBA 3X3 2026
+    TRYON). Switching it off also removes approved try-on results from those
+    events' slideshows, because the slideshow policy treats a disabled event as
+    "originals only" (`lib/tryon/slideshow-policy.ts:28`). The previous settings
+    are kept outside the repo so they can be restored.
+  - The `*/5` try-on sync cron is removed from `vercel.json` (v12.3.40);
+    `CRON_SECRET` stays unset. `RUNBOOK.md` "Scheduled jobs and workers" has the
+    steps to restore it.
+  - messmass and camera keep separate logins for now: `client_credentials` is not
+    enabled for their SSO clients and a messmass login mints no camera session
+    (the 403 above is expected).
+  - The fan-selfie consent question is closed with no change to behaviour.
+  - Cleaned up: `fff.messmass.com` detached from the Vercel project,
+    `camera.doneisbetter.com` kept (savetheworld reads camera through it); the
+    unused `camera_MONGODB_URI` and `GITHUB_TOKEN` Vercel variables removed;
+    GitHub Pages disabled; 30 merged remote branches (including five `claude/*`)
+    and the stray `phase0-ux-bugs` worktree deleted; PR #88 and issue #117 closed.
+  - Branch protection on `main` now applies to admins and blocks force-pushes
+    (was `enforce_admins: false`), so a red `Verify` check blocks the merge.
 - **Dependabot**: 0 open alerts on 2026-09-29 (v12.3.38 updated `sharp`, `next`,
   the `postcss` override and the transitive packages).
 - **Design system**: GDS 6.3.0 installed from vendored release tarballs
@@ -55,34 +76,12 @@ this file is the short current-state summary. Previous rewrite: 2026-08-17
 
 ## Open items
 
-- **Consent decision (owner).** publish-selfies flips an explicit
-  `isShareVisible: false` (a fan who unticked sharing) as well as missing
-  values; the pledge wall (`GET /api/internal/savetheworld/pledges`) treats a
-  missing `isShareVisible` as visible, which covers 505 legacy submissions
-  created before the share opt-in existed. Decide whether both behaviors are
-  intended.
 - **Vercel Node setting.** Project `04_camera` is set to Node 22.x; builds run on
   24 because `package.json` `engines.node` (`>=24.0.0 <25.0.0`) overrides it.
   Set the dashboard to 24.x.
-- **`CRON_SECRET` (owner).** The `*/5` try-on sync cron gets 403 on every run
-  while `CRON_SECRET` is unset in production, so the completion backstop is off.
-  Its engineering precondition, an idempotent backstop, landed in v12.3.39.
-  Decide whether to set the secret, or to remove the cron from `vercel.json`
-  while try-on is paused. See `RUNBOOK.md` "Scheduled jobs and workers".
-- **messmass → camera shared session (owner).** Every messmass login calls
-  `POST /api/internal/messmass/sso-session`, and SSO refuses the forwarded
-  messmass token read access to camera's permission record (SSO client scoping,
-  sso `6fb1b6a7`). Since v12.3.39 that answers 403
-  `sso_token_cannot_read_camera_permission` instead of a 500, so no camera
-  session is minted from a messmass login. To make it work: enable the
-  `client_credentials` grant with `manage_permissions` for camera's SSO client,
-  then read the permission with camera's own client token.
 - **Secret scanning settings (owner).** Non-provider patterns and validity
   checks are off for this public repo (Settings > Code security). The CI
   gitleaks step covers the working tree only, not history.
-- **Branch protection bypass.** `main` requires a PR and the `Verify` check, but
-  not for admins (`enforce_admins: false`); direct pushes bypass it and Vercel
-  deploys them regardless of CI.
 - **`CameraCapture` `autoStart` unreliable under `next dev`** (FRONT-008) —
   found, not fixed. A `useRef` double-invoke guard survives React StrictMode's
   dev-only mount→cleanup→remount cycle, but the `setTimeout(startCamera, 0)`

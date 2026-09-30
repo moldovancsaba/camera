@@ -17,12 +17,14 @@ production = `origin/main`). Vercel does not wait for GitHub Actions — run
 `npx vercel@latest --prod` is for manual redeploy/rollback only.
 
 The build is promoted to all production domains: `camera.messmass.com`,
-`go.messmass.com`, `fff.messmass.com`.
+`go.messmass.com` and `camera.doneisbetter.com` (savetheworld reads camera
+through it; do not detach it). `fff.messmass.com` was detached on 2026-09-30.
 
 `main` has a GitHub branch protection rule requiring a pull request (0
-approvals) and the `Verify` status check (`.github/workflows/ci.yml`), but it is
-not enforced for admins (`enforce_admins: false`), so direct pushes to `main`
-bypass it — and Vercel deploys them regardless of CI.
+approvals) and the `Verify` status check (`.github/workflows/ci.yml`). Since
+2026-09-30 it is enforced for admins (`enforce_admins: true`) and force-pushes
+are off, so every change reaches `main` through a green PR. Vercel deploys each
+merge to production without waiting for further checks.
 
 ### Verify after deploy
 
@@ -74,20 +76,25 @@ path entry stops scanning that whole file.
 
 ## Scheduled jobs and workers
 
-**Vercel Cron: try-on completion backstop.** `vercel.json` schedules
-`GET /api/internal/tryon/sync?status=done&limit=50` every 5 minutes
-(`*/5 * * * *`); Vercel runs crons against the production deployment only.
+**Vercel Cron: try-on completion backstop (paused since v12.3.40).** The job that
+used to live in `vercel.json` called
+`GET /api/internal/tryon/sync?status=done&limit=50` every 5 minutes. The owner
+paused try-on on 2026-09-30 (local worker stopped, `tryOn.enabled` off on every
+event), and `CRON_SECRET` was never set on project `04_camera`, so every run got a
+403 (about 288 a day) and synced nothing. The cron entry is therefore removed.
+The route itself is unchanged and still works when called with the service
+secret.
 
-- **Auth.** Vercel sends `Authorization: Bearer <CRON_SECRET>`. The route
-  compares it in constant time and fails closed: with `CRON_SECRET` unset every
-  cron call gets a generic 403 (`{"success":false,"error":"Forbidden"}`) and
-  logs `[internal-auth] try-on sync cron: CRON_SECRET is not configured` as a
-  warning.
-- **Current state: disabled.** `CRON_SECRET` is not set on project `04_camera`
-  (Vercel env names checked 2026-09-29), so the job 403s about 288 times a day
-  and nothing syncs. Whether to set it, or to drop the cron from `vercel.json`
-  while try-on is paused, is an open owner decision. Check with
-  `npx vercel@latest env ls production --scope narimato` (names only).
+- **To bring it back.** (1) Set `CRON_SECRET` on project `04_camera`
+  (`openssl rand -hex 32 | npx --yes vercel@latest env add CRON_SECRET production --scope narimato`);
+  (2) restore this block in `vercel.json`:
+  `{"crons":[{"path":"/api/internal/tryon/sync?status=done&limit=50","schedule":"*/5 * * * *"}]}`;
+  (3) deploy. Vercel then sends `Authorization: Bearer <CRON_SECRET>` and only runs
+  crons against the production deployment.
+- **Auth when it is on.** The route compares the bearer in constant time and fails
+  closed: with `CRON_SECRET` unset every call gets a generic 403
+  (`{"success":false,"error":"Forbidden"}`) and logs
+  `[internal-auth] try-on sync cron: CRON_SECRET is not configured` as a warning.
 - **What it does when enabled.** It applies completion only for `done` jobs that
   have a stored `result.publicResultUrl` but no completion marker: no derived
   `submissions` doc with `sourceJobId` = the job id, and no `remove` event in

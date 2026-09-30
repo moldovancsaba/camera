@@ -1,6 +1,6 @@
 # Camera
 
-**Version**: 12.3.39  
+**Version**: 12.3.40  
 **Last Updated**: 2026-09-28  
 **Status**: Production system
 
@@ -247,7 +247,7 @@ Camera can optionally enqueue asynchronous try-on jobs after a capture is saved.
 - public capture flows read active suits from `GET /api/tryon/suits`
 - `POST /api/submissions` remains the primary save path and can optionally create a linked `tryon_jobs` record
 - the official local worker in the try-on worker repository polls Atlas, runs the try-on processor, uploads the result to Vercel Blob (imgbb as a best-effort mirror), and calls Camera’s signed completion endpoint; Camera itself runs no worker
-- a Vercel Cron (`vercel.json`, every 5 minutes) calls `/api/internal/tryon/sync` as a backstop for completions the webhook missed; it stays disabled while `CRON_SECRET` is unset (see [RUNBOOK.md](RUNBOOK.md), "Scheduled jobs and workers")
+- a try-on completion backstop cron (every 5 minutes, calling `/api/internal/tryon/sync`) existed for completions the webhook missed; it is paused and removed from `vercel.json` while try-on is paused (see [RUNBOOK.md](RUNBOOK.md), "Scheduled jobs and workers", for how to restore it)
 - `/admin/tryon` is the operator workspace for queue, catalog, and moderation
 - `/admin/tryon/queue` shows live queue state directly from `tryon_jobs`
 - `/admin/tryon/suits` manages the selectable garment catalog as Camera-hosted uploaded garment assets (legacy route name remains `/suits`)

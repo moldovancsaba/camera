@@ -1,8 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/internal/tryon/sync?status=done&limit=50",
-      "schedule": "*/5 * * * *"
-    }
-  ]
-}
+{}
