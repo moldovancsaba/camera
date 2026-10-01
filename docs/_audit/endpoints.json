@@ -1,12 +1,12 @@
 {
  "_meta": {
-  "generated": "2026-10-01T13:05:30+00:00",
+  "generated": "2026-10-01T15:05:56+00:00",
   "repo": "camera",
-  "head": "c9d8cdf",
+  "head": "148bc50",
   "counts": {
-   "endpoints": 99,
+   "endpoints": 100,
    "collections": 6,
-   "env": 55,
+   "env": 59,
    "outbound-hosts": 18,
    "docs": 40
   }
@@ -776,6 +776,18 @@
     "withErrorHandler"
    ],
    "no_auth_marker": true
+  },
+  {
+   "path": "/api/internal/image-direct/complete",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/internal/image-direct/complete/route.ts",
+   "auth_markers": [
+    "assertImageDirectCallbackSecret",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
   },
   {
    "path": "/api/internal/messmass/events",

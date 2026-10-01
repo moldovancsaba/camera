@@ -1,6 +1,6 @@
 # Camera ↔ image.direct rendering contract
 
-**Status: Planned; not implemented or enabled.** Camera try-on is paused. This contract describes the gated replacement path and is not evidence that an image.direct route, callback, or worker integration is live. Keep all events disabled until the canary and retirement gates pass.
+**Status: Callback handler implemented and default-disabled; caller/dispatch and worker integration incomplete.** Camera try-on remains paused. No event dispatches to image.direct. Keep the callback gate false and output-host allowlist unset until worker publication, result qualification, and isolated end-to-end tests pass.
 
 ## Ownership
 
@@ -27,9 +27,9 @@ Camera completion materializes a derived `submissionKind: 'tryon_result'` with s
 6. Camera verifies callback/job correlation and result-host policy, idempotently creates one result, applies its existing event moderation policy (pending/hidden by default; reruns always require fresh review), and acknowledges it. image.direct marks execution complete only after this acknowledgement.
 7. Reconciliation repairs missing dispatch/callback acknowledgements without creating another Camera result or rerendering an already-published result.
 
-## Planned API and payload
+## API and payload (partially implemented, disabled)
 
-All routes below are **planned** and must not be called until their implementation issues close.
+The image.direct admission/status/cancel handlers and Camera callback handler are implemented but default-denied. Camera dispatch/outbox, image.direct input/worker/result delivery, distributed rate limiting, isolated Atlas concurrency tests and end-to-end verification remain incomplete. Both admission gates and Camera's callback gate must remain off until those issues close; the endpoints are not production-ready workflows.
 
 ### Camera → image.direct
 
@@ -74,7 +74,7 @@ The example contains illustrative values only. Camera must send a stable job ID,
 
 Identical replay for the same `cameraJobId` and request fingerprint returns the existing renderer execution (`202` on first acceptance, `200` on replay); reuse with changed intent returns `409 idempotency_conflict`. Safe errors include `400 invalid_request`, `401 unauthorized`, `413 request_too_large`, `429 rate_limited`, `503 queue_unavailable`, and `409 capability_unsupported`.
 
-Planned status lookup: `GET /api/integrations/camera/v1/jobs/{cameraJobId}`. Planned cancellation: `POST /api/integrations/camera/v1/jobs/{cameraJobId}/cancel`; cancellation succeeds idempotently only before worker claim and otherwise returns `409 job_not_cancellable`. It does not interrupt inference or delete assets.
+Status lookup: `GET /api/integrations/camera/v1/jobs/{cameraJobId}`. Cancellation: `POST /api/integrations/camera/v1/jobs/{cameraJobId}/cancel`; both are gated with admission, and cancellation succeeds idempotently only before worker claim. These routes are unavailable until image.direct delivers its explicit worker adapter.
 
 ### image.direct worker execution
 
@@ -82,7 +82,7 @@ The planned worker claim route is `POST /api/worker/integrations/camera/jobs/cla
 
 ### image.direct → Camera result callback
 
-The planned target is `POST /api/internal/tryon/complete`, extended for a versioned `renderer: 'image_direct'` result. It must require `X-Camera-Image-Direct-Callback-Token: <CAMERA_IMAGE_DIRECT_CALLBACK_TOKEN>`; this credential is distinct from the legacy try-on worker secret. The result includes Camera `jobId`, image.direct execution ID, immutable result URL, SHA-256, length, media type, pipeline/model version, and idempotency key. Camera accepts only the exact configured image.direct R2 CDN host and immutable path, correlated to the canonical Camera job. It must not fetch arbitrary callback URLs. Duplicate identical callbacks return the original acknowledgement; conflicting outputs fail safely. Callback data cannot set moderation, sharing, or slideshow flags.
+The callback endpoint is `POST /api/internal/image-direct/complete`, separate from the legacy `POST /api/internal/tryon/complete`. It requires `X-Camera-Image-Direct-Callback-Token: <CAMERA_IMAGE_DIRECT_CALLBACK_TOKEN>` and `CAMERA_IMAGE_DIRECT_CALLBACK_ENABLED=true`; this credential is distinct from the legacy try-on worker secret. It validates Camera `jobId`, image.direct execution ID, immutable result URL, SHA-256, length, media type, pipeline/model version, and the deterministic key `image-direct-result:{jobId}:v1`. Camera accepts only the exact configured R2 CDN host and immutable `/assets/{assetId}/versions/1/{sha256}` path correlated to the canonical job. It does not fetch arbitrary callback URLs. Identical callbacks reuse the reserved result metadata; conflicting output is rejected. New callback-created results are pending review and hidden, and payload data cannot set moderation/sharing/slideshow flags. The dispatcher has not yet recorded renderer/execution correlation, so the callback is not yet usable end-to-end.
 
 ## State mapping and retry ownership
 
@@ -117,7 +117,7 @@ These are contract names. Separate admission and callback secrets have been prov
 | Camera Vercel | `IMAGE_DIRECT_INTEGRATION_URL`, `IMAGE_DIRECT_INTEGRATION_TOKEN` | Camera admission/status/cancel request. |
 | image.direct Vercel | `CAMERA_INTEGRATION_TOKEN`, `CAMERA_INTEGRATION_TOKEN_PREVIOUS`, `CAMERA_INPUT_ALLOWED_HOSTS` | Authenticate Camera and constrain source/garment hosts. The current inbound token matches `IMAGE_DIRECT_INTEGRATION_TOKEN` in Camera for the same environment only; previous token is unset except during rotation. |
 | image.direct Mac worker | `CAMERA_IMAGE_DIRECT_CALLBACK_URL`, `CAMERA_IMAGE_DIRECT_CALLBACK_TOKEN` | Outbound authenticated completion. |
-| Camera Vercel | `CAMERA_IMAGE_DIRECT_CALLBACK_TOKEN`, `CAMERA_IMAGE_DIRECT_CALLBACK_TOKEN_PREVIOUS`, `IMAGE_DIRECT_RESULT_ALLOWED_HOSTS` | Verify callback and restrict immutable R2 CDN outputs. This token is separate from the admission token and matches the local worker token only within the same environment; previous token is unset except during rotation. |
+| Camera Vercel | `CAMERA_IMAGE_DIRECT_CALLBACK_TOKEN`, `CAMERA_IMAGE_DIRECT_CALLBACK_TOKEN_PREVIOUS`, `CAMERA_IMAGE_DIRECT_CALLBACK_ENABLED`, `IMAGE_DIRECT_RESULT_ALLOWED_HOSTS` | Verify callback and restrict immutable R2 CDN outputs. Callback gate remains off until worker delivery and qualification pass. This token is separate from the admission token and matches the local worker token only within the same environment; previous token is unset except during rotation. |
 
 Use independent random secrets for Preview and Production. Paired values must match within one environment only; never reuse one environment's value in the other. Production uses `https://imagedirect.vercel.app`; Preview must not point to Production. No shared Atlas URI is required. Secret values are never returned from health routes or logged. Rotation uses a bounded overlap and verified revocation; authentication failures fail closed and are not retried as transient errors. See the [credential rotation runbook](https://github.com/moldovancsaba/image.direct/blob/main/docs/runbooks/CAMERA_INTEGRATION_CREDENTIALS.md).
 
