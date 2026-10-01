@@ -145,6 +145,10 @@ fields/actions visible; the settings only ever narrow what renders, never add ne
 - Failed job states are not included in active queue SLA counts.
 - Worker completion endpoint degrades gracefully on unreachable result image URLs; dimensions are stored as null and the result still enters the pending review queue.
 
+### Renderer runtime status and planned replacement
+
+As of 2026-09-30, try-on is paused: current events have try-on disabled, the legacy local worker is stopped, and the try-on sync cron has been removed. Camera's `tryon_jobs`, derived results, and moderation remain retained product data. A planned image.direct integration will preserve Camera as queue/moderation authority and use a separate authenticated local-rendering execution service; it is not currently enabled and must not be inferred from the historical callback route. See [docs/IMAGE_DIRECT_INTEGRATION.md](docs/IMAGE_DIRECT_INTEGRATION.md).
+
 ## 5. Authorization architecture
 
 Camera uses two layers of authorization.

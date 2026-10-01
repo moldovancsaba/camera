@@ -1,7 +1,9 @@
 # Try-On Architecture
 
 **Version**: 12.3.40  
-**Last Updated**: 2026-07-04
+**Last Updated**: 2026-10-01
+
+**Runtime status 2026-10-01**: Try-on is paused. Current events have try-on disabled, the local legacy worker is stopped, and the try-on sync cron is removed. This document records the retained Camera data/moderation contract; do not interpret the historical worker flow below as enabled production processing. The planned image.direct replacement is documented in [IMAGE_DIRECT_INTEGRATION.md](./IMAGE_DIRECT_INTEGRATION.md) and is not live.
 
 ## Purpose
 
@@ -10,7 +12,7 @@ Camera uses a strict separation between queue execution and published artifacts 
 ## 1. Runtime topology
 
 - Intake creates a source submission and optional try-on request.
-- Worker executes queue jobs and returns completed image URLs via signed callback.
+- Historically, the separate local worker executed jobs and returned result URLs via signed callback; that runtime is currently paused.
 - Administration uses `/admin/tryon/vetting` for moderation and `/admin/tryon` for queue/catalog operations.
 - Analytics consumes only archived moderation outcomes for deterministic reporting.
 
@@ -20,7 +22,7 @@ Camera uses a strict separation between queue execution and published artifacts 
 2. When try-on is requested, Camera:
    - uploads the source image / asset reference
    - creates or updates a `tryon_jobs` document.
-3. A local worker claims the job and executes the configured setup:
+3. **Historical flow (paused):** the separate try-on local worker claimed the job and executed the configured setup:
    - downloads input source
    - downloads garment asset from Camera-hosted storage
    - runs generation pipeline
@@ -34,6 +36,10 @@ Camera uses a strict separation between queue execution and published artifacts 
    - pending queue: `tryOnModerationArchive.archived !== true` and `reviewStatus='pending_review'`
    - archive modes: `approved`, `rejected`, `service`, `greatest`
 6. Manual recovery happens in job-level flows (`retry`, `rerun`, `reapply-result`) from the queue and moderation pages.
+
+### Planned image.direct replacement (not live)
+
+When delivered and explicitly enabled, Camera will keep `tryon_jobs` as the product lifecycle source of truth and dispatch through an authenticated durable outbox to image.direct. image.direct will own only a correlated renderer execution record, local worker lease/inference, and verified R2 result. Its idempotent callback will materialize the result through Camera's existing completion/moderation path. The services will not share Atlas credentials or write each other's collections. Public inputs require per-job consent, exact-host allowlisting, and content integrity checks; two-piece outfits are unsupported in v1. See [the integration contract](./IMAGE_DIRECT_INTEGRATION.md).
 
 ## 3. Contracts and state
 

@@ -294,6 +294,7 @@ Canonical docs:
 - [docs/SLIDESHOW_LOGIC.md](docs/SLIDESHOW_LOGIC.md)
 - [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)
 - [docs/TRYON_LOW_LEVEL_DESIGN.md](docs/TRYON_LOW_LEVEL_DESIGN.md)
+- [docs/IMAGE_DIRECT_INTEGRATION.md](docs/IMAGE_DIRECT_INTEGRATION.md) — planned, paused image.direct renderer contract
 - [docs/TRYON_ADMIN_GUIDE.md](docs/TRYON_ADMIN_GUIDE.md)
 - [docs/TRYON_ANALYTICS.md](docs/TRYON_ANALYTICS.md)
 - [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md)

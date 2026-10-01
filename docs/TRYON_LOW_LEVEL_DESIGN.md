@@ -1,7 +1,9 @@
 # Try-On Low-Level Design
 
 **Version**: 12.3.40
-**Last Updated**: 2026-07-04
+**Last Updated**: 2026-10-01
+
+**Runtime status 2026-10-01**: The renderer is paused; this document remains authoritative for Camera's retained moderation and recovery contracts. The planned image.direct protocol is specified separately in [IMAGE_DIRECT_INTEGRATION.md](./IMAGE_DIRECT_INTEGRATION.md) and must not be treated as implemented.
 
 ## 1. Objective and scope
 
@@ -36,6 +38,7 @@ Status values are defined in `lib/db/schemas.ts`:
 - `retry_wait`
 - `done`
 - `failed`
+- `cancelled`
 
 Stage values are:
 
@@ -49,6 +52,7 @@ Stage values are:
 - `notifying_camera`
 - `done`
 - `failed`
+- `cancelled`
 
 ### 2.2 Moderation review states (derived submissions)
 
@@ -263,7 +267,13 @@ function rerunFromResultOrQueue(jobId, presetId):
   return queued new job details
 ```
 
-## 12. Edge cases
+## 12. Planned image.direct boundary (not implemented)
+
+Camera remains authoritative for the `tryon_jobs` state, source submission, garment/event policy, retry/rerun intent, result submission, and moderation. The image.direct execution ledger and worker lease are subordinate; no shared Atlas URI or cross-service collection writes are permitted. Camera dispatches a durable idempotent request only after event policy and per-job public-CDN consent pass. image.direct validates exact input hosts and hashes before local inference, publishes an immutable verified R2 output, and sends a separately authenticated idempotent completion callback. Camera accepts only a correlated output from its configured result-host allowlist and applies its existing event moderation policy (pending/hidden by default; reruns always require fresh review). The exact request/response, status mapping, error taxonomy, secret names, and rollback are defined in [IMAGE_DIRECT_INTEGRATION.md](./IMAGE_DIRECT_INTEGRATION.md).
+
+V1 carries one source and at most one garment reference. Two-piece jobs, unsupported setup/profile mappings, and unqualified engine capabilities must fail before a worker claim or inference spend. Integration availability, retries, worker leases, callback delivery, and rollout controls are not current behavior; see the dependent issues on the image.direct delivery board.
+
+## 13. Edge cases
 
 - Anonymous placeholder emails (`anonymous@event`, `anonymous@event.com`) are treated as non-display names but preserved for audit/linkage.
 - If setup list is temporarily empty, action UI degrades with disabled preset selector.
@@ -271,7 +281,7 @@ function rerunFromResultOrQueue(jobId, presetId):
 - Re-apply of non-done jobs is blocked.
 - Rerun of active jobs (`processing|claimed|uploading_result`) is blocked.
 
-## 13. Open dependencies
+## 14. Open dependencies
 
 - Event-level terms URL and email templates configured on `Event` documents.
 - Worker must emit valid `publicResultUrl` for completion.

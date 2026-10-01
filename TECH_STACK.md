@@ -141,9 +141,9 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 
 ### Local try-on worker integration
 
-- Camera writes queue state to MongoDB Atlas
-- the official worker lives in the separate try-on worker repository (cloned alongside this repo on operator machines)
-- Camera finalizes generated assets through signed internal callbacks instead of running the processor in-process
+- Camera's existing try-on queue and moderation data remain in MongoDB Atlas.
+- As of 2026-09-30, the legacy try-on worker is stopped and event try-on is disabled; this is not an active production renderer.
+- The planned image.direct replacement uses authenticated server-to-server calls and a local image.direct worker; its contract and current non-live status are in [docs/IMAGE_DIRECT_INTEGRATION.md](docs/IMAGE_DIRECT_INTEGRATION.md).
 
 ### `@vercel/blob`
 
