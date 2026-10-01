@@ -127,6 +127,7 @@ interface StoredResult {
   deleteUrl?: string | null;
   reviewStatus?: string;
   isShareVisible?: boolean;
+  isSlideshowEligible?: boolean;
   metadata: { compositionEngine?: string; tryOnRawResultUrl?: string | null };
 }
 
@@ -145,8 +146,8 @@ function storedSourceResultUrl(fake: FakeDb): string | null {
   return (source as unknown as { tryOnRequest: { resultUrl: string | null } }).tryOnRequest.resultUrl;
 }
 
-function setup(options: { frameRecord?: boolean; applyFrame?: boolean; derived?: boolean; failCompose?: boolean } = {}) {
-  const { frameRecord = true, applyFrame = true, derived = true, failCompose = false } = options;
+function setup(options: { frameRecord?: boolean; applyFrame?: boolean; derived?: boolean; failCompose?: boolean; autoApprove?: boolean } = {}) {
+  const { frameRecord = true, applyFrame = true, derived = true, failCompose = false, autoApprove = false } = options;
   composeFails = failCompose;
   composedFrom.length = 0;
   inspected.length = 0;
@@ -154,7 +155,7 @@ function setup(options: { frameRecord?: boolean; applyFrame?: boolean; derived?:
 
   return createFakeDb({
     [COLLECTIONS.EVENTS]: [
-      { _id: '650000000000000000000010', eventId: 'evt-1', tryOn: { applyFrameToReturnedResults: applyFrame, vettingEnabled: true } },
+      { _id: '650000000000000000000010', eventId: 'evt-1', tryOn: { applyFrameToReturnedResults: applyFrame, vettingEnabled: !autoApprove } },
     ],
     [COLLECTIONS.FRAMES]: frameRecord ? [{ frameId: 'frame-1', imageUrl: FRAME_URL }] : [],
     [COLLECTIONS.SUBMISSIONS]: [
@@ -253,4 +254,20 @@ test('a first completion with a failing composite still publishes the raw result
   assert.equal(created.imageUrl, RAW);
   assert.equal(created.reviewStatus, 'pending_review');
   assert.match(String(errors.mock.calls[0].arguments[0]), /falling back to raw upload/);
+});
+
+test('image.direct completion keeps a new result pending and hidden even when event auto-vetting is disabled', async () => {
+  const fake = setup({ derived: false, applyFrame: false, autoApprove: true });
+
+  const outcome = await applyTryOnCompletion(fake.db, buildJob(), {
+    publicResultUrl: RAW,
+    forcePendingReview: true,
+  });
+
+  const created = storedResult(fake, (doc) => doc.sourceJobId === JOB_ID);
+  assert.equal(outcome.publicationStatus, 'pending_review');
+  assert.equal(outcome.publicationVisible, false);
+  assert.equal(created.reviewStatus, 'pending_review');
+  assert.equal(created.isShareVisible, false);
+  assert.equal(created.isSlideshowEligible, false);
 });

@@ -969,6 +969,20 @@ export interface TryOnJobResult {
   imgbbMirrorUrl?: string | null;
 }
 
+export interface ImageDirectTryOnExecution {
+  executionId: string;
+  requestVersion: 1;
+  result?: {
+    idempotencyKey: string;
+    publicResultUrl: string;
+    sha256: string;
+    byteLength: number;
+    mediaType: 'image/jpeg' | 'image/png' | 'image/webp';
+    pipelineVersion: string;
+    modelId: string;
+  };
+}
+
 export interface TryOnJobError {
   code?: string | null;
   message?: string | null;
@@ -988,6 +1002,8 @@ export interface TryOnJob {
   processing: TryOnJobProcessingState;
   result: TryOnJobResult;
   error: TryOnJobError;
+  renderer?: 'legacy' | 'image_direct';
+  imageDirect?: ImageDirectTryOnExecution;
   createdAt: string;
   updatedAt: string;
 }

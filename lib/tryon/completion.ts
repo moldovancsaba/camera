@@ -20,6 +20,7 @@ import { dispatchPendingRelatedEmailForSubmission } from '@/lib/email/submission
 import { resolveTryOnSubmissionIdentity } from '@/lib/tryon/identity';
 import { resolveCompletionReapplySource } from '@/lib/tryon/sync';
 import { checkSharedSecret, logSharedSecretRejection } from '@/lib/security/safeEqual';
+import { validImageDirectCallbackCredential } from '@/lib/tryon/image-direct-callback';
 
 type FrameRecord = {
   fileUrl?: string | null;
@@ -41,6 +42,7 @@ export interface TryOnCompletionPayload {
   deleteUrl?: string | null;
   workerId?: string | null;
   pipelineVersion?: string | null;
+  forcePendingReview?: boolean;
 }
 
 export interface TryOnCompletionResult {
@@ -90,6 +92,23 @@ export function assertInternalTryOnSecret(request: Request): void {
   const result = checkSharedSecret(process.env.CAMERA_TRYON_INTERNAL_SECRET?.trim(), provided);
   if (result !== 'ok') {
     logSharedSecretRejection('try-on internal API', 'CAMERA_TRYON_INTERNAL_SECRET', result);
+    throw apiForbidden();
+  }
+}
+
+export function assertImageDirectCallbackSecret(request: Request): void {
+  const provided = request.headers.get('x-camera-image-direct-callback-token')?.trim() || '';
+  const configured = process.env.CAMERA_IMAGE_DIRECT_CALLBACK_TOKEN?.trim();
+  const previous = process.env.CAMERA_IMAGE_DIRECT_CALLBACK_TOKEN_PREVIOUS?.trim();
+  const currentCheck = configured && configured.length >= 32
+    ? checkSharedSecret(configured, provided)
+    : 'not_configured';
+  if (!validImageDirectCallbackCredential(provided, configured, previous)) {
+    logSharedSecretRejection(
+      'image.direct completion',
+      'CAMERA_IMAGE_DIRECT_CALLBACK_TOKEN',
+      configured ? currentCheck as Exclude<typeof currentCheck, 'ok'> : 'not_configured'
+    );
     throw apiForbidden();
   }
 }
@@ -229,7 +248,7 @@ async function resolveTryOnResultAsset(
       frame?.width,
       frame?.height
     );
-  } catch (error) {
+  } catch {
     console.error(
       retainedAsset
         ? 'Failed to apply frame to returned try-on result; keeping the current framed result.'
@@ -237,8 +256,7 @@ async function resolveTryOnResultAsset(
       {
         eventId: sourceSubmission.eventId ?? null,
         frameId,
-        publicResultUrl,
-        error,
+        errorCode: 'frame_composition_failed',
       }
     );
     return withoutFrame();
@@ -329,7 +347,7 @@ export async function applyTryOnCompletion(
 
   const sourceEvent = await resolveSourceEvent(db, sourceSubmission, job);
   const isRerunJob = isAdminRerunJob(job);
-  const publication = isRerunJob
+  const publication = payload.forcePendingReview || isRerunJob
     ? getPendingReviewState()
     : getCompositionReviewState(sourceEvent);
   // Read before the asset is resolved: a re-application of the same raw
@@ -378,6 +396,7 @@ export async function applyTryOnCompletion(
           imgbbDeleteUrl: resolvedAsset.deleteUrl ?? payload.deleteUrl ?? null,
           provider: detectImageProvider(resolvedAsset.publicResultUrl),
         },
+        ...(payload.forcePendingReview && job.imageDirect?.result ? { 'imageDirect.result': job.imageDirect.result } : {}),
         error: {
           code: null,
           message: null,
