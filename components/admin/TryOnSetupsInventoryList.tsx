@@ -22,6 +22,7 @@ export interface SerializedTryOnSetupRow {
   isDefault: boolean;
   profile?: string | null;
   category?: string | null;
+  promptVersion?: number | null;
   defaultForGarmentTypes?: string[] | null;
 }
 
@@ -72,6 +73,7 @@ export default function TryOnSetupsInventoryList({ setups }: { setups: Serialize
       ...(setup.isDefault ? [{ label: 'Default', value: setup.cameraId ? `Yes (camera ${setup.cameraId})` : 'Yes (global)' }] : []),
       ...(setup.profile ? [{ label: 'Processing profile', value: setup.profile }] : []),
       ...(setup.category ? [{ label: 'Category', value: setup.category }] : []),
+      ...(setup.promptVersion ? [{ label: 'Prompt version', value: String(setup.promptVersion) }] : []),
       ...(setup.defaultForGarmentTypes?.length
         ? [{ label: 'Default for garments', value: setup.defaultForGarmentTypes.join(', ') }]
         : []),

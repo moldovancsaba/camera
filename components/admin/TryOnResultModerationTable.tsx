@@ -13,6 +13,7 @@ import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
 import type { TryOnSuitOption } from '@/lib/tryon/suits';
 import type { AdminCardDisplaySettings } from '@/lib/db/schemas';
 import { DEFAULT_CARD_DISPLAY_SETTINGS } from '@/lib/admin/card-display-settings';
+import TryOnRerunPromptModal, { type TryOnPromptFormValue } from '@/components/admin/TryOnRerunPromptModal';
 
 type CardDisplaySettings = Omit<AdminCardDisplaySettings, '_id'>;
 
@@ -41,6 +42,7 @@ function resolveDisplayName(value: string): string {
 export interface ModerationRow {
   id: string;
   sourceJobId: string | null;
+  promptSnapshot?: { positive: string; negative: string; version: number; sha256: string } | null;
   imageUrl: string;
   previewImageUrl: string | null;
   originalImageUrl: string | null;
@@ -149,11 +151,15 @@ async function postRemove(id: string) {
   }
 }
 
-async function postRerun(sourceJobId: string, setupId?: string, leatherSuitId?: string) {
+async function postRerun(sourceJobId: string, setupId?: string, leatherSuitId?: string, promptOverride?: TryOnPromptFormValue) {
   const response = await fetch(`/api/admin/tryon-jobs/${sourceJobId}/rerun`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...(setupId ? { setupId } : {}), ...(leatherSuitId ? { leatherSuitId } : {}) }),
+    body: JSON.stringify({
+      ...(setupId ? { setupId } : {}),
+      ...(leatherSuitId ? { leatherSuitId } : {}),
+      ...(promptOverride ? { promptOverride } : {}),
+    }),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -304,6 +310,9 @@ function toModerationRow(value: unknown): ModerationRow | null {
   return {
     id: row.id,
     sourceJobId: typeof row.sourceJobId === 'string' ? row.sourceJobId : null,
+    promptSnapshot: row.promptSnapshot && typeof row.promptSnapshot.positive === 'string' && typeof row.promptSnapshot.negative === 'string'
+      ? row.promptSnapshot
+      : null,
     imageUrl: row.imageUrl,
     previewImageUrl: typeof row.previewImageUrl === 'string' ? row.previewImageUrl : null,
     originalImageUrl: typeof row.originalImageUrl === 'string' ? row.originalImageUrl : null,
@@ -793,6 +802,9 @@ export default function TryOnResultModerationTable({
   const [selectedSuitByRow, setSelectedSuitByRow] = useState<Record<string, string>>({});
   const [selectedSlideshowByRow, setSelectedSlideshowByRow] = useState<Record<string, string>>({});
   const [rerunFeedbackByRow, setRerunFeedbackByRow] = useState<Record<string, string>>({});
+  const [pendingPromptRerun, setPendingPromptRerun] = useState<{ row: ModerationRow; setupId?: string; suitId?: string } | null>(null);
+  const [promptForm, setPromptForm] = useState<TryOnPromptFormValue>({ positive: '', negative: '', reason: '' });
+  const [promptRerunError, setPromptRerunError] = useState<string | null>(null);
   const [pendingDecision, setPendingDecision] = useState<{ row: ModerationRow; action: 'approve' | 'reject' } | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [selectedFrameId, setSelectedFrameId] = useState('');
@@ -1151,28 +1163,50 @@ export default function TryOnResultModerationTable({
 
     const selectedSetupId = selectedSetupIdForRow(row);
     const selectedSuitId = selectedSuitIdForRow(row);
+    setPromptForm({ positive: '', negative: '', reason: '' });
+    setPromptRerunError(null);
+    setPendingPromptRerun({ row, setupId: selectedSetupId || undefined, suitId: selectedSuitId || undefined });
+  }
+
+  async function submitPromptRerun() {
+    const pending = pendingPromptRerun;
+    if (!pending?.row.sourceJobId) return;
+    const selectedSetupId = pending.setupId;
+    const hasPromptOverride = Boolean(promptForm.positive.trim() || promptForm.negative.trim());
     try {
-      setBusyId(`${row.id}:rerun`);
-      const result = await postRerun(row.sourceJobId, selectedSetupId || undefined, selectedSuitId || undefined);
+      setBusyId(`${pending.row.id}:rerun`);
+      const result = await postRerun(
+        pending.row.sourceJobId,
+        selectedSetupId,
+        pending.suitId,
+        hasPromptOverride ? {
+          ...promptForm,
+          positive: promptForm.positive.trim() || pending.row.promptSnapshot?.positive || '',
+          negative: promptForm.negative.trim() || pending.row.promptSnapshot?.negative || '',
+        } : undefined,
+      );
       const setupLabel = getSetupLabel(
         setupsById,
-        selectedSetupId ? { setupId: selectedSetupId } : row.setup
+        selectedSetupId ? { setupId: selectedSetupId } : pending.row.setup
       );
       setRerunFeedbackByRow((current) => ({
         ...current,
-        [row.id]: result.jobId
+        [pending.row.id]: result.jobId
           ? `Job resubmitted as ${result.jobId} with ${setupLabel}. The new result will return to pending review before publication.`
           : `Job resubmitted with ${setupLabel}. The new result will return to pending review before publication.`,
       }));
       setDisplayRows((current) => {
-        const next = current.filter((item) => item.id !== row.id);
+        const next = current.filter((item) => item.id !== pending.row.id);
         knownRowIdsRef.current = new Set(next.map((item) => item.id));
         return next;
       });
-      if (activeRowId === row.id) {
+      if (activeRowId === pending.row.id) {
         setActiveRowId(null);
       }
+      setPendingPromptRerun(null);
       router.refresh();
+    } catch (error) {
+      setPromptRerunError(error instanceof Error ? error.message : 'Failed to rerun try-on job');
     } finally {
       setBusyId(null);
     }
@@ -1673,6 +1707,16 @@ export default function TryOnResultModerationTable({
           </Stack>
         ) : null}
       </AdminModal>
+      <TryOnRerunPromptModal
+        opened={Boolean(pendingPromptRerun)}
+        onClose={() => setPendingPromptRerun(null)}
+        onSubmit={() => void submitPromptRerun()}
+        value={promptForm}
+        onChange={setPromptForm}
+        loading={Boolean(pendingPromptRerun && busyId === `${pendingPromptRerun.row.id}:rerun`)}
+        error={promptRerunError}
+        savedPrompt={pendingPromptRerun?.row.promptSnapshot ?? null}
+      />
     </>
   );
 }

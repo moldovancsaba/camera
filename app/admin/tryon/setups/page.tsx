@@ -64,6 +64,7 @@ export default async function AdminTryOnSetupsPage({
       isDefault: Boolean(setup.isDefault),
       profile: setup.config?.processing_profile ?? setup.config?.processingProfile ?? null,
       category: setup.config?.category ?? null,
+      promptVersion: setup.promptConfig?.version ?? null,
       defaultForGarmentTypes: Array.isArray(setup.defaultForGarmentTypes) ? setup.defaultForGarmentTypes : null,
     }));
   } catch (error) {

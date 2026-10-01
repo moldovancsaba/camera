@@ -39,6 +39,7 @@ export const POST = withErrorHandler(async (
     isDefault: false,
     rank: 0,
     config: { ...source.config },
+    promptConfig: source.promptConfig ? { ...source.promptConfig } : null,
     createdAt: now,
     updatedAt: now,
   };

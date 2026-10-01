@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, type TryOnSetup, type TryOnSetupConfig } from '@/lib/db/schemas';
 import { buildUniqueSetupId, normalizeDefaultForGarmentTypes } from '@/lib/tryon/setup-resolution';
 import { apiBadRequest, apiCreated, apiSuccess, requireAdmin, withErrorHandler } from '@/lib/api';
+import { buildTryOnPromptConfig } from '@/lib/tryon/prompts';
 
 function normalizeString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -97,6 +98,13 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     isDefault: Boolean(body.isDefault),
     rank: Number.isFinite(Number(body.rank)) ? Number(body.rank) : 0,
     config: buildConfig(body),
+    promptConfig: body.positivePrompt !== undefined || body.negativePrompt !== undefined
+      ? (() => {
+          const result = buildTryOnPromptConfig(body.positivePrompt ?? '', body.negativePrompt ?? '');
+          if (!result.ok) throw apiBadRequest(`Invalid prompt configuration: ${result.code}`);
+          return result.config;
+        })()
+      : null,
     defaultForGarmentTypes: normalizeDefaultForGarmentTypes(body.defaultForGarmentTypes),
     createdAt: now,
     updatedAt: now,

@@ -894,6 +894,7 @@ export interface TryOnSetup {
   isDefault: boolean;
   rank: number;
   config?: TryOnSetupConfig;
+  promptConfig?: TryOnPromptConfig | null;
   // WHAT: garment types this setup is the submit-time default for. WHY: a
   // setup's parameters are shaped around a garment silhouette (a full-body
   // leather-suit prompt painted fake sleeves onto FIBA's short-sleeve
@@ -903,6 +904,24 @@ export interface TryOnSetup {
   defaultForGarmentTypes?: GarmentType[] | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TryOnPromptConfig {
+  version: number;
+  positive: string;
+  negative: string;
+}
+
+export interface TryOnPromptSnapshot {
+  setupId: string | null;
+  version: number;
+  positive: string;
+  negative: string;
+  sha256: string;
+  source: 'setup' | 'operator_rerun_override' | 'legacy';
+  createdAt: string;
+  createdBy?: string | null;
+  reason?: string | null;
 }
 
 export interface TryOnSetupPreference {
@@ -941,6 +960,7 @@ export interface TryOnJobRequest {
   // this is the 'bottom'. The worker renders two sequential passes and
   // publishes one result; it re-validates both pieces' types at claim time.
   outfitBottomLeatherSuitId?: string | null;
+  promptSnapshot?: TryOnPromptSnapshot | null;
 }
 
 export interface TryOnJobResolvedSetup {

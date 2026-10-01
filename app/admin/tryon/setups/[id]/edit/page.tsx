@@ -5,7 +5,7 @@ import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
-import { AdminCheckbox, FormSection } from '@sovereignsquad/gds-admin/client';
+import { AdminCheckbox, AdminTextarea, FormSection } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
 import type { GarmentType, TryOnSetupConfig } from '@/lib/db/schemas';
 
@@ -27,6 +27,7 @@ interface TryOnSetupRecord {
   rank: number;
   config: TryOnSetupConfig;
   defaultForGarmentTypes?: GarmentType[] | null;
+  promptConfig?: { version: number; positive: string; negative: string } | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -46,6 +47,8 @@ export default function EditTryOnSetupPage({ params }: { params: Promise<{ id: s
   const [error, setError] = useState<string | null>(null);
   const [showMask, setShowMask] = useState(true);
   const [defaultForGarmentTypes, setDefaultForGarmentTypes] = useState<GarmentType[]>([]);
+  const [positivePrompt, setPositivePrompt] = useState('');
+  const [negativePrompt, setNegativePrompt] = useState('');
   const { confirm } = useGdsConfirm();
 
   const toggleGarmentType = (type: GarmentType, checked: boolean) => {
@@ -65,6 +68,8 @@ export default function EditTryOnSetupPage({ params }: { params: Promise<{ id: s
         setSetup(loaded);
         setShowMask(loaded.config?.show_mask !== false);
         setDefaultForGarmentTypes(Array.isArray(loaded.defaultForGarmentTypes) ? loaded.defaultForGarmentTypes : []);
+        setPositivePrompt(loaded.promptConfig?.positive ?? '');
+        setNegativePrompt(loaded.promptConfig?.negative ?? '');
       } catch (err: unknown) {
         setError(getErrorMessage(err));
       } finally {
@@ -87,6 +92,8 @@ export default function EditTryOnSetupPage({ params }: { params: Promise<{ id: s
       active: formData.get('active') === 'on',
       isDefault: formData.get('isDefault') === 'on',
       defaultForGarmentTypes,
+      positivePrompt,
+      negativePrompt,
       processingProfile: formData.get('processingProfile'),
       category: formData.get('category'),
       sleeveLength: formData.get('sleeveLength'),
@@ -282,6 +289,26 @@ export default function EditTryOnSetupPage({ params }: { params: Promise<{ id: s
                 <input name={name} defaultValue={defaultValue} inputMode={inputMode} style={{ minHeight: 44, padding: '0 0.75rem' }} />
               </label>
             ))}
+          </FormSection>
+
+          <FormSection title="Image editing prompts">
+            <p style={{ margin: 0 }}>
+              Version {setup.promptConfig?.version ?? 0}. Changes apply only to new jobs; existing jobs keep their saved prompt snapshot. Guests cannot view or edit these prompts.
+            </p>
+            <AdminTextarea
+              name="positivePrompt"
+              label="Positive prompt"
+              value={positivePrompt}
+              onChange={setPositivePrompt}
+              placeholder="Describe the intended edit and details to preserve..."
+            />
+            <AdminTextarea
+              name="negativePrompt"
+              label="Negative prompt"
+              value={negativePrompt}
+              onChange={setNegativePrompt}
+              placeholder="Describe changes or artifacts to avoid..."
+            />
           </FormSection>
 
           <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
