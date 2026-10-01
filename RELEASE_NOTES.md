@@ -1,5 +1,27 @@
 # RELEASE_NOTES.md
 
+## 2026-10-01 — Operator-managed try-on prompt snapshots
+
+- **New features:** admins can maintain positive and negative prompt text on
+  try-on setups; each new try-on job keeps an immutable, versioned, hashed
+  snapshot. Global admins can change prompt text for a rerun with a required
+  audit reason. Guests cannot submit or view prompt settings.
+- **Fixed:** editing a setup no longer changes the prompt intent of jobs already
+  queued; rerun edits preserve the untouched saved prompt field.
+- **Known issues:** Camera-to-image.direct dispatch and local worker execution
+  of these snapshots remain gated off. The current release stores and validates
+  the contract, but does not claim Camera prompt snapshots have been consumed by
+  model inference. Historical jobs without snapshots retain legacy behavior.
+- **Roadmap:** complete the queue/worker handoff and prompt-consuming inference
+  contract in image.direct #28 and Camera #162; then run an authenticated
+  operator setup/rerun smoke before enabling dispatch.
+- **Evidence:** Camera commit `7c50026` is live in Vercel Production deployment
+  [`dpl_64pYWRmzt5sLn1D1re6FjDkQ3csi`](https://vercel.com/narimato/04_camera/64pYWRmzt5sLn1D1re6FjDkQ3csi).
+  `https://camera.messmass.com/` returned HTTP 200. Snapshot contract
+  implementation is in image.direct commit `e98908f`; its production health
+  endpoint returned HTTP 200 with Atlas connected. Full operator workflow and
+  Camera model execution remain pending as stated above.
+
 ## v12.3.40 — try-on sync cron removed while try-on is paused
 
 - **Changed:** the `*/5 * * * *` cron that called
