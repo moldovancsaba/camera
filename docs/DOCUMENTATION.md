@@ -26,6 +26,7 @@ set:
 - [docs/GDS_COMPONENT_RULES.md](GDS_COMPONENT_RULES.md)
 - [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md)
 - [docs/TRYON_ARCHITECTURE.md](TRYON_ARCHITECTURE.md)
+- [docs/IMAGE_DIRECT_INTEGRATION.md](IMAGE_DIRECT_INTEGRATION.md) — planned, paused renderer replacement contract
 - [docs/TRYON_OPERATIONS.md](TRYON_OPERATIONS.md)
 - [docs/TRYON_LOW_LEVEL_DESIGN.md](TRYON_LOW_LEVEL_DESIGN.md)
 - [docs/TRYON_ADMIN_GUIDE.md](TRYON_ADMIN_GUIDE.md)
@@ -186,4 +187,3 @@ If `PLAYWRIGHT_START_WEB_SERVER=true` is used, Playwright spins up a dedicated N
 
 ### Manual configuration
 If you run tests against an already running dev server on port `3000` (e.g., setting `PLAYWRIGHT_PORT=3000`), you must ensure that your dev server was started with a safe database name (e.g. `camera_test` or `camera_dev`) and the correct callback secret, otherwise test bootstraps will fail.
-
