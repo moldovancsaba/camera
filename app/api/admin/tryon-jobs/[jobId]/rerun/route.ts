@@ -9,6 +9,7 @@ import { requireAuth, apiBadRequest, apiForbidden, apiNotFound, apiSuccess, with
 import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob, type TryOnSetup } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { appendTryOnModerationEvent, snapshotTryOnModerationState } from '@/lib/tryon/moderation-audit';
+import { buildTryOnPromptSnapshot, MAX_NEGATIVE_PROMPT_LENGTH, MAX_POSITIVE_PROMPT_LENGTH } from '@/lib/tryon/prompts';
 
 function buildRerunRequestHash(requestHash: string): string {
   return `${requestHash}::rerun:${createTryOnJobId()}`;
@@ -24,7 +25,8 @@ function buildRerunJob(
   job: TryOnJob,
   setupIdOverride?: string | null,
   leatherSuitIdOverride?: string | null,
-  sourceImageUrlOverride?: string | null
+  sourceImageUrlOverride?: string | null,
+  promptSnapshotOverride?: TryOnJob['request']['promptSnapshot']
 ): TryOnJob {
   const createdAt = nowIso();
   const { _id: omittedMongoId, ...template } = job;
@@ -62,6 +64,7 @@ function buildRerunJob(
       rerunOfJobId: job.jobId,
       ...(setupIdOverride ? { setupId: setupIdOverride } : {}),
       ...(leatherSuitIdOverride ? { leatherSuitId: leatherSuitIdOverride } : {}),
+      ...(promptSnapshotOverride ? { promptSnapshot: promptSnapshotOverride } : {}),
     },
     error: {
       code: null,
@@ -101,13 +104,20 @@ export const POST = withErrorHandler(async (
       ? (body as { setupId: string }).setupId
       : undefined
   );
+  let requestedSetup: TryOnSetup | null = null;
   if (requestedSetupId) {
-    const setup = await db
+    requestedSetup = await db
       .collection<TryOnSetup>(COLLECTIONS.TRYON_SETUPS)
       .findOne({ setupId: requestedSetupId, active: true });
-    if (!setup) {
+    if (!requestedSetup) {
       throw apiBadRequest(`setupId "${requestedSetupId}" is not active or does not exist`);
     }
+  }
+  const promptSetupId = requestedSetupId ?? sourceJob.request.setupId ?? null;
+  if (!requestedSetup && promptSetupId) {
+    requestedSetup = await db
+      .collection<TryOnSetup>(COLLECTIONS.TRYON_SETUPS)
+      .findOne({ setupId: promptSetupId, active: true });
   }
 
   const requestedLeatherSuitId = normalizeSetupId(
@@ -172,11 +182,50 @@ export const POST = withErrorHandler(async (
     throw apiBadRequest('Original job is missing source or request details required for rerun');
   }
 
+  let promptSnapshot = sourceJob.request.promptSnapshot ?? null;
+  if (body.promptOverride !== undefined) {
+    const override = body.promptOverride;
+    if (!override || typeof override !== 'object' || Array.isArray(override) ||
+        Object.keys(override).some((key) => !['positive', 'negative', 'reason'].includes(key)) ||
+        typeof override.positive !== 'string' || typeof override.negative !== 'string' ||
+        typeof override.reason !== 'string' || !override.reason.trim() || override.reason.trim().length > 500 ||
+        override.positive.length > MAX_POSITIVE_PROMPT_LENGTH || override.negative.length > MAX_NEGATIVE_PROMPT_LENGTH) {
+      throw apiBadRequest('promptOverride requires bounded positive and negative text and an operator reason');
+    }
+    const result = buildTryOnPromptSnapshot({
+      setupId: requestedSetupId ?? sourceJob.request.setupId ?? null,
+      version: (sourceJob.request.promptSnapshot?.version ?? requestedSetup?.promptConfig?.version ?? 0) + 1,
+      positive: override.positive,
+      negative: override.negative,
+      source: 'operator_rerun_override',
+      createdAt: nowIso(),
+      createdBy: session.user.email,
+      reason: override.reason.trim(),
+    });
+    if (!result.ok) throw apiBadRequest(`Invalid prompt override: ${result.code}`);
+    promptSnapshot = result.snapshot;
+  } else if (requestedSetup?.promptConfig && (
+    requestedSetupId !== sourceJob.request.setupId ||
+    requestedSetup.promptConfig.version !== sourceJob.request.promptSnapshot?.version
+  )) {
+    const result = buildTryOnPromptSnapshot({
+      setupId: requestedSetup.setupId,
+      version: requestedSetup.promptConfig.version,
+      positive: requestedSetup.promptConfig.positive,
+      negative: requestedSetup.promptConfig.negative,
+      source: 'setup',
+      createdAt: nowIso(),
+    });
+    if (!result.ok) throw apiBadRequest(`Invalid prompt configuration: ${result.code}`);
+    promptSnapshot = result.snapshot;
+  }
+
   const rerunJob = buildRerunJob(
     sourceJob,
     requestedSetupId,
     requestedLeatherSuitId,
-    replacementUpload?.imageUrl ?? null
+    replacementUpload?.imageUrl ?? null,
+    promptSnapshot
   );
 
   const inserted = await db.collection<TryOnJob>(COLLECTIONS.TRYON_JOBS).insertOne(rerunJob);
@@ -233,6 +282,8 @@ export const POST = withErrorHandler(async (
         rerunJobId: rerunJob.jobId,
         rerunOfJobId: sourceJob.jobId,
         setupId: rerunJob.request.setupId ?? null,
+        promptSnapshotHash: rerunJob.request.promptSnapshot?.sha256 ?? null,
+        promptOverride: rerunJob.request.promptSnapshot?.source === 'operator_rerun_override',
       },
     });
   }

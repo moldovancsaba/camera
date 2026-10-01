@@ -5,7 +5,8 @@ export function buildTryOnRequestHash(
   leatherSuitId: string,
   pipelineVersion: string,
   setupId?: string | null,
-  outfitBottomLeatherSuitId?: string | null
+  outfitBottomLeatherSuitId?: string | null,
+  promptSnapshotHash?: string | null
 ): string {
   const normalizedSetupId = typeof setupId === 'string' && setupId.trim() ? setupId.trim() : null;
   const normalizedBottomId =
@@ -17,8 +18,12 @@ export function buildTryOnRequestHash(
   // so no existing dedup behavior shifts on deploy — while a top-only job and
   // a top+bottom job for the same submission can never collide.
   const base = `${submissionId}:${leatherSuitId}:${pipelineVersion}:${normalizedSetupId || ''}`;
+  const outfitBase = normalizedBottomId ? `${base}:outfit-bottom:${normalizedBottomId}` : base;
+  const promptBase = typeof promptSnapshotHash === 'string' && promptSnapshotHash.trim()
+    ? `${outfitBase}:prompt:${promptSnapshotHash.trim()}`
+    : outfitBase;
   return createHash('sha256')
-    .update(normalizedBottomId ? `${base}:outfit-bottom:${normalizedBottomId}` : base)
+    .update(promptBase)
     .digest('hex');
 }
 

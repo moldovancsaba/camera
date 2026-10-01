@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DataTable } from '@sovereignsquad/gds-admin/client';
 import { StatusBadge, StateBlock, useGdsConfirm } from '@sovereignsquad/gds-core/client';
+import TryOnRerunPromptModal, { type TryOnPromptFormValue } from '@/components/admin/TryOnRerunPromptModal';
 import { getStatusBadgeProps, type CameraStatusTone } from '@/lib/gds/presentation';
 import type { TryOnSetup } from '@/lib/tryon/setup-resolution';
 import type { TryOnSuitOption } from '@/lib/tryon/suits';
@@ -25,6 +26,7 @@ export interface QueueRow {
   request: {
     leatherSuitId: string;
     setupId?: string | null;
+    promptSnapshot?: { positive: string; negative: string; version: number; sha256: string } | null;
   };
   processing: {
     workerId?: string | null;
@@ -97,11 +99,12 @@ async function retryJob(jobId: string) {
   return payload.data?.message || payload.message || 'Job queued for retry.';
 }
 
-async function rerunJob(jobId: string, setupId?: string, leatherSuitId?: string, sourceImageData?: string) {
-  const payload: Record<string, string> = {};
+async function rerunJob(jobId: string, setupId?: string, leatherSuitId?: string, sourceImageData?: string, promptOverride?: { positive: string; negative: string; reason: string }) {
+  const payload: Record<string, unknown> = {};
   if (setupId) payload.setupId = setupId;
   if (leatherSuitId) payload.leatherSuitId = leatherSuitId;
   if (sourceImageData) payload.sourceImageData = sourceImageData;
+  if (promptOverride) payload.promptOverride = promptOverride;
   const response = await fetch(`/api/admin/tryon-jobs/${jobId}/rerun`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -269,6 +272,10 @@ function toQueueRow(value: unknown): QueueRow | null {
     request: {
       leatherSuitId: typeof row.request?.leatherSuitId === 'string' ? row.request.leatherSuitId : 'unknown',
       setupId: typeof row.request?.setupId === 'string' ? row.request.setupId : null,
+      promptSnapshot: row.request?.promptSnapshot && typeof row.request.promptSnapshot.positive === 'string' &&
+        typeof row.request.promptSnapshot.negative === 'string'
+        ? row.request.promptSnapshot
+        : null,
     },
     processing: {
       workerId: typeof row.processing?.workerId === 'string' ? row.processing.workerId : null,
@@ -305,6 +312,14 @@ export default function TryOnQueueTable({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [busyJobId, setBusyJobId] = useState<string | null>(null);
   const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
+  const [rerunTarget, setRerunTarget] = useState<{
+    jobId: string;
+    setupId?: string;
+    leatherSuitId?: string;
+    promptSnapshot?: QueueRow['request']['promptSnapshot'];
+  } | null>(null);
+  const [promptForm, setPromptForm] = useState<TryOnPromptFormValue>({ positive: '', negative: '', reason: '' });
+  const [rerunError, setRerunError] = useState<string | null>(null);
   const [selectedSetupByJob, setSelectedSetupByJob] = useState<Record<string, string>>({});
   const [selectedSuitByJob, setSelectedSuitByJob] = useState<Record<string, string>>({});
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -369,19 +384,32 @@ export default function TryOnQueueTable({
     }
   }
 
-  async function handleRerun(jobId: string, setupId?: string, leatherSuitId?: string) {
-    const confirmed = await confirm({
-      title: 'Rerun try-on job',
-      message:
-        'Rerun creates a new queued job with the selected preset and garment. The new result will require human approval before it can be sent to the user.',
-    });
-    if (!confirmed) {
-      return;
-    }
+  function handleRerun(row: QueueRow, setupId?: string, leatherSuitId?: string) {
+    setPromptForm({ positive: '', negative: '', reason: '' });
+    setRerunError(null);
+    setRerunTarget({ jobId: row.jobId, setupId, leatherSuitId, promptSnapshot: row.request.promptSnapshot });
+  }
+
+  async function submitRerun() {
+    if (!rerunTarget) return;
+    const hasPromptOverride = Boolean(promptForm.positive.trim() || promptForm.negative.trim());
     try {
-      setBusyJobId(jobId);
-      setRecoveryMessage(await rerunJob(jobId, setupId, leatherSuitId));
+      setBusyJobId(rerunTarget.jobId);
+      setRecoveryMessage(await rerunJob(
+        rerunTarget.jobId,
+        rerunTarget.setupId,
+        rerunTarget.leatherSuitId,
+        undefined,
+        hasPromptOverride ? {
+          ...promptForm,
+          positive: promptForm.positive.trim() || rerunTarget.promptSnapshot?.positive || '',
+          negative: promptForm.negative.trim() || rerunTarget.promptSnapshot?.negative || '',
+        } : undefined,
+      ));
+      setRerunTarget(null);
       router.refresh();
+    } catch (error) {
+      setRerunError(error instanceof Error ? error.message : 'Failed to rerun try-on job');
     } finally {
       setBusyJobId(null);
     }
@@ -634,7 +662,7 @@ export default function TryOnQueueTable({
                           size="xs"
                           loading={busyJobId === row.jobId}
                           aria-label={`Rerun try-on job ${row.jobId}`}
-                          onClick={() => void handleRerun(row.jobId, selectedSetupId, selectedSuitId || undefined)}
+                          onClick={() => handleRerun(row, selectedSetupId, selectedSuitId || undefined)}
                         >
                           Rerun
                         </SemanticButton>
@@ -768,6 +796,16 @@ export default function TryOnQueueTable({
           All {totalCount} matching jobs loaded.
         </p>
       )}
+      <TryOnRerunPromptModal
+        opened={Boolean(rerunTarget)}
+        onClose={() => setRerunTarget(null)}
+        onSubmit={() => void submitRerun()}
+        value={promptForm}
+        onChange={setPromptForm}
+        loading={Boolean(rerunTarget && busyJobId === rerunTarget.jobId)}
+        error={rerunError}
+        savedPrompt={rerunTarget?.promptSnapshot ?? null}
+      />
     </div>
   );
 }

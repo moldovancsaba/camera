@@ -22,6 +22,7 @@ function toQueueRow(job: Partial<TryOnJob>) {
         typeof job.request?.setupId === 'string' && job.request.setupId.trim().length > 0
           ? job.request.setupId
           : null,
+      promptSnapshot: job.request?.promptSnapshot ?? null,
     },
     processing: {
       workerId: typeof job.processing?.workerId === 'string' ? job.processing.workerId : null,

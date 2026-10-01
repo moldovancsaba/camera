@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, type TryOnSetup, type TryOnSetupConfig } from '@/lib/db/schemas';
 import { apiBadRequest, apiNotFound, apiSuccess, requireAdmin, withErrorHandler } from '@/lib/api';
 import { normalizeDefaultForGarmentTypes } from '@/lib/tryon/setup-resolution';
+import { buildTryOnPromptConfig } from '@/lib/tryon/prompts';
 
 interface RouteContext {
   params: Promise<{ setupId: string }>;
@@ -75,6 +76,15 @@ export const PUT = withErrorHandler(async (request: NextRequest, context: RouteC
   if (body.rank !== undefined && Number.isFinite(Number(body.rank))) updateData.rank = Number(body.rank);
   if (body.defaultForGarmentTypes !== undefined) {
     updateData.defaultForGarmentTypes = normalizeDefaultForGarmentTypes(body.defaultForGarmentTypes);
+  }
+  if (body.positivePrompt !== undefined || body.negativePrompt !== undefined) {
+    const result = buildTryOnPromptConfig(
+      body.positivePrompt ?? setup.promptConfig?.positive ?? '',
+      body.negativePrompt ?? setup.promptConfig?.negative ?? '',
+      setup.promptConfig,
+    );
+    if (!result.ok) throw apiBadRequest(`Invalid prompt configuration: ${result.code}`);
+    updateData.promptConfig = result.config;
   }
   updateData.config = buildConfig(body, setup.config);
 

@@ -30,6 +30,8 @@ export default function NewTryOnSetupPage() {
   const [isDefault, setIsDefault] = useState(false);
   const [cameraId, setCameraId] = useState('');
   const [defaultForGarmentTypes, setDefaultForGarmentTypes] = useState<GarmentType[]>([]);
+  const [positivePrompt, setPositivePrompt] = useState('');
+  const [negativePrompt, setNegativePrompt] = useState('');
 
   const toggleGarmentType = (type: GarmentType, checked: boolean) => {
     setDefaultForGarmentTypes((current) =>
@@ -65,6 +67,8 @@ export default function NewTryOnSetupPage() {
           isDefault,
           cameraId,
           defaultForGarmentTypes,
+          positivePrompt,
+          negativePrompt,
           processingProfile,
           category,
           sleeveLength,
@@ -146,6 +150,26 @@ export default function NewTryOnSetupPage() {
             <AdminTextInput name="maskSharpness" label="Mask sharpness" value={maskSharpness} onChange={setMaskSharpness} inputMode="numeric" placeholder="e.g., 12" />
             <AdminTextInput name="maskPadding" label="Mask padding" value={maskPadding} onChange={setMaskPadding} inputMode="numeric" placeholder="e.g., 10" />
             <AdminTextInput name="detailBoost" label="Detail boost" value={detailBoost} onChange={setDetailBoost} inputMode="decimal" placeholder="e.g., 0.15" />
+          </AdminFormSection>
+
+          <AdminFormSection
+            title="Image editing prompts"
+            description="These prompts are operator-managed. Guests cannot view or edit them; each new job records an immutable snapshot."
+          >
+            <AdminTextarea
+              name="positivePrompt"
+              label="Positive prompt"
+              value={positivePrompt}
+              onChange={setPositivePrompt}
+              placeholder="Describe the intended edit and details to preserve..."
+            />
+            <AdminTextarea
+              name="negativePrompt"
+              label="Negative prompt"
+              value={negativePrompt}
+              onChange={setNegativePrompt}
+              placeholder="Describe changes or artifacts to avoid..."
+            />
           </AdminFormSection>
 
           <div style={{ display: 'grid', gap: '0.75rem' }}>

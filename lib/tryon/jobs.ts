@@ -9,6 +9,7 @@ import {
   type SubmissionTryOnLink,
   type TryOnJob,
   type TryOnJobError,
+  type TryOnPromptSnapshot,
   type TryOnJobStage,
   type TryOnJobStatus,
 } from '@/lib/db/schemas';
@@ -31,6 +32,7 @@ export interface CreateTryOnJobInput {
   eventMongoId?: string | null;
   partnerId?: string | null;
   userId?: string | null;
+  promptSnapshot?: TryOnPromptSnapshot | null;
 }
 
 export interface TryOnJobLinkResult {
@@ -84,7 +86,8 @@ export function buildQueuedTryOnJob(input: CreateTryOnJobInput): TryOnJob {
       normalizedSuitId,
       TRYON_PIPELINE_VERSION,
       normalizedSetupId,
-      normalizedBottomId
+      normalizedBottomId,
+      input.promptSnapshot?.sha256 ?? null
     ),
     status: 'queued',
     stage: 'queued',
@@ -106,6 +109,7 @@ export function buildQueuedTryOnJob(input: CreateTryOnJobInput): TryOnJob {
       garmentType: input.garmentType ?? null,
       sleeveStyle: input.sleeveStyle ?? null,
       outfitBottomLeatherSuitId: normalizedBottomId,
+      ...(input.promptSnapshot ? { promptSnapshot: input.promptSnapshot } : {}),
     },
     processing: {
       attemptCount: 0,

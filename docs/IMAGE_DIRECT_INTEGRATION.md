@@ -5,6 +5,7 @@
 ## Ownership
 
 - Camera owns capture, source submissions, event/garment eligibility, canonical `tryon_jobs`, retry/rerun intent, derived `tryon_result` submissions, moderation, and publication policy.
+- Camera owns operator-managed positive/negative prompts in `tryonSetups`. Event setup selection and garment-type defaults choose the setup; each job stores an immutable prompt snapshot. image.direct consumes the snapshot and never resolves a mutable prompt profile.
 - image.direct owns a subordinate renderer execution record correlated by stable Camera `jobId`, local worker lease and inference, and integrity-verified immutable R2 output.
 - Camera `tryon_jobs` remains the product lifecycle source of truth. image.direct's planned `camera_render_jobs` records mirror execution state and do not replace Camera's queue or write Camera collections.
 - The two applications use separate database credentials and communicate through authenticated server-to-server APIs; they do not share Atlas credentials or write each other's collections.
@@ -59,8 +60,12 @@ Authentication: `Authorization: Bearer <IMAGE_DIRECT_INTEGRATION_TOKEN>` over HT
   },
   "request": {
     "setupId": "camera_setup_id",
-    "promptProfileId": "approved-image-direct-profile",
-    "promptProfileVersion": "1"
+    "promptSnapshot": {
+      "version": 2,
+      "positive": "Preserve the original jersey, logos, text, and fit while editing only the approved scene details.",
+      "negative": "Do not change garment construction, logos, spelling, sponsor marks, or body identity.",
+      "sha256": "64-lowercase-hex-characters"
+    }
   },
   "consent": {
     "publicDelivery": true,
@@ -70,7 +75,7 @@ Authentication: `Authorization: Bearer <IMAGE_DIRECT_INTEGRATION_TOKEN>` over HT
 }
 ```
 
-The example contains illustrative values only. Camera must send a stable job ID, immutable setup/profile snapshot, per-job public-delivery consent provenance, and expected SHA-256, byte length, and media type for every input. image.direct verifies actual bytes. Only HTTPS URLs on exact configured host/path allowlists are eligible. Reject private, loopback, link-local, reserved, or rebinding destinations and cross-host redirects. No credentials may appear in URLs.
+The example contains illustrative values only. Camera must send a stable job ID, immutable positive/negative prompt snapshot and version, per-job public-delivery consent provenance, and expected SHA-256, byte length, and media type for every input. `promptSnapshot.sha256` is SHA-256 over UTF-8 JSON with keys in this order: `{ "setupId", "version", "positive", "negative" }`; it represents the exact immutable rendering intent. image.direct verifies the prompt hash and actual input bytes. Only HTTPS URLs on exact configured host/path allowlists are eligible. Reject private, loopback, link-local, reserved, or rebinding destinations and redirects. No credentials may appear in URLs. Guest submission APIs reject prompt fields; only Camera administrators edit setup prompts or provide an audited override when creating a rerun.
 
 Identical replay for the same `cameraJobId` and request fingerprint returns the existing renderer execution (`202` on first acceptance, `200` on replay); reuse with changed intent returns `409 idempotency_conflict`. Safe errors include `400 invalid_request`, `401 unauthorized`, `413 request_too_large`, `429 rate_limited`, `503 queue_unavailable`, and `409 capability_unsupported`.
 

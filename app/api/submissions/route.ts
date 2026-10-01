@@ -17,6 +17,7 @@ import {
   SubmissionStatus,
   type UserConsent,
   type Submission,
+  type TryOnSetup,
 } from '@/lib/db/schemas';
 import {
   withErrorHandler,
@@ -39,6 +40,7 @@ import {
 } from '@/lib/tryon/jobs';
 import { assertValidLeatherSuitId } from '@/lib/tryon/suits';
 import { findDefaultSetupForGarmentType } from '@/lib/tryon/setup-resolution';
+import { buildTryOnPromptSnapshot } from '@/lib/tryon/prompts';
 interface TryOnRequestDetails {
   requested: boolean;
   leatherSuitId: string | null;
@@ -146,6 +148,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     // Parse request body
     const body = await request.json();
+    const promptFields = ['prompt', 'promptSnapshot', 'promptOverride', 'positivePrompt', 'negativePrompt'];
+    if (promptFields.some((key) => Object.prototype.hasOwnProperty.call(body, key))) {
+      throw apiBadRequest('Prompt fields are managed by Camera operators and are not accepted on guest submissions');
+    }
     const { 
       imageData, 
       frameId, 
@@ -449,6 +455,24 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
             )
           : null;
 
+        const promptSetup = finalSetupId
+          ? await db.collection<TryOnSetup>(COLLECTIONS.TRYON_SETUPS).findOne({ setupId: finalSetupId, active: true })
+          : null;
+        const promptConfig = promptSetup?.promptConfig;
+        const promptSnapshotResult = promptConfig
+          ? buildTryOnPromptSnapshot({
+              setupId: promptSetup.setupId,
+              version: promptConfig.version,
+              positive: promptConfig.positive,
+              negative: promptConfig.negative,
+              source: 'setup',
+              createdAt,
+            })
+          : null;
+        if (promptSnapshotResult && !promptSnapshotResult.ok) {
+          throw new Error('try_on_prompt_configuration_invalid');
+        }
+
         const linkedJob = await insertOrGetTryOnJob(db, {
           submissionId,
           imageUrl: sourceUpload.imageUrl,
@@ -462,6 +486,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           eventMongoId: eventDocument?._id ? getSubmissionMongoIdString(eventDocument._id) : null,
           partnerId: typeof partnerId === 'string' ? partnerId : null,
           userId: session?.user?.id || 'anonymous',
+          promptSnapshot: promptSnapshotResult?.ok ? promptSnapshotResult.snapshot : null,
         });
 
         if (ObjectId.isValid(submissionId)) {

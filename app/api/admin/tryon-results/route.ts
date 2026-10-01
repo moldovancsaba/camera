@@ -208,6 +208,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         id: doc._id.toString(),
         sourceSubmissionId: doc.sourceSubmissionId ?? null,
         sourceJobId: doc.sourceJobId ?? null,
+        promptSnapshot: sourceJob?.request.promptSnapshot ?? null,
         setup: toSetupPayload(sourceJob),
         reviewStatus: doc.reviewStatus ?? 'pending_review',
         imageUrl:
