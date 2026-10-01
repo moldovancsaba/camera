@@ -110,16 +110,16 @@ Camera owns retry and rerun intent. Retry of unchanged intent preserves the Came
 
 ## Environment names and secrets
 
-Names are planned only; their presence or values are not asserted here. Provision direction-specific high-entropy secrets in encrypted Vercel settings and ignored local environment files. Do not copy secrets from existing Vercel projects or reuse broad worker, Atlas, R2, or legacy try-on credentials.
+These are contract names. Separate admission and callback secrets have been provisioned as Vercel Secrets per Preview/Production receiver; this does not mean any integration route is live. Host allowlists and the Preview URL remain unset until the owning API work defines them. Do not reuse worker, Atlas, R2, or legacy try-on credentials.
 
 | Runtime | Planned keys | Use |
 |---|---|---|
 | Camera Vercel | `IMAGE_DIRECT_INTEGRATION_URL`, `IMAGE_DIRECT_INTEGRATION_TOKEN` | Camera admission/status/cancel request. |
-| image.direct Vercel | `IMAGE_DIRECT_INTEGRATION_TOKEN`, `CAMERA_INPUT_ALLOWED_HOSTS` | Authenticate Camera and constrain source/garment hosts. |
+| image.direct Vercel | `CAMERA_INTEGRATION_TOKEN`, `CAMERA_INTEGRATION_TOKEN_PREVIOUS`, `CAMERA_INPUT_ALLOWED_HOSTS` | Authenticate Camera and constrain source/garment hosts. The current inbound token matches `IMAGE_DIRECT_INTEGRATION_TOKEN` in Camera for the same environment only; previous token is unset except during rotation. |
 | image.direct Mac worker | `CAMERA_IMAGE_DIRECT_CALLBACK_URL`, `CAMERA_IMAGE_DIRECT_CALLBACK_TOKEN` | Outbound authenticated completion. |
-| Camera Vercel | `CAMERA_IMAGE_DIRECT_CALLBACK_TOKEN`, `IMAGE_DIRECT_RESULT_ALLOWED_HOSTS` | Verify callback and restrict immutable R2 CDN outputs. |
+| Camera Vercel | `CAMERA_IMAGE_DIRECT_CALLBACK_TOKEN`, `CAMERA_IMAGE_DIRECT_CALLBACK_TOKEN_PREVIOUS`, `IMAGE_DIRECT_RESULT_ALLOWED_HOSTS` | Verify callback and restrict immutable R2 CDN outputs. This token is separate from the admission token and matches the local worker token only within the same environment; previous token is unset except during rotation. |
 
-No shared Atlas URI is required. Secret values are never returned from health routes or logged. Rotation uses a bounded overlap and verified revocation; authentication failures fail closed and are not retried as transient errors.
+Use independent random secrets for Preview and Production. Paired values must match within one environment only; never reuse one environment's value in the other. Production uses `https://imagedirect.vercel.app`; Preview must not point to Production. No shared Atlas URI is required. Secret values are never returned from health routes or logged. Rotation uses a bounded overlap and verified revocation; authentication failures fail closed and are not retried as transient errors. See the [credential rotation runbook](https://github.com/moldovancsaba/image.direct/blob/main/docs/runbooks/CAMERA_INTEGRATION_CREDENTIALS.md).
 
 ## Operations, recovery, and rollback
 
