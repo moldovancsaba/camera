@@ -1,5 +1,21 @@
 # RELEASE_NOTES.md
 
+## Unreleased — strict share opt-in for savetheworld's wall and galleries
+
+- **Changed:** `GET /api/internal/savetheworld/pledges` now lists only
+  submissions with `isShareVisible === true`. Photos with no flag (taken before
+  the share checkbox existed) and explicit opt-outs are no longer public.
+  The filter lives in `lib/savetheworld/wall.ts`.
+- **Changed:** `POST .../events/[eventId]/publish-selfies` now flips only
+  submissions whose flag was never set; it no longer overrides a fan who
+  unticked sharing. This closes the "known issue (decision pending)" under
+  v12.3.37.
+- **Not changed:** the capture checkbox still defaults to checked (owner
+  decision, 2026-10-02) and `POST /api/submissions` still stores
+  `isShareVisible: shareOptIn === true`.
+- **Effect to expect:** legacy unflagged photos disappear from savetheworld
+  until an admin publishes them with "Publish all fan selfies".
+
 ## 2026-10-01 — Operator-managed try-on prompt snapshots
 
 - **New features:** admins can maintain positive and negative prompt text on

@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { apiSuccess, withErrorHandler, checkRateLimit, RATE_LIMITS } from '@/lib/api';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { assertInternalSavetheworldSecret } from '@/lib/savetheworld/internal';
+import { buildWallFilter } from '@/lib/savetheworld/wall';
 
 /**
  * GET /api/internal/savetheworld/pledges?eventId=<mongoId|eventId>&limit=<n>
@@ -13,9 +14,9 @@ import { assertInternalSavetheworldSecret } from '@/lib/savetheworld/internal';
  * taking action" wall, newest first.
  *
  * Privacy boundary — these land on a public marketing page, so this returns
- * only non-tryon submissions whose `isShareVisible` is not `false` (explicitly
- * unticked photos are excluded; submissions created before the share opt-in
- * existed have no field and are treated as visible), and never
+ * only non-tryon submissions whose `isShareVisible` is `true` (strict opt-in:
+ * a missing or `false` flag is never public; legacy photos become public only
+ * through the admin's publish-selfies action), and never
  * `userEmail`/`userInfo`. Display name only, and only when the user set one.
  * A submission qualifies only if it has a displayable image; the returned
  * `imageUrl` is `previewImageUrl`, else `finalImageUrl` (the framed
@@ -86,17 +87,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   }
 
   // Submissions link to an event via the legacy single-event mirror (eventId) or
-  // the multi-event array (eventIds[]). isShareVisible: { $ne: false } includes
-  // submissions created before the shareOptIn feature (field absent → null → not false).
-  const wallFilter = {
-    $and: [
-      eventMatch,
-      { submissionKind: { $ne: 'tryon_result' } },
-      { isShareVisible: { $ne: false } },
-      // Only fields this route will return; the raw originalImageUrl is never shown here.
-      { $or: [{ previewImageUrl: { $type: 'string' } }, { finalImageUrl: { $type: 'string' } }, { imageUrl: { $type: 'string' } }] },
-    ],
-  };
+  // the multi-event array (eventIds[]); buildWallFilter matches both and requires
+  // isShareVisible === true.
+  const wallFilter = buildWallFilter(eventKeys);
   const [submissions, total] = await Promise.all([
     db.collection(COLLECTIONS.SUBMISSIONS).find(wallFilter).sort({ createdAt: -1 }).limit(limit).toArray(),
     db.collection(COLLECTIONS.SUBMISSIONS).countDocuments(wallFilter),
