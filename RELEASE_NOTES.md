@@ -13,6 +13,9 @@
 - **Not changed:** the capture checkbox still defaults to checked (owner
   decision, 2026-10-02) and `POST /api/submissions` still stores
   `isShareVisible: shareOptIn === true`.
+- **Added:** `GET /api/internal/savetheworld/events` rows carry `savetheworldLinked`
+  (true when savetheworld provisioned the event), so savetheworld can show and bulk-enable
+  only its own events instead of every event in camera.
 - **Effect to expect:** legacy unflagged photos disappear from savetheworld
   until an admin publishes them with "Publish all fan selfies".
 

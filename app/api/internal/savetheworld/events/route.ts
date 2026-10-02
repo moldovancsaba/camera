@@ -59,6 +59,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       isActive: !!e.isActive,
       mongoId,
       captureUrl: buildCaptureUrl(mongoId),
+      // true when savetheworld provisioned this event (it carries savetheworldEventId); camera also
+      // lists events that belong to other products, which savetheworld must not bulk-publish.
+      savetheworldLinked: Boolean(e.savetheworldEventId),
     };
   });
   return apiSuccess({ events });

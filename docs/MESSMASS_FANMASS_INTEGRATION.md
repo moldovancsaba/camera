@@ -167,7 +167,10 @@ Body: `{ name, logoUrl? }`. Response: `{ partner: { partnerId, name, created, li
 ### `GET /api/internal/savetheworld/events?partnerId=` | `?eventId=<eventId or Mongo _id>`
 Events sorted by `eventDate` descending, capped at 200; `?eventId` returns exactly
 that event regardless of the cap. Response: `{ events: [{ eventId, name, partnerId,
-partnerName, eventDate, isActive, mongoId, captureUrl }] }`. Rate limit `INTERNAL_READ`.
+partnerName, eventDate, isActive, mongoId, captureUrl, savetheworldLinked }] }`;
+`savetheworldLinked` is true when savetheworld provisioned the event (it carries
+`savetheworldEventId`), so savetheworld can tell its own events from other products'.
+Rate limit `INTERNAL_READ`.
 
 ### `POST /api/internal/savetheworld/events`
 Body: `{ savetheworldEventId, eventName, eventDate?, partnerId }`. Requires the
