@@ -19,7 +19,11 @@ export function eventMatchFor(eventKeys: string[]): Record<string, unknown> {
   return { $or: [{ eventId: { $in: eventKeys } }, { eventIds: { $in: eventKeys } }] };
 }
 
-/** Non-tryon submissions of the event, with an image, not yet share-visible. */
+/**
+ * Non-tryon submissions of the event, with an image, whose share flag was never set
+ * (absent or null). A fan who explicitly unticked sharing (`false`) is never
+ * overridden, and `true` needs no change.
+ */
 export function buildPublishSelfiesFilter(eventKeys: string[]): Record<string, unknown> {
   return {
     $and: [
@@ -32,7 +36,7 @@ export function buildPublishSelfiesFilter(eventKeys: string[]): Record<string, u
           { originalImageUrl: { $type: 'string' } },
         ],
       },
-      { isShareVisible: { $ne: true } },
+      { isShareVisible: null },
     ],
   };
 }

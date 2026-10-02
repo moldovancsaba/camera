@@ -167,7 +167,10 @@ Body: `{ name, logoUrl? }`. Response: `{ partner: { partnerId, name, created, li
 ### `GET /api/internal/savetheworld/events?partnerId=` | `?eventId=<eventId or Mongo _id>`
 Events sorted by `eventDate` descending, capped at 200; `?eventId` returns exactly
 that event regardless of the cap. Response: `{ events: [{ eventId, name, partnerId,
-partnerName, eventDate, isActive, mongoId, captureUrl }] }`. Rate limit `INTERNAL_READ`.
+partnerName, eventDate, isActive, mongoId, captureUrl, savetheworldLinked }] }`;
+`savetheworldLinked` is true when savetheworld provisioned the event (it carries
+`savetheworldEventId`), so savetheworld can tell its own events from other products'.
+Rate limit `INTERNAL_READ`.
 
 ### `POST /api/internal/savetheworld/events`
 Body: `{ savetheworldEventId, eventName, eventDate?, partnerId }`. Requires the
@@ -180,9 +183,9 @@ Rate limit `INTERNAL_WRITE`.
 
 ### `GET /api/internal/savetheworld/pledges?eventId=<Mongo _id or event UUID>&limit=<n>`
 The public pledge wall, newest first (`limit` default 12, max 60): non-tryon
-submissions of the event whose `isShareVisible` is not `false` (submissions
-predating the share opt-in have no field and count as visible) and that have any
-of `finalImageUrl`/`imageUrl`/`originalImageUrl`. Never returns `userEmail` or
+submissions of the event whose `isShareVisible` is `true` (strict opt-in: a
+missing or `false` flag is never listed; legacy photos appear only after
+`publish-selfies`) and that have a displayable image. Never returns `userEmail` or
 `userInfo`. Response: `{ pledges: [{ pledgeId, imageUrl, name, createdAt }], total }`.
 With `&submissionId=<id>` it instead returns that one submission of the event,
 bypassing the wall filters — a private lookup for the capturer's own post-selfie
@@ -190,11 +193,12 @@ screen. Rate limit `INTERNAL_READ`.
 
 ### `POST /api/internal/savetheworld/events/[eventId]/publish-selfies`
 Sets `isShareVisible: true` on the event's non-tryon submissions that have an
-image and are not yet visible (event resolved by `eventId`, Mongo `_id` or
+image and an unset share flag (event resolved by `eventId`, Mongo `_id` or
 `savetheworldEventId`). Event-scoped since 12.3.37
 ([lib/savetheworld/publishSelfies.ts](../lib/savetheworld/publishSelfies.ts)).
-Not rate-limited. It also flips an explicit `isShareVisible: false` (a fan who
-unticked sharing) — consent decision pending. Response: `{ published, total }`.
+Not rate-limited. It only flips submissions whose flag was never set (absent or
+null): an explicit `isShareVisible: false` (a fan who unticked sharing) is never
+overridden. Response: `{ published, total }`.
 
 ### camera → savetheworld
 Browser handoff only: the post-selfie CTA page opens the `SAVETHEWORLD_APP_URL`
