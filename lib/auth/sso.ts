@@ -372,15 +372,26 @@ export async function getUserInfo(accessToken: string): Promise<SSOUser> {
 }
 
 /**
+ * Upper bound for one token-revoke request. SSO being slow or hung must not
+ * hold up logout (messmass bounds its equivalent call at the same 3000 ms).
+ */
+export const SSO_REVOKE_TIMEOUT_MS = 3000;
+
+/**
  * Revoke access token or refresh token
  * Called during logout
- * 
+ *
+ * Rejects (TimeoutError) if SSO does not answer within `timeoutMs`; the
+ * logout route treats any rejection as non-blocking.
+ *
  * @param token - Token to revoke
  * @param tokenTypeHint - Type of token ('access_token' or 'refresh_token')
+ * @param timeoutMs - Request deadline; the default is SSO_REVOKE_TIMEOUT_MS
  */
 export async function revokeToken(
   token: string,
-  tokenTypeHint: 'access_token' | 'refresh_token' = 'access_token'
+  tokenTypeHint: 'access_token' | 'refresh_token' = 'access_token',
+  timeoutMs: number = SSO_REVOKE_TIMEOUT_MS
 ): Promise<void> {
   const config = SSO_CONFIG();
   const endpoints = SSO_ENDPOINTS();
@@ -397,6 +408,7 @@ export async function revokeToken(
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: params.toString(),
+    signal: AbortSignal.timeout(timeoutMs),
   });
 
   if (!response.ok) {

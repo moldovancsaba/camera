@@ -39,14 +39,19 @@ export async function GET(request: NextRequest) {
     const session = await getSession();
 
     if (session) {
-      // Attempt to revoke tokens at SSO (best effort, doesn't block logout)
-      try {
-        await revokeToken(session.accessToken, 'access_token');
-        await revokeToken(session.refreshToken, 'refresh_token');
+      // Attempt to revoke tokens at SSO (best effort, doesn't block logout).
+      // Concurrent, so the wait is bounded by one SSO_REVOKE_TIMEOUT_MS, and
+      // allSettled so one slow or failed revoke never skips the other.
+      const results = await Promise.allSettled([
+        revokeToken(session.accessToken, 'access_token'),
+        revokeToken(session.refreshToken, 'refresh_token'),
+      ]);
+      const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+      if (failures.length === 0) {
         console.log('✓ Tokens revoked at SSO');
-      } catch (error) {
-        console.error('⚠ Token revocation failed (non-blocking):', error);
+      } else {
         // Don't throw - revocation failure shouldn't block logout
+        console.error('⚠ Token revocation failed (non-blocking):', failures.map((f) => f.reason));
       }
     }
 

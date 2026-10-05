@@ -26,6 +26,11 @@ export function messmassConfigured(): boolean {
   return Boolean(process.env.MESSMASS_BASE_URL && process.env.CAMERA_MESSMASS_INTERNAL_SECRET);
 }
 
+// WHY: pushSsoSessionToMessmass is awaited on every camera login. A slow or
+//     hung messmass must cost the user at most this long; on timeout the push
+//     is treated like any other failure (null, no messmass session).
+const SSO_SESSION_PUSH_TIMEOUT_MS = 3000;
+
 /**
  * WHAT: Best-effort cross-app login -- forwards the SSO tokens camera just
  *     received to messmass's /api/integrations/camera/sso-session, which
@@ -39,11 +44,14 @@ export function messmassConfigured(): boolean {
  *     SESSION_COOKIE_DOMAIN=.messmass.com is set here so camera_session is
  *     itself visible on messmass's host too.
  */
-export async function pushSsoSessionToMessmass(tokens: {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-}): Promise<string[] | null> {
+export async function pushSsoSessionToMessmass(
+  tokens: {
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+  },
+  timeoutMs: number = SSO_SESSION_PUSH_TIMEOUT_MS
+): Promise<string[] | null> {
   if (!messmassConfigured()) return null;
   try {
     const res = await fetch(`${base()}/api/integrations/camera/sso-session`, {
@@ -58,6 +66,7 @@ export async function pushSsoSessionToMessmass(tokens: {
         refreshToken: tokens.refresh_token,
         expiresIn: tokens.expires_in,
       }),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) return null;
     const cookies = typeof res.headers.getSetCookie === 'function' ? res.headers.getSetCookie() : [];

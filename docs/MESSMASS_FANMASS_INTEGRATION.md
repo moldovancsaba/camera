@@ -22,12 +22,17 @@ camera        --(browser handoff: post-selfie CTA)----->  savetheworld
 
 Camera is mostly inbound but DOES call messmass outbound in two cases (see §4): it
 pushes partners it creates natively to `POST {MESSMASS_BASE_URL}/api/integrations/camera/partners`
-(`pushPartnerToMessmass`, [lib/messmassClient.ts:64-87](../lib/messmassClient.ts),
+(`pushPartnerToMessmass`, [lib/messmassClient.ts:79-102](../lib/messmassClient.ts),
 called from [app/api/partners/route.ts:136](../app/api/partners/route.ts) and
 [app/api/partners/[partnerId]/route.ts:135](../app/api/partners/%5BpartnerId%5D/route.ts))
 and mints a cross-app session via `POST .../api/integrations/camera/sso-session`
-(`pushSsoSessionToMessmass`, [lib/messmassClient.ts:36-62](../lib/messmassClient.ts),
+(`pushSsoSessionToMessmass`, [lib/messmassClient.ts:41-77](../lib/messmassClient.ts),
 called from [app/api/auth/callback/route.ts:44](../app/api/auth/callback/route.ts)).
+The session mint runs on every camera login and is best-effort: it is bounded at
+3000 ms (`AbortSignal.timeout`), and a timeout, a refusal such as the expected
+403 (owner decision 2026-09-30, `HANDOVER.md`: separate logins), or an unreachable messmass all
+return `null`, so the user simply gets no messmass session. The partner push is
+not yet time-bounded.
 It otherwise serves authenticated requests from them, including the reverse
 sso-session mint documented at the end of §1. Rate limits are enforced per
 route (§5) but callers are not end users, so 429s should read as "a caller is
