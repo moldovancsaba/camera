@@ -310,3 +310,7 @@ Historical or planning-heavy docs should not be treated as runtime truth unless 
 - `TASKLIST.md`
 - `LEARNINGS.md`
 - `CODE_AUDIT.md`
+
+## License
+
+MIT. See [LICENSE](LICENSE).
