@@ -146,10 +146,13 @@ any auth code here:
   `app/api/auth/login/route.ts`), so SSO shows its real login screen instead of
   silently re-approving a still-live SSO browser session — this is the reference
   implementation messmass's equivalent logout flow was built to match.
-- **`revokeToken()` (`lib/auth/sso.ts`) has no fetch timeout.** If SSO's revoke
-  endpoint hangs, this call currently can too — bound it with
-  `signal: AbortSignal.timeout(...)` if this ever becomes a real issue (messmass's
-  equivalent already does this).
+- **`revokeToken()` (`lib/auth/sso.ts`) is bounded by `SSO_REVOKE_TIMEOUT_MS`
+  (3000 ms, same as messmass's equivalent) via `AbortSignal.timeout`, and rejects
+  with a `TimeoutError` if SSO does not answer.** The logout route revokes the
+  access and refresh token concurrently with `Promise.allSettled`, so a slow or
+  aborted revoke neither holds logout past one deadline nor skips the other
+  token. Other fetches in `lib/auth/sso.ts` (token exchange, userinfo) are still
+  unbounded.
 - **Session tokens live in the session itself.** `Session` (`lib/auth/session.ts`)
   stores `accessToken`/`refreshToken` directly (either in the `camera_session`
   cookie or, if `shouldUseMongoWebSessions()`, a Mongo-backed session document) —

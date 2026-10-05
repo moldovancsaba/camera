@@ -31,6 +31,20 @@
 - **Effect to expect:** legacy unflagged photos disappear from savetheworld
   until an admin publishes them with "Publish all fan selfies".
 
+## Unreleased — bounded SSO revoke and messmass session push
+
+- **Fixed:** the SSO token revoke on logout and the messmass session push on
+  login had no timeout, so a hung peer could stall the request. Both are now
+  bounded at 3000 ms (`AbortSignal.timeout`), matching messmass.
+- **Changed:** logout revokes the access and refresh token concurrently
+  (`Promise.allSettled`), so one slow or failed revoke no longer skips the other
+  and logout waits at most one deadline instead of two. Failures stay
+  non-blocking and the local session is still cleared.
+- **Unchanged:** a messmass push that times out behaves like a refusal (no
+  messmass session for that login). The partner push to messmass and the other
+  fetches in `lib/auth/sso.ts` (token exchange, userinfo) remain unbounded.
+- **Tests:** `lib/auth/sso-revoke.test.ts`, `lib/messmassClient.test.ts`.
+
 ## 2026-10-01 — Operator-managed try-on prompt snapshots
 
 - **New features:** admins can maintain positive and negative prompt text on
