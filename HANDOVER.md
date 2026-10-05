@@ -75,7 +75,14 @@ this file is the short current-state summary. Previous rewrite: 2026-08-17
   then `firewall publish`. Verified live: of 130 rapid requests, 100 reached
   camera and 30 were stopped by the firewall. Upstash is not planned.
 - **Dependabot**: 0 open alerts on 2026-09-29 (v12.3.38 updated `sharp`, `next`,
-  the `postcss` override and the transitive packages).
+  the `postcss` override and the transitive packages). On 2026-10-05
+  `npm audit --omit=dev` still reported a high finding: axios 1.18.1 sat inside
+  twelve GitHub-reviewed advisories published 2026-09-30 (fixed in 1.20.0, now
+  installed). Dependabot alerts are enabled (39 past alerts, all fixed) but
+  none was ever raised for axios, and why is unexplained; do not treat "0 open
+  alerts" as proof of a clean tree, run `npm audit --omit=dev` as well. Five
+  dev-only highs remain (`eslint-config-next` pulling `braces`/`micromatch`);
+  npm's only offered fix is a downgrade to 14.x, so they are left alone.
 - **Design system**: GDS 6.3.0 installed from vendored release tarballs
   (`vendor/gds/*.tgz` via `file:` specs in `package.json`, since v12.3.29); no
   registry token needed.
