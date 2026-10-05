@@ -1,5 +1,17 @@
 # RELEASE_NOTES.md
 
+## Unreleased — axios raised to 1.20.0 (security advisories)
+
+- **Security:** `axios` `^1.7.0` (1.18.1 installed) to `^1.20.0`. Twelve
+  GitHub-reviewed advisories published 2026-09-30 cover axios up to 1.19.x
+  (prototype-pollution gadgets, header injection, proxy and redirect bypasses,
+  two denial-of-service cases); `npm audit --omit=dev` now reports 0
+  vulnerabilities. The only caller is `lib/imgbb/upload.ts` (`get`, `post`,
+  `isAxiosError`), whose API is unchanged in 1.20.0.
+- **Not changed:** five dev-only findings (`eslint-config-next` pulling
+  `braces`/`micromatch`) stay; npm's only offered fix is a downgrade to 14.x.
+- **Note:** Dependabot raised no alert for these advisories; see `HANDOVER.md`.
+
 ## Unreleased — strict share opt-in for savetheworld's wall and galleries
 
 - **Changed:** `GET /api/internal/savetheworld/pledges` now lists only
