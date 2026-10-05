@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-01T15:05:56+00:00",
+  "generated": "2026-10-05T11:32:35+00:00",
   "repo": "camera",
-  "head": "148bc50",
+  "head": "bf13720",
   "counts": {
    "endpoints": 100,
    "collections": 6,
    "env": 59,
    "outbound-hosts": 18,
-   "docs": 40
+   "docs": 41
   }
  },
  "items": [
@@ -171,6 +171,10 @@
   {
    "file": "docs/landing-page-css-handoff.md",
    "title": "Landing Page CSS Handoff"
+  },
+  {
+   "file": "gds_fix_handover.md",
+   "title": "GDS fix handover: camera"
   }
  ]
 }
