@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — photo vetting: photos waiting on the dashboard
+
+- **Added:** a "Photos waiting" tile on the admin dashboard (every event for a global admin, only their own events for a partner user),
+  and a "N photos waiting" badge on the active events strip; an event with waiting photos opens its Photos tab from the strip.
+
 ## Unreleased — photo vetting: the rollout to existing events
 
 - **Added:** `/admin/photo-vetting` (global admin, linked under Operations) and `POST /api/admin/photo-vetting-rollout`. A dry run counts the

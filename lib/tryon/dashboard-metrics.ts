@@ -2,6 +2,7 @@ import type { Db } from 'mongodb';
 import { COLLECTIONS, type LeatherSuit, type Submission, type TryOnJob, type TryOnWorkerHeartbeat } from '@/lib/db/schemas';
 import { activeTryOnQueueTotal, WORKER_OWNED_TRYON_QUEUE_STATUSES } from '@/lib/tryon/queue-status';
 import { summarizeTryOnWorkerHealth, type TryOnWorkerHealthSummary } from '@/lib/tryon/worker-health';
+import { countWaitingPhotos } from '@/lib/photo-vetting/queue';
 
 // WHAT: The operational snapshot both the Try-On hub and the admin dashboard's
 // attention row need — queue depth, worker health, garment counts, pending
@@ -22,6 +23,8 @@ export interface ActiveEventRow {
   name: string;
   partnerName: string;
   pendingVettingCount: number;
+  /** Photos of this event waiting for approval (photo vetting, camera#272). */
+  photosWaiting: number;
 }
 
 // WHAT: A handful of the most recently-active events, each with its own pending
@@ -69,6 +72,7 @@ export async function collectActiveEventRows(
         .toArray()
     : [];
   const pendingByUuid = new Map(pendingCounts.map((row) => [row._id, row.count]));
+  const waitingPhotos = await countWaitingPhotos(db, uuids);
 
   return events.map((event) => ({
     id: String(event._id),
@@ -76,6 +80,7 @@ export async function collectActiveEventRows(
     name: typeof event.name === 'string' ? event.name : 'Untitled event',
     partnerName: typeof event.partnerName === 'string' ? event.partnerName : '—',
     pendingVettingCount: pendingByUuid.get(event.eventId) ?? 0,
+    photosWaiting: waitingPhotos.byEvent.get(event.eventId) ?? 0,
   }));
 }
 

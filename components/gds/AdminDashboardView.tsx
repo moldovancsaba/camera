@@ -11,6 +11,8 @@ import type { ActiveEventRow } from '@/lib/tryon/dashboard-metrics';
 
 export interface DashboardAttentionMetrics {
   pendingVettingCount: number;
+  /** Photos of vetted events waiting for approval (camera#272). */
+  photosWaitingCount: number;
   activeQueueTotal: number;
   eventsLiveCount: number;
   // null for a partner-scoped session — worker health describes shared
@@ -61,6 +63,14 @@ export default function AdminDashboardView({
               icon={<AdminIcon iconKey="photoScan" size={18} />}
             />
           </Link>
+          <Link href="/admin/events" style={{ color: 'inherit', textDecoration: 'none' }}>
+            <MetricCard
+              label="Photos waiting"
+              value={metrics.photosWaitingCount}
+              description="Photos of events with vetting on, waiting for approval. Open an event's Photos tab."
+              icon={<AdminIcon iconKey="photoScan" size={18} />}
+            />
+          </Link>
           <Link href="/admin/tryon/queue" style={{ color: 'inherit', textDecoration: 'none' }}>
             <MetricCard
               label="Active queue"
@@ -98,9 +108,11 @@ export default function AdminDashboardView({
               <Link
                 key={event.id}
                 href={
-                  event.eventUuid
-                    ? `/admin/tryon/vetting?eventId=${encodeURIComponent(event.eventUuid)}`
-                    : `/admin/events/${event.id}`
+                  event.photosWaiting > 0
+                    ? `/admin/events/${event.id}/photos`
+                    : event.eventUuid
+                      ? `/admin/tryon/vetting?eventId=${encodeURIComponent(event.eventUuid)}`
+                      : `/admin/events/${event.id}`
                 }
                 style={{
                   alignItems: 'center',
@@ -121,6 +133,21 @@ export default function AdminDashboardView({
                     {event.partnerName}
                   </span>
                 </div>
+                {event.photosWaiting > 0 ? (
+                  <span
+                    style={{
+                      background: 'var(--mantine-color-blue-1)',
+                      borderRadius: 999,
+                      color: 'var(--mantine-color-blue-8)',
+                      flexShrink: 0,
+                      fontSize: 'var(--mantine-font-size-xs)',
+                      fontWeight: 600,
+                      padding: '4px 10px',
+                    }}
+                  >
+                    {event.photosWaiting} {event.photosWaiting === 1 ? 'photo' : 'photos'} waiting
+                  </span>
+                ) : null}
                 {event.pendingVettingCount > 0 ? (
                   <span
                     style={{
