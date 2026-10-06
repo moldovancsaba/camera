@@ -112,7 +112,9 @@ export default function ReframeStep({
     viewRef.current = view;
   }, [view]);
 
-  // Decode the original off the main thread when the browser can.
+  // Decode the photo off the main thread when the browser can, with its EXIF orientation applied (a photo from the device's
+  // camera is stored sideways with a tag). An engine that does not know `from-image` falls back to an image element, which
+  // applies the orientation everywhere.
   useEffect(() => {
     let cancelled = false;
     let bitmap: ImageBitmap | null = null;
@@ -121,7 +123,9 @@ export default function ReframeStep({
     (async () => {
       try {
         if (typeof createImageBitmap === 'function') {
-          bitmap = await createImageBitmap(capture.blob);
+          bitmap = await createImageBitmap(capture.blob, { imageOrientation: 'from-image' }).catch(() => null);
+        }
+        if (bitmap) {
           if (cancelled) {
             bitmap.close();
             bitmap = null;

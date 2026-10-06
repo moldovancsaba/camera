@@ -38,9 +38,10 @@ import { type CustomPage } from '@/lib/db/schemas';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep';
 import type { FullFrameCapture } from '@/lib/camera/frame-capture';
-import type { ReframeRecord } from '@/lib/camera/reframe';
 import { pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory } from '@/lib/frame/capture';
-import { uploadOriginal, type UploadedOriginal } from '@/lib/camera/original-upload';
+import SystemCameraCapture from '@/components/camera/SystemCameraCapture';
+import { captureOverride, chooseCaptureMethod, hasStillCapture, type CaptureMethod } from '@/lib/camera/still-capture';
+import { detectTouchPrimaryDevice } from '@/lib/camera/constraints';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -246,12 +247,17 @@ export default function EventCapturePage({
   const [generatedFrame, setGeneratedFrame] = useState<CaptureFrame | null>(null);
   const lastVariantIndex = useRef<number | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  // The whole camera image and how it was framed (camera#209). The original is held for the
-  // reframe step; storing it is camera#210, and the record is sent with the submission.
+  // The whole photo at the camera's full size, held in the browser for the reframe step only: the guest zooms and pans
+  // anywhere in it, and only the frame-sized result is saved. The photo itself is dropped (owner decision 2026-10-06).
   const [capturedOriginal, setCapturedOriginal] = useState<FullFrameCapture | null>(null);
-  const [reframeRecord, setReframeRecord] = useState<ReframeRecord | null>(null);
-  // The result of uploading the original, so a retried Save does not upload it twice.
-  const [uploadedOriginalCache, setUploadedOriginalCache] = useState<{ blob: Blob; result: UploadedOriginal } | null>(null);
+  // How the photo is taken in this environment (camera#257): the device's own camera on every touch device, a real still or
+  // the video frame on a desktop webcam. Known after mount.
+  const [captureMethod, setCaptureMethod] = useState<CaptureMethod | null>(null);
+  useEffect(() => {
+    setCaptureMethod(
+      chooseCaptureMethod({ touchPrimary: detectTouchPrimaryDevice(), stillCapture: hasStillCapture(), override: captureOverride(window.location.search) })
+    );
+  }, []);
   const [compositeImage, setCompositeImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -715,20 +721,21 @@ export default function EventCapturePage({
       }
     }
     setCapturedOriginal(capture);
-    setReframeRecord(null);
     setStep('reframe');
   };
 
   // The frame-less crop continues through the existing composite step, as the old capture did.
   const handleReframeDone = (result: ReframeResult) => {
-    setReframeRecord(result.record);
     setCapturedImage(result.dataUrl);
   };
 
+  // The full photo is not kept: once the framed result is on screen it is dropped (it can be tens of megabytes).
+  useEffect(() => {
+    if (step === 'preview') setCapturedOriginal(null);
+  }, [step]);
+
   const handleReframeRetake = () => {
     setCapturedOriginal(null);
-    setUploadedOriginalCache(null);
-    setReframeRecord(null);
     setStep('capture-photo');
   };
 
@@ -739,20 +746,6 @@ export default function EventCapturePage({
     setIsSaving(true);
 
     try {
-      // The pure full-frame original goes straight to Blob (camera#210). A failed upload never
-      // blocks the save: the photo is saved without the original.
-      let uploadedOriginal: UploadedOriginal | null = null;
-      if (capturedOriginal && reframeRecord) {
-        if (uploadedOriginalCache && uploadedOriginalCache.blob === capturedOriginal.blob) {
-          uploadedOriginal = uploadedOriginalCache.result;
-        } else {
-          uploadedOriginal = await uploadOriginal(capturedOriginal, event.eventId);
-          if (uploadedOriginal) {
-            setUploadedOriginalCache({ blob: capturedOriginal.blob, result: uploadedOriginal });
-          }
-        }
-      }
-
       // Include userInfo and consents in the submission payload
       const submissionData: {
         imageData: string;
@@ -772,12 +765,6 @@ export default function EventCapturePage({
         userInfo?: WhoAreYouPageData;
         consents?: CollectedData['consents'];
         shareOptIn?: boolean;
-        // The pure full-frame original (uploaded straight to Blob) and how it was framed (camera#210).
-        // Both are sent together or not at all.
-        originalImageUrl?: string;
-        originalImageWidth?: number;
-        originalImageHeight?: number;
-        reframe?: ReframeRecord;
         // The message and image of the generated default frame this photo used (camera#236).
         frameVariant?: { index: number | null; message: string | null; imageUrl: string };
       } = {
@@ -798,14 +785,6 @@ export default function EventCapturePage({
                 message: selectedFrame.generated.message,
                 imageUrl: selectedFrame.imageUrl,
               },
-            }
-          : {}),
-        ...(uploadedOriginal && reframeRecord
-          ? {
-              originalImageUrl: uploadedOriginal.url,
-              originalImageWidth: uploadedOriginal.width,
-              originalImageHeight: uploadedOriginal.height,
-              reframe: reframeRecord,
             }
           : {}),
       };
@@ -980,8 +959,6 @@ export default function EventCapturePage({
     setSelectedFrame((current) => (current?.generated ? null : current));
     setCapturedImage(null);
     setCapturedOriginal(null);
-    setUploadedOriginalCache(null);
-    setReframeRecord(null);
     setCompositeImage(null);
     setShareUrl(null);
     setTryOnResult(null);
@@ -1099,8 +1076,6 @@ export default function EventCapturePage({
     // Reset capture state
     setCapturedImage(null);
     setCapturedOriginal(null);
-    setUploadedOriginalCache(null);
-    setReframeRecord(null);
     setCompositeImage(null);
     setShareUrl(null);
     setImageDimensions(null);
@@ -1466,21 +1441,32 @@ export default function EventCapturePage({
               </div>
             )}
             <div className="flex-1 flex items-center justify-center p-4 min-h-0">
-              <CameraCapture
-                // The camera records the whole image; the reframe step crops it to the frame and
-                // compositeImageWithFrame adds the overlay afterwards.
-                onCapture={handleCameraCapture}
-                frameWidth={selectedFrame?.width || generatedFrame?.width || 1920}
-                frameHeight={selectedFrame?.height || generatedFrame?.height || 1080}
-                previewAspectWidthOverHeight={captureAspect}
-                territories={liveTerritories}
-                captureButtonColor={event?.brandColor || CAMERA_DEFAULT_BRAND_COLOR}
-                captureButtonBorderColor={event?.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR}
-                promptTitle={cameraPromptTitle}
-                promptDescription={cameraPromptDescription}
-                buttonSize={eventButtonSize}
-                autoStart
-              />
+              {captureMethod === 'system' ? (
+                // Every touch device takes the photo with its own camera: the camera's full still, the same everywhere.
+                <SystemCameraCapture
+                  onCapture={handleCameraCapture}
+                  promptTitle={cameraPromptTitle}
+                  captureButtonColor={event?.brandColor || CAMERA_DEFAULT_BRAND_COLOR}
+                  buttonSize={eventButtonSize}
+                />
+              ) : captureMethod ? (
+                <CameraCapture
+                  // A desktop webcam: the live view takes a real still where the browser can, else the video frame. The
+                  // reframe step crops it to the frame and compositeImageWithFrame adds the overlay afterwards.
+                  onCapture={handleCameraCapture}
+                  frameWidth={selectedFrame?.width || generatedFrame?.width || 1920}
+                  frameHeight={selectedFrame?.height || generatedFrame?.height || 1080}
+                  previewAspectWidthOverHeight={captureAspect}
+                  territories={liveTerritories}
+                  captureButtonColor={event?.brandColor || CAMERA_DEFAULT_BRAND_COLOR}
+                  captureButtonBorderColor={event?.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR}
+                  promptTitle={cameraPromptTitle}
+                  promptDescription={cameraPromptDescription}
+                  buttonSize={eventButtonSize}
+                  stillCapture={captureMethod === 'still'}
+                  autoStart
+                />
+              ) : null}
             </div>
           </div>
         )}

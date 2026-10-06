@@ -57,6 +57,7 @@ import {
   sendCameraDiagnostic,
 } from '@/lib/camera/diagnostics-client';
 import { captureFullFrame, type FullFrameCapture } from '@/lib/camera/frame-capture';
+import { aspectsAgree, fullFrameFromBlob, takeStillBlob } from '@/lib/camera/still-capture';
 import { fillCropRect, toFractionRect } from '@/lib/camera/reframe';
 import { sampleVideoLumaStats, waitForVideoFrame } from '@/lib/camera/video-frame';
 
@@ -116,6 +117,11 @@ export interface CameraCaptureProps {
   autoStart?: boolean;
   /** Layer boxes of the generated event frame, drawn inside the frame guide as 50% black territories (camera#236). */
   territories?: readonly Territory[];
+  /**
+   * The shutter takes a real photo from the camera (ImageCapture.takePhoto) at the largest size it offers, and uses the
+   * video frame only when that fails (camera#257). False: the video frame, as before.
+   */
+  stillCapture?: boolean;
 }
 
 export default function CameraCapture({ 
@@ -137,6 +143,7 @@ export default function CameraCapture({
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
   autoStart = false,
   territories,
+  stillCapture = false,
 }: CameraCaptureProps) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -524,8 +531,47 @@ export default function CameraCapture({
     let notReadyRetries = 0;
     let encodeFailures = 0;
     let lastStats: LumaStats | null = null;
+    let stillFellBack = false;
+    // Read now: stopCamera() empties the video, and its size reads 0 afterwards.
+    const liveWidth = video.videoWidth;
+    const liveHeight = video.videoHeight;
 
     try {
+      // The largest photo the camera can take, at the moment of the tap. A photo whose shape differs from the live view's
+      // (some phones take stills in another mode than they stream) is not used: the guest framed what the live view showed.
+      const track = streamRef.current?.getVideoTracks()[0];
+      if (stillCapture && track && video.videoWidth > 0 && video.videoHeight > 0) {
+        try {
+          const blob = await takeStillBlob(track);
+          const captured = await fullFrameFromBlob(blob, canvas, { facingMode: facingModeRef.current, mirrored: facingModeRef.current === 'user', method: 'still' });
+          if (!captured) throw new Error('The photo could not be opened');
+          if (!aspectsAgree(captured.width / captured.height, video.videoWidth / video.videoHeight)) {
+            throw new Error(`The photo is ${captured.width}x${captured.height}, not the shape of the live view`);
+          }
+          setCapturedImage(captured.dataUrl);
+          onCapture(captured);
+          stopCamera();
+          reportDiagnostic('capture', {
+            timing: diagRef.current.unlockedAt ? { shutterDelayMs: tappedAt - diagRef.current.unlockedAt } : undefined,
+            capture: {
+              outcome: 'ok',
+              attempts: 1,
+              videoWidth: liveWidth,
+              videoHeight: liveHeight,
+              outputWidth: captured.width,
+              outputHeight: captured.height,
+              method: 'still',
+              nativeWidth: captured.nativeWidth,
+              nativeHeight: captured.nativeHeight,
+            },
+          });
+          return;
+        } catch (stillError) {
+          console.warn('The still photo failed; using the video frame instead.', stillError);
+          stillFellBack = true;
+        }
+      }
+
       const result = await runBoundedAttempts(
         async (): Promise<AttemptOutcome> => {
           if (!video.videoWidth || !video.videoHeight || video.readyState < 2) {
@@ -561,7 +607,7 @@ export default function CameraCapture({
           }
 
           setCapturedImage(captured.dataUrl);
-          onCapture(captured);
+          onCapture({ ...captured, method: 'frame' });
           stopCamera();
           return 'done';
         },
@@ -583,10 +629,12 @@ export default function CameraCapture({
           notReadyRetries,
           lumaMean: finalStats?.mean,
           lumaStdDev: finalStats?.stdDev,
-          videoWidth: video.videoWidth,
-          videoHeight: video.videoHeight,
+          videoWidth: liveWidth,
+          videoHeight: liveHeight,
           outputWidth: canvas.width,
           outputHeight: canvas.height,
+          method: 'frame',
+          ...(stillFellBack ? { stillFellBack: true } : {}),
         },
       });
     } finally {

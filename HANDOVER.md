@@ -51,6 +51,11 @@ Open work is tracked on the GitHub project board, not in this file (next section
   (camera#238, `/admin/frames/generated`, merged but not run). Not yet done: the renderer has not run inside a deployed function (RUNBOOK
   "First check on Vercel"), nothing is generated in production, so guests see no change; then the dry-run report for the
   owner, then the run. Open: messmass#430, camera#237 (real save, accessibility audit).
+- **Capture works the same way for every camera (owner decision 2026-10-06, camera#257):** the largest still, zoom and pan
+  anywhere, "Love it", and only the frame-sized result is saved; the full-size original is no longer uploaded. Every touch
+  device takes the photo with its own camera app (file input with `capture`); a desktop webcam keeps the live view and takes a
+  real still where the browser can; `?capture=frame` is the way back. Not yet tried on a real iPhone. Cleanup once no old page
+  can be open: `POST /api/uploads/original`, the original claim handling in `POST /api/submissions`, `blob:orphans`.
 - **GDS:** camera is on 6.3.0 (vendored); the latest release is 6.7.0. The
   audit and ordered plan are in `gds_fix_handover.md` (merged in #175):
   camera#183 done 2026-10-06 (official stylesheet imported, forked CSS deleted;

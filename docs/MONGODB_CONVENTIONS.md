@@ -136,7 +136,7 @@ Runtime submission persistence currently relies on fields like:
 - `frameId`
 - `imageUrl`
 
-Image fields (camera#210):
+Image fields (camera#210; since camera#257 the capture page no longer uploads an original, so new submissions carry only the composite and the two fields below exist on older submissions):
 
 - `finalImageUrl` and `imageUrl` are the framed composite; they are the public image.
 - `originalImageUrl` is the pure full-frame camera image (not cropped, not framed, not mirrored) in Vercel Blob under `originals/<eventId>/`. It is private: no public route returns it (`lib/submissions/original-exposure.test.ts` guards this). Submissions made before camera#210, and submissions whose original could not be uploaded, carry the composite here instead.

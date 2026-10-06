@@ -106,10 +106,36 @@ more than intended passed. The real ceiling is a Vercel Firewall rule:
   first, because per-IP limits that start counting globally would tighten and
   could throttle fans who share an IP.
 
-## Full-frame originals (camera#210)
+## How the photo is taken, and what is kept (camera#257)
 
-The camera records the whole image and the fan frames it afterwards; the pure original is stored
-with the submission next to the framed photo.
+It works the same way for every camera (owner decision 2026-10-06): the largest still the camera can take, at the moment
+of the shutter, then the guest zooms and pans anywhere in it, presses "Love it", and **only the frame-sized result is saved**.
+The full-size photo stays in the browser during the reframe step and is dropped afterwards; nothing is uploaded for it.
+
+- **Every touch device** (iPhone, iPad, Android phones and tablets, any browser): the device's own camera app, through a file
+  input with `capture`. The front camera is the first choice, "Use the back camera" is a second button. The photo is used
+  as the camera gave it (an iPhone Air front camera: 18 MP, 4896 x 3672) with its EXIF orientation applied, not re-encoded;
+  only a photo above 40 MP is scaled down once. There is no live view inside the page on these devices; the frame's boxes
+  show in the reframe step. The camera app may add its own "Use photo" tap.
+- **A desktop webcam** (no camera app exists): the live view, where the shutter takes a real photo
+  (`ImageCapture.takePhoto`, Chrome and Edge) at the largest size the camera offers (at most 40 MP), and uses the video frame
+  when the photo fails, takes more than 7 s, or has another shape than the live view. Safari and Firefox on a desktop have no
+  `takePhoto`: the video frame, the most they can give.
+- **Back to the old capture:** add `?capture=frame` to the capture link (live view and video frame on every device);
+  `?capture=still` and `?capture=system` force the other two methods for testing.
+- **Diagnostics:** the `capture` record has `method` (`system`, `still`, `frame`), `nativeWidth` / `nativeHeight` (the
+  photo's own size), `outputWidth` / `outputHeight` and `stillFellBack`. Use `?cameraTest=<label>` on a phone test.
+- **If a phone's photo cannot be opened** (a format the browser cannot decode) the guest sees "We could not open the photo.
+  Please take it again." and stays on the camera step.
+
+## Full-frame originals (camera#210, no longer stored since camera#257)
+
+Until 2026-10-06 the camera recorded the whole image, the fan framed it afterwards, and the pure original was stored with the
+submission next to the framed photo. **The capture page no longer uploads it** and no longer sends `originalImageUrl` or
+`reframe` (owner: keep only the frame-sized image). The section below describes what older submissions still carry and what
+the server still accepts (a page opened before the change may still send them). `POST /api/uploads/original` is not called by
+the page any more; remove it, the claim handling in `POST /api/submissions` and `npm run blob:orphans` once no page loaded
+before the change can still be open.
 
 - **Where:** Vercel Blob, `originals/<eventId>/<random>-<suffix>.jpg` (public store, unguessable
   path, never returned by a public route, never mirrored to imgbb). `submissions.originalImageUrl`

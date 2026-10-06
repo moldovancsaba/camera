@@ -100,6 +100,25 @@
   EuroLeague Women" (owner decision, camera#248). Events with real teams, and events whose name is no pairing, fill as
   before. Images already generated for such an event are redrawn at their next generation (the message changed).
 
+## Unreleased — the same capture for every camera: the largest still, zoom and pan anywhere, only the frame-sized result is saved
+
+- **Changed:** on every touch device (iPhone, iPad, Android, any browser) the photo is taken with the device's own camera app and
+  used at the camera's full size (an iPhone Air front camera: 18 MP, 4896 x 3672), upright, not re-encoded. The guest zooms and
+  pans anywhere in it, presses "Love it", and the saved image is the frame-sized result cut from the full-size pixels. On a
+  desktop webcam the shutter takes a real photo at the largest size (Chrome, Edge) and falls back to the video frame.
+- **Changed:** **the full-size original is no longer uploaded or stored.** The capture page sends no `originalImageUrl` and no
+  `reframe` record, calls no upload route, and drops the photo from memory once the framed result is on screen. Older
+  submissions keep theirs; the server still accepts them from a page that was open before this change.
+- **Changed:** no live view inside the page on touch devices, so the frame's boxes show in the reframe step only. The
+  landscape and square-sensor problems of the live view (camera#254) do not arise there any more. `?capture=frame` brings the
+  old live view back on any device.
+- **Added:** capture diagnostics carry the capture `method`, the photo's own size and whether a still fell back to the frame.
+- **Fixed:** the capture diagnostic read the video size after the camera had stopped (always 0); it is read before.
+- Checked on a production build with a generated 4896x3672 photo, an EXIF-rotated photo, a 48 MP photo, a file that is not a
+  photo, and fake webcams (a still, a still of the wrong shape, a failing still, no `ImageCapture`): 19 + 18 checks; the earlier
+  capture (92), landscape (31) and square-sensor restart (10, under `?capture=frame`) checks still pass. Not tried on a real
+  iPhone: what the system camera and Safari do with the photo is the open check (camera#257).
+
 ## Unreleased — turning the phone asks the camera again for the new shape
 
 - **Fixed:** on a phone with a square sensor (the iPhone's Center Stage front camera) the picture keeps the shape that
