@@ -146,3 +146,24 @@ test('deleteOne success (deletedCount: 1) writes the audit event exactly once, a
     reason: 'Permanently removed by admin',
   });
 });
+
+test('a failed file delete answers 502 and keeps the result: no row delete, no audit event', async (t) => {
+  const calls: string[] = [];
+  const appendCalls: unknown[][] = [];
+  mockRouteDeps(t, { deletedCount: 1 }, calls, appendCalls);
+  t.mock.module('@/lib/submissions/delete-files', {
+    namedExports: {
+      deleteSubmissionFiles: async () => {
+        calls.push('deleteSubmissionFiles');
+        throw apiReal.apiError('Could not delete the stored image files, so the submission was kept. Try again.', 502);
+      },
+    },
+  });
+
+  const { POST } = await importRouteModule('files-fail');
+  const res = await POST(buildRequest(), { params: Promise.resolve({ submissionId }) });
+
+  assert.equal(res.status, 502);
+  assert.deepEqual(calls, ['deleteSubmissionFiles']);
+  assert.equal(appendCalls.length, 0);
+});

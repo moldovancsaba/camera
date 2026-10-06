@@ -29,6 +29,7 @@ import {
   optionalAuth,
 } from '@/lib/api';
 import { dispatchPendingSubmissionEmailForSubmission } from '@/lib/email/submission-result-email';
+import { deleteSubmissionFiles } from '@/lib/submissions/delete-files';
 
 interface FinalizeSubmissionBody {
   action?: 'update_user_info' | 'finalize';
@@ -129,6 +130,10 @@ export const DELETE = withErrorHandler(async (
     );
   }
 
+  // Files first, row second: a failed file delete answers 502 and keeps the row, so the same
+  // request can simply be repeated (camera#211).
+  const files = await deleteSubmissionFiles(db, submission);
+
   // Permanently delete the submission
   const result = await db
     .collection(COLLECTIONS.SUBMISSIONS)
@@ -142,7 +147,13 @@ export const DELETE = withErrorHandler(async (
 
   return apiSuccess({
     message: 'Submission deleted permanently',
-    deletedId: submissionId
+    deletedId: submissionId,
+    files: {
+      deleted: files.deleted.length,
+      keptShared: files.keptShared.length,
+      imgbbRequested: files.imgbbRequested,
+      imgbbFailed: files.imgbbFailed
+    }
   });
 });
 

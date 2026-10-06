@@ -6,6 +6,7 @@ import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { patchSubmissionTryOnState } from '@/lib/tryon/jobs';
 import { appendTryOnModerationEvent, snapshotTryOnModerationState } from '@/lib/tryon/moderation-audit';
+import { deleteSubmissionFiles } from '@/lib/submissions/delete-files';
 
 // WHAT: Permanently deletes a try-on RESULT submission (the generated
 // image), mirroring the same deleteOne semantics the raw-submission
@@ -35,6 +36,9 @@ export const POST = withErrorHandler(async (
   if (!resultSubmission) {
     throw apiNotFound('Try-on result');
   }
+
+  // Files first (camera#211): a failed file delete answers 502 and keeps the result, so the admin can retry.
+  await deleteSubmissionFiles(db, resultSubmission);
 
   const deleteResult = await db
     .collection(COLLECTIONS.SUBMISSIONS)
