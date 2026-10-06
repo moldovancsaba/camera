@@ -104,6 +104,13 @@ export const RATE_LIMITS = {
    * carrier NAT) and each capture session sends two or three small records.
    */
   DIAGNOSTICS: { max: 300, windowMs: 60 * 1000 },
+
+  /**
+   * Upload tokens for the full-frame original (camera#210), requested once per save. Slightly
+   * above UPLOAD (10 per minute per IP, the limit on the submission itself) so a retry or two
+   * does not lock a fan out.
+   */
+  ORIGINAL_UPLOAD_TOKEN: { max: 30, windowMs: 60 * 1000 },
 } as const;
 
 /**

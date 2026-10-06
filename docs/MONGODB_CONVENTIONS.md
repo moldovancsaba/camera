@@ -112,6 +112,13 @@ Runtime submission persistence currently relies on fields like:
 - `frameId`
 - `imageUrl`
 
+Image fields (camera#210):
+
+- `finalImageUrl` and `imageUrl` are the framed composite; they are the public image.
+- `originalImageUrl` is the pure full-frame camera image (not cropped, not framed, not mirrored) in Vercel Blob under `originals/<eventId>/`. It is private: no public route returns it (`lib/submissions/original-exposure.test.ts` guards this). Submissions made before camera#210, and submissions whose original could not be uploaded, carry the composite here instead.
+- `reframe` is present exactly when `originalImageUrl` is a distinct full-frame original: `{version: 1, mode: fill|fit|custom, zoom, crop {x, y, width, height} in source pixels (may extend past the image in fit), sourceWidth, sourceHeight, frameAspect, mirrored}`. `lib/submissions/public-image.ts` never falls back to the original when it exists.
+- `metadata.originalWidth`, `originalHeight`, `originalFileSize` and `originalMimeType` describe the original (the file's size and type come from a Blob lookup); `metadata.finalWidth` and `finalHeight` still describe the composite, which the slideshow reads.
+
 Important:
 
 - submission `eventId` is the event UUID, not the event Mongo `_id`

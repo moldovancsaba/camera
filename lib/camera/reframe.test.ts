@@ -200,3 +200,38 @@ test('show everything is only offered when it differs from fill, with a half per
   assert.equal(canShowEverything(320, 240, 1.3333), false, 'a rounded 4:3 is the same shape');
   assert.equal(canShowEverything(320, 240, 1.4), true, 'a clearly different shape');
 });
+
+// ------------------------------------------------------------------ record validation (camera#210)
+import { sanitizeReframeRecord } from './reframe';
+
+test('a record produced by the app passes validation unchanged', () => {
+  const record = toReframeRecord(panView(zoomView(defaultView(SW, SH), 2, null, SW, SH, 9 / 16), 40, -20, SW, SH, 9 / 16), SW, SH, 9 / 16, true);
+  assert.deepEqual(sanitizeReframeRecord(JSON.parse(JSON.stringify(record))), record);
+  const fit = toReframeRecord(fitView(SW, SH, 16 / 9), SW, SH, 16 / 9, false);
+  assert.deepEqual(sanitizeReframeRecord(JSON.parse(JSON.stringify(fit))), fit);
+});
+
+test('unknown fields are dropped and invalid records are rejected, not repaired', () => {
+  const good = toReframeRecord(defaultView(SW, SH), SW, SH, 9 / 16, true);
+  const withExtra = sanitizeReframeRecord({ ...good, email: 'a@b.c', crop: { ...good.crop, note: 'x' } });
+  assert.ok(withExtra);
+  assert.equal(JSON.stringify(withExtra).includes('a@b.c'), false);
+  assert.equal('note' in withExtra.crop, false);
+
+  for (const bad of [
+    null, 'text', [], {},
+    { ...good, version: 2 },
+    { ...good, mode: 'zoomed' },
+    { ...good, mirrored: 'yes' },
+    { ...good, zoom: 99 },
+    { ...good, zoom: Number.NaN },
+    { ...good, frameAspect: 0 },
+    { ...good, sourceWidth: 99999 },
+    { ...good, crop: { ...good.crop, width: 0 } },
+    { ...good, crop: { ...good.crop, x: 1e9 } },
+    { ...good, crop: null },
+    { ...good, crop: 'big' },
+  ]) {
+    assert.equal(sanitizeReframeRecord(bad), null, JSON.stringify(bad)?.slice(0, 60));
+  }
+});

@@ -37,6 +37,7 @@ import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep';
 import type { FullFrameCapture } from '@/lib/camera/frame-capture';
 import type { ReframeRecord } from '@/lib/camera/reframe';
+import { uploadOriginal, type UploadedOriginal } from '@/lib/camera/original-upload';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -221,6 +222,8 @@ export default function EventCapturePage({
   // reframe step; storing it is camera#210, and the record is sent with the submission.
   const [capturedOriginal, setCapturedOriginal] = useState<FullFrameCapture | null>(null);
   const [reframeRecord, setReframeRecord] = useState<ReframeRecord | null>(null);
+  // The result of uploading the original, so a retried Save does not upload it twice.
+  const [uploadedOriginalCache, setUploadedOriginalCache] = useState<{ blob: Blob; result: UploadedOriginal } | null>(null);
   const [compositeImage, setCompositeImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -681,6 +684,7 @@ export default function EventCapturePage({
 
   const handleReframeRetake = () => {
     setCapturedOriginal(null);
+    setUploadedOriginalCache(null);
     setReframeRecord(null);
     setStep('capture-photo');
   };
@@ -691,6 +695,20 @@ export default function EventCapturePage({
     setIsSaving(true);
 
     try {
+      // The pure full-frame original goes straight to Blob (camera#210). A failed upload never
+      // blocks the save: the photo is saved without the original.
+      let uploadedOriginal: UploadedOriginal | null = null;
+      if (capturedOriginal && reframeRecord) {
+        if (uploadedOriginalCache && uploadedOriginalCache.blob === capturedOriginal.blob) {
+          uploadedOriginal = uploadedOriginalCache.result;
+        } else {
+          uploadedOriginal = await uploadOriginal(capturedOriginal, event.eventId);
+          if (uploadedOriginal) {
+            setUploadedOriginalCache({ blob: capturedOriginal.blob, result: uploadedOriginal });
+          }
+        }
+      }
+
       // Include userInfo and consents in the submission payload
       const submissionData: {
         imageData: string;
@@ -710,8 +728,12 @@ export default function EventCapturePage({
         userInfo?: WhoAreYouPageData;
         consents?: CollectedData['consents'];
         shareOptIn?: boolean;
-        // How the photo was framed; the API ignores it until camera#210 stores it.
-        reframe?: ReframeRecord | null;
+        // The pure full-frame original (uploaded straight to Blob) and how it was framed (camera#210).
+        // Both are sent together or not at all.
+        originalImageUrl?: string;
+        originalImageWidth?: number;
+        originalImageHeight?: number;
+        reframe?: ReframeRecord;
       } = {
         imageData: compositeImage,
         frameId: selectedFrame?.frameId || null,  // Optional frame
@@ -723,7 +745,14 @@ export default function EventCapturePage({
         imageHeight: imageDimensions?.height || selectedFrame?.height || 1080,
         cameraId,
         shareOptIn,
-        reframe: reframeRecord,
+        ...(uploadedOriginal && reframeRecord
+          ? {
+              originalImageUrl: uploadedOriginal.url,
+              originalImageWidth: uploadedOriginal.width,
+              originalImageHeight: uploadedOriginal.height,
+              reframe: reframeRecord,
+            }
+          : {}),
       };
 
       if (selectedTryOnSuitId && event?.tryOn?.enabled) {
@@ -895,6 +924,7 @@ export default function EventCapturePage({
     // Keep selected frame and go back to capture step
     setCapturedImage(null);
     setCapturedOriginal(null);
+    setUploadedOriginalCache(null);
     setReframeRecord(null);
     setCompositeImage(null);
     setShareUrl(null);
@@ -1013,6 +1043,7 @@ export default function EventCapturePage({
     // Reset capture state
     setCapturedImage(null);
     setCapturedOriginal(null);
+    setUploadedOriginalCache(null);
     setReframeRecord(null);
     setCompositeImage(null);
     setShareUrl(null);
