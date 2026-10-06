@@ -2,8 +2,9 @@
  * WHAT: the guided tour's dark backdrop / spotlight-cutout color values.
  * WHY: kept in a CSS file (not inline in TourOverlay.tsx) so the raw
  *     color literals live outside the gds-compliance scanner's scope
- *     (it scans .ts/.tsx/.js/.jsx only, matching how components/gds/gds-theme.css
- *     already holds this app's other raw box-shadow/backdrop colors).
+ *     (it scans .ts/.tsx/.js/.jsx only). The forked components/gds/gds-theme.css
+ *     that used to hold this app's other raw colors was removed once the
+ *     official @sovereignsquad/gds-theme/styles.css was imported.
  */
 
 .backdropFallback {

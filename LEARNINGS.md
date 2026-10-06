@@ -5,7 +5,7 @@
 
 **Project**: Camera — Photo Frame Webapp
 **Current Version**: 2.20.0
-**Last Updated**: 2026-08-02T00:00:00.000Z
+**Last Updated**: 2026-10-06T00:00:00.000Z
 **Current Status**: Historical lessons archive. The current runtime model is documented in `README.md`, `ARCHITECTURE.md`, and `docs/*`.
 
 This document records actual issues encountered during development, their solutions, and strategic decisions made. It serves as a knowledge base to prevent repeated mistakes and guide future development.
@@ -795,6 +795,34 @@ const capturePhoto = async () => {
 
 ---
 
+### [FRONT-009] GDS styles.css loses its Inter @import under Turbopack; load the font from the layout — 2026-10-06T00:00:00.000Z
+
+**Issue**: Replacing camera's hand-copied GDS theme CSS with the official `@sovereignsquad/gds-theme/styles.css` made the production build print "@import rules must precede all rules" and silently stopped Inter from loading, with no other visible symptom.
+
+**Context**:
+- The package sheet starts with `@import '@mantine/core/styles.css'; @import '@mantine/notifications/styles.css';` and then `@import url('https://fonts.googleapis.com/...Inter...')`. Turbopack inlines the two local imports, so the remote font import lands after thousands of rules.
+- A CSS `@import` after any other rule is invalid and ignored; the built CSS contained no `fonts.googleapis.com` import at all.
+- The old fork put its (ten-family) `@import` first in its own file, so it survived.
+
+**Solution**:
+- `app/layout.tsx` loads Inter itself with React 19 resource hints: `preinit(<css2 url for Inter 400-800>, { as: "style", precedence: "default" })` emits the stylesheet `<link>`, and `preconnect` for `fonts.googleapis.com` and `fonts.gstatic.com` is delivered as a `Link` response header. The CSP already allowed both hosts.
+- A plain JSX `<link>` to `fonts.googleapis.com/css2` works too but trips `@next/next/no-page-custom-font`, a Pages Router rule that is a false positive in an App Router root layout; the resource hints avoid it without a lint suppression, which `CLAUDE.md` forbids.
+- Verified by reading the built page in a browser before and after: tokens defined, `--mantine-font-family` unchanged, Inter faces declared and loadable.
+
+**Key Decisions**:
+- A bundler warning about CSS ordering is a functional defect, not noise: check the built chunk for the rule the warning names.
+- Do not re-fork the package stylesheet to dodge a bundler issue; work around it in the consumer and report it upstream (general-design-system#791 covers bundler stylesheet troubleshooting).
+
+**Lessons Learned**:
+- `document.fonts.check()` returns true when no matching `@font-face` is declared, so it cannot prove a font loaded; list `document.fonts` and request the face with `document.fonts.load()`.
+- Comparing computed styles before and after on the same built page found a regression that a green build and green tests did not.
+
+**Impact**:
+- Inter keeps loading; nine unused Google font families stop being fetched render-blocking.
+- Remove the layout `<link>` once GDS ships the import first or as a documented link.
+
+---
+
 ## Process
 
 ### [PROC-001] Version Control Protocol Establishment — 2025-11-03T18:31:18.000Z
@@ -1126,15 +1154,15 @@ _Use this template for new learnings:_
 
 ## Statistics
 
-**Total Learnings**: 15
+**Total Learnings**: 16
 - Development: 2
 - Design: 0
 - Backend: 3
-- Frontend: 8
+- Frontend: 9
 - Process: 3
 - Other: 1
 
-**Last Updated**: 2026-08-02T00:00:00.000Z
+**Last Updated**: 2026-10-06T00:00:00.000Z
 
 ---
 
