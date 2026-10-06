@@ -61,6 +61,16 @@
 - **Not changed:** the privacy and consent wording (per landing page, owner content); proposed
   sentences are in RUNBOOK for sign-off. Deleting an event still leaves its submissions.
 
+## Unreleased — an event name that is a pairing is split into two lines
+
+- **Changed:** on a generated frame without a home and a visitor team, an event name like "Casademont Zaragoza -
+  Basket Landes" is shown as two lines, "Casademont Zaragoza" over "Basket Landes", without the separator (owner
+  rule, camera#244). Separators need a space on both sides: `x`, `vs`, `v`, then an en or em dash, then a hyphen,
+  the first kind present deciding, so "OTP Bank - PICK Szeged x Sporting Clube de Portugal" splits at the `x`. An
+  ambiguous name (two separators of the kind), an empty side or no separator wraps as before.
+- **Note:** `FRAME_RENDER_VERSION` is now 2, so frames already generated for such events are redrawn the next time
+  their images are generated.
+
 ## Unreleased — the generated default frame is drawn
 
 - **Added:** the frame image of an event is drawn on the server (`@napi-rs/canvas`): a transparent 1920x1080 PNG per
