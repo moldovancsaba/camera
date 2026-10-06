@@ -17,6 +17,7 @@ import { findEventForSlideshow } from '@/lib/slideshow/resolve-event';
 import { submissionEventIdKeys } from '@/lib/slideshow/submission-event-keys';
 import type { Event } from '@/lib/db/schemas';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
+import { publiclyVisibleClauses } from '@/lib/submissions/visibility';
 
 /**
  * GET /api/slideshows/[slideshowId]/next-candidate?excludeIds=id1,id2,...
@@ -74,13 +75,9 @@ export async function GET(
             ],
           },
           { _id: { $nin: excludeIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id)) } },
-          { isArchived: { $ne: true } },                 // Exclude archived submissions
-          {
-            $or: [
-              { hiddenFromEvents: { $exists: false } },  // Field doesn't exist yet (old data)
-              { hiddenFromEvents: { $nin: eventIdKeys } },
-            ]
-          }
+          // Not archived, not hidden from the event, not pending or rejected, and a try-on result only when approved:
+          // the one rule of lib/submissions/visibility.ts (camera#262). This route had no review filter at all.
+          ...publiclyVisibleClauses(eventIdKeys),
         ]
       })
       .sort({ playCount: 1, createdAt: 1 })

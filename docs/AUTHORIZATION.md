@@ -152,6 +152,14 @@ These can be partner-scoped where implemented:
 - `/admin/events`
 - `/admin/events/[id]`
 
+### Public photo surfaces (camera#262)
+
+What a visitor may see of a saved photo is decided by one rule, `lib/submissions/visibility.ts` (`isPubliclyVisible`): not archived,
+not hidden from every event it belongs to, not pending or rejected, and a try-on result only when approved and not turned off for
+sharing. It is applied to `/share/[id]` and its link preview, `/api/share/[id]/download`, `/api/slideshows/[id]/next-candidate`
+and `/users/[name]` (admins excepted). The slideshow playlist, the savetheworld wall and publish-selfies, the fanmass feed and the
+emails follow in V9 of `docs/PHOTO_VETTING_PLAN.md`.
+
 ### Event-scoped management APIs
 
 These now follow the same partner-aware policy and should require global admin or partner-scoped Events manager access:

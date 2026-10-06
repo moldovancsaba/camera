@@ -100,6 +100,20 @@
   EuroLeague Women" (owner decision, camera#248). Events with real teams, and events whose name is no pairing, fill as
   before. Images already generated for such an event are redrawn at their next generation (the message changed).
 
+## Unreleased — one rule for what a public page may show of a saved photo (camera#262)
+
+- **Added:** `lib/submissions/visibility.ts`, one rule for the public surfaces: a photo is not public when it is archived, when it is
+  hidden from every event it belongs to, or when its review says pending or rejected; a try-on result is public only when approved
+  and not turned off for sharing. A photo with no review status (every photo saved so far) stays public.
+- **Changed:** the share page, the share download, `/api/slideshows/[id]/next-candidate` and `/users/[name]` (for visitors; admins still
+  see everything there) use it. A photo that is not public answers like an unknown one (404). The share page's link-preview image
+  (Open Graph / Twitter) is only given for a public photo; other pages are `noindex`. Before, the preview image showed any photo,
+  including rejected try-on results, and `next-candidate` had no review, kind or eligibility filter.
+- **Effect on today's data (production, counted 2026-10-06):** 977 plain photos, none archived, none with a review status; 214 are
+  hidden from at least one event, and those hidden from all their events no longer open from their share link (an admin removed
+  them). 597 try-on results: 542 approved stay as they are, 55 rejected are no longer reachable.
+- This is package V1 of the photo vetting plan (`docs/PHOTO_VETTING_PLAN.md`); nothing about the pending state exists yet.
+
 ## Unreleased — the same capture for every camera: the largest still, zoom and pan anywhere, only the frame-sized result is saved
 
 - **Changed:** on every touch device (iPhone, iPad, Android, any browser) the photo is taken with the device's own camera app and

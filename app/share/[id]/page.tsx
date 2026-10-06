@@ -11,6 +11,7 @@ import type { Db } from 'mongodb';
 import Image from 'next/image';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { isPubliclyVisible, visibilityInputOf } from '@/lib/submissions/visibility';
 import PublicShell from '@/components/public/PublicPageShell';
 import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import { listApprovedShareVariants } from '@/lib/tryon/publication';
@@ -242,9 +243,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       .collection(COLLECTIONS.SUBMISSIONS)
       .findOne({ _id: new ObjectId(id) });
 
-    if (!submission) {
+    // A photo that is not public (pending, rejected, archived, removed from its events) gets no preview image and is not
+    // indexed: a link preview must not leak what the page itself would not show (camera#262).
+    if (!submission || !isPubliclyVisible(visibilityInputOf(submission))) {
       return {
         title: 'Photo Not Found',
+        robots: { index: false, follow: false },
       };
     }
 
@@ -307,7 +311,7 @@ export default async function SharePage({ params }: Props) {
     const doc = await db
       .collection(COLLECTIONS.SUBMISSIONS)
       .findOne({ _id: new ObjectId(id) });
-    if (doc && typeof doc === 'object') {
+    if (doc && typeof doc === 'object' && isPubliclyVisible(visibilityInputOf(doc))) {
       submission = {
         id: doc._id.toString(),
         imageUrl: readString(doc.imageUrl) ?? undefined,

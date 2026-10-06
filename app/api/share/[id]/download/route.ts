@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import type { Db } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { isPubliclyVisible, visibilityInputOf } from '@/lib/submissions/visibility';
 import { listApprovedShareVariants } from '@/lib/tryon/publication';
 import {
   type ShareVariantCard,
@@ -367,7 +368,9 @@ export async function GET(
 
     const db = await connectToDatabase();
     const doc = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ _id: new ObjectId(id) });
-    if (!doc || typeof doc !== 'object') {
+    // A photo that is not public (pending, rejected, archived, removed from its events) cannot be downloaded: the same answer as
+    // an unknown id (camera#262).
+    if (!doc || typeof doc !== 'object' || !isPubliclyVisible(visibilityInputOf(doc))) {
       return NextResponse.json({ error: 'Share submission not found' }, { status: 404 });
     }
 
