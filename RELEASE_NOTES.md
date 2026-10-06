@@ -1,5 +1,40 @@
 # RELEASE_NOTES.md
 
+## Unreleased — capture: the whole camera image is recorded, the frame is applied afterwards
+
+- **Changed:** `CameraCapture` records the whole camera image (up to 4096 px on the long side
+  and 12 megapixels, JPEG quality 0.92): no crop, no frame, not mirrored. `onCapture` now
+  receives a `FullFrameCapture` (`blob`, `dataUrl`, `width`, `height`, `facingMode`,
+  `mirrored`) instead of `(blob, dataUrl)`. Before, the capture itself cropped to the frame.
+- **Changed:** the frame's aspect ratio is applied as a second step by the pages
+  (`lib/camera/frame-crop.ts`, `cropCaptureToAspect`): the largest centred crop
+  (`lib/camera/reframe.ts`), mirrored for the front camera, exactly the image the old capture
+  produced, so the composite, the try-on source and the saved photo are unchanged. The
+  original is not kept yet; the adjustable reframe step (camera#209) and its storage
+  (camera#210) will hold it.
+- **Changed:** the live view shows the whole camera image (`object-fit: contain`, stage with
+  the camera's own shape) and draws the frame as a guide: what the frame keeps is bright
+  and outlined, the rest is dimmed with `--gds-overlay-scrim`, with the hint "Your frame keeps
+  the bright area." No guide is drawn when the frame keeps the whole image. The captured
+  preview also uses `contain`.
+- **Fixed:** the stage was sized from the parent's `clientWidth`/`clientHeight`, which include
+  padding, so inside a padded wrapper (the capture page's `p-4`) it came out up to 32 px too
+  large and was squeezed out of its intended aspect ratio. It now uses the parent's content box.
+- **Removed:** the unused `frameOverlay` prop and its drawing code (both pages passed
+  `undefined`).
+- **Added:** `lib/camera/frame-capture.ts`, `frame-crop.ts`, `reframe.ts` (with
+  `reframe.test.ts`), original-size limits in `constraints.ts`.
+- **Evidence (Chromium fake camera, production build, clip with a different colour block in each
+  corner):** the stored original is the whole 320x240 frame with all four markers in their true,
+  unmirrored positions and `mirrored: true`; a 9:16 frame crops to 135x240 with both side markers
+  removed, a 4:3 frame keeps everything (mirrored, so left and right markers swap), a 16:9 frame
+  crops to 320x180; the guide's aspect equals the frame's (0.563, none for 4:3, 1.778), lies
+  inside the video and is centred; the video box matches the camera's shape (1.333). Real
+  devices are not covered.
+- **Not changed:** reframing by the fan (camera#209), storing the original (camera#210), lens
+  choice (camera#212). The engine's React state remains in the component; only the pure and DOM
+  helpers moved out. camera#208.
+
 ## Unreleased — capture: native 4:3 camera mode, no user-agent sniffing, canvas cap
 
 - **Changed:** the camera request is now a 4:3 mode (1440x1920 on a phone held upright,

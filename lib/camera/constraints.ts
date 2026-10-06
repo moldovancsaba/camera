@@ -95,6 +95,16 @@ export function detectTouchPrimaryDevice(): boolean {
 export const CANVAS_MAX_LONG_SIDE = 2048;
 export const CANVAS_MAX_PIXELS = 8_000_000;
 
+/**
+ * Limits for the full-frame original (camera#208): higher than the cropped output because it is
+ * the pure image that is kept, but still well under iOS Safari's 16,777,216 pixel canvas limit.
+ */
+export const ORIGINAL_MAX_LONG_SIDE = 4096;
+export const ORIGINAL_MAX_PIXELS = 12_000_000;
+
+/** JPEG quality of the full-frame original. */
+export const ORIGINAL_JPEG_QUALITY = 0.92;
+
 /** Scales a size down, keeping its aspect ratio, until it is within both caps. Never scales up. */
 export function capCanvasSize(
   width: number,

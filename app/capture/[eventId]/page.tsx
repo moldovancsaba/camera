@@ -34,6 +34,8 @@ import RestartPage from '@/components/capture/RestartPage';
 import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
 import { type CustomPage } from '@/lib/db/schemas';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
+import { cropCaptureToAspect } from '@/lib/camera/frame-crop';
+import type { FullFrameCapture } from '@/lib/camera/frame-capture';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -652,8 +654,23 @@ export default function EventCapturePage({
     setStep('capture-photo');
   };
 
-  const handlePhotoCapture = (_blob: Blob, dataUrl: string) => {
-    setCapturedImage(dataUrl);
+  // Width over height of the frame the photo is cropped to (16:9 when the event has no frame).
+  const captureAspect = selectedFrame
+    ? frameIntrinsicAspect ??
+      (selectedFrame.width > 0 && selectedFrame.height > 0 ? selectedFrame.width / selectedFrame.height : 16 / 9)
+    : 16 / 9;
+
+  // The camera records the whole image; the frame's aspect ratio is applied here, afterwards
+  // (camera#208). The original is not kept yet: the reframe step (camera#209) and its storage
+  // (camera#210) will hold it.
+  const handleCameraCapture = async (capture: FullFrameCapture) => {
+    try {
+      const cropped = await cropCaptureToAspect(capture, captureAspect);
+      setCapturedImage(cropped.dataUrl);
+    } catch (error) {
+      console.error('Error cropping the captured photo:', error);
+      alert(errorFrameMessage);
+    }
   };
 
   const handleSave = async () => {
@@ -1333,20 +1350,12 @@ export default function EventCapturePage({
             )}
             <div className="flex-1 flex items-center justify-center p-4 min-h-0">
               <CameraCapture
-                onCapture={handlePhotoCapture}
-                // CRITICAL: No frame overlay during capture to prevent canvas issues
-                // Frame will be composited AFTER capture in compositeImageWithFrame()
-                frameOverlay={undefined}
+                // The camera records the whole image; the frame is applied by handleCameraCapture
+                // (crop) and compositeImageWithFrame (overlay) after capture.
+                onCapture={handleCameraCapture}
                 frameWidth={selectedFrame?.width || 1920}
                 frameHeight={selectedFrame?.height || 1080}
-                previewAspectWidthOverHeight={
-                  selectedFrame
-                    ? frameIntrinsicAspect ??
-                      (selectedFrame.width > 0 && selectedFrame.height > 0
-                        ? selectedFrame.width / selectedFrame.height
-                        : 16 / 9)
-                    : undefined
-                }
+                previewAspectWidthOverHeight={captureAspect}
                 captureButtonColor={event?.brandColor || CAMERA_DEFAULT_BRAND_COLOR}
                 captureButtonBorderColor={event?.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR}
                 promptTitle={cameraPromptTitle}
