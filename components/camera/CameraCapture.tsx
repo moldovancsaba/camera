@@ -38,7 +38,15 @@ import {
   isBrokenFrame,
   runBoundedAttempts,
   type AttemptOutcome,
+  type LumaStats,
 } from '@/lib/camera/capture-policy';
+import { DIAGNOSTIC_VERSION, type CameraDiagnostic } from '@/lib/camera/diagnostics';
+import {
+  cameraTestLabel,
+  newDiagnosticSession,
+  pageDiagnosticFields,
+  sendCameraDiagnostic,
+} from '@/lib/camera/diagnostics-client';
 import { sampleVideoLumaStats, waitForVideoFrame } from '@/lib/camera/video-frame';
 
 /** Supports hex (#rgb) or CSS `var(--token)` for branded capture UI. */
@@ -132,6 +140,37 @@ export default function CameraCapture({
   const autoStartAttemptedRef = useRef(false);
   const sampleCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const capturingRef = useRef(false);
+  const facingModeRef = useRef<'user' | 'environment'>(initialFacingMode);
+  // WHAT: in-memory bookkeeping for the anonymous capture diagnostics (camera#204). Never persisted.
+  const diagRef = useRef({
+    session: '',
+    requestedAt: 0,
+    attachedAt: 0,
+    firstFrameAt: 0,
+    unlockedAt: 0,
+    streamEventSent: false,
+    requested: undefined as CameraDiagnostic['requested'],
+    granted: undefined as CameraDiagnostic['granted'],
+    deviceCount: undefined as number | undefined,
+  });
+
+  const reportDiagnostic = useCallback(
+    (kind: CameraDiagnostic['kind'], fields: Partial<Omit<CameraDiagnostic, 'v' | 'kind' | 'session'>>) => {
+      const diag = diagRef.current;
+      if (!diag.session) diag.session = newDiagnosticSession();
+      sendCameraDiagnostic({
+        v: DIAGNOSTIC_VERSION,
+        kind,
+        session: diag.session,
+        testRun: cameraTestLabel(),
+        facingMode: facingModeRef.current,
+        deviceCount: diag.deviceCount,
+        page: pageDiagnosticFields(),
+        ...fields,
+      });
+    },
+    []
+  );
 
   const isMobileDevice = useCallback(() => {
     if (typeof navigator === 'undefined') {
@@ -260,6 +299,7 @@ export default function CameraCapture({
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter(device => device.kind === 'videoinput');
         // Always show camera selector if more than 1 camera available
+        diagRef.current.deviceCount = videoDevices.length;
         setHasMultipleCameras(videoDevices.length > 1);
       } catch (err) {
         console.error('Error checking cameras:', err);
@@ -278,6 +318,7 @@ export default function CameraCapture({
         try {
           const devices = await navigator.mediaDevices.enumerateDevices();
           const videoDevices = devices.filter(device => device.kind === 'videoinput');
+          diagRef.current.deviceCount = videoDevices.length;
           setHasMultipleCameras(videoDevices.length > 1);
         } catch (err) {
           console.error('Error checking cameras:', err);
@@ -297,6 +338,12 @@ export default function CameraCapture({
     setCapturedImage(null);
     setIsShutterReady(false);
     setCaptureNotice(null);
+    facingModeRef.current = facing;
+    diagRef.current.requestedAt = performance.now();
+    diagRef.current.firstFrameAt = 0;
+    diagRef.current.unlockedAt = 0;
+    diagRef.current.streamEventSent = false;
+    diagRef.current.granted = undefined;
     try {
       const currentStream = streamRef.current;
       if (currentStream) {
@@ -318,18 +365,21 @@ export default function CameraCapture({
 
       const mobile = isMobileDevice();
 
+      const idealWidth = mobile ? (isLandscapeTarget ? 3840 : 2160) : (isLandscapeTarget ? 2560 : 1440);
+      const idealHeight = mobile ? (isLandscapeTarget ? 2160 : 3840) : (isLandscapeTarget ? 1440 : 2560);
       const preferredVideoConstraints: MediaTrackConstraints = mobile
         ? {
             facingMode: { ideal: facing },
-            width: { ideal: isLandscapeTarget ? 3840 : 2160 },
-            height: { ideal: isLandscapeTarget ? 2160 : 3840 },
+            width: { ideal: idealWidth },
+            height: { ideal: idealHeight },
             aspectRatio: { ideal: targetAspect },
           }
         : {
-            width: { ideal: isLandscapeTarget ? 2560 : 1440 },
-            height: { ideal: isLandscapeTarget ? 1440 : 2560 },
+            width: { ideal: idealWidth },
+            height: { ideal: idealHeight },
             aspectRatio: { ideal: targetAspect },
           };
+      diagRef.current.requested = { mode: 'preferred', width: idealWidth, height: idealHeight, aspectRatio: targetAspect };
 
       let mediaStream: MediaStream;
       try {
@@ -339,6 +389,7 @@ export default function CameraCapture({
         });
       } catch (primaryError) {
         console.warn('Primary camera constraints failed, retrying with relaxed constraints.', primaryError);
+        diagRef.current.requested = { mode: 'relaxed' };
         mediaStream = await navigator.mediaDevices.getUserMedia({
           video: mobile ? { facingMode: facing } : true,
           audio: false,
@@ -350,6 +401,20 @@ export default function CameraCapture({
         return;
       }
       
+      const settings = mediaStream.getVideoTracks()[0]?.getSettings?.() as
+        | (MediaTrackSettings & { resizeMode?: string })
+        | undefined;
+      diagRef.current.granted = settings
+        ? {
+            width: settings.width,
+            height: settings.height,
+            frameRate: settings.frameRate,
+            aspectRatio: settings.aspectRatio,
+            facingMode: settings.facingMode,
+            resizeMode: settings.resizeMode,
+          }
+        : undefined;
+
       setFacingMode(facing);
       setStream(mediaStream);
       
@@ -473,6 +538,7 @@ export default function CameraCapture({
     canvas.toBlob((blob) => {
       if (!blob) {
         setCaptureNotice(CAPTURE_FAILED_MESSAGE);
+        reportDiagnostic('capture', { capture: { outcome: 'failed' } });
         return;
       }
 
@@ -506,10 +572,16 @@ export default function CameraCapture({
     setIsCapturing(true);
     setCaptureNotice(null);
 
+    const tappedAt = performance.now();
+    let brokenRetries = 0;
+    let notReadyRetries = 0;
+    let lastStats: LumaStats | null = null;
+
     try {
       const result = await runBoundedAttempts(
         async (): Promise<AttemptOutcome> => {
           if (!video.videoWidth || !video.videoHeight || video.readyState < 2) {
+            notReadyRetries += 1;
             return 'retry';
           }
 
@@ -518,6 +590,7 @@ export default function CameraCapture({
               await video.play();
             } catch (playError) {
               console.error('Failed to play video:', playError);
+              notReadyRetries += 1;
               return 'retry';
             }
           }
@@ -525,13 +598,16 @@ export default function CameraCapture({
           await waitForVideoFrame(video);
 
           if (frameOverlay && !frameImage) {
+            notReadyRetries += 1;
             return 'retry';
           }
 
           const sampleCanvas = sampleCanvasRef.current ?? (sampleCanvasRef.current = document.createElement('canvas'));
           const stats = sampleVideoLumaStats(video, sampleCanvas);
+          lastStats = stats;
           if (stats && isBrokenFrame(stats)) {
             console.warn('Camera returned a broken (near-black, flat) frame; retrying.', stats);
+            brokenRetries += 1;
             return 'retry';
           }
 
@@ -543,6 +619,24 @@ export default function CameraCapture({
       if (!result.ok) {
         setCaptureNotice(CAPTURE_NOT_READY_MESSAGE);
       }
+
+      const finalStats = lastStats as LumaStats | null;
+      const unlockedAt = diagRef.current.unlockedAt;
+      reportDiagnostic('capture', {
+        timing: unlockedAt ? { shutterDelayMs: tappedAt - unlockedAt } : undefined,
+        capture: {
+          outcome: result.ok ? 'ok' : 'not_ready',
+          attempts: result.attempts,
+          brokenRetries,
+          notReadyRetries,
+          lumaMean: finalStats?.mean,
+          lumaStdDev: finalStats?.stdDev,
+          videoWidth: video.videoWidth,
+          videoHeight: video.videoHeight,
+          outputWidth: canvas.width,
+          outputHeight: canvas.height,
+        },
+      });
     } finally {
       capturingRef.current = false;
       setIsCapturing(false);
@@ -656,6 +750,8 @@ export default function CameraCapture({
     }
 
     let cancelled = false;
+    const diag = diagRef.current;
+    diag.attachedAt = performance.now();
     let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
     let warmupTimer: ReturnType<typeof setTimeout> | null = null;
     let frameCallbackId: number | null = null;
@@ -664,17 +760,34 @@ export default function CameraCapture({
     // WHAT: unlocks the shutter a short warm-up after the first presented frame.
     // WHY: right after the stream starts the camera is still settling exposure and focus,
     //     and an early tap captures a near-black frame (camera#206).
+    // Unlocks the shutter and reports how the stream started (once per stream); a missing
+    // firstFrameMs means the unlock came from the timeout, i.e. no frame event arrived.
+    const markShutterReady = () => {
+      if (cancelled) return;
+      setIsShutterReady(true);
+      const now = performance.now();
+      diag.unlockedAt = now;
+      if (diag.streamEventSent) return;
+      diag.streamEventSent = true;
+      reportDiagnostic('stream_started', {
+        requested: diag.requested,
+        granted: diag.granted,
+        timing: {
+          startMs: diag.attachedAt - diag.requestedAt,
+          firstFrameMs: diag.firstFrameAt ? diag.firstFrameAt - diag.attachedAt : undefined,
+          shutterUnlockMs: now - diag.attachedAt,
+        },
+      });
+    };
+
     const unlockShutterAfterWarmup = () => {
       if (cancelled || warmupTimer) return;
-      warmupTimer = setTimeout(() => {
-        if (!cancelled) setIsShutterReady(true);
-      }, SHUTTER_WARMUP_MS);
+      diag.firstFrameAt = performance.now();
+      warmupTimer = setTimeout(markShutterReady, SHUTTER_WARMUP_MS);
     };
 
     // Never leave the shutter dead if no frame event ever arrives on some browser.
-    const shutterTimeout = setTimeout(() => {
-      if (!cancelled) setIsShutterReady(true);
-    }, SHUTTER_READY_TIMEOUT_MS);
+    const shutterTimeout = setTimeout(markShutterReady, SHUTTER_READY_TIMEOUT_MS);
 
     const markPreviewReady = () => {
       if (cancelled) return;
@@ -765,7 +878,7 @@ export default function CameraCapture({
         video.srcObject = null;
       }
     };
-  }, [stream]);
+  }, [stream, reportDiagnostic]);
 
   const useTripleBar = controlBar === 'bottom-triple';
   const tripleBarClassName = useTripleBar ? 'camera-triple-bar camera-triple-bar--inline' : 'camera-triple-bar';

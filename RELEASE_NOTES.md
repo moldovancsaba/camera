@@ -1,5 +1,24 @@
 # RELEASE_NOTES.md
 
+## Unreleased — anonymous capture diagnostics
+
+- **Added:** `POST /api/observability/capture-diagnostic`, a public, allowlisted,
+  size-bounded (4096 bytes), rate-limited (300/min per IP) beacon that logs one structured
+  line `camera.capture_diagnostic` per record. `CameraCapture` reports two records per capture
+  session: `stream_started` (requested and granted camera mode, device count, time to first
+  frame, time until the shutter unlocked) and `capture` (outcome, attempts, broken-frame
+  retries, brightness mean and spread, sizes, tap delay). Nothing is persisted; no image, name,
+  email, IP address, cookie, camera label or device id is sent or kept (tests prove unknown
+  fields are dropped). camera#204.
+- **Added:** `npm run camera:diagnostics-report` (`scripts/camera-diagnostics-report.ts`,
+  `lib/camera/diagnostics-report.ts`) summarises exported logs per browser, device or
+  `?cameraTest=<label>` run: broken-frame rate, dark photos, streams with no frame event,
+  median timings, most common granted camera mode.
+- **Docs:** RUNBOOK "Capture diagnostics (anonymous)" lists what is collected, how to read it,
+  and the privacy sentence to add to each landing page's privacy text (that text is authored
+  per landing page, so it cannot be changed centrally).
+- **Not changed:** capture behaviour, constraints, output.
+
 ## Unreleased — capture: front camera by default, shutter gated on the first frame, bounded retries
 
 - **Changed:** `CameraCapture` now opens the front camera by default for everyone
