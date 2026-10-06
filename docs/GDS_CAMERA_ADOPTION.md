@@ -118,11 +118,14 @@ Camera exceptions follow the shared structure from [docs/GDS_EXCEPTION_STANDARD.
 
 ## Known package limitations: `AdminResourceCard` / `MediaPreviewCard`
 
-Confirmed by reading the compiled source of `@sovereignsquad/gds-admin@3.9.0`
-and `@sovereignsquad/gds-core@3.9.0` (the only published version of either
-package as of this writing — no newer version exists to check). Not
-reproducible from the public type definitions alone; found while
-investigating two real production bug reports (v2.19.0, PRs #103–#105).
+Originally confirmed by reading the compiled source of
+`@sovereignsquad/gds-admin@3.9.0` and `@sovereignsquad/gds-core@3.9.0`; found
+while investigating two real production bug reports (v2.19.0, PRs #103–#105).
+Re-checked on 2026-10-06 against the installed **6.3.0**: items 1 and 2 are
+still present, item 3 is fixed upstream. Items 1 and 2 are tracked upstream as
+`sovereignsquad/general-design-system#755`; the GDS fix handover
+(`gds_fix_handover.md`) reports both still present in 6.7.0, which was not
+re-checked here.
 
 1. **Every non-danger `primary`/`secondary` action renders as "Edit".**
    `AdminResourceCard` hardcodes `action: primary.kind === "danger" ? "delete" : "edit"`
@@ -143,19 +146,24 @@ investigating two real production bug reports (v2.19.0, PRs #103–#105).
    (optionally colored) text/nodes into `status`, never another `Badge`-like
    component. `lib/gds/statusChipContent.tsx`'s `getStatusChipContent()` is
    the approved helper for this.
-3. **The media/image block cannot be omitted.** `MediaPreviewCard` always
-   renders an `AspectRatio` block — either the real image, or a "No media"
-   placeholder `StateBlock` when no `src`/`thumbnailSrc` is given. There is
-   no prop to skip this. Records with no image at all (Partners, Events,
-   Slideshows, Landing Pages) must use `components/gds/ResourceListGrid.tsx`
-   instead of `AdminResourceManager` — a from-scratch, no-media card grid
-   composed from approved primitives (see the pattern-adapter table above).
+3. **FIXED upstream in 3.10.0 (2026-07-22): the media/image block can now be
+   omitted.** On 3.9.0, `MediaPreviewCard` always rendered an `AspectRatio`
+   block (the real image, or a "No media" placeholder). 3.10.0 added
+   `hideWhenNoMedia?: boolean` to `MediaPreviewCard`, threaded through
+   `AdminResourceCard`, `AdminResourceGrid` and `AdminResourceManager`; it is
+   in the installed 6.3.0 and used at
+   `components/admin/TryOnSetupsInventoryList.tsx`. Partners, Events,
+   Slideshows and Landing Pages still use the local
+   `components/gds/ResourceListGrid.tsx` (a from-scratch no-media card grid),
+   which was built for the 3.9.0 limitation. Moving them to
+   `AdminResourceManager` with `hideWhenNoMedia` is possible, but the GDS fix
+   handover ties retiring `ResourceListGrid` to #755 (items 1 and 2 above), so
+   check that before switching.
 
-None of these are fixable from inside Camera's boundary — they're vendored
-package behavior. If `sovereignsquad/general-design-system` is reachable,
-file an upstream issue/PR; until then, any new `AdminResourceManager`
-consumer must follow the workarounds above or it will silently reintroduce
-one of these three bugs.
+Items 1 and 2 are not fixable from inside Camera's boundary — they are vendored
+package behavior, filed upstream as `sovereignsquad/general-design-system#755`.
+Until a release fixes them, any new `AdminResourceManager` consumer must follow
+the workarounds above or it will silently reintroduce one of these bugs.
 
 ## Published package capability snapshot
 
