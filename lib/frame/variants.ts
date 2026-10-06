@@ -1,0 +1,96 @@
+/**
+ * Generates the images of an event's default frame: one transparent 1920x1080 PNG per usable message, stored in
+ * Vercel Blob, with the layer boxes kept for the live-view territories (docs/DEFAULT_FRAME_PLAN.md, camera#235).
+ * An image is reused while everything that decides it is unchanged. Old files are never deleted: a submission
+ * records the variant it used and try-on composes with that URL later. Dependencies are injected so it is
+ * unit-tested without Blob or a network.
+ */
+
+import { createHash } from 'node:crypto';
+import { put } from '@vercel/blob';
+import type { Db, Document } from 'mongodb';
+import { COLLECTIONS } from '@/lib/db/schemas';
+import { contextHash, type FrameDesign, type FrameVariant } from './context';
+import { resolveFrameFont, type ResolvedFont } from './fonts';
+import { DEFAULT_FRAME_HEIGHT, DEFAULT_FRAME_WIDTH, layerBoxes } from './layout';
+import { fetchLogo } from './logo';
+import { usableMessages } from './messages';
+import { FRAME_RENDER_VERSION, renderFrame } from './render';
+
+export interface VariantDeps {
+  upload: (pathname: string, png: Buffer) => Promise<string>;
+  fetchLogo: (url: string) => Promise<Buffer | null>;
+  resolveFont: (style: FrameDesign['context']['style']) => Promise<ResolvedFont>;
+  now: () => string;
+}
+
+const defaultDeps: VariantDeps = {
+  upload: async (pathname, png) =>
+    (await put(pathname, png, { access: 'public', contentType: 'image/png', addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 31536000 })).url,
+  fetchLogo,
+  resolveFont: (style) => resolveFrameFont(style),
+  now: () => new Date().toISOString(),
+};
+
+export interface GenerateResult {
+  design: FrameDesign;
+  generated: number;
+  reused: number;
+}
+
+/** Everything that decides the image: what is drawn, the message, the font actually used, the size and the drawing code. */
+export function variantKey(design: FrameDesign, message: string | null, font: ResolvedFont): string {
+  return createHash('sha256')
+    .update(JSON.stringify([contextHash(design.context), message, font.family, font.used, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT, FRAME_RENDER_VERSION]))
+    .digest('hex');
+}
+
+/** A stored image can be reused when its key is unchanged and it was not a result of a failure that is worth retrying. */
+const reusable = (variant: FrameVariant, key: string) => variant.key === key && variant.logo !== 'failed' && !variant.font.retry;
+
+export async function generateFrameVariants(db: Db, event: Document, deps: VariantDeps = defaultDeps): Promise<GenerateResult> {
+  const design = event.frameDesign as FrameDesign | undefined;
+  if (!design?.context) throw new Error('The frame design has no snapshot yet');
+
+  const { context } = design;
+  const usable = usableMessages(design.messages, { partner1: context.event.homeTeam?.name, partner2: context.event.visitorTeam?.name });
+  // No usable message: one frame without a message layer, so the event still has its frame.
+  const jobs = usable.length > 0 ? usable.map((m) => ({ index: m.index as number | null, message: m.text as string | null })) : [{ index: null, message: null }];
+
+  const font = await deps.resolveFont(context.style);
+  const existing = design.variants ?? [];
+  const variants: FrameVariant[] = [];
+  let logoBytes: Buffer | null | undefined;
+  let generated = 0;
+
+  for (const job of jobs) {
+    const key = variantKey(design, job.message, font);
+    const kept = existing.find((variant) => reusable(variant, key));
+    if (kept) {
+      variants.push({ ...kept, index: job.index });
+      continue;
+    }
+
+    if (logoBytes === undefined) logoBytes = context.partner?.logoUrl ? await deps.fetchLogo(context.partner.logoUrl) : null;
+    const rendered = await renderFrame({ context, message: job.message, logoBytes, font });
+    const imageUrl = await deps.upload(`frames/generated/${event.eventId}/${key.slice(0, 32)}.png`, rendered.png);
+    variants.push({
+      index: job.index,
+      message: job.message,
+      imageUrl,
+      width: rendered.layout.width,
+      height: rendered.layout.height,
+      layers: layerBoxes(rendered.layout).map(({ id, rect }) => ({ id, ...rect })),
+      key,
+      font: { family: font.family, used: font.used, note: font.note, retry: font.retry },
+      logo: rendered.logo,
+    });
+    generated += 1;
+  }
+
+  const generatedAt = deps.now();
+  const next: FrameDesign = { ...design, variants, generatedAt };
+  // One write at the end: a failed upload above leaves the previous variants as they were.
+  await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: event._id }, { $set: { 'frameDesign.variants': variants, 'frameDesign.generatedAt': generatedAt } });
+  return { design: next, generated, reused: variants.length - generated };
+}

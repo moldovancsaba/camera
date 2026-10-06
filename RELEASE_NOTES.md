@@ -61,6 +61,22 @@
 - **Not changed:** the privacy and consent wording (per landing page, owner content); proposed
   sentences are in RUNBOOK for sign-off. Deleting an event still leaves its submissions.
 
+## Unreleased — the generated default frame is drawn
+
+- **Added:** the frame image of an event is drawn on the server (`@napi-rs/canvas`): a transparent 1920x1080 PNG per
+  usable message with the partner logo (as it is: its own transparency, nothing removed), the teams text or the event
+  name, the bar in the hero colour with its 1% line, and the message, to the owner's geometry. Stored in Vercel Blob;
+  `frameDesign.variants` keeps each image's URL, message, layer boxes, font and logo state. An image is redrawn only when
+  what decides it changed.
+- **Added:** bundled fonts in `assets/frame-fonts` (Inter, Roboto, Poppins, Montserrat and the colour emoji font, all SIL
+  OFL, licences included); a custom partner font is fetched from messmass at render time and never stored; any font that
+  cannot be had falls back to Inter.
+- **Changed:** `PUT /api/admin/events/[id]/frame-design`, `POST .../refresh` and messmass provisioning now generate the
+  images (the routes answer with `variants` counts; 502 when the data is saved but the images are not).
+- **Added:** `@napi-rs/canvas` as a dependency, `serverExternalPackages` and `outputFileTracingIncludes` in
+  `next.config.ts` for the three rendering routes. Not yet checked inside a deployed function (RUNBOOK, "First check on Vercel").
+- Nothing shows the frame yet: the capture flow follows (camera#236).
+
 ## Unreleased — the data behind the generated default frame
 
 - **Added:** `events.frameDesign` holds what the generated default frame of an event is built from: a snapshot of

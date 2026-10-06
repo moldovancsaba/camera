@@ -128,8 +128,8 @@ The endpoint returns the already resolved style, including the system default, s
 | F1 [camera#232](https://github.com/moldovancsaba/camera/issues/232) | Layout engine: safety area, boxes, text fit and wrap, message pick, pure and tested | camera | none | merged ([camera#240](https://github.com/moldovancsaba/camera/pull/240), 0e464cb) |
 | F2 [camera#233](https://github.com/moldovancsaba/camera/issues/233) | Spike: server canvas with woff and woff2 fonts and the emoji on Vercel; decides the renderer | camera | none | spike done on macOS, decisions recorded; the Linux and Vercel run is open |
 | F3 [messmass#429](https://github.com/moldovancsaba/messmass/issues/429) | `frame-context` endpoint with the resolution chain and system default | messmass | none | merged ([messmass#431](https://github.com/moldovancsaba/messmass/pull/431), 0a8f624); the endpoint is live once messmass has deployed |
-| F4 [camera#234](https://github.com/moldovancsaba/camera/issues/234) | Data model, messmass sync, refresh action, message list storage and the default list | camera | F3 | built, [camera#241](https://github.com/moldovancsaba/camera/pull/241) in review |
-| F5 [camera#235](https://github.com/moldovancsaba/camera/issues/235) | Renderer and variants: one PNG per message in Blob, layer boxes, regeneration on input change | camera | F1, F2, F4 | not started |
+| F4 [camera#234](https://github.com/moldovancsaba/camera/issues/234) | Data model, messmass sync, refresh action, message list storage and the default list | camera | F3 | merged ([camera#241](https://github.com/moldovancsaba/camera/pull/241), 6994bf3) |
+| F5 [camera#235](https://github.com/moldovancsaba/camera/issues/235) | Renderer and variants: one PNG per message in Blob, layer boxes, regeneration on input change | camera | F1, F2, F4 | built, [camera#242](https://github.com/moldovancsaba/camera/pull/242) in review |
 | F6 [camera#236](https://github.com/moldovancsaba/camera/issues/236) | Capture flow: skip the picker, territories, random variant per shutter press, record the variant | camera | F1, F5 | not started |
 | F7 [camera#237](https://github.com/moldovancsaba/camera/issues/237) | Event editor panel (GDS): message list, preview, refresh, reset, replace with an uploaded frame | camera | F4, F5 | not started |
 | F8 [camera#238](https://github.com/moldovancsaba/camera/issues/238) | Backfill every event without a frame of its own, try-on consistency, runbook and rollout | camera | F5, F6 | not started |
@@ -159,8 +159,8 @@ Prototype of the renderer in a scratch project (`@napi-rs/canvas` 1.0.10 plus `s
 Decisions for F5:
 
 - Use `@napi-rs/canvas`.
-- Bundle the Google fonts messmass lists (Inter, Roboto, Poppins, Montserrat) as full TTF files; a Google WOFF2 covers only one script subset, so fetching WOFF2 would lose characters. Confirm each licence when bundling (Inter, Poppins, Montserrat and Noto Color Emoji are OFL; Roboto is Apache 2.0).
-- Bundle Noto Color Emoji and register it only when a message contains an emoji.
+- Bundle the Google fonts messmass lists (Inter, Roboto, Poppins, Montserrat) as full font files; a Google WOFF2 covers only one script subset, so fetching WOFF2 would lose characters. Licences checked when bundling (F5): all five bundled fonts, Roboto included, are SIL OFL 1.1 (the `google/fonts` repository now carries Roboto under `ofl/`), with the licence texts in `assets/frame-fonts/licenses/`.
+- Bundle Noto Color Emoji and register it only when a text contains an emoji. Converted to WOFF2 it is 5.5 MB instead of 25 MB and still draws in colour.
 - Fetch a custom partner font from messmass at render time, server to server, register it under a unique alias per font file, keep it in memory only, and fall back to Inter when it cannot be fetched.
 - Next config for the route that renders: `serverExternalPackages` for the canvas package and `outputFileTracingIncludes` for the font files (verify in F5).
 - Known limit: Vercel has no system fonts, and Inter covers Latin, Greek and Cyrillic, so a name in CJK or Arabic would show missing glyphs. Fonts register process-wide, hence the unique alias.

@@ -216,6 +216,28 @@ panel and the backfill follow (camera#235 to #238).
   The default list follows the code until an event edits it.
 - **Checks:** `GET /api/admin/events/<id>/frame-design` as an admin shows the snapshot; `source` tells whether it
   came from messmass; `context.style.resolvedFrom` tells which messmass level the theme came from.
+- **Images (camera#235):** one transparent 1920x1080 PNG per usable message, drawn on the server
+  (`lib/frame/render.ts`, `@napi-rs/canvas`) and stored in Vercel Blob under `frames/generated/<eventId>/<key>.png`;
+  `frameDesign.variants[]` keeps each image's URL, message, layer boxes (for the live-view territories), font and logo
+  state. They are generated after a refresh, after the message list is saved (a `502` means the snapshot or the list
+  is saved but the images are not: repeat the request, it is safe), and after provisioning (after the response).
+  A message whose `{partner1}` / `{partner2}` cannot be filled is skipped; with no usable message there is one image
+  without a message layer.
+- **Reuse:** an image is redrawn only when something that decides it changed (what is drawn, the message, the font
+  actually used, the drawing code `FRAME_RENDER_VERSION`). An image made while the logo could not be fetched
+  (`logo: failed`) or a custom font could not be fetched (`font.retry`) is redrawn at the next generation.
+- **Old images are never deleted:** a submission records the variant it used and try-on composes with that URL later.
+- **Logos** are drawn exactly as they are (their own transparency, nothing removed, no box behind them). Only https
+  URLs on `i.ibb.co` and camera's own Blob store are fetched, with no redirects, 5 MB and 8 s limits; anything else is
+  `logo: failed` and the frame is drawn without it.
+- **Fonts:** Inter, Roboto, Poppins and Montserrat and the colour emoji font are bundled in `assets/frame-fonts` (OFL,
+  see its README). A custom partner font is fetched from the messmass origin at render time (a plain `/fonts/` path,
+  3 MB, 5 s), kept in memory only, never stored. If it cannot be had the frame uses Inter and `font.note` says why.
+- **First check on Vercel:** the renderer was verified on macOS and by the Linux CI tests of the same code, but not
+  yet inside a deployed function. After the first deploy, refresh one event as an admin
+  (`POST /api/admin/events/<id>/frame-design/refresh`) and open `frameDesign.variants[0].imageUrl`: a frame with text
+  and the logo (if the partner has one) means the canvas package and the fonts work there. A 502 with
+  `frame images could not be generated` in the function log means they do not.
 
 ## Capture diagnostics (anonymous)
 

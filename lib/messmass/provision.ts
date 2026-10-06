@@ -14,7 +14,9 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { inheritPartnerDefaults } from '@/lib/db/events';
 import { apiBadRequest, apiNotFound } from '@/lib/api';
+import { after } from 'next/server';
 import { refreshFrameDesign } from '@/lib/frame/sync';
+import { generateFrameVariants } from '@/lib/frame/variants';
 
 function ci(name: string) {
   return { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
@@ -118,8 +120,17 @@ export async function provisionEvent(input: { messmassEventId: string; messmassP
   const res = await db.collection(COLLECTIONS.EVENTS).insertOne(doc);
   // The default frame is built from the messmass theme: take the snapshot now. A slow or failing messmass never
   // blocks provisioning; an admin can refresh later (camera#234).
-  await refreshFrameDesign(db, { ...doc, _id: res.insertedId }).catch((error) => {
-    console.warn('frame design snapshot failed for a provisioned event', error);
-  });
+  await refreshFrameDesign(db, { ...doc, _id: res.insertedId })
+    .then(({ design }) => {
+      // The images are rendered after the response, so provisioning stays quick; a failure is logged and an admin can refresh.
+      after(() =>
+        generateFrameVariants(db, { ...doc, _id: res.insertedId, frameDesign: design }).catch((error: unknown) => {
+          console.warn('frame images could not be generated for a provisioned event', error);
+        })
+      );
+    })
+    .catch((error) => {
+      console.warn('frame design snapshot failed for a provisioned event', error);
+    });
   return { eventId: doc.eventId as string, mongoId: String(res.insertedId), partnerId: partner.partnerId, created: true };
 }

@@ -14,6 +14,15 @@ process.env.BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA ??= 'true';
  */
 const nextConfig: NextConfig = {
   transpilePackages: ['@sovereignsquad/gds-theme', '@sovereignsquad/gds-core', '@sovereignsquad/gds-admin'],
+  // The generated default frame is drawn on the server (lib/frame/render.ts) with a native canvas package, which
+  // must be loaded by Node instead of bundled, and the bundled fonts must travel with the routes that render
+  // (docs/DEFAULT_FRAME_PLAN.md, camera#235).
+  serverExternalPackages: ['@napi-rs/canvas'],
+  outputFileTracingIncludes: {
+    '/api/admin/events/*/frame-design': ['./assets/frame-fonts/*'],
+    '/api/admin/events/*/frame-design/refresh': ['./assets/frame-fonts/*'],
+    '/api/internal/messmass/events': ['./assets/frame-fonts/*'],
+  },
   // WHAT: The exact remote hosts /_next/image may fetch and transform: camera's
   //   own Vercel Blob store and imgbb's direct-image host, nothing else.
   // WHY: '*.public.blob.vercel-storage.com' matched every Vercel customer's

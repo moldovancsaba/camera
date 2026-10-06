@@ -1,0 +1,158 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import type { Db } from 'mongodb';
+import { ObjectId } from 'mongodb';
+import { CAMERA_DEFAULT_BRAND_COLOR, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
+import { contextHash, nativeFrameContext, type FrameDesign } from './context';
+import { resolveFrameFont } from './fonts';
+import { DEFAULT_FRAME_MESSAGES } from './messages';
+import { generateFrameVariants, variantKey, type VariantDeps } from './variants';
+
+const NOW = '2026-10-06T12:00:00.000Z';
+const WHITE = `${CAMERA_STAGE_WHITE}FF`;
+const BAR = `${CAMERA_DEFAULT_BRAND_COLOR}FF`;
+
+function design(over: Partial<FrameDesign['context']['event']> = {}, messages: string[] = [...DEFAULT_FRAME_MESSAGES], logoUrl: string | null = 'https://i.ibb.co/a/l.png'): FrameDesign {
+  const base = nativeFrameContext({ eventName: 'El Clásico', partnerName: 'FC Barcelona', partnerLogoUrl: logoUrl }, NOW);
+  const context = {
+    ...base,
+    event: { ...base.event, homeTeam: { id: 'h', name: 'FC Barcelona', shortName: null, logoUrl: null }, visitorTeam: { id: 'v', name: 'Real Madrid', shortName: null, logoUrl: null }, ...over },
+    style: { ...base.style, headingColor: WHITE, heroBackground: BAR },
+  };
+  return { context: { ...context, inputHash: contextHash(context) }, messages, messagesOverridden: false, updatedAt: NOW };
+}
+
+const eventId = 'evt-uuid-1';
+const event = (d: FrameDesign) => ({ _id: new ObjectId(), eventId, name: 'El Clásico', frameDesign: d });
+
+function harness(over: Partial<VariantDeps> = {}) {
+  const uploads: string[] = [];
+  const logoCalls: string[] = [];
+  const writes: Array<Record<string, unknown>> = [];
+  const db = { collection: () => ({ updateOne: async (_f: unknown, u: { $set: Record<string, unknown> }) => (writes.push(u.$set), { matchedCount: 1 }) }) } as unknown as Db;
+  const deps: VariantDeps = {
+    upload: async (pathname) => (uploads.push(pathname), `https://blob.test/${pathname}`),
+    fetchLogo: async (url) => (logoCalls.push(url), null),
+    resolveFont: (style) => resolveFrameFont(style),
+    now: () => NOW,
+    ...over,
+  };
+  return { db, deps, uploads, logoCalls, writes };
+}
+
+test('one image per usable message, stored under the event with a deterministic path, with the layer boxes', async () => {
+  const { db, deps, uploads, writes } = harness();
+  const e = event(design());
+  const result = await generateFrameVariants(db, e, deps);
+
+  assert.equal(result.generated, 5);
+  assert.equal(result.reused, 0);
+  const variants = result.design.variants!;
+  assert.deepEqual(variants.map((v) => v.index), [0, 1, 2, 3, 4]);
+  assert.equal(variants[1].message, 'Let’s Go, FC Barcelona');
+  assert.equal(uploads.length, 5);
+  for (const pathname of uploads) assert.match(pathname, new RegExp(`^frames/generated/${eventId}/[0-9a-f]{32}\\.png$`));
+  assert.equal(variants[0].imageUrl, `https://blob.test/${uploads[0]}`);
+  assert.deepEqual(variants[0].layers.map((l) => l.id), ['teams', 'bar', 'message']);
+  assert.deepEqual([variants[0].width, variants[0].height], [1920, 1080]);
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0]['frameDesign.generatedAt'], NOW);
+  assert.equal((writes[0]['frameDesign.variants'] as unknown[]).length, 5);
+});
+
+test('a message that needs a team name is skipped for an event without one', async () => {
+  const { db, deps } = harness();
+  const e = event(design({ homeTeam: null, visitorTeam: null }));
+  const variants = (await generateFrameVariants(db, e, deps)).design.variants!;
+  assert.deepEqual(variants.map((v) => v.index), [0, 2, 3, 4]);
+});
+
+test('with no usable message there is one image without a message layer', async () => {
+  const { db, deps } = harness();
+  const e = event(design({ homeTeam: null, visitorTeam: null }, ['Hello {partner1}']));
+  const variants = (await generateFrameVariants(db, e, deps)).design.variants!;
+  assert.equal(variants.length, 1);
+  assert.equal(variants[0].index, null);
+  assert.equal(variants[0].message, null);
+  assert.equal(variants[0].layers.some((l) => l.id === 'message'), false);
+});
+
+test('unchanged inputs reuse the stored images: no render, no upload, no logo fetch', async () => {
+  // No logo: a logo that could not be fetched is deliberately not reused (see the logo test below).
+  const first = harness();
+  const e = event(design({}, [...DEFAULT_FRAME_MESSAGES], null));
+  const generated = (await generateFrameVariants(first.db, e, first.deps)).design;
+
+  const second = harness();
+  const again = await generateFrameVariants(second.db, event(generated), second.deps);
+  assert.equal(again.generated, 0);
+  assert.equal(again.reused, 5);
+  assert.equal(second.uploads.length, 0);
+  assert.equal(second.logoCalls.length, 0);
+  assert.deepEqual(again.design.variants!.map((v) => v.imageUrl), generated.variants!.map((v) => v.imageUrl));
+});
+
+test('a changed colour renders everything again; one edited message renders only that one', async () => {
+  const base = harness();
+  const generated = (await generateFrameVariants(base.db, event(design({}, [...DEFAULT_FRAME_MESSAGES], null)), base.deps)).design;
+
+  const recoloured = { ...generated, context: { ...generated.context, style: { ...generated.context.style, heroBackground: `${CAMERA_STAGE_WHITE}80` } } };
+  recoloured.context.inputHash = contextHash(recoloured.context);
+  const a = harness();
+  assert.equal((await generateFrameVariants(a.db, event(recoloured), a.deps)).generated, 5);
+
+  const edited = { ...generated, messages: generated.messages.map((m, i) => (i === 2 ? 'We are the Champions!' : m)) };
+  const b = harness();
+  const result = await generateFrameVariants(b.db, event(edited), b.deps);
+  assert.equal(result.generated, 1);
+  assert.equal(result.reused, 4);
+});
+
+test('a logo that could not be fetched is retried at the next generation; a missing logo is not fetched at all', async () => {
+  const first = harness();
+  const generated = (await generateFrameVariants(first.db, event(design()), first.deps)).design;
+  assert.ok(generated.variants!.every((v) => v.logo === 'failed'));
+  assert.equal(first.logoCalls.length, 1, 'the logo is fetched once for all variants');
+
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==', 'base64');
+  const retry = harness({ fetchLogo: async () => png });
+  const result = await generateFrameVariants(retry.db, event(generated), retry.deps);
+  assert.equal(result.generated, 5);
+  assert.ok(result.design.variants!.every((v) => v.logo === 'drawn'));
+
+  const none = harness();
+  const withoutLogo = await generateFrameVariants(none.db, event(design({}, [...DEFAULT_FRAME_MESSAGES], null)), none.deps);
+  assert.equal(none.logoCalls.length, 0);
+  assert.ok(withoutLogo.design.variants!.every((v) => v.logo === 'none'));
+});
+
+test('a font fetch that failed is retried at the next generation', async () => {
+  const failing = async (style: FrameDesign['context']['style']) => ({ ...(await resolveFrameFont({ ...style, fontFamily: 'Inter' })), used: 'fallback' as const, note: 'custom font could not be fetched', retry: true });
+  const first = harness({ resolveFont: failing });
+  const generated = (await generateFrameVariants(first.db, event(design()), first.deps)).design;
+  assert.ok(generated.variants!.every((v) => v.font.retry));
+
+  const second = harness();
+  assert.equal((await generateFrameVariants(second.db, event(generated), second.deps)).generated, 5);
+});
+
+test('a failed upload throws and writes nothing, so the previous images stay', async () => {
+  const { db, deps, writes } = harness({ upload: async () => { throw new Error('blob unavailable'); } });
+  await assert.rejects(generateFrameVariants(db, event(design()), deps), /blob unavailable/);
+  assert.equal(writes.length, 0);
+});
+
+test('an event without a snapshot cannot be rendered', async () => {
+  const { db, deps } = harness();
+  await assert.rejects(generateFrameVariants(db, { _id: new ObjectId(), eventId }, deps), /no snapshot/);
+});
+
+test('the key depends on what is drawn, the message and the font, and not on when it was fetched', () => {
+  const d = design();
+  const font = { family: 'frame-inter', stack: '', used: 'bundled' as const, note: null, retry: false };
+  const key = variantKey(d, 'Go!', font);
+  assert.match(key, /^[0-9a-f]{64}$/);
+  assert.equal(variantKey({ ...d, context: { ...d.context, fetchedAt: 'later' } }, 'Go!', font), key);
+  assert.notEqual(variantKey(d, 'Go! Go!', font), key);
+  assert.notEqual(variantKey(d, 'Go!', { ...font, family: 'frame-roboto' }), key);
+});
