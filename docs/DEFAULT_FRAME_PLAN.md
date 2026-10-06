@@ -20,7 +20,7 @@ All logo and text layers stay inside a safety area of 90% of the frame, centred.
 | Layer | Rule | At 1920x1080 |
 |---|---|---|
 | Safety area | 5% margin on every side | x 96 to 1824, y 54 to 1026 (1728x972) |
-| Logo | inside a box of 15% width by 15% height, anchored top right of the safety area, aspect kept, never enlarged past the box; omitted when the partner has no logo. **Live view: only a 50% black box at the logo's fitted rectangle, never the logo image. Final render: the logo with no background of any kind** | box 288x162, right edge 1824, top 54 |
+| Logo | inside a box of 15% width by 15% height, anchored top right of the safety area, aspect kept, never enlarged past the box; omitted when the partner has no logo. **Live view: only a 50% black box at the logo's fitted rectangle, never the logo image. Final render: the logo as it is, with no box or fill behind it; nothing is ever removed from the logo** | box 288x162, right edge 1824, top 54 |
 | Teams text | x from 10% to 30% (20% wide), top at 10% of the height; two lines, home then visitor; font size scaled so the first line is exactly the box width | x 192 to 576 (384 wide), top 108 |
 | Bar | full width, bottom 20% | x 0 to 1920, y 864 to 1080 (216 tall) |
 | Bar line | 1% of the height, top edge only, drawn outside the bar so the sides and bottom are clipped away | about 10.8 px, y 853.2 to 864 |
@@ -51,7 +51,7 @@ Rules the owner set:
 | 9 | Portrait | None. Every device, in both orientations, uses the landscape frame |
 | 10 | Scope | All events, backward as well |
 | 11 | Try-on | The generated frame applies wherever the event has no camera frame of its own, for every event |
-| 12 | Logo background | Live view: a 50% black box where the logo will be, no logo image. Final render: the logo without any background (decided 2026-10-06; how a logo's own opaque background is removed is the open point below) |
+| 12 | Logo background | Live view: a 50% black box where the logo will be, no logo image. Final render: the logo drawn with its own transparency (alpha channel) if it has one; if it has none, drawn exactly as it is. No box or fill behind it and nothing cut from the logo, ever (decided 2026-10-06) |
 | 13 | Teams font rule, message size | The longer of the two lines is fitted to 384 px; the 54 px message box and its small text are accepted |
 
 ### Assumptions taken (owner to correct)
@@ -62,7 +62,6 @@ Rules the owner set:
 - "No camera frame of its own" means: the event has no active frame assigned. Events with frames keep them and are not touched by the backfill.
 - Text alignment: teams text left, message centred, logo right.
 - The teams font size has a cap of 10% of the frame height (108 px), so a very short name does not become huge; when the visitor line is longer than the home line the size is reduced until the longer line fits 384 px.
-- "Without any background" is read as: no box or fill behind the logo, and the logo image's own flat opaque background (usually white) is made transparent. A flat background connected to the image border is keyed out with a tolerance and a soft edge, so white inside the crest stays; a logo that is already transparent is untouched; a logo whose background is not flat (photo, gradient) cannot be keyed out safely and is drawn as it is. Owner to confirm, see Open.
 - An event name used as the teams text wraps inside the 384 px box at the largest size at most the cap that keeps its longest word inside the box.
 
 ## What messmass has
@@ -132,7 +131,7 @@ F1, F2 and F3 can start at once.
 
 - **Emoji**: the 🫶 needs a colour emoji font bundled with the renderer; colour emoji ignore the text colour. F2 decides; the fallback is browser rendering of the message or dropping the emoji.
 - **Fonts**: custom partner fonts are fetched from messmass at render time; if a font cannot be fetched the frame uses Inter and records that in the variant. A font that is a partner's property is only read, never stored in camera.
-- **Logos**: partner logos are ImgBB images of any aspect ratio; some have an opaque white background. The renderer removes a flat border-connected background (see assumptions); a logo with a photo or gradient background keeps it. Anti-aliased edges can leave a faint halo on dark photos, so the keying softens the edge and the golden-image tests include a white-background logo.
+- **Logos**: partner logos are ImgBB images of any aspect ratio. A logo with an opaque (for example white) background is drawn with that background, by the owner's decision: nothing is removed from a logo. The fix for such a logo is a transparent source: messmass keeps `sportsDb.strTeamBadge`, `strTeamLogo` and `footballData.crest`, and F3 can return them as an option later.
 - **Small message**: the message box is 54 px tall, so the text is about 4% of the frame height.
 - **Stale snapshot**: the frame does not follow messmass changes until the refresh action runs (decision 6).
 - **Backfill volume**: one render per message per event; the backfill runs in batches and is idempotent (inputs are hashed).
@@ -144,10 +143,6 @@ F1, F2 and F3 can start at once.
 - messmass endpoint: the resolution chain at every level, including the system default and a missing partner.
 - Capture: Playwright on the same 16 viewports as the app-like work, territories visible in the live view, real composite at the preview step, variant recorded.
 - Backfill: dry run with counts per outcome before the real run.
-
-## Open
-
-- Logo background: confirm the reading above, and what to do when the background cannot be removed (default: draw the logo as it is). Alternative sources in messmass that are usually transparent (`sportsDb.strTeamBadge`, `strTeamLogo`, `footballData.crest`) could be preferred over `partners.logoUrl`; F3 would then return them.
 
 ## Not covered
 
