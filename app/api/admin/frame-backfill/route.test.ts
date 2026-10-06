@@ -53,7 +53,14 @@ test('a run takes three events by default, a limit of 1 to 10 and a cursor', asy
   const { POST } = await importRoute('run');
   assert.deepEqual((await (await POST(post({ mode: 'run' }))).json()).data, { batch: { processed: 1, done: true } });
   await POST(post({ mode: 'run', limit: 10, after: 'abc' }));
-  assert.deepEqual(calls.map((c) => c.args[0]), [{ limit: 3, after: null, budgetMs: 35_000 }, { limit: 10, after: 'abc', budgetMs: 35_000 }]);
+  await POST(post({ mode: 'run', redraw: true }));
+  await POST(post({ mode: 'run', redraw: 'yes' }));
+  assert.deepEqual(calls.map((c) => c.args[0]), [
+    { limit: 3, after: null, budgetMs: 35_000, redraw: false },
+    { limit: 10, after: 'abc', budgetMs: 35_000, redraw: false },
+    { limit: 3, after: null, budgetMs: 35_000, redraw: true },
+    { limit: 3, after: null, budgetMs: 35_000, redraw: false },
+  ]);
 });
 
 test('bad input is a 400 and starts nothing', async (t) => {

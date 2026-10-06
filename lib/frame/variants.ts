@@ -14,6 +14,7 @@ import { contextHash, type FrameDesign, type FrameVariant } from './context';
 import { resolveFrameFont, type ResolvedFont } from './fonts';
 import { DEFAULT_FRAME_HEIGHT, DEFAULT_FRAME_WIDTH, layerBoxes } from './layout';
 import { fetchLogo } from './logo';
+import { eventEmoji, withoutEmoji } from './emoji';
 import { messageTokens, usableMessages } from './messages';
 import { FRAME_RENDER_VERSION, renderFrame } from './render';
 
@@ -54,9 +55,13 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
 
   const { context } = design;
   // The placeholders name the sides the frame shows (the pairing in the event name when the home partner is a competition).
+  // No partner logo: the event's emoji is drawn as the logo and taken out of the name (camera#274), so a message that uses the
+  // name does not carry it either. A partner with a logo keeps the name as it is.
+  const emoji = context.partner?.logoUrl ? null : eventEmoji(context.event, context.partner?.name);
+  const shown = emoji ? { ...context, event: { ...context.event, name: withoutEmoji(context.event.name, emoji) } } : context;
   const usable = usableMessages(
     design.messages,
-    messageTokens({ home: context.event.homeTeam?.name, visitor: context.event.visitorTeam?.name, eventName: context.event.name })
+    messageTokens({ home: shown.event.homeTeam?.name, visitor: shown.event.visitorTeam?.name, eventName: shown.event.name })
   );
   // No usable message: one frame without a message layer, so the event still has its frame.
   const jobs = usable.length > 0 ? usable.map((m) => ({ index: m.index as number | null, message: m.text as string | null })) : [{ index: null, message: null }];
@@ -76,7 +81,7 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
     }
 
     if (logoBytes === undefined) logoBytes = context.partner?.logoUrl ? await deps.fetchLogo(context.partner.logoUrl) : null;
-    const rendered = await renderFrame({ context, message: job.message, logoBytes, font });
+    const rendered = await renderFrame({ context: shown, message: job.message, logoBytes, emoji, font });
     const imageUrl = await deps.upload(`frames/generated/${event.eventId}/${key.slice(0, 32)}.png`, rendered.png);
     variants.push({
       index: job.index,
@@ -88,6 +93,7 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
       key,
       font: { family: font.family, used: font.used, note: font.note, retry: font.retry },
       logo: rendered.logo,
+      renderVersion: FRAME_RENDER_VERSION,
     });
     generated += 1;
   }

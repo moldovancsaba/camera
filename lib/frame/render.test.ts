@@ -36,8 +36,8 @@ async function pixels(png: Buffer) {
 const nearWhite = (p: number[]) => p[3] > 200 && p[0] > 230 && p[1] > 230 && p[2] > 230;
 const opaque = (p: number[]) => p[3] > 0;
 
-async function render(ctx: FrameContext, message: string | null, logoBytes: Buffer | null = null) {
-  return renderFrame({ context: ctx, message, logoBytes, font: await resolveFrameFont(ctx.style) });
+async function render(ctx: FrameContext, message: string | null, logoBytes: Buffer | null = null, emoji: string | null = null) {
+  return renderFrame({ context: ctx, message, logoBytes, emoji, font: await resolveFrameFont(ctx.style) });
 }
 
 const logoPng = () =>
@@ -154,4 +154,39 @@ test('the logo state tells none, drawn and failed apart, and a frame without a l
   assert.equal(garbage.logo, 'failed');
   const p = await pixels(failed.png);
   assert.equal(p.count(1500, 40, 1900, 260, opaque), 0);
+});
+
+const coloured = (p: number[]) => p[3] > 200 && Math.max(p[0], p[1], p[2]) - Math.min(p[0], p[1], p[2]) > 40;
+
+test('with no logo the event emoji is drawn in the logo box, in colour, at the top right of the safety area', async () => {
+  const { png, layout, logo } = await render(context({ name: '⚽ DVTK x Kazincbarcika', homeTeam: null, visitorTeam: null }, { name: 'SEYU', logoUrl: null }), null, null, '⚽');
+  const p = await pixels(png);
+  assert.equal(logo, 'emoji');
+  const box = layout.logo!;
+  assert.ok(box, 'the logo layer exists, so the live view has its territory');
+  assert.ok(Math.abs(box.x + box.width - 1824) < 1 && Math.abs(box.y - 54) < 1, 'anchored top right of the safety area');
+  assert.ok(box.height <= 162.01 && box.width <= 288.01);
+  assert.ok(p.count(box.x, box.y, box.x + box.width, box.y + box.height, coloured) + p.count(box.x, box.y, box.x + box.width, box.y + box.height, nearWhite) > 200, 'something is drawn there');
+  assert.equal(p.count(1200, 40, box.x - 20, 260, opaque), 0, 'nothing else between the teams text and the emoji');
+});
+
+test('a wide emoji keeps its shape in the box: a flag is wider than tall, a ball is square', async () => {
+  const flag = await render(context(teams, { name: 'P', logoUrl: null }), null, null, '🇭🇺');
+  const ball = await render(context(teams, { name: 'P', logoUrl: null }), null, null, '⚽');
+  assert.ok(flag.layout.logo!.width > flag.layout.logo!.height * 1.15, `${flag.layout.logo!.width} x ${flag.layout.logo!.height}`);
+  assert.ok(Math.abs(ball.layout.logo!.width - ball.layout.logo!.height) < 3);
+});
+
+test('a real logo wins over the emoji, and no emoji means no logo as before', async () => {
+  const withLogo = await render(context(teams, { name: 'P', logoUrl: 'https://i.ibb.co/a/l.png' }), null, await logoPng(), '⚽');
+  assert.equal(withLogo.logo, 'drawn');
+  const none = await render(context(teams, { name: 'P', logoUrl: null }), null, null, null);
+  assert.equal(none.logo, 'none');
+  assert.equal(none.layout.logo, null);
+});
+
+test('a logo that could not be fetched still counts as failed (so it is retried) while the emoji stands in for it', async () => {
+  const failed = await render(context(teams, { name: 'P', logoUrl: 'https://i.ibb.co/a/l.png' }), null, null, '🏀');
+  assert.equal(failed.logo, 'failed');
+  assert.ok(failed.layout.logo, 'the emoji is drawn meanwhile');
 });

@@ -6,6 +6,7 @@ import { CAMERA_DEFAULT_BRAND_COLOR, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens
 import { contextHash, nativeFrameContext, type FrameDesign } from './context';
 import { resolveFrameFont } from './fonts';
 import { DEFAULT_FRAME_MESSAGES } from './messages';
+import { FRAME_RENDER_VERSION } from './render';
 import { generateFrameVariants, variantKey, type VariantDeps } from './variants';
 
 const NOW = '2026-10-06T12:00:00.000Z';
@@ -172,4 +173,29 @@ test('real home and visitor teams win over the event name, and a lone team keeps
 
   const lone = event(design({ name: 'Fan Day', visitorTeam: null }, ['Let’s Go, {partner1}', 'Against {partner2}']));
   assert.deepEqual((await generateFrameVariants(db, lone, deps)).design.variants!.map((v) => v.message), ['Let’s Go, FC Barcelona']);
+});
+
+test('with no partner logo the event emoji is the logo, and the name and the messages are used without it', async () => {
+  const { db, deps } = harness();
+  const e = event(design({ name: '⚽ DVTK x Kazincbarcika', homeTeam: null, visitorTeam: null }, ['Go {partner1}!'], null));
+  const variant = (await generateFrameVariants(db, e, deps)).design.variants![0];
+  assert.equal(variant.message, 'Go DVTK!', 'the emoji is not in the message');
+  assert.equal(variant.logo, 'emoji');
+  assert.equal(variant.renderVersion, FRAME_RENDER_VERSION);
+  assert.ok(variant.layers.some((layer) => layer.id === 'logo'), 'a logo layer, so the live view has its territory');
+});
+
+test('a partner with a logo keeps the name as it is: the emoji stays in the name and is not drawn as a logo', async () => {
+  const { db, deps } = harness();
+  const e = event(design({ name: '⚽ DVTK x Kazincbarcika', homeTeam: null, visitorTeam: null }, ['Go {partner1}!']));
+  const variant = (await generateFrameVariants(db, e, deps)).design.variants![0];
+  assert.equal(variant.message, 'Go ⚽ DVTK!');
+  assert.notEqual(variant.logo, 'emoji');
+});
+
+test('an event with no logo and no emoji has no logo layer, as before', async () => {
+  const { db, deps } = harness();
+  const variant = (await generateFrameVariants(db, event(design({ name: 'Fan Day', homeTeam: null, visitorTeam: null }, ['Go!'], null)), deps)).design.variants![0];
+  assert.equal(variant.logo, 'none');
+  assert.equal(variant.layers.some((layer) => layer.id === 'logo'), false);
 });

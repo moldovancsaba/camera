@@ -20,7 +20,7 @@ const BUNDLED: Record<string, string> = {
   montserrat: 'Montserrat.ttf',
 };
 const FALLBACK = 'inter';
-const EMOJI_ALIAS = 'frame-emoji';
+export const EMOJI_ALIAS = 'frame-emoji';
 const FONT_FILE = /^\/fonts\/[A-Za-z0-9._ -]+\.(?:woff2?|ttf|otf)$/;
 const FONT_MAX_BYTES = 3 * 1024 * 1024;
 const FONT_FETCH_TIMEOUT_MS = 5000;

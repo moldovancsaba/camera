@@ -57,8 +57,14 @@ export interface FrameVariant {
   /** Hash of everything that decides the image; an unchanged key means the stored image is reused. */
   key: string;
   font: { family: string; used: 'bundled' | 'custom' | 'fallback'; note: string | null; retry: boolean };
-  /** `none`: the partner has no logo; `failed`: it could not be fetched or decoded (retried at the next generation). */
-  logo: 'drawn' | 'none' | 'failed';
+  /**
+   * `drawn`: the partner's logo; `emoji`: the partner has no logo, so the event's own emoji is drawn in its place (camera#274);
+   * `none`: no logo and no emoji; `failed`: the logo could not be fetched or decoded (retried at the next generation; the emoji
+   * is drawn meanwhile when there is one).
+   */
+  logo: 'drawn' | 'emoji' | 'none' | 'failed';
+  /** The drawing code this image was made with (FRAME_RENDER_VERSION); an older one is redrawn by the rollout's "redraw" run. Absent on the first images. */
+  renderVersion?: number;
 }
 
 export interface FrameDesign {

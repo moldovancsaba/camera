@@ -73,13 +73,19 @@ export default function FrameBackfillConsole() {
     }
   }
 
-  async function run() {
+  async function run(redraw = false) {
     if (!report) return;
-    const confirmed = await confirm({
-      title: 'Give the events a generated frame',
-      message: `This takes the messmass snapshot and draws the frame images for up to ${report.todo} events without a frame of their own, ${BATCH} at a time, and writes them to the events and to Blob storage. Events with a frame of their own are not touched. You can stop at any time and run again; finished events are skipped.`,
-      targetName: `${report.todo} event${report.todo === 1 ? '' : 's'}`,
-    });
+    const confirmed = redraw
+      ? await confirm({
+          title: 'Redraw the older images',
+          message: `This draws again the images of ${report.doneStale} events that were made with an older drawing code (for example before the event emoji was used as a logo), ${BATCH} events at a time, and replaces them in Blob storage. The messmass data of those events is not changed. You can stop at any time and run again.`,
+          targetName: `${report.doneStale} event${report.doneStale === 1 ? '' : 's'}`,
+        })
+      : await confirm({
+          title: 'Give the events a generated frame',
+          message: `This takes the messmass snapshot and draws the frame images for up to ${report.todo} events without a frame of their own, ${BATCH} at a time, and writes them to the events and to Blob storage. Events with a frame of their own are not touched. You can stop at any time and run again; finished events are skipped.`,
+          targetName: `${report.todo} event${report.todo === 1 ? '' : 's'}`,
+        });
     if (!confirmed) return;
 
     stop.current = false;
@@ -90,7 +96,7 @@ export default function FrameBackfillConsole() {
     try {
       let after: string | null = null;
       while (!stop.current) {
-        const answer: { batch: BatchResult } = await post<{ batch: BatchResult }>({ mode: 'run', limit: BATCH, after });
+        const answer: { batch: BatchResult } = await post<{ batch: BatchResult }>({ mode: 'run', limit: BATCH, after, redraw });
         const batch: BatchResult = answer.batch;
         sum = {
           processed: sum.processed + batch.processed,
@@ -137,7 +143,8 @@ export default function FrameBackfillConsole() {
             <dl style={{ display: 'grid', gap: '0.375rem 1rem', gridTemplateColumns: 'minmax(0, 40%) minmax(0, 1fr)', overflowWrap: 'anywhere', margin: 0 }}>
               {row('Events', report.total)}
               {row('With a frame of their own', report.ownFrame, 'not touched')}
-              {row('Already have generated images', report.done, 'skipped')}
+              {row('Already have generated images', report.done, 'skipped by the first run')}
+              {row('…drawn with an older drawing code', report.doneStale, 'the redraw run draws these again')}
               {row('To do', report.todo)}
               {row('…linked to messmass', report.todoLinked, 'frame built from messmass data')}
               {row('…camera-native (no link)', report.todoNative, 'frame built from camera’s own name and partner logo, no teams, system theme')}
@@ -173,6 +180,9 @@ export default function FrameBackfillConsole() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
           <Button loading={running} disabled={!report || !reviewed || report.todo === 0 || checking} onClick={() => void run()}>
             Give the events a generated frame
+          </Button>
+          <Button variant="light" loading={running} disabled={!report || !reviewed || report.doneStale === 0 || checking} onClick={() => void run(true)}>
+            {report ? `Redraw the older images (${report.doneStale})` : 'Redraw the older images'}
           </Button>
           {running ? (
             <Button variant="light" onClick={() => (stop.current = true)}>

@@ -100,6 +100,21 @@
   EuroLeague Women" (owner decision, camera#248). Events with real teams, and events whose name is no pairing, fill as
   before. Images already generated for such an event are redrawn at their next generation (the message changed).
 
+## Unreleased — the event emoji is the logo when the partner has none (camera#274)
+
+- **Added:** when a partner has no logo (or its logo could not be fetched), the generated frame draws the event's own emoji in the
+  logo spot: the first emoji in the event title (else in a team name, else in the partner's name), in colour, fitted into the logo box
+  with its own shape (a flag is wider than tall), top right of the safety area. "⚽ DVTK x Kazincbarcika", "[🏀] FIBA U20 - Day I" and
+  "🏍️ MotoGP - Balatonpark Circuit - Saturday" now have a ball, a basketball and a motorbike where the logo would be. An event whose
+  title has no emoji is unchanged, and a partner with a logo keeps its logo and its title as they are.
+- **Changed:** the emoji that is drawn as the logo is taken out of the title shown on the frame (with its brackets) and out of the text
+  of `{partner1}` / `{partner2}`, so it is not shown twice. No event title or other data is changed; to use another emoji, edit the title
+  in messmass and press "Refresh from messmass" on the event.
+- **Added:** the rollout page has a "Redraw the older images" run: it draws again only the images made with an older drawing code
+  (every image now records `renderVersion`; the 22 frames drawn so far have none), without taking a new snapshot. `FRAME_RENDER_VERSION`
+  is 3. The dry run reports how many events that is.
+- The event editor panel says when the emoji stands in for the logo.
+
 ## Unreleased — one rule for what a public page may show of a saved photo (camera#262)
 
 - **Added:** `lib/submissions/visibility.ts`, one rule for the public surfaces: a photo is not public when it is archived, when it is

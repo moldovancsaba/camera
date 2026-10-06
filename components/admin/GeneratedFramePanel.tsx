@@ -18,6 +18,7 @@ import { cssColour } from '@/lib/gds/tokens/color-css';
 import { FRAME_PREVIEW_BACKDROP } from '@/lib/gds/tokens/colors';
 import type { FrameDesign } from '@/lib/frame/context';
 import { describeSnapshotChanges } from '@/lib/frame/diff';
+import { eventEmoji } from '@/lib/frame/emoji';
 import { fillMessage, messageTokens, validateMessages } from '@/lib/frame/messages';
 
 interface Limits {
@@ -268,7 +269,7 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame }: { ev
                     <span>{context.partner.name}</span>
                   </span>
                 ) : (
-                  'none, so no logo is drawn'
+                  variants[0]?.logo === 'emoji' ? `none, so the event’s emoji ${eventEmoji(context.event, context.partner?.name) ?? ''} is drawn in its place` : 'none, so no logo is drawn'
                 )}
               </dd>
               <dt>Theme</dt>
