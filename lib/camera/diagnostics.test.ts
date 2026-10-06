@@ -110,3 +110,16 @@ test('enum fields outside the allowlist are dropped', () => {
   assert.equal('requested' in record, false);
   assert.equal('granted' in record, false);
 });
+
+test('a capture record names how the image was taken and the photo size, and drops anything else', () => {
+  const record = sanitizeDiagnostic({
+    v: 1,
+    kind: 'capture',
+    session: SESSION,
+    capture: { outcome: 'ok', method: 'system', nativeWidth: 4896, nativeHeight: 3672, outputWidth: 4896, outputHeight: 3672, stillFellBack: true, label: 'iPhone Air' },
+  });
+  assert.deepEqual(record?.capture, { outcome: 'ok', method: 'system', nativeWidth: 4896, nativeHeight: 3672, outputWidth: 4896, outputHeight: 3672, stillFellBack: true });
+
+  const odd = sanitizeDiagnostic({ v: 1, kind: 'capture', session: SESSION, capture: { outcome: 'ok', method: 'magic', nativeWidth: 'big', stillFellBack: 'yes' } });
+  assert.deepEqual(odd?.capture, { outcome: 'ok' });
+});

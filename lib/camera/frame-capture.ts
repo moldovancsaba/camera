@@ -23,6 +23,11 @@ export interface FullFrameCapture {
   facingMode: FacingModeValue;
   /** True when the live preview was mirrored (front camera). The image itself is NOT mirrored. */
   mirrored: boolean;
+  /** How the image was taken (camera#257): a real still, the device's own camera, or a video frame. Absent for older code paths. */
+  method?: 'still' | 'system' | 'frame';
+  /** The photo's own size before the cap (still and system only). */
+  nativeWidth?: number;
+  nativeHeight?: number;
 }
 
 /** Base64 data URL of an existing blob, without re-encoding the image. */

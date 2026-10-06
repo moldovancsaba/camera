@@ -63,6 +63,13 @@ export interface CameraDiagnostic {
     videoHeight?: number;
     outputWidth?: number;
     outputHeight?: number;
+    /** How the image was taken (camera#257): a real still, the device's own camera app, or a video frame. */
+    method?: 'still' | 'system' | 'frame';
+    /** The photo's own size (still and system), before any scaling. */
+    nativeWidth?: number;
+    nativeHeight?: number;
+    /** A still was tried and the video frame was used instead. */
+    stillFellBack?: boolean;
   };
   page?: {
     orientation?: 'portrait' | 'landscape';
@@ -174,6 +181,10 @@ export function sanitizeDiagnostic(input: unknown): CameraDiagnostic | null {
           videoHeight: num(c.videoHeight, 0, 16384),
           outputWidth: num(c.outputWidth, 0, 16384),
           outputHeight: num(c.outputHeight, 0, 16384),
+          method: oneOf<'still' | 'system' | 'frame'>(c.method, ['still', 'system', 'frame']),
+          nativeWidth: num(c.nativeWidth, 0, 65536),
+          nativeHeight: num(c.nativeHeight, 0, 65536),
+          stillFellBack: c.stillFellBack === true ? true : undefined,
         }),
       };
     }

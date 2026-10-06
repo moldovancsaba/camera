@@ -52,6 +52,14 @@ Share of the camera image that survives `cover` into a frame:
 - Try-on keeps receiving the reframed, frame-free crop, so try-on and image.direct inputs do not change.
 - Public Blob URLs stay (unguessable path, not listed). Private Blob access would need an authenticated image proxy; revisit if wanted.
 
+## Update 2026-10-06 (camera#257): the original is not kept
+
+The owner decided that the capture works the same way for every camera: the largest still the camera can take, zoom and pan
+anywhere in it, "Love it", and only the frame-sized result is saved. The full-size original (#208, #210) is no longer
+uploaded; it lives in the browser for the reframe step only. The two sections below describe the earlier design and what older
+submissions carry. Touch devices take the photo with the device's own camera (no live view in the page), a desktop webcam
+keeps the live view. See RUNBOOK, "How the photo is taken, and what is kept".
+
 ## Privacy
 
 A full-frame original shows more background and bystanders than the cropped result. Deleting a submission currently removes only the database row (`app/api/submissions/[submissionId]/route.ts:135`); the Blob files and the imgbb mirror stay online. The plan includes deleting the files with the submission, updating the privacy and consent text, and stating retention (camera#211). Wording needs owner or counsel sign-off.

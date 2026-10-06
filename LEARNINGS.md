@@ -1279,6 +1279,19 @@ _Use this template for new learnings:_
 
 **Key Decisions**: measure what the user sees (size, reachability) and test with the browser's real visible area; a camera is not a fixed size, and its shape is not always the shape of the window.
 
+### [FRONT-017] One capture for every camera: the system camera on touch devices, and why the live view was the wrong place to fix orientation — 2026-10-06T00:00:00.000Z
+
+**Issue**: Three phone tests in a row (landscape live view, square-sensor iPhone, resolution) showed the live in-page camera is the weak part: it gives video frames of a few megapixels, its shape depends on the sensor and on how the phone was held, and it needed a stream restart after every turn. The owner asked for the largest frame, the same way for every camera, zoom and pan anywhere, and only the frame-sized result saved.
+
+**Context**:
+- The 18 MP still of an iPhone Air front camera (4896 x 3672 by Apple's own pipeline, plausible from the 13 MP square crop reported for the iPhone 17) is only reachable from a web page through the system camera (a file input with `capture`); Safari has no `ImageCapture.takePhoto`, and a 4K stream request had already been found slow to start and linked to black photos.
+- A photo from a file input comes with an EXIF orientation tag; `createImageBitmap(blob, { imageOrientation: 'from-image' })` or an image element applies it, a canvas re-encode would bake it in but lose detail and hit the 16.7 MP iOS canvas limit, so the photo is kept as the camera gave it and decoded by the reframe step (up to 40 MP, then scaled once).
+- `<input type=file capture>` is ignored by desktop browsers (a file dialog), so a desktop webcam keeps the live view, with `ImageCapture.takePhoto` where it exists.
+
+**Solution**: `lib/camera/still-capture.ts` chooses the method (`system` on every touch device, `still` or `frame` on a webcam, `?capture=` to force one); `SystemCameraCapture` takes the photo; the reframe step decodes with the orientation applied; the page no longer uploads the original and drops the photo when the framed result is on screen. Checked with generated 18 MP, rotated and 48 MP photos through `setInputFiles`, and with stubbed `ImageCapture`.
+
+**Key Decisions**: one pipeline for every camera (capture the most, reframe, keep only the framed result) instead of fixing each device's live view; the orientation-restart code of camera#256 stays for `?capture=frame` and can be removed with the old live view; a real phone is still the acceptance.
+
 **Last Updated**: 2026-10-06T00:00:00.000Z
 
 ---

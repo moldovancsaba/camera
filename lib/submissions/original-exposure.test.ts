@@ -19,7 +19,6 @@ const ALLOWED: Record<string, string> = {
   'app/api/internal/fanmass/events/[eventId]/media/route.ts': 'service-to-service feed behind a shared secret; asks for the raw fan photo by design',
   'app/api/internal/savetheworld/pledges/route.ts': 'only documents that the original is never shown on the public wall',
   'app/api/submissions/route.ts': 'writes the submission; the response goes to the fan who made it',
-  'app/capture/[eventId]/page.tsx': 'the guest capture page only sends the URL of the fan\'s own upload with the submission; it never receives or shows an original',
   'components/admin/TryOnResultModerationTable.tsx': 'admin moderation UI',
   'lib/db/schemas.ts': 'type definition',
   'lib/email/submission-result-email.ts': 'email to the fan about their own photo',
