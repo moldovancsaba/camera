@@ -1,6 +1,6 @@
 # Camera ↔ image.direct rendering contract
 
-**Status: Callback handler implemented and default-disabled; caller/dispatch and worker integration incomplete.** Camera try-on remains paused. No event dispatches to image.direct. Keep the callback gate false and output-host allowlist unset until worker publication, result qualification, and isolated end-to-end tests pass.
+**Status (2026-10-06): both sides are partly built and everything is default-disabled; nothing dispatches.** Camera has the result callback handler, setup-owned prompts and immutable prompt snapshots, and the `renderer`/`imageDirect` job fields. Camera does not yet have the dispatch/outbox and HTTP adapter, a per-event renderer setting, per-job admission metadata (input hashes, sizes, media types and a consent record), or reconciliation and health. image.direct (main `3ec4ba8`) has the admission/status/cancel API, the worker claim/result/failure/complete routes and the Mac worker, behind default-off gates, but its experimental model is not qualified (image.direct #15 and #18). Camera try-on remains paused and no event dispatches to image.direct. Keep the callback gate false and the output-host allowlist unset until result qualification and isolated end-to-end tests pass. Decision of 2026-10-05: image.direct runs alongside try-on and try-on is retired only after a consented canary and owner sign-off (tracker: [camera #189](https://github.com/moldovancsaba/camera/issues/189)).
 
 ## Ownership
 
@@ -30,7 +30,7 @@ Camera completion materializes a derived `submissionKind: 'tryon_result'` with s
 
 ## API and payload (partially implemented, disabled)
 
-The image.direct admission/status/cancel handlers and Camera callback handler are implemented but default-denied. Camera dispatch/outbox, image.direct input/worker/result delivery, distributed rate limiting, isolated Atlas concurrency tests and end-to-end verification remain incomplete. Both admission gates and Camera's callback gate must remain off until those issues close; the endpoints are not production-ready workflows.
+The image.direct admission/status/cancel handlers, its worker routes and Mac worker (`backend/worker.py`, `camera_inputs.py`, `camera_prompt.py`), and Camera's callback handler exist but are default-denied. Still missing: Camera's dispatch/outbox and per-event switch, Camera's admission metadata, distributed rate limiting, isolated Atlas concurrency tests, end-to-end verification and a qualified model. Both image.direct admission gates and Camera's callback gate must remain off until those issues close; the endpoints are not production-ready workflows.
 
 ### Camera → image.direct
 
@@ -79,11 +79,11 @@ The example contains illustrative values only. Camera must send a stable job ID,
 
 Identical replay for the same `cameraJobId` and request fingerprint returns the existing renderer execution (`202` on first acceptance, `200` on replay); reuse with changed intent returns `409 idempotency_conflict`. Safe errors include `400 invalid_request`, `401 unauthorized`, `413 request_too_large`, `429 rate_limited`, `503 queue_unavailable`, and `409 capability_unsupported`.
 
-Status lookup: `GET /api/integrations/camera/v1/jobs/{cameraJobId}`. Cancellation: `POST /api/integrations/camera/v1/jobs/{cameraJobId}/cancel`; both are gated with admission, and cancellation succeeds idempotently only before worker claim. These routes are unavailable until image.direct delivers its explicit worker adapter.
+Status lookup: `GET /api/integrations/camera/v1/jobs/{cameraJobId}`. Cancellation: `POST /api/integrations/camera/v1/jobs/{cameraJobId}/cancel`; both are gated with admission, and cancellation succeeds idempotently only before worker claim. These routes exist but stay unavailable until image.direct's `CAMERA_INTEGRATION_ENABLED` and `CAMERA_INTEGRATION_WORKER_ADAPTER_ENABLED` gates are on (both default to `false`).
 
 ### image.direct worker execution
 
-The planned worker claim route is `POST /api/worker/integrations/camera/jobs/claim`, protected by image.direct's existing worker authentication and a per-claim lease. `204` means no eligible job. The worker receives only validated references and immutable job/profile data; it never receives Camera's Atlas URI. Writes are lease-fenced, and expired/stale workers cannot finalize a result.
+The worker claim route is `POST /api/worker/integrations/camera/jobs/claim` (additionally gated by `CAMERA_LOCAL_RENDER_QUALIFIED`, default `false`), protected by image.direct's existing worker authentication and a per-claim lease. `204` means no eligible job. The worker receives only validated references and immutable job/profile data; it never receives Camera's Atlas URI. Writes are lease-fenced, and expired/stale workers cannot finalize a result.
 
 ### image.direct → Camera result callback
 
@@ -143,4 +143,4 @@ This contract adds no UI. The dependent renderer rollout controls issue must use
 
 Before canary, tests must prove idempotent admission/callback, state mapping, input SSRF and integrity denial, consent absence/revocation, size/time limits, stale lease fencing, retry classification, worker outage/recovery, queued-cancel race, R2 outage, moderation defaults, and rollback. Use disposable Atlas and synthetic or individually consented public-CDN assets only. Record hashes, response codes, model/build, metrics, and signoff; do not attach private image bytes or credentials to issues.
 
-Related contracts: [Try-On Architecture](./TRYON_ARCHITECTURE.md), [Try-On Low-Level Design](./TRYON_LOW_LEVEL_DESIGN.md), [operations](./TRYON_OPERATIONS.md), [documentation index](./DOCUMENTATION.md). The image.direct delivery board is [project #65](https://github.com/users/moldovancsaba/projects/65); the issues are [image.direct #24–#29](https://github.com/moldovancsaba/image.direct/issues/24), [Camera #162–#166](https://github.com/moldovancsaba/camera/issues/162), and the gated [try-on retirement issue #49](https://github.com/moldovancsaba/try-on/issues/49).
+Related contracts: [Try-On Architecture](./TRYON_ARCHITECTURE.md), [Try-On Low-Level Design](./TRYON_LOW_LEVEL_DESIGN.md), [operations](./TRYON_OPERATIONS.md), [documentation index](./DOCUMENTATION.md). The image.direct delivery board is [project #65](https://github.com/users/moldovancsaba/projects/65) and Camera's board is [project #24](https://github.com/users/moldovancsaba/projects/24). The issues are [image.direct #24–#29](https://github.com/moldovancsaba/image.direct/issues/24); the former Camera issues #162–#166 now live as [image.direct #37–#41](https://github.com/moldovancsaba/image.direct/issues/37) (dispatch, result acceptance, rollout controls, readiness, canary); the gated try-on retirement issue (formerly try-on #49) is [image.direct #43](https://github.com/moldovancsaba/image.direct/issues/43); the Camera-side tracker is [camera #189](https://github.com/moldovancsaba/camera/issues/189).

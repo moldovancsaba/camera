@@ -136,9 +136,16 @@ any auth code here:
   than bouncing straight back into SSO. Don't remove that exception without
   understanding why it's there (it's the fix for logout looking like it does
   nothing).
-- **SSO has no RP-Initiated Logout / `end_session_endpoint`.** Confirmed against
-  `https://sso.doneisbetter.com/.well-known/openid-configuration` — only
-  `authorize`, `token`, `userinfo`, `revoke`, `introspect`, `jwks_uri` are exposed.
+- **SSO's discovery document has no RP-Initiated Logout / `end_session_endpoint`.**
+  Confirmed against `https://sso.doneisbetter.com/.well-known/openid-configuration`
+  (re-checked 2026-10-06) — only `authorize`, `token`, `userinfo`, `revoke`,
+  `introspect`, `jwks_uri` are exposed. SSO does ship a non-standard
+  `GET /api/oauth/logout` (sso repo `pages/api/oauth/logout.js`, described in
+  sso `docs/LEARNINGS.md`, "Logout Flow"): it clears SSO's own session cookie
+  and redirects to a `post_logout_redirect_uri` that must match one of the
+  client's registered redirect URIs. It is not advertised in discovery and this
+  app does not call it; whether to adopt it is open (camera#196, which also
+  needs a check that camera's post-logout URI would pass the allowlist).
   This app's logout (`app/api/auth/logout/route.ts`) already does the right thing:
   revokes both `session.accessToken` and `session.refreshToken` at SSO
   (`lib/auth/sso.ts` `revokeToken()`, best-effort) before clearing the local

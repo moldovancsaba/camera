@@ -1,6 +1,6 @@
 /**
  * Public redirect: short slug → Camera event capture or Greatest Hits URL.
- * On GO_SHORT_HOSTNAMES, middleware rewrites `/{slug}` here (same deployment).
+ * On GO_SHORT_HOSTNAMES, `proxy.ts` (the Next 16 successor of middleware) rewrites `/{slug}` here (same deployment).
  */
 
 import { NextRequest, NextResponse } from 'next/server';

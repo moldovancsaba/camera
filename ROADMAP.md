@@ -1,18 +1,41 @@
 # Roadmap
 
-**Version Context**: 2.17.0  
-**Last Updated**: 2026-07-04
+**Version Context**: 12.3.40  
+**Last Updated**: 2026-10-06
 
-This file is forward-looking only. Gym / Workout / FunFitFan surfaces were removed from the codebase in 2026-05; items below reflect the Events-only platform unless noted.
+This file is forward-looking only. Active work, with status, is on the GitHub
+project board [#24](https://github.com/users/moldovancsaba/projects/24); current
+state and owner decisions are in `HANDOVER.md`. Gym / Workout / FunFitFan surfaces
+were removed from the codebase in 2026-05; items below reflect the Events-only
+platform unless noted.
 
 ## Near-term priorities
 
-### 0. Tracker, observability, and release-gate decisions (v2.15.0 carry-over)
+### image.direct as a second renderer
 
-- reconcile the GitHub board against the 2026-06-30 issue audit (13 delivered issues still open; the audit file was removed in v12.2.22, its outcome is summarized in `RELEASE_NOTES.md` v2.16.0)
-- decide the error-observability sink (Sentry vs. structured Vercel logging) and wire `app/error.tsx` + server catch paths (#83)
-- decide whether to restore GitHub Actions or formalize the local release gate (#78; workflows removed in `c0b8b54`)
-- finish the GDS UI migrations: logos editor parity (#74), public surfaces (#76), media cards (#77)
+- Run image.direct next to the paused try-on runtime behind a per-event switch;
+  retire try-on only after a consented canary and owner sign-off (decision
+  2026-10-05). Tracker camera#189; contract and current state in
+  `docs/IMAGE_DIRECT_INTEGRATION.md`.
+- The long pole is model qualification inside image.direct (its issues #14, #15,
+  #18); Camera's own work is dispatch, the per-event setting and admission data.
+
+### GDS 6.7 alignment
+
+- Execute the ordered plan in `gds_fix_handover.md`: official stylesheet instead
+  of the forked CSS, bump from 6.3.0 to 6.7.0, then the work packages and the
+  items that wait on GDS releases (board issues camera#183-#188).
+
+### 0. Earlier carry-over (v2.15.0 items), now resolved or superseded
+
+- Tracker reconciliation: done; the board was rebuilt on 2026-10-05.
+- Error observability (#83): delivered as a structured logger
+  (`lib/observability/logger.ts`, v2.17.0).
+- Release gate (#78): formalized as `npm run release:check` (v2.17.0) and now also
+  enforced by CI (`.github/workflows/ci.yml`: `inventory:check` and
+  `release:check`); `main` is protected and requires the `Verify` check.
+- GDS UI migrations: logos editor parity (#74) delivered in v2.17.0; the rest
+  (#76, #77) is superseded by the GDS alignment plan above.
 
 ### 1. Complete partner-scoped authorization rollout
 
