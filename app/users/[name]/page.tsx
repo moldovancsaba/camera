@@ -18,6 +18,7 @@ import { Badge, Card, Container, Group, SimpleGrid, Stack, Text, Title } from '@
 import { getSession } from '@/lib/auth/session';
 import { buildUserManagementPropsFromSubmissions } from '@/lib/admin/build-user-management-props';
 import UserManagementActions from '@/components/admin/UserManagementActions';
+import { isPubliclyVisible, visibilityInputOf } from '@/lib/submissions/visibility';
 
 export const dynamic = 'force-dynamic';
 
@@ -147,13 +148,16 @@ export default async function UserProfilePage({ params }: PageProps) {
     console.log('=== User Profile Debug ===');
     console.log('Looking for user with sanitized name:', sanitizedUrlName);
     
-    // Get all submissions and find matching user by sanitized name comparison
-    // Note: Don't filter by isArchived - we want to show all user submissions
-    const allSubmissions = await db
-      .collection('submissions')
-      .find({})
-      .sort({ createdAt: -1 })
-      .toArray();
+    // Get all submissions and find matching user by sanitized name comparison.
+    // Admins see every submission of the user (they manage them here); everyone else only sees what is public: nothing
+    // archived, removed from its events, pending, rejected or an unapproved try-on result (camera#262).
+    const allSubmissions = (
+      await db
+        .collection('submissions')
+        .find({})
+        .sort({ createdAt: -1 })
+        .toArray()
+    ).filter((sub) => viewerCanManageUsers || isPubliclyVisible(visibilityInputOf(sub)));
     
     console.log('Total submissions:', allSubmissions.length);
     console.log('Sample submission:', allSubmissions[0] ? {
