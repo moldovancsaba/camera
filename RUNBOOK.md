@@ -212,7 +212,7 @@ panel and the backfill follow (camera#235 to #238).
 - **`changed`:** a refresh reports `changed: true` only when something drawn differs (names, partner logo, font,
   colours); fetching the same data again is not a change.
 - **Messages:** `GET` and `PUT /api/admin/events/[id]/frame-design`. At most 10, 80 characters each, placeholders
-  `{partner1}` (home team) and `{partner2}` (visitor) only; `{ reset: true }` restores the five default messages.
+  `{partner1}` and `{partner2}` only (the two sides the frame shows: home team and visitor, or the two sides of a pairing in the event name, camera#248); `{ reset: true }` restores the five default messages.
   The default list follows the code until an event edits it.
 - **Checks:** `GET /api/admin/events/<id>/frame-design` as an admin shows the snapshot; `source` tells whether it
   came from messmass; `context.style.resolvedFrom` tells which messmass level the theme came from.

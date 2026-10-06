@@ -220,26 +220,31 @@ export interface FrameLayoutInput {
   measure: Measure;
 }
 
+/**
+ * The two sides the frame shows as its teams: the real home and visitor when both are known, otherwise the two sides of
+ * a pairing in the event name, otherwise null. The message placeholders `{partner1}` and `{partner2}` use the same
+ * sides, so a message always names what the teams text shows (on an event whose home partner is a competition the
+ * real teams are only in the name).
+ */
+export function matchSides(input: { home?: string | null; visitor?: string | null; eventName: string }): [string, string] | null {
+  const home = input.home?.trim();
+  const visitor = input.visitor?.trim();
+  return home && visitor ? [home, visitor] : splitMatchName(input.eventName);
+}
+
 export function layoutFrame(input: FrameLayoutInput): FrameLayout {
   const width = input.width ?? DEFAULT_FRAME_WIDTH;
   const height = input.height ?? DEFAULT_FRAME_HEIGHT;
-  const home = input.home?.trim();
-  const visitor = input.visitor?.trim();
   const message = input.message?.trim();
-  // No home and visitor: a pairing in the event name ("A - B") is shown like the teams, without the separator.
-  const sides = home && visitor ? null : splitMatchName(input.eventName);
+  // Real home and visitor, else a pairing in the event name ("A - B") without its separator, else the name itself.
+  const sides = matchSides(input);
   return {
     width,
     height,
     safety: safetyArea(width, height),
     logo: fitLogo(width, height, input.logo),
-    // Teams only when both are known; with one or none the event name says more than a lone team.
-    teams:
-      home && visitor
-        ? fitTeams(home, visitor, input.measure, width, height)
-        : sides
-          ? fitTeams(sides[0], sides[1], input.measure, width, height)
-          : fitEventName(input.eventName, input.measure, width, height),
+    // Teams only when two sides are known; with one or none the event name says more than a lone team.
+    teams: sides ? fitTeams(sides[0], sides[1], input.measure, width, height) : fitEventName(input.eventName, input.measure, width, height),
     bar: barRect(width, height),
     barLine: barLine(width, height),
     message: message ? fitMessage(message, input.measure, width, height) : null,
