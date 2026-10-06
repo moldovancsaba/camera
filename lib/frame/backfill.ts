@@ -13,20 +13,24 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { fetchFrameContext, messmassConfigured } from '@/lib/messmassClient';
 import { parseFrameContext } from './context';
 import { splitMatchName } from './layout';
+import { FRAME_RENDER_VERSION } from './render';
 import { refreshFrameDesign } from './sync';
 import { generateFrameVariants } from './variants';
 
 export type Classification =
   | { kind: 'own-frame' }
-  | { kind: 'done' }
+  /** Has generated images; `stale` when some were drawn with an older drawing code (or before the version was kept). */
+  | { kind: 'done'; stale: boolean }
   | { kind: 'todo'; linked: boolean; hasSnapshot: boolean; inactive: boolean };
 
 /** What the rollout does with one event. Pure. */
 export function classifyEvent(event: Document): Classification {
   const frames = Array.isArray(event.frames) ? (event.frames as Array<{ isActive?: boolean }>) : [];
   if (frames.some((frame) => frame?.isActive)) return { kind: 'own-frame' };
-  const variants = Array.isArray(event.frameDesign?.variants) ? (event.frameDesign.variants as Array<{ imageUrl?: unknown }>) : [];
-  if (variants.some((variant) => typeof variant?.imageUrl === 'string' && variant.imageUrl)) return { kind: 'done' };
+  const variants = Array.isArray(event.frameDesign?.variants) ? (event.frameDesign.variants as Array<{ imageUrl?: unknown; renderVersion?: unknown }>) : [];
+  if (variants.some((variant) => typeof variant?.imageUrl === 'string' && variant.imageUrl)) {
+    return { kind: 'done', stale: variants.some((variant) => typeof variant?.renderVersion !== 'number' || variant.renderVersion < FRAME_RENDER_VERSION) };
+  }
   return {
     kind: 'todo',
     linked: typeof event.messmassEventId === 'string' && event.messmassEventId.trim() !== '',
@@ -59,6 +63,8 @@ export interface BackfillReport {
   ownFrame: number;
   /** Skipped: generated images exist already. */
   done: number;
+  /** Of those, how many have images drawn with an older drawing code; the "redraw" run draws them again (camera#274). */
+  doneStale: number;
   todo: number;
   todoLinked: number;
   /** No messmass link: the frame is built from camera's own name and partner logo, no teams, the system theme. */
@@ -88,7 +94,7 @@ const defaultDeps: BackfillDeps = {
   now: () => Date.now(),
 };
 
-const PROJECTION = { name: 1, messmassEventId: 1, frames: 1, isActive: 1, partnerId: 1, 'frameDesign.context': 1, 'frameDesign.variants.imageUrl': 1 };
+const PROJECTION = { name: 1, messmassEventId: 1, frames: 1, isActive: 1, partnerId: 1, 'frameDesign.context': 1, 'frameDesign.variants.imageUrl': 1, 'frameDesign.variants.renderVersion': 1 };
 const sortKey = (event: Document) => String(event._id);
 
 async function listEvents(db: Db): Promise<Document[]> {
@@ -163,6 +169,7 @@ export async function dryRun(db: Db, options: { probe?: boolean } = {}, deps: Ba
     total: events.length,
     ownFrame: 0,
     done: 0,
+    doneStale: 0,
     todo: 0,
     todoLinked: 0,
     todoNative: 0,
@@ -175,7 +182,10 @@ export async function dryRun(db: Db, options: { probe?: boolean } = {}, deps: Ba
   for (const event of events) {
     const c = classifyEvent(event);
     if (c.kind === 'own-frame') report.ownFrame += 1;
-    else if (c.kind === 'done') report.done += 1;
+    else if (c.kind === 'done') {
+      report.done += 1;
+      if (c.stale) report.doneStale += 1;
+    }
     else {
       report.todo += 1;
       todo.push(event);
@@ -226,12 +236,18 @@ export interface BatchResult {
  */
 export async function runBackfillBatch(
   db: Db,
-  options: { limit: number; after?: string | null; budgetMs: number },
+  options: { limit: number; after?: string | null; budgetMs: number; redraw?: boolean },
   deps: BackfillDeps = defaultDeps
 ): Promise<BatchResult> {
   const started = deps.now();
   const events = await listEvents(db);
-  const todo = events.filter((event) => classifyEvent(event).kind === 'todo' && (!options.after || sortKey(event) > options.after));
+  // "Redraw" works on the events whose images are stale instead of the ones without images: the snapshot stays as it is and only
+  // the images whose inputs or drawing code changed are drawn again (`generate` reuses the rest).
+  const wanted = (event: Document) => {
+    const c = classifyEvent(event);
+    return options.redraw ? c.kind === 'done' && c.stale : c.kind === 'todo';
+  };
+  const todo = events.filter((event) => wanted(event) && (!options.after || sortKey(event) > options.after));
 
   const result: BatchResult = { processed: 0, completed: 0, imagesDrawn: 0, imagesReused: 0, failures: [], waiting: [], nextAfter: null, remaining: 0, done: false };
   let last: string | null = options.after ?? null;
@@ -245,8 +261,16 @@ export async function runBackfillBatch(
     try {
       // The full document: what the refresh and the renderer read is not in the listing's projection.
       const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: listed._id });
-      const current = event ? classifyEvent(event) : null;
-      if (!event || current?.kind !== 'todo') continue;
+      if (!event || !wanted(event)) continue;
+      if (options.redraw) {
+        const images = await deps.generate(db, event);
+        result.completed += 1;
+        result.imagesDrawn += images.generated;
+        result.imagesReused += images.reused;
+        continue;
+      }
+      const current = classifyEvent(event);
+      if (current.kind !== 'todo') continue;
       const waiting = () => result.waiting.push({ id: String(listed._id), name: String(listed.name ?? '') });
       // A linked event is drawn from messmass data or not at all: camera's own fallback would show no teams and the
       // system theme, and the event would then count as done.

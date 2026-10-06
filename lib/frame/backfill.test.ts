@@ -4,6 +4,7 @@ import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { FRAME_SYSTEM_BAR_COLOR, FRAME_SYSTEM_HEADING_COLOR } from '@/lib/gds/tokens/colors';
 import { classifyEvent, dryRun, runBackfillBatch, type BackfillDeps } from './backfill';
+import { FRAME_RENDER_VERSION } from './render';
 
 const IMAGE = 'https://teststoreid.public.blob.vercel-storage.com/frames/generated/e/a.png';
 
@@ -61,12 +62,14 @@ function deps(over: Partial<BackfillDeps> = {}): BackfillDeps & { refreshed: str
 
 test('an event with an active frame of its own is never touched, one with images is skipped, the rest is to do', () => {
   assert.deepEqual(classifyEvent(events[0]), { kind: 'own-frame' });
-  assert.deepEqual(classifyEvent(events[1]), { kind: 'done' });
+  assert.deepEqual(classifyEvent(events[1]), { kind: 'done', stale: true }, 'images made before the drawing version was kept are stale');
   assert.deepEqual(classifyEvent(events[2]), { kind: 'todo', linked: true, hasSnapshot: false, inactive: false });
   assert.deepEqual(classifyEvent(events[3]), { kind: 'todo', linked: true, hasSnapshot: false, inactive: true }, 'an inactive assignment is no frame');
   assert.deepEqual(classifyEvent(events[4]), { kind: 'todo', linked: false, hasSnapshot: false, inactive: false });
   assert.deepEqual(classifyEvent(events[5]), { kind: 'todo', linked: false, hasSnapshot: true, inactive: false });
   assert.deepEqual(classifyEvent({ _id: 'x', frames: [{ isActive: true }], frameDesign: { variants: [{ imageUrl: IMAGE }] } }), { kind: 'own-frame' }, 'an own frame wins');
+  assert.deepEqual(classifyEvent({ _id: 'x', frameDesign: { variants: [{ imageUrl: IMAGE, renderVersion: FRAME_RENDER_VERSION }] } }), { kind: 'done', stale: false });
+  assert.deepEqual(classifyEvent({ _id: 'x', frameDesign: { variants: [{ imageUrl: IMAGE, renderVersion: FRAME_RENDER_VERSION }, { imageUrl: IMAGE, renderVersion: FRAME_RENDER_VERSION - 1 }] } }), { kind: 'done', stale: true }, 'one old image is enough');
   assert.equal(classifyEvent({ _id: 'x', frameDesign: { context: {}, variants: [{ imageUrl: '' }] } }).kind, 'todo', 'a variant without an image is no image');
 });
 
@@ -74,7 +77,7 @@ test('the dry run counts every outcome and writes and draws nothing', async () =
   const d = deps();
   const report = await dryRun(fakeDb(), {}, d);
   assert.deepEqual(report, {
-    total: 7, ownFrame: 1, done: 1, todo: 5, todoLinked: 3, todoNative: 2, todoInactive: 1, todoWithSnapshot: 1, nativeWithoutPartnerLogo: 1, messmassConfigured: true,
+    total: 7, ownFrame: 1, done: 1, doneStale: 1, todo: 5, todoLinked: 3, todoNative: 2, todoInactive: 1, todoWithSnapshot: 1, nativeWithoutPartnerLogo: 1, messmassConfigured: true,
   });
   assert.deepEqual([d.refreshed, d.generated], [[], []]);
 });
@@ -189,4 +192,18 @@ test('an event that got its own frame or images since the listing is left alone'
 test('with nothing to do a batch is done at once', async () => {
   const result = await runBackfillBatch(fakeDb([events[0], events[1]]), { limit: 3, budgetMs: 1000 }, deps());
   assert.deepEqual([result.processed, result.remaining, result.done, result.nextAfter], [0, 0, true, null]);
+});
+
+test('a redraw run draws again only the events whose images are stale, never takes a snapshot, and reports like any batch', async () => {
+  const docs: Document[] = [
+    { _id: 'a', name: 'Old', frameDesign: { context: {}, variants: [{ imageUrl: IMAGE }] } },
+    { _id: 'b', name: 'Current', frameDesign: { context: {}, variants: [{ imageUrl: IMAGE, renderVersion: FRAME_RENDER_VERSION }] } },
+    { _id: 'c', name: 'No images', messmassEventId: 'm' },
+    { _id: 'd', name: 'Own frame', frames: [{ isActive: true }], frameDesign: { context: {}, variants: [{ imageUrl: IMAGE }] } },
+  ];
+  const d = deps();
+  const result = await runBackfillBatch(fakeDb(docs), { limit: 10, budgetMs: 60_000, redraw: true }, d);
+  assert.deepEqual(d.generated, ['a']);
+  assert.deepEqual(d.refreshed, [], 'the snapshot stays as it is');
+  assert.deepEqual([result.processed, result.completed, result.imagesDrawn, result.done], [1, 1, 5, true]);
 });
