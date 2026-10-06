@@ -92,7 +92,7 @@ null for the single image without a message), `message` (the filled text drawn),
 `frames/generated/<eventId>/<key>.png`), `width`/`height` (1920x1080), `layers` (the boxes of the logo, teams text,
 bar and message, in drawing order), `key` (hash of everything that decides the image), `font` (family, `used`:
 `bundled`/`custom`/`fallback`, `note`, `retry`) and `logo` (`drawn`/`none`/`failed`); `generatedAt` is on the design.
-Images are never deleted: a submission records the variant it used.
+Images are never deleted: a submission records the variant it used (`submissions.frameVariant`, camera#236).
 
 ### Practical consequence
 
@@ -142,6 +142,7 @@ Image fields (camera#210):
 - `originalImageUrl` is the pure full-frame camera image (not cropped, not framed, not mirrored) in Vercel Blob under `originals/<eventId>/`. It is private: no public route returns it (`lib/submissions/original-exposure.test.ts` guards this). Submissions made before camera#210, and submissions whose original could not be uploaded, carry the composite here instead.
 - `reframe` is present exactly when `originalImageUrl` is a distinct full-frame original: `{version: 1, mode: fill|fit|custom, zoom, crop {x, y, width, height} in source pixels (may extend past the image in fit), sourceWidth, sourceHeight, frameAspect, mirrored}`. `lib/submissions/public-image.ts` never falls back to the original when it exists.
 - `metadata.originalWidth`, `originalHeight`, `originalFileSize` and `originalMimeType` describe the original (the file's size and type come from a Blob lookup); `metadata.finalWidth` and `finalHeight` still describe the composite, which the slideshow reads.
+- `frameVariant` `{index, message, imageUrl}` is present when the photo used the generated default frame of an event with no frame of its own (camera#236, `frameId` is then null): the position and text of the message drawn and the generated image in Vercel Blob (`frames/generated/`), kept because try-on composes with it later. It is never deleted with the submission (it is shared by every photo of that variant).
 
 Important:
 

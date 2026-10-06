@@ -246,9 +246,9 @@ test('an original that cannot be confirmed keeps the photo: it is saved without 
   }
 });
 
-const GENERATED = `https://${HOST}/frames/generated/${EVENT}/0123456789abcdef.png`;
+const GENERATED = `https://${HOST}/frames/generated/${EVENT}/variant-two.png`;
 
-test('the generated frame variant a photo used is stored with the submission (camera#236)', async (t) => {
+test('the generated frame variant a photo used is stored with the submission', async (t) => {
   const restore = withStoreToken();
   const quiet = silence();
   try {

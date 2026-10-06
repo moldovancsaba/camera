@@ -1219,6 +1219,22 @@ _Use this template for new learnings:_
 - Process: 3
 - Other: 1
 
+### [FRONT-013] The guest flow for a generated frame: a synthetic frame id breaks submission, and the colour gate reads "#236" as a colour — 2026-10-06T00:00:00.000Z
+
+**Issue**: The capture flow had to treat the generated default frame like a frame (composite, reframe, submission) without being a stored frame, and pick a different image at every shutter press.
+
+**Context**:
+- The page and the submission route are built around a stored `frames` document: `POST /api/submissions` looks every `frameId` up in `frames` and answers 404 for an unknown one, so the first plan (a synthetic `frameId` such as `generated:<event>:<n>`) would have failed every save.
+- The GDS `forbidden-color` rule is a regex, `#` followed by 3 to 8 hex characters, so an issue number such as `#236` inside a string literal (a test title) counts as a raw colour; in comments it is stripped.
+
+**Solution**:
+- The generated frame is shown to the page as a frame object only in memory (`variantFrame` in the capture page); the submission sends `frameId: null` and a separate `frameVariant { index, message, imageUrl }`, which the server keeps only when the image is one of this project's `frames/generated/` PNGs (`sanitizeFrameVariant`). A wrong claim drops the record, never the photo.
+- The public event response carries a derived `generatedFrame` and no longer the stored `frameDesign`, so the admin snapshot is not served to guests.
+- Territories are one small component fed with fractions of the frame, used over the live view's frame guide and over the reframe stage, which both already have the frame's shape.
+- Checked on the real capture page in a production build with the API mocked at the network level (Playwright, 16 viewports): variant images drawn in distinct colours make "which variant was composed" measurable, and the same run compares it with what the submission recorded. Mark the camera tour as seen in the test context or its backdrop swallows the clicks, and wait for the POST: a failed original upload retries before it.
+
+**Key Decisions**: record a generated frame in its own field rather than faking a frame id; keep the page free of colour literals through a token constant (`FRAME_TERRITORY_FILL`); no issue numbers inside string literals.
+
 **Last Updated**: 2026-10-06T00:00:00.000Z
 
 ---

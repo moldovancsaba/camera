@@ -61,6 +61,25 @@
 - **Not changed:** the privacy and consent wording (per landing page, owner content); proposed
   sentences are in RUNBOOK for sign-off. Deleting an event still leaves its submissions.
 
+## Unreleased — the guest capture flow uses the generated default frame
+
+- **Added:** an event with no active frame of its own and generated frame images skips the frame picker, and every
+  shutter press takes a random message image of the generated frame, never the one before while another exists.
+  The live view and the reframe step show where the logo, teams text, bar and message will be as 50% black boxes
+  (the logo is only a box, no box when the partner has no logo); the real composition is drawn from the preview step
+  on, and the saved and shared image is that composition. Try again picks again. Events with frames of their own,
+  and events with neither, behave as before.
+- **Added:** `GET /api/events/[eventId]` returns `generatedFrame` (images, messages, layer boxes), null while the event
+  has an own active frame or no image exists. **Changed:** it no longer returns the stored `frameDesign`
+  (snapshot of messmass data, message list, render details); admins read that from `.../frame-design`.
+- **Added:** `POST /api/submissions` accepts `frameVariant { index, message, imageUrl }` and stores it when the image
+  is one of this project's generated frame images; otherwise it is dropped with a warning
+  (`submissions.frame_variant_dropped`) and the photo still saves. `frameId` stays null for a generated frame.
+- Nothing changes for any event until it has generated images (the first check on Vercel, then the backfill, camera#238).
+- Measured on the real capture page in a production build, API mocked at the network level, on 16 viewports (phones,
+  tablets, desktop; portrait and landscape): territories match the layer boxes, no page scroll, the frame image is not
+  fetched before the preview step, nine presses never repeat, the submission carries the variant that was composed.
+
 ## Unreleased — an event name that is a pairing is split into two lines
 
 - **Changed:** on a generated frame without a home and a visitor team, an event name like "Casademont Zaragoza -
