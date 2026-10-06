@@ -36,3 +36,18 @@ export const SLIDESHOW_LAYOUT_PRESET_COLORS = [
   '#14b8a6',
   '#ef4444',
 ] as const;
+
+// The system default report style of messmass for the pages of the guest journey (camera#285): used when an event has no theme
+// snapshot yet. Same values as DEFAULT_REPORT_STYLE_COLORS in messmass (#RRGGBBAA).
+export const EVENT_THEME_DEFAULT = {
+  heroBackground: '#f8fafcff',
+  headingColor: '#1f2937ff',
+  textColor: '#111827ff',
+  cardBackground: '#ffffffff',
+  cardBorder: '#f3f4f6ff',
+  buttonBackground: '#ffffffff',
+  buttonText: '#3b82f6ff',
+  accentColor: '#3b82f6ff',
+  linkColor: '#2563ebff',
+  cardRadius: '0.75rem',
+} as const;

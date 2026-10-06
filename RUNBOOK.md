@@ -361,6 +361,22 @@ silhouette, an event with a generated frame shows the shapes.
 can still be approved, and new photos are published at once as before. Everything: turn the code default back (`false`) and switch the
 events off one by one, or ask for a bulk switch-off. Nothing the rollout wrote is destructive: it only sets `photoVetting` on events.
 
+## Event theme (camera#285)
+
+The guest pages are drawn with the **theme** of the event: the background, heading, card, button and radius colours of its messmass style,
+the partner's logo (else the event's emoji) and the font. It is the same snapshot the generated frame is drawn from
+(`events.frameDesign.context`), so `GET /api/events/<id>` returns it as `theme` and nothing is stored twice. Events whose style is the
+messmass default get the default look; an event with no snapshot yet gets the default look with its brand colour on the buttons.
+
+- **It follows messmass.** Editing a style or a partner (logo, name, style, template, team data) in messmass posts to
+  `POST /api/internal/messmass/theme-updated`; camera marks the events stale and refreshes the first ones at once, and every other event on
+  the next guest request (after the response). A new logo also redraws the frame images of that event. There is no cron.
+- **If an event keeps the old look.** The snapshot's `fetchedAt` (admin: the event's frame design) tells when it was last taken; an event
+  messmass could not answer for stays as it was and is asked again after ten minutes (`events.themeCheckedAt`). *Refresh from messmass* in
+  the event's frame design forces it.
+- **Contrast is enforced in code**, not in the style: text that would not read is shown in white or black, so a bad style costs the look,
+  never the page.
+
 ## Capture diagnostics (anonymous)
 
 The capture screen reports how each capture went so the rate of black or near-black photos can

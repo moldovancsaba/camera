@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { CAMERA_DEFAULT_CTA_BRAND_COLOR, CAMERA_STAGE_WHITE, EVENT_THEME_DEFAULT } from '@/lib/gds/tokens/colors';
 import { test, type TestContext } from 'node:test';
 import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
@@ -157,4 +158,34 @@ test('PATCH: the setting must be true or false', async (t) => {
   assert.equal((await PATCH(patchRequest({ photoVetting: { required: 'yes' } }), params)).status, 400);
   assert.equal((await PATCH(patchRequest({ photoVetting: null }), params)).status, 400);
   assert.equal(h.updates.length, 0);
+});
+
+// Stand-in colours from the tokens (no raw colour literals in tests).
+const HERO = EVENT_THEME_DEFAULT.headingColor;
+const WHITE = `${CAMERA_STAGE_WHITE.toLowerCase()}ff`;
+const FRESH = new Date().toISOString();
+const SNAPSHOT = {
+  context: {
+    source: 'messmass', fetchedAt: FRESH, inputHash: 'h', event: { name: 'Derby', date: null, homeTeam: null, visitorTeam: null },
+    partner: { name: 'Club', logoUrl: 'https://store.test/logo.png' }, template: null,
+    style: { name: 'S', resolvedFrom: 'project', fontFamily: 'Aquatic', fontSource: 'system', fontFile: null, headingColor: WHITE, heroBackground: HERO },
+  },
+  messages: [], messagesOverridden: false, updatedAt: FRESH,
+};
+
+test('GET returns the theme of the event: from its messmass snapshot, without exposing the snapshot itself', async (t) => {
+  mockDeps(t, { event: { messmassEventId: 'm1', frameDesign: SNAPSHOT } });
+  const { GET } = await importRouteModule('theme-snapshot');
+  const { event } = ((await (await GET(getRequest(), params)).json()) as { data: { event: Record<string, unknown> } }).data;
+  const theme = event.theme as { source: string; background: string; heading: string; logoUrl: string; font: { family: string } };
+  assert.deepEqual([theme.source, theme.background, theme.heading, theme.logoUrl, theme.font.family], ['messmass', HERO.slice(0, 7), WHITE.slice(0, 7), 'https://store.test/logo.png', 'Aquatic']);
+  assert.equal('frameDesign' in event, false, 'the snapshot is admin data');
+});
+
+test('GET returns the system default look for an event that has no snapshot yet', async (t) => {
+  mockDeps(t, { event: { name: 'Fan Day', brandColor: CAMERA_DEFAULT_CTA_BRAND_COLOR } });
+  const { GET } = await importRouteModule('theme-default');
+  const { event } = ((await (await GET(getRequest(), params)).json()) as { data: { event: Record<string, unknown> } }).data;
+  const theme = event.theme as { source: string; dark: boolean };
+  assert.deepEqual([theme.source, theme.dark], ['event', false]);
 });

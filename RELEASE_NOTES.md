@@ -1,5 +1,20 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the event theme: data, resolution and following messmass (J1)
+
+- **Added:** `GET /api/events/<id>` returns `theme`, one resolved look for the guest pages: background, heading, card, button, link and
+  radius colours, the logo (the partner's, else the event's emoji) and the font, taken from the messmass style snapshot the generated frame
+  is drawn from, so pages and frame agree. Events whose style is the messmass default get the default look too. Contrast is guaranteed:
+  text that does not read on its background (4.5:1; 3:1 for the large button labels) is replaced by white or black, and a button colour
+  that does not stand out from its card (3:1) falls to the style's accent, the event's brand colour, or the card's text colour
+  (`lib/theme/`).
+- **Added:** the snapshot carries `style.page`, the page colours of the messmass style (messmass must be at the version that sends them;
+  older snapshots still theme from their hero and heading colours). A change of these colours alone does not redraw the frame images.
+- **Added:** camera follows messmass. `POST /api/internal/messmass/theme-updated` (messmass shared secret) marks events stale and refreshes
+  the first ones at once (a new snapshot, and the frame images whose inputs changed, so a new logo reaches the frame too); a stale
+  snapshot, or one older than a day, is also refreshed after a guest's request. An event messmass cannot answer for keeps its old
+  snapshot and is not asked again for ten minutes.
+
 ## Unreleased — photo vetting is the default for new events
 
 - **Changed:** every new event starts with photo vetting required (admin, messmass and savetheworld provisioning), as decided by the
