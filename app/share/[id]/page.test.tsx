@@ -1,0 +1,125 @@
+import assert from 'node:assert/strict';
+import { test, type TestContext } from 'node:test';
+import { ObjectId } from 'mongodb';
+
+type PageModule = typeof import('./page');
+const importPage = (caseId: string) => import('./page?case=' + caseId) as Promise<PageModule>;
+
+const TOKEN = 'tok_abcdefghijklmnopqrst';
+const EVENT_ID = new ObjectId();
+
+interface Doc extends Record<string, unknown> {
+  _id: ObjectId;
+}
+
+function photo(extra: Record<string, unknown> = {}): Doc {
+  return {
+    _id: new ObjectId(),
+    eventId: 'event-uuid',
+    eventIds: ['event-uuid'],
+    submissionKind: 'original',
+    imageUrl: 'https://store.test/submission-1.jpg',
+    userName: 'Guest',
+    userInfo: { name: 'Ann', email: 'ann@example.com' },
+    createdAt: '2026-10-06T12:00:00.000Z',
+    metadata: { finalWidth: 1920, finalHeight: 1080 },
+    ...extra,
+  };
+}
+
+function matches(doc: Doc, filter: Record<string, unknown>): boolean {
+  if (Array.isArray(filter.$or)) return (filter.$or as Array<Record<string, unknown>>).some((clause) => matches(doc, clause));
+  if ('_id' in filter) return String(filter._id) === String(doc._id);
+  if ('shareToken' in filter) return doc.shareToken === filter.shareToken;
+  return false;
+}
+
+function mockDb(t: TestContext, docs: Doc[]) {
+  t.mock.module('@/lib/db/mongodb', {
+    namedExports: {
+      connectToDatabase: async () => ({
+        collection: (name: string) => ({
+          findOne: async (filter: Record<string, unknown>) => {
+            if (name === 'events') return { _id: EVENT_ID, eventId: 'event-uuid', name: 'Derby' };
+            return docs.find((doc) => matches(doc, filter)) ?? null;
+          },
+          find: () => ({ sort: () => ({ toArray: async () => [] }), toArray: async () => [] }),
+        }),
+      }),
+    },
+  });
+}
+
+const params = (id: string) => ({ params: Promise.resolve({ id }) });
+const isNotFound = (error: unknown) => /NEXT_HTTP_ERROR_FALLBACK;404|NEXT_NOT_FOUND/.test(String((error as { digest?: unknown })?.digest ?? error));
+
+async function render(page: PageModule, id: string): Promise<{ element?: { type: unknown; props: Record<string, unknown> }; notFound: boolean }> {
+  try {
+    const element = (await page.default(params(id))) as unknown as { type: unknown; props: Record<string, unknown> };
+    return { element, notFound: false };
+  } catch (error) {
+    if (isNotFound(error)) return { notFound: true };
+    throw error;
+  }
+}
+
+test('a waiting photo reached by its token shows the waiting notice, never the photo', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'pending_review' })]);
+  const page = await importPage('waiting');
+  const { element, notFound } = await render(page, TOKEN);
+  assert.equal(notFound, false);
+  assert.equal(element?.props.state, 'waiting');
+  assert.equal(element?.props.eventName, 'Derby');
+  assert.equal(JSON.stringify(element).includes('submission-1.jpg'), false, 'the picture URL is nowhere in the page');
+});
+
+test('a rejected photo reached by its token shows the not-approved notice with a way to take another photo', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'rejected' })]);
+  const page = await importPage('rejected');
+  const { element } = await render(page, TOKEN);
+  assert.equal(element?.props.state, 'not_approved');
+  assert.equal(element?.props.captureHref, `/capture/${EVENT_ID.toString()}`);
+});
+
+test('the same waiting photo reached by its database id is not found', async (t) => {
+  const doc = photo({ shareToken: TOKEN, reviewStatus: 'pending_review' });
+  mockDb(t, [doc]);
+  const page = await importPage('by-id');
+  assert.equal((await render(page, doc._id.toHexString())).notFound, true);
+});
+
+test('an approved photo shows as a photo, by id and by token', async (t) => {
+  const doc = photo({ shareToken: TOKEN, reviewStatus: 'approved' });
+  mockDb(t, [doc]);
+  const page = await importPage('approved');
+  for (const id of [doc._id.toHexString(), TOKEN]) {
+    const { element, notFound } = await render(page, id);
+    assert.equal(notFound, false);
+    assert.notEqual(element?.props.state, 'waiting');
+    assert.match(JSON.stringify(element), /submission-1\.jpg/, 'the picture is on the page');
+  }
+});
+
+test('an unknown link is not found', async (t) => {
+  mockDb(t, []);
+  const page = await importPage('unknown');
+  assert.equal((await render(page, 'nope')).notFound, true);
+  assert.equal((await render(page, TOKEN)).notFound, true);
+});
+
+test('the link preview of a waiting or rejected photo carries no image and is not indexed', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'pending_review' })]);
+  const page = await importPage('metadata');
+  const meta = await page.generateMetadata(params(TOKEN));
+  assert.deepEqual(meta.robots, { index: false, follow: false });
+  assert.equal(meta.openGraph, undefined);
+  assert.equal(JSON.stringify(meta).includes('submission-1.jpg'), false);
+});
+
+test('the link preview of an approved photo still carries its image', async (t) => {
+  const doc = photo({ shareToken: TOKEN, reviewStatus: 'approved' });
+  mockDb(t, [doc]);
+  const page = await importPage('metadata-approved');
+  const meta = await page.generateMetadata(params(doc._id.toHexString()));
+  assert.match(JSON.stringify(meta), /submission-1\.jpg/);
+});

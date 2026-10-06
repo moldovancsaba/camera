@@ -327,6 +327,9 @@ package it is off for every event, so none of the behaviour below applies yet.
   repeat the action. A frame is never skipped silently: an unframed picture is only made for a photo that recorded no frame at all.
 - **If the email did not go out** the answer says `email: failed` or `skipped` (no address, no sender configured); the photo is approved
   either way, and `metadata.emailSent*` on the submission shows what happened.
+- **The share link** of a vetted photo is `/share/<shareToken>` (in the approval email). Waiting: a notice that refreshes itself; rejected: a
+  notice with "Take another photo"; approved: the photo. A waiting or rejected photo is only shown to its token, never to its database id.
+  Run `npm run db:ensure-indexes` once before the rollout: it adds the unique `shareToken` index the lookup uses.
 - **Pending photos in the Blob store** are referenced by `photoReview.photoUrl`, so the orphan finder does not report them and deleting the
   submission deletes the file.
 

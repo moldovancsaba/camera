@@ -116,7 +116,7 @@ Epic: [camera#261](https://github.com/moldovancsaba/camera/issues/261). Status o
 | V5 [camera#266](https://github.com/moldovancsaba/camera/issues/266) | **Built, inert until V10:** `POST /api/submissions`: pending storage, no mirror, no share link or email, try-on held | V2 | route tests |
 | V6 [camera#267](https://github.com/moldovancsaba/camera/issues/267) | **Built, inert until V10 (the queue page that calls it is V7):** Approval pipeline: server composition (photos and try-on results, recorded frame image), publish flags, wall rule, "photo ready" and "not approved" emails, rejection | V5 | uses the `sharp` composer |
 | V7 [camera#268](https://github.com/moldovancsaba/camera/issues/268) | Moderation UI for photos, event setting in the editor, roles (event managers and above) | V6 | GDS components |
-| V8 [camera#269](https://github.com/moldovancsaba/camera/issues/269) | Public pages: share page states (waiting / not approved / approved), `noindex`, download, share token | V1, V5 | |
+| V8 [camera#269](https://github.com/moldovancsaba/camera/issues/269) | **Built, inert until V10:** Public pages: share page states (waiting / not approved / approved), `noindex`, download, share token | V1, V5 | |
 | V9 [camera#270](https://github.com/moldovancsaba/camera/issues/270) | Feeds: savetheworld wall and `publish-selfies`, fanmass, slideshows, emails, the manual email script, admin badges | V1, V6 | |
 | V10 [camera#271](https://github.com/moldovancsaba/camera/issues/271) | Rollout: dry runs, owner review, enable by default, RUNBOOK, release notes, first-day checks | all | |
 

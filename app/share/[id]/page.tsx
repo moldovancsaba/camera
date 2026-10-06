@@ -11,7 +11,8 @@ import type { Db } from 'mongodb';
 import Image from 'next/image';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { isPubliclyVisible, visibilityInputOf } from '@/lib/submissions/visibility';
+import { findShareSubmission, shareStateOf, type ShareLookup } from '@/lib/submissions/share-lookup';
+import PhotoStatusNotice from '@/components/share/PhotoStatusNotice';
 import PublicShell from '@/components/public/PublicPageShell';
 import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import { listApprovedShareVariants } from '@/lib/tryon/publication';
@@ -239,13 +240,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const { id } = await params;
     const db = await connectToDatabase();
-    const submission = await db
-      .collection(COLLECTIONS.SUBMISSIONS)
-      .findOne({ _id: new ObjectId(id) });
+    const lookup = await findShareSubmission(db, id);
+    const state = shareStateOf(lookup);
+    const submission = lookup?.doc ?? null;
 
     // A photo that is not public (pending, rejected, archived, removed from its events) gets no preview image and is not
-    // indexed: a link preview must not leak what the page itself would not show (camera#262).
-    if (!submission || !isPubliclyVisible(visibilityInputOf(submission))) {
+    // indexed: a link preview must not leak what the page itself would not show (camera#262, camera#269).
+    if (state === 'waiting' || state === 'not_approved') {
+      return {
+        title: 'Your photo',
+        robots: { index: false, follow: false },
+      };
+    }
+    if (!submission || state !== 'visible') {
       return {
         title: 'Photo Not Found',
         robots: { index: false, follow: false },
@@ -305,13 +312,14 @@ export default async function SharePage({ params }: Props) {
     }
   };
   
+  let lookup: ShareLookup | null = null;
   try {
     const { id } = await params;
     const db = await connectToDatabase();
-    const doc = await db
-      .collection(COLLECTIONS.SUBMISSIONS)
-      .findOne({ _id: new ObjectId(id) });
-    if (doc && typeof doc === 'object' && isPubliclyVisible(visibilityInputOf(doc))) {
+    // The link carries the database id or the share token of a vetted photo (camera#269).
+    lookup = await findShareSubmission(db, id);
+    const doc = lookup?.doc ?? null;
+    if (doc && typeof doc === 'object' && shareStateOf(lookup) === 'visible') {
       submission = {
         id: doc._id.toString(),
         imageUrl: readString(doc.imageUrl) ?? undefined,
@@ -373,6 +381,20 @@ export default async function SharePage({ params }: Props) {
     }
   } catch (error) {
     console.error('Error fetching submission:', error);
+  }
+
+  // A vetted photo reached by its token that is waiting or was not approved: a notice, never the photo (camera#269).
+  const shareState = shareStateOf(lookup);
+  if ((shareState === 'waiting' || shareState === 'not_approved') && lookup) {
+    const noticeDb = await connectToDatabase();
+    const noticeEvent = await resolveEventForSubmission(noticeDb, lookup.doc);
+    return (
+      <PhotoStatusNotice
+        state={shareState}
+        eventName={noticeEvent?.name ?? 'Shared photo'}
+        captureHref={noticeEvent?.mongoId ? `/capture/${noticeEvent.mongoId}` : '/capture'}
+      />
+    );
   }
 
   if (!submission) {

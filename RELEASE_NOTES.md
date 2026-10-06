@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — photo vetting: the share page of a waiting or rejected photo (switched off)
+
+- **Added:** `/share/<token>` for vetted photos. The link in the approval email carries the photo's opaque share token. A photo that is
+  waiting shows "Your photo is waiting for approval" (the page refreshes itself every 20 seconds and turns into the photo once it is
+  approved); a rejected photo shows "Your photo could not be approved" with a "Take another photo" button. Neither shows the photo,
+  both are `noindex` and send no preview image. Reached by database id, a waiting or rejected photo is still "not found", so these
+  pages cannot be found by counting ids. Approved photos work by id as before (galleries and older emails keep their links) and by token.
+- **Added:** a unique index on `shareToken` in `npm run db:ensure-indexes`.
+
 ## Unreleased — photo vetting: the guest journey (switched off)
 
 - **Changed:** on an event with vetting required the capture page never shows the real frame. The reframe step and the preview show the
