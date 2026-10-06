@@ -335,6 +335,31 @@ package it is off for every event, so none of the behaviour below applies yet.
 - **Pending photos in the Blob store** are referenced by `photoReview.photoUrl`, so the orphan finder does not report them and deleting the
   submission deletes the file.
 
+### Turning photo vetting on (camera#271)
+
+1. **One event first.** A global admin opens the event's **Photos** tab (`/admin/events/<id>/photos`) and presses *Turn vetting on*. Take a
+   photo on that event's capture page (on a phone too): the guest first gives an email or logs in with Google / Facebook, sees the shapes
+   instead of the frame, saves, and reads "waiting for approval". The photo must be on **no** public page. Then approve it on the Photos tab:
+   the guest gets the email with `/share/<token>`, the page shows the framed photo, and the photo reaches the slideshow, the wall and the
+   fanmass feed only now. Reject another one and check the "not approved" email and the page's "Take another photo".
+2. **Indexes.** Run `npm run db:ensure-indexes` once (production env): it adds the unique `shareToken` index and the queue index.
+3. **Every event.** `/admin/photo-vetting` (global admin). *Run the dry run*, read it (how many events, which took photos in the last 24
+   hours and 7 days: from the moment the run finishes their next photos wait for approval, so tell their managers first), tick *I have
+   read the dry-run report*, then *Turn photo vetting on for every event*. The run is repeatable; events already on are skipped, and nothing
+   written before is changed. Photos made before vetting stay public: a missing review status counts as approved and no approval time is
+   written (the fanmass feed would otherwise send them again).
+4. **New events** get vetting required when `PHOTO_VETTING_DEFAULT_FOR_NEW_EVENTS` in `lib/events/photo-vetting.ts` is `true` (a code change,
+   merged after the checks above). It covers events created in the admin, by messmass provisioning and by savetheworld provisioning.
+
+**Checklist for the first live event:** a test photo stays invisible (share page by id is "not found", no slideshow slide, not on the wall,
+not in the fanmass feed); approval emails the guest and publishes it; a try-on requested with the photo runs only after approval; the
+event manager (not only a global admin) can open the Photos tab and approve; an event that has its own frame shows the darkened
+silhouette, an event with a generated frame shows the shapes.
+
+**Rolling back.** One event: the switch on its Photos tab (global admin) turns vetting off; photos already waiting stay on the Photos tab and
+can still be approved, and new photos are published at once as before. Everything: turn the code default back (`false`) and switch the
+events off one by one, or ask for a bulk switch-off. Nothing the rollout wrote is destructive: it only sets `photoVetting` on events.
+
 ## Capture diagnostics (anonymous)
 
 The capture screen reports how each capture went so the rate of black or near-black photos can

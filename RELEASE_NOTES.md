@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — photo vetting: the rollout to existing events
+
+- **Added:** `/admin/photo-vetting` (global admin, linked under Operations) and `POST /api/admin/photo-vetting-rollout`. A dry run counts the
+  events, shows which took photos in the last 24 hours and week, and writes nothing; the run turns the setting on for every event that
+  does not have it, attributed to the admin, and can be repeated. Photos made before vetting are not touched.
+- **Documented:** how to turn vetting on (one event first, indexes, every event, the default for new events), a checklist for the first
+  live event, and how to roll back (RUNBOOK, "Turning photo vetting on").
+- The default for new events is still off; it is a one-line change (`PHOTO_VETTING_DEFAULT_FOR_NEW_EVENTS`) once the owner has tested.
+
 ## Unreleased — photo vetting: every feed takes approved photos only (switched off)
 
 - **Changed:** a vetted photo that is waiting or was rejected is no longer picked up by the slideshow playlist (also when pinned), the
