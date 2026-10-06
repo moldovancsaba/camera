@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-06T17:39:57+00:00",
+  "generated": "2026-10-06T19:00:08+00:00",
   "repo": "camera",
-  "head": "9fb9d91",
+  "head": "5556c13",
   "counts": {
    "endpoints": 107,
    "collections": 6,
    "env": 59,
    "outbound-hosts": 23,
-   "docs": 45
+   "docs": 46
   }
  },
  "items": [
@@ -119,6 +119,10 @@
   {
    "file": "docs/IMAGE_DIRECT_INTEGRATION.md",
    "title": "Camera \u2194 image.direct rendering contract"
+  },
+  {
+   "file": "docs/JOURNEY_DESIGN_PLAN.md",
+   "title": "Event design on the guest journey (plan)"
   },
   {
    "file": "docs/MESSMASS_FANMASS_INTEGRATION.md",
