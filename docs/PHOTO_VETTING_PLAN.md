@@ -105,18 +105,20 @@ before approval.
 
 ## Work packages
 
+Epic: [camera#261](https://github.com/moldovancsaba/camera/issues/261). Status of each package is kept in its issue and on the board.
+
 | # | Package | Depends on | Notes |
 |---|---|---|---|
-| V1 | **Close today's leaks and add the shared rule** (`isPubliclyVisible`, "legacy and missing status are visible"): link-preview image, `next-candidate`, `/users/[name]`, share page and download use it. No change for approved or legacy photos | none | independent of the rest, ships first |
-| V2 | Data model, event setting and defaults: `photoVetting` on events and in provisioning, `reviewStatus` and pending fields on photos, indexes, backfills (photos to `approved`, events to `required`) with a dry run | V1 | owner reviews the dry run |
-| V3 | **Identity on every event:** a default "who are you" page (email or Google / Facebook login) for new events and by provisioning, a backfill for the 231 events without one (dry run first), and enforcement at capture: with vetting required a photo cannot be saved without an email or a login | V2 | see the open question on unverified email |
-| V4 | Guest journey: shapes preview (generated frames and own frames), pending save (two uploads), waiting screen, off-state unchanged | V2, V3 | Playwright on the viewport matrix and a phone |
-| V5 | `POST /api/submissions`: pending storage, no mirror, no share link or email, try-on held | V2 | route tests |
-| V6 | Approval pipeline: server composition (photos and try-on results, recorded frame image), publish flags, wall rule, "photo ready" and "not approved" emails, rejection | V5 | uses the `sharp` composer |
-| V7 | Moderation UI for photos, event setting in the editor, roles (event managers and above) | V6 | GDS components |
-| V8 | Public pages: share page states (waiting / not approved / approved), `noindex`, download, share token | V1, V5 | |
-| V9 | Feeds: savetheworld wall and `publish-selfies`, fanmass, slideshows, emails, the manual email script, admin badges | V1, V6 | |
-| V10 | Rollout: dry runs, owner review, enable by default, RUNBOOK, release notes, first-day checks | all | |
+| V1 [camera#262](https://github.com/moldovancsaba/camera/issues/262) | **Close today's leaks and add the shared rule** (`isPubliclyVisible`, "legacy and missing status are visible"): link-preview image, `next-candidate`, `/users/[name]`, share page and download use it. No change for approved or legacy photos | none | independent of the rest, ships first |
+| V2 [camera#263](https://github.com/moldovancsaba/camera/issues/263) | Data model, event setting and defaults: `photoVetting` on events and in provisioning, `reviewStatus` and pending fields on photos, indexes, backfills (photos to `approved`, events to `required`) with a dry run | V1 | owner reviews the dry run |
+| V3 [camera#264](https://github.com/moldovancsaba/camera/issues/264) | **Identity on every event:** a default "who are you" page (email or Google / Facebook login) for new events and by provisioning, a backfill for the 231 events without one (dry run first), and enforcement at capture: with vetting required a photo cannot be saved without an email or a login | V2 | see the open question on unverified email |
+| V4 [camera#265](https://github.com/moldovancsaba/camera/issues/265) | Guest journey: shapes preview (generated frames and own frames), pending save (two uploads), waiting screen, off-state unchanged | V2, V3 | Playwright on the viewport matrix and a phone |
+| V5 [camera#266](https://github.com/moldovancsaba/camera/issues/266) | `POST /api/submissions`: pending storage, no mirror, no share link or email, try-on held | V2 | route tests |
+| V6 [camera#267](https://github.com/moldovancsaba/camera/issues/267) | Approval pipeline: server composition (photos and try-on results, recorded frame image), publish flags, wall rule, "photo ready" and "not approved" emails, rejection | V5 | uses the `sharp` composer |
+| V7 [camera#268](https://github.com/moldovancsaba/camera/issues/268) | Moderation UI for photos, event setting in the editor, roles (event managers and above) | V6 | GDS components |
+| V8 [camera#269](https://github.com/moldovancsaba/camera/issues/269) | Public pages: share page states (waiting / not approved / approved), `noindex`, download, share token | V1, V5 | |
+| V9 [camera#270](https://github.com/moldovancsaba/camera/issues/270) | Feeds: savetheworld wall and `publish-selfies`, fanmass, slideshows, emails, the manual email script, admin badges | V1, V6 | |
+| V10 [camera#271](https://github.com/moldovancsaba/camera/issues/271) | Rollout: dry runs, owner review, enable by default, RUNBOOK, release notes, first-day checks | all | |
 
 Testing: unit tests for the rule and the event default; route tests for the pending save and the approval; a browser run of the
 whole journey (capture, waiting, approve, share page, email) on the viewport matrix; a check per surface that a pending photo
