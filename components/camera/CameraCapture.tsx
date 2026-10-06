@@ -20,7 +20,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { Button } from '@mantine/core';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
@@ -42,7 +42,6 @@ import {
 } from '@/lib/camera/capture-policy';
 import {
   buildVideoConstraintChain,
-  capCanvasSize,
   detectTouchPrimaryDevice,
   isTerminalCameraError,
 } from '@/lib/camera/constraints';
@@ -53,7 +52,12 @@ import {
   pageDiagnosticFields,
   sendCameraDiagnostic,
 } from '@/lib/camera/diagnostics-client';
+import { captureFullFrame, type FullFrameCapture } from '@/lib/camera/frame-capture';
+import { fillCropRect, toFractionRect } from '@/lib/camera/reframe';
 import { sampleVideoLumaStats, waitForVideoFrame } from '@/lib/camera/video-frame';
+
+/** Shown under the live view when the frame keeps only part of the camera image. */
+const FRAME_GUIDE_HINT = 'Your frame keeps the bright area.';
 
 /** Supports hex (#rgb) or CSS `var(--token)` for branded capture UI. */
 function capturePromptBackground(fill: string): string {
@@ -65,10 +69,13 @@ function capturePromptBackground(fill: string): string {
 }
 
 export interface CameraCaptureProps {
-  onCapture: (blob: Blob, dataUrl: string) => void;
+  /**
+   * Receives the whole camera image: not cropped, not framed, not mirrored (see FullFrameCapture).
+   * The caller applies the frame's aspect ratio afterwards (lib/camera/frame-crop.ts).
+   */
+  onCapture: (capture: FullFrameCapture) => void;
   onError?: (error: Error) => void;
   className?: string;
-  frameOverlay?: string; // URL of frame image to overlay
   frameWidth?: number;   // Frame width in pixels (for aspect ratio)
   frameHeight?: number;  // Frame height in pixels (for aspect ratio)
   captureButtonColor?: string; // Hex or CSS `var(--token)` for capture button fill (default brand token)
@@ -78,8 +85,9 @@ export interface CameraCaptureProps {
   /** Camera facing when capture opens. Defaults to the front camera for everyone (owner decision 2026-10-06). */
   initialFacingMode?: 'user' | 'environment';
   /**
-   * When set (e.g. `9/16`), drives preview sizing, getUserMedia aspect, and capture output
+   * When set (e.g. `9/16`), the frame's aspect ratio for the guide drawn over the live view,
    * even if `frameWidth`/`frameHeight` from the DB are wrong (e.g. legacy 1920×1080 defaults).
+   * It no longer changes what is captured: the whole camera image is recorded.
    */
   previewAspectWidthOverHeight?: number;
   /**
@@ -108,7 +116,6 @@ export default function CameraCapture({
   onCapture, 
   onError, 
   className = '', 
-  frameOverlay, 
   frameWidth, 
   frameHeight,
   captureButtonColor = CAMERA_DEFAULT_BRAND_COLOR,
@@ -130,7 +137,8 @@ export default function CameraCapture({
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>(initialFacingMode);
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [frameImage, setFrameImage] = useState<HTMLImageElement | null>(null);
+  // Width over height of the camera's own image, known once the video reports its size.
+  const [cameraAspect, setCameraAspect] = useState<number | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [orientation, setOrientation] = useState<'portrait' | 'landscape-left' | 'landscape-right'>('portrait');
   // The shutter unlocks after the first presented frame plus a short warm-up (see capture-policy.ts).
@@ -191,62 +199,26 @@ export default function CameraCapture({
       return frameWidth / frameHeight;
     }
 
-    if (frameImage && frameImage.width > 0 && frameImage.height > 0) {
-      return frameImage.width / frameImage.height;
-    }
-
     return 16 / 9;
-  }, [frameHeight, frameImage, frameWidth, previewAspectWidthOverHeight]);
+  }, [frameHeight, frameWidth, previewAspectWidthOverHeight]);
 
-  const getCaptureOutputPixelSize = () => {
-    const forced = previewAspectWidthOverHeight;
-    const fromFrameW = frameWidth && frameWidth > 0 ? frameWidth : 0;
-    const fromFrameH = frameHeight && frameHeight > 0 ? frameHeight : 0;
-    const fromImgW = frameImage && frameImage.width > 0 ? frameImage.width : 0;
-    const fromImgH = frameImage && frameImage.height > 0 ? frameImage.height : 0;
+  // The area the frame will keep, as fractions of the live view. Null while the camera's size is
+  // unknown, or when the frame keeps the whole image (nothing to guide).
+  const frameGuide = useMemo(() => {
+    if (!cameraAspect) return null;
+    const virtualHeight = 1000;
+    const virtualWidth = Math.round(cameraAspect * virtualHeight);
+    const rect = toFractionRect(
+      fillCropRect(virtualWidth, virtualHeight, getTargetAspectRatio()),
+      virtualWidth,
+      virtualHeight
+    );
+    return rect.width > 0.995 && rect.height > 0.995 ? null : rect;
+  }, [cameraAspect, getTargetAspectRatio]);
 
-    if (forced != null && Number.isFinite(forced) && forced > 0) {
-      let w = fromFrameW || fromImgW || 1080;
-      let h = fromFrameH || fromImgH || 1920;
-      const r = w / h;
-      if (Math.abs(r - forced) > 0.02) {
-        if (forced < 1) {
-          h = Math.max(h, w > 0 ? Math.round(w / forced) : 1920, 1920);
-          w = Math.round(h * forced);
-        } else {
-          w = Math.max(w, 1920);
-          h = Math.round(w / forced);
-        }
-      }
-      return { width: w, height: h };
-    }
-
-    return {
-      width: fromFrameW || fromImgW || 1920,
-      height: fromFrameH || fromImgH || 1080,
-    };
-  };
-
-  /**
-   * Load frame overlay image
-   */
   useEffect(() => {
     streamRef.current = stream;
   }, [stream]);
-
-  useEffect(() => {
-    if (frameOverlay) {
-      const img = new window.Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => setFrameImage(img);
-      img.onerror = (err) => console.error('Failed to load frame overlay:', err);
-      img.src = frameOverlay;
-    } else {
-      queueMicrotask(() => {
-        setFrameImage(null);
-      });
-    }
-  }, [frameOverlay]);
 
   /**
    * Detect device orientation angle for precise control positioning.
@@ -469,90 +441,11 @@ export default function CameraCapture({
   };
 
   /**
-   * Draw the current video frame to the output canvas (object-cover into the target aspect,
-   * mirrored for the front camera) and hand the JPEG to onCapture. Returns false when the
-   * frame could not be drawn, so the caller retries. Output size and crop are unchanged here;
-   * the full-frame capture is camera#208.
-   */
-  const drawAndEmitFrame = (video: HTMLVideoElement, canvas: HTMLCanvasElement): boolean => {
-    // Capped so a very large frame bitmap cannot exceed iOS Safari's canvas limit (camera#207).
-    const outputSize = getCaptureOutputPixelSize();
-    const { width: frameTargetWidth, height: frameTargetHeight } = capCanvasSize(outputSize.width, outputSize.height);
-
-    canvas.width = frameTargetWidth;
-    canvas.height = frameTargetHeight;
-
-    // Scale the FULL video to fill the canvas (object-cover) and centre it.
-    const scale = Math.max(canvas.width / video.videoWidth, canvas.height / video.videoHeight);
-    const scaledWidth = video.videoWidth * scale;
-    const scaledHeight = video.videoHeight * scale;
-    const offsetX = (canvas.width - scaledWidth) / 2;
-    const offsetY = (canvas.height - scaledHeight) / 2;
-
-    const ctx = canvas.getContext('2d', {
-      willReadFrequently: false,
-      alpha: false, // Safari optimization: no alpha channel needed
-    });
-    if (!ctx) {
-      return false;
-    }
-
-    // Safari fix: fill with a white background first
-    ctx.fillStyle = CAMERA_STAGE_WHITE;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    try {
-      // Front camera: flip horizontally to match the mirrored live view
-      if (facingMode === 'user') {
-        ctx.save();
-        ctx.scale(-1, 1);
-        ctx.drawImage(
-          video,
-          0, 0, video.videoWidth, video.videoHeight,
-          -offsetX - scaledWidth, offsetY, scaledWidth, scaledHeight
-        );
-        ctx.restore();
-      } else {
-        ctx.drawImage(
-          video,
-          0, 0, video.videoWidth, video.videoHeight,
-          offsetX, offsetY, scaledWidth, scaledHeight
-        );
-      }
-
-      if (frameImage) {
-        ctx.drawImage(frameImage, 0, 0, canvas.width, canvas.height);
-      }
-    } catch (err) {
-      console.error('Error drawing video to canvas:', err);
-      return false;
-    }
-
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        setCaptureNotice(CAPTURE_FAILED_MESSAGE);
-        reportDiagnostic('capture', { capture: { outcome: 'failed' } });
-        return;
-      }
-
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-      setCapturedImage(dataUrl);
-
-      // Pass captured image to parent
-      onCapture(blob, dataUrl);
-
-      // Stop camera after capture
-      stopCamera();
-    }, 'image/jpeg', 0.95);
-
-    return true;
-  };
-
-  /**
    * Capture a photo from the video stream. The shutter is only enabled once a frame has been
    * presented and the camera has warmed up; each tap waits for a fresh frame, rejects a
    * near-black flat one (sampled brightness, see capture-policy.ts) and tries at most
    * CAPTURE_MAX_ATTEMPTS times before telling the user, instead of looping silently.
+   * The whole camera frame is recorded (camera#208); the frame's crop is applied afterwards.
    */
   const capturePhoto = async () => {
     const video = videoRef.current;
@@ -568,6 +461,7 @@ export default function CameraCapture({
     const tappedAt = performance.now();
     let brokenRetries = 0;
     let notReadyRetries = 0;
+    let encodeFailures = 0;
     let lastStats: LumaStats | null = null;
 
     try {
@@ -590,11 +484,6 @@ export default function CameraCapture({
 
           await waitForVideoFrame(video);
 
-          if (frameOverlay && !frameImage) {
-            notReadyRetries += 1;
-            return 'retry';
-          }
-
           const sampleCanvas = sampleCanvasRef.current ?? (sampleCanvasRef.current = document.createElement('canvas'));
           const stats = sampleVideoLumaStats(video, sampleCanvas);
           lastStats = stats;
@@ -604,13 +493,22 @@ export default function CameraCapture({
             return 'retry';
           }
 
-          return drawAndEmitFrame(video, canvas) ? 'done' : 'retry';
+          const captured = await captureFullFrame(video, canvas, facingModeRef.current);
+          if (!captured) {
+            encodeFailures += 1;
+            return 'retry';
+          }
+
+          setCapturedImage(captured.dataUrl);
+          onCapture(captured);
+          stopCamera();
+          return 'done';
         },
         { maxAttempts: CAPTURE_MAX_ATTEMPTS, delayMs: CAPTURE_RETRY_DELAY_MS }
       );
 
       if (!result.ok) {
-        setCaptureNotice(CAPTURE_NOT_READY_MESSAGE);
+        setCaptureNotice(encodeFailures > 0 ? CAPTURE_FAILED_MESSAGE : CAPTURE_NOT_READY_MESSAGE);
       }
 
       const finalStats = lastStats as LumaStats | null;
@@ -618,7 +516,7 @@ export default function CameraCapture({
       reportDiagnostic('capture', {
         timing: unlockedAt ? { shutterDelayMs: tappedAt - unlockedAt } : undefined,
         capture: {
-          outcome: result.ok ? 'ok' : 'not_ready',
+          outcome: result.ok ? 'ok' : encodeFailures > 0 ? 'failed' : 'not_ready',
           attempts: result.attempts,
           brokenRetries,
           notReadyRetries,
@@ -659,8 +557,8 @@ export default function CameraCapture({
   }, [autoStart, facingMode]);
 
   /**
-   * Calculate container size to match the target aspect ratio.
-   * What you see is what you capture, with a 1:1 preview-to-output correspondence.
+   * Calculate the stage size: the camera's own aspect ratio, so the whole camera image is
+   * visible and is what gets recorded (camera#208).
    */
   useEffect(() => {
     const calculateSize = () => {
@@ -669,11 +567,17 @@ export default function CameraCapture({
       const parent = containerRef.current.parentElement;
       if (!parent) return;
       
-      const availableWidth = parent.clientWidth;
-      const availableHeight = parent.clientHeight;
+      // The parent's content box: clientWidth/clientHeight include its padding, which would make
+      // the stage larger than the space it has and squeeze it out of the camera's aspect ratio.
+      const parentStyle = window.getComputedStyle(parent);
+      const paddingX = (parseFloat(parentStyle.paddingLeft) || 0) + (parseFloat(parentStyle.paddingRight) || 0);
+      const paddingY = (parseFloat(parentStyle.paddingTop) || 0) + (parseFloat(parentStyle.paddingBottom) || 0);
+      const availableWidth = parent.clientWidth - paddingX;
+      const availableHeight = parent.clientHeight - paddingY;
 
-      // Calculate target aspect ratio (frame or default 16:9)
-      const targetAspect = getTargetAspectRatio();
+      // The stage has the camera's own shape so the whole image is visible; until the video
+      // reports its size, use the frame's aspect ratio (or 16:9).
+      const targetAspect = cameraAspect ?? getTargetAspectRatio();
 
       if (availableWidth <= 0) {
         return;
@@ -725,7 +629,7 @@ export default function CameraCapture({
       window.removeEventListener('orientationchange', calculateSize);
       resizeObserver?.disconnect();
     };
-  }, [frameWidth, frameHeight, frameImage, previewAspectWidthOverHeight, getTargetAspectRatio]);
+  }, [frameWidth, frameHeight, cameraAspect, previewAspectWidthOverHeight, getTargetAspectRatio]);
 
   /**
    * Cleanup on unmount
@@ -798,6 +702,7 @@ export default function CameraCapture({
 
       const readyHandler = () => {
         if (video.videoWidth > 0 && video.videoHeight > 0) {
+          setCameraAspect(video.videoWidth / video.videoHeight);
           markPreviewReady();
           if (!hasFrameCallback && video.readyState >= 2) {
             unlockShutterAfterWarmup();
@@ -898,29 +803,32 @@ export default function CameraCapture({
       >
         {!capturedImage ? (
           <>
-            {/* Live Video Stream - Cover the frame area, mirror if front camera */}
+            {/* Live Video Stream - the whole camera image (the stage has the camera's shape), mirrored for the front camera */}
             <video
               ref={videoRef}
               autoPlay
               playsInline
               muted
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
               style={{
                 transform: facingMode === 'user' ? 'scaleX(-1)' : 'none'
               }}
             />
 
-            {/* Frame Overlay - Always on top, exact size match */}
-            {frameImage && (
-              <div className="absolute inset-0 pointer-events-none z-10">
-                <Image
-                  src={frameOverlay ?? ''}
-                  alt="Frame overlay"
-                  fill
-                  unoptimized
-                  className="w-full h-full object-cover"
-                />
-              </div>
+            {/* Frame guide: dims what the frame will not keep; the whole image is still recorded. */}
+            {stream && frameGuide && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute z-10"
+                style={{
+                  left: `${frameGuide.left * 100}%`,
+                  top: `${frameGuide.top * 100}%`,
+                  width: `${frameGuide.width * 100}%`,
+                  height: `${frameGuide.height * 100}%`,
+                  boxShadow: '0 0 0 100vmax var(--gds-overlay-scrim)',
+                  outline: `2px solid ${CAMERA_STAGE_WHITE}`,
+                }}
+              />
             )}
 
             {/* Loading Overlay */}
@@ -942,6 +850,11 @@ export default function CameraCapture({
             {captureNotice && (
               <div className="absolute inset-x-0 bottom-2 z-20 p-2 text-center text-xs" role="status">
                 {captureNotice}
+              </div>
+            )}
+            {!captureNotice && stream && frameGuide && isShutterReady && (
+              <div className="absolute inset-x-0 bottom-2 z-20 p-2 text-center text-xs" role="note">
+                {FRAME_GUIDE_HINT}
               </div>
             )}
 
@@ -996,7 +909,7 @@ export default function CameraCapture({
               alt="Captured photo"
               fill
               unoptimized
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
           </>
         )}

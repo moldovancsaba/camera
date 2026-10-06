@@ -16,6 +16,8 @@ import ShareOverlay from '@/components/capture/ShareOverlay';
 import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
 import { Button, Checkbox } from '@mantine/core';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
+import { cropCaptureToAspect } from '@/lib/camera/frame-crop';
+import type { FullFrameCapture } from '@/lib/camera/frame-capture';
 
 
 interface Frame {
@@ -238,6 +240,20 @@ export default function CapturePage() {
     setCapturedImage(dataUrl);
   };
 
+  // The camera records the whole image; the frame's aspect ratio is applied here, afterwards.
+  const handleCameraCapture = async (capture: FullFrameCapture) => {
+    if (!selectedFrame) return;
+    const { width: frameW, height: frameH } = framePixelDimensions(selectedFrame);
+    const aspect = frameIntrinsicAspect ?? (frameW > 0 && frameH > 0 ? frameW / frameH : 16 / 9);
+    try {
+      const cropped = await cropCaptureToAspect(capture, aspect);
+      setCapturedImage(cropped.dataUrl);
+    } catch (error) {
+      console.error('Error cropping the captured photo:', error);
+      alert('Failed to apply frame. Please try again.');
+    }
+  };
+
   const handleSave = async () => {
     if (!compositeImage || !selectedFrame) return;
 
@@ -400,13 +416,12 @@ export default function CapturePage() {
         <div className="flex min-h-0 flex-1 flex-col pt-16 md:flex-row md:pt-4">
           <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center p-4">
             <CameraCapture
-              onCapture={handlePhotoCapture}
-              frameOverlay={undefined}
+              onCapture={handleCameraCapture}
               frameWidth={frameW}
               frameHeight={frameH}
               previewAspectWidthOverHeight={previewAspect}
               promptTitle="Capture your photo"
-              promptDescription="Fill the preview; your frame is composited after capture (same as event capture)."
+              promptDescription="The whole camera view is recorded; your frame is applied after capture (same as event capture)."
             />
           </div>
           <aside className="shrink-0 border-t   p-4 md:flex md:w-80 md:flex-col md:border-l md:border-t-0">

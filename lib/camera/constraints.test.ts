@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import {
   CANVAS_MAX_LONG_SIDE,
   CANVAS_MAX_PIXELS,
+  ORIGINAL_MAX_LONG_SIDE,
+  ORIGINAL_MAX_PIXELS,
   buildVideoConstraintChain,
   capCanvasSize,
   isTerminalCameraError,
@@ -94,4 +96,14 @@ test('capCanvasSize caps total pixels below the iOS limit', () => {
 test('capCanvasSize survives zero and invalid input', () => {
   assert.deepEqual(capCanvasSize(0, 0), { width: 1, height: 1 });
   assert.deepEqual(capCanvasSize(Number.NaN, 100), { width: 1, height: 100 });
+});
+
+test('the full-frame original keeps typical phone frames whole and stays under the iOS canvas limit', () => {
+  const limits = { maxLongSide: ORIGINAL_MAX_LONG_SIDE, maxPixels: ORIGINAL_MAX_PIXELS };
+  assert.deepEqual(capCanvasSize(1440, 1920, limits), { width: 1440, height: 1920 }, 'the 4:3 mode we request is stored 1:1');
+  assert.deepEqual(capCanvasSize(1920, 1080, limits), { width: 1920, height: 1080 });
+  const big = capCanvasSize(4032, 3024, limits);
+  assert.ok(big.width * big.height <= ORIGINAL_MAX_PIXELS);
+  assert.ok(Math.max(big.width, big.height) <= ORIGINAL_MAX_LONG_SIDE);
+  assert.ok(ORIGINAL_MAX_PIXELS < 16_777_216, 'below the 16,777,216 pixel iOS Safari limit');
 });
