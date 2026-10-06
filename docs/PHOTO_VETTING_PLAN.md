@@ -118,7 +118,7 @@ Epic: [camera#261](https://github.com/moldovancsaba/camera/issues/261). Status o
 | V7 [camera#268](https://github.com/moldovancsaba/camera/issues/268) | **Built, inert until V10 (the tab is `/admin/events/<id>/photos`, because `/vetting` is the try-on vetting):** Moderation UI for photos, event setting in the editor, roles (event managers and above) | V6 | GDS components |
 | V8 [camera#269](https://github.com/moldovancsaba/camera/issues/269) | **Built, inert until V10:** Public pages: share page states (waiting / not approved / approved), `noindex`, download, share token | V1, V5 | |
 | V9 [camera#270](https://github.com/moldovancsaba/camera/issues/270) | **Built, inert until V10:** Feeds: savetheworld wall and `publish-selfies`, fanmass, slideshows, emails, the manual email script, admin badges | V1, V6 | |
-| V10 [camera#271](https://github.com/moldovancsaba/camera/issues/271) | Rollout: dry runs, owner review, enable by default, RUNBOOK, release notes, first-day checks | all | |
+| V10 [camera#271](https://github.com/moldovancsaba/camera/issues/271) | **Tool built; the runs wait for the owner's test and go-ahead:** Rollout: dry runs, owner review, enable by default, RUNBOOK, release notes, first-day checks | all | |
 
 Testing: unit tests for the rule and the event default; route tests for the pending save and the approval; a browser run of the
 whole journey (capture, waiting, approve, share page, email) on the viewport matrix; a check per surface that a pending photo
