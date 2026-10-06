@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-05T11:32:35+00:00",
+  "generated": "2026-10-06T06:19:37+00:00",
   "repo": "camera",
-  "head": "bf13720",
+  "head": "81f14d5",
   "counts": {
    "endpoints": 100,
    "collections": 6,
    "env": 59,
    "outbound-hosts": 18,
-   "docs": 41
+   "docs": 42
   }
  },
  "items": [
@@ -75,6 +75,10 @@
   {
    "file": "docs/BRANCHING.md",
    "title": "Branching model"
+  },
+  {
+   "file": "docs/CAMERA_MODULE_PLAN.md",
+   "title": "Camera module plan"
   },
   {
    "file": "docs/DOCUMENTATION.md",

@@ -11,6 +11,12 @@ platform unless noted.
 
 ## Near-term priorities
 
+### Camera module overhaul
+
+- Reliable capture, a stored full-frame original with a reframe step, front
+  camera as the global default and lens selection. Plan:
+  `docs/CAMERA_MODULE_PLAN.md`; tracker camera#203.
+
 ### image.direct as a second renderer
 
 - Run image.direct next to the paused try-on runtime behind a per-event switch;
