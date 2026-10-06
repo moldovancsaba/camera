@@ -33,6 +33,19 @@
 - Measured before and after on 7 viewports (3 steps of the flow each) with a Chromium fake camera:
   Save/Retake off screen on 5 of 7 sizes before, none after.
 
+## Unreleased — in-page notices instead of browser alerts in the capture flow
+
+- **Changed:** the six native `alert()` pop-ups of the capture page (save succeeded, save failed, frame
+  failed, link copied, copy failed, "save the photo first") are replaced by in-page notices
+  (`components/capture/notify.ts`, GDS `showGdsNotification`). A native dialog blocks the page, shows the site
+  address as its title and does not feel like an app.
+- Errors stay 10 seconds, other notices 5; every notice has a close button. Only one notice is shown at a time,
+  and starting a save clears the previous one, so a retry never sits under a stale error. The event-configured
+  messages (`successMessage`, `errorSaveMessage`, ...) are unchanged; line breaks in them become spaces.
+- **Placement:** during the camera steps the notices appear at the top (below the notch). With the default
+  bottom placement they covered the Try again button on phones and tablets and the Next button on small phones
+  and in landscape (measured on 5 device configurations before the change, none after).
+
 ## Unreleased — deleting a submission deletes its image files
 
 - **Changed:** `DELETE /api/submissions/[submissionId]` and `POST /api/admin/tryon-results/[submissionId]/remove`

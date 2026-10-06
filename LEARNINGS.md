@@ -824,6 +824,20 @@ const capturePhoto = async () => {
 
 **Key Decisions**: Lock zoom and scroll per step, not per route; record it as a GDS accessibility exception with an owner and exit condition.
 
+### [FRONT-012] Visible notices: `useGdsToasts` draws nothing, and the default toast position covers the buttons — 2026-10-06T00:00:00.000Z
+
+**Issue**: Replacing the capture page's `alert()` calls needed a notice that is visible, non-blocking and does not cover the actions.
+
+**Context**:
+- `useGdsToasts()` (`@sovereignsquad/gds-core/client`) only writes to the provider's state and a visually hidden `aria-live` region; the visible list is the separate `GdsNotificationCenter` component, which nothing in this app mounts. The admin pages call it in about 50 places, so their toasts probably reach screen readers only (camera tracks it separately).
+- `showGdsNotification` (`@sovereignsquad/gds-theme/client`) renders through the Mantine `<Notifications />` host that `GdsProvider` already mounts, so it is visible, but the host sits at the bottom right and stretches across a phone, which covered the Try again and Next buttons.
+
+**Solution**:
+- `components/capture/notify.ts` wraps `showGdsNotification`, clears the previous notice first (`notifications.clean()`) so a retry never sits under a stale error, and the camera steps move the host to the top with a rule keyed on `html[data-app-lock]` (no change for the admin or other pages).
+- Measured with a throwaway Playwright run (failed save, saved, copy link on phone, small phone, landscape, tablet, desktop): before, the toast overlapped an action button on 4 of 5 configurations and a stale error stacked above the success; after, none, and no native dialog fired.
+
+**Key Decisions**: one notice at a time; errors last 10 s, others 5 s; check notice placement in a browser, not by reading the library defaults.
+
 ### [FRONT-009] GDS styles.css loses its Inter @import under Turbopack; load the font from the layout — 2026-10-06T00:00:00.000Z
 
 **Issue**: Replacing camera's hand-copied GDS theme CSS with the official `@sovereignsquad/gds-theme/styles.css` made the production build print "@import rules must precede all rules" and silently stopped Inter from loading, with no other visible symptom.
