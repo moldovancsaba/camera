@@ -76,3 +76,26 @@ export async function countPhotoQueue(db: Db, eventUuid: string): Promise<Record
   const counts = await Promise.all(QUEUE_STATUSES.map((status) => db.collection(COLLECTIONS.SUBMISSIONS).countDocuments(queueFilter(eventUuid, status))));
   return { pending_review: counts[0], rejected: counts[1], approved: counts[2] };
 }
+
+/**
+ * How many photos wait for approval, in total and per event (by event UUID), for the dashboards. `eventUuids` limits it to the events
+ * a partner-scoped session may see; null counts every event.
+ */
+export async function countWaitingPhotos(db: Db, eventUuids: readonly string[] | null): Promise<{ total: number; byEvent: Map<string, number> }> {
+  if (eventUuids && eventUuids.length === 0) return { total: 0, byEvent: new Map() };
+  const rows = await db
+    .collection(COLLECTIONS.SUBMISSIONS)
+    .aggregate<{ _id: string; count: number }>([
+      {
+        $match: {
+          photoReview: { $exists: true },
+          reviewStatus: 'pending_review',
+          isArchived: { $ne: true },
+          eventId: eventUuids ? { $in: [...eventUuids] } : { $type: 'string' },
+        },
+      },
+      { $group: { _id: '$eventId', count: { $sum: 1 } } },
+    ])
+    .toArray();
+  return { total: rows.reduce((sum, row) => sum + row.count, 0), byEvent: new Map(rows.map((row) => [row._id, row.count])) };
+}

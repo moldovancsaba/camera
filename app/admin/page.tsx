@@ -15,6 +15,7 @@ import {
   collectTryOnDashboardMetrics,
   type ActiveEventRow,
 } from '@/lib/tryon/dashboard-metrics';
+import { countWaitingPhotos } from '@/lib/photo-vetting/queue';
 import { formatTryOnWorkerHealthDescription, formatTryOnWorkerHealthTitle } from '@/lib/tryon/worker-health';
 
 export const dynamic = 'force-dynamic';
@@ -41,13 +42,15 @@ export default async function AdminDashboard() {
     navigationAccess = await getAdminNavigationAccess(db, session);
 
     if (navigationAccess.isGlobalAdmin) {
-      const [tryOnMetrics, eventsLiveCount, events] = await Promise.all([
+      const [tryOnMetrics, eventsLiveCount, events, waitingPhotos] = await Promise.all([
         collectTryOnDashboardMetrics(db),
         db.collection(COLLECTIONS.EVENTS).countDocuments({ isActive: true }),
         collectActiveEventRows(db, null),
+        countWaitingPhotos(db, null),
       ]);
       metrics = {
         pendingVettingCount: tryOnMetrics.pendingVettingCount,
+        photosWaitingCount: waitingPhotos.total,
         activeQueueTotal: tryOnMetrics.activeQueueTotal,
         eventsLiveCount,
         workerHealthTitle: tryOnMetrics.workerHealth ? formatTryOnWorkerHealthTitle(tryOnMetrics.workerHealth) : 'Worker unknown',
@@ -68,13 +71,15 @@ export default async function AdminDashboard() {
           : [];
       const eventUuids = events.map((event) => event.eventId).filter((value): value is string => typeof value === 'string');
       const eventMongoIds = events.map((event) => String(event._id));
-      const [scoped, eventsLiveCount, activeRows] = await Promise.all([
+      const [scoped, eventsLiveCount, activeRows, waitingPhotos] = await Promise.all([
         collectScopedTryOnDashboardMetrics(db, eventUuids, eventMongoIds),
         db.collection(COLLECTIONS.EVENTS).countDocuments({ isActive: true, partnerId: { $in: partnerIds } }),
         collectActiveEventRows(db, partnerIds),
+        countWaitingPhotos(db, eventUuids),
       ]);
       metrics = {
         pendingVettingCount: scoped.pendingVettingCount,
+        photosWaitingCount: waitingPhotos.total,
         activeQueueTotal: scoped.activeQueueTotal,
         eventsLiveCount,
         workerHealthTitle: null,

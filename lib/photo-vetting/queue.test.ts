@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ObjectId } from 'mongodb';
-import { countPhotoQueue, isQueueStatus, loadPhotoQueue, queueFilter, toPhotoQueueItem } from './queue';
+import { countPhotoQueue, countWaitingPhotos, isQueueStatus, loadPhotoQueue, queueFilter, toPhotoQueueItem } from './queue';
 
 const base = () => ({
   _id: new ObjectId(),
@@ -63,4 +63,22 @@ test('the waiting list is oldest first, decided lists newest first, and the coun
   assert.deepEqual(sorts, [{ createdAt: 1 }, { createdAt: -1 }]);
   assert.deepEqual(await countPhotoQueue(db, 'e1'), { pending_review: 3, rejected: 1, approved: 1 });
   assert.deepEqual(counted, ['pending_review', 'rejected', 'approved']);
+});
+
+test('waiting photos are counted in total and per event, for every event or only for the ones given', async () => {
+  const pipelines: Array<Array<{ $match?: { eventId: unknown } }>> = [];
+  const db = {
+    collection: () => ({
+      aggregate: (pipeline: Array<{ $match?: { eventId: unknown } }>) => (pipelines.push(pipeline), { toArray: async () => [{ _id: 'e1', count: 3 }, { _id: 'e2', count: 1 }] }),
+    }),
+  } as never;
+  const all = await countWaitingPhotos(db, null);
+  assert.equal(all.total, 4);
+  assert.deepEqual([...all.byEvent], [['e1', 3], ['e2', 1]]);
+  assert.deepEqual(pipelines[0][0].$match?.eventId, { $type: 'string' });
+  await countWaitingPhotos(db, ['e1']);
+  assert.deepEqual(pipelines[1][0].$match?.eventId, { $in: ['e1'] });
+  const none = await countWaitingPhotos(db, []);
+  assert.equal(none.total, 0);
+  assert.equal(pipelines.length, 2, 'no events, no query');
 });
