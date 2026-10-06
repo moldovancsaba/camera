@@ -4,6 +4,7 @@
  * Google / Facebook entry points — same SSO OAuth flow as Amanoba (`provider` on authorize URL).
  */
 
+import type { MouseEvent } from 'react';
 import { SocialAuthButtons } from '@sovereignsquad/gds-core/client';
 
 import { socialLoginHref, type SocialLoginProvider } from '@/lib/auth/social-login';
@@ -25,31 +26,39 @@ export default function SocialLoginButtons({
   const googleHref = socialLoginHref('google', { fromLogout });
   const facebookHref = socialLoginHref('facebook', { fromLogout });
 
-  const handleClick = (provider: SocialLoginProvider) =>
-    beforeNavigate
-      ? () => {
-          beforeNavigate(provider);
-        }
-      : undefined;
+  // The GDS button drops `onClick` whenever it has an `href`, so the click is caught on the wrapper (capture phase, before the
+  // browser follows the link). Without this the capture resume cookies were never set and a login ended on /admin (camera#284).
+  const handleClickCapture = (event: MouseEvent<HTMLDivElement>) => {
+    if (!beforeNavigate) return;
+    const link = (event.target as HTMLElement).closest('a');
+    if (!link) return;
+    let provider: string | null = null;
+    try {
+      provider = new URL(link.href, window.location.origin).searchParams.get('provider');
+    } catch {
+      return;
+    }
+    if (provider === 'google' || provider === 'facebook') beforeNavigate(provider);
+  };
 
   return (
-    <SocialAuthButtons
-      providers={[
-        {
-          id: 'google',
-          href: googleHref,
-          label: 'Continue with Google',
-          onClick: handleClick('google'),
-        },
-        {
-          id: 'facebook',
-          href: facebookHref,
-          label: 'Continue with Facebook',
-          onClick: handleClick('facebook'),
-        },
-      ]}
-      layout={variant === 'capture' ? 'stack' : 'grid'}
-      compact={variant === 'capture'}
-    />
+    <div onClickCapture={handleClickCapture}>
+      <SocialAuthButtons
+        providers={[
+          {
+            id: 'google',
+            href: googleHref,
+            label: 'Continue with Google',
+          },
+          {
+            id: 'facebook',
+            href: facebookHref,
+            label: 'Continue with Facebook',
+          },
+        ]}
+        layout={variant === 'capture' ? 'stack' : 'grid'}
+        compact={variant === 'capture'}
+      />
+    </div>
   );
 }

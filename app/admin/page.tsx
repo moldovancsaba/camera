@@ -49,8 +49,8 @@ export default async function AdminDashboard() {
         countWaitingPhotos(db, null),
       ]);
       metrics = {
-        pendingVettingCount: tryOnMetrics.pendingVettingCount,
-        photosWaitingCount: waitingPhotos.total,
+        // Vetting is one count: try-on results and photos waiting for approval (camera#284).
+        pendingVettingCount: tryOnMetrics.pendingVettingCount + waitingPhotos.total,
         activeQueueTotal: tryOnMetrics.activeQueueTotal,
         eventsLiveCount,
         workerHealthTitle: tryOnMetrics.workerHealth ? formatTryOnWorkerHealthTitle(tryOnMetrics.workerHealth) : 'Worker unknown',
@@ -78,8 +78,7 @@ export default async function AdminDashboard() {
         countWaitingPhotos(db, eventUuids),
       ]);
       metrics = {
-        pendingVettingCount: scoped.pendingVettingCount,
-        photosWaitingCount: waitingPhotos.total,
+        pendingVettingCount: scoped.pendingVettingCount + waitingPhotos.total,
         activeQueueTotal: scoped.activeQueueTotal,
         eventsLiveCount,
         workerHealthTitle: null,

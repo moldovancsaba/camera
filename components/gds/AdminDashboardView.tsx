@@ -10,9 +10,8 @@ import { getVisibleAdminNavSections, type AdminNavigationAccess } from '@/lib/ad
 import type { ActiveEventRow } from '@/lib/tryon/dashboard-metrics';
 
 export interface DashboardAttentionMetrics {
+  /** Try-on results and photos waiting for approval. */
   pendingVettingCount: number;
-  /** Photos of vetted events waiting for approval (camera#272). */
-  photosWaitingCount: number;
   activeQueueTotal: number;
   eventsLiveCount: number;
   // null for a partner-scoped session — worker health describes shared
@@ -59,15 +58,7 @@ export default function AdminDashboardView({
             <MetricCard
               label="Pending vetting"
               value={metrics.pendingVettingCount}
-              description="Try-on results waiting for approval or rejection."
-              icon={<AdminIcon iconKey="photoScan" size={18} />}
-            />
-          </Link>
-          <Link href="/admin/events" style={{ color: 'inherit', textDecoration: 'none' }}>
-            <MetricCard
-              label="Photos waiting"
-              value={metrics.photosWaitingCount}
-              description="Photos of events with vetting on, waiting for approval. Open an event's Photos tab."
+              description="Photos and try-on results waiting for approval or rejection."
               icon={<AdminIcon iconKey="photoScan" size={18} />}
             />
           </Link>
@@ -109,7 +100,7 @@ export default function AdminDashboardView({
                 key={event.id}
                 href={
                   event.photosWaiting > 0
-                    ? `/admin/events/${event.id}/photos`
+                    ? `/admin/events/${event.id}/vetting`
                     : event.eventUuid
                       ? `/admin/tryon/vetting?eventId=${encodeURIComponent(event.eventUuid)}`
                       : `/admin/events/${event.id}`

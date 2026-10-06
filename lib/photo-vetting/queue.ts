@@ -99,3 +99,24 @@ export async function countWaitingPhotos(db: Db, eventUuids: readonly string[] |
     .toArray();
   return { total: rows.reduce((sum, row) => sum + row.count, 0), byEvent: new Map(rows.map((row) => [row._id, row.count])) };
 }
+
+export interface WaitingPhotosEvent {
+  /** The event's Mongo id, as used in /admin/events/<id>. */
+  id: string;
+  name: string;
+  count: number;
+}
+
+/** The events that have photos waiting for approval, the busiest first (for the global Vetting page). */
+export async function listEventsWithWaitingPhotos(db: Db): Promise<WaitingPhotosEvent[]> {
+  const { byEvent } = await countWaitingPhotos(db, null);
+  if (byEvent.size === 0) return [];
+  const events = await db
+    .collection(COLLECTIONS.EVENTS)
+    .find({ eventId: { $in: [...byEvent.keys()] } }, { projection: { eventId: 1, name: 1 } })
+    .toArray();
+  return events
+    .map((event) => ({ id: String(event._id), name: typeof event.name === 'string' ? event.name : String(event._id), count: byEvent.get(String(event.eventId)) ?? 0 }))
+    .filter((event) => event.count > 0)
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
