@@ -838,6 +838,20 @@ const capturePhoto = async () => {
 
 **Key Decisions**: one notice at a time; errors last 10 s, others 5 s; check notice placement in a browser, not by reading the library defaults.
 
+### [BACK-006] Drawing a frame on the server: native canvas on Next, a 25 MB font that shrinks to 5.5 MB, tests that survive another machine — 2026-10-06T00:00:00.000Z
+
+**Issue**: The generated default frame needs text in the partner's font, a colour emoji and the partner logo, drawn on the server so that capture, share and try-on can use one PNG. `sharp` cannot draw text with custom fonts.
+
+**Solution**:
+- `@napi-rs/canvas` registers TTF, WOFF, WOFF2 and COLRv1 emoji fonts from buffers; it needs `serverExternalPackages` (loaded by Node, not bundled) and `outputFileTracingIncludes` keyed by route (use `*` for a dynamic segment, e.g. `/api/admin/events/*/frame-design`) so the font files are traced into each function. Verified by reading the `.nft.json` of the built routes.
+- The Noto Color Emoji COLRv1 font is 25 MB as TTF and 5.5 MB as WOFF2 (fontTools, `flavor = 'woff2'`); it still draws in colour. Register it only when a text contains an emoji.
+- Registration is process wide: one alias per font file, a custom font's alias derived from its path and size.
+- Test the render structurally (size, transparency, bar and line colours, where text and logo land, colour-emoji pixels, a logo's own transparency preserved) instead of comparing pixels with a golden image, so it holds on another machine's rasteriser.
+- A stored image made while the logo or a custom font could not be fetched is flagged (`logo: failed`, `font.retry`) and redrawn next time, while a font that is simply not available is not retried.
+- Old images are never deleted: a submission records the variant it used.
+
+**Key Decisions**: draw on the server; bundle the OFL fonts with their licences; never store a partner's font; one write per generation so a failed upload leaves the previous images.
+
 ### [FRONT-009] GDS styles.css loses its Inter @import under Turbopack; load the font from the layout — 2026-10-06T00:00:00.000Z
 
 **Issue**: Replacing camera's hand-copied GDS theme CSS with the official `@sovereignsquad/gds-theme/styles.css` made the production build print "@import rules must precede all rules" and silently stopped Inter from loading, with no other visible symptom.

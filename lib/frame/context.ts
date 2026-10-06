@@ -8,6 +8,7 @@
 
 import { createHash } from 'node:crypto';
 import { FRAME_SYSTEM_BAR_COLOR, FRAME_SYSTEM_HEADING_COLOR } from '@/lib/gds/tokens/colors';
+import type { LayerId } from './layout';
 
 export interface FrameTeam {
   id: string;
@@ -42,12 +43,33 @@ export interface FrameContext {
   };
 }
 
+/** One generated image of the frame: the same layers with one message (camera#235). */
+export interface FrameVariant {
+  /** Position in the event's message list; null for the single frame without a message. */
+  index: number | null;
+  /** The filled message that is drawn, or null for a frame without a message layer. */
+  message: string | null;
+  imageUrl: string;
+  width: number;
+  height: number;
+  /** The boxes of the layers, in drawing order, for the live-view territories. */
+  layers: Array<{ id: LayerId; x: number; y: number; width: number; height: number }>;
+  /** Hash of everything that decides the image; an unchanged key means the stored image is reused. */
+  key: string;
+  font: { family: string; used: 'bundled' | 'custom' | 'fallback'; note: string | null; retry: boolean };
+  /** `none`: the partner has no logo; `failed`: it could not be fetched or decoded (retried at the next generation). */
+  logo: 'drawn' | 'none' | 'failed';
+}
+
 export interface FrameDesign {
   context: FrameContext;
   /** The editable message list (lib/frame/messages.ts); the default list while `messagesOverridden` is false. */
   messages: string[];
   messagesOverridden: boolean;
   updatedAt: string;
+  /** One image per usable message (camera#235); absent until the first generation. */
+  variants?: FrameVariant[];
+  generatedAt?: string;
 }
 
 const TEXT_MAX = 200;

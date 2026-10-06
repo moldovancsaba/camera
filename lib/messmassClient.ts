@@ -124,3 +124,9 @@ export async function fetchFrameContext(messmassEventId: string, timeoutMs: numb
     return null;
   }
 }
+
+/** Absolute URL of a font file on the messmass origin (a `/fonts/...` path from the frame context), or null when messmass is not configured. */
+export function messmassFontUrl(fontPath: string): string | null {
+  const origin = base();
+  return origin && fontPath.startsWith('/fonts/') ? `${origin}${encodeURI(fontPath)}` : null;
+}

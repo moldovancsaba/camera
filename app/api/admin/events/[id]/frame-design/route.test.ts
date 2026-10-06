@@ -19,7 +19,8 @@ const design = {
   updatedAt: 'x',
 };
 
-function setup(t: import('node:test').TestContext, options: { event?: Record<string, unknown> | null; deny?: boolean } = {}) {
+function setup(t: import('node:test').TestContext, options: { event?: Record<string, unknown> | null; deny?: boolean; imagesFail?: boolean } = {}) {
+  const generated: unknown[] = [];
   const access: Array<{ id: string; role: unknown }> = [];
   const updates: unknown[] = [];
   const event = options.event === undefined ? { _id: new ObjectId(id), name: 'E', partnerId: 'p', frameDesign: design } : options.event;
@@ -39,7 +40,16 @@ function setup(t: import('node:test').TestContext, options: { event?: Record<str
       },
     },
   });
-  return { access, updates };
+  t.mock.module('@/lib/frame/variants', {
+    namedExports: {
+      generateFrameVariants: async (_db: unknown, e: { frameDesign: object }) => {
+        generated.push(e.frameDesign);
+        if (options.imagesFail) throw new Error('blob down');
+        return { design: { ...e.frameDesign, variants: [{}, {}] }, generated: 2, reused: 0 };
+      },
+    },
+  });
+  return { access, updates, generated };
 }
 
 const req = (method: string, body?: unknown) =>
@@ -88,7 +98,24 @@ test('PUT saves a valid list as a manager and answers with the design', async (t
   assert.deepEqual(access, [{ id, role: 'manager' }]);
   assert.deepEqual(body.data.frameDesign.messages, ['Go!', 'Let’s Go, {partner1}']);
   assert.equal(body.data.frameDesign.messagesOverridden, true);
+  assert.deepEqual(body.data.variants, { total: 2, generated: 2, reused: 0 });
   assert.equal(updates.length, 1);
+});
+
+test('PUT generates the images from the saved list, and a failure is a 502 after the list is saved', async (t) => {
+  const ok = setup(t);
+  const { PUT } = await importRoute('put-images');
+  await PUT(req('PUT', { messages: ['Go!'] }), ctx());
+  assert.deepEqual((ok.generated[0] as { messages: string[] }).messages, ['Go!']);
+});
+
+test('PUT answers 502 when the images cannot be generated', async (t) => {
+  const { updates } = setup(t, { imagesFail: true });
+  const { PUT } = await importRoute('put-images-fail');
+  const res = await PUT(req('PUT', { messages: ['Go!'] }), ctx());
+  assert.equal(res.status, 502);
+  assert.match((await res.json()).error, /messages were saved/);
+  assert.equal(updates.length, 1, 'the list is saved before the images are tried');
 });
 
 test('PUT with { reset: true } restores the default list', async (t) => {

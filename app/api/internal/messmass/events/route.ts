@@ -7,6 +7,9 @@ import { provisionEvent } from '@/lib/messmass/provision';
 //   { messmassEventId, eventName, eventDate?, messmassPartnerId? | partnerId? }
 // Idempotently create a camera event for the partner, inheriting the partner's
 // default design (brand colors / frames / logos), and stamp the messmass id.
+// The frame images of a new event are rendered after the response.
+export const maxDuration = 60;
+
 export const POST = withErrorHandler(async (request: NextRequest) => {
   assertInternalMessmassSecret(request);
   await checkRateLimit(request, RATE_LIMITS.INTERNAL_WRITE);

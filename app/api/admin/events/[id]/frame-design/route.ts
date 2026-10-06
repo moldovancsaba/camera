@@ -2,7 +2,8 @@
  * The generated default frame of an event: the messmass snapshot and the editable message list (camera#234).
  *
  * GET /api/admin/events/[id]/frame-design      the snapshot and the message list (viewer)
- * PUT /api/admin/events/[id]/frame-design      { messages: string[] } or { reset: true } (manager)
+ * PUT /api/admin/events/[id]/frame-design      { messages: string[] } or { reset: true } (manager); the frame images are
+ *   generated afterwards, one per usable message (a 502 means the list is saved but the images are not; repeat the request)
  *
  * `[id]` is the Mongo _id of the event, as in the other admin event routes.
  */
@@ -13,6 +14,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import {
   apiBadRequest,
+  apiError,
   apiNotFound,
   apiSuccess,
   checkRateLimit,
@@ -24,6 +26,7 @@ import type { Session } from '@/lib/auth/session';
 import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
 import { DEFAULT_FRAME_MESSAGES, MAX_FRAME_MESSAGES, MAX_FRAME_MESSAGE_LENGTH } from '@/lib/frame/messages';
 import { saveFrameMessages } from '@/lib/frame/sync';
+import { generateFrameVariants } from '@/lib/frame/variants';
 
 type RouteContext = { params?: Promise<{ id: string }> };
 
@@ -49,6 +52,9 @@ export const GET = withErrorHandler(async (request: NextRequest, context?: Route
   });
 });
 
+// Rendering and uploading up to 10 images takes a few seconds.
+export const maxDuration = 60;
+
 export const PUT = withErrorHandler(async (request: NextRequest, context?: RouteContext) => {
   const session = await requireAuth(request);
   await checkRateLimit(request, RATE_LIMITS.ADMIN);
@@ -57,6 +63,10 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
 
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== 'object') throw apiBadRequest('A JSON body is required');
-  const frameDesign = await saveFrameMessages(db, event, body as { messages?: unknown; reset?: unknown });
-  return apiSuccess({ frameDesign });
+  const saved = await saveFrameMessages(db, event, body as { messages?: unknown; reset?: unknown });
+  const images = await generateFrameVariants(db, { ...event, frameDesign: saved }).catch((error: unknown) => {
+    console.error(`Event ${id}: frame images could not be generated`, error);
+    throw apiError('The messages were saved but the frame images could not be generated. Try again.', 502);
+  });
+  return apiSuccess({ frameDesign: images.design, variants: { total: images.design.variants?.length ?? 0, generated: images.generated, reused: images.reused } });
 });

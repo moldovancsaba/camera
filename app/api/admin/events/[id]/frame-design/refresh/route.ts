@@ -2,7 +2,10 @@
  * Take a new snapshot of the messmass data the generated default frame is built from (camera#234).
  *
  * POST /api/admin/events/[id]/frame-design/refresh   (manager)
- * -> { frameDesign, changed, messmassUnavailable }
+ * -> { frameDesign, changed, messmassUnavailable, variants: { total, generated, reused } }
+ *
+ * After the snapshot the frame images are generated (one per usable message); images whose inputs did not change are
+ * reused. If they cannot be generated the snapshot is already saved and the answer is 502; repeating is safe.
  *
  * `changed` is true when something that is drawn differs from the previous snapshot. When messmass cannot be
  * reached the previous snapshot is kept and `messmassUnavailable` is true; an event without a messmass link gets
@@ -15,6 +18,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import {
   apiBadRequest,
+  apiError,
   apiNotFound,
   apiSuccess,
   checkRateLimit,
@@ -24,6 +28,10 @@ import {
 } from '@/lib/api';
 import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
 import { refreshFrameDesign } from '@/lib/frame/sync';
+import { generateFrameVariants } from '@/lib/frame/variants';
+
+// Rendering and uploading up to 10 images takes a few seconds.
+export const maxDuration = 60;
 
 export const POST = withErrorHandler(async (request: NextRequest, context?: { params?: Promise<{ id: string }> }) => {
   const session = await requireAuth(request);
@@ -38,5 +46,14 @@ export const POST = withErrorHandler(async (request: NextRequest, context?: { pa
   if (!event) throw apiNotFound('Event');
 
   const { design, changed, messmassUnavailable } = await refreshFrameDesign(db, event);
-  return apiSuccess({ frameDesign: design, changed, messmassUnavailable });
+  const images = await generateFrameVariants(db, { ...event, frameDesign: design }).catch((error: unknown) => {
+    console.error(`Event ${id}: frame images could not be generated`, error);
+    throw apiError('The snapshot was updated but the frame images could not be generated. Try again.', 502);
+  });
+  return apiSuccess({
+    frameDesign: images.design,
+    changed,
+    messmassUnavailable,
+    variants: { total: images.design.variants?.length ?? 0, generated: images.generated, reused: images.reused },
+  });
 });

@@ -85,7 +85,14 @@ default frame of the event is built from:
 
 The messmass answer is untrusted: it is parsed in `lib/frame/context.ts` (https logos only, drawable colours only,
 a plain `/fonts/` file for a custom font). The generated frame applies only while the event has no active frame of
-its own (`frames[]` with `isActive`); the variants (one image per message) are added by the renderer (camera#235).
+its own (`frames[]` with `isActive`).
+
+`frameDesign.variants[]` (camera#235) holds one generated image per usable message: `index` (position in `messages`, or
+null for the single image without a message), `message` (the filled text drawn), `imageUrl` (Vercel Blob,
+`frames/generated/<eventId>/<key>.png`), `width`/`height` (1920x1080), `layers` (the boxes of the logo, teams text,
+bar and message, in drawing order), `key` (hash of everything that decides the image), `font` (family, `used`:
+`bundled`/`custom`/`fallback`, `note`, `retry`) and `logo` (`drawn`/`none`/`failed`); `generatedAt` is on the design.
+Images are never deleted: a submission records the variant it used.
 
 ### Practical consequence
 
