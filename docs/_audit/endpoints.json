@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-06T19:27:36+00:00",
+  "generated": "2026-10-06T19:49:36+00:00",
   "repo": "camera",
-  "head": "968f8ef",
+  "head": "06858fb",
   "counts": {
-   "endpoints": 108,
+   "endpoints": 109,
    "collections": 6,
    "env": 59,
    "outbound-hosts": 23,
@@ -857,6 +857,17 @@
     "POST"
    ],
    "file": "app/api/internal/messmass/events/route.ts",
+   "auth_markers": [
+    "withErrorHandler"
+   ],
+   "no_auth_marker": true
+  },
+  {
+   "path": "/api/internal/messmass/frame-backfill",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/internal/messmass/frame-backfill/route.ts",
    "auth_markers": [
     "withErrorHandler"
    ],

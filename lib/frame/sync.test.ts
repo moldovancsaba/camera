@@ -163,3 +163,24 @@ test('saving messages on an event with no snapshot yet creates the snapshot firs
   assert.deepEqual(design.messages, ['Go!']);
   assert.equal(updates.length, 2);
 });
+
+test('a new snapshot keeps the generated images of the event: they are replaced only when their inputs change', async () => {
+  const { db, updates } = fakeDb();
+  const { d } = deps(answer(OTHER_HERO));
+  const variants = [{ index: 0, message: 'Go', imageUrl: 'https://store.test/frames/generated/e/a.png', width: 1920, height: 1080, layers: [], key: 'k', font: { family: 'Inter', used: 'bundled', note: null, retry: false }, logo: 'drawn' }];
+  const existing = { context: { inputHash: 'old', fetchedAt: 'x' }, messages: [...DEFAULT_FRAME_MESSAGES], messagesOverridden: false, updatedAt: 'x', variants, generatedAt: 'g' };
+  const result = await refreshFrameDesign(db, linked({ frameDesign: existing }), d);
+  assert.equal(result.changed, true);
+  assert.deepEqual(result.design.variants, variants);
+  assert.equal(result.design.generatedAt, 'g');
+  const stored = updates[0].update.$set.frameDesign as FrameDesign;
+  assert.deepEqual(stored.variants, variants, 'what is written to the event still has the images');
+});
+
+test('an event without images gets a snapshot without images', async () => {
+  const { db } = fakeDb();
+  const { d } = deps(answer());
+  const result = await refreshFrameDesign(db, linked(), d);
+  assert.equal('variants' in result.design, false);
+  assert.equal('generatedAt' in result.design, false);
+});
