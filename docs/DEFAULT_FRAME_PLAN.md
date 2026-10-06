@@ -21,12 +21,12 @@ All logo and text layers stay inside a safety area of 90% of the frame, centred.
 |---|---|---|
 | Safety area | 5% margin on every side | x 96 to 1824, y 54 to 1026 (1728x972) |
 | Logo | inside a box of 15% width by 15% height, anchored top right of the safety area, aspect kept, never enlarged past the box; omitted when the partner has no logo. **Live view: only a 50% black box at the logo's fitted rectangle, never the logo image. Final render: the logo as it is, with no box or fill behind it; nothing is ever removed from the logo** | box 288x162, right edge 1824, top 54 |
-| Teams text | x from 10% to 30% (20% wide), top at 10% of the height; two lines, home then visitor; font size scaled so the first line is exactly the box width | x 192 to 576 (384 wide), top 108 |
+| Teams text | x from 10% to 30% (20% wide), top at 10% of the height, **left aligned**; two lines, home then visitor; the longer line fills the box width; **box at most 25% of the height tall, font between 3% and 10% of the height; a line that still does not fit at the smallest size is cut at its end with an ellipsis** | x 192 to 576 (384 wide), top 108, at most 270 tall, font 32.4 to 108 px |
 | Bar | full width, bottom 20% | x 0 to 1920, y 864 to 1080 (216 tall) |
 | Bar line | 1% of the height, top edge only, drawn outside the bar so the sides and bottom are clipped away | about 10.8 px, y 853.2 to 864 |
-| Message | 90% wide, 5% tall, bottom edge 10% above the frame bottom, one line | 1728x54, x 96 to 1824, y 918 to 972 |
+| Message | 90% wide, from the top of the bar to the bottom safety margin (15% of the height), one line, font 80% of the box height, shrunk only when the width requires it | 1728x162, x 96 to 1824, y 864 to 1026, font 129.6 px |
 
-All four layers fit inside the safety area and none overlap (the logo box starts at x 1536, the teams box ends at x 576, the bar starts at y 864 and the logo and teams text end well above it).
+All layers except the bar fit inside the safety area and none overlap (the logo box starts at x 1536, the teams box ends at x 576 and at most y 378, the bar starts at y 864; the message box is inside the bar).
 
 Colours and font come from the event's effective messmass style: text, the bar line and the message use `headingColor`, the bar uses `heroBackground`, the font is the style's `fontFamily`. Colours are `#RRGGBBAA`; the alpha is kept.
 
@@ -41,7 +41,7 @@ Rules the owner set:
 | # | Question | Answer |
 |---|---|---|
 | 1 | Message source | A random message from a list set in the camera event editor. Default list: "Go! Go! Go!", "Let's Go, {partner1}", "We are the Best!", "Together for Victory!", "🫶 Let's Go 🫶" |
-| 2 | Message box | 1728x54, bottom edge 108 px above the frame bottom (table above) |
+| 2 | Message box | First 1728x54 at y 918 to 972; **corrected by the owner 2026-10-06** to 1728x162 from the top of the bar to the bottom safety margin (y 864 to 1026) so the message can be larger |
 | 3 | Live view territory | Each layer's own box at 50% black, through the reframe step; the real composition from the preview step on |
 | 4 | Colours | The event's effective style; `headingColor`, `heroBackground`, line in `headingColor` |
 | 5 | Fonts | Load the style's font and fall back to Inter when it is unavailable |
@@ -52,7 +52,8 @@ Rules the owner set:
 | 10 | Scope | All events, backward as well |
 | 11 | Try-on | The generated frame applies wherever the event has no camera frame of its own, for every event |
 | 12 | Logo background | Live view: a 50% black box where the logo will be, no logo image. Final render: the logo drawn with its own transparency (alpha channel) if it has one; if it has none, drawn exactly as it is. No box or fill behind it and nothing cut from the logo, ever (decided 2026-10-06) |
-| 13 | Teams font rule, message size | The longer of the two lines is fitted to 384 px; the 54 px message box and its small text are accepted |
+| 13 | Teams font rule | The longer of the two lines is fitted to 384 px |
+| 14 | Teams text limits (owner correction 2026-10-06, numbers confirmed) | Left aligned; box at most 25% of the frame height; font between 3% and 10% of the height; text that still does not fit at the smallest size is cut at its end with an ellipsis (an event name loses its last part) |
 
 ### Assumptions taken (owner to correct)
 
@@ -61,8 +62,8 @@ Rules the owner set:
 - At most 10 messages per event. The list lives on the event first; a partner-level default is a later step.
 - "No camera frame of its own" means: the event has no active frame assigned. Events with frames keep them and are not touched by the backfill.
 - Text alignment: teams text left, message centred, logo right.
-- The teams font size has a cap of 10% of the frame height (108 px), so a very short name does not become huge; when the visitor line is longer than the home line the size is reduced until the longer line fits 384 px.
-- An event name used as the teams text wraps inside the 384 px box at the largest size at most the cap that keeps its longest word inside the box.
+- The teams font size is kept between 3% (32.4 px) and 10% (108 px) of the frame height, so a very short name does not become huge and a long one does not become unreadable; when the visitor line is longer than the home line the size is reduced until the longer line fits 384 px.
+- An event name used as the teams text wraps inside the 384 px box at the largest size (at most 10% of the height) that keeps its longest word inside the box and the block inside 25% of the height, smaller down to 3%; if it still does not fit, the last part is cut and the last line ends with an ellipsis.
 
 ## What messmass has
 
@@ -132,7 +133,6 @@ F1, F2 and F3 can start at once.
 - **Emoji**: the 🫶 needs a colour emoji font bundled with the renderer; colour emoji ignore the text colour. F2 decides; the fallback is browser rendering of the message or dropping the emoji.
 - **Fonts**: custom partner fonts are fetched from messmass at render time; if a font cannot be fetched the frame uses Inter and records that in the variant. A font that is a partner's property is only read, never stored in camera.
 - **Logos**: partner logos are ImgBB images of any aspect ratio. A logo with an opaque (for example white) background is drawn with that background, by the owner's decision: nothing is removed from a logo. The fix for such a logo is a transparent source: messmass keeps `sportsDb.strTeamBadge`, `strTeamLogo` and `footballData.crest`, and F3 can return them as an option later.
-- **Small message**: the message box is 54 px tall, so the text is about 4% of the frame height.
 - **Stale snapshot**: the frame does not follow messmass changes until the refresh action runs (decision 6).
 - **Backfill volume**: one render per message per event; the backfill runs in batches and is idempotent (inputs are hashed).
 
