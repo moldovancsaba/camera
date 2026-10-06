@@ -20,6 +20,8 @@ export interface SerializedSubmissionRow {
   partnerName?: string | null;
   eventAdminId?: string | null;
   eventName?: string | null;
+  /** Set for photos of vetted events that are not approved yet (camera#270). */
+  reviewStatus?: 'pending_review' | 'rejected' | null;
 }
 
 function isLegacyGuestName(value: string): boolean {
@@ -53,6 +55,7 @@ export default function SubmissionsInventoryList({
         { label: 'Email', value: submission.userEmail },
         { label: 'Frame', value: submission.frameName || 'frameless' },
         { label: 'Created', value: submission.createdAtLabel },
+        submission.reviewStatus ? { label: 'Review', value: submission.reviewStatus === 'rejected' ? 'Rejected' : 'Waiting for approval' } : null,
         submission.partnerName ? { label: 'Partner', value: submission.partnerName } : null,
         submission.eventName ? { label: 'Event', value: submission.eventName } : null,
         typeof submission.playCount === 'number' && submission.playCount > 0
@@ -76,6 +79,8 @@ export default function SubmissionsInventoryList({
       label: 'Download',
       kind: 'icon',
       onSelect: (submission) => {
+        // A photo that is waiting has no picture yet (camera#270).
+        if (!submission.imageUrl) return;
         window.open(submission.imageUrl, '_blank', 'noopener,noreferrer');
       },
     },

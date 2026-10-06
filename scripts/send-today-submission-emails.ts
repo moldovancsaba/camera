@@ -1,6 +1,7 @@
 import { loadEnvFromFiles } from './load-env-from-files';
 import { closeConnection, connectToDatabase } from '@/lib/db/mongodb';
 import { dispatchPendingSubmissionEmailForSubmission } from '@/lib/email/submission-result-email';
+import { UNPUBLISHED_REVIEW_STATUSES } from '@/lib/submissions/visibility';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 
 interface SendTodayOptions {
@@ -110,6 +111,9 @@ async function runForDate(db: Awaited<ReturnType<typeof connectToDatabase>>, opt
   if (!options.includeTryon) {
     baseQuery.submissionKind = { $ne: 'tryon_result' };
   }
+
+  // A vetted photo that is waiting or was rejected gets no email from this script (camera#270): its guest is emailed when it is approved.
+  baseQuery.reviewStatus = { $nin: [...UNPUBLISHED_REVIEW_STATUSES] };
 
   if (!options.force) {
     baseQuery['metadata.emailSent'] = { $ne: true };

@@ -119,6 +119,12 @@ export default async function AdminSubmissionsPage({
     redirect('/admin/partners');
   }
 
+  // Photos of vetted events that are waiting or rejected are marked in the list (camera#270).
+  const reviewStatusOf = (submission: unknown): SerializedSubmissionRow['reviewStatus'] => {
+    const status = (submission as { reviewStatus?: unknown; submissionKind?: unknown }).reviewStatus;
+    const kind = (submission as { submissionKind?: unknown }).submissionKind;
+    return kind !== 'tryon_result' && (status === 'pending_review' || status === 'rejected') ? status : null;
+  };
   let submissionRows: SerializedSubmissionRow[] = [];
   let galleryItemCount = 0;
   let namedUserCount = 0;
@@ -225,6 +231,7 @@ export default async function AdminSubmissionsPage({
         partnerName: partner?.name ?? null,
         eventAdminId: mongoIdString(event?._id),
         eventName: event?.name ?? null,
+        reviewStatus: reviewStatusOf(submission),
       });
     }
   } catch (error) {

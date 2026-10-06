@@ -184,6 +184,8 @@ export default async function PartnerDetailPage({
         partnerId: partner.partnerId,
         isArchived: false,
         hiddenFromPartner: false,
+        // A vetted photo that is waiting or rejected is reviewed under the event's Photos tab, not shown here (camera#270).
+        $or: [{ photoReview: { $exists: false } }, { reviewStatus: 'approved' }],
       })
       .sort({ createdAt: -1 })
       .limit(50)

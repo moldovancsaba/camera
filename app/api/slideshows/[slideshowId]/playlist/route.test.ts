@@ -122,3 +122,23 @@ test('pin still overrides submissionSourceMode kind restriction for an approved 
   });
   assert.equal(matches(doc, nonPinned), false);
 });
+
+test('a vetted photo that is waiting or rejected is never in a playlist, pinned or not, whatever the source mode', () => {
+  for (const mode of ['originals_only', 'approved_tryon_only', 'originals_and_approved_tryon'] as const) {
+    for (const reviewStatus of ['pending_review', 'rejected']) {
+      const doc = baseDoc({ submissionKind: 'original', reviewStatus });
+      assert.equal(matches(doc, filterFor(mode)), false, `${mode} pinned ${reviewStatus}`);
+      const unpinned = buildPlaylistMatchFilter({ eventIdKeys, inactiveEmails, submissionSourceMode: mode, manualObjectIds: [], excludeOids: [] });
+      assert.equal(matches(doc, unpinned), false, `${mode} ${reviewStatus}`);
+    }
+  }
+});
+
+test('an approved vetted photo and a photo from before vetting are in an originals playlist', () => {
+  for (const reviewStatus of ['approved', undefined]) {
+    const doc = baseDoc({ submissionKind: 'original', reviewStatus });
+    if (reviewStatus === undefined) delete (doc as Record<string, unknown>).reviewStatus;
+    const filter = buildPlaylistMatchFilter({ eventIdKeys, inactiveEmails, submissionSourceMode: 'originals_only', manualObjectIds: [], excludeOids: [] });
+    assert.equal(matches(doc, filter), true, String(reviewStatus));
+  }
+});
