@@ -33,7 +33,7 @@ Colours and font come from the event's effective messmass style: text, the bar l
 Rules the owner set:
 
 - No logo: the logo layer is not drawn.
-- No home and visitor: the teams text shows the event name, broken into several lines to fit the box.
+- No home and visitor: the teams text shows the event name. If the name is a pairing ("A - B", "A x B", "A vs B") it is split into two lines at the separator and the separator is not shown (decision 15); any other name is broken into lines to fit the box.
 - The message is chosen at random from a list that is editable per event (decision below).
 
 ## Decisions
@@ -54,6 +54,7 @@ Rules the owner set:
 | 12 | Logo background | Live view: a 50% black box where the logo will be, no logo image. Final render: the logo drawn with its own transparency (alpha channel) if it has one; if it has none, drawn exactly as it is. No box or fill behind it and nothing cut from the logo, ever (decided 2026-10-06) |
 | 13 | Teams font rule | The longer of the two lines is fitted to 384 px |
 | 14 | Teams text limits (owner correction 2026-10-06, numbers confirmed) | Left aligned; box at most 25% of the frame height; font between 3% and 10% of the height; text that still does not fit at the smallest size is cut at its end with an ellipsis (an event name loses its last part) |
+| 15 | Pairing in an event name (owner, 2026-10-06: "If we break into lines do not use these separators") | An event name that is a pairing is split into two lines like home and visitor, without the separator, and fitted by the teams rule. Separators need a space on both sides, strongest first: `x`, `×`, `vs`, `vs.`, `v`; then an en or em dash; then a hyphen. The first level that occurs decides, so "OTP Bank - PICK Szeged x Sporting Clube de Portugal" splits at the `x` and keeps the hyphen inside the home team. More than one separator of the level, an empty side, or no separator: not split, the name wraps as before. Real home and visitor names still win; one team alone does not stop the split |
 
 ### Assumptions taken (owner to correct)
 
@@ -63,7 +64,7 @@ Rules the owner set:
 - "No camera frame of its own" means: the event has no active frame assigned. Events with frames keep them and are not touched by the backfill.
 - Text alignment: teams text left, message centred, logo right.
 - The teams font size is kept between 3% (32.4 px) and 10% (108 px) of the frame height, so a very short name does not become huge and a long one does not become unreadable; when the visitor line is longer than the home line the size is reduced until the longer line fits 384 px.
-- An event name used as the teams text wraps inside the 384 px box at the largest size (at most 10% of the height) that keeps its longest word inside the box and the block inside 25% of the height, smaller down to 3%; if it still does not fit, the last part is cut and the last line ends with an ellipsis.
+- An event name that is not a pairing, used as the teams text, wraps inside the 384 px box at the largest size (at most 10% of the height) that keeps its longest word inside the box and the block inside 25% of the height, smaller down to 3%; if it still does not fit, the last part is cut and the last line ends with an ellipsis.
 
 ## What messmass has
 
@@ -177,7 +178,7 @@ Read-only checks against production, after F1 to F5 and the installable-app work
 
 What the real data shows, for decisions in later packages:
 
-- **The home team is often a competition.** The two newest events are named "Casademont Zaragoza - Basket Landes" and "Valencia Basket Club  - Fenerbahce Tarfin", but their `partner1Id` is the partner "EuroLeague Women" and there is no `partner2Id`. The frame then shows the event name (the owner's rule for events without a home and a visitor) with the competition's logo. Splitting such a name at its " - " into two lines is possible but is not done; it is an open question for the owner.
+- **The home team is often a competition.** The two newest events are named "Casademont Zaragoza - Basket Landes" and "Valencia Basket Club  - Fenerbahce Tarfin", but their `partner1Id` is the partner "EuroLeague Women" and there is no `partner2Id`. The frame then shows the event name (the owner's rule for events without a home and a visitor) with the competition's logo. Such a name is now split at its separator into two lines without the separator (decision 15, camera#244).
 - **Logos can have a background.** The EuroLeague Women logo is a file named "...Logo-with-background...png". By the owner's decision logos are drawn as they are, so such a logo keeps its background.
 - **Styles resolve as designed:** one event took its own style (`resolvedFrom: project`), one the partner's, and one fell back to the system default (a partner template without a style); no short names are present in this data (`shortName: null`).
 

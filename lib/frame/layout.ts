@@ -5,7 +5,8 @@
  * territories (browser) draw from the same numbers and the module is unit-tested.
  *
  * At the default 1920x1080: safety area x 96..1824 y 54..1026; logo box 288x162 at the top right of the
- * safety area; teams text x 192..576 from y 108, left aligned, at most 270 px tall, font 32.4..108 px; bar
+ * safety area; teams text x 192..576 from y 108, left aligned, at most 270 px tall, font 32.4..108 px (an event name
+ * that is a pairing is split at its separator and shown like the teams); bar
  * y 864..1080 with a 1% line just above it; message 1728x162 from the top of the bar to the bottom safety
  * margin (y 864..1026).
  */
@@ -123,6 +124,30 @@ export function fitTeams(home: string, visitor: string, measure: Measure, width:
   return textBlock([home, visitor].map((line) => ellipsize(line, measure, size, boxWidth)), size, width, height);
 }
 
+// Separators of a pairing in an event name, strongest first: an `x`, `vs` or `v`, then an en or em dash, then a hyphen,
+// each with spaces around it. "OTP Bank - PICK Szeged x Sporting Clube de Portugal" splits at the `x`, not inside the
+// home team's own name.
+const MATCH_SEPARATORS = [/\s+(?:x|×|vs\.?|v)\s+/gi, /\s+[–—]\s+/g, /\s+-\s+/g];
+
+/**
+ * The two sides of an event name that is a pairing ("Casademont Zaragoza - Basket Landes"), without the separator, or
+ * null. The first separator level that occurs decides: exactly one occurrence with text on both sides splits, more than
+ * one (for example "A x B x C") is ambiguous and does not.
+ */
+export function splitMatchName(name: string): [string, string] | null {
+  const text = name.trim();
+  for (const pattern of MATCH_SEPARATORS) {
+    const found = [...text.matchAll(pattern)];
+    if (found.length === 0) continue;
+    if (found.length > 1) return null;
+    const at = found[0].index ?? 0;
+    const home = text.slice(0, at).trim();
+    const visitor = text.slice(at + found[0][0].length).trim();
+    return home && visitor ? [home, visitor] : null;
+  }
+  return null;
+}
+
 /** Greedy word wrap at one size; a word wider than the box is broken by characters. */
 function wrap(words: string[], measure: Measure, size: number, boxWidth: number): string[] {
   const lines: string[] = [];
@@ -201,13 +226,20 @@ export function layoutFrame(input: FrameLayoutInput): FrameLayout {
   const home = input.home?.trim();
   const visitor = input.visitor?.trim();
   const message = input.message?.trim();
+  // No home and visitor: a pairing in the event name ("A - B") is shown like the teams, without the separator.
+  const sides = home && visitor ? null : splitMatchName(input.eventName);
   return {
     width,
     height,
     safety: safetyArea(width, height),
     logo: fitLogo(width, height, input.logo),
     // Teams only when both are known; with one or none the event name says more than a lone team.
-    teams: home && visitor ? fitTeams(home, visitor, input.measure, width, height) : fitEventName(input.eventName, input.measure, width, height),
+    teams:
+      home && visitor
+        ? fitTeams(home, visitor, input.measure, width, height)
+        : sides
+          ? fitTeams(sides[0], sides[1], input.measure, width, height)
+          : fitEventName(input.eventName, input.measure, width, height),
     bar: barRect(width, height),
     barLine: barLine(width, height),
     message: message ? fitMessage(message, input.measure, width, height) : null,

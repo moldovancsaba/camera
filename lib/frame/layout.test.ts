@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   barLine,
+  splitMatchName,
   barRect,
   fitEventName,
   fitLogo,
@@ -178,4 +179,53 @@ test('no logo, no teams and no message leave only the event name and the bar', (
 test('one team alone is not a match: the event name is shown', () => {
   const layout = layoutFrame({ eventName: 'Fan Day', home: 'FC Barcelona', visitor: '  ', measure });
   assert.deepEqual(layout.teams?.lines, ['Fan Day']);
+});
+
+test('an event name that is a pairing splits at its separator, without the separator', () => {
+  assert.deepEqual(splitMatchName('Casademont Zaragoza - Basket Landes'), ['Casademont Zaragoza', 'Basket Landes']);
+  assert.deepEqual(splitMatchName('Valencia Basket Club  - Fenerbahce Tarfin'), ['Valencia Basket Club', 'Fenerbahce Tarfin']);
+  assert.deepEqual(splitMatchName('Roma x Lazio'), ['Roma', 'Lazio']);
+  assert.deepEqual(splitMatchName('Roma X Lazio'), ['Roma', 'Lazio']);
+  assert.deepEqual(splitMatchName('Roma × Lazio'), ['Roma', 'Lazio']);
+  assert.deepEqual(splitMatchName('Roma vs Lazio'), ['Roma', 'Lazio']);
+  assert.deepEqual(splitMatchName('Roma vs. Lazio'), ['Roma', 'Lazio']);
+  assert.deepEqual(splitMatchName('Roma v Lazio'), ['Roma', 'Lazio']);
+  assert.deepEqual(splitMatchName('Roma – Lazio'), ['Roma', 'Lazio']);
+  assert.deepEqual(splitMatchName('Roma — Lazio'), ['Roma', 'Lazio']);
+});
+
+test('the stronger separator wins, so a hyphen inside a team name stays', () => {
+  assert.deepEqual(splitMatchName('OTP Bank - PICK Szeged x Sporting Clube de Portugal'), ['OTP Bank - PICK Szeged', 'Sporting Clube de Portugal']);
+});
+
+test('an ambiguous name, a name with an empty side, and a name without a separator are not split', () => {
+  assert.equal(splitMatchName('A - B - C'), null);
+  assert.equal(splitMatchName('A x B x C'), null);
+  assert.equal(splitMatchName('Roma -'), null);
+  assert.equal(splitMatchName('- Lazio'), null);
+  assert.equal(splitMatchName('Fan Day'), null);
+  assert.equal(splitMatchName('Max Xavier'), null, 'a letter x inside a word is not a separator');
+  assert.equal(splitMatchName('Pre-season friendly'), null, 'a hyphen without spaces is not a separator');
+  assert.equal(splitMatchName(''), null);
+});
+
+test('without teams a pairing in the event name is shown like the teams: two lines, no separator, left aligned', () => {
+  const layout = layoutFrame({ eventName: 'Casademont Zaragoza - Basket Landes', home: null, visitor: null, measure });
+  assert.deepEqual(layout.teams?.lines, ['Casademont Zaragoza', 'Basket Landes']);
+  assert.equal(layout.teams?.align, 'left');
+  assert.ok(layout.teams!.lines.every((line) => !line.includes(' - ')));
+  assert.ok(measure('Casademont Zaragoza', layout.teams!.fontSize) <= 384 + 0.01);
+  assert.deepEqual(layout.teams, fitTeams('Casademont Zaragoza', 'Basket Landes', measure, 1920, 1080));
+});
+
+test('one team alone does not stop the split, and real teams still win over the name', () => {
+  const alone = layoutFrame({ eventName: 'Roma x Lazio', home: 'AS Roma', visitor: null, measure });
+  assert.deepEqual(alone.teams?.lines, ['Roma', 'Lazio']);
+  const both = layoutFrame({ eventName: 'Roma x Lazio', home: 'FC Barcelona', visitor: 'Real Madrid', measure });
+  assert.deepEqual(both.teams?.lines, ['FC Barcelona', 'Real Madrid']);
+});
+
+test('a name that does not split still wraps as an event name', () => {
+  const layout = layoutFrame({ eventName: 'Spring Festival', measure });
+  assert.deepEqual(layout.teams?.lines, ['Spring', 'Festival']);
 });

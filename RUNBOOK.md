@@ -226,6 +226,10 @@ panel and the backfill follow (camera#235 to #238).
 - **Reuse:** an image is redrawn only when something that decides it changed (what is drawn, the message, the font
   actually used, the drawing code `FRAME_RENDER_VERSION`). An image made while the logo could not be fetched
   (`logo: failed`) or a custom font could not be fetched (`font.retry`) is redrawn at the next generation.
+- **Event names that are a pairing:** when there is no home and visitor team, a name like "A - B", "A x B" or "A vs B"
+  is drawn as two lines without the separator (camera#244, rules in the plan, decision 15). Bumping
+  `FRAME_RENDER_VERSION` is how a change to the drawing code reaches existing events: their images are redrawn at the
+  next generation (refresh, message save or provisioning), not all at once.
 - **Old images are never deleted:** a submission records the variant it used and try-on composes with that URL later.
 - **Logos** are drawn exactly as they are (their own transparency, nothing removed, no box behind them). Only https
   URLs on `i.ibb.co` and camera's own Blob store are fetched, with no redirects, 5 MB and 8 s limits; anything else is

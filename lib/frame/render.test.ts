@@ -93,6 +93,15 @@ test('without teams the event name is drawn in the same box', async () => {
   assert.ok(p.count(box.x, box.y, box.x + box.width, box.y + box.height, nearWhite) > 150);
 });
 
+test('an event name that is a pairing is drawn as two lines without the separator', async () => {
+  const ctx = context({ homeTeam: null, visitorTeam: null, name: 'Casademont Zaragoza - Basket Landes' });
+  const { png, layout } = await render(ctx, null);
+  const p = await pixels(png);
+  const box = layout.teams!.rect;
+  assert.deepEqual(layout.teams!.lines, ['Casademont Zaragoza', 'Basket Landes']);
+  assert.ok(p.count(box.x, box.y, box.x + box.width, box.y + box.height, nearWhite) > 150);
+});
+
 test('the message is drawn over the bar, within the message box; no message, no text there', async () => {
   const withMessage = await render(context(teams), 'Together for Victory!');
   const without = await render(context(teams), null);
