@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-06T14:32:04+00:00",
+  "generated": "2026-10-06T15:34:25+00:00",
   "repo": "camera",
-  "head": "467b91c",
+  "head": "b4e01ce",
   "counts": {
    "endpoints": 105,
    "collections": 6,
    "env": 59,
    "outbound-hosts": 23,
-   "docs": 44
+   "docs": 45
   }
  },
  "items": [
@@ -131,6 +131,10 @@
   {
    "file": "docs/MONGODB_CONVENTIONS.md",
    "title": "MongoDB Conventions"
+  },
+  {
+   "file": "docs/PHOTO_VETTING_PLAN.md",
+   "title": "Photo vetting by default: plan"
   },
   {
    "file": "docs/SLIDESHOW_LOGIC.md",
