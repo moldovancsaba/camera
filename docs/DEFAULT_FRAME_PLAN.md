@@ -136,6 +136,26 @@ F1, F2 and F3 can start at once.
 - **Stale snapshot**: the frame does not follow messmass changes until the refresh action runs (decision 6).
 - **Backfill volume**: one render per message per event; the backfill runs in batches and is idempotent (inputs are hashed).
 
+## F2 spike result (2026-10-06, macOS arm64; Linux and Vercel not yet verified)
+
+Prototype of the renderer in a scratch project (`@napi-rs/canvas` 1.0.10 plus `sharp`), drawing the frame to the geometry table above.
+
+- **Fonts**: registered from in-memory buffers, as a server fetch delivers them: a variable TTF (Inter, weight axis works), a WOFF (messmass AS Roma, drawn in its own typeface), a WOFF2 (Poppins) and the 25 MB Noto Color Emoji (COLRv1). The 🫶 message drew in colour through the font stack `"<family>", "Inter", "Noto Color Emoji"`.
+- **Speed**: 35 to 50 ms per 1920x1080 frame, PNG about 40 KB, cold start including the import and registering all four fonts about 110 ms, 142 MB resident.
+- **Layout**: the longer team line ended at x 575 inside the 576 px box edge; the logo kept its own transparent corners with nothing behind it; "ø" renders.
+- **Size**: the Linux x64 binary is 34.8 MB unpacked, well inside the Vercel function limit.
+
+Decisions for F5:
+
+- Use `@napi-rs/canvas`.
+- Bundle the Google fonts messmass lists (Inter, Roboto, Poppins, Montserrat) as full TTF files; a Google WOFF2 covers only one script subset, so fetching WOFF2 would lose characters. Confirm each licence when bundling (Inter, Poppins, Montserrat and Noto Color Emoji are OFL; Roboto is Apache 2.0).
+- Bundle Noto Color Emoji and register it only when a message contains an emoji.
+- Fetch a custom partner font from messmass at render time, server to server, register it under a unique alias per font file, keep it in memory only, and fall back to Inter when it cannot be fetched.
+- Next config for the route that renders: `serverExternalPackages` for the canvas package and `outputFileTracingIncludes` for the font files (verify in F5).
+- Known limit: Vercel has no system fonts, and Inter covers Latin, Greek and Cyrillic, so a name in CJK or Arabic would show missing glyphs. Fonts register process-wide, hence the unique alias.
+
+Still open for #233: run the same render on Linux. There is no Docker or Vercel CLI in the build environment, so it happens on the first preview of F5 (a route that renders the sample), or earlier through a manually triggered workflow if wanted.
+
 ## Testing
 
 - Layout engine: exact pixel boxes at 1920x1080 and at other sizes, text fit with long, short and missing names, no logo, no teams.
