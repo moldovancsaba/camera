@@ -120,6 +120,43 @@ html[data-app-lock] body {
   }
 }
 
+/*
+ * Reframe step on a short landscape window (a phone on its side, with the browser's own bars): the controls go beside the
+ * photo instead of under it, so the photo keeps the height; the options scroll inside their column, the actions stay in
+ * view (camera#254). Taller landscape windows (tablets, desktops) keep the stacked layout.
+ */
+@media (orientation: landscape) and (max-height: 600px) {
+  .reframe-shell {
+    flex-direction: row;
+  }
+
+  .reframe-panel {
+    flex-shrink: 0;
+    margin: 0;
+    max-width: none;
+    min-height: 0;
+    padding: 0.5rem 0.75rem;
+    width: min(22rem, 42%);
+  }
+
+  .reframe-options {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* Scroll, never squash: a control keeps its own height. */
+  .reframe-options > * {
+    flex-shrink: 0;
+  }
+
+  /* On a narrow panel the three buttons wrap instead of clipping their labels. */
+  .reframe-actions {
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+}
+
 [data-camera-admin] .gds-responsive-mobile {
   display: none;
 }

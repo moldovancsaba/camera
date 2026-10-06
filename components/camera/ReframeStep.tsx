@@ -370,8 +370,8 @@ export default function ReframeStep({
   }
 
   return (
-    <div className="flex h-full w-full flex-col">
-      <div ref={wrapperRef} className="flex min-h-0 flex-1 items-center justify-center p-4">
+    <div className="reframe-shell flex h-full w-full flex-col">
+      <div ref={wrapperRef} className="flex min-h-0 min-w-0 flex-1 items-center justify-center p-4">
         <div
           ref={stageRef}
           role="group"
@@ -391,7 +391,8 @@ export default function ReframeStep({
         </div>
       </div>
 
-      <div className="mx-auto flex w-full max-w-md flex-col gap-3 p-4">
+      <div className="reframe-panel mx-auto flex w-full max-w-md flex-col gap-3 p-4">
+        <div className="reframe-options flex flex-col gap-3">
         <p className="text-center text-xs" role="status" aria-live="polite">
           {`Zoom ${zoomPercent}%. ${modeLabel}.`}
         </p>
@@ -427,8 +428,9 @@ export default function ReframeStep({
           Drag the photo to move it, pinch or use the zoom control to resize it. With the keyboard, use the arrow keys to move
           and plus and minus to zoom.
         </p>
+        </div>
 
-        <div className="flex items-center justify-between gap-2">
+        <div className="reframe-actions flex items-center justify-between gap-2">
           <Button type="button" variant="light" size={buttonSize} radius="md" onClick={onRetake} disabled={isFinishing}>
             {labels?.retake ?? 'Retake'}
           </Button>
