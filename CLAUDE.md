@@ -101,7 +101,7 @@ rather than pushing anyway.
 
 **Two boundary rules enforced by `scripts/check-gds-boundaries.mjs`:** no direct
 `@mantine/core` imports in `app/admin` or `components/gds` (allowlist:
-`components/gds/styles.ts`, `components/gds/PublicPrimitives.tsx`) — compose the
+`components/gds/PublicPrimitives.tsx`) — compose the
 shipped `@sovereignsquad/gds-*` components instead. **`verify-production-guards.ts`**
 statically requires every dev-only/dangerous route handler to call
 `blockDangerousApiInProduction()` — a new dev-only route must be added to that

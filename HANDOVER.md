@@ -34,8 +34,10 @@ Open work is tracked on the GitHub project board, not in this file (next section
   would claim image.direct jobs.
 - **GDS:** camera is on 6.3.0 (vendored); the latest release is 6.7.0. The
   audit and ordered plan are in `gds_fix_handover.md` (merged in #175):
-  camera#183 (import the official stylesheet, delete the forked CSS), camera#184
-  (bump to 6.7.0), work packages camera#185-#187, owner decisions camera#188.
+  camera#183 done 2026-10-06 (official stylesheet imported, forked CSS deleted;
+  Inter now loaded from the root layout, see `LEARNINGS.md` FRONT-009),
+  camera#184 (bump to 6.7.0) next, work packages camera#185-#187, owner
+  decisions camera#188.
 - **messmass and sso:** nothing blocks camera. The 2026-09-30 decision (separate
   logins) stands; sso 5.41.1 and 5.42.0 need no camera change. A `CAMERA_` env
   prefix is an open owner decision (camera#195).

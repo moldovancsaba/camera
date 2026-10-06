@@ -25,6 +25,7 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 |---------|----------------|
 | App Router client boundary | `app/providers.tsx` |
 | Theme | package-direct `@sovereignsquad/gds-theme/server` default `gdsTheme` |
+| Stylesheet | `app/layout.tsx` imports `@sovereignsquad/gds-theme/styles.css` (which inlines the Mantine core and notifications sheets) before `app/globals.css` since 2026-10-06; the former hand-copied fork `components/gds/gds-theme.css` is deleted. Inter is loaded by React resource hints (`preinit`/`preconnect`) in the root layout, because the package sheet's own Inter `@import` is dropped by Turbopack (see `LEARNINGS.md` FRONT-009) |
 | Root provider | `components/gds/CameraGdsProvider.tsx` wrapping `@sovereignsquad/gds-theme/client` `GdsProvider` without local theme extension; v3.5 document color-scheme and root CSS variable selector are enabled |
 | Notifications | Root `GdsNotificationProvider` / `GdsToastProvider` from `@sovereignsquad/gds-core/client` plus `showGdsNotification` from `@sovereignsquad/gds-theme/client` |
 | Modals / confirm | Root `GdsConfirmProvider` / `OverlayManagerProvider` from `@sovereignsquad/gds-core/client`; legacy `lib/gds/confirm-destructive.tsx` remains a migration bridge |

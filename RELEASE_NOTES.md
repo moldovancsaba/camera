@@ -1,5 +1,35 @@
 # RELEASE_NOTES.md
 
+## Unreleased — official GDS stylesheet replaces the forked theme CSS
+
+- **Changed:** `app/layout.tsx` now imports `@sovereignsquad/gds-theme/styles.css`
+  (which inlines the Mantine core and notifications sheets) before `app/globals.css`.
+  The hand-copied fork `components/gds/gds-theme.css` (378 lines, copied in
+  `332ea67` on 2026-06-08) is deleted. Its remaining rules were inert: all but the
+  mobile-navbar rule were gated on `html[data-gds-theme-preset]`, which nothing in
+  camera sets, and its `--gds-vibe-*` variables were read by nothing else.
+- **Fixed:** `--gds-bg-canvas`, `--gds-text-primary`, `--gds-border-card`,
+  `--gds-overlay-surface` and `--gds-overlay-scrim` were undefined at runtime (read
+  in the browser on the built app); they now resolve.
+- **Changed:** fonts. The fork loaded ten Google font families render-blocking;
+  only Inter is used. Inter now loads through React resource hints (`preinit`, `preconnect`) in
+  the root layout, because the package sheet's own Inter `@import` ends up after the inlined
+  Mantine rules, Turbopack warns, and browsers ignore a late `@import`; without
+  the link Inter silently stopped loading. The other nine families are no longer
+  loaded; no code references them, but CSS stored by landing-page creators in the
+  database could, and that was not checked.
+- **Removed:** the dead `components/gds/styles.ts` entries from
+  `scripts/check-gds-boundaries.mjs`, `gds-adoption.json`, `CLAUDE.md` and
+  `docs/GDS_RELEASE_GATE.md` (the file no longer exists).
+- **Verified:** `npm run build` under Turbopack succeeds, so the crash the fork's
+  commit blamed on the official import does not recur. Before/after read on the
+  built app: tokens defined, body font family unchanged, Inter loads, and the
+  404 page looks the same.
+- **Not verified:** authenticated admin pages and the capture, landing and
+  slideshow pages could not be viewed locally (no SSO or database); check popover
+  and menu backgrounds on the Vercel preview.
+- Handover plan row 1 of `gds_fix_handover.md` (camera#183).
+
 ## Unreleased — axios raised to 1.20.0 (security advisories)
 
 - **Security:** `axios` `^1.7.0` (1.18.1 installed) to `^1.20.0`. Twelve

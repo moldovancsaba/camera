@@ -55,7 +55,7 @@ The manifest enforces the active GDS boundary:
 
 ## Current Import Exceptions
 
-- `components/gds/styles.ts` may import Mantine leaf primitives for shared admin styling tokens.
+- `components/gds/PublicPrimitives.tsx` is the only file allowed to import `@mantine/core` directly inside `app/admin` or `components/gds` (`scripts/check-gds-boundaries.mjs`). `components/gds/styles.ts` no longer exists.
 
 ## Rollback
 
