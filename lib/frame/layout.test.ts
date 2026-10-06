@@ -26,7 +26,16 @@ test('the boxes at 1920x1080 are the ones in the plan table', () => {
   assert.deepEqual(safetyArea(1920, 1080), { x: 96, y: 54, width: 1728, height: 972 });
   assert.deepEqual(barRect(1920, 1080), { x: 0, y: 864, width: 1920, height: 216 });
   assert.deepEqual(barLine(1920, 1080), { x: 0, y: 853.2, width: 1920, height: 10.8 });
-  assert.deepEqual(messageBox(1920, 1080), { x: 96, y: 918, width: 1728, height: 54 });
+  assert.deepEqual(messageBox(1920, 1080), { x: 96, y: 864, width: 1728, height: 162 });
+});
+
+test('the message box runs from the top of the bar to the bottom safety margin', () => {
+  const bar = barRect(1920, 1080);
+  const message = messageBox(1920, 1080);
+  const safety = safetyArea(1920, 1080);
+  assert.equal(message.y, bar.y);
+  assert.equal(message.y + message.height, safety.y + safety.height);
+  assert.equal(message.height, 1080 * 0.15);
 });
 
 test('the bar line sits above the bar: only its top edge shows, never the sides or the bottom', () => {
@@ -57,7 +66,7 @@ test('no logo, or a logo without a size, means no logo layer', () => {
 test('every size keeps the same proportions', () => {
   assert.deepEqual(safetyArea(1280, 720), { x: 64, y: 36, width: 1152, height: 648 });
   assert.deepEqual(barRect(1280, 720), { x: 0, y: 576, width: 1280, height: 144 });
-  assert.deepEqual(messageBox(1280, 720), { x: 64, y: 612, width: 1152, height: 36 });
+  assert.deepEqual(messageBox(1280, 720), { x: 64, y: 576, width: 1152, height: 108 });
 });
 
 test('the teams text: the longer line fills the 384 px box, home above visitor at one size', () => {
@@ -65,6 +74,7 @@ test('the teams text: the longer line fills the 384 px box, home above visitor a
   assert.deepEqual(teams.lines, ['FC Barcelona', 'Real Madrid']);
   assert.equal(teams.fontSize, 64);
   assert.deepEqual(teams.rect, { x: 192, y: 108, width: 384, height: 147.2 });
+  assert.equal(teams.align, 'left');
 
   const longerVisitor = fitTeams('AS Roma', 'Brøndby IF Copenhagen', measure, 1920, 1080);
   assert.ok(measure('Brøndby IF Copenhagen', longerVisitor.fontSize) <= 384 + 0.01);
@@ -75,14 +85,31 @@ test('very short names do not grow past 10% of the frame height', () => {
   assert.equal(fitTeams('FC', 'AC', measure, 1920, 1080).fontSize, 108);
 });
 
-test('the event name replaces the teams: several lines, every line inside the box', () => {
+test('the teams text never gets taller than 25% of the frame height', () => {
+  for (const [home, visitor] of [['FC', 'AC'], ['FC Barcelona', 'Real Madrid'], ['A', 'Brøndby IF Copenhagen Supporters Club']]) {
+    assert.ok(fitTeams(home, visitor, measure, 1920, 1080).rect.height <= 270, `${home} v ${visitor}`);
+  }
+});
+
+test('very long names stop shrinking at 3% of the frame height and the end of the line is cut with an ellipsis', () => {
+  const teams = fitTeams('Brøndby IF Copenhagen Supporters Club International', 'FC', measure, 1920, 1080);
+  assert.equal(teams.fontSize, 32.4);
+  assert.ok(teams.lines[0].endsWith('…'));
+  assert.ok(measure(teams.lines[0], teams.fontSize) <= 384 + 0.01);
+  assert.equal(teams.lines[1], 'FC');
+});
+
+test('the event name replaces the teams: several lines, every line inside the box, left aligned', () => {
   const name = fitEventName('Spring Festival', measure, 1920, 1080);
   assert.deepEqual(name?.lines, ['Spring', 'Festival']);
   assert.equal(name?.fontSize, 96);
+  assert.equal(name?.align, 'left');
 
   const long = fitEventName('The Big Annual Spring Fan Festival Opening Night 2026 Edition', measure, 1920, 1080);
-  assert.ok(long && long.lines.length <= 4);
-  for (const line of long?.lines ?? []) assert.ok(measure(line, long!.fontSize) <= 384 + 0.01, line);
+  assert.ok(long);
+  assert.ok(long!.rect.height <= 270, 'the block stays inside the maximum box height');
+  assert.ok(long!.fontSize >= 32.4 && long!.fontSize <= 108);
+  for (const line of long!.lines) assert.ok(measure(line, long!.fontSize) <= 384 + 0.01, line);
 });
 
 test('a word wider than the box is broken instead of overflowing', () => {
@@ -92,11 +119,13 @@ test('a word wider than the box is broken instead of overflowing', () => {
   assert.equal(name?.lines.join(''), 'Supercalifragilisticexpialidocious');
 });
 
-test('a name too long for four lines ends in an ellipsis that still fits', () => {
+test('a name too long for the box at the smallest size loses its last part and ends in an ellipsis that fits', () => {
   const words = Array.from({ length: 40 }, (_, i) => `Word${i}`).join(' ');
   const name = fitEventName(words, measure, 1920, 1080);
-  assert.equal(name?.lines.length, 4);
-  assert.ok(name?.lines[3].endsWith('…'));
+  assert.equal(name?.fontSize, 32.4);
+  assert.equal(name?.lines.length, 7);
+  assert.ok(name?.lines[6].endsWith('…'));
+  assert.ok(name!.rect.height <= 270);
   for (const line of name?.lines ?? []) assert.ok(measure(line, name!.fontSize) <= 384 + 0.01, line);
 });
 
@@ -104,10 +133,10 @@ test('an empty event name has no text', () => {
   assert.equal(fitEventName('   ', measure, 1920, 1080), null);
 });
 
-test('the message is one line: 80% of the box height, shrunk to fit the width', () => {
-  assert.equal(fitMessage('Go! Go! Go!', measure, 1920, 1080).fontSize, 43.2);
+test('the message is one line: 80% of the 162 px box height, shrunk to fit the width', () => {
+  assert.equal(fitMessage('Go! Go! Go!', measure, 1920, 1080).fontSize, 129.6);
   const long = fitMessage('x'.repeat(100), measure, 1920, 1080);
-  assert.ok(long.fontSize < 43.2);
+  assert.ok(long.fontSize < 129.6);
   assert.ok(measure(long.text, long.fontSize) <= 1728 + 0.01);
 });
 

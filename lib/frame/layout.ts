@@ -5,8 +5,9 @@
  * territories (browser) draw from the same numbers and the module is unit-tested.
  *
  * At the default 1920x1080: safety area x 96..1824 y 54..1026; logo box 288x162 at the top right of the
- * safety area; teams text x 192..576 from y 108; bar y 864..1080 with a 1% line just above it; message
- * 1728x54 at y 918..972.
+ * safety area; teams text x 192..576 from y 108, left aligned, at most 270 px tall, font 32.4..108 px; bar
+ * y 864..1080 with a 1% line just above it; message 1728x162 from the top of the bar to the bottom safety
+ * margin (y 864..1026).
  */
 
 export const DEFAULT_FRAME_WIDTH = 1920;
@@ -26,6 +27,8 @@ export interface FittedText {
   lines: string[];
   fontSize: number;
   lineHeight: number;
+  /** The teams text and the event name are always left aligned. */
+  align: 'left';
   /** The text block: the box width and the height of its lines, from the box top. */
   rect: Rect;
 }
@@ -53,11 +56,9 @@ const TEAMS_TOP = 0.1;
 const TEAMS_WIDTH = 0.2;
 const TEAMS_MAX_FONT = 0.1;
 const TEAMS_MIN_FONT = 0.03;
-const EVENT_NAME_MAX_LINES = 4;
+const TEAMS_MAX_HEIGHT = 0.25;
 const BAR_HEIGHT = 0.2;
 const BAR_LINE = 0.01;
-const MESSAGE_HEIGHT = 0.05;
-const MESSAGE_BOTTOM = 0.1;
 const MESSAGE_FONT = 0.8;
 const LINE_HEIGHT = 1.15;
 /** Text width is linear in the font size, so one probe size gives the size that fits a width. */
@@ -90,20 +91,36 @@ export const barRect = (width: number, height: number): Rect => rect(0, height *
 export const barLine = (width: number, height: number): Rect =>
   rect(0, height * (1 - BAR_HEIGHT) - height * BAR_LINE, width, height * BAR_LINE);
 
+/** From the top of the bar down to the bottom safety margin, inside the safety width: as tall as the bar allows. */
 export const messageBox = (width: number, height: number): Rect =>
-  rect(width * SAFETY_MARGIN, height * (1 - MESSAGE_BOTTOM - MESSAGE_HEIGHT), width * (1 - 2 * SAFETY_MARGIN), height * MESSAGE_HEIGHT);
+  rect(width * SAFETY_MARGIN, height * (1 - BAR_HEIGHT), width * (1 - 2 * SAFETY_MARGIN), height * (BAR_HEIGHT - SAFETY_MARGIN));
 
 function textBlock(lines: string[], fontSize: number, width: number, height: number): FittedText {
   const size = round(fontSize);
   const lineHeight = round(size * LINE_HEIGHT);
-  return { lines, fontSize: size, lineHeight, rect: rect(width * TEAMS_LEFT, height * TEAMS_TOP, width * TEAMS_WIDTH, lineHeight * lines.length) };
+  return { lines, fontSize: size, lineHeight, align: 'left', rect: rect(width * TEAMS_LEFT, height * TEAMS_TOP, width * TEAMS_WIDTH, lineHeight * lines.length) };
 }
 
-/** Home above visitor at one size: the longer of the two fills the box width, capped at 10% of the height. */
+/** The line cut at its end, with an ellipsis, until it fits the width. */
+function cutToFit(text: string, measure: Measure, size: number, boxWidth: number): string {
+  const chars = Array.from(text.trimEnd());
+  while (chars.length > 0 && measure(`${chars.join('').trimEnd()}…`, size) > boxWidth) chars.pop();
+  return `${chars.join('').trimEnd()}…`;
+}
+
+const ellipsize = (line: string, measure: Measure, size: number, boxWidth: number) =>
+  measure(line, size) <= boxWidth ? line : cutToFit(line, measure, size, boxWidth);
+
+/**
+ * Home above visitor at one size: the longer line fills the box width, kept between 3% and 10% of the frame
+ * height. A line still wider than the box at the smallest size is cut at its end with an ellipsis.
+ */
 export function fitTeams(home: string, visitor: string, measure: Measure, width: number, height: number): FittedText {
+  const boxWidth = width * TEAMS_WIDTH;
   const widest = Math.max(measure(home, PROBE), measure(visitor, PROBE));
-  const fit = widest > 0 ? (PROBE * width * TEAMS_WIDTH) / widest : height * TEAMS_MAX_FONT;
-  return textBlock([home, visitor], Math.min(height * TEAMS_MAX_FONT, fit), width, height);
+  const fit = widest > 0 ? (PROBE * boxWidth) / widest : Infinity;
+  const size = Math.max(height * TEAMS_MIN_FONT, Math.min(height * TEAMS_MAX_FONT, fit, (height * TEAMS_MAX_HEIGHT) / (2 * LINE_HEIGHT)));
+  return textBlock([home, visitor].map((line) => ellipsize(line, measure, size, boxWidth)), size, width, height);
 }
 
 /** Greedy word wrap at one size; a word wider than the box is broken by characters. */
@@ -131,28 +148,33 @@ function wrap(words: string[], measure: Measure, size: number, boxWidth: number)
   return lines;
 }
 
-/** The event name in the teams box when there are no teams: several lines at the largest size (at most the cap) that keeps every word inside the box. */
+/**
+ * The event name in the teams box when there are no teams: several lines at the largest size (at most 10% of
+ * the height) that keeps every word inside the box width and the block inside the box height (25% of the
+ * frame height); smaller down to 3%. If it still does not fit at the smallest size, the last part is cut and
+ * the last line ends with an ellipsis.
+ */
 export function fitEventName(name: string, measure: Measure, width: number, height: number): FittedText | null {
   const words = name.split(/\s+/).filter(Boolean);
   if (words.length === 0) return null;
   const boxWidth = width * TEAMS_WIDTH;
-  const longest = Math.max(...words.map((word) => measure(word, PROBE)));
+  const maxHeight = height * TEAMS_MAX_HEIGHT;
   const minSize = height * TEAMS_MIN_FONT;
-  let size = Math.max(minSize, Math.min(height * TEAMS_MAX_FONT, longest > 0 ? (PROBE * boxWidth) / longest : height * TEAMS_MAX_FONT));
+  const longest = Math.max(...words.map((word) => measure(word, PROBE)));
+  let size = Math.max(minSize, Math.min(height * TEAMS_MAX_FONT, longest > 0 ? (PROBE * boxWidth) / longest : Infinity));
   let lines = wrap(words, measure, size, boxWidth);
-  while (lines.length > EVENT_NAME_MAX_LINES && size > minSize) {
+  while (lines.length * size * LINE_HEIGHT > maxHeight && size > minSize) {
     size = Math.max(minSize, size * 0.9);
     lines = wrap(words, measure, size, boxWidth);
   }
-  if (lines.length > EVENT_NAME_MAX_LINES) {
-    let last = `${lines.slice(EVENT_NAME_MAX_LINES - 1).join(' ')}`;
-    while (last && measure(`${last}…`, size) > boxWidth) last = Array.from(last).slice(0, -1).join('');
-    lines = [...lines.slice(0, EVENT_NAME_MAX_LINES - 1), `${last}…`];
+  const maxLines = Math.max(1, Math.floor(maxHeight / (size * LINE_HEIGHT)));
+  if (lines.length > maxLines) {
+    lines = [...lines.slice(0, maxLines - 1), cutToFit(lines.slice(maxLines - 1).join(' '), measure, size, boxWidth)];
   }
   return textBlock(lines, size, width, height);
 }
 
-/** One line in the message box: 80% of the box height, shrunk until it fits the width. */
+/** One line in the message box: 80% of the box height (129.6 px at 1920x1080), shrunk until it fits the width. */
 export function fitMessage(text: string, measure: Measure, width: number, height: number): { text: string; fontSize: number; rect: Rect } {
   const box = messageBox(width, height);
   const size = box.height * MESSAGE_FONT;
