@@ -156,3 +156,20 @@ test('the key depends on what is drawn, the message and the font, and not on whe
   assert.notEqual(variantKey(d, 'Go! Go!', font), key);
   assert.notEqual(variantKey(d, 'Go!', { ...font, family: 'frame-roboto' }), key);
 });
+
+test('on a competition event the placeholders take the two sides of the pairing in the event name', async () => {
+  const { db, deps } = harness();
+  const competition = { id: 'c', name: 'EuroLeague Women', shortName: null, logoUrl: null };
+  const e = event(design({ name: 'Casademont Zaragoza - Basket Landes', homeTeam: competition, visitorTeam: null }, ['Let’s Go, {partner1}', 'Against {partner2}', 'Go!']));
+  const variants = (await generateFrameVariants(db, e, deps)).design.variants!;
+  assert.deepEqual(variants.map((v) => v.message), ['Let’s Go, Casademont Zaragoza', 'Against Basket Landes', 'Go!']);
+});
+
+test('real home and visitor teams win over the event name, and a lone team keeps its name when the name is no pairing', async () => {
+  const { db, deps } = harness();
+  const both = event(design({ name: 'Roma - Lazio' }, ['Let’s Go, {partner1}', 'Against {partner2}']));
+  assert.deepEqual((await generateFrameVariants(db, both, deps)).design.variants!.map((v) => v.message), ['Let’s Go, FC Barcelona', 'Against Real Madrid']);
+
+  const lone = event(design({ name: 'Fan Day', visitorTeam: null }, ['Let’s Go, {partner1}', 'Against {partner2}']));
+  assert.deepEqual((await generateFrameVariants(db, lone, deps)).design.variants!.map((v) => v.message), ['Let’s Go, FC Barcelona']);
+});

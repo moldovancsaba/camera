@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   barLine,
+  matchSides,
   splitMatchName,
   barRect,
   fitEventName,
@@ -228,4 +229,12 @@ test('one team alone does not stop the split, and real teams still win over the 
 test('a name that does not split still wraps as an event name', () => {
   const layout = layoutFrame({ eventName: 'Spring Festival', measure });
   assert.deepEqual(layout.teams?.lines, ['Spring', 'Festival']);
+});
+
+test('the sides of a frame: real home and visitor, else the pairing in the name, else none', () => {
+  assert.deepEqual(matchSides({ home: 'FC Barcelona', visitor: 'Real Madrid', eventName: 'Roma - Lazio' }), ['FC Barcelona', 'Real Madrid']);
+  assert.deepEqual(matchSides({ home: 'EuroLeague Women', visitor: null, eventName: 'Casademont Zaragoza - Basket Landes' }), ['Casademont Zaragoza', 'Basket Landes']);
+  assert.deepEqual(matchSides({ eventName: 'Roma x Lazio' }), ['Roma', 'Lazio']);
+  assert.equal(matchSides({ home: 'AS Roma', visitor: null, eventName: 'Fan Day' }), null);
+  assert.equal(matchSides({ home: ' ', visitor: ' ', eventName: 'Fan Day' }), null);
 });

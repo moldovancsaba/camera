@@ -61,6 +61,14 @@
 - **Not changed:** the privacy and consent wording (per landing page, owner content); proposed
   sentences are in RUNBOOK for sign-off. Deleting an event still leaves its submissions.
 
+## Unreleased — frame messages name the sides the frame shows
+
+- **Changed:** `{partner1}` and `{partner2}` in the frame messages now fill with the two sides shown as the teams text:
+  the real home and visitor when both exist, otherwise the two sides of a pairing in the event name. On an event whose
+  home partner is a competition, "Let’s Go, {partner1}" reads "Let’s Go, Casademont Zaragoza" instead of "Let’s Go,
+  EuroLeague Women" (owner decision, camera#248). Events with real teams, and events whose name is no pairing, fill as
+  before. Images already generated for such an event are redrawn at their next generation (the message changed).
+
 ## Unreleased — the guest capture flow uses the generated default frame
 
 - **Added:** an event with no active frame of its own and generated frame images skips the frame picker, and every
