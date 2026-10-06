@@ -40,6 +40,12 @@ import {
   type AttemptOutcome,
   type LumaStats,
 } from '@/lib/camera/capture-policy';
+import {
+  buildVideoConstraintChain,
+  capCanvasSize,
+  detectTouchPrimaryDevice,
+  isTerminalCameraError,
+} from '@/lib/camera/constraints';
 import { DIAGNOSTIC_VERSION, type CameraDiagnostic } from '@/lib/camera/diagnostics';
 import {
   cameraTestLabel,
@@ -171,14 +177,6 @@ export default function CameraCapture({
     },
     []
   );
-
-  const isMobileDevice = useCallback(() => {
-    if (typeof navigator === 'undefined') {
-      return false;
-    }
-
-    return /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent);
-  }, []);
 
   const getTargetAspectRatio = useCallback(() => {
     if (
@@ -357,43 +355,36 @@ export default function CameraCapture({
         videoRef.current.srcObject = null;
       }
 
-      // Request camera access with the highest practical resolution
-      // For mobile: use facingMode to select front/back camera
-      // For desktop: use default camera
-      const targetAspect = getTargetAspectRatio();
-      const isLandscapeTarget = targetAspect >= 1;
+      // Camera mode: a 4:3 mode on a ladder of looser fallbacks (lib/camera/constraints.ts).
+      // facingMode is always an ideal, so no user-agent sniffing decides whether to send it,
+      // and there is no aspectRatio constraint the browser could crop the frame for.
+      const chain = buildVideoConstraintChain({
+        facing,
+        portrait: window.innerHeight >= window.innerWidth,
+        touchPrimary: detectTouchPrimaryDevice(),
+      });
 
-      const mobile = isMobileDevice();
-
-      const idealWidth = mobile ? (isLandscapeTarget ? 3840 : 2160) : (isLandscapeTarget ? 2560 : 1440);
-      const idealHeight = mobile ? (isLandscapeTarget ? 2160 : 3840) : (isLandscapeTarget ? 1440 : 2560);
-      const preferredVideoConstraints: MediaTrackConstraints = mobile
-        ? {
-            facingMode: { ideal: facing },
-            width: { ideal: idealWidth },
-            height: { ideal: idealHeight },
-            aspectRatio: { ideal: targetAspect },
+      let mediaStream: MediaStream | null = null;
+      let lastError: unknown = null;
+      for (let step = 0; step < chain.length && !mediaStream; step += 1) {
+        const attempt = chain[step];
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({ video: attempt.constraints, audio: false });
+          diagRef.current.requested =
+            attempt.label === 'preferred'
+              ? { mode: 'preferred', width: attempt.width, height: attempt.height }
+              : { mode: 'relaxed' };
+        } catch (cameraError) {
+          lastError = cameraError;
+          if (isTerminalCameraError(cameraError) || step === chain.length - 1) {
+            break;
           }
-        : {
-            width: { ideal: idealWidth },
-            height: { ideal: idealHeight },
-            aspectRatio: { ideal: targetAspect },
-          };
-      diagRef.current.requested = { mode: 'preferred', width: idealWidth, height: idealHeight, aspectRatio: targetAspect };
+          console.warn('Camera constraints failed, retrying with looser constraints.', cameraError);
+        }
+      }
 
-      let mediaStream: MediaStream;
-      try {
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: preferredVideoConstraints,
-          audio: false,
-        });
-      } catch (primaryError) {
-        console.warn('Primary camera constraints failed, retrying with relaxed constraints.', primaryError);
-        diagRef.current.requested = { mode: 'relaxed' };
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: mobile ? { facingMode: facing } : true,
-          audio: false,
-        });
+      if (!mediaStream) {
+        throw lastError ?? new Error('Failed to access camera');
       }
 
       if (requestId !== startRequestRef.current) {
@@ -484,7 +475,9 @@ export default function CameraCapture({
    * the full-frame capture is camera#208.
    */
   const drawAndEmitFrame = (video: HTMLVideoElement, canvas: HTMLCanvasElement): boolean => {
-    const { width: frameTargetWidth, height: frameTargetHeight } = getCaptureOutputPixelSize();
+    // Capped so a very large frame bitmap cannot exceed iOS Safari's canvas limit (camera#207).
+    const outputSize = getCaptureOutputPixelSize();
+    const { width: frameTargetWidth, height: frameTargetHeight } = capCanvasSize(outputSize.width, outputSize.height);
 
     canvas.width = frameTargetWidth;
     canvas.height = frameTargetHeight;
