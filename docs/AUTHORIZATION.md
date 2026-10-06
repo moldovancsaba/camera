@@ -161,6 +161,7 @@ These now follow the same partner-aware policy and should require global admin o
 - slideshow-layout CRUD routes
 - landing page CRUD routes (partner Events manager)
 - event gallery upload and submission removal routes (partner Events manager)
+- event frame design routes: reading the snapshot and message list needs partner `viewer` access to the event, saving the messages and refreshing from messmass need `manager`; access is checked before the event is looked up (camera#234)
 - slideshow background image upload (partner Events manager)
 
 ### Permanent deletion of a submission

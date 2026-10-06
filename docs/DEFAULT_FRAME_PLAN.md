@@ -93,7 +93,7 @@ messmass  --GET frame-context (secret)-->  camera sync  -->  event.frameDesign.c
 - **Why one PNG per message**: the message changes per photo, so one image per event is not enough. A message costs one render and one stored PNG, hence the cap of 10.
 - **Territories** are drawn in the browser from the layer boxes stored with the variant (text boxes depend on font metrics, which the browser does not have).
 - **Picker**: an event that has no frames of its own and a generated design skips the frame picker (like an event with a single frame today) and goes straight to the camera. Variants are not shown as separate frames.
-- **Data**: `Event.frameDesign = { mode, source, context, messages, messagesOverridden, variants: [{ message, imageUrl, width, height, layers, inputHash }], generatedAt }`. A submission records `frameVariant: { index, message }` and a synthetic `frameId` (`generated:<eventId>:<index>`); the stored variant URL is what try-on later composes with.
+- **Data** (built in F4): `Event.frameDesign = { context, messages, messagesOverridden, updatedAt }`, where `context` carries `source` (`messmass` or `camera`), the snapshot and its `inputHash`; whether the generated frame applies is derived (the event has no active frame), not stored. F5 adds `variants: [{ message, imageUrl, width, height, layers, inputHash }]`. A submission records `frameVariant: { index, message }` and a synthetic `frameId` (`generated:<eventId>:<index>`); the stored variant URL is what try-on later composes with.
 - **Camera-native events** (no messmass link): context falls back to the camera partner's name and logo, no teams, and the system default style, so the event name becomes the teams text.
 
 ### messmass endpoint (new, in the messmass repo)

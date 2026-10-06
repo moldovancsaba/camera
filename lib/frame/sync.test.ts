@@ -4,8 +4,13 @@ import { ObjectId, type Db } from 'mongodb';
 import { refreshFrameDesign, saveFrameMessages, type RefreshDeps } from './sync';
 import { DEFAULT_FRAME_MESSAGES } from './messages';
 import type { FrameDesign } from './context';
+import { CAMERA_DEFAULT_BRAND_COLOR, CAMERA_DEFAULT_CTA_BRAND_COLOR, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
 
 const NOW = '2026-10-06T12:00:00.000Z';
+// Colours from the token file (no raw colour literals in tests), as #RRGGBBAA.
+const WHITE = `${CAMERA_STAGE_WHITE}FF`;
+const HERO = `${CAMERA_DEFAULT_CTA_BRAND_COLOR}FF`;
+const OTHER_HERO = `${CAMERA_DEFAULT_BRAND_COLOR}FF`;
 const eventId = new ObjectId();
 
 function fakeDb(partner: Record<string, unknown> | null = { name: 'Fan Club', logoUrl: 'https://i.ibb.co/fc.png' }) {
@@ -22,12 +27,12 @@ function fakeDb(partner: Record<string, unknown> | null = { name: 'Fan Club', lo
   return { db, updates };
 }
 
-function answer(heroBackground = '#0b1d51ff') {
+function answer(heroBackground = HERO) {
   return {
     event: { name: 'El Clásico', homeTeam: { id: 'h', name: 'FC Barcelona' }, visitorTeam: { id: 'v', name: 'Real Madrid' } },
     partner: { name: 'FC Barcelona', logoUrl: 'https://i.ibb.co/home.png' },
     template: { name: 'T', resolvedFrom: 'default' },
-    style: { name: 'S', resolvedFrom: 'partner', fontFamily: 'Inter', fontSource: 'google', fontFile: null, headingColor: '#ffffffff', heroBackground },
+    style: { name: 'S', resolvedFrom: 'partner', fontFamily: 'Inter', fontSource: 'google', fontFile: null, headingColor: WHITE, heroBackground },
   };
 }
 
@@ -66,7 +71,7 @@ test('a refresh with the same answer is not a change, one with a new colour is',
   const same = await refreshFrameDesign(db, linked({ frameDesign: first }), deps(answer()).d);
   assert.equal(same.changed, false);
 
-  const colour = await refreshFrameDesign(db, linked({ frameDesign: first }), deps(answer('#123456ff')).d);
+  const colour = await refreshFrameDesign(db, linked({ frameDesign: first }), deps(answer(OTHER_HERO)).d);
   assert.equal(colour.changed, true);
   assert.notEqual(colour.design.context.inputHash, first.context.inputHash);
 });

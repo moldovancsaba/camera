@@ -1,9 +1,21 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { FRAME_SYSTEM_BAR_COLOR, FRAME_SYSTEM_HEADING_COLOR } from '@/lib/gds/tokens/colors';
+import {
+  CAMERA_DEFAULT_BRAND_COLOR,
+  CAMERA_DEFAULT_CTA_BRAND_COLOR,
+  CAMERA_STAGE_BLACK,
+  CAMERA_STAGE_WHITE,
+  FRAME_SYSTEM_BAR_COLOR,
+  FRAME_SYSTEM_HEADING_COLOR,
+} from '@/lib/gds/tokens/colors';
 import { contextHash, nativeFrameContext, parseFrameContext } from './context';
 
 const NOW = '2026-10-06T12:00:00.000Z';
+// Colours from the token file (no raw colour literals in tests), as #RRGGBBAA.
+const WHITE = `${CAMERA_STAGE_WHITE}FF`;
+const BLACK = `${CAMERA_STAGE_BLACK}FF`;
+const HERO = `${CAMERA_DEFAULT_CTA_BRAND_COLOR}FF`;
+const OTHER_HERO = `${CAMERA_DEFAULT_BRAND_COLOR}FF`;
 
 function answer(over: Record<string, unknown> = {}) {
   return {
@@ -19,7 +31,7 @@ function answer(over: Record<string, unknown> = {}) {
     template: { id: 't', name: 'Match report', resolvedFrom: 'partner' },
     style: {
       id: 's', name: 'Barça theme', resolvedFrom: 'partner', fontFamily: 'AS Roma', fontSource: 'custom',
-      fontFile: '/fonts/ASRoma-Regular.woff', headingColor: '#FFFFFFFF', heroBackground: '#0b1d51ff',
+      fontFile: '/fonts/ASRoma-Regular.woff', headingColor: WHITE, heroBackground: HERO,
     },
     ...over,
   };
@@ -36,7 +48,7 @@ test('a messmass answer becomes a snapshot with teams, partner, theme and a hash
   assert.deepEqual(context.partner, { name: 'FC Barcelona', logoUrl: 'https://i.ibb.co/home.png' });
   assert.deepEqual(context.template, { name: 'Match report', resolvedFrom: 'partner' });
   assert.equal(context.style.fontFile, '/fonts/ASRoma-Regular.woff');
-  assert.equal(context.style.headingColor, '#ffffffff', 'colours are normalised to lower case');
+  assert.equal(context.style.headingColor, WHITE.toLowerCase(), 'colours are normalised to lower case');
   assert.match(context.inputHash, /^[0-9a-f]{64}$/);
 });
 
@@ -67,10 +79,10 @@ test('untrusted values are cleaned: only https logos, only drawable colours, onl
 });
 
 test('a font file is kept only for a custom font, and an unknown font source is a system font', () => {
-  const google = parseFrameContext(answer({ style: { fontFamily: 'Roboto', fontSource: 'google', fontFile: '/fonts/Roboto.woff2', headingColor: '#000000ff', heroBackground: '#ffffffff' } }), NOW);
+  const google = parseFrameContext(answer({ style: { fontFamily: 'Roboto', fontSource: 'google', fontFile: '/fonts/Roboto.woff2', headingColor: BLACK, heroBackground: WHITE } }), NOW);
   assert.equal(google?.style.fontSource, 'google');
   assert.equal(google?.style.fontFile, null);
-  const odd = parseFrameContext(answer({ style: { fontFamily: 'Y', fontSource: 'weird', headingColor: '#000000ff', heroBackground: '#ffffffff' } }), NOW);
+  const odd = parseFrameContext(answer({ style: { fontFamily: 'Y', fontSource: 'weird', headingColor: BLACK, heroBackground: WHITE } }), NOW);
   assert.equal(odd?.style.fontSource, 'system');
 });
 
@@ -84,11 +96,11 @@ test('the hash changes only with what is drawn', () => {
   const hashOf = (over: Record<string, unknown>) => parseFrameContext(answer(over), NOW)!.inputHash;
   const event = (home: string) => ({ name: 'El Clásico', homeTeam: { id: 'h', name: home }, visitorTeam: { id: 'v', name: 'Real Madrid' } });
   const style = (over: Record<string, unknown>) => ({
-    name: 'S', fontFamily: 'AS Roma', fontSource: 'custom', fontFile: '/fonts/ASRoma-Regular.woff', headingColor: '#FFFFFFFF', heroBackground: '#0b1d51ff', ...over,
+    name: 'S', fontFamily: 'AS Roma', fontSource: 'custom', fontFile: '/fonts/ASRoma-Regular.woff', headingColor: WHITE, heroBackground: HERO, ...over,
   });
   assert.notEqual(hashOf({ event: event('Other FC') }), base.inputHash);
   assert.notEqual(hashOf({ partner: { name: 'FC Barcelona', logoUrl: 'https://i.ibb.co/new.png' } }), base.inputHash);
-  assert.notEqual(hashOf({ style: style({ heroBackground: '#123456ff' }) }), base.inputHash);
+  assert.notEqual(hashOf({ style: style({ heroBackground: OTHER_HERO }) }), base.inputHash);
   assert.notEqual(hashOf({ style: style({ fontFile: '/fonts/ASRoma-v2.woff' }) }), base.inputHash);
   assert.equal(contextHash(base), base.inputHash);
 });
