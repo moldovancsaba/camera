@@ -9,6 +9,8 @@ import {
   capCanvasSize,
   isTerminalCameraError,
   isTouchPrimaryDevice,
+  shapeOf,
+  streamShapeMismatch,
 } from './constraints';
 
 test('a phone held upright asks for a portrait 4:3 mode, never 4K and never an aspect ratio', () => {
@@ -106,4 +108,29 @@ test('the full-frame original keeps typical phone frames whole and stays under t
   assert.ok(big.width * big.height <= ORIGINAL_MAX_PIXELS);
   assert.ok(Math.max(big.width, big.height) <= ORIGINAL_MAX_LONG_SIDE);
   assert.ok(ORIGINAL_MAX_PIXELS < 16_777_216, 'below the 16,777,216 pixel iOS Safari limit');
+});
+
+test('the shape of a size: portrait, landscape, or square within 3%', () => {
+  assert.equal(shapeOf(1440, 1920), 'portrait');
+  assert.equal(shapeOf(1920, 1440), 'landscape');
+  assert.equal(shapeOf(1920, 1080), 'landscape');
+  assert.equal(shapeOf(1000, 1000), 'square');
+  assert.equal(shapeOf(1020, 1000), 'square');
+  assert.equal(shapeOf(1100, 1000), 'landscape');
+  assert.equal(shapeOf(0, 0), 'square');
+});
+
+test('a phone turned to landscape with a portrait stream is asked again for landscape, and the other way round', () => {
+  const base = { touchPrimary: true };
+  assert.equal(streamShapeMismatch({ ...base, windowWidth: 844, windowHeight: 290, videoWidth: 480, videoHeight: 640 }), 'landscape');
+  assert.equal(streamShapeMismatch({ ...base, windowWidth: 390, windowHeight: 700, videoWidth: 640, videoHeight: 480 }), 'portrait');
+});
+
+test('no mismatch when the picture already fits the window, the window or picture is square, or it is not a touch device', () => {
+  assert.equal(streamShapeMismatch({ touchPrimary: true, windowWidth: 844, windowHeight: 390, videoWidth: 640, videoHeight: 480 }), null);
+  assert.equal(streamShapeMismatch({ touchPrimary: true, windowWidth: 390, windowHeight: 844, videoWidth: 480, videoHeight: 640 }), null);
+  assert.equal(streamShapeMismatch({ touchPrimary: true, windowWidth: 800, windowHeight: 800, videoWidth: 480, videoHeight: 640 }), null);
+  assert.equal(streamShapeMismatch({ touchPrimary: true, windowWidth: 844, windowHeight: 390, videoWidth: 1000, videoHeight: 1000 }), null);
+  assert.equal(streamShapeMismatch({ touchPrimary: false, windowWidth: 844, windowHeight: 390, videoWidth: 480, videoHeight: 640 }), null);
+  assert.equal(streamShapeMismatch({ touchPrimary: true, windowWidth: 844, windowHeight: 390, videoWidth: 0, videoHeight: 0 }), null, 'size not known yet');
 });

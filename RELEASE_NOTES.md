@@ -100,6 +100,22 @@
   EuroLeague Women" (owner decision, camera#248). Events with real teams, and events whose name is no pairing, fill as
   before. Images already generated for such an event are redrawn at their next generation (the message changed).
 
+## Unreleased — turning the phone asks the camera again for the new shape
+
+- **Fixed:** on a phone with a square sensor (the iPhone's Center Stage front camera) the picture keeps the shape that
+  was asked for when the camera started, not the one the phone is held in: started upright, then turned to landscape, the
+  live view showed a small portrait picture in a landscape window (owner phone test, camera#254). If a touch device's
+  picture is portrait in a landscape window, or landscape in a portrait window, for 0.7 s, the camera is now asked again
+  for the window's shape (1920x1440 in landscape, 1440x1920 upright), once per turn, and the view follows. Phones
+  whose picture follows how they are held are never asked again; a device that cannot give the shape is asked once,
+  not in a loop; desktops are untouched.
+- **Fixed:** the hint "Your frame keeps the bright area." was dark text on the dimmed part of the live view and could not
+  be read; it is white now.
+- Checked on a production build with a fake camera that answers what is asked (a square sensor), one that follows the
+  window, a stubborn one and a desktop: 10 checks, including three turns in a row and the shutter after a restart;
+  the earlier landscape (31) and capture (92) checks still pass. Not tried on a real iPhone: how Safari answers the second
+  request on that camera is the open check.
+
 ## Unreleased — landscape on phones: the live view follows the camera, the reframe controls sit beside the photo
 
 - **Fixed:** the live camera view kept the camera's frame size from the moment it started. On iPhone Safari the size

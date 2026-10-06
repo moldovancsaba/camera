@@ -13,6 +13,8 @@
  *   shows at least as much of the scene as a 16:9 stream cropped to the same frame. 2.8 MP also
  *   starts much faster than the 4K request it replaces. Treat the numbers as starting values
  *   to tune with the owner's phone tests.
+ * - The shape follows the window when the camera starts and again after a turn (`streamShapeMismatch`): a phone with a
+ *   square sensor delivers the shape that was asked for, not the one it is held in (camera#254).
  * - `facingMode` is always an `ideal`, never an `exact`: devices without a facing mode (most
  *   webcams) simply ignore it, so no user-agent sniffing is needed to decide whether to send it.
  */
@@ -60,6 +62,35 @@ export function buildVideoConstraintChain(options: {
     { label: 'relaxed', constraints: { facingMode: { ideal: options.facing } } },
     { label: 'relaxed', constraints: true },
   ];
+}
+
+export type StreamShape = 'portrait' | 'landscape' | 'square';
+
+/** The shape of a width and height; within 3% of square counts as square. */
+export function shapeOf(width: number, height: number): StreamShape {
+  if (!(width > 0) || !(height > 0)) return 'square';
+  const ratio = width / height;
+  return Math.abs(ratio - 1) <= 0.03 ? 'square' : ratio > 1 ? 'landscape' : 'portrait';
+}
+
+/**
+ * The window's shape when a touch device's stream is the wrong way round for it (a portrait picture in a landscape
+ * window or the other way round), else null. Phones whose picture follows how they are held never mismatch; a phone with
+ * a square sensor (the iPhone's Center Stage front camera) delivers the shape that was asked for when the camera started,
+ * not the one it is held in, so after the phone is turned the camera has to be asked again, now for the window's shape
+ * (`buildVideoConstraintChain` reads the window). A square window or picture, or a desktop, never mismatches.
+ */
+export function streamShapeMismatch(env: {
+  touchPrimary: boolean;
+  windowWidth: number;
+  windowHeight: number;
+  videoWidth: number;
+  videoHeight: number;
+}): StreamShape | null {
+  if (!env.touchPrimary) return null;
+  const video = shapeOf(env.videoWidth, env.videoHeight);
+  const window = shapeOf(env.windowWidth, env.windowHeight);
+  return video !== 'square' && window !== 'square' && video !== window ? window : null;
 }
 
 /** Errors for which trying looser constraints is pointless (the user said no, or no camera). */
