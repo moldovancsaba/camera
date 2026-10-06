@@ -98,33 +98,43 @@ messmass  --GET frame-context (secret)-->  camera sync  -->  event.frameDesign.c
 
 ### messmass endpoint (new, in the messmass repo)
 
-`GET /api/integrations/camera/events/{messmassEventId}/frame-context`, shared-secret authenticated like the other camera integration routes:
+`GET /api/integrations/camera/events/[messmassEventId]/frame-context` (messmass [#429](https://github.com/moldovancsaba/messmass/issues/429), PR [#431](https://github.com/moldovancsaba/messmass/pull/431)), shared secret via `assertCameraSecret` like the other camera routes: 400 malformed id, 404 unknown event, 200:
 
 ```json
 {
-  "event":    { "id": "", "name": "", "date": "", "homeTeam": { "id": "", "name": "", "shortName": "", "logoUrl": "" }, "visitorTeam": null },
-  "partner":  { "id": "", "name": "", "logoUrl": "" },
-  "template": { "id": "", "name": "", "resolvedFrom": "project | partner | default | hardcoded" },
+  "success": true,
+  "event":    { "id": "", "name": "", "date": null,
+                "homeTeam":    { "id": "", "name": "", "shortName": null, "logoUrl": null },
+                "visitorTeam": null },
+  "partner":  { "id": "", "name": "", "logoUrl": null },
+  "template": { "id": null, "name": "System Default", "resolvedFrom": "project | partner | default | hardcoded" },
   "style":    { "id": null, "name": "System default", "resolvedFrom": "project | partner | template | system-default",
                 "fontFamily": "Inter", "fontSource": "google | custom | system", "fontFile": null,
                 "headingColor": "#1f2937ff", "heroBackground": "#f8fafcff" }
 }
 ```
 
+- `homeTeam` is `partner1Id`, `visitorTeam` is `partner2Id`; either is null when missing. `partner` is the home team, or the event's own partner (`partnerId`) when it has no teams, or null.
+- `shortName` is the sports-DB or football-data short name when the partner has one.
+- `fontFile` is a path on the messmass origin (for example `/fonts/ASRoma-Regular.woff`) and only set for a custom font; the renderer fetches it server to server.
+- Resolution follows `report-config` (template: event, partner, default, none; style: event, partner, template, system default). **One deliberate difference:** the partner is found through `partner1Id`, which is what projects store, because `report-config` reads a legacy `partner1` field that nothing writes any more ([messmass#430](https://github.com/moldovancsaba/messmass/issues/430), report pages unchanged). The frame can therefore show the partner's theme while the event's own report still shows the default one.
+
 The endpoint returns the already resolved style, including the system default, so camera never re-implements the resolution chain.
 
 ## Work packages
 
-| # | Package | Repo | Depends on |
-|---|---|---|---|
-| F1 [camera#232](https://github.com/moldovancsaba/camera/issues/232) | Layout engine: safety area, boxes, text fit and wrap, message pick, pure and tested | camera | none |
-| F2 [camera#233](https://github.com/moldovancsaba/camera/issues/233) | Spike: server canvas with woff and woff2 fonts and the emoji on Vercel; decides the renderer | camera | none |
-| F3 [messmass#429](https://github.com/moldovancsaba/messmass/issues/429) | `frame-context` endpoint with the resolution chain and system default | messmass | none |
-| F4 [camera#234](https://github.com/moldovancsaba/camera/issues/234) | Data model, messmass sync, refresh action, message list storage and the default list | camera | F3 |
-| F5 [camera#235](https://github.com/moldovancsaba/camera/issues/235) | Renderer and variants: one PNG per message in Blob, layer boxes, regeneration on input change | camera | F1, F2, F4 |
-| F6 [camera#236](https://github.com/moldovancsaba/camera/issues/236) | Capture flow: skip the picker, territories, random variant per shutter press, record the variant | camera | F1, F5 |
-| F7 [camera#237](https://github.com/moldovancsaba/camera/issues/237) | Event editor panel (GDS): message list, preview, refresh, reset, replace with an uploaded frame | camera | F4, F5 |
-| F8 [camera#238](https://github.com/moldovancsaba/camera/issues/238) | Backfill every event without a frame of its own, try-on consistency, runbook and rollout | camera | F5, F6 |
+| # | Package | Repo | Depends on | Status |
+|---|---|---|---|---|
+| F1 [camera#232](https://github.com/moldovancsaba/camera/issues/232) | Layout engine: safety area, boxes, text fit and wrap, message pick, pure and tested | camera | none | built, [camera#240](https://github.com/moldovancsaba/camera/pull/240) in review |
+| F2 [camera#233](https://github.com/moldovancsaba/camera/issues/233) | Spike: server canvas with woff and woff2 fonts and the emoji on Vercel; decides the renderer | camera | none | spike done on macOS, decisions recorded; the Linux and Vercel run is open |
+| F3 [messmass#429](https://github.com/moldovancsaba/messmass/issues/429) | `frame-context` endpoint with the resolution chain and system default | messmass | none | built, [messmass#431](https://github.com/moldovancsaba/messmass/pull/431) in review |
+| F4 [camera#234](https://github.com/moldovancsaba/camera/issues/234) | Data model, messmass sync, refresh action, message list storage and the default list | camera | F3 | not started |
+| F5 [camera#235](https://github.com/moldovancsaba/camera/issues/235) | Renderer and variants: one PNG per message in Blob, layer boxes, regeneration on input change | camera | F1, F2, F4 | not started |
+| F6 [camera#236](https://github.com/moldovancsaba/camera/issues/236) | Capture flow: skip the picker, territories, random variant per shutter press, record the variant | camera | F1, F5 | not started |
+| F7 [camera#237](https://github.com/moldovancsaba/camera/issues/237) | Event editor panel (GDS): message list, preview, refresh, reset, replace with an uploaded frame | camera | F4, F5 | not started |
+| F8 [camera#238](https://github.com/moldovancsaba/camera/issues/238) | Backfill every event without a frame of its own, try-on consistency, runbook and rollout | camera | F5, F6 | not started |
+
+Status is updated when a package is delivered, together with its issue and the docs it touches.
 
 F1, F2 and F3 can start at once.
 
@@ -133,6 +143,7 @@ F1, F2 and F3 can start at once.
 - **Emoji**: the 🫶 needs a colour emoji font bundled with the renderer; colour emoji ignore the text colour. F2 decides; the fallback is browser rendering of the message or dropping the emoji.
 - **Fonts**: custom partner fonts are fetched from messmass at render time; if a font cannot be fetched the frame uses Inter and records that in the variant. A font that is a partner's property is only read, never stored in camera.
 - **Logos**: partner logos are ImgBB images of any aspect ratio. A logo with an opaque (for example white) background is drawn with that background, by the owner's decision: nothing is removed from a logo. The fix for such a logo is a transparent source: messmass keeps `sportsDb.strTeamBadge`, `strTeamLogo` and `footballData.crest`, and F3 can return them as an option later.
+- **messmass gap**: until [messmass#430](https://github.com/moldovancsaba/messmass/issues/430) is decided, an event's report and its generated frame can disagree about the theme (the frame follows the documented chain).
 - **Stale snapshot**: the frame does not follow messmass changes until the refresh action runs (decision 6).
 - **Backfill volume**: one render per message per event; the backfill runs in batches and is idempotent (inputs are hashed).
 
