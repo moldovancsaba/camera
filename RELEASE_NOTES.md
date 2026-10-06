@@ -61,6 +61,21 @@
 - **Not changed:** the privacy and consent wording (per landing page, owner content); proposed
   sentences are in RUNBOOK for sign-off. Deleting an event still leaves its submissions.
 
+## Unreleased — the generated frame reaches the events that already exist, and try-on results carry it
+
+- **Added:** `/admin/frames/generated` ("Generated Frames" under Libraries, global admin only) and
+  `POST /api/admin/frame-backfill`. A dry run counts what a run would do (own frame, already done, to do by linked,
+  native, inactive, with snapshot, native without partner logo) and, with the messmass check, asks messmass once per
+  linked event (read-only) to report logos, teams, theme sources and custom fonts. The run takes the snapshot and draws
+  the images three events at a time until none is left, can be stopped and repeated, lists failures per event, and
+  needs a dry-run report on screen that was ticked as read.
+- **Rules:** events with an active frame of their own are never touched; events that have images are skipped. A linked
+  event messmass gives no usable answer for is not drawn from camera's fallback: it waits for a later run.
+- **Changed:** a try-on result for a photo taken with the generated frame is composed with the image the photo
+  recorded (`frameVariant.imageUrl`, re-checked to be one of this project's `frames/generated/` images), and the derived
+  result keeps `frameVariant`. Before, such results got no frame. Requires the event's "apply frame to returned results".
+- Nothing runs by itself: the rollout starts when an admin presses the button.
+
 ## Unreleased — the generated frame can be edited in the event editor
 
 - **Added:** a "Generated default frame" panel at the top of an event's Frames page (`/admin/events/[id]/frames`):

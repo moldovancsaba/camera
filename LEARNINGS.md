@@ -1249,6 +1249,19 @@ _Use this template for new learnings:_
 
 **Key Decisions**: a check that cannot fail is not a check: make each assertion fail once on purpose (or read the page) before trusting it.
 
+### [FRONT-015] A rollout console: one error state for two actions hid the failure, and a confirm dialog said "Delete" — 2026-10-06T00:00:00.000Z
+
+**Issue**: The console that rolls the generated frame out to existing events runs a dry run, a batched run and, after the run, a dry run again; checked in a browser with the API mocked, three things were wrong that unit tests could not show.
+
+**Context**:
+- The run's error and the dry run's error shared one state, and the dry run that follows a run clears it first, so a failure in the middle of a run was never shown. Two states, one per action.
+- `useGdsConfirm().confirmDestructive` always renders a red "Delete" button; for an action that writes but deletes nothing, `confirm` is the right call.
+- A `dl` laid out as `max-content 1fr` pushed the values 80 px past a 320 px screen when a label was long; `minmax(0, 40%) minmax(0, 1fr)` with `overflow-wrap: anywhere` fits.
+
+**Solution**: separate error states, `confirm`, the grid above; and the batch runner treats a linked event messmass cannot answer for as waiting, not as a fallback frame, so a messmass outage never makes events look done.
+
+**Key Decisions**: a bulk action reports per event (failed, waiting) instead of one pass or fail; a run is repeatable because finished events are skipped.
+
 **Last Updated**: 2026-10-06T00:00:00.000Z
 
 ---

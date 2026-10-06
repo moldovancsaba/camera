@@ -138,6 +138,7 @@ These remain global-admin-only:
 - `/admin`
 - `/admin/users`
 - `/admin/frames`
+- `/admin/frames/generated` (rollout of the generated default frame, camera#238; the page checks for a global admin and `POST /api/admin/frame-backfill` requires `requireAdmin`)
 - `/admin/logos`
 - `/admin/submissions`
 - `/admin/tryon/**`
