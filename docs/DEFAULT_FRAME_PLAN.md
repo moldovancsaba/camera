@@ -126,10 +126,10 @@ The endpoint returns the already resolved style, including the system default, s
 | # | Package | Repo | Depends on | Status |
 |---|---|---|---|---|
 | F1 [camera#232](https://github.com/moldovancsaba/camera/issues/232) | Layout engine: safety area, boxes, text fit and wrap, message pick, pure and tested | camera | none | merged ([camera#240](https://github.com/moldovancsaba/camera/pull/240), 0e464cb) |
-| F2 [camera#233](https://github.com/moldovancsaba/camera/issues/233) | Spike: server canvas with woff and woff2 fonts and the emoji on Vercel; decides the renderer | camera | none | spike done on macOS, decisions recorded; the Linux and Vercel run is open |
+| F2 [camera#233](https://github.com/moldovancsaba/camera/issues/233) | Spike: server canvas with woff and woff2 fonts and the emoji on Vercel; decides the renderer | camera | none | spike done on macOS and decisions recorded; used by F5 (merged); the Linux and Vercel run is the open "First check on Vercel" |
 | F3 [messmass#429](https://github.com/moldovancsaba/messmass/issues/429) | `frame-context` endpoint with the resolution chain and system default | messmass | none | merged ([messmass#431](https://github.com/moldovancsaba/messmass/pull/431), 0a8f624); the endpoint is live once messmass has deployed |
 | F4 [camera#234](https://github.com/moldovancsaba/camera/issues/234) | Data model, messmass sync, refresh action, message list storage and the default list | camera | F3 | merged ([camera#241](https://github.com/moldovancsaba/camera/pull/241), 6994bf3) |
-| F5 [camera#235](https://github.com/moldovancsaba/camera/issues/235) | Renderer and variants: one PNG per message in Blob, layer boxes, regeneration on input change | camera | F1, F2, F4 | built, [camera#242](https://github.com/moldovancsaba/camera/pull/242) in review |
+| F5 [camera#235](https://github.com/moldovancsaba/camera/issues/235) | Renderer and variants: one PNG per message in Blob, layer boxes, regeneration on input change | camera | F1, F2, F4 | merged ([camera#242](https://github.com/moldovancsaba/camera/pull/242), 35ec112); the check inside a deployed function is open (RUNBOOK, "First check on Vercel") |
 | F6 [camera#236](https://github.com/moldovancsaba/camera/issues/236) | Capture flow: skip the picker, territories, random variant per shutter press, record the variant | camera | F1, F5 | not started |
 | F7 [camera#237](https://github.com/moldovancsaba/camera/issues/237) | Event editor panel (GDS): message list, preview, refresh, reset, replace with an uploaded frame | camera | F4, F5 | not started |
 | F8 [camera#238](https://github.com/moldovancsaba/camera/issues/238) | Backfill every event without a frame of its own, try-on consistency, runbook and rollout | camera | F5, F6 | not started |
@@ -166,6 +166,20 @@ Decisions for F5:
 - Known limit: Vercel has no system fonts, and Inter covers Latin, Greek and Cyrillic, so a name in CJK or Arabic would show missing glyphs. Fonts register process-wide, hence the unique alias.
 
 Still open for #233: run the same render on Linux. There is no Docker or Vercel CLI in the build environment, so it happens on the first preview of F5 (a route that renders the sample), or earlier through a manually triggered workflow if wanted.
+
+## Live checks (2026-10-06)
+
+Read-only checks against production, after F1 to F5 and the installable-app work were merged:
+
+- **messmass endpoint (F3):** `GET https://www.messmass.com/api/integrations/camera/events/<id>/frame-context` with the shared secret answered `200` in under a second for three real events, with the documented shape.
+- **Installable app (camera#226):** `https://camera.messmass.com/capture/<eventId>/manifest.webmanifest` for a real event answers `200`, `application/manifest+json`, with the event's name, `standalone`, `orientation: any`, start URL and scope inside the event and the three icons (each `200`); the page head carries the manifest link, `viewport-fit=cover`, the theme colour and the iOS web-app tags; a malformed id is `404`.
+- **Who gets a generated frame:** of 234 events, 15 have an active frame of their own and keep it; 219 have none (218 linked to messmass) and will get a generated frame, at most about 1,100 images (219 events, at most 5 messages each). Counts only; no event data was changed. Of those 219, 113 have a logo on their camera partner record; the messmass answer may carry more.
+
+What the real data shows, for decisions in later packages:
+
+- **The home team is often a competition.** The two newest events are named "Casademont Zaragoza - Basket Landes" and "Valencia Basket Club  - Fenerbahce Tarfin", but their `partner1Id` is the partner "EuroLeague Women" and there is no `partner2Id`. The frame then shows the event name (the owner's rule for events without a home and a visitor) with the competition's logo. Splitting such a name at its " - " into two lines is possible but is not done; it is an open question for the owner.
+- **Logos can have a background.** The EuroLeague Women logo is a file named "...Logo-with-background...png". By the owner's decision logos are drawn as they are, so such a logo keeps its background.
+- **Styles resolve as designed:** one event took its own style (`resolvedFrom: project`), one the partner's, and one fell back to the system default (a partner template without a style); no short names are present in this data (`shortName: null`).
 
 ## Testing
 
