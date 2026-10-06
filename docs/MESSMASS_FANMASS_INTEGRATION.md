@@ -83,6 +83,15 @@ Provisioned events inherit the partner's default design (`brandColor`,
 ([lib/db/events.ts](../lib/db/events.ts)) — still editable afterward in Camera
 through the `*Overridden` flags.
 
+### `POST /api/internal/messmass/theme-updated` (camera#285)
+messmass tells camera that the look of its events changed. Body `{ "scope": "all" }` (a report style was edited or deleted) or
+`{ "scope": "events", "messmassEventIds": ["<24 hex>", ...] }` (a partner's logo, name, style, template or team data changed; at most 500).
+Camera marks those events stale (`events.themeStale`) and refreshes the oldest stale ones within 40 seconds, at most 12 per call: a new
+snapshot of the messmass theme (`frameDesign.context`, including `style.page`, the page colours of the style) and, for an event that has
+generated frame images, the images whose inputs changed. Answer `{ marked, refreshed, unavailable, failed, remaining }`. Events still stale
+refresh the next time a guest opens them (after the response), and a snapshot older than a day is refreshed the same way, so no cron is needed.
+messmass sends the notice best-effort with a 4 s timeout; it never blocks a save.
+
 ### Cross-reference fields stamped on Camera records
 - `organizations.messmassOrganizationId`
 - `partners.messmassPartnerId`

@@ -3,7 +3,7 @@
 Owner request (2026-10-06): "use the messmass reporting design for the user journey as we use it for the frames: we already have the
 background colour, the logo and the text colours, so use it for all pages, to have beautiful login, selfie and photo pages."
 
-Status: **plan, nothing built yet.** Epic [camera#285](https://github.com/moldovancsaba/camera/issues/285).
+Status: **in delivery** (owner decisions below, 2026-10-06). Epic [camera#285](https://github.com/moldovancsaba/camera/issues/285).
 
 ## What we already have
 
@@ -57,10 +57,11 @@ EventTheme { background, text, accent, logo, fontFamily, fontUrl | null, source:
 | J5 [camera#290](https://github.com/moldovancsaba/camera/issues/290) | Web fonts (Google / system first, custom fonts after the licence check) | |
 | J6 [camera#291](https://github.com/moldovancsaba/camera/issues/291) | Email: the same colours and logo in the guest emails | optional, owner to say |
 
-## Decisions proposed (owner to confirm or change)
+## Decisions (owner, 2026-10-06)
 
-1. Events whose style is the **system default** (119 of 171) keep today's look; only events with a partner or project style, or a brand colour of
-   their own, change. (Alternative: give every event the dark messmass default look; that changes every event at once.)
+1. **The default reporting themes apply too:** every event gets its messmass style, including the system default, and the defaults will be
+   managed in messmass from now on. When a theme (or a logo) changes in messmass, camera follows: messmass notifies camera, which takes a new
+   snapshot and redraws the frame if needed (J1).
 2. A messmass pair that fails the contrast rule is corrected, not shown as is.
 3. The camera view and the guest's own photo are never tinted; the theme colours the pages around them.
-4. J5 (fonts) and J6 (emails) are separate and can wait.
+4. Fonts (J5) and the guest emails (J6) are delivered after the pages.

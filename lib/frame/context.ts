@@ -7,7 +7,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { FRAME_SYSTEM_BAR_COLOR, FRAME_SYSTEM_HEADING_COLOR } from '@/lib/gds/tokens/colors';
+import { EVENT_THEME_DEFAULT, FRAME_SYSTEM_BAR_COLOR, FRAME_SYSTEM_HEADING_COLOR } from '@/lib/gds/tokens/colors';
 import type { LayerId } from './layout';
 
 export interface FrameTeam {
@@ -40,7 +40,23 @@ export interface FrameContext {
     /** #RRGGBBAA. */
     headingColor: string;
     heroBackground: string;
+    /** The page colours of the style for the guest pages (camera#285); absent in snapshots taken before it. */
+    page?: PageStyle;
   };
+}
+
+/** The colours and radius the pages of the guest journey are drawn with (messmass `style.page`); colours are #RRGGBBAA. */
+export interface PageStyle {
+  pageBackground: string;
+  textColor: string;
+  cardBackground: string;
+  cardBorder: string;
+  buttonBackground: string;
+  buttonText: string;
+  accentColor: string;
+  linkColor: string;
+  /** A CSS length (px, rem or em). */
+  cardRadius: string;
 }
 
 /** One generated image of the frame: the same layers with one message (camera#235). */
@@ -106,6 +122,25 @@ function colour(value: unknown, fallback: string): string {
   return raw && COLOUR.test(raw) ? raw.toLowerCase() : fallback;
 }
 
+const RADIUS = /^\d{1,2}(?:\.\d{1,2})?(?:px|rem|em)$/;
+
+/** The page colours of a messmass style, every one falling back to the system default so a half-filled style still draws. */
+export function parsePageStyle(value: unknown, heroBackground: string): PageStyle {
+  const page = record(value);
+  const radius = text(page?.cardRadius);
+  return {
+    pageBackground: colour(page?.pageBackground, heroBackground),
+    textColor: colour(page?.textColor, EVENT_THEME_DEFAULT.textColor),
+    cardBackground: colour(page?.cardBackground, EVENT_THEME_DEFAULT.cardBackground),
+    cardBorder: colour(page?.cardBorder, EVENT_THEME_DEFAULT.cardBorder),
+    buttonBackground: colour(page?.buttonBackground, EVENT_THEME_DEFAULT.buttonBackground),
+    buttonText: colour(page?.buttonText, EVENT_THEME_DEFAULT.buttonText),
+    accentColor: colour(page?.accentColor, EVENT_THEME_DEFAULT.accentColor),
+    linkColor: colour(page?.linkColor, EVENT_THEME_DEFAULT.linkColor),
+    cardRadius: radius && RADIUS.test(radius) ? radius : EVENT_THEME_DEFAULT.cardRadius,
+  };
+}
+
 function team(value: unknown): FrameTeam | null {
   const t = record(value);
   const name = text(t?.name);
@@ -153,6 +188,7 @@ export function parseFrameContext(input: unknown, now: string): FrameContext | n
       fontFile: fontSource === 'custom' ? fontFile : null,
       headingColor: colour(style.headingColor, FRAME_SYSTEM_HEADING_COLOR),
       heroBackground: colour(style.heroBackground, FRAME_SYSTEM_BAR_COLOR),
+      ...(record(style.page) ? { page: parsePageStyle(style.page, colour(style.heroBackground, FRAME_SYSTEM_BAR_COLOR)) } : {}),
     },
   };
   return { ...context, inputHash: contextHash(context) };
@@ -178,6 +214,7 @@ export function nativeFrameContext(
       fontFile: null,
       headingColor: FRAME_SYSTEM_HEADING_COLOR,
       heroBackground: FRAME_SYSTEM_BAR_COLOR,
+      page: parsePageStyle(null, FRAME_SYSTEM_BAR_COLOR),
     },
   };
   return { ...context, inputHash: contextHash(context) };

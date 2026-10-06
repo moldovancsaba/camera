@@ -112,9 +112,28 @@ test('the fallback for an event without a messmass snapshot: camera name and par
   assert.equal(context.event.homeTeam, null);
   assert.equal(context.event.visitorTeam, null);
   assert.deepEqual(context.partner, { name: 'Fan Club', logoUrl: 'https://i.ibb.co/fc.png' });
-  assert.deepEqual(context.style, {
+  const { page, ...style } = context.style;
+  assert.deepEqual(style, {
     name: 'System default', resolvedFrom: 'system-default', fontFamily: 'Inter', fontSource: 'google', fontFile: null,
     headingColor: FRAME_SYSTEM_HEADING_COLOR, heroBackground: FRAME_SYSTEM_BAR_COLOR,
   });
+  assert.equal(page?.pageBackground, FRAME_SYSTEM_BAR_COLOR, 'the page colours are the system default too');
   assert.equal(nativeFrameContext({ eventName: 'x', partnerName: '   ' }, NOW).partner, null);
+});
+
+test('the page colours of a messmass style are read, each falling back to the default; a snapshot without them has none', () => {
+  const base = { event: { name: 'E' }, template: null, style: { headingColor: '#ffffffff', heroBackground: '#171d37ff' } };
+  const withPage = parseFrameContext({ ...base, style: { ...base.style, page: { textColor: '#222222ff', buttonBackground: 'not a colour', cardRadius: '1.5rem' } } }, NOW);
+  assert.equal(withPage?.style.page?.textColor, '#222222ff');
+  assert.equal(withPage?.style.page?.pageBackground, '#171d37ff', 'the page background falls back to the hero background');
+  assert.equal(withPage?.style.page?.buttonBackground, '#ffffffff', 'an unusable colour falls back to the system default');
+  assert.equal(withPage?.style.page?.cardRadius, '1.5rem');
+  assert.equal(parseFrameContext({ ...base, style: { ...base.style, page: { cardRadius: 'calc(1px)' } } }, NOW)?.style.page?.cardRadius, '0.75rem');
+  assert.equal(parseFrameContext(base, NOW)?.style.page, undefined);
+});
+
+test('a change of the page colours alone does not change the hash of the frame (the images are not drawn again)', () => {
+  const a = parseFrameContext({ event: { name: 'E' }, template: null, style: { headingColor: '#ffffffff', heroBackground: '#171d37ff', page: { textColor: '#222222ff' } } }, NOW);
+  const b = parseFrameContext({ event: { name: 'E' }, template: null, style: { headingColor: '#ffffffff', heroBackground: '#171d37ff', page: { textColor: '#333333ff' } } }, NOW);
+  assert.equal(a?.inputHash, b?.inputHash);
 });

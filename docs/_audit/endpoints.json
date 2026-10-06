@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-06T19:00:08+00:00",
+  "generated": "2026-10-06T19:27:36+00:00",
   "repo": "camera",
-  "head": "5556c13",
+  "head": "968f8ef",
   "counts": {
-   "endpoints": 107,
+   "endpoints": 108,
    "collections": 6,
    "env": 59,
    "outbound-hosts": 23,
@@ -891,6 +891,17 @@
     "POST"
    ],
    "file": "app/api/internal/messmass/sso-session/route.ts",
+   "auth_markers": [
+    "withErrorHandler"
+   ],
+   "no_auth_marker": true
+  },
+  {
+   "path": "/api/internal/messmass/theme-updated",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/internal/messmass/theme-updated/route.ts",
    "auth_markers": [
     "withErrorHandler"
    ],

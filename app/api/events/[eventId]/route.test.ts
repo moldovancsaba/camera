@@ -158,3 +158,30 @@ test('PATCH: the setting must be true or false', async (t) => {
   assert.equal((await PATCH(patchRequest({ photoVetting: null }), params)).status, 400);
   assert.equal(h.updates.length, 0);
 });
+
+const FRESH = new Date().toISOString();
+const SNAPSHOT = {
+  context: {
+    source: 'messmass', fetchedAt: FRESH, inputHash: 'h', event: { name: 'Derby', date: null, homeTeam: null, visitorTeam: null },
+    partner: { name: 'Club', logoUrl: 'https://store.test/logo.png' }, template: null,
+    style: { name: 'S', resolvedFrom: 'project', fontFamily: 'Aquatic', fontSource: 'system', fontFile: null, headingColor: '#ffffffff', heroBackground: '#171d37ff' },
+  },
+  messages: [], messagesOverridden: false, updatedAt: FRESH,
+};
+
+test('GET returns the theme of the event: from its messmass snapshot, without exposing the snapshot itself', async (t) => {
+  mockDeps(t, { event: { messmassEventId: 'm1', frameDesign: SNAPSHOT } });
+  const { GET } = await importRouteModule('theme-snapshot');
+  const { event } = ((await (await GET(getRequest(), params)).json()) as { data: { event: Record<string, unknown> } }).data;
+  const theme = event.theme as { source: string; background: string; heading: string; logoUrl: string; font: { family: string } };
+  assert.deepEqual([theme.source, theme.background, theme.heading, theme.logoUrl, theme.font.family], ['messmass', '#171d37', '#ffffff', 'https://store.test/logo.png', 'Aquatic']);
+  assert.equal('frameDesign' in event, false, 'the snapshot is admin data');
+});
+
+test('GET returns the system default look for an event that has no snapshot yet', async (t) => {
+  mockDeps(t, { event: { name: 'Fan Day', brandColor: '#9333ea' } });
+  const { GET } = await importRouteModule('theme-default');
+  const { event } = ((await (await GET(getRequest(), params)).json()) as { data: { event: Record<string, unknown> } }).data;
+  const theme = event.theme as { source: string; dark: boolean };
+  assert.deepEqual([theme.source, theme.dark], ['event', false]);
+});
