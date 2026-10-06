@@ -41,7 +41,6 @@ export default function RestartPage({
       title={config.title}
       description={config.description}
       logoUrl={logoUrl}
-      eyebrow="Capture flow"
     >
       <Group grow>
         {onBack ? (

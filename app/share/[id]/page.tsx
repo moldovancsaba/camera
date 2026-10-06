@@ -13,6 +13,9 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { findShareSubmission, shareStateOf, type ShareLookup } from '@/lib/submissions/share-lookup';
 import PhotoStatusNotice from '@/components/share/PhotoStatusNotice';
+import EventThemeScope from '@/components/theme/EventThemeScope';
+import { loadEventTheme } from '@/lib/theme/load';
+import type { EventTheme } from '@/lib/theme/event-theme';
 import PublicShell from '@/components/public/PublicPageShell';
 import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import { listApprovedShareVariants } from '@/lib/tryon/publication';
@@ -90,6 +93,11 @@ interface TryOnVariantLike {
 
 export const dynamic = 'force-dynamic';
 
+/** The page in the theme of its event; a page whose event is unknown keeps the default look. */
+function ThemedPage({ theme, children }: { theme: EventTheme | null; children: React.ReactNode }) {
+  return theme ? <EventThemeScope theme={theme}>{children}</EventThemeScope> : <>{children}</>;
+}
+
 function getSubmissionEventLookupKeys(submission: Record<string, unknown>): string[] {
   const candidates = [
     ...(Array.isArray(submission.eventIds) ? submission.eventIds : []),
@@ -112,7 +120,7 @@ function getSubmissionEventLookupKeys(submission: Record<string, unknown>): stri
 async function resolveEventForSubmission(
   db: Db,
   submission: Record<string, unknown>
-): Promise<{ mongoId: string; name: string; sharePageSettings: EventSharePageSettings } | null> {
+): Promise<{ mongoId: string; name: string; sharePageSettings: EventSharePageSettings; theme: EventTheme } | null> {
   const eventLookupKeys = getSubmissionEventLookupKeys(submission);
   if (!eventLookupKeys.length) {
     return null;
@@ -141,6 +149,8 @@ async function resolveEventForSubmission(
     mongoId: eventDoc._id.toString(),
     name,
     sharePageSettings: normalizeEventSharePageSettings(sharePage),
+    // The page is drawn with the theme of the event (camera#285).
+    theme: await loadEventTheme(db, eventDoc),
   };
 }
 
@@ -389,11 +399,13 @@ export default async function SharePage({ params }: Props) {
     const noticeDb = await connectToDatabase();
     const noticeEvent = await resolveEventForSubmission(noticeDb, lookup.doc);
     return (
-      <PhotoStatusNotice
-        state={shareState}
-        eventName={noticeEvent?.name ?? 'Shared photo'}
-        captureHref={noticeEvent?.mongoId ? `/capture/${noticeEvent.mongoId}` : '/capture'}
-      />
+      <ThemedPage theme={noticeEvent?.theme ?? null}>
+        <PhotoStatusNotice
+          state={shareState}
+          eventName={noticeEvent?.name ?? 'Shared photo'}
+          captureHref={noticeEvent?.mongoId ? `/capture/${noticeEvent.mongoId}` : '/capture'}
+        />
+      </ThemedPage>
     );
   }
 
@@ -590,6 +602,7 @@ export default async function SharePage({ params }: Props) {
 
   const headline = event?.name ?? 'Shared photo';
   return (
+    <ThemedPage theme={event?.theme ?? null}>
     <PublicShell size="lg">
       <Stack gap="xl">
         <Stack align="center" gap="xs" ta="center">
@@ -702,5 +715,6 @@ export default async function SharePage({ params }: Props) {
         </div>
       </Stack>
     </PublicShell>
+    </ThemedPage>
   );
 }

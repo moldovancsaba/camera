@@ -1,5 +1,20 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the guest pages are drawn with the event's theme (J2–J5)
+
+- **Changed:** every page of the guest journey (`/capture/<event>`: login, consent, call to action, thank-you, restart, the camera, reframe,
+  preview and waiting steps) and the share page with its waiting and not-approved notices are drawn with the theme of the event: its page
+  background and heading colour, card colours and radius, button colours and font, from the messmass style the generated frame is drawn
+  from. The event's logo (the partner's, else the event's emoji) is shown on top of each stage card and in the header of the share page
+  instead of the product name. The browser's own chrome (theme colour, overscroll) takes the page colour. Events whose style is the messmass
+  default get the default look.
+- **Changed:** buttons stand out from both the card and the page (3:1), so a dark page never gets a dark button; text that would not read is
+  corrected to white or black (`lib/theme/`). The "Capture flow" label and the READY / COMPLETE badges are gone from the guest pages.
+- **Added:** fonts. A Google font of the style is loaded by its stylesheet, a custom messmass font (AS Roma, CHL Hypercharged, ...) by an
+  `@font-face` from the messmass origin (`www.messmass.com`, which answers with CORS headers); a system font falls back to the system stack.
+  The Content-Security-Policy allows the messmass origin for fonts. A logo on a host the pages cannot load images from is not used: the emoji
+  takes its place.
+
 ## Unreleased — a new theme snapshot keeps the frame images (fix) and the frame backfill by secret
 
 - **Fixed:** taking a new snapshot of an event (refresh from messmass, and the new theme refresh) replaced the whole frame design and

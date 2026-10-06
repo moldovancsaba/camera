@@ -89,9 +89,8 @@ export default function ShareOverlay({
   return (
     <div className={shellClassName}>
       <div className={centerClassName}>
-        <div className={panelClassName}>
+        <div className={panelClassName} data-event-stage>
           <PublicFlowShell
-            eyebrow="Capture flow"
             stage={{
               id: 'share-stage',
               title,

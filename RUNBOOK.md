@@ -374,6 +374,13 @@ messmass default get the default look; an event with no snapshot yet gets the de
 - **If an event keeps the old look.** The snapshot's `fetchedAt` (admin: the event's frame design) tells when it was last taken; an event
   messmass could not answer for stays as it was and is asked again after ten minutes (`events.themeCheckedAt`). *Refresh from messmass* in
   the event's frame design forces it.
+- **Where it shows.** `app/capture/[eventId]/layout.tsx` wraps the whole guest journey in `EventThemeScope`, and `/share/<id>` and its
+  notices are wrapped the same way; the cards (Mantine Paper, so the GDS flow shell too), buttons, inputs, headings and the public shell header
+  take the theme through CSS variables (`lib/theme/css.ts`). A page without an event (or an event without a snapshot) keeps the default look.
+- **Fonts.** Google fonts load from fonts.googleapis.com; custom fonts from `www.messmass.com/fonts/` (the CSP in `next.config.ts` allows
+  both). A font that cannot load falls back to the system stack, so the page always renders.
+- **Logos.** The theme shows the partner logo only from i.ibb.co, imgbb.com or the project's Blob store (the image CSP); anything else shows
+  the event's emoji instead.
 - **Contrast is enforced in code**, not in the style: text that would not read is shown in white or black, so a bad style costs the look,
   never the page.
 

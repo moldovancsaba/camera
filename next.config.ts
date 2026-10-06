@@ -115,7 +115,7 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Next.js requires unsafe-inline/eval
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Tailwind requires unsafe-inline, Google Fonts for Material Icons
               "img-src 'self' data: https://*.public.blob.vercel-storage.com https://i.ibb.co https://imgbb.com blob:",
-              "font-src 'self' data: https://fonts.gstatic.com", // Google Fonts CDN for Material Icons
+              "font-src 'self' data: https://fonts.gstatic.com https://messmass.com https://www.messmass.com", // Google Fonts CDN for Material Icons and the event theme; messmass for the custom fonts of event themes (camera#285)
               "connect-src 'self' https://sso.doneisbetter.com https://*.public.blob.vercel-storage.com https://api.imgbb.com https://vercel.com/api/blob/", // vercel.com/api/blob/: direct browser upload of the full-frame original (camera#210)
               "frame-ancestors 'self'",
               "base-uri 'self'",

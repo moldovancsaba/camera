@@ -5,7 +5,7 @@
  * colour as the button colour when it has one.
  *
  * Contrast is guaranteed, not trusted: text is only used where it reads (WCAG 4.5:1, 3:1 for the large button labels), a button colour
- * only where it stands out from its card (3:1); anything else is corrected, so a messmass style can never make a page unreadable.
+ * only where it stands out from its card and from the page (3:1); anything else is corrected, so a messmass style can never make a page unreadable.
  * Pure and DOM-free; unit-tested in event-theme.test.ts.
  */
 
@@ -38,7 +38,14 @@ export interface EventTheme {
   logoUrl: string | null;
   /** The event's emoji, for an event with no logo. */
   emoji: string | null;
-  font: { family: string; source: FontSource; /** Path on the messmass origin of a custom font file. */ file: string | null };
+  font: {
+    family: string;
+    source: FontSource;
+    /** Path on the messmass origin of a custom font file. */
+    file: string | null;
+    /** The custom font file as an absolute URL for the browser (set where the messmass address is known, lib/theme/load.ts). */
+    url: string | null;
+  };
 }
 
 export interface ThemeInput {
@@ -81,15 +88,19 @@ export function resolveEventTheme({ brandColor, context }: ThemeInput): EventThe
   const cardText = readable(opaque(page.textColor, hexRgb(cardBackground)), cardBackground);
   const cardBorder = opaque(page.cardBorder, hexRgb(cardBackground)) ?? cardBackground;
 
-  // The first colour that stands out from the card (3:1): the style's button, its accent, the event's brand colour, else the card's text.
+  // A button sits on a card (login, consent) or straight on the page (the photo steps), so its colour must stand out from both (3:1): the
+  // style's button, its accent, the page's own colour, the event's brand colour; failing all of them the card's text colour, white or
+  // black, whichever stands out from both best.
   const brand = opaque(brandColor);
-  const candidates = [opaque(page.buttonBackground, hexRgb(cardBackground)), opaque(page.accentColor, hexRgb(cardBackground)), brand];
-  const buttonBackground = candidates.find((c): c is string => !!c && contrast(c, cardBackground) >= 3) ?? cardText;
-  // Button labels are large and bold (WCAG large text): 3:1 is enough.
+  const standsOut = (c: string) => contrast(c, cardBackground) >= 3 && contrast(c, background) >= 3;
+  const candidates = [opaque(page.buttonBackground, hexRgb(cardBackground)), opaque(page.accentColor, hexRgb(cardBackground)), background, brand];
+  const buttonBackground =
+    candidates.find((c): c is string => !!c && standsOut(c)) ??
+    [cardText, '#000000', '#ffffff'].sort((a, b) => Math.min(contrast(b, cardBackground), contrast(b, background)) - Math.min(contrast(a, cardBackground), contrast(a, background)))[0];
   const buttonText = readable(opaque(page.buttonText, hexRgb(buttonBackground)), buttonBackground, 3);
   const link = readable(opaque(page.linkColor, hexRgb(cardBackground)), cardBackground);
 
-  const partnerLogo = context?.partner?.logoUrl ?? null;
+  const partnerLogo = allowedImage(context?.partner?.logoUrl);
   const emoji = partnerLogo || !context ? null : eventEmoji({ name: context.event.name, homeTeam: context.event.homeTeam, visitorTeam: context.event.visitorTeam }, context.partner?.name);
 
   return {
@@ -106,8 +117,23 @@ export function resolveEventTheme({ brandColor, context }: ThemeInput): EventThe
     dark: isDark(background),
     logoUrl: partnerLogo,
     emoji,
-    font: { family: style?.fontFamily ?? 'Inter', source: style?.fontSource ?? 'google', file: style?.fontFile ?? null },
+    font: { family: style?.fontFamily ?? 'Inter', source: style?.fontSource ?? 'google', file: style?.fontFile ?? null, url: null },
   };
+}
+
+/**
+ * The hosts the guest pages may load images from (the Content-Security-Policy of next.config.ts): a logo anywhere else would not show, so it
+ * is not used and the event's emoji takes its place.
+ */
+const IMAGE_HOSTS = [/^i\.ibb\.co$/, /^imgbb\.com$/, /^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/];
+export function allowedImage(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && IMAGE_HOSTS.some((host) => host.test(parsed.hostname)) ? url : null;
+  } catch {
+    return null;
+  }
 }
 
 function hexRgb(hex: string) {
