@@ -1,5 +1,22 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the camera steps behave like an app
+
+- **Changed:** while a camera step is on screen (frame picker, capture, reframe, preview, share) the
+  page cannot scroll, bounce or pull-to-refresh, and the browser cannot zoom it (`touch-action`, plus
+  cancelling the iOS pinch gesture events). The onboarding, consent/terms, form and thank-you pages keep
+  normal zoom and scrolling on purpose; the route-wide fixed-viewport lane of the GDS policy is not used.
+  Recorded as an accessibility exception in `docs/GDS_CAMERA_ADOPTION.md`.
+- **Fixed:** on the preview step the Save and Try again buttons were below the screen on most phones
+  (as far down as 1071 px in landscape) and the page had to be scrolled to reach them. The photo now
+  takes the space the actions leave, in portrait and landscape; the actions stay pinned and only the
+  options above them (try-on selector, share checkbox) scroll.
+- **Fixed:** the share card was centred without a scroll, so on a short screen its top and bottom were
+  clipped; it now scrolls inside itself, and the four share buttons sit in one row in landscape.
+- **Changed:** the loading and not-found screens use the dynamic viewport height.
+- Measured before and after on 7 viewports (3 steps of the flow each) with a Chromium fake camera:
+  Save/Retake off screen on 5 of 7 sizes before, none after.
+
 ## Unreleased — deleting a submission deletes its image files
 
 - **Changed:** `DELETE /api/submissions/[submissionId]` and `POST /api/admin/tryon-results/[submissionId]/remove`
