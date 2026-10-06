@@ -10,6 +10,10 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { uploadImage } from '@/lib/imgbb/upload';
+import { head as blobHead } from '@vercel/blob';
+import { sanitizeReframeRecord } from '@/lib/camera/reframe';
+import { blobStoreHostFromToken, verifyOriginalImage } from '@/lib/submissions/original-image';
+import { logWarn } from '@/lib/observability/logger';
 import {
   COLLECTIONS,
   DeviceType,
@@ -161,6 +165,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       partnerName, 
       imageWidth, 
       imageHeight,
+      // The pure full-frame camera image the browser uploaded straight to Blob (camera#210), its
+      // size, and how it was framed. Verified below; absent for older clients.
+      originalImageUrl: claimedOriginalUrl,
+      originalImageWidth,
+      originalImageHeight,
+      reframe: claimedReframe,
       // Custom page data
       userInfo,
       consents,
@@ -177,6 +187,37 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   if (!imageData) {
     throw apiBadRequest('Image data is required');
   }
+
+    // Check the claimed full-frame original before anything is uploaded or stored (camera#210).
+    // A claim outside this event's folder of our own Blob store, or not a JPEG of an allowed size,
+    // rejects the request; a file that cannot be confirmed only drops the original, never the photo.
+    const originalCheck = await verifyOriginalImage({
+      url: claimedOriginalUrl,
+      width: originalImageWidth,
+      height: originalImageHeight,
+      eventId,
+      storeHost: blobStoreHostFromToken(process.env.BLOB_READ_WRITE_TOKEN),
+      head: async (url) => {
+        const found = await blobHead(url);
+        return { size: found.size, contentType: found.contentType };
+      },
+    });
+    if (originalCheck.kind === 'invalid') {
+      throw apiBadRequest(originalCheck.reason);
+    }
+    if (originalCheck.kind === 'unverified') {
+      logWarn('submissions.original_unverified', 'The claimed original image could not be confirmed; saving without it', {
+        eventId: typeof eventId === 'string' ? eventId : null,
+      });
+    }
+    const verifiedOriginal = originalCheck.kind === 'ok' ? originalCheck.original : null;
+
+    // A distinct original always comes with the record of how it was framed, and nothing else
+    // does: the record is what marks the original as private (lib/submissions/public-image.ts).
+    const reframeRecord = verifiedOriginal ? sanitizeReframeRecord(claimedReframe) : null;
+    if (verifiedOriginal && !reframeRecord) {
+      throw apiBadRequest('The reframe record for the original image is missing or invalid');
+    }
 
     // Convert base64 to buffer and upload to imgbb
     const base64Data = imageData.split(',')[1]; // Remove data:image/png;base64, prefix
@@ -257,8 +298,11 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       ...(eventId ? { eventIds: [eventId] } : { eventIds: [] }),
       eventName: eventName || null,
       imageUrl: uploadResult.imageUrl,
-      originalImageUrl: uploadResult.imageUrl,
+      // The full-frame original when the browser uploaded one (private; never in a public response),
+      // otherwise the composite as before.
+      originalImageUrl: verifiedOriginal?.url ?? uploadResult.imageUrl,
       finalImageUrl: uploadResult.imageUrl,
+      ...(verifiedOriginal && reframeRecord ? { reframe: reframeRecord } : {}),
       deleteUrl: uploadResult.deleteUrl,
       imageId: uploadResult.imageId,
       fileSize: uploadResult.fileSize,
@@ -278,10 +322,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         deviceType: DeviceType.UNKNOWN,
         deviceInfo: request.headers.get('user-agent') || undefined,
         ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
-        originalWidth: imageWidth || frame?.width || 1920,
-        originalHeight: imageHeight || frame?.height || 1080,
-        originalFileSize: uploadResult.fileSize || 0,
-        originalMimeType: uploadResult.mimeType || 'image/png',
+        originalWidth: verifiedOriginal?.width ?? (imageWidth || frame?.width || 1920),
+        originalHeight: verifiedOriginal?.height ?? (imageHeight || frame?.height || 1080),
+        originalFileSize: verifiedOriginal?.fileSize ?? (uploadResult.fileSize || 0),
+        originalMimeType: verifiedOriginal?.mimeType ?? (uploadResult.mimeType || 'image/png'),
         finalFileSize: uploadResult.fileSize,
         // Image dimensions for slideshow aspect ratio detection (default 16:9 if no frame)
         finalWidth: imageWidth || frame?.width || 1920,

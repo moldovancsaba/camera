@@ -107,7 +107,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Tailwind requires unsafe-inline, Google Fonts for Material Icons
               "img-src 'self' data: https://*.public.blob.vercel-storage.com https://i.ibb.co https://imgbb.com blob:",
               "font-src 'self' data: https://fonts.gstatic.com", // Google Fonts CDN for Material Icons
-              "connect-src 'self' https://sso.doneisbetter.com https://*.public.blob.vercel-storage.com https://api.imgbb.com",
+              "connect-src 'self' https://sso.doneisbetter.com https://*.public.blob.vercel-storage.com https://api.imgbb.com https://vercel.com/api/blob/", // vercel.com/api/blob/: direct browser upload of the full-frame original (camera#210)
               "frame-ancestors 'self'",
               "base-uri 'self'",
               "form-action 'self' https://sso.doneisbetter.com",

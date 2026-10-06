@@ -1,5 +1,39 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the full-frame original is stored with the submission
+
+- **Added:** the pure camera image (not cropped, not framed, not mirrored, JPEG 0.92) is stored
+  in Vercel Blob under `originals/<eventId>/` and referenced by `submissions.originalImageUrl`;
+  `submissions.reframe` records how it was framed (mode, zoom, crop box in source pixels, frame
+  aspect, mirrored) so any crop can be redone. `metadata.originalWidth/Height/FileSize/MimeType`
+  now describe the original (size and type from a Blob lookup). The framed composite is still
+  `finalImageUrl`/`imageUrl` and is still what every public surface shows. Submissions made before
+  this change are unchanged (original = composite, no `reframe`).
+- **Added:** `POST /api/uploads/original` issues a short-lived Blob upload token and the browser
+  uploads straight to Blob when the fan taps Save, because the original plus the composite can
+  exceed the 4.5 MB request-body limit of Vercel Functions. The token is for one JPEG of at most
+  15 MB, valid 10 minutes, only for an existing event, only at `originals/<eventId>/`, with a random
+  suffix; rate limited to 30 a minute per IP. The CSP `connect-src` gains
+  `https://vercel.com/api/blob/` (checked in a browser: that path is allowed, other `vercel.com`
+  paths and other hosts stay blocked).
+- **Changed:** `POST /api/submissions` accepts `originalImageUrl`, `originalImageWidth`,
+  `originalImageHeight` and `reframe`. A claim outside the event's folder of our own store, a file
+  that is not a JPEG of an allowed size, or a missing or invalid reframe record is a 400 before
+  anything is uploaded or stored; a file that cannot be confirmed only drops the original (the photo
+  is saved as before). The original never goes through `uploadImage`, so it is never mirrored to imgbb.
+- **Changed:** if the upload fails the browser retries twice and then saves without the original.
+- **Privacy guard:** `lib/submissions/public-image.ts` never falls back to the original when a
+  `reframe` record exists; the derived try-on result keeps the try-on source instead of copying the
+  private URL; `lib/submissions/original-exposure.test.ts` fails when any file outside a reviewed
+  list reads `originalImageUrl`, or when a public surface mentions it. Verified by temporarily adding
+  the field to a public page: both checks failed, and passed again after the revert.
+- **Behaviour of existing readers:** the fanmass media feed (it asks for the raw fan photo), event
+  exports, admin try-on moderation and the "original capture" in the result email now receive the
+  full-frame original for new submissions.
+- **Not changed:** deleting a submission still removes only the database row, not the files
+  (camera#211); the original is in a public store behind an unguessable path, not a private store;
+  no backfill of older submissions (they never had an original). camera#210.
+
 ## Unreleased — capture: reframe step (move, zoom, show everything)
 
 - **Added:** on the event capture page the whole camera image now goes through a reframe step

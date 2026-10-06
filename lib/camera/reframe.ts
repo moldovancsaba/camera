@@ -255,3 +255,50 @@ export function toReframeRecord(
     mirrored,
   };
 }
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function boundedNumber(value: unknown, min: number, max: number, decimals: number): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) return null;
+  return round(value, decimals);
+}
+
+/**
+ * Validates a reframe record received from a browser before it is stored (camera#210). Returns a
+ * record containing only the known fields, or null when anything is missing or out of range;
+ * nothing is clamped silently, because a record that does not describe a real crop is not kept.
+ */
+export function sanitizeReframeRecord(input: unknown): ReframeRecord | null {
+  if (!isPlainObject(input) || input.version !== 1) return null;
+  if (input.mode !== 'fill' && input.mode !== 'fit' && input.mode !== 'custom') return null;
+  if (typeof input.mirrored !== 'boolean' || !isPlainObject(input.crop)) return null;
+
+  const zoom = boundedNumber(input.zoom, 0.05, 8, 4);
+  const frameAspect = boundedNumber(input.frameAspect, 0.05, 20, 4);
+  const sourceWidth = boundedNumber(input.sourceWidth, 1, 16384, 0);
+  const sourceHeight = boundedNumber(input.sourceHeight, 1, 16384, 0);
+  const x = boundedNumber(input.crop.x, -65536, 65536, 1);
+  const y = boundedNumber(input.crop.y, -65536, 65536, 1);
+  const width = boundedNumber(input.crop.width, 0.1, 65536, 1);
+  const height = boundedNumber(input.crop.height, 0.1, 65536, 1);
+
+  if (
+    zoom === null || frameAspect === null || sourceWidth === null || sourceHeight === null ||
+    x === null || y === null || width === null || height === null
+  ) {
+    return null;
+  }
+
+  return {
+    version: 1,
+    mode: input.mode,
+    zoom,
+    crop: { x, y, width, height },
+    sourceWidth,
+    sourceHeight,
+    frameAspect,
+    mirrored: input.mirrored,
+  };
+}

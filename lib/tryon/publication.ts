@@ -87,8 +87,13 @@ export function buildDerivedTryOnSubmission({
     eventName: sourceSubmission.eventName ?? null,
     imageUrl: publicResultUrl,
     deleteUrl: deleteUrl ?? undefined,
+    // A source with a reframe record has a private full-frame original (camera#210). The derived
+    // result is shown publicly and in moderation, so it keeps the try-on source the job actually
+    // used instead of copying the private original's URL.
     originalImageUrl:
-      typeof sourceSubmission.originalImageUrl === 'string' && sourceSubmission.originalImageUrl.trim()
+      !sourceSubmission.reframe &&
+      typeof sourceSubmission.originalImageUrl === 'string' &&
+      sourceSubmission.originalImageUrl.trim()
         ? sourceSubmission.originalImageUrl
         : job.source.imageUrl,
     finalImageUrl: publicResultUrl,

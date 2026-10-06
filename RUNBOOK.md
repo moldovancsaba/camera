@@ -106,6 +106,30 @@ more than intended passed. The real ceiling is a Vercel Firewall rule:
   first, because per-IP limits that start counting globally would tighten and
   could throttle fans who share an IP.
 
+## Full-frame originals (camera#210)
+
+The camera records the whole image and the fan frames it afterwards; the pure original is stored
+with the submission next to the framed photo.
+
+- **Where:** Vercel Blob, `originals/<eventId>/<random>-<suffix>.jpg` (public store, unguessable
+  path, never returned by a public route, never mirrored to imgbb). `submissions.originalImageUrl`
+  points at it and `submissions.reframe` records how it was framed.
+- **How it gets there:** when a fan taps Save, the browser asks `POST /api/uploads/original` for a
+  token (one JPEG, at most 15 MB, 10 minutes, existing event only) and uploads straight to
+  `https://vercel.com/api/blob/` (allowed by the CSP `connect-src`). The submission then carries
+  only the URL. `POST /api/submissions` accepts it only when it is inside the event's folder of our
+  own store and a Blob lookup confirms a JPEG of an allowed size; a foreign or malformed claim is a
+  400, a file it cannot confirm just drops the original.
+- **If the upload fails** (network, token route down) the browser retries twice, then saves the photo
+  without the original; the submission looks like an older one (original = composite, no `reframe`).
+  Look for `submissions.original_unverified` log lines and for submissions that have a framed photo
+  but no `reframe` after the rollout.
+- **Cleanup:** deleting a submission currently removes only the database row, not the files
+  (camera#211). An upload that succeeds but whose save never completes leaves an orphan under
+  `originals/`; list `originals/` in the Blob dashboard and compare with `submissions.originalImageUrl`.
+- **Privacy:** the original shows more of the scene than the framed photo, so the privacy and consent
+  text must say the full camera image is stored (camera#211).
+
 ## Capture diagnostics (anonymous)
 
 The capture screen reports how each capture went so the rate of black or near-black photos can

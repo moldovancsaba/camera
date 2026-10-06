@@ -23,6 +23,7 @@
  * - Collected data (name, email, consents) stored with each submission
  */
 
+import type { ReframeRecord } from '@/lib/camera/reframe';
 import { ObjectId } from 'mongodb';
 import type { SlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
 
@@ -632,8 +633,14 @@ export interface Submission {
   imageUrl?: string;                 // Legacy/current primary public image URL used by share/slideshow/admin surfaces
   previewImageUrl?: string | null;   // Smaller downscaled imgbb image for grid/list thumbnails; fall back to imageUrl/finalImageUrl when absent
   deleteUrl?: string;                // ImgBB delete URL when the image is managed by Camera
-  originalImageUrl: string;          // User's original photo
+  // The pure full-frame camera image (camera#210): not cropped, not framed, not mirrored, stored in Vercel
+  // Blob under originals/<eventId>/ and never returned by a public route. Submissions made before
+  // camera#210 (and when the original could not be uploaded) have no `reframe` and carry the composite here.
+  originalImageUrl: string;
   finalImageUrl: string;             // Composed photo with frame
+  // How the original was framed (mode, zoom, crop box in source pixels, frame aspect, mirrored), so any crop can
+  // be redone. Present exactly when originalImageUrl is a distinct full-frame original.
+  reframe?: ReframeRecord | null;
   eventId?: string | null;           // Legacy/current single-event mirror for filtering
   frameName?: string | null;         // Cached frame name used by admin listings
   frameCategory?: string | null;     // Cached frame category used by admin filters

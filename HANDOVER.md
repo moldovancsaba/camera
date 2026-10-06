@@ -40,8 +40,8 @@ Open work is tracked on the GitHub project board, not in this file (next section
   lenses #212, canary #213). Decisions: front camera is the global default;
   anonymous diagnostics approved; record the full frame, then crop to the frame
   in a second step; the owner tests on phones. Merged 2026-10-06: #204, #206,
-  #207 (constraints), #208 (whole-frame capture); #209 (reframe step) in review.
-  Next: #210 storage of the original and the reframe record, #211 privacy
+  #207 (constraints), #208 (whole-frame capture), #209 (reframe step); #210
+  (storage of the original and the reframe record) in review. Next: #211 privacy
   (file deletion, consent wording), #212 lenses, #205 test harness.
 - **GDS:** camera is on 6.3.0 (vendored); the latest release is 6.7.0. The
   audit and ordered plan are in `gds_fix_handover.md` (merged in #175):
