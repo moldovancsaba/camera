@@ -26,6 +26,7 @@ set:
 - [docs/GDS_COMPONENT_RULES.md](GDS_COMPONENT_RULES.md)
 - [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md)
 - [docs/CAMERA_MODULE_PLAN.md](CAMERA_MODULE_PLAN.md) — capture reliability, full-frame original, reframe step, front default and lens choice (camera#203)
+- [docs/DEFAULT_FRAME_PLAN.md](DEFAULT_FRAME_PLAN.md) — generated default event frame from messmass data: layers, geometry, messages, work packages (camera#231)
 - [docs/TRYON_ARCHITECTURE.md](TRYON_ARCHITECTURE.md)
 - [docs/IMAGE_DIRECT_INTEGRATION.md](IMAGE_DIRECT_INTEGRATION.md) — planned, paused renderer replacement contract
 - [docs/TRYON_OPERATIONS.md](TRYON_OPERATIONS.md)
