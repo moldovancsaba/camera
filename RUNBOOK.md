@@ -195,6 +195,28 @@ code), so the wording below is for the owner to paste where it fits; nothing her
   image from our storage. [Retention: state how long photos are kept after the event, for example
   N months, then deleted.]"
 
+## Generated default frame (camera#231)
+
+An event without a frame of its own gets a generated frame (plan: `docs/DEFAULT_FRAME_PLAN.md`). This section covers
+what is built so far, the data (`events.frameDesign`, camera#234); the renderer, the capture flow, the editor
+panel and the backfill follow (camera#235 to #238).
+
+- **Snapshot:** taken from messmass `GET /api/integrations/camera/events/[id]/frame-context` when messmass provisions
+  the event, and when an admin calls `POST /api/admin/events/[id]/frame-design/refresh` (the editor panel gets a
+  button, camera#237). There is no automatic follow of messmass changes.
+- **Failure behaviour:** a slow, failing or unconfigured messmass never blocks provisioning. A refresh that gets no
+  usable answer keeps the previous snapshot and answers `messmassUnavailable: true`; an event with no snapshot yet
+  gets the fallback built from camera's own name and partner logo, no teams, and the system theme (Inter, light
+  colours), `source: camera`. A later refresh replaces the fallback with the messmass data. Look for
+  `frame design snapshot failed for a provisioned event` in the logs.
+- **`changed`:** a refresh reports `changed: true` only when something drawn differs (names, partner logo, font,
+  colours); fetching the same data again is not a change.
+- **Messages:** `GET` and `PUT /api/admin/events/[id]/frame-design`. At most 10, 80 characters each, placeholders
+  `{partner1}` (home team) and `{partner2}` (visitor) only; `{ reset: true }` restores the five default messages.
+  The default list follows the code until an event edits it.
+- **Checks:** `GET /api/admin/events/<id>/frame-design` as an admin shows the snapshot; `source` tells whether it
+  came from messmass; `context.style.resolvedFrom` tells which messmass level the theme came from.
+
 ## Capture diagnostics (anonymous)
 
 The capture screen reports how each capture went so the rate of black or near-black photos can

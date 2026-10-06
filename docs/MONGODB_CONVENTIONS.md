@@ -70,6 +70,23 @@ This is used for:
 - submission `eventId` and `eventIds`
 - slideshow documents
 
+### Generated frame design (`events.frameDesign`)
+
+`events.frameDesign` (camera#234, [docs/DEFAULT_FRAME_PLAN.md](DEFAULT_FRAME_PLAN.md)) holds what the generated
+default frame of the event is built from:
+
+- `context`: a snapshot, `source` `messmass` or `camera` (the fallback for an event with no messmass link or while
+  messmass has not answered), `fetchedAt`, `inputHash` (hash of what is drawn: names, partner logo, font, colours),
+  `event` (name, date, `homeTeam`, `visitorTeam`), `partner` (name, https logo URL), `template` (informational) and
+  `style` (font family, source and custom font file path, `headingColor`, `heroBackground`, both `#RRGGBBAA`).
+- `messages`: the editable message list (at most 10, 80 characters each, placeholders `{partner1}` and
+  `{partner2}` only). `messagesOverridden` is false while the list is the default list, which then follows the code.
+- `updatedAt`.
+
+The messmass answer is untrusted: it is parsed in `lib/frame/context.ts` (https logos only, drawable colours only,
+a plain `/fonts/` file for a custom font). The generated frame applies only while the event has no active frame of
+its own (`frames[]` with `isActive`); the variants (one image per message) are added by the renderer (camera#235).
+
 ### Practical consequence
 
 You often need both:

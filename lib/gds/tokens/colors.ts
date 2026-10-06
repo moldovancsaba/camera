@@ -5,6 +5,11 @@ export const CAMERA_DEFAULT_CTA_BRAND_COLOR = '#9333EA';
 export const CAMERA_STAGE_WHITE = '#FFFFFF';
 export const CAMERA_STAGE_BLACK = '#000000';
 
+// The system default report style of messmass (heading colour and hero background, #RRGGBBAA), used for a generated
+// event frame when no theme is known (camera#231). Same values as DEFAULT_REPORT_STYLE_COLORS in messmass.
+export const FRAME_SYSTEM_HEADING_COLOR = '#1f2937ff';
+export const FRAME_SYSTEM_BAR_COLOR = '#f8fafcff';
+
 // Splash and canvas colour of the installed app (the light theme's `--mantine-color-gray-0`), camera#222.
 export const CAMERA_PWA_BACKGROUND_COLOR = '#f8f9fa';
 

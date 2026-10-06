@@ -25,6 +25,7 @@
 
 import type { ReframeRecord } from '@/lib/camera/reframe';
 import { ObjectId } from 'mongodb';
+import type { FrameDesign } from '@/lib/frame/context';
 import type { SlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
 
 /**
@@ -383,6 +384,10 @@ export interface Event {
   framesOverridden?: boolean;        // Whether event has custom frame assignments
   logosOverridden?: boolean;         // Whether event has custom logo assignments
   
+  // Generated default frame (docs/DEFAULT_FRAME_PLAN.md): the messmass snapshot it is built from and the editable message list.
+  // Applies only while the event has no active frame of its own; see lib/frame/.
+  frameDesign?: FrameDesign;
+
   // Statistics
   submissionCount?: number;          // Cached count of submissions for this event
   

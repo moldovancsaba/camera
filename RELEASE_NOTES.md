@@ -61,6 +61,20 @@
 - **Not changed:** the privacy and consent wording (per landing page, owner content); proposed
   sentences are in RUNBOOK for sign-off. Deleting an event still leaves its submissions.
 
+## Unreleased — the data behind the generated default frame
+
+- **Added:** `events.frameDesign` holds what the generated default frame of an event is built from: a snapshot of
+  the messmass data (teams and logos, partner, font and colours, from messmass `frame-context`) or a fallback from
+  camera's own data, and the editable message list (at most 10, `{partner1}` / `{partner2}` placeholders, the five
+  default messages). The messmass answer is parsed defensively (https logos, drawable colours, a plain `/fonts/`
+  file). Nothing draws it yet; the renderer and the capture flow follow (camera#235, #236).
+- **Added:** `GET` and `PUT /api/admin/events/[id]/frame-design` (snapshot and message list) and
+  `POST /api/admin/events/[id]/frame-design/refresh` (take a new snapshot, answers whether anything drawn changed);
+  partner Events managers may use them, viewers may read.
+- **Changed:** messmass provisioning also takes the snapshot for a new event, best effort: a slow or failing messmass
+  never blocks provisioning and a refresh keeps the previous snapshot when messmass gives nothing usable.
+- **Added:** `fetchFrameContext` in `lib/messmassClient.ts` (5 s bound, null on any failure).
+
 ## Unreleased — the full-frame original is stored with the submission
 
 - **Added:** the pure camera image (not cropped, not framed, not mirrored, JPEG 0.92) is stored
