@@ -14,6 +14,10 @@ export const FRAME_SYSTEM_BAR_COLOR = '#f8fafcff';
 // (camera#236, owner decision 2026-10-06).
 export const FRAME_TERRITORY_FILL = 'rgba(0, 0, 0, 0.5)';
 
+// Stand-in for a photo behind the generated frame in the event editor, so a mostly transparent frame can be judged
+// (camera#237).
+export const FRAME_PREVIEW_BACKDROP = 'linear-gradient(135deg, #b8bec7, #5d6571)';
+
 // Splash and canvas colour of the installed app (the light theme's `--mantine-color-gray-0`), camera#222.
 export const CAMERA_PWA_BACKGROUND_COLOR = '#f8f9fa';
 

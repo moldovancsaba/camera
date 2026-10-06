@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
+import GeneratedFramePanel from '@/components/admin/GeneratedFramePanel';
 import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 
 interface EventFrameAssignment {
@@ -179,6 +180,8 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
         title="Manage Event Frames"
         description={`Assign and manage frames for ${event.name}`}
       />
+
+      <GeneratedFramePanel eventId={eventId} hasOwnActiveFrame={assignedFrames.some((frame) => frame.isActive)} />
 
       <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))' }}>
         <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>

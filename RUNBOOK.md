@@ -226,6 +226,11 @@ panel and the backfill follow (camera#235 to #238).
 - **Reuse:** an image is redrawn only when something that decides it changed (what is drawn, the message, the font
   actually used, the drawing code `FRAME_RENDER_VERSION`). An image made while the logo could not be fetched
   (`logo: failed`) or a custom font could not be fetched (`font.retry`) is redrawn at the next generation.
+- **Editing (camera#237):** the panel at the top of `/admin/events/[id]/frames` shows the images, the snapshot and the
+  message list, and has Save messages, Reset to the default list and Refresh from messmass (the first real way to take
+  a snapshot and draw the images of one event; use it for the "First check on Vercel" above). A save or refresh takes
+  a few seconds because the images are drawn then; a red notice with "Try again" means the data is saved but the images
+  are not, and repeating is safe. "Messages saved" with `N images: X drawn, Y reused` is the normal answer.
 - **Capture (camera#236):** while an event has no active frame of its own and `frameDesign.variants` has images, the
   guest page skips the frame picker, shows the layer boxes as 50% black territories in the live view and the reframe
   step, picks a variant at every shutter press and composes it on the preview step. The submission stores

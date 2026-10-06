@@ -2,9 +2,11 @@
  * The message of the generated default frame (docs/DEFAULT_FRAME_PLAN.md, camera#232): a list the event
  * editor controls, one entry picked at random on every shutter press. Pure, so it is unit-tested.
  *
- * Placeholders: `{partner1}` is the home team's name, `{partner2}` the visitor's. A message whose
+ * Placeholders: `{partner1}` and `{partner2}` are the two sides the frame shows (see `messageTokens`). A message whose
  * placeholder cannot be filled is skipped, and a raw placeholder is never drawn.
  */
+
+import { matchSides } from './layout';
 
 export const DEFAULT_FRAME_MESSAGES: readonly string[] = [
   'Go! Go! Go!',
@@ -41,6 +43,12 @@ export function fillMessage(template: string, tokens: MessageTokens): string | n
     return value ?? '';
   });
   return missing ? null : text;
+}
+
+/** What `{partner1}` and `{partner2}` stand for: the two sides the frame shows (see `matchSides`), else the lone home or visitor name. */
+export function messageTokens(input: { home?: string | null; visitor?: string | null; eventName: string }): MessageTokens {
+  const sides = matchSides(input);
+  return sides ? { partner1: sides[0], partner2: sides[1] } : { partner1: input.home, partner2: input.visitor };
 }
 
 export function usableMessages(templates: readonly string[], tokens: MessageTokens): UsableMessage[] {
