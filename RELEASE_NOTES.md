@@ -1,5 +1,33 @@
 # RELEASE_NOTES.md
 
+## Unreleased — capture: native 4:3 camera mode, no user-agent sniffing, canvas cap
+
+- **Changed:** the camera request is now a 4:3 mode (1440x1920 on a phone held upright,
+  1920x1440 otherwise) instead of up to 4K plus an `aspectRatio` hint. There is no
+  `aspectRatio` constraint any more, so the browser has nothing to crop the frame for.
+  Most phone sensors are 4:3 and 16:9 video modes are crops of them, so a 4:3 stream shows
+  at least as much of the scene in any frame; 2.8 MP also starts much faster than 4K. These
+  are starting values: the capture diagnostics (requested versus granted mode) and the
+  owner's phone tests show whether each device grants it.
+- **Changed:** `facingMode` is always an `ideal` and is sent on every device (webcams ignore
+  it), replacing the user-agent test that treated iPads as desktops, so Switch camera should now
+  work on iPad (not yet seen on a real device). Phone-versus-desktop is decided only for the stream's orientation,
+  from the pointer type or the UA client hint, never the user-agent string.
+- **Changed:** constraints are tried as a ladder: the 4:3 mode, then the facing only, then
+  anything. Permission and no-camera errors stop the ladder instead of being retried.
+- **Fixed:** the capture canvas is capped at 2048 px on the long side and 8 megapixels (iOS
+  Safari blanks canvases above 16,777,216 pixels). The page's composite already downsizes to
+  2048 px, so the final image is unchanged.
+- **Added:** `lib/camera/constraints.ts` with `constraints.test.ts`.
+- **Evidence (Chromium fake camera, production build):** the constraints that reach
+  `getUserMedia` were recorded in five scenarios: desktop, phone portrait, phone landscape,
+  first attempt overconstrained (second attempt facing only, capture works), permission denied
+  (one call, error shown). Real devices are not covered; the granted mode per device is what
+  the owner's phone tests will show. camera#207.
+- **Not changed:** the crop and output size (camera#208, #209), lens choice (camera#212). The
+  JPEG is still encoded twice (camera, then the page's composite); that goes away with the
+  full-frame capture (camera#208 and #209), which rebuilds that pipeline.
+
 ## Unreleased — anonymous capture diagnostics
 
 - **Added:** `POST /api/observability/capture-diagnostic`, a public, allowlisted,
