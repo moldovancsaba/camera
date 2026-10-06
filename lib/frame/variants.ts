@@ -12,9 +12,9 @@ import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { contextHash, type FrameDesign, type FrameVariant } from './context';
 import { resolveFrameFont, type ResolvedFont } from './fonts';
-import { DEFAULT_FRAME_HEIGHT, DEFAULT_FRAME_WIDTH, layerBoxes, matchSides } from './layout';
+import { DEFAULT_FRAME_HEIGHT, DEFAULT_FRAME_WIDTH, layerBoxes } from './layout';
 import { fetchLogo } from './logo';
-import { usableMessages } from './messages';
+import { messageTokens, usableMessages } from './messages';
 import { FRAME_RENDER_VERSION, renderFrame } from './render';
 
 export interface VariantDeps {
@@ -54,10 +54,10 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
 
   const { context } = design;
   // The placeholders name the sides the frame shows (the pairing in the event name when the home partner is a competition).
-  const home = context.event.homeTeam?.name;
-  const visitor = context.event.visitorTeam?.name;
-  const sides = matchSides({ home, visitor, eventName: context.event.name });
-  const usable = usableMessages(design.messages, { partner1: sides ? sides[0] : home, partner2: sides ? sides[1] : visitor });
+  const usable = usableMessages(
+    design.messages,
+    messageTokens({ home: context.event.homeTeam?.name, visitor: context.event.visitorTeam?.name, eventName: context.event.name })
+  );
   // No usable message: one frame without a message layer, so the event still has its frame.
   const jobs = usable.length > 0 ? usable.map((m) => ({ index: m.index as number | null, message: m.text as string | null })) : [{ index: null, message: null }];
 

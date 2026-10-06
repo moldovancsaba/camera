@@ -5,6 +5,7 @@ import {
   fillMessage,
   MAX_FRAME_MESSAGE_LENGTH,
   MAX_FRAME_MESSAGES,
+  messageTokens,
   pickMessage,
   usableMessages,
   validateMessages,
@@ -70,4 +71,10 @@ test('empty, over-long, non-text, unknown placeholder and stray brace are refuse
 test('an emoji counts as one character toward the length limit', () => {
   assert.equal(validateMessages(['🫶'.repeat(MAX_FRAME_MESSAGE_LENGTH)]).ok, true);
   assert.equal(validateMessages(['🫶'.repeat(MAX_FRAME_MESSAGE_LENGTH + 1)]).ok, false);
+});
+
+test('the tokens are the sides the frame shows: real teams, else the pairing in the name, else the lone team', () => {
+  assert.deepEqual(messageTokens({ home: 'FC Barcelona', visitor: 'Real Madrid', eventName: 'A - B' }), { partner1: 'FC Barcelona', partner2: 'Real Madrid' });
+  assert.deepEqual(messageTokens({ home: 'EuroLeague Women', visitor: null, eventName: 'Casademont Zaragoza - Basket Landes' }), { partner1: 'Casademont Zaragoza', partner2: 'Basket Landes' });
+  assert.deepEqual(messageTokens({ home: 'AS Roma', visitor: null, eventName: 'Fan Day' }), { partner1: 'AS Roma', partner2: null });
 });

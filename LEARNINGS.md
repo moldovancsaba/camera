@@ -1235,6 +1235,20 @@ _Use this template for new learnings:_
 
 **Key Decisions**: record a generated frame in its own field rather than faking a frame id; keep the page free of colour literals through a token constant (`FRAME_TERRITORY_FILL`); no issue numbers inside string literals.
 
+### [FRONT-014] Testing a React panel against a mocked API: `role="alert"` is not only yours — 2026-10-06T00:00:00.000Z
+
+**Issue**: The event editor panel for the generated frame needed a real-browser check of its error messages, and the first run of the check passed where it should have failed.
+
+**Context**:
+- Next.js renders a route announcer with `role="alert"` on every page, so `page.getByRole('alert').count() >= 1` is true with no error on screen, and `=== 0` is never true. The "Discard clears the error" check failed for that reason and the three validation checks passed for the wrong one.
+- A notice that repeats a value also made a text count 2 instead of 1 (the "Bar colour changed" line and the colour in the facts list).
+
+**Solution**:
+- Locate the panel's own error by element (`p[role="alert"]`) and scope fact checks to the list that holds them (`dl`).
+- The panel itself was mounted on a throwaway lab page of a production build with the API mocked at the network level (the real admin page needs an SSO session), and the lab page was deleted before committing. Reorder is done with Up/Down buttons, so the keyboard check is a focused button and Enter.
+
+**Key Decisions**: a check that cannot fail is not a check: make each assertion fail once on purpose (or read the page) before trusting it.
+
 **Last Updated**: 2026-10-06T00:00:00.000Z
 
 ---

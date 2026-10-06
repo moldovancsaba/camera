@@ -61,6 +61,22 @@
 - **Not changed:** the privacy and consent wording (per landing page, owner content); proposed
   sentences are in RUNBOOK for sign-off. Deleting an event still leaves its submissions.
 
+## Unreleased — the generated frame can be edited in the event editor
+
+- **Added:** a "Generated default frame" panel at the top of an event's Frames page (`/admin/events/[id]/frames`):
+  the images that exist (on a photo-like backdrop, with the message each carries, and a note when the logo or a
+  custom font could not be had), what they are built from (source and time of the messmass snapshot, event, teams,
+  logo, theme, font, colours), the message list with Add, Remove, Up and Down (buttons, so the order can be changed from
+  the keyboard), a character count and, for `{partner1}` / `{partner2}`, how each message reads for this event or that
+  it is skipped, Save messages, Discard changes and Reset to the default list. Saving draws the images again.
+- **Added:** "Refresh from messmass": says what changed (names, logo, font, colours), or that nothing did, or that
+  messmass could not be reached and the previous snapshot is kept. The snapshot still does not follow messmass by itself.
+- The panel says whether the generated frame is in use: it is not while the event has an active frame of its own;
+  assigning one on the same page replaces it at once, deactivating or removing it brings the generated frame back.
+- Checked on a production build with the API mocked: edit, keyboard reorder, add (up to ten), remove, validation
+  (81 characters, unknown placeholder, empty), save, reset, refresh in its three outcomes, a failing save, no
+  snapshot yet, an own frame, 320, 390 and 768 px wide with no horizontal scroll.
+
 ## Unreleased — frame messages name the sides the frame shows
 
 - **Changed:** `{partner1}` and `{partner2}` in the frame messages now fill with the two sides shown as the teams text:
