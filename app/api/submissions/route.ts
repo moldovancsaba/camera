@@ -14,6 +14,7 @@ import { head as blobHead } from '@vercel/blob';
 import { sanitizeReframeRecord } from '@/lib/camera/reframe';
 import { blobStoreHostFromToken, verifyOriginalImage } from '@/lib/submissions/original-image';
 import { logWarn } from '@/lib/observability/logger';
+import { sanitizeFrameVariant, type RecordedFrameVariant } from '@/lib/frame/capture';
 import {
   COLLECTIONS,
   DeviceType,
@@ -171,6 +172,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       originalImageWidth,
       originalImageHeight,
       reframe: claimedReframe,
+      // The message and image of the generated default frame the photo used (camera#236); checked below.
+      frameVariant: claimedFrameVariant,
       // Custom page data
       userInfo,
       consents,
@@ -237,6 +240,18 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       }
     }
 
+    // The generated default frame applies only to a photo without a frame of its own. A claim that is not one of this
+    // project's generated frame images is dropped; the photo still saves.
+    let frameVariant: RecordedFrameVariant | null = null;
+    if (!frame && claimedFrameVariant !== undefined && claimedFrameVariant !== null) {
+      frameVariant = sanitizeFrameVariant(claimedFrameVariant, blobStoreHostFromToken(process.env.BLOB_READ_WRITE_TOKEN));
+      if (!frameVariant) {
+        logWarn('submissions.frame_variant_dropped', 'The claimed generated frame variant is not valid; saving without it', {
+          eventId: typeof eventId === 'string' ? eventId : null,
+        });
+      }
+    }
+
     // Validate userInfo if provided
     // If userInfo is provided from 'who-are-you' page, validate structure
     let validatedUserInfo = undefined;
@@ -290,6 +305,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       frameId: frame?.frameId || null,
       frameName: frame?.name || null,
       frameCategory: frame?.category || null,
+      // Which generated-frame image (and message) this photo used; try-on composes with it later (camera#236)
+      ...(frameVariant ? { frameVariant } : {}),
       // Partner/Event context (for gallery filtering)
       partnerId: partnerId || null,
       partnerName: partnerName || null,

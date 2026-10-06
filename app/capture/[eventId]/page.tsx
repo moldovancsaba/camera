@@ -14,7 +14,7 @@
 
 'use client';
 
-import { useState, useEffect, use, useCallback } from 'react';
+import { useState, useEffect, use, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import { Button, Checkbox } from '@mantine/core';
 import CameraCapture from '@/components/camera/CameraCapture';
@@ -39,6 +39,7 @@ import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep';
 import type { FullFrameCapture } from '@/lib/camera/frame-capture';
 import type { ReframeRecord } from '@/lib/camera/reframe';
+import { pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory } from '@/lib/frame/capture';
 import { uploadOriginal, type UploadedOriginal } from '@/lib/camera/original-upload';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
@@ -55,6 +56,8 @@ interface Frame {
   imageUrl: string;
   width: number;
   height: number;
+  /** Set when this is the image of the generated default frame picked for one shutter press (camera#236). */
+  generated?: { index: number | null; message: string | null; territories: Territory[] };
 }
 
 interface EventData {
@@ -74,6 +77,8 @@ interface EventData {
     buttonSize?: EventButtonSize;
   };
   frames?: EventFrameAssignment[];
+  /** The generated default frame, present only while the event has no active frame of its own (camera#236). */
+  generatedFrame?: CaptureFrame | null;
   tryOn?: {
     enabled: boolean;
     setupId?: string | null;
@@ -212,6 +217,18 @@ function buildEmailDeliveryNotice(metadata?: SubmissionEmailMetadata | null): st
   return '';
 }
 
+/** The generated default frame's image for one shutter press, in the shape the composite step already uses. */
+function variantFrame(variant: CaptureVariant): Frame {
+  return {
+    frameId: '',
+    name: 'Default event frame',
+    imageUrl: variant.imageUrl,
+    width: variant.width,
+    height: variant.height,
+    generated: { index: variant.index, message: variant.message, territories: territoriesOf(variant) },
+  };
+}
+
 export default function EventCapturePage({
   params,
 }: {
@@ -224,6 +241,10 @@ export default function EventCapturePage({
   const [onboardingLogoUrl, setOnboardingLogoUrl] = useState<string | null>(null);
   const [frames, setFrames] = useState<Frame[]>([]);
   const [selectedFrame, setSelectedFrame] = useState<Frame | null>(null);
+  // The generated default frame of an event without a frame of its own (camera#236): the guest never sees a picker,
+  // each shutter press takes a random variant (never the one before) and the live view and reframe show territories.
+  const [generatedFrame, setGeneratedFrame] = useState<CaptureFrame | null>(null);
+  const lastVariantIndex = useRef<number | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   // The whole camera image and how it was framed (camera#209). The original is held for the
   // reframe step; storing it is camera#210, and the record is sent with the submission.
@@ -431,6 +452,7 @@ export default function EventCapturePage({
             buttonSize: normalizeEventButtonSize(eventData.visualSettings?.buttonSize),
           },
           tryOn: eventData.tryOn,
+          generatedFrame: eventData.generatedFrame ?? null,
         });
         
         // Fetch logos for loading-capture and onboarding-thankyou scenarios
@@ -502,7 +524,8 @@ export default function EventCapturePage({
             setStep('capture-photo');
           }
         } else {
-          // No frames - skip to capture without frame
+          // No frame of its own: the generated frame if there is one, else no frame at all. Either way, skip the picker.
+          setGeneratedFrame(eventData.generatedFrame ?? null);
           setStep('capture-photo');
         }
       } catch (error) {
@@ -516,7 +539,7 @@ export default function EventCapturePage({
   }, [eventId]);
 
   useEffect(() => {
-    if (!selectedFrame?.imageUrl) {
+    if (!selectedFrame?.imageUrl || selectedFrame.generated) {
       setFrameIntrinsicAspect(null);
       return;
     }
@@ -532,7 +555,7 @@ export default function EventCapturePage({
     return () => {
       cancelled = true;
     };
-  }, [selectedFrame?.frameId, selectedFrame?.imageUrl]);
+  }, [selectedFrame?.frameId, selectedFrame?.imageUrl, selectedFrame?.generated]);
 
   const compositeImageWithFrame = useCallback(async () => {
     if (!capturedImage || !selectedFrame) return;
@@ -669,6 +692,12 @@ export default function EventCapturePage({
     setStep('capture-photo');
   };
 
+  // Territories of the generated frame for the live view, taken from its first image (the layers are the same in all of them).
+  const liveTerritories = useMemo(
+    () => (generatedFrame && frames.length === 0 ? territoriesOf(generatedFrame.variants[0]) : undefined),
+    [generatedFrame, frames.length]
+  );
+
   // Width over height of the frame the photo is cropped to (16:9 when the event has no frame).
   const captureAspect = selectedFrame
     ? frameIntrinsicAspect ??
@@ -678,6 +707,13 @@ export default function EventCapturePage({
   // The camera records the whole image; the fan then moves and zooms it inside the frame in the
   // reframe step (camera#209), whose default is the largest crop that fills the frame.
   const handleCameraCapture = (capture: FullFrameCapture) => {
+    if (generatedFrame) {
+      const variant = pickVariant(generatedFrame, lastVariantIndex.current);
+      if (variant) {
+        lastVariantIndex.current = variant.index;
+        setSelectedFrame(variantFrame(variant));
+      }
+    }
     setCapturedOriginal(capture);
     setReframeRecord(null);
     setStep('reframe');
@@ -742,9 +778,11 @@ export default function EventCapturePage({
         originalImageWidth?: number;
         originalImageHeight?: number;
         reframe?: ReframeRecord;
+        // The message and image of the generated default frame this photo used (camera#236).
+        frameVariant?: { index: number | null; message: string | null; imageUrl: string };
       } = {
         imageData: compositeImage,
-        frameId: selectedFrame?.frameId || null,  // Optional frame
+        frameId: selectedFrame?.generated ? null : selectedFrame?.frameId || null,  // Optional frame
         eventId: event.eventId,  // Use event UUID, not URL parameter
         eventName: event.name,
         partnerId: event.partnerId,
@@ -753,6 +791,15 @@ export default function EventCapturePage({
         imageHeight: imageDimensions?.height || selectedFrame?.height || 1080,
         cameraId,
         shareOptIn,
+        ...(selectedFrame?.generated
+          ? {
+              frameVariant: {
+                index: selectedFrame.generated.index,
+                message: selectedFrame.generated.message,
+                imageUrl: selectedFrame.imageUrl,
+              },
+            }
+          : {}),
         ...(uploadedOriginal && reframeRecord
           ? {
               originalImageUrl: uploadedOriginal.url,
@@ -929,7 +976,8 @@ export default function EventCapturePage({
   };
 
   const handleReset = () => {
-    // Keep selected frame and go back to capture step
+    // Keep a chosen frame and go back to capture step; a generated variant is picked again at the next shutter press
+    setSelectedFrame((current) => (current?.generated ? null : current));
     setCapturedImage(null);
     setCapturedOriginal(null);
     setUploadedOriginalCache(null);
@@ -1422,9 +1470,10 @@ export default function EventCapturePage({
                 // The camera records the whole image; the reframe step crops it to the frame and
                 // compositeImageWithFrame adds the overlay afterwards.
                 onCapture={handleCameraCapture}
-                frameWidth={selectedFrame?.width || 1920}
-                frameHeight={selectedFrame?.height || 1080}
+                frameWidth={selectedFrame?.width || generatedFrame?.width || 1920}
+                frameHeight={selectedFrame?.height || generatedFrame?.height || 1080}
                 previewAspectWidthOverHeight={captureAspect}
+                territories={liveTerritories}
                 captureButtonColor={event?.brandColor || CAMERA_DEFAULT_BRAND_COLOR}
                 captureButtonBorderColor={event?.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR}
                 promptTitle={cameraPromptTitle}
@@ -1442,7 +1491,9 @@ export default function EventCapturePage({
             <ReframeStep
               capture={capturedOriginal}
               frameAspect={captureAspect}
-              frameImageUrl={selectedFrame?.imageUrl ?? null}
+              // The generated frame shows as territories until the preview step; own frames as before.
+              frameImageUrl={selectedFrame?.generated ? null : selectedFrame?.imageUrl ?? null}
+              territories={selectedFrame?.generated?.territories}
               buttonSize={eventButtonSize}
               onDone={handleReframeDone}
               onRetake={handleReframeRetake}

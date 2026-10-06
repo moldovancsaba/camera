@@ -28,6 +28,7 @@ import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/part
 import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
 import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
+import { captureFrameOf } from '@/lib/frame/capture';
 
 function normalizeEventNotificationSettings(value: unknown) {
   const notificationPolicy = normalizeSubmissionEmailPolicy(value);
@@ -159,12 +160,18 @@ export const GET = withErrorHandler(async (
     });
   }
 
+  // The generated default frame reaches the capture page as `generatedFrame`, derived: present only while the event
+  // has no active frame of its own (camera#236). The stored `frameDesign` (snapshot of messmass data, message list,
+  // render internals) is admin data and is not part of this public response; admins read it from .../frame-design.
+  const { frameDesign, ...publicEvent } = event;
+
   // Return event with serialized _id
   // customPages is included automatically
   return apiSuccess({
     event: {
-      ...event,
+      ...publicEvent,
       _id: event._id.toString(),
+      generatedFrame: captureFrameOf({ frames: event.frames, frameDesign: frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'] }),
     }
   });
 });

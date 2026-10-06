@@ -226,6 +226,13 @@ panel and the backfill follow (camera#235 to #238).
 - **Reuse:** an image is redrawn only when something that decides it changed (what is drawn, the message, the font
   actually used, the drawing code `FRAME_RENDER_VERSION`). An image made while the logo could not be fetched
   (`logo: failed`) or a custom font could not be fetched (`font.retry`) is redrawn at the next generation.
+- **Capture (camera#236):** while an event has no active frame of its own and `frameDesign.variants` has images, the
+  guest page skips the frame picker, shows the layer boxes as 50% black territories in the live view and the reframe
+  step, picks a variant at every shutter press and composes it on the preview step. The submission stores
+  `frameVariant { index, message, imageUrl }` and `frameId: null`. To switch an event off, assign it an active frame of
+  its own (the generated frame is derived, so this takes effect at once) and to switch it back, deactivate that frame.
+  A `submissions.frame_variant_dropped` warning means a client sent an image that is not one of ours; the photo was saved
+  without the record. The public event response carries `generatedFrame`, not `frameDesign`.
 - **Event names that are a pairing:** when there is no home and visitor team, a name like "A - B", "A x B" or "A vs B"
   is drawn as two lines without the separator (camera#244, rules in the plan, decision 15). Bumping
   `FRAME_RENDER_VERSION` is how a change to the drawing code reaches existing events: their images are redrawn at the
