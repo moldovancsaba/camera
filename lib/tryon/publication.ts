@@ -80,6 +80,8 @@ export function buildDerivedTryOnSubmission({
     frameId: sourceSubmission.frameId,
     frameName: sourceSubmission.frameName ?? null,
     frameCategory: sourceSubmission.frameCategory ?? null,
+    // The generated-frame image the source photo used (camera#236), so the result keeps the same frame
+    ...(sourceSubmission.frameVariant ? { frameVariant: sourceSubmission.frameVariant } : {}),
     partnerId: sourceSubmission.partnerId ?? null,
     partnerName: sourceSubmission.partnerName ?? null,
     eventId: sourceSubmission.eventId ?? eventIds[0] ?? null,

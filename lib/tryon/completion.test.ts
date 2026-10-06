@@ -25,17 +25,23 @@ const FRAMED_PREVIEW = 'https://i.ibb.co/abc123/tryon-framed-1-preview.jpg';
 const FRAMED_DELETE = 'https://i.ibb.co/abc123/framed-1-delete';
 const NEW_FRAMED = 'https://i.ibb.co/def456/tryon-framed-2.png';
 const FRAME_URL = 'https://example.public.blob.vercel-storage.com/frame-1.png';
+// A generated default frame image (camera#236) lives in this project's Blob store, named by the token.
+process.env.BLOB_READ_WRITE_TOKEN = 'vercel_blob_rw_teststoreid_testsecretvalue0123456789';
+const GENERATED_FRAME = 'https://teststoreid.public.blob.vercel-storage.com/frames/generated/evt-1/variant-two.png';
+const FOREIGN_FRAME = 'https://other.example/frames/generated/variant-two.png';
 
 let composeFails = false;
 const composedFrom: string[] = [];
+const composedWith: string[] = [];
 const inspected: string[] = [];
 const publicationLinks: string[] = [];
 
 const publicationReal = await import('@/lib/tryon/publication');
 mock.module('@/lib/tryon/frame-composition', {
   namedExports: {
-    applyFrameToTryOnResult: async (resultUrl: string): Promise<TryOnResultAsset> => {
+    applyFrameToTryOnResult: async (resultUrl: string, frameUrl: string): Promise<TryOnResultAsset> => {
       composedFrom.push(resultUrl);
+      composedWith.push(frameUrl);
       if (composeFails) {
         throw new Error('Failed to fetch image asset: 503 Service Unavailable');
       }
@@ -146,10 +152,11 @@ function storedSourceResultUrl(fake: FakeDb): string | null {
   return (source as unknown as { tryOnRequest: { resultUrl: string | null } }).tryOnRequest.resultUrl;
 }
 
-function setup(options: { frameRecord?: boolean; applyFrame?: boolean; derived?: boolean; failCompose?: boolean; autoApprove?: boolean } = {}) {
-  const { frameRecord = true, applyFrame = true, derived = true, failCompose = false, autoApprove = false } = options;
+function setup(options: { frameRecord?: boolean; applyFrame?: boolean; derived?: boolean; failCompose?: boolean; autoApprove?: boolean; generated?: string } = {}) {
+  const { frameRecord = true, applyFrame = true, derived = true, failCompose = false, autoApprove = false, generated } = options;
   composeFails = failCompose;
   composedFrom.length = 0;
+  composedWith.length = 0;
   inspected.length = 0;
   publicationLinks.length = 0;
 
@@ -159,7 +166,9 @@ function setup(options: { frameRecord?: boolean; applyFrame?: boolean; derived?:
     ],
     [COLLECTIONS.FRAMES]: frameRecord ? [{ frameId: 'frame-1', imageUrl: FRAME_URL }] : [],
     [COLLECTIONS.SUBMISSIONS]: [
-      { _id: SOURCE_ID, eventId: 'evt-1', frameId: 'frame-1', userName: 'Guest', userEmail: '' },
+      generated
+        ? { _id: SOURCE_ID, eventId: 'evt-1', frameId: null, frameVariant: { index: 1, message: 'We are the Best!', imageUrl: generated }, userName: 'Guest', userEmail: '' }
+        : { _id: SOURCE_ID, eventId: 'evt-1', frameId: 'frame-1', userName: 'Guest', userEmail: '' },
       ...(derived ? [derivedFramedResult()] : []),
     ],
     [COLLECTIONS.TRYON_JOBS]: [structuredClone(buildJob())],
@@ -270,4 +279,46 @@ test('image.direct completion keeps a new result pending and hidden even when ev
   assert.equal(created.reviewStatus, 'pending_review');
   assert.equal(created.isShareVisible, false);
   assert.equal(created.isSlideshowEligible, false);
+});
+
+test('a photo taken with the generated frame gets its try-on result composed with the same image, and the result records it', async () => {
+  const fake = setup({ derived: false, generated: GENERATED_FRAME });
+
+  const outcome = await applyTryOnCompletion(fake.db, buildJob(), { publicResultUrl: RAW });
+
+  assert.equal(outcome.action, 'created');
+  assert.deepEqual(composedFrom, [RAW]);
+  assert.deepEqual(composedWith, [GENERATED_FRAME]);
+  const created = storedResult(fake, (doc) => doc.sourceJobId === JOB_ID) as StoredResult & { frameId: unknown; frameVariant: unknown };
+  assert.equal(created.imageUrl, NEW_FRAMED);
+  assert.equal(created.frameId, null);
+  assert.deepEqual(created.frameVariant, { index: 1, message: 'We are the Best!', imageUrl: GENERATED_FRAME });
+});
+
+test('the generated frame is not composed when the event does not apply frames to returned results', async () => {
+  const fake = setup({ derived: false, applyFrame: false, generated: GENERATED_FRAME });
+
+  await applyTryOnCompletion(fake.db, buildJob(), { publicResultUrl: RAW });
+
+  assert.deepEqual(composedWith, []);
+  assert.deepEqual(inspected, [RAW]);
+});
+
+test('a recorded image that is not one of ours is never fetched for a try-on result', async () => {
+  const fake = setup({ derived: false, generated: FOREIGN_FRAME });
+
+  await applyTryOnCompletion(fake.db, buildJob(), { publicResultUrl: RAW });
+
+  assert.deepEqual(composedWith, []);
+  assert.deepEqual(inspected, [RAW]);
+});
+
+test('a reapply for a generated-frame photo composes the stored raw output again, never the framed composite', async () => {
+  const fake = setup({ generated: GENERATED_FRAME });
+
+  const outcome = await applyCompletionFromJobResult(fake.db, buildJob());
+
+  assert.equal(outcome.action, 'updated');
+  assert.deepEqual(composedFrom, [RAW]);
+  assert.deepEqual(composedWith, [GENERATED_FRAME]);
 });

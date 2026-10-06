@@ -6,6 +6,8 @@ import {
   type TryOnJob,
 } from '@/lib/db/schemas';
 import { nowIso } from '@/lib/tryon/time';
+import { sanitizeFrameVariant } from '@/lib/frame/capture';
+import { blobStoreHostFromToken } from '@/lib/submissions/original-image';
 import { apiBadRequest, apiForbidden, apiNotFound } from '@/lib/api';
 import { detectImageProvider, normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
 import { buildDerivedTryOnSubmission, buildTryOnPublicationSummary, upsertSubmissionTryOnPublicationLink } from '@/lib/tryon/publication';
@@ -222,7 +224,13 @@ async function resolveTryOnResultAsset(
     ? sourceSubmission.frameId.trim()
     : null;
 
-  if (!frameId) {
+  // A photo taken with the generated default frame has no stored frame; it records the image it used (camera#236), and
+  // the result composes with that same image so the try-on result carries the frame the fan saw (camera#238).
+  const generated = frameId
+    ? null
+    : sanitizeFrameVariant(sourceSubmission.frameVariant, blobStoreHostFromToken(process.env.BLOB_READ_WRITE_TOKEN));
+
+  if (!frameId && !generated) {
     return withoutFrame();
   }
 
@@ -230,12 +238,15 @@ async function resolveTryOnResultAsset(
     return withoutFrame();
   }
 
-  const frame = await db.collection<FrameRecord>(COLLECTIONS.FRAMES).findOne(
-    { frameId },
-    { projection: { fileUrl: 1, imageUrl: 1, width: 1, height: 1 } }
-  );
+  const frame = frameId
+    ? await db.collection<FrameRecord>(COLLECTIONS.FRAMES).findOne(
+        { frameId },
+        { projection: { fileUrl: 1, imageUrl: 1, width: 1, height: 1 } }
+      )
+    : null;
 
-  const frameAssetUrl = frame ? resolveFrameAssetUrl(frame) : null;
+  // The generated image carries its own size (read from the file), so no width or height is passed for it.
+  const frameAssetUrl = generated ? generated.imageUrl : frame ? resolveFrameAssetUrl(frame) : null;
   if (!frameAssetUrl) {
     return withoutFrame();
   }
@@ -255,7 +266,7 @@ async function resolveTryOnResultAsset(
         : 'Failed to apply frame to returned try-on result; falling back to raw upload.',
       {
         eventId: sourceSubmission.eventId ?? null,
-        frameId,
+        frameId: frameId ?? 'generated',
         errorCode: 'frame_composition_failed',
       }
     );
