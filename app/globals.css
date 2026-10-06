@@ -65,6 +65,25 @@ body {
   font-family: var(--mantine-font-family);
 }
 
+/*
+ * App-like camera steps (camera#222), switched on by components/capture/AppShellLock.tsx.
+ * The page cannot scroll, bounce or pull-to-refresh, and `touch-action` keeps the browser from
+ * zooming it on double tap or pinch where it honours the property (iOS pinch is cancelled in JS).
+ * Lists inside the screen (frame picker, the action panel) still scroll within themselves.
+ */
+html[data-app-lock],
+html[data-app-lock] body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
+}
+
+html[data-app-lock] body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+}
+
 [data-camera-admin] .gds-responsive-mobile {
   display: none;
 }

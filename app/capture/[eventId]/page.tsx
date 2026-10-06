@@ -18,6 +18,7 @@ import { useState, useEffect, use, useCallback } from 'react';
 import Image from 'next/image';
 import { Button, Checkbox } from '@mantine/core';
 import CameraCapture from '@/components/camera/CameraCapture';
+import AppShellLock from '@/components/capture/AppShellLock';
 import ShareOverlay from '@/components/capture/ShareOverlay';
 import TourOverlay from '@/components/tour/TourOverlay';
 import TourReplayButton from '@/components/tour/TourReplayButton';
@@ -145,6 +146,11 @@ interface SubmissionEmailMetadata {
   emailError?: string | null;
   emailSendAfterRelatedPending?: boolean;
 }
+
+// The actions beside or below the preview image. The options scroll inside the panel; the buttons stay
+// pinned, so a tall try-on selector never pushes them off screen (camera#222).
+const PREVIEW_PANEL_CLASS =
+  'flex w-full max-w-md min-h-0 shrink flex-col gap-2 px-3 landscape:h-full landscape:w-[22rem] landscape:max-w-[45%] landscape:shrink-0 landscape:justify-center';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
@@ -1199,7 +1205,7 @@ export default function EventCapturePage({
   
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-transparent">
+      <div className="flex min-h-dvh items-center justify-center bg-transparent">
         <div className="text-center">
           {loadingLogoUrl ? (
             <div className="relative mx-auto mb-8 h-64 w-full max-w-md">
@@ -1220,7 +1226,7 @@ export default function EventCapturePage({
 
   if (!event) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-transparent p-4">
+      <div className="flex min-h-dvh items-center justify-center bg-transparent p-4">
         <div className="text-center max-w-md">
           <h2 className="text-2xl font-bold  mb-2">
             Event Not Found
@@ -1235,6 +1241,7 @@ export default function EventCapturePage({
 
   return (
     <div className="fixed inset-0 flex flex-col landscape:flex-row bg-transparent">
+      <AppShellLock />
       <TourOverlay controller={selectFrameTour} />
       <TourOverlay controller={photoTour} />
       <TourOverlay controller={previewTour} />
@@ -1300,7 +1307,11 @@ export default function EventCapturePage({
               )}
             </div>
             {/* Progress Steps - Hide in landscape for camera */}
-            <div className="flex items-center justify-center gap-2 landscape:flex-col landscape:gap-4 landscape:hidden">
+            <div
+              className={`flex items-center justify-center gap-2 landscape:flex-col landscape:gap-4 landscape:hidden ${
+                step === 'preview' ? '[@media(max-height:640px)]:hidden' : ''
+              }`}
+            >
               {/* Only show frame selection step if multiple frames */}
               {frames.length > 1 && (
                 <>
@@ -1350,7 +1361,13 @@ export default function EventCapturePage({
       )}
 
       {/* Content Area - Scrollable */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 landscape:overflow-x-auto landscape:overflow-y-hidden">
+      <div
+        className={`min-h-0 flex-1 px-4 pb-4 ${
+          step === 'preview'
+            ? 'overflow-hidden'
+            : 'overflow-y-auto overflow-x-hidden landscape:overflow-x-auto landscape:overflow-y-hidden'
+        }`}
+      >
         {/* Step 1: Frame Selection - Fit to screen keeping aspect ratio */}
         {step === 'select-frame' && (
           <div className="h-full flex items-center justify-center p-4">
@@ -1433,86 +1450,89 @@ export default function EventCapturePage({
 
         {/* Step 3: Preview */}
         {step === 'preview' && compositeImage && (
-          <div className="w-full py-4">
-            <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-4">
-              {/* Image with no overlayed controls */}
-              <div className="relative w-full">
+          <div className="h-full w-full py-2">
+            <div className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-col items-center gap-3 landscape:flex-row landscape:gap-4">
+              {/* The image takes the space the actions leave; it is never scrolled past (camera#222) */}
+              <div className="relative min-h-[20dvh] w-full flex-1 landscape:h-full landscape:min-h-0 landscape:min-w-0">
                 <Image
                   src={compositeImage}
                   alt="Final result"
-                  width={selectedFrame?.width || 1200}
-                  height={selectedFrame?.height || 1200}
+                  fill
                   unoptimized
-                  className="w-full h-auto max-w-full object-contain"
+                  className="object-contain"
                 />
               </div>
 
               {!shareUrl && (
-                <div className="flex w-full max-w-md flex-col gap-4 px-4">
-                  {event?.tryOn?.enabled ? (
-                    <div className="rounded-2xl p-4 shadow-2xl">
-                      <TryOnSuitSelector
-                        selectedSuitId={selectedTryOnSuitId}
-                        onChange={setSelectedTryOnSuitId}
-                        disabled={isSaving}
-                        eventMongoId={eventId}
-                        outfitEnabled={event?.tryOn?.outfitEnabled === true}
-                        selectedBottomSuitId={selectedTryOnBottomSuitId}
-                        onBottomChange={setSelectedTryOnBottomSuitId}
+                <div className={PREVIEW_PANEL_CLASS}>
+                  <div className="flex min-h-0 flex-col gap-2 overflow-y-auto px-1 py-1">
+                    {event?.tryOn?.enabled ? (
+                      <div className="rounded-2xl p-3 shadow-md">
+                        <TryOnSuitSelector
+                          selectedSuitId={selectedTryOnSuitId}
+                          onChange={setSelectedTryOnSuitId}
+                          disabled={isSaving}
+                          eventMongoId={eventId}
+                          outfitEnabled={event?.tryOn?.outfitEnabled === true}
+                          selectedBottomSuitId={selectedTryOnBottomSuitId}
+                          onBottomChange={setSelectedTryOnBottomSuitId}
+                        />
+                      </div>
+                    ) : null}
+                    <div className="rounded-2xl p-3 shadow-md">
+                      <Checkbox
+                        id="share-opt-in"
+                        checked={shareOptIn}
+                        onChange={(e) => setShareOptIn(e.currentTarget.checked)}
+                        label="Share my photo on the public pledge wall"
+                        aria-label="Share my photo on the public pledge wall"
+                        description="Your photo will appear on this event's public pledge wall. Uncheck to keep it private."
+                        styles={{ label: { lineHeight: 1.6 } }}
                       />
                     </div>
-                  ) : null}
-                  <div className="rounded-2xl p-4 shadow-2xl">
-                    <Checkbox
-                      id="share-opt-in"
-                      checked={shareOptIn}
-                      onChange={(e) => setShareOptIn(e.currentTarget.checked)}
-                      label="Share my photo on the public pledge wall"
-                      aria-label="Share my photo on the public pledge wall"
-                      description="Your photo will appear on this event's public pledge wall. Uncheck to keep it private."
-                      styles={{ label: { lineHeight: 1.6 } }}
-                    />
                   </div>
-                  <Button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    size={eventButtonSize}
-                    radius="md"
-                    fullWidth
-                    color={event?.brandColor || CAMERA_DEFAULT_BRAND_COLOR}
-                    className="shadow-2xl"
-                  >
-                    {isSaving ? (
-                      event?.showLogo && event?.logoUrl ? (
-                        <Image
-                          src={event.logoUrl}
-                          alt="Event logo"
-                          width={32}
-                          height={32}
-                          unoptimized
-                          className="animate-pulse object-contain"
-                        />
-                      ) : null
-                    ) : null}
-                    <span className="text-xl">{isSaving ? 'SAVING...' : captureButtonText}</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleReset}
-                    size={eventButtonSize}
-                    radius="md"
-                    fullWidth
-                    variant="light"
-                    className="shadow-2xl"
-                  >
-                    <span className="text-xl">{retryButtonText}</span>
-                  </Button>
+                  <div className="flex shrink-0 flex-col gap-2 px-1 pb-1">
+                    <Button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      size={eventButtonSize}
+                      radius="md"
+                      fullWidth
+                      color={event?.brandColor || CAMERA_DEFAULT_BRAND_COLOR}
+                      className="shadow-md"
+                    >
+                      {isSaving ? (
+                        event?.showLogo && event?.logoUrl ? (
+                          <Image
+                            src={event.logoUrl}
+                            alt="Event logo"
+                            width={32}
+                            height={32}
+                            unoptimized
+                            className="animate-pulse object-contain"
+                          />
+                        ) : null
+                      ) : null}
+                      <span className="text-xl">{isSaving ? 'SAVING...' : captureButtonText}</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleReset}
+                      size={eventButtonSize}
+                      radius="md"
+                      fullWidth
+                      variant="light"
+                      className="shadow-md"
+                    >
+                      <span className="text-xl">{retryButtonText}</span>
+                    </Button>
+                  </div>
                 </div>
               )}
 
               {shareUrl && showSharePage && (
-                <div className="w-full px-4 max-w-md">
+                <div className={PREVIEW_PANEL_CLASS}>
                   <ShareOverlay
                     shareUrl={shareUrl}
                     title={shareScreenTitle}
@@ -1534,7 +1554,7 @@ export default function EventCapturePage({
               )}
 
               {shareUrl && !showSharePage && (
-                <div className="w-full px-4 max-w-md">
+                <div className={PREVIEW_PANEL_CLASS}>
                   <ShareOverlay
                     title="Saved"
                     shareCaption={shareCaptionForSocial}

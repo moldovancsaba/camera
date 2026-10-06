@@ -795,6 +795,19 @@ const capturePhoto = async () => {
 
 ---
 
+### [FRONT-010] Making the capture flow feel like an app: lock only the camera steps, and test the fit on a real build — 2026-10-06T00:00:00.000Z
+
+**Issue**: The capture shell was already `fixed inset-0`, so the document never scrolled, yet the preview step still forced scrolling: the photo was `w-full h-auto` with the try-on selector, share checkbox and two buttons stacked under it, and Save/Try again sat below the screen on most phones (1071 px down in landscape).
+
+**Solution**:
+- Measure before changing: a throwaway Playwright script (fake camera, mocked API routes, no database) walked the real page at 7 viewports and recorded page scroll plus each button's position. The fix was then confirmed with the same script.
+- The preview is a flex column (row in landscape): the image takes the remaining space (`next/image` `fill`, `object-contain`), the options scroll inside their own box, the buttons stay pinned.
+- Centring a card with `items-center justify-center` inside a fixed overlay clips both ends when the card is taller than the screen, and the top is unreachable. Use `min-h-full flex items-center` inside an `overflow-y-auto` shell (safe centring).
+- A route-wide `user-scalable=no` would also lock the consent and terms pages (reading content), and iOS Safari ignores it anyway. The lock is a component that sets `html[data-app-lock]` only while a camera step is mounted: CSS for scroll/overscroll/`touch-action`, and `gesturestart` cancelled for iOS pinch. `body { position: fixed }` stops iOS rubber-banding.
+- `next dev` could not be used for the browser check (the GDS stylesheet fails to parse under the dev Turbopack, a dev-only error); a production build and `next start` work.
+
+**Key Decisions**: Lock zoom and scroll per step, not per route; record it as a GDS accessibility exception with an owner and exit condition.
+
 ### [FRONT-009] GDS styles.css loses its Inter @import under Turbopack; load the font from the layout — 2026-10-06T00:00:00.000Z
 
 **Issue**: Replacing camera's hand-copied GDS theme CSS with the official `@sovereignsquad/gds-theme/styles.css` made the production build print "@import rules must precede all rules" and silently stopped Inter from loading, with no other visible symptom.

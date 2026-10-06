@@ -117,6 +117,23 @@ Camera exceptions follow the shared structure from [docs/GDS_EXCEPTION_STANDARD.
 | Slideshow player (`components/slideshow/**`, `/slideshow/**`) | Runtime constraint | Timing-sensitive queue orchestration, fullscreen behavior, and media-first presentation | GDS runtime boundary, `PlaybackSurface` framing, surrounding admin configuration surfaces, visible error/empty states, keyboard-safe exit where applicable | Keep narrowing until only timing-sensitive queue, fullscreen behavior, and media internals remain outside direct package ownership |
 | Guided tour spotlight overlay (`components/tour/**`, `lib/tour/**`) | Package coverage gap | Full-viewport spotlight/backdrop rendering, step sequencing, tooltip position math — no Tour/Spotlight contract or usable positioning primitive exists in `@sovereignsquad/gds-core` 6.3.0 either (only exported overlay primitive is `Tooltip`, a plain hover label) — confirmed still true at 6.3.0, not just stale from the 3.9.0 era | `OverlayManagerProvider` registration for stacking with other overlays, GDS-approved primitives via `components/gds/PublicPrimitives.tsx` for tour controls, keyboard/focus/reduced-motion accessibility baseline | Replace the custom spotlight/backdrop and step engine once GDS publishes a Tour/Spotlight contract |
 
+### Camera-step scroll and zoom lock (camera#222)
+
+Owner request after live phone testing (2026-10-06): the capture flow should feel like an app. The GDS PWA
+viewport policy (`general-design-system/docs/PWA_VIEWPORT_POLICY.md`) treats disabling zoom as a reviewed
+accessibility exception, so it is recorded here.
+
+| Item | Record |
+|------|--------|
+| Surface | The camera steps only: frame picker, capture, reframe, preview, share card. `components/capture/AppShellLock.tsx` sets `html[data-app-lock]` while one is mounted; `app/globals.css` turns it into no page scroll, no overscroll or pull-to-refresh, and `touch-action: pan-x pan-y`; iOS page-pinch is cancelled through `gesturestart`. |
+| Not covered, on purpose | The onboarding, consent/terms, form and thank-you pages, and every route outside the capture flow keep browser zoom and the default viewport (`width=device-width, initial-scale=1`). The route-wide `app-shell-fixed` viewport lane is not used, because it would also lock the consent text. |
+| Owner | `moldovancsaba` (product owner), decision 2026-10-06, review by 2026-12-31. |
+| Reflow | Every camera step fits 320x568, 375x667, 390x844, 360x740, 414x896 and landscape 844x390 and 667x375 with no page scroll and the main actions on screen (Playwright, fake camera, 2026-10-06). |
+| Text size | Type is `rem`-based GDS tokens, untouched; OS text size is not blocked. **Not yet tested** at 200% OS text size on a device. |
+| Zoom-dependent content | None: the camera steps need no pinch to read or operate; the reframe step has its own pinch and drag on the canvas. |
+| Open | Real-device check on iPhone Safari and Chrome Android (iOS pinch handling cannot be proven in desktop Chromium). |
+| Exit condition | Remove the component and the CSS if a camera step gains reading-heavy content, or the owner withdraws the decision. |
+
 ## Known package limitations: `AdminResourceCard` / `MediaPreviewCard`
 
 Originally confirmed by reading the compiled source of

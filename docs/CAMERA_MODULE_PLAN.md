@@ -79,8 +79,8 @@ See `docs/CAMERA_DEVICE_TEST.md` once camera#205 lands. Until then, per device a
 | #204 diagnostics, #206 front camera and shutter gating, #207 constraints (4:3 mode, no UA sniffing, canvas cap), #208 full-frame capture | merged; waiting for the owner's phone tests |
 | #209 reframe step | merged (live from 21c6eda) |
 | #210 storage of the original and the reframe record | merged (7f35bf9); waiting for the owner's live test |
-| #211 privacy: file deletion, orphan report | in review; consent and retention wording waits for sign-off |
-| #222 app-like capture (no page scroll, no zoom, fits the viewport) | planned, not started |
+| #211 privacy: file deletion, orphan report | merged (c8d1ff1); consent and retention wording waits for sign-off |
+| #222 app-like capture (no page scroll, no zoom, fits the viewport) | phase 1 in review (installable manifest is phase 2, owner to decide) |
 | #212 lenses, #205 harness, #213 canary | not started |
 
 ## Open questions
