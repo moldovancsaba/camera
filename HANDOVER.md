@@ -47,8 +47,8 @@ Open work is tracked on the GitHub project board, not in this file (next section
   event without an active frame of its own gets a frame built from messmass data (partner logo top right, teams text
   top left, theme-coloured bar with a random message per photo; 1920x1080). Merged: layout engine, messmass endpoint,
   snapshot and message list, server renderer, guest capture flow, event editor panel (`/admin/events/[id]/frames`),
-  pairing-in-event-name split, placeholder rule. In review: the rollout to existing events and try-on consistency
-  (camera#238, `/admin/frames/generated`). Not yet done: the renderer has not run inside a deployed function (RUNBOOK
+  pairing-in-event-name split, placeholder rule, the rollout tool for existing events and try-on consistency
+  (camera#238, `/admin/frames/generated`, merged but not run). Not yet done: the renderer has not run inside a deployed function (RUNBOOK
   "First check on Vercel"), nothing is generated in production, so guests see no change; then the dry-run report for the
   owner, then the run. Open: messmass#430, camera#237 (real save, accessibility audit).
 - **GDS:** camera is on 6.3.0 (vendored); the latest release is 6.7.0. The
