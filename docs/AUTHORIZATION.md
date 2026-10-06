@@ -152,7 +152,11 @@ These can be partner-scoped where implemented:
 - `/admin/events`
 - `/admin/events/[id]`
 
-### Photo review (camera#267)
+### Photo review (camera#267, camera#268)
+
+The **Photos** tab (`/admin/events/[id]/photos`) needs the **manager** role on the event (global admins always); a user without it is sent
+back to the event overview. The tab shows the vetting setting to everyone who can review, and the switch only to global admins.
+
 
 `POST /api/admin/submissions/[submissionId]/review` approves or rejects a photo of an event with vetting required. A global admin may
 review any photo; a partner user needs the **manager** role on the photo's event (`assertGlobalAdminOrPartnerEventAccess(..., 'manager')`),

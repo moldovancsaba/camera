@@ -211,6 +211,12 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       .collection(COLLECTIONS.SUBMISSIONS)
       .createIndex({ sourceJobId: 1 }, { sparse: true, unique: true, name: 'submissions_sourceJobId_unique' })
   );
+  // The photo moderation queue of an event (camera#268).
+  await track(COLLECTIONS.SUBMISSIONS, () =>
+    db
+      .collection(COLLECTIONS.SUBMISSIONS)
+      .createIndex({ eventId: 1, reviewStatus: 1, createdAt: -1 }, { name: 'submissions_eventId_review_createdAt' })
+  );
   // Share links of vetted photos carry an opaque token (camera#269); only photos that have one are indexed.
   await track(COLLECTIONS.SUBMISSIONS, () =>
     db

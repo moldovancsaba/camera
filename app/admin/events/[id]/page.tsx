@@ -185,6 +185,8 @@ export default async function EventDetailPage({
         $and: [
           { $or: [{ eventId: event.eventId }, { eventIds: { $in: [event.eventId] } }] },
           { isArchived: { $ne: true } },
+          // A photo of a vetted event that is waiting or rejected is handled under Photos, not shown in the gallery (camera#268).
+          { $or: [{ photoReview: { $exists: false } }, { reviewStatus: 'approved' }] },
           {
             $or: [
               { hiddenFromEvents: { $exists: false } },

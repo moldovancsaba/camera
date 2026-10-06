@@ -317,8 +317,10 @@ package it is off for every event, so none of the behaviour below applies yet.
 
 - **A vetted photo** is saved `pending_review` with the plain photo in a private Blob object under `pending/<eventId>/`. No picture exists,
   nothing is mirrored to imgbb, no link is shown or emailed, and a requested try-on is held.
-- **Approve or reject:** `POST /api/admin/submissions/<id>/review` with `{"action":"approve"}` or `{"action":"reject","reason":"..."}`
-  (global admins and the event's partner Events managers; the queue page that calls it comes with a later package).
+- **Approve or reject:** the **Photos** tab of the event (`/admin/events/<id>/photos`, global admins and the event's partner Events managers):
+  Waiting / Rejected / Approved lists, approve or reject one photo, or select several and approve them together. It calls
+  `POST /api/admin/submissions/<id>/review` with `{"action":"approve"}` or `{"action":"reject","reason":"..."}`. The same tab shows the
+  event's setting; only a global admin can switch it (turning it off asks first).
   Approval composes the plain photo with the frame image the photo recorded (the generated variant, or the event's own frame), stores the
   picture, publishes the photo, applies the guest's pledge-wall choice, queues the held try-on, emails the share link
   (`/share/<token>`, whatever the event's own email switch says) and deletes the private photo. Rejection keeps the photo private, cancels the
