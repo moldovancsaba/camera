@@ -17,8 +17,19 @@ export function getCaptureSelectFrameSteps(): TourStepConfig[] {
   ];
 }
 
-export function getCapturePhotoSteps(options: { hasMultipleFrames: boolean }): TourStepConfig[] {
-  const steps: TourStepConfig[] = [
+export function getCapturePhotoSteps(options: { hasMultipleFrames: boolean; method?: 'system' | 'still' | 'frame' | null }): TourStepConfig[] {
+  // Touch devices take the photo with their own camera app (camera#257): there is no live shutter or camera switch on the
+  // page, only the "Take photo" button, so that is what the tour points at.
+  const deviceCameraSteps: TourStepConfig[] = [
+    {
+      id: 'capture-take-photo',
+      targetSelector: '[aria-label="Take photo"]',
+      title: 'Take your photo',
+      description: 'Tap here to open your camera. Take the photo, then move and zoom it into the frame.',
+    },
+  ];
+
+  const liveCameraSteps: TourStepConfig[] = [
     {
       id: 'capture-shutter',
       targetSelector: '[aria-label="Capture photo"]',
@@ -37,6 +48,8 @@ export function getCapturePhotoSteps(options: { hasMultipleFrames: boolean }): T
         typeof document !== 'undefined' && !!document.querySelector('[aria-label="Switch camera"]'),
     },
   ];
+
+  const steps = options.method === 'system' ? deviceCameraSteps : liveCameraSteps;
 
   if (options.hasMultipleFrames) {
     steps.push({
