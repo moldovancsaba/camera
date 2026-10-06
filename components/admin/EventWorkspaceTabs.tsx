@@ -5,12 +5,14 @@ import { useSelectedLayoutSegment } from 'next/navigation';
 
 const TABS: Array<{ segment: string | null; label: string; href: (id: string) => string }> = [
   { segment: null, label: 'Overview', href: (id) => `/admin/events/${id}` },
+  { segment: 'photos', label: 'Photos', href: (id) => `/admin/events/${id}/photos` },
   { segment: 'vetting', label: 'Vetting', href: (id) => `/admin/events/${id}/vetting` },
   { segment: 'queue', label: 'Queue', href: (id) => `/admin/events/${id}/queue` },
   { segment: 'analytics', label: 'Analytics', href: (id) => `/admin/events/${id}/analytics` },
 ];
 
-// WHAT: The event workspace's tab bar (Overview/Vetting/Queue/Analytics).
+// WHAT: The event workspace's tab bar (Overview/Photos/Vetting/Queue/Analytics). Photos is the photo approval queue (camera#268);
+// Vetting is the try-on result vetting.
 // WHY: The audit found vetting, the queue, and analytics reachable only from
 // a separate global "Try-On App" section, disconnected from the event they
 // operate on. These routes now nest under /admin/events/[id]/... and reuse

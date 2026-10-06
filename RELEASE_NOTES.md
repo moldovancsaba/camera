@@ -1,5 +1,17 @@
 # RELEASE_NOTES.md
 
+## Unreleased — photo vetting: the Photos tab, the moderation queue and the setting (switched off)
+
+- **Added:** a **Photos** tab on every event workspace (`/admin/events/<id>/photos`) for global admins and the event's partner Events
+  managers. It lists the event's vetted photos as Waiting (oldest first), Rejected and Approved, each with the guest's email, when it
+  was taken, the frame kind, the pledge-wall choice and whether a try-on follows. Approve or reject one photo (rejecting takes an
+  optional reason), or select several and approve them together; every control is a native button or checkbox, so the queue works
+  from the keyboard. A rejected photo can be approved later.
+- **Added:** the event's photo vetting setting on the same tab, with a switch for global admins only; turning it off asks first.
+- **Changed:** the event overview gallery no longer lists photos that are waiting or rejected under vetting; they live under Photos.
+- **Added:** a `{eventId, reviewStatus, createdAt}` index for the queue in `npm run db:ensure-indexes`.
+- The "Vetting" tab is unchanged: it is still the try-on result vetting.
+
 ## Unreleased — photo vetting: the share page of a waiting or rejected photo (switched off)
 
 - **Added:** `/share/<token>` for vetted photos. The link in the approval email carries the photo's opaque share token. A photo that is

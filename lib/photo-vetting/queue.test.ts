@@ -1,0 +1,66 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { ObjectId } from 'mongodb';
+import { countPhotoQueue, isQueueStatus, loadPhotoQueue, queueFilter, toPhotoQueueItem } from './queue';
+
+const base = () => ({
+  _id: new ObjectId(),
+  createdAt: '2026-10-06T12:00:00.000Z',
+  userInfo: { name: 'Ann', email: 'ann@example.com' },
+  reviewStatus: 'pending_review',
+  frameVariant: { index: 0, message: 'Go', imageUrl: 'https://s/x.png' },
+  photoReview: { photoUrl: 'https://s/pending/e/abc.jpg', shareOptIn: true, tryOn: null },
+  tryOnRequest: { requested: false },
+  reviewHistory: [],
+});
+
+test('a waiting photo shows its private photo, the guest, and what will happen at approval', () => {
+  const item = toPhotoQueueItem({ ...base(), photoReview: { photoUrl: 'https://s/pending/e/abc.jpg', shareOptIn: true, tryOn: { leatherSuitId: 's' } } });
+  assert.deepEqual([item.status, item.name, item.email, item.photoUrl, item.frameKind, item.shareOptIn, item.tryOnRequested, item.last], ['pending_review', 'Ann', 'ann@example.com', 'https://s/pending/e/abc.jpg', 'generated', true, true, null]);
+});
+
+test('an approved photo shows the real picture and the last decision', () => {
+  const item = toPhotoQueueItem({
+    ...base(),
+    reviewStatus: 'approved',
+    imageUrl: 'https://s/submission-1.jpg',
+    photoReview: { photoUrl: null, shareOptIn: false },
+    reviewHistory: [{ action: 'reject', by: 'a', at: 't1', reason: 'blurry' }, { action: 'approve', by: 'mod@example.com', at: 't2', reason: null }],
+  });
+  assert.equal(item.photoUrl, 'https://s/submission-1.jpg');
+  assert.deepEqual(item.last, { action: 'approve', by: 'mod@example.com', at: 't2', reason: null });
+});
+
+test('frame kinds and missing names are read defensively', () => {
+  assert.equal(toPhotoQueueItem({ ...base(), frameVariant: undefined, frameId: 'f1' }).frameKind, 'own');
+  assert.equal(toPhotoQueueItem({ ...base(), frameVariant: undefined }).frameKind, 'none');
+  const anonymous = toPhotoQueueItem({ ...base(), userInfo: undefined, userName: undefined });
+  assert.deepEqual([anonymous.name, anonymous.email], ['Guest', null]);
+});
+
+test('the queue covers photos that went through vetting for one event, not archived', () => {
+  assert.deepEqual(queueFilter('e1', 'pending_review'), {
+    $or: [{ eventId: 'e1' }, { eventIds: { $in: ['e1'] } }],
+    photoReview: { $exists: true },
+    reviewStatus: 'pending_review',
+    isArchived: { $ne: true },
+  });
+  assert.equal(isQueueStatus('rejected'), true);
+  assert.equal(isQueueStatus('hidden'), false);
+});
+
+test('the waiting list is oldest first, decided lists newest first, and the counts cover the three states', async () => {
+  const sorts: unknown[] = [];
+  const counted: unknown[] = [];
+  const db = {
+    collection: () => ({
+      find: () => ({ sort: (s: unknown) => (sorts.push(s), { limit: () => ({ toArray: async () => [base()] }) }) }),
+      countDocuments: async (filter: { reviewStatus: string }) => (counted.push(filter.reviewStatus), filter.reviewStatus === 'pending_review' ? 3 : 1),
+    }),
+  } as never;
+  assert.equal((await loadPhotoQueue(db, 'e1', 'pending_review')).length, 1);
+  await loadPhotoQueue(db, 'e1', 'approved');
+  assert.deepEqual(sorts, [{ createdAt: 1 }, { createdAt: -1 }]);
+  assert.deepEqual(await countPhotoQueue(db, 'e1'), { pending_review: 3, rejected: 1, approved: 1 });
+  assert.deepEqual(counted, ['pending_review', 'rejected', 'approved']);
+});
