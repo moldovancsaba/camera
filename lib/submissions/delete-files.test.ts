@@ -101,3 +101,9 @@ test('only imgbb hosts are ever requested as delete links', () => {
   });
   assert.deepEqual(imgbbDeleteLinks, ['https://ibb.co/AbC/hash']);
 });
+
+test('the private photo of a vetted photo that is still pending is deleted with the submission', () => {
+  const { fileUrls } = ownedUrls({ photoReview: { photoUrl: 'https://store.test/pending/e1/abc-xyz.jpg' } });
+  assert.deepEqual(fileUrls, ['https://store.test/pending/e1/abc-xyz.jpg']);
+  assert.deepEqual(ownedUrls({ photoReview: { photoUrl: null } }).fileUrls, [], 'after approval the file is gone and the field is null');
+});

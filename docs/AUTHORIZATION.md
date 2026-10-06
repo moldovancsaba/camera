@@ -152,6 +152,12 @@ These can be partner-scoped where implemented:
 - `/admin/events`
 - `/admin/events/[id]`
 
+### Photo review (camera#267)
+
+`POST /api/admin/submissions/[submissionId]/review` approves or rejects a photo of an event with vetting required. A global admin may
+review any photo; a partner user needs the **manager** role on the photo's event (`assertGlobalAdminOrPartnerEventAccess(..., 'manager')`),
+and a photo that belongs to no event is global-admin only. Changing the event setting itself (`photoVetting.required`) stays global-admin only.
+
 ### Public photo surfaces (camera#262)
 
 What a visitor may see of a saved photo is decided by one rule, `lib/submissions/visibility.ts` (`isPubliclyVisible`): not archived,

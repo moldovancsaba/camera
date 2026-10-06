@@ -1,5 +1,17 @@
 # RELEASE_NOTES.md
 
+## Unreleased — photo vetting: approval and rejection (switched off)
+
+- **Added:** `POST /api/admin/submissions/<id>/review` (global admins and the event's partner Events managers). Approving makes the
+  picture on the server from the plain photo and the frame image the photo recorded, publishes it, queues the try-on that was held,
+  emails the guest the share link and deletes the private photo. Rejecting keeps the photo private, cancels the held try-on and emails a
+  short note with a link to take another photo. Two moderators acting at once cannot both win; a picture that cannot be made leaves the
+  photo pending (502).
+- **Changed:** the try-on queueing moved out of `POST /api/submissions` into `lib/tryon/enqueue-for-submission.ts` so approval can use it;
+  behaviour for events without vetting is unchanged. The generic "after save" email dispatcher sends nothing for a pending or rejected
+  photo. Deleting a submission also deletes its private pending photo.
+- Still inert: the setting is off for every event until the rollout package.
+
 ## Unreleased — photo vetting: data model and the pending save (switched off)
 
 - **Added:** the event setting `photoVetting.required` (global admin only, `PATCH /api/events/<id>`, 403 for anyone
