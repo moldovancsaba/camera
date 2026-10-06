@@ -124,11 +124,52 @@ with the submission next to the framed photo.
   without the original; the submission looks like an older one (original = composite, no `reframe`).
   Look for `submissions.original_unverified` log lines and for submissions that have a framed photo
   but no `reframe` after the rollout.
-- **Cleanup:** deleting a submission currently removes only the database row, not the files
-  (camera#211). An upload that succeeds but whose save never completes leaves an orphan under
-  `originals/`; list `originals/` in the Blob dashboard and compare with `submissions.originalImageUrl`.
+- **Cleanup:** deleting a submission now deletes its files (see "Deleting a submission"). An upload
+  that succeeds but whose save never completes leaves an orphan under `originals/`;
+  `npm run blob:orphans` lists them.
 - **Privacy:** the original shows more of the scene than the framed photo, so the privacy and consent
-  text must say the full camera image is stored (camera#211).
+  text must say the full camera image is stored (proposed wording under "Deleting a submission").
+
+## Deleting a submission (camera#211)
+
+`DELETE /api/submissions/[submissionId]` (the owner or an admin) and
+`POST /api/admin/tryon-results/[submissionId]/remove` (global admin) delete the stored files first and
+the database record second.
+
+- **What is deleted:** every file of the submission in this project's own Blob store: the composite
+  (`imageUrl`/`finalImageUrl`), the full-frame original (`originalImageUrl`), the preview, and the
+  try-on source. A URL on any other host is never touched. A file another submission still points at is
+  kept and counted as `keptShared`.
+- **If a file cannot be deleted:** the answer is 502 and the record stays, so the same request can be
+  repeated (deleting a file that is already gone is not an error). A failure is logged as
+  `Submission <id>: deleting N stored file(s) failed`. The record is never removed while a file it
+  names may still be online.
+- **imgbb mirror:** the stored delete link is requested (only `ibb.co` / `imgbb.com` links are ever
+  called) and `files.imgbbFailed` reports a failed request, but it never blocks the delete.
+  **Not verified:** whether imgbb deletes on that request, because no imgbb key was available when this
+  was built. Check once with a real mirrored submission: delete it, then open its `i.ibb.co` URL.
+  The mirror is only written when `IMGBB_API_KEY` is set.
+- **Not covered:** the try-on result derived from a deleted submission stays until it is removed with
+  `POST /api/admin/tryon-results/[submissionId]/remove`; try-on job records keep their (now dead) URLs;
+  deleting an event leaves its submissions and their files; event and partner "remove" only hide a
+  submission, so it keeps its files by design (restorable).
+- **Orphans from before this change:** `npm run blob:orphans` (needs `MONGODB_URI`, `MONGODB_DB`,
+  `BLOB_READ_WRITE_TOKEN` from `vercel env pull`) lists Blob files no document refers to, split by
+  folder, and holds back files under 24 hours old as possible uploads in flight. It only reports.
+  Decision for the owner: delete the orphans older than a retention period once the list is reviewed.
+
+### Proposed wording for the privacy text (needs owner or counsel sign-off)
+
+The privacy policy and the consent pages are written per landing page and event (database content, not
+code), so the wording below is for the owner to paste where it fits; nothing here changes live text.
+
+- "We store the full, uncropped camera image next to the framed photo. It shows everything the camera
+  saw, including people and places around you. We use it only to produce your photo and never publish it."
+- "We also record, without any personal data, whether your camera worked (browser, device type, camera
+  settings) to fix capture problems."
+- "You can delete your photo at any time. Deleting it removes the framed photo and the full camera
+  image from our storage. [Retention: state how long photos are kept after the event, for example
+  N months, then deleted.]"
 
 ## Capture diagnostics (anonymous)
 

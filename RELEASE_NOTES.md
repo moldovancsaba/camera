@@ -1,5 +1,20 @@
 # RELEASE_NOTES.md
 
+## Unreleased — deleting a submission deletes its image files
+
+- **Changed:** `DELETE /api/submissions/[submissionId]` and `POST /api/admin/tryon-results/[submissionId]/remove`
+  now delete the submission's files in this project's Blob store (composite, full-frame original,
+  preview, try-on source) before deleting the record. A file another submission still references is
+  kept; a URL outside our store is never touched. If a file cannot be deleted the answer is 502 and the
+  record stays, so the request can be repeated. The `DELETE` response gains
+  `files: {deleted, keptShared, imgbbRequested, imgbbFailed}`.
+- **Changed:** the stored imgbb delete link is requested (imgbb hosts only). Whether imgbb honours it is
+  unverified (no key available); it never blocks the delete. The outbound-host inventory gains `ibb.co`
+  (the delete-link allowlist in `lib/submissions/delete-files.ts`).
+- **Added:** `npm run blob:orphans`, a report-only inventory of Blob files no document refers to.
+- **Not changed:** the privacy and consent wording (per landing page, owner content); proposed
+  sentences are in RUNBOOK for sign-off. Deleting an event still leaves its submissions.
+
 ## Unreleased — the full-frame original is stored with the submission
 
 - **Added:** the pure camera image (not cropped, not framed, not mirrored, JPEG 0.92) is stored

@@ -215,3 +215,45 @@ test('DELETE: the owner can still delete their own photo submission', async (t) 
   assert.equal(res.status, 200);
   assert.equal(deletes.length, 1);
 });
+
+// camera#211: deleting a submission also deletes its stored files, files first.
+
+test('DELETE: stored files are deleted before the row, and the response counts them', async (t) => {
+  const deletes: unknown[] = [];
+  let rowsDeletedWhenFilesWent = -1;
+  mockDeleteDeps(t, { session: buildUserSession('user-1'), submission: buildSubmission(true) }, deletes);
+  t.mock.module('@/lib/submissions/delete-files', {
+    namedExports: {
+      deleteSubmissionFiles: async () => {
+        rowsDeletedWhenFilesWent = deletes.length;
+        return { deleted: ['a', 'b'], keptShared: [], imgbbRequested: 1, imgbbFailed: 0 };
+      },
+    },
+  });
+
+  const { DELETE } = await importRouteModule('delete-files-first');
+  const res = await DELETE(buildDelete(), { params: Promise.resolve({ submissionId }) });
+
+  assert.equal(res.status, 200);
+  assert.equal(rowsDeletedWhenFilesWent, 0);
+  assert.equal(deletes.length, 1);
+  assert.deepEqual((await res.json()).data.files, { deleted: 2, keptShared: 0, imgbbRequested: 1, imgbbFailed: 0 });
+});
+
+test('DELETE: when the stored files cannot be deleted the answer is 502 and the row stays', async (t) => {
+  const deletes: unknown[] = [];
+  mockDeleteDeps(t, { session: buildUserSession('user-1'), submission: buildSubmission(true) }, deletes);
+  t.mock.module('@/lib/submissions/delete-files', {
+    namedExports: {
+      deleteSubmissionFiles: async () => {
+        throw apiReal.apiError('Could not delete the stored image files, so the submission was kept. Try again.', 502);
+      },
+    },
+  });
+
+  const { DELETE } = await importRouteModule('delete-files-fail');
+  const res = await DELETE(buildDelete(), { params: Promise.resolve({ submissionId }) });
+
+  assert.equal(res.status, 502);
+  assert.equal(deletes.length, 0);
+});

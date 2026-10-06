@@ -163,6 +163,14 @@ These now follow the same partner-aware policy and should require global admin o
 - event gallery upload and submission removal routes (partner Events manager)
 - slideshow background image upload (partner Events manager)
 
+### Permanent deletion of a submission
+
+`DELETE /api/submissions/[submissionId]` is allowed for the submission's owner (the fan's own erasure) and for
+global `admin` / `superadmin`; it deletes the stored image files first and then the record, see RUNBOOK
+"Deleting a submission" (camera#211). Try-on results are removed only through
+`POST /api/admin/tryon-results/[submissionId]/remove` (global admin). Event and partner "remove" only hide
+a submission (it can be restored), so they keep its files.
+
 ## 7. Recommended check order
 
 When writing new code:

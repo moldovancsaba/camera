@@ -26,6 +26,7 @@ const ALLOWED: Record<string, string> = {
   'lib/events/event-export.ts': 'admin event export',
   'lib/savetheworld/publishSelfies.ts': 'query that decides which submissions to publish; reads no URL out',
   'lib/savetheworld/wall.ts': 'only documents that the original is excluded from the public wall projection',
+  'lib/submissions/delete-files.ts': 'reads the URL only to delete the file with the submission; returns counts, never a URL',
   'lib/submissions/public-image.ts': 'the public image resolver, which refuses the original when a reframe record exists',
   'lib/tryon/publication.ts': 'builds the derived try-on document; keeps the private original off it',
 };
