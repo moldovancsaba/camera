@@ -17,6 +17,7 @@ import { apiBadRequest, apiNotFound } from '@/lib/api';
 import { after } from 'next/server';
 import { refreshFrameDesign } from '@/lib/frame/sync';
 import { generateFrameVariants } from '@/lib/frame/variants';
+import { defaultPhotoVetting } from '@/lib/events/photo-vetting';
 
 function ci(name: string) {
   return { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
@@ -112,6 +113,8 @@ export async function provisionEvent(input: { messmassEventId: string; messmassP
     logos: defaults.logos || [],
     logosOverridden: defaults.logosOverridden,
     tryOn: { enabled: false, setupId: null, allowedLeatherSuitIds: [], vettingEnabled: true, includeApprovedResultsInSlideshows: false, resultSlideshowMode: 'disabled' },
+    // Photo vetting (camera#263): the default of the rollout.
+    photoVetting: defaultPhotoVetting(),
     messmassEventId: input.messmassEventId,
     source: 'messmass',
     createdAt: now,

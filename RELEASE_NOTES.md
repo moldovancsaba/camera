@@ -1,5 +1,20 @@
 # RELEASE_NOTES.md
 
+## Unreleased — photo vetting: data model and the pending save (switched off)
+
+- **Added:** the event setting `photoVetting.required` (global admin only, `PATCH /api/events/<id>`, 403 for anyone
+  else) and the photo fields `reviewStatus`, `photoReview`, `shareToken`, `reviewHistory` (docs/MONGODB_CONVENTIONS.md).
+  New events and the messmass and savetheworld provisioning write the default, which is **off** until the rollout, so
+  nothing changes for any event yet.
+- **Added:** with vetting required, `POST /api/submissions` needs an email or a login (400 without), stores the plain
+  photo as an unlisted Blob object `pending/<eventId>/…` (no public upload, no imgbb mirror, no original), saves the
+  submission as `pending_review` with an opaque share token, holds the try-on request until approval, and answers with
+  no image URL and no share link. Events that do not require vetting save exactly as before.
+- **Added:** `GET /api/events/<id>?audience=guest` (the capture page) adds the default "who are you" page (email or
+  Google / Facebook login) to a vetted event that has none before the photo. It is injected at read time and never
+  stored; the admin editor still reads the stored pages. The public event read returns `photoVettingRequired`, never
+  the stored setting.
+
 ## Unreleased — each event's capture flow installs as an app
 
 - **Added:** `GET /capture/<eventId>/manifest.webmanifest`, a public per-event web app manifest (name and brand

@@ -29,6 +29,8 @@ import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
 import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
 import { captureFrameOf } from '@/lib/frame/capture';
+import { normalizePhotoVettingInput, photoVettingRequired } from '@/lib/events/photo-vetting';
+import { withRequiredIdentityPage } from '@/lib/events/identity-page';
 
 function normalizeEventNotificationSettings(value: unknown) {
   const notificationPolicy = normalizeSubmissionEmailPolicy(value);
@@ -163,13 +165,20 @@ export const GET = withErrorHandler(async (
   // The generated default frame reaches the capture page as `generatedFrame`, derived: present only while the event
   // has no active frame of its own (camera#236). The stored `frameDesign` (snapshot of messmass data, message list,
   // render internals) is admin data and is not part of this public response; admins read it from .../frame-design.
-  const { frameDesign, ...publicEvent } = event;
+  // `photoVetting` (who changed it, when) is admin data: guests get `photoVettingRequired`, and when asked as a guest
+  // (`?audience=guest`, the capture page) a vetted event with no "who are you" page before the photo gets the default one first:
+  // every vetted event asks for an email or a social login (camera#264). The admin editor reads the stored pages, never this one.
+  const { frameDesign, photoVetting, ...publicEvent } = event;
+  const vettingRequired = photoVettingRequired({ photoVetting: photoVetting as { required?: unknown } | undefined });
+  const forGuest = request.nextUrl.searchParams.get('audience') === 'guest';
 
   // Return event with serialized _id
   // customPages is included automatically
   return apiSuccess({
     event: {
       ...publicEvent,
+      ...(forGuest ? { customPages: withRequiredIdentityPage(event.customPages as Parameters<typeof withRequiredIdentityPage>[0], vettingRequired) } : {}),
+      photoVettingRequired: vettingRequired,
       _id: event._id.toString(),
       generatedFrame: captureFrameOf({ frames: event.frames, frameDesign: frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'] }),
     }
@@ -240,6 +249,7 @@ export const PATCH = withErrorHandler(async (
     notifications,
     visualSettings,
     sharePage,
+    photoVetting,
   } = body;
 
   const tryOnSetupId =
@@ -353,6 +363,18 @@ export const PATCH = withErrorHandler(async (
 
   if (visualSettings !== undefined) {
     updateFields.visualSettings = normalizeEventVisualSettings(visualSettings);
+  }
+
+  // Photo vetting (camera#263): only a global admin switches it, on or off.
+  if (photoVetting !== undefined) {
+    if (!isGlobalAdminSession(session)) {
+      throw apiForbidden('Only a global admin can change photo vetting');
+    }
+    const setting = normalizePhotoVettingInput(photoVetting, session.user.email ?? null);
+    if (!setting) {
+      throw apiBadRequest('photoVetting.required must be true or false');
+    }
+    updateFields.photoVetting = setting;
   }
 
   if (sharePage !== undefined) {

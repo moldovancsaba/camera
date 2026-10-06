@@ -94,6 +94,16 @@ bar and message, in drawing order), `key` (hash of everything that decides the i
 `bundled`/`custom`/`fallback`, `note`, `retry`) and `logo` (`drawn`/`none`/`failed`); `generatedAt` is on the design.
 Images are never deleted: a submission records the variant it used (`submissions.frameVariant`, camera#236).
 
+### Photo vetting (`events.photoVetting`)
+
+`events.photoVetting` (camera#263, [docs/PHOTO_VETTING_PLAN.md](PHOTO_VETTING_PLAN.md)) is `{required, updatedAt, updatedBy}`.
+Only an explicit `required: true` means vetting is on; a missing setting means off (`photoVettingRequired()` in
+`lib/events/photo-vetting.ts`). New events get the default from `defaultPhotoVetting()`; it stays off until the rollout
+(`PHOTO_VETTING_DEFAULT_FOR_NEW_EVENTS`). Only a global admin changes it (`PATCH /api/events/<id>`, 403 otherwise). The
+public event read never returns the stored setting, only `photoVettingRequired`. With vetting on, the read for the capture
+page (`?audience=guest`) adds a default "who are you" page (email or Google / Facebook login) when the event has none before
+the photo; that page is injected at read time and never stored.
+
 ### Practical consequence
 
 You often need both:
@@ -143,6 +153,14 @@ Image fields (camera#210; since camera#257 the capture page no longer uploads an
 - `reframe` is present exactly when `originalImageUrl` is a distinct full-frame original: `{version: 1, mode: fill|fit|custom, zoom, crop {x, y, width, height} in source pixels (may extend past the image in fit), sourceWidth, sourceHeight, frameAspect, mirrored}`. `lib/submissions/public-image.ts` never falls back to the original when it exists.
 - `metadata.originalWidth`, `originalHeight`, `originalFileSize` and `originalMimeType` describe the original (the file's size and type come from a Blob lookup); `metadata.finalWidth` and `finalHeight` still describe the composite, which the slideshow reads.
 - `frameVariant` `{index, message, imageUrl}` is present when the photo used the generated default frame of an event with no frame of its own (camera#236, `frameId` is then null): the position and text of the message drawn and the generated image in Vercel Blob (`frames/generated/`), kept because try-on composes with it later. It is never deleted with the submission (it is shared by every photo of that variant). A try-on result made from such a photo is composed with this image and keeps the same `frameVariant` (camera#238).
+
+A photo of an event with vetting required (camera#266) is saved pending and carries, instead of the image fields above:
+
+- `reviewStatus: 'pending_review'` (later `approved` or `rejected`; a missing status counts as approved, see `lib/submissions/visibility.ts`).
+- `photoReview` `{photoUrl, photoSize, photoMime, shareOptIn, submittedAt, tryOn}`: the plain framed-size photo in an unlisted Blob object `pending/<eventId>/<random>.jpg` (never mirrored to imgbb, never returned by a public route; deleted with the submission), the guest's pledge-wall choice and the held try-on request. There is no `imageUrl`, `finalImageUrl` or `originalImageUrl` until approval composes the real picture.
+- `shareToken`: opaque share id (`/share/<token>`); photos made before vetting keep their database `_id` as the share id.
+- `reviewHistory[]`: `{action: approve|reject, by, at, reason}`.
+- `userInfo.email` is required for these photos (typed on the "who are you" page or taken from the social login); the link is emailed after approval.
 
 Important:
 

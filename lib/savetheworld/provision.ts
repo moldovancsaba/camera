@@ -8,6 +8,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, CustomPageType, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { inheritPartnerDefaults } from '@/lib/db/events';
 import { apiBadRequest, apiNotFound } from '@/lib/api';
+import { defaultPhotoVetting } from '@/lib/events/photo-vetting';
 
 function ci(name: string) {
   return { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
@@ -96,6 +97,8 @@ export async function provisionEvent(input: { savetheworldEventId: string; partn
     logos: defaults.logos || [],
     logosOverridden: defaults.logosOverridden,
     tryOn: { enabled: false, setupId: null, allowedLeatherSuitIds: [], vettingEnabled: true, includeApprovedResultsInSlideshows: false, resultSlideshowMode: 'disabled' },
+    // Photo vetting (camera#263): the default of the rollout.
+    photoVetting: defaultPhotoVetting(),
     savetheworldEventId: input.savetheworldEventId,
     source: 'savetheworld',
     createdAt: now,
