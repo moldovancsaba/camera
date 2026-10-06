@@ -5,6 +5,9 @@ export const CAMERA_DEFAULT_CTA_BRAND_COLOR = '#9333EA';
 export const CAMERA_STAGE_WHITE = '#FFFFFF';
 export const CAMERA_STAGE_BLACK = '#000000';
 
+// Splash and canvas colour of the installed app (the light theme's `--mantine-color-gray-0`), camera#222.
+export const CAMERA_PWA_BACKGROUND_COLOR = '#f8f9fa';
+
 export const LANDING_PAGE_BASE_BACKGROUND = '#f8fafc';
 export const LANDING_PAGE_BASE_TEXT = '#0f172a';
 

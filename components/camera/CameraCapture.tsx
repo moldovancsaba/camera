@@ -999,10 +999,10 @@ export default function CameraCapture({
             disabled={!isShutterReady || isCapturing}
             className={`fixed z-50 h-16 w-16 rounded-full  shadow-lg transition-all ${
               orientation === 'portrait'
-                ? 'bottom-4 left-1/2 -translate-x-1/2'
+                ? 'bottom-[max(1rem,var(--gds-safe-area-inset-bottom))] left-1/2 -translate-x-1/2'
                 : orientation === 'landscape-right'
-                  ? 'right-4 top-1/2 -translate-y-1/2'
-                  : 'left-4 top-1/2 -translate-y-1/2'
+                  ? 'right-[max(1rem,var(--gds-safe-area-inset-right))] top-1/2 -translate-y-1/2'
+                  : 'left-[max(1rem,var(--gds-safe-area-inset-left))] top-1/2 -translate-y-1/2'
             }`}
             style={{
               borderWidth: '4px',
@@ -1020,10 +1020,10 @@ export default function CameraCapture({
               onClick={switchCamera}
               className={`fixed z-50 flex h-12 w-12 items-center justify-center rounded-full  shadow-lg  ${
                 orientation === 'portrait'
-                  ? 'bottom-4 right-4'
+                  ? 'bottom-[max(1rem,var(--gds-safe-area-inset-bottom))] right-[max(1rem,var(--gds-safe-area-inset-right))]'
                   : orientation === 'landscape-right'
-                    ? 'bottom-4 right-4'
-                    : 'bottom-4 left-4'
+                    ? 'bottom-[max(1rem,var(--gds-safe-area-inset-bottom))] right-[max(1rem,var(--gds-safe-area-inset-right))]'
+                    : 'bottom-[max(1rem,var(--gds-safe-area-inset-bottom))] left-[max(1rem,var(--gds-safe-area-inset-left))]'
               }`}
               aria-label="Switch camera"
               disabled={isLoading}
@@ -1047,10 +1047,10 @@ export default function CameraCapture({
           onClick={retake}
           className={`fixed z-50 rounded-lg  px-6 py-3 font-semibold  shadow-lg transition-all  ${
             orientation === 'portrait'
-              ? 'bottom-4 left-1/2 -translate-x-1/2'
+              ? 'bottom-[max(1rem,var(--gds-safe-area-inset-bottom))] left-1/2 -translate-x-1/2'
               : orientation === 'landscape-right'
-                ? 'right-4 top-1/2 -translate-y-1/2'
-                : 'left-4 top-1/2 -translate-y-1/2'
+                ? 'right-[max(1rem,var(--gds-safe-area-inset-right))] top-1/2 -translate-y-1/2'
+                : 'left-[max(1rem,var(--gds-safe-area-inset-left))] top-1/2 -translate-y-1/2'
           }`}
         >
           Retake Photo
