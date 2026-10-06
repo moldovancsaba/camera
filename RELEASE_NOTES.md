@@ -100,6 +100,21 @@
   EuroLeague Women" (owner decision, camera#248). Events with real teams, and events whose name is no pairing, fill as
   before. Images already generated for such an event are redrawn at their next generation (the message changed).
 
+## Unreleased — landscape on phones: the live view follows the camera, the reframe controls sit beside the photo
+
+- **Fixed:** the live camera view kept the camera's frame size from the moment it started. On iPhone Safari the size
+  changes when the phone is turned, so a portrait picture ended up in a landscape stage (a narrow strip with the frame
+  guide dimming the wrong parts). The view now follows the camera's real size (the video's `resize` event, the
+  window's orientation and resize events, and a 500 ms check, because iOS can change it without an event).
+- **Fixed:** the reframe step showed the photo about 30 px wide on a phone held sideways: its controls took the whole
+  height of Safari's short landscape window (measured: 12x6 px at 844x290), and at 568x230 Continue fell below the
+  window. In a landscape window up to 600 px tall the controls now sit beside the photo (options scroll inside their
+  column, Retake, Reset and Continue stay in view and wrap on a narrow panel); taller windows keep the stacked layout.
+- Measured on a production build: the photo is at least 55% of the window height from 568x230 to 932x300 and at
+  844x390, all actions are inside the window, no page scroll, no control squashed or clipped, 1024x768 unchanged; a
+  canvas camera that changes between 640x480 and 480x640 is followed both ways; the 16-viewport capture check (92
+  checks) still passes. Owner check on the phone in landscape is open (camera#254).
+
 ## Unreleased — the guest capture flow uses the generated default frame
 
 - **Added:** an event with no active frame of its own and generated frame images skips the frame picker, and every

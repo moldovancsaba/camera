@@ -1262,6 +1262,21 @@ _Use this template for new learnings:_
 
 **Key Decisions**: a bulk action reports per event (failed, waiting) instead of one pass or fail; a run is repeatable because finished events are skipped.
 
+### [FRONT-016] Landscape on a real phone: a layout check that measured the aspect, not the size, and a camera size read once — 2026-10-06T00:00:00.000Z
+
+**Issue**: The owner's phone test showed two landscape failures that the earlier 16-viewport run had passed: a portrait picture inside a landscape live view, and a reframe photo about 30 px wide.
+
+**Context**:
+- The reframe stage has the frame's shape, so "the stage is 16:9" stays true at 12x6 px; the check measured the aspect, not the size. It also used the full window height, while Safari's landscape window on an iPhone shows about 290 of 390 px.
+- `CameraCapture` read `videoWidth/videoHeight` on four load events and never again. iOS changes the frame size when the phone is turned, sometimes without an event.
+
+**Solution**:
+- The stage follows the video's size (`resize` event, window orientation and resize, a 500 ms check). Reproduced first with a canvas camera (`canvas.captureStream`) whose canvas size changes: the stage stayed 4:3 while the picture turned 3:4.
+- In a landscape window up to 600 px tall the reframe controls move beside the photo; the options scroll inside their column and never squash (`flex-shrink: 0`), the actions stay in view and wrap.
+- Layout checks for a camera step now assert the photo's size (at least 55% of the window's height) and that the actions are inside the window, on windows as short as the browser leaves, and every control keeps its own height.
+
+**Key Decisions**: measure what the user sees (size, reachability) and test with the browser's real visible area; a camera is not a fixed size.
+
 **Last Updated**: 2026-10-06T00:00:00.000Z
 
 ---

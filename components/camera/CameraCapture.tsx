@@ -225,6 +225,29 @@ export default function CameraCapture({
     streamRef.current = stream;
   }, [stream]);
 
+  // The camera's frame size can change while it runs: turning a phone changes it on iOS, with or without a resize event.
+  // The stage follows the real size, otherwise a portrait picture sits in a landscape stage (or the other way round).
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!stream || !video) return;
+    const follow = () => {
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        const next = video.videoWidth / video.videoHeight;
+        setCameraAspect((current) => (current !== null && Math.abs(current - next) < 0.001 ? current : next));
+      }
+    };
+    video.addEventListener('resize', follow);
+    window.addEventListener('orientationchange', follow);
+    window.addEventListener('resize', follow);
+    const timer = window.setInterval(follow, 500);
+    return () => {
+      video.removeEventListener('resize', follow);
+      window.removeEventListener('orientationchange', follow);
+      window.removeEventListener('resize', follow);
+      window.clearInterval(timer);
+    };
+  }, [stream, capturedImage]);
+
   /**
    * Detect device orientation angle for precise control positioning.
    * Distinguishes left rotation (90°) from right rotation (270°).
