@@ -113,6 +113,7 @@
   landscape and square-sensor problems of the live view (camera#254) do not arise there any more. `?capture=frame` brings the
   old live view back on any device.
 - **Added:** capture diagnostics carry the capture `method`, the photo's own size and whether a still fell back to the frame.
+- **Fixed:** the first-visit guided tour on a touch device pointed at a live shutter that is no longer on the page; it now points at the "Take photo" button ("Tap here to open your camera…"). Webcams keep the shutter and camera-switch steps. Checked on a phone, a phone on its side and a desktop.
 - **Fixed:** the capture diagnostic read the video size after the camera had stopped (always 0); it is read before.
 - Checked on a production build with a generated 4896x3672 photo, an EXIF-rotated photo, a 48 MP photo, a file that is not a
   photo, and fake webcams (a still, a still of the wrong shape, a failing still, no `ImageCapture`): 19 + 18 checks; the earlier
