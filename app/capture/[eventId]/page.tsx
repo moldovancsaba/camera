@@ -19,6 +19,7 @@ import Image from 'next/image';
 import { Button, Checkbox } from '@mantine/core';
 import CameraCapture from '@/components/camera/CameraCapture';
 import AppShellLock from '@/components/capture/AppShellLock';
+import { clearCaptureNotices, notifyCapture } from '@/components/capture/notify';
 import ShareOverlay from '@/components/capture/ShareOverlay';
 import TourOverlay from '@/components/tour/TourOverlay';
 import TourReplayButton from '@/components/tour/TourReplayButton';
@@ -582,7 +583,7 @@ export default function EventCapturePage({
       setStep('preview');
     } catch (error) {
       console.error('Error compositing image:', error);
-      alert(errorFrameMessage);
+      notifyCapture('error', errorFrameMessage);
     } finally {
       setIsProcessing(false);
     }
@@ -698,6 +699,7 @@ export default function EventCapturePage({
   const handleSave = async () => {
     if (!compositeImage || !event) return;
 
+    clearCaptureNotices();
     setIsSaving(true);
 
     try {
@@ -812,10 +814,10 @@ export default function EventCapturePage({
       setTryOnResult(data.data?.tryOn ?? data.tryOn ?? null);
       setShareUrl(`${origin}/share/${submissionId}`);
       
-      alert(finalSuccessMessage);
+      notifyCapture('success', finalSuccessMessage);
     } catch (error: unknown) {
       console.error('Error saving submission:', error);
-      alert(`${errorSaveMessage.replace(': Please try again.', '')}: ${getErrorMessage(error)}`);
+      notifyCapture('error', `${errorSaveMessage.replace(': Please try again.', '')}: ${getErrorMessage(error)}`);
     } finally {
       setIsSaving(false);
     }
@@ -890,16 +892,16 @@ export default function EventCapturePage({
 
     try {
       await navigator.clipboard.writeText(shareUrl);
-      alert(linkCopiedMessage);
+      notifyCapture('success', linkCopiedMessage);
     } catch (error) {
       console.error('Error copying link:', error);
-      alert(copyErrorMessage);
+      notifyCapture('error', copyErrorMessage);
     }
   };
 
   const handleShareSocial = (platform: string) => {
     if (!shareUrl) {
-      alert(saveFirstMessage);
+      notifyCapture('warning', saveFirstMessage);
       return;
     }
 
