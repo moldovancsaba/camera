@@ -1242,7 +1242,7 @@ export default function EventCapturePage({
   }
 
   return (
-    <div className="fixed inset-0 flex flex-col landscape:flex-row bg-transparent">
+    <div className="app-safe-area fixed inset-0 flex flex-col landscape:flex-row bg-transparent">
       <AppShellLock />
       <TourOverlay controller={selectFrameTour} />
       <TourOverlay controller={photoTour} />
@@ -1401,7 +1401,7 @@ export default function EventCapturePage({
 
         {/* Step 2: Photo Capture - Fullscreen */}
         {step === 'capture-photo' && (
-          <div className="fixed inset-0  z-40 flex flex-col">
+          <div className="app-safe-area fixed inset-0 z-40 flex flex-col">
             {/* Minimal header with change frame button - only show if multiple frames */}
             {frames.length > 1 && (
               <div className="absolute top-4 right-4 z-50">
@@ -1438,7 +1438,7 @@ export default function EventCapturePage({
 
         {/* Step 2b: Reframe - move and zoom the whole camera image inside the frame */}
         {step === 'reframe' && capturedOriginal && (
-          <div className="fixed inset-0 z-40 flex flex-col">
+          <div className="app-safe-area fixed inset-0 z-40 flex flex-col">
             <ReframeStep
               capture={capturedOriginal}
               frameAspect={captureAspect}

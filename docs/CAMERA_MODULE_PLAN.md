@@ -80,7 +80,8 @@ See `docs/CAMERA_DEVICE_TEST.md` once camera#205 lands. Until then, per device a
 | #209 reframe step | merged (live from 21c6eda) |
 | #210 storage of the original and the reframe record | merged (7f35bf9); waiting for the owner's live test |
 | #211 privacy: file deletion, orphan report | merged (c8d1ff1); consent and retention wording waits for sign-off |
-| #222 app-like capture (no page scroll, no zoom, fits the viewport) | phase 1 in review (installable manifest is phase 2, owner to decide) |
+| #222 app-like capture (no page scroll, no zoom, fits the viewport) | phase 1 merged (fefdc56); phase 2 (installable per-event app, both orientations, safe areas) in review |
+| #225 GDS server entry fails the Next build | backlog, to report upstream |
 | #212 lenses, #205 harness, #213 canary | not started |
 
 ## Open questions

@@ -795,6 +795,22 @@ const capturePhoto = async () => {
 
 ---
 
+### [FRONT-011] An installable per-event app: the GDS server entry breaks the build, and unit tests did not see it — 2026-10-06T00:00:00.000Z
+
+**Issue**: Building the web app manifest with the documented `getGdsWebAppManifest` from `@sovereignsquad/gds-theme/server` passed every unit test but failed `next build` with "Attempted to call mergeThemeOverrides() from the server".
+
+**Context**:
+- The `/server` entry shares a chunk that calls `@mantine/core`'s `mergeThemeOverrides` at module load. Plain Node (the unit-test runner) runs that fine; Next's server bundling treats Mantine's entry as a client module and refuses the call, but only when the module is part of a route handler or layout.
+- A passing unit test is not evidence a server import is safe under Next. Run `npm run build` after adding the first server-side import of a package entry.
+
+**Solution**:
+- Build the manifest object locally (type-only import of `GdsWebAppManifest`) and keep a unit test that imports the real generator dynamically and asserts deep equality, so a GDS change shows up as a failing test. Tracked in camera#225 for the upstream report.
+- One manifest per event (`/capture/<eventId>/manifest.webmanifest`), not one per origin: a manifest at `/` would start installed apps at the homepage, which redirects a guest to the SSO login. `start_url` must stay inside `scope`.
+- Chrome's installability can be checked without a database: serve the generated manifest and icons from a throwaway local server at the same URL shape and ask CDP `Page.getInstallabilityErrors` / `Page.getAppManifest`. No service worker is needed.
+- Safe areas and rotation can be tested in headless Chromium: CDP `Emulation.setSafeAreaInsetsOverride` for notch insets and `Emulation.setDeviceMetricsOverride` with `screenOrientation` for real device rotation (the camera reads `screen.orientation.angle`, which a plain window resize does not change).
+
+**Key Decisions**: no service worker; both orientations on every device; icons derived from the 200 px app icon until a larger original exists.
+
 ### [FRONT-010] Making the capture flow feel like an app: lock only the camera steps, and test the fit on a real build — 2026-10-06T00:00:00.000Z
 
 **Issue**: The capture shell was already `fixed inset-0`, so the document never scrolled, yet the preview step still forced scrolling: the photo was `w-full h-auto` with the try-on selector, share checkbox and two buttons stacked under it, and Save/Try again sat below the screen on most phones (1071 px down in landscape).
