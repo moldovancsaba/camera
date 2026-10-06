@@ -23,19 +23,21 @@ interface Harness {
   inserted: Array<Record<string, unknown>>;
   uploads: number;
   heads: string[];
+  puts: Array<{ pathname: string; options: Record<string, unknown> }>;
 }
 
 function mockDeps(
   t: TestContext,
-  head: (url: string) => Promise<{ size: number; contentType: string }>
+  head: (url: string) => Promise<{ size: number; contentType: string }>,
+  extra: { event?: Record<string, unknown>; session?: Record<string, unknown> | null } = {}
 ): Harness {
-  const h: Harness = { inserted: [], uploads: 0, heads: [] };
-  t.mock.module('@/lib/api', { namedExports: { ...apiReal, optionalAuth: async () => null } });
+  const h: Harness = { inserted: [], uploads: 0, heads: [], puts: [] };
+  t.mock.module('@/lib/api', { namedExports: { ...apiReal, optionalAuth: async () => extra.session ?? null } });
   t.mock.module('@/lib/db/mongodb', {
     namedExports: {
       connectToDatabase: async () => ({
         collection: (name: string) => ({
-          findOne: async () => (name === 'events' ? { _id: 'event-1', name: 'Test event' } : null),
+          findOne: async () => (name === 'events' ? { _id: 'event-1', name: 'Test event', ...(extra.event ?? {}) } : null),
           insertOne: async (doc: Record<string, unknown>) => {
             h.inserted.push(doc);
             return { insertedId: new ObjectId() };
@@ -58,7 +60,10 @@ function mockDeps(
         h.heads.push(url);
         return head(url);
       },
-      put: async () => ({ url: COMPOSITE }),
+      put: async (pathname: string, _body: unknown, options: Record<string, unknown>) => {
+        h.puts.push({ pathname, options });
+        return { url: `https://${HOST}/${pathname}-suffix` };
+      },
       del: async () => undefined,
     },
   });
@@ -287,6 +292,119 @@ test('a submission without a variant has no frameVariant field', async (t) => {
     const { POST } = await importRouteModule('variant-none');
     assert.equal((await POST(submissionRequest())).status, 201);
     assert.equal('frameVariant' in h.inserted[0], false);
+  } finally {
+    quiet();
+    restore();
+  }
+});
+
+const VETTED = { photoVetting: { required: true } };
+const GUEST = { name: 'Ann Guest', email: 'ann@example.com' };
+
+test('a vetted event saves the photo pending: private, no public picture, no mirror, a share token, and the answer holds nothing public', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead, { event: VETTED });
+    const { POST } = await importRouteModule('vetted-pending');
+    const response = await POST(submissionRequest({ userInfo: GUEST, shareOptIn: true }));
+    assert.equal(response.status, 201);
+    const text = JSON.stringify(await response.json());
+    assert.equal(h.uploads, 0, 'nothing goes through the public upload and its imgbb mirror');
+    assert.equal(h.puts.length, 1);
+    assert.match(h.puts[0].pathname, /^pending\/event-1\/[0-9a-f]{24}\.jpg$/);
+    assert.equal(h.puts[0].options.addRandomSuffix, true);
+    const doc = h.inserted[0] as Record<string, unknown> & { photoReview: Record<string, unknown>; metadata: Record<string, unknown> };
+    assert.equal(doc.reviewStatus, 'pending_review');
+    assert.equal(doc.isShareVisible, false, 'the pledge-wall choice waits for approval');
+    assert.equal(doc.photoReview.shareOptIn, true);
+    assert.equal(doc.photoReview.photoMime, 'image/jpeg');
+    assert.match(String(doc.photoReview.photoUrl), /pending\/event-1\//);
+    assert.match(String(doc.shareToken), /^[A-Za-z0-9_-]{24}$/);
+    for (const key of ['imageUrl', 'finalImageUrl', 'originalImageUrl', 'deleteUrl']) assert.equal(key in doc, false, `no ${key} before approval`);
+    assert.deepEqual(doc.userInfo && { name: (doc.userInfo as Record<string, unknown>).name, email: (doc.userInfo as Record<string, unknown>).email }, GUEST);
+    assert.equal(doc.metadata.compositionEngine, 'camera_capture_pending');
+    assert.ok(!text.includes('pending/'), 'the response does not carry the private photo URL');
+    assert.match(text, /"pending":true/);
+  } finally {
+    quiet();
+    restore();
+  }
+});
+
+test('a vetted event does not save a photo without an email or a login, and stores nothing', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead, { event: VETTED });
+    const { POST } = await importRouteModule('vetted-no-identity');
+    assert.equal((await POST(submissionRequest())).status, 400);
+    assert.equal((await POST(submissionRequest({ userInfo: { name: 'Ann', email: 'not an email' } }))).status, 400);
+    assert.equal(h.puts.length, 0);
+    assert.equal(h.inserted.length, 0);
+  } finally {
+    quiet();
+    restore();
+  }
+});
+
+test('a social login is enough: the email of the logged-in user is the guest', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead, { event: VETTED, session: { user: { id: 'u1', email: 'login@example.com', name: 'Lo Gin' } } });
+    const { POST } = await importRouteModule('vetted-login');
+    assert.equal((await POST(submissionRequest())).status, 201);
+    const doc = h.inserted[0] as { userInfo: { email: string; name: string } };
+    assert.equal(doc.userInfo.email, 'login@example.com');
+    assert.equal(doc.userInfo.name, 'Lo Gin');
+  } finally {
+    quiet();
+    restore();
+  }
+});
+
+test('a vetted event ignores a claimed original, refuses something that is not a photo, and holds the try-on until approval', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead, { event: VETTED });
+    const { POST } = await importRouteModule('vetted-misc');
+    const withClaims = await POST(submissionRequest({ userInfo: GUEST, originalImageUrl: ORIGINAL, originalImageWidth: 1440, originalImageHeight: 1920, reframe: record }));
+    assert.equal(withClaims.status, 201);
+    assert.equal(h.heads.length, 0, 'the claimed original is never looked at');
+    assert.equal('reframe' in h.inserted[0], false);
+
+    assert.equal((await POST(submissionRequest({ userInfo: GUEST, imageData: 'data:text/html;base64,AAAA' }))).status, 400);
+
+    const tryOn = await POST(submissionRequest({ userInfo: GUEST, requestTryOn: true, leatherSuitId: 'suit-1', tryOnSourceImageData: 'data:image/jpeg;base64,AAAA' }));
+    assert.equal(tryOn.status, 201);
+    const body = (await tryOn.json()) as { data: { tryOn: { status: string; jobId: string | null } } };
+    assert.equal(body.data.tryOn.status, 'awaiting_approval');
+    assert.equal(body.data.tryOn.jobId, null);
+    const doc = h.inserted[h.inserted.length - 1] as { photoReview: { tryOn: Record<string, unknown> | null }; tryOnRequest: { status: string } };
+    assert.equal(doc.tryOnRequest.status, 'awaiting_approval');
+    assert.deepEqual(doc.photoReview.tryOn, { leatherSuitId: 'suit-1', setupId: null, cameraId: null, outfitBottomLeatherSuitId: null });
+  } finally {
+    quiet();
+    restore();
+  }
+});
+
+test('an event that does not require vetting saves exactly as before', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead, { event: { photoVetting: { required: false } } });
+    const { POST } = await importRouteModule('not-vetted');
+    assert.equal((await POST(submissionRequest())).status, 201);
+    assert.equal(h.uploads, 1);
+    assert.equal(h.puts.length, 0);
+    const doc = h.inserted[0] as Record<string, unknown>;
+    assert.equal(doc.imageUrl, COMPOSITE);
+    assert.equal('reviewStatus' in doc, false);
+    assert.equal('photoReview' in doc, false);
+    assert.equal('shareToken' in doc, false);
   } finally {
     quiet();
     restore();

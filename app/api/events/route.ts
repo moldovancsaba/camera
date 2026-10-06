@@ -30,6 +30,7 @@ import { normalizeEventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-po
 import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
 import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
+import { defaultPhotoVetting } from '@/lib/events/photo-vetting';
 
 function normalizeEventNotificationSettings(value: unknown) {
   const notificationPolicy = normalizeSubmissionEmailPolicy(value);
@@ -260,6 +261,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       resultSlideshowMode,
     },
     notifications: normalizeEventNotificationSettings(notifications),
+    // Photo vetting (camera#263): the default of the rollout; only a global admin changes it afterwards.
+    photoVetting: defaultPhotoVetting(now),
     ...(resolvedShortSlug !== undefined ? { shortUrlSlug: resolvedShortSlug } : {}),
     ...(resolvedGreatestHitsSlug !== undefined ? { greatestHitsSlug: resolvedGreatestHitsSlug } : {}),
     submissionCount: 0,

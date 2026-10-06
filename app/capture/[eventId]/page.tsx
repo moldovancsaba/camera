@@ -80,6 +80,8 @@ interface EventData {
   frames?: EventFrameAssignment[];
   /** The generated default frame, present only while the event has no active frame of its own (camera#236). */
   generatedFrame?: CaptureFrame | null;
+  /** Photo vetting is required (camera#263): the photo waits for approval, and the real frame is never shown before it. */
+  photoVettingRequired?: boolean;
   tryOn?: {
     enabled: boolean;
     setupId?: string | null;
@@ -430,7 +432,8 @@ export default function EventCapturePage({
         const urlParams = new URLSearchParams(window.location.search);
         const isResume = urlParams.get('resume') === 'true';
         
-      const response = await fetch(`/api/events/${eventId}`);
+      // As a guest: a vetted event with no "who are you" page before the photo gets the default one first (camera#264).
+      const response = await fetch(`/api/events/${eventId}?audience=guest`);
         if (!response.ok) throw new Error('Event not found');
         
         const data = await response.json();
@@ -459,6 +462,7 @@ export default function EventCapturePage({
           },
           tryOn: eventData.tryOn,
           generatedFrame: eventData.generatedFrame ?? null,
+          photoVettingRequired: eventData.photoVettingRequired === true,
         });
         
         // Fetch logos for loading-capture and onboarding-thankyou scenarios

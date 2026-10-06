@@ -307,6 +307,9 @@ export interface Event {
     includeApprovedResultsInSlideshows?: boolean; // Legacy/publication flag mirrored from resultSlideshowMode
     resultSlideshowMode?: 'disabled' | 'mixed_with_originals' | 'approved_results_only'; // Event policy for approved try-on slideshow publication
   };
+  // Photo vetting (camera#263): with `required` a guest's photo is saved pending and reaches the share page, slideshows and feeds only
+  // after an event manager or admin approves it. Only a global admin changes it. A missing setting means not required.
+  photoVetting?: { required: boolean; updatedAt?: string; updatedBy?: string | null };
   notifications?: {
     submissionResultEmailEnabled: boolean; // Whether users receive the public result page link after submission
     submissionResultEmailSubject?: string | null; // Optional legacy event-level subject template (fallback)
@@ -668,6 +671,19 @@ export interface Submission {
   reviewNotes?: string | null;
   approvedAt?: string | null;
   approvedBy?: string | null;
+  // A photo of a vetted event while it waits (camera#266): the plain framed-size photo in an unlisted Blob object (never mirrored,
+  // never returned by a public route), what approval needs to compose the real picture, and the history of the review. The
+  // branded composite does not exist until approval; imageUrl and finalImageUrl are absent until then.
+  photoReview?: {
+    photoUrl: string;                // Plain photo, Blob `pending/<event>/…`; deleted with the submission
+    photoSize: number;
+    photoMime: string;
+    shareOptIn: boolean;             // The guest's pledge-wall choice, applied when the photo is approved
+    submittedAt: string;
+    tryOn?: { leatherSuitId: string; setupId: string | null; cameraId: string | null; outfitBottomLeatherSuitId: string | null } | null; // Held until approval
+  } | null;
+  shareToken?: string | null;        // Opaque share id of a vetted photo (/share/<token>); older photos use their database id
+  reviewHistory?: Array<{ action: 'approve' | 'reject'; by: string; at: string; reason?: string | null }>;
   isShareVisible?: boolean;          // Public share-page publication flag
   isSlideshowEligible?: boolean;     // Slideshow playlist eligibility flag
   tryOnModerationArchive?: TryOnModerationArchiveState | null; // Review-queue archive state for try-on results only

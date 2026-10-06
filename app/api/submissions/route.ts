@@ -10,11 +10,13 @@ import { NextRequest } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { uploadImage } from '@/lib/imgbb/upload';
-import { head as blobHead } from '@vercel/blob';
+import { head as blobHead, put as blobPut } from '@vercel/blob';
 import { sanitizeReframeRecord } from '@/lib/camera/reframe';
 import { blobStoreHostFromToken, verifyOriginalImage } from '@/lib/submissions/original-image';
 import { logWarn } from '@/lib/observability/logger';
 import { sanitizeFrameVariant, type RecordedFrameVariant } from '@/lib/frame/capture';
+import { photoVettingRequired } from '@/lib/events/photo-vetting';
+import { guestIdentity, newShareToken, storePendingPhoto } from '@/lib/photo-vetting/pending';
 import {
   COLLECTIONS,
   DeviceType,
@@ -191,20 +193,30 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     throw apiBadRequest('Image data is required');
   }
 
+  // Photo vetting (camera#266): read from the event, never from the client. A vetted event saves the photo pending, with nothing public.
+  const db = await connectToDatabase();
+  const vettingEvent =
+    typeof eventId === 'string' && eventId.trim()
+      ? ((await db.collection(COLLECTIONS.EVENTS).findOne(buildEventLookupFilterByIdentifier(eventId), { projection: { photoVetting: 1 } })) as { _id: unknown; photoVetting?: { required?: unknown } } | null)
+      : null;
+  const vetted = photoVettingRequired(vettingEvent);
+
     // Check the claimed full-frame original before anything is uploaded or stored (camera#210).
     // A claim outside this event's folder of our own Blob store, or not a JPEG of an allowed size,
     // rejects the request; a file that cannot be confirmed only drops the original, never the photo.
-    const originalCheck = await verifyOriginalImage({
-      url: claimedOriginalUrl,
-      width: originalImageWidth,
-      height: originalImageHeight,
-      eventId,
-      storeHost: blobStoreHostFromToken(process.env.BLOB_READ_WRITE_TOKEN),
-      head: async (url) => {
-        const found = await blobHead(url);
-        return { size: found.size, contentType: found.contentType };
-      },
-    });
+    const originalCheck = vetted
+      ? ({ kind: 'none' } as const)
+      : await verifyOriginalImage({
+          url: claimedOriginalUrl,
+          width: originalImageWidth,
+          height: originalImageHeight,
+          eventId,
+          storeHost: blobStoreHostFromToken(process.env.BLOB_READ_WRITE_TOKEN),
+          head: async (url) => {
+            const found = await blobHead(url);
+            return { size: found.size, contentType: found.contentType };
+          },
+        });
     if (originalCheck.kind === 'invalid') {
       throw apiBadRequest(originalCheck.reason);
     }
@@ -224,13 +236,14 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     // Convert base64 to buffer and upload to imgbb
     const base64Data = imageData.split(',')[1]; // Remove data:image/png;base64, prefix
-    const uploadResult = await uploadImage(base64Data, {
-      name: `submission-${Date.now()}`,
-    });
+    const uploadResult = vetted
+      ? null
+      : await uploadImage(base64Data, {
+          name: `submission-${Date.now()}`,
+        });
 
     // Get frame details from database (using frameId UUID)
     // Frame is optional - events with 0 frames submit frameId=null
-    const db = await connectToDatabase();
     let frame = null;
     
     if (frameId) {
@@ -294,9 +307,24 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       }
     }
 
-    // Save submission to database
+    // A vetted event needs to know who the guest is (the approval email goes there) and keeps the plain photo privately.
     const createdAt = new Date().toISOString();
-    const submission: Submission = {
+    let identity: ReturnType<typeof guestIdentity> = null;
+    let pendingPhoto: Awaited<ReturnType<typeof storePendingPhoto>> | null = null;
+    if (vetted) {
+      identity = guestIdentity(validatedUserInfo, session);
+      if (!identity) {
+        throw apiBadRequest('An email or a login is required to save a photo for this event');
+      }
+      try {
+        pendingPhoto = await storePendingPhoto(imageData, String(vettingEvent?._id ?? 'event'), { put: (pathname, body, options) => blobPut(pathname, body, options) });
+      } catch (storeError) {
+        throw apiBadRequest(storeError instanceof Error ? storeError.message : 'The photo could not be stored');
+      }
+    }
+
+    // Save submission to database
+    const submission = {
       submissionId: `submission_${Date.now()}`,
       userId: session?.user?.id || 'anonymous',
       userEmail: session?.user?.email || 'anonymous@event',
@@ -314,23 +342,53 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       // Normalize for slideshow + queries: always mirror event UUID into eventIds when present
       ...(eventId ? { eventIds: [eventId] } : { eventIds: [] }),
       eventName: eventName || null,
-      imageUrl: uploadResult.imageUrl,
-      // The full-frame original when the browser uploaded one (private; never in a public response),
-      // otherwise the composite as before.
-      originalImageUrl: verifiedOriginal?.url ?? uploadResult.imageUrl,
-      finalImageUrl: uploadResult.imageUrl,
-      ...(verifiedOriginal && reframeRecord ? { reframe: reframeRecord } : {}),
-      deleteUrl: uploadResult.deleteUrl,
-      imageId: uploadResult.imageId,
-      fileSize: uploadResult.fileSize,
-      mimeType: uploadResult.mimeType,
+      // A pending photo has no public picture: the composite is made at approval (camera#266).
+      ...(uploadResult
+        ? {
+            imageUrl: uploadResult.imageUrl,
+            // The full-frame original when the browser uploaded one (private; never in a public response),
+            // otherwise the composite as before.
+            originalImageUrl: verifiedOriginal?.url ?? uploadResult.imageUrl,
+            finalImageUrl: uploadResult.imageUrl,
+            ...(verifiedOriginal && reframeRecord ? { reframe: reframeRecord } : {}),
+            deleteUrl: uploadResult.deleteUrl,
+            imageId: uploadResult.imageId,
+            fileSize: uploadResult.fileSize,
+            mimeType: uploadResult.mimeType,
+          }
+        : {
+            fileSize: pendingPhoto?.size ?? null,
+            mimeType: pendingPhoto?.mime ?? null,
+            reviewStatus: 'pending_review',
+            photoReview: {
+              photoUrl: pendingPhoto?.url ?? '',
+              photoSize: pendingPhoto?.size ?? 0,
+              photoMime: pendingPhoto?.mime ?? 'image/jpeg',
+              shareOptIn: shareOptIn === true,
+              submittedAt: createdAt,
+              tryOn: tryOnRequest.requested && tryOnRequest.leatherSuitId
+                ? {
+                    leatherSuitId: tryOnRequest.leatherSuitId,
+                    setupId: tryOnRequest.setupId ?? null,
+                    cameraId: tryOnRequest.cameraId ?? null,
+                    outfitBottomLeatherSuitId: tryOnRequest.outfitBottomLeatherSuitId ?? null,
+                  }
+                : null,
+            },
+            shareToken: newShareToken(),
+            reviewHistory: [],
+          }),
       submissionKind: 'original',
       // Public pledge-wall visibility: true only when shareOptIn === true in the request
       // (the capture UI's checkbox defaults to checked); false otherwise. May later be
       // bulk-set to true by publish-selfies (see the shareOptIn note above).
-      isShareVisible: shareOptIn === true,
-      // User info from onboarding pages
-      ...(validatedUserInfo && { userInfo: validatedUserInfo }),
+      isShareVisible: vetted ? false : shareOptIn === true,
+      // User info from onboarding pages (a social login gives the email without the page)
+      ...(validatedUserInfo
+        ? { userInfo: validatedUserInfo }
+        : vetted && identity
+          ? { userInfo: { name: identity.name ?? '', email: identity.email, collectedAt: createdAt } }
+          : {}),
       // Consent records from accept/CTA pages
       consents: validatedConsents,
       method: SubmissionMethod.CAMERA_CAPTURE,
@@ -341,14 +399,14 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
         originalWidth: verifiedOriginal?.width ?? (imageWidth || frame?.width || 1920),
         originalHeight: verifiedOriginal?.height ?? (imageHeight || frame?.height || 1080),
-        originalFileSize: verifiedOriginal?.fileSize ?? (uploadResult.fileSize || 0),
-        originalMimeType: verifiedOriginal?.mimeType ?? (uploadResult.mimeType || 'image/png'),
-        finalFileSize: uploadResult.fileSize,
+        originalFileSize: verifiedOriginal?.fileSize ?? (uploadResult?.fileSize || pendingPhoto?.size || 0),
+        originalMimeType: verifiedOriginal?.mimeType ?? (uploadResult?.mimeType || pendingPhoto?.mime || 'image/png'),
+        finalFileSize: uploadResult?.fileSize ?? pendingPhoto?.size,
         // Image dimensions for slideshow aspect ratio detection (default 16:9 if no frame)
         finalWidth: imageWidth || frame?.width || 1920,
         finalHeight: imageHeight || frame?.height || 1080,
         emailSent: false,
-        compositionEngine: 'camera_capture',
+        compositionEngine: vetted ? 'camera_capture_pending' : 'camera_capture',
       },
       shareCount: 0,
       downloadCount: 0,
@@ -358,7 +416,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       tryOnRequest: tryOnRequest.requested
         ? {
             requested: true,
-            status: 'requested',
+            // A vetted photo's try-on waits until the photo is approved (camera#266).
+            status: vetted ? 'awaiting_approval' : 'requested',
             requestedAt: createdAt,
             lastUpdatedAt: createdAt,
             leatherSuitId: tryOnRequest.leatherSuitId,
@@ -381,10 +440,25 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       tryOnJobs: [],
       createdAt,
       updatedAt: createdAt,
-    };
+    } as unknown as Submission;
 
     const result = await db.collection('submissions').insertOne(submission);
     const submissionId = getSubmissionMongoIdString(result.insertedId);
+
+    // A pending photo answers with what the waiting screen needs and nothing public: no picture, no share link (camera#266).
+    if (vetted) {
+      return apiCreated({
+        submission: { _id: result.insertedId, reviewStatus: 'pending_review', metadata: { emailSent: false } },
+        tryOn: {
+          requested: tryOnRequest.requested,
+          status: tryOnRequest.requested ? 'awaiting_approval' : 'not_requested',
+          leatherSuitId: tryOnRequest.requested ? tryOnRequest.leatherSuitId : null,
+          jobId: null,
+          error: null,
+        },
+        pending: true,
+      });
+    }
     const createdSubmission = {
       _id: result.insertedId,
       ...submission,
