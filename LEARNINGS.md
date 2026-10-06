@@ -1275,7 +1275,9 @@ _Use this template for new learnings:_
 - In a landscape window up to 600 px tall the reframe controls move beside the photo; the options scroll inside their column and never squash (`flex-shrink: 0`), the actions stay in view and wrap.
 - Layout checks for a camera step now assert the photo's size (at least 55% of the window's height) and that the actions are inside the window, on windows as short as the browser leaves, and every control keeps its own height.
 
-**Key Decisions**: measure what the user sees (size, reachability) and test with the browser's real visible area; a camera is not a fixed size.
+**Follow-up (same day, owner phone test again):** following the picture's real shape was not enough. A phone with a square sensor (iPhone Center Stage front camera) delivers the shape asked for at start (`buildVideoConstraintChain` reads the window once), so after turning the phone the view was a correct but small portrait picture in a landscape window. The camera is now asked again when a touch device's picture and window disagree for 0.7 s (`streamShapeMismatch`), once per turn; checked with fake cameras that answer what is asked, follow the window, refuse, or are desktops. Whether Safari honours the second request on that camera is unverified until the owner tries it.
+
+**Key Decisions**: measure what the user sees (size, reachability) and test with the browser's real visible area; a camera is not a fixed size, and its shape is not always the shape of the window.
 
 **Last Updated**: 2026-10-06T00:00:00.000Z
 

@@ -44,6 +44,8 @@ import {
 } from '@/lib/camera/capture-policy';
 import {
   buildVideoConstraintChain,
+  streamShapeMismatch,
+  type StreamShape,
   detectTouchPrimaryDevice,
   isTerminalCameraError,
 } from '@/lib/camera/constraints';
@@ -227,6 +229,12 @@ export default function CameraCapture({
 
   // The camera's frame size can change while it runs: turning a phone changes it on iOS, with or without a resize event.
   // The stage follows the real size, otherwise a portrait picture sits in a landscape stage (or the other way round).
+  // A phone with a square sensor keeps the shape that was asked for at start, so a portrait picture stays portrait after
+  // the phone is turned to landscape: if that holds for 0.7 s the camera is asked again for the window's shape, once per
+  // turn (never in a loop when the device cannot give it).
+  const startCameraRef = useRef<(facing?: 'user' | 'environment') => Promise<void>>(async () => {});
+  const mismatchRef = useRef<{ since: number; shape: StreamShape } | null>(null);
+  const askedForRef = useRef<StreamShape | null>(null);
   useEffect(() => {
     const video = videoRef.current;
     if (!stream || !video) return;
@@ -234,6 +242,26 @@ export default function CameraCapture({
       if (video.videoWidth > 0 && video.videoHeight > 0) {
         const next = video.videoWidth / video.videoHeight;
         setCameraAspect((current) => (current !== null && Math.abs(current - next) < 0.001 ? current : next));
+      }
+      const wanted = streamShapeMismatch({
+        touchPrimary: detectTouchPrimaryDevice(),
+        windowWidth: window.innerWidth,
+        windowHeight: window.innerHeight,
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+      });
+      if (wanted === null) {
+        mismatchRef.current = null;
+        askedForRef.current = null;
+      } else if (askedForRef.current !== wanted) {
+        const now = performance.now();
+        if (mismatchRef.current?.shape !== wanted) {
+          mismatchRef.current = { since: now, shape: wanted };
+        } else if (now - mismatchRef.current.since >= 700) {
+          askedForRef.current = wanted;
+          mismatchRef.current = null;
+          void startCameraRef.current(facingModeRef.current);
+        }
       }
     };
     video.addEventListener('resize', follow);
@@ -438,6 +466,11 @@ export default function CameraCapture({
       console.error('Camera error:', error);
     }
   };
+
+  // The orientation check above restarts the camera through this ref (startCamera is defined after that effect).
+  useEffect(() => {
+    startCameraRef.current = startCamera;
+  });
 
   /**
    * Stop camera stream and release resources
@@ -883,7 +916,7 @@ export default function CameraCapture({
               </div>
             )}
             {!captureNotice && stream && frameGuide && isShutterReady && (
-              <div className="absolute inset-x-0 bottom-2 z-20 p-2 text-center text-xs" role="note">
+              <div className="absolute inset-x-0 bottom-2 z-20 p-2 text-center text-xs" role="note" style={{ color: CAMERA_STAGE_WHITE }}>
                 {FRAME_GUIDE_HINT}
               </div>
             )}
