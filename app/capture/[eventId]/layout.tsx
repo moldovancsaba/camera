@@ -1,8 +1,8 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { ObjectId } from 'mongodb';
-import { connectToDatabase } from '@/lib/db/mongodb';
-import { COLLECTIONS } from '@/lib/db/schemas';
+import { loadCaptureEvent } from '@/lib/events/capture-event';
+import { pwaShortName, pwaThemeColor } from '@/lib/pwa/event-manifest';
 
 function stripHtml(s: string): string {
   return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -44,10 +44,7 @@ export async function generateMetadata({
     return { title: 'Capture' };
   }
 
-  const db = await connectToDatabase();
-  const event = await db
-    .collection(COLLECTIONS.EVENTS)
-    .findOne({ _id: new ObjectId(eventId) });
+  const event = await loadCaptureEvent(eventId);
 
   if (!event) {
     return { title: 'Event not found' };
@@ -74,6 +71,9 @@ export async function generateMetadata({
   return {
     title: { absolute: name },
     description,
+    // Installable per event (camera#222): the manifest starts and stays inside this event.
+    manifest: `/capture/${eventId}/manifest.webmanifest`,
+    appleWebApp: { capable: true, title: pwaShortName(name), statusBarStyle: 'default' },
     openGraph: {
       title: name,
       description,
@@ -87,6 +87,19 @@ export async function generateMetadata({
       ...(ogImages ? { images: [logoRaw] } : {}),
     },
   };
+}
+
+// viewport-fit=cover lets the installed app use the whole screen; the capture shells pad themselves
+// with the safe-area insets (`.app-safe-area` in app/globals.css). The zoom policy stays the browser
+// default here: only the camera steps lock zoom (components/capture/AppShellLock.tsx).
+export async function generateViewport({
+  params,
+}: {
+  params: Promise<{ eventId: string }>;
+}): Promise<Viewport> {
+  const { eventId } = await params;
+  const event = await loadCaptureEvent(eventId);
+  return { viewportFit: 'cover', themeColor: pwaThemeColor(event?.brandColor) };
 }
 
 export default function CaptureEventLayout({
