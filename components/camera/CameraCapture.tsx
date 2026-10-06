@@ -28,6 +28,18 @@ import {
   CAMERA_STAGE_WHITE,
 } from '@/lib/gds/tokens/colors';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
+import {
+  CAPTURE_FAILED_MESSAGE,
+  CAPTURE_MAX_ATTEMPTS,
+  CAPTURE_NOT_READY_MESSAGE,
+  CAPTURE_RETRY_DELAY_MS,
+  SHUTTER_READY_TIMEOUT_MS,
+  SHUTTER_WARMUP_MS,
+  isBrokenFrame,
+  runBoundedAttempts,
+  type AttemptOutcome,
+} from '@/lib/camera/capture-policy';
+import { sampleVideoLumaStats, waitForVideoFrame } from '@/lib/camera/video-frame';
 
 /** Supports hex (#rgb) or CSS `var(--token)` for branded capture UI. */
 function capturePromptBackground(fill: string): string {
@@ -49,7 +61,7 @@ export interface CameraCaptureProps {
   captureButtonBorderColor?: string; // Hex or CSS `var(--token)` for capture button border
   promptTitle?: string;  // Custom title for camera start prompt
   promptDescription?: string; // Custom description for camera start prompt
-  /** Default camera facing when capture opens. */
+  /** Camera facing when capture opens. Defaults to the front camera for everyone (owner decision 2026-10-06). */
   initialFacingMode?: 'user' | 'environment';
   /**
    * When set (e.g. `9/16`), drives preview sizing, getUserMedia aspect, and capture output
@@ -89,7 +101,7 @@ export default function CameraCapture({
   captureButtonBorderColor = CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   promptTitle = 'Ready to capture?',
   promptDescription = 'Click to start your camera and take a photo',
-  initialFacingMode = 'environment',
+  initialFacingMode = 'user',
   previewAspectWidthOverHeight,
   controlBar = 'default',
   onCancel,
@@ -107,6 +119,10 @@ export default function CameraCapture({
   const [frameImage, setFrameImage] = useState<HTMLImageElement | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [orientation, setOrientation] = useState<'portrait' | 'landscape-left' | 'landscape-right'>('portrait');
+  // The shutter unlocks after the first presented frame plus a short warm-up (see capture-policy.ts).
+  const [isShutterReady, setIsShutterReady] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [captureNotice, setCaptureNotice] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -114,6 +130,8 @@ export default function CameraCapture({
   const streamRef = useRef<MediaStream | null>(null);
   const startRequestRef = useRef(0);
   const autoStartAttemptedRef = useRef(false);
+  const sampleCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const capturingRef = useRef(false);
 
   const isMobileDevice = useCallback(() => {
     if (typeof navigator === 'undefined') {
@@ -277,6 +295,8 @@ export default function CameraCapture({
     setIsLoading(true);
     setError(null);
     setCapturedImage(null);
+    setIsShutterReady(false);
+    setCaptureNotice(null);
     try {
       const currentStream = streamRef.current;
       if (currentStream) {
@@ -368,6 +388,7 @@ export default function CameraCapture({
    */
   const stopCamera = useCallback(() => {
     startRequestRef.current += 1;
+    setIsShutterReady(false);
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
@@ -392,152 +413,140 @@ export default function CameraCapture({
   };
 
   /**
-   * Capture a photo from the video stream.
-   * The output matches the live view and crops to the target aspect ratio.
+   * Draw the current video frame to the output canvas (object-cover into the target aspect,
+   * mirrored for the front camera) and hand the JPEG to onCapture. Returns false when the
+   * frame could not be drawn, so the caller retries. Output size and crop are unchanged here;
+   * the full-frame capture is camera#208.
    */
-  const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) {
-      return;
+  const drawAndEmitFrame = (video: HTMLVideoElement, canvas: HTMLCanvasElement): boolean => {
+    const { width: frameTargetWidth, height: frameTargetHeight } = getCaptureOutputPixelSize();
+
+    canvas.width = frameTargetWidth;
+    canvas.height = frameTargetHeight;
+
+    // Scale the FULL video to fill the canvas (object-cover) and centre it.
+    const scale = Math.max(canvas.width / video.videoWidth, canvas.height / video.videoHeight);
+    const scaledWidth = video.videoWidth * scale;
+    const scaledHeight = video.videoHeight * scale;
+    const offsetX = (canvas.width - scaledWidth) / 2;
+    const offsetY = (canvas.height - scaledHeight) / 2;
+
+    const ctx = canvas.getContext('2d', {
+      willReadFrequently: false,
+      alpha: false, // Safari optimization: no alpha channel needed
+    });
+    if (!ctx) {
+      return false;
     }
 
+    // Safari fix: fill with a white background first
+    ctx.fillStyle = CAMERA_STAGE_WHITE;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    try {
+      // Front camera: flip horizontally to match the mirrored live view
+      if (facingMode === 'user') {
+        ctx.save();
+        ctx.scale(-1, 1);
+        ctx.drawImage(
+          video,
+          0, 0, video.videoWidth, video.videoHeight,
+          -offsetX - scaledWidth, offsetY, scaledWidth, scaledHeight
+        );
+        ctx.restore();
+      } else {
+        ctx.drawImage(
+          video,
+          0, 0, video.videoWidth, video.videoHeight,
+          offsetX, offsetY, scaledWidth, scaledHeight
+        );
+      }
+
+      if (frameImage) {
+        ctx.drawImage(frameImage, 0, 0, canvas.width, canvas.height);
+      }
+    } catch (err) {
+      console.error('Error drawing video to canvas:', err);
+      return false;
+    }
+
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        setCaptureNotice(CAPTURE_FAILED_MESSAGE);
+        return;
+      }
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      setCapturedImage(dataUrl);
+
+      // Pass captured image to parent
+      onCapture(blob, dataUrl);
+
+      // Stop camera after capture
+      stopCamera();
+    }, 'image/jpeg', 0.95);
+
+    return true;
+  };
+
+  /**
+   * Capture a photo from the video stream. The shutter is only enabled once a frame has been
+   * presented and the camera has warmed up; each tap waits for a fresh frame, rejects a
+   * near-black flat one (sampled brightness, see capture-policy.ts) and tries at most
+   * CAPTURE_MAX_ATTEMPTS times before telling the user, instead of looping silently.
+   */
+  const capturePhoto = async () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-
-    // Safari fix: Comprehensive checks before capture
-    // 1. Check if video has valid dimensions
-    if (!video.videoWidth || !video.videoHeight) {
-      console.warn('Video dimensions not ready, waiting...');
-      setTimeout(() => capturePhoto(), 100);
-      return;
-    }
-    
-    // 2. Check if video is actually playing (Safari specific)
-    if (video.paused || video.ended) {
-      console.warn('Video not playing, attempting to play...');
-      video.play().then(() => {
-        setTimeout(() => capturePhoto(), 100);
-      }).catch(err => {
-        console.error('Failed to play video:', err);
-        setError('Video playback failed. Please try again.');
-      });
-      return;
-    }
-    
-    // 3. Check if video currentTime is progressing (actually rendering frames)
-    if (video.currentTime === 0) {
-      console.warn('Video not rendering frames yet, waiting...');
-      setTimeout(() => capturePhoto(), 100);
+    if (!video || !canvas || capturingRef.current || !isShutterReady) {
       return;
     }
 
-    // Safari fix: Use requestAnimationFrame to capture during actual frame render
-    // This ensures Safari has actually painted the video frame
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        // Double RAF ensures we're definitely on a rendered frame
-        
-        // Calculate target aspect ratio from frame (or default 16:9)
-        // Draw the full sensor, scaled to the frame size
-        // This shows maximum visible area, matching what CSS object-cover displays
-        // Example: 3000x4000 sensor → 1500x1000 frame (3:2)
-        //   - Draw full 3000x4000 scaled to 1500x2000 (matches width)
-        //   - Canvas clips to 1500x1000, showing all 3 people
-        
-        const { width: frameTargetWidth, height: frameTargetHeight } = getCaptureOutputPixelSize();
+    capturingRef.current = true;
+    setIsCapturing(true);
+    setCaptureNotice(null);
 
-        canvas.width = frameTargetWidth;
-        canvas.height = frameTargetHeight;
-        
-        // Calculate how to scale and position the FULL video to fill canvas (object-cover)
-        const scaleX = canvas.width / video.videoWidth;
-        const scaleY = canvas.height / video.videoHeight;
-        const scale = Math.max(scaleX, scaleY); // Scale to fill (largest dimension)
-        
-        const scaledWidth = video.videoWidth * scale;
-        const scaledHeight = video.videoHeight * scale;
-        
-        // Center the scaled video
-        const offsetX = (canvas.width - scaledWidth) / 2;
-        const offsetY = (canvas.height - scaledHeight) / 2;
-
-        // Get canvas context
-        const ctx = canvas.getContext('2d', { 
-          willReadFrequently: false,
-          alpha: false // Safari optimization: no alpha channel needed
-        });
-        
-        if (!ctx) {
-          setError('Failed to get canvas context');
-          return;
-        }
-
-        if (frameOverlay && !frameImage) {
-          console.warn('Frame overlay not loaded yet; retrying capture.');
-          setTimeout(() => capturePhoto(), 150);
-          return;
-        }
-
-        // Safari fix: Fill with white background first
-        ctx.fillStyle = CAMERA_STAGE_WHITE;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        try {
-          // Draw FULL video scaled to fill canvas (object-cover behavior)
-          // If front camera, flip horizontally to match mirror view
-          if (facingMode === 'user') {
-            ctx.save();
-            ctx.scale(-1, 1);
-            ctx.drawImage(
-              video,
-              0, 0, video.videoWidth, video.videoHeight,
-              -offsetX - scaledWidth, offsetY, scaledWidth, scaledHeight
-            );
-            ctx.restore();
-          } else {
-            ctx.drawImage(
-              video,
-              0, 0, video.videoWidth, video.videoHeight,
-              offsetX, offsetY, scaledWidth, scaledHeight
-            );
-          }
-          
-          // Verify something was actually drawn (not black)
-          const imageData = ctx.getImageData(canvas.width / 2, canvas.height / 2, 1, 1);
-          const [r, g, b] = imageData.data;
-          
-          if (r === 0 && g === 0 && b === 0) {
-            console.warn('Captured black frame, retrying...');
-            setTimeout(() => capturePhoto(), 100);
-            return;
+    try {
+      const result = await runBoundedAttempts(
+        async (): Promise<AttemptOutcome> => {
+          if (!video.videoWidth || !video.videoHeight || video.readyState < 2) {
+            return 'retry';
           }
 
-          if (frameImage) {
-            ctx.drawImage(frameImage, 0, 0, canvas.width, canvas.height);
-          }
-
-          // Convert canvas to blob and data URL
-          canvas.toBlob((blob) => {
-            if (!blob) {
-              setError('Failed to capture photo');
-              return;
+          if (video.paused || video.ended) {
+            try {
+              await video.play();
+            } catch (playError) {
+              console.error('Failed to play video:', playError);
+              return 'retry';
             }
+          }
 
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-            setCapturedImage(dataUrl);
-            
-            // Pass captured image to parent
-            onCapture(blob, dataUrl);
-            
-            // Stop camera after capture
-            stopCamera();
-          }, 'image/jpeg', 0.95);
-          
-        } catch (err) {
-          console.error('Error drawing video to canvas:', err);
-          setError('Failed to capture photo. Please try again.');
-        }
-      });
-    });
+          await waitForVideoFrame(video);
+
+          if (frameOverlay && !frameImage) {
+            return 'retry';
+          }
+
+          const sampleCanvas = sampleCanvasRef.current ?? (sampleCanvasRef.current = document.createElement('canvas'));
+          const stats = sampleVideoLumaStats(video, sampleCanvas);
+          if (stats && isBrokenFrame(stats)) {
+            console.warn('Camera returned a broken (near-black, flat) frame; retrying.', stats);
+            return 'retry';
+          }
+
+          return drawAndEmitFrame(video, canvas) ? 'done' : 'retry';
+        },
+        { maxAttempts: CAPTURE_MAX_ATTEMPTS, delayMs: CAPTURE_RETRY_DELAY_MS }
+      );
+
+      if (!result.ok) {
+        setCaptureNotice(CAPTURE_NOT_READY_MESSAGE);
+      }
+    } finally {
+      capturingRef.current = false;
+      setIsCapturing(false);
+    }
   };
 
   /**
@@ -648,6 +657,24 @@ export default function CameraCapture({
 
     let cancelled = false;
     let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+    let warmupTimer: ReturnType<typeof setTimeout> | null = null;
+    let frameCallbackId: number | null = null;
+    const hasFrameCallback = typeof video.requestVideoFrameCallback === 'function';
+
+    // WHAT: unlocks the shutter a short warm-up after the first presented frame.
+    // WHY: right after the stream starts the camera is still settling exposure and focus,
+    //     and an early tap captures a near-black frame (camera#206).
+    const unlockShutterAfterWarmup = () => {
+      if (cancelled || warmupTimer) return;
+      warmupTimer = setTimeout(() => {
+        if (!cancelled) setIsShutterReady(true);
+      }, SHUTTER_WARMUP_MS);
+    };
+
+    // Never leave the shutter dead if no frame event ever arrives on some browser.
+    const shutterTimeout = setTimeout(() => {
+      if (!cancelled) setIsShutterReady(true);
+    }, SHUTTER_READY_TIMEOUT_MS);
 
     const markPreviewReady = () => {
       if (cancelled) return;
@@ -666,8 +693,15 @@ export default function CameraCapture({
       const readyHandler = () => {
         if (video.videoWidth > 0 && video.videoHeight > 0) {
           markPreviewReady();
+          if (!hasFrameCallback && video.readyState >= 2) {
+            unlockShutterAfterWarmup();
+          }
         }
       };
+
+      if (hasFrameCallback) {
+        frameCallbackId = video.requestVideoFrameCallback(() => unlockShutterAfterWarmup());
+      }
 
       video.addEventListener('loadedmetadata', readyHandler);
       video.addEventListener('loadeddata', readyHandler);
@@ -717,6 +751,13 @@ export default function CameraCapture({
       cancelled = true;
       if (fallbackTimer) {
         clearTimeout(fallbackTimer);
+      }
+      if (warmupTimer) {
+        clearTimeout(warmupTimer);
+      }
+      clearTimeout(shutterTimeout);
+      if (frameCallbackId !== null && typeof video.cancelVideoFrameCallback === 'function') {
+        video.cancelVideoFrameCallback(frameCallbackId);
       }
       detachListeners?.();
       if (video.srcObject === stream) {
@@ -783,6 +824,18 @@ export default function CameraCapture({
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2  mx-auto mb-4"></div>
                   <p className="text-sm">Starting camera...</p>
                 </div>
+              </div>
+            )}
+
+            {/* Shutter warm-up and capture messages (announced, not colour-only) */}
+            {stream && !isLoading && !isShutterReady && (
+              <div className="absolute inset-x-0 top-2 z-20 text-center text-xs" role="status">
+                Getting ready…
+              </div>
+            )}
+            {captureNotice && (
+              <div className="absolute inset-x-0 bottom-2 z-20 p-2 text-center text-xs" role="status">
+                {captureNotice}
               </div>
             )}
 
@@ -862,7 +915,13 @@ export default function CameraCapture({
                 )}
               </div>
               <div className="justify-self-center">
-                <Button type="button" size={buttonSize} radius="md" onClick={() => capturePhoto()}>
+                <Button
+                  type="button"
+                  size={buttonSize}
+                  radius="md"
+                  onClick={() => void capturePhoto()}
+                  disabled={!isShutterReady || isCapturing}
+                >
                   Take
                 </Button>
               </div>
@@ -917,7 +976,8 @@ export default function CameraCapture({
       {!useTripleBar && stream && !capturedImage && (
         <>
           <button
-            onClick={capturePhoto}
+            onClick={() => void capturePhoto()}
+            disabled={!isShutterReady || isCapturing}
             className={`fixed z-50 h-16 w-16 rounded-full  shadow-lg transition-all ${
               orientation === 'portrait'
                 ? 'bottom-4 left-1/2 -translate-x-1/2'

@@ -1,5 +1,33 @@
 # RELEASE_NOTES.md
 
+## Unreleased — capture: front camera by default, shutter gated on the first frame, bounded retries
+
+- **Changed:** `CameraCapture` now opens the front camera by default for everyone
+  (`initialFacingMode` default `user`, owner decision 2026-10-06). The Switch camera
+  control still reaches the back camera. On desktop the default view is now mirrored
+  like any webcam selfie, since the state used to say `environment` there.
+- **Fixed:** the shutter is disabled until a video frame has been presented plus a
+  600 ms warm-up (`requestVideoFrameCallback`, with a `playing`/`readyState` fallback and
+  a 4 s timeout so it is never dead), and shows "Getting ready…". Taps before that
+  captured exposure warm-up frames.
+- **Fixed:** the black-frame check no longer samples a single pixel for exactly
+  (0,0,0). A fresh frame is sampled on a 32x32 grid and rejected only when it is
+  near-black and almost flat (mean brightness under 6, spread under 3), so dark scenes
+  with detail still capture. At most 6 attempts (about 0.7 s) are made per tap; the
+  old code retried forever and, with a stream running, showed nothing. The user now
+  sees "The camera is not ready yet. Tap Take again." instead.
+- **Added:** `lib/camera/capture-policy.ts` (thresholds, brightness statistics,
+  bounded retry) with `capture-policy.test.ts`; `lib/camera/video-frame.ts`.
+- **Evidence (synthetic, Chromium fake camera, 24 captures at random times against a
+  looping clip that is near-black but not exactly black for 17% of the time):**
+  old code 4 near-black photos (brightness 5); new code 0. On a clip with exactly
+  black frames both captured 0 black photos, because the old single-pixel test did
+  catch those. The shutter was disabled on first sight 24 of 24 times and unlocked
+  after 0.60-0.66 s. Real devices are not covered; the thresholds are starting values
+  to be tuned with the capture diagnostics (camera#204) and the phone tests.
+- **Not changed:** output size, crop, camera constraints, lens choice, and the stored
+  image (camera#207-#212). camera#206.
+
 ## Unreleased — official GDS stylesheet replaces the forked theme CSS
 
 - **Changed:** `app/layout.tsx` now imports `@sovereignsquad/gds-theme/styles.css`
