@@ -21,6 +21,7 @@ import CameraCapture from '@/components/camera/CameraCapture';
 import AppShellLock from '@/components/capture/AppShellLock';
 import { clearCaptureNotices, notifyCapture } from '@/components/capture/notify';
 import ShareOverlay from '@/components/capture/ShareOverlay';
+import PendingPhotoPreview from '@/components/capture/PendingPhotoPreview';
 import TourOverlay from '@/components/tour/TourOverlay';
 import TourReplayButton from '@/components/tour/TourReplayButton';
 import { useTourController } from '@/lib/tour/useTourController';
@@ -38,6 +39,7 @@ import { type CustomPage } from '@/lib/db/schemas';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep';
 import type { FullFrameCapture } from '@/lib/camera/frame-capture';
+import { frameSilhouette } from '@/lib/frame/silhouette';
 import { pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory } from '@/lib/frame/capture';
 import SystemCameraCapture from '@/components/camera/SystemCameraCapture';
 import { captureOverride, chooseCaptureMethod, hasStillCapture, type CaptureMethod } from '@/lib/camera/still-capture';
@@ -265,6 +267,10 @@ export default function EventCapturePage({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  // Photo vetting (camera#265): the photo is saved and waits for approval. No share link exists yet.
+  const [pendingApproval, setPendingApproval] = useState(false);
+  // An own frame as a 50% black silhouette, shown instead of the real frame while the photo of a vetted event waits.
+  const [silhouetteUrl, setSilhouetteUrl] = useState<string | null>(null);
   const [step, setStep] = useState<'select-frame' | 'capture-photo' | 'reframe' | 'preview'>('select-frame');
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
   /** Intrinsic frame bitmap aspect (w/h); preview matches composite via `previewAspectWidthOverHeight`. */
@@ -286,6 +292,7 @@ export default function EventCapturePage({
   // Public pledge-wall opt-in: defaults to checked so fan photos appear on the event wall.
   // The capturer can uncheck to keep their photo private.
   const [shareOptIn, setShareOptIn] = useState(true);
+  const vetted = event?.photoVettingRequired === true;
   
   const { onboardingPages, thankYouPages, takePhotoPage } = splitCustomPages(customPages);
 
@@ -310,6 +317,13 @@ export default function EventCapturePage({
   const successMessage = configuredTakePhotoPage?.config.successMessage || 'Photo saved successfully! You can now share it.';
   const showSharePage = configuredTakePhotoPage?.config.showSharePage !== false;
   const skipShareMessage = configuredTakePhotoPage?.config.skipShareMessage || 'Thank you! Your photo has been saved.';
+  // Photo vetting (camera#265): what the guest reads while the photo waits for approval.
+  const pendingPreviewNotice = 'Your photo will get its frame after it has been approved.';
+  const pendingSavedMessage = 'Thank you! Your photo is waiting for approval.';
+  const pendingTitle = 'Thank you!';
+  const pendingWaitingMessage = `Your photo is waiting for approval. We will email you the link to it as soon as it is approved.${
+    selectedTryOnSuitId ? ' Your try-on picture will be made after that.' : ''
+  }`;
   const cameraPromptTitle = configuredTakePhotoPage?.config.cameraPromptTitle || 'Ready to capture?';
   const cameraPromptDescription =
     configuredTakePhotoPage?.config.cameraPromptDescription || 'Click to start your camera and take a photo';
@@ -567,6 +581,22 @@ export default function EventCapturePage({
     };
   }, [selectedFrame?.frameId, selectedFrame?.imageUrl, selectedFrame?.generated]);
 
+  // The own frame of a vetted event is shown as a silhouette, never as the real frame (camera#265).
+  const ownFrameUrl = selectedFrame && !selectedFrame.generated ? selectedFrame.imageUrl : null;
+  useEffect(() => {
+    if (!vetted || !ownFrameUrl) {
+      setSilhouetteUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void frameSilhouette(ownFrameUrl).then((url) => {
+      if (!cancelled) setSilhouetteUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [vetted, ownFrameUrl]);
+
   const compositeImageWithFrame = useCallback(async () => {
     if (!capturedImage || !selectedFrame) return;
 
@@ -609,7 +639,8 @@ export default function EventCapturePage({
       canvas.height = targetHeight;
       setImageDimensions({ width: targetWidth, height: targetHeight });
       ctx.drawImage(photoImg, 0, 0, canvas.width, canvas.height);
-      ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
+      // A vetted event gets its plain photo: the frame is put on by the server once the photo is approved (camera#265).
+      if (!vetted) ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
 
       const composite = canvas.toDataURL('image/jpeg', 0.85);
       setCompositeImage(composite);
@@ -620,7 +651,7 @@ export default function EventCapturePage({
     } finally {
       setIsProcessing(false);
     }
-  }, [capturedImage, errorFrameMessage, selectedFrame]);
+  }, [capturedImage, errorFrameMessage, selectedFrame, vetted]);
 
   // Composite image with frame when photo is captured (or just use photo if no frame)
   useEffect(() => {
@@ -796,7 +827,8 @@ export default function EventCapturePage({
       if (selectedTryOnSuitId && event?.tryOn?.enabled) {
         submissionData.requestTryOn = true;
         submissionData.leatherSuitId = selectedTryOnSuitId;
-        submissionData.tryOnSourceImageData = capturedImage;
+        // A vetted photo is the source: the server keeps it and queues the try-on when the photo is approved.
+        if (!vetted) submissionData.tryOnSourceImageData = capturedImage;
         if (selectedTryOnBottomSuitId && event?.tryOn?.outfitEnabled) {
           submissionData.outfitBottomLeatherSuitId = selectedTryOnBottomSuitId;
         }
@@ -837,6 +869,13 @@ export default function EventCapturePage({
       }
       setSavedSubmissionId(submissionId);
       setHasFinalizedSubmissionEmail(false);
+      // A photo of a vetted event is saved and waits for approval: no share link yet, the guest gets it by email.
+      if ((data.data ?? data).pending === true) {
+        setPendingApproval(true);
+        setTryOnResult(null);
+        notifyCapture('success', pendingSavedMessage);
+        return;
+      }
       const emailNotice = buildEmailDeliveryNotice(data.data?.submission?.metadata);
       const finalSuccessMessage = emailNotice
         ? `${successMessage}\n${emailNotice}`
@@ -965,6 +1004,7 @@ export default function EventCapturePage({
     setCapturedOriginal(null);
     setCompositeImage(null);
     setShareUrl(null);
+    setPendingApproval(false);
     setTryOnResult(null);
     setSelectedTryOnSuitId(null);
     setStep('capture-photo');
@@ -997,7 +1037,8 @@ export default function EventCapturePage({
       userInfo: data,
     }));
 
-    if (savedSubmissionId) {
+    // The contact of a vetted photo was given before the photo (the server needs it to email the link): nothing to update.
+    if (savedSubmissionId && !vetted) {
       await updateSubmissionContact(savedSubmissionId, data);
     }
 
@@ -1082,6 +1123,7 @@ export default function EventCapturePage({
     setCapturedOriginal(null);
     setCompositeImage(null);
     setShareUrl(null);
+    setPendingApproval(false);
     setImageDimensions(null);
     setTryOnResult(null);
     setSelectedTryOnSuitId(null);
@@ -1481,8 +1523,9 @@ export default function EventCapturePage({
             <ReframeStep
               capture={capturedOriginal}
               frameAspect={captureAspect}
-              // The generated frame shows as territories until the preview step; own frames as before.
-              frameImageUrl={selectedFrame?.generated ? null : selectedFrame?.imageUrl ?? null}
+              // The generated frame shows as territories until the preview step; own frames as before. A vetted event
+              // never shows the real frame: its own frame shows as a silhouette (camera#265).
+              frameImageUrl={vetted ? silhouetteUrl : selectedFrame?.generated ? null : selectedFrame?.imageUrl ?? null}
               territories={selectedFrame?.generated?.territories}
               buttonSize={eventButtonSize}
               onDone={handleReframeDone}
@@ -1497,18 +1540,33 @@ export default function EventCapturePage({
             <div className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-col items-center gap-3 landscape:flex-row landscape:gap-4">
               {/* The image takes the space the actions leave; it is never scrolled past (camera#222) */}
               <div className="relative min-h-[20dvh] w-full flex-1 landscape:h-full landscape:min-h-0 landscape:min-w-0">
-                <Image
-                  src={compositeImage}
-                  alt="Final result"
-                  fill
-                  unoptimized
-                  className="object-contain"
-                />
+                {vetted ? (
+                  <PendingPhotoPreview
+                    photoUrl={compositeImage}
+                    aspect={imageDimensions ? imageDimensions.width / imageDimensions.height : captureAspect}
+                    territories={selectedFrame?.generated?.territories}
+                    silhouetteUrl={selectedFrame?.generated ? null : silhouetteUrl}
+                    alt="Your photo; the shaded shapes show where the frame will go"
+                  />
+                ) : (
+                  <Image
+                    src={compositeImage}
+                    alt="Final result"
+                    fill
+                    unoptimized
+                    className="object-contain"
+                  />
+                )}
               </div>
 
-              {!shareUrl && (
+              {!shareUrl && !pendingApproval && (
                 <div className={PREVIEW_PANEL_CLASS}>
                   <div className="flex min-h-0 flex-col gap-2 overflow-y-auto px-1 py-1">
+                    {vetted && (
+                      <p className="text-center text-sm" data-pending-notice>
+                        {pendingPreviewNotice}
+                      </p>
+                    )}
                     {event?.tryOn?.enabled ? (
                       <div className="rounded-2xl p-3 shadow-md">
                         <TryOnSuitSelector
@@ -1574,6 +1632,21 @@ export default function EventCapturePage({
                 </div>
               )}
 
+              {pendingApproval && (
+                <div className={PREVIEW_PANEL_CLASS}>
+                  <ShareOverlay
+                    title={pendingTitle}
+                    shareCaption={shareCaptionForSocial}
+                    buttonSize={eventButtonSize}
+                    nextButtonText={shareNextButtonText}
+                    completionMessage={pendingWaitingMessage}
+                    onNext={handleMoveToThankYou}
+                    showShareActions={false}
+                    stageStatus="complete"
+                  />
+                </div>
+              )}
+
               {shareUrl && showSharePage && (
                 <div className={PREVIEW_PANEL_CLASS}>
                   <ShareOverlay
@@ -1631,7 +1704,7 @@ export default function EventCapturePage({
               />
             ) : null}
             <p className="  font-medium">
-              Applying frame...
+              {vetted ? 'Preparing your photo...' : 'Applying frame...'}
             </p>
           </div>
         </div>
