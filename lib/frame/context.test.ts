@@ -5,6 +5,7 @@ import {
   CAMERA_DEFAULT_CTA_BRAND_COLOR,
   CAMERA_STAGE_BLACK,
   CAMERA_STAGE_WHITE,
+  EVENT_THEME_DEFAULT,
   FRAME_SYSTEM_BAR_COLOR,
   FRAME_SYSTEM_HEADING_COLOR,
 } from '@/lib/gds/tokens/colors';
@@ -121,19 +122,23 @@ test('the fallback for an event without a messmass snapshot: camera name and par
   assert.equal(nativeFrameContext({ eventName: 'x', partnerName: '   ' }, NOW).partner, null);
 });
 
+// Stand-in colours from the tokens (no raw colour literals in tests).
+const PAGE_HERO = EVENT_THEME_DEFAULT.headingColor;
+const TEXT_A = EVENT_THEME_DEFAULT.textColor;
+const TEXT_B = EVENT_THEME_DEFAULT.linkColor;
+
 test('the page colours of a messmass style are read, each falling back to the default; a snapshot without them has none', () => {
-  const base = { event: { name: 'E' }, template: null, style: { headingColor: '#ffffffff', heroBackground: '#171d37ff' } };
-  const withPage = parseFrameContext({ ...base, style: { ...base.style, page: { textColor: '#222222ff', buttonBackground: 'not a colour', cardRadius: '1.5rem' } } }, NOW);
-  assert.equal(withPage?.style.page?.textColor, '#222222ff');
-  assert.equal(withPage?.style.page?.pageBackground, '#171d37ff', 'the page background falls back to the hero background');
-  assert.equal(withPage?.style.page?.buttonBackground, '#ffffffff', 'an unusable colour falls back to the system default');
+  const base = { event: { name: 'E' }, template: null, style: { headingColor: WHITE, heroBackground: PAGE_HERO } };
+  const withPage = parseFrameContext({ ...base, style: { ...base.style, page: { textColor: TEXT_A, buttonBackground: 'not a colour', cardRadius: '1.5rem' } } }, NOW);
+  assert.equal(withPage?.style.page?.textColor, TEXT_A);
+  assert.equal(withPage?.style.page?.pageBackground, PAGE_HERO, 'the page background falls back to the hero background');
+  assert.equal(withPage?.style.page?.buttonBackground, EVENT_THEME_DEFAULT.buttonBackground, 'an unusable colour falls back to the system default');
   assert.equal(withPage?.style.page?.cardRadius, '1.5rem');
   assert.equal(parseFrameContext({ ...base, style: { ...base.style, page: { cardRadius: 'calc(1px)' } } }, NOW)?.style.page?.cardRadius, '0.75rem');
   assert.equal(parseFrameContext(base, NOW)?.style.page, undefined);
 });
 
 test('a change of the page colours alone does not change the hash of the frame (the images are not drawn again)', () => {
-  const a = parseFrameContext({ event: { name: 'E' }, template: null, style: { headingColor: '#ffffffff', heroBackground: '#171d37ff', page: { textColor: '#222222ff' } } }, NOW);
-  const b = parseFrameContext({ event: { name: 'E' }, template: null, style: { headingColor: '#ffffffff', heroBackground: '#171d37ff', page: { textColor: '#333333ff' } } }, NOW);
-  assert.equal(a?.inputHash, b?.inputHash);
+  const make = (textColor: string) => parseFrameContext({ event: { name: 'E' }, template: null, style: { headingColor: WHITE, heroBackground: PAGE_HERO, page: { textColor } } }, NOW);
+  assert.equal(make(TEXT_A)?.inputHash, make(TEXT_B)?.inputHash);
 });
