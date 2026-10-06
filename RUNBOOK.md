@@ -349,8 +349,8 @@ package it is off for every event, so none of the behaviour below applies yet.
    read the dry-run report*, then *Turn photo vetting on for every event*. The run is repeatable; events already on are skipped, and nothing
    written before is changed. Photos made before vetting stay public: a missing review status counts as approved and no approval time is
    written (the fanmass feed would otherwise send them again).
-4. **New events** get vetting required when `PHOTO_VETTING_DEFAULT_FOR_NEW_EVENTS` in `lib/events/photo-vetting.ts` is `true` (a code change,
-   merged after the checks above). It covers events created in the admin, by messmass provisioning and by savetheworld provisioning.
+4. **New events** start with vetting required (`PHOTO_VETTING_DEFAULT_FOR_NEW_EVENTS` in `lib/events/photo-vetting.ts` is `true`). It covers events
+   created in the admin, by messmass provisioning and by savetheworld provisioning.
 
 **Checklist for the first live event:** a test photo stays invisible (share page by id is "not found", no slideshow slide, not on the wall,
 not in the fanmass feed); approval emails the guest and publishes it; a try-on requested with the photo runs only after approval; the

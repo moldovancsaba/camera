@@ -2,13 +2,12 @@
  * Photo vetting for an event (camera#263, docs/PHOTO_VETTING_PLAN.md): with it required, a guest's photo is saved as pending, no
  * branded image of it exists, and it reaches the share page, slideshows and feeds only after an event manager or admin approves.
  *
- * `event.photoVetting.required` is the switch. Only a global admin changes it. Until the rollout (V10) the default for new events
- * is OFF, so merging the packages before it changes nothing; the rollout flips `PHOTO_VETTING_DEFAULT_FOR_NEW_EVENTS` and runs the
- * backfill for the existing events (a dry run first).
+ * `event.photoVetting.required` is the switch. Only a global admin changes it. Every new event starts with it on (owner, 2026-10-06);
+ * the events that already existed were switched on by the rollout (`/admin/photo-vetting`).
  */
 
-/** Whether a new event starts with vetting required. Switched on by the rollout (camera#271). */
-export const PHOTO_VETTING_DEFAULT_FOR_NEW_EVENTS = false;
+/** Whether a new event starts with vetting required: yes, by design (camera#271). */
+export const PHOTO_VETTING_DEFAULT_FOR_NEW_EVENTS = true;
 
 export interface PhotoVettingSetting {
   required: boolean;

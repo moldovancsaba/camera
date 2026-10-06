@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — photo vetting is the default for new events
+
+- **Changed:** every new event starts with photo vetting required (admin, messmass and savetheworld provisioning), as decided by the
+  owner. Existing events are switched on by the rollout (`/admin/photo-vetting`).
+
 ## Unreleased — one Vetting place, and the Google / Facebook login returns to the capture page
 
 - **Changed:** photo approval moved from its own Photos tab into the event's existing **Vetting** tab: the photos waiting for approval come
