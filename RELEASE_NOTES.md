@@ -1,5 +1,38 @@
 # RELEASE_NOTES.md
 
+## Unreleased — capture: reframe step (move, zoom, show everything)
+
+- **Added:** on the event capture page the whole camera image now goes through a reframe step
+  before the preview (`components/camera/ReframeStep.tsx`). The fan sees the image under the
+  frame overlay, exactly as the final composite. The default is the largest crop that fills the
+  frame, centred (what the old capture produced), so tapping Continue gives the same photo as
+  before. The fan can drag to move, pinch or use the mouse wheel to zoom, use the arrow keys to
+  move and plus and minus to zoom, use the GDS zoom slider, or choose Show everything, which
+  fits the whole image in the frame over a blurred backdrop. Reset, Retake and Continue are
+  buttons; Show everything is disabled when the frame has the image's own shape.
+- **Added:** the pure geometry in `lib/camera/reframe.ts` (fill and fit boxes, clamped zoom and
+  pan, zoom around a point, mode, the stored record) with 18 unit tests, and one canvas renderer
+  (`lib/camera/reframe-render.ts`) that draws both the preview and the final crop, so the
+  result is what was on screen. The backdrop blur is a downscale and upscale, which works in
+  every browser (canvas `filter` does not).
+- **Added:** a `reframe` record (`mode`, `zoom`, crop box in source pixels, frame aspect,
+  `mirrored`) is produced and sent with the submission. The API ignores it until camera#210 stores
+  it, so nothing changes on the server.
+- **Changed:** `handleCameraCapture` on the event page no longer crops; it opens the reframe step.
+  The frame-less crop then continues through the existing composite, preview and save steps and
+  is still the try-on source. The stepper counts the reframe step as part of "Capture Photo".
+  The legacy `/capture` page keeps the default crop without the step.
+- **Evidence (Chromium fake camera, production build, corner-marked clip; 18 checks):** default
+  is Fill at 100% with no corner markers; Show everything shows all four markers (mirrored) over a
+  non-blank backdrop; the produced image matches the preview (largest brightness difference 2.7 on
+  an 84-point grid) and has the same markers; the record is correct (fit, crop wider than the image,
+  mirrored); plus-key zoom, arrow-key and mouse-drag moves go the right way in the mirrored view;
+  an emulated-touch pinch to three times the finger distance zooms 3x; the slider, Reset and
+  Retake work; the frame overlay is drawn; a frame with the image's shape disables Show
+  everything. Real devices are not covered.
+- **Not changed:** storing the original and the record (camera#210), lens choice (camera#212).
+  camera#209.
+
 ## Unreleased — capture: the whole camera image is recorded, the frame is applied afterwards
 
 - **Changed:** `CameraCapture` records the whole camera image (up to 4096 px on the long side

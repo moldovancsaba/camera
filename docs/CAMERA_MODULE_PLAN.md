@@ -72,6 +72,14 @@ Overlaps: camera#185 (GDS work package A, handover PR 10 restores the guest came
 
 See `docs/CAMERA_DEVICE_TEST.md` once camera#205 lands. Until then, per device and browser: open the preview, take three photos with the front camera, switch cameras, and note whether any photo is black or dark, how much of the scene was visible, and which cameras the switch offered. Add `?cameraTest=<label>` to the URL once the diagnostics exist so the runs can be found in the logs.
 
+## Progress (2026-10-06)
+
+| Issue | State |
+|---|---|
+| #204 diagnostics, #206 front camera and shutter gating, #207 constraints (4:3 mode, no UA sniffing, canvas cap), #208 full-frame capture | merged; waiting for the owner's phone tests |
+| #209 reframe step | in review |
+| #210 storage, #211 privacy, #212 lenses, #205 harness, #213 canary | not started |
+
 ## Open questions
 
 - iOS lens exposure (front and back only, or every lens); settled by the phone test.

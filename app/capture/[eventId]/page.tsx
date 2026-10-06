@@ -34,8 +34,9 @@ import RestartPage from '@/components/capture/RestartPage';
 import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
 import { type CustomPage } from '@/lib/db/schemas';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
-import { cropCaptureToAspect } from '@/lib/camera/frame-crop';
+import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep';
 import type { FullFrameCapture } from '@/lib/camera/frame-capture';
+import type { ReframeRecord } from '@/lib/camera/reframe';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -216,12 +217,16 @@ export default function EventCapturePage({
   const [frames, setFrames] = useState<Frame[]>([]);
   const [selectedFrame, setSelectedFrame] = useState<Frame | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  // The whole camera image and how it was framed (camera#209). The original is held for the
+  // reframe step; storing it is camera#210, and the record is sent with the submission.
+  const [capturedOriginal, setCapturedOriginal] = useState<FullFrameCapture | null>(null);
+  const [reframeRecord, setReframeRecord] = useState<ReframeRecord | null>(null);
   const [compositeImage, setCompositeImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
-  const [step, setStep] = useState<'select-frame' | 'capture-photo' | 'preview'>('select-frame');
+  const [step, setStep] = useState<'select-frame' | 'capture-photo' | 'reframe' | 'preview'>('select-frame');
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
   /** Intrinsic frame bitmap aspect (w/h); preview matches composite via `previewAspectWidthOverHeight`. */
   const [frameIntrinsicAspect, setFrameIntrinsicAspect] = useState<number | null>(null);
@@ -660,17 +665,24 @@ export default function EventCapturePage({
       (selectedFrame.width > 0 && selectedFrame.height > 0 ? selectedFrame.width / selectedFrame.height : 16 / 9)
     : 16 / 9;
 
-  // The camera records the whole image; the frame's aspect ratio is applied here, afterwards
-  // (camera#208). The original is not kept yet: the reframe step (camera#209) and its storage
-  // (camera#210) will hold it.
-  const handleCameraCapture = async (capture: FullFrameCapture) => {
-    try {
-      const cropped = await cropCaptureToAspect(capture, captureAspect);
-      setCapturedImage(cropped.dataUrl);
-    } catch (error) {
-      console.error('Error cropping the captured photo:', error);
-      alert(errorFrameMessage);
-    }
+  // The camera records the whole image; the fan then moves and zooms it inside the frame in the
+  // reframe step (camera#209), whose default is the largest crop that fills the frame.
+  const handleCameraCapture = (capture: FullFrameCapture) => {
+    setCapturedOriginal(capture);
+    setReframeRecord(null);
+    setStep('reframe');
+  };
+
+  // The frame-less crop continues through the existing composite step, as the old capture did.
+  const handleReframeDone = (result: ReframeResult) => {
+    setReframeRecord(result.record);
+    setCapturedImage(result.dataUrl);
+  };
+
+  const handleReframeRetake = () => {
+    setCapturedOriginal(null);
+    setReframeRecord(null);
+    setStep('capture-photo');
   };
 
   const handleSave = async () => {
@@ -698,6 +710,8 @@ export default function EventCapturePage({
         userInfo?: WhoAreYouPageData;
         consents?: CollectedData['consents'];
         shareOptIn?: boolean;
+        // How the photo was framed; the API ignores it until camera#210 stores it.
+        reframe?: ReframeRecord | null;
       } = {
         imageData: compositeImage,
         frameId: selectedFrame?.frameId || null,  // Optional frame
@@ -709,6 +723,7 @@ export default function EventCapturePage({
         imageHeight: imageDimensions?.height || selectedFrame?.height || 1080,
         cameraId,
         shareOptIn,
+        reframe: reframeRecord,
       };
 
       if (selectedTryOnSuitId && event?.tryOn?.enabled) {
@@ -879,6 +894,8 @@ export default function EventCapturePage({
   const handleReset = () => {
     // Keep selected frame and go back to capture step
     setCapturedImage(null);
+    setCapturedOriginal(null);
+    setReframeRecord(null);
     setCompositeImage(null);
     setShareUrl(null);
     setTryOnResult(null);
@@ -995,6 +1012,8 @@ export default function EventCapturePage({
   const handleRestartFlow = () => {
     // Reset capture state
     setCapturedImage(null);
+    setCapturedOriginal(null);
+    setReframeRecord(null);
     setCompositeImage(null);
     setShareUrl(null);
     setImageDimensions(null);
@@ -1271,12 +1290,12 @@ export default function EventCapturePage({
               )}
               <div className="flex flex-col items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                  step === 'capture-photo' ? ' ' : '   '
+                  (step === 'capture-photo' || step === 'reframe') ? ' ' : '   '
                 }`}>
                   {frames.length > 1 ? '2' : '1'}
                 </div>
                 <p className={`text-[10px] font-medium text-center mt-1 ${
-                  step === 'capture-photo' ? ' ' : ' '
+                  (step === 'capture-photo' || step === 'reframe') ? ' ' : ' '
                 }`}>
                   Capture Photo
                 </p>
@@ -1350,8 +1369,8 @@ export default function EventCapturePage({
             )}
             <div className="flex-1 flex items-center justify-center p-4 min-h-0">
               <CameraCapture
-                // The camera records the whole image; the frame is applied by handleCameraCapture
-                // (crop) and compositeImageWithFrame (overlay) after capture.
+                // The camera records the whole image; the reframe step crops it to the frame and
+                // compositeImageWithFrame adds the overlay afterwards.
                 onCapture={handleCameraCapture}
                 frameWidth={selectedFrame?.width || 1920}
                 frameHeight={selectedFrame?.height || 1080}
@@ -1364,6 +1383,20 @@ export default function EventCapturePage({
                 autoStart
               />
             </div>
+          </div>
+        )}
+
+        {/* Step 2b: Reframe - move and zoom the whole camera image inside the frame */}
+        {step === 'reframe' && capturedOriginal && (
+          <div className="fixed inset-0 z-40 flex flex-col">
+            <ReframeStep
+              capture={capturedOriginal}
+              frameAspect={captureAspect}
+              frameImageUrl={selectedFrame?.imageUrl ?? null}
+              buttonSize={eventButtonSize}
+              onDone={handleReframeDone}
+              onRetake={handleReframeRetake}
+            />
           </div>
         )}
 
