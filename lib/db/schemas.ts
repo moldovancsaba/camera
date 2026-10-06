@@ -649,6 +649,9 @@ export interface Submission {
   eventId?: string | null;           // Legacy/current single-event mirror for filtering
   frameName?: string | null;         // Cached frame name used by admin listings
   frameCategory?: string | null;     // Cached frame category used by admin filters
+  // The generated default frame image and message this photo used (camera#236); set only when the event had no frame
+  // of its own. The image is kept for good (try-on composes with it), so it is never deleted with the submission.
+  frameVariant?: { index: number | null; message: string | null; imageUrl: string } | null;
   imageId?: string | null;           // ImgBB image id when returned by upload API
   fileSize?: number | null;          // Current top-level file size mirror used by some admin tools
   mimeType?: string | null;          // Current top-level mime type mirror used by some admin tools

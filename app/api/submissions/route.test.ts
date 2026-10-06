@@ -245,3 +245,50 @@ test('an original that cannot be confirmed keeps the photo: it is saved without 
     restore();
   }
 });
+
+const GENERATED = `https://${HOST}/frames/generated/${EVENT}/0123456789abcdef.png`;
+
+test('the generated frame variant a photo used is stored with the submission (camera#236)', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead);
+    const { POST } = await importRouteModule('variant');
+    const response = await POST(submissionRequest({ frameVariant: { index: 2, message: 'Together for Victory!', imageUrl: GENERATED } }));
+    assert.equal(response.status, 201);
+    assert.deepEqual(h.inserted[0].frameVariant, { index: 2, message: 'Together for Victory!', imageUrl: GENERATED });
+    assert.equal(h.inserted[0].frameId, null, 'a generated frame is not a stored frame');
+  } finally {
+    quiet();
+    restore();
+  }
+});
+
+test('a variant claim that is not one of our generated images is dropped and the photo still saves', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead);
+    const { POST } = await importRouteModule('variant-bad');
+    const response = await POST(submissionRequest({ frameVariant: { index: 0, message: 'x', imageUrl: 'https://evil.example/frames/generated/a.png' } }));
+    assert.equal(response.status, 201);
+    assert.equal('frameVariant' in h.inserted[0], false);
+  } finally {
+    quiet();
+    restore();
+  }
+});
+
+test('a submission without a variant has no frameVariant field', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead);
+    const { POST } = await importRouteModule('variant-none');
+    assert.equal((await POST(submissionRequest())).status, 201);
+    assert.equal('frameVariant' in h.inserted[0], false);
+  } finally {
+    quiet();
+    restore();
+  }
+});

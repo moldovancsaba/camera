@@ -28,6 +28,8 @@ import {
   CAMERA_STAGE_WHITE,
 } from '@/lib/gds/tokens/colors';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
+import FrameTerritories from '@/components/capture/FrameTerritories';
+import type { Territory } from '@/lib/frame/capture';
 import {
   CAPTURE_FAILED_MESSAGE,
   CAPTURE_MAX_ATTEMPTS,
@@ -110,6 +112,8 @@ export interface CameraCaptureProps {
   buttonSize?: EventButtonSize;
   /** Start getUserMedia as soon as the camera step mounts. Falls back to the manual prompt if blocked. */
   autoStart?: boolean;
+  /** Layer boxes of the generated event frame, drawn inside the frame guide as 50% black territories (camera#236). */
+  territories?: readonly Territory[];
 }
 
 export default function CameraCapture({ 
@@ -130,6 +134,7 @@ export default function CameraCapture({
   showRetake = true,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
   autoStart = false,
+  territories,
 }: CameraCaptureProps) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -828,7 +833,9 @@ export default function CameraCapture({
                   boxShadow: '0 0 0 100vmax var(--gds-overlay-scrim)',
                   outline: `2px solid ${CAMERA_STAGE_WHITE}`,
                 }}
-              />
+              >
+                {territories && territories.length > 0 && <FrameTerritories territories={territories} />}
+              </div>
             )}
 
             {/* Loading Overlay */}

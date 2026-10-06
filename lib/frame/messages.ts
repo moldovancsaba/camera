@@ -53,11 +53,11 @@ export function usableMessages(templates: readonly string[], tokens: MessageToke
 }
 
 /** A random usable message, never the one used last time when another is available; null when none is usable. */
-export function pickMessage(
-  usable: readonly UsableMessage[],
+export function pickMessage<T extends { index: number | null }>(
+  usable: readonly T[],
   previousIndex: number | null,
   random: () => number = Math.random
-): UsableMessage | null {
+): T | null {
   if (usable.length === 0) return null;
   const candidates = usable.length > 1 ? usable.filter((message) => message.index !== previousIndex) : usable;
   return candidates[Math.min(candidates.length - 1, Math.floor(random() * candidates.length))];

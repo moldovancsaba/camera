@@ -16,6 +16,8 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Button } from '@mantine/core';
 import { GdsSegmentedControl, GdsSlider } from '@sovereignsquad/gds-core/client';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
+import FrameTerritories from '@/components/capture/FrameTerritories';
+import type { Territory } from '@/lib/frame/capture';
 import { capCanvasSize } from '@/lib/camera/constraints';
 import { blobToDataUrl, type FullFrameCapture } from '@/lib/camera/frame-capture';
 import {
@@ -51,6 +53,8 @@ export interface ReframeStepProps {
   frameAspect: number;
   /** The frame overlay, drawn over the preview exactly as in the final composite. */
   frameImageUrl?: string | null;
+  /** Layer boxes of the generated event frame, shown as 50% black territories instead of the frame (camera#236). */
+  territories?: readonly Territory[];
   buttonSize?: EventButtonSize;
   onDone: (result: ReframeResult) => void;
   onRetake: () => void;
@@ -80,6 +84,7 @@ export default function ReframeStep({
   capture,
   frameAspect,
   frameImageUrl,
+  territories,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
   onDone,
   onRetake,
@@ -382,6 +387,7 @@ export default function ReframeStep({
           onKeyDown={onKeyDown}
         >
           <canvas ref={canvasRef} className="block h-full w-full" />
+          {territories && territories.length > 0 && <FrameTerritories territories={territories} />}
         </div>
       </div>
 

@@ -10,6 +10,10 @@ export const CAMERA_STAGE_BLACK = '#000000';
 export const FRAME_SYSTEM_HEADING_COLOR = '#1f2937ff';
 export const FRAME_SYSTEM_BAR_COLOR = '#f8fafcff';
 
+// The 50% black "territory" shown where a layer of the generated event frame will be, before the real composition
+// (camera#236, owner decision 2026-10-06).
+export const FRAME_TERRITORY_FILL = 'rgba(0, 0, 0, 0.5)';
+
 // Splash and canvas colour of the installed app (the light theme's `--mantine-color-gray-0`), camera#222.
 export const CAMERA_PWA_BACKGROUND_COLOR = '#f8f9fa';
 
