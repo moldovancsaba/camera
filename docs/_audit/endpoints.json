@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-06T11:34:20+00:00",
+  "generated": "2026-10-06T12:54:38+00:00",
   "repo": "camera",
-  "head": "6994bf3",
+  "head": "a0b4fe9",
   "counts": {
-   "endpoints": 104,
+   "endpoints": 105,
    "collections": 6,
    "env": 59,
    "outbound-hosts": 23,
@@ -91,6 +91,18 @@
     "GET"
    ],
    "file": "app/api/admin/fix-mojibake-text/route.ts",
+   "auth_markers": [
+    "requireAdmin",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/frame-backfill",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/admin/frame-backfill/route.ts",
    "auth_markers": [
     "requireAdmin",
     "withErrorHandler"

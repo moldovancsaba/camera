@@ -92,6 +92,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
+        href: '/admin/frames/generated',
+        label: 'Generated Frames',
+        description: 'Roll the generated default frame out to events without a frame of their own.',
+        iconKey: 'frame',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
+      {
         href: '/admin/logos',
         label: 'Global Logos',
         description: 'Shared logo inventory available to any event.',

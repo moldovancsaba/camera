@@ -226,6 +226,32 @@ panel and the backfill follow (camera#235 to #238).
 - **Reuse:** an image is redrawn only when something that decides it changed (what is drawn, the message, the font
   actually used, the drawing code `FRAME_RENDER_VERSION`). An image made while the logo could not be fetched
   (`logo: failed`) or a custom font could not be fetched (`font.retry`) is redrawn at the next generation.
+- **Rolling the frame out to existing events (camera#238):** `/admin/frames/generated` (Libraries, "Generated Frames",
+  global admin only), API `POST /api/admin/frame-backfill`. It covers every event with no active frame of its own and no
+  generated images; events with an own active frame are never touched, events with images are skipped, so it can be
+  repeated and continued. Order:
+  1. **First check on Vercel** (above), on one event, from the Frames page of that event.
+  2. **Dry run**, with the messmass check on. It writes and draws nothing; the messmass check asks messmass once per linked
+     event (read-only, up to 40 s). Read the counts: events with an own frame, with images, to do (linked, native,
+     inactive, with a snapshot but no images), native events without a partner logo, and from messmass how many will
+     have a logo, real teams, a pairing in the name or the event name only, which theme they get and how many use a
+     custom font. The owner reviews this before the run.
+  3. **Run**: tick that the report was read, confirm; it takes three events per request and continues until none is
+     left; "Stop after this batch" ends it, running again continues (finished events are skipped). A **linked event
+     messmass gives no usable answer for is not drawn from camera's fallback**: it is listed as waiting and stays to do
+     (use the event's own Frames page, Refresh, to force the fallback for one event). Failures are listed per event and
+     retried by the next run. When it ends a dry run is repeated, so "To do" is what is left.
+  4. **First-day checks**: the final dry run shows `To do` equal to the waiting and failed events only and `With a frame
+     of their own` unchanged from the first report; open the capture link of three events (a pairing name, real teams,
+     no logo) on a phone: territories in the live view, a different message on each shutter press, the real composition on
+     the preview; save and open the share page; on an event with "apply frame to returned results" a try-on result carries
+     the same frame. Logs to watch: `Frame backfill: event <id> failed`, `frame images could not be generated`,
+     `submissions.frame_variant_dropped`.
+  5. **Rollback**: per event, assign or activate a frame of its own (the generated one stops applying at once). For all
+     events, revert the capture change (camera#246) or, with the owner's approval, remove the images from the events
+     (`frameDesign.variants`); the stored images stay in Blob and a later run draws them again (identical inputs reuse
+     the same files).
+  Timing: about 3 events per request; 219 events are about 75 requests.
 - **Editing (camera#237):** the panel at the top of `/admin/events/[id]/frames` shows the images, the snapshot and the
   message list, and has Save messages, Reset to the default list and Refresh from messmass (the first real way to take
   a snapshot and draw the images of one event; use it for the "First check on Vercel" above). A save or refresh takes
