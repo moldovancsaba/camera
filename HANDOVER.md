@@ -32,6 +32,14 @@ Open work is tracked on the GitHub project board, not in this file (next section
   state: `docs/IMAGE_DIRECT_INTEGRATION.md`. try-on#52 tracks a precondition for
   any re-enable: the legacy worker's claim query has no `renderer` filter and
   would claim image.direct jobs.
+- **Camera module overhaul (owner-approved 2026-10-06):** black photos about 25%
+  of the time (rate differs by device and browser), only a slice of the camera
+  view used, back camera first, no lens choice. Plan in `docs/CAMERA_MODULE_PLAN.md`,
+  tracker camera#203 (diagnostics #204, harness #205, quick wins #206, constraints
+  #207, full-frame capture #208, reframe step #209, storage #210, privacy #211,
+  lenses #212, canary #213). Decisions: front camera is the global default;
+  anonymous diagnostics approved; record the full frame, then crop to the frame
+  in a second step; the owner tests on phones.
 - **GDS:** camera is on 6.3.0 (vendored); the latest release is 6.7.0. The
   audit and ordered plan are in `gds_fix_handover.md` (merged in #175):
   camera#183 done 2026-10-06 (official stylesheet imported, forked CSS deleted;
