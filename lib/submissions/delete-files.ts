@@ -49,6 +49,7 @@ function text(value: unknown): string | null {
 /** Every file URL the submission owns, de-duplicated; originalImageUrl equals imageUrl for older submissions. */
 export function ownedUrls(submission: Document): { fileUrls: string[]; imgbbDeleteLinks: string[] } {
   const tryOn = (submission.tryOnRequest ?? {}) as Document;
+  const review = (submission.photoReview ?? {}) as Document;
   const fileUrls = new Set(
     [
       submission.imageUrl,
@@ -56,6 +57,8 @@ export function ownedUrls(submission: Document): { fileUrls: string[]; imgbbDele
       submission.originalImageUrl,
       submission.previewImageUrl,
       tryOn.sourceImageUrl,
+      // The private plain photo of a vetted photo that has not been approved yet (camera#266).
+      review.photoUrl,
     ]
       .map(text)
       .filter((url): url is string => url !== null)

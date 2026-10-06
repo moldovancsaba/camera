@@ -547,6 +547,7 @@ export interface UserConsent {
 
 export type SubmissionTryOnRequestStatus =
   | 'not_requested'
+  | 'awaiting_approval' // a vetted photo's try-on waits until the photo is approved (camera#266)
   | 'requested'
   | 'source_uploaded'
   | 'queued'
@@ -675,7 +676,7 @@ export interface Submission {
   // never returned by a public route), what approval needs to compose the real picture, and the history of the review. The
   // branded composite does not exist until approval; imageUrl and finalImageUrl are absent until then.
   photoReview?: {
-    photoUrl: string;                // Plain photo, Blob `pending/<event>/…`; deleted with the submission
+    photoUrl: string | null;         // Plain photo, Blob `pending/<event>/…`; deleted with the submission, and after approval (then null)
     photoSize: number;
     photoMime: string;
     shareOptIn: boolean;             // The guest's pledge-wall choice, applied when the photo is approved

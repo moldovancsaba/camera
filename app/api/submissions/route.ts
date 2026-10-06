@@ -24,7 +24,6 @@ import {
   SubmissionStatus,
   type UserConsent,
   type Submission,
-  type TryOnSetup,
 } from '@/lib/db/schemas';
 import {
   withErrorHandler,
@@ -39,24 +38,7 @@ import {
   checkRateLimit,
   RATE_LIMITS,
 } from '@/lib/api';
-import {
-  buildSubmissionTryOnLink,
-  insertOrGetTryOnJob,
-  patchSubmissionTryOnState,
-  upsertSubmissionTryOnLink,
-} from '@/lib/tryon/jobs';
-import { assertValidLeatherSuitId } from '@/lib/tryon/suits';
-import { findDefaultSetupForGarmentType } from '@/lib/tryon/setup-resolution';
-import { buildTryOnPromptSnapshot } from '@/lib/tryon/prompts';
-interface TryOnRequestDetails {
-  requested: boolean;
-  leatherSuitId: string | null;
-  sourceImageData: string | null;
-  setupId?: string | null;
-  cameraId?: string | null;
-  outfitBottomLeatherSuitId?: string | null;
-}
-
+import { enqueueTryOnForSubmission, type TryOnPolicyEvent, type TryOnRequestDetails } from '@/lib/tryon/enqueue-for-submission';
 interface SubmissionEventDocument {
   _id: string;
   name?: string;
@@ -75,11 +57,7 @@ interface SubmissionEventDocument {
     submissionResultEmailBodyAfterTryOnResubmissionApproved?: string | null;
     submissionResultEmailSenderName?: string | null;
   };
-  tryOn?: {
-    enabled?: boolean;
-    allowedLeatherSuitIds?: string[];
-    setupId?: string | null;
-  };
+  tryOn?: TryOnPolicyEvent['tryOn'];
 }
 
 interface EventLookupFilter {
@@ -494,201 +472,18 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     if (tryOnRequest.requested) {
       created.tryOn.requested = true;
       created.tryOn.leatherSuitId = tryOnRequest.leatherSuitId;
-
-      const resolvedSetupId =
-        tryOnRequest.setupId ??
-        (!tryOnRequest.cameraId
-          ? eventPolicy?.tryOn?.setupId && eventPolicy.tryOn.setupId.trim()
-            ? eventPolicy.tryOn.setupId.trim()
-            : null
-          : null);
-
-      try {
-        if (!tryOnRequest.leatherSuitId) {
-          throw new Error('leather_suit_id is required when try-on is requested');
-        }
-        if (!tryOnRequest.sourceImageData) {
-          throw new Error('try_on_source_image_data is required when try-on is requested');
-        }
-
-        if (eventId) {
-          const eventPolicyForTryOn = eventPolicy
-            ? ({ _id: null, tryOn: eventPolicy.tryOn })
-            : await db.collection(COLLECTIONS.EVENTS).findOne(
-                buildEventLookupFilterByIdentifier(eventId),
-                { projection: { _id: 1, tryOn: 1 } }
-              );
-          if (!eventPolicyForTryOn?.tryOn?.enabled) {
-            throw new Error('try_on_not_enabled_for_event');
-          }
-          const allowedSuitIds = Array.isArray(eventPolicyForTryOn?.tryOn?.allowedLeatherSuitIds)
-            ? eventPolicyForTryOn.tryOn.allowedLeatherSuitIds
-            : [];
-          if (
-            allowedSuitIds.length > 0 &&
-            !allowedSuitIds.includes(tryOnRequest.leatherSuitId)
-          ) {
-            throw new Error('leather_suit_not_allowed_for_event');
-          }
-          if (tryOnRequest.outfitBottomLeatherSuitId) {
-            // Outfit pairing (try-on#39 contract, implemented here per
-            // camera#116). The flag is read from the event document at
-            // submit time, never trusted from the client; the allowlist
-            // rule applies to BOTH pieces.
-            if (eventPolicyForTryOn?.tryOn?.outfitEnabled !== true) {
-              throw new Error('outfit_not_enabled_for_event');
-            }
-            if (
-              allowedSuitIds.length > 0 &&
-              !allowedSuitIds.includes(tryOnRequest.outfitBottomLeatherSuitId)
-            ) {
-              throw new Error('leather_suit_not_allowed_for_event');
-            }
-          }
-        } else if (tryOnRequest.outfitBottomLeatherSuitId) {
-          // Outfit selection is an event-scoped feature; the eventless
-          // capture flow has no outfitEnabled policy to validate against.
-          throw new Error('outfit_not_enabled_for_event');
-        }
-
-        const selectedGarment = await assertValidLeatherSuitId(db, tryOnRequest.leatherSuitId);
-
-        // Garment-type default (defaultForGarmentTypes on a setup): more
-        // specific than the event's generic tryOn.setupId, so it wins over it
-        // when the request itself named no setup. A full-body leather-suit
-        // setup on the event must not drive a short-sleeve jersey render.
-        const garmentDefaultSetup = !tryOnRequest.setupId
-          ? await findDefaultSetupForGarmentType(db, selectedGarment.garmentType || 'motorsport_suit')
-          : null;
-        const finalSetupId = tryOnRequest.setupId ?? garmentDefaultSetup?.setupId ?? resolvedSetupId;
-        if (tryOnRequest.outfitBottomLeatherSuitId) {
-          // Server-side type pairing, mirroring the worker's own claim-time
-          // validation (defense in depth): the primary garment must be a
-          // 'top' and the paired piece a 'bottom'.
-          if ((selectedGarment.garmentType || 'motorsport_suit') !== 'top') {
-            throw new Error('outfit_top_type_required');
-          }
-          const bottomGarment = await assertValidLeatherSuitId(db, tryOnRequest.outfitBottomLeatherSuitId);
-          if (bottomGarment.garmentType !== 'bottom') {
-            throw new Error('outfit_bottom_type_mismatch');
-          }
-        }
-
-        const sourceBase64 = tryOnRequest.sourceImageData.split(',')[1];
-        if (!sourceBase64) {
-          throw new Error('try_on_source_image_data must be a valid base64 data URL');
-        }
-
-        const sourceUpload = await uploadImage(sourceBase64, {
-          name: `tryon-source-${Date.now()}`,
-        });
-
-        const eventDocument = eventId
-          ? await db.collection(COLLECTIONS.EVENTS).findOne(
-              buildEventLookupFilterByIdentifier(eventId),
-              { projection: { _id: 1 } }
-            )
-          : null;
-
-        const promptSetup = finalSetupId
-          ? await db.collection<TryOnSetup>(COLLECTIONS.TRYON_SETUPS).findOne({ setupId: finalSetupId, active: true })
-          : null;
-        const promptConfig = promptSetup?.promptConfig;
-        const promptSnapshotResult = promptConfig
-          ? buildTryOnPromptSnapshot({
-              setupId: promptSetup.setupId,
-              version: promptConfig.version,
-              positive: promptConfig.positive,
-              negative: promptConfig.negative,
-              source: 'setup',
-              createdAt,
-            })
-          : null;
-        if (promptSnapshotResult && !promptSnapshotResult.ok) {
-          throw new Error('try_on_prompt_configuration_invalid');
-        }
-
-        const linkedJob = await insertOrGetTryOnJob(db, {
-          submissionId,
-          imageUrl: sourceUpload.imageUrl,
-          leatherSuitId: tryOnRequest.leatherSuitId,
-          garmentType: selectedGarment.garmentType || 'motorsport_suit',
-          sleeveStyle: selectedGarment.sleeveStyle ?? null,
-          outfitBottomLeatherSuitId: tryOnRequest.outfitBottomLeatherSuitId ?? null,
-          setupId: finalSetupId,
-          cameraId: tryOnRequest.cameraId,
-          eventId: typeof eventId === 'string' ? eventId : null,
-          eventMongoId: eventDocument?._id ? getSubmissionMongoIdString(eventDocument._id) : null,
-          partnerId: typeof partnerId === 'string' ? partnerId : null,
-          userId: session?.user?.id || 'anonymous',
-          promptSnapshot: promptSnapshotResult?.ok ? promptSnapshotResult.snapshot : null,
-        });
-
-        if (ObjectId.isValid(submissionId)) {
-          const submissionObjectId = new ObjectId(submissionId);
-          await patchSubmissionTryOnState(db, submissionObjectId, {
-            status: 'source_uploaded',
-            requested: true,
-            requestedAt: createdAt,
-            leatherSuitId: tryOnRequest.leatherSuitId,
-            sourceImageUrl: sourceUpload.imageUrl,
-            sourceDeleteUrl: sourceUpload.deleteUrl ?? null,
-            sourceImageId: sourceUpload.imageId ?? null,
-            reviewStatus: null,
-            shareVisible: false,
-            slideshowEligible: false,
-            lastError: null,
-          });
-
-          await upsertSubmissionTryOnLink(
-            db,
-            submissionObjectId,
-            buildSubmissionTryOnLink(
-              linkedJob.job,
-              linkedJob.deduplicated ? linkedJob.job.status : 'queued',
-              linkedJob.job.result.publicResultUrl ?? null
-            )
-          );
-
-          await patchSubmissionTryOnState(db, submissionObjectId, {
-            status: linkedJob.deduplicated ? linkedJob.job.status : 'queued',
-            requested: true,
-            requestedAt: createdAt,
-            leatherSuitId: tryOnRequest.leatherSuitId,
-            jobId: linkedJob.job.jobId,
-            sourceImageUrl: sourceUpload.imageUrl,
-            sourceDeleteUrl: sourceUpload.deleteUrl ?? null,
-            sourceImageId: sourceUpload.imageId ?? null,
-            resultUrl: linkedJob.job.result.publicResultUrl ?? null,
-            resultDeleteUrl: linkedJob.job.result.imgbbDeleteUrl ?? null,
-            resultProvider: linkedJob.job.result.provider ?? null,
-            reviewStatus: null,
-            shareVisible: false,
-            slideshowEligible: false,
-            lastError: null,
-          });
-        }
-
-        created.tryOn.status = linkedJob.deduplicated ? 'deduplicated' : 'queued';
-        created.tryOn.jobId = linkedJob.job.jobId;
-      } catch (tryOnError: unknown) {
-        created.tryOn.status = 'enqueue_failed';
-        created.tryOn.error =
-          tryOnError instanceof Error ? tryOnError.message : 'Unable to enqueue try-on job';
-
-        if (ObjectId.isValid(submissionId)) {
-          await patchSubmissionTryOnState(db, new ObjectId(submissionId), {
-            status: 'enqueue_failed',
-            requested: true,
-            requestedAt: createdAt,
-            leatherSuitId: tryOnRequest.leatherSuitId,
-            reviewStatus: null,
-            shareVisible: false,
-            slideshowEligible: false,
-            lastError: created.tryOn.error,
-          });
-        }
-      }
+      const outcome = await enqueueTryOnForSubmission(db, {
+        submissionId,
+        createdAt,
+        eventId: typeof eventId === 'string' && eventId ? eventId : null,
+        partnerId,
+        userId: session?.user?.id || 'anonymous',
+        eventPolicy,
+        request: tryOnRequest,
+      });
+      created.tryOn.status = outcome.status;
+      created.tryOn.jobId = outcome.jobId;
+      created.tryOn.error = outcome.error;
     }
 
     return apiCreated(created);

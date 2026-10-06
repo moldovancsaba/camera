@@ -310,6 +310,26 @@ panel and the backfill follow (camera#235 to #238).
   and the logo (if the partner has one) means the canvas package and the fonts work there. A 502 with
   `frame images could not be generated` in the function log means they do not.
 
+## Photo vetting (camera#261)
+
+Plan and decisions: [docs/PHOTO_VETTING_PLAN.md](docs/PHOTO_VETTING_PLAN.md). The setting is `events.photoVetting.required`; until the rollout
+package it is off for every event, so none of the behaviour below applies yet.
+
+- **A vetted photo** is saved `pending_review` with the plain photo in a private Blob object under `pending/<eventId>/`. No picture exists,
+  nothing is mirrored to imgbb, no link is shown or emailed, and a requested try-on is held.
+- **Approve or reject:** `POST /api/admin/submissions/<id>/review` with `{"action":"approve"}` or `{"action":"reject","reason":"..."}`
+  (global admins and the event's partner Events managers; the queue page that calls it comes with a later package).
+  Approval composes the plain photo with the frame image the photo recorded (the generated variant, or the event's own frame), stores the
+  picture, publishes the photo, applies the guest's pledge-wall choice, queues the held try-on, emails the share link
+  (`/share/<token>`, whatever the event's own email switch says) and deletes the private photo. Rejection keeps the photo private, cancels the
+  held try-on and emails a short fixed "not approved" note with a link to take another photo. A rejected photo can still be approved.
+- **If approval answers 502** ("the photo stays pending"), the frame image or the photo could not be fetched or stored; nothing changed, so
+  repeat the action. A frame is never skipped silently: an unframed picture is only made for a photo that recorded no frame at all.
+- **If the email did not go out** the answer says `email: failed` or `skipped` (no address, no sender configured); the photo is approved
+  either way, and `metadata.emailSent*` on the submission shows what happened.
+- **Pending photos in the Blob store** are referenced by `photoReview.photoUrl`, so the orphan finder does not report them and deleting the
+  submission deletes the file.
+
 ## Capture diagnostics (anonymous)
 
 The capture screen reports how each capture went so the rate of black or near-black photos can

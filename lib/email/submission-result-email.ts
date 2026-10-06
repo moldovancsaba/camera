@@ -567,6 +567,12 @@ export async function dispatchPendingSubmissionEmailForSubmission(
   sourceSubmission: WithId<Submission>,
   baseUrl = PUBLIC_BASE_URL
 ): Promise<SendSubmissionEmailMetadataResult | null> {
+  // A photo that is waiting for a decision, or was not approved, gets no link by this path: the guest of a vetted photo is
+  // emailed when it is approved (lib/photo-vetting/review.ts), and the share link of a pending photo shows nothing.
+  if (sourceSubmission.reviewStatus === 'pending_review' || sourceSubmission.reviewStatus === 'rejected') {
+    return null;
+  }
+
   const event = await resolveEventForSubmission(db, sourceSubmission);
   const policy = normalizeSubmissionEmailPolicy(event?.notifications);
 
