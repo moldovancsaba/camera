@@ -130,6 +130,30 @@ with the submission next to the framed photo.
 - **Privacy:** the original shows more of the scene than the framed photo, so the privacy and consent
   text must say the full camera image is stored (proposed wording under "Deleting a submission").
 
+## Installing the capture flow as an app (camera#222)
+
+Each event installs as its own app: `GET /capture/<eventId>/manifest.webmanifest` (public, built by
+`lib/pwa/event-manifest.ts`) names the app after the event, opens at `/capture/<eventId>?source=pwa`, stays in
+that event's scope, takes the event's brand colour as the status-bar colour, runs `standalone` and allows
+**both orientations** (`orientation: any`). The event layout links it and adds the iOS web-app tags and
+`viewport-fit=cover`; full-screen shells pad themselves with the safe-area insets (`.app-safe-area`).
+
+- **Install:** iPhone/iPad Safari: Share, Add to Home Screen. Android Chrome: the install prompt or menu, after
+  a few seconds of use. Desktop Chrome/Edge: the install icon in the address bar.
+- **Check an event's manifest:** `curl -s https://<host>/capture/<eventMongoId>/manifest.webmanifest` should return
+  JSON with that event's name; an unknown or malformed id is a 404. Chrome DevTools, Application, Manifest shows the
+  parse and installability result.
+- **No service worker, so no offline mode,** on purpose: capture and upload need the network, and a stale cache
+  on a fast-moving app is a bigger risk than the benefit. Chrome does not require one to install.
+- **Icons** are `public/pwa/icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, generated from `app/icon.png`
+  (200x200), so the 512 versions are enlarged. Drop in a 512x512 original under the same names to sharpen them
+  (the files are cached for a year, so use new file names and update `PWA_ICONS`).
+- **Limits to know:** the share page (`/share/<id>`) and the SSO login are outside the app's scope, so they open in
+  the system's in-app browser sheet; the Android back gesture leaves the app from any step (steps are not history
+  entries); the manifest is cached for 5 minutes at the edge, so a rename reaches installed apps shortly after.
+- **GDS:** `getGdsWebAppManifest` cannot be imported by a Next route handler (it fails `next build`, see
+  camera#225), so the same shape is built locally and a unit test compares it with the GDS generator.
+
 ## Deleting a submission (camera#211)
 
 `DELETE /api/submissions/[submissionId]` (the owner or an admin) and

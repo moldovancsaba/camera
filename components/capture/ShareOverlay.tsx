@@ -77,7 +77,7 @@ export default function ShareOverlay({
     ? 'absolute inset-0 overflow-y-auto bg-black/55 backdrop-blur-sm'
     : '';
   const centerClassName = overlay
-    ? 'flex min-h-full items-center justify-center p-4 landscape:p-2'
+    ? 'app-safe-pad flex min-h-full items-center justify-center'
     : '';
   const panelClassName = overlay
     ? 'w-full max-w-xl text-left'

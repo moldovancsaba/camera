@@ -131,8 +131,18 @@ accessibility exception, so it is recorded here.
 | Reflow | Every camera step fits 320x568, 375x667, 390x844, 360x740, 414x896 and landscape 844x390 and 667x375 with no page scroll and the main actions on screen (Playwright, fake camera, 2026-10-06). |
 | Text size | Type is `rem`-based GDS tokens, untouched; OS text size is not blocked. **Not yet tested** at 200% OS text size on a device. |
 | Zoom-dependent content | None: the camera steps need no pinch to read or operate; the reframe step has its own pinch and drag on the canvas. |
+| Orientation and devices | Both orientations on any device: the manifest sets `orientation: any`, and the flow was measured (no page scroll, no horizontal scroll, controls inside the safe area) on 16 viewports: 7 phones (including notched portrait and landscape), 6 tablets (744 to 1366 px, both orientations) and 3 desktop sizes, plus rotating mid-flow on a phone and a tablet (device-orientation emulation, 2026-10-06). |
+| Safe areas | `viewport-fit=cover` on the event capture route only; `.app-safe-area` / `.app-safe-pad` and the camera's fixed controls use the GDS `--gds-safe-area-inset-*` tokens. Verified with emulated insets (notch 47 px top, 34 px home indicator; landscape 47 px sides). |
 | Open | Real-device check on iPhone Safari and Chrome Android (iOS pinch handling cannot be proven in desktop Chromium). |
 | Exit condition | Remove the component and the CSS if a camera step gains reading-heavy content, or the owner withdraws the decision. |
+
+### `@sovereignsquad/gds-theme/server` cannot be imported by a Next route handler (camera#225)
+
+The documented `getGdsWebAppManifest` import fails `next build` ("Attempted to call mergeThemeOverrides() from the
+server"): the `/server` entry loads a chunk that calls `@mantine/core` at module load, and Next's server bundling
+treats Mantine's entry as client code. Camera builds the manifest object itself in the GDS shape
+(`lib/pwa/event-manifest.ts`) and a unit test asserts it equals the generator's output. To be reported upstream and
+removed once GDS fixes the entry.
 
 ## Known package limitations: `AdminResourceCard` / `MediaPreviewCard`
 

@@ -10,6 +10,9 @@ export const CAMERA_STAGE_BLACK = '#000000';
 export const FRAME_SYSTEM_HEADING_COLOR = '#1f2937ff';
 export const FRAME_SYSTEM_BAR_COLOR = '#f8fafcff';
 
+// Splash and canvas colour of the installed app (the light theme's `--mantine-color-gray-0`), camera#222.
+export const CAMERA_PWA_BACKGROUND_COLOR = '#f8f9fa';
+
 export const LANDING_PAGE_BASE_BACKGROUND = '#f8fafc';
 export const LANDING_PAGE_BASE_TEXT = '#0f172a';
 

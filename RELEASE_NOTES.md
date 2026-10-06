@@ -1,5 +1,21 @@
 # RELEASE_NOTES.md
 
+## Unreleased — each event's capture flow installs as an app
+
+- **Added:** `GET /capture/<eventId>/manifest.webmanifest`, a public per-event web app manifest (name and brand
+  colour from the event, `standalone`, opens at and stays inside that event, **both orientations**, 192/512 and
+  maskable icons under `public/pwa/`). An unknown or malformed id is a 404. Chrome reports no manifest or
+  installability errors for it. The event layout links it, adds the iOS web-app tags and the theme colour.
+- **Added:** `viewport-fit=cover` on the event capture route, with safe-area padding on the full-screen shells,
+  the camera's fixed controls and the share card, so nothing sits under a notch, rounded corner or home indicator
+  in portrait or landscape. Zoom policy is unchanged (browser default outside the camera steps).
+- **Decided:** no service worker and no offline mode; GDS lists both as app-owned non-goals and Chrome does not
+  require one to install. The 512 icons are enlarged from the 200 px source.
+- **Worked around:** the GDS `getGdsWebAppManifest` helper cannot be imported by a route handler (it fails the Next
+  build, camera#225); the manifest is built locally in the GDS shape and a test compares the two.
+- Measured on 16 viewports (phones, tablets, desktop; portrait and landscape; emulated notch insets) and by
+  rotating the device mid-flow on a phone and a tablet: no page scroll, controls inside the safe area, state kept.
+
 ## Unreleased — the camera steps behave like an app
 
 - **Changed:** while a camera step is on screen (frame picker, capture, reframe, preview, share) the
@@ -16,6 +32,19 @@
 - **Changed:** the loading and not-found screens use the dynamic viewport height.
 - Measured before and after on 7 viewports (3 steps of the flow each) with a Chromium fake camera:
   Save/Retake off screen on 5 of 7 sizes before, none after.
+
+## Unreleased — in-page notices instead of browser alerts in the capture flow
+
+- **Changed:** the six native `alert()` pop-ups of the capture page (save succeeded, save failed, frame
+  failed, link copied, copy failed, "save the photo first") are replaced by in-page notices
+  (`components/capture/notify.ts`, GDS `showGdsNotification`). A native dialog blocks the page, shows the site
+  address as its title and does not feel like an app.
+- Errors stay 10 seconds, other notices 5; every notice has a close button. Only one notice is shown at a time,
+  and starting a save clears the previous one, so a retry never sits under a stale error. The event-configured
+  messages (`successMessage`, `errorSaveMessage`, ...) are unchanged; line breaks in them become spaces.
+- **Placement:** during the camera steps the notices appear at the top (below the notch). With the default
+  bottom placement they covered the Try again button on phones and tablets and the Next button on small phones
+  and in landscape (measured on 5 device configurations before the change, none after).
 
 ## Unreleased — deleting a submission deletes its image files
 

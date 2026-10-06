@@ -78,10 +78,46 @@ html[data-app-lock] body {
   touch-action: pan-x pan-y;
 }
 
+/* Notices (components/capture/notify.ts) sit at the top during the camera steps: at the bottom they cover the
+   Save, Try again and Next buttons. */
+html[data-app-lock] .mantine-Notifications-root {
+  top: max(var(--mantine-spacing-md), var(--gds-safe-area-inset-top));
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
 html[data-app-lock] body {
   position: fixed;
   inset: 0;
   width: 100%;
+}
+
+/*
+ * Safe areas (camera#222): the installed app uses the whole screen (viewport-fit=cover), so a full-screen
+ * shell pads itself by the notch, rounded-corner and home-indicator insets (GDS tokens, 0px on a plain screen).
+ * `.app-safe-pad` keeps a minimum gap and grows it to the inset.
+ */
+.app-safe-area {
+  padding-top: var(--gds-safe-area-inset-top);
+  padding-right: var(--gds-safe-area-inset-right);
+  padding-bottom: var(--gds-safe-area-inset-bottom);
+  padding-left: var(--gds-safe-area-inset-left);
+}
+
+.app-safe-pad {
+  --pad: 1rem;
+  padding-top: max(var(--pad), var(--gds-safe-area-inset-top));
+  padding-right: max(var(--pad), var(--gds-safe-area-inset-right));
+  padding-bottom: max(var(--pad), var(--gds-safe-area-inset-bottom));
+  padding-left: max(var(--pad), var(--gds-safe-area-inset-left));
+}
+
+@media (orientation: landscape) {
+  .app-safe-pad {
+    --pad: 0.5rem;
+  }
 }
 
 [data-camera-admin] .gds-responsive-mobile {
