@@ -19,6 +19,7 @@ import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 import { normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
 import { isActionableIdentityGap, resolveTryOnSubmissionIdentity } from '@/lib/tryon/identity';
 import EventPicker from '@/components/admin/EventPicker';
+import WaitingPhotosCard from '@/components/admin/WaitingPhotosCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -669,6 +670,7 @@ export default async function AdminTryOnResultsPage({
       beforeToolbar={
         <>
           {!eventId ? <EventPicker basePath="/admin/tryon/vetting" /> : null}
+          {!eventId && !archiveBucket && !failedJobsMode && !queueMode ? <WaitingPhotosCard /> : null}
           {oldestWaitingRow ? (
             <OldestVettingResultCard row={oldestWaitingRow} />
           ) : null}

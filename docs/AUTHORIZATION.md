@@ -154,8 +154,9 @@ These can be partner-scoped where implemented:
 
 ### Photo review (camera#267, camera#268)
 
-The **Photos** tab (`/admin/events/[id]/photos`) needs the **manager** role on the event (global admins always); a user without it is sent
-back to the event overview. The tab shows the vetting setting to everyone who can review, and the switch only to global admins.
+The event's **Vetting** tab (`/admin/events/[id]/vetting`) needs the **manager** role on the event (global admins always); a user without it
+is sent back to the event overview. Its photo section shows the vetting setting to everyone who can review, and the switch only to global
+admins; the try-on result vetting below it stays global-admin only.
 
 
 `POST /api/admin/submissions/[submissionId]/review` approves or rejects a photo of an event with vetting required. A global admin may
@@ -170,7 +171,7 @@ sharing. It is applied to `/share/[id]` and its link preview, `/api/share/[id]/d
 and `/users/[name]` (admins excepted). The slideshow playlist (pinned photos included), the savetheworld wall, its "people involved" count and
 publish-selfies, the savetheworld private lookup of a photo (empty until approved), the fanmass feed, the generic "after save" email path
 and the manual email script follow the same rule for waiting and rejected photos (camera#270). The admin gallery and partner gallery do not
-list them (they are reviewed under the event's Photos tab), and the global submissions list marks them.
+list them (they are reviewed in the event's Vetting tab), and the global submissions list marks them.
 
 ### Event-scoped management APIs
 

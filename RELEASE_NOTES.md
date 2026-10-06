@@ -1,9 +1,24 @@
 # RELEASE_NOTES.md
 
+## Unreleased — photo vetting is the default for new events
+
+- **Changed:** every new event starts with photo vetting required (admin, messmass and savetheworld provisioning), as decided by the
+  owner. Existing events are switched on by the rollout (`/admin/photo-vetting`).
+
+## Unreleased — one Vetting place, and the Google / Facebook login returns to the capture page
+
+- **Changed:** photo approval moved from its own Photos tab into the event's existing **Vetting** tab: the photos waiting for approval come
+  first (the setting switch, Waiting / Rejected / Approved, approve and reject), the event's try-on results below them for global admins.
+  The Photos tab is gone. The global Vetting page lists the events whose photos wait, the dashboard's "Pending vetting" counts photos and
+  try-on results together, and an event with waiting photos opens its Vetting tab from the active events strip.
+- **Fixed:** logging in with Google or Facebook on the "who are you" page ended on `/admin` instead of the capture page. The GDS social
+  button ignores `onClick` when it has a link, so the capture resume cookies were never set; the click is now caught on a wrapper before the
+  browser follows the link. This affected every event with social login on its "who are you" page.
+
 ## Unreleased — photo vetting: photos waiting on the dashboard
 
-- **Added:** a "Photos waiting" tile on the admin dashboard (every event for a global admin, only their own events for a partner user),
-  and a "N photos waiting" badge on the active events strip; an event with waiting photos opens its Photos tab from the strip.
+- **Added:** photos waiting on the admin dashboard (counted into "Pending vetting", for a global admin every event, for a partner user only
+  their own events) and a "N photos waiting" badge on the active events strip.
 
 ## Unreleased — photo vetting: the rollout to existing events
 

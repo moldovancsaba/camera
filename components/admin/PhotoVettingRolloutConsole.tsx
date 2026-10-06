@@ -106,7 +106,7 @@ export default function PhotoVettingRolloutConsole() {
                 <ul style={{ margin: 0, paddingInlineStart: '1.25rem' }}>
                   {report.busyNow.map((event) => (
                     <li key={event.id}>
-                      <a href={`/admin/events/${event.id}/photos`}>{event.name}</a>
+                      <a href={`/admin/events/${event.id}/vetting`}>{event.name}</a>
                       {event.partnerName ? <span style={{ color: 'var(--gds-color-muted)' }}> ({event.partnerName})</span> : null}: {event.photosLast24h} / {event.photosLast7d}
                     </li>
                   ))}

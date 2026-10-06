@@ -12,9 +12,9 @@ test('only an explicit true requires vetting; events made before the setting exi
   assert.equal(photoVettingRequired(undefined), false);
 });
 
-test('a new event starts with the default of the rollout (off until the rollout switches it on)', () => {
+test('a new event starts with vetting required, by design', () => {
   assert.equal(defaultPhotoVetting('2026-10-06T00:00:00.000Z').required, PHOTO_VETTING_DEFAULT_FOR_NEW_EVENTS);
-  assert.equal(PHOTO_VETTING_DEFAULT_FOR_NEW_EVENTS, false, 'merged packages change nothing until the rollout (the rollout package)');
+  assert.equal(PHOTO_VETTING_DEFAULT_FOR_NEW_EVENTS, true);
 });
 
 test('a PATCH may set a boolean required and nothing else', () => {

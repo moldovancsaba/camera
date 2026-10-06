@@ -317,7 +317,8 @@ package it is off for every event, so none of the behaviour below applies yet.
 
 - **A vetted photo** is saved `pending_review` with the plain photo in a private Blob object under `pending/<eventId>/`. No picture exists,
   nothing is mirrored to imgbb, no link is shown or emailed, and a requested try-on is held.
-- **Approve or reject:** the **Photos** tab of the event (`/admin/events/<id>/photos`, global admins and the event's partner Events managers):
+- **Approve or reject:** the event's **Vetting** tab (`/admin/events/<id>/vetting`, global admins and the event's partner Events managers; the global
+  Vetting page lists the events whose photos wait). Photos come first, the try-on results of the event below them, for global admins:
   Waiting / Rejected / Approved lists, approve or reject one photo, or select several and approve them together. It calls
   `POST /api/admin/submissions/<id>/review` with `{"action":"approve"}` or `{"action":"reject","reason":"..."}`. The same tab shows the
   event's setting; only a global admin can switch it (turning it off asks first).
@@ -337,9 +338,9 @@ package it is off for every event, so none of the behaviour below applies yet.
 
 ### Turning photo vetting on (camera#271)
 
-1. **One event first.** A global admin opens the event's **Photos** tab (`/admin/events/<id>/photos`) and presses *Turn vetting on*. Take a
+1. **One event first.** A global admin opens the event's **Vetting** tab (`/admin/events/<id>/vetting`) and presses *Turn vetting on*. Take a
    photo on that event's capture page (on a phone too): the guest first gives an email or logs in with Google / Facebook, sees the shapes
-   instead of the frame, saves, and reads "waiting for approval". The photo must be on **no** public page. Then approve it on the Photos tab:
+   instead of the frame, saves, and reads "waiting for approval". The photo must be on **no** public page. Then approve it on the Vetting tab:
    the guest gets the email with `/share/<token>`, the page shows the framed photo, and the photo reaches the slideshow, the wall and the
    fanmass feed only now. Reject another one and check the "not approved" email and the page's "Take another photo".
 2. **Indexes.** Run `npm run db:ensure-indexes` once (production env): it adds the unique `shareToken` index and the queue index.
@@ -348,15 +349,15 @@ package it is off for every event, so none of the behaviour below applies yet.
    read the dry-run report*, then *Turn photo vetting on for every event*. The run is repeatable; events already on are skipped, and nothing
    written before is changed. Photos made before vetting stay public: a missing review status counts as approved and no approval time is
    written (the fanmass feed would otherwise send them again).
-4. **New events** get vetting required when `PHOTO_VETTING_DEFAULT_FOR_NEW_EVENTS` in `lib/events/photo-vetting.ts` is `true` (a code change,
-   merged after the checks above). It covers events created in the admin, by messmass provisioning and by savetheworld provisioning.
+4. **New events** start with vetting required (`PHOTO_VETTING_DEFAULT_FOR_NEW_EVENTS` in `lib/events/photo-vetting.ts` is `true`). It covers events
+   created in the admin, by messmass provisioning and by savetheworld provisioning.
 
 **Checklist for the first live event:** a test photo stays invisible (share page by id is "not found", no slideshow slide, not on the wall,
 not in the fanmass feed); approval emails the guest and publishes it; a try-on requested with the photo runs only after approval; the
-event manager (not only a global admin) can open the Photos tab and approve; an event that has its own frame shows the darkened
+event manager (not only a global admin) can open the Vetting tab and approve; an event that has its own frame shows the darkened
 silhouette, an event with a generated frame shows the shapes.
 
-**Rolling back.** One event: the switch on its Photos tab (global admin) turns vetting off; photos already waiting stay on the Photos tab and
+**Rolling back.** One event: the switch on its Vetting tab (global admin) turns vetting off; photos already waiting stay on the Vetting tab and
 can still be approved, and new photos are published at once as before. Everything: turn the code default back (`false`) and switch the
 events off one by one, or ask for a bulk switch-off. Nothing the rollout wrote is destructive: it only sets `photoVetting` on events.
 
