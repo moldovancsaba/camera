@@ -125,9 +125,9 @@ The endpoint returns the already resolved style, including the system default, s
 
 | # | Package | Repo | Depends on | Status |
 |---|---|---|---|---|
-| F1 [camera#232](https://github.com/moldovancsaba/camera/issues/232) | Layout engine: safety area, boxes, text fit and wrap, message pick, pure and tested | camera | none | built, [camera#240](https://github.com/moldovancsaba/camera/pull/240) in review |
+| F1 [camera#232](https://github.com/moldovancsaba/camera/issues/232) | Layout engine: safety area, boxes, text fit and wrap, message pick, pure and tested | camera | none | merged ([camera#240](https://github.com/moldovancsaba/camera/pull/240), 0e464cb) |
 | F2 [camera#233](https://github.com/moldovancsaba/camera/issues/233) | Spike: server canvas with woff and woff2 fonts and the emoji on Vercel; decides the renderer | camera | none | spike done on macOS, decisions recorded; the Linux and Vercel run is open |
-| F3 [messmass#429](https://github.com/moldovancsaba/messmass/issues/429) | `frame-context` endpoint with the resolution chain and system default | messmass | none | built, [messmass#431](https://github.com/moldovancsaba/messmass/pull/431) in review |
+| F3 [messmass#429](https://github.com/moldovancsaba/messmass/issues/429) | `frame-context` endpoint with the resolution chain and system default | messmass | none | merged ([messmass#431](https://github.com/moldovancsaba/messmass/pull/431), 0a8f624); the endpoint is live once messmass has deployed |
 | F4 [camera#234](https://github.com/moldovancsaba/camera/issues/234) | Data model, messmass sync, refresh action, message list storage and the default list | camera | F3 | not started |
 | F5 [camera#235](https://github.com/moldovancsaba/camera/issues/235) | Renderer and variants: one PNG per message in Blob, layer boxes, regeneration on input change | camera | F1, F2, F4 | not started |
 | F6 [camera#236](https://github.com/moldovancsaba/camera/issues/236) | Capture flow: skip the picker, territories, random variant per shutter press, record the variant | camera | F1, F5 | not started |
