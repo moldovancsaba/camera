@@ -1,8 +1,8 @@
 /**
  * Keeps the frame design of an event up to date (docs/DEFAULT_FRAME_PLAN.md, camera#234): a snapshot of the
  * messmass data taken at provisioning and whenever an admin presses refresh, and the editable message list.
- * There is no automatic follow of messmass changes (owner decision 6). Dependencies are injected so it is
- * unit-tested without a network or a database server.
+ * messmass changes are followed by lib/theme/refresh.ts (camera#285; this replaces owner decision 6 of the first plan, "no automatic
+ * follow"). Dependencies are injected so it is unit-tested without a network or a database server.
  */
 
 import type { Db, Document } from 'mongodb';
@@ -68,6 +68,10 @@ export async function refreshFrameDesign(db: Db, event: Document, deps: RefreshD
     messages: overridden && existing ? existing.messages : [...DEFAULT_FRAME_MESSAGES],
     messagesOverridden: overridden,
     updatedAt: now,
+    // The generated images stay: a new snapshot must never take the images of the event away. They are replaced image by image when
+    // their inputs change (generateFrameVariants), and until then the event keeps the frame it has.
+    ...(existing?.variants ? { variants: existing.variants } : {}),
+    ...(existing?.generatedAt ? { generatedAt: existing.generatedAt } : {}),
   };
   await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: event._id }, { $set: { frameDesign: design, updatedAt: now } });
   return { design, changed: !existing || existing.context?.inputHash !== context.inputHash, messmassUnavailable };

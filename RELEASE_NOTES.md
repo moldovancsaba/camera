@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — a new theme snapshot keeps the frame images (fix) and the frame backfill by secret
+
+- **Fixed:** taking a new snapshot of an event (refresh from messmass, and the new theme refresh) replaced the whole frame design and
+  dropped the generated images of the event, so the event showed no frame until its images were drawn again. The snapshot now keeps the
+  images and `generatedAt`; an image is replaced only when its inputs change. The first run of the theme refresh on 2026-10-06 dropped
+  the images of 19 events; they are drawn again by the backfill below.
+- **Added:** `POST /api/internal/messmass/frame-backfill` (messmass shared secret): the admin console's "Give the events a generated
+  frame" for a holder of the secret, a few events per call until `done`.
+
 ## Unreleased — the event theme: data, resolution and following messmass (J1)
 
 - **Added:** `GET /api/events/<id>` returns `theme`, one resolved look for the guest pages: background, heading, card, button, link and

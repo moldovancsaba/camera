@@ -92,6 +92,12 @@ generated frame images, the images whose inputs changed. Answer `{ marked, refre
 refresh the next time a guest opens them (after the response), and a snapshot older than a day is refreshed the same way, so no cron is needed.
 messmass sends the notice best-effort with a 4 s timeout; it never blocks a save.
 
+### `POST /api/internal/messmass/frame-backfill` (camera#285)
+Draws the generated frame images of the events that have none: the work of the admin console's "Give the events a generated frame", for a
+holder of the messmass secret. Body `{ "limit": 1..10 (default 3), "after": "<event id>", "redraw": false }`, answer `{ batch }` with
+`done` and `nextAfter`; call again with `nextAfter` until `done`. Events with a frame of their own are untouched and events that already
+have images are skipped, so it can be repeated.
+
 ### Cross-reference fields stamped on Camera records
 - `organizations.messmassOrganizationId`
 - `partners.messmassPartnerId`
