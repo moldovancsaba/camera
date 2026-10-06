@@ -100,3 +100,27 @@ export async function pushPartnerToMessmass(input: {
     return null;
   }
 }
+
+// WHY: the frame context is read when an event is provisioned and when an admin presses refresh, so a slow or
+//     hung messmass must cost at most this long; on timeout it is treated like any other failure (null).
+const FRAME_CONTEXT_TIMEOUT_MS = 5000;
+
+/**
+ * The resolved theme of one messmass event for the generated default frame (messmass GET
+ * /api/integrations/camera/events/[id]/frame-context, camera#231): teams with logos, partner, template and
+ * effective style. Returns the raw JSON (parsed and validated by lib/frame/context.ts) or null when messmass is
+ * unconfigured, unreachable, slow, or does not know the event. Never throws.
+ */
+export async function fetchFrameContext(messmassEventId: string, timeoutMs: number = FRAME_CONTEXT_TIMEOUT_MS): Promise<unknown | null> {
+  if (!messmassConfigured() || !/^[0-9a-f]{24}$/i.test(messmassEventId)) return null;
+  try {
+    const res = await fetch(`${base()}/api/integrations/camera/events/${messmassEventId}/frame-context`, {
+      headers: { 'x-camera-secret': token(), authorization: `Bearer ${token()}` },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) return null;
+    return await res.json().catch(() => null);
+  } catch {
+    return null;
+  }
+}
