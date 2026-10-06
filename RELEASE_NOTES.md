@@ -1,5 +1,16 @@
 # RELEASE_NOTES.md
 
+## Unreleased — photo vetting: the guest journey (switched off)
+
+- **Changed:** on an event with vetting required the capture page never shows the real frame. The reframe step and the preview show the
+  guest's photo with the 50% black shapes (the layer boxes of a generated frame; for an event's own frame a 50% black silhouette made in
+  the browser from the frame image), with the line "Your photo will get its frame after it has been approved." The browser saves the
+  plain photo (one upload, no frame on it), no try-on source copy is sent, and the page shows "Thank you! Your photo is waiting for
+  approval. We will email you the link ...": no share link, no copy button, no save button.
+- **Changed:** the card on the waiting screen shows COMPLETE instead of READY (`ShareOverlay` gets a `stageStatus`).
+- Events without vetting behave exactly as before. Measured on five viewports (320x568 to 1920x1080, portrait and landscape) with a
+  fake camera and the API mocked: shapes aligned with the layer boxes, the frame colour absent from the saved image, no page scroll.
+
 ## Unreleased — photo vetting: approval and rejection (switched off)
 
 - **Added:** `POST /api/admin/submissions/<id>/review` (global admins and the event's partner Events managers). Approving makes the

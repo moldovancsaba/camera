@@ -25,6 +25,8 @@ interface ShareOverlayProps {
   onShareSocial?: (platform: 'facebook' | 'twitter' | 'linkedin' | 'whatsapp') => void;
   onNext?: () => void;
   showShareActions?: boolean;
+  /** The status badge of the card: 'ready' for a photo that can be shared, 'complete' for one that is saved and waits (camera#265). */
+  stageStatus?: 'ready' | 'complete';
   overlay?: boolean;
   buttonSize?: EventButtonSize;
 }
@@ -68,6 +70,7 @@ export default function ShareOverlay({
   onShareSocial,
   onNext,
   showShareActions = true,
+  stageStatus = 'ready',
   overlay = true,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
 }: ShareOverlayProps) {
@@ -92,7 +95,7 @@ export default function ShareOverlay({
             stage={{
               id: 'share-stage',
               title,
-              status: 'ready',
+              status: stageStatus,
               body: (
                 <Stack gap="md">
                   {showShareActions && shareUrl ? (
