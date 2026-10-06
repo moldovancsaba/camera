@@ -73,12 +73,24 @@ function accountActiveClause(inactiveEmails: Iterable<string>): object {
   };
 }
 
-/** A pinned tryon_result still needs to have cleared review; a pinned original never carries reviewStatus at all. */
+/**
+ * A plain photo, unless it is a vetted photo that is waiting or was rejected (camera#270): such a photo has no picture yet or must
+ * stay private. Photos from before vetting carry no review status and stay in.
+ */
+function approvedOriginalsClause(): object {
+  return {
+    $and: [
+      { $or: [{ submissionKind: { $exists: false } }, { submissionKind: 'original' }] },
+      { reviewStatus: { $nin: ['pending_review', 'rejected'] } },
+    ],
+  };
+}
+
+/** A pinned tryon_result still needs to have cleared review; a pinned original must not be waiting or rejected. */
 function pinnedReviewStateClause(): object {
   return {
     $or: [
-      { submissionKind: { $exists: false } },
-      { submissionKind: 'original' },
+      approvedOriginalsClause(),
       { $and: [{ submissionKind: 'tryon_result' }, { reviewStatus: 'approved' }] },
     ],
   };
@@ -133,21 +145,11 @@ export function buildPlaylistMatchFilter({
             { isSlideshowEligible: true },
           ],
         },
-        {
-          $or: [
-            { submissionKind: { $exists: false } },
-            { submissionKind: 'original' },
-          ],
-        },
+        approvedOriginalsClause(),
       ],
     });
   } else {
-    and.push({
-      $or: [
-        { submissionKind: { $exists: false } },
-        { submissionKind: 'original' },
-      ],
-    });
+    and.push(approvedOriginalsClause());
   }
   if (excludeOids.length > 0) {
     and.push({ _id: { $nin: excludeOids } });

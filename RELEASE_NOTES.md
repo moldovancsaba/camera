@@ -1,5 +1,16 @@
 # RELEASE_NOTES.md
 
+## Unreleased — photo vetting: every feed takes approved photos only (switched off)
+
+- **Changed:** a vetted photo that is waiting or was rejected is no longer picked up by the slideshow playlist (also when pinned), the
+  savetheworld wall and its total, savetheworld publish-selfies and its total, the savetheworld private lookup of one photo (now an empty
+  answer until the photo is approved), the fanmass media feed, the "after save" email path and the manual email script
+  (`scripts/send-today-submission-emails.ts`). Photos from before vetting carry no review status and are unaffected.
+- **Changed:** the fanmass media feed orders and cuts by when a photo became available: the capture time as before, the approval time for a
+  vetted photo, so a photo approved after fanmass moved its cursor still arrives. `createdAt` in the answer carries that moment.
+- **Changed:** the partner gallery no longer lists waiting or rejected vetted photos, and the global submissions list marks them
+  ("Waiting for approval" / "Rejected") and does not open a download for a photo that has no picture yet.
+
 ## Unreleased — photo vetting: the Photos tab, the moderation queue and the setting (switched off)
 
 - **Added:** a **Photos** tab on every event workspace (`/admin/events/<id>/photos`) for global admins and the event's partner Events

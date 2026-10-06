@@ -21,6 +21,7 @@ const ALLOWED: Record<string, string> = {
   'app/api/submissions/route.ts': 'writes the submission; the response goes to the fan who made it',
   'components/admin/TryOnResultModerationTable.tsx': 'admin moderation UI',
   'lib/db/schemas.ts': 'type definition',
+  'lib/fanmass/media-feed.ts': 'the query behind the fanmass feed (service secret): selects photos that have one, returns no URL itself',
   'lib/email/submission-result-email.ts': 'email to the fan about their own photo',
   'lib/events/event-export.ts': 'admin event export',
   'lib/savetheworld/publishSelfies.ts': 'query that decides which submissions to publish; reads no URL out',

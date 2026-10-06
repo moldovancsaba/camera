@@ -3,13 +3,14 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { apiSuccess, withErrorHandler, checkRateLimit, RATE_LIMITS } from '@/lib/api';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { assertInternalFanmassSecret } from '@/lib/fanmass/internal';
+import { buildMediaFeedPipeline } from '@/lib/fanmass/media-feed';
 
 /**
  * GET /api/internal/fanmass/events/[eventId]/media?since=<ISO>&limit=<n>
  *
  * Service-authed, incremental photo feed for one event. Returns ORIGINAL fan
- * photos (submissionKind !== 'tryon_result') captured after `since`, oldest
- * first, so fanmass pulls only new images each poll and advances its cursor.
+ * photos (submissionKind !== 'tryon_result') that became available after `since`
+ * (the capture time, or the approval time for a vetted photo), oldest first, so fanmass pulls only new images each poll and advances its cursor.
  * Uses originalImageUrl — the raw fan photo (best for fan-worn brand exposure),
  * not the frame-composited final image. imgbb URLs are publicly fetchable.
  *
@@ -30,20 +31,12 @@ export const GET = withErrorHandler(async (
 
   const db = await connectToDatabase();
 
-  // Submissions link to an event via the legacy single-event mirror (eventId) or
-  // the multi-event array (eventIds[]).
-  const query: Record<string, unknown> = {
-    $or: [{ eventId }, { eventIds: eventId }],
-    submissionKind: { $ne: 'tryon_result' },
-    originalImageUrl: { $type: 'string' },
-  };
-  if (since) query.createdAt = { $gt: since };
-
+  // Submissions link to an event via the legacy single-event mirror (eventId) or the multi-event array (eventIds[]).
+  // Photos that are waiting for approval or were rejected are not in the feed, and a photo is cut and ordered by when it
+  // became available (its approval, for a vetted photo), so a photo approved after fanmass moved its cursor still arrives.
   const submissions = await db
     .collection(COLLECTIONS.SUBMISSIONS)
-    .find(query)
-    .sort({ createdAt: 1 })
-    .limit(limit)
+    .aggregate(buildMediaFeedPipeline(eventId, since, limit))
     .toArray();
 
   return apiSuccess({
@@ -51,7 +44,8 @@ export const GET = withErrorHandler(async (
     media: submissions.map((s) => ({
       captureId: s.submissionId,
       url: s.originalImageUrl || s.imageUrl || s.finalImageUrl,
-      createdAt: s.createdAt,
+      // The moment the photo became available to this feed (the cursor fanmass sends back as `since`).
+      createdAt: s.availableAt ?? s.createdAt,
     })),
   });
 });

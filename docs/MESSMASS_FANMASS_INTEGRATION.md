@@ -141,6 +141,12 @@ try-on results, because fanmass measures brand exposure on the fan as
 photographed, not on the branded output. `limit` defaults to 200, capped at 500.
 Response: `{ eventId, media: [{ captureId, url, createdAt }] }`.
 
+**Photo vetting (camera#270):** a photo of an event with vetting required is in the feed only once it is approved; waiting and rejected
+photos are not. `createdAt` in the answer, and the `since` cut, mean *when the photo became available to this feed*: the capture time for
+every photo from before vetting (unchanged), the approval time for a vetted photo, so a photo approved after fanmass moved its cursor
+still arrives on the next poll. An approved vetted photo's `url` is the approved picture (the plain photo is private and deleted after
+approval).
+
 `url` is a public image link — Vercel Blob (`*.public.blob.vercel-storage.com`)
 for photos stored since v12.2.14, imgbb (`i.ibb.co`) for older ones — fetched by
 fanmass **without** the shared secret — deliberate, so the secret is never

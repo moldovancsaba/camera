@@ -65,6 +65,12 @@ export function isPubliclyVisible(submission: VisibilityInput | null | undefined
   return submission.reviewStatus !== 'pending_review' && submission.reviewStatus !== 'rejected';
 }
 
+/** Review states that keep a photo off every feed and page: waiting for a decision, or not approved (camera#270). */
+export const UNPUBLISHED_REVIEW_STATUSES = ['pending_review', 'rejected'] as const;
+
+/** `reviewStatus` is neither of them; a missing status passes (photos from before vetting carry none). For feeds that already restrict the kind. */
+export const notWaitingOrRejectedClause = { reviewStatus: { $nin: [...UNPUBLISHED_REVIEW_STATUSES] } };
+
 /** The same rule for a MongoDB query on plain photos and approved try-on results (the shape the slideshow routes use). */
 export function publiclyVisibleClauses(eventIdKeys: readonly string[]): object[] {
   return [

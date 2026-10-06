@@ -11,6 +11,8 @@
  * `$or` clauses into the same object literal.
  */
 
+import { notWaitingOrRejectedClause } from '@/lib/submissions/visibility';
+
 /** Submissions belonging to one event, under any identifier they may carry. */
 export function eventMatchFor(eventKeys: string[]): Record<string, unknown> {
   if (eventKeys.length === 0) {
@@ -37,11 +39,13 @@ export function buildPublishSelfiesFilter(eventKeys: string[]): Record<string, u
         ],
       },
       { isShareVisible: null },
+      // Never publish a vetted photo that is waiting or was rejected (camera#270).
+      notWaitingOrRejectedClause,
     ],
   };
 }
 
 /** All non-tryon submissions of the event (the `total` in the response). */
 export function buildEventSubmissionsFilter(eventKeys: string[]): Record<string, unknown> {
-  return { $and: [eventMatchFor(eventKeys), { submissionKind: { $ne: 'tryon_result' } }] };
+  return { $and: [eventMatchFor(eventKeys), { submissionKind: { $ne: 'tryon_result' } }, notWaitingOrRejectedClause] };
 }

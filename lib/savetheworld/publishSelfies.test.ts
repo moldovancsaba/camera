@@ -44,3 +44,10 @@ test('total filter is scoped to the same event', () => {
 test('refuses to build an unscoped filter', () => {
   assert.throws(() => buildPublishSelfiesFilter([]), /unscoped/);
 });
+
+test('a vetted photo that is waiting or was rejected is never published, never on the wall and never counted', () => {
+  const clause = { reviewStatus: { $nin: ['pending_review', 'rejected'] } };
+  assert.ok((buildPublishSelfiesFilter(KEYS).$and as unknown[]).some((c) => JSON.stringify(c) === JSON.stringify(clause)), 'publish');
+  assert.ok((buildWallFilter(KEYS).$and as unknown[]).some((c) => JSON.stringify(c) === JSON.stringify(clause)), 'wall');
+  assert.ok((buildEventSubmissionsFilter(KEYS).$and as unknown[]).some((c) => JSON.stringify(c) === JSON.stringify(clause)), 'total');
+});
