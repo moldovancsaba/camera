@@ -217,6 +217,7 @@ Note: the first-edition scanner flagged `email-preview`, `fix-mojibake-text`, `m
 |---|---|---|---|---|
 | GET /api/share/[id]/download | none | path submission ObjectId + `?variant=` (must match a variant the event's share-page settings expose) | image bytes as attachment | external: fetches the stored image URL (Vercel Blob, or imgbb for older photos); no DB write |
 | POST /api/observability/client-error | none | body `{digest?, message?, url?}` (fields clamped to 2KB) | `{ok:true}` | server-side structured log only (never persisted/reflected) |
+| POST /api/observability/capture-diagnostic | none | body: one allowlisted, range-clamped capture diagnostic record (`lib/camera/diagnostics.ts`, max 4096 bytes); rate limited 300/min per IP | `204`; `400` invalid, `413` too large, `429` limited | server-side structured log `camera.capture_diagnostic` only (never persisted/reflected); no image, name, email, IP or device id |
 
 ## Adjudication of no-auth routes
 
@@ -232,6 +233,7 @@ Public-by-design (with reason):
 - **GET /api/share/[id]/download** — public share page download; requires an unguessable submission ObjectId, and only serves variants the event's share settings expose.
 - **GET /api/tryon/suits** — capture UI suit picker; response projected to safe fields.
 - **POST /api/observability/client-error** — documented public error beacon; size-bounded, log-only.
+- **POST /api/observability/capture-diagnostic** — anonymous capture diagnostics (camera#204); public because fans are not signed in; allowlisted fields only, size-bounded, rate limited, log-only.
 - **/api/internal/*** — shared-secret service auth (messmass / fanmass / savetheworld / try-on worker / cron), the designed trust boundary; every `assertInternal*Secret` fails closed when its env var is unset; sso-session additionally re-verifies the token against SSO itself.
 - **POST /api/tryon/setups/[setupId]/use** — dual-auth by design (service secret for kiosk automation, or an admin session since v12.3.39).
 - **dev-only surface** (`/api/e2e/*`, `/api/auth/dev-login`) — 404 in production via `blockDangerousApiInProduction()`; e2e additionally requires localhost + a disposable E2E database name. (`/api/debug/*`, `/api/test-db`, `/api/test-frames`, `/api/migrate/submissions` no longer exist — deleted in 070058e.)

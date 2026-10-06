@@ -97,6 +97,13 @@ export const RATE_LIMITS = {
    */
   INTERNAL_READ: { max: 120, windowMs: 60 * 1000 },
   INTERNAL_WRITE: { max: 60, windowMs: 60 * 1000 },
+
+  /**
+   * Anonymous capture diagnostics beacon (public). Best-effort log-only traffic, so the cap
+   * only stops floods; kept high because a whole venue can share one IP (shared Wi-Fi or
+   * carrier NAT) and each capture session sends two or three small records.
+   */
+  DIAGNOSTICS: { max: 300, windowMs: 60 * 1000 },
 } as const;
 
 /**

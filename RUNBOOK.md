@@ -106,6 +106,34 @@ more than intended passed. The real ceiling is a Vercel Firewall rule:
   first, because per-IP limits that start counting globally would tighten and
   could throttle fans who share an IP.
 
+## Capture diagnostics (anonymous)
+
+The capture screen reports how each capture went so the rate of black or near-black photos can
+be compared per device and browser (camera#204, plan `docs/CAMERA_MODULE_PLAN.md`).
+
+- **What is sent** (`lib/camera/diagnostics.ts`): requested and granted camera mode, front or
+  back camera, number of cameras, time to first frame, time until the shutter unlocked, time
+  from unlock to the tap, number of attempts and broken-frame retries, brightness mean and
+  spread of the captured frame, video and output size, page orientation, viewport and pixel
+  ratio, and a random per-page-load session id. The server adds the user agent (200 characters).
+- **What is never sent or kept:** images, names, emails, IP addresses, cookies, camera labels or
+  device ids. Records are only written as a structured log line (`camera.capture_diagnostic`),
+  never to the database. Unknown fields are dropped by an allowlist on the server.
+- **Reading it:** export the runtime logs from Vercel (project `04_camera`) and run
+  `npm run camera:diagnostics-report -- [--by browser|device|testRun] <logfile>`, or pipe the log
+  text in. It groups records and prints broken-frame rate, dark photos, "no frame event" streams,
+  and median timings. Lines without `camera.capture_diagnostic` are ignored.
+- **Phone tests:** add `?cameraTest=<label>` to the capture URL (for example
+  `?cameraTest=iphone-15-safari`); the label appears in every record of that page load and
+  `--by testRun` separates those runs.
+- **Privacy text:** landing-page privacy text is authored per landing page in the admin, so add
+  this sentence to each one that is in use (wording to be confirmed by the owner or counsel):
+  "When you use the camera we collect anonymous technical information about how it worked, such as
+  the browser, the camera resolution and timings. It contains no photo and nothing that identifies
+  you, and it is used only to make the camera more reliable."
+- **Limits:** the beacon is rate limited to 300 requests a minute per IP (a venue can share one
+  IP); excess records are dropped. It never blocks or delays capture.
+
 ## Scheduled jobs and workers
 
 **Vercel Cron: try-on completion backstop (paused since v12.3.40).** The job that

@@ -33,6 +33,7 @@
     "tryon:report-unrecoverable-identities:csv": "tsx scripts/report-unrecoverable-tryon-identities.ts --csv",
     "tryon:apply-identity-corrections": "tsx scripts/apply-tryon-identity-corrections.ts",
     "tryon:apply-identity-corrections:apply": "tsx scripts/apply-tryon-identity-corrections.ts --apply",
+    "camera:diagnostics-report": "tsx scripts/camera-diagnostics-report.ts",
     "tryon:audit-data-integrity": "tsx scripts/audit-tryon-data-integrity.ts",
     "tryon:audit-data-integrity:strict": "tsx scripts/audit-tryon-data-integrity.ts --strict",
     "tryon:backfill-superseded-archive-reason": "tsx scripts/backfill-tryon-superseded-archive-reason.ts",
