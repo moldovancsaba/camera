@@ -1,5 +1,9 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the Start button design for every button of the user flow (camera#334)
+
+- **Changed (owner, 2026-10-07: "I love that start button. I would like to use that design everywhere in this flow"):** every button inside the themed pages (login, consent, selfie taking, share, restart and thank-you, CTA) is now the Start design: a round pill with a ring, bold capitals and a soft glow; the quieter buttons are the same design inverted (label colour as the fill, fill colour as the label, same ring). It is one rule in `lib/theme/css.ts`, so no page was rewritten. The colours of the Start button of the event's welcome page (fill, label, ring) are now the colours of the whole flow (`EventTheme.buttonRing`, `welcomeButtonColours`); events without them keep the style's button colours, with the label colour as the ring. Small buttons get a thinner ring and tighter letters so Google and Facebook fit side by side. Checked in a real browser on the built pages with the real MTK theme values: pill, 4 px ring `#189cd8`, fill `#1b3a69`, white capitals, weight 800 on the consent, login, CTA and restart pages. Not changed: text colours, how the style's own button colours are derived, the pledge wall checkbox (planning items 60 to 62). `docs/JOURNEY_DESIGN_PLAN.md`.
+
 ## Unreleased — tracked short links with scan counts sent to messmass (camera#320)
 
 - **Added:** one tracked short link per placement of an event (the giant screen QR, a poster, an email footer): `go.messmass.com/<slug>` (six characters from an

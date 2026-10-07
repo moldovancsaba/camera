@@ -54,6 +54,7 @@ export function themeVariables(theme: EventTheme): Record<string, string> {
     '--event-card-border': theme.cardBorder,
     '--event-button-bg': theme.buttonBackground,
     '--event-button-text': theme.buttonText,
+    '--event-button-ring': theme.buttonRing,
     '--event-link': theme.link,
     '--event-radius': theme.radius,
     '--event-font': fontStack(theme),
@@ -105,23 +106,55 @@ export const EVENT_THEME_CSS = `
   --mantine-primary-color-filled: var(--event-button-bg);
   --mantine-primary-color-filled-hover: color-mix(in srgb, var(--event-button-bg) 86%, var(--event-button-text));
 }
+.event-theme .mantine-Button-root {
+  /* The Start button of the welcome page is the button of the whole flow (item 59 of the welcome page planning): a round pill with a ring, bold capitals and a soft glow. */
+  --ring: 4px;
+  --button-radius: 999px !important;
+  height: auto;
+  min-height: var(--button-height, 2.625rem);
+  padding-block: 0.375rem;
+  font-weight: 800 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+/* The small buttons (two side by side, Google and Facebook) get a thinner ring, less padding and tighter letters so the capitals fit. */
+.event-theme .mantine-Button-root[data-size='xs'],
+.event-theme .mantine-Button-root[data-size='compact-xs'] {
+  --ring: 2px;
+  padding-inline: 0.625rem;
+  letter-spacing: 0.02em !important;
+}
+.event-theme .mantine-Button-root[data-size='sm'],
+.event-theme .mantine-Button-root[data-size='compact-sm'] {
+  --ring: 3px;
+  padding-inline: 0.625rem;
+  letter-spacing: 0.02em !important;
+}
+.event-theme .mantine-Button-root .mantine-Button-label {
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
+}
+/* The main button: the Start design. */
 .event-theme .mantine-Button-root:not([data-variant]),
 .event-theme .mantine-Button-root[data-variant='filled'] {
   --button-bg: var(--event-button-bg) !important;
   --button-hover: color-mix(in srgb, var(--event-button-bg) 86%, var(--event-button-text)) !important;
   --button-color: var(--event-button-text) !important;
-  --button-bd: transparent !important;
+  --button-bd: var(--ring) solid var(--event-button-ring) !important;
 }
-.event-theme .mantine-Button-root[data-variant='light'] {
-  --button-bg: color-mix(in srgb, var(--event-heading) 16%, transparent) !important;
-  --button-hover: color-mix(in srgb, var(--event-heading) 26%, transparent) !important;
-  --button-color: var(--event-heading) !important;
+.event-theme .mantine-Button-root:not([data-variant]):not(:disabled):not([data-disabled]),
+.event-theme .mantine-Button-root[data-variant='filled']:not(:disabled):not([data-disabled]) {
+  box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, var(--event-button-bg) 45%, transparent);
 }
-.event-theme .mantine-Paper-root .mantine-Button-root[data-variant='light'],
-.event-theme [data-event-card] .mantine-Button-root[data-variant='light'] {
-  --button-bg: color-mix(in srgb, var(--event-card-text) 8%, transparent) !important;
-  --button-hover: color-mix(in srgb, var(--event-card-text) 16%, transparent) !important;
-  --button-color: var(--event-card-text) !important;
+/* The quieter button: the same design inverted, the label colour as the fill and the fill colour as the label, with the same ring. */
+.event-theme .mantine-Button-root[data-variant='light'],
+.event-theme .mantine-Button-root[data-variant='default'],
+.event-theme .mantine-Button-root[data-variant='outline'] {
+  --button-bg: var(--event-button-text) !important;
+  --button-hover: color-mix(in srgb, var(--event-button-text) 86%, var(--event-button-bg)) !important;
+  --button-color: var(--event-button-bg) !important;
+  --button-bd: var(--ring) solid var(--event-button-ring) !important;
 }
 .event-theme .mantine-Input-input,
 .event-theme .mantine-TextInput-input {
