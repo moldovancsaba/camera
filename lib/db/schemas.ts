@@ -180,6 +180,7 @@ export interface Partner {
  * - cta: Call-to-action that can redirect to URL, optional button (if no button = end page)
  * - take-photo: Represents the existing camera capture flow (special type for ordering)
  * - restart: Explicitly restarts the entire journey from the first onboarding step
+ * - welcome: Step 0, a full-screen picture with a Start button, before the login (camera#308)
  */
 export enum CustomPageType {
   WHO_ARE_YOU = 'who-are-you',  // Data collection page
@@ -187,6 +188,7 @@ export enum CustomPageType {
   CTA = 'cta',                  // Call to action page
   TAKE_PHOTO = 'take-photo',    // Photo capture step (for ordering only)
   RESTART = 'restart',          // Restart the full experience from the beginning
+  WELCOME = 'welcome',          // Step 0: full-screen picture and a Start button
 }
 
 /**
@@ -257,6 +259,13 @@ export interface CustomPage {
     saveFirstMessage?: string;   // Warning when trying to share before saving (e.g., "Please save the photo first to get a shareable link.")
     // For 'restart' type only
     restartButtonText?: string;  // Optional dedicated label for restarting from the first page
+    // For 'welcome' type only (step 0). The button label is `buttonText`; the title is read by screen readers, not shown.
+    backgroundImageUrl?: string;  // Fills the screen in any orientation (scaled to cover, centred)
+    bottomImageUrl?: string;      // Transparent layer, full width, bottom of the screen
+    cornerImageUrl?: string;      // Transparent layer drawn over the bottom one at the same scale (its design sits in the bottom right corner)
+    buttonColor?: string;         // Start button fill, e.g. the club's official colour
+    buttonTextColor?: string;     // Start button label
+    buttonBorderColor?: string;   // Start button ring
   };
   createdAt: string;           // ISO 8601 timestamp when page was added
   updatedAt: string;           // ISO 8601 timestamp of last modification

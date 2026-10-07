@@ -48,6 +48,10 @@ export function hasIdentityPageBeforePhoto(pages: readonly CustomPage[]): boolea
 export function withRequiredIdentityPage(pages: readonly CustomPage[] | null | undefined, vettingRequired: boolean, now?: string): CustomPage[] {
   const own = [...(pages ?? [])];
   if (!vettingRequired || hasIdentityPageBeforePhoto(own)) return own;
-  const first = own.length > 0 ? Math.min(...own.map((page) => page.order)) : 0;
-  return [defaultIdentityPage(first - 1, now), ...own];
+  // The default login step goes right after the leading welcome step(s) (step 0 is the first thing a guest sees), else first.
+  const sorted = [...own].sort((a, b) => a.order - b.order);
+  let leading = 0;
+  while (sorted[leading]?.pageType === 'welcome') leading += 1;
+  const order = leading > 0 ? sorted[leading - 1].order + 0.5 : (sorted.length > 0 ? sorted[0].order : 0) - 1;
+  return [defaultIdentityPage(order, now), ...own];
 }

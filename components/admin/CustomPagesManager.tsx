@@ -17,6 +17,48 @@ import { useState } from 'react';
 import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
 import { CustomPageType, type CustomPage, generateId, generateTimestamp } from '@/lib/db/schemas';
 
+function ImageUrlField({ label, value, onChange, helper }: { label: string; value: string; onChange: (value: string) => void; helper?: string }) {
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const upload = async (file: File | null) => {
+    if (!file) return;
+    setBusy(true);
+    setProblem(null);
+    try {
+      const imageData = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('The file could not be read.'));
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch('/api/upload-logo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData, name: `welcome-${Date.now()}` }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || payload.message || 'The upload failed.');
+      const url = String(payload?.data?.imageUrl ?? '');
+      if (!url) throw new Error('The upload finished without an image address.');
+      onChange(url);
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : 'The upload failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'grid', gap: '0.5rem' }}>
+      <Field label={label} value={value} onChange={onChange} placeholder="https://… or upload a file (PNG, JPEG or WebP, up to 4 MB)" helper={helper} />
+      <input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={(event) => void upload(event.currentTarget.files?.[0] ?? null)} aria-label={`Upload ${label}`} />
+      {busy ? <span role="status">Uploading…</span> : null}
+      {problem ? <span role="alert" style={{ color: 'var(--gds-color-danger, inherit)' }}>{problem}</span> : null}
+    </div>
+  );
+}
+
 export interface CustomPagesManagerProps {
   eventId: string;
   initialPages: CustomPage[];
@@ -188,6 +230,7 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
     const now = generateTimestamp();
     // Find the highest order to add at the end
     const maxOrder = pages.length > 0 ? Math.max(...pages.map(p => p.order)) : 0;
+    const minOrder = pages.length > 0 ? Math.min(...pages.map(p => p.order)) : 0;
     
     const defaultTitle =
       type === CustomPageType.WHO_ARE_YOU
@@ -196,12 +239,14 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
           ? 'Please accept'
           : type === CustomPageType.RESTART
             ? 'Ready for the next guest?'
-          : 'Next step';
+            : type === CustomPageType.WELCOME
+              ? 'Welcome'
+              : 'Next step';
 
     const newPage: CustomPage = {
       pageId: generateId(),
       pageType: type,
-      order: maxOrder + 1,  // Add at end
+      order: type === CustomPageType.WELCOME ? minOrder - 1 : maxOrder + 1,  // Step 0 goes first, any other page at the end
       isActive: true,
       config: {
         title: defaultTitle,
@@ -220,6 +265,9 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
         ...(type === CustomPageType.RESTART && {
           buttonText: 'Start again',
           restartButtonText: 'Start again',
+        }),
+        ...(type === CustomPageType.WELCOME && {
+          buttonText: 'Start',
         }),
       },
       createdAt: now,
@@ -448,6 +496,14 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
           + CTA
           </SemanticButton>
           <SemanticButton
+            action="custom-pages:add-welcome"
+            type="button"
+            variant="secondary"
+            onClick={() => handleAddPage(CustomPageType.WELCOME)}
+          >
+            + Welcome (step 0)
+          </SemanticButton>
+          <SemanticButton
             action="custom-pages:add-restart"
             type="button"
             variant="secondary"
@@ -552,6 +608,12 @@ function PageEditModal({
   const [restartButtonText, setRestartButtonText] = useState(
     page.config.restartButtonText || page.config.buttonText || 'Start again'
   );
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState(page.config.backgroundImageUrl || '');
+  const [bottomImageUrl, setBottomImageUrl] = useState(page.config.bottomImageUrl || '');
+  const [cornerImageUrl, setCornerImageUrl] = useState(page.config.cornerImageUrl || '');
+  const [buttonColor, setButtonColor] = useState(page.config.buttonColor || '');
+  const [buttonTextColor, setButtonTextColor] = useState(page.config.buttonTextColor || '');
+  const [buttonBorderColor, setButtonBorderColor] = useState(page.config.buttonBorderColor || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -606,6 +668,14 @@ function PageEditModal({
         ...(page.pageType === CustomPageType.RESTART && {
           restartButtonText,
         }),
+        ...(page.pageType === CustomPageType.WELCOME && {
+          backgroundImageUrl: backgroundImageUrl.trim() || undefined,
+          bottomImageUrl: bottomImageUrl.trim() || undefined,
+          cornerImageUrl: cornerImageUrl.trim() || undefined,
+          buttonColor: buttonColor.trim() || undefined,
+          buttonTextColor: buttonTextColor.trim() || undefined,
+          buttonBorderColor: buttonBorderColor.trim() || undefined,
+        }),
       },
     };
 
@@ -615,8 +685,46 @@ function PageEditModal({
   return (
     <form onSubmit={handleSubmit}>
       <div style={{ display: 'grid', gap: '1rem' }}>
-        <Field label="Page Title" value={title} onChange={setTitle} required placeholder="e.g., Welcome!" />
-        <Area label="Description" value={description} onChange={setDescription} rows={3} placeholder="Optional description text" />
+        <Field
+          label="Page Title"
+          value={title}
+          onChange={setTitle}
+          required
+          placeholder="e.g., Welcome!"
+          helper={page.pageType === CustomPageType.WELCOME ? 'Read by screen readers, not shown on the page.' : undefined}
+        />
+        {page.pageType === CustomPageType.WELCOME ? null : (
+          <Area label="Description" value={description} onChange={setDescription} rows={3} placeholder="Optional description text" />
+        )}
+
+        {page.pageType === CustomPageType.WELCOME ? (
+          <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              <h4 style={{ margin: 0 }}>Pictures and button colours</h4>
+              <ImageUrlField
+                label="Background picture"
+                value={backgroundImageUrl}
+                onChange={setBackgroundImageUrl}
+                helper="Fills the screen in portrait and landscape (scaled to cover, centred)."
+              />
+              <ImageUrlField
+                label="Bottom layer"
+                value={bottomImageUrl}
+                onChange={setBottomImageUrl}
+                helper="Transparent PNG, drawn full width on the bottom edge."
+              />
+              <ImageUrlField
+                label="Corner layer"
+                value={cornerImageUrl}
+                onChange={setCornerImageUrl}
+                helper="Transparent PNG of the same size as the bottom layer, drawn over it at the same scale."
+              />
+              <Field label="Start button colour" value={buttonColor} onChange={setButtonColor} placeholder="e.g., the club's official colour, as #RRGGBB" />
+              <Field label="Start button label colour" value={buttonTextColor} onChange={setButtonTextColor} placeholder="#RRGGBB" />
+              <Field label="Start button ring colour" value={buttonBorderColor} onChange={setButtonBorderColor} placeholder="#RRGGBB" />
+            </div>
+          </section>
+        ) : null}
 
         {page.pageType === CustomPageType.WHO_ARE_YOU ? (
           <>
