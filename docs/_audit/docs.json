@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-06T20:11:37+00:00",
+  "generated": "2026-10-07T10:50:57+00:00",
   "repo": "camera",
-  "head": "07911fe",
+  "head": "1ecdc2c",
   "counts": {
    "endpoints": 109,
    "collections": 6,
    "env": 59,
-   "outbound-hosts": 25,
-   "docs": 46
+   "outbound-hosts": 26,
+   "docs": 47
   }
  },
  "items": [
@@ -123,6 +123,10 @@
   {
    "file": "docs/JOURNEY_DESIGN_PLAN.md",
    "title": "Event design on the guest journey (plan)"
+  },
+  {
+   "file": "docs/LOGO_STORAGE.md",
+   "title": "Logo storage (Cloudflare R2)"
   },
   {
    "file": "docs/MESSMASS_FANMASS_INTEGRATION.md",

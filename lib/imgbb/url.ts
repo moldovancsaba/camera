@@ -5,6 +5,14 @@ const DIRECT_IMAGE_HOST = 'i.ibb.co';
 // a suffix match rather than a literal hostname.
 const BLOB_HOST_SUFFIX = '.public.blob.vercel-storage.com';
 
+// The public address of the Cloudflare R2 bucket that holds the partner and event logos (messmass-logos, docs/LOGO_STORAGE.md). Only logos
+// live there, so unlike Blob it is a literal host: nothing else of the account is reachable through it.
+export const LOGO_STORAGE_HOST = 'pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev';
+
+export function isLogoStorageHostname(hostname: string): boolean {
+  return hostname === LOGO_STORAGE_HOST;
+}
+
 function safeUrl(raw: string): URL | null {
   try {
     return new URL(raw);

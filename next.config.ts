@@ -7,7 +7,7 @@ process.env.BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA ??= 'true';
  * Next.js configuration for Camera webapp
  * 
  * Key configurations:
- * - Image hosts: camera's own Vercel Blob store (primary) and i.ibb.co (legacy/mirror)
+ * - Image hosts: camera's own Vercel Blob store (primary), the logo bucket on Cloudflare R2 and i.ibb.co (legacy/mirror)
  * - Security headers (HSTS, CSP, X-Frame-Options)
  * - Performance optimizations (compression, caching)
  * - TypeScript strict mode enforcement
@@ -54,6 +54,12 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'i.ibb.co',
         pathname: '/**',
+      },
+      // The logo bucket on Cloudflare R2 (messmass-logos): partner and event logos only (lib/imgbb/url.ts LOGO_STORAGE_HOST).
+      {
+        protocol: 'https',
+        hostname: 'pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev',
+        pathname: '/logos/**',
       },
     ],
   },
@@ -114,7 +120,7 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Next.js requires unsafe-inline/eval
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Tailwind requires unsafe-inline, Google Fonts for Material Icons
-              "img-src 'self' data: https://*.public.blob.vercel-storage.com https://i.ibb.co https://imgbb.com blob:",
+              "img-src 'self' data: https://*.public.blob.vercel-storage.com https://i.ibb.co https://imgbb.com https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev blob:",
               "font-src 'self' data: https://fonts.gstatic.com https://messmass.com https://www.messmass.com", // Google Fonts CDN for Material Icons and the event theme; messmass for the custom fonts of event themes (camera#285)
               "connect-src 'self' https://sso.doneisbetter.com https://*.public.blob.vercel-storage.com https://api.imgbb.com https://vercel.com/api/blob/", // vercel.com/api/blob/: direct browser upload of the full-frame original (camera#210)
               "frame-ancestors 'self'",

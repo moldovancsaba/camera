@@ -108,6 +108,8 @@ test('a logo on a host the pages may not load images from is not used: the emoji
   assert.equal(theme.logoUrl, null);
   assert.equal(theme.emoji, '🏐');
   assert.equal(allowedImage('https://i.ibb.co/x/logo.png'), 'https://i.ibb.co/x/logo.png');
+  assert.equal(allowedImage('https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev/logos/a.png'), 'https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev/logos/a.png');
+  assert.equal(allowedImage(`https://pub-${'0'.repeat(32)}.r2.dev/logos/a.png`), null, 'only the logo bucket, not any r2.dev address');
   assert.equal(allowedImage('https://abc123.public.blob.vercel-storage.com/logo.png') !== null, true);
   assert.equal(allowedImage('http://i.ibb.co/x.png'), null);
   assert.equal(allowedImage('https://evil.test/i.ibb.co/x.png'), null);

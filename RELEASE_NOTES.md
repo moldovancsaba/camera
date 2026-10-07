@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — camera accepts logos from the Cloudflare R2 logo bucket
+
+- **Added:** the guest pages, the frame renderer and `next.config.ts` (image patterns and CSP) accept logos from the logo bucket on Cloudflare R2
+  (`pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev`, path `/logos/**` for the image optimizer), next to imgbb and Vercel Blob. Only that exact
+  address is accepted, not other `r2.dev` addresses. Nothing is moved yet: this is the step that has to be live before the stored links change.
+  See `docs/LOGO_STORAGE.md`.
+
 ## Unreleased — the share pages: a smaller event title and a centred notice
 
 - **Changed:** the event name at the top of the share page and of the "waiting for approval" / "not approved" pages is 24px (it was 48px

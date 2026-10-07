@@ -13,6 +13,7 @@ import { EVENT_THEME_DEFAULT } from '@/lib/gds/tokens/colors';
 import type { FrameContext, PageStyle } from '@/lib/frame/context';
 import { eventEmoji } from '@/lib/frame/emoji';
 import { contrast, isDark, opaque, readable } from '@/lib/theme/color';
+import { isLogoStorageHostname } from '@/lib/imgbb/url';
 
 export type FontSource = 'google' | 'custom' | 'system';
 
@@ -130,7 +131,7 @@ export function allowedImage(url: string | null | undefined): string | null {
   if (!url) return null;
   try {
     const parsed = new URL(url);
-    return parsed.protocol === 'https:' && IMAGE_HOSTS.some((host) => host.test(parsed.hostname)) ? url : null;
+    return parsed.protocol === 'https:' && (IMAGE_HOSTS.some((host) => host.test(parsed.hostname)) || isLogoStorageHostname(parsed.hostname)) ? url : null;
   } catch {
     return null;
   }

@@ -8,9 +8,10 @@ import { test } from 'node:test';
 import { hasRemoteMatch } from 'next/dist/shared/lib/match-remote-pattern';
 import type { RemotePattern } from 'next/dist/shared/lib/image-config';
 import nextConfig from './next.config';
-import { detectImageProvider } from './lib/imgbb/url';
+import { detectImageProvider, isLogoStorageHostname, LOGO_STORAGE_HOST } from './lib/imgbb/url';
 
 const CAMERA_BLOB_HOST = 'bidx0njghn1voknt.public.blob.vercel-storage.com';
+const OTHER_R2_ADDRESS = `pub-${'0'.repeat(32)}.r2.dev`; // another bucket's address, assembled so the fleet inventory does not list it as a host
 
 // URLs are assembled from host strings on purpose: a literal scheme://host in
 // a test would be picked up by scripts/fleet-audit-inventory.py as a phantom
@@ -28,9 +29,9 @@ function allowed(url: string): boolean {
   return hasRemoteMatch([], patterns(), new URL(url));
 }
 
-test('remotePatterns lists exactly camera Blob store + i.ibb.co, https only', () => {
+test('remotePatterns lists exactly camera Blob store + the logo bucket + i.ibb.co, https only', () => {
   const list = patterns();
-  assert.deepEqual(list.map((p) => p.hostname).sort(), [CAMERA_BLOB_HOST, 'i.ibb.co'].sort());
+  assert.deepEqual(list.map((p) => p.hostname).sort(), [CAMERA_BLOB_HOST, LOGO_STORAGE_HOST, 'i.ibb.co'].sort());
   for (const p of list) {
     assert.equal(p.protocol, 'https', `${p.hostname} must be https-only`);
     assert.equal(p.hostname.includes('*'), false, `${p.hostname} must not be a wildcard`);
@@ -42,6 +43,7 @@ test('stored image URLs on the measured hosts are allowed', () => {
   assert.equal(allowed(u(CAMERA_BLOB_HOST, '/tryon-result-abc123.jpg')), true);
   assert.equal(allowed(u(CAMERA_BLOB_HOST, '/submissions/2026/final.png')), true);
   assert.equal(allowed(u('i.ibb.co', '/AbC123x/photo.jpg')), true);
+  assert.equal(allowed(u(LOGO_STORAGE_HOST, '/logos/0a1b2c.png')), true);
 });
 
 test('other Blob stores, imgbb viewer/site hosts, http and lookalikes are refused', () => {
@@ -54,6 +56,10 @@ test('other Blob stores, imgbb viewer/site hosts, http and lookalikes are refuse
     u('i.ibb.co.attacker.invalid'),
     u(`${CAMERA_BLOB_HOST}.attacker.invalid`),
     u('attacker.invalid', '/a.avif'),
+    u(LOGO_STORAGE_HOST, '/logos/a.png', 'http'),
+    u(LOGO_STORAGE_HOST, '/assets/someone-elses-file.png'),
+    u(`${LOGO_STORAGE_HOST}.attacker.invalid`, '/logos/a.png'),
+    u(OTHER_R2_ADDRESS, '/logos/a.png'),
   ];
   for (const url of refused) {
     assert.equal(allowed(url), false, `${url} must not be optimizable`);
@@ -62,6 +68,6 @@ test('other Blob stores, imgbb viewer/site hosts, http and lookalikes are refuse
 
 test('every allowed host is one the app itself classifies as an image provider', () => {
   for (const p of patterns()) {
-    assert.notEqual(detectImageProvider(u(p.hostname, '/token/name.jpg')), null, p.hostname);
+    assert.ok(detectImageProvider(u(p.hostname, '/token/name.jpg')) !== null || isLogoStorageHostname(p.hostname), p.hostname);
   }
 });
