@@ -606,7 +606,7 @@ export default async function SharePage({ params }: Props) {
     <PublicShell size="lg">
       <Stack gap="xl">
         <Stack align="center" gap="xs" ta="center">
-          <Title order={1}>
+          <Title order={1} size="1.5rem">
             {headline}
           </Title>
         </Stack>
