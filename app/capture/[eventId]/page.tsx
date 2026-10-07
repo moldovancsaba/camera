@@ -1282,6 +1282,8 @@ export default function EventCapturePage({
               backgroundImageUrl: currentPage.config.backgroundImageUrl,
               bottomImageUrl: currentPage.config.bottomImageUrl,
               cornerImageUrl: currentPage.config.cornerImageUrl,
+              screenImageUrl: currentPage.config.screenImageUrl,
+              screenImageAlt: currentPage.config.screenImageAlt,
               buttonColor: currentPage.config.buttonColor,
               buttonTextColor: currentPage.config.buttonTextColor,
               buttonBorderColor: currentPage.config.buttonBorderColor,

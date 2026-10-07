@@ -263,6 +263,8 @@ export interface CustomPage {
     backgroundImageUrl?: string;  // Fills the screen in any orientation (scaled to cover, centred)
     bottomImageUrl?: string;      // Transparent layer, full width, bottom of the screen
     cornerImageUrl?: string;      // Transparent layer drawn over the bottom one at the same scale (its design sits in the bottom right corner)
+    screenImageUrl?: string;      // The picture on the giant screen drawn as a CSS 3D LED wall above the Start button (camera#315)
+    screenImageAlt?: string;      // What that picture shows, for screen readers
     buttonColor?: string;         // Start button fill, e.g. the club's official colour
     buttonTextColor?: string;     // Start button label
     buttonBorderColor?: string;   // Start button ring

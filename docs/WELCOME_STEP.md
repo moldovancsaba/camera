@@ -13,6 +13,12 @@ the middle. Start leads on to the next step (the login step of a vetted event, w
   its width and are cropped at the top.
 - **Start button** (`buttonText`, `buttonColor`, `buttonTextColor`, `buttonBorderColor`): a real button in the middle of the screen, 4.25 rem
   high, uppercase, with a ring; the colours are hex values from the page's settings (the club's official colours), anything else is ignored.
+- **Giant screen** (`screenImageUrl`, `screenImageAlt`; camera#315): a 16:9 LED wall made in CSS 3D (`components/capture/LedScreen3D.tsx`): a box with a
+  bezel and depth, tilted towards the guest, swaying slowly, with a faint pixel grid and a reflection on the glass, showing the one picture over
+  the Start button. Only CSS and that picture: nothing else is downloaded, it is sharp on any screen, and it holds still for a guest whose device
+  asks for less motion. It is as wide as the smallest of 88% of the screen width, 52 rem, and what fits above the button with a margin at the top
+  (`--led-w`), so it never touches the button or leaves the screen, in portrait, landscape, tablet and desktop. Leave `screenImageUrl` empty and
+  the page has no screen. `screenImageAlt` says what the picture shows, for screen readers.
 - **Title** (`title`): read by screen readers, not shown. The design carries no text; the only words on the page are the button label.
 
 ## Setting it up
@@ -22,10 +28,12 @@ Admin, event, Pages (custom pages): "+ Welcome (step 0)" adds the page as the fi
 (`withRequiredIdentityPage`, `lib/events/identity-page.ts`); an event with its own login page keeps it. After the last photo the guest goes
 straight to the camera again, not back to the welcome step.
 
-## Pictures of MTK x Vasas (2026-10-26)
+## Pictures of MTK x Vasas (match on 2026-10-16)
 
 Stored by hand in the public R2 bucket `messmass-logos` under `landing/mtk-vasas/<sha256>.<ext>` (see `docs/LOGO_STORAGE.md`): the background
-as a 264 KB JPEG made from the designers' 2.4 MB PNG (1254×1254), the two layers as delivered. Camera's CSP already allows that address.
+as a 264 KB JPEG made from the designers' 2.4 MB PNG (1254×1254), the two layers as delivered. Camera's CSP already allows that address. The picture on the giant screen is composed from the designers' slideshow overlay (`Seyu_MTK_VASAS_Overlay2`),
+their sample selfie in its window, our QR code and "SZKENNELJ BE!" in the event font (1600×900 JPEG, `landing/mtk-vasas/screen/<sha256>.jpg`); replace it
+in the page's settings once the real picture (a real guest photo, the tracked QR link) exists.
 
 ## Known limits
 
