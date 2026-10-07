@@ -1107,9 +1107,9 @@ export default function EventCapturePage({
       setFlowPhase('thankyou');
       setCurrentPageIndex(0);
     } else {
-      // No thank you pages, restart
+      // No thank you pages: the guest is ready for the next photo, already known (camera#285 owner default)
       finalizeSubmissionForEventEnd();
-      handleRestartFlow();
+      handleNextPhoto();
     }
   };
   
@@ -1117,6 +1117,31 @@ export default function EventCapturePage({
    * Restart flow from beginning
    * Resets all state and goes back to first page or capture
    */
+  /**
+   * After a photo and its pages: straight to the camera for the next photo. The guest is already known (the login or email given at the
+   * start and the consents accepted stay), so the next photo does not ask again; only an explicit "restart" page of the event starts over
+   * from the first page (handleRestartFlow). The default of the guest journey; an event changes it with its own pages.
+   */
+  const handleNextPhoto = () => {
+    setCapturedImage(null);
+    setCapturedOriginal(null);
+    setCompositeImage(null);
+    setShareUrl(null);
+    setPendingApproval(false);
+    setImageDimensions(null);
+    setTryOnResult(null);
+    setSelectedTryOnSuitId(null);
+    setSelectedTryOnBottomSuitId(null);
+    setSavedSubmissionId(null);
+    setHasFinalizedSubmissionEmail(false);
+    setIsFinalizingSubmission(false);
+    setShareOptIn(true);
+    // A chosen frame is kept; a generated variant is picked again at the next shutter press.
+    setSelectedFrame((current) => (current?.generated ? null : current));
+    setFlowPhase('capture');
+    setStep(frames.length > 1 && !selectedFrame ? 'select-frame' : 'capture-photo');
+  };
+
   const handleRestartFlow = () => {
     // Reset capture state
     setCapturedImage(null);
@@ -1168,8 +1193,9 @@ export default function EventCapturePage({
       if (flowPhase === 'onboarding') {
         setFlowPhase('capture');
       } else {
+        // The last page of the journey is done: ready for the next photo, not back at the login (owner default)
         finalizeSubmissionForEventEnd();
-        handleRestartFlow();
+        handleNextPhoto();
       }
       return null;
     }

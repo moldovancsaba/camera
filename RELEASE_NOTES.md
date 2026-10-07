@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — after the photo, the next photo (default)
+
+- **Changed:** the NEXT button after a saved photo (and the end of the event's thank-you pages) now goes straight to the camera for the next
+  photo instead of back to the login page. The guest stays known: the name and email (or login) given at the start and the accepted consents
+  are kept, so the next photo does not ask again; a chosen frame is kept and a generated frame is picked again at the next shutter press;
+  the try-on choice and the pledge-wall tick are reset. This is the default of the guest journey: an event that wants the old behaviour
+  adds a "restart" page, which still starts again from the first page, and every page of the journey stays editable on the event.
+
 ## Unreleased — the guest pages are drawn with the event's theme (J2–J5)
 
 - **Changed:** every page of the guest journey (`/capture/<event>`: login, consent, call to action, thank-you, restart, the camera, reframe,
