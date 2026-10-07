@@ -713,30 +713,38 @@ function PageEditModal({
         {page.pageType === CustomPageType.WELCOME ? (
           <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
             <div style={{ display: 'grid', gap: '1rem' }}>
-              <h4 style={{ margin: 0 }}>Pictures and button colours</h4>
+              <h4 style={{ margin: 0 }}>Landing page elements (each one is optional)</h4>
+              <Field
+                label="Start button text"
+                value={buttonText}
+                onChange={setButtonText}
+                required
+                placeholder="e.g., START"
+                helper="The only words on the page. Write it in the language of the event."
+              />
               <ImageUrlField
                 label="Background picture"
                 value={backgroundImageUrl}
                 onChange={setBackgroundImageUrl}
-                helper="Fills the screen in portrait and landscape (scaled to cover, centred)."
+                helper="Fills the screen in portrait and landscape (scaled to cover, centred). Leave empty for no picture: the page colour of the event shows."
               />
               <ImageUrlField
-                label="Bottom layer"
+                label="Left image (bottom left)"
                 value={bottomImageUrl}
                 onChange={setBottomImageUrl}
-                helper="Transparent PNG, drawn full width on the bottom edge."
+                helper="Transparent PNG on the bottom edge: full width in portrait, half the width at the left edge in landscape. Leave empty for no left image."
               />
               <ImageUrlField
-                label="Corner layer"
+                label="Right image (bottom right)"
                 value={cornerImageUrl}
                 onChange={setCornerImageUrl}
-                helper="Transparent PNG of the same size as the bottom layer, drawn over it at the same scale."
+                helper="Transparent PNG of the same size as the left image, at the same scale: over it in portrait, half the width at the right edge in landscape. Leave empty for no right image."
               />
               <ImageUrlField
                 label="Giant screen picture"
                 value={screenImageUrl}
                 onChange={setScreenImageUrl}
-                helper="Shown on a 3D giant screen above the Start button (drawn by camera, tilted and swaying). 16:9 works best. Leave empty for no screen."
+                helper="Shown on a 3D giant screen above the Start button (drawn by camera, tilted and swaying). 16:9 works best. Leave empty and the page has no giant screen."
               />
               <Field label="Giant screen picture description" value={screenImageAlt} onChange={setScreenImageAlt} placeholder="What the screen shows, for screen readers" />
               <Field label="Start button colour" value={buttonColor} onChange={setButtonColor} placeholder="e.g., the club's official colour, as #RRGGBB" />
@@ -1009,7 +1017,7 @@ function PageEditModal({
           />
         ) : null}
 
-        {page.pageType !== CustomPageType.TAKE_PHOTO && (page.pageType !== CustomPageType.CTA || hasButton) ? (
+        {page.pageType !== CustomPageType.TAKE_PHOTO && page.pageType !== CustomPageType.WELCOME && (page.pageType !== CustomPageType.CTA || hasButton) ? (
           <Field
             label="Button Text"
             value={buttonText}

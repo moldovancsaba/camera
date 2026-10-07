@@ -84,3 +84,38 @@ test('the giant screen and the Start button are one group, centred together in t
   assert.equal((html.match(/data-welcome-group/g) ?? []).length, 1);
 });
 
+test('every element is optional: only what has a setting is drawn, the button is always there, an empty setting counts as none', async (t) => {
+  const { default: WelcomePage } = await load(t, 'optional');
+  const render = (extra: Record<string, string>) => renderToStaticMarkup(<WelcomePage config={{ title: 'W', buttonText: 'Go', ...extra }} onNext={() => undefined} />);
+  const images = (html: string) => (html.match(/<img /g) ?? []).length;
+
+  const none = render({});
+  assert.equal(images(none), 0, 'no setting, no picture');
+  assert.match(none, /<button[^>]*>Go<\/button>/);
+  assert.equal(images(render({ backgroundImageUrl: '', bottomImageUrl: '', cornerImageUrl: '', screenImageUrl: '' })), 0, 'empty settings are the same as none');
+
+  const background = render({ backgroundImageUrl: IMG('bg') });
+  assert.equal(images(background), 1);
+  assert.match(background, /object-fit:cover/);
+  assert.equal(/data-welcome-layer|data-led-screen/.test(background), false, 'a background alone draws no layer and no screen');
+
+  const left = render({ bottomImageUrl: IMG('left') });
+  assert.equal(images(left), 1);
+  assert.match(left, /data-welcome-layer="bottom"/);
+  assert.equal(/data-welcome-layer="corner"|data-led-screen|object-fit:cover/.test(left), false, 'a left image alone draws only the left image');
+
+  const right = render({ cornerImageUrl: IMG('right') });
+  assert.equal(images(right), 1);
+  assert.match(right, /data-welcome-layer="corner"/);
+  assert.equal(/data-welcome-layer="bottom"|data-led-screen|object-fit:cover/.test(right), false, 'a right image alone draws only the right image');
+
+  const screen = render({ screenImageUrl: IMG('screen') });
+  assert.equal(images(screen), 1);
+  assert.match(screen, /data-led-screen/);
+  assert.equal(/data-welcome-layer|object-fit:cover/.test(screen), false, 'a screen picture alone draws only the giant screen');
+
+  const all = render({ backgroundImageUrl: IMG('bg'), bottomImageUrl: IMG('left'), cornerImageUrl: IMG('right'), screenImageUrl: IMG('screen') });
+  assert.equal(images(all), 4);
+  assert.match(all, /<button[^>]*>Go<\/button>/);
+});
+
