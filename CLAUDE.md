@@ -231,6 +231,20 @@ the design off (#317), because each was "fixed" from a desktop check. The rules,
   Simulator) shows it. Close the ticket only after that.
 - The regression test is `components/theme/EventThemeScope.test.tsx`; the explanation is in `docs/WELCOME_STEP.md` ("The colour behind the page on a phone").
 
+## 8. Never write test data into production messmass (owner directive 2026-10-07)
+
+messmass is a production site, and its event figures are real: many come from the camera solution of the previous provider, which camera is being built to
+replace (the 20 September event "MTK Budapest x ETO FC" holds 33 Android and 84 iPhone QR scans from it, although it had been used as a "test event" for screen
+design). So:
+
+- **No test data goes into messmass, and no test visit is counted on an event that has a `messmassEventId`:** the first counted visit pushes totals to messmass
+  (`lib/short-links/sync.ts`). That includes a temporary write with a planned restore, a scratch collection or database on the messmass cluster, and events that only
+  look like tests. Read an event's stats before treating it as a test event, and ask when in doubt.
+- **Check messmass-writing features with unit tests and fakes** (the pipeline and the sync are covered that way), with a database of your own, or at the real event.
+- **Live checks that write nothing are fine:** HEAD requests on a short link (never counted), requests with a bot user agent, unauthenticated calls that must answer
+  401 or 404, read-only database queries, and rendering a page. The first real scan after launch is the end-to-end proof, and it is the owner's to make.
+- A decoder, screenshot or seed helper must take its input as an argument; a helper that silently reads a fixed file once reported a wrong QR as right.
+
 ## Next.js App Router: two `page.tsx` resolving to the same route fails silently
 
 A production outage in a sibling project (the `management` engine repo, 2026-08-20) traced back to this:
