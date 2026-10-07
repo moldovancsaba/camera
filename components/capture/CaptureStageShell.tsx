@@ -27,8 +27,8 @@ export default function CaptureStageShell({ title, description, children, logoUr
   const emoji = !logo ? theme?.emoji ?? null : null;
 
   return (
-    <div className="app-safe-pad flex min-h-dvh w-full items-center justify-center p-4">
-      <Stack align="center" gap="lg" className="w-full max-w-xl" data-event-stage>
+    <div className="app-safe-pad flex min-h-dvh w-full items-center justify-center p-3">
+      <Stack align="center" gap="md" className="w-full max-w-xl" data-event-stage>
         {logo ? (
           <Image
             src={logo}
@@ -36,10 +36,10 @@ export default function CaptureStageShell({ title, description, children, logoUr
             width={320}
             height={128}
             unoptimized
-            style={{ maxHeight: 112, maxWidth: 280, height: 'auto', width: 'auto' }}
+            style={{ maxHeight: 72, maxWidth: 200, height: 'auto', width: 'auto' }}
           />
         ) : emoji ? (
-          <span aria-hidden="true" style={{ fontSize: 72, lineHeight: 1 }}>
+          <span aria-hidden="true" style={{ fontSize: 48, lineHeight: 1 }}>
             {emoji}
           </span>
         ) : null}
@@ -50,7 +50,7 @@ export default function CaptureStageShell({ title, description, children, logoUr
               title,
               description,
               status,
-              body: <Stack gap="md">{children}</Stack>,
+              body: <Stack gap="sm">{children}</Stack>,
               notice,
             }}
           />
