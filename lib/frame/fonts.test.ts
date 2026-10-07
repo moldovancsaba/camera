@@ -98,3 +98,17 @@ test('without a messmass origin there is no custom font fetch', async () => {
   delete process.env.MESSMASS_BASE_URL;
   assert.equal(await fetchMessmassFont('/fonts/NoOrigin.woff', (async () => new Response(poppins)) as typeof fetch), null);
 });
+
+test('the bundled fonts are static bold files: a variable font is drawn at its default weight by the canvas, so a bold message would come out regular', async () => {
+  const { readFileSync, readdirSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const dir = join(process.cwd(), 'assets', 'frame-fonts');
+  const tags = (file: string): string[] => {
+    const buf = readFileSync(join(dir, file));
+    const count = buf.readUInt16BE(4);
+    return Array.from({ length: count }, (_, i) => buf.toString('latin1', 12 + i * 16, 16 + i * 16));
+  };
+  const fonts = readdirSync(dir).filter((f) => f.endsWith('.ttf'));
+  assert.deepEqual(fonts.sort(), ['Inter-Bold.ttf', 'Montserrat-Bold.ttf', 'Poppins-Bold.ttf', 'Roboto-Bold.ttf']);
+  for (const file of fonts) assert.equal(tags(file).includes('fvar'), false, `${file} must not be a variable font`);
+});
