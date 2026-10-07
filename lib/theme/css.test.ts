@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { EVENT_THEME_CSS, fontFaceCss, fontStack, googleFontHref, safeFontFamily, SYSTEM_FONT_STACK, themeVariables } from './css';
+import { EVENT_THEME_CSS, fontFaceCss, fontStack, googleFontHref, pageColourCss, safeFontFamily, SYSTEM_FONT_STACK, themeVariables } from './css';
 import { resolveEventTheme } from './event-theme';
 
 test('a theme becomes the custom properties of its wrapper', () => {
@@ -41,4 +41,11 @@ test('a custom font becomes an @font-face for an https font file, nothing else',
   assert.equal(fontFaceCss('X', 'https://www.messmass.com/fonts/a.woff2')?.includes("format('woff2')"), true);
   for (const bad of [null, 'http://www.messmass.com/fonts/a.woff', 'https://www.messmass.com/fonts/a.exe', "https://x.test/a'b.woff", 'not a url']) assert.equal(fontFaceCss('X', bad), null, String(bad));
   assert.equal(fontFaceCss('{}', 'https://www.messmass.com/fonts/a.woff'), null);
+});
+
+test('the page colour reaches the document and the GDS wrapper behind the page, and only as a hex colour', () => {
+  const css = pageColourCss(resolveEventTheme({}).background);
+  assert.match(css, /^html:root\[data-mantine-color-scheme\] \{ --mantine-color-body: #[0-9a-f]{6}; background: #[0-9a-f]{6}; \}$/i);
+  assert.equal(pageColourCss('red; } body { display: none'), '');
+  assert.equal(pageColourCss('url(https://example.com/x)'), '');
 });

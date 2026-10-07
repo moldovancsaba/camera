@@ -3,11 +3,12 @@
 /**
  * Draws everything inside it with the theme of the event (camera#285, docs/JOURNEY_DESIGN_PLAN.md): sets the theme's custom properties on a
  * wrapper and carries them onto the cards, buttons and text of the Mantine / GDS components inside (lib/theme/css.ts). The page behind the
- * wrapper and the browser's own chrome take the background colour as well, so nothing outside the page shows another colour.
+ * wrapper and the browser's own chrome take the background colour as well, so nothing outside the page shows another colour (the document and
+ * the GDS wrapper above this component through `pageColourCss`, which is what keeps a white band from showing under the page on a phone).
  */
 
 import { createContext, useContext, useEffect, type ReactNode } from 'react';
-import { EVENT_THEME_CSS, fontFaceCss, googleFontHref, themeVariables } from '@/lib/theme/css';
+import { EVENT_THEME_CSS, fontFaceCss, googleFontHref, pageColourCss, themeVariables } from '@/lib/theme/css';
 import type { EventTheme } from '@/lib/theme/event-theme';
 
 /** The theme of the event the page belongs to, for components that draw its logo or emoji; null outside a themed page. */
@@ -31,6 +32,7 @@ export default function EventThemeScope({ theme, children }: { theme: EventTheme
   return (
     <div className="event-theme" style={{ ...themeVariables(theme), minHeight: '100dvh' }} data-event-theme={theme.source}>
       <style>{EVENT_THEME_CSS}</style>
+      <style>{pageColourCss(theme.background)}</style>
       <ThemeFont font={theme.font} />
       <EventThemeContext.Provider value={theme}>{children}</EventThemeContext.Provider>
     </div>

@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — no white band behind the page on iPhone Safari (camera#316)
+
+- **Fixed:** on iPhone Safari with the floating bottom bar (iOS 26) a white band showed between the page (the welcome step, the loading screen, the other
+  guest pages) and the bar, although the page colour was set (#313 fixed the height of the picture box only). The cause: the GDS provider wraps the app in a
+  full-height div painted with Mantine's white body colour, over the document background, and that wrapper reaches below the page box. The document and
+  Mantine's body colour now take the event's page colour (`pageColourCss`, from `EventThemeScope`, which the capture and share pages use), the way the
+  messmass report does it. Checked on the built page: the wrapper is the page colour instead of white. A page can still end above the bar on iOS 26 (fixed
+  content is not drawn under the bar); what shows below it is now the page colour. `docs/WELCOME_STEP.md`.
+
 ## Unreleased — generated frames draw their text in bold (camera#314)
 
 - **Fixed:** the text of a generated frame (the message, the team names) is drawn at weight 700, but the canvas renderer ignores the weight of a
