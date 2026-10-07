@@ -5,6 +5,13 @@ the middle. Start leads on to the next step (the login step of a vetted event, w
 
 ## What the page is made of
 
+Five elements, **each one optional** (owner, 2026-10-07): the giant screen (needs its picture), the left image, the right image, the background picture, and
+the Start button (always there; its text is a setting, so it can be written per event and per language). A setting that is empty means that element is not
+drawn: no screen picture, no giant screen; no left image, no left image; no right image, no right image; no background, no background (the page colour of the
+event shows). Each one stands alone, none needs another. In the admin (event, Pages, Welcome step) the fields carry these names: Start button text,
+Background picture, Left image (bottom left), Right image (bottom right), Giant screen picture (and its description for screen readers), plus the three button
+colours. `WelcomePage.test.tsx` keeps the rule ("every element is optional").
+
 - **Background picture** (`backgroundImageUrl`): scaled to cover the screen and centred, in portrait and in landscape; a square photo is
   cropped, never stretched.
 - **Bottom layer** (`bottomImageUrl`) and **corner layer** (`cornerImageUrl`): transparent PNGs on the bottom edge, always at one scale. In portrait each is as

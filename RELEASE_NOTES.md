@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the landing page settings use the owner's names and say that every element is optional (camera#319)
+
+- **Changed:** the welcome step's fields in the admin are named as the owner calls the elements: Start button text (moved into the section, with the other
+  elements), Background picture, Left image (bottom left), Right image (bottom right), Giant screen picture; each says that leaving it empty means that element is
+  not shown, and the help texts describe portrait and landscape (full width in portrait, half the width at each edge in landscape). Nothing changes on the
+  page or in the stored settings (`bottomImageUrl` and `cornerImageUrl` keep their names). A test keeps the rule that each of the four pictures stands alone and an
+  empty setting counts as none. `components/admin/CustomPagesManager.tsx`, `docs/WELCOME_STEP.md`.
+
 ## Unreleased — the welcome group fills the height on a phone held sideways (camera#318)
 
 - **Fixed:** with the phone in landscape the giant screen and the Start button took only about two thirds of the height (owner, 2026-10-07): their size came
