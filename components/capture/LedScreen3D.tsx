@@ -6,10 +6,10 @@
  * no 3D library and no extra download, and holds still for guests who ask their device for less motion.
  *
  * It is one element of a group with the Start button of the welcome step (WelcomePage): the screen sits above the button in the normal flow and the
- * group as a whole is centred in the visible screen (owner, 2026-10-07). So it is sized by what the group needs: the width is the smallest of 88% of
- * the viewport width, a fixed maximum, and what fits in the height with the button under it (the box is 16:9; 5.5rem is the button, the gap and the
- * shadow room, 6svh the margins; the factor 1.5 is 1 / (9/16 + 0.06 of the shadow gap + 0.04 that the tilt lifts the near edge)). Every colour comes
- * from a * token or is mixed from one, so the colour gate stays green.
+ * group as a whole is centred in the visible screen (owner, 2026-10-07). The group is as big as it can be: about 90% of the height of the page box (the
+ * box is a size container, `cqh` is 1% of its height; `svh` is too small on a phone held sideways), limited by 88% of the viewport width and a maximum
+ * width. Under the 90%: the screen is 16:9, 5.5rem is the button, the gap and the shadow room, the factor 1.5 is 1 / (9/16 + 0.06 of the shadow gap + 0.04
+ * that the tilt lifts the near edge). Every colour comes from a token or is mixed from one, so the colour gate stays green.
  */
 
 import { CAMERA_STAGE_BLACK, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
@@ -20,7 +20,7 @@ const light = (white: number) => `color-mix(in srgb, ${CAMERA_STAGE_WHITE} ${whi
 
 export const LED_SCREEN_CSS = `
 .led3d {
-  --led-w: max(9rem, min(88vw, 60rem, calc((100svh - var(--gds-safe-area-inset-top, 0px) - 5.5rem - max(1.2rem, 6svh)) * 1.5)));
+  --led-w: max(9rem, min(88vw, 90rem, calc((90cqh - 0.9 * var(--gds-safe-area-inset-top, 0px) - 5.5rem) * 1.5)));
   --led-d: calc(var(--led-w) * 0.05);
   --led-bezel: calc(var(--led-w) * 0.014);
   position: relative;

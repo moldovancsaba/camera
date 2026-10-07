@@ -9,7 +9,8 @@
  * but iPhone Safari 26 draws fixed content only above its floating bar, so the part under the bar, with the bottom layers of the design anchored
  * to it, was cut off (owner, 2026-10-07). The part of the screen the box does not reach takes the page colour (`pageColourCss`, lib/theme/css.ts).
  * Things meant for the middle of the screen sit in a flex column centred in the box, with the top inset of the notch as padding (WelcomePage), so they do
- * not depend on where the bottom edge is (CLAUDE.md section 7).
+ * not depend on where the bottom edge is (CLAUDE.md section 7). The box is a size container, so they can be sized in `cqh`, a percentage of the box
+ * itself: `svh` is smaller than the visible screen on a phone held sideways (292pt against 393pt measured on the owner's iPhone, camera#318).
  */
 
 import { useEffect, useRef, type ReactNode } from 'react';
@@ -35,7 +36,7 @@ export default function FullScreenPage({ children, marker }: { children: ReactNo
     <main
       ref={ref}
       {...marker}
-      style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: `var(--event-bg, ${CAMERA_STAGE_BLACK})` }}
+      style={{ position: 'fixed', inset: 0, overflow: 'hidden', containerType: 'size', background: `var(--event-bg, ${CAMERA_STAGE_BLACK})` }}
     >
       {children}
     </main>

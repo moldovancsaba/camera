@@ -223,6 +223,8 @@ the design off (#317), because each was "fixed" from a desktop check. The rules,
   Anchor bottom layers to the bottom of `FullScreenPage` (`inset: 0`, no `min-height`) and put what belongs in the middle (the giant screen and the Start
   button of the welcome step, one group, owner 2026-10-07) in one flex column centred in the box, padded by `--gds-safe-area-inset-top`, so the group is
   centred in the visible screen whatever the bottom edge does. Whatever the box does not reach shows the page colour, so a page ending above the bar is not a defect.
+- **Size things by the page box (`cqh` in `FullScreenPage`, a size container), not by `svh`/`dvh`/`vh`.** On the owner's iPhone held sideways `svh` was 292 pt while
+  the screen was 393 pt tall, so a group sized from `svh` came out too small (#318). Portrait was fine because it is limited by the width.
 - **A desktop browser cannot show this.** Do not tell the owner such a layout is fixed on the strength of a desktop screenshot or a viewport
   emulation. Check the DOM (no ancestor between the page and the document paints a colour other than the page colour: print the chain of `background-color`
   from the page element up to `html`) and then say plainly that it is not confirmed on a phone until the owner's phone screenshot (or a working iOS

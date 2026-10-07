@@ -1,5 +1,17 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the welcome group fills the height on a phone held sideways (camera#318)
+
+- **Fixed:** with the phone in landscape the giant screen and the Start button took only about two thirds of the height (owner, 2026-10-07): their size came
+  from `svh`, which is about 100 pt smaller than the screen when the phone is held sideways. `FullScreenPage` is now a size container and the group is sized in
+  `cqh`, a percentage of the page box itself, to about 90% of its height (up to 90 rem wide, 88% of the width). Portrait is unchanged (the width limits it).
+  Measured on a production build: the group is 84–85% of the layout height (about 90% with the tilt) at 852×393, 667×375, 1024×768, 1440×900 and 1920×1080, centred
+  (equal gaps above and below), the screen above the button and inside the screen. `components/capture/LedScreen3D.tsx`, `FullScreenPage.tsx`, `CLAUDE.md` section 7.
+- **Changed (owner, 2026-10-07):** in landscape the two design layers of the welcome step are half the width of the screen each (the bottom layer at the left edge,
+  the corner layer at the right edge, same scale) instead of full width, so the "10" and the club badge are no longer huge on a phone held sideways; portrait is
+  unchanged. Chosen by the shape of the page box (a container query), measured at 852×393, 667×375, 1024×768, 1440×900 and 1920×1080 (each 50% wide, left at x=0, right at
+  the half) and at 390×844, 390×762 and 768×1024 (full width as before). `components/capture/WelcomePage.tsx`.
+
 ## Unreleased — the bottom of the welcome design is no longer cut off on iPhone Safari (camera#317)
 
 - **Fixed:** after the white band was gone (#316) the bottom of the welcome design (the "10" and the club badge) was cut off on an iPhone: the full-screen box

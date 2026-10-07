@@ -15,7 +15,7 @@ test('the giant screen is a box of six faces with the picture on the front, and 
 });
 
 test('it is sized by the screen it is on, drawn in 3D, holds still when asked, and draws only in the two stage colours', () => {
-  assert.match(LED_SCREEN_CSS, /--led-w: max\(9rem, min\(88vw, 60rem, calc\(\(100svh - var\(--gds-safe-area-inset-top, 0px\) - 5\.5rem - max\(1\.2rem, 6svh\)\) \* 1\.5\)\)\)/);
+  assert.match(LED_SCREEN_CSS, /--led-w: max\(9rem, min\(88vw, 90rem, calc\(\(90cqh - 0\.9 \* var\(--gds-safe-area-inset-top, 0px\) - 5\.5rem\) \* 1\.5\)\)\)/);
   assert.match(LED_SCREEN_CSS, /aspect-ratio: 16 \/ 9/);
   assert.match(LED_SCREEN_CSS, /transform-style: preserve-3d/);
   assert.match(LED_SCREEN_CSS, /@media \(prefers-reduced-motion: reduce\) \{\s*\.led3d-body \{ animation: none; \}/);
