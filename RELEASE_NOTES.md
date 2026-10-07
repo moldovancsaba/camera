@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the event as an installed app: Apple's tag and the event's colours
+
+- **Fixed:** the capture pages sent only the standard `mobile-web-app-capable` tag. Next turns `appleWebApp: { capable: true }` into that tag
+  alone, and iOS Safari opens a Home Screen app without the browser bars when it finds Apple's own `apple-mobile-web-app-capable`, so the
+  event layout now sends both.
+- **Changed:** the browser toolbar colour and the installed app's colour and splash background are the page colour of the event's theme, as
+  the page itself is (before: the brand colour and a fixed grey).
+
 ## Unreleased — vendored GDS 6.3.0 → 6.8.0 (camera#184)
 
 - **Changed:** the five vendored `@sovereignsquad/gds-*` packages (`gds-core`, `gds-theme`, `gds-admin`, `gds-compliance`, `gds-eslint-config`) move
