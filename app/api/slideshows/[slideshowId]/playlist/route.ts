@@ -7,6 +7,7 @@
  * Filters inactive users from playlist generation.
  */
 
+import { resolveScreenDesign } from '@/lib/slideshow/screen-design';
 import { randomBytes } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
@@ -417,6 +418,7 @@ export async function GET(
           backgroundAccentColor: bgAccent,
           backgroundImageUrl: bgImage,
           viewportScale,
+          screenDesign: resolveScreenDesign(slideshow.screenDesign),
         },
         playlist: [],
         message: 'No submissions available for this event',
@@ -458,6 +460,7 @@ export async function GET(
         backgroundAccentColor: bgAccent,
         backgroundImageUrl: bgImage,
         viewportScale,
+        screenDesign: resolveScreenDesign(slideshow.screenDesign),
       },
       playlist,
       totalSubmissions: submissions.length,

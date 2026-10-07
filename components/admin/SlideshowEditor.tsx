@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import { InlineAlert } from '@sovereignsquad/gds-core/client';
 import { FormSection } from '@sovereignsquad/gds-admin/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
+import ScreenDesignFields, { designFromDraft, draftFromDesign, type ScreenDesignDraft } from '@/components/admin/ScreenDesignFields';
+import type { ScreenDesign } from '@/lib/slideshow/screen-design';
 import {
   SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
   SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
@@ -46,6 +48,7 @@ interface SlideshowValue {
   backgroundImageUrl?: string | null;
   viewportScale?: 'fit' | 'fill';
   stageAspect?: number | null;
+  screenDesign?: ScreenDesign | null;
   submissionSourceMode?: 'originals_only' | 'approved_tryon_only' | 'originals_and_approved_tryon';
 }
 
@@ -109,6 +112,7 @@ export default function SlideshowEditor({
   const [backgroundImageUrl, setBackgroundImageUrl] = useState(
     initialSlideshow?.backgroundImageUrl ?? ''
   );
+  const [screenDraft, setScreenDraft] = useState<ScreenDesignDraft>(() => draftFromDesign(initialSlideshow?.screenDesign));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingBackground, setIsUploadingBackground] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
@@ -141,6 +145,7 @@ export default function SlideshowEditor({
       viewportScale,
       submissionSourceMode,
       stageAspect: stageAspect ?? null,
+      screenDesign: designFromDraft(screenDraft),
     };
 
     try {
@@ -487,6 +492,12 @@ export default function SlideshowEditor({
                 </Card>
               ) : null}
             </Field>
+          </Section>
+
+          <Section title="Screen design">
+            <Stack gap="md">
+              <ScreenDesignFields draft={screenDraft} onChange={setScreenDraft} />
+            </Stack>
           </Section>
 
           <Group>

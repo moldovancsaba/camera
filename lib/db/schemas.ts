@@ -1157,6 +1157,8 @@ export interface Slideshow {
    * (16:9 unless overridden here).
    */
   stageAspect?: number | null;
+  /** A giant-screen design: a picture over the stage with a window for the photos, a QR code and texts (camera#309). */
+  screenDesign?: import('@/lib/slideshow/screen-design').ScreenDesign | null;
   
   // Admin tracking
   createdBy: string;                 // Admin user ID from SSO who created this slideshow

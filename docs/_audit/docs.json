@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-07T12:42:55+00:00",
+  "generated": "2026-10-07T13:01:17+00:00",
   "repo": "camera",
-  "head": "f71e34a",
+  "head": "ac56de5",
   "counts": {
    "endpoints": 109,
    "collections": 6,
    "env": 59,
    "outbound-hosts": 26,
-   "docs": 48
+   "docs": 49
   }
  },
  "items": [
@@ -143,6 +143,10 @@
   {
    "file": "docs/PHOTO_VETTING_PLAN.md",
    "title": "Photo vetting by default: plan"
+  },
+  {
+   "file": "docs/SCREEN_DESIGN.md",
+   "title": "Giant-screen design (slideshow screen design)"
   },
   {
    "file": "docs/SLIDESHOW_LOGIC.md",
