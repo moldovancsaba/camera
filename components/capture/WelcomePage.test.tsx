@@ -68,3 +68,18 @@ test('the giant screen is drawn above the button when the page has a screen pict
   assert.match(withScreen, /alt="The screen"/);
   assert.equal(/data-led-screen/.test(renderToStaticMarkup(<WelcomePage config={config} onNext={() => undefined} />)), false);
 });
+
+test('the giant screen and the Start button are one group, centred together in the visible screen', async (t) => {
+  const { default: WelcomePage } = await load(t, 'group');
+  const html = renderToStaticMarkup(<WelcomePage config={{ ...config, screenImageUrl: IMG('screen') }} onNext={() => undefined} />);
+  const start = html.indexOf('data-welcome-group');
+  assert.ok(start > 0, 'there is one group');
+  const group = html.slice(html.lastIndexOf('<div', start), html.indexOf('>', start));
+  assert.match(group, /display:flex/);
+  assert.match(group, /flex-direction:column/);
+  assert.match(group, /align-items:center/);
+  assert.match(group, /justify-content:center/);
+  assert.ok(html.indexOf('data-led-screen') > start && html.indexOf('<button') > html.indexOf('data-led-screen'), 'the screen and the button are both inside the group, the screen first');
+  assert.equal((html.match(/data-welcome-group/g) ?? []).length, 1);
+});
+

@@ -5,10 +5,11 @@
  * picture on its face, tilted towards the guest and swaying slowly. Made of nothing but CSS and one image, so it is sharp on any screen, costs
  * no 3D library and no extra download, and holds still for guests who ask their device for less motion.
  *
- * It is sized by the screen it is on: the width is the smallest of 88% of the viewport width, a fixed maximum, and what fits in the height above
- * the Start button of the welcome step (the box is 16:9, the Start button sits at the middle of the visible screen; 3.6rem is the gap above it and 3svh the margin at the top; the factor 1.5 is
- * 1 / (9/16 + 0.06 of the shadow gap + 0.04 that the tilt lifts the near edge)). Every colour comes from a
- * token or is mixed from one, so the colour gate stays green.
+ * It is one element of a group with the Start button of the welcome step (WelcomePage): the screen sits above the button in the normal flow and the
+ * group as a whole is centred in the visible screen (owner, 2026-10-07). So it is sized by what the group needs: the width is the smallest of 88% of
+ * the viewport width, a fixed maximum, and what fits in the height with the button under it (the box is 16:9; 5.5rem is the button, the gap and the
+ * shadow room, 6svh the margins; the factor 1.5 is 1 / (9/16 + 0.06 of the shadow gap + 0.04 that the tilt lifts the near edge)). Every colour comes
+ * from a * token or is mixed from one, so the colour gate stays green.
  */
 
 import { CAMERA_STAGE_BLACK, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
@@ -19,15 +20,15 @@ const light = (white: number) => `color-mix(in srgb, ${CAMERA_STAGE_WHITE} ${whi
 
 export const LED_SCREEN_CSS = `
 .led3d {
-  --led-w: max(9rem, min(88vw, 52rem, calc((50svh - 3.6rem - max(0.6rem, 3svh)) * 1.5)));
+  --led-w: max(9rem, min(88vw, 60rem, calc((100svh - var(--gds-safe-area-inset-top, 0px) - 5.5rem - max(1.2rem, 6svh)) * 1.5)));
   --led-d: calc(var(--led-w) * 0.05);
   --led-bezel: calc(var(--led-w) * 0.014);
-  position: absolute;
-  left: 50%;
+  position: relative;
+  flex: none;
   width: var(--led-w);
   aspect-ratio: 16 / 9;
-  bottom: calc(50svh + 3.6rem + var(--led-w) * 0.06);
-  transform: translateX(-50%);
+  /* The shadow under the screen and a gap to the Start button below it. */
+  margin-bottom: calc(var(--led-w) * 0.06 + 1.2rem);
   perspective: calc(var(--led-w) * 3.2);
   perspective-origin: 50% 40%;
   pointer-events: none;
