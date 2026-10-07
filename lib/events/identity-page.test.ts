@@ -43,3 +43,14 @@ test('the input list is not changed', () => {
   withRequiredIdentityPage(pages, true);
   assert.equal(pages.length, 1);
 });
+
+test('the welcome step stays first: the default login step goes right after it, not before it', () => {
+  const pages = [page('take-photo', 0), page('welcome', -3), page('accept', -1)];
+  const result = withRequiredIdentityPage(pages, true).sort((a, b) => a.order - b.order);
+  assert.deepEqual(result.map((p) => p.pageType), ['welcome', 'who-are-you', 'accept', 'take-photo']);
+  assert.equal(result[1].pageId, DEFAULT_IDENTITY_PAGE_ID);
+  const twoWelcome = withRequiredIdentityPage([page('welcome', 0), page('welcome', 1), page('take-photo', 2)], true).sort((a, b) => a.order - b.order);
+  assert.deepEqual(twoWelcome.map((p) => p.pageType), ['welcome', 'welcome', 'who-are-you', 'take-photo']);
+  assert.equal(hasIdentityPageBeforePhoto([page('welcome', 0), page('take-photo', 1)]), false, 'a welcome step is not a login');
+  assert.equal(withRequiredIdentityPage([page('welcome', 0), page('who-are-you', 1), page('take-photo', 2)], true).length, 3, 'an event with its own login keeps it');
+});

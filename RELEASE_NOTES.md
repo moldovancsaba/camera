@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — a welcome step (step 0) with a picture and a Start button (camera#308)
+
+- **Added:** a new page type `welcome`, always the first step: a background picture that fills the screen in any orientation (scaled to
+  cover), two transparent layers at the bottom (full width, same scale; the second carries the bottom right corner), and a centred Start
+  button in the club's colours. The design carries no text; the title is for screen readers only. Added to an event in the admin pages editor
+  ("+ Welcome (step 0)", pictures pasted or uploaded, button colours as hex). A vetted event's default login step now goes right after the
+  welcome step instead of before it. See `docs/WELCOME_STEP.md`.
+
 ## Unreleased — the logos of partners and events are on Cloudflare R2
 
 - **Changed (data, 2026-10-07):** every logo link of the messmass partners and of camera (partners, events, the logo library, a landing page)

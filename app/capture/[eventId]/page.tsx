@@ -34,6 +34,7 @@ import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoA
 import AcceptPage, { type AcceptPageData } from '@/components/capture/AcceptPage';
 import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
 import RestartPage from '@/components/capture/RestartPage';
+import WelcomePage from '@/components/capture/WelcomePage';
 import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
 import { type CustomPage } from '@/lib/db/schemas';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
@@ -1265,6 +1266,23 @@ export default function EventCapturePage({
             buttonSize={eventButtonSize}
             submissionId={savedSubmissionId ?? undefined}
             onNext={(data) => handleConsentComplete(currentPage, data)}
+          />
+        );
+
+      case 'welcome':
+        return (
+          <WelcomePage
+            config={{
+              title: currentPage.config.title,
+              buttonText: currentPage.config.buttonText,
+              backgroundImageUrl: currentPage.config.backgroundImageUrl,
+              bottomImageUrl: currentPage.config.bottomImageUrl,
+              cornerImageUrl: currentPage.config.cornerImageUrl,
+              buttonColor: currentPage.config.buttonColor,
+              buttonTextColor: currentPage.config.buttonTextColor,
+              buttonBorderColor: currentPage.config.buttonBorderColor,
+            }}
+            onNext={handleNextPage}
           />
         );
 
