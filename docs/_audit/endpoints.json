@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-07T14:06:14+00:00",
+  "generated": "2026-10-07T16:11:35+00:00",
   "repo": "camera",
-  "head": "3398261",
+  "head": "db2b4f7",
   "counts": {
-   "endpoints": 109,
+   "endpoints": 111,
    "collections": 6,
    "env": 59,
-   "outbound-hosts": 26,
-   "docs": 51
+   "outbound-hosts": 29,
+   "docs": 52
   }
  },
  "items": [
@@ -79,6 +79,32 @@
     "POST"
    ],
    "file": "app/api/admin/events/[id]/gallery-upload/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/events/[id]/short-links/[slug]/qr",
+   "methods": [
+    "GET"
+   ],
+   "file": "app/api/admin/events/[id]/short-links/[slug]/qr/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/events/[id]/short-links",
+   "methods": [
+    "GET",
+    "POST",
+    "PATCH"
+   ],
+   "file": "app/api/admin/events/[id]/short-links/route.ts",
    "auth_markers": [
     "requireAuth",
     "withErrorHandler"

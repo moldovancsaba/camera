@@ -31,6 +31,7 @@ import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
 import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
 import { defaultPhotoVetting } from '@/lib/events/photo-vetting';
+import { trackedSlugExists } from '@/lib/short-links/store';
 
 function normalizeEventNotificationSettings(value: unknown) {
   const notificationPolicy = normalizeSubmissionEmailPolicy(value);
@@ -182,6 +183,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       if (dup) {
         throw apiBadRequest('This short URL is already used by another event.');
       }
+      if (await trackedSlugExists(db, norm.slug)) {
+        throw apiBadRequest('This short URL is already used by a tracked link.');
+      }
       resolvedShortSlug = norm.slug;
     } else {
       resolvedShortSlug = null;
@@ -198,6 +202,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       const dup = await db.collection(COLLECTIONS.EVENTS).findOne({ greatestHitsSlug: norm.slug });
       if (dup) {
         throw apiBadRequest('This Greatest Hits slug is already used by another event.');
+      }
+      if (await trackedSlugExists(db, norm.slug)) {
+        throw apiBadRequest('This Greatest Hits slug is already used by a tracked link.');
       }
       resolvedGreatestHitsSlug = norm.slug;
     } else {

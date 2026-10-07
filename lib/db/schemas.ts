@@ -48,6 +48,9 @@ export const COLLECTIONS = {
   USERS_CACHE: 'users_cache',
   SLIDESHOWS: 'slideshows',
   SLIDESHOW_LAYOUTS: 'slideshow_layouts',
+  /** Tracked short links, one per placement (camera#320); their hits are counted in SHORT_LINK_HITS. */
+  SHORT_LINKS: 'short_links',
+  SHORT_LINK_HITS: 'short_link_hits',
   LANDING_PAGES: 'landing_pages',
   LANDING_PAGE_CSS_PRESETS: 'landing_page_css_presets',
   PARTNER_USER_ACCESS: 'partner_user_access',
@@ -296,6 +299,8 @@ export interface Event {
    */
   shortUrlSlug?: string | null;
   greatestHitsSlug?: string | null;
+  /** What was last pushed to messmass from the tracked links of this event (camera#320, lib/short-links/sync.ts). */
+  shortLinkSync?: { pushedAt: string; totals?: { visitQrCode: number; visitShortUrl: number; qrscanAndroid: number; qrscanIphone: number } };
 
   // Partner relationship
   partnerId: string;                 // Reference to parent partner

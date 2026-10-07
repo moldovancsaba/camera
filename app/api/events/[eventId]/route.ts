@@ -33,6 +33,7 @@ import { normalizePhotoVettingInput, photoVettingRequired } from '@/lib/events/p
 import { withRequiredIdentityPage } from '@/lib/events/identity-page';
 import { loadEventTheme } from '@/lib/theme/load';
 import { needsThemeRefresh, refreshEventTheme } from '@/lib/theme/refresh';
+import { trackedSlugExists } from '@/lib/short-links/store';
 
 function normalizeEventNotificationSettings(value: unknown) {
   const notificationPolicy = normalizeSubmissionEmailPolicy(value);
@@ -329,6 +330,9 @@ export const PATCH = withErrorHandler(async (
       if (dup) {
         throw apiBadRequest('This short URL is already used by another event.');
       }
+      if (await trackedSlugExists(db, norm.slug)) {
+        throw apiBadRequest('This short URL is already used by a tracked link.');
+      }
     }
     updateFields.shortUrlSlug = norm.slug;
   }
@@ -345,6 +349,9 @@ export const PATCH = withErrorHandler(async (
       });
       if (dup) {
         throw apiBadRequest('This Greatest Hits slug is already used by another event.');
+      }
+      if (await trackedSlugExists(db, norm.slug)) {
+        throw apiBadRequest('This Greatest Hits slug is already used by a tracked link.');
       }
     }
     updateFields.greatestHitsSlug = norm.slug;

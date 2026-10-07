@@ -125,6 +125,33 @@ export async function fetchFrameContext(messmassEventId: string, timeoutMs: numb
   }
 }
 
+// WHY: the push runs after a visit has been redirected, so a slow messmass must not hold the function for long; a timeout is a failed push and the
+//     next one repeats it (messmass takes whole totals, so a repeat is harmless).
+const LINK_STATS_TIMEOUT_MS = 5000;
+
+/**
+ * Sends the scan and click totals of an event's tracked short links (messmass POST /api/integrations/camera/events/[id]/link-stats, camera#320).
+ * True when messmass accepted them; false when it is unconfigured, unreachable, slow or refuses. Never throws.
+ */
+export async function pushLinkStatsToMessmass(
+  messmassEventId: string,
+  totals: { visitQrCode: number; visitShortUrl: number; qrscanAndroid: number; qrscanIphone: number },
+  timeoutMs: number = LINK_STATS_TIMEOUT_MS,
+): Promise<boolean> {
+  if (!messmassConfigured() || !/^[0-9a-f]{24}$/i.test(messmassEventId)) return false;
+  try {
+    const res = await fetch(`${base()}/api/integrations/camera/events/${messmassEventId}/link-stats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-camera-secret': token(), authorization: `Bearer ${token()}` },
+      body: JSON.stringify({ totals }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** Absolute URL of a font file on the messmass origin (a `/fonts/...` path from the frame context), or null when messmass is not configured. */
 export function messmassFontUrl(fontPath: string): string | null {
   const origin = base();

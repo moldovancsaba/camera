@@ -17,6 +17,7 @@ import SlideshowManager from '@/components/admin/SlideshowManager';
 import SlideshowLayoutManager from '@/components/admin/SlideshowLayoutManager';
 import LandingPageManager from '@/components/admin/LandingPageManager';
 import EventGallery from '@/components/admin/EventGallery';
+import ShortLinksPanel from '@/components/admin/ShortLinksPanel';
 import EventExportControls from '@/components/admin/EventExportControls';
 import DeleteEventButton from '@/components/admin/DeleteEventButton';
 import { connectToDatabase } from '@/lib/db/mongodb';
@@ -407,6 +408,10 @@ export default async function EventDetailPage({
               </Text>
             )}
           </Card>
+
+          <div style={{ gridColumn: '1 / -1' }}>
+            <ShortLinksPanel eventId={id} />
+          </div>
 
           <Card>
             <Title order={3}>Greatest Hits Public Page</Title>

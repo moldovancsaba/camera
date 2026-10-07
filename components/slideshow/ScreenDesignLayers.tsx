@@ -42,7 +42,6 @@ export default function ScreenDesignLayers({ design }: { design: ResolvedScreenD
   return (
     <>
       {href ? (
-        // eslint-disable-next-line @next/next/no-page-custom-font
         <link rel="stylesheet" href={href} />
       ) : null}
       {fontFace ? <style>{fontFace}</style> : null}
