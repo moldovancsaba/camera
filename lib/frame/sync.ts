@@ -70,6 +70,8 @@ export async function refreshFrameDesign(db: Db, event: Document, deps: RefreshD
     updatedAt: now,
     // The generated images stay: a new snapshot must never take the images of the event away. They are replaced image by image when
     // their inputs change (generateFrameVariants), and until then the event keeps the frame it has.
+    // The designers' base picture of the frame belongs to the event, not to the messmass snapshot: it stays too.
+    ...(existing?.base ? { base: existing.base } : {}),
     ...(existing?.variants ? { variants: existing.variants } : {}),
     ...(existing?.generatedAt ? { generatedAt: existing.generatedAt } : {}),
   };

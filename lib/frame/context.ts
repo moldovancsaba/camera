@@ -8,6 +8,7 @@
 
 import { createHash } from 'node:crypto';
 import { EVENT_THEME_DEFAULT, FRAME_SYSTEM_BAR_COLOR, FRAME_SYSTEM_HEADING_COLOR } from '@/lib/gds/tokens/colors';
+import type { FrameBase } from './base';
 import type { LayerId } from './layout';
 
 export interface FrameTeam {
@@ -89,6 +90,8 @@ export interface FrameDesign {
   messages: string[];
   messagesOverridden: boolean;
   updatedAt: string;
+  /** The designers' text-free frame the messages are written on, instead of the generated layout (lib/frame/base.ts, camera#311). */
+  base?: FrameBase;
   /** One image per usable message (camera#235); absent until the first generation. */
   variants?: FrameVariant[];
   generatedAt?: string;
