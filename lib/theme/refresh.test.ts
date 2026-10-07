@@ -93,3 +93,16 @@ test('the stale run works through the events until the budget is spent and repor
   assert.ok(run.refreshed >= 1 && run.refreshed < 3, `the budget stops the run (${run.refreshed})`);
   assert.equal(run.remaining, 2);
 });
+
+test('an event whose frame is made from the designers\' picture is checked at every refresh, even when the messmass data did not change', async () => {
+  const { db } = fakeDb();
+  const calls: string[] = [];
+  const withBase = deps({ changed: false }, calls, {
+    refresh: async () => (calls.push('refresh'), { design: { context: {}, messages: ['A'], messagesOverridden: true, updatedAt: 'x', base: { images: [], messageBox: { x: 0, y: 0, width: 1, height: 1 } } } as never, changed: false, messmassUnavailable: false }),
+  });
+  assert.equal(await refreshEventTheme(db, linked({ frameDesign: { context: {}, variants: [{}] } }), withBase), 'unchanged');
+  assert.deepEqual(calls, ['refresh', 'generate']);
+  const first: string[] = [];
+  await refreshEventTheme(db, linked(), { ...withBase, refresh: async () => (first.push('refresh'), { design: { base: {} } as never, changed: false, messmassUnavailable: false }), generate: async () => (first.push('generate'), { design: {} as never, generated: 0, reused: 0 }) });
+  assert.deepEqual(first, ['refresh', 'generate'], 'also the first time, before any image exists');
+});

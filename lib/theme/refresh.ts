@@ -50,8 +50,10 @@ export async function refreshEventTheme(db: Db, event: Document, deps: ThemeRefr
       await events.updateOne({ _id: event._id }, { $set: { themeCheckedAt: at } });
       return 'unavailable';
     }
-    // An event that already has frame images gets the ones whose inputs changed; the others are kept as they are.
-    if (changed && (event.frameDesign as FrameDesign | undefined)?.variants?.length) {
+    // An event that already has frame images gets the ones whose inputs changed; the others are kept as they are. An event whose frame is
+    // made from the designers' picture (frameDesign.base) is always checked, because the picture, its box or its messages may have changed
+    // without the messmass data changing; an image whose key is unchanged is reused, so a check that finds nothing new draws nothing.
+    if ((changed && (event.frameDesign as FrameDesign | undefined)?.variants?.length) || design.base) {
       await deps.generate(db, { ...event, frameDesign: design });
     }
     await events.updateOne({ _id: event._id }, { $set: { themeCheckedAt: at }, $unset: { themeStale: '' } });
