@@ -290,6 +290,8 @@ Core collections:
 - `submissions`
 - `slideshows`
 - `slideshow_layouts`
+- `short_links` (tracked short links, one per placement of an event; docs/SHORT_LINKS.md)
+- `short_link_hits` (their visit counts, one row per link, UTC day and kind of phone)
 - `landing_pages`
 - `landing_page_css_presets`
 - `partner_user_access`

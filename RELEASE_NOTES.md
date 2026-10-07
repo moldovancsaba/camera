@@ -1,5 +1,23 @@
 # RELEASE_NOTES.md
 
+## Unreleased — tracked short links with scan counts sent to messmass (camera#320)
+
+- **Added:** one tracked short link per placement of an event (the giant screen QR, a poster, an email footer): `go.messmass.com/<slug>` (six characters from an
+  alphabet without look-alikes, or a chosen slug) sends the visitor to the capture page and counts the visit after the redirect: people only (HEAD requests,
+  prefetches, chat-app previews, crawlers and tools are left out), by link, UTC day and kind of phone (Android, iPhone, other), in `short_link_hits` (one row
+  per link, day and phone, `$inc`; no row per visit). The event's own short URL is counted too. New collections `short_links` and `short_link_hits`.
+- **Added:** the totals reach messmass (messmass#435, `POST /api/integrations/camera/events/[id]/link-stats`) as `visitQrCode` (QR links), `visitShortUrl` (plain
+  links and the event's own short URL), `qrscanAndroid` and `qrscanIphone`: messmass adds camera's total to the value each stat held at camera's first report, so nothing
+  typed in or imported is overwritten. Only events with at least one tracked link are pushed. There is no scheduled job, so the push rides on the traffic, at most once per
+  30 seconds per event (one atomic claim), and on opening the links panel; a visit inside the window is sent by the next visit or the next panel opening.
+- **Added:** admin panel "Tracked links" on the event page: address with a copy button, the QR code as an SVG file for the designers (any colour), counts (total, today, Android /
+  iPhone / other), a form to add a link, a switch to turn a link off (it answers "not found", its counts stay). API `GET/POST/PATCH /api/admin/events/[id]/short-links` and
+  `GET .../[slug]/qr`. The event routes refuse a short URL or greatest-hits slug that a tracked link already uses.
+- **Verified:** unit tests for the device and bot rules, the totals, the link store, the throttled sync and the visit counter; the real functions were also run against a
+  throwaway database of the real cluster (then dropped): hits are rows per link/day/phone, totals and per-link counts add up, five simultaneous syncs make exactly one push, the
+  throttle and the unchanged check hold, a switched-off link stops resolving and keeps its counts. Also removed an unused lint directive in `ScreenDesignLayers.tsx`.
+  `docs/SHORT_LINKS.md`.
+
 ## Unreleased — the landing page settings use the owner's names and say that every element is optional (camera#319)
 
 - **Changed:** the welcome step's fields in the admin are named as the owner calls the elements: Start button text (moved into the section, with the other
