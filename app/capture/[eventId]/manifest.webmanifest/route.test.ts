@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ObjectId } from 'mongodb';
-import { CAMERA_DEFAULT_CTA_BRAND_COLOR } from '@/lib/gds/tokens/colors';
+import { CAMERA_DEFAULT_BRAND_COLOR, CAMERA_DEFAULT_CTA_BRAND_COLOR } from '@/lib/gds/tokens/colors';
 
 type RouteModule = typeof import('./route');
 
@@ -40,6 +40,9 @@ test('a known event gets its own manifest, served as a manifest with a short sha
   t.mock.module('@/lib/events/capture-event', {
     namedExports: { loadCaptureEvent: async () => ({ name: 'Summer Fest', brandColor: CAMERA_DEFAULT_CTA_BRAND_COLOR }) },
   });
+  // The manifest takes the page colour of the event's theme (camera#285); here the theme cannot be loaded, so the brand colour stays.
+  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => ({}) } });
+  t.mock.module('@/lib/theme/load', { namedExports: { loadEventTheme: async () => Promise.reject(new Error('no theme')) } });
 
   const { GET } = await importRouteModule('known-event');
   const res = await call(GET, eventId);
@@ -52,4 +55,16 @@ test('a known event gets its own manifest, served as a manifest with a short sha
   assert.equal(manifest.theme_color, CAMERA_DEFAULT_CTA_BRAND_COLOR);
   assert.equal(manifest.start_url, `/capture/${eventId}?source=pwa`);
   assert.equal(manifest.orientation, 'any');
+});
+
+test('the manifest takes the page colour of the event theme for the toolbar and the splash', async (t) => {
+  t.mock.module('@/lib/events/capture-event', { namedExports: { loadCaptureEvent: async () => ({ name: 'Derby', brandColor: CAMERA_DEFAULT_CTA_BRAND_COLOR }) } });
+  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => ({}) } });
+  t.mock.module('@/lib/theme/load', { namedExports: { loadEventTheme: async () => ({ background: CAMERA_DEFAULT_BRAND_COLOR }) } });
+
+  const { GET } = await importRouteModule('themed');
+  const manifest = await (await call(GET, eventId)).json();
+
+  assert.equal(manifest.theme_color, CAMERA_DEFAULT_BRAND_COLOR);
+  assert.equal(manifest.background_color, CAMERA_DEFAULT_BRAND_COLOR);
 });

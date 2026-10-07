@@ -34,14 +34,19 @@ export function pwaShortName(name: string): string {
   return name.slice(0, SHORT_NAME_MAX).trim();
 }
 
-export function eventManifest(event: Record<string, unknown>, eventId: string): GdsWebAppManifest {
+/** The colour of the browser's toolbar and of the installed app's splash screen: the page colour of the event's theme (camera#285), else the brand colour. */
+export function pwaPageColor(theme: { background: string } | null | undefined, brandColor: unknown): string {
+  return theme && HEX_COLOR.test(theme.background) ? theme.background : pwaThemeColor(brandColor);
+}
+
+export function eventManifest(event: Record<string, unknown>, eventId: string, theme?: { background: string } | null): GdsWebAppManifest {
   const name = typeof event.name === 'string' && event.name.trim() ? event.name.trim() : 'Camera';
   const path = `/capture/${eventId}`;
   return {
     name,
     short_name: pwaShortName(name),
-    theme_color: pwaThemeColor(event.brandColor),
-    background_color: CAMERA_PWA_BACKGROUND_COLOR,
+    theme_color: pwaPageColor(theme, event.brandColor),
+    background_color: theme && HEX_COLOR.test(theme.background) ? theme.background : CAMERA_PWA_BACKGROUND_COLOR,
     display: 'standalone',
     // Both orientations on every device: the capture flow is laid out for portrait and landscape.
     orientation: 'any',

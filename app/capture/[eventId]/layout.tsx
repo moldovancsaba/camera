@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { ObjectId } from 'mongodb';
 import { loadCaptureEvent } from '@/lib/events/capture-event';
-import { pwaShortName, pwaThemeColor } from '@/lib/pwa/event-manifest';
+import { pwaPageColor, pwaShortName } from '@/lib/pwa/event-manifest';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { loadEventTheme } from '@/lib/theme/load';
 import EventThemeScope from '@/components/theme/EventThemeScope';
@@ -77,6 +77,9 @@ export async function generateMetadata({
     // Installable per event (camera#222): the manifest starts and stays inside this event.
     manifest: `/capture/${eventId}/manifest.webmanifest`,
     appleWebApp: { capable: true, title: pwaShortName(name), statusBarStyle: 'default' },
+    // Next emits only the standard `mobile-web-app-capable` for `capable`; iOS Safari opens a Home Screen app without the browser bars
+    // when it finds Apple's own tag, so both are sent.
+    other: { 'apple-mobile-web-app-capable': 'yes' },
     openGraph: {
       title: name,
       description,
@@ -102,7 +105,9 @@ export async function generateViewport({
 }): Promise<Viewport> {
   const { eventId } = await params;
   const event = await loadCaptureEvent(eventId);
-  return { viewportFit: 'cover', themeColor: pwaThemeColor(event?.brandColor) };
+  // The browser's toolbar takes the page colour of the event's theme, as the page itself does (camera#285).
+  const theme = event ? await loadEventTheme(await connectToDatabase(), event).catch(() => null) : null;
+  return { viewportFit: 'cover', themeColor: pwaPageColor(theme, event?.brandColor) };
 }
 
 export default async function CaptureEventLayout({

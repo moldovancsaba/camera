@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { CAMERA_DEFAULT_BRAND_COLOR, CAMERA_DEFAULT_CTA_BRAND_COLOR, CAMERA_PWA_BACKGROUND_COLOR } from '@/lib/gds/tokens/colors';
-import { eventManifest, PWA_ICONS, pwaThemeColor } from './event-manifest';
+import { eventManifest, PWA_ICONS, pwaPageColor, pwaThemeColor } from './event-manifest';
 
 const ID = '66f1a2b3c4d5e6f708192a3b';
 
@@ -58,4 +58,16 @@ test('the manifest equals what the GDS generator returns for the same input', as
       icons: PWA_ICONS,
     })
   );
+});
+
+test('the installed app and the browser toolbar take the page colour of the event theme, else the brand colour and the default splash', () => {
+  const theme = { background: CAMERA_DEFAULT_CTA_BRAND_COLOR };
+  const themed = eventManifest({ name: 'Derby', brandColor: CAMERA_DEFAULT_BRAND_COLOR }, ID, theme);
+  assert.equal(themed.theme_color, CAMERA_DEFAULT_CTA_BRAND_COLOR);
+  assert.equal(themed.background_color, CAMERA_DEFAULT_CTA_BRAND_COLOR);
+  const plain = eventManifest({ name: 'Derby', brandColor: CAMERA_DEFAULT_BRAND_COLOR }, ID);
+  assert.equal(plain.theme_color, CAMERA_DEFAULT_BRAND_COLOR);
+  assert.equal(plain.background_color, CAMERA_PWA_BACKGROUND_COLOR);
+  assert.equal(pwaPageColor({ background: 'not a colour' }, CAMERA_DEFAULT_BRAND_COLOR), CAMERA_DEFAULT_BRAND_COLOR);
+  assert.equal(pwaPageColor(null, undefined), CAMERA_DEFAULT_BRAND_COLOR);
 });
