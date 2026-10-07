@@ -3,7 +3,7 @@
 Owner request (2026-10-06): "use the messmass reporting design for the user journey as we use it for the frames: we already have the
 background colour, the logo and the text colours, so use it for all pages, to have beautiful login, selfie and photo pages."
 
-Status: **in delivery** (owner decisions below, 2026-10-06). Built: J1 (theme and following messmass), J2–J4 (pages), J5 (fonts); J6 (emails) next. Epic [camera#285](https://github.com/moldovancsaba/camera/issues/285).
+Status: **in delivery** (owner decisions below, 2026-10-06). Built: J1 (theme and following messmass), J2–J4 (pages), J5 (fonts), J6 (emails). Epic [camera#285](https://github.com/moldovancsaba/camera/issues/285).
 
 ## What we already have
 

@@ -8,6 +8,7 @@ import type { Event } from '@/lib/db/schemas';
 import { sendSubmissionResultEmail, type SubmissionNotificationInput, type SubmissionNotificationResult } from '@/lib/email/submission-notification';
 import { normalizeSubmissionEmailPolicy, resolveSubmissionResultEmailRecipient, buildSubmissionShareUrl } from '@/lib/email/submission-result-email';
 import { getConfiguredSiteUrl } from '@/lib/site-url';
+import type { EventTheme } from '@/lib/theme/event-theme';
 
 type EmailSender = (input: SubmissionNotificationInput) => Promise<SubmissionNotificationResult>;
 type RecipientSource = Parameters<typeof resolveSubmissionResultEmailRecipient>[0];
@@ -38,7 +39,8 @@ export async function sendPhotoApprovedEmail(
   submission: RecipientSource,
   event: EventForEmail,
   shareUrl: string,
-  send: EmailSender = sendSubmissionResultEmail
+  send: EmailSender = sendSubmissionResultEmail,
+  theme: EventTheme | null = null
 ): Promise<SubmissionNotificationResult> {
   const recipient = resolveSubmissionResultEmailRecipient(submission);
   const policy = normalizeSubmissionEmailPolicy(event?.notifications);
@@ -51,6 +53,8 @@ export async function sendPhotoApprovedEmail(
     senderName: policy.senderName,
     subjectTemplate: policy.subjectTemplateAfterSave || policy.subjectTemplate,
     bodyTemplate: policy.bodyTemplateAfterSave || policy.bodyTemplate,
+    theme,
+    buttonLabel: 'See your photo',
   });
 }
 
@@ -59,7 +63,8 @@ export async function sendPhotoNotApprovedEmail(
   submission: RecipientSource,
   event: EventForEmail,
   captureUrl: string,
-  send: EmailSender = sendSubmissionResultEmail
+  send: EmailSender = sendSubmissionResultEmail,
+  theme: EventTheme | null = null
 ): Promise<SubmissionNotificationResult> {
   const recipient = resolveSubmissionResultEmailRecipient(submission);
   const policy = normalizeSubmissionEmailPolicy(event?.notifications);
@@ -72,5 +77,7 @@ export async function sendPhotoNotApprovedEmail(
     senderName: policy.senderName,
     subjectTemplate: NOT_APPROVED_SUBJECT,
     bodyTemplate: NOT_APPROVED_BODY,
+    theme,
+    buttonLabel: 'Take another photo',
   });
 }
