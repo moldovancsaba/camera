@@ -14,12 +14,17 @@ export function parseLoginProvider(
   return undefined;
 }
 
-/** Relative path to start OAuth (PKCE) with an optional forced SSO provider. */
+/**
+ * Relative path to start OAuth (PKCE) with an optional forced SSO provider. A guest's login names the capture page it started on
+ * (`captureEvent`, and `capturePage` for the step), so the callback brings the guest back there (lib/auth/capture-return.ts).
+ */
 export function socialLoginHref(
   provider: SocialLoginProvider,
-  options?: { fromLogout?: boolean }
+  options?: { fromLogout?: boolean; captureEventId?: string; capturePage?: number }
 ): string {
   const p = new URLSearchParams({ provider });
   if (options?.fromLogout) p.set('from_logout', 'true');
+  if (options?.captureEventId) p.set('captureEvent', options.captureEventId);
+  if (options?.capturePage !== undefined) p.set('capturePage', String(options.capturePage));
   return `/api/auth/login?${p.toString()}`;
 }

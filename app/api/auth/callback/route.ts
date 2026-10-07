@@ -27,6 +27,7 @@ import {
 import { decodeSignedOAuthPkceState, getOAuthPkceStateSigningKey } from '@/lib/auth/oauth-pkce-state';
 import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
 import { pushSsoSessionToMessmass } from '@/lib/messmassClient';
+import { clearCaptureReturn, captureReturnPath, readCaptureReturn } from '@/lib/auth/capture-return';
 
 /**
  * WHAT: Best-effort -- also log this user into messmass, so one SSO login
@@ -57,11 +58,11 @@ function redirectOAuthFailure(
   message: string,
   options?: { clearPendingSession?: boolean }
 ): NextResponse {
-  const captureEventId = request.cookies.get('captureEventId')?.value;
+  const capture = readCaptureReturn(request);
 
   let res: NextResponse;
-  if (captureEventId) {
-    const url = new URL(`/capture/${captureEventId}`, request.url);
+  if (capture) {
+    const url = new URL(`/capture/${capture.eventId}`, request.url);
     url.searchParams.set('error', errorCode);
     url.searchParams.set('message', encodeURIComponent(message));
     res = NextResponse.redirect(url);
@@ -75,6 +76,7 @@ function redirectOAuthFailure(
   if (options?.clearPendingSession) {
     clearPendingSessionCookieOnResponse(res);
   }
+  if (capture) clearCaptureReturn(res);
   return res;
 }
 
@@ -207,23 +209,14 @@ export async function GET(request: NextRequest) {
       // Continue with default (no access) - user will see access denied page
     }
 
-    // Check whether the user needs to resume an interrupted capture flow
-    const captureEventId = request.cookies.get('captureEventId')?.value;
-    const capturePageIndex = request.cookies.get('capturePageIndex')?.value;
-    
-    if (captureEventId) {
-      console.log('✓ Resuming capture flow:', captureEventId, 'page:', capturePageIndex);
-      
-      // Redirect back to capture page with resume signal
-      const resumeUrl = new URL(`/capture/${captureEventId}`, request.url);
-      resumeUrl.searchParams.set('resume', 'true');
-      if (capturePageIndex) {
-        resumeUrl.searchParams.set('page', capturePageIndex);
-      }
-      
-      const response = NextResponse.redirect(resumeUrl);
-      response.cookies.delete('captureEventId');
-      response.cookies.delete('capturePageIndex');
+    // A guest's login goes back to the capture page it started on, whatever rights the account has: the dashboard is for dashboard logins only.
+    const capture = readCaptureReturn(request);
+
+    if (capture) {
+      console.log('✓ Resuming capture flow:', capture.eventId, 'page:', capture.page);
+
+      const response = NextResponse.redirect(new URL(captureReturnPath(capture), request.url));
+      clearCaptureReturn(response);
       clearPendingSessionCookieOnResponse(response);
 
       await createSession(user, tokens, { appRole, appAccess }, response);
@@ -239,6 +232,7 @@ export async function GET(request: NextRequest) {
     // successful admin sign-in is the admin area itself.
     const adminResponse = NextResponse.redirect(new URL('/admin', request.url));
     clearPendingSessionCookieOnResponse(adminResponse);
+    clearCaptureReturn(adminResponse);
     await createSession(user, tokens, { appRole, appAccess }, adminResponse);
     console.log('✓ Session created');
     await appendMessmassSessionCookies(adminResponse, tokens);
