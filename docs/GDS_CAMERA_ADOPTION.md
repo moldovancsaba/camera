@@ -5,7 +5,7 @@
 
 ## SSOT statement
 
-[sovereignsquad/general-design-system](https://github.com/sovereignsquad/general-design-system) (SSOT docs and published bundle now **v6.3.0**) is the single source of truth for design, UI, and UX across the portfolio.
+[sovereignsquad/general-design-system](https://github.com/sovereignsquad/general-design-system) (SSOT docs and published bundle now **v6.8.0**) is the single source of truth for design, UI, and UX across the portfolio.
 
 This file and other Camera docs describe only **implementation adapters**, migration state, validation commands, and approved exceptions. If a Camera-local UI document conflicts with the GDS repository, **the GDS repository wins**.
 
@@ -195,7 +195,7 @@ the workarounds above or it will silently reintroduce one of these bugs.
 
 ## Published package capability snapshot
 
-Camera is currently pinned to the latest verified published release bundle, `@sovereignsquad/*` **6.3.0**.
+Camera is currently pinned to the latest verified published release bundle, `@sovereignsquad/*` **6.8.0**.
 
 ### Available now in the published package line
 
@@ -240,7 +240,7 @@ Camera now uses the real `@sovereignsquad/*` package line through the temporary 
 Current state:
 
 - Camera runtime: Mantine `8.3.6`, React `19.2.0`
-- Shared `@sovereignsquad/*` packages: version `6.3.0`, Mantine `^7.9.0` in-repo build target (consumer-smoke-tested against `8.3.6`/`9.2.1`), React `^18.2.0 || ^19.0.0`
+- Shared `@sovereignsquad/*` packages: version `6.8.0`, Mantine `^7.9.0` in-repo build target (consumer-smoke-tested against `8.3.6`/`9.2.1`), React `^18.2.0 || ^19.0.0`
 
 `gds-adoption.json`'s `gdsVersion` now correctly tracks this (see the 2026-08-21 entry below) -- Camera's runtime already sits inside GDS's validated peer matrix (Mantine `8.3.6` + React `19.2.0` is one of the two exact combinations GDS's own `verify:mantine` tests against), so no framework bump was needed alongside this one.
 
@@ -389,6 +389,18 @@ npm run build
 ```
 
 The same commands run in GitHub Actions through [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md).
+
+### 2026-10-07: vendored GDS bumped `6.3.0` → `6.8.0` (camera#184)
+
+The five vendored tarballs (`gds-core`, `gds-theme`, `gds-admin`, `gds-compliance`, `gds-eslint-config`) are now the `gds-v6.8.0`
+release assets, downloaded with `gh release download`; each one's integrity hash was compared with the version published on
+GitHub Packages and matches. The issue asked for `6.7.0`; `6.8.0` was released on 2026-10-06, so the bump goes there instead
+(`6.8.0` only adds on top of `6.7.0`). `package.json`'s five `file:` specs, the lockfile and `gdsVersion` follow.
+Peer dependency ranges (Mantine `^7.9 || ^8.3 || ^9`, React `^18.2 || ^19`) are identical between `6.3.0` and `6.8.0`.
+The refreshed lockfile also moves `@tiptap/*` from `3.31.3` to `3.31.4` (GDS `6.8.0` declares `^3.31.3`).
+The statements above that say "against the installed `6.3.0`" are dated observations from before this bump and have not been
+re-measured. Still to confirm live after deploy (needs an admin sign-in): the sidebar `NavLink` row height, because `6.5.0`
+sets a 44px minimum from a token camera does not define at `:root` (tracked in camera#184).
 
 ## References
 

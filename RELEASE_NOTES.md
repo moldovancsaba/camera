@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — vendored GDS 6.3.0 → 6.8.0 (camera#184)
+
+- **Changed:** the five vendored `@sovereignsquad/gds-*` packages (`gds-core`, `gds-theme`, `gds-admin`, `gds-compliance`, `gds-eslint-config`) move
+  from 6.3.0 to 6.8.0. The tarballs are the `gds-v6.8.0` release assets (integrity checked against GitHub Packages), so the install is still
+  token-free. `gdsVersion` in `gds-adoption.json` follows. Peer ranges are unchanged between the two releases. `@tiptap/*` moves from 3.31.3 to
+  3.31.4 in the lockfile as a result (GDS 6.8.0 declares `^3.31.3`).
+
 ## Unreleased — after the photo, the next photo (default)
 
 - **Changed:** the NEXT button after a saved photo (and the end of the event's thank-you pages) now goes straight to the camera for the next

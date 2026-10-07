@@ -26,10 +26,10 @@ platform unless noted.
 - The long pole is model qualification inside image.direct (its issues #14, #15,
   #18); Camera's own work is dispatch, the per-event setting and admission data.
 
-### GDS 6.7 alignment
+### GDS 6.8 alignment
 
 - Execute the ordered plan in `gds_fix_handover.md`: official stylesheet instead
-  of the forked CSS, bump from 6.3.0 to 6.7.0, then the work packages and the
+  of the forked CSS (done), bump from 6.3.0 to 6.8.0 (camera#184; live check pending), then the work packages and the
   items that wait on GDS releases (board issues camera#183-#188).
 
 ### 0. Earlier carry-over (v2.15.0 items), now resolved or superseded

@@ -8,7 +8,7 @@
 
 This document defines the required release gate for Camera changes that touch UI, admin workflows, public flows, or GDS package boundaries.
 
-Camera uses the Sovereign Squad General Design System through the `@sovereignsquad/*` packages, installed from vendored release tarballs (`vendor/gds/*.tgz` via `file:` specs, 6.3.0, since v12.3.29) — no registry or token needed. The machine-readable contract is [gds-adoption.json](../gds-adoption.json).
+Camera uses the Sovereign Squad General Design System through the `@sovereignsquad/*` packages, installed from vendored release tarballs (`vendor/gds/*.tgz` via `file:` specs, 6.8.0; vendored since v12.3.29) — no registry or token needed. The machine-readable contract is [gds-adoption.json](../gds-adoption.json).
 
 ## Package Manager
 

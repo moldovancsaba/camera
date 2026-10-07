@@ -136,7 +136,7 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 
 ### `@sovereignsquad/gds-*` and Mantine 8.3
 
-- `gds-core` / `gds-admin` / `gds-theme` 6.3.0 provide the design-system runtime, admin primitives, and theming; all five `@sovereignsquad/gds-*` packages install from vendored release tarballs (`vendor/gds/*.tgz`, `file:` specs, since v12.3.29)
+- `gds-core` / `gds-admin` / `gds-theme` 6.8.0 provide the design-system runtime, admin primitives, and theming; all five `@sovereignsquad/gds-*` packages install from vendored release tarballs (`vendor/gds/*.tgz`, `file:` specs, since v12.3.29)
 - `gds-compliance` and `gds-eslint-config` back the `gds:check` / `gds:validate-manifest` gate
 
 ### Local try-on worker integration
