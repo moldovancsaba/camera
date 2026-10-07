@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the event as an installed app: Apple's tag and the event's colours
+
+- **Fixed:** the capture pages sent only the standard `mobile-web-app-capable` tag. Next turns `appleWebApp: { capable: true }` into that tag
+  alone, and iOS Safari opens a Home Screen app without the browser bars when it finds Apple's own `apple-mobile-web-app-capable`, so the
+  event layout now sends both.
+- **Changed:** the browser toolbar colour and the installed app's colour and splash background are the page colour of the event's theme, as
+  the page itself is (before: the brand colour and a fixed grey).
+
 ## Unreleased — after the photo, the next photo (default)
 
 - **Changed:** the NEXT button after a saved photo (and the end of the event's thank-you pages) now goes straight to the camera for the next
