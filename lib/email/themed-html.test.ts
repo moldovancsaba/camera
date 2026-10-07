@@ -40,3 +40,17 @@ test('an event name or a link that tries to break out of its place is escaped', 
   assert.equal(html.includes('"><b>'), false);
   assert.equal(html.includes('a="b'), false);
 });
+
+test('the event\'s footer picture sits under the card, full width, and is absent when the event has none', () => {
+  const FOOTER = 'https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev/landing/mtk-vasas/footer.png';
+  const withFooter = resolveEventTheme({ context: nativeFrameContext({ eventName: 'Derby', partnerName: 'MTK', partnerLogoUrl: null }, NOW), emailFooterImageUrl: FOOTER });
+  assert.equal(withFooter.emailFooterImageUrl, FOOTER);
+  const html = renderThemedEmail({ theme: withFooter, eventName: 'Derby', bodyText: 'Hi', button: null });
+  const footer = html.indexOf(`<img src="${FOOTER}"`);
+  assert.ok(footer > html.indexOf('Hi') && footer > 0, 'after the message card');
+  assert.match(html.slice(footer, html.indexOf('>', footer)), /width="560"[^>]*max-width:560px;height:auto/);
+  assert.equal(renderThemedEmail({ theme, eventName: 'Derby', bodyText: 'Hi', button: null }).includes('landing/mtk-vasas'), false);
+  const refused = resolveEventTheme({ context: nativeFrameContext({ eventName: 'Derby', partnerName: 'MTK', partnerLogoUrl: null }, NOW), emailFooterImageUrl: 'https://evil.example.test/x.png' });
+  assert.equal(refused.emailFooterImageUrl, null, 'an address the pages may not load images from is not used');
+  assert.equal(resolveEventTheme({ emailFooterImageUrl: 'http://i.ibb.co/x/f.png' }).emailFooterImageUrl, null, 'https only');
+});

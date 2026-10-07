@@ -9,7 +9,7 @@
  */
 
 import Image from 'next/image';
-import { CAMERA_DEFAULT_BRAND_COLOR, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
+import PillButton, { safeColour } from '@/components/capture/PillButton';
 
 export interface WelcomePageConfig {
   /** Read by screen readers, not shown. */
@@ -28,15 +28,9 @@ export interface WelcomePageProps {
   onNext: () => void;
 }
 
-/** A colour from the page's settings is used only when it is a hex colour; anything else could reach the stylesheet as it is. */
-export function safeColour(value: string | undefined, fallback: string): string {
-  return value && /^#[0-9a-f]{3,8}$/i.test(value.trim()) ? value.trim() : fallback;
-}
+export { safeColour };
 
 export default function WelcomePage({ config, onNext }: WelcomePageProps) {
-  const fill = safeColour(config.buttonColor, CAMERA_DEFAULT_BRAND_COLOR);
-  const label = safeColour(config.buttonTextColor, CAMERA_STAGE_WHITE);
-  const ring = safeColour(config.buttonBorderColor, CAMERA_STAGE_WHITE);
   const layer = { position: 'absolute', left: 0, bottom: 0, width: '100%', height: 'auto', pointerEvents: 'none' } as const;
 
   return (
@@ -49,32 +43,15 @@ export default function WelcomePage({ config, onNext }: WelcomePageProps) {
       {config.bottomImageUrl ? <Image src={config.bottomImageUrl} alt="" width={600} height={400} unoptimized priority data-welcome-layer="bottom" style={layer} /> : null}
       {config.cornerImageUrl ? <Image src={config.cornerImageUrl} alt="" width={600} height={400} unoptimized priority data-welcome-layer="corner" style={layer} /> : null}
 
-      <button
-        type="button"
+      <PillButton
         onClick={onNext}
-        className="focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-white"
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: '50%',
-          transform: 'translate(-50%, -50%)',
-          minWidth: 'min(80vw, 18rem)',
-          minHeight: '4.25rem',
-          padding: '0 2.5rem',
-          border: `4px solid ${ring}`,
-          borderRadius: '999px',
-          background: fill,
-          color: label,
-          fontSize: '1.5rem',
-          fontWeight: 800,
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-          cursor: 'pointer',
-          boxShadow: `0 0.75rem 2rem color-mix(in srgb, ${fill} 55%, transparent)`,
-        }}
+        fill={config.buttonColor}
+        label={config.buttonTextColor}
+        ring={config.buttonBorderColor}
+        style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
       >
         {config.buttonText}
-      </button>
+      </PillButton>
     </main>
   );
 }

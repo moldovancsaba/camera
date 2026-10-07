@@ -18,9 +18,11 @@
  */
 
 import { useState } from 'react';
+import Image from 'next/image';
+import PillButton from '@/components/capture/PillButton';
 import CaptureStageShell from '@/components/capture/CaptureStageShell';
 import { Button, Group, Stack, Text } from '@mantine/core';
-import { CAMERA_DEFAULT_CTA_BRAND_COLOR } from '@/lib/gds/tokens/colors';
+import { CAMERA_DEFAULT_CTA_BRAND_COLOR, CAMERA_STAGE_BLACK, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
 
 export interface CTAPageConfig {
@@ -31,6 +33,12 @@ export interface CTAPageConfig {
   hasButton?: boolean;
   visitButtonText?: string;
   redirectingText?: string;
+  /** A picture that fills the screen behind the page's own title, text and buttons (camera#310). */
+  backgroundImageUrl?: string;
+  /** Colours of the round buttons on a page with a picture (hex). */
+  buttonColor?: string;
+  buttonTextColor?: string;
+  buttonBorderColor?: string;
 }
 
 export interface CTAPageData {
@@ -89,6 +97,30 @@ export default function CTAPage({
       acceptedAt: new Date().toISOString(),
     });
   };
+
+  if (config.backgroundImageUrl) {
+    const shadow = `0 0.1em 0.5em color-mix(in srgb, ${CAMERA_STAGE_BLACK} 55%, transparent)`;
+    return (
+      <main data-cta-picture style={{ position: 'fixed', inset: 0, overflow: 'hidden' }}>
+        <Image src={config.backgroundImageUrl} alt="" fill unoptimized priority sizes="100vw" style={{ objectFit: 'cover', objectPosition: 'center' }} />
+        <div aria-hidden style={{ position: 'absolute', inset: 0, background: `linear-gradient(to top, color-mix(in srgb, ${CAMERA_STAGE_BLACK} 55%, transparent), color-mix(in srgb, ${CAMERA_STAGE_BLACK} 25%, transparent))` }} />
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', padding: '1.5rem', textAlign: 'center', color: CAMERA_STAGE_WHITE, overflowY: 'auto' }}>
+          <h1 style={{ margin: 0, fontSize: 'clamp(2rem, 7vw, 4.5rem)', fontWeight: 800, lineHeight: 1.05, textTransform: 'uppercase', textShadow: shadow }}>{config.title}</h1>
+          {config.description ? <p style={{ margin: 0, maxWidth: '40rem', fontSize: 'clamp(1.05rem, 2.6vw, 1.75rem)', fontStyle: 'italic', textShadow: shadow }}>{config.description}</p> : null}
+          {urlToVisit ? (
+            <PillButton onClick={handleRedirect} disabled={isRedirecting} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel="Visit URL">
+              {isRedirecting ? 'Opening…' : visitButtonText}
+            </PillButton>
+          ) : null}
+          {hasButton ? (
+            <PillButton variant={urlToVisit ? 'outline' : 'solid'} onClick={handleContinue} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={config.buttonText}>
+              {config.buttonText}
+            </PillButton>
+          ) : null}
+        </div>
+      </main>
+    );
+  }
 
   return (
     <CaptureStageShell

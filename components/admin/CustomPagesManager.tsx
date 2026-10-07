@@ -15,6 +15,7 @@
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
+import { uploadImageFile } from '@/lib/admin/upload-image-client';
 import { CustomPageType, type CustomPage, generateId, generateTimestamp } from '@/lib/db/schemas';
 
 function ImageUrlField({ label, value, onChange, helper }: { label: string; value: string; onChange: (value: string) => void; helper?: string }) {
@@ -26,22 +27,7 @@ function ImageUrlField({ label, value, onChange, helper }: { label: string; valu
     setBusy(true);
     setProblem(null);
     try {
-      const imageData = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(new Error('The file could not be read.'));
-        reader.readAsDataURL(file);
-      });
-      const res = await fetch('/api/upload-logo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageData, name: `welcome-${Date.now()}` }),
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload.error || payload.message || 'The upload failed.');
-      const url = String(payload?.data?.imageUrl ?? '');
-      if (!url) throw new Error('The upload finished without an image address.');
-      onChange(url);
+      onChange(await uploadImageFile(file, 'journey'));
     } catch (error) {
       setProblem(error instanceof Error ? error.message : 'The upload failed.');
     } finally {
@@ -676,6 +662,12 @@ function PageEditModal({
           buttonTextColor: buttonTextColor.trim() || undefined,
           buttonBorderColor: buttonBorderColor.trim() || undefined,
         }),
+        ...(page.pageType === CustomPageType.CTA && {
+          backgroundImageUrl: backgroundImageUrl.trim() || undefined,
+          buttonColor: buttonColor.trim() || undefined,
+          buttonTextColor: buttonTextColor.trim() || undefined,
+          buttonBorderColor: buttonBorderColor.trim() || undefined,
+        }),
       },
     };
 
@@ -696,6 +688,23 @@ function PageEditModal({
         {page.pageType === CustomPageType.WELCOME ? null : (
           <Area label="Description" value={description} onChange={setDescription} rows={3} placeholder="Optional description text" />
         )}
+
+        {page.pageType === CustomPageType.CTA ? (
+          <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              <h4 style={{ margin: 0 }}>Picture page (optional)</h4>
+              <ImageUrlField
+                label="Background picture"
+                value={backgroundImageUrl}
+                onChange={setBackgroundImageUrl}
+                helper="Fills the screen behind the title, the text and the buttons, which camera writes over it (white, with a soft dark veil). Leave empty for the plain card."
+              />
+              <Field label="Button colour" value={buttonColor} onChange={setButtonColor} placeholder="#RRGGBB" />
+              <Field label="Button label colour" value={buttonTextColor} onChange={setButtonTextColor} placeholder="#RRGGBB" />
+              <Field label="Button ring colour" value={buttonBorderColor} onChange={setButtonBorderColor} placeholder="#RRGGBB" />
+            </div>
+          </section>
+        ) : null}
 
         {page.pageType === CustomPageType.WELCOME ? (
           <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>

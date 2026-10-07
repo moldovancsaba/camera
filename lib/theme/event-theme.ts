@@ -39,6 +39,8 @@ export interface EventTheme {
   logoUrl: string | null;
   /** The event's emoji, for an event with no logo. */
   emoji: string | null;
+  /** The picture under the card of the guest emails (https, an allowed image host), else null (camera#310). */
+  emailFooterImageUrl: string | null;
   font: {
     family: string;
     source: FontSource;
@@ -52,6 +54,8 @@ export interface EventTheme {
 export interface ThemeInput {
   /** The event's own brand colour from the editor (#RRGGBB), used for buttons when messmass gives no usable button colour. */
   brandColor?: string | null;
+  /** The event's email footer picture (event.emailFooterImageUrl). */
+  emailFooterImageUrl?: string | null;
   /** The snapshot of the messmass (or fallback) data the generated frame is drawn from. */
   context?: FrameContext | null;
 }
@@ -78,7 +82,7 @@ const DEFAULT_PAGE: PageStyle = {
   cardRadius: EVENT_THEME_DEFAULT.cardRadius,
 };
 
-export function resolveEventTheme({ brandColor, context }: ThemeInput): EventTheme {
+export function resolveEventTheme({ brandColor, context, emailFooterImageUrl }: ThemeInput): EventTheme {
   const style = context?.style;
   const page = style?.page ?? DEFAULT_PAGE;
   const fromMessmass = context?.source === 'messmass';
@@ -118,6 +122,7 @@ export function resolveEventTheme({ brandColor, context }: ThemeInput): EventThe
     dark: isDark(background),
     logoUrl: partnerLogo,
     emoji,
+    emailFooterImageUrl: allowedImage(emailFooterImageUrl),
     font: { family: style?.fontFamily ?? 'Inter', source: style?.fontSource ?? 'google', file: style?.fontFile ?? null, url: null },
   };
 }

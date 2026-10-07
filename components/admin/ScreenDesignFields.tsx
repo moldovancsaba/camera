@@ -8,6 +8,7 @@
 
 import { useRef, useState } from 'react';
 import { Button, Field, Group, NumberInput, Select, SimpleGrid, Text, TextInput } from '@/components/gds/PublicPrimitives';
+import { uploadImageFile } from '@/lib/admin/upload-image-client';
 import type { ScreenDesign } from '@/lib/slideshow/screen-design';
 
 export interface ScreenDesignTextDraft { text: string; x: string; y: string; width: string; size: string; color: string }
@@ -77,18 +78,7 @@ export default function ScreenDesignFields({ draft, onChange }: { draft: ScreenD
     setBusy(true);
     setProblem(null);
     try {
-      const imageData = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(new Error('The file could not be read.'));
-        reader.readAsDataURL(file);
-      });
-      const res = await fetch('/api/upload-logo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageData, name: `screen-${Date.now()}` }) });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload.error || payload.message || 'The upload failed.');
-      const url = String(payload?.data?.imageUrl ?? '');
-      if (!url) throw new Error('The upload finished without an image address.');
-      set('overlayImageUrl', url);
+      set('overlayImageUrl', await uploadImageFile(file, 'screen'));
     } catch (e) {
       setProblem(e instanceof Error ? e.message : 'The upload failed.');
     } finally {

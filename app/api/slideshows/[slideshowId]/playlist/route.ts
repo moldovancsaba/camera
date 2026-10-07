@@ -8,6 +8,7 @@
  */
 
 import { resolveScreenDesign } from '@/lib/slideshow/screen-design';
+import { loadEventTheme } from '@/lib/theme/load';
 import { randomBytes } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
@@ -362,6 +363,13 @@ export async function GET(
 
     const playMode = slideshow.playMode === 'once' ? 'once' : 'loop';
 
+    // The screen design writes its texts in the event's own font, from its messmass report style (owner, 2026-10-07).
+    let screenDesign = null;
+    if (slideshow.screenDesign) {
+      const { font } = await loadEventTheme(db, event as unknown as Record<string, unknown>);
+      screenDesign = resolveScreenDesign(slideshow.screenDesign, { family: font.family, source: font.source, url: font.url });
+    }
+
     const bgPrimary =
       typeof slideshow.backgroundPrimaryColor === 'string' && slideshow.backgroundPrimaryColor
         ? slideshow.backgroundPrimaryColor
@@ -418,7 +426,7 @@ export async function GET(
           backgroundAccentColor: bgAccent,
           backgroundImageUrl: bgImage,
           viewportScale,
-          screenDesign: resolveScreenDesign(slideshow.screenDesign),
+          screenDesign,
         },
         playlist: [],
         message: 'No submissions available for this event',
@@ -460,7 +468,7 @@ export async function GET(
         backgroundAccentColor: bgAccent,
         backgroundImageUrl: bgImage,
         viewportScale,
-        screenDesign: resolveScreenDesign(slideshow.screenDesign),
+        screenDesign,
       },
       playlist,
       totalSubmissions: submissions.length,

@@ -1,5 +1,18 @@
 # RELEASE_NOTES.md
 
+## Unreleased — a picture for the CTA page and a footer picture for the guest emails (camera#310)
+
+- **Added:** a CTA page can have a background picture. It then fills the screen, with the page's title, text and buttons written over it in white
+  (round buttons in the club's colours); without a picture the page is unchanged. Set in the admin pages editor (CTA page, "Picture page").
+- **Added:** an event can have an email footer picture (`emailFooterImageUrl`, event edit form, pasted or uploaded), drawn under the card of
+  every guest email of the event; only an https address on an allowed image host is used. It is part of the event theme.
+- **Changed:** the round Start button of the welcome step is now a shared component (`PillButton`), also used by the CTA picture page; no change to
+  how the welcome step looks.
+- **Changed:** the admin forms share one upload helper (`lib/admin/upload-image-client.ts`). See `docs/JOURNEY_IMAGES.md`.
+- **Changed (owner, 2026-10-07: the font comes from the messmass report style):** the texts of a slideshow screen design are written in the
+  event's own font (a Google font, or the style's custom font file) instead of a font set on the design; a `fontFamily` on the design is only an
+  override. The round buttons (welcome step, CTA picture page) now inherit the page's font; before, a button used the browser's.
+
 ## Unreleased — a giant-screen design for slideshows: overlay, photo window, QR code and text (camera#309)
 
 - **Added:** a slideshow can carry a screen design: an overlay picture drawn over the stage (transparent where the photos play), the window
