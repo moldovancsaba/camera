@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the logos of partners and events are on Cloudflare R2
+
+- **Changed (data, 2026-10-07):** every logo link of the messmass partners and of camera (partners, events, the logo library, a landing page)
+  now points to the logo bucket on Cloudflare R2: 160 distinct links, 351 references, all verified through the public address. The dead
+  imgbb link of OTP Bank - PICK Szeged was replaced by the partner's TheSportsDB badge. Camera's stored event snapshots were refreshed from the
+  new links. See `docs/LOGO_STORAGE.md`; tracked in camera#305 (other images still on imgbb: camera#306).
+
 ## Unreleased — camera accepts logos from the Cloudflare R2 logo bucket
 
 - **Added:** the guest pages, the frame renderer and `next.config.ts` (image patterns and CSP) accept logos from the logo bucket on Cloudflare R2
