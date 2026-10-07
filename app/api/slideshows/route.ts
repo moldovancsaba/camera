@@ -16,6 +16,7 @@ import {
   SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
 } from '@/lib/gds/tokens/colors';
 import { normalizeStageAspectInput } from '@/lib/slideshow/stage-aspect';
+import { parseScreenDesign } from '@/lib/slideshow/screen-design';
 import {
   getPartnerScopedAccessForEvent,
   getPartnerScopedAccessForEventUuid,
@@ -224,6 +225,7 @@ export async function PATCH(request: NextRequest) {
       backgroundImageUrl,
       viewportScale,
       stageAspect: bodyStageAspectPatch,
+      screenDesign,
       submissionSourceMode,
     } = body;
 
@@ -281,6 +283,13 @@ export async function PATCH(request: NextRequest) {
       } else {
         return NextResponse.json({ error: 'backgroundImageUrl must be a non-empty string or null' }, { status: 400 });
       }
+    }
+    if (screenDesign !== undefined) {
+      const parsed = parseScreenDesign(screenDesign);
+      if (!parsed.ok) {
+        return NextResponse.json({ error: parsed.error }, { status: 400 });
+      }
+      updates.screenDesign = parsed.value;
     }
     if (viewportScale !== undefined) {
       if (viewportScale !== 'fit' && viewportScale !== 'fill') {

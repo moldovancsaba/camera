@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — a giant-screen design for slideshows: overlay, photo window, QR code and text (camera#309)
+
+- **Added:** a slideshow can carry a screen design: an overlay picture drawn over the stage (transparent where the photos play), the window
+  where the photos play, a QR code that camera draws itself (a new dependency, `qrcode`, the same one savetheworld uses; light modules by
+  default like the designers' example), and up to eight single-line texts in a Google font. Positions are percentages of the 16:9 stage, so it
+  looks the same at any size. Edited in the slideshow editor ("Screen design"), checked on save (https addresses, hex colours, positions inside
+  the stage), sent to the player with the playlist. Without a design the player is unchanged. See `docs/SCREEN_DESIGN.md`.
+
 ## Unreleased — a welcome step (step 0) with a picture and a Start button (camera#308)
 
 - **Added:** a new page type `welcome`, always the first step: a background picture that fills the screen in any orientation (scaled to

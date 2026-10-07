@@ -8,6 +8,8 @@
  * background so the next advance does not wait on a burst fetch.
  */
 
+import ScreenDesignLayers, { screenWindowStyle } from '@/components/slideshow/ScreenDesignLayers';
+import type { ResolvedScreenDesign } from '@/lib/slideshow/screen-design';
 import {
   useEffect,
   useState,
@@ -71,6 +73,8 @@ interface SlideshowSettings {
   backgroundAccentColor?: string;
   backgroundImageUrl?: string | null;
   viewportScale?: ViewportScaleMode;
+  /** A giant-screen design: picture over the stage, a window for the photos, a QR code and texts (camera#309). */
+  screenDesign?: ResolvedScreenDesign | null;
 }
 
 export interface SlideshowPlayerCoreProps {
@@ -760,7 +764,7 @@ export function SlideshowPlayerCore({
 
   const currentSlide = headSlide;
 
-  const fit = objectFit;
+  const fit = settings?.screenDesign?.photoFit ?? objectFit;
 
   const renderSlide = (slide: Slide) => {
     if (slide.type === 'single') {
@@ -849,14 +853,8 @@ export function SlideshowPlayerCore({
   const sh = stageSize.height;
   const hasStage = sw > 0 && sh > 0;
 
-  const canvasInner = (
-    <div
-      className={
-        variant === 'fullscreen'
-          ? 'relative overflow-hidden'
-          : 'relative h-full w-full overflow-hidden'
-      }
-      style={
+  const screenDesign = settings?.screenDesign ?? null;
+  const stageBaseStyle: CSSProperties =
         variant === 'embedded'
           ? { position: 'relative', width: '100%', height: '100%' }
           : variant === 'fullscreen'
@@ -879,8 +877,18 @@ export function SlideshowPlayerCore({
                   maxWidth: '177.78vh',
                   maxHeight: '100vh',
                 }
-            : {}
+            : {};
+  // The design's sizes are fractions of the stage, so the stage is a size container (cqh/cqw units).
+  const stageStyle: CSSProperties = screenDesign ? { ...stageBaseStyle, containerType: 'size' } : stageBaseStyle;
+
+  const canvasInner = (
+    <div
+      className={
+        variant === 'fullscreen'
+          ? 'relative overflow-hidden'
+          : 'relative h-full w-full overflow-hidden'
       }
+      style={stageStyle}
     >
       <div className="absolute inset-0 z-0" style={stageBackdropStyle} aria-hidden />
       {bgImageUrl ? (
@@ -893,7 +901,10 @@ export function SlideshowPlayerCore({
         />
       ) : null}
 
-      <div className="absolute inset-0 z-[2] flex items-center justify-center">
+      <div
+        className={screenDesign ? 'absolute z-[2] flex items-center justify-center overflow-hidden' : 'absolute inset-0 z-[2] flex items-center justify-center'}
+        style={screenDesign ? screenWindowStyle(screenDesign) : undefined}
+      >
         {currentSlide ? (
           <div
             style={{
@@ -916,6 +927,7 @@ export function SlideshowPlayerCore({
           </div>
         )}
       </div>
+      {screenDesign ? <ScreenDesignLayers design={screenDesign} /> : null}
 
     </div>
   );
