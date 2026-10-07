@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — an event with a frame base is checked at every theme refresh (camera#312)
+
+- **Fixed:** the theme refresh redrew frame images only when the messmass snapshot had changed, so adding or changing the designers' picture of
+  a frame (`frameDesign.base`) drew nothing until messmass changed. An event with a base is now always checked; an image whose key is unchanged is
+  reused, so a check that finds nothing new draws nothing. Events without a base behave as before.
+
 ## Unreleased — frames from the designers' picture, with the message in the event's font (camera#311)
 
 - **Added:** a generated frame can be made from a designers' text-free picture instead of the generated layout (`frameDesign.base`, one picture
