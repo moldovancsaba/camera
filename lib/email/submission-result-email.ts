@@ -4,6 +4,8 @@ import { normalizeEventSharePageSettings, type EventSharePageSettings } from '@/
 import { listApprovedShareVariants } from '@/lib/tryon/publication';
 import { sendSubmissionResultEmail, type SubmissionNotificationResult, type SubmissionNotificationInput } from '@/lib/email/submission-notification';
 import { sanitizeEmail } from '@/lib/security/sanitize';
+import { loadEventTheme } from '@/lib/theme/load';
+import type { EventTheme } from '@/lib/theme/event-theme';
 import { getConfiguredSiteUrl } from '@/lib/site-url';
 import {
   DEFAULT_EVENT_TERMS_URL,
@@ -405,7 +407,8 @@ export function buildSubmissionEmailInput(
   shareUrl: string,
   policy: SubmissionEmailPolicy,
   eventName: string | null,
-  mode: SubmissionEmailMode = 'after_save'
+  mode: SubmissionEmailMode = 'after_save',
+  theme: EventTheme | null = null
 ): SubmissionNotificationInput | null {
   const recipient = resolveSubmissionResultEmailRecipient(submission);
   if (!recipient.email) {
@@ -434,6 +437,7 @@ export function buildSubmissionEmailInput(
     senderName: policy.senderName,
     subjectTemplate,
     bodyTemplate,
+    theme,
   };
 }
 
@@ -442,9 +446,10 @@ export async function sendSubmissionResultEmailByPolicy(
   eventName: string | null,
   shareUrl: string,
   policy: SubmissionEmailPolicy,
-  mode: SubmissionEmailMode
+  mode: SubmissionEmailMode,
+  theme: EventTheme | null = null
 ): Promise<SendSubmissionEmailMetadataResult> {
-  const input = buildSubmissionEmailInput(submission, shareUrl, policy, eventName, mode);
+  const input = buildSubmissionEmailInput(submission, shareUrl, policy, eventName, mode, theme);
   if (!input) {
     const now = new Date().toISOString();
 
@@ -463,6 +468,16 @@ export async function sendSubmissionResultEmailByPolicy(
   }
 
   return buildEmailMetadataPatch(mode, await sendSubmissionResultEmail(input), shareUrl);
+}
+
+/** The theme of the event for its guest emails; null when it cannot be loaded, and the email then keeps its plain layout. */
+export async function themeOf(db: Db, event: WithId<Event> | null): Promise<EventTheme | null> {
+  if (!event) return null;
+  try {
+    return await loadEventTheme(db, event);
+  } catch {
+    return null;
+  }
 }
 
 export async function dispatchPendingRelatedEmailForSubmission(
@@ -505,7 +520,8 @@ export async function dispatchPendingRelatedEmailForSubmission(
     event?.name || null,
     shareUrl,
     policy,
-    'after_related'
+    'after_related',
+    await themeOf(db, event)
   );
 
   if (!result.shouldRetry) {
@@ -558,7 +574,8 @@ export async function dispatchTryOnResubmissionApprovalEmailForSubmission(
     event?.name || null,
     shareUrl,
     policy,
-    'after_tryon_resubmission_approved'
+    'after_tryon_resubmission_approved',
+    await themeOf(db, event)
   );
 }
 
@@ -606,7 +623,8 @@ export async function dispatchPendingSubmissionEmailForSubmission(
       eventName,
       shareUrl,
       policy,
-      'after_save'
+      'after_save',
+      await themeOf(db, event)
     );
 
     mergedResult.shouldRetry = mergedResult.shouldRetry || afterSaveResult.shouldRetry;

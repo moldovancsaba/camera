@@ -1,4 +1,6 @@
 import { sanitizeEmail } from '@/lib/security/sanitize';
+import { renderThemedEmail } from '@/lib/email/themed-html';
+import type { EventTheme } from '@/lib/theme/event-theme';
 import { getResendApiKey, sendEmail } from '@/lib/email/send';
 import {
   DEFAULT_EVENT_TERMS_URL,
@@ -16,6 +18,10 @@ export interface SubmissionNotificationInput {
   senderName?: string | null;
   subjectTemplate?: string | null;
   bodyTemplate?: string | null;
+  /** The look of the event (camera#285): the email is drawn in its colours with its logo and a button; absent, the plain layout is used. */
+  theme?: EventTheme | null;
+  /** The label of the button that opens `shareUrl` in a themed email. */
+  buttonLabel?: string | null;
 }
 
 export type SubmissionNotificationResult =
@@ -145,7 +151,9 @@ export async function sendSubmissionResultEmail(
     to: recipientEmail,
     subject,
     text: bodyText,
-    html: `
+    html: input.theme
+      ? renderThemedEmail({ theme: input.theme, eventName, bodyText, button: { label: input.buttonLabel?.trim() || 'Open your photo', url: input.shareUrl } })
+      : `
       <div style="font-family: Arial, sans-serif; line-height: 1.5;">
         <p>${safeBody}</p>
       </div>

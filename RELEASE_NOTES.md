@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the guest emails are drawn with the event's theme (J6)
+
+- **Changed:** the guest emails that carry a link (photo approved, photo not approved, and the "after save" / related-photos / try-on emails
+  of an event) are drawn in the theme of the event: a header band in the page colour with the event's logo (or emoji) and name, the message
+  on a card in the card colours, and the link as a button in the theme's button colours (`lib/email/themed-html.ts`). The plain-text part of
+  the email is unchanged, and an event whose theme cannot be loaded gets the plain layout as before. The event's own subject and body
+  wording is still used.
+
 ## Unreleased — the event as an installed app: Apple's tag and the event's colours
 
 - **Fixed:** the capture pages sent only the standard `mobile-web-app-capable` tag. Next turns `appleWebApp: { capable: true }` into that tag
