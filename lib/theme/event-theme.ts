@@ -30,6 +30,8 @@ export interface EventTheme {
   cardText: string;
   buttonBackground: string;
   buttonText: string;
+  /** The ring round every button (camera#334): the colour the club set on its welcome page's Start button, else the label colour. */
+  buttonRing: string;
   /** Link colour on a card. */
   link: string;
   /** A CSS length (px, rem or em). */
@@ -54,6 +56,11 @@ export interface EventTheme {
 export interface ThemeInput {
   /** The event's own brand colour from the editor (#RRGGBB), used for buttons when messmass gives no usable button colour. */
   brandColor?: string | null;
+  /**
+   * The colours the club set on the Start button of its welcome page (fill, label, ring). The button of the whole flow looks like the Start button
+   * (camera#334), so these win over the style's button colours; only the label is still checked for contrast.
+   */
+  buttons?: { fill?: unknown; label?: unknown; ring?: unknown } | null;
   /** The event's email footer picture (event.emailFooterImageUrl). */
   emailFooterImageUrl?: string | null;
   /** The snapshot of the messmass (or fallback) data the generated frame is drawn from. */
@@ -82,7 +89,7 @@ const DEFAULT_PAGE: PageStyle = {
   cardRadius: EVENT_THEME_DEFAULT.cardRadius,
 };
 
-export function resolveEventTheme({ brandColor, context, emailFooterImageUrl }: ThemeInput): EventTheme {
+export function resolveEventTheme({ brandColor, context, emailFooterImageUrl, buttons }: ThemeInput): EventTheme {
   const style = context?.style;
   const page = style?.page ?? DEFAULT_PAGE;
   const fromMessmass = context?.source === 'messmass';
@@ -100,9 +107,11 @@ export function resolveEventTheme({ brandColor, context, emailFooterImageUrl }: 
   const standsOut = (c: string) => contrast(c, cardBackground) >= 3 && contrast(c, background) >= 3;
   const candidates = [opaque(page.buttonBackground, hexRgb(cardBackground)), opaque(page.accentColor, hexRgb(cardBackground)), background, brand];
   const buttonBackground =
+    opaque(buttons?.fill) ??
     candidates.find((c): c is string => !!c && standsOut(c)) ??
     [cardText, '#000000', '#ffffff'].sort((a, b) => Math.min(contrast(b, cardBackground), contrast(b, background)) - Math.min(contrast(a, cardBackground), contrast(a, background)))[0];
-  const buttonText = readable(opaque(page.buttonText, hexRgb(buttonBackground)), buttonBackground, 3);
+  const buttonText = readable(opaque(buttons?.label, hexRgb(buttonBackground)) ?? opaque(page.buttonText, hexRgb(buttonBackground)), buttonBackground, 3);
+  const buttonRing = opaque(buttons?.ring) ?? buttonText;
   const link = readable(opaque(page.linkColor, hexRgb(cardBackground)), cardBackground);
 
   const partnerLogo = allowedImage(context?.partner?.logoUrl);
@@ -117,6 +126,7 @@ export function resolveEventTheme({ brandColor, context, emailFooterImageUrl }: 
     cardText,
     buttonBackground,
     buttonText,
+    buttonRing,
     link,
     radius: radiusOf(page.cardRadius),
     dark: isDark(background),

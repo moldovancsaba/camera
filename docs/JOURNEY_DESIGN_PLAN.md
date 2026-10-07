@@ -65,3 +65,18 @@ EventTheme { background, text, accent, logo, fontFamily, fontUrl | null, source:
 2. A messmass pair that fails the contrast rule is corrected, not shown as is.
 3. The camera view and the guest's own photo are never tinted; the theme colours the pages around them.
 4. Fonts (J5) and the guest emails (J6) are delivered after the pages.
+
+## Buttons: the Start design everywhere (owner, 2026-10-07; camera#334, planning item 59)
+
+The Start button of the welcome page (`components/capture/PillButton.tsx`: round, a ring, bold capitals, a soft glow) is the button of the **whole flow**. Every button inside the themed area (login, consent, selfie taking, share, restart and thank-you, CTA) takes that design, because the one place that styles them is `EVENT_THEME_CSS` in `lib/theme/css.ts` (a Mantine button inside `.event-theme`):
+
+- **Main button** (no variant, or `filled`): a pill (`--button-radius: 999px`), the fill `--event-button-bg`, the label `--event-button-text`, a ring `--event-button-ring` 4 px wide, bold capitals, a soft glow (not on a disabled button).
+- **Quieter button** (`light`, `default`, `outline`): the same design **inverted**: the label colour as the fill, the fill colour as the label, the same ring. Wherever the flow had a secondary button, it is now the inverted Start design.
+- **Sizes** are the buttons' own (`xs`, `sm`, `md` and the event's button size); the ring is 2 px on `xs` and 3 px on `sm`, which also get less padding and tighter letters so two buttons side by side (Google and Facebook) fit. A long label wraps instead of being cut.
+- **Colours:** `EventTheme.buttonRing` and the fill and label come from the **Start button of the event's active welcome page** when it sets them (`buttonColor`, `buttonTextColor`, `buttonBorderColor`, `welcomeButtonColours` in `lib/theme/load.ts`), so the whole flow looks like the Start button of that event; only the label is still checked for contrast (3:1). Otherwise they are the style's button colours as before, and the ring is the label colour.
+- The CTA page with a picture keeps its own round buttons (`PillButton`, its `outline` variant over the picture).
+
+For the MTK x Vasas event this resolves to the fill `#1b3a69`, the label white and the ring `#189cd8`, exactly the Start button.
+
+Not part of this change (planning items 60 to 62, waiting for the owner): the colour of the text on the page (black today, because the messmass navy fails 4.5:1 on the page blue), how the style's own button colours are derived for events whose welcome page sets none, and the purple checkbox of the public pledge wall option.
+

@@ -115,3 +115,19 @@ test('a logo on a host the pages may not load images from is not used: the emoji
   assert.equal(allowedImage('https://evil.test/i.ibb.co/x.png'), null);
   assert.equal(allowedImage(null), null);
 });
+
+test('the colours the club set on its welcome page Start button become the buttons of the whole flow, and the ring defaults to the label colour', () => {
+  const context = nativeFrameContext({ eventName: 'Fan Day', partnerName: null, partnerLogoUrl: null }, '2026-10-07T10:00:00.000Z');
+  const base = resolveEventTheme({ context });
+  assert.equal(base.buttonRing, base.buttonText, 'with no welcome colours the ring is the label colour');
+  const own = resolveEventTheme({ context, buttons: { fill: '#1b3a69', label: '#ffffff', ring: '#189cd8' } });
+  assert.deepEqual([own.buttonBackground, own.buttonText, own.buttonRing], ['#1b3a69', '#ffffff', '#189cd8']);
+  const noRing = resolveEventTheme({ context, buttons: { fill: '#1b3a69', label: '#ffffff' } });
+  assert.equal(noRing.buttonRing, '#ffffff');
+  // a label that cannot be read on its fill is corrected; text that is not a colour is ignored
+  const unreadable = resolveEventTheme({ context, buttons: { fill: '#1b3a69', label: '#223344' } });
+  assert.ok(contrast(unreadable.buttonText, unreadable.buttonBackground) >= 3);
+  const junk = resolveEventTheme({ context, buttons: { fill: 'red; background:url(x)', label: 42, ring: {} } });
+  assert.deepEqual([junk.buttonBackground, junk.buttonText, junk.buttonRing], [base.buttonBackground, base.buttonText, base.buttonRing]);
+});
+

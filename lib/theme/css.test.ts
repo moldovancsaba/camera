@@ -6,7 +6,7 @@ import { resolveEventTheme } from './event-theme';
 test('a theme becomes the custom properties of its wrapper', () => {
   const theme = resolveEventTheme({});
   const vars = themeVariables(theme);
-  assert.deepEqual(Object.keys(vars).sort(), ['--event-bg', '--event-button-bg', '--event-button-text', '--event-card-bg', '--event-card-border', '--event-card-text', '--event-font', '--event-heading', '--event-link', '--event-radius']);
+  assert.deepEqual(Object.keys(vars).sort(), ['--event-bg', '--event-button-bg', '--event-button-ring', '--event-button-text', '--event-card-bg', '--event-card-border', '--event-card-text', '--event-font', '--event-heading', '--event-link', '--event-radius']);
   assert.equal(vars['--event-bg'], theme.background);
   assert.equal(vars['--event-radius'], theme.radius);
 });
@@ -49,3 +49,15 @@ test('the page colour reaches the document and the GDS wrapper behind the page, 
   assert.equal(pageColourCss('red; } body { display: none'), '');
   assert.equal(pageColourCss('url(https://example.com/x)'), '');
 });
+
+test('every button of the flow is the Start design: a pill with a ring and bold capitals; the quieter button is the same design inverted', () => {
+  const rule = (selector: string) => EVENT_THEME_CSS.slice(EVENT_THEME_CSS.indexOf(selector));
+  assert.match(EVENT_THEME_CSS, /\.event-theme \.mantine-Button-root \{[^}]*--button-radius: 999px !important;[^}]*text-transform: uppercase !important;/);
+  const main = rule(".event-theme .mantine-Button-root:not([data-variant]),");
+  assert.match(main, /--button-bg: var\(--event-button-bg\) !important;[\s\S]*--button-color: var\(--event-button-text\) !important;[\s\S]*--button-bd: var\(--ring\) solid var\(--event-button-ring\) !important;/);
+  const inverse = rule(".event-theme .mantine-Button-root[data-variant='light'],");
+  assert.match(inverse, /--button-bg: var\(--event-button-text\) !important;[\s\S]*--button-color: var\(--event-button-bg\) !important;[\s\S]*--button-bd: var\(--ring\) solid var\(--event-button-ring\) !important;/);
+  for (const variant of ['light', 'default', 'outline']) assert.ok(EVENT_THEME_CSS.includes(`[data-variant='${variant}']`), variant);
+  assert.equal(/mantine-Paper-root \.mantine-Button-root/.test(EVENT_THEME_CSS), false, 'no older card-only button colours that would undo the inverted design');
+});
+
