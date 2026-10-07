@@ -7,10 +7,12 @@ the middle. Start leads on to the next step (the login step of a vetted event, w
 
 - **Background picture** (`backgroundImageUrl`): scaled to cover the screen and centred, in portrait and in landscape; a square photo is
   cropped, never stretched.
-- **Bottom layer** (`bottomImageUrl`) and **corner layer** (`cornerImageUrl`): transparent PNGs, each as wide as the screen and on its
-  bottom edge, so both always have the same scale; the corner layer is drawn over the bottom one and carries its design in the bottom right
-  corner. The designers deliver both at 600×400 (3:2); they are a design of the whole bottom of the screen, so on a wide screen they grow with
-  its width and are cropped at the top.
+- **Bottom layer** (`bottomImageUrl`) and **corner layer** (`cornerImageUrl`): transparent PNGs on the bottom edge, always at one scale. In portrait each is as
+  wide as the screen (the corner layer is drawn over the bottom one and carries its design in the bottom right corner). In landscape (the shape of the page box
+  decides, through a container query, `WELCOME_LAYER_CSS`) each is half the width of the screen: the bottom layer at the left edge, the corner layer at the right
+  edge (owner, 2026-10-07: full width made them huge on a phone held sideways, camera#318). The designers deliver both at 600×400 (3:2) with their art in the
+  lower part only (the bottom layer is a full-width blue band with the "10" and the laurel at its left, the corner layer is the club badge in its bottom right
+  corner), so in landscape the blue band ends at the middle of the screen and the badge stays in the corner.
 - **Start button** (`buttonText`, `buttonColor`, `buttonTextColor`, `buttonBorderColor`): a real button in the middle of the screen (with the giant screen above it, when there is one), 4.25 rem
   high, uppercase, with a ring; the colours are hex values from the page's settings (the club's official colours), anything else is ignored.
 - **Giant screen** (`screenImageUrl`, `screenImageAlt`; camera#315): a 16:9 LED wall made in CSS 3D (`components/capture/LedScreen3D.tsx`): a box with a
@@ -54,4 +56,5 @@ and the Start button are one group centred in the box. Not testable on a desktop
 
 - The layers are 600 px wide: on a phone (3× screens) and on a large screen they are enlarged and look soft. Ask for 1800×1200.
 - The background is 1254 px square: on a 1920 px wide screen it is enlarged 1.5×. Ask for at least 2400 px on the long side.
-- On a landscape phone the layers are cropped at the top (they are scaled to the width), which is what "same scale at full width" means.
+- In landscape the bottom layer's blue band ends at the middle of the screen (half the width, same scale as the corner layer); if that edge should fade or the band
+  should run on, the designers need to deliver a wider band or a matching second piece.
