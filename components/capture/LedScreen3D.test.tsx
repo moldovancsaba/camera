@@ -15,7 +15,7 @@ test('the giant screen is a box of six faces with the picture on the front, and 
 });
 
 test('it is sized by the screen it is on, drawn in 3D, holds still when asked, and draws only in the two stage colours', () => {
-  assert.match(LED_SCREEN_CSS, /--led-w: max\(9rem, min\(88vw, 52rem, calc\(\(50svh - 3\.6rem - max\(0\.6rem, 3svh\)\) \* 1\.5\)\)\)/);
+  assert.match(LED_SCREEN_CSS, /--led-w: max\(9rem, min\(88vw, 60rem, calc\(\(100svh - var\(--gds-safe-area-inset-top, 0px\) - 5\.5rem - max\(1\.2rem, 6svh\)\) \* 1\.5\)\)\)/);
   assert.match(LED_SCREEN_CSS, /aspect-ratio: 16 \/ 9/);
   assert.match(LED_SCREEN_CSS, /transform-style: preserve-3d/);
   assert.match(LED_SCREEN_CSS, /@media \(prefers-reduced-motion: reduce\) \{\s*\.led3d-body \{ animation: none; \}/);
@@ -24,7 +24,9 @@ test('it is sized by the screen it is on, drawn in 3D, holds still when asked, a
   assert.equal(/rgba?\(|hsla?\(/i.test(LED_SCREEN_CSS), false);
 });
 
-test('it is placed from the top like the Start button (50svh), so it does not move with the bottom edge of the page', () => {
-  assert.match(LED_SCREEN_CSS, /top: calc\(50svh - 3\.6rem - var\(--led-w\) \* 0\.06\);\s*transform: translate\(-50%, -100%\);/);
-  assert.equal(/\.led3d \{[^}]*\n  bottom:/.test(LED_SCREEN_CSS), false);
+test('it sits in the normal flow above the Start button (they are one group, centred by the page), not placed on its own', () => {
+  const rule = LED_SCREEN_CSS.slice(LED_SCREEN_CSS.indexOf('.led3d {'), LED_SCREEN_CSS.indexOf('.led3d-body'));
+  assert.match(rule, /position: relative;/);
+  assert.match(rule, /margin-bottom: calc\(var\(--led-w\) \* 0\.06 \+ 1\.2rem\);/);
+  assert.equal(/\n  (top|bottom|left|right):/.test(rule), false, 'no offset of its own: the group places it');
 });

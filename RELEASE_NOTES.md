@@ -5,8 +5,10 @@
 - **Fixed:** after the white band was gone (#316) the bottom of the welcome design (the "10" and the club badge) was cut off on an iPhone: the full-screen box
   was `100lvh` tall (#313) and iOS 26 Safari does not draw fixed content under its floating bottom bar, so the bottom layers anchored to the box bottom were
   half under the bar. The box is now exactly the visible screen, so the bottom layers sit on its bottom edge above the bar, and the page colour fills below.
-  The Start button stays at `50svh`; the giant screen is now positioned from the top (`50svh`) like the button instead of from the bottom edge, so it does not
-  move with the box. `components/capture/FullScreenPage.tsx`, `LedScreen3D.tsx`, `CLAUDE.md` section 7.
+- **Changed (owner, 2026-10-07):** the giant screen and the Start button are one group, centred together in the visible screen (a flex column with the notch
+  inset as top padding) instead of the button sitting at the middle with the screen above it; the screen is sized so the whole group fits (up to 60 rem wide).
+  Measured on a production build at 390×844, 390×762 (with a 59 px top inset), 844×390, 768×1024 and 1920×1080: the gap above the group equals the gap below it,
+  the screen is above the button and inside the screen. `components/capture/FullScreenPage.tsx`, `WelcomePage.tsx`, `LedScreen3D.tsx`, `CLAUDE.md` section 7.
 
 ## Unreleased — the giant screen as code on the welcome step (camera#315)
 

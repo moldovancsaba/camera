@@ -4,8 +4,8 @@
  * Step 0 of the guest journey (camera#308): a picture that fills the screen, two transparent design layers at the bottom, and one clear
  * Start button in the middle. The picture is scaled to cover the screen and centred, so it fills it in portrait and in landscape alike
  * (a square photo is cropped, never stretched). Both layers are as wide as the screen and sit on its bottom edge, so they always have the
- * same scale; the second layer is drawn over the first and carries its design in the bottom right corner. What the page says is the
- * button label only: the design carries no text.
+ * same scale; the second layer is drawn over the first and carries its design in the bottom right corner. The giant screen (when the page has
+ * a picture for it) and the Start button are one group in the middle of the screen. What the page says is the button label only: the design carries no text.
  */
 
 import Image from 'next/image';
@@ -48,17 +48,22 @@ export default function WelcomePage({ config, onNext }: WelcomePageProps) {
       {config.bottomImageUrl ? <Image src={config.bottomImageUrl} alt="" width={600} height={400} unoptimized priority data-welcome-layer="bottom" style={layer} /> : null}
       {config.cornerImageUrl ? <Image src={config.cornerImageUrl} alt="" width={600} height={400} unoptimized priority data-welcome-layer="corner" style={layer} /> : null}
 
-      {config.screenImageUrl ? <LedScreen3D imageUrl={config.screenImageUrl} alt={config.screenImageAlt || ''} /> : null}
-
-      <PillButton
-        onClick={onNext}
-        fill={config.buttonColor}
-        label={config.buttonTextColor}
-        ring={config.buttonBorderColor}
-        style={{ position: 'absolute', left: '50%', top: '50svh', transform: 'translate(-50%, -50%)' }}
+      {/* The giant screen and the Start button are one group, centred in the visible screen (below the notch area). */}
+      <div
+        data-welcome-group
+        style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: 'var(--gds-safe-area-inset-top, 0px)', pointerEvents: 'none' }}
       >
-        {config.buttonText}
-      </PillButton>
+        {config.screenImageUrl ? <LedScreen3D imageUrl={config.screenImageUrl} alt={config.screenImageAlt || ''} /> : null}
+        <PillButton
+          onClick={onNext}
+          fill={config.buttonColor}
+          label={config.buttonTextColor}
+          ring={config.buttonBorderColor}
+          style={{ flex: 'none', pointerEvents: 'auto' }}
+        >
+          {config.buttonText}
+        </PillButton>
+      </div>
     </FullScreenPage>
   );
 }

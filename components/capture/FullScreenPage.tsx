@@ -8,7 +8,8 @@
  * The box is exactly the visible screen, not taller (camera#317). It was `100lvh` tall (#313) so the picture would reach under a phone's bottom bar,
  * but iPhone Safari 26 draws fixed content only above its floating bar, so the part under the bar, with the bottom layers of the design anchored
  * to it, was cut off (owner, 2026-10-07). The part of the screen the box does not reach takes the page colour (`pageColourCss`, lib/theme/css.ts).
- * Things placed from the middle of the screen use `50svh` from the top, which does not depend on where the bottom edge is (CLAUDE.md section 7).
+ * Things meant for the middle of the screen sit in a flex column centred in the box, with the top inset of the notch as padding (WelcomePage), so they do
+ * not depend on where the bottom edge is (CLAUDE.md section 7).
  */
 
 import { useEffect, useRef, type ReactNode } from 'react';

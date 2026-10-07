@@ -220,8 +220,9 @@ the design off (#317), because each was "fixed" from a desktop check. The rules,
   (`html` background from `--page-bg`, transparent body; messmass `app/globals.css`).
 - **Size a full-screen guest page to the visible screen, not to `lvh`.** A `fixed` box taller than the visible screen (`min-height: 100lvh`) has everything anchored
   to its bottom drawn under the bar, where iOS 26 does not draw it: the bottom layers of the welcome design were cut off (#313 caused it, #317 fixed it).
-  Anchor bottom layers to the bottom of `FullScreenPage` (`inset: 0`, no `min-height`) and place centred controls from the top (`top: 50svh`), which does
-  not depend on where the bottom edge is. Whatever the box does not reach shows the page colour, so a page ending above the bar is not a defect.
+  Anchor bottom layers to the bottom of `FullScreenPage` (`inset: 0`, no `min-height`) and put what belongs in the middle (the giant screen and the Start
+  button of the welcome step, one group, owner 2026-10-07) in one flex column centred in the box, padded by `--gds-safe-area-inset-top`, so the group is
+  centred in the visible screen whatever the bottom edge does. Whatever the box does not reach shows the page colour, so a page ending above the bar is not a defect.
 - **A desktop browser cannot show this.** Do not tell the owner such a layout is fixed on the strength of a desktop screenshot or a viewport
   emulation. Check the DOM (no ancestor between the page and the document paints a colour other than the page colour: print the chain of `background-color`
   from the page element up to `html`) and then say plainly that it is not confirmed on a phone until the owner's phone screenshot (or a working iOS

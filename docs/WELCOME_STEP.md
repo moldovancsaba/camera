@@ -11,14 +11,16 @@ the middle. Start leads on to the next step (the login step of a vetted event, w
   bottom edge, so both always have the same scale; the corner layer is drawn over the bottom one and carries its design in the bottom right
   corner. The designers deliver both at 600×400 (3:2); they are a design of the whole bottom of the screen, so on a wide screen they grow with
   its width and are cropped at the top.
-- **Start button** (`buttonText`, `buttonColor`, `buttonTextColor`, `buttonBorderColor`): a real button in the middle of the screen, 4.25 rem
+- **Start button** (`buttonText`, `buttonColor`, `buttonTextColor`, `buttonBorderColor`): a real button in the middle of the screen (with the giant screen above it, when there is one), 4.25 rem
   high, uppercase, with a ring; the colours are hex values from the page's settings (the club's official colours), anything else is ignored.
 - **Giant screen** (`screenImageUrl`, `screenImageAlt`; camera#315): a 16:9 LED wall made in CSS 3D (`components/capture/LedScreen3D.tsx`): a box with a
-  bezel and depth, tilted towards the guest, swaying slowly, with a faint pixel grid and a reflection on the glass, showing the one picture over
-  the Start button. Only CSS and that picture: nothing else is downloaded, it is sharp on any screen, and it holds still for a guest whose device
-  asks for less motion. It is as wide as the smallest of 88% of the screen width, 52 rem, and what fits above the button with a margin at the top
-  (`--led-w`), so it never touches the button or leaves the screen, in portrait, landscape, tablet and desktop. Leave `screenImageUrl` empty and
-  the page has no screen. `screenImageAlt` says what the picture shows, for screen readers.
+  bezel and depth, tilted towards the guest, swaying slowly, with a faint pixel grid and a reflection on the glass, showing the one picture above the Start
+  button. Only CSS and that picture: nothing else is downloaded, it is sharp on any screen, and it holds still for a guest whose device asks for less
+  motion. **The screen and the Start button are one group** (`data-welcome-group` in `WelcomePage`): a column, the screen above the button, centred as a
+  whole in the visible screen (horizontally and vertically, below the top inset of the notch), so on every device they sit in the middle together. The screen
+  is as wide as the smallest of 88% of the screen width, 60 rem, and what fits in the height together with the button and the margins (`--led-w`), so it
+  never touches the button or leaves the screen, in portrait, landscape, tablet and desktop. Leave `screenImageUrl` empty and the button alone is centred.
+  `screenImageAlt` says what the picture shows, for screen readers.
 - **Title** (`title`): read by screen readers, not shown. The design carries no text; the only words on the page are the button label.
 
 ## Setting it up
@@ -43,8 +45,8 @@ Mantine's body colour (white), over the document background, so that wrapper sho
 after #313 had fixed only the box height). `EventThemeScope` now renders `pageColourCss` (`lib/theme/css.ts`): the document and `--mantine-color-body`
 take the event's page colour, as the messmass report does (`html` background, transparent body). A page can still end above the bar (an iOS rule for
 fixed content); what shows below it is the page colour, never white. So `FullScreenPage` is exactly the visible screen (no `min-height: 100lvh`: the
-part under the bar is not drawn, and the bottom layers anchored there were cut off, camera#317), the bottom layers sit on its bottom edge, and the Start
-button and the giant screen are placed from `50svh` at the top. Not testable on a desktop: check on a phone.
+part under the bar is not drawn, and the bottom layers anchored there were cut off, camera#317), the bottom layers sit on its bottom edge, and the giant screen
+and the Start button are one group centred in the box. Not testable on a desktop: check on a phone.
 
 ## Known limits
 
