@@ -23,3 +23,8 @@ test('it is sized by the screen it is on, drawn in 3D, holds still when asked, a
   assert.deepEqual([...hexes].sort(), [CAMERA_STAGE_BLACK, CAMERA_STAGE_WHITE].map((h) => h.toLowerCase()).sort(), 'every colour is one of the two stage tokens, mixed with color-mix');
   assert.equal(/rgba?\(|hsla?\(/i.test(LED_SCREEN_CSS), false);
 });
+
+test('it is placed from the top like the Start button (50svh), so it does not move with the bottom edge of the page', () => {
+  assert.match(LED_SCREEN_CSS, /top: calc\(50svh - 3\.6rem - var\(--led-w\) \* 0\.06\);\s*transform: translate\(-50%, -100%\);/);
+  assert.equal(/\.led3d \{[^}]*\n  bottom:/.test(LED_SCREEN_CSS), false);
+});

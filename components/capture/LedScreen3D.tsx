@@ -26,8 +26,9 @@ export const LED_SCREEN_CSS = `
   left: 50%;
   width: var(--led-w);
   aspect-ratio: 16 / 9;
-  bottom: calc(50svh + 3.6rem + var(--led-w) * 0.06);
-  transform: translateX(-50%);
+  /* From the top, like the Start button (50svh), so it does not move with the bottom edge of the page. */
+  top: calc(50svh - 3.6rem - var(--led-w) * 0.06);
+  transform: translate(-50%, -100%);
   perspective: calc(var(--led-w) * 3.2);
   perspective-origin: 50% 40%;
   pointer-events: none;

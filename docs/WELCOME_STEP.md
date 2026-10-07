@@ -42,7 +42,9 @@ its top and bottom from the body background or from a fixed element at the edge.
 Mantine's body colour (white), over the document background, so that wrapper showed as a white band between the page and the bar (owner, 2026-10-07,
 after #313 had fixed only the box height). `EventThemeScope` now renders `pageColourCss` (`lib/theme/css.ts`): the document and `--mantine-color-body`
 take the event's page colour, as the messmass report does (`html` background, transparent body). A page can still end above the bar (an iOS rule for
-fixed content); what shows below it is the page colour, never white. Not testable on a desktop: check on a phone.
+fixed content); what shows below it is the page colour, never white. So `FullScreenPage` is exactly the visible screen (no `min-height: 100lvh`: the
+part under the bar is not drawn, and the bottom layers anchored there were cut off, camera#317), the bottom layers sit on its bottom edge, and the Start
+button and the giant screen are placed from `50svh` at the top. Not testable on a desktop: check on a phone.
 
 ## Known limits
 

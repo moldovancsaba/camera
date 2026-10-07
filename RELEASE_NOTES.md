@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the bottom of the welcome design is no longer cut off on iPhone Safari (camera#317)
+
+- **Fixed:** after the white band was gone (#316) the bottom of the welcome design (the "10" and the club badge) was cut off on an iPhone: the full-screen box
+  was `100lvh` tall (#313) and iOS 26 Safari does not draw fixed content under its floating bottom bar, so the bottom layers anchored to the box bottom were
+  half under the bar. The box is now exactly the visible screen, so the bottom layers sit on its bottom edge above the bar, and the page colour fills below.
+  The Start button stays at `50svh`; the giant screen is now positioned from the top (`50svh`) like the button instead of from the bottom edge, so it does not
+  move with the box. `components/capture/FullScreenPage.tsx`, `LedScreen3D.tsx`, `CLAUDE.md` section 7.
+
 ## Unreleased — the giant screen as code on the welcome step (camera#315)
 
 - **Added:** the welcome step can show the stadium's giant screen above the Start button: a 16:9 LED wall drawn in CSS 3D (bezel, depth, pixel

@@ -1,11 +1,14 @@
 'use client';
 
 /**
- * The frame of a page that is one picture from edge to edge (the welcome step, the CTA page with a picture). It fills the whole screen,
- * including the part under a mobile browser's bars: on a phone the fixed box alone ends where the bottom bar begins, and the white of the
- * document showed between the picture and the bar (owner, 2026-10-07). So the box is as tall as the largest viewport (`lvh`, which reaches
- * under the bars), it has the page colour of the event behind the picture (dark when the event has none), and the document itself takes that colour (and does not bounce)
- * while the page is shown, so no white can appear at an edge, while the picture loads, or when the page is pulled.
+ * The frame of a page that is one picture from edge to edge (the welcome step, the CTA page with a picture). It is a fixed box over the visible
+ * screen, with the page colour of the event behind the picture (dark when the event has none), and the document itself takes that colour (and
+ * does not bounce) while the page is shown, so the picture never shows white at an edge, while it loads, or when the page is pulled.
+ *
+ * The box is exactly the visible screen, not taller (camera#317). It was `100lvh` tall (#313) so the picture would reach under a phone's bottom bar,
+ * but iPhone Safari 26 draws fixed content only above its floating bar, so the part under the bar, with the bottom layers of the design anchored
+ * to it, was cut off (owner, 2026-10-07). The part of the screen the box does not reach takes the page colour (`pageColourCss`, lib/theme/css.ts).
+ * Things placed from the middle of the screen use `50svh` from the top, which does not depend on where the bottom edge is (CLAUDE.md section 7).
  */
 
 import { useEffect, useRef, type ReactNode } from 'react';
@@ -31,7 +34,7 @@ export default function FullScreenPage({ children, marker }: { children: ReactNo
     <main
       ref={ref}
       {...marker}
-      style={{ position: 'fixed', inset: 0, minHeight: '100lvh', overflow: 'hidden', background: `var(--event-bg, ${CAMERA_STAGE_BLACK})` }}
+      style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: `var(--event-bg, ${CAMERA_STAGE_BLACK})` }}
     >
       {children}
     </main>
