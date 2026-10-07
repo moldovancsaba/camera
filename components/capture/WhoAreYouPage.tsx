@@ -73,11 +73,6 @@ export default function WhoAreYouPage({
   const socialHeading = config.ssoButtonText || 'Sign in with Google or Facebook';
   const pseudoFormTitle = config.pseudoFormTitle || 'Or enter your details';
 
-  const beforeSocialNavigate = () => {
-    document.cookie = `captureEventId=${eventId}; path=/; max-age=600; SameSite=Lax`;
-    document.cookie = `capturePageIndex=${pageIndex}; path=/; max-age=600; SameSite=Lax`;
-  };
-
   const validate = (): boolean => {
     const newErrors: { name?: string; email?: string } = {};
 
@@ -124,7 +119,7 @@ export default function WhoAreYouPage({
           <Title order={4} ta="center">
             {socialHeading}
           </Title>
-          <SocialLoginButtons beforeNavigate={beforeSocialNavigate} />
+          <SocialLoginButtons captureEventId={eventId} capturePage={pageIndex} />
         </Stack>
       ) : null}
 

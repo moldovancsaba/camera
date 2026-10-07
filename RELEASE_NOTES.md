@@ -1,5 +1,16 @@
 # RELEASE_NOTES.md
 
+## Unreleased — a guest's login returns to the selfie page, never to the dashboard
+
+- **Fixed:** a guest who logged in from the selfie page could end on `/admin` (and, without dashboard rights, on "no access"). The way back
+  was two cookies written by the page script just before the click, alive for 10 minutes; when they were missing the callback fell back to
+  `/admin`. The Google and Facebook links now name the capture page and step (`captureEvent`, `capturePage`), the login route records them in
+  a server-set `capture_return` cookie for the length of the OAuth round trip, and the callback sends the guest back to
+  `/capture/<id>?resume=true&page=<step>` whatever rights the account has (`lib/auth/capture-return.ts`). Only a login with no target goes to
+  `/admin`; a target that is not a capture event id is ignored, and a dashboard login clears a target left by an abandoned selfie login.
+  Pages of the old kind still work (their cookies are read as a fallback). Tested with a local round trip against a fake SSO.
+- **Removed:** the page-script cookies (`captureEventId`, `capturePageIndex`) and the click handler that wrote them in `SocialLoginButtons`.
+
 ## Unreleased — a smaller, tidier login step on the guest page
 
 - **Changed:** the "Who are you?" step fits a phone screen with the browser bar showing: the logo, the card spacing and the titles of every

@@ -90,7 +90,7 @@ function blankSessionCookieOptions(domain: string | undefined) {
  * Chrome (incl. strict tracking / third-party cookie modes) is pickier than Safari about `SameSite=Lax` on that hop;
  * `SameSite=None` + `Secure` is the standard pattern for short-lived OAuth handoff cookies (prod is always HTTPS).
  */
-function oauthPendingCookieAttrs(): {
+export function oauthPendingCookieAttrs(): {
   httpOnly: true;
   secure: boolean;
   sameSite: 'lax' | 'none';

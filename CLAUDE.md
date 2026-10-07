@@ -160,6 +160,13 @@ any auth code here:
   aborted revoke neither holds logout past one deadline nor skips the other
   token. Other fetches in `lib/auth/sso.ts` (token exchange, userinfo) are still
   unbounded.
+- **A guest's login returns to the capture page it started on, never to `/admin`.** The social buttons on the "who are you" step link to
+  `/api/auth/login?provider=…&captureEvent=<id>&capturePage=<step>`; the login route records the target in the server-set `capture_return`
+  cookie (15 minutes, same attributes as the OAuth pending cookie; an id that is not a capture event id is ignored, and a login with no target
+  clears an older one) and the callback (`lib/auth/capture-return.ts`) redirects there with `?resume=true&page=<step>` whatever rights the
+  account has. Only a login with no target goes to `/admin`. It used to depend on two cookies the page script wrote just before the click
+  (10 minutes); when they were missing the callback fell back to `/admin`, and a guest without dashboard rights saw "no access". The old
+  cookies are still read as a fallback. Verified with a fake SSO (token and permission endpoints) in a local round trip.
 - **Session tokens live in the session itself.** `Session` (`lib/auth/session.ts`)
   stores `accessToken`/`refreshToken` directly (either in the `camera_session`
   cookie or, if `shouldUseMongoWebSessions()`, a Mongo-backed session document) —

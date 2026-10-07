@@ -22,6 +22,7 @@ import { setPendingSessionCookie } from '@/lib/auth/session';
 import { encodeSignedOAuthPkceState, getOAuthPkceStateSigningKey } from '@/lib/auth/oauth-pkce-state';
 import { parseLoginProvider } from '@/lib/auth/social-login';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
+import { captureReturnForLogin, captureReturnPath, setCaptureReturnCookie } from '@/lib/auth/capture-return';
 
 function resolveDevLoginRedirect(request: NextRequest): string {
   const { searchParams } = request.nextUrl;
@@ -30,9 +31,9 @@ function resolveDevLoginRedirect(request: NextRequest): string {
     return redirectToParam;
   }
 
-  const captureEventId = request.cookies.get('captureEventId')?.value?.trim();
-  if (captureEventId) {
-    return `/capture/${captureEventId}`;
+  const capture = captureReturnForLogin(request);
+  if (capture) {
+    return captureReturnPath(capture);
   }
 
   return '/';
@@ -74,6 +75,8 @@ export async function GET(request: NextRequest) {
     const redirectUri = getOAuthCallbackRedirectUri(request);
 
     const confidential = shouldUseConfidentialOAuth();
+    // The page the guest started on, recorded on the redirect to SSO: the callback brings the guest back to it, not to /admin.
+    const captureReturn = captureReturnForLogin(request);
 
     let authUrl: string;
 
@@ -86,6 +89,7 @@ export async function GET(request: NextRequest) {
       });
       const response = NextResponse.redirect(authUrl);
       setPendingSessionCookie(response, { state });
+      setCaptureReturnCookie(response, captureReturn);
       if (justLoggedOut) {
         response.cookies.set('post-logout', '', { maxAge: 0, path: '/' });
       }
@@ -120,6 +124,7 @@ export async function GET(request: NextRequest) {
     if (!signingKey) {
       setPendingSessionCookie(response, { codeVerifier, state });
     }
+    setCaptureReturnCookie(response, captureReturn);
     if (justLoggedOut) {
       response.cookies.set('post-logout', '', { maxAge: 0, path: '/' });
     }
