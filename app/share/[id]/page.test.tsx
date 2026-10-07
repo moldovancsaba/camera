@@ -53,10 +53,18 @@ function mockDb(t: TestContext, docs: Doc[]) {
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
 const isNotFound = (error: unknown) => /NEXT_HTTP_ERROR_FALLBACK;404|NEXT_NOT_FOUND/.test(String((error as { digest?: unknown })?.digest ?? error));
 
-async function render(page: PageModule, id: string): Promise<{ element?: { type: unknown; props: Record<string, unknown> }; notFound: boolean }> {
+type Element = { type: unknown; props: Record<string, unknown> };
+
+/** The element the page renders, without the theme wrapper around it (camera#285). */
+function inner(element: Element): Element {
+  const child = element.props.children as Element | undefined;
+  return element.props.theme !== undefined && child && typeof child === 'object' && 'props' in child ? child : element;
+}
+
+async function render(page: PageModule, id: string): Promise<{ element?: Element; whole?: Element; notFound: boolean }> {
   try {
-    const element = (await page.default(params(id))) as unknown as { type: unknown; props: Record<string, unknown> };
-    return { element, notFound: false };
+    const whole = (await page.default(params(id))) as unknown as Element;
+    return { element: inner(whole), whole, notFound: false };
   } catch (error) {
     if (isNotFound(error)) return { notFound: true };
     throw error;
@@ -122,4 +130,12 @@ test('the link preview of an approved photo still carries its image', async (t) 
   const page = await importPage('metadata-approved');
   const meta = await page.generateMetadata(params(doc._id.toHexString()));
   assert.match(JSON.stringify(meta), /submission-1\.jpg/);
+});
+
+test('the share page and its notices are drawn in the theme of the event', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'approved' })]);
+  const page = await importPage('themed');
+  const { whole } = await render(page, TOKEN);
+  const theme = whole?.props.theme as { source: string; background: string } | undefined;
+  assert.ok(theme && /^#[0-9a-f]{6}$/.test(theme.background), 'the wrapper carries the resolved theme of the event');
 });

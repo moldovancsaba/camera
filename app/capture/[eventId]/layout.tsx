@@ -3,6 +3,9 @@ import type { ReactNode } from 'react';
 import { ObjectId } from 'mongodb';
 import { loadCaptureEvent } from '@/lib/events/capture-event';
 import { pwaShortName, pwaThemeColor } from '@/lib/pwa/event-manifest';
+import { connectToDatabase } from '@/lib/db/mongodb';
+import { loadEventTheme } from '@/lib/theme/load';
+import EventThemeScope from '@/components/theme/EventThemeScope';
 
 function stripHtml(s: string): string {
   return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -102,10 +105,18 @@ export async function generateViewport({
   return { viewportFit: 'cover', themeColor: pwaThemeColor(event?.brandColor) };
 }
 
-export default function CaptureEventLayout({
+export default async function CaptureEventLayout({
   children,
+  params,
 }: {
   children: ReactNode;
+  params: Promise<{ eventId: string }>;
 }) {
-  return children;
+  const { eventId } = await params;
+  const event = await loadCaptureEvent(eventId);
+  if (!event) return children;
+  // Every page of the guest journey is drawn with the theme of the event (camera#285).
+  const db = await connectToDatabase();
+  const theme = await loadEventTheme(db, event);
+  return <EventThemeScope theme={theme}>{children}</EventThemeScope>;
 }

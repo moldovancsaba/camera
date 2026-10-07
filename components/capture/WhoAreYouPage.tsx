@@ -118,7 +118,6 @@ export default function WhoAreYouPage({
       title={config.title}
       description={config.description}
       logoUrl={logoUrl}
-      eyebrow="Capture flow"
     >
       {enableSSOLogin ? (
         <Stack gap="sm">

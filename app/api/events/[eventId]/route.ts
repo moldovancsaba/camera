@@ -31,8 +31,7 @@ import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-em
 import { captureFrameOf } from '@/lib/frame/capture';
 import { normalizePhotoVettingInput, photoVettingRequired } from '@/lib/events/photo-vetting';
 import { withRequiredIdentityPage } from '@/lib/events/identity-page';
-import { nativeFrameContext, type FrameContext } from '@/lib/frame/context';
-import { resolveEventTheme } from '@/lib/theme/event-theme';
+import { loadEventTheme } from '@/lib/theme/load';
 import { needsThemeRefresh, refreshEventTheme } from '@/lib/theme/refresh';
 
 function normalizeEventNotificationSettings(value: unknown) {
@@ -178,18 +177,6 @@ export const GET = withErrorHandler(async (
   // The look of the guest pages (camera#285): the messmass style snapshot of the event, or for an event without one camera's own
   // name and partner logo with the system default look. A snapshot that is stale (messmass said something changed) or older than a
   // day is refreshed after this response, so the next guest sees the new theme without waiting for it.
-  let themeContext = (frameDesign as { context?: FrameContext } | undefined)?.context ?? null;
-  if (!themeContext) {
-    const partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }, { projection: { name: 1, logoUrl: 1 } });
-    themeContext = nativeFrameContext(
-      {
-        eventName: String(event.name ?? ''),
-        partnerName: typeof partner?.name === 'string' ? partner.name : (event as { partnerName?: string }).partnerName,
-        partnerLogoUrl: typeof partner?.logoUrl === 'string' ? partner.logoUrl : null,
-      },
-      new Date().toISOString()
-    );
-  }
   if (event.isActive && needsThemeRefresh(event as unknown as Record<string, unknown>)) {
     after(async () => {
       await refreshEventTheme(db, event as unknown as Record<string, unknown>);
@@ -201,7 +188,7 @@ export const GET = withErrorHandler(async (
   return apiSuccess({
     event: {
       ...publicEvent,
-      theme: resolveEventTheme({ brandColor: typeof event.brandColor === 'string' ? event.brandColor : null, context: themeContext }),
+      theme: await loadEventTheme(db, event as unknown as Record<string, unknown>),
       ...(forGuest ? { customPages: withRequiredIdentityPage(event.customPages as Parameters<typeof withRequiredIdentityPage>[0], vettingRequired) } : {}),
       photoVettingRequired: vettingRequired,
       _id: event._id.toString(),

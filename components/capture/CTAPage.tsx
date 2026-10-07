@@ -95,7 +95,6 @@ export default function CTAPage({
       title={config.title}
       description={config.description}
       logoUrl={logoUrl}
-      eyebrow="Capture flow"
     >
       {urlToVisit ? (
         <Stack gap="xs">

@@ -81,7 +81,6 @@ export default function AcceptPage({
       title={config.title}
       description={config.description}
       logoUrl={logoUrl}
-      eyebrow="Capture flow"
     >
       <Stack gap="sm">
         <Card
