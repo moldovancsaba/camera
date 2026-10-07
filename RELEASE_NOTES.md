@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the share pages: a smaller event title and a centred notice
+
+- **Changed:** the event name at the top of the share page and of the "waiting for approval" / "not approved" pages is 24px (it was 48px
+  and took three lines on a phone), the same size as the title of the login step.
+- **Fixed:** the title of the waiting / not-approved notice ("Waiting for approval", "Not approved") was left-aligned while the text under it
+  was centred; it is centred now.
+
 ## Unreleased — a guest's login returns to the selfie page, never to the dashboard
 
 - **Fixed:** a guest who logged in from the selfie page could end on `/admin` (and, without dashboard rights, on "no access"). The way back
