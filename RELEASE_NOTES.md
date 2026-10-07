@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — no white strip under the welcome and CTA picture pages on a phone
+
+- **Fixed:** on iPhone Safari the welcome step (and a CTA page with a picture) stopped where the browser's bottom bar begins, and the white of the
+  document showed in the strip between the picture and the bar. The page is now as tall as the largest viewport (`lvh`, so the picture reaches
+  under the bar), has the event's page colour behind the picture (dark when the event has none), the document takes that colour while the page is
+  shown and does not bounce, and the Start button is centred in the part of the screen the guest can see (`svh`). Shared frame:
+  `components/capture/FullScreenPage.tsx`.
+
 ## Unreleased — an event with a frame base is checked at every theme refresh (camera#312)
 
 - **Fixed:** the theme refresh redrew frame images only when the messmass snapshot had changed, so adding or changing the designers' picture of

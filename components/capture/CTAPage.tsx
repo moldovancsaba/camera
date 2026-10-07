@@ -19,6 +19,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import FullScreenPage from '@/components/capture/FullScreenPage';
 import PillButton from '@/components/capture/PillButton';
 import CaptureStageShell from '@/components/capture/CaptureStageShell';
 import { Button, Group, Stack, Text } from '@mantine/core';
@@ -101,7 +102,7 @@ export default function CTAPage({
   if (config.backgroundImageUrl) {
     const shadow = `0 0.1em 0.5em color-mix(in srgb, ${CAMERA_STAGE_BLACK} 55%, transparent)`;
     return (
-      <main data-cta-picture style={{ position: 'fixed', inset: 0, overflow: 'hidden' }}>
+      <FullScreenPage marker={{ 'data-cta-picture': '' }}>
         <Image src={config.backgroundImageUrl} alt="" fill unoptimized priority sizes="100vw" style={{ objectFit: 'cover', objectPosition: 'center' }} />
         <div aria-hidden style={{ position: 'absolute', inset: 0, background: `linear-gradient(to top, color-mix(in srgb, ${CAMERA_STAGE_BLACK} 55%, transparent), color-mix(in srgb, ${CAMERA_STAGE_BLACK} 25%, transparent))` }} />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', padding: '1.5rem', textAlign: 'center', color: CAMERA_STAGE_WHITE, overflowY: 'auto' }}>
@@ -118,7 +119,7 @@ export default function CTAPage({
             </PillButton>
           ) : null}
         </div>
-      </main>
+      </FullScreenPage>
     );
   }
 
