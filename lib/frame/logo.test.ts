@@ -9,12 +9,16 @@ const image = (body: BodyInit = png, headers: Record<string, string> = { 'conten
 test('only https URLs on the two image hosts camera already uses are fetched', () => {
   assert.equal(isAllowedLogoUrl('https://i.ibb.co/abc/logo.png'), true);
   assert.equal(isAllowedLogoUrl('https://bidx0njghn1voknt.public.blob.vercel-storage.com/logos/a.png'), true);
+  assert.equal(isAllowedLogoUrl('https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev/logos/0a1b2c.png'), true);
   for (const bad of [
     'http://i.ibb.co/abc/logo.png',
     'https://ibb.co/abc',
     'https://i.ibb.co.evil.example/x.png',
     'https://evil.example/i.ibb.co/x.png',
     'https://user:pass@i.ibb.co/x.png',
+    'http://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev/logos/a.png',
+    'https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev.evil.example/logos/a.png',
+    `https://pub-${'0'.repeat(32)}.r2.dev/logos/a.png`, // another bucket's address
     'https://169.254.169.254/latest/meta-data',
     'https://localhost/x.png',
     'javascript:alert(1)',
