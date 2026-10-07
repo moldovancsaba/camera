@@ -1258,6 +1258,10 @@ export default function EventCapturePage({
               hasButton: currentPage.config.hasButton,
               visitButtonText: currentPage.config.visitButtonText,
               redirectingText: currentPage.config.redirectingText,
+              backgroundImageUrl: currentPage.config.backgroundImageUrl,
+              buttonColor: currentPage.config.buttonColor,
+              buttonTextColor: currentPage.config.buttonTextColor,
+              buttonBorderColor: currentPage.config.buttonBorderColor,
             }}
             pageId={currentPage.pageId}
             logoUrl={onboardingLogoUrl}

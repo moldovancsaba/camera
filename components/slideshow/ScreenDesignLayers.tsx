@@ -8,6 +8,7 @@
 
 import type { CSSProperties } from 'react';
 import { CAMERA_STAGE_BLACK, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
+import { fontFaceCss, fontStack, googleFontHref } from '@/lib/theme/css';
 import type { ResolvedScreenDesign } from '@/lib/slideshow/screen-design';
 
 const HEX = /^#[0-9a-f]{3,8}$/i;
@@ -18,14 +19,33 @@ export function screenWindowStyle(design: ResolvedScreenDesign): CSSProperties {
   return { left: `${w.left}%`, top: `${w.top}%`, width: `${w.width}%`, height: `${w.height}%` };
 }
 
+/**
+ * The font of the texts: the one set on the design itself (a Google font), else the event's own from its messmass report style, loaded the
+ * way the guest pages load it (Google stylesheet, or the custom font file of the style as an @font-face).
+ */
+function textFont(design: ResolvedScreenDesign): { stack: string | undefined; href: string | null; fontFace: string | null } {
+  if (design.fontFamily) {
+    const font = { family: design.fontFamily, source: 'google' as const, url: null };
+    return { stack: fontStack({ font: { ...font, file: null } }), href: googleFontHref(design.fontFamily), fontFace: null };
+  }
+  const font = design.font;
+  if (!font || font.source === 'system') return { stack: undefined, href: null, fontFace: null };
+  return {
+    stack: fontStack({ font: { ...font, file: null } }),
+    href: font.source === 'google' ? googleFontHref(font.family) : null,
+    fontFace: font.source === 'custom' ? fontFaceCss(font.family, font.url) : null,
+  };
+}
+
 export default function ScreenDesignLayers({ design }: { design: ResolvedScreenDesign }) {
-  const font = design.fontFamily ? `'${design.fontFamily}', sans-serif` : undefined;
+  const { stack: font, href, fontFace } = textFont(design);
   return (
     <>
-      {design.fontFamily ? (
+      {href ? (
         // eslint-disable-next-line @next/next/no-page-custom-font
-        <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${encodeURIComponent(design.fontFamily).replace(/%20/g, '+')}:wght@700&display=swap`} />
+        <link rel="stylesheet" href={href} />
       ) : null}
+      {fontFace ? <style>{fontFace}</style> : null}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={design.overlayImageUrl} alt="" className="pointer-events-none absolute inset-0 z-[3] h-full w-full" data-screen-overlay />
       {design.qr && design.qrSvg ? (

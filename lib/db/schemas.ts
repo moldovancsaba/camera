@@ -378,6 +378,8 @@ export interface Event {
   // Customization
   loadingText?: string;              // Text shown while event is loading (e.g., "Loading event...")
   logoUrl?: string;                  // Optional event logo URL (imgbb.com) - displayed on capture pages
+  /** A picture drawn under the card of every guest email of this event (the club's footer strip); https, a host the pages may load images from (camera#310). */
+  emailFooterImageUrl?: string | null;
   showLogo: boolean;                 // Whether to display logo on event pages (default: false)
   
   // Brand colors

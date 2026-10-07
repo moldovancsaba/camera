@@ -6,6 +6,7 @@
 
 'use client';
 
+import { uploadImageFile } from '@/lib/admin/upload-image-client';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -70,6 +71,7 @@ interface EventRecord {
   loadingText?: string;
   isActive?: boolean;
   logoUrl?: string;
+  emailFooterImageUrl?: string | null;
   showLogo?: boolean;
   brandColor?: string;
   brandBorderColor?: string;
@@ -146,6 +148,7 @@ export default function EditEventPage({
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [emailFooterImageUrl, setEmailFooterImageUrl] = useState('');
   const [brandColor, setBrandColor] = useState(CAMERA_DEFAULT_BRAND_COLOR);
   const [brandBorderColor, setBrandBorderColor] = useState(CAMERA_DEFAULT_BRAND_BORDER_COLOR);
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
@@ -244,6 +247,7 @@ export default function EditEventPage({
         setEvent(eventData);
         setCustomPages(eventData.customPages || []);
         setLogoPreview(eventData.logoUrl || null);
+        setEmailFooterImageUrl(eventData.emailFooterImageUrl || '');
         setBrandColor(eventData.brandColor || CAMERA_DEFAULT_BRAND_COLOR);
         setBrandBorderColor(eventData.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR);
         setTryOnEnabled(Boolean(eventData.tryOn?.enabled));
@@ -498,6 +502,7 @@ export default function EditEventPage({
       loadingText: formData.get('loadingText') as string,
       isActive: formData.get('isActive') === 'on',
       logoUrl,
+      emailFooterImageUrl: emailFooterImageUrl.trim() || null,
       showLogo: formData.get('showLogo') === 'on',
       brandColor: brandColor || undefined,
       brandBorderColor: brandBorderColor || undefined,
@@ -713,6 +718,27 @@ export default function EditEventPage({
               defaultChecked={event?.showLogo}
               disabled={!logoPreview}
               label="Display logo on event pages"
+            />
+
+            <TextInput
+              label="Email footer picture"
+              description="Shown under the card of every guest email of this event (the club's footer strip). https address, or upload one below."
+              value={emailFooterImageUrl}
+              onChange={(e) => setEmailFooterImageUrl(e.currentTarget.value)}
+              placeholder="https://…"
+            />
+            <FileInput
+              label="Upload an email footer picture"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              description="PNG, JPEG or WebP, up to 4 MB. 1120 px wide is sharp on phones; it is shown 560 px wide."
+              onChange={async (file) => {
+                if (!file) return;
+                try {
+                  setEmailFooterImageUrl(await uploadImageFile(file, 'email-footer'));
+                } catch (err: unknown) {
+                  setError(`Failed to upload the footer picture: ${getErrorMessage(err)}`);
+                }
+              }}
             />
 
             <Text fw={600} size="sm">

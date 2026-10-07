@@ -30,16 +30,25 @@ export interface ScreenDesign {
   /** Where the photos play, % of the stage. */
   window: { left: number; top: number; width: number; height: number };
   photoFit: 'cover' | 'contain';
-  /** A Google font for the texts, e.g. Roboto. */
+  /** A Google font for the texts that replaces the event's own (its messmass report style); leave it out to use the event's font. */
   fontFamily?: string;
   /** The QR code: where it points, its top left corner (% of the stage) and its side (% of the stage width). */
   qr?: { url: string; x: number; y: number; size: number; color?: string };
   texts?: ScreenDesignText[];
 }
 
-/** What the player gets: the design and the QR code drawn as an SVG. */
+/** The font the texts are written in: the event's, from its messmass report style (lib/theme). */
+export interface ScreenDesignFont {
+  family: string;
+  source: 'google' | 'custom' | 'system';
+  /** The custom font file as an absolute URL, for `source: 'custom'`. */
+  url: string | null;
+}
+
+/** What the player gets: the design, the QR code drawn as an SVG, and the event's font (a `fontFamily` set on the design itself wins). */
 export interface ResolvedScreenDesign extends ScreenDesign {
   qrSvg?: string;
+  font?: ScreenDesignFont;
 }
 
 const HEX = /^#[0-9a-f]{3,8}$/i;
@@ -119,10 +128,11 @@ export function qrSvg(url: string, color: string = CAMERA_STAGE_WHITE): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges" role="img" aria-label="QR code"><path fill="${fill}" d="${path}"/></svg>`;
 }
 
-export function resolveScreenDesign(stored: unknown): ResolvedScreenDesign | null {
+export function resolveScreenDesign(stored: unknown, themeFont?: ScreenDesignFont | null): ResolvedScreenDesign | null {
   const parsed = parseScreenDesign(stored);
   if (!parsed.ok || !parsed.value) return null;
   const design: ResolvedScreenDesign = { ...parsed.value };
   if (design.qr) design.qrSvg = qrSvg(design.qr.url, design.qr.color);
+  if (themeFont) design.font = themeFont;
   return design;
 }

@@ -16,13 +16,13 @@ the player makes the stage a size container and the sizes are `cqh`/`%` units.
 | Photo window | `window {left, top, width, height}` | Where the photos play. The photos are cropped to it (`photoFit: cover`) or shown whole (`contain`). The overlay's own rounded corners and border cover the edge of the photos. |
 | QR code | `qr {url, x, y, size, color}` | `url` is where it points (https, up to 300 characters), `x`/`y` its top left corner, `size` its side as % of the stage **width**. The server draws it as an SVG of its dark modules (level M correction), by default white, so it is light on the dark overlay like the designers' example (a QR reader that reads inverted codes scans it; a phone camera does). |
 | Texts | `texts[] {text, x, y, width, size, align, color}` | Single line, up to 8, each at most 120 characters; `size` is % of the stage height; white with a soft shadow by default. |
-| Font | `fontFamily` | A Google font name (e.g. Roboto, bold), loaded by the player. |
+| Font | `fontFamily` (optional) | The texts are written in the event's own font, from its messmass report style (a Google font, or the style's custom font file), loaded by the player. A `fontFamily` set on the design replaces it with a Google font; leave it out. |
 
 ## MTK x Vasas (2026-10-26)
 
 Overlay: the designers' `Seyu_MTK_VASAS_Overlay2.png` (stored in the R2 bucket under `landing/mtk-vasas/`). Measured from their size panel
 (`39.84, 33.28, 1330.05 × 748.15` px of 1920×1080): window `left 2.075, top 3.081, width 69.274, height 69.273`; QR `x 73.54, y 2.78, size
-24.375` (468 px); text "SZKENNELJ BE!" `x 73.44, y 48.7, width 24.48, size 5.6` in Roboto. At 1920×1080 the rendered QR is 468×468 at
+24.375` (468 px); text "SZKENNELJ BE!" `x 73.44, y 48.7, width 24.48, size 5.6` in the event's font. At 1920×1080 the rendered QR is 468×468 at
 (1412, 30), the window 1330×748 at (40, 33), as in the example.
 
 ## Limits

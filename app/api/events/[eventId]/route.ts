@@ -251,6 +251,7 @@ export const PATCH = withErrorHandler(async (
     loadingText,
     isActive,
     logoUrl,
+    emailFooterImageUrl,
     showLogo,
     brandColor,
     brandBorderColor,
@@ -291,6 +292,13 @@ export const PATCH = withErrorHandler(async (
   }
   if (logoUrl !== undefined) {
     updateFields.logoUrl = logoUrl?.trim() || null;
+  }
+  if (emailFooterImageUrl !== undefined) {
+    const footer = typeof emailFooterImageUrl === 'string' ? emailFooterImageUrl.trim() : '';
+    if (footer && !/^https:\/\/[^\s]+$/.test(footer)) {
+      throw apiBadRequest('emailFooterImageUrl must be an https address');
+    }
+    updateFields.emailFooterImageUrl = footer || null;
   }
   if (showLogo !== undefined) {
     updateFields.showLogo = Boolean(showLogo);

@@ -51,13 +51,17 @@ export function renderThemedEmail({ theme, eventName, bodyText, button }: Themed
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 8px 0;"><tr><td bgcolor="${theme.buttonBackground}" style="background:${theme.buttonBackground};border-radius:8px;"><a href="${escapeHtml(button.url)}" style="display:inline-block;padding:14px 28px;font-family:${font};font-size:16px;font-weight:700;color:${theme.buttonText};text-decoration:none;">${escapeHtml(button.label)}</a></td></tr></table>`
     : '';
 
+  const footer = theme.emailFooterImageUrl
+    ? `\n<tr><td style="padding:16px 0 0 0;"><img src="${escapeHtml(theme.emailFooterImageUrl)}" alt="${escapeHtml(eventName)}" width="560" style="display:block;width:100%;max-width:560px;height:auto;border:0;border-radius:${theme.radius};" /></td></tr>`
+    : '';
+
   return `<!doctype html>
 <html><body style="margin:0;padding:0;background:${theme.background};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.background}" style="background:${theme.background};">
 <tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
 <tr><td style="padding:8px 0 20px 0;font-family:${font};text-align:center;color:${theme.heading};">${mark}<div style="margin-top:12px;font-size:20px;font-weight:700;color:${theme.heading};">${escapeHtml(eventName)}</div></td></tr>
-<tr><td bgcolor="${theme.cardBackground}" style="background:${theme.cardBackground};border:1px solid ${theme.cardBorder};border-radius:${theme.radius};padding:24px;font-family:${font};font-size:16px;line-height:1.55;color:${theme.cardText};">${paragraphs}${cta}</td></tr>
+<tr><td bgcolor="${theme.cardBackground}" style="background:${theme.cardBackground};border:1px solid ${theme.cardBorder};border-radius:${theme.radius};padding:24px;font-family:${font};font-size:16px;line-height:1.55;color:${theme.cardText};">${paragraphs}${cta}</td></tr>${footer}
 </table>
 </td></tr>
 </table>

@@ -22,7 +22,7 @@ export async function loadEventTheme(db: Db, event: Document): Promise<EventThem
       new Date().toISOString()
     );
   }
-  const theme = resolveEventTheme({ brandColor: typeof event.brandColor === 'string' ? event.brandColor : null, context });
+  const theme = resolveEventTheme({ brandColor: typeof event.brandColor === 'string' ? event.brandColor : null, context, emailFooterImageUrl: typeof event.emailFooterImageUrl === 'string' ? event.emailFooterImageUrl : null });
   return { ...theme, font: { ...theme.font, url: browserFontUrl(theme.font.file) } };
 }
 

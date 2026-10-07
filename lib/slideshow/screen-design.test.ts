@@ -79,3 +79,11 @@ test('the player gets the QR drawn, and nothing at all for a design that is not 
   assert.equal(resolveScreenDesign({ nonsense: true }), null);
   assert.equal(resolveScreenDesign(undefined), null);
 });
+
+test('the texts are written in the event\'s own font unless the design sets one', () => {
+  const noFont = { ...good, fontFamily: undefined };
+  const themeFont = { family: 'Inter', source: 'google' as const, url: null };
+  assert.deepEqual(resolveScreenDesign(noFont, themeFont)?.font, themeFont);
+  assert.equal(resolveScreenDesign(noFont)?.font, undefined, 'no font known: the player uses its default');
+  assert.equal(resolveScreenDesign({ ...good, fontFamily: 'Poppins' }, themeFont)?.fontFamily, 'Poppins', 'a font set on the design is kept next to the event font, and wins in the player');
+});
