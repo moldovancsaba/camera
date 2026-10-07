@@ -35,6 +35,15 @@ as a 264 KB JPEG made from the designers' 2.4 MB PNG (1254×1254), the two layer
 their sample selfie in its window, our QR code and "SZKENNELJ BE!" in the event font (1600×900 JPEG, `landing/mtk-vasas/screen/<sha256>.jpg`); replace it
 in the page's settings once the real picture (a real guest photo, the tracked QR link) exists.
 
+## The colour behind the page on a phone
+
+On iPhone Safari with the floating bottom bar (iOS 26) the page box (and anything `fixed`) ends above the bar, and Safari ignores `theme-color`: it tints
+its top and bottom from the body background or from a fixed element at the edge. The GDS provider wraps the app in a full-height div painted with
+Mantine's body colour (white), over the document background, so that wrapper showed as a white band between the page and the bar (owner, 2026-10-07,
+after #313 had fixed only the box height). `EventThemeScope` now renders `pageColourCss` (`lib/theme/css.ts`): the document and `--mantine-color-body`
+take the event's page colour, as the messmass report does (`html` background, transparent body). A page can still end above the bar (an iOS rule for
+fixed content); what shows below it is the page colour, never white. Not testable on a desktop: check on a phone.
+
 ## Known limits
 
 - The layers are 600 px wide: on a phone (3× screens) and on a large screen they are enlarged and look soft. Ask for 1800×1200.

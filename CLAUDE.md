@@ -205,6 +205,25 @@ Update the relevant existing doc (`ARCHITECTURE.md` for structural changes,
 and this file in the same change set whenever the behavior or workflow they
 describe changes.
 
+## 7. Guest pages on a phone: no band of another colour (owner directive 2026-10-07)
+
+A white band between a guest page and the browser's bottom bar reached the owner's phone twice (camera#313, then #316) because it was "fixed" from a
+desktop check. The rules, so it does not happen a third time:
+
+- **Every layer behind a guest page is the event's page colour, never the default white:** the document (`html`), the GDS provider's wrapper div (painted
+  with Mantine's `--mantine-color-body`, white by default, and it paints over the document), the body, the page box. `EventThemeScope` does this for
+  the document and the wrapper (`pageColourCss`, `lib/theme/css.ts`); a full-screen picture page uses `components/capture/FullScreenPage.tsx`. A new
+  guest page goes inside `EventThemeScope` and takes its colours from the theme variables (`--event-bg`), never a hard-coded colour.
+- **iPhone Safari 26 (floating bottom bar) works differently from a desktop browser:** it ignores `<meta name="theme-color">`; it tints its top and
+  bottom from the body background, or from a `fixed`/`sticky` element at the edge; `fixed` content, `100dvh` and `100lvh` stop above the bar and are not
+  drawn under it. So a page can end above the bar, and what is below must be the page colour. The messmass report is the working reference
+  (`html` background from `--page-bg`, transparent body; messmass `app/globals.css`).
+- **A desktop browser cannot show this.** Do not tell the owner such a layout is fixed on the strength of a desktop screenshot or a viewport
+  emulation. Check the DOM (no ancestor between the page and the document paints a colour other than the page colour: print the chain of `background-color`
+  from the page element up to `html`) and then say plainly that it is not confirmed on a phone until the owner's phone screenshot (or a working iOS
+  Simulator) shows it. Close the ticket only after that.
+- The regression test is `components/theme/EventThemeScope.test.tsx`; the explanation is in `docs/WELCOME_STEP.md` ("The colour behind the page on a phone").
+
 ## Next.js App Router: two `page.tsx` resolving to the same route fails silently
 
 A production outage in a sibling project (the `management` engine repo, 2026-08-20) traced back to this:

@@ -61,6 +61,19 @@ export function themeVariables(theme: EventTheme): Record<string, string> {
 }
 
 /**
+ * The page colour behind everything, for the part of the screen the page box does not reach (camera#316). The GDS provider wraps the app in a
+ * full-height div painted with Mantine's body colour (white), over the document's own background; on a phone with a floating bottom bar (iOS 26
+ * Safari) the page box ends above the bar while that wrapper reaches below it, and a white band showed under the picture (owner, 2026-10-07).
+ * So the document and Mantine's body colour take the page colour of the event, the way the messmass report does. A value that is not a hex colour
+ * gives no rule.
+ */
+export function pageColourCss(background: string): string {
+  return /^#[0-9a-f]{6}$/i.test(background)
+    ? `html:root[data-mantine-color-scheme] { --mantine-color-body: ${background}; background: ${background}; }`
+    : '';
+}
+
+/**
  * The rules that apply the variables to what is inside a `.event-theme` wrapper. Cards (Mantine Paper, which the GDS flow shell is) get
  * the card colours and the radius; filled buttons the button colours; text outside cards the heading colour on the page background.
  */
