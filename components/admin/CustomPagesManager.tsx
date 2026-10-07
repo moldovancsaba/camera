@@ -597,6 +597,8 @@ function PageEditModal({
   const [backgroundImageUrl, setBackgroundImageUrl] = useState(page.config.backgroundImageUrl || '');
   const [bottomImageUrl, setBottomImageUrl] = useState(page.config.bottomImageUrl || '');
   const [cornerImageUrl, setCornerImageUrl] = useState(page.config.cornerImageUrl || '');
+  const [screenImageUrl, setScreenImageUrl] = useState(page.config.screenImageUrl || '');
+  const [screenImageAlt, setScreenImageAlt] = useState(page.config.screenImageAlt || '');
   const [buttonColor, setButtonColor] = useState(page.config.buttonColor || '');
   const [buttonTextColor, setButtonTextColor] = useState(page.config.buttonTextColor || '');
   const [buttonBorderColor, setButtonBorderColor] = useState(page.config.buttonBorderColor || '');
@@ -658,6 +660,8 @@ function PageEditModal({
           backgroundImageUrl: backgroundImageUrl.trim() || undefined,
           bottomImageUrl: bottomImageUrl.trim() || undefined,
           cornerImageUrl: cornerImageUrl.trim() || undefined,
+          screenImageUrl: screenImageUrl.trim() || undefined,
+          screenImageAlt: screenImageAlt.trim() || undefined,
           buttonColor: buttonColor.trim() || undefined,
           buttonTextColor: buttonTextColor.trim() || undefined,
           buttonBorderColor: buttonBorderColor.trim() || undefined,
@@ -728,6 +732,13 @@ function PageEditModal({
                 onChange={setCornerImageUrl}
                 helper="Transparent PNG of the same size as the bottom layer, drawn over it at the same scale."
               />
+              <ImageUrlField
+                label="Giant screen picture"
+                value={screenImageUrl}
+                onChange={setScreenImageUrl}
+                helper="Shown on a 3D giant screen above the Start button (drawn by camera, tilted and swaying). 16:9 works best. Leave empty for no screen."
+              />
+              <Field label="Giant screen picture description" value={screenImageAlt} onChange={setScreenImageAlt} placeholder="What the screen shows, for screen readers" />
               <Field label="Start button colour" value={buttonColor} onChange={setButtonColor} placeholder="e.g., the club's official colour, as #RRGGBB" />
               <Field label="Start button label colour" value={buttonTextColor} onChange={setButtonTextColor} placeholder="#RRGGBB" />
               <Field label="Start button ring colour" value={buttonBorderColor} onChange={setButtonBorderColor} placeholder="#RRGGBB" />

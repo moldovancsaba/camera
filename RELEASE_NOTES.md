@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the giant screen as code on the welcome step (camera#315)
+
+- **Added:** the welcome step can show the stadium's giant screen above the Start button: a 16:9 LED wall drawn in CSS 3D (bezel, depth, pixel
+  grid, glass reflection, soft shadow) with one picture on its face, tilted towards the guest and swaying slowly (still when the device asks for less
+  motion). It is sized from the screen, so it keeps clear of the button and stays inside the screen on a phone in portrait and landscape, a tablet and
+  a desktop. New settings `screenImageUrl` and `screenImageAlt` on the welcome page (admin: Pages, Welcome step, "Giant screen picture"); without a
+  picture nothing changes. Verified on a production build at 390×844, 844×390, 768×1024 and 1920×1080 (no overlap with the button, no scrolling,
+  the picture loads). `components/capture/LedScreen3D.tsx`, `docs/WELCOME_STEP.md`.
+
 ## Unreleased — no white band behind the page on iPhone Safari (camera#316)
 
 - **Fixed:** on iPhone Safari with the floating bottom bar (iOS 26) a white band showed between the page (the welcome step, the loading screen, the other

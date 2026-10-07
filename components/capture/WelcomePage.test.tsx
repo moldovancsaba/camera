@@ -59,3 +59,12 @@ test('a colour that is not a hex colour is not used', async (t) => {
   assert.equal(safeColour(` ${hex('189CD8')} `, 'x'), hex('189CD8'));
   for (const bad of ['red', 'url(https://evil.example)', hex('12'), hex('123456789a'), '189cd8', 'red;background:url(x)', '', undefined]) assert.equal(safeColour(bad, 'fallback'), 'fallback', String(bad));
 });
+
+test('the giant screen is drawn above the button when the page has a screen picture, and not otherwise', async (t) => {
+  const { default: WelcomePage } = await load(t, 'screen');
+  const withScreen = renderToStaticMarkup(<WelcomePage config={{ ...config, screenImageUrl: IMG('screen'), screenImageAlt: 'The screen' }} onNext={() => undefined} />);
+  assert.match(withScreen, /data-led-screen/);
+  assert.ok(withScreen.indexOf('data-led-screen') < withScreen.indexOf('<button'), 'the screen comes before the button in the page');
+  assert.match(withScreen, /alt="The screen"/);
+  assert.equal(/data-led-screen/.test(renderToStaticMarkup(<WelcomePage config={config} onNext={() => undefined} />)), false);
+});

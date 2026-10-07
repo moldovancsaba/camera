@@ -10,6 +10,7 @@
 
 import Image from 'next/image';
 import FullScreenPage from '@/components/capture/FullScreenPage';
+import LedScreen3D from '@/components/capture/LedScreen3D';
 import PillButton, { safeColour } from '@/components/capture/PillButton';
 
 export interface WelcomePageConfig {
@@ -19,6 +20,9 @@ export interface WelcomePageConfig {
   backgroundImageUrl?: string;
   bottomImageUrl?: string;
   cornerImageUrl?: string;
+  /** The picture shown on the giant screen (a CSS 3D LED wall above the Start button); left out, no screen is drawn. */
+  screenImageUrl?: string;
+  screenImageAlt?: string;
   buttonColor?: string;
   buttonTextColor?: string;
   buttonBorderColor?: string;
@@ -43,6 +47,8 @@ export default function WelcomePage({ config, onNext }: WelcomePageProps) {
       ) : null}
       {config.bottomImageUrl ? <Image src={config.bottomImageUrl} alt="" width={600} height={400} unoptimized priority data-welcome-layer="bottom" style={layer} /> : null}
       {config.cornerImageUrl ? <Image src={config.cornerImageUrl} alt="" width={600} height={400} unoptimized priority data-welcome-layer="corner" style={layer} /> : null}
+
+      {config.screenImageUrl ? <LedScreen3D imageUrl={config.screenImageUrl} alt={config.screenImageAlt || ''} /> : null}
 
       <PillButton
         onClick={onNext}
