@@ -15,7 +15,7 @@
 import { useState } from 'react';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import CaptureStageShell from '@/components/capture/CaptureStageShell';
-import { Button, Divider, Group, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Button, Divider, Group, Stack, TextInput, Title } from '@mantine/core';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -120,25 +120,26 @@ export default function WhoAreYouPage({
       logoUrl={logoUrl}
     >
       {enableSSOLogin ? (
-        <Stack gap="sm">
-          <Text ta="center" size="sm" fw={600}>
+        <Stack gap="xs">
+          <Title order={4} ta="center">
             {socialHeading}
-          </Text>
-          <SocialLoginButtons variant="capture" beforeNavigate={beforeSocialNavigate} />
+          </Title>
+          <SocialLoginButtons beforeNavigate={beforeSocialNavigate} />
         </Stack>
       ) : null}
 
       {enableSSOLogin && enablePseudoReg ? <Divider label="OR" labelPosition="center" /> : null}
 
       {enablePseudoReg ? (
-        <Stack gap="md">
+        <Stack gap="sm">
           {enableSSOLogin ? (
-            <Title order={3} ta="center">
+            <Title order={4} ta="center">
               {pseudoFormTitle}
             </Title>
           ) : null}
 
           <TextInput
+            size="sm"
             label={config.nameLabel}
             value={name}
             onChange={(e) => {
@@ -157,6 +158,7 @@ export default function WhoAreYouPage({
           />
 
           <TextInput
+            size="sm"
             label={config.emailLabel}
             type="email"
             value={email}

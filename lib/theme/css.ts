@@ -127,4 +127,19 @@ export const EVENT_THEME_CSS = `
 .event-theme [data-event-stage] .mantine-Badge-root {
   display: none;
 }
+/* A smaller stage, so a whole step fits above the browser bar of a phone: tighter spacing, smaller titles. */
+.event-theme [data-event-stage] {
+  --mantine-spacing-lg: 1rem;
+  --mantine-spacing-md: 0.75rem;
+  --mantine-h2-font-size: 1.5rem;
+  --mantine-h4-font-size: 1rem;
+}
+/* The Google and Facebook buttons sit side by side, so the mark and the name are centred together, not pushed to the two edges. */
+.event-theme [data-event-stage] a.mantine-Button-root[href*='provider='] .mantine-Button-inner {
+  justify-content: center;
+  gap: 0.5rem;
+}
+.event-theme [data-event-stage] a.mantine-Button-root[href*='provider='] .mantine-Button-label {
+  flex: 0 1 auto;
+}
 `;

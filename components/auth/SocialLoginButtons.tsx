@@ -1,11 +1,13 @@
 'use client';
 
 /**
- * Google / Facebook entry points — same SSO OAuth flow as Amanoba (`provider` on authorize URL).
+ * Google / Facebook entry points — same SSO OAuth flow as Amanoba (`provider` on authorize URL). Two buttons side by side, with no
+ * heading of their own: the page that shows them says what they are for.
  */
 
 import type { MouseEvent } from 'react';
-import { SocialAuthButtons } from '@sovereignsquad/gds-core/client';
+import { SimpleGrid } from '@mantine/core';
+import { ProviderIdentityButton } from '@sovereignsquad/gds-core/client';
 
 import { socialLoginHref, type SocialLoginProvider } from '@/lib/auth/social-login';
 
@@ -14,14 +16,11 @@ export interface SocialLoginButtonsProps {
   fromLogout?: boolean;
   /** Before navigating away (e.g. set capture resume cookies) */
   beforeNavigate?: (provider: SocialLoginProvider) => void;
-  /** Visual style preset */
-  variant?: 'home' | 'capture';
 }
 
 export default function SocialLoginButtons({
   fromLogout,
   beforeNavigate,
-  variant = 'home',
 }: SocialLoginButtonsProps) {
   const googleHref = socialLoginHref('google', { fromLogout });
   const facebookHref = socialLoginHref('facebook', { fromLogout });
@@ -43,22 +42,10 @@ export default function SocialLoginButtons({
 
   return (
     <div onClickCapture={handleClickCapture}>
-      <SocialAuthButtons
-        providers={[
-          {
-            id: 'google',
-            href: googleHref,
-            label: 'Continue with Google',
-          },
-          {
-            id: 'facebook',
-            href: facebookHref,
-            label: 'Continue with Facebook',
-          },
-        ]}
-        layout={variant === 'capture' ? 'stack' : 'grid'}
-        compact={variant === 'capture'}
-      />
+      <SimpleGrid cols={2} spacing="sm">
+        <ProviderIdentityButton provider="google" href={googleHref} label="Google" ariaLabel="Continue with Google" size="sm" />
+        <ProviderIdentityButton provider="facebook" href={facebookHref} label="Facebook" ariaLabel="Continue with Facebook" size="sm" />
+      </SimpleGrid>
     </div>
   );
 }

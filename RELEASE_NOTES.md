@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — a smaller, tidier login step on the guest page
+
+- **Changed:** the "Who are you?" step fits a phone screen with the browser bar showing: the logo, the card spacing and the titles of every
+  guest stage are smaller (`[data-event-stage]` rules in `lib/theme/css.ts`, `CaptureStageShell`), and the form fields are the small size.
+- **Changed:** Google and Facebook are two buttons side by side, with no heading of their own ("Continue with a trusted provider" is gone).
+  "Log in with" and "Or use your email" are now the same size.
+- **Removed:** the unused `variant` option of `SocialLoginButtons`; the GDS `SocialAuthButtons` block is no longer used (it always drew its own
+  heading and divider, and stacked the buttons on a phone).
+
 ## Unreleased — the guest emails are drawn with the event's theme (J6)
 
 - **Changed:** the guest emails that carry a link (photo approved, photo not approved, and the "after save" / related-photos / try-on emails
