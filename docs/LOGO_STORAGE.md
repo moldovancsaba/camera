@@ -28,9 +28,17 @@ then show a broken logo.
 - Logos only: report images and fan selfies of messmass events, the try-on garments and the frame images are not moved (they are on imgbb or
   Blob as before).
 
-## Moving the existing logos
+## The move of 2026-10-07 (camera#305)
 
-The move reads every logo link of the messmass partners and of camera (partners, events, the logo library, landing pages), downloads each
-distinct file, stores it in the bucket under its hash, and replaces the old link in both databases, keeping the old-to-new table (the way
-back). A logo whose old link no longer answers is replaced by the badge the partner has from TheSportsDB (`sportsDb`), after a person has
-looked at it. See the release notes for the day it ran and its numbers.
+160 distinct logo links (351 references: messmass partners 144, camera partners 192, camera events 2, the logo library 12, one landing page)
+were downloaded, checked as real images, stored in the bucket under their hash, verified through the public address (hash, size and cache
+header, 159 of 159) and replaced in both databases. The one dead link (OTP Bank - PICK Szeged: imgbb answered 404 with its "image not found"
+picture) was replaced by the badge the partner has from TheSportsDB (`sportsDb.strBadge`), after a person looked at it. Camera then took a
+new snapshot of every event, so the guest pages and the frame images use the new links.
+
+The records of the move (every old link and the document that held it, the new links) and a script that puts every link back are kept in
+`/Users/Shared/Projects/logo-migration-2026-10-07/` on the machine that ran it. The files stay in the bucket either way.
+
+To do the same again (a new batch of links, or a new address): collect the distinct links of messmass partners and camera partners, events,
+logo library and landing pages, store each file with `storeLogo` (messmass `lib/logoStorage.ts`), check each through its public address, then
+replace the old link by the new one with `updateMany` per field, writing the rollback file first.
