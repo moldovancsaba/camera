@@ -9,6 +9,7 @@
  */
 
 import Image from 'next/image';
+import FullScreenPage from '@/components/capture/FullScreenPage';
 import PillButton, { safeColour } from '@/components/capture/PillButton';
 
 export interface WelcomePageConfig {
@@ -34,7 +35,7 @@ export default function WelcomePage({ config, onNext }: WelcomePageProps) {
   const layer = { position: 'absolute', left: 0, bottom: 0, width: '100%', height: 'auto', pointerEvents: 'none' } as const;
 
   return (
-    <main data-welcome-step style={{ position: 'fixed', inset: 0, overflow: 'hidden' }}>
+    <FullScreenPage marker={{ 'data-welcome-step': '' }}>
       <h1 className="sr-only">{config.title}</h1>
 
       {config.backgroundImageUrl ? (
@@ -48,10 +49,10 @@ export default function WelcomePage({ config, onNext }: WelcomePageProps) {
         fill={config.buttonColor}
         label={config.buttonTextColor}
         ring={config.buttonBorderColor}
-        style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
+        style={{ position: 'absolute', left: '50%', top: '50svh', transform: 'translate(-50%, -50%)' }}
       >
         {config.buttonText}
       </PillButton>
-    </main>
+    </FullScreenPage>
   );
 }
