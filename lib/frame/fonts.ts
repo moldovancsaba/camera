@@ -13,11 +13,13 @@ import type { FrameContext } from './context';
 
 export const FRAME_FONT_DIR = path.join(process.cwd(), 'assets', 'frame-fonts');
 
+// Static bold files, not the variable fonts: every message and team name is drawn at weight 700, and the canvas renderer ignores the weight
+// of a variable font (it draws its default instance: regular for Inter and Roboto, even thin for Montserrat), so the bold has to be a font of its own.
 const BUNDLED: Record<string, string> = {
-  inter: 'Inter.ttf',
-  roboto: 'Roboto.ttf',
+  inter: 'Inter-Bold.ttf',
+  roboto: 'Roboto-Bold.ttf',
   poppins: 'Poppins-Bold.ttf',
-  montserrat: 'Montserrat.ttf',
+  montserrat: 'Montserrat-Bold.ttf',
 };
 const FALLBACK = 'inter';
 export const EMOJI_ALIAS = 'frame-emoji';

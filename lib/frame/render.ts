@@ -11,7 +11,7 @@ import { EMOJI_ALIAS, ensureEmojiFont, type ResolvedFont } from './fonts';
 import { DEFAULT_FRAME_HEIGHT, DEFAULT_FRAME_WIDTH, layoutFrame, type FrameLayout } from './layout';
 
 /** Bump when the drawing changes, so stored images are regenerated. */
-export const FRAME_RENDER_VERSION = 3;
+export const FRAME_RENDER_VERSION = 4;
 
 export interface RenderedFrame {
   png: Buffer;

@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — generated frames draw their text in bold (camera#314)
+
+- **Fixed:** the text of a generated frame (the message, the team names) is drawn at weight 700, but the canvas renderer ignores the weight of a
+  variable font and draws its default instance: regular for Inter and Roboto, even thin for Montserrat. The bundled Inter, Roboto and
+  Montserrat are now static bold files (instances of the same fonts, weight 700), so the text is bold as intended. `FRAME_RENDER_VERSION` is 4: the
+  existing images are not redrawn by themselves, the "Redraw the older images" run of `/admin/frames/generated` brings them up to date. A test
+  keeps variable fonts out of `assets/frame-fonts`.
+
 ## Unreleased — no white strip under the welcome and CTA picture pages on a phone
 
 - **Fixed:** on iPhone Safari the welcome step (and a CTA page with a picture) stopped where the browser's bottom bar begins, and the white of the
