@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-07T13:28:03+00:00",
+  "generated": "2026-10-07T13:35:38+00:00",
   "repo": "camera",
-  "head": "373b954",
+  "head": "ee0bfca",
   "counts": {
    "endpoints": 109,
    "collections": 6,
    "env": 59,
    "outbound-hosts": 26,
-   "docs": 50
+   "docs": 51
   }
  },
  "items": [
@@ -99,6 +99,10 @@
   {
    "file": "docs/EVENT_EXPORTS.md",
    "title": "Event Data Exports \u2014 Low-Level Design"
+  },
+  {
+   "file": "docs/FRAME_BASE.md",
+   "title": "Frames from the designers' picture (frame base)"
   },
   {
    "file": "docs/GDS_CAMERA_ADOPTION.md",

@@ -34,6 +34,7 @@ function harness(over: Partial<VariantDeps> = {}) {
   const deps: VariantDeps = {
     upload: async (pathname) => (uploads.push(pathname), `https://blob.test/${pathname}`),
     fetchLogo: async (url) => (logoCalls.push(url), null),
+    fetchBaseImage: async () => null,
     resolveFont: (style) => resolveFrameFont(style),
     now: () => NOW,
     ...over,

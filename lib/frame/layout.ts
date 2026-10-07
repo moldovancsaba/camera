@@ -48,7 +48,7 @@ export interface FrameLayout {
   message: { text: string; fontSize: number; rect: Rect } | null;
 }
 
-export type LayerId = 'logo' | 'teams' | 'bar' | 'message';
+export type LayerId = 'logo' | 'teams' | 'bar' | 'message' | 'header' | 'footer';
 
 const SAFETY_MARGIN = 0.05;
 const LOGO_BOX = 0.15;

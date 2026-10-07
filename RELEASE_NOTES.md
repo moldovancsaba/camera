@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — frames from the designers' picture, with the message in the event's font (camera#311)
+
+- **Added:** a generated frame can be made from a designers' text-free picture instead of the generated layout (`frameDesign.base`, one picture
+  per colourway, a box for the message, optional territories). Each message is drawn into its picture in the event's font from its messmass
+  report style, stored like any generated frame, and picked at random at every shutter press as before. A design without a base is drawn and
+  keyed exactly as before (nothing is redrawn). The live view's territories can now also be a `header` and a `footer` band. See `docs/FRAME_BASE.md`.
+
 ## Unreleased — a picture for the CTA page and a footer picture for the guest emails (camera#310)
 
 - **Added:** a CTA page can have a background picture. It then fills the screen, with the page's title, text and buttons written over it in white

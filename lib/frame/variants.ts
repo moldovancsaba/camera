@@ -10,6 +10,7 @@ import { createHash } from 'node:crypto';
 import { put } from '@vercel/blob';
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { baseImageFor, parseFrameBase, renderBaseFrame } from './base';
 import { contextHash, type FrameDesign, type FrameVariant } from './context';
 import { resolveFrameFont, type ResolvedFont } from './fonts';
 import { DEFAULT_FRAME_HEIGHT, DEFAULT_FRAME_WIDTH, layerBoxes } from './layout';
@@ -21,6 +22,8 @@ import { FRAME_RENDER_VERSION, renderFrame } from './render';
 export interface VariantDeps {
   upload: (pathname: string, png: Buffer) => Promise<string>;
   fetchLogo: (url: string) => Promise<Buffer | null>;
+  /** The designers' base picture of a frame (lib/frame/base.ts); fetched like a logo (https, an allowed host, size capped). */
+  fetchBaseImage: (url: string) => Promise<Buffer | null>;
   resolveFont: (style: FrameDesign['context']['style']) => Promise<ResolvedFont>;
   now: () => string;
 }
@@ -29,6 +32,7 @@ const defaultDeps: VariantDeps = {
   upload: async (pathname, png) =>
     (await put(pathname, png, { access: 'public', contentType: 'image/png', addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 31536000 })).url,
   fetchLogo,
+  fetchBaseImage: (url) => fetchLogo(url),
   resolveFont: (style) => resolveFrameFont(style),
   now: () => new Date().toISOString(),
 };
@@ -41,9 +45,10 @@ export interface GenerateResult {
 
 /** Everything that decides the image: what is drawn, the message, the font actually used, the size and the drawing code. */
 export function variantKey(design: FrameDesign, message: string | null, font: ResolvedFont): string {
-  return createHash('sha256')
-    .update(JSON.stringify([contextHash(design.context), message, font.family, font.used, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT, FRAME_RENDER_VERSION]))
-    .digest('hex');
+  const decides: unknown[] = [contextHash(design.context), message, font.family, font.used, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT, FRAME_RENDER_VERSION];
+  // A base picture changes the image; a design without one keeps the key it always had, so nothing is redrawn.
+  if (design.base) decides.push(design.base);
+  return createHash('sha256').update(JSON.stringify(decides)).digest('hex');
 }
 
 /** A stored image can be reused when its key is unchanged and it was not a result of a failure that is worth retrying. */
@@ -70,6 +75,8 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
   const existing = design.variants ?? [];
   const variants: FrameVariant[] = [];
   let logoBytes: Buffer | null | undefined;
+  const base = parseFrameBase(design.base);
+  const baseBytes = new Map<string, Buffer>();
   let generated = 0;
 
   for (const job of jobs) {
@@ -77,6 +84,33 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
     const kept = existing.find((variant) => reusable(variant, key));
     if (kept) {
       variants.push({ ...kept, index: job.index });
+      continue;
+    }
+
+    if (base) {
+      // The designers' picture, with the message written in the event's font; a picture that cannot be fetched fails the run and leaves the images as they were.
+      const picture = baseImageFor(base, job.message);
+      let bytes = baseBytes.get(picture.imageUrl);
+      if (!bytes) {
+        bytes = (await deps.fetchBaseImage(picture.imageUrl)) ?? undefined;
+        if (!bytes) throw new Error('The base picture of the frame could not be fetched');
+        baseBytes.set(picture.imageUrl, bytes);
+      }
+      const rendered = await renderBaseFrame({ base, imageBytes: bytes, message: job.message, font });
+      const imageUrl = await deps.upload(`frames/generated/${event.eventId}/${key.slice(0, 32)}.png`, rendered.png);
+      variants.push({
+        index: job.index,
+        message: job.message,
+        imageUrl,
+        width: rendered.width,
+        height: rendered.height,
+        layers: rendered.layers,
+        key,
+        font: { family: font.family, used: font.used, note: font.note, retry: font.retry },
+        logo: 'none',
+        renderVersion: FRAME_RENDER_VERSION,
+      });
+      generated += 1;
       continue;
     }
 
