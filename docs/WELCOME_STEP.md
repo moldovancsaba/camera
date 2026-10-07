@@ -17,9 +17,11 @@ the middle. Start leads on to the next step (the login step of a vetted event, w
   bezel and depth, tilted towards the guest, swaying slowly, with a faint pixel grid and a reflection on the glass, showing the one picture above the Start
   button. Only CSS and that picture: nothing else is downloaded, it is sharp on any screen, and it holds still for a guest whose device asks for less
   motion. **The screen and the Start button are one group** (`data-welcome-group` in `WelcomePage`): a column, the screen above the button, centred as a
-  whole in the visible screen (horizontally and vertically, below the top inset of the notch), so on every device they sit in the middle together. The screen
-  is as wide as the smallest of 88% of the screen width, 60 rem, and what fits in the height together with the button and the margins (`--led-w`), so it
-  never touches the button or leaves the screen, in portrait, landscape, tablet and desktop. Leave `screenImageUrl` empty and the button alone is centred.
+  whole in the visible screen (horizontally and vertically, below the top inset of the notch), so on every device they sit in the middle together. The group is as
+  big as it can be: the screen is as wide as the smallest of 88% of the screen width, 90 rem, and what makes the group about 90% of the height of the page box
+  (`--led-w`, in `cqh`, 1% of the box height; `svh` is not used because it is about 100 pt too small on a phone held sideways, camera#318). So in portrait
+  it is as wide as the screen allows, and on a phone held sideways, a tablet or a desktop it fills the height, and it never touches the button or leaves the
+  screen. Leave `screenImageUrl` empty and the button alone is centred.
   `screenImageAlt` says what the picture shows, for screen readers.
 - **Title** (`title`): read by screen readers, not shown. The design carries no text; the only words on the page are the button label.
 
