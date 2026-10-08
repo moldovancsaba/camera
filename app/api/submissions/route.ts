@@ -38,6 +38,7 @@ import {
   checkRateLimit,
   RATE_LIMITS,
 } from '@/lib/api';
+import { safeLinkUrl } from '@/lib/events/consent';
 import { enqueueTryOnForSubmission, type TryOnPolicyEvent, type TryOnRequestDetails } from '@/lib/tryon/enqueue-for-submission';
 interface SubmissionEventDocument {
   _id: string;
@@ -276,6 +277,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           pageId: String(consent.pageId),
           pageType: consent.pageType,
           checkboxText: String(consent.checkboxText),
+          ...(safeLinkUrl(consent.linkUrl) ? { linkUrl: safeLinkUrl(consent.linkUrl) } : {}),
           accepted: true,
           acceptedAt:
             typeof consent.acceptedAt === 'string' && consent.acceptedAt.trim()

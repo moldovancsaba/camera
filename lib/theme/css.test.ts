@@ -61,3 +61,7 @@ test('every button of the flow is the Start design: a pill with a ring and bold 
   assert.equal(/mantine-Paper-root \.mantine-Button-root/.test(EVENT_THEME_CSS), false, 'no older card-only button colours that would undo the inverted design');
 });
 
+test('a ticked checkbox takes the event\'s button colours, not the default purple', () => {
+  assert.match(EVENT_THEME_CSS, /\.event-theme \.mantine-Checkbox-root \{\s*--checkbox-color: var\(--event-button-bg\) !important;\s*--checkbox-icon-color: var\(--event-button-text\) !important;/);
+});
+

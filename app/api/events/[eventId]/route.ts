@@ -30,7 +30,9 @@ import { normalizeEventSharePageSettings } from '@/lib/events/share-page-setting
 import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
 import { captureFrameOf } from '@/lib/frame/capture';
 import { normalizePhotoVettingInput, photoVettingRequired } from '@/lib/events/photo-vetting';
-import { withRequiredIdentityPage } from '@/lib/events/identity-page';
+import { withDefaultJourneyPages } from '@/lib/events/default-pages';
+import { sanitizeCheckboxes } from '@/lib/events/consent';
+import { eventGetsDefaults, getDefaultsRollout } from '@/lib/admin/defaults-rollout';
 import { loadEventTheme } from '@/lib/theme/load';
 import { needsThemeRefresh, refreshEventTheme } from '@/lib/theme/refresh';
 import { trackedSlugExists } from '@/lib/short-links/store';
@@ -184,13 +186,16 @@ export const GET = withErrorHandler(async (
     });
   }
 
+  // The default consent page comes with the journey defaults: an event created with them, or any event once the global switch is on (camera#330).
+  const consentDefault = forGuest ? eventGetsDefaults(event as { journeyDefaults?: unknown }, await getDefaultsRollout(db)) : false;
+
   // Return event with serialized _id
   // customPages is included automatically
   return apiSuccess({
     event: {
       ...publicEvent,
       theme: await loadEventTheme(db, event as unknown as Record<string, unknown>),
-      ...(forGuest ? { customPages: withRequiredIdentityPage(event.customPages as Parameters<typeof withRequiredIdentityPage>[0], vettingRequired) } : {}),
+      ...(forGuest ? { customPages: withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault }) } : {}),
       photoVettingRequired: vettingRequired,
       _id: event._id.toString(),
       generatedFrame: captureFrameOf({ frames: event.frames, frameDesign: frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'] }),
@@ -454,10 +459,12 @@ export const PATCH = withErrorHandler(async (
       }
 
       if (page.pageType === 'accept') {
-        // accept pages must have checkboxText
-        if (!page.config.checkboxText) {
-          throw apiBadRequest('accept pages must have checkboxText in config');
+        // accept pages need a checkbox: a list of checkboxes (each with a text and an optional https link, camera#330) or the single checkboxText
+        const checkboxes = sanitizeCheckboxes(page.config.checkboxes);
+        if (checkboxes.length === 0 && !page.config.checkboxText) {
+          throw apiBadRequest('accept pages must have checkboxText or checkboxes in config');
         }
+        page.config.checkboxes = checkboxes;
       }
       
       // CTA pages: checkboxText is optional (used as URL to visit)

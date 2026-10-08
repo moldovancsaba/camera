@@ -160,6 +160,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         iconKey: 'adjustments',
         isVisible: (access) => access.isGlobalAdmin,
       },
+      {
+        href: '/admin/settings/defaults',
+        label: 'Journey defaults',
+        description: 'The one switch that gives existing events the journey defaults, such as the consent page.',
+        iconKey: 'adjustments',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
     ],
   },
   {

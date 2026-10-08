@@ -156,6 +156,11 @@ export const EVENT_THEME_CSS = `
   --button-color: var(--event-button-bg) !important;
   --button-bd: var(--ring) solid var(--event-button-ring) !important;
 }
+/* A ticked checkbox takes the event's button colours, not the default purple (the consent page is the first page every user sees). */
+.event-theme .mantine-Checkbox-root {
+  --checkbox-color: var(--event-button-bg) !important;
+  --checkbox-icon-color: var(--event-button-text) !important;
+}
 .event-theme .mantine-Input-input,
 .event-theme .mantine-TextInput-input {
   background: var(--event-card-bg);

@@ -554,6 +554,8 @@ function PageEditModal({
   const [namePlaceholder, setNamePlaceholder] = useState(page.config.namePlaceholder || 'Enter your name');
   const [emailPlaceholder, setEmailPlaceholder] = useState(page.config.emailPlaceholder || 'your.email@example.com');
   const [checkboxText, setCheckboxText] = useState(page.config.checkboxText || '');
+  // The checkboxes of a consent page, each with an optional https link; all required (camera#330). Empty list: the single text above is the one checkbox.
+  const [checkboxes, setCheckboxes] = useState<Array<{ text: string; linkUrl: string }>>(() => (page.config.checkboxes ?? []).map((item) => ({ text: item.text, linkUrl: item.linkUrl ?? '' })));
   // For CTA pages: hasButton determines if button is shown (if false, it's an end page)
   const [hasButton, setHasButton] = useState(page.config.hasButton !== false);
   const [visitButtonText, setVisitButtonText] = useState(page.config.visitButtonText || 'Visit Now');
@@ -624,6 +626,10 @@ function PageEditModal({
         }),
         ...(page.pageType === CustomPageType.ACCEPT && {
           checkboxText,
+          checkboxes: checkboxes
+            .map((item) => ({ text: item.text.trim(), linkUrl: item.linkUrl.trim() }))
+            .filter((item) => item.text)
+            .map((item) => (item.linkUrl ? item : { text: item.text })),
         }),
         ...(page.pageType === CustomPageType.CTA && {
           checkboxText,
@@ -825,14 +831,51 @@ function PageEditModal({
         ) : null}
 
         {page.pageType === CustomPageType.ACCEPT ? (
-          <Area
-            label="Checkbox Text"
-            value={checkboxText}
-            onChange={setCheckboxText}
-            required
-            rows={2}
-            placeholder="e.g., I agree to the terms and conditions"
-          />
+          <>
+            <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                <h4 style={{ margin: 0 }}>Checkboxes (every one is required)</h4>
+                <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
+                  The user must tick every checkbox to continue. A link opens that page in a new tab. Leave the list empty to use the single text below.
+                </p>
+                {checkboxes.map((item, index) => (
+                  <div key={index} style={{ display: 'grid', gap: '0.5rem', borderTop: index > 0 ? '1px solid var(--gds-color-border)' : undefined, paddingTop: index > 0 ? '0.75rem' : 0 }}>
+                    <Field
+                      label={`Checkbox ${index + 1} text`}
+                      value={item.text}
+                      onChange={(value) => setCheckboxes((list) => list.map((entry, at) => (at === index ? { ...entry, text: value } : entry)))}
+                      placeholder="e.g., I accept the Terms and conditions"
+                    />
+                    <Field
+                      type="url"
+                      label={`Checkbox ${index + 1} link (https, optional)`}
+                      value={item.linkUrl}
+                      onChange={(value) => setCheckboxes((list) => list.map((entry, at) => (at === index ? { ...entry, linkUrl: value } : entry)))}
+                      placeholder="https://example.com/terms"
+                    />
+                    <div>
+                      <SemanticButton action="custom-pages:remove-checkbox" type="button" variant="secondary" onClick={() => setCheckboxes((list) => list.filter((_, at) => at !== index))}>
+                        Remove checkbox {index + 1}
+                      </SemanticButton>
+                    </div>
+                  </div>
+                ))}
+                <div>
+                  <SemanticButton action="custom-pages:add-checkbox" type="button" variant="secondary" onClick={() => setCheckboxes((list) => [...list, { text: '', linkUrl: '' }])} disabled={checkboxes.length >= 10}>
+                    Add a checkbox
+                  </SemanticButton>
+                </div>
+              </div>
+            </section>
+            <Area
+              label="Single checkbox text (used when the list above is empty)"
+              value={checkboxText}
+              onChange={setCheckboxText}
+              required={checkboxes.filter((item) => item.text.trim()).length === 0}
+              rows={2}
+              placeholder="e.g., I agree to the terms and conditions"
+            />
+          </>
         ) : null}
 
         {page.pageType === CustomPageType.CTA ? (

@@ -227,6 +227,8 @@ export interface CustomPage {
     emailPlaceholder?: string; // Placeholder for email input (e.g., "your.email@example.com")
     // For 'accept' type only
     checkboxText?: string;     // Text displayed next to checkbox (e.g., "I agree to...")
+    /** A list of required checkboxes, each with an optional https link to the page it names (camera#330); when empty, `checkboxText` is the one checkbox. */
+    checkboxes?: Array<{ text: string; linkUrl?: string }>;
     // For 'cta' type only
     // checkboxText is repurposed as URL to visit
     hasButton?: boolean;       // If false, CTA is end page (no continue button, auto-continues after URL visit)
@@ -299,6 +301,8 @@ export interface Event {
    */
   shortUrlSlug?: string | null;
   greatestHitsSlug?: string | null;
+  /** Set on events created with the journey defaults (the default consent page and the like); existing events get them through the global switch (lib/admin/defaults-rollout.ts). */
+  journeyDefaults?: boolean;
   /** What was last pushed to messmass from the tracked links of this event (camera#320, lib/short-links/sync.ts). */
   shortLinkSync?: { pushedAt: string; totals?: { visitQrCode: number; visitShortUrl: number; qrscanAndroid: number; qrscanIphone: number } };
 
@@ -559,6 +563,7 @@ export interface UserConsent {
   pageId: string;              // Reference to customPage that generated this consent
   pageType: 'accept' | 'cta';  // Type of page (for categorization)
   checkboxText: string;        // Exact text user agreed to (immutable record)
+  linkUrl?: string;            // The https address the checkbox linked to, when it had one (camera#330)
   accepted: boolean;           // Always true (required to proceed)
   acceptedAt: string;          // ISO 8601 timestamp when user checked the box
 }
