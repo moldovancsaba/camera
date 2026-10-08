@@ -98,7 +98,14 @@ const PROJECTION = { name: 1, messmassEventId: 1, frames: 1, isActive: 1, partne
 const sortKey = (event: Document) => String(event._id);
 
 async function listEvents(db: Db): Promise<Document[]> {
-  return (await db.collection(COLLECTIONS.EVENTS).find({}, { projection: PROJECTION }).toArray()).sort((a, b) => (sortKey(a) < sortKey(b) ? -1 : 1));
+  const events = (await db.collection(COLLECTIONS.EVENTS).find({}, { projection: PROJECTION }).toArray()).sort((a, b) => (sortKey(a) < sortKey(b) ? -1 : 1));
+  // A frame with a message area is a text-free frame that carries the messages of an event (camera#366), not a complete frame of the event's own: an event that only
+  // has such frames still gets the generated frame, so they do not count as "an active frame of its own" here.
+  const carriers = new Set(
+    (await db.collection(COLLECTIONS.FRAMES).find({ messageArea: { $exists: true } }, { projection: { frameId: 1 } }).toArray()).map((frame) => frame.frameId).filter((id): id is string => typeof id === 'string')
+  );
+  if (carriers.size === 0) return events;
+  return events.map((event) => (Array.isArray(event.frames) ? { ...event, frames: (event.frames as Array<{ frameId?: string }>).filter((row) => !carriers.has(String(row?.frameId))) } : event));
 }
 
 const PROBE_CONCURRENCY = 6;

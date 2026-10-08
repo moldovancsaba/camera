@@ -14,6 +14,8 @@ import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import GeneratedFramePanel from '@/components/admin/GeneratedFramePanel';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
+import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
+import type { MessageArea } from '@/lib/frame/message-area';
 import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
 import type { EventLibrary } from '@/lib/library/types';
 
@@ -44,6 +46,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
 
   useEffect(() => {
     params.then((resolved) => setEventId(resolved.id));
@@ -91,6 +94,11 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
     return act(() => call(`/api/events/${eventId}/frames/${frameId}`, { method: 'DELETE' }));
   };
   const toggle = (frameId: string) => act(() => call(`/api/events/${eventId}/frames/${frameId}/toggle`, { method: 'PATCH' }));
+  const saveMessageArea = async (frameId: string, messageArea: MessageArea | null) => {
+    await call(`/api/events/${eventId}/library/items/${frameId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'frames', messageArea }) });
+    setEditing(null);
+    await reload();
+  };
   const deleteUpload = (frameId: string, name: string) => {
     if (!confirm(`Delete "${name}"? It was uploaded for this event and is removed for good.`)) return Promise.resolve();
     return act(() => call(`/api/events/${eventId}/library/items/${frameId}?kind=frames`, { method: 'DELETE' }));
@@ -125,7 +133,12 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
         description={`The frames of ${eventName}. It takes them from the library of ${partnerName}, or you upload frames for this event only.`}
       />
 
-      <GeneratedFramePanel eventId={eventId} hasOwnActiveFrame={library.assigned.some((entry) => entry.assignment.isActive === true)} />
+      {/* A frame that carries messages is not a frame of the event's own (camera#366); the panel starts again when the frames change, so it offers the current ones. */}
+      <GeneratedFramePanel
+        key={library.assigned.map((entry) => `${entry.id}:${entry.assignment.isActive === true ? 1 : 0}:${entry.messageArea ? 1 : 0}`).join(',')}
+        eventId={eventId}
+        hasOwnActiveFrame={library.assigned.some((entry) => entry.assignment.isActive === true && entry.messageArea === null)}
+      />
 
       {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}
       {!library.partner ? <InlineAlert title="No partner" message="This event has no partner, so it has no library to take frames from. You can still upload frames for this event." severity="warning" /> : null}
@@ -168,9 +181,12 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                     thumbnailUrl={entry.thumbnailUrl}
                     noun="frame"
                     scope={entry.scope}
+                    wide={editing === entry.id}
+                    note={entry.messageArea ? 'Guests never pick this frame: the messages of this event are written on it.' : undefined}
                     badges={
                       <>
                         <LabelTag tone={active ? 'success' : 'neutral'} label={active ? 'Active' : 'Inactive'} />
+                        {entry.messageArea ? <LabelTag tone="info" label="Carries messages" /> : null}
                         {!entry.stillInPartnerLibrary ? <LabelTag tone="warning" label="No longer in the partner library" /> : null}
                         {!entry.itemActive ? <LabelTag tone="warning" label="Switched off in the library" /> : null}
                       </>
@@ -184,13 +200,22 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                           Remove frame
                         </SemanticButton>
                         {entry.scope === 'event' ? (
+                          <SemanticButton action="library:message-area" variant="secondary" size="xs" disabled={busy} onClick={() => setEditing(editing === entry.id ? null : entry.id)}>
+                            Message area
+                          </SemanticButton>
+                        ) : null}
+                        {entry.scope === 'event' ? (
                           <SemanticButton action="library:delete-upload" variant="danger" size="xs" disabled={busy} onClick={() => void deleteUpload(entry.id, entry.name)}>
                             Delete upload
                           </SemanticButton>
                         ) : null}
                       </>
                     }
-                  />
+                  >
+                    {editing === entry.id ? (
+                      <MessageAreaEditor pictureUrl={entry.imageUrl} name={entry.name} value={entry.messageArea} disabled={busy} onSave={(area) => saveMessageArea(entry.id, area)} onCancel={() => setEditing(null)} />
+                    ) : null}
+                  </LibraryItemCard>
                 );
               })}
             </div>
@@ -224,6 +249,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                   thumbnailUrl={item.thumbnailUrl}
                   noun="frame"
                   scope={item.scope}
+                  badges={item.messageArea ? <LabelTag tone="info" label="Carries messages" /> : undefined}
                   actions={
                     <SemanticButton action="event-frames:assign" size="xs" disabled={busy} onClick={() => void assign(item.id)}>
                       Assign frame

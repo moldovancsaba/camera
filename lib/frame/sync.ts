@@ -11,6 +11,7 @@ import { fetchFrameContext, messmassConfigured } from '@/lib/messmassClient';
 import { apiBadRequest } from '@/lib/api';
 import { nativeFrameContext, parseFrameContext, type FrameContext, type FrameDesign } from './context';
 import { DEFAULT_FRAME_MESSAGES, validateMessages } from './messages';
+import { validateMessageFrames } from './message-frames';
 
 export interface RefreshDeps {
   fetchContext: (messmassEventId: string) => Promise<unknown | null>;
@@ -72,6 +73,8 @@ export async function refreshFrameDesign(db: Db, event: Document, deps: RefreshD
     // their inputs change (generateFrameVariants), and until then the event keeps the frame it has.
     // The designers' base picture of the frame belongs to the event, not to the messmass snapshot: it stays too.
     ...(existing?.base ? { base: existing.base } : {}),
+    // The frames the messages chose belong to the event too (camera#366).
+    ...(existing?.messageFrames ? { messageFrames: existing.messageFrames } : {}),
     ...(existing?.variants ? { variants: existing.variants } : {}),
     ...(existing?.generatedAt ? { generatedAt: existing.generatedAt } : {}),
   };
@@ -82,11 +85,13 @@ export async function refreshFrameDesign(db: Db, event: Document, deps: RefreshD
 /**
  * Save the event's message list, or reset it to the default list. Throws a 400 for a list the editor may not save
  * (more than 10, empty, too long, unknown placeholder). The list counts as edited only when it differs from the default.
+ * `messageFrames` (camera#366) replaces the frame each message is written on; without it the choices stay for the messages that are still in the list,
+ * and a reset clears them. Throws a 400 for a frame that is not assigned to the event, switched off or without a message area.
  */
 export async function saveFrameMessages(
   db: Db,
   event: Document,
-  input: { messages?: unknown; reset?: unknown },
+  input: { messages?: unknown; reset?: unknown; messageFrames?: unknown },
   deps: RefreshDeps = defaultDeps
 ): Promise<FrameDesign> {
   const current: FrameDesign = (event.frameDesign as FrameDesign | undefined) ?? (await refreshFrameDesign(db, event, deps)).design;
@@ -98,15 +103,27 @@ export async function saveFrameMessages(
     if (!checked.ok) throw apiBadRequest(checked.error);
     messages = checked.messages;
   }
+  let chosen: Record<string, string> = input.reset === true ? {} : { ...(current.messageFrames ?? {}) };
+  if (input.reset !== true && input.messageFrames !== undefined) {
+    const checked = await validateMessageFrames(db, event, messages, input.messageFrames);
+    if (!checked.ok) throw apiBadRequest(checked.error);
+    chosen = checked.messageFrames;
+  }
+  // A choice belongs to a message text: it goes with the message when the message goes.
+  chosen = Object.fromEntries(Object.entries(chosen).filter(([message]) => messages.includes(message)));
+  const hasChoices = Object.keys(chosen).length > 0;
+
+  const { messageFrames: _previous, ...rest } = current;
+  void _previous;
   const design: FrameDesign = {
-    ...current,
+    ...rest,
     messages,
     messagesOverridden: !sameList(messages, DEFAULT_FRAME_MESSAGES),
     updatedAt: deps.now(),
+    ...(hasChoices ? { messageFrames: chosen } : {}),
   };
-  await db.collection(COLLECTIONS.EVENTS).updateOne(
-    { _id: event._id },
-    { $set: { 'frameDesign.messages': design.messages, 'frameDesign.messagesOverridden': design.messagesOverridden, 'frameDesign.updatedAt': design.updatedAt, updatedAt: design.updatedAt } }
-  );
+  const set: Record<string, unknown> = { 'frameDesign.messages': design.messages, 'frameDesign.messagesOverridden': design.messagesOverridden, 'frameDesign.updatedAt': design.updatedAt, updatedAt: design.updatedAt };
+  if (hasChoices) set['frameDesign.messageFrames'] = chosen;
+  await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: event._id }, hasChoices ? { $set: set } : { $set: set, $unset: { 'frameDesign.messageFrames': '' } });
   return design;
 }
