@@ -6,6 +6,8 @@ import { pwaPageColor, pwaShortName } from '@/lib/pwa/event-manifest';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { loadEventTheme } from '@/lib/theme/load';
 import EventThemeScope from '@/components/theme/EventThemeScope';
+import UiLanguageProvider from '@/components/i18n/UiLanguageProvider';
+import { normalizeUiLanguage } from '@/lib/i18n';
 
 function stripHtml(s: string): string {
   return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -123,5 +125,10 @@ export default async function CaptureEventLayout({
   // Every page of the guest journey is drawn with the theme of the event (camera#285).
   const db = await connectToDatabase();
   const theme = await loadEventTheme(db, event);
-  return <EventThemeScope theme={theme}>{children}</EventThemeScope>;
+  // ... and in the language of the event (camera#352).
+  return (
+    <EventThemeScope theme={theme}>
+      <UiLanguageProvider language={normalizeUiLanguage(event.uiLanguage)}>{children}</UiLanguageProvider>
+    </EventThemeScope>
+  );
 }

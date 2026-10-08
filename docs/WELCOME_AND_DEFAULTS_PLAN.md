@@ -140,6 +140,19 @@ Item numbers run continuously and never restart. A number can be commented on in
 | 93 | The frame notice and the try-on choice move to the one screen above the buttons; a failed save keeps the user on the screen with Continue ready. |
 | 94 | Decided by the owner on 2026-10-08: the old no-event page `/capture` has no zoom screen and no "Love it" screen (one preview with Save & Share and Download), so nothing is merged there; the pledge wall checkbox is **removed there too** (that page has no consent step, so its photos are now always shown on the wall; the owner chose this knowing it). |
 
+### Part 5: UI language (#352, #353, MTK request 2026-10-08)
+
+| # | Decision |
+|---|---|
+| 100 | The event gets a **UI language** (`uiLanguage`: `en` default, `hu`). Every default text of the user journey, the public photo page and the user emails comes from a dictionary in that language; a text an editor wrote for the event still wins (rule 18). A stored text that is exactly the English default counts as not set in another language (the page editor saved the defaults as if they were the editor's own). |
+| 101 | Hungarian is informal (te), in one dictionary file (`lib/i18n/messages.hu.ts`) for MTK to review. |
+| 102 | Scope: the user flow, the public photo page and the user emails; the consent boxes link to the Hungarian legal pages. Not the admin. |
+| 103 | The real MTK Budapest x Vasas FC event is switched to Hungarian only after it is verified in a browser and in the emails. |
+| 104 | Partner setting: the default UI language of its events (#353). |
+| 105 | Event editor: "same as the partner" or its own language (override flag, like `logosOverridden`). |
+| 106 | No partner setting means English. |
+| 107 | Open: what "communication style" means: the tone of a language (te or Ön), or the partner's own default texts. |
+
 ### Delivery
 
 80. **Proposed delivery order** (the owner to confirm, item 81). Each step is its own pull request, merged only with the owner's yes, and starts with the check of what exists (item 20):

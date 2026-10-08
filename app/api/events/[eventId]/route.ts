@@ -27,6 +27,7 @@ import { normalizeEventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-po
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
+import { isUiLanguage, UI_LANGUAGES } from '@/lib/i18n';
 import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
 import { captureFrameOf } from '@/lib/frame/capture';
 import { normalizePhotoVettingInput, photoVettingRequired } from '@/lib/events/photo-vetting';
@@ -269,6 +270,7 @@ export const PATCH = withErrorHandler(async (
     visualSettings,
     sharePage,
     photoVetting,
+    uiLanguage,
   } = body;
 
   const tryOnSetupId =
@@ -393,6 +395,16 @@ export const PATCH = withErrorHandler(async (
     updateFields.notifications = normalizeEventNotificationSettings(notifications);
   }
 
+  // The language of the user interface (camera#352): a language we have, or empty for the default (English).
+  if (uiLanguage !== undefined) {
+    if (uiLanguage === null || uiLanguage === '') {
+      updateFields.uiLanguage = null;
+    } else if (isUiLanguage(uiLanguage)) {
+      updateFields.uiLanguage = uiLanguage;
+    } else {
+      throw apiBadRequest('uiLanguage must be one of: ' + UI_LANGUAGES.join(', '));
+    }
+  }
   if (visualSettings !== undefined) {
     updateFields.visualSettings = normalizeEventVisualSettings(visualSettings);
   }

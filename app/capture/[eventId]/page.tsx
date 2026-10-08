@@ -34,6 +34,7 @@ import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoA
 import AcceptPage, { type AcceptPageData } from '@/components/capture/AcceptPage';
 import { consentRecords } from '@/lib/events/consent';
 import { approvalTexts } from '@/lib/events/page-texts';
+import { useT } from '@/components/i18n/UiLanguageProvider';
 import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
 import RestartPage from '@/components/capture/RestartPage';
 import WelcomePage from '@/components/capture/WelcomePage';
@@ -244,6 +245,7 @@ export default function EventCapturePage({
   params: Promise<{ eventId: string }>;
 }) {
   const { eventId } = use(params);
+  const { t, own } = useT();
   
   const [event, setEvent] = useState<EventData | null>(null);
   const [loadingLogoUrl, setLoadingLogoUrl] = useState<string | null>(null);
@@ -1336,7 +1338,7 @@ export default function EventCapturePage({
               />
             </div>
           ) : null}
-          <p className=" text-2xl">{event?.loadingText || 'Loading event...'}</p>
+          <p className=" text-2xl">{own('event.loading', event?.loadingText)}</p>
         </div>
       </div>
     );
@@ -1347,10 +1349,10 @@ export default function EventCapturePage({
       <div className="flex min-h-dvh items-center justify-center bg-transparent p-4">
         <div className="text-center max-w-md">
           <h2 className="text-2xl font-bold  mb-2">
-            Event Not Found
+            {t('event.notFound.title')}
           </h2>
           <p className="">
-            This event could not be loaded.
+            {t('event.notFound.text')}
           </p>
         </div>
       </div>
