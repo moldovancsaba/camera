@@ -36,8 +36,9 @@ colours. `WelcomePage.test.tsx` keeps the rule ("every element is optional").
 
 ## Setting it up
 
-Admin, event, Pages (custom pages): "+ Welcome (step 0)" adds the page as the first step; the pictures can be pasted as addresses or uploaded
-(PNG, JPEG or WebP, up to 4 MB, through `/api/upload-logo`). A vetted event shows its default login step right after the welcome step
+Admin, event, Pages (custom pages): "+ Welcome (step 0)" adds the page as the first step; each picture has a picture picker: chosen from the event's
+images library (its partner's library and its own uploads, `docs/LIBRARIES.md`), uploaded there (PNG, JPEG, WebP or SVG, up to 4 MB), or pasted as an
+address, and stored as the plain address either way. A vetted event shows its default login step right after the welcome step
 (`withRequiredIdentityPage`, `lib/events/identity-page.ts`); an event with its own login page keeps it. After the last photo the guest goes
 straight to the camera again, not back to the welcome step.
 

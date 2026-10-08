@@ -287,6 +287,7 @@ Core collections:
 - `events`
 - `frames`
 - `logos`
+- `images` (the Images library: pictures the picture fields choose; docs/LIBRARIES.md)
 - `submissions`
 - `slideshows`
 - `slideshow_layouts`
@@ -309,7 +310,8 @@ Schema definitions live in [lib/db/schemas.ts](lib/db/schemas.ts).
 
 **Libraries.** `frames` and `logos` form three levels, Global -> Partner -> Event, one way only (camera#361): an item is global unless it carries `scope`
 `partner` or `event`; a partner's library is `Partner.library` plus its own uploads; an event takes items from its partner's library or uploads its own
-(`Event.frames[]`, `Event.logos[]`). See [docs/LIBRARIES.md](docs/LIBRARIES.md); the code is in `lib/library/`.
+(`Event.frames[]`, `Event.logos[]`). See [docs/LIBRARIES.md](docs/LIBRARIES.md); the code is in `lib/library/`. `images` has the same three levels but is
+not assigned to an event: a picture field keeps the plain address of one picture, chosen with the picture picker (`components/admin/library/ImagePicker.tsx`).
 
 ## 9. Submission pipeline
 
@@ -354,6 +356,7 @@ Major API groups:
 - events: `/api/events/**`
 - frames: `/api/frames/**` (the global library)
 - libraries: `/api/partners/[partnerId]/library/**` and `/api/events/[eventId]/library/**` (docs/LIBRARIES.md)
+- images: `/api/images/**` (the global Images library)
 - logos: `/api/logos/**`
 - submissions: `/api/submissions/**`
 - slideshows: `/api/slideshows/**`
