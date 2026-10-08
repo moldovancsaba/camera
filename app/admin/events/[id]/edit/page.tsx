@@ -35,10 +35,6 @@ import { FormSection } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import type { TryOnSetup } from '@/lib/db/schemas';
-import {
-  CAMERA_DEFAULT_BRAND_BORDER_COLOR,
-  CAMERA_DEFAULT_BRAND_COLOR,
-} from '@/lib/gds/tokens/colors';
 import type { TryOnSuitOption } from '@/lib/tryon/suits';
 import type { EventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 import {
@@ -91,8 +87,10 @@ interface EventRecord {
   logoUrl?: string;
   emailFooterImageUrl?: string | null;
   showLogo?: boolean;
-  brandColor?: string;
-  brandBorderColor?: string;
+  brandColor?: string | null;
+  brandBorderColor?: string | null;
+  /** The theme the guest pages get (the event API returns it): its button colours are what the colour boxes start from (camera#380). */
+  theme?: { buttonBackground?: string; buttonRing?: string };
   shortUrlSlug?: string;
   greatestHitsSlug?: string;
   eventId?: string;
@@ -170,8 +168,12 @@ export default function EditEventPage({
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [emailFooterImageUrl, setEmailFooterImageUrl] = useState('');
-  const [brandColor, setBrandColor] = useState(CAMERA_DEFAULT_BRAND_COLOR);
-  const [brandBorderColor, setBrandBorderColor] = useState(CAMERA_DEFAULT_BRAND_BORDER_COLOR);
+  // The brand colours come from messmass by default (camera#380): the boxes only matter while this event has colours of its own, and a save that did not touch
+  // them sends none, so the default can never be stored as if somebody had picked it.
+  const [ownColours, setOwnColours] = useState(false);
+  const [coloursTouched, setColoursTouched] = useState(false);
+  const [brandColor, setBrandColor] = useState('');
+  const [brandBorderColor, setBrandBorderColor] = useState('');
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
   const [tryOnOutfitEnabled, setTryOnOutfitEnabled] = useState(false);
@@ -272,8 +274,10 @@ export default function EditEventPage({
         setCustomPages(eventData.customPages || []);
         setLogoPreview(eventData.logoUrl || null);
         setEmailFooterImageUrl(eventData.emailFooterImageUrl || '');
-        setBrandColor(eventData.brandColor || CAMERA_DEFAULT_BRAND_COLOR);
-        setBrandBorderColor(eventData.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR);
+        setOwnColours(Boolean(eventData.brandColor || eventData.brandBorderColor));
+        setColoursTouched(false);
+        setBrandColor(eventData.brandColor || eventData.theme?.buttonBackground || '');
+        setBrandBorderColor(eventData.brandBorderColor || eventData.theme?.buttonRing || '');
         setTryOnEnabled(Boolean(eventData.tryOn?.enabled));
         setTryOnOutfitEnabled(eventData.tryOn?.outfitEnabled === true);
         setTryOnSetupId(eventData.tryOn?.setupId || '');
@@ -531,8 +535,8 @@ export default function EditEventPage({
       logoUrl,
       emailFooterImageUrl: emailFooterImageUrl.trim() || null,
       showLogo: formData.get('showLogo') === 'on',
-      brandColor: brandColor || undefined,
-      brandBorderColor: brandBorderColor || undefined,
+      // Only when the colours were touched: null clears them, so the event follows messmass (or the default of its partner) again.
+      ...(coloursTouched ? { brandColor: ownColours ? brandColor || null : null, brandBorderColor: ownColours ? brandBorderColor || null : null } : {}),
       shortUrlSlug: (formData.get('shortUrlSlug') as string) ?? '',
       greatestHitsSlug: (formData.get('greatestHitsSlug') as string) ?? '',
       tryOn: {
@@ -793,12 +797,25 @@ export default function EditEventPage({
             <Text size="xs" c="dimmed">
               Used across the event experience: buttons, inputs, checkboxes, and the camera interface.
             </Text>
+            <Checkbox
+              checked={!ownColours}
+              onChange={(changed) => {
+                setOwnColours(!changed.currentTarget.checked);
+                setColoursTouched(true);
+              }}
+              label="Use the colours of the messmass style"
+              description="On by default: the colours come from the style of this event's report in messmass. Switch it off to set your own colours for this event. The colours of the Start button on the welcome page, when it sets any, come first."
+            />
             <Grid>
               <Grid.Col span={{ base: 12, md: 6 }}>
                 <ColorInput
                   label="Primary color"
                   value={brandColor}
-                  onChange={setBrandColor}
+                  onChange={(value) => {
+                    setBrandColor(value);
+                    setColoursTouched(true);
+                  }}
+                  disabled={!ownColours}
                   description="Buttons, capture fill, and focus states."
                 />
               </Grid.Col>
@@ -806,7 +823,11 @@ export default function EditEventPage({
                 <ColorInput
                   label="Border / accent color"
                   value={brandBorderColor}
-                  onChange={setBrandBorderColor}
+                  onChange={(value) => {
+                    setBrandBorderColor(value);
+                    setColoursTouched(true);
+                  }}
+                  disabled={!ownColours}
                   description="Input borders, checkboxes, and capture button border."
                 />
               </Grid.Col>

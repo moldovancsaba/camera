@@ -410,8 +410,13 @@ export interface Event {
   
   // Brand colors
   // Used throughout the event experience for consistent branding
-  brandColor?: string;               // Primary brand color hex - used for buttons, focus states
-  brandBorderColor?: string;         // Border/accent color hex - used for borders, outlines
+  /**
+   * The event's OWN brand colours (camera#380), only ever deliberate: by default they are missing (null or absent) and the colours come from messmass, so the
+   * guest pages follow the style of the event's report. A colour set here (or inherited from the partner's default) comes before the messmass style, and
+   * after the colours of the Start button of the welcome page.
+   */
+  brandColor?: string | null;        // Primary brand color hex - used for buttons, focus states
+  brandBorderColor?: string | null;  // Border/accent color hex - used for borders, outlines
   visualSettings?: {
     buttonSize: 'xs' | 'sm' | 'md' | 'lg' | 'xl'; // Event action button size, rendered through GDS/Mantine buttons
   };

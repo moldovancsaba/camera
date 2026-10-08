@@ -5,13 +5,16 @@
  */
 
 import { NextRequest } from 'next/server';
+import { ObjectId } from 'mongodb';
 import {
   withErrorHandler,
   requireAuth,
   validateRequiredFields,
   apiSuccess,
   apiBadRequest,
+  apiNotFound,
 } from '@/lib/api';
+import { COLLECTIONS } from '@/lib/db/schemas';
 import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { resetEventStyleToDefault } from '@/lib/db/events';
@@ -26,7 +29,7 @@ import { resetEventStyleToDefault } from '@/lib/db/events';
  * This endpoint:
  * 1. Clears custom values for the specified style field
  * 2. Sets the override flag to false so the event inherits partner defaults again
- * 3. Applies partner's current default values
+ * 3. Applies partner's current default values (for the brand colours: none when the partner has none, so the event follows messmass)
  * 
  * Use case: User wants to revert custom changes and re-inherit from partner
  */
@@ -36,8 +39,12 @@ export const POST = withErrorHandler(async (
 ) => {
   const session = await requireAuth();
   const { eventId } = await params;
+  if (!ObjectId.isValid(eventId)) throw apiBadRequest('Invalid event ID format');
   const db = await connectToDatabase();
   await assertGlobalAdminOrPartnerEventAccess(db, session, eventId, 'manager');
+  // The address carries the event's Mongo id; the reset looks the event up by its UUID (camera#380: it used to be given the Mongo id and found nothing).
+  const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(eventId) }, { projection: { eventId: 1 } });
+  if (!event) throw apiNotFound('Event');
   
   // Parse request body
   const body = await request.json();
@@ -55,7 +62,7 @@ export const POST = withErrorHandler(async (
   }
 
   // Reset style to partner default
-  const updatedEvent = await resetEventStyleToDefault(eventId, styleField);
+  const updatedEvent = await resetEventStyleToDefault(String(event.eventId), styleField);
 
   return apiSuccess({
     event: updatedEvent,

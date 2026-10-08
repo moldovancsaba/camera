@@ -9,12 +9,17 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SemanticButton, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
+import CameraSemanticButton from '@/components/gds/CameraSemanticButton';
 
 interface StyleInheritanceIndicatorProps {
   styleField: 'brandColors' | 'frames' | 'logos';
   isOverridden: boolean;
   eventId: string;
   partnerName: string;
+  /** Brand colours: the event has no colours of its own, so it follows the messmass style (camera#380). */
+  followsMessmass?: boolean;
+  /** Brand colours: some colour is stored on the event (its own, or the default of its partner). */
+  hasOwnValue?: boolean;
 }
 
 export default function StyleInheritanceIndicator({
@@ -22,6 +27,7 @@ export default function StyleInheritanceIndicator({
   isOverridden,
   eventId,
   partnerName,
+  followsMessmass = false,
 }: StyleInheritanceIndicatorProps) {
   const router = useRouter();
   const [isResetting, setIsResetting] = useState(false);
@@ -40,8 +46,11 @@ export default function StyleInheritanceIndicator({
 
   const handleReset = async () => {
     const confirmed = await confirm({
-      title: 'Reset style inheritance',
-      message: `Reset ${fieldNames[styleField]} to ${partnerName}'s default?`,
+      title: styleField === 'brandColors' ? 'Use the default colours' : 'Reset style inheritance',
+      message:
+        styleField === 'brandColors'
+          ? `Remove the colours of this event? It will use the default colours of ${partnerName}, or the colours of its messmass style when ${partnerName} has none.`
+          : `Reset ${fieldNames[styleField]} to ${partnerName}'s default?`,
       confirmAction: 'reset',
     });
     if (!confirmed) {
@@ -69,15 +78,17 @@ export default function StyleInheritanceIndicator({
     }
   };
 
+  const source = isOverridden ? 'Custom' : followsMessmass && styleField === 'brandColors' ? 'From messmass' : `From ${partnerName}`;
   return (
     <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-xs)' }}>
-      <span title={isOverridden ? 'Custom' : `Using ${partnerName} default`}>
-        {isOverridden ? '🔴' : '🟢'}
-      </span>
-      <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)' }}>
-        {isOverridden ? 'Custom' : `From ${partnerName}`}
-      </span>
-      {isOverridden ? (
+      <span title={source}>{isOverridden ? '🔴' : '🟢'}</span>
+      <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: 'var(--mantine-font-size-xs)' }}>{source}</span>
+      {isOverridden && styleField === 'brandColors' ? (
+        <CameraSemanticButton action="style-sections:use-default-colours" size="xs" onClick={() => void handleReset()} loading={isResetting}>
+          Use the default colours
+        </CameraSemanticButton>
+      ) : null}
+      {isOverridden && styleField !== 'brandColors' ? (
         <SemanticButton action="reset" size="xs" onClick={() => void handleReset()} loading={isResetting}>
           {isResetting ? 'Resetting...' : 'Reset to Partner Default'}
         </SemanticButton>

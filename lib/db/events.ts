@@ -10,8 +10,9 @@ import { COLLECTIONS, Event, Partner, LogoScenario, generateTimestamp } from './
 
 interface EventUpdatePayload {
   updatedAt: string;
-  brandColor?: string;
-  brandBorderColor?: string;
+  /** `null` clears a colour: the event then follows messmass (camera#380). */
+  brandColor?: string | null;
+  brandBorderColor?: string | null;
   frames?: Array<{
     frameId: string;
     isActive: boolean;
@@ -71,11 +72,12 @@ interface InheritedDefaults {
 export async function updateChildEventsFromPartner(
   partnerId: string,
   updates: {
+    /** `null` means the partner has no default colours: the events that follow it follow messmass again (camera#380). */
     defaultBrandColors?: {
       primary?: string;
       secondary?: string;
       accent?: string;
-    };
+    } | null;
     defaultFrames?: string[];
     defaultLogos?: Array<{
       logoId: string;
@@ -107,10 +109,10 @@ export async function updateChildEventsFromPartner(
       updatedAt: now,
     };
 
-    // Update brand colors if not overridden and defaults provided
-    if (updates.defaultBrandColors && !event.brandColorsOverridden) {
-      eventUpdates.brandColor = updates.defaultBrandColors.primary;
-      eventUpdates.brandBorderColor = updates.defaultBrandColors.secondary;
+    // Update brand colors if not overridden and defaults provided (or removed: then the event has none and follows messmass)
+    if (updates.defaultBrandColors !== undefined && !event.brandColorsOverridden) {
+      eventUpdates.brandColor = updates.defaultBrandColors?.primary ?? null;
+      eventUpdates.brandBorderColor = updates.defaultBrandColors?.secondary ?? null;
       result.brandColorsUpdated++;
     }
 
@@ -275,15 +277,10 @@ export async function resetEventStyleToDefault(
   // Reset based on style field
   switch (styleField) {
     case 'brandColors':
+      // The event's own colours go. It takes the default of its partner when the partner has one; else it has no colours and follows messmass (camera#380).
       eventUpdates.brandColorsOverridden = false;
-      if (partner.defaultBrandColors) {
-        if (partner.defaultBrandColors.primary) {
-          eventUpdates.brandColor = partner.defaultBrandColors.primary;
-        }
-        if (partner.defaultBrandColors.secondary) {
-          eventUpdates.brandBorderColor = partner.defaultBrandColors.secondary;
-        }
-      }
+      eventUpdates.brandColor = partner.defaultBrandColors?.primary || null;
+      eventUpdates.brandBorderColor = partner.defaultBrandColors?.secondary || null;
       break;
 
     case 'frames':

@@ -23,6 +23,7 @@ import {
 import { assertPartnerMongoWorkspaceAccess } from '@/lib/partners/authorization';
 import { pushPartnerToMessmass } from '@/lib/messmassClient';
 import { partnerLibraryIds } from '@/lib/library/db';
+import { parsePartnerBrandDefaults } from '@/lib/events/brand-colours';
 
 export const GET = withErrorHandler(async (
   _request: NextRequest,
@@ -106,7 +107,13 @@ export const PATCH = withErrorHandler(async (
   if (contactName !== undefined) updates.contactName = contactName?.trim() || null;
   if (logoUrl !== undefined) updates.logoUrl = logoUrl?.trim() || null;
   if (isActive !== undefined) updates.isActive = Boolean(isActive);
-  if (defaultBrandColors !== undefined) updates.defaultBrandColors = defaultBrandColors;
+  // The default colours of the partner's events (camera#380): by default none, so the events follow messmass; only a colour somebody picked is stored.
+  let brandDefaults: ReturnType<typeof parsePartnerBrandDefaults> | undefined;
+  if (defaultBrandColors !== undefined) {
+    brandDefaults = parsePartnerBrandDefaults(defaultBrandColors);
+    if (!brandDefaults.ok) throw apiBadRequest(brandDefaults.error);
+    updates.defaultBrandColors = brandDefaults.value;
+  }
   if (defaultFrames !== undefined) updates.defaultFrames = defaultFrames;
   if (defaultLogos !== undefined) updates.defaultLogos = defaultLogos;
 
@@ -165,7 +172,7 @@ export const PATCH = withErrorHandler(async (
   let cascadeResult;
   if (defaultBrandColors !== undefined || defaultFrames !== undefined || defaultLogos !== undefined) {
     const cascadeUpdates: Record<string, unknown> = {};
-    if (defaultBrandColors !== undefined) cascadeUpdates.defaultBrandColors = defaultBrandColors;
+    if (brandDefaults?.ok) cascadeUpdates.defaultBrandColors = brandDefaults.value;
     if (defaultFrames !== undefined) cascadeUpdates.defaultFrames = defaultFrames;
     if (defaultLogos !== undefined) cascadeUpdates.defaultLogos = defaultLogos;
     cascadeResult = await updateChildEventsFromPartner(existingPartner.partnerId, cascadeUpdates);

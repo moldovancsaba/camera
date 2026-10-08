@@ -95,6 +95,7 @@ export const cameraAdminVocabularyPacks = [
   }),
   createGdsVocabularyPack('style-sections', {
     'edit-colors': { defaultMessage: 'Edit colors', icon: GdsIcons.Edit, feedback: openedFeedback },
+    'use-default-colours': { defaultMessage: 'Use the default colours', icon: GdsIcons.Refresh, feedback: savedFeedback },
     'manage-frames': { defaultMessage: 'Manage frames', icon: GdsIcons.Gallery, feedback: openedFeedback },
     'assign-frames': { defaultMessage: 'Assign frames', icon: GdsIcons.Add, feedback: savedFeedback },
     'manage-frame-assignments': { defaultMessage: 'Manage frame assignments', icon: GdsIcons.Settings, feedback: openedFeedback },
