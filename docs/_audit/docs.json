@@ -1,8 +1,8 @@
 {
  "_meta": {
-  "generated": "2026-10-08T10:48:09+00:00",
-  "repo": "camera-hu",
-  "head": "44f5caf",
+  "generated": "2026-10-08T10:48:28+00:00",
+  "repo": "camera",
+  "head": "1f06fe3",
   "counts": {
    "endpoints": 118,
    "collections": 7,
