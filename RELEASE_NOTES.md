@@ -1,6 +1,6 @@
 # RELEASE_NOTES.md
 
-## Unreleased — the one-time "Photo vetting" entry leaves the sidebar
+## Unreleased — the one-time "Photo vetting" entry leaves the sidebar (camera#371)
 
 - **Changed (owner, 2026-10-08):** the sidebar entry "Photo vetting" (Operations) opened only the one-time rollout page that switched vetting on for the events that existed, and it read as if it were the place where photos are approved. The rollout is done (214 of 214 events require vetting, every new event starts with it on), so the entry is gone from the sidebar. The page stays at `/admin/photo-vetting` for emergencies, and nothing about vetting changes: photos still wait for approval, the approval list is the event's own Vetting tab, and the admin home shows how many wait.
 - **Verified:** type-check, lint and the full chain; counted read-only on the live data (214 of 214 events require vetting, MTK Budapest x Vasas FC included; no photo is waiting). Not seen by the owner: the sidebar after the change.
