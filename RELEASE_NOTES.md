@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — vetting: approving no longer waits for imgbb, locks only its own photo and the page follows (camera#342)
+
+- **Fixed (owner report, 2026-10-08):** on the vetting page the approval worked but took long, every button was greyed meanwhile and the page had to be reloaded by hand. The upload waited for the imgbb courtesy copy (up to three attempts of 30 s; imgbb's upload API is slow today); it now waits at most 5 s (`mirrorWaitMs`) and goes on with the Vercel Blob picture, which is the source of truth. This applies to every upload; a copy that arrives late is dropped.
+- **Changed:** a decision locks only its own photo, so the next photo can be approved or rejected while one is being made; the card says "Now: Approving… please wait" (the buttons show their fixed labels). After every decision the page reloads its data from the server, so the counts of the tabs and the list are right without a manual reload, and when no answer arrives within 2 minutes (a dropped connection) the notice says the photo may have been decided anyway and the list shows what the server holds.
+- **Verified:** unit tests for the upload (a mirror that never answers does not delay it, a mirror that answers in time is kept); a real browser on the built page with mocked answers and nothing written: slow answer, next photo approved meanwhile, lost answer, reject and bulk approve. Not yet seen on the owner's phone.
+
 ## Unreleased — the consent page, the login rule and the global defaults switch (camera#330)
 
 - **Added:** a default **consent page** right after the welcome page, before the login page: three required checkboxes, each linking (in a new tab) to the service's own legal page: Terms and conditions, Accept cookies, Privacy policy (`seyuselfies.com`). The `accept` page type now takes a **list of checkboxes** (text and optional https link, all required, up to ten); pages with the older single checkbox text are unchanged. One consent record is stored per checkbox (exact text, link, time; `UserConsent.linkUrl` is new). The admin pages editor edits the list. The default is added at read time, an event's own consent page wins, nothing is stored in the event's pages; the server does not enforce consent (the page blocks the user).

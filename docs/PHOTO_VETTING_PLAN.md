@@ -126,6 +126,8 @@ cannot be seen; the owner's phone test.
 
 ## Risks and notes
 
+- **Approval waits only for Vercel Blob (camera#342).** The imgbb courtesy copy of an uploaded picture is waited for at most 5 seconds; imgbb can be slow or closed without notice. A decision locks only its own photo and the page reloads its data after every decision, so a slow or lost answer never leaves the moderator on a stale page.
+
 - Guests at a live event wait for approval: the waiting page should refresh itself, and the queue should be quick to work
   (bulk approve, notification to the vetters). An unvetted event shows nothing on the share page, which is the point.
 - Photos that already have a public composite (all existing ones) are not touched by the backfill; hiding one is the existing
