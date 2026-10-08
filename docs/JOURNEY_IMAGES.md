@@ -23,7 +23,7 @@ white text, no text and no button drawn in it.
 save" emails). It is part of the event's theme (`EventTheme.emailFooterImageUrl`, only an https address on a host the pages may load images
 from) and drawn by `lib/email/themed-html.ts`, 560 px wide on the page, with the event name as its alt text, rounded like the card. Set in the
 event edit form ("Email footer picture") with the picture picker: chosen from the event's images library, uploaded there, or pasted as an https
-address; it is stored as the plain address, as before. A 1120 px wide picture is sharp on phones; the designers' strip is 1920×200, so it is made
+address; it is stored as the plain address, as before. The picker offers PNG, JPEG and WebP only, as the old upload did: email apps do not show SVG. A 1120 px wide picture is sharp on phones; the designers' strip is 1920×200, so it is made
 1120×117 first.
 
 Emails are not drawn with a CSP, but an image that is not on an allowed host is dropped by the theme (so a typo cannot put a stranger's picture in

@@ -8,6 +8,7 @@
 
 import { Field, NumberInput, Select, SimpleGrid, Text, TextInput } from '@/components/gds/PublicPrimitives';
 import ImagePicker from '@/components/admin/library/ImagePicker';
+import { OVERLAY_PICTURE_TYPES, OVERLAY_PICTURE_WORDS } from '@/lib/library/image-files';
 import type { ScreenDesign } from '@/lib/slideshow/screen-design';
 
 export interface ScreenDesignTextDraft { text: string; x: string; y: string; width: string; size: string; color: string }
@@ -74,10 +75,12 @@ export default function ScreenDesignFields({ draft, onChange, eventMongoId }: { 
     <>
       <ImagePicker
         label="Overlay picture"
-        helper="A 16:9 picture (1920×1080) drawn over the stage, transparent where the photos play. An https address. Leave empty for a plain slideshow."
+        helper="A 16:9 picture (1920×1080) drawn over the stage, transparent where the photos play: PNG, WebP or SVG, an https address. Leave empty for a plain slideshow."
         value={draft.overlayImageUrl}
         onChange={(url) => set('overlayImageUrl', url)}
         level={{ scope: 'event', eventId: eventMongoId }}
+        fileTypes={OVERLAY_PICTURE_TYPES}
+        fileTypeWords={OVERLAY_PICTURE_WORDS}
       />
 
       <Text size="sm" fw={600}>Where the photos play (% of the stage)</Text>

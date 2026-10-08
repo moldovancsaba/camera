@@ -59,7 +59,8 @@
   and the CTA page picture (page editor), the email footer picture (event editor) and the slideshow screen overlay (slideshow editor).
 - **Unchanged for guests:** every field keeps the same plain address string it stored before, so the capture page, the emails and the slideshow read the same strings and
   were not changed. An address that is in no library (the MTK pictures put on R2 by hand) keeps working and shows its preview. The checks of the fields are unchanged
-  (email footer and overlay: https only; page pictures: as given).
+  (email footer and overlay: https only; page pictures: as given). The email footer is offered only PNG, JPEG or WebP (email apps do not show SVG) and the overlay only
+  PNG, WebP or SVG (a JPEG cannot be transparent), the types their own uploads took before.
 - **Fixed (found while building this, in the library core of camera#364, pull request #377):** every partner and event library upload would have failed on the server with
   "FileReader is not defined" (the uploaded file was read with a browser-only API; the tests mocked the upload). The file is now read with `arrayBuffer()`. An SVG upload was
   stored as `image/svg`, which a browser does not draw; it is now `image/svg+xml` (no SVG was stored yet: checked read-only on frames and logos).
@@ -70,8 +71,8 @@
   every new or changed route, the picker helpers and markup, the stored strings and the checks of the four fields); type-check; lint; the full CI chain; a real browser on
   the production build with a stateful fake API and real picture addresses (the MTK pictures on R2 the fields hold today, the library frames), nothing written: the three
   pages with every action, the picker inside a form (choose, type, paste, a broken address, clear, upload with a size check, the form never submitted by the picker), the
-  real page editor, screen design and event editor saving the plain address, at 1280 and 390 px (61 checks). Read-only: the 10 picture fields with an address today are
-  plain strings on R2, in no library.
+  real page editor, screen design and event editor saving the plain address, the type rules of the footer and the overlay, at 1280 and 390 px (64 checks). Read-only:
+  the 10 picture fields with an address today are plain strings on R2, in no library.
 - **Not verified:** seen by the owner; a real upload or save (no write was made to the database or to the file store, so the first real upload is the owner's); the guest
   pages, emails and slideshow in a browser (their code is unchanged). The event editor is 8 px wider than a 390 px screen because of its date and colour rows (not changed here).
 

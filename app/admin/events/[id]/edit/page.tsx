@@ -30,6 +30,7 @@ import { useGdsToasts } from '@sovereignsquad/gds-core/client';
 import { type CustomPage } from '@/lib/db/schemas';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
 import ImagePicker from '@/components/admin/library/ImagePicker';
+import { EMAIL_PICTURE_TYPES, EMAIL_PICTURE_WORDS } from '@/lib/library/image-files';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
 import { FormSection } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
@@ -772,10 +773,12 @@ export default function EditEventPage({
 
             <ImagePicker
               label="Email footer picture"
-              helper="Shown under the card of every guest email of this event (the club's footer strip). An https address; 1120 px wide is sharp on phones, it is shown 560 px wide."
+              helper="Shown under the card of every guest email of this event (the club's footer strip). An https address, PNG, JPEG or WebP (email apps do not show SVG); 1120 px wide is sharp on phones, it is shown 560 px wide."
               value={emailFooterImageUrl}
               onChange={setEmailFooterImageUrl}
               level={{ scope: 'event', eventId: mongoId }}
+              fileTypes={EMAIL_PICTURE_TYPES}
+              fileTypeWords={EMAIL_PICTURE_WORDS}
             />
 
             <Text fw={600} size="sm">

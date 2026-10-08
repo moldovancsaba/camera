@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { chosenValue, libraryItemFor, pickableImages, pickerEndpoints, previewableUrl } from './picker';
+import { chosenValue, libraryItemFor, pickableImages, pickerEndpoints, pictureFileType, previewableUrl } from './picker';
+import { EMAIL_PICTURE_TYPES, OVERLAY_PICTURE_TYPES } from './image-files';
 import type { LibraryItemView } from './types';
 
 const item = (id: string, extra: Partial<LibraryItemView> = {}): LibraryItemView => ({ id, kind: 'images', name: `Picture ${id}`, description: '', imageUrl: `https://store.example.test/${id}.png`, thumbnailUrl: null, scope: 'global', itemActive: true, createdAt: null, ...extra });
@@ -28,6 +29,20 @@ test('the preview draws an http(s) address or a path of the site, and nothing wh
   assert.equal(previewableUrl('http://example.test/a.png'), 'http://example.test/a.png');
   for (const typing of ['', '   ', 'h', 'https:', 'www.example.test/a.png', '//example.test/a.png', 'javascript:alert(1)', 'data:image/png;base64,AAAA']) assert.equal(previewableUrl(typing), null, typing);
   assert.equal(previewableUrl(null), null);
+});
+
+test('the file type of a picture is read from its address; a field offers only the types its own upload took before', () => {
+  assert.equal(pictureFileType('https://store.example.test/image-1760000000000-Ab12.png'), 'image/png');
+  assert.equal(pictureFileType('https://store.example.test/image-1.jpeg?download=1'), 'image/jpeg');
+  assert.equal(pictureFileType('https://store.example.test/a.JPG'), 'image/jpeg');
+  assert.equal(pictureFileType('https://store.example.test/crest.svg'), 'image/svg+xml');
+  assert.equal(pictureFileType('https://store.example.test/a.webp#x'), 'image/webp');
+  assert.equal(pictureFileType('https://store.example.test/no-extension'), null);
+  assert.equal(pictureFileType(null), null);
+  const data = { available: [item('png'), item('jpg', { imageUrl: 'https://store.example.test/b.jpeg' }), item('svg', { imageUrl: 'https://store.example.test/c.svg' }), item('plain', { imageUrl: 'https://store.example.test/d' })] };
+  assert.deepEqual(pickableImages('event', data).map((i) => i.id), ['png', 'jpg', 'svg', 'plain'], 'every type by default');
+  assert.deepEqual(pickableImages('event', data, EMAIL_PICTURE_TYPES).map((i) => i.id), ['png', 'jpg', 'plain'], 'the email footer: no SVG, which email apps do not show');
+  assert.deepEqual(pickableImages('event', data, OVERLAY_PICTURE_TYPES).map((i) => i.id), ['png', 'svg', 'plain'], 'the screen overlay: no JPEG, which cannot be transparent');
 });
 
 test('a library picture is recognised by its address; choosing one stores its plain address, nothing else', () => {

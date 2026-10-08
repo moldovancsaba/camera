@@ -50,6 +50,19 @@ test('an address still being typed is not drawn', async (t) => {
   assert.ok(html.includes('Not a picture address yet'));
 });
 
+test('a field that takes fewer types says so for an address of another type, and keeps the address', async (t) => {
+  const { default: ImagePicker } = await load(t, 'types');
+  const svg = 'https://store.example.test/crest.svg';
+  const html = renderToStaticMarkup(
+    <MantineProvider>
+      <ImagePicker label="Email footer picture" value={svg} onChange={() => undefined} level={EVENT} fileTypes={['image/png', 'image/jpeg', 'image/webp']} fileTypeWords="PNG, JPEG or WebP" />
+    </MantineProvider>
+  );
+  assert.ok(html.includes('This field takes PNG, JPEG or WebP'));
+  assert.ok(html.includes(`value="${svg}"`), 'the field is not changed: the check of the field stays where it was');
+  assert.doesNotMatch(render(ImagePicker, R2), /This field takes/, 'a JPEG in a field that takes every type: no warning');
+});
+
 test('the picker cannot change how the editor around it saves: no form, no submit button, no required field', async (t) => {
   const { default: ImagePicker } = await load(t, 'inside-a-form');
   const html = render(ImagePicker, R2);

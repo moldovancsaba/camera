@@ -4,6 +4,7 @@
  * Pure and client-safe, so it is unit-tested (picker.test.ts).
  */
 
+import type { ImageFileType } from './image-files';
 import type { LibraryItemView } from './types';
 
 /** The level of the page a picture field is on. The ids are the Mongo `_id` of the partner or the event, as in the other admin routes. */
@@ -30,14 +31,27 @@ export function pickerEndpoints(level: PickerLevel): PickerEndpoints {
   return { list: '/api/images', upload: '/api/images', page: '/admin/images', words: 'the global images' };
 }
 
+const EXTENSION_TYPES: Record<string, ImageFileType> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', svg: 'image/svg+xml' };
+
+/** The file type of a picture from its address (the store names a library picture by its type: `image-1760000000000-ab12.png`); null when it does not say. */
+export function pictureFileType(url: string | null | undefined): ImageFileType | null {
+  const match = /\.([a-z0-9]+)(?:[?#].*)?$/i.exec((url ?? '').trim());
+  return match ? EXTENSION_TYPES[match[1].toLowerCase()] ?? null : null;
+}
+
 /**
  * What a field can choose, from the answer of the list route of its level: an event's library is `available` (its partner's library and its own
- * uploads), a partner's is `items`, the global one `items`. Pictures that are switched off, or have no address, are left out.
+ * uploads), a partner's is `items`, the global one `items`. Pictures that are switched off, or have no address, are left out, and so is a picture
+ * of a type the field does not take (`fileTypes`; a picture whose type the address does not say is kept).
  */
-export function pickableImages(scope: PickerLevel['scope'], data: unknown): LibraryItemView[] {
+export function pickableImages(scope: PickerLevel['scope'], data: unknown, fileTypes?: readonly ImageFileType[]): LibraryItemView[] {
   const list = (data as Record<string, unknown> | null | undefined)?.[scope === 'event' ? 'available' : 'items'];
   if (!Array.isArray(list)) return [];
-  return (list as LibraryItemView[]).filter((item) => Boolean(item) && typeof item.imageUrl === 'string' && item.imageUrl.length > 0 && item.itemActive !== false);
+  return (list as LibraryItemView[]).filter((item) => {
+    if (!item || typeof item.imageUrl !== 'string' || !item.imageUrl || item.itemActive === false) return false;
+    const type = pictureFileType(item.imageUrl);
+    return !fileTypes || !type || fileTypes.includes(type);
+  });
 }
 
 /** The address as the preview can draw it: an http(s) address or a path of this site; null while it is not one (still being typed). */

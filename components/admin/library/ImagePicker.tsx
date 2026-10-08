@@ -18,8 +18,8 @@ import { AdminTextInput } from '@sovereignsquad/gds-admin/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import AssetThumbnail from '@/components/admin/library/AssetThumbnail';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
-import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS } from '@/lib/library/image-files';
-import { chosenValue, libraryItemFor, pickableImages, pickerEndpoints, previewableUrl, type PickerLevel } from '@/lib/library/picker';
+import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS, type ImageFileType } from '@/lib/library/image-files';
+import { chosenValue, libraryItemFor, pickableImages, pickerEndpoints, pictureFileType, previewableUrl, type PickerLevel } from '@/lib/library/picker';
 import type { LibraryItemView } from '@/lib/library/types';
 
 export interface ImagePickerProps {
@@ -31,6 +31,9 @@ export interface ImagePickerProps {
   onChange: (value: string) => void;
   /** The library the field chooses from and uploads to: the level of the page it is on. */
   level: PickerLevel;
+  /** The file types the field takes, and the same in words (default: every type of the Images library). Others are not offered or uploaded here. */
+  fileTypes?: readonly ImageFileType[];
+  fileTypeWords?: string;
   placeholder?: string;
 }
 
@@ -42,11 +45,13 @@ function errorText(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-export default function ImagePicker({ label, helper, value, onChange, level, placeholder = 'https://…' }: ImagePickerProps) {
+export default function ImagePicker({ label, helper, value, onChange, level, fileTypes = IMAGE_FILE_TYPES, fileTypeWords = IMAGE_FILE_WORDS, placeholder = 'https://…' }: ImagePickerProps) {
   const uid = useId();
   const endpoints = pickerEndpoints(level);
   const listUrl = endpoints.list;
   const scope = level.scope;
+  // A string, so a list written in place does not reload the library on every render.
+  const typesKey = fileTypes.join(',');
   const [panel, setPanel] = useState<'library' | 'upload' | null>(null);
   const [items, setItems] = useState<LibraryItemView[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -63,11 +68,11 @@ export default function ImagePicker({ label, helper, value, onChange, level, pla
       const response = await fetch(listUrl);
       const payload = (await response.json().catch(() => null)) as { data?: unknown; error?: string } | null;
       if (!response.ok) throw new Error(payload?.error || `The library could not be loaded (${response.status})`);
-      setItems(pickableImages(scope, payload?.data));
+      setItems(pickableImages(scope, payload?.data, typesKey.split(',') as ImageFileType[]));
     } catch (error) {
       setLoadError(errorText(error, 'The library could not be loaded'));
     }
-  }, [listUrl, scope]);
+  }, [listUrl, scope, typesKey]);
 
   // The library is read once, so the picker can say whether the current picture is one of its own; it is read again when it is opened after an error.
   useEffect(() => {
@@ -77,6 +82,8 @@ export default function ImagePicker({ label, helper, value, onChange, level, pla
   const current = value.trim();
   const preview = previewableUrl(current);
   const fromLibrary = items ? libraryItemFor(current, items) : null;
+  const currentType = preview ? pictureFileType(preview) : null;
+  const wrongType = currentType !== null && !fileTypes.includes(currentType);
 
   const choose = (item: LibraryItemView) => {
     onChange(chosenValue(item));
@@ -96,8 +103,8 @@ export default function ImagePicker({ label, helper, value, onChange, level, pla
 
   const chooseFile = (selected: File | null) => {
     if (!selected) return;
-    if (!(IMAGE_FILE_TYPES as readonly string[]).includes(selected.type)) {
-      setUploadError(`Only ${IMAGE_FILE_WORDS} files are allowed.`);
+    if (!(fileTypes as readonly string[]).includes(selected.type)) {
+      setUploadError(`Only ${fileTypeWords} files are allowed here.`);
       return;
     }
     if (selected.size > IMAGE_MAX_BYTES) {
@@ -167,6 +174,7 @@ export default function ImagePicker({ label, helper, value, onChange, level, pla
         <div style={{ display: 'grid', flex: '1 1 240px', gap: '0.5rem', minWidth: 0 }}>
           <AdminTextInput name={`picture-address-${uid}`} label="Picture address" value={value} onChange={onChange} placeholder={placeholder} />
           {status ? <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>{status}</div> : null}
+          {wrongType ? <LabelTag tone="warning" label={`This field takes ${fileTypeWords}`} /> : null}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             <SemanticButton action={panel === 'library' ? 'library:close' : 'library:choose'} type="button" variant="secondary" size="xs" onClick={openLibrary}>
               {panel === 'library' ? 'Close the library' : 'Choose from the library'}
@@ -234,9 +242,9 @@ export default function ImagePicker({ label, helper, value, onChange, level, pla
             </div>
           ) : (
             <UploadDropzone
-              accept={IMAGE_FILE_TYPES.join(',')}
+              accept={typesKey}
               title="Click to upload or drag and drop"
-              description={`${IMAGE_FILE_WORDS}, up to ${IMAGE_MAX_WORDS}`.toUpperCase()}
+              description={`${fileTypeWords}, up to ${IMAGE_MAX_WORDS}`.toUpperCase()}
               multiple={false}
               onFilesSelected={(files) => chooseFile(files[0] ?? null)}
               actionLabel="Choose image"

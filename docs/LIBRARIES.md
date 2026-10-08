@@ -108,7 +108,9 @@ the imgbb mirror), on the same three levels: Global Images, the partner's images
   works inside the editors' forms.
 - **Wired in** at the event level: the four welcome page pictures and the CTA page picture (page editor), the email footer picture (event editor), the
   overlay of the screen design (slideshow editor). The check of each field is unchanged: the email footer and the overlay take an https address
-  only, the page pictures are stored as given.
+  only, the page pictures are stored as given. Two fields are offered only the file types their own uploads took before (`lib/library/image-files.ts`):
+  the email footer PNG, JPEG or WebP (email apps do not show SVG), the overlay PNG, WebP or SVG (a JPEG cannot be transparent where the photos play);
+  an address of another type typed by hand is kept and marked.
 
 | Route | Does |
 |---|---|
