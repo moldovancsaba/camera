@@ -268,3 +268,42 @@ test('PATCH with both colours cleared takes the event back to messmass: no colou
   assert.equal(h.updates[0].brandBorderColor, null);
   assert.equal(h.updates[0].brandColorsOverridden, false);
 });
+
+// The picture fields keep a plain address: the picker fills them from the Images library, while what is stored and what is checked stay
+// exactly as they were, so the capture page, the emails and the slideshow read the same strings.
+const LIBRARY_PICTURE = 'https://bidx0njghn1voknt.public.blob.vercel-storage.com/image-1760000000000-abc.png';
+const R2_PICTURE = (name: string) => `https://pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev/landing/mtk-vasas/${name}`;
+
+test('PATCH: the email footer picture is stored as a plain https address, trimmed; empty clears it; anything else is refused', async (t) => {
+  const h = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-footer-picture');
+  assert.equal((await PATCH(patchRequest({ emailFooterImageUrl: `  ${LIBRARY_PICTURE} ` }), params)).status, 200);
+  assert.equal(h.updates[0].emailFooterImageUrl, LIBRARY_PICTURE);
+  assert.equal((await PATCH(patchRequest({ emailFooterImageUrl: R2_PICTURE('footer.png') }), params)).status, 200, 'an address that is in no library is kept');
+  assert.equal(h.updates[1].emailFooterImageUrl, R2_PICTURE('footer.png'));
+  assert.equal((await PATCH(patchRequest({ emailFooterImageUrl: '' }), params)).status, 200);
+  assert.equal(h.updates[2].emailFooterImageUrl, null);
+  for (const bad of ['http://i.ibb.co/x/footer.png', 'footer.png', 'https://pictures example.test/footer.png']) {
+    assert.equal((await PATCH(patchRequest({ emailFooterImageUrl: bad }), params)).status, 400, bad);
+  }
+  assert.equal(h.updates.length, 3, 'a refused address writes nothing');
+});
+
+test('PATCH: the welcome page and CTA page pictures are stored exactly as sent, as plain addresses', async (t) => {
+  const h = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-page-pictures');
+  const welcome = {
+    pageId: 'welcome',
+    pageType: 'welcome',
+    order: -1,
+    isActive: true,
+    config: { title: 'Welcome', buttonText: 'START', backgroundImageUrl: R2_PICTURE('background.jpg'), bottomImageUrl: R2_PICTURE('left.png'), cornerImageUrl: R2_PICTURE('right.png'), screenImageUrl: LIBRARY_PICTURE },
+  };
+  const cta = { pageId: 'cta', pageType: 'cta', order: 2, isActive: true, config: { title: 'Visit us', buttonText: 'Next', backgroundImageUrl: LIBRARY_PICTURE } };
+  assert.equal((await PATCH(patchRequest({ customPages: [welcome, cta] }), params)).status, 200);
+  const stored = h.updates[0].customPages as Array<{ pageId: string; config: Record<string, unknown> }>;
+  assert.deepEqual(stored.map((page) => [page.pageId, page.config]), [
+    ['welcome', welcome.config],
+    ['cta', cta.config],
+  ]);
+});

@@ -8,13 +8,14 @@
  * tabs and the list always show what the server holds, also when an answer never arrives.
  */
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { InlineAlert, ListingCard, StateBlock, type ListingMetadataRow } from '@sovereignsquad/gds-core/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { TextInput } from '@/components/gds/PublicPrimitives';
+import { WAITING_REFRESH_MS, shouldRefreshWaiting } from '@/lib/photo-vetting/auto-refresh';
 import type { PhotoQueueItem, QueueStatus } from '@/lib/photo-vetting/queue';
 
 interface PhotoReviewQueueProps {
@@ -89,6 +90,14 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
   const [progress, setProgress] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
 
+  // The Waiting list asks the server for new photos by itself (camera#373), so an approver at the match does not have to reload the page.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (shouldRefreshWaiting({ status, hidden: document.visibilityState === 'hidden', deciding: busy.length > 0, rejecting: rejecting !== null })) router.refresh();
+    }, WAITING_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [status, busy.length, rejecting, router]);
+
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const allIds = useMemo(() => items.map((item) => item.id), [items]);
   const allSelected = allIds.length > 0 && allIds.every((id) => selectedSet.has(id));
@@ -133,7 +142,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
       });
     } else {
       const note = emailNote(answers);
-      setNotice({ severity: note ? 'warning' : 'success', title: done.length === 1 ? 'Photo approved' : `${done.length} photos approved`, message: `The guest gets the link by email${note}.` });
+      setNotice({ severity: note ? 'warning' : 'success', title: done.length === 1 ? 'Photo approved' : `${done.length} photos approved`, message: `The user gets the link by email${note}.` });
     }
   };
 
@@ -146,7 +155,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
       setRejecting(null);
       setReason('');
       const note = emailNote([answer]);
-      setNotice({ severity: note ? 'warning' : 'success', title: 'Photo rejected', message: `The guest gets a short note${note}. The photo stays private.` });
+      setNotice({ severity: note ? 'warning' : 'success', title: 'Photo rejected', message: `The user gets a short note${note}. The photo stays private.` });
     } catch (error) {
       setNotice({ severity: 'error', title: 'Not rejected', message: error instanceof Error ? error.message : 'The photo could not be rejected' });
     } finally {
@@ -162,7 +171,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
         <StateBlock
           variant="empty"
           title={status === 'pending_review' ? 'Nothing is waiting' : status === 'rejected' ? 'No rejected photos' : 'No approved photos yet'}
-          description={status === 'pending_review' ? 'New photos of this event appear here until they are approved or rejected.' : 'Photos appear here once they have been decided.'}
+          description={status === 'pending_review' ? 'New photos of this event appear here until they are approved or rejected. This page looks for new photos by itself every 10 seconds.' : 'Photos appear here once they have been decided.'}
         />
       </div>
     );
@@ -184,7 +193,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
           </div>
           <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
             {selected.length > 0 ? `${selected.length} selected. ` : ''}
-            {status === 'pending_review' ? 'Oldest first. ' : ''}
+            {status === 'pending_review' ? 'Oldest first. Looks for new photos every 10 seconds. ' : ''}
             {items.length} shown
           </span>
         </section>

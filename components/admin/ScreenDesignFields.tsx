@@ -6,9 +6,9 @@
  * checks (lib/slideshow/screen-design.ts).
  */
 
-import { useRef, useState } from 'react';
-import { Button, Field, Group, NumberInput, Select, SimpleGrid, Text, TextInput } from '@/components/gds/PublicPrimitives';
-import { uploadImageFile } from '@/lib/admin/upload-image-client';
+import { Field, NumberInput, Select, SimpleGrid, Text, TextInput } from '@/components/gds/PublicPrimitives';
+import ImagePicker from '@/components/admin/library/ImagePicker';
+import { OVERLAY_PICTURE_TYPES, OVERLAY_PICTURE_WORDS } from '@/lib/library/image-files';
 import type { ScreenDesign } from '@/lib/slideshow/screen-design';
 
 export interface ScreenDesignTextDraft { text: string; x: string; y: string; width: string; size: string; color: string }
@@ -66,36 +66,22 @@ function Num({ label, value, onChange, helper }: { label: string; value: string;
   );
 }
 
-export default function ScreenDesignFields({ draft, onChange }: { draft: ScreenDesignDraft; onChange: (next: ScreenDesignDraft) => void }) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
+/** `eventMongoId` is the event of the slideshow: the overlay is chosen from that event's images library (camera#368). */
+export default function ScreenDesignFields({ draft, onChange, eventMongoId }: { draft: ScreenDesignDraft; onChange: (next: ScreenDesignDraft) => void; eventMongoId: string }) {
   const set = <K extends keyof ScreenDesignDraft>(key: K, value: ScreenDesignDraft[K]) => onChange({ ...draft, [key]: value });
   const setText = (i: number, patch: Partial<ScreenDesignTextDraft>) => onChange({ ...draft, texts: draft.texts.map((t, j) => (j === i ? { ...t, ...patch } : t)) });
 
-  const upload = async (file: File | null) => {
-    if (!file) return;
-    setBusy(true);
-    setProblem(null);
-    try {
-      set('overlayImageUrl', await uploadImageFile(file, 'screen'));
-    } catch (e) {
-      setProblem(e instanceof Error ? e.message : 'The upload failed.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <>
-      <Field label="Overlay picture" helper="A 16:9 picture (1920×1080) drawn over the stage, transparent where the photos play. Leave empty for a plain slideshow.">
-        <TextInput value={draft.overlayImageUrl} onChange={(e) => set('overlayImageUrl', e.target.value)} placeholder="https://… or upload a PNG (up to 4 MB)" />
-        <input ref={fileRef} type="file" accept="image/png,image/webp" hidden onChange={(e) => void upload(e.target.files?.[0] ?? null)} />
-        <Group gap="xs">
-          <Button type="button" variant="light" disabled={busy} onClick={() => fileRef.current?.click()}>{busy ? 'Uploading...' : 'Upload picture'}</Button>
-        </Group>
-        {problem ? <Text size="xs" role="alert">{problem}</Text> : null}
-      </Field>
+      <ImagePicker
+        label="Overlay picture"
+        helper="A 16:9 picture (1920×1080) drawn over the stage, transparent where the photos play: PNG, WebP or SVG, an https address. Leave empty for a plain slideshow."
+        value={draft.overlayImageUrl}
+        onChange={(url) => set('overlayImageUrl', url)}
+        level={{ scope: 'event', eventId: eventMongoId }}
+        fileTypes={OVERLAY_PICTURE_TYPES}
+        fileTypeWords={OVERLAY_PICTURE_WORDS}
+      />
 
       <Text size="sm" fw={600}>Where the photos play (% of the stage)</Text>
       <SimpleGrid cols={{ base: 2, sm: 4 }}>

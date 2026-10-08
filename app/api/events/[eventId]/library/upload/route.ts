@@ -1,6 +1,7 @@
 /**
  * Event library upload (camera#361): POST a file as an item that belongs to this event (`scope: 'event'`). It is assigned to the event at once
- * (the event now has its own list, so partner changes no longer replace it) and no other event can take it. Multipart: `kind`, `file`, `name`,
+ * (the event now has its own list, so partner changes no longer replace it) and no other event can take it. An image is not assigned
+ * (camera#368): it joins the event's images library, which the picture fields choose from. Multipart: `kind`, `file`, `name`,
  * `description?`, `category?`; for a logo also `scenario?` (where it is shown, `onboarding-thankyou` when none is sent; camera#367).
  * Events managers of the partner and global admins.
  */
@@ -11,7 +12,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { withErrorHandler, requireAuth, apiBadRequest, apiCreated, apiForbidden, apiNotFound } from '@/lib/api';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
-import { KIND_META, parseKind } from '@/lib/library/kinds';
+import { KIND_META, isAssignedKind, parseKind } from '@/lib/library/kinds';
 import { createLibraryItem } from '@/lib/library/upload';
 import { itemView } from '@/lib/library/db';
 import { DEFAULT_UPLOAD_SCENARIO, LOGO_SCENARIOS, isLogoScenario } from '@/lib/library/logos';
@@ -22,7 +23,7 @@ export const POST = withErrorHandler(async (request: NextRequest, context: { par
   if (!ObjectId.isValid(eventId)) throw apiBadRequest('Invalid event ID format');
   const form = await request.formData();
   const kind = parseKind(form.get('kind'));
-  if (!kind) throw apiBadRequest('kind must be frames or logos');
+  if (!kind) throw apiBadRequest('kind must be frames, logos or images');
   // A logo is assigned to one scenario at once; a bad scenario is refused before the file is stored.
   const sentScenario = form.get('scenario');
   const scenario = kind === 'logos' ? (sentScenario === null || sentScenario === '' ? DEFAULT_UPLOAD_SCENARIO : sentScenario) : null;
@@ -45,6 +46,7 @@ export const POST = withErrorHandler(async (request: NextRequest, context: { par
   };
   const result = await createLibraryItem(db, input);
   if (!result.ok) throw apiBadRequest(result.reason);
+  if (!isAssignedKind(kind)) return apiCreated({ item: itemView(kind, result.item), assignment: null });
 
   const now = generateTimestamp();
   // A logo's assignment carries its scenario and an order (0, as an assignment from the logo page gets).

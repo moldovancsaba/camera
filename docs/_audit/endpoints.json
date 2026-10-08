@@ -1,11 +1,11 @@
 {
  "_meta": {
-  "generated": "2026-10-08T13:09:08+00:00",
+  "generated": "2026-10-08T13:29:05+00:00",
   "repo": "camera",
-  "head": "5ce25d1",
+  "head": "c6e7caf",
   "counts": {
-   "endpoints": 120,
-   "collections": 7,
+   "endpoints": 122,
+   "collections": 8,
    "env": 59,
    "outbound-hosts": 30,
    "docs": 57
@@ -894,6 +894,32 @@
     "withErrorHandler"
    ],
    "no_auth_marker": true
+  },
+  {
+   "path": "/api/images/[pictureId]",
+   "methods": [
+    "PATCH",
+    "DELETE"
+   ],
+   "file": "app/api/images/[pictureId]/route.ts",
+   "auth_markers": [
+    "requireAdmin",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/images",
+   "methods": [
+    "GET",
+    "POST"
+   ],
+   "file": "app/api/images/route.ts",
+   "auth_markers": [
+    "requireAdmin",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
   },
   {
    "path": "/api/internal/email/send",

@@ -56,3 +56,8 @@ export interface EventLibrary {
   /** Assignments whose item no longer exists in the library. */
   missing: Array<{ id: string; assignment: Record<string, unknown> }>;
 }
+
+/** An image of the global Images page (camera#368); in the "every upload" view it says whose upload it is (null: a global image). */
+export interface GlobalImageEntry extends LibraryItemView {
+  owner: { level: 'partner' | 'event'; name: string } | null;
+}

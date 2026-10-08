@@ -6,6 +6,44 @@
 - **Docs:** `docs/LIBRARY_AUDIT.md` carries the confirmed triage with the issue of each finding (camera#392 to camera#400).
 - **Verified:** unit tests (where an item is used, the refusal sentence, both routes with an event, a partner library and a partner default; the fake database now matches an array field the way MongoDB does); type-check; lint; the full CI chain. **Not seen by the owner.**
 
+## Unreleased — libraries, step 5: the Images library and pickers for pictures (camera#368)
+
+- **Added (owner report, 2026-10-08: "visual elements has to be visible"):** an **Images library** on the three levels of the libraries (`docs/LIBRARIES.md`, section Images):
+  **Global Images** (`/admin/images`, menu Libraries, global admins: upload, switch off or on, delete; `?scope=all` lists every upload with whose it is), the partner's
+  **Images** (`/admin/partners/<id>/images`: add from the global library, upload, remove, delete an own upload) and the event's **Images** (`/admin/events/<id>/images`: the
+  pictures the event can use, from its partner's library and its own uploads; upload, delete an own upload; a link to the partner's Images page), linked from the style
+  sections of the partner and event pages.
+  Every list shows the pictures and where each comes from. Collection `images` (id `pictureId`); uploads take PNG, JPEG, WebP or SVG up to 4 MB and store the size in pixels.
+- **Added:** a **picture picker** for the picture fields: the current picture (or "No picture"), "Choose from the library" (the images of the event, with their pictures,
+  one click), "Upload here" (into the event's library), "Clear the picture", and the plain address field next to it as before. Wired into the four welcome page pictures
+  and the CTA page picture (page editor), the email footer picture (event editor) and the slideshow screen overlay (slideshow editor).
+- **Unchanged for guests:** every field keeps the same plain address string it stored before, so the capture page, the emails and the slideshow read the same strings and
+  were not changed. An address that is in no library (the MTK pictures put on R2 by hand) keeps working and shows its preview. The checks of the fields are unchanged
+  (email footer and overlay: https only; page pictures: as given). The email footer is offered only PNG, JPEG or WebP (email apps do not show SVG) and the overlay only
+  PNG, WebP or SVG (a JPEG cannot be transparent), the types their own uploads took before.
+- **Fixed (found while building this, in the library core of camera#364, pull request #377):** every partner and event library upload would have failed on the server with
+  "FileReader is not defined" (the uploaded file was read with a browser-only API; the tests mocked the upload). The file is now read with `arrayBuffer()`. An SVG upload was
+  stored as `image/svg`, which a browser does not draw; it is now `image/svg+xml` (no SVG was stored yet: checked read-only on frames and logos).
+- **Changed:** the library routes take `kind=images`; an image is not assigned to an event (an event upload does not touch the event) and has no default for new events;
+  deleting a global image takes it out of every partner library; removing or deleting an image never changes a field (its file stays). The fields no longer upload
+  through `/api/upload-logo` (still used by the event logo); `lib/admin/upload-image-client.ts` has no caller left.
+- **Verified:** unit tests (the images kind in the library code, the upload with the real upload helper and only the file store faked, the global list, switch and delete,
+  every new or changed route, the picker helpers and markup, the stored strings and the checks of the four fields); type-check; lint; the full CI chain; a real browser on
+  the production build with a stateful fake API and real picture addresses (the MTK pictures on R2 the fields hold today, the library frames), nothing written: the three
+  pages with every action, the picker inside a form (choose, type, paste, a broken address, clear, upload with a size check, the form never submitted by the picker), the
+  real page editor, screen design and event editor saving the plain address, the type rules of the footer and the overlay, at 1280 and 390 px (65 checks). Read-only:
+  the 10 picture fields with an address today are plain strings on R2, in no library.
+- **Not verified:** seen by the owner; a real upload or save (no write was made to the database or to the file store, so the first real upload is the owner's); the guest
+  pages, emails and slideshow in a browser (their code is unchanged). The event editor is 8 px wider than a 390 px screen because of its date and colour rows (not changed here).
+
+## Unreleased — the Waiting list of the approver looks for new photos by itself (camera#373)
+
+- **Changed (found while writing the how-to for the MTK approver):** the Waiting list of an event's Vetting tab refreshed only after a decision, so a photo taken in the meantime appeared only
+  after a reload of the page. It now asks the server every 10 seconds, only on the Waiting list, only while the page is on screen, and never while a decision is in flight or a rejection
+  reason is being written; the page says so. The two notices after a decision say "the user", not "the guest" (the dictionary).
+- **Verified:** a unit test of the rule (which lists, hidden page, decision in flight, rejection reason); type-check; lint; the full CI chain. The timer itself is not exercised in a browser here
+  (the refresh needs the server and a sign-in): the first real check is a second tab on an event that is not linked to messmass. **Not seen by the owner.**
+
 ## Unreleased — libraries, step 4: logos on three levels, the messmass logo as a partner library item (camera#367)
 
 - **Added (owner report, 2026-10-08):** logos have the three levels of the frames (epic camera#361). **Partner logos** (`/admin/partners/<id>/logos`): the partner's library with

@@ -11,6 +11,7 @@ import {
   KIND_META,
   LIBRARY_KINDS,
   eventAssignedIds,
+  isAssignedKind,
   partnerDefaultIds,
   partnerSavedIds,
   type LibraryKind,
@@ -54,6 +55,7 @@ const byNewest = (a: Document, b: Document): number => text(b.createdAt).localeC
 
 /** The ids of the items the events of a partner already use (their assigned frames or logos), without duplicates. */
 export async function usedByPartnerEvents(db: Db, partnerId: string, kind: LibraryKind): Promise<string[]> {
+  if (!isAssignedKind(kind)) return [];
   const events = await db.collection(COLLECTIONS.EVENTS).find({ partnerId }, { projection: { [kind]: 1 } }).toArray();
   return [...new Set(events.flatMap((event) => eventAssignedIds(kind, event)))];
 }
@@ -118,7 +120,8 @@ export async function loadEventLibrary(db: Db, event: Document, kind: LibraryKin
   const inPartnerLibrary = new Set([...resolved.globalDocs, ...resolved.ownDocs].map((doc) => idOf(kind, doc)));
 
   const idField = KIND_META[kind].idField;
-  const rows = ((event as Record<string, unknown>)[kind] as Document[] | undefined) ?? [];
+  // Images are not assigned: nothing is "assigned" and the event's images library is the whole `available` list (its fields choose from it).
+  const rows = isAssignedKind(kind) ? (((event as Record<string, unknown>)[kind] as Document[] | undefined) ?? []) : [];
   const assignedIds = [...new Set(rows.map((row) => text(row?.[idField])).filter(Boolean))];
   const docs = assignedIds.length ? await coll(db, kind).find({ [idField]: { $in: assignedIds } }).toArray() : [];
   const docById = new Map(docs.map((doc) => [idOf(kind, doc), doc]));
@@ -188,7 +191,7 @@ export type SavePartnerLibraryResult =
  * that follows the defaults, so such an event stops following them: its list is its own from now on (the flag an edit of the list sets).
  */
 async function keepInEvents(db: Db, partnerId: string, kind: LibraryKind, ids: string[]): Promise<void> {
-  if (!ids.length) return;
+  if (!ids.length || !isAssignedKind(kind)) return; // an event never has images assigned
   await db
     .collection(COLLECTIONS.EVENTS)
     .updateMany({ partnerId, [`${kind}.${KIND_META[kind].idField}`]: { $in: ids }, [`${kind}Overridden`]: { $ne: true } }, { $set: { [`${kind}Overridden`]: true } });
@@ -203,6 +206,7 @@ export async function savePartnerLibrary(db: Db, partner: Document, kind: Librar
   const add = [...new Set(change.add ?? [])];
   const remove = [...new Set(change.remove ?? [])];
   const noun = KIND_META[kind].noun;
+  if (change.defaults && !isAssignedKind(kind)) return { ok: false, status: 400, reason: `An ${noun} has no default for new events: each picture field of an event chooses its own.` };
   if (change.defaults && kind !== 'frames') return { ok: false, status: 400, reason: `Defaults for new events are set for frames here; ${noun} defaults are set with their scenario.` };
   if (change.logoDefaults && kind !== 'logos') return { ok: false, status: 400, reason: 'Defaults with a scenario are set for logos only.' };
 
@@ -252,14 +256,15 @@ export async function savePartnerLibrary(db: Db, partner: Document, kind: Librar
     logoDefaultsChanged = !sameLogoDefaults(logoDefaults, current);
   }
 
-  const set: Record<string, unknown> = { 'library.frames': library.frames, 'library.logos': library.logos, updatedAt: now };
+  const set: Record<string, unknown> = { ...Object.fromEntries(LIBRARY_KINDS.map((k) => [`library.${k}`, library[k]])), updatedAt: now };
   if (defaultsChanged && kind === 'frames') set.defaultFrames = defaults;
   if (logoDefaultsChanged) set.defaultLogos = logoDefaults;
   await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId: text(partner.partnerId) }, { $set: set });
   await keepInEvents(db, text(partner.partnerId), kind, remove);
 
   const removedInUse: Record<string, number> = {};
-  for (const id of remove) {
+  // An image is not assigned, so no event "uses" one here: a picture field that shows it keeps its address, and the picture keeps showing.
+  for (const id of isAssignedKind(kind) ? remove : []) {
     const count = await db.collection(COLLECTIONS.EVENTS).countDocuments({ partnerId: text(partner.partnerId), [`${kind}.${KIND_META[kind].idField}`]: id });
     if (count > 0) removedInUse[id] = count;
   }
@@ -356,12 +361,14 @@ export async function deleteLibraryUpload(db: Db, kind: LibraryKind, itemId: str
   const item = await coll(db, kind).findOne({ [idField]: itemId });
   if (!item) return { ok: false, status: 404, reason: `${noun[0].toUpperCase()}${noun.slice(1)} not found` };
   const scope = scopeOf(fieldsOf(item));
+  // An image is not assigned to an event, so there is no assignment to take away; the file stays in the store, so a field that shows it keeps showing it.
+  const assigned = isAssignedKind(kind);
   if (level.scope === 'event') {
     if (scope !== 'event' || text(item.eventId) !== level.eventId) return { ok: false, status: 400, reason: `Only a ${noun} uploaded for this event can be deleted here.` };
-    await db.collection(COLLECTIONS.EVENTS).updateOne({ eventId: level.eventId }, { $pull: { [kind]: { [idField]: itemId } } as Document });
+    if (assigned) await db.collection(COLLECTIONS.EVENTS).updateOne({ eventId: level.eventId }, { $pull: { [kind]: { [idField]: itemId } } as Document });
   } else {
     if (scope !== 'partner' || text(item.partnerId) !== level.partnerId) return { ok: false, status: 400, reason: `Only a ${noun} uploaded for this partner can be deleted here.` };
-    const inUse = await db.collection(COLLECTIONS.EVENTS).countDocuments({ partnerId: level.partnerId, [`${kind}.${idField}`]: itemId });
+    const inUse = assigned ? await db.collection(COLLECTIONS.EVENTS).countDocuments({ partnerId: level.partnerId, [`${kind}.${idField}`]: itemId }) : 0;
     if (inUse > 0) return { ok: false, status: 409, reason: `${inUse} event${inUse === 1 ? '' : 's'} still use${inUse === 1 ? 's' : ''} this ${noun}. Remove it from them first.` };
     if (kind === 'frames') await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId: level.partnerId }, { $pull: { defaultFrames: itemId } as Document });
     if (kind === 'logos') await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId: level.partnerId }, { $pull: { defaultLogos: { logoId: itemId } } as Document });

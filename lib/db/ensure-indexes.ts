@@ -150,6 +150,20 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
     db.collection(COLLECTIONS.LOGOS).createIndex({ isActive: 1, createdAt: -1 }, { name: 'logos_isActive_createdAt' })
   );
 
+  // --- images (the Images library, camera#368): by id, the global list, and the own uploads of a partner or an event ---
+  await track(COLLECTIONS.IMAGES, () =>
+    db.collection(COLLECTIONS.IMAGES).createIndex({ pictureId: 1 }, { unique: true, name: 'images_pictureId_unique' })
+  );
+  await track(COLLECTIONS.IMAGES, () =>
+    db.collection(COLLECTIONS.IMAGES).createIndex({ scope: 1, isActive: 1, createdAt: -1 }, { name: 'images_scope_isActive_createdAt' })
+  );
+  await track(COLLECTIONS.IMAGES, () =>
+    db.collection(COLLECTIONS.IMAGES).createIndex({ scope: 1, partnerId: 1, createdAt: -1 }, { name: 'images_scope_partnerId_createdAt' })
+  );
+  await track(COLLECTIONS.IMAGES, () =>
+    db.collection(COLLECTIONS.IMAGES).createIndex({ scope: 1, eventId: 1, createdAt: -1 }, { name: 'images_scope_eventId_createdAt' })
+  );
+
   // --- submissions (hot paths: slideshow aggregate, user gallery, admin) ---
   await track(COLLECTIONS.SUBMISSIONS, () =>
     db
