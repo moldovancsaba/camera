@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — slideshow editor: saving an existing slideshow no longer clears its screen design (camera#350)
+
+- **Fixed:** the admin slideshow editor opened an existing slideshow with an empty screen design (overlay picture, photo window, QR, texts) because its props never carried `screenDesign`, and a save then sent `screenDesign: null`, which the API stores. Saving any existing slideshow cleared its design. Found by reading the code for the default slideshow work; the two stored designs (the real MTK Budapest x Vasas FC "Main screen" and the ETO FC one) were still intact. The editor now gets the stored design, and an existing slideshow is saved without `screenDesign` unless the design fields were changed since the page opened.
+- **Verified:** a unit test that the editor props carry the design and that the fields give it back unchanged; type-check; lint. Not yet seen by a person: opening the real MTK slideshow in the editor.
+
 ## Unreleased — share page: the fixed texts are editable per event (camera#339, step 1)
 
 - **Added (planning items 74 and 75):** the fixed words of the public photo page (`/share/...`, the page the email links to) and of its two notices are settings of the event's share page (`sharePage.texts`, event editor, section "Share page"): Download button, Create Your Own button, Related photos heading, Original photo label, the "Waiting for approval" notice (heading, text), the "Not approved" notice (heading, text, hint under it) and the Take another photo button. An empty field means the text the page always showed, nothing is frozen into the event, so no event changes until an editor writes a text. `lib/events/share-page-settings.ts` (`SHARE_PAGE_TEXT_DEFAULTS`, `sharePageText`). The pending try-on message was editable before and is unchanged.

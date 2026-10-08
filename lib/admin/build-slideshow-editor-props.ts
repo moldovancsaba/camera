@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { parseScreenDesign, type ScreenDesign } from '@/lib/slideshow/screen-design';
 import {
   SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
   SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
@@ -24,6 +25,15 @@ export interface SlideshowEditorInitialValue {
   viewportScale?: 'fit' | 'fill';
   stageAspect?: number | null;
   submissionSourceMode?: 'originals_only' | 'approved_tryon_only' | 'originals_and_approved_tryon';
+  /** The screen design stored on the slideshow (camera#309); without it the editor would start empty and a save would clear it. */
+  screenDesign?: ScreenDesign | null;
+}
+
+/** The stored screen design when it is a valid one, else null. */
+function storedScreenDesign(value: unknown): ScreenDesign | null {
+  if (!value) return null;
+  const parsed = parseScreenDesign(value);
+  return parsed.ok ? parsed.value : null;
 }
 
 export interface SlideshowEditorPropsData {
@@ -104,6 +114,7 @@ export async function buildSlideshowEditorProps(
               : slideshow.stageAspect === null
                 ? null
                 : undefined,
+          screenDesign: storedScreenDesign(slideshow.screenDesign),
         }
       : null,
   };

@@ -113,6 +113,9 @@ export default function SlideshowEditor({
     initialSlideshow?.backgroundImageUrl ?? ''
   );
   const [screenDraft, setScreenDraft] = useState<ScreenDesignDraft>(() => draftFromDesign(initialSlideshow?.screenDesign));
+  // What the design fields held when the page opened (or was last saved): an existing slideshow is saved without its screen design unless the
+  // fields were changed, so a save can never clear a design by accident.
+  const savedScreenDraft = useRef(JSON.stringify(screenDraft));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingBackground, setIsUploadingBackground] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
@@ -145,7 +148,7 @@ export default function SlideshowEditor({
       viewportScale,
       submissionSourceMode,
       stageAspect: stageAspect ?? null,
-      screenDesign: designFromDraft(screenDraft),
+      ...(slideshowMongoId && JSON.stringify(screenDraft) === savedScreenDraft.current ? {} : { screenDesign: designFromDraft(screenDraft) }),
     };
 
     try {
@@ -169,6 +172,8 @@ export default function SlideshowEditor({
       if (savedSlideshow?._id) setSlideshowMongoId(String(savedSlideshow._id));
       if (savedSlideshow?.slideshowId) setSlideshowId(String(savedSlideshow.slideshowId));
 
+      // Only an update stores the design (a create does not read it), so only an update moves the baseline.
+      if (slideshowMongoId) savedScreenDraft.current = JSON.stringify(screenDraft);
       setSuccess(slideshowMongoId ? 'Slideshow updated.' : 'Slideshow saved.');
 
       if (!slideshowMongoId && savedSlideshow?._id) {
