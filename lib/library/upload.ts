@@ -1,7 +1,7 @@
 /**
- * An upload into a library (camera#361): the file checks every kind shares, the file store, and the item with its owner written on it: one partner or
- * one event. What differs per kind (accepted files, stored shape) is an `Uploader` in `uploaders/`, registered below; frames and logos so far,
- * images join with their package.
+ * An upload into a library (camera#361): the file checks every kind shares, the file store, and the item with its owner written on it: one partner,
+ * one event, or the global library (images, `POST /api/images`). What differs per kind (accepted files, size, stored shape) is an `Uploader` in
+ * `uploaders/`, registered below: frames, logos and images.
  */
 
 import type { Db, Document } from 'mongodb';
@@ -9,6 +9,7 @@ import { generateTimestamp } from '@/lib/db/schemas';
 import { uploadImage } from '@/lib/imgbb/upload';
 import { KIND_META, type LibraryKind } from './kinds';
 import { framesUploader } from './uploaders/frames';
+import { imagesUploader } from './uploaders/images';
 import { logosUploader } from './uploaders/logos';
 import type { Uploader } from './uploaders/types';
 
@@ -16,6 +17,7 @@ import type { Uploader } from './uploaders/types';
 const UPLOADERS: Partial<Record<LibraryKind, Uploader>> = {
   frames: framesUploader,
   logos: logosUploader,
+  images: imagesUploader,
 };
 
 export const UPLOAD_KINDS = Object.keys(UPLOADERS) as LibraryKind[];
@@ -30,6 +32,7 @@ const MAX_NAME = 120;
 const MAX_DESCRIPTION = 500;
 
 export type Owner =
+  | { scope: 'global' }
   | { scope: 'partner'; partnerId: string }
   | { scope: 'event'; /** the event UUID (`Event.eventId`) */ eventId: string; partnerId: string | null };
 
@@ -59,11 +62,13 @@ export function checkUpload(input: Pick<UploadInput, 'kind' | 'file' | 'name' | 
   if (!(typeof File !== 'undefined' && input.file instanceof File) || typeof file?.type !== 'string') return { ok: false, reason: 'Choose a file to upload.' };
   if (!uploader.fileTypes.includes(file.type)) return { ok: false, reason: `Only ${uploader.fileTypeWords} files are allowed.` };
   if (typeof file.size === 'number' && file.size === 0) return { ok: false, reason: 'The file is empty.' };
+  if (uploader.maxBytes && typeof file.size === 'number' && file.size > uploader.maxBytes) return { ok: false, reason: `The file is too big: ${Math.round(uploader.maxBytes / 1048576)} MB at most.` };
   return { ok: true, name, description };
 }
 
 /** The owner written on the item. */
 function ownerFields(owner: Owner): Record<string, string> {
+  if (owner.scope === 'global') return { scope: 'global' };
   return owner.scope === 'partner'
     ? { scope: 'partner', partnerId: owner.partnerId }
     : { scope: 'event', eventId: owner.eventId, ...(owner.partnerId ? { partnerId: owner.partnerId } : {}) };

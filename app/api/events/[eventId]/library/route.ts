@@ -19,7 +19,7 @@ export const GET = withErrorHandler(async (request: NextRequest, context: { para
   const { eventId } = await context.params;
   if (!ObjectId.isValid(eventId)) throw apiBadRequest('Invalid event ID format');
   const kind = parseKind(request.nextUrl.searchParams.get('kind'));
-  if (!kind) throw apiBadRequest('kind must be frames or logos');
+  if (!kind) throw apiBadRequest('kind must be frames, logos or images');
   const db = await connectToDatabase();
   const access = await getPartnerScopedAccessForEvent(db, eventId, session, 'viewer');
   if (!access.allowed) throw apiForbidden('Partner-level Events access is required');

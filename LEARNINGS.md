@@ -1309,4 +1309,26 @@ _Use this template for new learnings:_
 
 ---
 
+### [BACK-007] The library uploads passed a File to the server upload, which read it with FileReader: Node has none — 2026-10-08T00:00:00.000Z
+
+**Issue**: While building the Images library (camera#368) on the library core (camera#364), every partner and event upload would have failed with `ReferenceError: FileReader is not defined`: `createLibraryItem` passed the uploaded `File` to `uploadImage`, whose `fileToBase64` used `FileReader`, which exists in browsers and not in Node (Next does not add it either). Every other caller passes a base64 string, so the path had never run on the server. The route tests mock `uploadImage` and the browser check used a fake API, so nothing saw it.
+
+**Solution**: `fileToBase64` reads the file with `arrayBuffer()`. A test now runs the real `uploadImage` with a `File` and only the Blob store faked (`lib/imgbb/upload.test.ts`, `lib/library/images.test.ts`). In the same file, sharp names an SVG `svg`, so an SVG was stored as `image/svg`, which a browser does not draw in an `<img>`; it is now `image/svg+xml`.
+
+**Key Decisions**: fix the shared helper at its root rather than convert in the library code; when a test mocks a module, keep at least one test that runs the real module with only the outside service faked.
+
+**Last Updated**: 2026-10-08T00:00:00.000Z
+
+---
+
+### [FRONT-018] A semantic button shows the text of its action, not its children; a picker inside a form must not submit it — 2026-10-08T00:00:00.000Z
+
+**Issue**: Two things seen while building the picture picker (camera#368). The GDS `SemanticButton` always shows the `defaultMessage` of its action from the vocabulary and drops its children: a button written `Delete` showed "Delete from the library", and the page editor's "Save Pages" shows "Save all". And the picker sits inside the editors' own forms (event editor, page editor, slideshow editor), where a nested `<form>`, a submit button, a `required` field or Enter in a text field would save or block the editor.
+
+**Solution**: the texts in the code match the vocabulary, and an action gets its own entry when it needs its own words (`library:upload-and-use`). The picker has no `<form>`, its buttons are `type="button"` (Mantine's default too), none of its fields is required, its field names are unique per picker (`useId`), and Enter in its name field uploads; a render test checks the markup, and the browser check counts the submits of a form around it.
+
+**Last Updated**: 2026-10-08T00:00:00.000Z
+
+---
+
 **Note**: This document should be updated immediately when issues are encountered and resolved. It serves as the institutional memory of the project, preventing repeated mistakes and preserving the reasoning behind key decisions.

@@ -82,7 +82,7 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
   },
   {
     title: 'Libraries',
-    description: 'Shared resources events draw on — frames, logos, garments, and pages.',
+    description: 'Shared resources events draw on — frames, logos, images, garments, and pages.',
     items: [
       {
         href: '/admin/frames',
@@ -102,6 +102,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         href: '/admin/logos',
         label: 'Global Logos',
         description: 'Shared logo inventory available to any event.',
+        iconKey: 'photo',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
+      {
+        href: '/admin/images',
+        label: 'Global Images',
+        description: 'Pictures for the welcome page, the CTA page, the email footer and the giant screen, for partners to take.',
         iconKey: 'photo',
         isVisible: (access) => access.isGlobalAdmin,
       },

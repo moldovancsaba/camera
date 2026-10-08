@@ -1,11 +1,11 @@
 {
  "_meta": {
-  "generated": "2026-10-08T13:08:41+00:00",
+  "generated": "2026-10-08T13:17:49+00:00",
   "repo": "camera",
-  "head": "78f7fea",
+  "head": "96a23ff",
   "counts": {
-   "endpoints": 120,
-   "collections": 7,
+   "endpoints": 122,
+   "collections": 8,
    "env": 59,
    "outbound-hosts": 30,
    "docs": 57
@@ -14,6 +14,7 @@
  "items": [
   "events",
   "frames",
+  "images",
   "leather_suits",
   "logos",
   "partners",

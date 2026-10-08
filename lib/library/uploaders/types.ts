@@ -32,6 +32,8 @@ export interface Uploader {
   /** The accepted MIME types, and the same in words for the messages. */
   fileTypes: readonly string[];
   fileTypeWords: string;
+  /** The largest file accepted, in bytes; no limit when left out. */
+  maxBytes?: number;
   /** The prefix of the stored file's name. */
   storeName: string;
   /** The document to insert for the stored file. */

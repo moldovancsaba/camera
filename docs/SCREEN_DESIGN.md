@@ -12,7 +12,7 @@ the player makes the stage a size container and the sizes are `cqh`/`%` units.
 
 | Part | Field | Notes |
 |---|---|---|
-| Overlay picture | `overlayImageUrl` | A 1920×1080 PNG drawn over the whole stage, transparent where the photos play. https only. |
+| Overlay picture | `overlayImageUrl` | A 1920×1080 PNG drawn over the whole stage, transparent where the photos play. https only. Chosen in the editor with the picture picker, from the images library of the slideshow's event (PNG, WebP or SVG: a JPEG cannot be transparent), uploaded there, or pasted (docs/LIBRARIES.md); stored as the plain address. |
 | Photo window | `window {left, top, width, height}` | Where the photos play. The photos are cropped to it (`photoFit: cover`) or shown whole (`contain`). The overlay's own rounded corners and border cover the edge of the photos. |
 | QR code | `qr {url, x, y, size, color}` | `url` is where it points (https, up to 300 characters), `x`/`y` its top left corner, `size` its side as % of the stage **width**. The server draws it as an SVG of its dark modules (level M correction), by default white, so it is light on the dark overlay like the designers' example (a QR reader that reads inverted codes scans it; a phone camera does). |
 | Texts | `texts[] {text, x, y, width, size, align, color}` | Single line, up to 8, each at most 120 characters; `size` is % of the stage height; white with a soft shadow by default. |

@@ -16,7 +16,7 @@ its own. A partner can only take items that are global. The pictures are always 
 
 ## The data
 
-- **Scope of an item.** `frames` and `logos` documents may carry `scope` (`global`, `partner`, `event`), `partnerId` (the partner UUID) and `eventId` (the
+- **Scope of an item.** `frames`, `logos` and `images` documents may carry `scope` (`global`, `partner`, `event`), `partnerId` (the partner UUID) and `eventId` (the
   event UUID, `Event.eventId`). A **missing scope means global**, so nothing that existed changes. The global lists (`GET /api/frames`, `/admin/frames`)
   show global items only; `/admin/frames?scope=all` lists every upload.
 - **Partner library.** `Partner.library.frames` and `Partner.library.logos` hold the ids the partner took from the global library. The partner's own
@@ -105,11 +105,60 @@ The same three levels as frames (pages `/admin/partners/<id>/logos` and `/admin/
   same before and after this change for all 214 events, by both ids (428 answers), and the event page shows the same order and the same shown logo as that API for the 10 events
   with logos. `components/capture/CaptureStageShell.test.tsx` keeps the order of the stage pages: the event's logo for those pages, else the theme's logo, else the emoji.
 
+## Images (LIB-5, camera#368)
+
+The pictures of the picture fields: the welcome page (background, left image, right image, giant screen), the CTA page picture, the email footer and the
+slideshow screen overlay. Collection `images` (`LibraryImage` in `lib/db/schemas.ts`), id `pictureId` (not `imageId`: on a frame that is the asset id of
+the imgbb mirror), on the same three levels: Global Images, the partner's images (taken from the global library, plus its own uploads), the event's images
+(from its partner's library, plus its own uploads).
+
+- **An image is not assigned.** A picture field keeps the plain address of one picture, as it always did; the capture page, the emails and the slideshow
+  read that string, never this collection. So an event has no list of images: its images library is what its fields can choose from. Images have no
+  defaults for new events. In the code (`isAssignedKind`, `lib/library/kinds.ts`): `eventAssignedIds` and `partnerDefaultIds` give none for images;
+  `partnerSavedIds` reads `Partner.library.images`, the global images the partner took (a partner that has not saved a library has its own uploads only:
+  nobody had images before); `loadEventLibrary` gives an empty `assigned` and the whole library in `available` (active pictures, newest first);
+  `savePartnerLibrary` writes `library.images` with the other kinds (the first save of any kind saves all of them), reports no event for a removed image
+  (`removedInUse` stays empty) and refuses `defaults`; an event upload is not added to the event.
+- **Removing or deleting an image never changes a field.** The file stays in the store, so a page that shows it keeps showing it; the picker then marks
+  the address "Not in the library". Deleting a global image also takes it out of every partner library (`lib/library/images.ts`).
+- **Uploads:** PNG, JPEG, WebP or SVG, up to 4 MB (checked in the page before it is sent, and on the server), with the size in pixels read from the file
+  (`lib/library/uploaders/images.ts`): at the global level (`POST /api/images`), for a partner and for an event.
+- **Pages:** Global Images `/admin/images` (global admins, menu Libraries: upload, switch off or on, delete; `?scope=all` lists every upload with whose it
+  is, changed only on its own page), partner Images `/admin/partners/<id>/images` (add from the global library, upload, remove, delete an own upload),
+  event Images `/admin/events/<id>/images` (the pictures the event can use, upload, delete an own upload; it links to the partner's Images page). The
+  style sections of the partner and event pages link to them. Every list shows the pictures and where each comes from.
+- **The picture picker** (`components/admin/library/ImagePicker.tsx`, helpers in `lib/library/picker.ts`): the current picture, or "No picture";
+  "Choose from the library" lists the images of the level of the page (an event editor: the event's library; a partner page: the partner's; a global
+  page: the global one) with their pictures, and one click chooses one; "Upload here" uploads at that level and chooses the picture; "Clear the
+  picture". The plain address field stays next to it: an address typed or pasted by hand (the MTK pictures on R2 are in no library yet) keeps working
+  and shows its preview, and an address that does not load says so. The picker has no form of its own, no submit button and no required field, so it
+  works inside the editors' forms.
+- **Wired in** at the event level: the four welcome page pictures and the CTA page picture (page editor), the email footer picture (event editor), the
+  overlay of the screen design (slideshow editor). The check of each field is unchanged: the email footer and the overlay take an https address
+  only, the page pictures are stored as given. Two fields are offered only the file types their own uploads took before (`lib/library/image-files.ts`):
+  the email footer PNG, JPEG or WebP (email apps do not show SVG), the overlay PNG, WebP or SVG (a JPEG cannot be transparent where the photos play);
+  an address of another type typed by hand is kept and marked.
+
+| Route | Does |
+|---|---|
+| `GET /api/images` | The global images, newest first (`?scope=all`: every image, each with whose upload it is). Global admins. |
+| `POST /api/images` | Multipart `file`, `name`, `description?`: an image of the global library. Global admins. |
+| `PATCH /api/images/<pictureId>` | `{ isActive }`: switch a global image off or on. Global admins; refused for a partner's or an event's upload. |
+| `DELETE /api/images/<pictureId>` | Delete a global image and take it out of every partner library. Global admins; refused for a partner's or an event's upload. |
+| `GET`, `PUT /api/partners/<id>/library?kind=images`, `POST .../upload`, `DELETE .../items/<pictureId>?kind=images` | As for frames, without defaults. |
+| `GET /api/events/<id>/library?kind=images`, `POST .../upload`, `DELETE .../items/<pictureId>?kind=images` | As for frames; an upload is not assigned. |
+
+Not yet: the sample selfies and stadium backgrounds of the default slideshow (camera#326); the slideshow background picture keeps its own upload; the MTK
+pictures move into the libraries with LIB-6 (camera#369). The index definitions of `images` (`lib/db/ensure-indexes.ts`) exist only once
+`npm run db:ensure-indexes` has run; nothing depends on them.
+
 ## What is done and what comes next
 
-- **Done (LIB-1, LIB-2, LIB-3, LIB-4):** the core, the partner and event pages for frames, upload at both levels, the one-way rule in the API, the global list global-only, the message
-  area of a frame and the frame of each message, and logos on the three levels with the logo from messmass as a partner library item (see Logos above).
+- **Done (LIB-1 to LIB-5):** the core, the partner and event pages for frames, upload at both levels, the one-way rule in the API, the global list global-only, the message area of a
+  frame and the frame of each message, logos on the three levels with the logo from messmass as a partner library item (section Logos), and the Images library on the three levels
+  with the picture picker of the picture fields (section Images).
 - **Built (LIB-6, camera#369):** the move of an event's older base picture into the library, a button in the generated frame panel (docs/FRAME_BASE.md, "Moving the base into the
   library"). It is **not applied to any real event**: the MTK x Vasas event moves last, after the owner has seen the library pages work and says go.
-- **Next:** LIB-5 an Images library, LIB-7 the audit fixes (frame deletion that also cleans the libraries, paging of long lists).
-- A **logo** or an **image** joins a kind by adding it to `LIBRARY_KINDS` and `KIND_META` (`lib/library/kinds.ts`) and its upload to `lib/library/upload.ts`.
+- **Next:** LIB-7 the audit fixes (docs/LIBRARY_AUDIT.md: refuse deleting an item that is in use, paging of long lists).
+- A kind joins by adding it to `LIBRARY_KINDS` and `KIND_META` (`lib/library/kinds.ts`) and its uploader to `lib/library/upload.ts`; a kind that events do not
+  assign (images) answers false in `isAssignedKind`.
