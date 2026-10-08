@@ -6,7 +6,6 @@
 
 'use client';
 
-import { uploadImageFile } from '@/lib/admin/upload-image-client';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -30,6 +29,7 @@ import {
 import { useGdsToasts } from '@sovereignsquad/gds-core/client';
 import { type CustomPage } from '@/lib/db/schemas';
 import CustomPagesManager from '@/components/admin/CustomPagesManager';
+import ImagePicker from '@/components/admin/library/ImagePicker';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
 import { FormSection } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
@@ -770,25 +770,12 @@ export default function EditEventPage({
               label="Display logo on event pages"
             />
 
-            <TextInput
+            <ImagePicker
               label="Email footer picture"
-              description="Shown under the card of every guest email of this event (the club's footer strip). https address, or upload one below."
+              helper="Shown under the card of every guest email of this event (the club's footer strip). An https address; 1120 px wide is sharp on phones, it is shown 560 px wide."
               value={emailFooterImageUrl}
-              onChange={(e) => setEmailFooterImageUrl(e.currentTarget.value)}
-              placeholder="https://…"
-            />
-            <FileInput
-              label="Upload an email footer picture"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
-              description="PNG, JPEG or WebP, up to 4 MB. 1120 px wide is sharp on phones; it is shown 560 px wide."
-              onChange={async (file) => {
-                if (!file) return;
-                try {
-                  setEmailFooterImageUrl(await uploadImageFile(file, 'email-footer'));
-                } catch (err: unknown) {
-                  setError(`Failed to upload the footer picture: ${getErrorMessage(err)}`);
-                }
-              }}
+              onChange={setEmailFooterImageUrl}
+              level={{ scope: 'event', eventId: mongoId }}
             />
 
             <Text fw={600} size="sm">

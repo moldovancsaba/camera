@@ -15,36 +15,9 @@
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
 import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
-import { uploadImageFile } from '@/lib/admin/upload-image-client';
+import ImagePicker from '@/components/admin/library/ImagePicker';
 import { CustomPageType, type CustomPage, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { DEFAULT_APPROVAL_TEXTS, DEFAULT_REDIRECTING_TEXT } from '@/lib/events/page-texts';
-
-function ImageUrlField({ label, value, onChange, helper }: { label: string; value: string; onChange: (value: string) => void; helper?: string }) {
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
-
-  const upload = async (file: File | null) => {
-    if (!file) return;
-    setBusy(true);
-    setProblem(null);
-    try {
-      onChange(await uploadImageFile(file, 'journey'));
-    } catch (error) {
-      setProblem(error instanceof Error ? error.message : 'The upload failed.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div style={{ display: 'grid', gap: '0.5rem' }}>
-      <Field label={label} value={value} onChange={onChange} placeholder="https://… or upload a file (PNG, JPEG or WebP, up to 4 MB)" helper={helper} />
-      <input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={(event) => void upload(event.currentTarget.files?.[0] ?? null)} aria-label={`Upload ${label}`} />
-      {busy ? <span role="status">Uploading…</span> : null}
-      {problem ? <span role="alert" style={{ color: 'var(--gds-color-danger, inherit)' }}>{problem}</span> : null}
-    </div>
-  );
-}
 
 export interface CustomPagesManagerProps {
   eventId: string;
@@ -513,6 +486,7 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
           {editingPage ? (
             <PageEditModal
               page={editingPage}
+              eventId={eventId}
               onSave={handleSavePage}
               onCancel={() => {
                 setShowModal(false);
@@ -529,17 +503,20 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
 }
 
 /**
- * Modal for editing page configuration
+ * Modal for editing page configuration. `eventId` (the event's Mongo _id) is the library the pictures are chosen from (camera#368).
  */
 function PageEditModal({
   page,
+  eventId,
   onSave,
   onCancel,
 }: {
   page: CustomPage;
+  eventId: string;
   onSave: (page: CustomPage) => void;
   onCancel: () => void;
 }) {
+  const pictureLevel = { scope: 'event' as const, eventId };
   const [title, setTitle] = useState(page.config.title);
   const [description, setDescription] = useState(page.config.description);
   const [buttonText, setButtonText] = useState(page.config.buttonText);
@@ -713,10 +690,11 @@ function PageEditModal({
           <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
             <div style={{ display: 'grid', gap: '1rem' }}>
               <h4 style={{ margin: 0 }}>Picture page (optional)</h4>
-              <ImageUrlField
+              <ImagePicker
                 label="Background picture"
                 value={backgroundImageUrl}
                 onChange={setBackgroundImageUrl}
+                level={pictureLevel}
                 helper="Fills the screen behind the title, the text and the buttons, which camera writes over it (white, with a soft dark veil). Leave empty for the plain card."
               />
               <Field label="Button colour" value={buttonColor} onChange={setButtonColor} placeholder="#RRGGBB" />
@@ -738,28 +716,32 @@ function PageEditModal({
                 placeholder="e.g., START"
                 helper="The only words on the page. Write it in the language of the event."
               />
-              <ImageUrlField
+              <ImagePicker
                 label="Background picture"
                 value={backgroundImageUrl}
                 onChange={setBackgroundImageUrl}
+                level={pictureLevel}
                 helper="Fills the screen in portrait and landscape (scaled to cover, centred). Leave empty for no picture: the page colour of the event shows."
               />
-              <ImageUrlField
+              <ImagePicker
                 label="Left image (bottom left)"
                 value={bottomImageUrl}
                 onChange={setBottomImageUrl}
+                level={pictureLevel}
                 helper="Transparent PNG on the bottom edge: full width in portrait, half the width at the left edge in landscape. Leave empty for no left image."
               />
-              <ImageUrlField
+              <ImagePicker
                 label="Right image (bottom right)"
                 value={cornerImageUrl}
                 onChange={setCornerImageUrl}
+                level={pictureLevel}
                 helper="Transparent PNG of the same size as the left image, at the same scale: over it in portrait, half the width at the right edge in landscape. Leave empty for no right image."
               />
-              <ImageUrlField
+              <ImagePicker
                 label="Giant screen picture"
                 value={screenImageUrl}
                 onChange={setScreenImageUrl}
+                level={pictureLevel}
                 helper="Shown on a 3D giant screen above the Start button (drawn by camera, tilted and swaying). 16:9 works best. Leave empty and the page has no giant screen."
               />
               <Field label="Giant screen picture description" value={screenImageAlt} onChange={setScreenImageAlt} placeholder="What the screen shows, for screen readers" />

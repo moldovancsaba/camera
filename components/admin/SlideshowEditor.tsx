@@ -501,7 +501,7 @@ export default function SlideshowEditor({
 
           <Section title="Screen design">
             <Stack gap="md">
-              <ScreenDesignFields draft={screenDraft} onChange={setScreenDraft} />
+              <ScreenDesignFields draft={screenDraft} onChange={setScreenDraft} eventMongoId={eventMongoId} />
             </Stack>
           </Section>
 
