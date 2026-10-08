@@ -91,6 +91,7 @@ Item numbers run continuously and never restart. A number can be commented on in
 56. An empty text falls back to its default; "show the share page" and "show the frame while capturing" keep their defaults.
 57. Item 55 confirmed.
 58. No additional elements for now.
+96. Delivered (#333): the four approval texts are settings of the selfie-taking page (heading, saved message, frame notice, waiting message); empty = the default. The try-on sentence is added to the default waiting message only; an own waiting message is shown as written. The "Love it" / "Try again" texts are gone with that screen (item 92).
 
 ### Part 3c: one button design and colours (#334, #336)
 
@@ -106,6 +107,7 @@ Item numbers run continuously and never restart. A number can be commented on in
 65. No CTA page is added automatically; ready-to-fill defaults when an editor adds one.
 66. No default destination.
 67. Agreed.
+97. Delivered (#337): the "Redirecting message" is shown on the visit button after it was pressed ("Opening…" when empty); the editor field starts empty with the default as its grey text. The three existing CTA pages carry their saved text ("Redirecting you shortly..." twice, one Italian), which they now show.
 
 ### Part 3e: restart and thank-you pages (#338)
 
@@ -114,6 +116,7 @@ Item numbers run continuously and never restart. A number can be commented on in
 70. The "Back" button text becomes editable on the consent, login, CTA and restart pages, default "Back".
 71. Item 69 confirmed.
 72. Item 70 confirmed.
+95. **Finding (2026-10-08, from the code, open for the owner):** the four pages have a Back button in their code, but the capture page never connects it (`onBack` is passed nowhere), so no user ever sees a Back button and the "Back button text" of item 70 would have no effect. Item 70 is therefore **not built**. Options: leave the flow one-way (item 70 closes as not needed, the dead code is removed later) or build back navigation as its own ticket.
 
 ### Part 3f: the share step and the public photo page (#339)
 

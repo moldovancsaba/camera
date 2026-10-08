@@ -25,6 +25,7 @@ import CaptureStageShell from '@/components/capture/CaptureStageShell';
 import { Button, Group, Stack, Text } from '@mantine/core';
 import { CAMERA_DEFAULT_CTA_BRAND_COLOR, CAMERA_STAGE_BLACK, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
+import { redirectingText } from '@/lib/events/page-texts';
 
 export interface CTAPageConfig {
   title: string;
@@ -74,7 +75,7 @@ export default function CTAPage({
     ? `${config.checkboxText}${config.checkboxText.includes('?') ? '&' : '?'}submissionId=${submissionId}`
     : config.checkboxText;
   const visitButtonText = config.visitButtonText || 'Visit Now';
-  void config.redirectingText;
+  const opening = redirectingText(config.redirectingText);
 
   const handleRedirect = () => {
     if (urlToVisit) {
@@ -110,7 +111,7 @@ export default function CTAPage({
           {config.description ? <p style={{ margin: 0, maxWidth: '40rem', fontSize: 'clamp(1.05rem, 2.6vw, 1.75rem)', fontStyle: 'italic', textShadow: shadow }}>{config.description}</p> : null}
           {urlToVisit ? (
             <PillButton onClick={handleRedirect} disabled={isRedirecting} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel="Visit URL">
-              {isRedirecting ? 'Opening…' : visitButtonText}
+              {isRedirecting ? opening : visitButtonText}
             </PillButton>
           ) : null}
           {hasButton ? (
@@ -139,7 +140,7 @@ export default function CTAPage({
             fullWidth
             aria-label="Visit URL"
           >
-            {isRedirecting ? '🔗 Opening...' : `🔗 ${visitButtonText}`}
+            {isRedirecting ? `🔗 ${opening}` : `🔗 ${visitButtonText}`}
           </Button>
           {hasButton ? (
             <Text size="xs" ta="center" c="dimmed">

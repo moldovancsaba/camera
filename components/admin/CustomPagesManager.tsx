@@ -17,6 +17,7 @@ import { useState } from 'react';
 import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
 import { uploadImageFile } from '@/lib/admin/upload-image-client';
 import { CustomPageType, type CustomPage, generateId, generateTimestamp } from '@/lib/db/schemas';
+import { DEFAULT_APPROVAL_TEXTS, DEFAULT_REDIRECTING_TEXT } from '@/lib/events/page-texts';
 
 function ImageUrlField({ label, value, onChange, helper }: { label: string; value: string; onChange: (value: string) => void; helper?: string }) {
   const [busy, setBusy] = useState(false);
@@ -559,7 +560,8 @@ function PageEditModal({
   // For CTA pages: hasButton determines if button is shown (if false, it's an end page)
   const [hasButton, setHasButton] = useState(page.config.hasButton !== false);
   const [visitButtonText, setVisitButtonText] = useState(page.config.visitButtonText || 'Visit Now');
-  const [redirectingText, setRedirectingText] = useState(page.config.redirectingText || 'Redirecting you shortly...');
+  // Empty = the default text, shown as the placeholder (camera#337)
+  const [redirectingText, setRedirectingText] = useState(page.config.redirectingText || '');
   // For take-photo page: button texts
   const [shareNextButtonText, setShareNextButtonText] = useState(page.config.shareNextButtonText || 'NEXT');
   const [shareScreenTitle, setShareScreenTitle] = useState(
@@ -582,6 +584,11 @@ function PageEditModal({
   const [showSharePage, setShowSharePage] = useState(page.config.showSharePage !== false);
   const [skipShareMessage, setSkipShareMessage] = useState(page.config.skipShareMessage || 'Thank you! Your photo has been saved.');
   const [showFrameOnCapture, setShowFrameOnCapture] = useState(page.config.showFrameOnCapture !== false); // Default true
+  // Texts while a photo waits for approval; empty = the default text, shown as the placeholder (camera#333)
+  const [pendingTitle, setPendingTitle] = useState(page.config.pendingTitle || '');
+  const [pendingSavedMessage, setPendingSavedMessage] = useState(page.config.pendingSavedMessage || '');
+  const [pendingPreviewNotice, setPendingPreviewNotice] = useState(page.config.pendingPreviewNotice || '');
+  const [pendingWaitingMessage, setPendingWaitingMessage] = useState(page.config.pendingWaitingMessage || '');
   // Camera prompt text
   const [cameraPromptTitle, setCameraPromptTitle] = useState(page.config.cameraPromptTitle || 'Ready to capture?');
   const [cameraPromptDescription, setCameraPromptDescription] = useState(page.config.cameraPromptDescription || 'Click to start your camera and take a photo');
@@ -633,7 +640,7 @@ function PageEditModal({
           checkboxText,
           hasButton,
           visitButtonText,
-          redirectingText,
+          redirectingText: redirectingText.trim() || undefined,
         }),
         ...(page.pageType === CustomPageType.TAKE_PHOTO && {
           // Not used any more: the reframe screen's Continue and Retake replaced the "love it" screen (camera#344). Kept as they are, never deleted.
@@ -657,6 +664,10 @@ function PageEditModal({
           linkCopiedMessage,
           copyErrorMessage,
           saveFirstMessage,
+          pendingTitle: pendingTitle.trim() || undefined,
+          pendingSavedMessage: pendingSavedMessage.trim() || undefined,
+          pendingPreviewNotice: pendingPreviewNotice.trim() || undefined,
+          pendingWaitingMessage: pendingWaitingMessage.trim() || undefined,
         }),
         ...(page.pageType === CustomPageType.RESTART && {
           restartButtonText,
@@ -896,7 +907,8 @@ function PageEditModal({
               label="Redirecting Message"
               value={redirectingText}
               onChange={setRedirectingText}
-              placeholder="e.g., Redirecting you shortly..."
+              placeholder={DEFAULT_REDIRECTING_TEXT}
+              helper="Shown on the visit button after it was pressed. Empty: the text in grey."
             />
             <Check
               checked={hasButton}
@@ -1034,6 +1046,39 @@ function PageEditModal({
               value={saveFirstMessage}
               onChange={setSaveFirstMessage}
               placeholder="e.g., Please save the photo first to get a shareable link."
+            />
+
+            <DividerLabel>Photo approval texts</DividerLabel>
+            <Field
+              label="Waiting Title"
+              value={pendingTitle}
+              onChange={setPendingTitle}
+              placeholder={DEFAULT_APPROVAL_TEXTS.title}
+              helper="For events with photo approval. Empty: the text in grey, in every field of this group."
+            />
+            <Area
+              label="Frame Notice"
+              value={pendingPreviewNotice}
+              onChange={setPendingPreviewNotice}
+              rows={2}
+              placeholder={DEFAULT_APPROVAL_TEXTS.previewNotice}
+              helper="Above the Continue button of the photo screen, before the photo is saved."
+            />
+            <Area
+              label="Saved Message"
+              value={pendingSavedMessage}
+              onChange={setPendingSavedMessage}
+              rows={2}
+              placeholder={DEFAULT_APPROVAL_TEXTS.savedMessage}
+              helper="The notification after the photo was saved."
+            />
+            <Area
+              label="Waiting Message"
+              value={pendingWaitingMessage}
+              onChange={setPendingWaitingMessage}
+              rows={3}
+              placeholder={DEFAULT_APPROVAL_TEXTS.waitingMessage}
+              helper="Below the title. Tell the user how the link arrives. Your own text is shown as written."
             />
           </>
         ) : null}

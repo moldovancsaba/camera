@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — editable texts: the redirecting message and the four approval texts (camera#337, camera#333)
+
+- **Fixed (#337):** the "Redirecting Message" of a CTA page was saved but never shown; the visit button now shows it after it was pressed, "Opening…" when it is empty. The editor field starts empty with the default as its grey text, so it follows the code default unless an editor writes their own. The three existing CTA pages carry their saved text ("Redirecting you shortly..." on two, an Italian text on one), which they now show instead of "Opening…".
+- **Added (#333):** the four texts a user reads while a photo waits for approval are settings of the selfie-taking page (section "Photo approval texts"): the heading ("Thank you!"), the saved message, the frame notice above Continue, and the waiting message with the email information. Empty = the text the code always showed, so no event changes until an editor writes one. The try-on sentence is added to the default waiting message only; an own waiting message is shown as written. `lib/events/page-texts.ts`.
+- **Not built (#338):** the "Back button text" setting. The capture page never passes a Back button to the consent, login, CTA or restart page, so no user ever sees one and the text would have no effect; waiting for the owner (planning item 95).
+- **Verified:** unit tests for the defaults and the fallback; a real browser on the built app, mocked answers, nothing written: custom texts on the screen and the waiting screen, defaults without settings, the CTA button text after a press.
+
 ## Unreleased — one screen instead of reframe and "Love it": Continue saves (camera#344)
 
 - **Changed (client feedback via the owner, 2026-10-08):** after the shutter there is **one screen**: the zoom and move screen with Retake, Reset and Continue. **Continue saves the photo** and leads to the waiting-for-approval screen (vetted events) or the share screen. The separate "Love it / Try again" screen is gone for good. The frame notice ("Your photo will get its frame after it has been approved.") and, on events with try-on, the suit choice are on the one screen above the buttons. A save that fails leaves the user on the screen with the error shown and Continue ready; Retake goes back to the camera and saves nothing.

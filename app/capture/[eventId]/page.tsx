@@ -33,6 +33,7 @@ import {
 import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoAreYouPage';
 import AcceptPage, { type AcceptPageData } from '@/components/capture/AcceptPage';
 import { consentRecords } from '@/lib/events/consent';
+import { approvalTexts } from '@/lib/events/page-texts';
 import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
 import RestartPage from '@/components/capture/RestartPage';
 import WelcomePage from '@/components/capture/WelcomePage';
@@ -317,13 +318,13 @@ export default function EventCapturePage({
   const successMessage = configuredTakePhotoPage?.config.successMessage || 'Photo saved successfully! You can now share it.';
   const showSharePage = configuredTakePhotoPage?.config.showSharePage !== false;
   const skipShareMessage = configuredTakePhotoPage?.config.skipShareMessage || 'Thank you! Your photo has been saved.';
-  // Photo vetting (camera#265): what the guest reads while the photo waits for approval.
-  const pendingPreviewNotice = 'Your photo will get its frame after it has been approved.';
-  const pendingSavedMessage = 'Thank you! Your photo is waiting for approval.';
-  const pendingTitle = 'Thank you!';
-  const pendingWaitingMessage = `Your photo is waiting for approval. We will email you the link to it as soon as it is approved.${
-    selectedTryOnSuitId ? ' Your try-on picture will be made after that.' : ''
-  }`;
+  // Photo vetting (camera#265): what the user reads while the photo waits for approval; the selfie-taking page can replace each text (camera#333).
+  const {
+    previewNotice: pendingPreviewNotice,
+    savedMessage: pendingSavedMessage,
+    title: pendingTitle,
+    waitingMessage: pendingWaitingMessage,
+  } = approvalTexts(configuredTakePhotoPage?.config, Boolean(selectedTryOnSuitId));
   const cameraPromptTitle = configuredTakePhotoPage?.config.cameraPromptTitle || 'Ready to capture?';
   const cameraPromptDescription =
     configuredTakePhotoPage?.config.cameraPromptDescription || 'Click to start your camera and take a photo';
