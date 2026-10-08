@@ -13,10 +13,12 @@ import { ObjectId } from 'mongodb';
 import { type Frame } from '@/lib/db/schemas';
 import { parseMessageArea } from '@/lib/frame/message-area';
 import { regenerateEventsUsingFrame } from '@/lib/frame/regenerate';
+import { inUseSentence, usageOfItem } from '@/lib/library/db';
 import {
   requireAdmin,
   withErrorHandler,
   apiSuccess,
+  apiError,
   apiNotFound,
   apiBadRequest,
 } from '@/lib/api';
@@ -118,8 +120,18 @@ export const DELETE = withErrorHandler(async (
   }
 
   const db = await connectToDatabase();
-  const result = await db.collection<Frame>('frames').deleteOne({ _id: new ObjectId(id) });
+  const frame = await db.collection<Frame>('frames').findOne({ _id: new ObjectId(id) });
+  if (!frame) {
+    throw apiNotFound('Frame');
+  }
 
+  // A frame that an event or a partner library uses is not deleted (camera#392): the events would show a picture that is gone. Switch it off instead.
+  const refusal = inUseSentence('frame', await usageOfItem(db, 'frames', String(frame.frameId)));
+  if (refusal) {
+    throw apiError(refusal, 409);
+  }
+
+  const result = await db.collection<Frame>('frames').deleteOne({ _id: new ObjectId(id) });
   if (result.deletedCount === 0) {
     throw apiNotFound('Frame');
   }

@@ -272,6 +272,35 @@ export async function savePartnerLibrary(db: Db, partner: Document, kind: Librar
   return { ok: true, defaults, defaultsChanged: defaultsChanged && kind === 'frames', removedInUse };
 }
 
+/** Where a library item is used: the events that have it assigned, the partner libraries that hold it, and the partners that make it a default for new events. */
+export interface ItemUsage {
+  events: number;
+  partnerLibraries: number;
+  partnerDefaults: number;
+}
+
+export async function usageOfItem(db: Db, kind: LibraryKind, itemId: string): Promise<ItemUsage> {
+  const idField = KIND_META[kind].idField;
+  const events = await db.collection(COLLECTIONS.EVENTS).countDocuments({ [`${kind}.${idField}`]: itemId });
+  const partnerLibraries = await db.collection(COLLECTIONS.PARTNERS).countDocuments({ [`library.${kind}`]: itemId });
+  const defaultsPath = kind === 'frames' ? 'defaultFrames' : kind === 'logos' ? 'defaultLogos.logoId' : null;
+  const partnerDefaults = defaultsPath ? await db.collection(COLLECTIONS.PARTNERS).countDocuments({ [defaultsPath]: itemId }) : 0;
+  return { events, partnerLibraries, partnerDefaults };
+}
+
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+
+/** The refusal to delete an item that is in use (camera#392), or null when nothing uses it. Switching it off is the way to retire an item that is in use. */
+export function inUseSentence(noun: string, usage: ItemUsage): string | null {
+  const parts = [
+    usage.events ? plural(usage.events, 'event', 'events') : '',
+    usage.partnerLibraries ? plural(usage.partnerLibraries, 'partner library', 'partner libraries') : '',
+    usage.partnerDefaults ? `${plural(usage.partnerDefaults, 'partner', 'partners')} that make${usage.partnerDefaults === 1 ? 's' : ''} it a default for new events` : '',
+  ].filter(Boolean);
+  if (parts.length === 0) return null;
+  return `This ${noun} is used by ${parts.join(', ')}. Switch it off instead, so nobody can take it any more, or remove it from them first.`;
+}
+
 /** `eventId` here is the event UUID (`Event.eventId`), like the `eventId` an upload carries. */
 export type UpdateUploadResult = { ok: true; item: Document } | { ok: false; status: 400 | 404; reason: string };
 

@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — a global frame or logo that is in use cannot be deleted (camera#392; library audit finding 14)
+
+- **Changed (owner decision, 2026-10-08: before the match):** `DELETE /api/frames/<id>` and `DELETE /api/logos/<id>` (global admins) are refused with a 409 and a plain message while an event has the item assigned, a partner library holds it, or a partner makes it a default for new events: "This frame is used by 2 events, 1 partner library. Switch it off instead, so nobody can take it any more, or remove it from them first." Before, a deleted frame left its id on every event and library (the pages listed it as missing), and a deleted logo was pulled from every event without a word, so a live event could lose its logo. An item nothing uses is deleted as before; switching it off is the way to retire one that is in use.
+- **Docs:** `docs/LIBRARY_AUDIT.md` carries the confirmed triage with the issue of each finding (camera#392 to camera#400).
+- **Verified:** unit tests (where an item is used, the refusal sentence, both routes with an event, a partner library and a partner default; the fake database now matches an array field the way MongoDB does); type-check; lint; the full CI chain. **Not seen by the owner.**
+
 ## Unreleased — libraries, step 5: the Images library and pickers for pictures (camera#368)
 
 - **Added (owner report, 2026-10-08: "visual elements has to be visible"):** an **Images library** on the three levels of the libraries (`docs/LIBRARIES.md`, section Images):

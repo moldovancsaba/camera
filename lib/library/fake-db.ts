@@ -2,7 +2,7 @@
  * A database of plain arrays for the tests of the libraries: just the calls lib/library and its routes make (find with sort and limit,
  * findOne, countDocuments, insertOne, updateOne with $set, $push and $pull, updateMany with $set and $pull (also on a dotted path such as
  * `library.images`), deleteOne). Filters: equality (null matches a missing field),
- * $in, $nin, $ne, $exists, $or and dotted paths through arrays (`frames.frameId`); $set (also `frames.$.isActive`), $unset, $push and $pull. Not part of the app.
+ * $in, $nin, $ne, $exists, $or and dotted paths through arrays (`frames.frameId`; a plain value also matches an array that holds it); $set (also `frames.$.isActive`), $unset, $push and $pull. Not part of the app.
  */
 
 import type { Db } from 'mongodb';
@@ -30,6 +30,8 @@ function matchesValue(value: unknown, want: unknown): boolean {
     });
   }
   if (want === null) return value === null || value === undefined;
+  // As in MongoDB, an array field matches a plain value when one of its elements equals it (`library.frames` holding 'f1').
+  if (Array.isArray(value) && !Array.isArray(want)) return value.some((item) => matchesValue(item, want));
   return value === want || (typeof value === 'object' && value !== null && String(value) === String(want));
 }
 
