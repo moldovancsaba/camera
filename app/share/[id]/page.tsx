@@ -14,17 +14,21 @@ import { notFound } from 'next/navigation';
 import { findShareSubmission, shareStateOf, type ShareLookup } from '@/lib/submissions/share-lookup';
 import PhotoStatusNotice from '@/components/share/PhotoStatusNotice';
 import EventThemeScope from '@/components/theme/EventThemeScope';
+import UiLanguageProvider from '@/components/i18n/UiLanguageProvider';
 import { loadEventTheme } from '@/lib/theme/load';
 import type { EventTheme } from '@/lib/theme/event-theme';
 import PublicShell from '@/components/public/PublicPageShell';
-import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
+import { Alert, Button, Card, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import { listApprovedShareVariants } from '@/lib/tryon/publication';
 import {
   DEFAULT_PENDING_TRYON_MESSAGE,
   normalizeEventSharePageSettings,
+  pendingTryOnText,
   sharePageText,
   type EventSharePageSettings,
 } from '@/lib/events/share-page-settings';
+import { DEFAULT_UI_LANGUAGE, normalizeUiLanguage, translate, type UiLanguage } from '@/lib/i18n';
+import { formatDateTime } from '@/lib/i18n/date';
 import {
   type ShareVariantCard,
   prioritizeShareVariantCardsForFeaturedDisplay,
@@ -95,9 +99,15 @@ interface TryOnVariantLike {
 
 export const dynamic = 'force-dynamic';
 
-/** The page in the theme of its event; a page whose event is unknown keeps the default look. */
-function ThemedPage({ theme, children }: { theme: EventTheme | null; children: React.ReactNode }) {
-  return theme ? <EventThemeScope theme={theme}>{children}</EventThemeScope> : <>{children}</>;
+/** The page in the theme and the language of its event (camera#285, camera#352); a page whose event is unknown keeps the default look, in English. */
+function ThemedPage({ theme, language, children }: { theme: EventTheme | null; language: UiLanguage; children: React.ReactNode }) {
+  return theme ? (
+    <EventThemeScope theme={theme}>
+      <UiLanguageProvider language={language}>{children}</UiLanguageProvider>
+    </EventThemeScope>
+  ) : (
+    <>{children}</>
+  );
 }
 
 function getSubmissionEventLookupKeys(submission: Record<string, unknown>): string[] {
@@ -122,7 +132,7 @@ function getSubmissionEventLookupKeys(submission: Record<string, unknown>): stri
 async function resolveEventForSubmission(
   db: Db,
   submission: Record<string, unknown>
-): Promise<{ mongoId: string; name: string; sharePageSettings: EventSharePageSettings; theme: EventTheme } | null> {
+): Promise<{ mongoId: string; name: string; sharePageSettings: EventSharePageSettings; theme: EventTheme; language: UiLanguage } | null> {
   const eventLookupKeys = getSubmissionEventLookupKeys(submission);
   if (!eventLookupKeys.length) {
     return null;
@@ -140,10 +150,12 @@ async function resolveEventForSubmission(
     .collection(COLLECTIONS.EVENTS)
     .findOne({ $or: orClauses });
   if (!eventDoc?._id) return null;
+  // The page speaks the language of the event (camera#352).
+  const language = normalizeUiLanguage(eventDoc.uiLanguage);
   const name =
     typeof eventDoc.name === 'string' && eventDoc.name.trim()
       ? eventDoc.name.trim()
-      : 'Event';
+      : translate(language, 'meta.event');
   const sharePage = eventDoc.sharePage && typeof eventDoc.sharePage === 'object'
     ? eventDoc.sharePage
     : null;
@@ -153,25 +165,12 @@ async function resolveEventForSubmission(
     sharePageSettings: normalizeEventSharePageSettings(sharePage),
     // The page is drawn with the theme of the event (camera#285).
     theme: await loadEventTheme(db, eventDoc),
+    language,
   };
 }
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-function formatDateTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-  return date.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 function isLikelyEmail(value: string): boolean {
@@ -182,7 +181,7 @@ function isLegacyGuestName(value: string): boolean {
   return value.trim().toLowerCase() === 'event guest';
 }
 
-function resolveDisplayName(userName: string | null, userInfoName: string | null): string {
+function resolveDisplayName(userName: string | null, userInfoName: string | null, language: UiLanguage): string {
   const normalizedUserInfoName = userInfoName?.trim();
   if (normalizedUserInfoName && !isLikelyEmail(normalizedUserInfoName) && !isLegacyGuestName(normalizedUserInfoName)) {
     return normalizedUserInfoName;
@@ -191,12 +190,13 @@ function resolveDisplayName(userName: string | null, userInfoName: string | null
   if (normalizedUserName && !isLikelyEmail(normalizedUserName) && !isLegacyGuestName(normalizedUserName)) {
     return normalizedUserName;
   }
-  return 'Guest';
+  return translate(language, 'sharePage.guest');
 }
 
 function buildTryOnVariantCards(
   variant: TryOnVariantLike,
-  settings: EventSharePageSettings
+  settings: EventSharePageSettings,
+  language: UiLanguage
 ): ShareVariantCard[] {
   const id = variant._id?.toString() ?? '';
   const metadata = variant.metadata && typeof variant.metadata === 'object'
@@ -211,14 +211,14 @@ function buildTryOnVariantCards(
     }
     return Boolean(resultUrl && rawResultUrl && resultUrl !== rawResultUrl);
   })();
-  const suitLabel = readString(variant.tryOnLeatherSuitId) || 'Approved try-on result';
+  const suitLabel = readString(variant.tryOnLeatherSuitId) || translate(language, 'sharePage.tryOnApproved');
   const cards: ShareVariantCard[] = [];
 
   if (settings.includeTryOnResult && rawResultUrl) {
     cards.push({
       id: `${id}:tryon-generated`,
       imageUrl: rawResultUrl,
-      label: `${suitLabel} - generated`,
+      label: translate(language, 'sharePage.tryOnGenerated', { suit: suitLabel }),
       isTryOn: true,
     });
   }
@@ -229,7 +229,7 @@ function buildTryOnVariantCards(
         id: `${id}:tryon-framed`,
         imageUrl: resultUrl,
         previewImageUrl: previewUrl,
-        label: `${suitLabel} - with frame`,
+        label: translate(language, 'sharePage.tryOnFramed', { suit: suitLabel }),
         isTryOn: true,
       });
     }
@@ -258,36 +258,47 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     // A photo that is not public (pending, rejected, archived, removed from its events) gets no preview image and is not
     // indexed: a link preview must not leak what the page itself would not show (camera#262, camera#269).
-    if (state === 'waiting' || state === 'not_approved') {
+    if ((state === 'waiting' || state === 'not_approved') && submission) {
+      // The notice speaks the language of the event, and so does its tab title (camera#352). A failed event lookup must not cost the
+      // noindex: the title is then English.
+      const noticeEvent = await resolveEventForSubmission(db, submission).catch(() => null);
+      const noticeLanguage = noticeEvent?.language ?? DEFAULT_UI_LANGUAGE;
       return {
-        title: 'Your photo',
+        title: translate(noticeLanguage, 'sharePage.meta.yourPhoto'),
+        // The product's description, as the root layout gives every page; here in the event's language.
+        description: translate(noticeLanguage, 'meta.app.description'),
         robots: { index: false, follow: false },
       };
     }
+    // The page is not found (Next's own page, which does not know the event), so its title stays English.
     if (!submission || state !== 'visible') {
       return {
-        title: 'Photo Not Found',
+        title: translate(DEFAULT_UI_LANGUAGE, 'sharePage.meta.notFound'),
         robots: { index: false, follow: false },
       };
     }
 
-  const event = await resolveEventForSubmission(db, submission);
-  const eventLabel = event?.name ?? 'Shared photo';
-  const displayName = resolveDisplayName(
-    readString(submission.userName),
-    readString(submission.userInfo?.name)
-  );
-  const submissionImageUrl = readString(submission.imageUrl);
-  const openGraph: NonNullable<Metadata['openGraph']> = {
-    title: `Photo of ${displayName}`,
-    description: `From ${eventLabel}`,
-    type: 'website',
-  };
-  const twitter: NonNullable<Metadata['twitter']> = {
-    card: submissionImageUrl ? 'summary_large_image' : 'summary',
-    title: `Photo of ${displayName}`,
-    description: `From ${eventLabel}`,
-  };
+    const event = await resolveEventForSubmission(db, submission);
+    const language = event?.language ?? DEFAULT_UI_LANGUAGE;
+    const eventLabel = event?.name ?? translate(language, 'sharePage.sharedPhoto');
+    const displayName = resolveDisplayName(
+      readString(submission.userName),
+      readString(submission.userInfo?.name),
+      language
+    );
+    const photoOf = translate(language, 'sharePage.meta.photoOf', { name: displayName });
+    const from = translate(language, 'sharePage.meta.from', { event: eventLabel });
+    const submissionImageUrl = readString(submission.imageUrl);
+    const openGraph: NonNullable<Metadata['openGraph']> = {
+      title: photoOf,
+      description: from,
+      type: 'website',
+    };
+    const twitter: NonNullable<Metadata['twitter']> = {
+      card: submissionImageUrl ? 'summary_large_image' : 'summary',
+      title: photoOf,
+      description: from,
+    };
 
     if (submissionImageUrl) {
       openGraph.images = [
@@ -295,22 +306,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           url: submissionImageUrl,
           width: 1200,
           height: 1200,
-          alt: `Photo of ${displayName}`,
+          alt: photoOf,
         },
       ];
       twitter.images = [submissionImageUrl];
     }
 
     return {
-      title: `Photo of ${displayName} — ${eventLabel}`,
-      description: `Photo from ${eventLabel}`,
+      title: translate(language, 'sharePage.meta.title', { name: displayName, event: eventLabel }),
+      description: translate(language, 'sharePage.meta.description', { event: eventLabel }),
       openGraph,
       twitter,
     };
   } catch (error) {
     console.error('Error generating metadata:', error);
     return {
-      title: 'Photo',
+      title: translate(DEFAULT_UI_LANGUAGE, 'sharePage.meta.photo'),
     };
   }
 }
@@ -400,13 +411,15 @@ export default async function SharePage({ params }: Props) {
   if ((shareState === 'waiting' || shareState === 'not_approved') && lookup) {
     const noticeDb = await connectToDatabase();
     const noticeEvent = await resolveEventForSubmission(noticeDb, lookup.doc);
+    const noticeLanguage = noticeEvent?.language ?? DEFAULT_UI_LANGUAGE;
     return (
-      <ThemedPage theme={noticeEvent?.theme ?? null}>
+      <ThemedPage theme={noticeEvent?.theme ?? null} language={noticeLanguage}>
         <PhotoStatusNotice
           state={shareState}
-          eventName={noticeEvent?.name ?? 'Shared photo'}
+          eventName={noticeEvent?.name ?? translate(noticeLanguage, 'sharePage.sharedPhoto')}
           captureHref={noticeEvent?.mongoId ? `/capture/${noticeEvent.mongoId}` : '/capture'}
           settings={noticeEvent?.sharePageSettings}
+          language={noticeLanguage}
         />
       </ThemedPage>
     );
@@ -418,6 +431,7 @@ export default async function SharePage({ params }: Props) {
 
   const db = await connectToDatabase();
   const event = await resolveEventForSubmission(db, submission as unknown as Record<string, unknown>);
+  const language = event?.language ?? DEFAULT_UI_LANGUAGE;
   const sharePageSettings = event?.sharePageSettings ?? FALLBACK_SHARE_PAGE_SETTINGS;
   const hasTryOnRequest = Boolean(submission.tryOnRequest?.requested);
   const enforcedSharePageSettings = hasTryOnRequest
@@ -469,7 +483,7 @@ export default async function SharePage({ params }: Props) {
           addUniqueShareVariant({
             id: `${currentSubmissionId}:camera-result`,
             imageUrl: submissionImage,
-            label: 'Photo with Camera frame',
+            label: translate(language, 'sharePage.cameraResult'),
           });
         }
       } else if (sourceDoc && typeof sourceDoc.imageUrl === 'string' && sourceDoc.imageUrl.trim()) {
@@ -480,7 +494,7 @@ export default async function SharePage({ params }: Props) {
           addUniqueShareVariant({
             id: `${submission.sourceSubmissionId}:camera-result`,
             imageUrl: sourceResultImage,
-            label: 'Photo with Camera frame',
+            label: translate(language, 'sharePage.cameraResult'),
           });
         }
       }
@@ -490,7 +504,7 @@ export default async function SharePage({ params }: Props) {
       addUniqueShareVariant({
         id: `${(submission.submissionKind === 'original' ? currentSubmissionId : submission.sourceSubmissionId) ?? currentSubmissionId}:original-capture`,
         imageUrl: sourceImageUrl,
-        label: sharePageText(sharePageSettings, 'originalPhotoLabel'),
+        label: sharePageText(sharePageSettings, 'originalPhotoLabel', language),
       });
     }
 
@@ -535,7 +549,7 @@ export default async function SharePage({ params }: Props) {
       }
 
       variantCandidates.forEach((variant) => {
-        buildTryOnVariantCards(variant, enforcedSharePageSettings).forEach((card) => {
+        buildTryOnVariantCards(variant, enforcedSharePageSettings, language).forEach((card) => {
           addUniqueShareVariant(card);
         });
       });
@@ -543,7 +557,8 @@ export default async function SharePage({ params }: Props) {
       if (enforcedSharePageSettings.includeCheckedInTryOnResult) {
         const checkedInVariant = pickFirstCheckedInTryOnVariantCard(
           variantCandidates,
-          enforcedSharePageSettings
+          enforcedSharePageSettings,
+          language
         );
         if (checkedInVariant) {
           if (!shareVariants.some((variant) => variant.id === checkedInVariant.id)) {
@@ -590,7 +605,7 @@ export default async function SharePage({ params }: Props) {
   const downloadableImageHref = hasDownloadableImage && featuredVariant && submission.id
     ? `/api/share/${submission.id}/download?variant=${encodeURIComponent(featuredVariant.id)}`
     : null;
-  const imageMissingMessage = sharePageSettings.pendingTryOnMessage;
+  const pendingTryOnMessage = pendingTryOnText(sharePageSettings, language);
 
   const showPendingTryOnMessage =
     hasTryOnRequest &&
@@ -603,9 +618,9 @@ export default async function SharePage({ params }: Props) {
     createYourOwnHref = `/capture/${event.mongoId}`;
   }
 
-  const headline = event?.name ?? 'Shared photo';
+  const headline = event?.name ?? translate(language, 'sharePage.sharedPhoto');
   return (
-    <ThemedPage theme={event?.theme ?? null}>
+    <ThemedPage theme={event?.theme ?? null} language={language}>
     <PublicShell size="lg">
       <Stack gap="xl">
         <Stack align="center" gap="xs" ta="center">
@@ -646,15 +661,17 @@ export default async function SharePage({ params }: Props) {
               mb="md"
               style={{ minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              {imageMissingMessage}
+              {pendingTryOnMessage}
             </Text>
           )}
 
           <Text size="sm" c="dimmed" ta="right" mb="lg">
-            {submission.createdAt ? formatDateTime(submission.createdAt) : ''}
+            {submission.createdAt ? formatDateTime(submission.createdAt, language) : ''}
           </Text>
 
-          <Group gap="md" grow>
+          {/* The two buttons sit one under the other on a phone: side by side, half a phone wide, the themed capitals of "Download" and of a
+              Hungarian label were clipped (camera#352). Side by side again from the small breakpoint up; a single button is always full width. */}
+          <SimpleGrid cols={{ base: 1, xs: sharePageSettings.showCreateYourOwnButton ? 2 : 1 }} spacing="md">
             {downloadableImageHref ? (
               <Button
                 component="a"
@@ -662,30 +679,30 @@ export default async function SharePage({ params }: Props) {
                 download
                 size="lg"
               >
-                {sharePageText(sharePageSettings, 'downloadButton')}
+                {sharePageText(sharePageSettings, 'downloadButton', language)}
               </Button>
             ) : (
               <Button size="lg" disabled>
-                {sharePageText(sharePageSettings, 'downloadButton')}
+                {sharePageText(sharePageSettings, 'downloadButton', language)}
               </Button>
             )}
             {sharePageSettings.showCreateYourOwnButton ? (
               <Button component="a" href={createYourOwnHref} variant="default" size="lg">
-                {sharePageText(sharePageSettings, 'createYourOwnButton')}
+                {sharePageText(sharePageSettings, 'createYourOwnButton', language)}
               </Button>
             ) : null}
-          </Group>
+          </SimpleGrid>
 
           {showPendingTryOnMessage && featuredVariant ? (
             <Alert color="blue" variant="light" mt="xl">
-              {sharePageSettings.pendingTryOnMessage}
+              {pendingTryOnMessage}
             </Alert>
           ) : null}
 
           {galleryVariants.length > 0 ? (
             <Stack gap="md" mt="xl">
               <Text fw={700}>
-            {sharePageText(sharePageSettings, 'relatedPhotosTitle')}
+            {sharePageText(sharePageSettings, 'relatedPhotosTitle', language)}
               </Text>
               <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
                 {galleryVariants.map((variant) => (
