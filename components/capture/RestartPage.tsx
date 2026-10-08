@@ -7,6 +7,7 @@ import {
   CAMERA_DEFAULT_BRAND_COLOR,
 } from '@/lib/gds/tokens/colors';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
+import { useT } from '@/components/i18n/UiLanguageProvider';
 
 export interface RestartPageConfig {
   title: string;
@@ -34,6 +35,7 @@ export default function RestartPage({
   brandBorderColor = CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
 }: RestartPageProps) {
+  const { t } = useT();
   void brandBorderColor;
 
   return (
@@ -44,8 +46,8 @@ export default function RestartPage({
     >
       <Group grow>
         {onBack ? (
-          <Button variant="light" size={buttonSize} onClick={onBack} aria-label="Go back to previous page">
-            Back
+          <Button variant="light" size={buttonSize} onClick={onBack} aria-label={t('common.backAria')}>
+            {t('common.back')}
           </Button>
         ) : null}
         <Button

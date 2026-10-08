@@ -13,7 +13,8 @@
  */
 
 import { useState } from 'react';
-import { DEFAULT_IDENTITY_TEXTS, loginOptions, textOrDefault } from '@/lib/events/identity-page';
+import { loginOptions } from '@/lib/events/identity-page';
+import { useT } from '@/components/i18n/UiLanguageProvider';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import CaptureStageShell from '@/components/capture/CaptureStageShell';
 import { Button, Divider, Group, Stack, TextInput, Title } from '@mantine/core';
@@ -63,32 +64,33 @@ export default function WhoAreYouPage({
   pageIndex,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
 }: WhoAreYouPageProps) {
+  const { t, own } = useT();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [errors, setErrors] = useState<{ name?: string; email?: string }>({});
 
   // At least one way to say who you are stays on (planning item 36); an empty text falls back to its default.
   const { sso: enableSSOLogin, form: enablePseudoReg } = loginOptions(config);
-  const text = DEFAULT_IDENTITY_TEXTS;
-  const nameLabel = textOrDefault(config.nameLabel, text.nameLabel);
-  const emailLabel = textOrDefault(config.emailLabel, text.emailLabel);
-  const buttonText = textOrDefault(config.buttonText, text.buttonText);
-  const socialHeading = config.ssoButtonText || 'Sign in with Google or Facebook';
-  const pseudoFormTitle = config.pseudoFormTitle || 'Or enter your details';
+  // Every text: the editor's own, else the language's default; a stored English default counts as not set in another language (camera#352).
+  const nameLabel = own(['login.nameLabel', 'login.nameLabelEditor'], config.nameLabel);
+  const emailLabel = own(['login.emailLabel', 'login.emailLabelEditor'], config.emailLabel);
+  const buttonText = own('login.button', config.buttonText);
+  const socialHeading = own(['login.ssoEditor', 'login.sso'], config.ssoButtonText);
+  const pseudoFormTitle = own(['login.formEditor', 'login.form'], config.pseudoFormTitle);
 
   const validate = (): boolean => {
     const newErrors: { name?: string; email?: string } = {};
 
     if (!name.trim()) {
-      newErrors.name = 'Name is required';
+      newErrors.name = t('login.err.nameRequired');
     } else if (name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
+      newErrors.name = t('login.err.nameShort');
     }
 
     if (!email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = t('login.err.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = t('login.err.emailInvalid');
     }
 
     setErrors(newErrors);
@@ -113,8 +115,8 @@ export default function WhoAreYouPage({
 
   return (
     <CaptureStageShell
-      title={textOrDefault(config.title, text.title)}
-      description={textOrDefault(config.description, text.description)}
+      title={own('login.title', config.title)}
+      description={own('login.description', config.description)}
       logoUrl={logoUrl}
     >
       {enableSSOLogin ? (
@@ -126,7 +128,7 @@ export default function WhoAreYouPage({
         </Stack>
       ) : null}
 
-      {enableSSOLogin && enablePseudoReg ? <Divider label="OR" labelPosition="center" /> : null}
+      {enableSSOLogin && enablePseudoReg ? <Divider label={t('login.or')} labelPosition="center" /> : null}
 
       {enablePseudoReg ? (
         <Stack gap="sm">
@@ -147,7 +149,7 @@ export default function WhoAreYouPage({
               }
             }}
             onKeyDown={handleKeyPress}
-            placeholder={config.namePlaceholder || 'Enter your name'}
+            placeholder={own(['login.namePlaceholderEditor', 'login.namePlaceholder'], config.namePlaceholder)}
             aria-label={nameLabel}
             error={errors.name}
           />
@@ -164,15 +166,15 @@ export default function WhoAreYouPage({
               }
             }}
             onKeyDown={handleKeyPress}
-            placeholder={config.emailPlaceholder || 'your.email@example.com'}
+            placeholder={own(['login.emailPlaceholderEditor', 'login.emailPlaceholder'], config.emailPlaceholder)}
             aria-label={emailLabel}
             error={errors.email}
           />
 
           <Group grow pt="xs">
             {onBack ? (
-              <Button variant="light" size={buttonSize} onClick={onBack} aria-label="Go back to previous page">
-                Back
+              <Button variant="light" size={buttonSize} onClick={onBack} aria-label={t('common.backAria')}>
+                {t('common.back')}
               </Button>
             ) : null}
             <Button onClick={handleNext} color={brandColor} size={buttonSize} aria-label={buttonText}>

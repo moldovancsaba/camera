@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { PublicFlowShell, type PublicFlowStageStatus } from '@sovereignsquad/gds-core/client';
 import { Stack } from '@mantine/core';
 import { useEventTheme } from '@/components/theme/EventThemeScope';
+import { useT } from '@/components/i18n/UiLanguageProvider';
 
 interface CaptureStageShellProps {
   title: string;
@@ -22,6 +23,7 @@ interface CaptureStageShellProps {
  * page, drawn with the theme of the event (camera#285).
  */
 export default function CaptureStageShell({ title, description, children, logoUrl, notice, status = 'ready' }: CaptureStageShellProps) {
+  const { t } = useT();
   const theme = useEventTheme();
   const logo = logoUrl ?? theme?.logoUrl ?? null;
   const emoji = !logo ? theme?.emoji ?? null : null;
@@ -32,7 +34,7 @@ export default function CaptureStageShell({ title, description, children, logoUr
         {logo ? (
           <Image
             src={logo}
-            alt="Event logo"
+            alt={t('common.eventLogo')}
             width={320}
             height={128}
             unoptimized

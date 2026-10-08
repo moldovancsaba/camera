@@ -8,21 +8,27 @@
  */
 
 import type { CustomPage } from '@/lib/db/schemas';
+import { translate, type UiLanguage } from '@/lib/i18n';
 
 export const DEFAULT_IDENTITY_PAGE_ID = 'default-identity';
 
 /** The texts of the default login page; an own login page whose text is empty falls back to the same words (camera#330, planning item 36). */
-export const DEFAULT_IDENTITY_TEXTS = {
-  title: 'Who are you?',
-  description: 'Log in or tell us your email: we will send you the link to your photo as soon as it has been approved.',
-  buttonText: 'Continue',
-  ssoButtonText: 'Log in with',
-  pseudoFormTitle: 'Or use your email',
-  nameLabel: 'Your name',
-  emailLabel: 'Your email',
-  namePlaceholder: 'Your name',
-  emailPlaceholder: 'you@example.com',
-} as const;
+export function identityTexts(language: UiLanguage = 'en') {
+  return {
+    title: translate(language, 'login.title'),
+    description: translate(language, 'login.description'),
+    buttonText: translate(language, 'login.button'),
+    ssoButtonText: translate(language, 'login.sso'),
+    pseudoFormTitle: translate(language, 'login.form'),
+    nameLabel: translate(language, 'login.nameLabel'),
+    emailLabel: translate(language, 'login.emailLabel'),
+    namePlaceholder: translate(language, 'login.namePlaceholder'),
+    emailPlaceholder: translate(language, 'login.emailPlaceholder'),
+  };
+}
+
+/** The English texts (the dictionary's), for code that has no language. */
+export const DEFAULT_IDENTITY_TEXTS = identityTexts('en');
 
 /** A text, or its default when it is empty. */
 export function textOrDefault(value: string | null | undefined, fallback: string): string {
@@ -40,8 +46,8 @@ export function loginOptions(config: { enableSSOLogin?: boolean; enablePseudoReg
 }
 
 /** The page a vetted event shows first when it has no "who are you" page of its own before the photo. */
-export function defaultIdentityPage(order: number, now: string = new Date().toISOString()): CustomPage {
-  const t = DEFAULT_IDENTITY_TEXTS;
+export function defaultIdentityPage(order: number, now: string = new Date().toISOString(), language: UiLanguage = 'en'): CustomPage {
+  const t = identityTexts(language);
   return {
     pageId: DEFAULT_IDENTITY_PAGE_ID,
     pageType: 'who-are-you' as CustomPage['pageType'],
@@ -74,7 +80,7 @@ export function hasIdentityPageBeforePhoto(pages: readonly CustomPage[]): boolea
 }
 
 /** The event's pages as the guest sees them: with vetting required and no identity page before the photo, the default one is first. */
-export function withRequiredIdentityPage(pages: readonly CustomPage[] | null | undefined, vettingRequired: boolean, now?: string): CustomPage[] {
+export function withRequiredIdentityPage(pages: readonly CustomPage[] | null | undefined, vettingRequired: boolean, now?: string, language: UiLanguage = 'en'): CustomPage[] {
   const own = [...(pages ?? [])];
   if (!vettingRequired || hasIdentityPageBeforePhoto(own)) return own;
   // The default login step goes right after the leading welcome step(s) (step 0 is the first thing a guest sees) and the consent page(s) that
@@ -84,5 +90,5 @@ export function withRequiredIdentityPage(pages: readonly CustomPage[] | null | u
   while (sorted[leading]?.pageType === 'welcome') leading += 1;
   while (sorted[leading]?.pageType === 'accept') leading += 1;
   const order = leading > 0 ? sorted[leading - 1].order + 0.5 : (sorted.length > 0 ? sorted[0].order : 0) - 1;
-  return [defaultIdentityPage(order, now), ...own];
+  return [defaultIdentityPage(order, now, language), ...own];
 }

@@ -28,6 +28,6 @@ export const useUiLanguage = (): UiLanguage => useContext(UiLanguageContext);
 export function useT() {
   const language = useUiLanguage();
   const t = useCallback((key: MessageKey, values?: MessageValues) => translate(language, key, values), [language]);
-  const own = useCallback((key: MessageKey, stored: string | null | undefined, values?: MessageValues) => textOr(language, key, stored, values), [language]);
+  const own = useCallback((key: MessageKey | readonly MessageKey[], stored: string | null | undefined, values?: MessageValues) => textOr(language, key, stored, values), [language]);
   return { t, own, language };
 }

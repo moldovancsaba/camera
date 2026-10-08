@@ -37,3 +37,11 @@ test('an editor\'s own text wins; the English default stored by the page editor 
   assert.equal(textOr('en', 'event.loading', ''), 'Loading event...');
   assert.equal(textOr('en', 'event.loading', 'Hold on'), 'Hold on');
 });
+
+test('several English wordings of one field are all treated as the stored default; the first key is the text shown', () => {
+  const keys = ['login.nameLabel', 'login.nameLabelEditor'] as const;
+  assert.equal(textOr('hu', keys, 'Your name'), 'A neved');
+  assert.equal(textOr('hu', keys, 'Your Name'), 'A neved');
+  assert.equal(textOr('hu', keys, 'Becenév'), 'Becenév');
+  assert.equal(textOr('en', keys, 'Your Name'), 'Your Name');
+});

@@ -40,6 +40,7 @@ import {
   type ReframeView,
 } from '@/lib/camera/reframe';
 import { renderReframe } from '@/lib/camera/reframe-render';
+import { useT } from '@/components/i18n/UiLanguageProvider';
 
 /** The frame-less crop (what the composite step and try-on use) and how it was made. */
 export interface ReframeResult {
@@ -104,6 +105,7 @@ export default function ReframeStep({
   const [frameImage, setFrameImage] = useState<HTMLImageElement | null>(null);
   const [viewState, setViewState] = useState<ReframeView | null>(null);
   const [stage, setStage] = useState({ width: 0, height: 0 });
+  const { t } = useT();
   const [isFinishing, setIsFinishing] = useState(false);
   // Locked while the crop is made and while the page saves the photo.
   const locked = isFinishing || busy;
@@ -372,14 +374,14 @@ export default function ReframeStep({
   const canShowEverything = source ? canShowEverythingFor(source.width, source.height, frameAspect) : false;
   const mode: ReframeMode = source && view ? modeOf(view, source.width, source.height, frameAspect) : 'fill';
   const zoomPercent = view ? Math.round(clampView(view, source?.width ?? 1, source?.height ?? 1, frameAspect).zoom * 100) : 100;
-  const modeLabel = mode === 'fill' ? 'Filling the frame' : mode === 'fit' ? 'Showing everything' : 'Custom position';
+  const modeLabel = mode === 'fill' ? t('reframe.mode.fill') : mode === 'fit' ? t('reframe.mode.fit') : t('reframe.mode.custom');
 
   if (loadFailed) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-6 text-center" role="alert">
-        <p>We could not open the photo. Please retake it.</p>
+        <p>{t('reframe.loadFailed')}</p>
         <Button type="button" size={buttonSize} radius="md" onClick={onRetake}>
-          {labels?.retake ?? 'Retake'}
+          {labels?.retake ?? t('reframe.retake')}
         </Button>
       </div>
     );
@@ -392,7 +394,7 @@ export default function ReframeStep({
           ref={stageRef}
           role="group"
           tabIndex={0}
-          aria-label="Photo position inside the frame"
+          aria-label={t('reframe.stage.aria')}
           aria-describedby={instructionsId}
           className="relative overflow-hidden"
           style={{ width: stage.width || undefined, height: stage.height || undefined, touchAction: 'none', cursor: 'grab' }}
@@ -410,11 +412,11 @@ export default function ReframeStep({
       <div className="reframe-panel mx-auto flex w-full max-w-md flex-col gap-3 p-4">
         <div className="reframe-options flex flex-col gap-3">
         <p className="text-center text-xs" role="status" aria-live="polite">
-          {`Zoom ${zoomPercent}%. ${modeLabel}.`}
+          {t('reframe.status', { percent: zoomPercent, mode: modeLabel })}
         </p>
 
         <GdsSegmentedControl<ReframeMode>
-          ariaLabel="How the photo fits the frame"
+          ariaLabel={t('reframe.fit.aria')}
           fullWidth
           value={mode}
           onChange={(next) => {
@@ -423,15 +425,15 @@ export default function ReframeStep({
             if (next === 'fit') update(fitView(source.width, source.height, frameAspect));
           }}
           options={[
-            { value: 'fill', label: 'Fill frame' },
-            { value: 'fit', label: 'Show everything', disabled: !canShowEverything },
-            { value: 'custom', label: 'Custom', disabled: true },
+            { value: 'fill', label: t('reframe.fit.fill') },
+            { value: 'fit', label: t('reframe.fit.all'), disabled: !canShowEverything },
+            { value: 'custom', label: t('reframe.fit.custom'), disabled: true },
           ]}
         />
 
         <GdsSlider
-          label="Zoom"
-          ariaLabel="Zoom"
+          label={t('reframe.zoom')}
+          ariaLabel={t('reframe.zoom')}
           min={Math.round(low * 100)}
           max={MAX_ZOOM * 100}
           step={1}
@@ -441,8 +443,7 @@ export default function ReframeStep({
         />
 
         <p id={instructionsId} className="text-center text-xs">
-          Drag the photo to move it, pinch or use the zoom control to resize it. With the keyboard, use the arrow keys to move
-          and plus and minus to zoom.
+          {t('reframe.instructions')}
         </p>
         </div>
 
@@ -450,7 +451,7 @@ export default function ReframeStep({
 
         <div className="reframe-actions flex items-center justify-between gap-2">
           <Button type="button" variant="light" size={buttonSize} radius="md" onClick={onRetake} disabled={locked}>
-            {labels?.retake ?? 'Retake'}
+            {labels?.retake ?? t('reframe.retake')}
           </Button>
           <Button
             type="button"
@@ -460,10 +461,10 @@ export default function ReframeStep({
             onClick={() => source && update(defaultView(source.width, source.height))}
             disabled={!source || locked}
           >
-            {labels?.reset ?? 'Reset'}
+            {labels?.reset ?? t('reframe.reset')}
           </Button>
           <Button type="button" size={buttonSize} radius="md" onClick={() => void finish()} disabled={!source || locked} loading={locked}>
-            {labels?.continue ?? 'Continue'}
+            {labels?.continue ?? t('reframe.continue')}
           </Button>
         </div>
       </div>

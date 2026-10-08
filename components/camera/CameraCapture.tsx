@@ -31,9 +31,7 @@ import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/vi
 import FrameTerritories from '@/components/capture/FrameTerritories';
 import type { Territory } from '@/lib/frame/capture';
 import {
-  CAPTURE_FAILED_MESSAGE,
   CAPTURE_MAX_ATTEMPTS,
-  CAPTURE_NOT_READY_MESSAGE,
   CAPTURE_RETRY_DELAY_MS,
   SHUTTER_READY_TIMEOUT_MS,
   SHUTTER_WARMUP_MS,
@@ -60,9 +58,7 @@ import { captureFullFrame, type FullFrameCapture } from '@/lib/camera/frame-capt
 import { aspectsAgree, fullFrameFromBlob, takeStillBlob } from '@/lib/camera/still-capture';
 import { fillCropRect, toFractionRect } from '@/lib/camera/reframe';
 import { sampleVideoLumaStats, waitForVideoFrame } from '@/lib/camera/video-frame';
-
-/** Shown under the live view when the frame keeps only part of the camera image. */
-const FRAME_GUIDE_HINT = 'Your frame keeps the bright area.';
+import { useT } from '@/components/i18n/UiLanguageProvider';
 
 /** Supports hex (#rgb) or CSS `var(--token)` for branded capture UI. */
 function capturePromptBackground(fill: string): string {
@@ -132,8 +128,8 @@ export default function CameraCapture({
   frameHeight,
   captureButtonColor = CAMERA_DEFAULT_BRAND_COLOR,
   captureButtonBorderColor = CAMERA_DEFAULT_BRAND_BORDER_COLOR,
-  promptTitle = 'Ready to capture?',
-  promptDescription = 'Click to start your camera and take a photo',
+  promptTitle: promptTitleProp,
+  promptDescription: promptDescriptionProp,
   initialFacingMode = 'user',
   previewAspectWidthOverHeight,
   controlBar = 'default',
@@ -145,6 +141,9 @@ export default function CameraCapture({
   territories,
   stillCapture = false,
 }: CameraCaptureProps) {
+  const { t } = useT();
+  const promptTitle = promptTitleProp ?? t('camera.ready.title');
+  const promptDescription = promptDescriptionProp ?? t('camera.prompt.desktop');
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(autoStart);
@@ -451,17 +450,17 @@ export default function CameraCapture({
       setIsLoading(false);
       
       const error = err as Error;
-      let errorMessage = 'Failed to access camera';
+      let errorMessage = t('camera.error.failed');
 
       // Provide user-friendly error messages
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-        errorMessage = 'Camera access denied. Please allow camera permission in your browser settings.';
+        errorMessage = t('camera.error.denied');
       } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-        errorMessage = 'No camera found on this device.';
+        errorMessage = t('camera.error.notFound');
       } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-        errorMessage = 'Camera is already in use by another application.';
+        errorMessage = t('camera.error.inUse');
       } else if (error.name === 'OverconstrainedError') {
-        errorMessage = 'Camera does not support the requested settings.';
+        errorMessage = t('camera.error.constraints');
       }
 
       setError(errorMessage);
@@ -615,7 +614,7 @@ export default function CameraCapture({
       );
 
       if (!result.ok) {
-        setCaptureNotice(encodeFailures > 0 ? CAPTURE_FAILED_MESSAGE : CAPTURE_NOT_READY_MESSAGE);
+        setCaptureNotice(encodeFailures > 0 ? t('camera.captureFailed') : t('camera.notReady'));
       }
 
       const finalStats = lastStats as LumaStats | null;
@@ -947,7 +946,7 @@ export default function CameraCapture({
               <div className="absolute inset-0  flex items-center justify-center z-30">
                 <div className=" text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2  mx-auto mb-4"></div>
-                  <p className="text-sm">Starting camera...</p>
+                  <p className="text-sm">{t('camera.starting')}</p>
                 </div>
               </div>
             )}
@@ -955,7 +954,7 @@ export default function CameraCapture({
             {/* Shutter warm-up and capture messages (announced, not colour-only) */}
             {stream && !isLoading && !isShutterReady && (
               <div className="absolute inset-x-0 top-2 z-20 text-center text-xs" role="status">
-                Getting ready…
+                {t('camera.gettingReady')}
               </div>
             )}
             {captureNotice && (
@@ -965,7 +964,7 @@ export default function CameraCapture({
             )}
             {!captureNotice && stream && frameGuide && isShutterReady && (
               <div className="absolute inset-x-0 bottom-2 z-20 p-2 text-center text-xs" role="note" style={{ color: CAMERA_STAGE_WHITE }}>
-                {FRAME_GUIDE_HINT}
+                {t('camera.frameGuideHint')}
               </div>
             )}
 
@@ -976,7 +975,7 @@ export default function CameraCapture({
                   <svg className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p className="text-base md:text-lg font-semibold mb-2">Camera Error</p>
+                  <p className="text-base md:text-lg font-semibold mb-2">{t('camera.errorTitle')}</p>
                   <p className="text-xs md:text-sm mb-4">{error}</p>
                   <Button
                     type="button"
@@ -984,7 +983,7 @@ export default function CameraCapture({
                     size={buttonSize}
                     onClick={() => startCamera(facingMode)}
                   >
-                    Try Again
+                    {t('camera.tryAgain')}
                   </Button>
                 </div>
               </div>
@@ -1017,7 +1016,7 @@ export default function CameraCapture({
             {/* Captured Image Preview */}
             <Image
               src={capturedImage}
-              alt="Captured photo"
+              alt={t('camera.captured.alt')}
               fill
               unoptimized
               className="w-full h-full object-contain"
@@ -1038,7 +1037,7 @@ export default function CameraCapture({
               <div className="justify-self-start">
                 {onCancel ? (
                   <Button type="button" variant="light" size={buttonSize} radius="md" onClick={onCancel}>
-                    Cancel
+                    {t('camera.cancel')}
                   </Button>
                 ) : (
                   <span />
@@ -1052,7 +1051,7 @@ export default function CameraCapture({
                   onClick={() => void capturePhoto()}
                   disabled={!isShutterReady || isCapturing}
                 >
-                  Take
+                  {t('camera.take')}
                 </Button>
               </div>
               <div className="justify-self-end">
@@ -1065,7 +1064,7 @@ export default function CameraCapture({
                     onClick={() => switchCamera()}
                     disabled={isLoading}
                   >
-                    Change camera
+                    {t('camera.changeCamera')}
                   </Button>
                 ) : (
                   <span />
@@ -1082,7 +1081,7 @@ export default function CameraCapture({
             <div className="justify-self-start">
               {onCancel ? (
                 <Button type="button" variant="light" size={buttonSize} radius="md" onClick={onCancel}>
-                  Cancel
+                  {t('camera.cancel')}
                 </Button>
               ) : (
                 <span />
@@ -1091,7 +1090,7 @@ export default function CameraCapture({
             <div className="justify-self-center">
               {showRetake ? (
                 <Button type="button" variant="light" size={buttonSize} radius="md" onClick={() => retake()}>
-                  Retake
+                  {t('camera.retake')}
                 </Button>
               ) : (
                 <span />
@@ -1120,7 +1119,8 @@ export default function CameraCapture({
               borderStyle: 'solid',
               borderColor: captureButtonBorderColor,
             }}
-            aria-label="Capture photo"
+            aria-label={t('camera.shutter.aria')}
+            data-tour-id="capture-shutter"
           >
             <div className="h-full w-full rounded-full" style={{ backgroundColor: captureButtonColor }} />
           </button>
@@ -1136,7 +1136,8 @@ export default function CameraCapture({
                     ? 'bottom-[max(1rem,var(--gds-safe-area-inset-bottom))] right-[max(1rem,var(--gds-safe-area-inset-right))]'
                     : 'bottom-[max(1rem,var(--gds-safe-area-inset-bottom))] left-[max(1rem,var(--gds-safe-area-inset-left))]'
               }`}
-              aria-label="Switch camera"
+              aria-label={t('camera.switch.aria')}
+              data-tour-id="capture-switch-camera"
               disabled={isLoading}
             >
               <svg className="h-6 w-6 " fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1164,7 +1165,7 @@ export default function CameraCapture({
                 : 'left-[max(1rem,var(--gds-safe-area-inset-left))] top-1/2 -translate-y-1/2'
           }`}
         >
-          Retake Photo
+          {t('camera.retakePhoto')}
         </button>
       ) : null}
 

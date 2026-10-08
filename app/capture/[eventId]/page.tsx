@@ -35,6 +35,8 @@ import AcceptPage, { type AcceptPageData } from '@/components/capture/AcceptPage
 import { consentRecords } from '@/lib/events/consent';
 import { approvalTexts } from '@/lib/events/page-texts';
 import { useT } from '@/components/i18n/UiLanguageProvider';
+import { translate, type MessageKey, type MessageValues, type UiLanguage } from '@/lib/i18n';
+import { errorText } from '@/lib/i18n/errors';
 import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
 import RestartPage from '@/components/capture/RestartPage';
 import WelcomePage from '@/components/capture/WelcomePage';
@@ -168,8 +170,8 @@ interface SubmissionEmailMetadata {
 const PREVIEW_PANEL_CLASS =
   'flex w-full max-w-md min-h-0 shrink flex-col gap-2 px-3 landscape:h-full landscape:w-[22rem] landscape:max-w-[45%] landscape:shrink-0 landscape:justify-center';
 
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'An unexpected error occurred';
+function getErrorMessage(error: unknown, language: UiLanguage): string {
+  return error instanceof Error ? error.message : translate(language, 'flow.unexpectedError');
 }
 
 function splitCustomPages(
@@ -199,30 +201,31 @@ function splitCustomPages(
   return { onboardingPages, thankYouPages, takePhotoPage };
 }
 
-function buildEmailDeliveryNotice(metadata?: SubmissionEmailMetadata | null): string {
+function buildEmailDeliveryNotice(metadata: SubmissionEmailMetadata | null | undefined, language: UiLanguage): string {
+  const t = (key: MessageKey, values?: MessageValues) => translate(language, key, values);
   if (!metadata) {
     return '';
   }
   if (metadata.emailSent) {
-    return `Confirmation email was sent to ${metadata.emailRecipient || 'the provided address'}.`;
+    return t('flow.email.sent', { recipient: metadata.emailRecipient || t('flow.email.recipientFallback') });
   }
   if (metadata.emailSkipReason === 'event_email_disabled') {
-    return 'Email module is disabled for this event.';
+    return t('flow.email.disabled');
   }
   if (metadata.emailSkipReason === 'missing_recipient') {
-    return 'Email will be sent once the event is completed and guest email is collected.';
+    return t('flow.email.missingRecipient');
   }
   if (metadata.emailSkipReason === 'missing_api_key') {
-    return 'Email was not sent because RESEND API key is not configured.';
+    return t('flow.email.missingKey');
   }
   if (metadata.emailSkipReason === 'missing_from_address') {
-    return 'Email was not sent because sender domain is not configured.';
+    return t('flow.email.missingFrom');
   }
   if (metadata.emailSendAfterRelatedPending) {
-    return 'Email is waiting for related photos to become ready.';
+    return t('flow.email.waitingRelated');
   }
   if (metadata.emailFailedAt && metadata.emailError) {
-    return `Email failed: ${metadata.emailError}`;
+    return t('flow.email.failed', { error: metadata.emailError });
   }
   return '';
 }
@@ -245,7 +248,7 @@ export default function EventCapturePage({
   params: Promise<{ eventId: string }>;
 }) {
   const { eventId } = use(params);
-  const { t, own } = useT();
+  const { t, own, language } = useT();
   
   const [event, setEvent] = useState<EventData | null>(null);
   const [loadingLogoUrl, setLoadingLogoUrl] = useState<string | null>(null);
@@ -315,57 +318,52 @@ export default function EventCapturePage({
   const hasAnyOnboardingPages = onboardingPages.length > 0;
   const hasAnyThankYouPages = thankYouPages.length > 0;
 
-  const shareNextButtonText = configuredTakePhotoPage?.config.shareNextButtonText || 'NEXT';
-  const changeButtonText = configuredTakePhotoPage?.config.changeButtonText || 'Change';
-  const successMessage = configuredTakePhotoPage?.config.successMessage || 'Photo saved successfully! You can now share it.';
-  const showSharePage = configuredTakePhotoPage?.config.showSharePage !== false;
-  const skipShareMessage = configuredTakePhotoPage?.config.skipShareMessage || 'Thank you! Your photo has been saved.';
+  // Every default text comes from the dictionary of the event's language; a text the editor wrote on the selfie-taking page wins, and a stored
+  // English default (the page editor saved the defaults as if they were its own) counts as not set in another language (camera#352).
+  const takePhotoConfig = configuredTakePhotoPage?.config;
+  const shareNextButtonText = own('flow.next', takePhotoConfig?.shareNextButtonText);
+  const changeButtonText = own('flow.change', takePhotoConfig?.changeButtonText);
+  const successMessage = own('flow.success', takePhotoConfig?.successMessage);
+  const showSharePage = takePhotoConfig?.showSharePage !== false;
+  const skipShareMessage = own('flow.skipShare', takePhotoConfig?.skipShareMessage);
   // Photo vetting (camera#265): what the user reads while the photo waits for approval; the selfie-taking page can replace each text (camera#333).
   const {
     previewNotice: pendingPreviewNotice,
     savedMessage: pendingSavedMessage,
     title: pendingTitle,
     waitingMessage: pendingWaitingMessage,
-  } = approvalTexts(configuredTakePhotoPage?.config, Boolean(selectedTryOnSuitId));
-  const cameraPromptTitle = configuredTakePhotoPage?.config.cameraPromptTitle || 'Ready to capture?';
-  const cameraPromptDescription =
-    configuredTakePhotoPage?.config.cameraPromptDescription || 'Click to start your camera and take a photo';
-  const errorFrameMessage = configuredTakePhotoPage?.config.errorFrameMessage || 'Failed to apply frame. Please try again.';
-  const errorSaveMessage = configuredTakePhotoPage?.config.errorSaveMessage || 'Failed to save photo: Please try again.';
-  const linkCopiedMessage = configuredTakePhotoPage?.config.linkCopiedMessage || 'Link copied to clipboard!';
-  const copyErrorMessage = configuredTakePhotoPage?.config.copyErrorMessage || 'Failed to copy link. Please copy it manually.';
-  const saveFirstMessage = configuredTakePhotoPage?.config.saveFirstMessage || 'Please save the photo first to get a shareable link.';
-  const shareScreenTitle =
-    configuredTakePhotoPage?.config.shareScreenTitle?.trim() || 'Share Your Photo';
-  const shareCopyLinkButtonText =
-    configuredTakePhotoPage?.config.shareCopyLinkButtonText?.trim() || 'Copy';
-  const shareViewPhotoButtonText =
-    configuredTakePhotoPage?.config.shareViewPhotoButtonText?.trim() ||
-    'View your photo (opens share link)';
-  const shareSuggestedMessageLabel =
-    configuredTakePhotoPage?.config.shareSuggestedMessageLabel?.trim() ||
-    'Suggested message for apps below:';
-  const shareSocialCaptionTemplateRaw =
-    configuredTakePhotoPage?.config.shareSocialCaptionTemplate?.trim();
+  } = approvalTexts(takePhotoConfig, Boolean(selectedTryOnSuitId), language);
+  const cameraPromptTitle = own('camera.ready.title', takePhotoConfig?.cameraPromptTitle);
+  const cameraPromptDescription = own('camera.prompt.desktop', takePhotoConfig?.cameraPromptDescription);
+  const errorFrameMessage = own('flow.errorFrame', takePhotoConfig?.errorFrameMessage);
+  const errorSaveMessage = own('flow.errorSave', takePhotoConfig?.errorSaveMessage);
+  const linkCopiedMessage = own('flow.linkCopied', takePhotoConfig?.linkCopiedMessage);
+  const copyErrorMessage = own('flow.copyError', takePhotoConfig?.copyErrorMessage);
+  const saveFirstMessage = own('flow.saveFirst', takePhotoConfig?.saveFirstMessage);
+  const shareScreenTitle = own('share.title', takePhotoConfig?.shareScreenTitle);
+  const shareCopyLinkButtonText = own('share.copy', takePhotoConfig?.shareCopyLinkButtonText);
+  const shareViewPhotoButtonText = own('share.view', takePhotoConfig?.shareViewPhotoButtonText);
+  const shareSuggestedMessageLabel = own('flow.shareSuggested', takePhotoConfig?.shareSuggestedMessageLabel);
+  const shareSocialCaptionTemplateRaw = takePhotoConfig?.shareSocialCaptionTemplate?.trim();
   const shareCaptionForSocial = shareSocialCaptionTemplateRaw
     ? shareSocialCaptionTemplateRaw.replace(
         /\{event\}/gi,
         () => event?.name?.trim() || ''
       )
     : event?.name?.trim()
-      ? `Check out my photo from ${event.name.trim()}!`
-      : 'Check out my photo!';
+      ? t('flow.shareCaption.event', { event: event.name.trim() })
+      : t('flow.shareCaption.plain');
   const eventButtonSize = normalizeEventButtonSize(event?.visualSettings?.buttonSize);
 
-  const selectFrameTour = useTourController('capture:select-frame:v1', getCaptureSelectFrameSteps(), {
+  const selectFrameTour = useTourController('capture:select-frame:v1', getCaptureSelectFrameSteps(language), {
     autoStart: step === 'select-frame',
   });
   const photoTour = useTourController(
     'capture:photo:v1',
-    getCapturePhotoSteps({ hasMultipleFrames: frames.length > 1, method: captureMethod }),
+    getCapturePhotoSteps({ hasMultipleFrames: frames.length > 1, method: captureMethod, language }),
     { autoStart: step === 'capture-photo' }
   );
-  const previewTour = useTourController('capture:preview:v1', getCapturePreviewSteps(), {
+  const previewTour = useTourController('capture:preview:v1', getCapturePreviewSteps(language), {
     autoStart: step === 'preview' && !!shareUrl && showSharePage,
   });
 
@@ -856,7 +854,7 @@ export default function EventCapturePage({
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('Save failed:', response.status, errorData);
-        throw new Error(errorData.error || `Server error: ${response.status}`);
+        throw new Error(errorData.error || t('flow.serverError', { status: response.status }));
       }
 
       const data = await response.json();
@@ -870,7 +868,7 @@ export default function EventCapturePage({
             ? String(rawId)
             : '';
       if (!submissionId) {
-        throw new Error('Save succeeded but no submission id was returned');
+        throw new Error(t('flow.noSubmissionId'));
       }
       setSavedSubmissionId(submissionId);
       setHasFinalizedSubmissionEmail(false);
@@ -882,7 +880,7 @@ export default function EventCapturePage({
         notifyCapture('success', pendingSavedMessage);
         return;
       }
-      const emailNotice = buildEmailDeliveryNotice(data.data?.submission?.metadata);
+      const emailNotice = buildEmailDeliveryNotice(data.data?.submission?.metadata, language);
       const finalSuccessMessage = emailNotice
         ? `${successMessage}\n${emailNotice}`
         : successMessage;
@@ -893,7 +891,9 @@ export default function EventCapturePage({
       notifyCapture('success', finalSuccessMessage);
     } catch (error: unknown) {
       console.error('Error saving submission:', error);
-      notifyCapture('error', `${errorSaveMessage.replace(': Please try again.', '')}: ${getErrorMessage(error)}`);
+      // The editor's own save-error text keeps its way (its ": Please try again." ending is dropped); the default is the dictionary's "Failed to save photo".
+      const saveFailed = errorSaveMessage === t('flow.errorSave') ? t('flow.saveFailedPrefix') : errorSaveMessage.replace(': Please try again.', '');
+      notifyCapture('error', `${saveFailed}: ${errorText(language, getErrorMessage(error, language))}`);
       // The user is still on the reframe screen: forget this picture so that Continue makes and saves it again.
       setCapturedImage(null);
       setCompositeImage(null);
@@ -1207,8 +1207,8 @@ export default function EventCapturePage({
             config={{
               title: currentPage.config.title,
               description: currentPage.config.description,
-              nameLabel: currentPage.config.nameLabel || 'Your Name',
-              emailLabel: currentPage.config.emailLabel || 'Your Email',
+              nameLabel: own(['login.nameLabelEditor', 'login.nameLabel'], currentPage.config.nameLabel),
+              emailLabel: own(['login.emailLabelEditor', 'login.emailLabel'], currentPage.config.emailLabel),
               buttonText: currentPage.config.buttonText,
               namePlaceholder: currentPage.config.namePlaceholder,
               emailPlaceholder: currentPage.config.emailPlaceholder,
@@ -1331,7 +1331,7 @@ export default function EventCapturePage({
             <div className="relative mx-auto mb-8 h-64 w-full max-w-md">
               <Image
                 src={loadingLogoUrl}
-                alt="Event logo"
+                alt={t('common.eventLogo')}
                 fill
                 unoptimized
                 className="object-contain"
@@ -1372,11 +1372,11 @@ export default function EventCapturePage({
         >
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="font-semibold">Sign-in did not complete</p>
+              <p className="font-semibold">{t('flow.signin.title')}</p>
               <p className="mt-1">{signInError.message}</p>
               {signInError.code === 'session_expired' && (
                 <p className="mt-1  ">
-                  Use one browser tab for sign-in, or try again.
+                  {t('flow.signin.hint')}
                 </p>
               )}
             </div>
@@ -1384,7 +1384,7 @@ export default function EventCapturePage({
               type="button"
               onClick={() => setSignInError(null)}
               className="shrink-0 rounded px-2 py-0.5    dark:"
-              aria-label="Dismiss"
+              aria-label={t('common.dismiss')}
             >
               ×
             </button>
@@ -1401,7 +1401,7 @@ export default function EventCapturePage({
                 <div className="relative mx-auto mb-2 h-16 w-16">
                   <Image
                     src={event.logoUrl}
-                    alt="Event logo"
+                    alt={t('common.eventLogo')}
                     fill
                     unoptimized
                     className="object-contain"
@@ -1421,7 +1421,7 @@ export default function EventCapturePage({
                   <TourReplayButton
                     tourId={step === 'select-frame' ? 'capture:select-frame:v1' : 'capture:photo:v1'}
                     controller={step === 'select-frame' ? selectFrameTour : photoTour}
-                    label="Show tour"
+                    label={t('tour.show')}
                   />
                 </div>
               )}
@@ -1444,7 +1444,7 @@ export default function EventCapturePage({
                     <p className={`text-[10px] font-medium text-center mt-1 ${
                       step === 'select-frame' ? ' ' : ' '
                     }`}>
-                      Select Frame
+                      {t('flow.step.selectFrame')}
                     </p>
                   </div>
                   <div className="w-4 h-0.5  "></div>
@@ -1459,7 +1459,7 @@ export default function EventCapturePage({
                 <p className={`text-[10px] font-medium text-center mt-1 ${
                   step === 'capture-photo' ? ' ' : ' '
                 }`}>
-                  Capture Photo
+                  {t('flow.step.capture')}
                 </p>
               </div>
               <div className="w-4 h-0.5  "></div>
@@ -1472,7 +1472,7 @@ export default function EventCapturePage({
                 <p className={`text-[10px] font-medium text-center mt-1 ${
                   (step === 'reframe' || step === 'preview') ? ' ' : ' '
                 }`}>
-                  Preview & Save
+                  {t('flow.step.save')}
                 </p>
               </div>
             </div>
@@ -1615,12 +1615,12 @@ export default function EventCapturePage({
                     aspect={imageDimensions ? imageDimensions.width / imageDimensions.height : captureAspect}
                     territories={selectedFrame?.generated?.territories}
                     silhouetteUrl={selectedFrame?.generated ? null : silhouetteUrl}
-                    alt="Your photo; the shaded shapes show where the frame will go"
+                    alt={t('flow.alt.territories')}
                   />
                 ) : (
                   <Image
                     src={compositeImage}
-                    alt="Final result"
+                    alt={t('flow.alt.final')}
                     fill
                     unoptimized
                     className="object-contain"
@@ -1660,7 +1660,7 @@ export default function EventCapturePage({
                     onNext={handleMoveToThankYou}
                   />
                   <div className="mt-2 flex justify-center">
-                    <TourReplayButton tourId="capture:preview:v1" controller={previewTour} label="Show tour" />
+                    <TourReplayButton tourId="capture:preview:v1" controller={previewTour} label={t('tour.show')} />
                   </div>
                 </div>
               )}
@@ -1668,7 +1668,7 @@ export default function EventCapturePage({
               {shareUrl && !showSharePage && (
                 <div className={PREVIEW_PANEL_CLASS}>
                   <ShareOverlay
-                    title="Saved"
+                    title={t('flow.saved')}
                     shareCaption={shareCaptionForSocial}
                     tryOnResult={tryOnResult}
                     buttonSize={eventButtonSize}
@@ -1692,7 +1692,7 @@ export default function EventCapturePage({
             {event?.showLogo && event?.logoUrl ? (
               <Image
                 src={event.logoUrl}
-                alt="Event logo"
+                alt={t('common.eventLogo')}
                 width={96}
                 height={96}
                 unoptimized
@@ -1700,7 +1700,7 @@ export default function EventCapturePage({
               />
             ) : null}
             <p className="  font-medium">
-              {isSaving ? 'Saving your photo...' : vetted ? 'Preparing your photo...' : 'Applying frame...'}
+              {isSaving ? t('flow.overlay.saving') : vetted ? t('flow.overlay.preparing') : t('flow.overlay.frame')}
             </p>
           </div>
         </div>
