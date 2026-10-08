@@ -52,8 +52,12 @@ export async function POST(
     const body = await request.json();
     const { logoId, scenario, order = 0, isActive = true } = body;
 
-    if (!logoId) {
+    if (typeof logoId !== 'string' || !logoId) {
       return apiBadRequest('logoId is required');
+    }
+
+    if (typeof order !== 'number' || !Number.isFinite(order) || typeof isActive !== 'boolean') {
+      return apiBadRequest('order must be a number and isActive true or false');
     }
 
     if (!scenario) {

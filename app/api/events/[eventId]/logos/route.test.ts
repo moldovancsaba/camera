@@ -106,3 +106,14 @@ test('what the guest pages read is unchanged: grouped by scenario, in order, ina
   assert.equal(body.data.logos['loading-capture'].find((r) => r.isActive)?.logoId, 'g1');
   for (const scenario of Object.keys(body.data.logos)) assert.equal(shownLogo(body.data.logos[scenario])?.logoId, body.data.logos[scenario].find((r) => r.isActive)?.logoId, scenario);
 });
+
+test('the logo id must be a plain text, and order and isActive plain values: an array that happens to print as a valid id stores nothing', async (t) => {
+  const { data } = setup(t);
+  const { POST } = await importRoute('plain-values');
+  assert.equal((await POST(post({ logoId: ['g1'], scenario: 'onboarding-thankyou' }), params)).status, 400);
+  assert.equal((await POST(post({ logoId: 'g1', scenario: 'onboarding-thankyou', order: 'first' }), params)).status, 400);
+  assert.equal((await POST(post({ logoId: 'g1', scenario: 'onboarding-thankyou', isActive: 'yes' }), params)).status, 400);
+  assert.deepEqual(rows(data), [], 'nothing was stored');
+  assert.equal(data.events[0].logosOverridden, undefined);
+});
+

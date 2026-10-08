@@ -78,11 +78,11 @@ export async function DELETE(
       }
     );
 
-    // Decrement logo usage count
-    await logosCollection.updateOne(
-      { logoId },
-      { $inc: { usageCount: -1 } }
-    );
+    // Decrement logo usage count (never below zero: uploads, imports and the defaults cascade do not count themselves in)
+    const counted = await logosCollection.findOne({ logoId });
+    if (typeof counted?.usageCount === 'number' && counted.usageCount > 0) {
+      await logosCollection.updateOne({ logoId }, { $inc: { usageCount: -1 } });
+    }
 
     return apiSuccess({
       message: 'Logo removed successfully',

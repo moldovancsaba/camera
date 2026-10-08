@@ -18,6 +18,7 @@ import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
 import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
 import { AdminCheckbox } from '@sovereignsquad/gds-admin/client';
 import { LOGO_SCENARIOS, type LogoDefault, type LogoScenarioId } from '@/lib/library/logos';
+import { cascadeText, type DefaultsCascade } from '@/lib/library/cascade-text';
 import type { LibraryItemView, PartnerLibrary, PartnerLibraryEntry } from '@/lib/library/types';
 
 interface PartnerRecord {
@@ -111,7 +112,7 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
 
   const edit = (change: { add?: string[]; remove?: string[]; defaults?: LogoDefault[] }) =>
     run(async () => {
-      const result = await call<{ library: PartnerLibrary; removedInUse: Record<string, number>; defaultLogos?: LogoDefault[] }>(`/api/partners/${partnerId}/library`, {
+      const result = await call<{ library: PartnerLibrary; removedInUse: Record<string, number>; defaultLogos?: LogoDefault[]; cascade?: DefaultsCascade | null }>(`/api/partners/${partnerId}/library`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kind: 'logos', ...change }),
@@ -119,12 +120,15 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
       setLibrary(result.library);
       if (result.defaultLogos) setDefaults(result.defaultLogos);
       const inUse = Object.values(result.removedInUse);
+      const followed = cascadeText(result.cascade, 'logos');
       if (inUse.length > 0) {
         const events = inUse.reduce((sum, count) => sum + count, 0);
         setNotice({
           title: 'Removed from the library',
-          message: `Removed. ${events} event${events === 1 ? '' : 's'} still use${events === 1 ? 's' : ''} a logo you removed: they keep it, and their pages mark it as no longer in this library.`,
+          message: `Removed. ${events} event${events === 1 ? '' : 's'} still use${events === 1 ? 's' : ''} a logo you removed: they keep it, and their pages mark it as no longer in this library.${followed ? ` ${followed}` : ''}`,
         });
+      } else if (followed) {
+        setNotice({ title: 'Defaults changed', message: followed });
       }
     });
 

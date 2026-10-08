@@ -82,3 +82,15 @@ test('an unknown scenario, or a scenario the logo is not in, changes nothing', a
   assert.equal((await PATCH(patch({ action: 'toggle', scenario: 'loading-capture' }), params)).status, 404);
   assert.deepEqual(state(data), [['slideshow-transition', true, 0], ['onboarding-thankyou', true, 1], ['loading-slideshow', true, 2]]);
 });
+
+test('removing a logo counts its use down, but never below zero', async (t) => {
+  const { data, calls } = setup(t);
+  const { DELETE } = await importRoute('usage-count');
+  const decrements = () => calls.filter((call) => call.collection === 'logos' && call.op === 'updateOne').length;
+  data.logos[0].usageCount = 2;
+  await DELETE(new NextRequest(url('?scenario=loading-capture'), { method: 'DELETE' }), params);
+  assert.equal(decrements(), 1, 'a logo that was counted is counted down');
+  data.logos[0].usageCount = 0;
+  await DELETE(new NextRequest(url('?scenario=loading-slideshow'), { method: 'DELETE' }), params);
+  assert.equal(decrements(), 1, 'a logo that was never counted in is not counted below zero');
+});
