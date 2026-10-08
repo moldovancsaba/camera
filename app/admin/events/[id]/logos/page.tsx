@@ -245,6 +245,12 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
 
       <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
         A logo that is not listed under Available has to be added to the library of {partnerName} first.
+        {library.partner ? (
+          <>
+            {' '}
+            <Link href={`/admin/partners/${library.partner.adminId}/logos`}>Open the library of {library.partner.name}</Link>
+          </>
+        ) : null}
       </p>
 
       <section style={SECTION}>
