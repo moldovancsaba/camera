@@ -3,12 +3,15 @@
 /**
  * The photo moderation queue of one event (camera#268, docs/PHOTO_VETTING_PLAN.md): the photos of a vetted event with approve and
  * reject, one at a time or selected in bulk. Each decision calls POST /api/admin/submissions/<id>/review; a photo leaves the list when
- * it is decided. Every control is a native button or checkbox, so the queue works from the keyboard.
+ * it is decided. Every control is a native button or checkbox, so the queue works from the keyboard. A decision locks only its own photo, so the
+ * next photo can be decided while one is still being made, and the page is reloaded from the server after every decision, so the counts of the
+ * tabs and the list always show what the server holds, also when an answer never arrives.
  */
 
 import { useMemo, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { InlineAlert, ListingCard, StateBlock, type ListingMetadataRow } from '@sovereignsquad/gds-core/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { TextInput } from '@/components/gds/PublicPrimitives';
@@ -39,12 +42,27 @@ function formatDateTime(value: string): string {
   return date.toLocaleString(undefined, { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
+/** No answer within this time: the decision may still have been made, so the list is reloaded instead of guessed. */
+const REVIEW_ANSWER_TIMEOUT_MS = 120_000;
+
+class NoAnswerError extends Error {
+  constructor() {
+    super('No answer arrived from the server. The photo may have been decided anyway; the list shows what the server holds now.');
+  }
+}
+
 async function review(id: string, action: 'approve' | 'reject', reason?: string): Promise<ReviewAnswer> {
-  const response = await fetch(`/api/admin/submissions/${id}/review`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, ...(reason ? { reason } : {}) }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`/api/admin/submissions/${id}/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...(reason ? { reason } : {}) }),
+      signal: AbortSignal.timeout(REVIEW_ANSWER_TIMEOUT_MS),
+    });
+  } catch {
+    throw new NoAnswerError();
+  }
   const body = (await response.json().catch(() => ({}))) as { error?: unknown; message?: unknown; data?: ReviewAnswer };
   if (!response.ok) {
     throw new Error(typeof body.error === 'string' ? body.error : typeof body.message === 'string' ? body.message : `Server error ${response.status}`);
@@ -60,7 +78,10 @@ const emailNote = (answers: ReviewAnswer[]): string => {
 };
 
 export default function PhotoReviewQueue({ status, initialItems, canReview }: PhotoReviewQueueProps) {
-  const [items, setItems] = useState(initialItems);
+  const router = useRouter();
+  // Photos decided here leave the list at once; everything else comes from the server (initialItems is fresh after each router.refresh()).
+  const [decided, setDecided] = useState<string[]>([]);
+  const items = useMemo(() => initialItems.filter((item) => !decided.includes(item.id)), [initialItems, decided]);
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState<string[]>([]);
   const [rejecting, setRejecting] = useState<string | null>(null);
@@ -75,10 +96,11 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
   const canDecide = canReview && status !== 'approved';
 
   const removeFromList = (ids: string[]) => {
-    const gone = new Set(ids);
-    setItems((current) => current.filter((item) => !gone.has(item.id)));
-    setSelected((current) => current.filter((id) => !gone.has(id)));
+    setDecided((current) => [...current, ...ids]);
+    setSelected((current) => current.filter((id) => !ids.includes(id)));
   };
+  const markBusy = (ids: string[]) => setBusy((current) => [...current, ...ids]);
+  const markFree = (ids: string[]) => setBusy((current) => current.filter((id) => !ids.includes(id)));
 
   const approve = async (ids: string[]) => {
     setNotice(null);
@@ -86,7 +108,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
     const answers: ReviewAnswer[] = [];
     const failures: string[] = [];
     const queue = [...ids];
-    setBusy(ids);
+    markBusy(ids);
     const worker = async () => {
       for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
         setProgress(ids.length > 1 ? `Approving ${done.length + failures.length + 1} of ${ids.length}…` : null);
@@ -97,12 +119,12 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
         } catch (error) {
           failures.push(error instanceof Error ? error.message : 'The photo could not be approved');
         }
-        setBusy((current) => current.filter((busyId) => busyId !== id));
+        markFree([id]);
       }
     };
     await Promise.all(Array.from({ length: Math.min(BULK_CONCURRENCY, ids.length) }, worker));
     setProgress(null);
-    setBusy([]);
+    router.refresh();
     if (failures.length > 0) {
       setNotice({
         severity: 'error',
@@ -117,7 +139,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
 
   const reject = async (id: string) => {
     setNotice(null);
-    setBusy([id]);
+    markBusy([id]);
     try {
       const answer = await review(id, 'reject', reason.trim() || undefined);
       removeFromList([id]);
@@ -128,7 +150,8 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
     } catch (error) {
       setNotice({ severity: 'error', title: 'Not rejected', message: error instanceof Error ? error.message : 'The photo could not be rejected' });
     } finally {
-      setBusy([]);
+      markFree([id]);
+      router.refresh();
     }
   };
 
@@ -178,6 +201,8 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
             { id: 'frame', label: 'Frame', value: FRAME_LABEL[item.frameKind], tone: 'muted' },
           ];
           if (item.email) metadata.unshift({ id: 'email', label: 'Email', value: item.email });
+          // The buttons show their fixed labels, so the card itself says that a decision is being made (it can take a few seconds).
+          if (isBusy) metadata.push({ id: 'working', label: 'Now', value: isRejecting ? 'Rejecting…' : 'Approving… please wait', tone: 'warning' });
           if (item.tryOnRequested) metadata.push({ id: 'tryon', label: 'Try-on', value: 'after approval', tone: 'muted' });
           if (item.status !== 'approved') metadata.push({ id: 'wall', label: 'Wall', value: item.shareOptIn ? 'shown' : 'private', tone: 'muted' });
           if (item.last) {
@@ -187,13 +212,13 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
           const actions: ReactNode[] = [];
           if (canDecide && !isRejecting) {
             actions.push(
-              <SemanticButton key="approve" action="photo-review:approve" type="button" size="xs" onClick={() => void approve([item.id])} disabled={working}>
+              <SemanticButton key="approve" action="photo-review:approve" type="button" size="xs" onClick={() => void approve([item.id])} disabled={isBusy}>
                 {isBusy ? 'Approving…' : 'Approve'}
               </SemanticButton>
             );
             if (status === 'pending_review') {
               actions.push(
-                <SemanticButton key="reject" action="photo-review:reject" type="button" size="xs" variant="secondary" onClick={() => { setRejecting(item.id); setReason(''); }} disabled={working}>
+                <SemanticButton key="reject" action="photo-review:reject" type="button" size="xs" variant="secondary" onClick={() => { setRejecting(item.id); setReason(''); }} disabled={isBusy}>
                   Reject
                 </SemanticButton>
               );
@@ -201,10 +226,10 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
           }
           if (isRejecting) {
             actions.push(
-              <SemanticButton key="confirm" action="photo-review:confirm-reject" type="button" size="xs" variant="danger" onClick={() => void reject(item.id)} disabled={working}>
+              <SemanticButton key="confirm" action="photo-review:confirm-reject" type="button" size="xs" variant="danger" onClick={() => void reject(item.id)} disabled={isBusy}>
                 {isBusy ? 'Rejecting…' : 'Confirm reject'}
               </SemanticButton>,
-              <SemanticButton key="cancel" action="photo-review:cancel-reject" type="button" size="xs" variant="secondary" onClick={() => setRejecting(null)} disabled={working}>
+              <SemanticButton key="cancel" action="photo-review:cancel-reject" type="button" size="xs" variant="secondary" onClick={() => setRejecting(null)} disabled={isBusy}>
                 Cancel
               </SemanticButton>
             );
@@ -228,7 +253,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
                       type="checkbox"
                       checked={selectedSet.has(item.id)}
                       onChange={() => setSelected((current) => (current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id]))}
-                      disabled={working}
+                      disabled={isBusy}
                       aria-label={`Select the photo of ${item.name}`}
                       style={{ position: 'absolute', zIndex: 1, insetBlockStart: 8, insetInlineStart: 8 }}
                     />
@@ -247,7 +272,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
                     value={reason}
                     onChange={(event) => setReason(event.currentTarget.value)}
                     maxLength={500}
-                    disabled={working}
+                    disabled={isBusy}
                     data-autofocus
                   />
                 ) : undefined

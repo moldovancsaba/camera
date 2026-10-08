@@ -18,6 +18,8 @@ import sharp from 'sharp';
 import { isRenderableImgbbImageUrl, normalizeImgbbDirectUrl } from '@/lib/imgbb/url';
 
 const IMGBB_UPLOAD_URL = 'https://api.imgbb.com/1/upload';
+/** The mirror is a courtesy: a slow imgbb must not slow the caller, so the call waits this long for it at most (camera vetting approvals waited minutes for it). */
+const DEFAULT_MIRROR_WAIT_MS = 5000;
 const IMGBB_API_KEY_CANDIDATES = [
   'IMGBB_API_KEY',
   'NEXT_PUBLIC_IMG_BB_API_KEY',
@@ -85,6 +87,7 @@ export interface UploadOptions {
   maxRetries?: number;     // imgbb mirror only: maximum number of retry attempts (default: 3)
   retryDelay?: number;     // imgbb mirror only: delay between retries in ms (default: 1000)
   validatePublicUrl?: boolean; // imgbb mirror only: validate final URL before returning (default: true)
+  mirrorWaitMs?: number;   // How long the call waits for the imgbb mirror before it goes on without it (default: 5000)
 }
 
 /**
@@ -335,19 +338,21 @@ export async function uploadImage(
     ? normalizeBase64Input(image)
     : await fileToBase64(image);
 
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const mirrorAttempt = uploadToImgbbMirror(base64Image, options).catch((error) => {
+    console.warn(
+      'imgbb mirror upload failed (non-fatal, Vercel Blob is primary):',
+      error instanceof Error ? error.message : error
+    );
+    return null;
+  });
+  // The mirror gets a few seconds, then the call goes on without it. A late mirror result is dropped (its copy on imgbb is just an unused extra).
+  const mirrorWait = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), options.mirrorWaitMs ?? DEFAULT_MIRROR_WAIT_MS);
+  });
   const [blob, mirror] = await Promise.all([
     uploadToBlobPrimary(base64Image, options.name),
-    // ponytail: mirror retries (30s timeout x up to 3 attempts) can add real
-    // latency to the failure case since Promise.all still waits for this to
-    // settle. Fine today; if a degrading imgbb starts dragging on real
-    // uploads, timebox this with Promise.race instead of waiting it out.
-    uploadToImgbbMirror(base64Image, options).catch((error) => {
-      console.warn(
-        'imgbb mirror upload failed (non-fatal, Vercel Blob is primary):',
-        error instanceof Error ? error.message : error
-      );
-      return null;
-    }),
+    Promise.race([mirrorAttempt, mirrorWait]).finally(() => clearTimeout(timer)),
   ]);
 
   return {
