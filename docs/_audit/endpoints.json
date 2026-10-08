@@ -1,8 +1,8 @@
 {
  "_meta": {
-  "generated": "2026-10-08T11:22:48+00:00",
+  "generated": "2026-10-08T11:39:11+00:00",
   "repo": "camera",
-  "head": "0e715d1",
+  "head": "60e88de",
   "counts": {
    "endpoints": 118,
    "collections": 7,
@@ -715,6 +715,7 @@
   {
    "path": "/api/events/[eventId]/library/items/[itemId]",
    "methods": [
+    "PATCH",
     "DELETE"
    ],
    "file": "app/api/events/[eventId]/library/items/[itemId]/route.ts",
@@ -1143,6 +1144,7 @@
   {
    "path": "/api/partners/[partnerId]/library/items/[itemId]",
    "methods": [
+    "PATCH",
     "DELETE"
    ],
    "file": "app/api/partners/[partnerId]/library/items/[itemId]/route.ts",

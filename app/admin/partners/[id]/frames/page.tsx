@@ -14,6 +14,8 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
+import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
+import type { MessageArea } from '@/lib/frame/message-area';
 import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
 import type { PartnerLibrary } from '@/lib/library/types';
 
@@ -49,6 +51,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
 
   useEffect(() => {
     params.then((resolved) => setPartnerId(resolved.id));
@@ -97,6 +100,12 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
     } finally {
       setBusy(false);
     }
+  };
+
+  const saveMessageArea = async (itemId: string, messageArea: MessageArea | null) => {
+    await call(`/api/partners/${partnerId}/library/items/${itemId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'frames', messageArea }) });
+    setEditing(null);
+    await reload();
   };
 
   const deleteUpload = async (itemId: string, name: string) => {
@@ -176,8 +185,11 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
                   thumbnailUrl={item.thumbnailUrl}
                   noun="frame"
                   scope={item.scope}
+                  wide={editing === item.id}
+                  note={item.messageArea ? 'Guests never pick this frame: the messages of an event are written on it.' : undefined}
                   badges={
                     <>
+                      {item.messageArea ? <LabelTag tone="info" label="Carries messages" /> : null}
                       {item.isDefault ? <LabelTag tone="success" label="Default for new events" /> : null}
                       {!item.itemActive ? <LabelTag tone="warning" label="Switched off in the library" /> : null}
                     </>
@@ -194,6 +206,11 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
                         </SemanticButton>
                       )}
                       {item.via === 'own' ? (
+                        <SemanticButton action="library:message-area" variant="secondary" size="xs" disabled={busy} onClick={() => setEditing(editing === item.id ? null : item.id)}>
+                          Message area
+                        </SemanticButton>
+                      ) : null}
+                      {item.via === 'own' ? (
                         <SemanticButton action="library:delete-upload" variant="danger" size="xs" disabled={busy} onClick={() => void deleteUpload(item.id, item.name)}>
                           Delete upload
                         </SemanticButton>
@@ -204,7 +221,11 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
                       )}
                     </>
                   }
-                />
+                >
+                  {editing === item.id ? (
+                    <MessageAreaEditor pictureUrl={item.imageUrl} name={item.name} value={item.messageArea} disabled={busy} onSave={(area) => saveMessageArea(item.id, area)} onCancel={() => setEditing(null)} />
+                  ) : null}
+                </LibraryItemCard>
               ))}
             </div>
           )}
@@ -229,6 +250,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
                   thumbnailUrl={item.thumbnailUrl}
                   noun="frame"
                   scope={item.scope}
+                  badges={item.messageArea ? <LabelTag tone="info" label="Carries messages" /> : undefined}
                   actions={
                     <SemanticButton action="library:add" size="xs" disabled={busy} onClick={() => void edit({ add: [item.id] })}>
                       Add to library

@@ -10,6 +10,7 @@ import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
 import type { ResolvedFont } from './fonts';
 import { DEFAULT_FRAME_HEIGHT, DEFAULT_FRAME_WIDTH, type LayerId } from './layout';
+import { HEX_COLOUR, parseBox } from './message-area';
 
 export interface FrameBaseImage {
   /** Names the colourway, e.g. `pink`; used by `messageImages`. */
@@ -31,20 +32,13 @@ export interface FrameBase {
   layers?: Array<{ id: Extract<LayerId, 'header' | 'footer'>; x: number; y: number; width: number; height: number }>;
 }
 
-const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+const HEX = HEX_COLOUR;
 const KEY = /^[A-Za-z0-9_-]{1,24}$/;
 const MAX_IMAGES = 6;
 /** The first guess for the size of the message: this much of the box height; it is only ever made smaller to fit the width. */
 const MESSAGE_SIZE_OF_BOX = 0.8;
 
-const num = (v: unknown, min: number, max: number): number | null => (typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max ? v : null);
-
-function box(value: unknown, width: number, height: number): { x: number; y: number; width: number; height: number } | null {
-  if (!value || typeof value !== 'object') return null;
-  const b = value as Record<string, unknown>;
-  const x = num(b.x, 0, width), y = num(b.y, 0, height), w = num(b.width, 1, width), h = num(b.height, 1, height);
-  return x === null || y === null || w === null || h === null || x + w > width + 0.01 || y + h > height + 0.01 ? null : { x, y, width: w, height: h };
-}
+const box = parseBox;
 
 /** The base from stored data, or null when it is not usable (then the event keeps the generated layout). */
 export function parseFrameBase(value: unknown): FrameBase | null {

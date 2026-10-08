@@ -41,9 +41,23 @@ export interface RecordedFrameVariant {
   imageUrl: string;
 }
 
+/** One assignment of a frame to an event, as the event data carries it; `frameDetails` is the library item behind it. */
+interface FrameAssignmentRow {
+  isActive?: boolean;
+  frameDetails?: { hasMessageArea?: boolean } | null;
+}
+
 interface EventWithFrames {
-  frames?: Array<{ isActive?: boolean }> | null;
+  frames?: FrameAssignmentRow[] | null;
   frameDesign?: { variants?: FrameVariant[] | null } | null;
+}
+
+/**
+ * A frame of the event's own, one the guest picks: switched on for the event, and a complete frame. A text-free frame with a message area carries the
+ * messages of the event (camera#366); it is an ingredient of the generated frame, not a frame of its own.
+ */
+export function isOwnActiveFrame(row: FrameAssignmentRow): boolean {
+  return Boolean(row.isActive) && row.frameDetails?.hasMessageArea !== true;
 }
 
 /**
@@ -51,7 +65,7 @@ interface EventWithFrames {
  * once at least one image exists. Derived, never stored, so assigning or removing an own frame switches it at once.
  */
 export function captureFrameOf(event: EventWithFrames): CaptureFrame | null {
-  if (event.frames?.some((frame) => frame.isActive)) return null;
+  if (event.frames?.some(isOwnActiveFrame)) return null;
   const variants = (event.frameDesign?.variants ?? [])
     .filter((variant) => variant.imageUrl && variant.width > 0 && variant.height > 0)
     .map(({ index, message, imageUrl, width, height, layers }) => ({ index, message, imageUrl, width, height, layers }));

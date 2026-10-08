@@ -10,6 +10,23 @@
 - **Verified:** unit tests (the dictionaries' keys and markers; the share page texts with and without own texts in both languages; the stored-English-default rule for the share page, the pending message and the emails; the Hungarian approval and not-approved emails; the metadata in both languages; the English strings pinned); type-check; lint; the full CI chain; a real browser on the built app against a throwaway local database (nothing written anywhere else): the photo page, the two notices and the pending try-on message in English and Hungarian at 320, 375, 430 and 1024 points, no English word left in Hungarian apart from the product name in the header of an event without a logo and the event's own texts, no clipped label, no sideways scroll; the approval, not-approved and after-save emails rendered in both languages and read.
 - **Not verified:** not seen on a phone (a desktop browser at phone sizes only); no email sent through Resend (the sender was replaced by a recorder); the Hungarian texts not reviewed by MTK; the stored texts of the real MTK event not checked (an own English text there would stay English). No event is set to Hungarian.
 
+## Unreleased — libraries, step 3: each message chooses its frame (camera#366; epic camera#361)
+
+- **Added (owner, 2026-10-08: "at the message we need to be able to choose which frame to apply it to"):** a frame of the library can have a **message area**: where a message is
+  written on a text-free frame (a box in the 1920 x 1080 frame, a colour, optional top and bottom territories), the same data the older `frameDesign.base` holds. It is set on the
+  card of a partner or event upload (the Message area button, with a preview of the boxes on the picture) and on the global frame's edit page. Saving it redraws the events whose
+  messages are written on that frame. A frame that carries messages is not offered to guests as a frame of their own.
+- **Added:** in the generated frame panel of an event every message has a **Frame** choice among the event's frames that carry messages (assigned, switched on, with a message
+  area); one frame per message, kept with the message by its text, checked on save, with a plain warning when a chosen frame is no longer available. The images on top say which
+  frame each one is written on.
+- **Changed:** for each message the drawing uses the frame it chose, else the event's older base picture, else the generated layout; the stored images are reused while nothing that
+  decides them changed, and a message with no frame keeps the key it had, so no event is redrawn by this change. An event whose only active frames carry messages has no frame of
+  its own, so the generated frames apply; the rollout tool and the capture page follow the same rule.
+- **Verified:** unit tests (the message area rules, the frame of each message and its validation, the drawing with chosen, unusable and missing frames, reuse and redraw of only the
+  changed frame, the capture and rollout rule, saving, resetting and refreshing, the routes that set a message area); type-check; lint; the full CI chain; a real browser on the
+  production build with the real library pictures and a fake API, nothing written: the Frame choice per message, the saved choice shown, an unavailable choice warned, the payload,
+  the message area editor and its payload, no sideways scroll at phone width. **Not seen by the owner;** no event uses a chosen frame yet (the MTK event moves last, camera#369).
+
 ## Unreleased — brand colours come from messmass by default and can be overwritten (camera#380)
 
 - **Fixed (owner report, 2026-10-08):** the colours of an event and of a partner now come from messmass by default, with the option to overwrite them. **Cause found:** the event editor filled the default blue into its colour boxes and sent both colours on every save, and the server marked the event "Custom"; so saving anything in the editor silently stored the blue as the event's own colour and switched the messmass colours off. It was on 4 events, MTK Budapest x Vasas FC among them (for MTK the guests' buttons are navy from the welcome page's Start button colours, which come first, so nothing changed for its guests; the panel showed the blue), and 3 partners carried the blue as their default (the partner editor did the same). The editor and the partner editor now have a switch "Use the colours of the messmass style" (on by default), the boxes only apply while it is off, and a save that did not touch the colours sends none. Clearing both colours gives the event the default of its partner when it has one, else messmass.
