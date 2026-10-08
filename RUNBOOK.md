@@ -109,7 +109,7 @@ more than intended passed. The real ceiling is a Vercel Firewall rule:
 ## How the photo is taken, and what is kept (camera#257)
 
 It works the same way for every camera (owner decision 2026-10-06): the largest still the camera can take, at the moment
-of the shutter, then the guest zooms and pans anywhere in it, presses "Love it", and **only the frame-sized result is saved**.
+of the shutter, then the guest zooms and pans anywhere in it, presses "Continue" (which saves the photo; the separate "Love it" screen is gone, camera#344), and **only the frame-sized result is saved**.
 The full-size photo stays in the browser during the reframe step and is dropped afterwards; nothing is uploaded for it.
 
 - **Every touch device** (iPhone, iPad, Android phones and tablets, any browser): the device's own camera app, through a file

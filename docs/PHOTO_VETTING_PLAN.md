@@ -72,8 +72,9 @@ photos carry an email. So "every event requires an email or a social login" is a
 
 0. **Identity first (every event):** the guest gives an email or logs in with a social login (Google or Facebook through SSO) before the photo is saved, so the approval email has an address.
 1. Capture and zoom / pan: unchanged. The boxes of the frame already show as 50% black shapes in the zoom step.
-2. **Preview:** the guest sees their framed-size photo with the **50% black shapes**, not the real frame, with a line such as
-   "Your photo will get its frame after it has been approved." Button as today ("Love it").
+2. **Preview and save, one screen (camera#344):** the zoom screen shows the guest's photo with the **50% black shapes**, not the real
+   frame, with the line "Your photo will get its frame after it has been approved." above the buttons. **Continue saves the photo**; there is
+   no separate "Love it" screen any more (planning item 90), and no pledge wall choice (item 91, the consent covers it).
 3. **Save:** the browser sends the plain framed-size photo (no frame, no shapes); the shapes are drawn in the browser from the frame's layer boxes (or, for an own frame, from a silhouette made from the frame image), so there is no second upload. The submission is
    `pending_review`. No branded composite exists yet, nothing is mirrored to imgbb, no share link is shown as ready, and no "photo
    is ready" email goes out.

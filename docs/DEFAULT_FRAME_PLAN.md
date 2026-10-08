@@ -13,7 +13,7 @@ Every event gets a default frame that can be overwritten or modified in camera a
 4. a bar at the bottom in the partner reporting colour, with a thin top line
 5. a message over the bar
 
-All logo and text layers stay inside a safety area of 90% of the frame, centred. In the live camera view every layer is shown as a 50% transparent black area ("territory"). The real composition appears at the Love it / Try again step and is also the shared image.
+All logo and text layers stay inside a safety area of 90% of the frame, centred. In the live camera view every layer is shown as a 50% transparent black area ("territory"). The real composition is made when the photo is saved (the "Love it" screen no longer exists, camera#344: Continue on the zoom screen saves) and is also the shared image.
 
 ## Geometry (percent of the frame, pixels at 1920x1080)
 

@@ -16,7 +16,7 @@
 
 import { useState, useEffect, use, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
-import { Button, Checkbox } from '@mantine/core';
+import { Button } from '@mantine/core';
 import CameraCapture from '@/components/camera/CameraCapture';
 import AppShellLock from '@/components/capture/AppShellLock';
 import { clearCaptureNotices, notifyCapture } from '@/components/capture/notify';
@@ -292,9 +292,8 @@ export default function EventCapturePage({
   const [selectedTryOnBottomSuitId, setSelectedTryOnBottomSuitId] = useState<string | null>(null);
   const [tryOnResult, setTryOnResult] = useState<TryOnSubmissionResult | null>(null);
   const [cameraId, setCameraId] = useState<string | null>(null);
-  // Public pledge-wall opt-in: defaults to checked so fan photos appear on the event wall.
-  // The capturer can uncheck to keep their photo private.
-  const [shareOptIn, setShareOptIn] = useState(true);
+  // Continue on the reframe screen saves the photo (camera#344): true from that press until the save starts, so nothing else is asked in between.
+  const [saveRequested, setSaveRequested] = useState(false);
   const vetted = event?.photoVettingRequired === true;
   
   const { onboardingPages, thankYouPages, takePhotoPage } = splitCustomPages(customPages);
@@ -313,8 +312,6 @@ export default function EventCapturePage({
   const hasAnyOnboardingPages = onboardingPages.length > 0;
   const hasAnyThankYouPages = thankYouPages.length > 0;
 
-  const captureButtonText = configuredTakePhotoPage?.config.captureButtonText || 'LOVE IT';
-  const retryButtonText = configuredTakePhotoPage?.config.retryButtonText || 'TRY AGAIN';
   const shareNextButtonText = configuredTakePhotoPage?.config.shareNextButtonText || 'NEXT';
   const changeButtonText = configuredTakePhotoPage?.config.changeButtonText || 'Change';
   const successMessage = configuredTakePhotoPage?.config.successMessage || 'Photo saved successfully! You can now share it.';
@@ -647,10 +644,12 @@ export default function EventCapturePage({
 
       const composite = canvas.toDataURL('image/jpeg', 0.85);
       setCompositeImage(composite);
-      setStep('preview');
     } catch (error) {
       console.error('Error compositing image:', error);
       notifyCapture('error', errorFrameMessage);
+      // Back on the reframe screen with Continue ready, so the user can press it again.
+      setSaveRequested(false);
+      setCapturedImage(null);
     } finally {
       setIsProcessing(false);
     }
@@ -670,7 +669,6 @@ export default function EventCapturePage({
           const ctx = canvas.getContext('2d');
           if (!ctx) {
             setCompositeImage(capturedImage);
-            setStep('preview');
             return;
           }
           
@@ -724,7 +722,6 @@ export default function EventCapturePage({
           
           const composite = canvas.toDataURL('image/jpeg', 0.85);
           setCompositeImage(composite);
-          setStep('preview');
         };
         img.src = capturedImage;
       }
@@ -762,8 +759,9 @@ export default function EventCapturePage({
     setStep('reframe');
   };
 
-  // The frame-less crop continues through the existing composite step, as the old capture did.
+  // The frame-less crop continues through the composite step, as the old capture did, and the photo is saved as soon as its picture is made (camera#344).
   const handleReframeDone = (result: ReframeResult) => {
+    setSaveRequested(true);
     setCapturedImage(result.dataUrl);
   };
 
@@ -815,7 +813,8 @@ export default function EventCapturePage({
         imageWidth: imageDimensions?.width || selectedFrame?.width || 1920,
         imageHeight: imageDimensions?.height || selectedFrame?.height || 1080,
         cameraId,
-        shareOptIn,
+        // The consent page covers showing the photo on the event's pledge wall; there is no separate choice any more (camera#344).
+        shareOptIn: true,
         ...(selectedFrame?.generated
           ? {
               frameVariant: {
@@ -876,6 +875,7 @@ export default function EventCapturePage({
       if ((data.data ?? data).pending === true) {
         setPendingApproval(true);
         setTryOnResult(null);
+        setStep('preview');
         notifyCapture('success', pendingSavedMessage);
         return;
       }
@@ -885,15 +885,30 @@ export default function EventCapturePage({
         : successMessage;
       setTryOnResult(data.data?.tryOn ?? data.tryOn ?? null);
       setShareUrl(`${origin}/share/${submissionId}`);
+      setStep('preview');
       
       notifyCapture('success', finalSuccessMessage);
     } catch (error: unknown) {
       console.error('Error saving submission:', error);
       notifyCapture('error', `${errorSaveMessage.replace(': Please try again.', '')}: ${getErrorMessage(error)}`);
+      // The user is still on the reframe screen: forget this picture so that Continue makes and saves it again.
+      setCapturedImage(null);
+      setCompositeImage(null);
     } finally {
       setIsSaving(false);
     }
   };
+
+  // The photo is saved as soon as Continue has made its picture; nothing else is asked in between (camera#344).
+  const handleSaveRef = useRef(handleSave);
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  });
+  useEffect(() => {
+    if (!saveRequested || !compositeImage || isSaving) return;
+    setSaveRequested(false);
+    void handleSaveRef.current();
+  }, [saveRequested, compositeImage, isSaving]);
 
   const updateSubmissionContact = async (submissionId: string, userInfo: WhoAreYouPageData) => {
     try {
@@ -998,22 +1013,6 @@ export default function EventCapturePage({
     if (url) {
       window.open(url, '_blank', 'width=600,height=400');
     }
-  };
-
-  const handleReset = () => {
-    // Keep a chosen frame and go back to capture step; a generated variant is picked again at the next shutter press
-    setSelectedFrame((current) => (current?.generated ? null : current));
-    setCapturedImage(null);
-    setCapturedOriginal(null);
-    setCompositeImage(null);
-    setShareUrl(null);
-    setPendingApproval(false);
-    setTryOnResult(null);
-    setSelectedTryOnSuitId(null);
-    setStep('capture-photo');
-    setSavedSubmissionId(null);
-    setHasFinalizedSubmissionEmail(false);
-    setShareOptIn(false);
   };
 
   // Custom page navigation handlers
@@ -1133,7 +1132,6 @@ export default function EventCapturePage({
     setSavedSubmissionId(null);
     setHasFinalizedSubmissionEmail(false);
     setIsFinalizingSubmission(false);
-    setShareOptIn(true);
     // A chosen frame is kept; a generated variant is picked again at the next shutter press.
     setSelectedFrame((current) => (current?.generated ? null : current));
     setFlowPhase('capture');
@@ -1451,12 +1449,12 @@ export default function EventCapturePage({
               )}
               <div className="flex flex-col items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                  (step === 'capture-photo' || step === 'reframe') ? ' ' : '   '
+                  step === 'capture-photo' ? ' ' : '   '
                 }`}>
                   {frames.length > 1 ? '2' : '1'}
                 </div>
                 <p className={`text-[10px] font-medium text-center mt-1 ${
-                  (step === 'capture-photo' || step === 'reframe') ? ' ' : ' '
+                  step === 'capture-photo' ? ' ' : ' '
                 }`}>
                   Capture Photo
                 </p>
@@ -1464,12 +1462,12 @@ export default function EventCapturePage({
               <div className="w-4 h-0.5  "></div>
               <div className="flex flex-col items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                  step === 'preview' ? ' ' : '   '
+                  (step === 'reframe' || step === 'preview') ? ' ' : '   '
                 }`}>
                   {frames.length > 1 ? '3' : '2'}
                 </div>
                 <p className={`text-[10px] font-medium text-center mt-1 ${
-                  step === 'preview' ? ' ' : ' '
+                  (step === 'reframe' || step === 'preview') ? ' ' : ' '
                 }`}>
                   Preview & Save
                 </p>
@@ -1578,7 +1576,27 @@ export default function EventCapturePage({
               buttonSize={eventButtonSize}
               onDone={handleReframeDone}
               onRetake={handleReframeRetake}
-            />
+              busy={saveRequested || isProcessing || isSaving}
+            >
+              {vetted && (
+                <p className="text-center text-sm" data-pending-notice>
+                  {pendingPreviewNotice}
+                </p>
+              )}
+              {event?.tryOn?.enabled ? (
+                <div className="rounded-2xl p-3 shadow-md">
+                  <TryOnSuitSelector
+                    selectedSuitId={selectedTryOnSuitId}
+                    onChange={setSelectedTryOnSuitId}
+                    disabled={isSaving}
+                    eventMongoId={eventId}
+                    outfitEnabled={event?.tryOn?.outfitEnabled === true}
+                    selectedBottomSuitId={selectedTryOnBottomSuitId}
+                    onBottomChange={setSelectedTryOnBottomSuitId}
+                  />
+                </div>
+              ) : null}
+            </ReframeStep>
           </div>
         )}
 
@@ -1606,79 +1624,6 @@ export default function EventCapturePage({
                   />
                 )}
               </div>
-
-              {!shareUrl && !pendingApproval && (
-                <div className={PREVIEW_PANEL_CLASS}>
-                  <div className="flex min-h-0 flex-col gap-2 overflow-y-auto px-1 py-1">
-                    {vetted && (
-                      <p className="text-center text-sm" data-pending-notice>
-                        {pendingPreviewNotice}
-                      </p>
-                    )}
-                    {event?.tryOn?.enabled ? (
-                      <div className="rounded-2xl p-3 shadow-md">
-                        <TryOnSuitSelector
-                          selectedSuitId={selectedTryOnSuitId}
-                          onChange={setSelectedTryOnSuitId}
-                          disabled={isSaving}
-                          eventMongoId={eventId}
-                          outfitEnabled={event?.tryOn?.outfitEnabled === true}
-                          selectedBottomSuitId={selectedTryOnBottomSuitId}
-                          onBottomChange={setSelectedTryOnBottomSuitId}
-                        />
-                      </div>
-                    ) : null}
-                    <div className="rounded-2xl p-3 shadow-md">
-                      <Checkbox
-                        id="share-opt-in"
-                        checked={shareOptIn}
-                        onChange={(e) => setShareOptIn(e.currentTarget.checked)}
-                        label="Share my photo on the public pledge wall"
-                        aria-label="Share my photo on the public pledge wall"
-                        description="Your photo will appear on this event's public pledge wall. Uncheck to keep it private."
-                        styles={{ label: { lineHeight: 1.6 } }}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 flex-col gap-2 px-1 pb-1">
-                    <Button
-                      type="button"
-                      onClick={handleSave}
-                      disabled={isSaving}
-                      size={eventButtonSize}
-                      radius="md"
-                      fullWidth
-                      color={event?.brandColor || CAMERA_DEFAULT_BRAND_COLOR}
-                      className="shadow-md"
-                    >
-                      {isSaving ? (
-                        event?.showLogo && event?.logoUrl ? (
-                          <Image
-                            src={event.logoUrl}
-                            alt="Event logo"
-                            width={32}
-                            height={32}
-                            unoptimized
-                            className="animate-pulse object-contain"
-                          />
-                        ) : null
-                      ) : null}
-                      <span className="text-xl">{isSaving ? 'SAVING...' : captureButtonText}</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleReset}
-                      size={eventButtonSize}
-                      radius="md"
-                      fullWidth
-                      variant="light"
-                      className="shadow-md"
-                    >
-                      <span className="text-xl">{retryButtonText}</span>
-                    </Button>
-                  </div>
-                </div>
-              )}
 
               {pendingApproval && (
                 <div className={PREVIEW_PANEL_CLASS}>
@@ -1738,7 +1683,7 @@ export default function EventCapturePage({
       </div>
 
       {/* Processing Overlay */}
-      {isProcessing && (
+      {(isProcessing || isSaving) && (
         <div className="fixed inset-0  flex items-center justify-center z-50">
           <div className="  rounded-lg p-8 text-center">
             {event?.showLogo && event?.logoUrl ? (
@@ -1752,7 +1697,7 @@ export default function EventCapturePage({
               />
             ) : null}
             <p className="  font-medium">
-              {vetted ? 'Preparing your photo...' : 'Applying frame...'}
+              {isSaving ? 'Saving your photo...' : vetted ? 'Preparing your photo...' : 'Applying frame...'}
             </p>
           </div>
         </div>

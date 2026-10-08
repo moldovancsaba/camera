@@ -561,8 +561,6 @@ function PageEditModal({
   const [visitButtonText, setVisitButtonText] = useState(page.config.visitButtonText || 'Visit Now');
   const [redirectingText, setRedirectingText] = useState(page.config.redirectingText || 'Redirecting you shortly...');
   // For take-photo page: button texts
-  const [captureButtonText, setCaptureButtonText] = useState(page.config.captureButtonText || 'LOVE IT');
-  const [retryButtonText, setRetryButtonText] = useState(page.config.retryButtonText || 'TRY AGAIN');
   const [shareNextButtonText, setShareNextButtonText] = useState(page.config.shareNextButtonText || 'NEXT');
   const [shareScreenTitle, setShareScreenTitle] = useState(
     page.config.shareScreenTitle || 'Share Your Photo'
@@ -638,8 +636,9 @@ function PageEditModal({
           redirectingText,
         }),
         ...(page.pageType === CustomPageType.TAKE_PHOTO && {
-          captureButtonText,
-          retryButtonText,
+          // Not used any more: the reframe screen's Continue and Retake replaced the "love it" screen (camera#344). Kept as they are, never deleted.
+          captureButtonText: page.config.captureButtonText,
+          retryButtonText: page.config.retryButtonText,
           shareNextButtonText,
           shareScreenTitle,
           shareCopyLinkButtonText,
@@ -910,18 +909,6 @@ function PageEditModal({
 
         {page.pageType === CustomPageType.TAKE_PHOTO ? (
           <>
-            <Field
-              label="Capture/Save Button Text"
-              value={captureButtonText}
-              onChange={setCaptureButtonText}
-              placeholder="e.g., LOVE IT"
-            />
-            <Field
-              label="Retry Button Text"
-              value={retryButtonText}
-              onChange={setRetryButtonText}
-              placeholder="e.g., TRY AGAIN"
-            />
             <Field
               label="Share Screen Next Button Text"
               value={shareNextButtonText}

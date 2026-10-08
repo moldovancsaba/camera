@@ -7,12 +7,15 @@
  * result is what was on screen. The geometry is pure and unit-tested (lib/camera/reframe.ts).
  *
  * Controls: drag to move, pinch or wheel to zoom, arrow keys to move, plus and minus to zoom, a
- * GDS slider and mode control, Reset, Retake and Continue.
+ * GDS slider and mode control, Reset, Retake and Continue. This is the one screen between taking the
+ * photo and saving it (camera#344): Continue hands the crop over and the page saves the photo, so there
+ * is no second "love it" screen. What the page needs to say or ask before the save (a notice, the try-on
+ * choice) goes in as children, above the buttons; `busy` keeps the buttons locked while the page saves.
  */
 
 'use client';
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@mantine/core';
 import { GdsSegmentedControl, GdsSlider } from '@sovereignsquad/gds-core/client';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
@@ -59,6 +62,10 @@ export interface ReframeStepProps {
   onDone: (result: ReframeResult) => void;
   onRetake: () => void;
   labels?: { continue?: string; retake?: string; reset?: string };
+  /** True while the page makes the picture and saves it: the buttons stay locked and Continue shows its spinner. */
+  busy?: boolean;
+  /** Shown above the buttons: a notice before the save, the try-on choice. */
+  children?: ReactNode;
 }
 
 interface Source {
@@ -89,6 +96,8 @@ export default function ReframeStep({
   onDone,
   onRetake,
   labels,
+  busy = false,
+  children,
 }: ReframeStepProps) {
   const [source, setSource] = useState<Source | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -96,6 +105,8 @@ export default function ReframeStep({
   const [viewState, setViewState] = useState<ReframeView | null>(null);
   const [stage, setStage] = useState({ width: 0, height: 0 });
   const [isFinishing, setIsFinishing] = useState(false);
+  // Locked while the crop is made and while the page saves the photo.
+  const locked = isFinishing || busy;
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -330,7 +341,7 @@ export default function ReframeStep({
 
   const finish = async () => {
     const current = viewRef.current;
-    if (!source || !current || isFinishing) return;
+    if (!source || !current || locked) return;
     setIsFinishing(true);
     try {
       const box = viewBoxOf(current, source.width, source.height, frameAspect);
@@ -352,6 +363,7 @@ export default function ReframeStep({
       });
     } catch (error) {
       console.error('Error applying the crop:', error);
+    } finally {
       setIsFinishing(false);
     }
   };
@@ -434,8 +446,10 @@ export default function ReframeStep({
         </p>
         </div>
 
+        {children}
+
         <div className="reframe-actions flex items-center justify-between gap-2">
-          <Button type="button" variant="light" size={buttonSize} radius="md" onClick={onRetake} disabled={isFinishing}>
+          <Button type="button" variant="light" size={buttonSize} radius="md" onClick={onRetake} disabled={locked}>
             {labels?.retake ?? 'Retake'}
           </Button>
           <Button
@@ -444,11 +458,11 @@ export default function ReframeStep({
             size={buttonSize}
             radius="md"
             onClick={() => source && update(defaultView(source.width, source.height))}
-            disabled={!source || isFinishing}
+            disabled={!source || locked}
           >
             {labels?.reset ?? 'Reset'}
           </Button>
-          <Button type="button" size={buttonSize} radius="md" onClick={() => void finish()} disabled={!source || isFinishing} loading={isFinishing}>
+          <Button type="button" size={buttonSize} radius="md" onClick={() => void finish()} disabled={!source || locked} loading={locked}>
             {labels?.continue ?? 'Continue'}
           </Button>
         </div>
