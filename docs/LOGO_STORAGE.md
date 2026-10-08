@@ -18,6 +18,14 @@ then show a broken logo.
   (`lib/theme/event-theme.ts`, `allowedImage`), the frame logo fetch (`lib/frame/logo.ts`, `isAllowedLogoUrl`), `next.config.ts`
   (`images.remotePatterns`, limited to `/logos/**`, and the CSP `img-src`) use it. Only this exact host is accepted, not `*.r2.dev`.
 
+## The partner's logo as a library item (camera#367)
+
+Importing a partner's logo from messmass (the button on `/admin/partners/<id>/logos`, `docs/LIBRARIES.md`) stores a document in camera's `logos` collection that belongs to
+the partner (`scope: 'partner'`, `source: 'messmass'`); its `imageUrl`, `thumbnailUrl` and `sourceUrl` are the bucket address of `Partner.logoUrl`. Camera still writes no file
+to the bucket and makes no copy elsewhere: a file there never changes (it is named by its hash), so the address stays good. Before storing, camera downloads the file once with
+the same checks as the frame logo (`lib/frame/logo.ts`: https, this host, no redirect, 8 seconds, 5 MB, an image) and reads its size with sharp. A move of the bucket (below)
+must also rewrite those three fields of the imported logos, as it rewrote the logo library.
+
 ## Limits and what to do about them
 
 - `r2.dev` addresses are meant for light public traffic and Cloudflare may rate-limit them; the files are immutable and long-cached, so a

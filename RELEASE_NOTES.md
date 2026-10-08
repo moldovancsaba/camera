@@ -1,5 +1,39 @@
 # RELEASE_NOTES.md
 
+## Unreleased — libraries, step 4: logos on three levels, the messmass logo as a partner library item (camera#367)
+
+- **Added (owner report, 2026-10-08):** logos have the three levels of the frames (epic camera#361). **Partner logos** (`/admin/partners/<id>/logos`): the partner's library with
+  pictures and their origin (global library, partner upload, from messmass), add from the global library, upload for the partner, remove, delete an own upload, and a default
+  for new events per scenario. **Manage Event Logos** (`/admin/events/<id>/logos`): per scenario, Assigned and Available from the partner's library and the event's own uploads,
+  with pictures; assign, switch on or off and remove act on that scenario; the logo the guests see is marked; an upload for the event goes into the scenario chosen
+  (Onboarding/Thank You Pages unless another is chosen). The model and the API are in `docs/LIBRARIES.md` ("Logos").
+- **Added: the logo from messmass is a partner library item** (decision 120: in the partner library only, not in the global list). "Import the logo from messmass" on the partner
+  page (`POST /api/partners/<id>/library/import-messmass-logo`) stores `Partner.logoUrl` as a logo of the partner (`source: messmass`, the same file on the logo bucket, measured
+  after a checked download). It is assigned to nothing: guests see nothing new until an editor assigns it.
+- **Changed:** an event can no longer take a logo straight from the global library, nor one switched off in the library (`POST /api/events/<id>/logos`, a plain 400);
+  `PATCH /api/partners/<id>` accepts default logos from the partner library only, each with a known scenario; the global logo lists (`GET /api/logos`, `/admin/logos`, the logo
+  picker of the landing page editor) show global logos only, `/admin/logos?scope=all` every logo; `POST /api/logos` writes `scope: 'global'`. The default logos are saved at each
+  click through the library API, by partner managers too (before, one "Save Defaults" button that only a global admin could use).
+- **Fixed:** removing or switching off a logo on an event acted on the wrong rows. Every event with logos has the same logo in all four scenarios (10 of 10): "Remove" in one
+  scenario took it out of all four, and the switch changed the row of the first scenario whatever was clicked. Both now act on their scenario (`scenario` on the API; without it
+  the API behaves as before) and make the event's list its own, so a later change of the partner's defaults no longer brings a removed logo back. The page said that several
+  active logos are picked at random; guests in fact see the first active one, which the page now says and marks.
+- **Fixed:** the library uploads of step 1 (frames at the partner and the event level), and now the logo uploads, would have failed on the server: `uploadImage` read the File
+  with `FileReader`, which Node does not have. It now reads the bytes.
+- **Guests:** nothing they see changes. Read-only on the real data, the event logo API that the capture page and the slideshow read answered the same before and after for all
+  214 events, by both ids (428 answers); for the 10 events with logos the event page shows the same order and marks the same logo. Tests pin that API and the logo of the stage
+  pages (the event's logo for those pages, else the theme's logo, else the emoji).
+- **Verified:** unit tests (866 in 141 files; new: the logo rules, the logo library on the fake database, the import, every new and changed route); the full CI chain in a clean
+  clone (`npm run inventory:check` and `npm run release:check`, both exit 0); a real browser on the production build with the real logo pictures (the 6 library logos and the MTK
+  tippmix logo from messmass) and a stateful fake API, nothing written: 38 checks of both pages at 1280 and 390 px (every picture loaded, origin tags, import, defaults per
+  scenario, add, remove, delete upload, upload with a preview, assign, switch off and remove in one scenario, the mark of the logo guests see, upload into a chosen scenario, the
+  link to the partner library, no horizontal scroll). Read-only on the real data: the 135 distinct partner logo files are all importable (129 PNG, 5 JPEG, 1 WebP, at most
+  678 KB), and a full import into the test database gave a 512 x 512 PNG logo; a second import returned it.
+- **Not verified:** not seen by the owner; no import, save or upload was made on the real database or the file store (the first import happens when the owner presses the
+  button); `/admin/logos?scope=all` was not opened in a browser (it needs the database and an admin session), only type-checked and built; the secret scan of CI (gitleaks) was
+  not run locally.
+- **Not yet:** messmass provisioning does not import the logo by itself; assigning the imported logo where MTK needs it is the MTK migration (camera#369); images (camera#368).
+
 ## Unreleased — libraries, step 6: move an event's designers' picture into the library (camera#369; epic camera#361)
 
 - **Added (owner direction, 2026-10-08: the designers' frames are listed under Assigned frames and every message chooses one):** the generated frame panel of an event that still has the

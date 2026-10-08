@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { GLOBAL_FILTER } from '@/lib/library/db';
 import { listLandingPageCssPresets, type LandingPageCssPresetOption } from '@/lib/landing-page-css-presets';
 import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
 
@@ -80,9 +81,11 @@ export async function buildLandingPageEditorProps(
       .find({ eventId: event.eventId })
       .sort({ createdAt: -1 })
       .toArray(),
+    // The global library only (camera#367): a logo one partner or one event has for itself, such as a partner's logo imported from messmass,
+    // is not offered to the landing pages of every event.
     db
       .collection(COLLECTIONS.LOGOS)
-      .find({ isActive: true })
+      .find({ isActive: true, ...GLOBAL_FILTER })
       .sort({ createdAt: -1 })
       .limit(100)
       .toArray(),

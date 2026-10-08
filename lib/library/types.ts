@@ -13,6 +13,8 @@ export interface LibraryItemView {
   description: string;
   imageUrl: string | null;
   thumbnailUrl: string | null;
+  /** Where an item that was not uploaded came from: `messmass` for the partner's logo imported from messmass (camera#367). */
+  source?: string;
   scope: LibraryScope;
   /** The item's own switch in the library (an inactive item cannot be newly taken). */
   itemActive: boolean;

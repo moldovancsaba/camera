@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-08T12:02:41+00:00",
+  "generated": "2026-10-08T12:15:49+00:00",
   "repo": "camera",
-  "head": "3fa9d7d",
+  "head": "c2f11b0",
   "counts": {
-   "endpoints": 119,
+   "endpoints": 120,
    "collections": 7,
    "env": 59,
    "outbound-hosts": 30,
@@ -1152,6 +1152,19 @@
    "file": "app/api/observability/client-error/route.ts",
    "auth_markers": [],
    "no_auth_marker": true
+  },
+  {
+   "path": "/api/partners/[partnerId]/library/import-messmass-logo",
+   "methods": [
+    "GET",
+    "POST"
+   ],
+   "file": "app/api/partners/[partnerId]/library/import-messmass-logo/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
   },
   {
    "path": "/api/partners/[partnerId]/library/items/[itemId]",

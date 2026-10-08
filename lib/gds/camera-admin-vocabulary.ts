@@ -154,6 +154,8 @@ export const cameraAdminVocabularyPacks = [
     'message-area': { defaultMessage: 'Message area', icon: GdsIcons.Edit, feedback: openedFeedback },
     'switch-on': { defaultMessage: 'Switch on', icon: GdsIcons.Toggle, feedback: savedFeedback },
     'switch-off': { defaultMessage: 'Switch off', icon: GdsIcons.Toggle, feedback: savedFeedback },
+    'import-messmass': { defaultMessage: 'Import the logo from messmass', icon: GdsIcons.Download, feedback: savedFeedback },
+    'delete-import': { defaultMessage: 'Delete the import', icon: GdsIcons.Delete, feedback: deletedFeedback },
   }),
   createGdsVocabularyPack('partner-frames', {
     'save-defaults': { defaultMessage: 'Save defaults', icon: GdsIcons.Save, feedback: savedFeedback },
