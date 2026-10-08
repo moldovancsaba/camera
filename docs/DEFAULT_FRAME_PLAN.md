@@ -193,6 +193,14 @@ What the real data shows, for decisions in later packages:
 - Capture: Playwright on the same 16 viewports as the app-like work, territories visible in the live view, real composite at the preview step, variant recorded.
 - Backfill: dry run with counts per outcome before the real run.
 
+## Messages can choose their frame (camera#366, 2026-10-08)
+
+The generated frame draws each message on its own layout. A message can instead **choose a frame of the event's library** that carries messages (a text-free frame with a message area,
+docs/LIBRARIES.md): the message is then written on that frame, in the event's font, in the same box, colour and territories the frame says, and the generated layout is not used for
+that message. For each message the order is **the frame it chose, else the event's older base picture (docs/FRAME_BASE.md), else the generated layout**. A message with no frame keeps the
+image key it had, so no event is redrawn by this. A frame that carries messages is not a frame the user picks; an event whose only active frames carry messages has no frame of its own, so
+the generated frames apply, in the capture page, the rollout and the backfill alike.
+
 ## Not covered
 
 - Per-event frame editing beyond the message list, colours and logo toggle (F7 starts with those).
