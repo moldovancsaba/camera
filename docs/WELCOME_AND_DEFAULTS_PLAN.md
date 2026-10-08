@@ -125,6 +125,16 @@ Item numbers run continuously and never restart. A number can be commented on in
 78. One shared component draws both; the in-flow step uses it (no navigation away; NEXT only in the flow); one canonical set of texts in the event's share page settings, with the share texts of the selfie-taking settings still honoured when the new field is empty; live with the global switch; "show the share page" keeps working.
 79. Item 78 agreed.
 
+### Part 4: one screen instead of reframe and "Love it" (#344, client feedback 2026-10-08)
+
+| # | Decision |
+|---|---|
+| 90 | The reframe screen and the "Love it" screen are **one screen**: after the shutter, adjust, Retake, Reset, **Continue saves** and leads to the waiting or share screen. |
+| 91 | The pledge wall checkbox is **removed**; the consent page covers it; every photo is saved with the wall choice on. |
+| 92 | The "Love it" and "Try again" screen and buttons are gone for good; their two text settings leave the page editor (stored values stay). |
+| 93 | The frame notice and the try-on choice move to the one screen above the buttons; a failed save keeps the user on the screen with Continue ready. |
+| 94 | Open, for the owner: the old no-event page `/capture` has no zoom screen and no "Love it" screen (one preview with Save & Share and Download), so there is nothing to merge; it has the pledge wall checkbox but **no consent step**, so the checkbox stays there until the owner decides. Not changed. |
+
 ### Delivery
 
 80. **Proposed delivery order** (the owner to confirm, item 81). Each step is its own pull request, merged only with the owner's yes, and starts with the check of what exists (item 20):
