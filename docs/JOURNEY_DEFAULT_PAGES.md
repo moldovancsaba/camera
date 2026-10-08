@@ -22,6 +22,8 @@ Social login and the email form are each optional, but **at least one stays on**
 
 `Event.journeyDefaults` is set on every event created from now on (camera admin and provisioning from messmass), and such an event gets the defaults. **Existing events get them only when the switch is on**: Admin, Settings, **Journey defaults** (`/admin/settings/defaults`, `GET/PATCH /api/admin/settings/defaults-rollout`, global admins, stored in `admin_settings` as `defaults-rollout`; off until an admin turns it on). Turning it on shows the default consent page at once on every existing event that has no consent page of its own, including events that are running; turning it off takes them away again. Nothing in an event's own pages is ever changed.
 
+**State:** the switch was turned **on** on 2026-10-08 at 06:10 UTC, on the owner's instruction (a script upserted `applyToExistingEvents: true`; the previous state was no setting). Live check right after: the real MTK Budapest x Vasas event shows welcome, the default consent page, then the login page; events that have their own consent page (for example FIBA 3X3 2026 TRYON) keep it and get no second one. To take the defaults away again set the switch off on the Journey defaults page.
+
 ## Not part of this
 
 The rest of the planned defaults (the default slideshow and the global defaults library, the welcome page screen, the share page, the editable texts) are separate packages, see the plan.

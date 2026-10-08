@@ -252,6 +252,11 @@ export interface CustomPage {
     successMessage?: string;     // Message shown after successful save (e.g., "Photo saved successfully! You can now share it.")
     showSharePage?: boolean;     // If false, skip share page and show thank you message instead
     skipShareMessage?: string;   // Message shown when share page is skipped (e.g., "Thank you! Your photo has been saved.")
+    // Texts a user reads while the photo of an event with photo approval waits for approval (camera#333); empty = the default text
+    pendingPreviewNotice?: string;    // Above the save button: the frame comes after approval
+    pendingSavedMessage?: string;     // Notification when the photo was saved and waits
+    pendingTitle?: string;            // Heading of the waiting screen
+    pendingWaitingMessage?: string;   // The waiting text with the email information; shown as written when set
     showFrameOnCapture?: boolean; // If true, show frame overlay during live capture; if false, frame only applied after capture (default: true)
     // Camera prompt customization
     cameraPromptTitle?: string;  // Title shown on camera start screen (e.g., "Ready to capture?")
