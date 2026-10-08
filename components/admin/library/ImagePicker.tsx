@@ -74,7 +74,8 @@ export default function ImagePicker({ label, helper, value, onChange, level, fil
     }
   }, [listUrl, scope, typesKey]);
 
-  // The library is read once, so the picker can say whether the current picture is one of its own; it is read again when it is opened after an error.
+  // The library is read when the picker appears, so it can say whether the current picture is one of its own, and again every time its list is opened, so a picture
+  // uploaded through another picker of the same editor, or added on the Images page, is offered without reloading the editor (and losing what is typed in it).
   useEffect(() => {
     void load();
   }, [load]);
@@ -92,7 +93,7 @@ export default function ImagePicker({ label, helper, value, onChange, level, fil
 
   const openLibrary = () => {
     setPanel(panel === 'library' ? null : 'library');
-    if (panel !== 'library' && loadError) void load();
+    if (panel !== 'library') void load();
   };
 
   const clearFile = () => {
