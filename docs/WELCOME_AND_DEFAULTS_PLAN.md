@@ -99,6 +99,7 @@ Item numbers run continuously and never restart. A number can be commented on in
 60. Findings, measured: the messmass style's text and button colours fail the contrast safeguard, which replaces them with black; the purple checkbox and the faint text do not take the event's colours.
 61. Recommendation: text on the page is the messmass colour made readable keeping its hue; the safeguard repairs instead of replacing; event-level button colours with derived defaults (the existing `brandColor` and `brandBorderColor` are checked first); no colour leaks.
 62. Accepted by the owner (#336).
+98. Delivered (#336): text colours are repaired keeping the hue (MTK navy to `#003d6c`); button colours in the order welcome page, event colours, derived; dimmed text, placeholders, input edges, links, the ticked consent card and the GDS controls follow the event; measured on 3 themes. Dictionary: **repair** = make a colour darker or lighter in 5% steps keeping its hue until it passes; **event colours** = the editor's `brandColor` and `brandBorderColor`.
 
 ### Part 3d: the CTA page (#337)
 

@@ -18,7 +18,6 @@ import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import CaptureStageShell from '@/components/capture/CaptureStageShell';
 import { Button, Divider, Group, Stack, TextInput, Title } from '@mantine/core';
 import {
-  CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
 } from '@/lib/gds/tokens/colors';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
@@ -60,7 +59,6 @@ export default function WhoAreYouPage({
   onBack,
   logoUrl,
   brandColor = CAMERA_DEFAULT_BRAND_COLOR,
-  brandBorderColor = CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   eventId,
   pageIndex,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
@@ -152,9 +150,6 @@ export default function WhoAreYouPage({
             placeholder={config.namePlaceholder || 'Enter your name'}
             aria-label={nameLabel}
             error={errors.name}
-            styles={{
-              input: !errors.name ? { borderColor: brandBorderColor } : undefined,
-            }}
           />
 
           <TextInput
@@ -172,9 +167,6 @@ export default function WhoAreYouPage({
             placeholder={config.emailPlaceholder || 'your.email@example.com'}
             aria-label={emailLabel}
             error={errors.email}
-            styles={{
-              input: !errors.email ? { borderColor: brandBorderColor } : undefined,
-            }}
           />
 
           <Group grow pt="xs">

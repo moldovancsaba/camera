@@ -5,14 +5,16 @@
  * colour as the button colour when it has one.
  *
  * Contrast is guaranteed, not trusted: text is only used where it reads (WCAG 4.5:1, 3:1 for the large button labels), a button colour
- * only where it stands out from its card and from the page (3:1); anything else is corrected, so a messmass style can never make a page unreadable.
+ * only where it stands out from its card and from the page (3:1). A colour that fails is **repaired, not replaced** (camera#336): the same hue,
+ * darker or lighter in steps of 5% until it passes; white or black only when no variant of it can pass. So a messmass style can never make
+ * a page unreadable, and the page keeps the colours of the club.
  * Pure and DOM-free; unit-tested in event-theme.test.ts.
  */
 
 import { EVENT_THEME_DEFAULT } from '@/lib/gds/tokens/colors';
 import type { FrameContext, PageStyle } from '@/lib/frame/context';
 import { eventEmoji } from '@/lib/frame/emoji';
-import { contrast, isDark, opaque, readable } from '@/lib/theme/color';
+import { bestOfWhiteOrBlack, contrast, isDark, mix, opaque, readable, repaired } from '@/lib/theme/color';
 import { isLogoStorageHostname } from '@/lib/imgbb/url';
 
 export type FontSource = 'google' | 'custom' | 'system';
@@ -24,10 +26,16 @@ export interface EventTheme {
   background: string;
   /** Heading and other text on the page background. */
   heading: string;
+  /** Dimmed text (descriptions, hints) on the page background: the heading colour, softened, still 4.5:1. */
+  headingMuted: string;
   cardBackground: string;
   cardBorder: string;
   /** Text on a card. */
   cardText: string;
+  /** Dimmed text (descriptions, hints, placeholders) on a card, still 4.5:1. */
+  cardMuted: string;
+  /** The edge of an input on a card, at least 3:1 against the card. */
+  inputBorder: string;
   buttonBackground: string;
   buttonText: string;
   /** The ring round every button (camera#334): the colour the club set on its welcome page's Start button, else the label colour. */
@@ -56,9 +64,11 @@ export interface EventTheme {
 export interface ThemeInput {
   /** The event's own brand colour from the editor (#RRGGBB), used for buttons when messmass gives no usable button colour. */
   brandColor?: string | null;
+  /** The event's own ring colour from the editor (#RRGGBB): the ring of every button when the welcome page sets none. */
+  brandBorderColor?: string | null;
   /**
    * The colours the club set on the Start button of its welcome page (fill, label, ring). The button of the whole flow looks like the Start button
-   * (camera#334), so these win over the style's button colours; only the label is still checked for contrast.
+   * (camera#334), so these win over everything else; only the label is still checked for contrast.
    */
   buttons?: { fill?: unknown; label?: unknown; ring?: unknown } | null;
   /** The event's email footer picture (event.emailFooterImageUrl). */
@@ -66,6 +76,9 @@ export interface ThemeInput {
   /** The snapshot of the messmass (or fallback) data the generated frame is drawn from. */
   context?: FrameContext | null;
 }
+
+/** How much of the button colour tints a selected card (a ticked consent box): the links on it must still read. */
+export const SELECTED_TINT = 0.08;
 
 const RADIUS = /^\d{1,2}(?:\.\d{1,2})?(?:px|rem|em)$/;
 const MAX_RADIUS_REM = 2;
@@ -89,7 +102,7 @@ const DEFAULT_PAGE: PageStyle = {
   cardRadius: EVENT_THEME_DEFAULT.cardRadius,
 };
 
-export function resolveEventTheme({ brandColor, context, emailFooterImageUrl, buttons }: ThemeInput): EventTheme {
+export function resolveEventTheme({ brandColor, brandBorderColor, context, emailFooterImageUrl, buttons }: ThemeInput): EventTheme {
   const style = context?.style;
   const page = style?.page ?? DEFAULT_PAGE;
   const fromMessmass = context?.source === 'messmass';
@@ -100,19 +113,31 @@ export function resolveEventTheme({ brandColor, context, emailFooterImageUrl, bu
   const cardText = readable(opaque(page.textColor, hexRgb(cardBackground)), cardBackground);
   const cardBorder = opaque(page.cardBorder, hexRgb(cardBackground)) ?? cardBackground;
 
-  // A button sits on a card (login, consent) or straight on the page (the photo steps), so its colour must stand out from both (3:1): the
-  // style's button, its accent, the page's own colour, the event's brand colour; failing all of them the card's text colour, white or
-  // black, whichever stands out from both best.
+  // The colours of the buttons (camera#336), in this order of precedence: the Start button of the welcome page, then the event's own colours (the
+  // editor's brand colour and ring), then the ones derived from the style. A button sits on a card (login, consent) or straight on the page (the
+  // photo steps), so its fill must stand out from both (3:1): a colour that does not is made to, keeping its hue.
   const brand = opaque(brandColor);
-  const standsOut = (c: string) => contrast(c, cardBackground) >= 3 && contrast(c, background) >= 3;
-  const candidates = [opaque(page.buttonBackground, hexRgb(cardBackground)), opaque(page.accentColor, hexRgb(cardBackground)), background, brand];
-  const buttonBackground =
-    opaque(buttons?.fill) ??
-    candidates.find((c): c is string => !!c && standsOut(c)) ??
-    [cardText, '#000000', '#ffffff'].sort((a, b) => Math.min(contrast(b, cardBackground), contrast(b, background)) - Math.min(contrast(a, cardBackground), contrast(a, background)))[0];
-  const buttonText = readable(opaque(buttons?.label, hexRgb(buttonBackground)) ?? opaque(page.buttonText, hexRgb(buttonBackground)), buttonBackground, 3);
-  const buttonRing = opaque(buttons?.ring) ?? buttonText;
-  const link = readable(opaque(page.linkColor, hexRgb(cardBackground)), cardBackground);
+  const stands = [cardBackground, background];
+  const fromStyle = [opaque(page.buttonBackground, hexRgb(cardBackground)), opaque(page.accentColor, hexRgb(cardBackground))].filter((c): c is string => !!c);
+  const welcomeFill = opaque(buttons?.fill);
+  const eventFill = repaired(brand, stands, 3);
+  // Derived: the style's own button or accent if it stands out as it is, else the accent (or the style's button) made to stand out; failing that
+  // the card's text colour, black or white, whichever stands out best.
+  const derivedFill =
+    fromStyle.find((c) => repaired(c, stands, 3) === c) ?? repaired(fromStyle[1] ?? fromStyle[0], stands, 3) ?? repaired(fromStyle[0], stands, 3) ?? null;
+  const fallbackFill = [cardText, '#000000', '#ffffff'].sort((a, b) => Math.min(contrast(b, cardBackground), contrast(b, background)) - Math.min(contrast(a, cardBackground), contrast(a, background)))[0];
+  const buttonBackground = welcomeFill ?? eventFill ?? derivedFill ?? fallbackFill;
+  // The label: the club's own, else the style's own label when the fill is the style's own button as it is, else white or black by contrast; always
+  // at least 3:1 on the fill.
+  const styleLabel = buttonBackground === opaque(page.buttonBackground, hexRgb(cardBackground)) ? opaque(page.buttonText, hexRgb(buttonBackground)) : null;
+  const buttonText = repaired(opaque(buttons?.label, hexRgb(buttonBackground)) ?? styleLabel, [buttonBackground], 3) ?? bestOfWhiteOrBlack([buttonBackground]);
+  const buttonRing = opaque(buttons?.ring) ?? repaired(opaque(brandBorderColor), stands, 3) ?? buttonText;
+  const selectedCard = mix(buttonBackground, cardBackground, SELECTED_TINT);
+  const link = repaired(opaque(page.linkColor, hexRgb(cardBackground)), [cardBackground, selectedCard]) ?? bestOfWhiteOrBlack([cardBackground, selectedCard]);
+  // Dimmed text and the edge of an input are shades of the text colour, and read as well as the text does (camera#336).
+  const headingMuted = readable(mix(heading, background, 0.62), background);
+  const cardMuted = readable(mix(cardText, cardBackground, 0.62), cardBackground);
+  const inputBorder = repaired(mix(cardText, cardBackground, 0.5), [cardBackground], 3) ?? bestOfWhiteOrBlack([cardBackground]);
 
   const partnerLogo = allowedImage(context?.partner?.logoUrl);
   const emoji = partnerLogo || !context ? null : eventEmoji({ name: context.event.name, homeTeam: context.event.homeTeam, visitorTeam: context.event.visitorTeam }, context.partner?.name);
@@ -121,9 +146,12 @@ export function resolveEventTheme({ brandColor, context, emailFooterImageUrl, bu
     source: fromMessmass ? 'messmass' : brand ? 'event' : 'default',
     background,
     heading,
+    headingMuted,
     cardBackground,
     cardBorder,
     cardText,
+    cardMuted,
+    inputBorder,
     buttonBackground,
     buttonText,
     buttonRing,

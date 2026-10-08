@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import type { FrameContext } from '@/lib/frame/context';
 import { nativeFrameContext, parseFrameContext } from '@/lib/frame/context';
 import { contrast } from './color';
-import { allowedImage, resolveEventTheme } from './event-theme';
+import { allowedImage, resolveEventTheme, SELECTED_TINT } from './event-theme';
+import { mix } from './color';
 
 const NOW = '2026-10-06T12:00:00.000Z';
 
@@ -97,9 +98,59 @@ test('a button must stand out from the page as well as from the card: on a dark 
   assert.equal(theme.buttonBackground, '#3b82f6');
 });
 
-test('when no colour stands out from both, the best of the card text, black and white is used', () => {
+test('a style colour that does not stand out is repaired, keeping its hue: grey on grey becomes a darker grey, not black', () => {
   const theme = resolveEventTheme({ context: context({ heroBackground: '#808080ff', page: { ...PAGE, cardBackground: '#808080ff', buttonBackground: '#808080ff', accentColor: '#808080ff' } }) });
+  assert.ok(contrast(theme.buttonBackground, theme.cardBackground) >= 3 && contrast(theme.buttonBackground, theme.background) >= 3);
+});
+
+test('when no variant of any colour stands out from both card and page, the best of the card text, black and white is used', () => {
+  // A light card on a dark page: no shade can be 3:1 from both, so the last resort applies.
+  const theme = resolveEventTheme({ context: context({ heroBackground: '#3a3a3aff', page: { ...PAGE, cardBackground: '#d0d0d0ff', buttonBackground: '#808080ff', accentColor: '#808080ff', textColor: '#111111ff' } }) });
   assert.ok(['#000000', '#ffffff'].includes(theme.buttonBackground) || theme.buttonBackground === theme.cardText);
+});
+
+test('MTK x Vasas (camera#336): the navy text on the page blue is made 20% darker, keeping the hue, not replaced by black', () => {
+  const theme = resolveEventTheme({ context: context({ heroBackground: '#00b5e4ff', headingColor: '#004c87ff', page: { ...PAGE, cardBackground: '#f3f4f6ff', textColor: '#004c87ff', buttonBackground: '#ffffffff', buttonText: '#00b5e4ff', accentColor: '#00b5e4ff' } }) });
+  assert.equal(theme.heading, '#003d6c');
+  assert.ok(contrast(theme.heading, theme.background) >= 4.5);
+  assert.equal(theme.cardText, '#004c87', 'on the card the navy already reads');
+});
+
+test('button colours: the welcome page first, then the event\'s own colours, then the ones derived from the style', () => {
+  const ctx = context({ page: PAGE });
+  const derived = resolveEventTheme({ context: ctx });
+  const event = resolveEventTheme({ context: ctx, brandColor: '#0a7d3e', brandBorderColor: '#b45309' });
+  assert.equal(event.buttonBackground, '#0a7d3e', 'the event colour wins over the style button');
+  assert.equal(event.buttonRing, '#b45309', 'and its ring colour is the ring');
+  assert.notEqual(derived.buttonBackground, '#0a7d3e');
+  const welcome = resolveEventTheme({ context: ctx, brandColor: '#0a7d3e', brandBorderColor: '#b45309', buttons: { fill: '#1b3a69', label: '#ffffff', ring: '#189cd8' } });
+  assert.deepEqual([welcome.buttonBackground, welcome.buttonText, welcome.buttonRing], ['#1b3a69', '#ffffff', '#189cd8'], 'the welcome page wins over the event');
+  const noRing = resolveEventTheme({ context: ctx, brandColor: '#0a7d3e' });
+  assert.equal(noRing.buttonRing, noRing.buttonText, 'with no ring colour anywhere the ring is the label colour');
+});
+
+test('an event colour that does not stand out is repaired, keeping its hue, and its label is white or black by contrast', () => {
+  const theme = resolveEventTheme({ context: context({ heroBackground: '#f8fafcff', page: { ...PAGE, cardBackground: '#ffffffff' } }), brandColor: '#d8e0ff' });
+  assert.ok(contrast(theme.buttonBackground, theme.cardBackground) >= 3 && contrast(theme.buttonBackground, theme.background) >= 3);
+  const [r, , b] = [1, 3, 5].map((i) => parseInt(theme.buttonBackground.slice(i, i + 2), 16));
+  assert.ok(b > r, 'still bluish');
+  assert.ok(['#ffffff', '#000000'].includes(theme.buttonText));
+  assert.ok(contrast(theme.buttonText, theme.buttonBackground) >= 3);
+});
+
+test('dimmed text and the edge of an input read as well as the text: 4.5:1 and 3:1, on every kind of style', () => {
+  const styles = [
+    context({ page: PAGE }),
+    context({ heroBackground: '#00b5e4ff', headingColor: '#004c87ff', page: { ...PAGE, cardBackground: '#f3f4f6ff', textColor: '#004c87ff' } }),
+    context({ heroBackground: '#ffffffff', headingColor: '#fafafaff', page: { ...PAGE, textColor: '#f0f0f0ff' } }),
+    nativeFrameContext({ eventName: 'Derby', partnerName: null, partnerLogoUrl: null }, NOW),
+  ];
+  for (const ctx of styles) {
+    const theme = resolveEventTheme({ context: ctx });
+    assert.ok(contrast(theme.headingMuted, theme.background) >= 4.5, `dimmed text ${theme.headingMuted} on page ${theme.background}`);
+    assert.ok(contrast(theme.cardMuted, theme.cardBackground) >= 4.5, `dimmed text ${theme.cardMuted} on card ${theme.cardBackground}`);
+    assert.ok(contrast(theme.inputBorder, theme.cardBackground) >= 3, `input edge ${theme.inputBorder} on card ${theme.cardBackground}`);
+  }
 });
 
 test('a logo on a host the pages may not load images from is not used: the emoji takes its place', () => {
@@ -131,3 +182,12 @@ test('the colours the club set on its welcome page Start button become the butto
   assert.deepEqual([junk.buttonBackground, junk.buttonText, junk.buttonRing], [base.buttonBackground, base.buttonText, base.buttonRing]);
 });
 
+
+test('the link colour reads on the card and on a ticked, tinted card (the consent boxes)', () => {
+  for (const ctx of [context({ page: PAGE }), context({ heroBackground: '#00b5e4ff', headingColor: '#004c87ff', page: { ...PAGE, cardBackground: '#f3f4f6ff', textColor: '#004c87ff', linkColor: '#2563ebff' } })]) {
+    const theme = resolveEventTheme({ context: ctx });
+    const ticked = mix(theme.buttonBackground, theme.cardBackground, SELECTED_TINT);
+    assert.ok(contrast(theme.link, theme.cardBackground) >= 4.5, `link ${theme.link} on the card`);
+    assert.ok(contrast(theme.link, ticked) >= 4.5, `link ${theme.link} on the ticked card ${ticked}`);
+  }
+});
