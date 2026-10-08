@@ -1,13 +1,13 @@
 {
  "_meta": {
-  "generated": "2026-10-08T12:06:46+00:00",
+  "generated": "2026-10-08T12:24:29+00:00",
   "repo": "camera",
-  "head": "08e24d8",
+  "head": "60633e2",
   "counts": {
-   "endpoints": 120,
+   "endpoints": 122,
    "collections": 8,
    "env": 59,
-   "outbound-hosts": 29,
+   "outbound-hosts": 30,
    "docs": 56
   }
  },
@@ -27,6 +27,7 @@
   "messmass.com",
   "other.public.blob.vercel-storage.com",
   "pub-b52ac4e9cc2b4199acd3a3b997ffdb0f.r2.dev",
+  "pub.r2.dev",
   "savetheplanet.vercel.app",
   "seyuselfies.com",
   "sso.doneisbetter.com",

@@ -3,7 +3,7 @@
 /**
  * Where a message is written on a frame (camera#366): a text-free frame that carries the messages of an event. The editor shows the frame with the
  * message box and the territories drawn on it, in the real proportions (the frame is drawn at 1920 x 1080), and saves the numbers. A frame with a message
- * area is not offered to guests as a frame of their own: the messages of an event are written on it (each message chooses its frame, in the generated
+ * area is not offered to users as a frame of their own: the messages of an event are written on it (each message chooses its frame, in the generated
  * frame panel of the event). Without one the frame is a complete frame, as before.
  */
 
@@ -110,7 +110,7 @@ export default function MessageAreaEditor({ pictureUrl, name, value, disabled = 
         disabled={off}
         onChange={(event) => setCarries(event.currentTarget.checked)}
         label="This frame carries messages"
-        description="Switch it on for a text-free frame: the messages of an event are written on it, in the box below. A frame that carries messages is not offered to guests as a frame of their own."
+        description="Switch it on for a text-free frame: the messages of an event are written on it, in the box below. A frame that carries messages is not offered to users as a frame of their own."
       />
       {carries ? (
         <>

@@ -3,6 +3,11 @@
  * 
  * DELETE: Remove logo from event
  * PATCH: Toggle logo active status or update order
+ *
+ * A logo can be assigned to several scenarios of one event (the defaults give most events the same logo in all four). With `scenario`
+ * (`?scenario=` on DELETE, in the body on PATCH) only that scenario's assignment changes; without it, as before, DELETE removes the logo from
+ * every scenario and PATCH changes its first assignment. Every change marks the event's list as its own (`logosOverridden`), so a later change
+ * of the partner's defaults no longer replaces it (camera#367).
  */
 
 import { NextRequest } from 'next/server';
@@ -12,8 +17,11 @@ import { COLLECTIONS, Event, generateTimestamp } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
 import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError, apiForbidden } from '@/lib/api/responses';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
+import { LOGO_SCENARIOS, isLogoScenario } from '@/lib/library/logos';
 
 type EventLogoAssignment = Event['logos'][number];
+
+const SCENARIO_ERROR = `Invalid scenario. Must be one of: ${LOGO_SCENARIOS.map((scenario) => scenario.id).join(', ')}`;
 
 export async function DELETE(
   request: NextRequest,
@@ -33,6 +41,11 @@ export async function DELETE(
       return apiBadRequest('Invalid event ID format');
     }
 
+    const scenario = request.nextUrl.searchParams.get('scenario');
+    if (scenario !== null && !isLogoScenario(scenario)) {
+      return apiBadRequest(SCENARIO_ERROR);
+    }
+
     const db = await connectToDatabase();
     const eventsCollection = db.collection(COLLECTIONS.EVENTS);
     const logosCollection = db.collection(COLLECTIONS.LOGOS);
@@ -47,29 +60,29 @@ export async function DELETE(
       return apiNotFound('Event');
     }
 
-    // Find logo assignment
+    // Find logo assignment (in the scenario, when one is given)
     const logoAssignment = ((event.logos ?? []) as EventLogoAssignment[]).find(
-      (logo) => logo.logoId === logoId
+      (logo) => logo.logoId === logoId && (scenario === null || logo.scenario === scenario)
     );
 
     if (!logoAssignment) {
       return apiNotFound('Logo assignment');
     }
 
-    // Remove logo from event
+    // Remove logo from event; the event's list is now its own
     await eventsCollection.updateOne(
       { _id: new ObjectId(eventId) },
       {
-        $pull: { logos: { logoId } } as Document,
-        $set: { updatedAt: generateTimestamp() },
+        $pull: { logos: scenario === null ? { logoId } : { logoId, scenario } } as Document,
+        $set: { updatedAt: generateTimestamp(), logosOverridden: true },
       }
     );
 
-    // Decrement logo usage count
-    await logosCollection.updateOne(
-      { logoId },
-      { $inc: { usageCount: -1 } }
-    );
+    // Decrement logo usage count (never below zero: uploads, imports and the defaults cascade do not count themselves in)
+    const counted = await logosCollection.findOne({ logoId });
+    if (typeof counted?.usageCount === 'number' && counted.usageCount > 0) {
+      await logosCollection.updateOne({ logoId }, { $inc: { usageCount: -1 } });
+    }
 
     return apiSuccess({
       message: 'Logo removed successfully',
@@ -100,6 +113,10 @@ export async function PATCH(
 
     const body = await request.json();
     const { action, order } = body;
+    const scenario: unknown = body.scenario ?? null;
+    if (scenario !== null && !isLogoScenario(scenario)) {
+      return apiBadRequest(SCENARIO_ERROR);
+    }
 
     const db = await connectToDatabase();
     const eventsCollection = db.collection(COLLECTIONS.EVENTS);
@@ -114,13 +131,18 @@ export async function PATCH(
       return apiNotFound('Event');
     }
 
-    // Find logo assignment index
+    // Find logo assignment index (in the scenario, when one is given)
     const logoAssignments = (event.logos ?? []) as EventLogoAssignment[];
-    const logoIndex = logoAssignments.findIndex((logo) => logo.logoId === logoId);
+    const logoIndex = logoAssignments.findIndex((logo) => logo.logoId === logoId && (scenario === null || logo.scenario === scenario));
 
     if (logoIndex === -1) {
       return apiNotFound('Logo assignment');
     }
+
+    // The positional `$` stands for the first assignment that matches: of the logo, or of the logo in the scenario.
+    const target = scenario === null
+      ? { _id: new ObjectId(eventId), 'logos.logoId': logoId }
+      : { _id: new ObjectId(eventId), logos: { $elemMatch: { logoId, scenario } } };
 
     // Handle different actions
     if (action === 'toggle') {
@@ -129,11 +151,12 @@ export async function PATCH(
       const newStatus = !currentStatus;
 
       await eventsCollection.updateOne(
-        { _id: new ObjectId(eventId), 'logos.logoId': logoId },
+        target,
         {
           $set: {
             'logos.$.isActive': newStatus,
             updatedAt: generateTimestamp(),
+            logosOverridden: true,
           },
         }
       );
@@ -145,11 +168,12 @@ export async function PATCH(
     } else if (action === 'updateOrder' && typeof order === 'number') {
       // Update order
       await eventsCollection.updateOne(
-        { _id: new ObjectId(eventId), 'logos.logoId': logoId },
+        target,
         {
           $set: {
             'logos.$.order': order,
             updatedAt: generateTimestamp(),
+            logosOverridden: true,
           },
         }
       );

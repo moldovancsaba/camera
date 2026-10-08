@@ -1292,7 +1292,20 @@ _Use this template for new learnings:_
 
 **Key Decisions**: one pipeline for every camera (capture the most, reframe, keep only the framed result) instead of fixing each device's live view; the orientation-restart code of camera#256 stays for `?capture=frame` and can be removed with the old live view; a real phone is still the acceptance.
 
-**Last Updated**: 2026-10-06T00:00:00.000Z
+### [FRONT-018] Logos in the libraries: a File on the server, button labels that are not the button text, and checks that ran under `.claude` — 2026-10-08T00:00:00.000Z
+
+**Issue**: Building the logo pages of the libraries (camera#367) turned up three things that unit tests and a quick look did not show.
+
+**Context**:
+- `uploadImage` (`lib/imgbb/upload.ts`) turned a File into base64 with `FileReader`, which Node does not have: every other caller passes base64, but the library uploads pass the File, so a partner or event upload would have failed on the server with `ReferenceError: FileReader is not defined`. The route tests mock `uploadImage`, so they passed.
+- A `SemanticButton` shows the label of its vocabulary action, not its children: four "default in this scenario" buttons, each with a scenario name as its text, all read "Make a default" on the page.
+- `scripts/fleet-audit-inventory.py` leaves out every path that contains `.claude`, and a worktree of an agent lives under `.claude/worktrees/`: there `--check` reports every collection, variable and document as gone, and `--write` would commit empty inventories. In CI the checkout has no such part. `next/image` loads lazily: on a long page a count of loaded pictures is wrong until the page has been scrolled.
+
+**Solution**: `fileToBase64` reads the bytes directly when there is no `FileReader` (a unit test runs it without one); per-scenario choices are checkboxes with the scenario as label; the inventory and the full chain run in a clean clone outside `.claude`; the browser check scrolls the page before counting pictures.
+
+**Key Decisions**: test the real file path, not only the mock; read the labels on the screenshot, never trust the JSX text of a vocabulary button; run the gates where CI runs them.
+
+**Last Updated**: 2026-10-08T00:00:00.000Z
 
 ---
 

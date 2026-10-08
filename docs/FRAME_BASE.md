@@ -1,10 +1,10 @@
 # Frames from the designers' picture (frame base)
 
 A club's designers deliver the frame of an event as a text-free picture (transparent 1920×1080 PNG: header and footer bands, crest, ribbon…) and
-camera writes the messages into it, in the event's own font: the font of its messmass report style, like every other text of the guest journey
+camera writes the messages into it, in the event's own font: the font of its messmass report style, like every other text of the user journey
 (owner, 2026-10-07; camera#311). This is the generated frame (docs/DEFAULT_FRAME_PLAN.md) with the designers' picture instead of the generated
 layout, so everything that follows is the same: one image per message, a random one at every shutter press, the images stored in camera's own Blob
-store, a guest's photo recording the image it used, the messmass font refreshed with the snapshot.
+store, a user's photo recording the image it used, the messmass font refreshed with the snapshot.
 
 ## What is stored
 
@@ -32,7 +32,17 @@ message** in the generated frame panel of the event. The `base` below is the old
 for each message the order is **the frame the message chose, else the base picture, else the generated layout**, and a design with neither keeps the keys it had, so
 nothing is redrawn. The font follows the messmass report style of the event: change it there, and the next refresh redraws the messages.
 
-## MTK x Vasas (2026-10-26)
+## Moving the base into the library (camera#369)
+
+The generated frame panel of an event that still has a base offers **Move it into the library** (`POST /api/admin/events/<id>/frame-design/migrate-base`, `lib/frame/migrate-base.ts`).
+It creates one **event frame** for each picture of the base (the picture's address is kept, the message box, colour and territories become the frame's message area), assigns the
+frames to the event (the event then has its own list), and makes every message choose the frame of the picture it uses today (the picture named in `messageImages`, else the
+first). The images are drawn again once; a test proves that each one is **byte for byte** the image the base drew, so users see the same pictures. The base stays on the event
+until the editor checks the images and presses **Remove the old data** (`{ "retire": true }`), which is refused while a message would lose its picture (a message with no frame,
+or a frame that is gone, switched off, or has no message area). Doing it twice changes nothing more: the same frames are reused and nothing is assigned twice. The panel asks for a
+save of unsaved message edits first, because it reloads the messages.
+
+## MTK x Vasas (2026-10-16)
 
 Pictures: the designers' `FRAME1` (blue band: HAJRÁ, MTK!, SZÍVEM KÉK-FEHÉR!) and `FRAME` (pink band: MTK SZÍV!, MINDEN NŐ SZÁMÍT!), stored in the R2
 bucket under `frames/mtk-vasas/base/`. Message box `x 520, y 8, width 880, height 90` (between the crest and the ribbon; the designers' texts are

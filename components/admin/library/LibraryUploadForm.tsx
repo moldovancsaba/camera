@@ -2,11 +2,11 @@
 
 /**
  * Upload an item into a library at the level of the page it is on (camera#361): a partner page uploads for the partner, an event page for the
- * event. The picture is shown before it is sent, so nobody uploads blind. One form for every kind (frames and images so far). It is a <form>, so it is
+ * event. The picture is shown before it is sent, so nobody uploads blind. One form for every kind (frames, logos and images). It is a <form>, so it is
  * not for use inside another form: the picture picker (ImagePicker) has its own upload for that.
  */
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { InlineAlert, UploadDropzone } from '@sovereignsquad/gds-core/client';
 import { AdminTextInput } from '@sovereignsquad/gds-admin/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
@@ -29,13 +29,16 @@ interface LibraryUploadFormProps {
   namePlaceholder?: string;
   /** Called after a successful upload, so the page can reload its lists. */
   onUploaded: () => void | Promise<void>;
+  /** More fields sent with the file (a logo uploaded for an event sends its `scenario`), and the inputs for them, shown above the button. */
+  extraFields?: Record<string, string>;
+  children?: ReactNode;
 }
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'The upload failed';
 }
 
-export default function LibraryUploadForm({ endpoint, kind, noun, accept, acceptWords, maxBytes, maxWords, namePlaceholder = 'e.g. Blue match frame', onUploaded }: LibraryUploadFormProps) {
+export default function LibraryUploadForm({ endpoint, kind, noun, accept, acceptWords, maxBytes, maxWords, namePlaceholder = 'e.g. Blue match frame', onUploaded, extraFields, children }: LibraryUploadFormProps) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -79,6 +82,7 @@ export default function LibraryUploadForm({ endpoint, kind, noun, accept, accept
       body.set('kind', kind);
       body.set('file', file);
       body.set('name', name);
+      for (const [field, value] of Object.entries(extraFields ?? {})) body.set(field, value);
       const response = await fetch(endpoint, { method: 'POST', body });
       const payload = (await response.json().catch(() => null)) as { error?: string } | null;
       if (!response.ok) throw new Error(payload?.error || `The upload failed (${response.status})`);
@@ -116,6 +120,7 @@ export default function LibraryUploadForm({ endpoint, kind, noun, accept, accept
       )}
       {error ? <InlineAlert title="Upload failed" message={error} severity="error" /> : null}
       <AdminTextInput name="name" label={`${noun[0].toUpperCase()}${noun.slice(1)} name`} value={name} onChange={setName} required placeholder={namePlaceholder} />
+      {children}
       <div>
         <SemanticButton action="library:upload" type="submit" loading={busy} disabled={!file || !name.trim()}>
           Upload

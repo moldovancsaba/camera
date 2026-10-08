@@ -13,11 +13,13 @@ type RouteModule = typeof import('./route');
 const importRoute = (caseId: string) => import('./route?case=' + caseId) as Promise<RouteModule>;
 
 const frame = (frameId: string) => ({ frameId, name: `Frame ${frameId}`, imageUrl: `https://img.example/${frameId}.png`, isActive: true });
+const logo = (logoId: string, extra: Record<string, unknown> = {}) => ({ logoId, name: `Logo ${logoId}`, imageUrl: `https://img.example/${logoId}.png`, isActive: true, ...extra });
 
 function setup(t: TestContext) {
   const seeded = fakeDb({
     frames: [frame('g1'), frame('g2')],
-    partners: [{ _id: PARTNER_MONGO_ID, partnerId: 'P', name: 'Partner P', source: 'messmass', library: { frames: ['g1'], logos: [] }, defaultFrames: [] }],
+    logos: [logo('l1'), logo('l2'), logo('lp', { scope: 'partner', partnerId: 'P' })],
+    partners: [{ _id: PARTNER_MONGO_ID, partnerId: 'P', name: 'Partner P', source: 'messmass', library: { frames: ['g1'], logos: ['l1'] }, defaultFrames: [] }],
     events: [],
   });
   const cascades: unknown[] = [];
@@ -56,6 +58,34 @@ test('a default frame from the partner library is saved and follows into the eve
   assert.equal(response.status, 200);
   assert.deepEqual((data.partners[0] as { defaultFrames: string[] }).defaultFrames, ['g1']);
   assert.deepEqual(cascades, [{ partnerId: 'P', updates: { defaultFrames: ['g1'] } }]);
+});
+
+test('a default logo must be in the partner library: one that is not is refused and nothing is written', async (t) => {
+  const { data, cascades } = setup(t);
+  const { PATCH } = await importRoute('logo-outside');
+  const response = await PATCH(patch({ defaultLogos: [{ logoId: 'l2', scenario: 'onboarding-thankyou', order: 0 }] }), params);
+  assert.equal(response.status, 400);
+  assert.match(((await response.json()) as { error: string }).error, /partner library/);
+  assert.equal((data.partners[0] as { defaultLogos?: unknown }).defaultLogos, undefined);
+  assert.deepEqual(cascades, []);
+});
+
+test('default logos from the partner library are saved with their scenario and order and follow into the events', async (t) => {
+  const { data, cascades } = setup(t);
+  const { PATCH } = await importRoute('logo-inside');
+  const defaultLogos = [{ logoId: 'l1', scenario: 'onboarding-thankyou', order: 0 }, { logoId: 'lp', scenario: 'loading-capture', order: 1 }];
+  assert.equal((await PATCH(patch({ defaultLogos }), params)).status, 200);
+  assert.deepEqual((data.partners[0] as { defaultLogos: unknown }).defaultLogos, defaultLogos);
+  assert.deepEqual(cascades, [{ partnerId: 'P', updates: { defaultLogos } }]);
+});
+
+test('default logos need a logo and a known scenario each', async (t) => {
+  const { data } = setup(t);
+  const { PATCH } = await importRoute('logo-shape');
+  assert.equal((await PATCH(patch({ defaultLogos: 'l1' }), params)).status, 400);
+  assert.equal((await PATCH(patch({ defaultLogos: [{ logoId: 'l1' }] }), params)).status, 400);
+  assert.equal((await PATCH(patch({ defaultLogos: [{ logoId: 'l1', scenario: 'somewhere' }] }), params)).status, 400);
+  assert.equal((data.partners[0] as { defaultLogos?: unknown }).defaultLogos, undefined);
 });
 
 test('defaultFrames must be a list of ids; a change that does not touch it is not checked against the library', async (t) => {

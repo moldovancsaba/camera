@@ -14,11 +14,14 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 
 const frame = (frameId: string, extra: Record<string, unknown> = {}) => ({ frameId, name: `Frame ${frameId}`, imageUrl: `https://img.example/${frameId}.png`, isActive: true, createdAt: '2026-10-01T00:00:00.000Z', ...extra });
 
+const logo = (logoId: string, extra: Record<string, unknown> = {}) => ({ logoId, name: `Logo ${logoId}`, imageUrl: `https://img.example/${logoId}.png`, isActive: true, createdAt: '2026-10-01T00:00:00.000Z', ...extra });
+const DEFAULT_LOGOS = [{ logoId: 'l1', scenario: 'slideshow-transition', order: 0 }, { logoId: 'l1', scenario: 'onboarding-thankyou', order: 1 }];
+
 function setup(t: TestContext, options: { allowed?: boolean } = {}) {
   const seeded = fakeDb({
     frames: [frame('g1'), frame('g2'), frame('p1', { scope: 'partner', partnerId: 'P' }), frame('x1', { scope: 'partner', partnerId: 'OTHER' })],
-    logos: [],
-    partners: [{ _id: PARTNER_MONGO_ID, partnerId: 'P', name: 'Partner P', defaultFrames: ['g1'] }],
+    logos: [logo('l1'), logo('l2'), logo('lp', { scope: 'partner', partnerId: 'P', source: 'messmass' })],
+    partners: [{ _id: PARTNER_MONGO_ID, partnerId: 'P', name: 'Partner P', defaultFrames: ['g1'], defaultLogos: DEFAULT_LOGOS }],
     events: [{ eventId: 'e-uuid', partnerId: 'P', frames: [{ frameId: 'g2', isActive: true }] }],
   });
   const cascades: Array<{ partnerId: string; updates: unknown }> = [];
@@ -121,6 +124,48 @@ test('PUT needs a kind and something to change, and ids as a list', async (t) =>
   assert.equal((await PUT(put({ kind: 'frames' }), params)).status, 400, 'nothing to change');
   assert.equal((await PUT(put({ kind: 'frames', add: 'g1' }), params)).status, 400);
   assert.equal((await PUT(put({ kind: 'frames', add: [7] }), params)).status, 400);
+});
+
+test('GET for logos: the default logos, the messmass logo as its own item, and the global logos it can add', async (t) => {
+  setup(t);
+  const { GET } = await importRoute('get-logos');
+  const body = (await (await GET(get('?kind=logos'), params)).json()) as { data: { saved: boolean; items: Array<{ id: string; via: string; isDefault: boolean; source?: string }>; available: Array<{ id: string }> } };
+  assert.deepEqual(body.data.items.map((i) => [i.id, i.via, i.isDefault, i.source ?? null]), [['l1', 'assigned', true, null], ['lp', 'own', false, 'messmass']]);
+  assert.deepEqual(ids(body.data.available), ['l2']);
+});
+
+test('PUT for logos sets the defaults per scenario, cascades them with their scenario and order, and answers with the saved defaults', async (t) => {
+  const { data, cascades } = setup(t);
+  const { PUT } = await importRoute('put-logo-defaults');
+  const defaults = [...DEFAULT_LOGOS, { logoId: 'lp', scenario: 'loading-capture', order: 2 }];
+  const response = await PUT(put({ kind: 'logos', defaults }), params);
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { data: { defaultLogos: unknown } };
+  assert.deepEqual(body.data.defaultLogos, defaults);
+  assert.deepEqual((data.partners[0] as { defaultLogos: unknown }).defaultLogos, defaults);
+  assert.deepEqual(cascades, [{ partnerId: 'P', updates: { defaultLogos: defaults } }], 'the events that follow the defaults get them, scenario and order included');
+  assert.deepEqual((data.partners[0] as { defaultFrames: string[] }).defaultFrames, ['g1'], 'the frames are not touched');
+});
+
+test('PUT for logos refuses a default outside the library or without a known scenario, and writes nothing', async (t) => {
+  const { data, cascades } = setup(t);
+  const { PUT } = await importRoute('put-logo-refuse');
+  assert.equal((await PUT(put({ kind: 'logos', defaults: [{ logoId: 'l2', scenario: 'loading-capture', order: 0 }] }), params)).status, 400, 'l2 is not in the library');
+  assert.equal((await PUT(put({ kind: 'logos', defaults: [{ logoId: 'l1', scenario: 'nowhere', order: 0 }] }), params)).status, 400);
+  assert.equal((await PUT(put({ kind: 'logos', defaults: ['l1'] }), params)).status, 400, 'logo defaults carry a scenario');
+  assert.deepEqual((data.partners[0] as { defaultLogos: unknown }).defaultLogos, DEFAULT_LOGOS);
+  assert.equal((data.partners[0] as { library?: unknown }).library, undefined);
+  assert.deepEqual(cascades, []);
+});
+
+test('PUT for logos that adds a logo keeps the defaults and does not touch the events', async (t) => {
+  const { data, cascades } = setup(t);
+  const { PUT } = await importRoute('put-logo-add');
+  const response = await PUT(put({ kind: 'logos', add: ['l2'] }), params);
+  assert.equal(response.status, 200);
+  assert.deepEqual((data.partners[0] as { library: { logos: string[] } }).library.logos.sort(), ['l1', 'l2']);
+  assert.deepEqual(cascades, []);
+  assert.deepEqual(((await response.json()) as { data: { defaultLogos: unknown } }).data.defaultLogos, DEFAULT_LOGOS);
 });
 
 test('a user without manager access to the partner cannot change its library', async (t) => {

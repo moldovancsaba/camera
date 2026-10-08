@@ -18,6 +18,7 @@ import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
 import type { MessageArea } from '@/lib/frame/message-area';
 import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
 import type { PartnerLibrary } from '@/lib/library/types';
+import { cascadeText, type DefaultsCascade } from '@/lib/library/cascade-text';
 
 interface PartnerRecord {
   name: string;
@@ -49,7 +50,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ title: string; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
 
@@ -84,16 +85,22 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
     setActionError(null);
     setNotice(null);
     try {
-      const result = await call<{ library: PartnerLibrary; removedInUse: Record<string, number> }>(`/api/partners/${partnerId}/library`, {
+      const result = await call<{ library: PartnerLibrary; removedInUse: Record<string, number>; cascade?: DefaultsCascade | null }>(`/api/partners/${partnerId}/library`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kind: 'frames', ...change }),
       });
       setLibrary(result.library);
       const inUse = Object.values(result.removedInUse);
+      const followed = cascadeText(result.cascade, 'frames');
       if (inUse.length > 0) {
         const events = inUse.reduce((sum, count) => sum + count, 0);
-        setNotice(`Removed. ${events} event${events === 1 ? '' : 's'} still use${events === 1 ? 's' : ''} a frame you removed: they keep it, and their pages mark it as no longer in this library.`);
+        setNotice({
+          title: 'Removed from the library',
+          message: `Removed. ${events} event${events === 1 ? '' : 's'} still use${events === 1 ? 's' : ''} a frame you removed: they keep it, and their pages mark it as no longer in this library.${followed ? ` ${followed}` : ''}`,
+        });
+      } else if (followed) {
+        setNotice({ title: 'Defaults changed', message: followed });
       }
     } catch (editError) {
       setActionError(errorText(editError));
@@ -162,7 +169,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
       {library.missing.length > 0 ? (
         <InlineAlert title="A frame is missing" message={`${library.missing.length} frame${library.missing.length === 1 ? '' : 's'} this partner used no longer exist${library.missing.length === 1 ? 's' : ''} in the library and ${library.missing.length === 1 ? 'is' : 'are'} not listed.`} severity="warning" />
       ) : null}
-      {notice ? <InlineAlert title="Removed from the library" message={notice} severity="info" /> : null}
+      {notice ? <InlineAlert title={notice.title} message={notice.message} severity="info" /> : null}
       {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}
 
       <section style={SECTION}>
@@ -186,7 +193,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
                   noun="frame"
                   scope={item.scope}
                   wide={editing === item.id}
-                  note={item.messageArea ? 'Guests never pick this frame: the messages of an event are written on it.' : undefined}
+                  note={item.messageArea ? 'Users never pick this frame: the messages of an event are written on it.' : undefined}
                   badges={
                     <>
                       {item.messageArea ? <LabelTag tone="info" label="Carries messages" /> : null}

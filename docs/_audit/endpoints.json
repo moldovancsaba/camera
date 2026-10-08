@@ -1,13 +1,13 @@
 {
  "_meta": {
-  "generated": "2026-10-08T12:06:46+00:00",
+  "generated": "2026-10-08T12:24:29+00:00",
   "repo": "camera",
-  "head": "08e24d8",
+  "head": "60633e2",
   "counts": {
-   "endpoints": 120,
+   "endpoints": 122,
    "collections": 8,
    "env": 59,
-   "outbound-hosts": 29,
+   "outbound-hosts": 30,
    "docs": 56
   }
  },
@@ -42,6 +42,18 @@
     "GET"
    ],
    "file": "app/api/admin/events/[id]/export/images/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/events/[id]/frame-design/migrate-base",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/admin/events/[id]/frame-design/migrate-base/route.ts",
    "auth_markers": [
     "requireAuth",
     "withErrorHandler"
@@ -1166,6 +1178,19 @@
    "file": "app/api/observability/client-error/route.ts",
    "auth_markers": [],
    "no_auth_marker": true
+  },
+  {
+   "path": "/api/partners/[partnerId]/library/import-messmass-logo",
+   "methods": [
+    "GET",
+    "POST"
+   ],
+   "file": "app/api/partners/[partnerId]/library/import-messmass-logo/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
   },
   {
    "path": "/api/partners/[partnerId]/library/items/[itemId]",
