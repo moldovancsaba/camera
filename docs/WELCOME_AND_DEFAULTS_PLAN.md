@@ -116,7 +116,7 @@ Item numbers run continuously and never restart. A number can be commented on in
 70. The "Back" button text becomes editable on the consent, login, CTA and restart pages, default "Back".
 71. Item 69 confirmed.
 72. Item 70 confirmed.
-95. **Finding (2026-10-08, from the code, open for the owner):** the four pages have a Back button in their code, but the capture page never connects it (`onBack` is passed nowhere), so no user ever sees a Back button and the "Back button text" of item 70 would have no effect. Item 70 is therefore **not built**. Options: leave the flow one-way (item 70 closes as not needed, the dead code is removed later) or build back navigation as its own ticket.
+95. **Finding (2026-10-08, from the code, open for the owner):** the four pages have a Back button in their code, but the capture page never connects it (`onBack` is passed nowhere), so no user ever sees a Back button and the "Back button text" of item 70 would have no effect. Item 70 is therefore **not built**. **Decided by the owner on 2026-10-08: the flow stays one-way**; item 70 and #338 close as not needed (the unused Back code stays for now and can be removed in a later cleanup).
 
 ### Part 3f: the share step and the public photo page (#339)
 
