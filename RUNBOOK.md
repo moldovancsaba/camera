@@ -344,7 +344,7 @@ package it is off for every event, so none of the behaviour below applies yet.
    the guest gets the email with `/share/<token>`, the page shows the framed photo, and the photo reaches the slideshow, the wall and the
    fanmass feed only now. Reject another one and check the "not approved" email and the page's "Take another photo".
 2. **Indexes.** Run `npm run db:ensure-indexes` once (production env): it adds the unique `shareToken` index and the queue index.
-3. **Every event.** `/admin/photo-vetting` (global admin). *Run the dry run*, read it (how many events, which took photos in the last 24
+3. **Every event.** `/admin/photo-vetting` (global admin; done on 2026-10-06, 238 of 238 events then and every event since is on, so the page has no sidebar entry any more (owner, 2026-10-08) and is opened by its address). *Run the dry run*, read it (how many events, which took photos in the last 24
    hours and 7 days: from the moment the run finishes their next photos wait for approval, so tell their managers first), tick *I have
    read the dry-run report*, then *Turn photo vetting on for every event*. The run is repeatable; events already on are skipped, and nothing
    written before is changed. Photos made before vetting stay public: a missing review status counts as approved and no approval time is
