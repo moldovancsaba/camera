@@ -140,7 +140,7 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
 
   const removeFromLibrary = (item: PartnerLibraryEntry) => {
     if (defaults.some((row) => row.logoId === item.id)) {
-      const sure = confirm(`"${item.name}" is a default for new events. Removing it from the library also removes it from the defaults, and from the events that still follow the defaults of this partner. Remove it?`);
+      const sure = confirm(`"${item.name}" is a default for new events. Removing it from the library also removes it from the defaults for new events. The events that already have it keep it. Remove it?`);
       if (!sure) return;
     }
     void edit({ remove: [item.id] });
@@ -162,7 +162,7 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
       await reload();
       setNotice({
         title: 'Imported',
-        message: 'The logo from messmass is now in this library. Its events can take it on their logo pages; nothing changed on the guest pages.',
+        message: 'The logo from messmass is now in this library. Its events can take it on their logo pages; nothing changed on the pages users see.',
       });
     });
 
@@ -213,7 +213,7 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
           <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
             <h3 style={{ margin: 0 }}>The logo from messmass</h3>
             <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>
-              The guest pages of {partner.name} already show this logo. Import it to have it in this library, so its events can also choose it on their logo pages. Importing changes nothing on the guest pages.
+              The pages users see for {partner.name} already show this logo. Import it to have it in this library, so its events can also choose it on their logo pages. Importing changes nothing on the guest pages.
             </p>
           </div>
           <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem', padding: '1rem' }}>

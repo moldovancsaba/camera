@@ -147,7 +147,7 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
       />
 
       <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
-        When a scenario has more than one active logo, the guests see the first one in the list.
+        When a scenario has more than one active logo, users see the first one in the list.
       </p>
 
       {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}
@@ -299,7 +299,7 @@ function AssignedLogo({ entry, shown, busy, onToggle, onRemove, onDelete }: { en
       badges={
         <>
           <LabelTag tone={active ? 'success' : 'neutral'} label={active ? 'Active' : 'Inactive'} />
-          {shown ? <LabelTag tone="info" label="Guests see this one" /> : null}
+          {shown ? <LabelTag tone="info" label="Users see this one" /> : null}
           {!entry.stillInPartnerLibrary ? <LabelTag tone="warning" label="No longer in the partner library" /> : null}
           {!entry.itemActive ? <LabelTag tone="warning" label="Switched off in the library" /> : null}
         </>

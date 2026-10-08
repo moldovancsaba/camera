@@ -85,25 +85,23 @@ is the same as before (checked on the real data: 14 of 14 events).
 
 The same three levels as frames (pages `/admin/partners/<id>/logos` and `/admin/events/<id>/logos`), with what is particular to logos (`lib/library/logos.ts`):
 
-- **Scenarios.** An event assigns a logo per scenario (`Event.logos[]`: `logoId`, `scenario`, `order`, `isActive`): `onboarding-thankyou` (on top of the guest pages of the
-  flow), `loading-capture` (the capture page while it loads), `loading-slideshow` (the slideshow while it loads) and `slideshow-transition` (no screen shows it yet). One logo can
-  be in several scenarios: the defaults gave every event that has logos the same logo in all four (10 of 10 events, 2026-10-08). In a scenario a guest sees the **first active
-  logo** by `order` (the event's own order for equal ones), never a random one: the capture page and the slideshow pick it so, and the event page marks it ("Guests see this one").
+- **Scenarios.** An event assigns a logo per scenario (`Event.logos[]`: `logoId`, `scenario`, `order`, `isActive`): `onboarding-thankyou` (on top of the pages of the user journey), `loading-capture` (the capture page while it loads), `loading-slideshow` (the slideshow while it loads) and `slideshow-transition` (no screen shows it yet). One logo can
+  be in several scenarios: the defaults gave every event that has logos the same logo in all four (10 of 10 events, 2026-10-08). In a scenario a user sees the **first active logo** by `order` (the event's own order for equal ones), never a random one: the capture page and the slideshow pick it so, and the event page marks it ("Users see this one").
 - **Defaults keep their scenario and order** (`Partner.defaultLogos[{ logoId, scenario, order }]`), set per scenario on the partner page, each a logo of the partner's library;
   a changed list follows into the events that have not edited their own logos (`logosOverridden`), as before. Removing a default logo from the library removes its default rows
   too (the page asks first), but an event that has the logo keeps it: it stops following the defaults, as for frames (camera#385).
-- **Event page.** Per scenario: Assigned, in the guests' order, and Available: the partner's library and the event's own uploads not assigned in that scenario (a logo the event
+- **Event page.** Per scenario: Assigned, in the users' order, and Available: the partner's library and the event's own uploads not assigned in that scenario (a logo the event
   shows in one scenario stays available for the others). Switching off and removing act on that scenario only and make the list the event's own. An upload on the event page is
   assigned at once in the scenario the editor chooses (`onboarding-thankyou` by default) with order 0, like an assignment.
 - **Global list.** `GET /api/logos`, `/admin/logos` and the logo picker of the landing page editor show global logos only; `/admin/logos?scope=all` lists every logo.
 - **The logo from messmass** (decision 120: in the partner library only). messmass provisioning keeps the partner's logo as `Partner.logoUrl`, a file on the logo bucket
-  (`docs/LOGO_STORAGE.md`); the guest pages show it through the event's theme when the event has no active logo of its own for those pages (then the event's emoji). The button
+  (`docs/LOGO_STORAGE.md`); the pages users see show it through the event's theme when the event has no active logo of its own for those pages (then the event's emoji). The button
   "Import the logo from messmass" on the partner page (`POST /api/partners/<id>/library/import-messmass-logo`) makes it a logo of the partner: `scope: 'partner'`,
   `source: 'messmass'`, `sourceUrl`, pointing at the same file (the bucket's files never change, so no copy is made), after a checked download (https, a host camera trusts for
-  logos, no redirect, 8 seconds, 5 MB, an image) and measured with sharp. It is **assigned to nothing**, no event, scenario or default, so the guest pages do not change until an
+  logos, no redirect, 8 seconds, 5 MB, an image) and measured with sharp. It is **assigned to nothing**, no event, scenario or default, so the pages users see do not change until an
   editor assigns it. Importing the same address again returns the same logo. On 2026-10-08, 192 partners had a logo address, all on the logo bucket (135 distinct files: 129 PNG,
   5 JPEG, 1 WebP, at most 678 KB), every one importable; none is imported yet, and provisioning does not import it.
-- **What guests see did not change:** read-only on the real data, the event logo API (`GET /api/events/<id>/logos`, what the capture page and the slideshow read) answered the
+- **What users see did not change:** read-only on the real data, the event logo API (`GET /api/events/<id>/logos`, what the capture page and the slideshow read) answered the
   same before and after this change for all 214 events, by both ids (428 answers), and the event page shows the same order and the same shown logo as that API for the 10 events
   with logos. `components/capture/CaptureStageShell.test.tsx` keeps the order of the stage pages: the event's logo for those pages, else the theme's logo, else the emoji.
 
