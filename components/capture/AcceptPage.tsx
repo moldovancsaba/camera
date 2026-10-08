@@ -20,6 +20,7 @@ import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
 } from '@/lib/gds/tokens/colors';
+import { SELECTED_TINT } from '@/lib/theme/event-theme';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
 
 export interface AcceptPageConfig {
@@ -110,9 +111,10 @@ export default function AcceptPage({
                 borderColor: error && !isChecked
                   ? 'var(--mantine-color-red-5)'
                   : isChecked
-                    ? brandBorderColor
+                    ? `var(--event-button-bg, ${brandBorderColor})`
                     : 'var(--mantine-color-gray-3)',
-                backgroundColor: isChecked ? `${brandColor}10` : undefined,
+                // A ticked box takes the event's button colour (the theme's), not a default blue; the tint is the one the theme's link colour is checked against.
+                backgroundColor: isChecked ? `color-mix(in srgb, var(--event-button-bg, ${brandColor}) ${SELECTED_TINT * 100}%, var(--event-card-bg, transparent))` : undefined,
               }}
             >
               <Checkbox

@@ -49,8 +49,11 @@ export function themeVariables(theme: EventTheme): Record<string, string> {
   return {
     '--event-bg': theme.background,
     '--event-heading': theme.heading,
+    '--event-muted': theme.headingMuted,
     '--event-card-bg': theme.cardBackground,
     '--event-card-text': theme.cardText,
+    '--event-card-muted': theme.cardMuted,
+    '--event-input-border': theme.inputBorder,
     '--event-card-border': theme.cardBorder,
     '--event-button-bg': theme.buttonBackground,
     '--event-button-text': theme.buttonText,
@@ -84,12 +87,17 @@ export const EVENT_THEME_CSS = `
   color: var(--event-heading);
   font-family: var(--event-font);
   color-scheme: normal;
+  /* Dimmed text on the page itself (not on a card) is the heading colour softened, and still readable. */
+  --mantine-color-dimmed: var(--event-muted);
+  /* The GDS controls (the zoom slider, the segmented control) take the event's button colour, not the GDS purple. */
+  --gds-brand-primary: var(--event-button-bg);
+  --gds-vibe-primary: var(--event-button-bg);
 }
 .event-theme .mantine-Paper-root,
 .event-theme [data-event-card] {
   --mantine-color-body: var(--event-card-bg);
   --mantine-color-text: var(--event-card-text);
-  --mantine-color-dimmed: color-mix(in srgb, var(--event-card-text) 62%, var(--event-card-bg));
+  --mantine-color-dimmed: var(--event-card-muted);
   --mantine-color-default-border: var(--event-card-border);
   background: var(--event-card-bg);
   color: var(--event-card-text);
@@ -130,6 +138,17 @@ export const EVENT_THEME_CSS = `
   padding-inline: 0.625rem;
   letter-spacing: 0.02em !important;
 }
+/* The three buttons of the photo screen (Retake, Reset, Continue) share one row: compact like the small buttons, and wrapping onto a second row on a narrow phone instead of clipping their labels. */
+.event-theme .reframe-actions {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.event-theme .reframe-actions .mantine-Button-root {
+  --ring: 3px;
+  padding-inline: 0.625rem;
+  letter-spacing: 0.02em !important;
+  flex: 1 1 auto;
+}
 .event-theme .mantine-Button-root .mantine-Button-label {
   white-space: normal;
   text-align: center;
@@ -156,6 +175,13 @@ export const EVENT_THEME_CSS = `
   --button-color: var(--event-button-bg) !important;
   --button-bd: var(--ring) solid var(--event-button-ring) !important;
 }
+/* The chosen segment of a segmented control (how the photo fits the frame) is drawn in the button colours, label included. */
+.event-theme .mantine-SegmentedControl-indicator {
+  background: var(--event-button-bg);
+}
+.event-theme .mantine-SegmentedControl-label[data-active] {
+  color: var(--event-button-text) !important;
+}
 /* A ticked checkbox takes the event's button colours, not the default purple (the consent page is the first page every user sees). */
 .event-theme .mantine-Checkbox-root {
   --checkbox-color: var(--event-button-bg) !important;
@@ -165,7 +191,12 @@ export const EVENT_THEME_CSS = `
 .event-theme .mantine-TextInput-input {
   background: var(--event-card-bg);
   color: var(--event-card-text);
-  border-color: color-mix(in srgb, var(--event-card-text) 28%, var(--event-card-bg));
+  border-color: var(--event-input-border);
+}
+.event-theme .mantine-Input-input::placeholder,
+.event-theme .mantine-TextInput-input::placeholder {
+  color: var(--event-card-muted);
+  opacity: 1;
 }
 .event-theme .mantine-AppShell-header {
   background: transparent;
@@ -184,6 +215,12 @@ export const EVENT_THEME_CSS = `
   --mantine-spacing-md: 0.75rem;
   --mantine-h2-font-size: 1.5rem;
   --mantine-h4-font-size: 1rem;
+}
+/* On a narrow phone (375 points and less) the two do not fit side by side without clipping a label: one under the other. */
+@media (max-width: 380px) {
+  .event-theme [data-event-stage] .mantine-SimpleGrid-root:has(> a.mantine-Button-root[href*='provider=']) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }
 /* The Google and Facebook buttons sit side by side, so the mark and the name are centred together, not pushed to the two edges. */
 .event-theme [data-event-stage] a.mantine-Button-root[href*='provider='] .mantine-Button-inner {

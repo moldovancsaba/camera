@@ -6,7 +6,7 @@ import { resolveEventTheme } from './event-theme';
 test('a theme becomes the custom properties of its wrapper', () => {
   const theme = resolveEventTheme({});
   const vars = themeVariables(theme);
-  assert.deepEqual(Object.keys(vars).sort(), ['--event-bg', '--event-button-bg', '--event-button-ring', '--event-button-text', '--event-card-bg', '--event-card-border', '--event-card-text', '--event-font', '--event-heading', '--event-link', '--event-radius']);
+  assert.deepEqual(Object.keys(vars).sort(), ['--event-bg', '--event-button-bg', '--event-button-ring', '--event-button-text', '--event-card-bg', '--event-card-border', '--event-card-muted', '--event-card-text', '--event-font', '--event-heading', '--event-input-border', '--event-link', '--event-muted', '--event-radius']);
   assert.equal(vars['--event-bg'], theme.background);
   assert.equal(vars['--event-radius'], theme.radius);
 });
@@ -24,7 +24,7 @@ test('a font family is cleaned so it cannot break out of the font stack', () => 
 test('the rules carry no colour literal: every colour is a variable the wrapper sets', () => {
   assert.equal(/#[0-9a-f]{3,8}\b/i.test(EVENT_THEME_CSS), false);
   assert.equal(/rgba?\(/i.test(EVENT_THEME_CSS), false);
-  for (const name of ['--event-bg', '--event-card-bg', '--event-button-bg', '--event-button-text', '--event-heading']) assert.ok(EVENT_THEME_CSS.includes(`var(${name})`), name);
+  for (const name of ['--event-bg', '--event-card-bg', '--event-button-bg', '--event-button-text', '--event-heading', '--event-muted', '--event-card-muted', '--event-input-border']) assert.ok(EVENT_THEME_CSS.includes(`var(${name})`), name);
 });
 
 test('a Google font is loaded by its stylesheet, only for a plain family name', () => {
@@ -65,3 +65,25 @@ test('a ticked checkbox takes the event\'s button colours, not the default purpl
   assert.match(EVENT_THEME_CSS, /\.event-theme \.mantine-Checkbox-root \{\s*--checkbox-color: var\(--event-button-bg\) !important;\s*--checkbox-icon-color: var\(--event-button-text\) !important;/);
 });
 
+
+test('the GDS controls (zoom slider, segmented control) take the event button colour, not the GDS purple', () => {
+  assert.match(EVENT_THEME_CSS, /--gds-brand-primary: var\(--event-button-bg\)/);
+  assert.match(EVENT_THEME_CSS, /--gds-vibe-primary: var\(--event-button-bg\)/);
+});
+
+test('dimmed text, the edge of an input and its placeholder come from the theme, readable by construction', () => {
+  assert.match(EVENT_THEME_CSS, /--mantine-color-dimmed: var\(--event-muted\)/);
+  assert.match(EVENT_THEME_CSS, /--mantine-color-dimmed: var\(--event-card-muted\)/);
+  assert.match(EVENT_THEME_CSS, /border-color: var\(--event-input-border\)/);
+  assert.match(EVENT_THEME_CSS, /::placeholder[^}]*color: var\(--event-card-muted\)/);
+});
+
+test('the chosen segment is drawn in the button colours with the button label colour, and the photo screen buttons wrap instead of clipping', () => {
+  assert.match(EVENT_THEME_CSS, /SegmentedControl-indicator \{[^}]*background: var\(--event-button-bg\)/);
+  assert.match(EVENT_THEME_CSS, /SegmentedControl-label\[data-active\] \{[^}]*color: var\(--event-button-text\)/);
+  assert.match(EVENT_THEME_CSS, /\.reframe-actions \{[^}]*flex-wrap: wrap/);
+});
+
+test('on a narrow phone the Google and Facebook buttons stack instead of clipping a label', () => {
+  assert.match(EVENT_THEME_CSS, /@media \(max-width: 380px\)[^@]*SimpleGrid-root:has\(> a\.mantine-Button-root\[href\*='provider='\]\)[^}]*grid-template-columns: minmax\(0, 1fr\) !important/);
+});

@@ -37,9 +37,11 @@ EventTheme { background, text, accent, logo, fontFamily, fontUrl | null, source:
 
 - **Source order:** the messmass style snapshot (partner / project) → the event's own `brandColor` → the system default look. The frame and the
   pages therefore always agree.
-- **Contrast is guaranteed, not trusted.** Text on the background must reach WCAG 4.5:1; when the messmass pair does not, the text falls back to
-  white or black, whichever reads better. Buttons keep a readable label colour the same way. A theme is applied only when it passes; otherwise the
-  default look.
+- **Contrast is guaranteed, not trusted, and a colour that fails is repaired, not replaced (camera#336).** Text on the background must reach WCAG
+  4.5:1; when the messmass colour does not, it is made darker or lighter in steps of 5%, **keeping its hue**, until it does (`repaired()` in
+  `lib/theme/color.ts`); white or black only when no variant of it can pass. For MTK x Vasas the navy `#004c87` on the page blue `#00b5e4` (3.66:1)
+  becomes `#003d6c` (4.63:1) instead of black. Button labels are checked at 3:1 the same way, links at 4.5:1 on the card and on a ticked (tinted) card.
+  Dimmed text (descriptions, hints, placeholders) and the edge of an input are shades of the text colour that are repaired to 4.5:1 and 3:1.
 - **GDS stays the rule.** The theme is data turned into CSS variables on a wrapper (`--event-bg`, `--event-text`, `--event-accent`); no raw colour
   literal enters the source (the `forbidden-color` gate stays green), and the components are the existing GDS ones.
 - **Capture routes only.** Admin is untouched. The `/capture/[eventId]` layout, `/share/[id]` and the new vetting notices get the theme.
@@ -78,5 +80,11 @@ The Start button of the welcome page (`components/capture/PillButton.tsx`: round
 
 For the MTK x Vasas event this resolves to the fill `#1b3a69`, the label white and the ring `#189cd8`, exactly the Start button.
 
-Not part of this change (planning items 60 to 62, waiting for the owner): the colour of the text on the page (black today, because the messmass navy fails 4.5:1 on the page blue), how the style's own button colours are derived for events whose welcome page sets none, and the purple checkbox of the public pledge wall option.
+## Colours of the flow (camera#336, planning items 60 to 62)
+
+- **Button colours, in this order:** (1) the Start button of the welcome page (fill, label, ring), unchanged and never repaired, it is the club's choice; (2) the event's own colours: the editor's `brandColor` (fill) and `brandBorderColor` (ring), the fill made to stand out from the card and the page (3:1) keeping its hue, the ring likewise; the label is white or black by contrast; (3) derived from the style: its own button colour or accent if it stands out as it is, else the accent made to stand out, else the style's button colour made to stand out, else the card text, black or white. The ring defaults to the label colour. The editor's colours are read by the theme only, the pages no longer carry a blue default of their own.
+- **No colour leaks.** The ticked consent box and its card, the input edges, the placeholders and every dimmed text take the event's colours; the zoom slider and the chosen segment of the photo screen (GDS controls) take the button colour (`--gds-brand-primary`, `--gds-vibe-primary`).
+- **Measured, not assumed:** `scratchpad`-style browser check on the built app with the real MTK theme, a derived theme (no welcome colours) and an event-colour theme: every text, placeholder and input edge on consent, login, photo screen, waiting, CTA and restart pages, 98 measurements per theme. Before: 24 below the limit (dimmed text 3.27:1, placeholders 1.89:1, a link 4.39:1, the purple slider and segment); after: 0 below the limit, and the only colour not from the event is the hover shade of a button (a mix of its fill and label).
+- **Layout found on the way:** the three buttons of the photo screen clipped their labels on phones narrower than 430 points; they are compact now and wrap onto a second row; the Google and Facebook buttons stack under 381 points. Checked at 320, 360, 375, 390, 414 and 430 points on every page: no clipped label, no sideways overflow. Not yet seen on a real phone.
+- **Left as the club chose it:** the ring colour the club set on its welcome page (`#189cd8` for MTK) is 2.81:1 against the light card on the inverted buttons (Google, Facebook, Retake, Reset); their labels read at 11:1, and the club's colours are not changed.
 

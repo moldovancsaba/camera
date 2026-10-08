@@ -56,11 +56,51 @@ export const isDark = (colour: string): boolean => {
   return c ? luminance(c.rgb) < 0.4 : false;
 };
 
+/** `top` over `below` at `amount` (0 to 1), as an opaque #RRGGBB; `below` when `top` is not a colour. Used for the dimmed shades of a text colour. */
+export function mix(top: string, below: string, amount: number): string {
+  const a = parseColour(top);
+  const b = parseColour(below);
+  if (!a || !b) return below;
+  const m = (x: number, y: number) => x * amount + y * (1 - amount);
+  return toHex({ r: m(a.rgb.r, b.rgb.r), g: m(a.rgb.g, b.rgb.g), b: m(a.rgb.b, b.rgb.b) });
+}
+
 const WHITE = '#ffffff';
 const BLACK = '#000000';
+/** One step of the repair of a colour: 5% of the way to black (darker) or to white (lighter). */
+const REPAIR_STEP = 0.05;
+const REPAIR_STEPS = 19;
 
-/** `wanted` if it reads on `background` at `ratio`, else white or black, whichever reads better. */
+const shade = ({ r, g, b }: Rgb, toward: 'darker' | 'lighter', amount: number): Rgb =>
+  toward === 'darker'
+    ? { r: r * (1 - amount), g: g * (1 - amount), b: b * (1 - amount) }
+    : { r: r + (255 - r) * amount, g: g + (255 - g) * amount, b: b + (255 - b) * amount };
+
+/**
+ * The colour itself when it reads on every background at `ratio`, else the nearest variant of it that does: the same hue, darker or lighter in
+ * steps of 5% (camera#336). Null when `wanted` is not a colour or no variant passes. The smallest change wins; at the same size, darker.
+ */
+export function repaired(wanted: string | null | undefined, backgrounds: readonly string[], ratio = 4.5): string | null {
+  const parsed = parseColour(wanted);
+  if (!parsed) return null;
+  const passes = (colour: string) => backgrounds.every((background) => contrast(colour, background) >= ratio);
+  for (let step = 0; step <= REPAIR_STEPS; step++) {
+    for (const toward of ['darker', 'lighter'] as const) {
+      const candidate = toHex(shade(parsed.rgb, toward, step * REPAIR_STEP));
+      if (passes(candidate)) return candidate;
+      if (step === 0) break;
+    }
+  }
+  return null;
+}
+
+/** White or black, whichever reads better on the backgrounds: the last resort when no variant of a colour can pass. */
+export function bestOfWhiteOrBlack(backgrounds: readonly string[]): string {
+  const worst = (colour: string) => Math.min(...backgrounds.map((background) => contrast(colour, background)));
+  return worst(WHITE) >= worst(BLACK) ? WHITE : BLACK;
+}
+
+/** `wanted` if it reads on `background` at `ratio`; else its nearest readable variant (same hue); only when none exists, white or black. */
 export function readable(wanted: string | null, background: string, ratio = 4.5): string {
-  if (wanted && contrast(wanted, background) >= ratio) return wanted;
-  return contrast(WHITE, background) >= contrast(BLACK, background) ? WHITE : BLACK;
+  return repaired(wanted, [background], ratio) ?? bestOfWhiteOrBlack([background]);
 }
