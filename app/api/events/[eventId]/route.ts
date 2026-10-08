@@ -273,6 +273,7 @@ export const PATCH = withErrorHandler(async (
     sharePage,
     photoVetting,
     uiLanguage,
+    tourEnabled,
   } = body;
 
   const tryOnSetupId =
@@ -397,6 +398,11 @@ export const PATCH = withErrorHandler(async (
     updateFields.notifications = normalizeEventNotificationSettings(notifications);
   }
 
+  // The guided tour is off unless an editor turns it on (camera#356).
+  if (tourEnabled !== undefined) {
+    if (typeof tourEnabled !== 'boolean') throw apiBadRequest('tourEnabled must be true or false');
+    updateFields.tourEnabled = tourEnabled;
+  }
   // The language of the user interface (camera#352): a language we have, or empty for the default (English).
   if (uiLanguage !== undefined) {
     if (uiLanguage === null || uiLanguage === '') {

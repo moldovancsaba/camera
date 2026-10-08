@@ -153,6 +153,13 @@ Item numbers run continuously and never restart. A number can be commented on in
 | 106 | No partner setting means English. |
 | 107 | Open: what "communication style" means: the tone of a language (te or Ön), or the partner's own default texts. |
 
+### Part 6: the guided tour is off by design (#356, MTK request 2026-10-08)
+
+| # | Decision |
+|---|---|
+| 108 | The tour of the capture flow is **off by default for every event**, existing events included. The event setting "Show the guided tour" (`Event.tourEnabled`, event editor) turns it on; only then do the tours start by themselves and the "Show tour" links appear. |
+| 109 | Nothing is deleted: the tour code and its texts (English and Hungarian) stay. |
+
 ### Delivery
 
 80. **Proposed delivery order** (the owner to confirm, item 81). Each step is its own pull request, merged only with the owner's yes, and starts with the check of what exists (item 20):

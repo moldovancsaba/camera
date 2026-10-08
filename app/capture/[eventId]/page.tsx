@@ -78,6 +78,7 @@ interface EventData {
   location: string | null;
   customPages: CustomPage[];  // Custom page flow
   loadingText?: string;  // Customizable loading text
+  tourEnabled?: boolean; // The guided tour is off unless the event turns it on (camera#356)
   logoUrl?: string;  // Optional event logo URL
   showLogo: boolean;  // Whether to display logo on pages
   brandColor?: string;  // Primary brand color (hex)
@@ -355,16 +356,18 @@ export default function EventCapturePage({
       : t('flow.shareCaption.plain');
   const eventButtonSize = normalizeEventButtonSize(event?.visualSettings?.buttonSize);
 
+  // The guided tour is off by design; only an event that turns it on gets it (camera#356).
+  const tourEnabled = event?.tourEnabled === true;
   const selectFrameTour = useTourController('capture:select-frame:v1', getCaptureSelectFrameSteps(language), {
-    autoStart: step === 'select-frame',
+    autoStart: tourEnabled && step === 'select-frame',
   });
   const photoTour = useTourController(
     'capture:photo:v1',
     getCapturePhotoSteps({ hasMultipleFrames: frames.length > 1, method: captureMethod, language }),
-    { autoStart: step === 'capture-photo' }
+    { autoStart: tourEnabled && step === 'capture-photo' }
   );
   const previewTour = useTourController('capture:preview:v1', getCapturePreviewSteps(language), {
-    autoStart: step === 'preview' && !!shareUrl && showSharePage,
+    autoStart: tourEnabled && step === 'preview' && !!shareUrl && showSharePage,
   });
 
   // Check for SSO resume after authentication
@@ -468,6 +471,7 @@ export default function EventCapturePage({
           location: eventData.location || null,
           customPages: eventData.customPages || [],
           loadingText: eventData.loadingText,
+          tourEnabled: eventData.tourEnabled === true,
           logoUrl: eventData.logoUrl,
           showLogo: eventData.showLogo || false,
           brandColor: eventData.brandColor,
@@ -1362,9 +1366,13 @@ export default function EventCapturePage({
   return (
     <div className="app-safe-area fixed inset-0 flex flex-col landscape:flex-row bg-transparent">
       <AppShellLock />
-      <TourOverlay controller={selectFrameTour} />
-      <TourOverlay controller={photoTour} />
-      <TourOverlay controller={previewTour} />
+      {tourEnabled ? (
+        <>
+          <TourOverlay controller={selectFrameTour} />
+          <TourOverlay controller={photoTour} />
+          <TourOverlay controller={previewTour} />
+        </>
+      ) : null}
       {signInError && (
         <div
           className="flex-shrink-0 z-50 mx-3 mt-3 rounded-lg border   px-3 py-2 text-sm  shadow-md    landscape:mx-2 landscape:mt-2"
@@ -1416,7 +1424,7 @@ export default function EventCapturePage({
               <h1 className="text-base font-bold  ">
                 {event.name}
               </h1>
-              {(step === 'select-frame' || step === 'capture-photo') && (
+              {tourEnabled && (step === 'select-frame' || step === 'capture-photo') && (
                 <div className="mt-2 flex justify-center landscape:hidden">
                   <TourReplayButton
                     tourId={step === 'select-frame' ? 'capture:select-frame:v1' : 'capture:photo:v1'}
@@ -1659,9 +1667,11 @@ export default function EventCapturePage({
                     onShareSocial={handleShareSocial}
                     onNext={handleMoveToThankYou}
                   />
-                  <div className="mt-2 flex justify-center">
-                    <TourReplayButton tourId="capture:preview:v1" controller={previewTour} label={t('tour.show')} />
-                  </div>
+                  {tourEnabled ? (
+                    <div className="mt-2 flex justify-center">
+                      <TourReplayButton tourId="capture:preview:v1" controller={previewTour} label={t('tour.show')} />
+                    </div>
+                  ) : null}
                 </div>
               )}
 

@@ -128,6 +128,7 @@ interface EventRecord {
     buttonSize?: EventButtonSize;
   };
   uiLanguage?: string | null;
+  tourEnabled?: boolean;
   sharePage?: {
     includeOriginalCapture?: boolean;
     includeCameraResult?: boolean;
@@ -229,6 +230,7 @@ export default function EditEventPage({
   );
   const [shareTexts, setShareTexts] = useState<SharePageTexts>({});
   const [uiLanguage, setUiLanguage] = useState<UiLanguage>(DEFAULT_UI_LANGUAGE);
+  const [tourEnabled, setTourEnabled] = useState(false);
   const [resultSlideshowMode, setResultSlideshowMode] =
     useState<EventTryOnResultSlideshowMode>('disabled');
   const [applyFrameToReturnedResults, setApplyFrameToReturnedResults] = useState(false);
@@ -350,6 +352,7 @@ export default function EditEventPage({
         setPendingTryOnMessage(sharePageSettings.pendingTryOnMessage);
         setShareTexts(sharePageSettings.texts);
         setUiLanguage(normalizeUiLanguage(eventData.uiLanguage));
+        setTourEnabled(eventData.tourEnabled === true);
         setResultSlideshowMode(
           eventData.tryOn?.resultSlideshowMode ||
             (eventData.tryOn?.includeApprovedResultsInSlideshows ? 'mixed_with_originals' : 'disabled')
@@ -563,6 +566,7 @@ export default function EditEventPage({
         buttonSize,
       },
       uiLanguage,
+      tourEnabled,
       sharePage: {
         includeOriginalCapture,
         includeCameraResult,
@@ -699,6 +703,13 @@ export default function EditEventPage({
               value={uiLanguage}
               onChange={(value) => setUiLanguage(normalizeUiLanguage(value))}
               allowDeselect={false}
+            />
+
+            <Checkbox
+              checked={tourEnabled}
+              onChange={(event) => setTourEnabled(event.currentTarget.checked)}
+              label="Show the guided tour"
+              description="Off by default. When on, the capture flow shows short tips the first time a user reaches a step, and a Show tour link to replay them."
             />
 
             <Select
