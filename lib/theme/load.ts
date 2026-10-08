@@ -9,6 +9,15 @@ import { nativeFrameContext, type FrameContext } from '@/lib/frame/context';
 import { messmassFontUrl } from '@/lib/messmassClient';
 import { resolveEventTheme, type EventTheme } from '@/lib/theme/event-theme';
 
+/** The colours of the Start button on the event's active welcome page (fill, label, ring), if it has set any: the whole flow's buttons look like it. */
+export function welcomeButtonColours(pages: unknown): { fill?: unknown; label?: unknown; ring?: unknown } | null {
+  const welcome = (Array.isArray(pages) ? pages : [])
+    .filter((page): page is { pageType: string; isActive?: boolean; order?: number; config?: Record<string, unknown> } => !!page && typeof page === 'object' && (page as { pageType?: unknown }).pageType === 'welcome' && (page as { isActive?: unknown }).isActive !== false)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
+  const config = welcome?.config;
+  return config ? { fill: config.buttonColor, label: config.buttonTextColor, ring: config.buttonBorderColor } : null;
+}
+
 export async function loadEventTheme(db: Db, event: Document): Promise<EventTheme> {
   let context = (event.frameDesign as { context?: FrameContext } | undefined)?.context ?? null;
   if (!context) {
@@ -22,7 +31,7 @@ export async function loadEventTheme(db: Db, event: Document): Promise<EventThem
       new Date().toISOString()
     );
   }
-  const theme = resolveEventTheme({ brandColor: typeof event.brandColor === 'string' ? event.brandColor : null, context, emailFooterImageUrl: typeof event.emailFooterImageUrl === 'string' ? event.emailFooterImageUrl : null });
+  const theme = resolveEventTheme({ buttons: welcomeButtonColours(event.customPages), brandColor: typeof event.brandColor === 'string' ? event.brandColor : null, context, emailFooterImageUrl: typeof event.emailFooterImageUrl === 'string' ? event.emailFooterImageUrl : null });
   return { ...theme, font: { ...theme.font, url: browserFontUrl(theme.font.file) } };
 }
 

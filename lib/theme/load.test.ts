@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { browserFontUrl } from './load';
+import { browserFontUrl, welcomeButtonColours } from './load';
 
 test('a custom font is asked for at an address that answers with CORS headers', () => {
   const previous = process.env.MESSMASS_BASE_URL;
@@ -17,3 +17,13 @@ test('a custom font is asked for at an address that answers with CORS headers', 
     else process.env.MESSMASS_BASE_URL = previous;
   }
 });
+
+test('the Start button colours come from the active welcome page, the first by order, and from nothing else', () => {
+  const welcome = (order: number, config: Record<string, unknown>, isActive = true) => ({ pageType: 'welcome', order, isActive, config });
+  assert.deepEqual(welcomeButtonColours([welcome(0, { buttonColor: 'a', buttonTextColor: 'b', buttonBorderColor: 'c' })]), { fill: 'a', label: 'b', ring: 'c' });
+  assert.deepEqual(welcomeButtonColours([welcome(2, { buttonColor: 'late' }), welcome(1, { buttonColor: 'first' })]), { fill: 'first', label: undefined, ring: undefined });
+  assert.equal(welcomeButtonColours([welcome(0, { buttonColor: 'off' }, false)]), null, 'an inactive welcome page is not used');
+  assert.equal(welcomeButtonColours([{ pageType: 'accept', order: 0, isActive: true, config: { buttonColor: 'x' } }]), null);
+  for (const nothing of [undefined, null, 'x', [], [null], [{}]]) assert.equal(welcomeButtonColours(nothing), null);
+});
+

@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-07T16:11:35+00:00",
+  "generated": "2026-10-07T20:45:05+00:00",
   "repo": "camera",
-  "head": "db2b4f7",
+  "head": "deb2daa",
   "counts": {
    "endpoints": 111,
    "collections": 6,
    "env": 59,
    "outbound-hosts": 29,
-   "docs": 52
+   "docs": 53
   }
  },
  "items": [
