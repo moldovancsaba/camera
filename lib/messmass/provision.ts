@@ -103,6 +103,7 @@ export async function provisionEvent(input: { messmassEventId: string; messmassP
     isActive: true,
     showLogo: false,
     customPages: [],
+    journeyDefaults: true, // the journey defaults (default consent page and the like) apply to events created from now on (camera#330)
     submissionCount: 0,
     // partner default design (editable in camera)
     brandColor: defaults.brandColor,

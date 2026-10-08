@@ -14,7 +14,8 @@
 
 import { useState } from 'react';
 import CaptureStageShell from '@/components/capture/CaptureStageShell';
-import { Alert, Button, Card, Checkbox, Group, Stack } from '@mantine/core';
+import { Alert, Anchor, Button, Card, Checkbox, Group, Stack } from '@mantine/core';
+import { consentCheckboxes, type ConsentCheckbox } from '@/lib/events/consent';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -25,12 +26,16 @@ export interface AcceptPageConfig {
   title: string;
   description: string;
   checkboxText: string;
+  /** A list of required checkboxes with an optional link each (camera#330); without it `checkboxText` is the one checkbox. */
+  checkboxes?: ConsentCheckbox[];
   buttonText: string;
 }
 
 export interface AcceptPageData {
   accepted: boolean;
   acceptedAt: string;
+  /** The checkboxes the user ticked, with their exact text and link, one consent record each. */
+  items?: ConsentCheckbox[];
 }
 
 export interface AcceptPageProps {
@@ -54,8 +59,11 @@ export default function AcceptPage({
   brandBorderColor = CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
 }: AcceptPageProps) {
-  const [accepted, setAccepted] = useState(false);
+  const items = consentCheckboxes(config);
+  const [checked, setChecked] = useState<boolean[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Every checkbox is required: the button works only when all of them are ticked.
+  const accepted = items.length > 0 ? items.every((_, index) => checked[index] === true) : checked[0] === true;
 
   const handleNext = () => {
     if (!accepted) {
@@ -66,15 +74,22 @@ export default function AcceptPage({
     onNext({
       accepted: true,
       acceptedAt: new Date().toISOString(),
+      ...(items.length > 0 ? { items } : {}),
     });
   };
 
-  const handleCheckboxChange = (checked: boolean) => {
-    setAccepted(checked);
-    if (checked && error) {
+  const handleCheckboxChange = (index: number, value: boolean) => {
+    setChecked((current) => {
+      const next = [...current];
+      next[index] = value;
+      return next;
+    });
+    if (value && error) {
       setError(null);
     }
   };
+
+  const boxes: ConsentCheckbox[] = items.length > 0 ? items : [{ text: config.checkboxText }];
 
   return (
     <CaptureStageShell
@@ -83,34 +98,59 @@ export default function AcceptPage({
       logoUrl={logoUrl}
     >
       <Stack gap="sm">
-        <Card
-          padding="md"
-          radius="md"
-          withBorder
-          style={{
-            borderColor: error
-              ? 'var(--mantine-color-red-5)'
-              : accepted
-                ? brandBorderColor
-                : 'var(--mantine-color-gray-3)',
-            backgroundColor: accepted ? `${brandColor}10` : undefined,
-          }}
-        >
-          <Checkbox
-            id={`accept-${pageId}`}
-            checked={accepted}
-            onChange={(event) => handleCheckboxChange(event.currentTarget.checked)}
-            label={config.checkboxText}
-            aria-label="Accept terms"
-            aria-invalid={Boolean(error)}
-            aria-describedby={error ? 'accept-error' : undefined}
-            styles={{
-              label: {
-                lineHeight: 1.6,
-              },
-            }}
-          />
-        </Card>
+        {boxes.map((item, index) => {
+          const isChecked = checked[index] === true;
+          return (
+            <Card
+              key={`${index}-${item.text}`}
+              padding="md"
+              radius="md"
+              withBorder
+              style={{
+                borderColor: error && !isChecked
+                  ? 'var(--mantine-color-red-5)'
+                  : isChecked
+                    ? brandBorderColor
+                    : 'var(--mantine-color-gray-3)',
+                backgroundColor: isChecked ? `${brandColor}10` : undefined,
+              }}
+            >
+              <Checkbox
+                id={`accept-${pageId}-${index}`}
+                checked={isChecked}
+                onChange={(event) => handleCheckboxChange(index, event.currentTarget.checked)}
+                label={
+                  <>
+                    {item.text}
+                    {item.linkUrl ? (
+                      // The link opens the legal page in a new tab, so the user does not lose the flow; it sits beside the text so a tap on the text still ticks the box.
+                      <Anchor
+                        href={item.linkUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`${item.text} (opens in a new tab)`}
+                        onClick={(event) => event.stopPropagation()}
+                        ml={6}
+                        fw={800}
+                        td="underline"
+                      >
+                        ↗
+                      </Anchor>
+                    ) : null}
+                  </>
+                }
+                aria-label={item.text}
+                aria-invalid={Boolean(error) && !isChecked}
+                aria-describedby={error ? 'accept-error' : undefined}
+                styles={{
+                  label: {
+                    lineHeight: 1.6,
+                  },
+                }}
+              />
+            </Card>
+          );
+        })}
 
         {error ? (
           <Alert id="accept-error" role="alert">

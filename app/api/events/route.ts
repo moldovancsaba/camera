@@ -252,6 +252,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     logos: inheritedDefaults.logos || [],
     logosOverridden: inheritedDefaults.logosOverridden,
     customPages: [],
+    journeyDefaults: true, // the journey defaults (default consent page and the like) apply to events created from now on (camera#330)
     tryOn: {
       enabled: Boolean(tryOn?.enabled),
       setupId: tryOnSetupId,

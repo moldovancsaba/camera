@@ -13,6 +13,7 @@
  */
 
 import { useState } from 'react';
+import { DEFAULT_IDENTITY_TEXTS, loginOptions, textOrDefault } from '@/lib/events/identity-page';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import CaptureStageShell from '@/components/capture/CaptureStageShell';
 import { Button, Divider, Group, Stack, TextInput, Title } from '@mantine/core';
@@ -68,8 +69,12 @@ export default function WhoAreYouPage({
   const [email, setEmail] = useState('');
   const [errors, setErrors] = useState<{ name?: string; email?: string }>({});
 
-  const enableSSOLogin = config.enableSSOLogin ?? false;
-  const enablePseudoReg = config.enablePseudoReg ?? true;
+  // At least one way to say who you are stays on (planning item 36); an empty text falls back to its default.
+  const { sso: enableSSOLogin, form: enablePseudoReg } = loginOptions(config);
+  const text = DEFAULT_IDENTITY_TEXTS;
+  const nameLabel = textOrDefault(config.nameLabel, text.nameLabel);
+  const emailLabel = textOrDefault(config.emailLabel, text.emailLabel);
+  const buttonText = textOrDefault(config.buttonText, text.buttonText);
   const socialHeading = config.ssoButtonText || 'Sign in with Google or Facebook';
   const pseudoFormTitle = config.pseudoFormTitle || 'Or enter your details';
 
@@ -110,8 +115,8 @@ export default function WhoAreYouPage({
 
   return (
     <CaptureStageShell
-      title={config.title}
-      description={config.description}
+      title={textOrDefault(config.title, text.title)}
+      description={textOrDefault(config.description, text.description)}
       logoUrl={logoUrl}
     >
       {enableSSOLogin ? (
@@ -135,7 +140,7 @@ export default function WhoAreYouPage({
 
           <TextInput
             size="sm"
-            label={config.nameLabel}
+            label={nameLabel}
             value={name}
             onChange={(e) => {
               setName(e.currentTarget.value);
@@ -145,7 +150,7 @@ export default function WhoAreYouPage({
             }}
             onKeyDown={handleKeyPress}
             placeholder={config.namePlaceholder || 'Enter your name'}
-            aria-label={config.nameLabel}
+            aria-label={nameLabel}
             error={errors.name}
             styles={{
               input: !errors.name ? { borderColor: brandBorderColor } : undefined,
@@ -154,7 +159,7 @@ export default function WhoAreYouPage({
 
           <TextInput
             size="sm"
-            label={config.emailLabel}
+            label={emailLabel}
             type="email"
             value={email}
             onChange={(e) => {
@@ -165,7 +170,7 @@ export default function WhoAreYouPage({
             }}
             onKeyDown={handleKeyPress}
             placeholder={config.emailPlaceholder || 'your.email@example.com'}
-            aria-label={config.emailLabel}
+            aria-label={emailLabel}
             error={errors.email}
             styles={{
               input: !errors.email ? { borderColor: brandBorderColor } : undefined,
@@ -178,8 +183,8 @@ export default function WhoAreYouPage({
                 Back
               </Button>
             ) : null}
-            <Button onClick={handleNext} color={brandColor} size={buttonSize} aria-label={config.buttonText}>
-              {config.buttonText}
+            <Button onClick={handleNext} color={brandColor} size={buttonSize} aria-label={buttonText}>
+              {buttonText}
             </Button>
           </Group>
         </Stack>

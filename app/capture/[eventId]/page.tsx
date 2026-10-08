@@ -32,6 +32,7 @@ import {
 } from '@/lib/tour/config/captureTourSteps';
 import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoAreYouPage';
 import AcceptPage, { type AcceptPageData } from '@/components/capture/AcceptPage';
+import { consentRecords } from '@/lib/events/consent';
 import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
 import RestartPage from '@/components/capture/RestartPage';
 import WelcomePage from '@/components/capture/WelcomePage';
@@ -134,6 +135,7 @@ interface CollectedData {
     pageId: string;
     pageType: 'accept' | 'cta';
     checkboxText: string;
+    linkUrl?: string;
     accepted: boolean;
     acceptedAt: string;
   }>;
@@ -1055,13 +1057,8 @@ export default function EventCapturePage({
       ...prev,
       consents: [
         ...prev.consents,
-        {
-          pageId: page.pageId,
-          pageType: page.pageType as 'accept' | 'cta',
-          checkboxText: page.config.checkboxText || '',
-          accepted: data.accepted,
-          acceptedAt: data.acceptedAt,
-        },
+        // A consent page with several checkboxes leaves one record per checkbox: its exact text, its link and the time (camera#330).
+        ...consentRecords({ pageId: page.pageId, pageType: page.pageType as 'accept' | 'cta', checkboxText: page.config.checkboxText }, data),
       ],
     }));
     handleNextPage();
@@ -1236,6 +1233,7 @@ export default function EventCapturePage({
               title: currentPage.config.title,
               description: currentPage.config.description,
               checkboxText: currentPage.config.checkboxText || '',
+              checkboxes: currentPage.config.checkboxes,
               buttonText: currentPage.config.buttonText,
             }}
             pageId={currentPage.pageId}
