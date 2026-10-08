@@ -21,7 +21,7 @@ export const GET = withErrorHandler(async (request: NextRequest, context: { para
   const session = await requireAuth();
   const { partnerId } = await context.params;
   const kind = parseKind(request.nextUrl.searchParams.get('kind'));
-  if (!kind) throw apiBadRequest('kind must be frames or logos');
+  if (!kind) throw apiBadRequest('kind must be frames, logos or images');
   const db = await connectToDatabase();
   const { partner } = await assertPartnerMongoWorkspaceAccess(db, session, partnerId, 'viewer');
   return apiSuccess(await loadPartnerLibrary(db, partner, kind));
@@ -40,7 +40,7 @@ export const PUT = withErrorHandler(async (request: NextRequest, context: { para
   const { partnerId } = await context.params;
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const kind = parseKind(body?.kind);
-  if (!body || !kind) throw apiBadRequest('kind must be frames or logos');
+  if (!body || !kind) throw apiBadRequest('kind must be frames, logos or images');
   const change = { add: ids(body.add, 'add'), remove: ids(body.remove, 'remove'), defaults: ids(body.defaults, 'defaults') };
   if (!change.add?.length && !change.remove?.length && !change.defaults) throw apiBadRequest('Nothing to change: send add, remove or defaults');
 

@@ -22,14 +22,15 @@ export const DELETE = withErrorHandler(async (request: NextRequest, context: { p
   const { eventId, itemId } = await context.params;
   if (!ObjectId.isValid(eventId)) throw apiBadRequest('Invalid event ID format');
   const kind = parseKind(request.nextUrl.searchParams.get('kind'));
-  if (!kind) throw apiBadRequest('kind must be frames or logos');
+  if (!kind) throw apiBadRequest('kind must be frames, logos or images');
   const db = await connectToDatabase();
   const access = await getPartnerScopedAccessForEvent(db, eventId, session, 'manager');
   if (!access.allowed) throw apiForbidden('Partner-level Events manager access is required');
   const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(eventId) }, { projection: { eventId: 1 } });
   if (!event) throw apiNotFound('Event');
   const result = await deleteLibraryUpload(db, kind, itemId, { scope: 'event', eventId: String(event.eventId) });
-  if (!result.ok) throw result.status === 404 ? apiNotFound(kind === 'frames' ? 'Frame' : 'Logo') : apiError(result.reason, result.status);
+  // The reason names the kind ("Frame not found", "Image not found").
+  if (!result.ok) throw apiError(result.reason, result.status);
   return apiSuccess({ deleted: itemId });
 });
 

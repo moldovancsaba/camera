@@ -16,7 +16,7 @@ export const POST = withErrorHandler(async (request: NextRequest, context: { par
   const { partnerId } = await context.params;
   const form = await request.formData();
   const kind = parseKind(form.get('kind'));
-  if (!kind) throw apiBadRequest('kind must be frames or logos');
+  if (!kind) throw apiBadRequest('kind must be frames, logos or images');
 
   const db = await connectToDatabase();
   const { partner } = await assertPartnerMongoWorkspaceAccess(db, session, partnerId, 'manager');
