@@ -7,9 +7,12 @@
  */
 
 import { NextRequest } from 'next/server';
+import { afterResponse } from '@/lib/api/after-response';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { ObjectId } from 'mongodb';
 import { type Frame } from '@/lib/db/schemas';
+import { parseMessageArea } from '@/lib/frame/message-area';
+import { regenerateEventsUsingFrame } from '@/lib/frame/regenerate';
 import {
   requireAdmin,
   withErrorHandler,
@@ -59,26 +62,41 @@ export const PUT = withErrorHandler(async (
   }
 
   const body = await request.json();
-  const { name, description, category, isActive } = body;
+  const { name, description, category, isActive, messageArea } = body;
 
   const db = await connectToDatabase();
   
-  const updateData: Record<string, string | boolean> = {
+  const updateData: Record<string, unknown> = {
     updatedAt: new Date().toISOString(),
   };
+  const unsetData: Record<string, ''> = {};
 
   if (name !== undefined) updateData.name = name;
   if (description !== undefined) updateData.description = description;
   if (category !== undefined) updateData.category = category;
   if (isActive !== undefined) updateData.isActive = isActive;
+  // Where a message is written on the frame (camera#366): null removes it; anything else must be usable.
+  if (messageArea === null) unsetData.messageArea = '';
+  else if (messageArea !== undefined) {
+    const area = parseMessageArea(messageArea);
+    if (!area) throw apiBadRequest('The message area is not usable: the box must sit inside the 1920 x 1080 frame and the colour must be a hex colour.');
+    updateData.messageArea = area;
+  }
 
-  const result = await db.collection<Frame>('frames').updateOne(
+  const result = await db.collection<Frame>('frames').findOneAndUpdate(
     { _id: new ObjectId(id) },
-    { $set: updateData }
+    Object.keys(unsetData).length ? { $set: updateData, $unset: unsetData } : { $set: updateData },
+    { returnDocument: 'after', projection: { frameId: 1 } }
   );
 
-  if (result.matchedCount === 0) {
+  if (!result) {
     throw apiNotFound('Frame');
+  }
+
+  // The events whose messages are written on this frame are redrawn (an image is reused while nothing that decides it changed).
+  if (messageArea !== undefined && result.frameId) {
+    const frameId = result.frameId;
+    afterResponse(() => regenerateEventsUsingFrame(db, frameId).then((done) => { if (done.failed.length) console.error('Frame images could not be redrawn', done.failed); }));
   }
 
   return apiSuccess({ success: true });

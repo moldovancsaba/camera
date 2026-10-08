@@ -82,6 +82,8 @@ export interface FrameVariant {
   logo: 'drawn' | 'emoji' | 'none' | 'failed';
   /** The drawing code this image was made with (FRAME_RENDER_VERSION); an older one is redrawn by the rollout's "redraw" run. Absent on the first images. */
   renderVersion?: number;
+  /** The library frame this image was drawn on (the frame its message chose, camera#366); absent for the generated layout and the older base picture. */
+  frameId?: string;
 }
 
 export interface FrameDesign {
@@ -92,6 +94,11 @@ export interface FrameDesign {
   updatedAt: string;
   /** The designers' text-free frame the messages are written on, instead of the generated layout (lib/frame/base.ts, camera#311). */
   base?: FrameBase;
+  /**
+   * Which library frame each message is written on (camera#366): the text of a message, as it stands in `messages`, to the id of a frame of the event that has a message
+   * area. A message that is not listed uses the older base picture or the generated layout, as before.
+   */
+  messageFrames?: Record<string, string>;
   /** One image per usable message (camera#235); absent until the first generation. */
   variants?: FrameVariant[];
   generatedAt?: string;

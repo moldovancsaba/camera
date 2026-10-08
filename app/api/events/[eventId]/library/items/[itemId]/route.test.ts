@@ -50,3 +50,33 @@ test("another event's upload, a global frame and an unknown frame cannot be dele
   assert.equal((await DELETE(...del('e1', 'nope'))).status, 400);
   assert.equal(data.frames.length, 3);
 });
+
+const patch = (itemId: string, body: unknown) => [
+  new NextRequest(`http://localhost/api/events/${EVENT_MONGO_ID}/library/items/${itemId}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
+  { params: Promise.resolve({ eventId: String(EVENT_MONGO_ID), itemId }) },
+] as const;
+const AREA = { messageBox: { x: 520, y: 8, width: 880, height: 90 }, messageColor: '#ffffff' };
+
+test("the message area of an event's own frame can be set and removed, and the answer carries it", async (t) => {
+  const { data } = setup(t);
+  const { PATCH } = await importRoute('patch');
+  const set = await PATCH(...patch('e1', { kind: 'frames', messageArea: AREA }));
+  assert.equal(set.status, 200);
+  const body = (await set.json()) as { data: { item: { id: string; messageArea: { messageBox: { width: number } } | null } } };
+  assert.equal(body.data.item.messageArea?.messageBox.width, 880);
+  assert.deepEqual((data.frames.find((f) => f.frameId === 'e1') as { messageArea: unknown }).messageArea, AREA);
+  const removed = await PATCH(...patch('e1', { kind: 'frames', messageArea: null }));
+  assert.equal(removed.status, 200);
+  assert.equal('messageArea' in (data.frames.find((f) => f.frameId === 'e1') as object), false);
+});
+
+test('a message area that is not usable, a frame that is not the event\'s own, and an empty change are refused', async (t) => {
+  const { data } = setup(t);
+  const { PATCH } = await importRoute('patch-refuse');
+  assert.equal((await PATCH(...patch('e1', { kind: 'frames', messageArea: { messageBox: { x: 0, y: 0, width: 0, height: 0 } } }))).status, 400);
+  assert.equal((await PATCH(...patch('e2', { kind: 'frames', messageArea: AREA }))).status, 400, "another event's upload");
+  assert.equal((await PATCH(...patch('g1', { kind: 'frames', messageArea: AREA }))).status, 400, 'a global frame');
+  assert.equal((await PATCH(...patch('e1', { kind: 'frames' }))).status, 400, 'nothing to change');
+  assert.equal((await PATCH(...patch('nope', { kind: 'frames', name: 'x' }))).status, 404);
+  assert.equal((data.frames.find((f) => f.frameId === 'e1') as { messageArea?: unknown }).messageArea, undefined);
+});

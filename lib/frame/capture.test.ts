@@ -103,3 +103,12 @@ test('a claim that is not ours is dropped so the photo still saves without it', 
   assert.equal(sanitizeFrameVariant({ ...ok, message: 'x'.repeat(301) }, HOST), null);
   assert.equal(sanitizeFrameVariant({ ...ok, message: 7 }, HOST), null);
 });
+
+test('a text-free frame with a message area carries the messages of the event: it is not a frame of its own, so the generated frame still applies', () => {
+  const carrier = { isActive: true, frameDetails: { hasMessageArea: true } };
+  const complete = { isActive: true, frameDetails: { hasMessageArea: false } };
+  assert.equal(captureFrameOf({ frames: [carrier], frameDesign: { variants } })?.variants.length, 3);
+  assert.equal(captureFrameOf({ frames: [carrier, complete], frameDesign: { variants } }), null, 'a complete frame next to it is a frame of its own');
+  assert.equal(captureFrameOf({ frames: [{ isActive: true, frameDetails: null }], frameDesign: { variants } }), null, 'an assignment whose frame is unknown counts as before');
+  assert.equal(captureFrameOf({ frames: [{ isActive: false, frameDetails: { hasMessageArea: false } }], frameDesign: { variants } })?.variants.length, 3);
+});

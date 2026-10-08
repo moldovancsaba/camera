@@ -16,6 +16,7 @@ import { resolveFrameFont, type ResolvedFont } from './fonts';
 import { DEFAULT_FRAME_HEIGHT, DEFAULT_FRAME_WIDTH, layerBoxes } from './layout';
 import { fetchLogo } from './logo';
 import { eventEmoji, withoutEmoji } from './emoji';
+import { chosenFrameId, frameBaseOf, loadMessageFrames, type MessageFrame } from './message-frames';
 import { messageTokens, usableMessages } from './messages';
 import { FRAME_RENDER_VERSION, renderFrame } from './render';
 
@@ -44,10 +45,12 @@ export interface GenerateResult {
 }
 
 /** Everything that decides the image: what is drawn, the message, the font actually used, the size and the drawing code. */
-export function variantKey(design: FrameDesign, message: string | null, font: ResolvedFont): string {
+export function variantKey(design: FrameDesign, message: string | null, font: ResolvedFont, frame?: MessageFrame): string {
   const decides: unknown[] = [contextHash(design.context), message, font.family, font.used, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT, FRAME_RENDER_VERSION];
-  // A base picture changes the image; a design without one keeps the key it always had, so nothing is redrawn.
-  if (design.base) decides.push(design.base);
+  // The frame a message chose (camera#366) decides the image, and the older base picture does not apply to that message. A base picture changes the image;
+  // a design with neither keeps the key it always had, so nothing is redrawn.
+  if (frame) decides.push({ frame: frame.frameId, imageUrl: frame.imageUrl, area: frame.area });
+  else if (design.base) decides.push(design.base);
   return createHash('sha256').update(JSON.stringify(decides)).digest('hex');
 }
 
@@ -77,13 +80,44 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
   let logoBytes: Buffer | null | undefined;
   const base = parseFrameBase(design.base);
   const baseBytes = new Map<string, Buffer>();
+  // The frames the messages chose: only those of the event that can still carry a message; a message whose frame is gone keeps the older picture or the layout.
+  const chosenFrames = Object.keys(design.messageFrames ?? {}).length > 0 ? await loadMessageFrames(db, event) : new Map<string, MessageFrame>();
   let generated = 0;
 
   for (const job of jobs) {
-    const key = variantKey(design, job.message, font);
+    const frameId = chosenFrameId(design, job.index);
+    const chosen = frameId ? chosenFrames.get(frameId) : undefined;
+    const key = variantKey(design, job.message, font, chosen);
     const kept = existing.find((variant) => reusable(variant, key));
     if (kept) {
       variants.push({ ...kept, index: job.index });
+      continue;
+    }
+
+    if (chosen) {
+      // A frame of the library with a message area: its picture, with the message written in the event's font; a picture that cannot be fetched fails the run and leaves the images as they were.
+      let bytes = baseBytes.get(chosen.imageUrl);
+      if (!bytes) {
+        bytes = (await deps.fetchBaseImage(chosen.imageUrl)) ?? undefined;
+        if (!bytes) throw new Error(`The picture of the frame "${chosen.name}" could not be fetched`);
+        baseBytes.set(chosen.imageUrl, bytes);
+      }
+      const rendered = await renderBaseFrame({ base: frameBaseOf(chosen), imageBytes: bytes, message: job.message, font });
+      const imageUrl = await deps.upload(`frames/generated/${event.eventId}/${key.slice(0, 32)}.png`, rendered.png);
+      variants.push({
+        index: job.index,
+        message: job.message,
+        imageUrl,
+        width: rendered.width,
+        height: rendered.height,
+        layers: rendered.layers,
+        key,
+        font: { family: font.family, used: font.used, note: font.note, retry: font.retry },
+        logo: 'none',
+        renderVersion: FRAME_RENDER_VERSION,
+        frameId: chosen.frameId,
+      });
+      generated += 1;
       continue;
     }
 

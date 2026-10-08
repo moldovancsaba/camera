@@ -114,7 +114,7 @@ interface EventFrameAssignment {
   frameId: string;
   isActive: boolean;
   /** The library item behind the assignment, as the event data carries it (null when the item no longer exists). */
-  frameDetails?: { frameId: string; name?: string; imageUrl?: string; width?: number; height?: number; isActive?: boolean; createdAt?: string } | null;
+  frameDetails?: { frameId: string; name?: string; imageUrl?: string; width?: number; height?: number; isActive?: boolean; createdAt?: string; hasMessageArea?: boolean } | null;
 }
 
 interface EventLogo {
@@ -529,7 +529,8 @@ export default function EventCapturePage({
         }
 
         // Get frames assigned to this event
-        const activeFrameAssignments: EventFrameAssignment[] = (eventData.frames || []).filter((frame: EventFrameAssignment) => frame.isActive);
+        // A text-free frame with a message area carries the event's messages (camera#366); it is not a frame the guest picks.
+        const activeFrameAssignments: EventFrameAssignment[] = (eventData.frames || []).filter((frame: EventFrameAssignment) => frame.isActive && frame.frameDetails?.hasMessageArea !== true);
         const frameIds = activeFrameAssignments.map((frame: EventFrameAssignment) => frame.frameId);
 
         if (frameIds.length > 0) {

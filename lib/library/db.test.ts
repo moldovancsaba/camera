@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ObjectId } from 'mongodb';
 import { fakeDb } from './fake-db';
-import { checkEventAssign, deleteLibraryUpload, loadEventLibrary, loadPartnerLibrary, savePartnerLibrary } from './db';
+import { checkEventAssign, deleteLibraryUpload, itemView, loadEventLibrary, loadPartnerLibrary, savePartnerLibrary, updateLibraryUpload } from './db';
 
 const EVENT = new ObjectId();
 const OTHER_EVENT = new ObjectId();
@@ -169,4 +169,39 @@ test('a partner upload cannot be deleted while an event of the partner has it, a
   assert.deepEqual((data.partners[0] as { defaultFrames: string[] }).defaultFrames, ['g1']);
   const wrongPartner = await deleteLibraryUpload(db, 'frames', 'x1', { scope: 'partner', partnerId: 'P' });
   assert.equal(wrongPartner.ok, false);
+});
+
+const AREA = { messageBox: { x: 520, y: 8, width: 880, height: 90 }, messageColor: '#ffffff' };
+
+test('the owner of an own upload can rename it and say where a message is written on it; the message area is checked and can be removed', async () => {
+  const { db, data } = seed();
+  const level = { scope: 'event' as const, eventId: EVENT_UUID };
+  const renamed = await updateLibraryUpload(db, 'frames', 'e1', level, { name: '  Pink match frame ' }, NOW);
+  assert.equal(renamed.ok && (renamed.item.name as string), 'Pink match frame');
+
+  const set = await updateLibraryUpload(db, 'frames', 'e1', level, { messageArea: { ...AREA, junk: 1 } }, NOW);
+  assert.equal(set.ok, true);
+  assert.deepEqual((data.frames.find((f) => f.frameId === 'e1') as { messageArea: unknown }).messageArea, AREA, 'unknown fields are dropped');
+  assert.equal(itemView('frames', data.frames.find((f) => f.frameId === 'e1')!).messageArea?.messageBox.width, 880);
+
+  const bad = await updateLibraryUpload(db, 'frames', 'e1', level, { messageArea: { messageBox: { x: 0, y: 0, width: 0, height: 0 } } }, NOW);
+  assert.deepEqual([bad.ok, bad.ok ? 0 : bad.status], [false, 400]);
+  assert.deepEqual((data.frames.find((f) => f.frameId === 'e1') as { messageArea: unknown }).messageArea, AREA, 'a refused change writes nothing');
+
+  const removed = await updateLibraryUpload(db, 'frames', 'e1', level, { messageArea: null }, NOW);
+  assert.equal(removed.ok, true);
+  assert.equal('messageArea' in (data.frames.find((f) => f.frameId === 'e1') as object), false);
+});
+
+test("only the owner's level can change an upload: not a global frame, not another event's or another partner's, and no empty name", async () => {
+  const { db } = seed();
+  const level = { scope: 'event' as const, eventId: EVENT_UUID };
+  assert.equal((await updateLibraryUpload(db, 'frames', 'g1', level, { name: 'x' }, NOW)).ok, false);
+  assert.equal((await updateLibraryUpload(db, 'frames', 'e2', level, { name: 'x' }, NOW)).ok, false);
+  assert.equal((await updateLibraryUpload(db, 'frames', 'p1', { scope: 'partner', partnerId: 'OTHER' }, { name: 'x' }, NOW)).ok, false);
+  assert.equal((await updateLibraryUpload(db, 'frames', 'p1', { scope: 'partner', partnerId: 'P' }, { name: 'ok' }, NOW)).ok, true);
+  assert.equal((await updateLibraryUpload(db, 'frames', 'e1', level, { name: '   ' }, NOW)).ok, false);
+  assert.deepEqual([(await updateLibraryUpload(db, 'frames', 'nope', level, { name: 'x' }, NOW)).ok], [false]);
+  const logo = await updateLibraryUpload(db, 'logos', 'l1', level, { messageArea: AREA }, NOW);
+  assert.equal(logo.ok, false, 'a logo has no message area');
 });
