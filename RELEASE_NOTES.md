@@ -20,6 +20,11 @@
   and not run against the real database (no write was made there): the first partner library save happens when the owner uses the page.
 - **Not yet:** messages choosing their frame (camera#366), logos (camera#367), images (camera#368), the MTK event (camera#369), the audit fixes (camera#370).
 
+## Unreleased — the one-time "Photo vetting" entry leaves the sidebar (camera#371)
+
+- **Changed (owner, 2026-10-08):** the sidebar entry "Photo vetting" (Operations) opened only the one-time rollout page that switched vetting on for the events that existed, and it read as if it were the place where photos are approved. The rollout is done (214 of 214 events require vetting, every new event starts with it on), so the entry is gone from the sidebar. The page stays at `/admin/photo-vetting` for emergencies, and nothing about vetting changes: photos still wait for approval, the approval list is the event's own Vetting tab, and the admin home shows how many wait.
+- **Verified:** type-check, lint and the full chain; counted read-only on the live data (214 of 214 events require vetting, MTK Budapest x Vasas FC included; no photo is waiting). Not seen by the owner: the sidebar after the change.
+
 ## Unreleased — the frame lists show the frames' pictures (camera#357)
 
 - **Fixed (owner report, 2026-10-08):** the event frames page (assigned and available lists), the partner frames page and the style panel printed the bare word "Image" instead of a frame's picture. They drew the picture only from `thumbnailUrl`, and the frames of the library never had one (they carry `imageUrl`). A frame is now shown by its thumbnail when it has one, else by the frame itself (`lib/frames/thumbnail.ts`, `FrameThumbnail`), on a neutral grey so a transparent frame is visible, at least 160 px wide in the lists; a frame with no picture at all says "No picture". The event data these pages read carries `imageUrl` next to `thumbnailUrl`. The global Frames list was already fine.
