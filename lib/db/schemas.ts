@@ -306,6 +306,8 @@ export interface Event {
    */
   shortUrlSlug?: string | null;
   greatestHitsSlug?: string | null;
+  /** The language of the user interface of this event (camera#352): the default texts of the journey, the public photo page and the user emails come from its dictionary. English when missing. */
+  uiLanguage?: 'en' | 'hu';
   /** Set on events created with the journey defaults (the default consent page and the like); existing events get them through the global switch (lib/admin/defaults-rollout.ts). */
   journeyDefaults?: boolean;
   /** What was last pushed to messmass from the tracked links of this event (camera#320, lib/short-links/sync.ts). */

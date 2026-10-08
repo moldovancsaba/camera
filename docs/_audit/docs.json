@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-08T07:47:36+00:00",
+  "generated": "2026-10-08T08:05:46+00:00",
   "repo": "camera",
-  "head": "10d1343",
+  "head": "30f898d",
   "counts": {
    "endpoints": 112,
    "collections": 6,
    "env": 59,
    "outbound-hosts": 29,
-   "docs": 54
+   "docs": 55
   }
  },
  "items": [
@@ -191,6 +191,10 @@
   {
    "file": "docs/TRYON_RECOVERY_RUNBOOK.md",
    "title": "Try-On recovery runbook"
+  },
+  {
+   "file": "docs/UI_LANGUAGE.md",
+   "title": "UI language of an event (camera#352)"
   },
   {
    "file": "docs/WELCOME_AND_DEFAULTS_PLAN.md",

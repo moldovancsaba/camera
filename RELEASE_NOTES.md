@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — UI language of an event, step 1: the core and the setting (camera#352)
+
+- **Added:** `Event.uiLanguage` (`en` default, `hu`), settable in the event editor ("Customization", "User interface language") and by `PATCH /api/events/<id>`; the guest `GET` returns it. A language layer (`lib/i18n`: the English and Hungarian dictionaries, `translate`, `textOr`) and `UiLanguageProvider` / `useT()` for client components, set from the capture layout; the document language (`<html lang>`) follows. An editor's own text still wins over the dictionary, and a stored text that equals the English default counts as not set in another language (the page editor saved the defaults as if they were the editor's own). `docs/UI_LANGUAGE.md`.
+- **Changed:** only two texts use the dictionary so far, "Loading event..." and the "Event Not Found" screen; English is exactly as before. The texts of the journey move into the dictionary in the next steps (the capture flow, the public photo page, the emails); until then a text stays English whatever the language. Nothing is set to Hungarian yet.
+- **Verified:** unit tests (the dictionaries have the same keys and markers, the stored-default rule, the provider with and without a language, the API: set, clear, refuse, untouched, returned to the guest); type-check; lint. Not seen by a person: the language select in the event editor.
+
 ## Unreleased — slideshow editor: saving an existing slideshow no longer clears its screen design (camera#350)
 
 - **Fixed:** the admin slideshow editor opened an existing slideshow with an empty screen design (overlay picture, photo window, QR, texts) because its props never carried `screenDesign`, and a save then sent `screenDesign: null`, which the API stores. Saving any existing slideshow cleared its design. Found by reading the code for the default slideshow work; the two stored designs (the real MTK Budapest x Vasas FC "Main screen" and the ETO FC one) were still intact. The editor now gets the stored design, and an existing slideshow is saved without `screenDesign` unless the design fields were changed since the page opened.

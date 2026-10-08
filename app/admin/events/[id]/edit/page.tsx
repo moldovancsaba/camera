@@ -47,6 +47,7 @@ import {
   normalizeEventButtonSize,
   type EventButtonSize,
 } from '@/lib/events/visual-settings';
+import { DEFAULT_UI_LANGUAGE, normalizeUiLanguage, UI_LANGUAGES, UI_LANGUAGE_LABELS, type UiLanguage } from '@/lib/i18n';
 import {
   DEFAULT_EVENT_SHARE_PAGE_SETTINGS,
   normalizeEventSharePageSettings,
@@ -126,6 +127,7 @@ interface EventRecord {
   visualSettings?: {
     buttonSize?: EventButtonSize;
   };
+  uiLanguage?: string | null;
   sharePage?: {
     includeOriginalCapture?: boolean;
     includeCameraResult?: boolean;
@@ -226,6 +228,7 @@ export default function EditEventPage({
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.pendingTryOnMessage
   );
   const [shareTexts, setShareTexts] = useState<SharePageTexts>({});
+  const [uiLanguage, setUiLanguage] = useState<UiLanguage>(DEFAULT_UI_LANGUAGE);
   const [resultSlideshowMode, setResultSlideshowMode] =
     useState<EventTryOnResultSlideshowMode>('disabled');
   const [applyFrameToReturnedResults, setApplyFrameToReturnedResults] = useState(false);
@@ -346,6 +349,7 @@ export default function EditEventPage({
         setShowCreateYourOwnButton(sharePageSettings.showCreateYourOwnButton);
         setPendingTryOnMessage(sharePageSettings.pendingTryOnMessage);
         setShareTexts(sharePageSettings.texts);
+        setUiLanguage(normalizeUiLanguage(eventData.uiLanguage));
         setResultSlideshowMode(
           eventData.tryOn?.resultSlideshowMode ||
             (eventData.tryOn?.includeApprovedResultsInSlideshows ? 'mixed_with_originals' : 'disabled')
@@ -558,6 +562,7 @@ export default function EditEventPage({
       visualSettings: {
         buttonSize,
       },
+      uiLanguage,
       sharePage: {
         includeOriginalCapture,
         includeCameraResult,
@@ -687,6 +692,15 @@ export default function EditEventPage({
           </FormSection>
 
           <FormSection title="Customization">
+            <Select
+              label="User interface language"
+              description="The language of the default texts of the user journey, the photo page and the emails. A text written for this event in the page editor still wins."
+              data={UI_LANGUAGES.map((language) => ({ value: language, label: UI_LANGUAGE_LABELS[language] }))}
+              value={uiLanguage}
+              onChange={(value) => setUiLanguage(normalizeUiLanguage(value))}
+              allowDeselect={false}
+            />
+
             <Select
               label="Button size"
               description="Controls the primary action button size across this event app."

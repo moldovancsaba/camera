@@ -160,6 +160,31 @@ test('PATCH: the setting must be true or false', async (t) => {
   assert.equal(h.updates.length, 0);
 });
 
+test('PATCH: the language of the user interface is set to a language we have, cleared with an empty value, and refused otherwise', async (t) => {
+  const h = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-language');
+  assert.equal((await PATCH(patchRequest({ uiLanguage: 'hu' }), params)).status, 200);
+  assert.equal(h.updates[0].uiLanguage, 'hu');
+  assert.equal((await PATCH(patchRequest({ uiLanguage: '' }), params)).status, 200);
+  assert.equal(h.updates[1].uiLanguage, null, 'empty means the default, English');
+  for (const bad of ['de', 'HU', 7, {}]) assert.equal((await PATCH(patchRequest({ uiLanguage: bad }), params)).status, 400, String(bad));
+  assert.equal(h.updates.length, 2, 'a refused language writes nothing');
+});
+
+test('PATCH without a language leaves the stored language alone', async (t) => {
+  const h = mockDeps(t, { event: { uiLanguage: 'hu' }, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-language-untouched');
+  assert.equal((await PATCH(patchRequest({ loadingText: 'Hello' }), params)).status, 200);
+  assert.equal('uiLanguage' in h.updates[0], false);
+});
+
+test('GET as a guest carries the language of the event', async (t) => {
+  mockDeps(t, { event: { uiLanguage: 'hu', customPages: [] } });
+  const { GET } = await importRouteModule('get-language');
+  const body = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { uiLanguage?: string } } };
+  assert.equal(body.data.event.uiLanguage, 'hu');
+});
+
 // Stand-in colours from the tokens (no raw colour literals in tests).
 const HERO = EVENT_THEME_DEFAULT.headingColor;
 const WHITE = `${CAMERA_STAGE_WHITE.toLowerCase()}ff`;
