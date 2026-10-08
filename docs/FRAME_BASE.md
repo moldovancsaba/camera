@@ -28,7 +28,7 @@ While the event has a frame of its own (a picture assigned in the frame library)
 
 **The way to set it up now is the library (camera#366, docs/LIBRARIES.md):** upload the designers' text-free frames at the event level (or the partner level), give each a
 **message area** (where the message is written: the same box, colour and territories as the fields above, edited on the frame's card), and choose a **frame for each
-message** in the generated frame panel of the event. The `base` below is the older way (data on the event, the MTK x Vasas event was set this way) and keeps working:
+message** in the generated frame panel of the event. The `base` below is the older way (data on the event; the MTK x Vasas event was set this way until 2026-10-08, see the end of this page) and keeps working:
 for each message the order is **the frame the message chose, else the base picture, else the generated layout**, and a design with neither keeps the keys it had, so
 nothing is redrawn. The font follows the messmass report style of the event: change it there, and the next refresh redraws the messages.
 
@@ -47,3 +47,11 @@ save of unsaved message edits first, because it reloads the messages.
 Pictures: the designers' `FRAME1` (blue band: HAJRÁ, MTK!, SZÍVEM KÉK-FEHÉR!) and `FRAME` (pink band: MTK SZÍV!, MINDEN NŐ SZÁMÍT!), stored in the R2
 bucket under `frames/mtk-vasas/base/`. Message box `x 520, y 8, width 880, height 90` (between the crest and the ribbon; the designers' texts are
 centred at x 960 and about 51 px high), territories: header `0,0,1920,100`, footer `0,980,1920,100`.
+
+**State since 2026-10-08.** The MTK x Vasas event no longer holds the base picture as data. The owner pressed *Move it into the library*: the two pictures are **event frames** of the event
+(`MTK Budapest x Vasas FC: blue` for HAJRÁ, MTK! and SZÍVEM KÉK-FEHÉR!, `...: pink` for MTK SZÍV! and MINDEN NŐ SZÁMÍT!), each with the message box, colour and territories above as its message
+area, assigned to the event (which has its own list), and every message chooses its frame. The four images were drawn again from the frames and are identical to the old ones (no pixel
+differs); the old `frameDesign.base` was then removed with *Remove the old data*. The event's other pictures and the partner's logo became library items the same day: the logo in the partner
+library of MTK Budapest, and the welcome page background, left image, right image and screen picture, the e-mail footer picture and the giant screen overlay as items of the event's Images
+library, each pointing at the address the event already uses (docs/LIBRARIES.md).
+

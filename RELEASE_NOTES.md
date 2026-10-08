@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the MTK x Vasas event is in the libraries (data; camera#369, epic camera#361)
+
+- **Changed (data, 2026-10-08, owner's go):** the real event MTK Budapest x Vasas FC now uses the libraries. The owner moved the designers' picture into the library (two event frames, every message
+  chooses one, the four images drawn again: no pixel differs from the old ones) and the old base data was removed. The partner's logo was imported into the MTK Budapest library (assigned to nothing)
+  and the six pictures the event uses became items of its Images library, pointing at the addresses already in use (no copy, no upload). No code change.
+- **Verified:** read-only checks after each step: the frames, the choice of each message, the images, the library items, the event's own fields, the slideshow screen design and the partner's library
+  and defaults as before, and the public event and logo APIs answering the same (apart from the per-request timestamps of the built-in pages). The pre-change state of the frame data and of the event
+  fields was saved. **The owner has seen the frames on the Frames page.**
+
 ## Unreleased — a global frame or logo that is in use cannot be deleted (camera#392; library audit finding 14)
 
 - **Changed (owner decision, 2026-10-08: before the match):** `DELETE /api/frames/<id>` and `DELETE /api/logos/<id>` (global admins) are refused with a 409 and a plain message while an event has the item assigned, a partner library holds it, or a partner makes it a default for new events: "This frame is used by 2 events, 1 partner library. Switch it off instead, so nobody can take it any more, or remove it from them first." Before, a deleted frame left its id on every event and library (the pages listed it as missing), and a deleted logo was pulled from every event without a word, so a live event could lose its logo. An item nothing uses is deleted as before; switching it off is the way to retire one that is in use.
