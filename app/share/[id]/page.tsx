@@ -28,6 +28,7 @@ import {
   type EventSharePageSettings,
 } from '@/lib/events/share-page-settings';
 import { DEFAULT_UI_LANGUAGE, normalizeUiLanguage, translate, type UiLanguage } from '@/lib/i18n';
+import { formatDateTime } from '@/lib/i18n/date';
 import {
   type ShareVariantCard,
   prioritizeShareVariantCardsForFeaturedDisplay,
@@ -170,23 +171,6 @@ async function resolveEventForSubmission(
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-/** The locale of the date under the photo: English keeps the server's own locale, as before the language existed. */
-const DATE_LOCALES: Record<UiLanguage, string | undefined> = { en: undefined, hu: 'hu-HU' };
-
-function formatDateTime(value: string, language: UiLanguage): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-  return date.toLocaleString(DATE_LOCALES[language], {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 function isLikelyEmail(value: string): boolean {
