@@ -7,6 +7,7 @@ import PublicShell from '@/components/public/PublicPageShell';
 import { Alert, Button, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import AutoRefresh from '@/components/share/AutoRefresh';
 import { sharePageText, type SharePageTexts } from '@/lib/events/share-page-settings';
+import type { UiLanguage } from '@/lib/i18n';
 
 interface PhotoStatusNoticeProps {
   state: 'waiting' | 'not_approved';
@@ -15,13 +16,15 @@ interface PhotoStatusNoticeProps {
   captureHref: string;
   /** The event's share page settings: its own texts for the notice, the defaults where it has none. */
   settings?: { texts?: SharePageTexts } | null;
+  /** The language of the event (camera#352): the language of the defaults. English when absent. */
+  language?: UiLanguage;
 }
 
 // The title is a flex row as wide as the alert, so it is centred with the text under it by centring the row.
 const CENTERED_ALERT = { title: { justifyContent: 'center' } };
 
-export default function PhotoStatusNotice({ state, eventName, captureHref, settings }: PhotoStatusNoticeProps) {
-  const text = (key: Parameters<typeof sharePageText>[1]) => sharePageText(settings, key);
+export default function PhotoStatusNotice({ state, eventName, captureHref, settings, language }: PhotoStatusNoticeProps) {
+  const text = (key: Parameters<typeof sharePageText>[1]) => sharePageText(settings, key, language);
   return (
     <PublicShell size="sm">
       <Stack gap="lg" align="center" ta="center" data-share-state={state}>

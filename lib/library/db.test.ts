@@ -93,6 +93,14 @@ test('removing a default removes it from the defaults and says how many events s
   assert.deepEqual((data.partners[0] as { library: { frames: string[] } }).library.frames, []);
 });
 
+test('removing an item keeps it on the events that use it: they stop following the defaults, and the events that do not use it keep following them', async () => {
+  const { db, data } = seed();
+  await savePartnerLibrary(db, partner({ library: { frames: ['g1', 'g2'] } }), 'frames', { remove: ['g2'] }, NOW);
+  const [uses, doesNotUse] = data.events as Array<{ framesOverridden?: boolean }>;
+  assert.equal(uses.framesOverridden, true, 'it has g2, so its list is its own from now on');
+  assert.equal(doesNotUse.framesOverridden, undefined, 'it does not have g2, so it keeps following the defaults');
+});
+
 test('a default for new events must be in the library; the partner\'s own upload can be one', async () => {
   const { db } = seed();
   const outside = await savePartnerLibrary(db, partner({ library: { frames: ['g1'] } }), 'frames', { defaults: ['g2'] }, NOW);

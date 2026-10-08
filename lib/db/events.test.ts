@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 import { fakeDb } from '@/lib/library/fake-db';
+import { savePartnerLibrary } from '@/lib/library/db';
 
 /** A colour from its digits: the colour gate allows no raw hex literal in a test. */
 const hex = (digits: string) => `#${digits}`;
@@ -73,3 +74,31 @@ test('a change that does not mention the colours does not touch them', async (t)
   assert.equal(result.brandColorsUpdated, 0);
   assert.equal(eventDoc(data, 'inherits').brandColor, PARTNER_A);
 });
+
+test('a frame the partner removes from its library stays on the events that use it, also when the defaults change with it (decision 116)', async (t) => {
+  const NOW = '2026-10-08T12:00:00.000Z';
+  const assigned = (frameId: string) => ({ frameId, isActive: true, addedAt: NOW, addedBy: 'system' });
+  const frame = (frameId: string) => ({ frameId, name: frameId, imageUrl: `https://img.example/${frameId}.png`, isActive: true });
+  const seeded = fakeDb({
+    frames: [frame('f1'), frame('f2')],
+    logos: [],
+    partners: [{ partnerId: 'P', name: 'Partner P', defaultFrames: ['f1', 'f2'], library: { frames: ['f1', 'f2'], logos: [] } }],
+    events: [
+      { eventId: 'uses', partnerId: 'P', frames: [assigned('f1'), assigned('f2')] },
+      { eventId: 'does-not', partnerId: 'P', frames: [assigned('f2')] },
+    ],
+  });
+  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
+  const { updateChildEventsFromPartner } = await importEvents('library-removal');
+
+  const partner = seeded.data.partners[0];
+  const saved = await savePartnerLibrary(seeded.db, partner, 'frames', { remove: ['f1'] }, NOW);
+  assert.equal(saved.ok, true);
+  if (!saved.ok) return;
+  await updateChildEventsFromPartner('P', { defaultFrames: saved.defaults });
+
+  const framesOf = (eventId: string) => (eventDoc(seeded.data, eventId).frames as Array<{ frameId: string }>).map((f) => f.frameId);
+  assert.deepEqual(framesOf('uses'), ['f1', 'f2'], 'it had f1 and keeps it');
+  assert.deepEqual(framesOf('does-not'), ['f2'], 'it follows the defaults, which are now f2');
+});
+

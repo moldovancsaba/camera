@@ -12,6 +12,28 @@
   width. **Not applied to any real event, not seen by the owner;** the MTK x Vasas event moves last (decision 118), after the owner has seen the library pages work.
 - **Changed (wording):** the library pages say "users", not "guests" (the dictionary).
 
+## Unreleased — library fixes: uploads on the server, and removing an item keeps it on the events (camera#385; epic camera#361)
+
+- **Fixed:** an upload on a partner or event library page failed on the server with "FileReader is not defined": the upload helper turned the file into text with `FileReader`, which Node does not
+  have. It now reads the file's bytes directly. The route tests replace the helper with a fake, which is why nothing showed it before; the new tests give the helper a real `File` and check the
+  stored bytes and name.
+- **Fixed:** an SVG was stored as `image/svg`, which a browser does not draw in an image; it is stored as `image/svg+xml`.
+- **Fixed (decision 116):** removing an item from a partner library also took it from the events that follow the partner's defaults, because the change of the defaults replaces the whole list of
+  such an event. An event that uses a removed item now stops following the defaults (the same flag an edit of its list sets), so its list stays as it is and its page says "No longer in the
+  partner library". Events that do not use the item keep following the defaults.
+- **Verified:** unit tests (the upload of a File and of an SVG, the flag set only on the events that use the item, and the real defaults cascade run after a removal, which fails without the fix);
+  type-check; lint; the full CI chain on a UTC clock. **Not seen by the owner;** one upload on a partner library page after the merge is the check.
+
+## Unreleased — UI language of an event, step 3: the public photo page and the emails (camera#352)
+
+- **Changed:** the public photo page (`/share/...`, the page the email links to) and its waiting and not-approved notices are in the event's language: the ten fixed texts of the share page settings, the pending try-on message, the picture labels and alt texts, "Guest", the date under the photo (Hungarian date format), the header logo's alt text, the tab title, the description and the link preview texts. An event's own text still wins; a stored text that is exactly the English default counts as not set in Hungarian, as in the capture flow.
+- **Changed:** the emails the guest gets are in the event's language: the approval and not-approved emails of a vetted photo, and the emails after the save, after the related photos and after an approved try-on rerun (subject, body, button, the word for a guest without a name, the terms link, which becomes `seyuselfies.com/hu/policies/`). The English defaults the event editor saved into an event are sent as the same defaults in Hungarian; an email text or terms link an editor wrote is sent as written.
+- **Added (owner, 2026-10-08):** the date and time under the photo of a Hungarian event are shown in Budapest time (`lib/i18n/date.ts`); English keeps the server's own time zone.
+- **Changed (layout, both languages):** on a phone the Download and Create Your Own buttons of the photo page sit one under the other. Side by side they were half a phone wide and the themed capitals were clipped: "Download" on main at 375 and 320 points, the Hungarian labels too. Side by side again from 576 pixels up; a single button stays full width.
+- **English is exactly as before:** every English dictionary text was compared byte for byte with the constants on main; the English emails rendered by main and by this branch from the same data are identical files (HTML and text); the English photo page and notices show the same words, metadata, alt texts and buttons as main at 320, 375 and 1024 points.
+- **Verified:** unit tests (the dictionaries' keys and markers; the share page texts with and without own texts in both languages; the stored-English-default rule for the share page, the pending message and the emails; the Hungarian approval and not-approved emails; the metadata in both languages; the English strings pinned); type-check; lint; the full CI chain; a real browser on the built app against a throwaway local database (nothing written anywhere else): the photo page, the two notices and the pending try-on message in English and Hungarian at 320, 375, 430 and 1024 points, no English word left in Hungarian apart from the product name in the header of an event without a logo and the event's own texts, no clipped label, no sideways scroll; the approval, not-approved and after-save emails rendered in both languages and read.
+- **Not verified:** not seen on a phone (a desktop browser at phone sizes only); no email sent through Resend (the sender was replaced by a recorder); the Hungarian texts not reviewed by MTK; the stored texts of the real MTK event not checked (an own English text there would stay English). No event is set to Hungarian.
+
 ## Unreleased — libraries, step 3: each message chooses its frame (camera#366; epic camera#361)
 
 - **Added (owner, 2026-10-08: "at the message we need to be able to choose which frame to apply it to"):** a frame of the library can have a **message area**: where a message is

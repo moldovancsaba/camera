@@ -1,4 +1,5 @@
 import type { EventSharePageSettings } from '@/lib/events/share-page-settings';
+import { DEFAULT_UI_LANGUAGE, translate, type UiLanguage } from '@/lib/i18n';
 
 export interface ShareVariantCard {
   id: string;
@@ -132,10 +133,19 @@ function readDateEpoch(value: unknown): number {
   return 0;
 }
 
+interface CheckedInCandidate {
+  card: ShareVariantCard;
+  rank: number;
+  timestamp: number;
+  /** The English label: ties are broken on it, so the page and the download route pick the same picture whatever the page's language. */
+  order: string;
+}
+
 function buildCheckedInCandidate(
   variant: TryOnShareVariantSource,
-  settings: EventSharePageSettings
-): { card: ShareVariantCard; rank: number; timestamp: number } | null {
+  settings: EventSharePageSettings,
+  language: UiLanguage
+): CheckedInCandidate | null {
   const id = variant._id?.toString() ?? '';
   const metadata =
     variant.metadata && typeof variant.metadata === 'object'
@@ -148,7 +158,10 @@ function buildCheckedInCandidate(
     rawResultUrl,
     metadata.compositionEngine
   );
-  const suitLabel = readString(variant.tryOnLeatherSuitId) || 'Approved try-on result';
+  // The label is in the language of the event's page (camera#352).
+  const suit = readString(variant.tryOnLeatherSuitId);
+  const labelIn = (labelLanguage: UiLanguage) =>
+    translate(labelLanguage, 'sharePage.tryOnCheckedIn', { suit: suit || translate(labelLanguage, 'sharePage.tryOnApproved') });
 
   const canUseFramed = Boolean(resultUrl && isFramed);
   const canUseRaw = Boolean(rawResultUrl);
@@ -187,10 +200,11 @@ function buildCheckedInCandidate(
   return {
     rank,
     timestamp: Math.max(readDateEpoch(variant.approvedAt), readDateEpoch(variant.createdAt)),
+    order: labelIn(DEFAULT_UI_LANGUAGE),
     card: {
       id: `${id}:tryon-checked-in`,
       imageUrl,
-      label: `${suitLabel} - checked-in`,
+      label: labelIn(language),
       isTryOn: true,
     },
   };
@@ -198,25 +212,27 @@ function buildCheckedInCandidate(
 
 export function buildCheckedInTryOnVariantCard(
   variant: TryOnShareVariantSource,
-  settings: EventSharePageSettings
+  settings: EventSharePageSettings,
+  language: UiLanguage = DEFAULT_UI_LANGUAGE
 ): ShareVariantCard | null {
-  return buildCheckedInCandidate(variant, settings)?.card ?? null;
+  return buildCheckedInCandidate(variant, settings, language)?.card ?? null;
 }
 
 export function pickFirstCheckedInTryOnVariantCard(
   variants: TryOnShareVariantSource[],
-  settings: EventSharePageSettings
+  settings: EventSharePageSettings,
+  language: UiLanguage = DEFAULT_UI_LANGUAGE
 ): ShareVariantCard | null {
   const candidates = variants
-    .map((variant) => buildCheckedInCandidate(variant, settings))
-    .filter((value): value is { card: ShareVariantCard; rank: number; timestamp: number } => Boolean(value));
+    .map((variant) => buildCheckedInCandidate(variant, settings, language))
+    .filter((value): value is CheckedInCandidate => Boolean(value));
 
   if (!candidates.length) return null;
 
   candidates.sort((a, b) => {
     if (b.rank !== a.rank) return b.rank - a.rank;
     if (b.timestamp !== a.timestamp) return b.timestamp - a.timestamp;
-    return a.card.label.localeCompare(b.card.label);
+    return a.order.localeCompare(b.order);
   });
 
   return candidates[0].card;

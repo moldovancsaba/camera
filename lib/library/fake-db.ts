@@ -1,6 +1,6 @@
 /**
  * A database of plain arrays for the tests of the libraries: just the calls lib/library and its routes make (find with sort and limit,
- * findOne, countDocuments, insertOne, updateOne with $set, $push and $pull, deleteOne). Filters: equality (null matches a missing field),
+ * findOne, countDocuments, insertOne, updateOne with $set, $push and $pull, updateMany with $set, deleteOne). Filters: equality (null matches a missing field),
  * $in, $nin, $ne, $exists, $or and dotted paths through arrays (`frames.frameId`); $set (also `frames.$.isActive`), $unset, $push and $pull. Not part of the app.
  */
 
@@ -127,6 +127,12 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
             doc[path] = arr.filter((item) => !(cond && typeof cond === 'object' ? matches(item as Doc, cond as Doc) : item === cond));
           }
           return { matchedCount: 1, modifiedCount: 1 };
+        },
+        updateMany: async (filter: Doc, update: Doc) => {
+          calls.push({ collection: name, op: 'updateMany', args: [filter, update] });
+          const docs = list(name).filter((d) => matches(d, filter));
+          for (const doc of docs) for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(doc, path, value, filter);
+          return { matchedCount: docs.length, modifiedCount: docs.length };
         },
         findOneAndUpdate: async (filter: Doc, update: Doc) => {
           const doc = list(name).find((d) => matches(d, filter));

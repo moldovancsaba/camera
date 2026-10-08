@@ -31,7 +31,7 @@ its own. A partner can only take items that are global. The pictures are always 
 A partner that has not saved a library yet has **what it already had**: its default frames and logos and the frames and logos its events already use (only global
 items; an event's own upload is not a partner item). That list is computed, nothing is written and nothing is deleted. **The first change saved on the partner library
 page makes it the partner's own list**, for every kind at once. Removing an item from the partner library does **not** take it away from the events that already
-have it: they keep it, and their page says "No longer in the partner library" (the API tells how many events still use a removed item).
+have it: they keep it, and their page says "No longer in the partner library" (the API tells how many events still use a removed item). An event that follows the partner's defaults and has the removed item stops following them (`framesOverridden`, `logosOverridden`): the change of the defaults replaces the whole list of an event that follows them, so without this the event would lose the item (decision 116).
 
 ## The rules (lib/library/rules.ts, pure)
 
