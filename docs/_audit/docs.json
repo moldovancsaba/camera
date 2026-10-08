@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-08T12:31:43+00:00",
+  "generated": "2026-10-08T13:08:41+00:00",
   "repo": "camera",
-  "head": "57e3361",
+  "head": "78f7fea",
   "counts": {
    "endpoints": 120,
    "collections": 7,
    "env": 59,
    "outbound-hosts": 30,
-   "docs": 56
+   "docs": 57
   }
  },
  "items": [
@@ -139,6 +139,10 @@
   {
    "file": "docs/LIBRARIES.md",
    "title": "Libraries: Global -> Partner -> Event"
+  },
+  {
+   "file": "docs/LIBRARY_AUDIT.md",
+   "title": "Library audit: what bypasses the libraries or cannot be seen (2026-10-08)"
   },
   {
    "file": "docs/LOGO_STORAGE.md",
