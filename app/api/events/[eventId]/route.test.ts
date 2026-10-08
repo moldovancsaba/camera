@@ -185,6 +185,26 @@ test('GET as a guest carries the language of the event', async (t) => {
   assert.equal(body.data.event.uiLanguage, 'hu');
 });
 
+test('PATCH: the guided tour is switched on or off with a true or false, refused otherwise, and left alone when absent', async (t) => {
+  const h = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-tour');
+  assert.equal((await PATCH(patchRequest({ tourEnabled: true }), params)).status, 200);
+  assert.equal(h.updates[0].tourEnabled, true);
+  assert.equal((await PATCH(patchRequest({ tourEnabled: false }), params)).status, 200);
+  assert.equal(h.updates[1].tourEnabled, false);
+  for (const bad of ['yes', 1, null, {}]) assert.equal((await PATCH(patchRequest({ tourEnabled: bad }), params)).status, 400, String(bad));
+  assert.equal((await PATCH(patchRequest({ loadingText: 'Hello' }), params)).status, 200);
+  assert.equal('tourEnabled' in h.updates[2], false);
+  assert.equal(h.updates.length, 3, 'a refused value writes nothing');
+});
+
+test('GET as a guest carries the tour setting, and an event that never set it does not have it (the tour is off)', async (t) => {
+  mockDeps(t, { event: { tourEnabled: true, customPages: [] } });
+  const { GET } = await importRouteModule('get-tour-on');
+  const on = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { tourEnabled?: boolean } } };
+  assert.equal(on.data.event.tourEnabled, true);
+});
+
 // Stand-in colours from the tokens (no raw colour literals in tests).
 const HERO = EVENT_THEME_DEFAULT.headingColor;
 const WHITE = `${CAMERA_STAGE_WHITE.toLowerCase()}ff`;

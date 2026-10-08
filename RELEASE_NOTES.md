@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the guided tour is off by design, an event setting turns it on (camera#356)
+
+- **Changed (client feedback via the owner, 2026-10-08):** the tour of the capture flow (the tips that started by themselves the first time a user reached a step, and the "Show tour" links) is **off for every event**, existing events included. The event setting **"Show the guided tour"** (`Event.tourEnabled`, event editor, `PATCH /api/events/<id>`, returned to the capture page) turns it on; then the tours start and replay as before, in the event's language. Missing or false means off. Nothing is deleted: the tour code and its texts stay.
+- **Verified:** unit tests of the API (set, clear, refuse a non-boolean, left alone when absent, returned to the capture page); a real browser on the built app, mocked answers, nothing written: with the setting false or missing no overlay and no "Show tour" link; with it true the overlay shows and the link is there. Not seen: the checkbox in the event editor by a person.
+
 ## Unreleased — UI language of an event, step 2: the texts of the capture flow (camera#352)
 
 - **Changed:** every default text of the capture flow now comes from the dictionary of the event's language (`lib/i18n`, English and Hungarian): the default consent and login pages (built in the language on the server; the consent boxes link to `seyuselfies.com/<language>/legal/...`), the camera screens, the photo screen (Retake, Reset, Continue, zoom and fit controls), the waiting and share screens, the CTA and restart pages, the social login buttons, the try-on selector, the tour, the save and email notices, the tab title and the link preview text. **English is exactly as before** (every English text was checked word for word against the code on main, and the flow was run in a real browser). No event has a language yet, so no event looks different.
