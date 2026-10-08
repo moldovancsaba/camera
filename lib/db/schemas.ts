@@ -501,6 +501,9 @@ export interface Logo {
   scope?: 'global' | 'partner' | 'event';
   partnerId?: string;                // partner UUID, for scope 'partner' (and the partner of an event upload)
   eventId?: string;                  // the event's UUID (Event.eventId), for scope 'event'
+  // A logo that was not uploaded (camera#367): 'messmass' for the partner's logo imported from messmass, and the address it came from.
+  source?: 'messmass';
+  sourceUrl?: string;
 }
 
 // ============================================================================

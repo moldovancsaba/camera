@@ -23,6 +23,7 @@ function matchesValue(value: unknown, want: unknown): boolean {
       if (op === '$nin') return !(arg as unknown[]).some((a) => matchesValue(value, a));
       if (op === '$ne') return !matchesValue(value, arg);
       if (op === '$exists') return (value !== undefined) === Boolean(arg);
+      if (op === '$elemMatch') return Array.isArray(value) && value.some((item) => matches(item as Doc, arg as Doc));
       throw new Error(`fake db: unsupported operator ${op}`);
     });
   }
@@ -38,10 +39,16 @@ export function matches(doc: Doc, filter: Doc): boolean {
   });
 }
 
-/** The index the positional `$` stands for: the first element of the array named in the filter (`frames.frameId`) that matches. */
+/** The index the positional `$` stands for: the first element of the array named in the filter (`frames.frameId`, or `logos` with `$elemMatch`) that matches. */
 function positionalIndex(doc: Doc, filter: Doc, arrayName: string): number {
   for (const [key, want] of Object.entries(filter)) {
     const [head, ...rest] = key.split('.');
+    const elemMatch = key === arrayName && want && typeof want === 'object' ? (want as Doc).$elemMatch : undefined;
+    if (elemMatch) {
+      const i = ((doc[arrayName] as unknown[] | undefined) ?? []).findIndex((item) => matches(item as Doc, elemMatch as Doc));
+      if (i >= 0) return i;
+      continue;
+    }
     if (head !== arrayName || rest.length === 0) continue;
     const list = (doc[arrayName] as unknown[] | undefined) ?? [];
     const i = list.findIndex((item) => valuesAt(item, rest).some((value) => matchesValue(value, want)));

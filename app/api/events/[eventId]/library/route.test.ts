@@ -15,11 +15,23 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 
 const frame = (frameId: string, extra: Record<string, unknown> = {}) => ({ frameId, name: `Frame ${frameId}`, imageUrl: `https://img.example/${frameId}.png`, isActive: true, createdAt: '2026-10-01T00:00:00.000Z', ...extra });
 
+const logo = (logoId: string, extra: Record<string, unknown> = {}) => ({ logoId, name: `Logo ${logoId}`, imageUrl: `https://img.example/${logoId}.png`, isActive: true, createdAt: '2026-10-01T00:00:00.000Z', ...extra });
+
 function setup(t: TestContext, options: { allowed?: boolean } = {}) {
   const seeded = fakeDb({
     frames: [frame('g1'), frame('g2'), frame('p1', { scope: 'partner', partnerId: 'P' }), frame('e1', { scope: 'event', eventId: 'e-uuid', partnerId: 'P' })],
-    partners: [{ _id: PARTNER_MONGO_ID, partnerId: 'P', name: 'Partner P', library: { frames: ['g1'], logos: [] } }],
-    events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', name: 'Event', frames: [{ frameId: 'e1', isActive: true, addedAt: 'x', addedBy: 'u' }] }],
+    logos: [logo('lg1'), logo('lg2'), logo('lp1', { scope: 'partner', partnerId: 'P', source: 'messmass' })],
+    partners: [{ _id: PARTNER_MONGO_ID, partnerId: 'P', name: 'Partner P', library: { frames: ['g1'], logos: ['lg1'] } }],
+    events: [
+      {
+        _id: EVENT_MONGO_ID,
+        eventId: 'e-uuid',
+        partnerId: 'P',
+        name: 'Event',
+        frames: [{ frameId: 'e1', isActive: true, addedAt: 'x', addedBy: 'u' }],
+        logos: [{ logoId: 'lg1', scenario: 'onboarding-thankyou', order: 0, isActive: true }, { logoId: 'lg1', scenario: 'loading-capture', order: 1, isActive: false }],
+      },
+    ],
   });
   t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
   t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN } });
@@ -45,6 +57,15 @@ test("GET lists what the event assigned and what it can still take: its partner'
   assert.equal(body.data.assigned[0].scope, 'event');
   // g1 is in the partner library, p1 is the partner's upload; g2 is global but the partner does not have it.
   assert.deepEqual(ids(body.data.available), ['g1', 'p1']);
+});
+
+test('GET for logos: one entry per scenario assignment, and every logo of the partner library is still offered for the other scenarios', async (t) => {
+  setup(t);
+  const { GET } = await importRoute('get-logos');
+  const body = (await (await GET(get('?kind=logos'), params())).json()) as { data: { assigned: Array<{ id: string; assignment: { scenario: string; isActive: boolean } }>; available: Array<{ id: string; source?: string }> } };
+  assert.deepEqual(body.data.assigned.map((e) => [e.id, e.assignment.scenario, e.assignment.isActive]), [['lg1', 'onboarding-thankyou', true], ['lg1', 'loading-capture', false]]);
+  assert.deepEqual(ids(body.data.available), ['lg1', 'lp1'], 'lg2 is global but the partner does not have it');
+  assert.equal(body.data.available.find((i) => i.id === 'lp1')?.source, 'messmass');
 });
 
 test('GET needs a valid event id and a kind, and the event must exist', async (t) => {

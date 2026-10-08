@@ -6,6 +6,7 @@
 
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { logoDefaultsOf, sameLogoDefaults, type LogoDefault } from './logos';
 import {
   KIND_META,
   LIBRARY_KINDS,
@@ -40,6 +41,7 @@ export function itemView(kind: LibraryKind, doc: Document): LibraryItemView {
     description: text(doc.description),
     imageUrl: urlOrNull(doc.imageUrl),
     thumbnailUrl: urlOrNull(doc.thumbnailUrl),
+    ...(text(doc.source) ? { source: text(doc.source) } : {}),
     scope: scopeOf(fieldsOf(doc)),
     itemActive: doc.isActive !== false,
     createdAt: urlOrNull(doc.createdAt),
@@ -134,7 +136,8 @@ export async function loadEventLibrary(db: Db, event: Document, kind: LibraryKin
   }
 
   const ownEventDocs = await coll(db, kind).find({ scope: 'event', eventId }).sort({ createdAt: -1 }).limit(LIST_LIMIT).toArray();
-  const taken = new Set(assignedIds);
+  // A logo is assigned once per scenario, so a logo the event shows in one scenario can still be taken for another (the page filters per scenario).
+  const taken = new Set(kind === 'logos' ? [] : assignedIds);
   const candidates = [...resolved.globalDocs, ...resolved.ownDocs, ...ownEventDocs].filter((doc) => doc.isActive !== false && !taken.has(idOf(kind, doc)));
   return {
     kind,
@@ -170,10 +173,12 @@ export interface PartnerLibraryChange {
   remove?: readonly string[];
   /** The ids marked "default for new events" (frames only); omitted keeps the current ones that are still in the library. */
   defaults?: readonly string[];
+  /** The same for logos (`Partner.defaultLogos`): each default with its scenario and order (lib/library/logos.ts). */
+  logoDefaults?: readonly LogoDefault[];
 }
 
 export type SavePartnerLibraryResult =
-  | { ok: true; defaults: string[]; defaultsChanged: boolean; removedInUse: Record<string, number> }
+  | { ok: true; defaults: string[]; defaultsChanged: boolean; removedInUse: Record<string, number>; logoDefaults?: LogoDefault[] }
   | { ok: false; status: 400 | 404; reason: string };
 
 /**
@@ -186,6 +191,7 @@ export async function savePartnerLibrary(db: Db, partner: Document, kind: Librar
   const remove = [...new Set(change.remove ?? [])];
   const noun = KIND_META[kind].noun;
   if (change.defaults && kind !== 'frames') return { ok: false, status: 400, reason: `Defaults for new events are set for frames here; ${noun} defaults are set with their scenario.` };
+  if (change.logoDefaults && kind !== 'logos') return { ok: false, status: 400, reason: 'Defaults with a scenario are set for logos only.' };
 
   if (add.length) {
     const docs = await coll(db, kind).find({ [KIND_META[kind].idField]: { $in: add } }).toArray();
@@ -222,8 +228,20 @@ export async function savePartnerLibrary(db: Db, partner: Document, kind: Librar
   }
   const defaultsChanged = defaults.length !== currentDefaults.length || defaults.some((id, i) => id !== currentDefaults[i]);
 
+  // Logo defaults carry their scenario and order; the same rule holds: a default is always an item of the library.
+  let logoDefaults: LogoDefault[] | undefined;
+  let logoDefaultsChanged = false;
+  if (kind === 'logos') {
+    const current = logoDefaultsOf(partner);
+    logoDefaults = change.logoDefaults ? [...change.logoDefaults] : current.filter((row) => allowed.has(row.logoId));
+    const outside = [...new Set(logoDefaults.map((row) => row.logoId))].filter((id) => !allowed.has(id));
+    if (outside.length) return { ok: false, status: 400, reason: `A default for new events must be in the partner library: ${outside.join(', ')}` };
+    logoDefaultsChanged = !sameLogoDefaults(logoDefaults, current);
+  }
+
   const set: Record<string, unknown> = { 'library.frames': library.frames, 'library.logos': library.logos, updatedAt: now };
   if (defaultsChanged && kind === 'frames') set.defaultFrames = defaults;
+  if (logoDefaultsChanged) set.defaultLogos = logoDefaults;
   await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId: text(partner.partnerId) }, { $set: set });
 
   const removedInUse: Record<string, number> = {};
@@ -231,6 +249,7 @@ export async function savePartnerLibrary(db: Db, partner: Document, kind: Librar
     const count = await db.collection(COLLECTIONS.EVENTS).countDocuments({ partnerId: text(partner.partnerId), [`${kind}.${KIND_META[kind].idField}`]: id });
     if (count > 0) removedInUse[id] = count;
   }
+  if (logoDefaults) return { ok: true, defaults: [...new Set(logoDefaults.map((row) => row.logoId))], defaultsChanged: logoDefaultsChanged, removedInUse, logoDefaults };
   return { ok: true, defaults, defaultsChanged: defaultsChanged && kind === 'frames', removedInUse };
 }
 
@@ -254,6 +273,7 @@ export async function deleteLibraryUpload(db: Db, kind: LibraryKind, itemId: str
     const inUse = await db.collection(COLLECTIONS.EVENTS).countDocuments({ partnerId: level.partnerId, [`${kind}.${idField}`]: itemId });
     if (inUse > 0) return { ok: false, status: 409, reason: `${inUse} event${inUse === 1 ? '' : 's'} still use${inUse === 1 ? 's' : ''} this ${noun}. Remove it from them first.` };
     if (kind === 'frames') await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId: level.partnerId }, { $pull: { defaultFrames: itemId } as Document });
+    if (kind === 'logos') await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId: level.partnerId }, { $pull: { defaultLogos: { logoId: itemId } } as Document });
   }
   await coll(db, kind).deleteOne({ [idField]: itemId });
   return { ok: true };
