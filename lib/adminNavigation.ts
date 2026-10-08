@@ -72,13 +72,6 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
-        href: '/admin/photo-vetting',
-        label: 'Photo vetting',
-        description: 'Turn photo vetting on for every event; photos wait for approval first.',
-        iconKey: 'photo',
-        isVisible: (access) => access.isGlobalAdmin,
-      },
-      {
         href: '/admin/tryon/maintenance',
         label: 'Maintenance',
         description: 'Worker health, data integrity audit, and job reconciliation.',
