@@ -9,6 +9,7 @@ import { SimpleGrid } from '@mantine/core';
 import { ProviderIdentityButton } from '@sovereignsquad/gds-core/client';
 
 import { socialLoginHref } from '@/lib/auth/social-login';
+import { useT } from '@/components/i18n/UiLanguageProvider';
 
 export interface SocialLoginButtonsProps {
   /** After logout, force IdP login screen */
@@ -19,13 +20,14 @@ export interface SocialLoginButtonsProps {
 }
 
 export default function SocialLoginButtons({ fromLogout, captureEventId, capturePage }: SocialLoginButtonsProps) {
+  const { t } = useT();
   const googleHref = socialLoginHref('google', { fromLogout, captureEventId, capturePage });
   const facebookHref = socialLoginHref('facebook', { fromLogout, captureEventId, capturePage });
 
   return (
     <SimpleGrid cols={2} spacing="sm">
-      <ProviderIdentityButton provider="google" href={googleHref} label="Google" ariaLabel="Continue with Google" size="sm" />
-      <ProviderIdentityButton provider="facebook" href={facebookHref} label="Facebook" ariaLabel="Continue with Facebook" size="sm" />
+      <ProviderIdentityButton provider="google" href={googleHref} label="Google" ariaLabel={t('social.google.aria')} size="sm" />
+      <ProviderIdentityButton provider="facebook" href={facebookHref} label="Facebook" ariaLabel={t('social.facebook.aria')} size="sm" />
     </SimpleGrid>
   );
 }

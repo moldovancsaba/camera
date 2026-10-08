@@ -8,28 +8,37 @@
 import type { CustomPage } from '@/lib/db/schemas';
 import type { ConsentCheckbox } from './consent';
 import { withRequiredIdentityPage } from './identity-page';
+import { translate, type UiLanguage } from '@/lib/i18n';
 
 export const DEFAULT_CONSENT_PAGE_ID = 'default-consent';
 
-/** The three legal pages every user accepts (owner, 2026-10-07): all required, English by default, another language typed per event. */
-export const DEFAULT_CONSENT_CHECKBOXES: readonly ConsentCheckbox[] = [
-  { text: 'I accept the Terms and conditions', linkUrl: 'https://seyuselfies.com/en/legal/terms' },
-  { text: 'I accept cookies', linkUrl: 'https://seyuselfies.com/en/legal/cookies' },
-  { text: 'I have read the Privacy policy', linkUrl: 'https://seyuselfies.com/en/policies' },
-];
+/**
+ * The three legal pages every user accepts (owner, 2026-10-07): all required, in the language of the event (camera#352); the links go to the legal
+ * pages of the service in that language (they exist in English and Hungarian).
+ */
+export function defaultConsentCheckboxes(language: UiLanguage = 'en'): readonly ConsentCheckbox[] {
+  return [
+    { text: translate(language, 'consent.terms'), linkUrl: `https://seyuselfies.com/${language}/legal/terms` },
+    { text: translate(language, 'consent.cookies'), linkUrl: `https://seyuselfies.com/${language}/legal/cookies` },
+    { text: translate(language, 'consent.privacy'), linkUrl: `https://seyuselfies.com/${language}/policies` },
+  ];
+}
 
-export function defaultConsentPage(order: number, now: string = new Date().toISOString()): CustomPage {
+/** The English default checkboxes, for code that has no language. */
+export const DEFAULT_CONSENT_CHECKBOXES: readonly ConsentCheckbox[] = defaultConsentCheckboxes('en');
+
+export function defaultConsentPage(order: number, now: string = new Date().toISOString(), language: UiLanguage = 'en'): CustomPage {
   return {
     pageId: DEFAULT_CONSENT_PAGE_ID,
     pageType: 'accept' as CustomPage['pageType'],
     order,
     isActive: true,
     config: {
-      title: 'Before we start',
-      description: 'Please accept all of the following to continue.',
-      buttonText: 'Continue',
+      title: translate(language, 'consent.title'),
+      description: translate(language, 'consent.description'),
+      buttonText: translate(language, 'consent.button'),
       checkboxText: '',
-      checkboxes: DEFAULT_CONSENT_CHECKBOXES.map((checkbox) => ({ ...checkbox })),
+      checkboxes: defaultConsentCheckboxes(language).map((checkbox) => ({ ...checkbox })),
     },
     createdAt: now,
     updatedAt: now,
@@ -49,7 +58,7 @@ export function hasConsentPageBeforePhoto(pages: readonly CustomPage[]): boolean
  */
 export function withDefaultJourneyPages(
   pages: readonly CustomPage[] | null | undefined,
-  options: { vettingRequired: boolean; consentDefault: boolean; now?: string },
+  options: { vettingRequired: boolean; consentDefault: boolean; now?: string; language?: UiLanguage },
 ): CustomPage[] {
   const own = [...(pages ?? [])];
   let withConsent = own;
@@ -58,7 +67,7 @@ export function withDefaultJourneyPages(
     let leading = 0;
     while (sorted[leading]?.pageType === 'welcome') leading += 1;
     const order = leading > 0 ? sorted[leading - 1].order + 0.25 : (sorted.length > 0 ? sorted[0].order : 0) - 2;
-    withConsent = [defaultConsentPage(order, options.now), ...own];
+    withConsent = [defaultConsentPage(order, options.now, options.language), ...own];
   }
-  return withRequiredIdentityPage(withConsent, options.vettingRequired, options.now);
+  return withRequiredIdentityPage(withConsent, options.vettingRequired, options.now, options.language);
 }

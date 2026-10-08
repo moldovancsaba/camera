@@ -26,6 +26,7 @@ import { Button, Group, Stack, Text } from '@mantine/core';
 import { CAMERA_DEFAULT_CTA_BRAND_COLOR, CAMERA_STAGE_BLACK, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
 import { redirectingText } from '@/lib/events/page-texts';
+import { useT } from '@/components/i18n/UiLanguageProvider';
 
 export interface CTAPageConfig {
   title: string;
@@ -69,13 +70,14 @@ export default function CTAPage({
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
   submissionId,
 }: CTAPageProps) {
+  const { t, own, language } = useT();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const hasButton = config.hasButton !== false;
   const urlToVisit = submissionId
     ? `${config.checkboxText}${config.checkboxText.includes('?') ? '&' : '?'}submissionId=${submissionId}`
     : config.checkboxText;
-  const visitButtonText = config.visitButtonText || 'Visit Now';
-  const opening = redirectingText(config.redirectingText);
+  const visitButtonText = own('cta.visitDefault', config.visitButtonText);
+  const opening = redirectingText(config.redirectingText, language);
 
   const handleRedirect = () => {
     if (urlToVisit) {
@@ -110,7 +112,7 @@ export default function CTAPage({
           <h1 style={{ margin: 0, fontSize: 'clamp(2rem, 7vw, 4.5rem)', fontWeight: 800, lineHeight: 1.05, textTransform: 'uppercase', textShadow: shadow }}>{config.title}</h1>
           {config.description ? <p style={{ margin: 0, maxWidth: '40rem', fontSize: 'clamp(1.05rem, 2.6vw, 1.75rem)', fontStyle: 'italic', textShadow: shadow }}>{config.description}</p> : null}
           {urlToVisit ? (
-            <PillButton onClick={handleRedirect} disabled={isRedirecting} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel="Visit URL">
+            <PillButton onClick={handleRedirect} disabled={isRedirecting} fill={config.buttonColor} label={config.buttonTextColor} ring={config.buttonBorderColor} ariaLabel={t('cta.visitAria')}>
               {isRedirecting ? opening : visitButtonText}
             </PillButton>
           ) : null}
@@ -138,13 +140,13 @@ export default function CTAPage({
             color={brandColor}
             size={buttonSize}
             fullWidth
-            aria-label="Visit URL"
+            aria-label={t('cta.visitAria')}
           >
             {isRedirecting ? `🔗 ${opening}` : `🔗 ${visitButtonText}`}
           </Button>
           {hasButton ? (
             <Text size="xs" ta="center" c="dimmed">
-              Opens in a new tab
+              {t('cta.newTab')}
             </Text>
           ) : null}
         </Stack>
@@ -152,8 +154,8 @@ export default function CTAPage({
 
       <Group grow>
         {onBack && hasButton ? (
-          <Button variant="light" size={buttonSize} onClick={onBack} aria-label="Go back to previous page">
-            Back
+          <Button variant="light" size={buttonSize} onClick={onBack} aria-label={t('common.backAria')}>
+            {t('common.back')}
           </Button>
         ) : null}
         {hasButton ? (

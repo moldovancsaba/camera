@@ -3,6 +3,7 @@
 import { PublicFlowShell } from '@sovereignsquad/gds-core/client';
 import { Alert, Anchor, Button, Group, Stack, Text, TextInput } from '@mantine/core';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
+import { useT } from '@/components/i18n/UiLanguageProvider';
 
 interface TryOnStatus {
   requested: boolean;
@@ -32,6 +33,7 @@ interface ShareOverlayProps {
 }
 
 function TryOnStatusNotice({ tryOnResult }: { tryOnResult?: TryOnStatus | null }) {
+  const { t } = useT();
   if (!tryOnResult?.requested) return null;
 
   const isQueued =
@@ -41,14 +43,14 @@ function TryOnStatusNotice({ tryOnResult }: { tryOnResult?: TryOnStatus | null }
     <Alert color={isQueued ? 'blue' : 'yellow'} variant="light">
       {isQueued ? (
         <>
-          <Text fw={700}>Try-on queued</Text>
-          <Text size="sm">Job ID: {tryOnResult.jobId}</Text>
+          <Text fw={700}>{t('share.tryOn.queued')}</Text>
+          <Text size="sm">{t('share.tryOn.job', { id: tryOnResult.jobId ?? '' })}</Text>
         </>
       ) : (
         <>
-          <Text fw={700}>Try-on was not queued</Text>
+          <Text fw={700}>{t('share.tryOn.notQueued')}</Text>
           <Text size="sm">
-            {tryOnResult.error || 'The image was saved, but the try-on queue step failed.'}
+            {tryOnResult.error || t('share.tryOn.failed')}
           </Text>
         </>
       )}
@@ -58,10 +60,10 @@ function TryOnStatusNotice({ tryOnResult }: { tryOnResult?: TryOnStatus | null }
 
 export default function ShareOverlay({
   shareUrl,
-  title = 'Share Your Photo',
-  copyButtonText = 'Copy',
-  viewPhotoButtonText = 'View your photo (opens share link)',
-  suggestedMessageLabel = 'Suggested message:',
+  title: titleProp,
+  copyButtonText: copyButtonTextProp,
+  viewPhotoButtonText: viewPhotoButtonTextProp,
+  suggestedMessageLabel: suggestedMessageLabelProp,
   shareCaption,
   tryOnResult,
   nextButtonText,
@@ -74,6 +76,11 @@ export default function ShareOverlay({
   overlay = true,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
 }: ShareOverlayProps) {
+  const { t } = useT();
+  const title = titleProp ?? t('share.title');
+  const copyButtonText = copyButtonTextProp ?? t('share.copy');
+  const viewPhotoButtonText = viewPhotoButtonTextProp ?? t('share.view');
+  const suggestedMessageLabel = suggestedMessageLabelProp ?? t('share.suggested');
   // Safe centring (camera#222): the card is centred when it fits and scrolls inside itself when the
   // screen is shorter than the card, instead of being clipped at both ends.
   const shellClassName = overlay

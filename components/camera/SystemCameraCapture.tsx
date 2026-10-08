@@ -16,6 +16,7 @@ import { DIAGNOSTIC_VERSION } from '@/lib/camera/diagnostics';
 import { cameraTestLabel, newDiagnosticSession, pageDiagnosticFields, sendCameraDiagnostic } from '@/lib/camera/diagnostics-client';
 import type { FullFrameCapture } from '@/lib/camera/frame-capture';
 import { fullFrameFromBlob } from '@/lib/camera/still-capture';
+import { useT } from '@/components/i18n/UiLanguageProvider';
 
 export interface SystemCameraCaptureProps {
   onCapture: (capture: FullFrameCapture) => void;
@@ -28,16 +29,17 @@ export interface SystemCameraCaptureProps {
   captureButtonColor?: string;
 }
 
-const OPEN_FAILED = 'We could not open the photo. Please take it again.';
-
 export default function SystemCameraCapture({
   onCapture,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
-  promptTitle = 'Ready to capture?',
-  promptDescription = 'Opens your camera and takes the photo at the best quality. You can move and zoom it afterwards.',
+  promptTitle: promptTitleProp,
+  promptDescription: promptDescriptionProp,
   initialFacingMode = 'user',
   captureButtonColor,
 }: SystemCameraCaptureProps) {
+  const { t } = useT();
+  const promptTitle = promptTitleProp ?? t('camera.ready.title');
+  const promptDescription = promptDescriptionProp ?? t('camera.prompt.device');
   const frontInput = useRef<HTMLInputElement>(null);
   const backInput = useRef<HTMLInputElement>(null);
   const session = useRef<string | null>(null);
@@ -49,7 +51,7 @@ export default function SystemCameraCapture({
     try {
       const capture = await fullFrameFromBlob(file, document.createElement('canvas'), { facingMode, mirrored: false, method: 'system' });
       if (!capture) {
-        notifyCapture('error', OPEN_FAILED);
+        notifyCapture('error', t('camera.openFailed'));
         return;
       }
       session.current ??= newDiagnosticSession();
@@ -65,7 +67,7 @@ export default function SystemCameraCapture({
       onCapture(capture);
     } catch (error) {
       console.error('The photo from the device camera could not be used:', error);
-      notifyCapture('error', OPEN_FAILED);
+      notifyCapture('error', t('camera.openFailed'));
     } finally {
       setBusy(false);
     }
@@ -85,11 +87,11 @@ export default function SystemCameraCapture({
       <input ref={frontInput} type="file" accept="image/*" capture="user" hidden data-system-camera="user" onChange={(event) => onPick(event, 'user')} aria-hidden="true" tabIndex={-1} />
       <input ref={backInput} type="file" accept="image/*" capture="environment" hidden data-system-camera="environment" onChange={(event) => onPick(event, 'environment')} aria-hidden="true" tabIndex={-1} />
       <div className="flex w-full max-w-xs flex-col gap-2">
-        <Button type="button" size={buttonSize} radius="md" loading={busy} color={captureButtonColor} onClick={() => (initialFacingMode === 'user' ? frontInput : backInput).current?.click()} aria-label="Take photo">
-          Take photo
+        <Button type="button" size={buttonSize} radius="md" loading={busy} color={captureButtonColor} onClick={() => (initialFacingMode === 'user' ? frontInput : backInput).current?.click()} aria-label={t('camera.takePhoto')} data-tour-id="capture-take-photo">
+          {t('camera.takePhoto')}
         </Button>
         <Button type="button" size={buttonSize} radius="md" variant="light" disabled={busy} onClick={() => (initialFacingMode === 'user' ? backInput : frontInput).current?.click()}>
-          {initialFacingMode === 'user' ? 'Use the back camera' : 'Use the front camera'}
+          {initialFacingMode === 'user' ? t('camera.useBack') : t('camera.useFront')}
         </Button>
       </div>
     </div>

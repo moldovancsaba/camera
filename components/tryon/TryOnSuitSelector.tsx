@@ -4,12 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import MediaCard from '@/components/media/MediaPreviewCard';
 import { StateBlock } from '@sovereignsquad/gds-core/client';
 import { Alert, Button, Group, Select, Stack, Text } from '@/components/gds/PublicPrimitives';
+import { useT } from '@/components/i18n/UiLanguageProvider';
+import type { MessageKey } from '@/lib/i18n';
 
-const GARMENT_TYPE_LABELS: Record<string, string> = {
-  motorsport_suit: 'motorsport suit',
-  jersey: 'jersey',
-  top: 'top',
-  bottom: 'bottom',
+const GARMENT_TYPE_KEYS: Record<string, MessageKey> = {
+  motorsport_suit: 'tryon.garment.motorsport_suit',
+  jersey: 'tryon.garment.jersey',
+  top: 'tryon.garment.top',
+  bottom: 'tryon.garment.bottom',
 };
 
 interface TryOnSuitOption {
@@ -32,10 +34,6 @@ interface TryOnSuitSelectorProps {
   onBottomChange?: (value: string | null) => void;
 }
 
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Unable to load available leather suits.';
-}
-
 export default function TryOnSuitSelector({
   selectedSuitId,
   onChange,
@@ -45,6 +43,8 @@ export default function TryOnSuitSelector({
   selectedBottomSuitId = null,
   onBottomChange,
 }: TryOnSuitSelectorProps) {
+  const { t } = useT();
+  const garmentLabel = (type: string) => (GARMENT_TYPE_KEYS[type] ? t(GARMENT_TYPE_KEYS[type]) : type.replace(/_/g, ' '));
   const [suits, setSuits] = useState<TryOnSuitOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,36 +86,36 @@ export default function TryOnSuitSelector({
       });
 
       if (!response.ok) {
-        throw new Error(`Suit catalog request failed with ${response.status}`);
+        throw new Error(t('tryon.catalogFailed', { status: response.status }));
       }
 
       const payload = await response.json();
       setSuits(payload.data?.suits ?? payload.suits ?? []);
     } catch (loadError: unknown) {
-      setError(getErrorMessage(loadError));
+      setError(loadError instanceof Error ? loadError.message : t('tryon.loadFailed'));
       setSuits([]);
     } finally {
       setIsLoading(false);
     }
-  }, [eventMongoId]);
+  }, [eventMongoId, t]);
 
   useEffect(() => {
     void loadSuits();
   }, [loadSuits]);
 
   if (isLoading) {
-    return <StateBlock variant="loading" title="Loading leather suits..." />;
+    return <StateBlock variant="loading" title={t('tryon.loading')} />;
   }
 
   if (error) {
     return (
       <StateBlock
         variant="error"
-        title="Leather suits are unavailable right now"
+        title={t('tryon.unavailable')}
         description={error}
         action={
           <Button variant="light" onClick={() => void loadSuits()}>
-            Retry
+            {t('tryon.retry')}
           </Button>
         }
       />
@@ -126,8 +126,8 @@ export default function TryOnSuitSelector({
     return (
       <StateBlock
         variant="empty"
-        title="No leather suits are available"
-        description="Try-on is currently unavailable because the suit catalog is empty."
+        title={t('tryon.none')}
+        description={t('tryon.noneText')}
       />
     );
   }
@@ -135,8 +135,8 @@ export default function TryOnSuitSelector({
   return (
     <Stack gap="sm">
       <Select
-        label="Leather jersey"
-        placeholder="Select a leather jersey for try-on"
+        label={t('tryon.jersey.label')}
+        placeholder={t('tryon.jersey.placeholder')}
         clearable
         disabled={disabled}
         data={suits.map((suit) => ({
@@ -145,14 +145,13 @@ export default function TryOnSuitSelector({
         }))}
         value={selectedSuitId}
         onChange={onChange}
-        aria-label="Select leather jersey for try-on"
+        aria-label={t('tryon.jersey.aria')}
         styles={{ label: { fontWeight: 700 } }}
       />
 
       <Alert variant="light">
         <Text size="sm">
-          Leave this empty to save a normal Camera submission only. Select a jersey to queue a try-on job after the
-          image is saved.
+          {t('tryon.hint')}
         </Text>
       </Alert>
 
@@ -161,14 +160,14 @@ export default function TryOnSuitSelector({
           <Group justify="space-between" align="center">
             <Text fw={600}>{selectedSuit.name}</Text>
             <Text size="xs" c="dimmed">
-              {GARMENT_TYPE_LABELS[selectedSuit.garmentType] || selectedSuit.garmentType.replace(/_/g, ' ')}
+              {garmentLabel(selectedSuit.garmentType)}
             </Text>
           </Group>
           {selectedSuit.previewUrl ? (
             <MediaCard
               src={selectedSuit.previewUrl}
-              alt={`${selectedSuit.name} preview`}
-              caption="Selected garment preview"
+              alt={t('tryon.preview.alt', { name: selectedSuit.name })}
+              caption={t('tryon.preview.garment')}
               ratio={1}
               fit="contain"
             />
@@ -179,8 +178,8 @@ export default function TryOnSuitSelector({
       {showBottomPicker ? (
         <Stack gap="xs">
           <Select
-            label="Complete the outfit — add a bottom (optional)"
-            placeholder="Select a matching bottom"
+            label={t('tryon.bottom.label')}
+            placeholder={t('tryon.bottom.placeholder')}
             clearable
             disabled={disabled}
             data={bottomOptions.map((suit) => ({
@@ -189,7 +188,7 @@ export default function TryOnSuitSelector({
             }))}
             value={selectedBottomSuitId}
             onChange={(value) => onBottomChange?.(value)}
-            aria-label="Select a bottom to complete the outfit"
+            aria-label={t('tryon.bottom.aria')}
             styles={{ label: { fontWeight: 700 } }}
           />
           {selectedBottom ? (
@@ -197,20 +196,20 @@ export default function TryOnSuitSelector({
               <Group justify="space-between" align="center">
                 <Text fw={600}>{selectedBottom.name}</Text>
                 <Text size="xs" c="dimmed">
-                  {GARMENT_TYPE_LABELS[selectedBottom.garmentType] || selectedBottom.garmentType}
+                  {garmentLabel(selectedBottom.garmentType)}
                 </Text>
               </Group>
               {selectedBottom.previewUrl ? (
                 <MediaCard
                   src={selectedBottom.previewUrl}
-                  alt={`${selectedBottom.name} preview`}
-                  caption="Selected bottom preview"
+                  alt={t('tryon.preview.alt', { name: selectedBottom.name })}
+                  caption={t('tryon.preview.bottom')}
                   ratio={1}
                   fit="contain"
                 />
               ) : null}
               <Alert variant="light">
-                <Text size="sm">Outfit renders take about twice as long as a single garment.</Text>
+                <Text size="sm">{t('tryon.outfitNote')}</Text>
               </Alert>
             </Stack>
           ) : null}
