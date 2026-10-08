@@ -9,7 +9,7 @@
 
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import Link from 'next/link';
-import Image from 'next/image';
+import FrameThumbnail from '@/components/admin/FrameThumbnail';
 import { StateBlock } from '@sovereignsquad/gds-core/client';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
@@ -22,9 +22,11 @@ interface FrameAssignment {
   isActive: boolean;
   frameDetails?: {
     thumbnailUrl?: string;
+    imageUrl?: string;
     name?: string;
   } | null;
   thumbnailUrl?: string;
+  imageUrl?: string;
   name?: string;
 }
 
@@ -241,17 +243,12 @@ export default function StyleSections({
             >
               {frames.map((frameAssignment, index) => {
                 const frameDetails = frameAssignment.frameDetails || frameAssignment;
-                const thumbnailUrl = frameDetails.thumbnailUrl;
                 const frameName = frameDetails.name || 'Unnamed Frame';
 
                 return (
                   <article key={index} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
                     <div style={{ alignItems: 'center', display: 'grid', gap: '0.5rem', justifyItems: 'center' }}>
-                      {thumbnailUrl ? (
-                        <Image src={thumbnailUrl} alt={frameName} width={128} height={128} unoptimized style={{ maxWidth: '100%', height: 'auto', objectFit: 'contain' }} />
-                      ) : (
-                        <span aria-hidden>Image</span>
-                      )}
+                      <FrameThumbnail frame={{ name: frameName, thumbnailUrl: frameDetails.thumbnailUrl, imageUrl: frameDetails.imageUrl }} width="100%" />
                       <strong style={{ fontSize: '0.875rem', overflow: 'hidden', textAlign: 'center', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
                         {frameName}
                       </strong>
