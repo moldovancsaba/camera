@@ -131,6 +131,8 @@ cannot be seen; the owner's phone test.
 
 - Guests at a live event wait for approval: the waiting page should refresh itself, and the queue should be quick to work
   (bulk approve, notification to the vetters). An unvetted event shows nothing on the share page, which is the point.
+  **The approver's Waiting list looks for new photos by itself every 10 seconds** (camera#373, `lib/photo-vetting/auto-refresh.ts`): only the Waiting list, only while the page is
+  on screen, never while a decision is in flight or a reason for a rejection is being written. Until 2026-10-08 it refreshed only after a decision, so a new photo needed a reload.
 - Photos that already have a public composite (all existing ones) are not touched by the backfill; hiding one is the existing
   "remove from event" action, and V1 makes that action effective on the share page as well.
 - Deleting a pending photo must delete its private file (the file-deletion helper covers the composite and the original today).
