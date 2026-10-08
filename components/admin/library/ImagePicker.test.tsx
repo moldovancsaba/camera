@@ -31,7 +31,7 @@ test('an address that is in no library still shows its picture, next to the addr
   const html = render(ImagePicker, R2);
   assert.ok(html.includes(`<img src="${R2}"`), 'the preview draws the stored address');
   assert.ok(html.includes(`value="${R2}"`), 'the plain address field holds the same string');
-  for (const text of ['Background picture', 'Fills the screen.', 'Picture address', 'Choose from the library', 'Upload here', 'Clear']) assert.ok(html.includes(text), text);
+  for (const text of ['Background picture', 'Fills the screen.', 'Picture address', 'Choose from the library', 'Upload here', 'Clear the picture']) assert.ok(html.includes(text), text);
 });
 
 test('an empty field says No picture, and nothing can be cleared', async (t) => {
@@ -40,7 +40,7 @@ test('an empty field says No picture, and nothing can be cleared', async (t) => 
   assert.match(html, /aria-label="This image has no picture"[^>]*>No picture</);
   assert.ok(html.includes('No picture: nothing is shown.'));
   assert.doesNotMatch(html, /<img /);
-  assert.match(html, /<button[^>]*disabled=""[^>]*>(?:(?!<\/button>).)*Clear/, 'Clear is disabled');
+  assert.match(html, /<button[^>]*disabled=""[^>]*>(?:(?!<\/button>).)*Clear the picture/, 'Clear the picture is disabled');
 });
 
 test('an address still being typed is not drawn', async (t) => {

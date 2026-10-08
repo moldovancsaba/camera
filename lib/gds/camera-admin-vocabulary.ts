@@ -150,6 +150,7 @@ export const cameraAdminVocabularyPacks = [
     close: { defaultMessage: 'Close the library', icon: GdsIcons.Close, feedback: openedFeedback },
     use: { defaultMessage: 'Use this picture', icon: GdsIcons.Check, feedback: savedFeedback },
     'upload-here': { defaultMessage: 'Upload here', icon: GdsIcons.Upload, feedback: openedFeedback },
+    'upload-and-use': { defaultMessage: 'Upload and use', icon: GdsIcons.Upload, feedback: savedFeedback },
     'cancel-upload': { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
     'clear-picture': { defaultMessage: 'Clear the picture', icon: GdsIcons.Clear, feedback: savedFeedback },
     delete: { defaultMessage: 'Delete from the library', icon: GdsIcons.Delete, feedback: deletedFeedback },

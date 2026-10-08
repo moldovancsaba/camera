@@ -137,7 +137,7 @@ export default function GlobalImagesLibrary({ showAll }: { showAll: boolean }) {
                           {item.itemActive ? 'Switch off' : 'Switch on'}
                         </SemanticButton>
                         <SemanticButton action="library:delete" variant="danger" size="xs" disabled={busy} onClick={() => void remove(item.id, item.name)}>
-                          Delete
+                          Delete from the library
                         </SemanticButton>
                       </>
                     ) : null

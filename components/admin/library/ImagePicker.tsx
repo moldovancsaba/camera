@@ -18,7 +18,6 @@ import { AdminTextInput } from '@sovereignsquad/gds-admin/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import AssetThumbnail from '@/components/admin/library/AssetThumbnail';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
-import MediaCard from '@/components/media/MediaPreviewCard';
 import { IMAGE_FILE_TYPES, IMAGE_FILE_WORDS, IMAGE_MAX_BYTES, IMAGE_MAX_WORDS } from '@/lib/library/image-files';
 import { chosenValue, libraryItemFor, pickableImages, pickerEndpoints, previewableUrl, type PickerLevel } from '@/lib/library/picker';
 import type { LibraryItemView } from '@/lib/library/types';
@@ -176,7 +175,7 @@ export default function ImagePicker({ label, helper, value, onChange, level, pla
               Upload here
             </SemanticButton>
             <SemanticButton action="library:clear-picture" type="button" variant="secondary" size="xs" disabled={!value} onClick={() => onChange('')}>
-              Clear
+              Clear the picture
             </SemanticButton>
           </div>
         </div>
@@ -221,16 +220,18 @@ export default function ImagePicker({ label, helper, value, onChange, level, pla
         <div style={PANEL} data-image-picker-upload>
           <strong>Upload a picture to {endpoints.words}</strong>
           {filePreview ? (
-            <MediaCard
-              src={filePreview}
-              alt="Preview of the new picture"
-              caption={file?.name}
-              action={
-                <SemanticButton action="library:clear-upload" type="button" variant="secondary" size="xs" onClick={clearFile}>
-                  Choose another file
-                </SemanticButton>
-              }
-            />
+            // The chosen file as the field will show it: the same small 16:9 preview, so the editor around the picker keeps its size.
+            <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <AssetThumbnail url={filePreview} name="Preview of the new picture" noun="image" width={240} />
+              <div style={{ display: 'grid', gap: '0.5rem', minWidth: 0 }}>
+                <span style={{ ...MUTED, overflowWrap: 'anywhere' }}>{file?.name}</span>
+                <div>
+                  <SemanticButton action="library:clear-upload" type="button" variant="secondary" size="xs" onClick={clearFile}>
+                    Choose another file
+                  </SemanticButton>
+                </div>
+              </div>
+            </div>
           ) : (
             <UploadDropzone
               accept={IMAGE_FILE_TYPES.join(',')}
@@ -255,7 +256,7 @@ export default function ImagePicker({ label, helper, value, onChange, level, pla
             }}
           />
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <SemanticButton action="library:upload" type="button" size="xs" loading={uploading} disabled={!file || !fileName.trim()} onClick={() => void upload()}>
+            <SemanticButton action="library:upload-and-use" type="button" size="xs" loading={uploading} disabled={!file || !fileName.trim()} onClick={() => void upload()}>
               Upload and use
             </SemanticButton>
             <SemanticButton

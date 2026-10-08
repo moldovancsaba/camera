@@ -361,7 +361,7 @@ export default function StyleSections({
             </p>
           </div>
           <Link href={isPartner ? `/admin/partners/${id}/images` : `/admin/events/${id}/images`} style={{ textDecoration: 'none' }}>
-            <SemanticButton action="style-sections:manage-images">Manage Images</SemanticButton>
+            <SemanticButton action="style-sections:manage-images">Manage images</SemanticButton>
           </Link>
         </div>
       </section>
