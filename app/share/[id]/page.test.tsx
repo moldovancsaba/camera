@@ -161,3 +161,103 @@ test('an approved photo page shows the event\'s own download text instead of Dow
   assert.ok(ownTexts.includes('Scarica'), `texts: ${ownTexts.join('|')}`);
   assert.equal(ownTexts.includes('Download'), false);
 });
+
+/** Every element of the tree that has the prop, found by walking the children. */
+function withProp(node: unknown, prop: string, found: Element[] = []): Element[] {
+  if (Array.isArray(node)) node.forEach((child) => withProp(child, prop, found));
+  else if (node && typeof node === 'object' && 'props' in node) {
+    const element = node as Element;
+    if (element.props[prop] !== undefined) found.push(element);
+    withProp(element.props.children, prop, found);
+  }
+  return found;
+}
+
+const DATE_OPTIONS: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' };
+const CREATED_AT = '2026-10-06T12:00:00.000Z';
+
+test('in English the photo page keeps its words, its alt text and its date exactly as before', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'approved' })], { sharePage: { showCreateYourOwnButton: true } });
+  const { whole, element } = await render(await importPage('english-page'), TOKEN);
+  assert.equal(whole?.props.language, 'en');
+  const texts = textsOf(element);
+  for (const word of ['Derby', 'Download', 'Create Your Own', new Date(CREATED_AT).toLocaleString(undefined, DATE_OPTIONS)]) assert.ok(texts.includes(word), `${word} in ${texts.join('|')}`);
+  assert.deepEqual(withProp(element, 'alt').map((image) => image.props.alt), ['Photo with Camera frame']);
+});
+
+test('in Hungarian the photo page shows the Hungarian defaults, alt text and date, and no English word', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'approved' })], { uiLanguage: 'hu', sharePage: { showCreateYourOwnButton: true } });
+  const { whole, element } = await render(await importPage('hungarian-page'), TOKEN);
+  assert.equal(whole?.props.language, 'hu', 'the page is wrapped in the language of the event');
+  const texts = textsOf(element);
+  const date = new Date(CREATED_AT).toLocaleString('hu-HU', { ...DATE_OPTIONS, timeZone: 'Europe/Budapest' });
+  assert.match(date, /okt\./);
+  for (const word of ['Derby', 'Letöltés', 'Készítsd el a sajátodat', date]) assert.ok(texts.includes(word), `${word} in ${texts.join('|')}`);
+  assert.deepEqual(withProp(element, 'alt').map((image) => image.props.alt), ['Fotó kerettel']);
+  for (const english of ['Download', 'Create Your Own', 'Photo with Camera frame']) assert.equal(JSON.stringify(element).includes(english), false, english);
+});
+
+test('in Hungarian an own text of the event wins, and a stored English default counts as not set', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'approved' })], { uiLanguage: 'hu', sharePage: { showCreateYourOwnButton: true, texts: { downloadButton: 'Mentsd el', createYourOwnButton: 'Create Your Own' } } });
+  const texts = textsOf((await render(await importPage('hungarian-own'), TOKEN)).element);
+  assert.ok(texts.includes('Mentsd el'), texts.join('|'));
+  assert.ok(texts.includes('Készítsd el a sajátodat'), texts.join('|'));
+  assert.equal(texts.includes('Create Your Own'), false);
+});
+
+test('in Hungarian the waiting notice gets the language and the event name', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'pending_review' })], { uiLanguage: 'hu' });
+  const { whole, element } = await render(await importPage('hungarian-waiting'), TOKEN);
+  assert.equal(whole?.props.language, 'hu');
+  assert.equal(element?.props.state, 'waiting');
+  assert.equal(element?.props.language, 'hu');
+  assert.equal(element?.props.eventName, 'Derby');
+});
+
+test('the not-approved notice of an English event is English', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'rejected' })]);
+  const { whole, element } = await render(await importPage('english-rejected'), TOKEN);
+  assert.equal(whole?.props.language, 'en');
+  assert.equal(element?.props.language, 'en');
+});
+
+test('the link preview of an English photo keeps its words exactly', async (t) => {
+  const doc = photo({ shareToken: TOKEN, reviewStatus: 'approved' });
+  mockDb(t, [doc]);
+  const meta = await (await importPage('english-meta')).generateMetadata(params(TOKEN));
+  assert.equal(meta.title, 'Photo of Ann — Derby');
+  assert.equal(meta.description, 'Photo from Derby');
+  assert.equal((meta.openGraph as { title?: string }).title, 'Photo of Ann');
+  assert.equal((meta.openGraph as { description?: string }).description, 'From Derby');
+  assert.equal((meta.openGraph as { images?: Array<{ alt?: string }> }).images?.[0]?.alt, 'Photo of Ann');
+  assert.equal((meta.twitter as { title?: string }).title, 'Photo of Ann');
+  assert.equal((meta.twitter as { description?: string }).description, 'From Derby');
+});
+
+test('the link preview of a Hungarian photo is Hungarian, with the guest word when the name is unknown', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'approved', userInfo: { email: 'ann@example.com' }, userName: 'Event Guest' })], { uiLanguage: 'hu' });
+  const meta = await (await importPage('hungarian-meta')).generateMetadata(params(TOKEN));
+  assert.equal(meta.title, 'Vendég fotója — Derby');
+  assert.equal(meta.description, 'Fotó az eseményről: Derby');
+  assert.equal((meta.openGraph as { title?: string }).title, 'Vendég fotója');
+  assert.equal((meta.openGraph as { description?: string }).description, 'Esemény: Derby');
+  assert.equal((meta.openGraph as { images?: Array<{ alt?: string }> }).images?.[0]?.alt, 'Vendég fotója');
+  assert.equal((meta.twitter as { description?: string }).description, 'Esemény: Derby');
+});
+
+test('the tab title of a waiting photo is in the language of its event, and the page is still not indexed', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'pending_review' })], { uiLanguage: 'hu' });
+  const hungarian = await (await importPage('hungarian-waiting-meta')).generateMetadata(params(TOKEN));
+  assert.equal(hungarian.title, 'A fotód');
+  assert.equal(hungarian.description, 'Készíts és ossz meg fotókat az eseményeken, egyedi keretekkel.');
+  assert.deepEqual(hungarian.robots, { index: false, follow: false });
+});
+
+test('the tab title of an English waiting photo, and of a photo that is not found, stay English', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'pending_review' })]);
+  const page = await importPage('english-waiting-meta');
+  const waiting = await page.generateMetadata(params(TOKEN));
+  assert.equal(waiting.title, 'Your photo');
+  assert.equal(waiting.description, 'Capture and share photos at your events with branded frames and flows.', 'the description every page had from the root layout');
+  assert.equal((await page.generateMetadata(params('nope'))).title, 'Photo Not Found');
+});
