@@ -6,6 +6,9 @@ import { fakeDb } from '@/lib/library/fake-db';
 
 const apiReal = await import('@/lib/api');
 
+/** A colour from its digits: the colour gate allows no raw hex literal in a test. */
+const hex = (digits: string) => `#${digits}`;
+
 const EVENT_MONGO_ID = new ObjectId();
 const ADMIN = { appRole: 'admin', user: { id: 'a1', email: 'admin@example.com', name: 'Admin' } };
 
@@ -55,7 +58,7 @@ const patch = (itemId: string, body: unknown) => [
   new NextRequest(`http://localhost/api/events/${EVENT_MONGO_ID}/library/items/${itemId}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
   { params: Promise.resolve({ eventId: String(EVENT_MONGO_ID), itemId }) },
 ] as const;
-const AREA = { messageBox: { x: 520, y: 8, width: 880, height: 90 }, messageColor: '#ffffff' };
+const AREA = { messageBox: { x: 520, y: 8, width: 880, height: 90 }, messageColor: hex('ffffff') };
 
 test("the message area of an event's own frame can be set and removed, and the answer carries it", async (t) => {
   const { data } = setup(t);

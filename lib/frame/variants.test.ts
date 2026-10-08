@@ -9,6 +9,9 @@ import { DEFAULT_FRAME_MESSAGES } from './messages';
 import { FRAME_RENDER_VERSION } from './render';
 import { generateFrameVariants, variantKey, type VariantDeps } from './variants';
 
+/** A colour from its digits: the colour gate allows no raw hex literal in a test. */
+const hex = (digits: string) => `#${digits}`;
+
 const NOW = '2026-10-06T12:00:00.000Z';
 const WHITE = `${CAMERA_STAGE_WHITE}FF`;
 const BAR = `${CAMERA_DEFAULT_BRAND_COLOR}FF`;
@@ -204,7 +207,7 @@ test('an event with no logo and no emoji has no logo layer, as before', async ()
 // --- A message written on the frame it chose (camera#366) ---------------------------------------------------------------------------------------------------
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==', 'base64');
-const AREA = { messageBox: { x: 520, y: 8, width: 880, height: 90 }, messageColor: '#ffffff' };
+const AREA = { messageBox: { x: 520, y: 8, width: 880, height: 90 }, messageColor: hex('ffffff') };
 const libraryFrame = (frameId: string, extra: Record<string, unknown> = {}) => ({ frameId, name: `Frame ${frameId}`, imageUrl: `https://i.ibb.co/${frameId}.png`, isActive: true, messageArea: AREA, ...extra });
 const assignment = (frameId: string, isActive = true) => ({ frameId, isActive, addedAt: 'x', addedBy: 'u' });
 

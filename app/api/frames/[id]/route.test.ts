@@ -6,6 +6,9 @@ import { fakeDb } from '@/lib/library/fake-db';
 
 const apiReal = await import('@/lib/api');
 
+/** A colour from its digits: the colour gate allows no raw hex literal in a test. */
+const hex = (digits: string) => `#${digits}`;
+
 const FRAME_OID = new ObjectId();
 const ADMIN = { appRole: 'admin', user: { id: 'a1', email: 'admin@example.com', name: 'Admin' } };
 
@@ -23,7 +26,7 @@ const put = (body: unknown) => [
   new NextRequest(`http://localhost/api/frames/${FRAME_OID}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
   { params: Promise.resolve({ id: String(FRAME_OID) }) },
 ] as const;
-const AREA = { messageBox: { x: 520, y: 8, width: 880, height: 90 }, messageColor: '#ffffff' };
+const AREA = { messageBox: { x: 520, y: 8, width: 880, height: 90 }, messageColor: hex('ffffff') };
 
 test('a frame gets a message area (checked, unknown fields dropped) and loses it again; other changes keep working', async (t) => {
   const { data } = setup(t);

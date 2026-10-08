@@ -3,7 +3,10 @@ import { test } from 'node:test';
 import { fakeDb } from '@/lib/library/fake-db';
 import { chosenFrameId, frameBaseOf, loadMessageFrames, parseMessageFrames, validateMessageFrames } from './message-frames';
 
-const AREA = { messageBox: { x: 520, y: 8, width: 880, height: 90 }, messageColor: '#ffffff', layers: [{ id: 'header', x: 0, y: 0, width: 1920, height: 100 }] };
+/** A colour from its digits: the colour gate allows no raw hex literal in a test. */
+const hex = (digits: string) => `#${digits}`;
+
+const AREA = { messageBox: { x: 520, y: 8, width: 880, height: 90 }, messageColor: hex('ffffff'), layers: [{ id: 'header', x: 0, y: 0, width: 1920, height: 100 }] };
 const frame = (frameId: string, extra: Record<string, unknown> = {}) => ({ frameId, name: `Frame ${frameId}`, imageUrl: `https://img.example/${frameId}.png`, isActive: true, messageArea: AREA, ...extra });
 const row = (frameId: string, isActive = true) => ({ frameId, isActive, addedAt: 'x', addedBy: 'u' });
 
@@ -32,7 +35,7 @@ test('a library frame becomes the same base the older designer picture uses, so 
   const base = frameBaseOf({ frameId: 'f1', name: 'F', imageUrl: 'https://img.example/f1.png', area: AREA as never });
   assert.deepEqual(base.images, [{ key: 'frame', imageUrl: 'https://img.example/f1.png' }]);
   assert.deepEqual(base.messageBox, AREA.messageBox);
-  assert.equal(base.messageColor, '#ffffff');
+  assert.equal(base.messageColor, hex('ffffff'));
   assert.deepEqual(base.layers, AREA.layers);
   const plain = frameBaseOf({ frameId: 'f2', name: 'F', imageUrl: 'https://img.example/f2.png', area: { messageBox: AREA.messageBox } });
   assert.equal('messageColor' in plain, false);

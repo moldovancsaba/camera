@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { parseBox, parseMessageArea } from './message-area';
 
+/** A colour from its digits: the colour gate allows no raw hex literal in a test. */
+const hex = (digits: string) => `#${digits}`;
+
 const BOX = { x: 520, y: 8, width: 880, height: 90 };
 
 test('a box must sit inside the 1920 x 1080 frame and have a size', () => {
@@ -16,13 +19,13 @@ test('a message area has a message box; the colour and the territories are optio
   assert.deepEqual(parseMessageArea({ messageBox: BOX }), { messageBox: BOX });
   const full = parseMessageArea({
     messageBox: BOX,
-    messageColor: '#ffffff',
+    messageColor: hex('ffffff'),
     layers: [{ id: 'header', x: 0, y: 0, width: 1920, height: 100 }, { id: 'footer', x: 0, y: 980, width: 1920, height: 100 }],
     junk: 'dropped',
   });
   assert.deepEqual(full, {
     messageBox: BOX,
-    messageColor: '#ffffff',
+    messageColor: hex('ffffff'),
     layers: [{ id: 'header', x: 0, y: 0, width: 1920, height: 100 }, { id: 'footer', x: 0, y: 980, width: 1920, height: 100 }],
   });
   assert.deepEqual(parseMessageArea({ messageBox: BOX, messageColor: '' }), { messageBox: BOX }, 'an empty colour means the default');

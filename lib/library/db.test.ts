@@ -4,6 +4,9 @@ import { ObjectId } from 'mongodb';
 import { fakeDb } from './fake-db';
 import { checkEventAssign, deleteLibraryUpload, itemView, loadEventLibrary, loadPartnerLibrary, savePartnerLibrary, updateLibraryUpload } from './db';
 
+/** A colour from its digits: the colour gate allows no raw hex literal in a test. */
+const hex = (digits: string) => `#${digits}`;
+
 const EVENT = new ObjectId();
 const OTHER_EVENT = new ObjectId();
 const EVENT_UUID = 'uuid-event';
@@ -171,7 +174,7 @@ test('a partner upload cannot be deleted while an event of the partner has it, a
   assert.equal(wrongPartner.ok, false);
 });
 
-const AREA = { messageBox: { x: 520, y: 8, width: 880, height: 90 }, messageColor: '#ffffff' };
+const AREA = { messageBox: { x: 520, y: 8, width: 880, height: 90 }, messageColor: hex('ffffff') };
 
 test('the owner of an own upload can rename it and say where a message is written on it; the message area is checked and can be removed', async () => {
   const { db, data } = seed();

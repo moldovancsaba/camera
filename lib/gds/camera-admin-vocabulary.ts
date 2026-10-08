@@ -151,6 +151,7 @@ export const cameraAdminVocabularyPacks = [
     'delete-upload': { defaultMessage: 'Delete upload', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'default-on': { defaultMessage: 'Make a default', icon: GdsIcons.Check, feedback: savedFeedback },
     'default-off': { defaultMessage: 'Remove the default', icon: GdsIcons.Cancel, feedback: savedFeedback },
+    'message-area': { defaultMessage: 'Message area', icon: GdsIcons.Edit, feedback: openedFeedback },
     'switch-on': { defaultMessage: 'Switch on', icon: GdsIcons.Toggle, feedback: savedFeedback },
     'switch-off': { defaultMessage: 'Switch off', icon: GdsIcons.Toggle, feedback: savedFeedback },
   }),
