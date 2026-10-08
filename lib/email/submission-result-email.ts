@@ -10,7 +10,10 @@ import { getConfiguredSiteUrl } from '@/lib/site-url';
 import {
   DEFAULT_EVENT_TERMS_URL,
   DEFAULT_SUBMISSION_EMAIL_SENDER_NAME,
+  emailDefaults,
+  ownEmailTemplate,
 } from '@/lib/email/submission-template-defaults';
+import { normalizeUiLanguage, type UiLanguage } from '@/lib/i18n';
 
 export interface SubmissionEmailPolicy {
   enabled: boolean;
@@ -27,6 +30,8 @@ export interface SubmissionEmailPolicy {
   subjectTemplateAfterTryOnResubmissionApproved?: string | null;
   bodyTemplateAfterTryOnResubmissionApproved?: string | null;
   termsUrl: string;
+  /** The language of the event: the defaults the email falls back to, and the words around the name and the event (camera#352). */
+  language: UiLanguage;
 }
 
 export interface SubmissionEmailRecipient {
@@ -101,7 +106,7 @@ export function resolveSubmissionResultEmailRecipient(submission: {
   };
 }
 
-export function normalizeSubmissionEmailPolicy(value: unknown): SubmissionEmailPolicy {
+export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLanguage = 'en'): SubmissionEmailPolicy {
   const source = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
   const enabled = Boolean(source.submissionResultEmailEnabled);
 
@@ -112,24 +117,26 @@ export function normalizeSubmissionEmailPolicy(value: unknown): SubmissionEmailP
     'submissionResultEmailSendAfterTryOnResubmissionApproved'
   );
 
-  const legacySubject = readTemplate(source.submissionResultEmailSubject, 180);
-  const legacyBody = readTemplate(source.submissionResultEmailBody, 5000, true);
-  const subjectTemplateAfterSave = readTemplate(
+  // A template stored as the English default counts as not set in another language (ownEmailTemplate).
+  const own = (value: string) => ownEmailTemplate(language, value || null) ?? '';
+  const legacySubject = own(readTemplate(source.submissionResultEmailSubject, 180));
+  const legacyBody = own(readTemplate(source.submissionResultEmailBody, 5000, true));
+  const subjectTemplateAfterSave = own(readTemplate(
     source.submissionResultEmailSubjectAfterSave,
     180
-  ) || legacySubject;
+  )) || legacySubject;
   const bodyTemplateAfterSave =
-    readTemplate(source.submissionResultEmailBodyAfterSave, 5000, true) || legacyBody;
+    own(readTemplate(source.submissionResultEmailBodyAfterSave, 5000, true)) || legacyBody;
   const subjectTemplateAfterRelatedPhotosReady =
-    readTemplate(source.submissionResultEmailSubjectAfterRelatedPhotosReady, 180) || legacySubject;
+    own(readTemplate(source.submissionResultEmailSubjectAfterRelatedPhotosReady, 180)) || legacySubject;
   const bodyTemplateAfterRelatedPhotosReady =
-    readTemplate(source.submissionResultEmailBodyAfterRelatedPhotosReady, 5000, true) || legacyBody;
+    own(readTemplate(source.submissionResultEmailBodyAfterRelatedPhotosReady, 5000, true)) || legacyBody;
   const subjectTemplateAfterTryOnResubmissionApproved =
-    readTemplate(source.submissionResultEmailSubjectAfterTryOnResubmissionApproved, 180) ||
+    own(readTemplate(source.submissionResultEmailSubjectAfterTryOnResubmissionApproved, 180)) ||
     subjectTemplateAfterRelatedPhotosReady ||
     legacySubject;
   const bodyTemplateAfterTryOnResubmissionApproved =
-    readTemplate(source.submissionResultEmailBodyAfterTryOnResubmissionApproved, 5000, true) ||
+    own(readTemplate(source.submissionResultEmailBodyAfterTryOnResubmissionApproved, 5000, true)) ||
     bodyTemplateAfterRelatedPhotosReady ||
     legacyBody;
 
@@ -159,7 +166,9 @@ export function normalizeSubmissionEmailPolicy(value: unknown): SubmissionEmailP
     bodyTemplateAfterRelatedPhotosReady,
     subjectTemplateAfterTryOnResubmissionApproved,
     bodyTemplateAfterTryOnResubmissionApproved,
-    termsUrl: readString(source.termsUrl) || DEFAULT_EVENT_TERMS_URL,
+    // The terms link stored as the English default counts as not set in another language: the language's own legal page is used.
+    termsUrl: (language === 'en' || readString(source.termsUrl) !== DEFAULT_EVENT_TERMS_URL ? readString(source.termsUrl) : null) || emailDefaults(language).termsUrl,
+    language,
   };
 }
 
@@ -438,6 +447,7 @@ export function buildSubmissionEmailInput(
     subjectTemplate,
     bodyTemplate,
     theme,
+    language: policy.language,
   };
 }
 
@@ -486,7 +496,7 @@ export async function dispatchPendingRelatedEmailForSubmission(
   baseUrl = PUBLIC_BASE_URL
 ): Promise<SendSubmissionEmailMetadataResult | null> {
   const event = await resolveEventForSubmission(db, sourceSubmission);
-  const policy = normalizeSubmissionEmailPolicy(event?.notifications);
+  const policy = normalizeSubmissionEmailPolicy(event?.notifications, normalizeUiLanguage(event?.uiLanguage));
 
   if (!policy.enabled || !policy.sendAfterRelatedPhotosReady) {
     return null;
@@ -555,7 +565,7 @@ export async function dispatchTryOnResubmissionApprovalEmailForSubmission(
   }
 
   const event = await resolveEventForSubmission(db, sourceSubmission);
-  const policy = normalizeSubmissionEmailPolicy(event?.notifications);
+  const policy = normalizeSubmissionEmailPolicy(event?.notifications, normalizeUiLanguage(event?.uiLanguage));
   if (!policy.enabled || !policy.sendAfterTryOnResubmissionApproved) {
     return null;
   }
@@ -591,7 +601,7 @@ export async function dispatchPendingSubmissionEmailForSubmission(
   }
 
   const event = await resolveEventForSubmission(db, sourceSubmission);
-  const policy = normalizeSubmissionEmailPolicy(event?.notifications);
+  const policy = normalizeSubmissionEmailPolicy(event?.notifications, normalizeUiLanguage(event?.uiLanguage));
 
   if (!policy.enabled) {
     return null;

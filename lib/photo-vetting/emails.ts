@@ -5,6 +5,8 @@
  */
 
 import type { Event } from '@/lib/db/schemas';
+import { emailDefaults } from '@/lib/email/submission-template-defaults';
+import { normalizeUiLanguage, translate } from '@/lib/i18n';
 import { sendSubmissionResultEmail, type SubmissionNotificationInput, type SubmissionNotificationResult } from '@/lib/email/submission-notification';
 import { normalizeSubmissionEmailPolicy, resolveSubmissionResultEmailRecipient, buildSubmissionShareUrl } from '@/lib/email/submission-result-email';
 import { getConfiguredSiteUrl } from '@/lib/site-url';
@@ -12,18 +14,11 @@ import type { EventTheme } from '@/lib/theme/event-theme';
 
 type EmailSender = (input: SubmissionNotificationInput) => Promise<SubmissionNotificationResult>;
 type RecipientSource = Parameters<typeof resolveSubmissionResultEmailRecipient>[0];
-type EventForEmail = Pick<Event, 'name' | 'notifications'> | null;
+type EventForEmail = Pick<Event, 'name' | 'notifications'> & { uiLanguage?: unknown } | null;
 
-export const NOT_APPROVED_SUBJECT = 'About your photo from {event}';
-export const NOT_APPROVED_BODY = `Hi {name},
-
-Thank you for taking part in {event}. Unfortunately your photo could not be approved, so it will not be published.
-
-You are welcome to take another photo:
-{link}
-
-Policies and General Terms and Conditions:
-{terms}`;
+/** The English texts of the not-approved email (the dictionary's), for code that has no language. */
+export const NOT_APPROVED_SUBJECT = emailDefaults('en').notApprovedSubject;
+export const NOT_APPROVED_BODY = emailDefaults('en').notApprovedBody;
 
 /** The share link is the opaque token of the photo, never its database id. */
 export function approvedShareUrl(shareToken: string, baseUrl: string = getConfiguredSiteUrl()): string {
@@ -43,7 +38,8 @@ export async function sendPhotoApprovedEmail(
   theme: EventTheme | null = null
 ): Promise<SubmissionNotificationResult> {
   const recipient = resolveSubmissionResultEmailRecipient(submission);
-  const policy = normalizeSubmissionEmailPolicy(event?.notifications);
+  const language = normalizeUiLanguage(event?.uiLanguage);
+  const policy = normalizeSubmissionEmailPolicy(event?.notifications, language);
   return send({
     recipientEmail: recipient.email,
     recipientName: recipient.name,
@@ -54,7 +50,8 @@ export async function sendPhotoApprovedEmail(
     subjectTemplate: policy.subjectTemplateAfterSave || policy.subjectTemplate,
     bodyTemplate: policy.bodyTemplateAfterSave || policy.bodyTemplate,
     theme,
-    buttonLabel: 'See your photo',
+    buttonLabel: translate(language, 'email.buttonSee'),
+    language,
   });
 }
 
@@ -67,7 +64,8 @@ export async function sendPhotoNotApprovedEmail(
   theme: EventTheme | null = null
 ): Promise<SubmissionNotificationResult> {
   const recipient = resolveSubmissionResultEmailRecipient(submission);
-  const policy = normalizeSubmissionEmailPolicy(event?.notifications);
+  const language = normalizeUiLanguage(event?.uiLanguage);
+  const policy = normalizeSubmissionEmailPolicy(event?.notifications, language);
   return send({
     recipientEmail: recipient.email,
     recipientName: recipient.name,
@@ -75,9 +73,10 @@ export async function sendPhotoNotApprovedEmail(
     shareUrl: captureUrl,
     termsUrl: policy.termsUrl,
     senderName: policy.senderName,
-    subjectTemplate: NOT_APPROVED_SUBJECT,
-    bodyTemplate: NOT_APPROVED_BODY,
+    subjectTemplate: emailDefaults(language).notApprovedSubject,
+    bodyTemplate: emailDefaults(language).notApprovedBody,
     theme,
-    buttonLabel: 'Take another photo',
+    buttonLabel: translate(language, 'email.buttonAnother'),
+    language,
   });
 }

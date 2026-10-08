@@ -3,11 +3,10 @@ import { renderThemedEmail } from '@/lib/email/themed-html';
 import type { EventTheme } from '@/lib/theme/event-theme';
 import { getResendApiKey, sendEmail } from '@/lib/email/send';
 import {
-  DEFAULT_EVENT_TERMS_URL,
-  DEFAULT_SUBMISSION_EMAIL_BODY,
-  DEFAULT_SUBMISSION_EMAIL_SUBJECT,
   DEFAULT_SUBMISSION_EMAIL_SENDER_NAME,
+  emailDefaults,
 } from '@/lib/email/submission-template-defaults';
+import { translate, type UiLanguage } from '@/lib/i18n';
 
 export interface SubmissionNotificationInput {
   recipientEmail?: string | null;
@@ -22,6 +21,8 @@ export interface SubmissionNotificationInput {
   theme?: EventTheme | null;
   /** The label of the button that opens `shareUrl` in a themed email. */
   buttonLabel?: string | null;
+  /** The language of the event (camera#352): the default texts and the words used when the name or the event is missing. English when absent. */
+  language?: UiLanguage;
 }
 
 export type SubmissionNotificationResult =
@@ -131,17 +132,21 @@ export async function sendSubmissionResultEmail(
     return { sent: false, skipped: true, reason: 'missing_from_address' };
   }
 
-  const eventName = input.eventName?.trim() || 'your event';
-  const recipientName = input.recipientName?.trim() || 'there';
-  const termsUrl = input.termsUrl?.trim() || DEFAULT_EVENT_TERMS_URL;
+  const language = input.language ?? 'en';
+  const defaults = emailDefaults(language);
+  const eventName = input.eventName?.trim() || translate(language, 'email.eventFallback');
+  // The recipient resolver says "there" when the user gave no name; in another language that becomes the language's own word.
+  const givenName = input.recipientName?.trim();
+  const recipientName = givenName && givenName !== 'there' ? givenName : translate(language, 'email.nameFallback');
+  const termsUrl = input.termsUrl?.trim() || defaults.termsUrl;
   const subject = renderTemplate(
-    normalizeTemplate(input.subjectTemplate, DEFAULT_SUBMISSION_EMAIL_SUBJECT, 180),
+    normalizeTemplate(input.subjectTemplate, defaults.subject, 180),
     { recipientName, eventName, shareUrl: input.shareUrl, termsUrl }
   )
     .replace(/\s+/g, ' ')
     .trim();
   const bodyText = renderTemplate(
-    normalizeTemplate(input.bodyTemplate, DEFAULT_SUBMISSION_EMAIL_BODY, 5000),
+    normalizeTemplate(input.bodyTemplate, defaults.body, 5000),
     { recipientName, eventName, shareUrl: input.shareUrl, termsUrl }
   );
   const safeBody = escapeHtml(bodyText).replace(/\n/g, '<br />');
@@ -152,7 +157,7 @@ export async function sendSubmissionResultEmail(
     subject,
     text: bodyText,
     html: input.theme
-      ? renderThemedEmail({ theme: input.theme, eventName, bodyText, button: { label: input.buttonLabel?.trim() || 'Open your photo', url: input.shareUrl } })
+      ? renderThemedEmail({ theme: input.theme, eventName, bodyText, button: { label: input.buttonLabel?.trim() || translate(language, 'email.buttonOpen'), url: input.shareUrl } })
       : `
       <div style="font-family: Arial, sans-serif; line-height: 1.5;">
         <p>${safeBody}</p>

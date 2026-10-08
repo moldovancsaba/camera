@@ -193,6 +193,18 @@ export const en = {
   'meta.capture.invalid': 'Capture',
   'meta.capture.notFound': 'Event not found',
   'meta.event': 'Event',
+  'email.subject': 'Your photo from {event}',
+  'email.body': 'Hi {name},\n\nThank you for enjoying the {event} experience.\n\nYour photo is ready. Don\'t forget to share it on your social media!\n{link}\n\nAI is fun, but it can make mistakes. If you want to make a new image, feel free to come back to us.\n\nWishing you an unforgettable time at {event}.\n\nPolicies and General Terms and Conditions:\n{terms}',
+  'email.subjectResubmission': 'Your updated photo from {event}',
+  'email.bodyResubmission': 'Hi {name},\n\nThank you for enjoying the {event} experience.\n\nYour updated photo is ready. Don\'t forget to share it on your social media!\n{link}\n\nAI is fun, but it can make mistakes. If you want to make a new image, feel free to come back to us.\n\nWishing you an unforgettable time at {event}.\n\nPolicies and General Terms and Conditions:\n{terms}',
+  'email.notApprovedSubject': 'About your photo from {event}',
+  'email.notApprovedBody': 'Hi {name},\n\nThank you for taking part in {event}. Unfortunately your photo could not be approved, so it will not be published.\n\nYou are welcome to take another photo:\n{link}\n\nPolicies and General Terms and Conditions:\n{terms}',
+  'email.buttonSee': 'See your photo',
+  'email.buttonAnother': 'Take another photo',
+  'email.buttonOpen': 'Open your photo',
+  'email.nameFallback': 'there',
+  'email.eventFallback': 'your event',
+  'email.termsUrl': 'https://seyuselfies.com/en/policies/',
 } as const;
 
 export type MessageKey = keyof typeof en;
