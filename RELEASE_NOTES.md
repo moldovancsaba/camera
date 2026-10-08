@@ -1,5 +1,35 @@
 # RELEASE_NOTES.md
 
+## Unreleased — libraries, step 5: the Images library and pickers for pictures (camera#368)
+
+- **Added (owner report, 2026-10-08: "visual elements has to be visible"):** an **Images library** on the three levels of the libraries (`docs/LIBRARIES.md`, section Images):
+  **Global Images** (`/admin/images`, menu Libraries, global admins: upload, switch off or on, delete; `?scope=all` lists every upload with whose it is), the partner's
+  **Images** (`/admin/partners/<id>/images`: add from the global library, upload, remove, delete an own upload) and the event's **Images** (`/admin/events/<id>/images`: the
+  pictures the event can use, from its partner's library and its own uploads; upload, delete an own upload; a link to the partner's Images page), linked from the style
+  sections of the partner and event pages.
+  Every list shows the pictures and where each comes from. Collection `images` (id `pictureId`); uploads take PNG, JPEG, WebP or SVG up to 4 MB and store the size in pixels.
+- **Added:** a **picture picker** for the picture fields: the current picture (or "No picture"), "Choose from the library" (the images of the event, with their pictures,
+  one click), "Upload here" (into the event's library), "Clear the picture", and the plain address field next to it as before. Wired into the four welcome page pictures
+  and the CTA page picture (page editor), the email footer picture (event editor) and the slideshow screen overlay (slideshow editor).
+- **Unchanged for guests:** every field keeps the same plain address string it stored before, so the capture page, the emails and the slideshow read the same strings and
+  were not changed. An address that is in no library (the MTK pictures put on R2 by hand) keeps working and shows its preview. The checks of the fields are unchanged
+  (email footer and overlay: https only; page pictures: as given). The email footer is offered only PNG, JPEG or WebP (email apps do not show SVG) and the overlay only
+  PNG, WebP or SVG (a JPEG cannot be transparent), the types their own uploads took before.
+- **Fixed (found while building this, in the library core of camera#364, pull request #377):** every partner and event library upload would have failed on the server with
+  "FileReader is not defined" (the uploaded file was read with a browser-only API; the tests mocked the upload). The file is now read with `arrayBuffer()`. An SVG upload was
+  stored as `image/svg`, which a browser does not draw; it is now `image/svg+xml` (no SVG was stored yet: checked read-only on frames and logos).
+- **Changed:** the library routes take `kind=images`; an image is not assigned to an event (an event upload does not touch the event) and has no default for new events;
+  deleting a global image takes it out of every partner library; removing or deleting an image never changes a field (its file stays). The fields no longer upload
+  through `/api/upload-logo` (still used by the event logo); `lib/admin/upload-image-client.ts` has no caller left.
+- **Verified:** unit tests (the images kind in the library code, the upload with the real upload helper and only the file store faked, the global list, switch and delete,
+  every new or changed route, the picker helpers and markup, the stored strings and the checks of the four fields); type-check; lint; the full CI chain; a real browser on
+  the production build with a stateful fake API and real picture addresses (the MTK pictures on R2 the fields hold today, the library frames), nothing written: the three
+  pages with every action, the picker inside a form (choose, type, paste, a broken address, clear, upload with a size check, the form never submitted by the picker), the
+  real page editor, screen design and event editor saving the plain address, the type rules of the footer and the overlay, at 1280 and 390 px (65 checks). Read-only:
+  the 10 picture fields with an address today are plain strings on R2, in no library.
+- **Not verified:** seen by the owner; a real upload or save (no write was made to the database or to the file store, so the first real upload is the owner's); the guest
+  pages, emails and slideshow in a browser (their code is unchanged). The event editor is 8 px wider than a 390 px screen because of its date and colour rows (not changed here).
+
 ## Unreleased — libraries, step 4: logos on three levels, the messmass logo as a partner library item (camera#367)
 
 - **Added (owner report, 2026-10-08):** logos have the three levels of the frames (epic camera#361). **Partner logos** (`/admin/partners/<id>/logos`): the partner's library with
@@ -92,36 +122,6 @@
 - **Fixed:** Reset on that panel did nothing (the reset call was given the event's Mongo id where its code looks the event up by its UUID, so it answered "Event not found"; and it kept the colours when the partner had no default colours). It is "Use the default colours" now and works: the event's own colours are removed, so the default of its partner (or messmass) applies. Removing the default colours of a partner also takes them off the events that follow it.
 - **Changed:** the colours an event stores are checked as #RRGGBB (an empty one clears it); `Event.brandColor` may be null; the theme says where the button fill comes from (`buttonSource`).
 - **Verified:** unit tests (the colour rules, the event save, Reset by the event's address id, the cascade of partner defaults, the source of the button colours); type-check; lint; the full CI chain; a real browser on the production build with the API mocked, nothing written: the panel for an event with the welcome page colours, with messmass colours, with its own colours and for a partner with none, and the editor (messmass colours on, an own choice sent, switching back clears, an untouched save sends no colour, an event that inherits its partner's colours keeps them). **Not done yet, pending the owner's go:** clearing the stuck blue on the 4 events and the 3 partners on the live data. Not seen by the owner on the live site.
-
-## Unreleased — libraries, step 5: the Images library and pickers for pictures (camera#368)
-
-- **Added (owner report, 2026-10-08: "visual elements has to be visible"):** an **Images library** on the three levels of the libraries (`docs/LIBRARIES.md`, section Images):
-  **Global Images** (`/admin/images`, menu Libraries, global admins: upload, switch off or on, delete; `?scope=all` lists every upload with whose it is), the partner's
-  **Images** (`/admin/partners/<id>/images`: add from the global library, upload, remove, delete an own upload) and the event's **Images** (`/admin/events/<id>/images`: the
-  pictures the event can use, from its partner's library and its own uploads; upload, delete an own upload; a link to the partner's Images page), linked from the style
-  sections of the partner and event pages.
-  Every list shows the pictures and where each comes from. Collection `images` (id `pictureId`); uploads take PNG, JPEG, WebP or SVG up to 4 MB and store the size in pixels.
-- **Added:** a **picture picker** for the picture fields: the current picture (or "No picture"), "Choose from the library" (the images of the event, with their pictures,
-  one click), "Upload here" (into the event's library), "Clear the picture", and the plain address field next to it as before. Wired into the four welcome page pictures
-  and the CTA page picture (page editor), the email footer picture (event editor) and the slideshow screen overlay (slideshow editor).
-- **Unchanged for guests:** every field keeps the same plain address string it stored before, so the capture page, the emails and the slideshow read the same strings and
-  were not changed. An address that is in no library (the MTK pictures put on R2 by hand) keeps working and shows its preview. The checks of the fields are unchanged
-  (email footer and overlay: https only; page pictures: as given). The email footer is offered only PNG, JPEG or WebP (email apps do not show SVG) and the overlay only
-  PNG, WebP or SVG (a JPEG cannot be transparent), the types their own uploads took before.
-- **Fixed (found while building this, in the library core of camera#364, pull request #377):** every partner and event library upload would have failed on the server with
-  "FileReader is not defined" (the uploaded file was read with a browser-only API; the tests mocked the upload). The file is now read with `arrayBuffer()`. An SVG upload was
-  stored as `image/svg`, which a browser does not draw; it is now `image/svg+xml` (no SVG was stored yet: checked read-only on frames and logos).
-- **Changed:** the library routes take `kind=images`; an image is not assigned to an event (an event upload does not touch the event) and has no default for new events;
-  deleting a global image takes it out of every partner library; removing or deleting an image never changes a field (its file stays). The fields no longer upload
-  through `/api/upload-logo` (still used by the event logo); `lib/admin/upload-image-client.ts` has no caller left.
-- **Verified:** unit tests (the images kind in the library code, the upload with the real upload helper and only the file store faked, the global list, switch and delete,
-  every new or changed route, the picker helpers and markup, the stored strings and the checks of the four fields); type-check; lint; the full CI chain; a real browser on
-  the production build with a stateful fake API and real picture addresses (the MTK pictures on R2 the fields hold today, the library frames), nothing written: the three
-  pages with every action, the picker inside a form (choose, type, paste, a broken address, clear, upload with a size check, the form never submitted by the picker), the
-  real page editor, screen design and event editor saving the plain address, the type rules of the footer and the overlay, at 1280 and 390 px (65 checks). Read-only:
-  the 10 picture fields with an address today are plain strings on R2, in no library.
-- **Not verified:** seen by the owner; a real upload or save (no write was made to the database or to the file store, so the first real upload is the owner's); the guest
-  pages, emails and slideshow in a browser (their code is unchanged). The event editor is 8 px wider than a 390 px screen because of its date and colour rows (not changed here).
 
 ## Unreleased — libraries, step 1: Global → Partner → Event for frames (camera#364, camera#365; epic camera#361)
 
