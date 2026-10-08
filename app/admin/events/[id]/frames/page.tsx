@@ -203,6 +203,12 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
           <h3 style={{ margin: 0 }}>Available Frames ({library.available.length})</h3>
           <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>
             From the library of {partnerName}, and uploads for this event, that the event has not taken yet. A frame that is not listed here has to be added to the partner library first.
+            {library.partner ? (
+              <>
+                {' '}
+                <Link href={`/admin/partners/${library.partner.adminId}/frames`}>Open the library of {library.partner.name}</Link>
+              </>
+            ) : null}
           </p>
         </div>
         <div style={{ padding: '1rem' }}>

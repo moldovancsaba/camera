@@ -43,7 +43,8 @@ export interface EventLibraryEntry extends LibraryItemView {
 
 export interface EventLibrary {
   kind: LibraryKind;
-  partner: { partnerId: string; name: string } | null;
+  /** `adminId` is the Mongo id the admin pages use in their addresses. */
+  partner: { partnerId: string; adminId: string; name: string } | null;
   assigned: EventLibraryEntry[];
   /** Taken-able items: the partner's library items and the event's own uploads that the event has not assigned. */
   available: LibraryItemView[];

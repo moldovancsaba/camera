@@ -7,6 +7,7 @@ import { fakeDb } from '@/lib/library/fake-db';
 const apiReal = await import('@/lib/api');
 
 const EVENT_MONGO_ID = new ObjectId();
+const PARTNER_MONGO_ID = new ObjectId();
 const ADMIN = { appRole: 'admin', user: { id: 'a1', email: 'admin@example.com', name: 'Admin' } };
 
 type RouteModule = typeof import('./route');
@@ -17,7 +18,7 @@ const frame = (frameId: string, extra: Record<string, unknown> = {}) => ({ frame
 function setup(t: TestContext, options: { allowed?: boolean } = {}) {
   const seeded = fakeDb({
     frames: [frame('g1'), frame('g2'), frame('p1', { scope: 'partner', partnerId: 'P' }), frame('e1', { scope: 'event', eventId: 'e-uuid', partnerId: 'P' })],
-    partners: [{ partnerId: 'P', name: 'Partner P', library: { frames: ['g1'], logos: [] } }],
+    partners: [{ _id: PARTNER_MONGO_ID, partnerId: 'P', name: 'Partner P', library: { frames: ['g1'], logos: [] } }],
     events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', name: 'Event', frames: [{ frameId: 'e1', isActive: true, addedAt: 'x', addedBy: 'u' }] }],
   });
   t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
@@ -39,6 +40,7 @@ test("GET lists what the event assigned and what it can still take: its partner'
   assert.equal(response.status, 200);
   const body = (await response.json()) as Body;
   assert.equal(body.data.partner?.name, 'Partner P');
+  assert.equal((body.data.partner as { adminId?: string } | null)?.adminId, String(PARTNER_MONGO_ID), 'the page links to the partner library by this id');
   assert.deepEqual(ids(body.data.assigned), ['e1']);
   assert.equal(body.data.assigned[0].scope, 'event');
   // g1 is in the partner library, p1 is the partner's upload; g2 is global but the partner does not have it.

@@ -138,7 +138,7 @@ export async function loadEventLibrary(db: Db, event: Document, kind: LibraryKin
   const candidates = [...resolved.globalDocs, ...resolved.ownDocs, ...ownEventDocs].filter((doc) => doc.isActive !== false && !taken.has(idOf(kind, doc)));
   return {
     kind,
-    partner: partner ? { partnerId: text(partner.partnerId), name: text(partner.name) } : null,
+    partner: partner ? { partnerId: text(partner.partnerId), adminId: String(partner._id), name: text(partner.name) } : null,
     assigned,
     available: candidates.sort(byNewest).map((doc) => itemView(kind, doc)),
     missing,
