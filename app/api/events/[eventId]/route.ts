@@ -31,6 +31,7 @@ import { isUiLanguage, normalizeUiLanguage, UI_LANGUAGES } from '@/lib/i18n';
 import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
 import { captureFrameOf } from '@/lib/frame/capture';
 import { normalizePhotoVettingInput, photoVettingRequired } from '@/lib/events/photo-vetting';
+import { applyEventBrandColours } from '@/lib/events/brand-colours';
 import { withDefaultJourneyPages } from '@/lib/events/default-pages';
 import { sanitizeCheckboxes } from '@/lib/events/consent';
 import { eventGetsDefaults, getDefaultsRollout } from '@/lib/admin/defaults-rollout';
@@ -319,14 +320,13 @@ export const PATCH = withErrorHandler(async (
   if (showLogo !== undefined) {
     updateFields.showLogo = Boolean(showLogo);
   }
-  // Brand colors: set override flag when brand values are changed
-  if (brandColor !== undefined) {
-    updateFields.brandColor = brandColor?.trim() || null;
-    updateFields.brandColorsOverridden = true; // Event now uses custom brand colors
-  }
-  if (brandBorderColor !== undefined) {
-    updateFields.brandBorderColor = brandBorderColor?.trim() || null;
-    updateFields.brandColorsOverridden = true; // Event now uses custom brand colors
+  // Brand colors (camera#380): by default they come from messmass, so a colour is stored only when it is submitted, and a save that does not send them leaves them
+  // alone. Empty or null clears a colour; with both cleared the event takes the default of its partner, else it follows messmass again.
+  if (brandColor !== undefined || brandBorderColor !== undefined) {
+    const partnerRow = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }, { projection: { defaultBrandColors: 1 } });
+    const change = applyEventBrandColours(event as { brandColor?: unknown; brandBorderColor?: unknown }, { brandColor, brandBorderColor }, partnerRow?.defaultBrandColors as { primary?: string; secondary?: string } | undefined);
+    if (!change.ok) throw apiBadRequest(change.error);
+    Object.assign(updateFields, change.fields);
   }
   if (isActive !== undefined) {
     updateFields.isActive = Boolean(isActive);

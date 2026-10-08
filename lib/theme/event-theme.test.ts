@@ -191,3 +191,33 @@ test('the link colour reads on the card and on a ticked, tinted card (the consen
     assert.ok(contrast(theme.link, ticked) >= 4.5, `link ${theme.link} on the ticked card ${ticked}`);
   }
 });
+
+test('the theme says where the button fill comes from, in the order the colours apply: the welcome page, the event own colour, the messmass style, the default', () => {
+  const messmass = context({ page: PAGE });
+  const darkWelcome = { fill: '#1b3a69', label: '#ffffff', ring: '#189cd8' };
+  const welcome = resolveEventTheme({ context: messmass, brandColor: '#0057b8', buttons: darkWelcome });
+  assert.equal(welcome.buttonSource, 'welcome');
+  assert.equal(welcome.buttonBackground, '#1b3a69');
+
+  const own = resolveEventTheme({ context: messmass, brandColor: '#0057b8' });
+  assert.equal(own.buttonSource, 'event');
+  assert.notEqual(own.buttonBackground, '#3b82f6', 'the event colour (made to stand out from the card and the page, same hue), not the style button');
+
+  const fromMessmass = resolveEventTheme({ context: messmass });
+  assert.equal(fromMessmass.buttonSource, 'messmass');
+  assert.equal(fromMessmass.buttonBackground, '#3b82f6', 'the style of the report, as it is');
+
+  const none = resolveEventTheme({});
+  assert.equal(none.buttonSource, 'default');
+  const native = resolveEventTheme({ context: nativeFrameContext({ eventName: 'Fan day', partnerName: 'Club', partnerLogoUrl: null }, NOW) });
+  assert.equal(native.buttonSource, 'default', 'camera own fallback is not messmass');
+});
+
+test('clearing the own colour of an event gives the guests the messmass colours back', () => {
+  const messmass = context({ page: PAGE });
+  const withOwn = resolveEventTheme({ context: messmass, brandColor: '#831100', brandBorderColor: '#ffaa00' });
+  const cleared = resolveEventTheme({ context: messmass, brandColor: null, brandBorderColor: null });
+  assert.notEqual(withOwn.buttonBackground, cleared.buttonBackground);
+  assert.equal(cleared.buttonBackground, resolveEventTheme({ context: messmass }).buttonBackground);
+  assert.equal(cleared.source, 'messmass');
+});

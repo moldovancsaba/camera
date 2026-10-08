@@ -28,7 +28,7 @@ interface PartnerRecord {
   defaultBrandColors?: {
     primary?: string;
     secondary?: string;
-  };
+  } | null;
 }
 
 interface UpdatePartnerPayload {
@@ -40,7 +40,7 @@ interface UpdatePartnerPayload {
   defaultBrandColors?: {
     primary?: string;
     secondary?: string;
-  };
+  } | null;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -54,6 +54,10 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [partner, setPartner] = useState<PartnerRecord | null>(null);
+  // The colours of the events come from messmass by default (camera#380): the partner has default colours only when somebody switches that off and picks some, and a
+  // save that did not touch them sends none, so a default is never stored by accident.
+  const [ownColours, setOwnColours] = useState(false);
+  const [coloursTouched, setColoursTouched] = useState(false);
   const [primaryColor, setPrimaryColor] = useState(CAMERA_DEFAULT_BRAND_COLOR);
   const [secondaryColor, setSecondaryColor] = useState(CAMERA_DEFAULT_BRAND_BORDER_COLOR);
 
@@ -74,6 +78,8 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
 
         const partnerRecord = data.partner ?? data.data?.partner;
         setPartner(partnerRecord);
+        setOwnColours(Boolean(partnerRecord.defaultBrandColors?.primary || partnerRecord.defaultBrandColors?.secondary));
+        setColoursTouched(false);
         setPrimaryColor(partnerRecord.defaultBrandColors?.primary || CAMERA_DEFAULT_BRAND_COLOR);
         setSecondaryColor(partnerRecord.defaultBrandColors?.secondary || CAMERA_DEFAULT_BRAND_BORDER_COLOR);
       } catch (fetchError) {
@@ -100,11 +106,9 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
       isActive: formData.get('isActive') === 'on',
     };
 
-    if (primaryColor || secondaryColor) {
-      data.defaultBrandColors = {
-        primary: primaryColor || undefined,
-        secondary: secondaryColor || undefined,
-      };
+    // Only when the colours were touched: null means the partner has none, so its events follow messmass.
+    if (coloursTouched) {
+      data.defaultBrandColors = ownColours ? { primary: primaryColor || undefined, secondary: secondaryColor || undefined } : null;
     }
 
     try {
@@ -202,15 +206,36 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
 
           <FormSection
             title="Default Styles for Events"
-            description="Set default brand colors that will automatically apply to all new events under this partner. Events can override these later to become independent."
+            description="By default the events of this partner use the colours of their messmass style. Set default brand colors only when every event of the partner should share them; events can still set their own."
           >
-            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))' }}>
+            <label style={{ alignItems: 'flex-start', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
+              <input
+                type="checkbox"
+                checked={!ownColours}
+                onChange={(event) => {
+                  setOwnColours(!event.currentTarget.checked);
+                  setColoursTouched(true);
+                }}
+                style={{ marginTop: '0.25rem' }}
+              />
+              <span>
+                Use the colours of the messmass style
+                <span style={{ color: 'var(--gds-color-muted)', display: 'block', fontSize: '0.8125rem', fontWeight: 400 }}>
+                  On by default. Switch it off to give every event of this partner the colours below.
+                </span>
+              </span>
+            </label>
+            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', opacity: ownColours ? 1 : 0.5 }}>
               <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
                 Default Primary Color
                 <input
                 type="color"
                 value={primaryColor}
-                onChange={(event) => setPrimaryColor(event.currentTarget.value)}
+                onChange={(event) => {
+                  setPrimaryColor(event.currentTarget.value);
+                  setColoursTouched(true);
+                }}
+                disabled={!ownColours}
                 aria-describedby="partner-primary-color-help"
                 style={{ minHeight: 44 }}
               />
@@ -223,7 +248,11 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
                 <input
                 type="color"
                 value={secondaryColor}
-                onChange={(event) => setSecondaryColor(event.currentTarget.value)}
+                onChange={(event) => {
+                  setSecondaryColor(event.currentTarget.value);
+                  setColoursTouched(true);
+                }}
+                disabled={!ownColours}
                 aria-describedby="partner-secondary-color-help"
                 style={{ minHeight: 44 }}
               />

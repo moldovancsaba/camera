@@ -19,6 +19,12 @@ import { isLogoStorageHostname } from '@/lib/imgbb/url';
 
 export type FontSource = 'google' | 'custom' | 'system';
 
+/**
+ * Where the fill of the buttons comes from, in the order of precedence: `welcome` the colours of the Start button of the welcome page, `event` the event's own
+ * colour (set in the editor, or the default of its partner), `messmass` the style of the event's report in messmass, `default` the system default look.
+ */
+export type ButtonColourSource = 'welcome' | 'event' | 'messmass' | 'default';
+
 export interface EventTheme {
   /** `messmass`: from the event's style snapshot; `event`: the system default look with the event's brand colour; `default`: the system default look. */
   source: 'messmass' | 'event' | 'default';
@@ -40,6 +46,8 @@ export interface EventTheme {
   buttonText: string;
   /** The ring round every button (camera#334): the colour the club set on its welcome page's Start button, else the label colour. */
   buttonRing: string;
+  /** Where the fill of the buttons comes from (the admin shows it next to the colours, so the editor knows which setting decides). */
+  buttonSource: ButtonColourSource;
   /** Link colour on a card. */
   link: string;
   /** A CSS length (px, rem or em). */
@@ -127,6 +135,7 @@ export function resolveEventTheme({ brandColor, brandBorderColor, context, email
     fromStyle.find((c) => repaired(c, stands, 3) === c) ?? repaired(fromStyle[1] ?? fromStyle[0], stands, 3) ?? repaired(fromStyle[0], stands, 3) ?? null;
   const fallbackFill = [cardText, '#000000', '#ffffff'].sort((a, b) => Math.min(contrast(b, cardBackground), contrast(b, background)) - Math.min(contrast(a, cardBackground), contrast(a, background)))[0];
   const buttonBackground = welcomeFill ?? eventFill ?? derivedFill ?? fallbackFill;
+  const buttonSource: ButtonColourSource = welcomeFill ? 'welcome' : eventFill ? 'event' : derivedFill && fromMessmass ? 'messmass' : 'default';
   // The label: the club's own, else the style's own label when the fill is the style's own button as it is, else white or black by contrast; always
   // at least 3:1 on the fill.
   const styleLabel = buttonBackground === opaque(page.buttonBackground, hexRgb(cardBackground)) ? opaque(page.buttonText, hexRgb(buttonBackground)) : null;
@@ -155,6 +164,7 @@ export function resolveEventTheme({ brandColor, brandBorderColor, context, email
     buttonBackground,
     buttonText,
     buttonRing,
+    buttonSource,
     link,
     radius: radiusOf(page.cardRadius),
     dark: isDark(background),
