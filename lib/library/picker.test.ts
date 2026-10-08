@@ -4,7 +4,7 @@ import { chosenValue, libraryItemFor, pickableImages, pickerEndpoints, pictureFi
 import { EMAIL_PICTURE_TYPES, OVERLAY_PICTURE_TYPES } from './image-files';
 import type { LibraryItemView } from './types';
 
-const item = (id: string, extra: Partial<LibraryItemView> = {}): LibraryItemView => ({ id, kind: 'images', name: `Picture ${id}`, description: '', imageUrl: `https://store.example.test/${id}.png`, thumbnailUrl: null, scope: 'global', itemActive: true, createdAt: null, ...extra });
+const item = (id: string, extra: Partial<LibraryItemView> = {}): LibraryItemView => ({ id, kind: 'images', name: `Picture ${id}`, description: '', imageUrl: `https://store.example.test/${id}.png`, thumbnailUrl: null, scope: 'global', itemActive: true, createdAt: null, messageArea: null, ...extra });
 
 test('a picture field chooses from the library of the level of its page, and uploads to that level', () => {
   assert.deepEqual(pickerEndpoints({ scope: 'event', eventId: 'ev1' }), { list: '/api/events/ev1/library?kind=images', upload: '/api/events/ev1/library/upload', page: '/admin/events/ev1/images', words: 'the images of this event' });
