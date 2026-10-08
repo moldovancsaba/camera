@@ -137,29 +137,15 @@ async function canFetchImage(url: string): Promise<boolean> {
 }
 
 /**
- * Convert File or Blob to base64 string. On the server there is no FileReader (Node has none), so the bytes are read directly: the library
- * uploads (lib/library/upload.ts) pass the uploaded File as it is.
+ * Convert File or Blob to base64 string. Read through `arrayBuffer()`: this module runs on the server, and Node has no FileReader (a File
+ * passed here, as the library uploads do, failed with "FileReader is not defined").
  */
 async function fileToBase64(file: File | Blob): Promise<string> {
-  if (typeof FileReader === 'undefined') {
-    const base64 = Buffer.from(await file.arrayBuffer()).toString('base64');
-    if (!base64) throw new Error('Invalid base64 image payload');
-    return base64;
+  const base64 = Buffer.from(await file.arrayBuffer()).toString('base64');
+  if (!base64) {
+    throw new Error('Invalid base64 image payload');
   }
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const payload = (reader.result as string).split(',');
-      const base64 = payload.length > 1 ? payload[1] : payload[0];
-      if (!base64) {
-        reject(new Error('Invalid base64 image payload'));
-        return;
-      }
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+  return base64;
 }
 
 function normalizeBase64Input(image: string): string {
@@ -209,7 +195,8 @@ async function uploadToBlobPrimary(
 ): Promise<{ imageUrl: string; fileSize: number; mimeType: string; fileName: string }> {
   const buffer = Buffer.from(base64Image, 'base64');
   const metadata = await sharp(buffer, { failOn: 'none' }).metadata();
-  const mimeType = metadata.format ? `image/${metadata.format}` : 'application/octet-stream';
+  // sharp names an SVG "svg"; a browser draws it in an <img> only when it is served as image/svg+xml.
+  const mimeType = metadata.format === 'svg' ? 'image/svg+xml' : metadata.format ? `image/${metadata.format}` : 'application/octet-stream';
   const extension = metadata.format ?? 'bin';
   const fileName = `${sanitizePathnameSegment(name ?? 'upload')}.${extension}`;
 

@@ -16,6 +16,7 @@ import {
   type LibraryKind,
   type ScopeFields,
 } from './kinds';
+import { parseMessageArea } from '@/lib/frame/message-area';
 import { applyLibraryEdit, assignedFromGlobal, canEventAssign, canPartnerAssign, scopeOf } from './rules';
 import type { EventLibrary, EventLibraryEntry, LibraryItemView, PartnerLibrary, PartnerLibraryEntry } from './types';
 
@@ -45,6 +46,7 @@ export function itemView(kind: LibraryKind, doc: Document): LibraryItemView {
     scope: scopeOf(fieldsOf(doc)),
     itemActive: doc.isActive !== false,
     createdAt: urlOrNull(doc.createdAt),
+    messageArea: kind === 'frames' ? parseMessageArea(doc.messageArea) : null,
   };
 }
 
@@ -182,9 +184,20 @@ export type SavePartnerLibraryResult =
   | { ok: false; status: 400 | 404; reason: string };
 
 /**
+ * Events that use an item that leaves the partner's library keep it (decision 116, camera#361). The defaults cascade replaces the whole list of an event
+ * that follows the defaults, so such an event stops following them: its list is its own from now on (the flag an edit of the list sets).
+ */
+async function keepInEvents(db: Db, partnerId: string, kind: LibraryKind, ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  await db
+    .collection(COLLECTIONS.EVENTS)
+    .updateMany({ partnerId, [`${kind}.${KIND_META[kind].idField}`]: { $in: ids }, [`${kind}Overridden`]: { $ne: true } }, { $set: { [`${kind}Overridden`]: true } });
+}
+
+/**
  * Edits a partner's library: adds items of the global library, removes items, sets the defaults for new events. The first save turns what the
  * partner had before (its defaults and what its events use) into its own saved list for every kind, so nothing disappears. Removing an item
- * does not touch the events that already use it; the result says how many do.
+ * does not take it away from the events that already use it (they stop following the defaults, see keepInEvents); the result says how many do.
  */
 export async function savePartnerLibrary(db: Db, partner: Document, kind: LibraryKind, change: PartnerLibraryChange, now: string): Promise<SavePartnerLibraryResult> {
   const add = [...new Set(change.add ?? [])];
@@ -243,6 +256,7 @@ export async function savePartnerLibrary(db: Db, partner: Document, kind: Librar
   if (defaultsChanged && kind === 'frames') set.defaultFrames = defaults;
   if (logoDefaultsChanged) set.defaultLogos = logoDefaults;
   await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId: text(partner.partnerId) }, { $set: set });
+  await keepInEvents(db, text(partner.partnerId), kind, remove);
 
   const removedInUse: Record<string, number> = {};
   for (const id of remove) {
@@ -254,6 +268,54 @@ export async function savePartnerLibrary(db: Db, partner: Document, kind: Librar
 }
 
 /** `eventId` here is the event UUID (`Event.eventId`), like the `eventId` an upload carries. */
+export type UpdateUploadResult = { ok: true; item: Document } | { ok: false; status: 400 | 404; reason: string };
+
+/** What the owner of an own upload may change: its name and, for a frame, its message area (null removes it). */
+export interface UploadChanges {
+  name?: unknown;
+  messageArea?: unknown;
+}
+
+/**
+ * Changes an item that was uploaded at the partner level or the event level (never a global one). A frame's message area (camera#366) says where a message
+ * is written on it; with one it carries the messages of an event instead of being a frame the guest picks.
+ */
+export async function updateLibraryUpload(
+  db: Db,
+  kind: LibraryKind,
+  itemId: string,
+  level: { scope: 'partner'; partnerId: string } | { scope: 'event'; eventId: string },
+  changes: UploadChanges,
+  now: string
+): Promise<UpdateUploadResult> {
+  const { idField, noun } = KIND_META[kind];
+  const item = await coll(db, kind).findOne({ [idField]: itemId });
+  if (!item) return { ok: false, status: 404, reason: `${noun[0].toUpperCase()}${noun.slice(1)} not found` };
+  const scope = scopeOf(fieldsOf(item));
+  const mine = level.scope === 'event' ? scope === 'event' && text(item.eventId) === level.eventId : scope === 'partner' && text(item.partnerId) === level.partnerId;
+  if (!mine) return { ok: false, status: 400, reason: `Only a ${noun} uploaded for this ${level.scope} can be changed here.` };
+
+  const set: Record<string, unknown> = { updatedAt: now };
+  const unset: Record<string, ''> = {};
+  if (changes.name !== undefined) {
+    const name = typeof changes.name === 'string' ? changes.name.trim() : '';
+    if (!name || name.length > 120) return { ok: false, status: 400, reason: 'The name must have 1 to 120 characters.' };
+    set.name = name;
+  }
+  if (changes.messageArea !== undefined) {
+    if (kind !== 'frames') return { ok: false, status: 400, reason: `A ${noun} has no message area.` };
+    if (changes.messageArea === null) unset.messageArea = '';
+    else {
+      const area = parseMessageArea(changes.messageArea);
+      if (!area) return { ok: false, status: 400, reason: 'The message area is not usable: the box must sit inside the 1920 x 1080 frame and the colour must be a hex colour.' };
+      set.messageArea = area;
+    }
+  }
+  await coll(db, kind).updateOne({ [idField]: itemId }, Object.keys(unset).length ? { $set: set, $unset: unset } : { $set: set });
+  const updated = await coll(db, kind).findOne({ [idField]: itemId });
+  return { ok: true, item: updated ?? { ...item, ...set } };
+}
+
 export type DeleteUploadResult = { ok: true } | { ok: false; status: 400 | 404 | 409; reason: string };
 
 /**

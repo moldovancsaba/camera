@@ -545,6 +545,11 @@ export interface Frame {
   scope?: 'global' | 'partner' | 'event';
   partnerId?: string;                // partner UUID, for scope 'partner' (and the partner of an event upload)
   eventId?: string;                  // the event's UUID (Event.eventId), for scope 'event'
+  /**
+   * Where a message is written on this frame (camera#366, lib/frame/message-area.ts): a text-free frame that carries the messages of an event. A frame with a message
+   * area is not a complete frame the guest picks; an event's messages choose it (`frameDesign.messageFrames`).
+   */
+  messageArea?: { messageBox: { x: number; y: number; width: number; height: number }; messageColor?: string; layers?: Array<{ id: 'header' | 'footer'; x: number; y: number; width: number; height: number }> };
 }
 
 // ============================================================================

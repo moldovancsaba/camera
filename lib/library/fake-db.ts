@@ -1,7 +1,7 @@
 /**
  * A database of plain arrays for the tests of the libraries: just the calls lib/library and its routes make (find with sort and limit,
- * findOne, countDocuments, insertOne, updateOne with $set, $push and $pull, deleteOne). Filters: equality (null matches a missing field),
- * $in, $nin, $ne, $exists, $or and dotted paths through arrays (`frames.frameId`). Not part of the app.
+ * findOne, countDocuments, insertOne, updateOne with $set, $push and $pull, updateMany with $set, deleteOne). Filters: equality (null matches a missing field),
+ * $in, $nin, $ne, $exists, $or and dotted paths through arrays (`frames.frameId`); $set (also `frames.$.isActive`), $unset, $push and $pull. Not part of the app.
  */
 
 import type { Db } from 'mongodb';
@@ -55,6 +55,16 @@ function positionalIndex(doc: Doc, filter: Doc, arrayName: string): number {
     if (i >= 0) return i;
   }
   throw new Error(`fake db: no element for the positional $ of ${arrayName}`);
+}
+
+function unsetPath(doc: Doc, path: string): void {
+  const parts = path.split('.');
+  let target: Doc | undefined = doc;
+  for (const part of parts.slice(0, -1)) {
+    const next: unknown = target?.[part];
+    target = next && typeof next === 'object' ? (next as Doc) : undefined;
+  }
+  if (target) delete target[parts[parts.length - 1]];
 }
 
 function setPath(doc: Doc, path: string, value: unknown, filter: Doc = {}): void {
@@ -113,6 +123,7 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
           const doc = list(name).find((d) => matches(d, filter));
           if (!doc) return { matchedCount: 0, modifiedCount: 0 };
           for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(doc, path, value, filter);
+          for (const path of Object.keys((update.$unset as Doc) ?? {})) unsetPath(doc, path);
           for (const [path, value] of Object.entries((update.$push as Doc) ?? {})) {
             const arr = (doc[path] as unknown[] | undefined) ?? [];
             doc[path] = [...arr, value];
@@ -123,10 +134,17 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
           }
           return { matchedCount: 1, modifiedCount: 1 };
         },
+        updateMany: async (filter: Doc, update: Doc) => {
+          calls.push({ collection: name, op: 'updateMany', args: [filter, update] });
+          const docs = list(name).filter((d) => matches(d, filter));
+          for (const doc of docs) for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(doc, path, value, filter);
+          return { matchedCount: docs.length, modifiedCount: docs.length };
+        },
         findOneAndUpdate: async (filter: Doc, update: Doc) => {
           const doc = list(name).find((d) => matches(d, filter));
           if (!doc) return null;
           for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(doc, path, value, filter);
+          for (const path of Object.keys((update.$unset as Doc) ?? {})) unsetPath(doc, path);
           return { ...doc };
         },
         deleteOne: async (filter: Doc) => {

@@ -31,7 +31,7 @@ its own. A partner can only take items that are global. The pictures are always 
 A partner that has not saved a library yet has **what it already had**: its default frames and logos and the frames and logos its events already use (only global
 items; an event's own upload is not a partner item). That list is computed, nothing is written and nothing is deleted. **The first change saved on the partner library
 page makes it the partner's own list**, for every kind at once. Removing an item from the partner library does **not** take it away from the events that already
-have it: they keep it, and their page says "No longer in the partner library" (the API tells how many events still use a removed item).
+have it: they keep it, and their page says "No longer in the partner library" (the API tells how many events still use a removed item). An event that follows the partner's defaults and has the removed item stops following them (`framesOverridden`, `logosOverridden`): the change of the defaults replaces the whole list of an event that follows them, so without this the event would lose the item (decision 116).
 
 ## The rules (lib/library/rules.ts, pure)
 
@@ -66,6 +66,21 @@ The capture page reads the frames of an event from the event data itself (the li
 a separate list of the whole library: an event's own upload is not in the global list, and the list stopped at 100. For every event that has frames today the result
 is the same as before (checked on the real data: 14 of 14 events).
 
+## Messages choose their frame (LIB-3)
+
+- **A message area on a frame** (`Frame.messageArea`, `lib/frame/message-area.ts`): where a message is written on a text-free frame (a box in the 1920 x 1080 frame, a colour,
+  optional top and bottom territories): the same data the older `frameDesign.base` holds. A frame **with** a message area carries the messages of an event and is **not** a frame
+  the guest picks; a frame without one is a complete frame, as before. It is edited on the card of a frame the level owns (the Message area button of a partner or event
+  upload) and on the global frame's edit page, with a preview of the boxes on the picture; saving redraws the events whose messages are written on that frame.
+- **The frame of each message** (`frameDesign.messageFrames`: the text of a message to a frame id): chosen in the generated frame panel of the event, one frame per message, among
+  the event's frames that are assigned, switched on, switched on in the library, and have a message area. The choice goes by the text of the message, so it stays with the
+  message when messages are moved; it is checked on save (400 with a plain message) and dropped when its message goes or the list is reset. A snapshot refresh keeps it.
+- **Drawing** (`lib/frame/variants.ts`): for each message: the chosen frame (written with the event's font, `renderBaseFrame`), else the older base picture, else the generated
+  layout. The image key covers the frame's picture and message area, so only the messages of a changed frame are drawn again; a message with no frame keeps the key it had.
+  A chosen frame that is no longer usable falls back quietly (the panel says so); a picture that cannot be fetched fails the run and leaves the images as they were.
+- **Guests:** an event whose only active frames carry messages has **no frame of its own**, so the generated frames apply (`captureFrameOf`, the capture page, the rollout in
+  `lib/frame/backfill.ts`); the event data tells the capture page which assigned frames carry messages (`hasMessageArea`).
+
 ## Logos (LIB-4, camera#367)
 
 The same three levels as frames (pages `/admin/partners/<id>/logos` and `/admin/events/<id>/logos`), with what is particular to logos (`lib/library/logos.ts`):
@@ -76,7 +91,7 @@ The same three levels as frames (pages `/admin/partners/<id>/logos` and `/admin/
   logo** by `order` (the event's own order for equal ones), never a random one: the capture page and the slideshow pick it so, and the event page marks it ("Guests see this one").
 - **Defaults keep their scenario and order** (`Partner.defaultLogos[{ logoId, scenario, order }]`), set per scenario on the partner page, each a logo of the partner's library;
   a changed list follows into the events that have not edited their own logos (`logosOverridden`), as before. Removing a default logo from the library removes its default rows
-  too (the page asks first), so the events that follow the defaults lose it; the events with their own list keep it.
+  too (the page asks first), but an event that has the logo keeps it: it stops following the defaults, as for frames (camera#385).
 - **Event page.** Per scenario: Assigned, in the guests' order, and Available: the partner's library and the event's own uploads not assigned in that scenario (a logo the event
   shows in one scenario stays available for the others). Switching off and removing act on that scenario only and make the list the event's own. An upload on the event page is
   assigned at once in the scenario the editor chooses (`onboarding-thankyou` by default) with order 0, like an assignment.
@@ -94,8 +109,8 @@ The same three levels as frames (pages `/admin/partners/<id>/logos` and `/admin/
 
 ## What is done and what comes next
 
-- **Done (LIB-1, LIB-2):** the core, the partner and event pages for frames, upload at both levels, the one-way rule in the API, the global list global-only.
-- **Done (LIB-4):** logos on the three levels, the pages with pictures, the logo from messmass as a partner library item (see Logos above).
-- **Next:** LIB-3 each message chooses its frame (and the message area of a frame), LIB-5 an Images library, LIB-6 the MTK migration (assigning the imported logo where MTK needs
-  it), LIB-7 the audit fixes (frame deletion that also cleans the libraries, paging of long lists).
+- **Done (LIB-1, LIB-2, LIB-3, LIB-4):** the core, the partner and event pages for frames, upload at both levels, the one-way rule in the API, the global list global-only, the message
+  area of a frame and the frame of each message, and logos on the three levels with the logo from messmass as a partner library item (see Logos above).
+- **Next:** LIB-5 an Images library, LIB-6 the MTK migration (assigning the imported logo where MTK needs it), LIB-7 the audit fixes (frame deletion that also cleans the libraries,
+  paging of long lists).
 - A **logo** or an **image** joins a kind by adding it to `LIBRARY_KINDS` and `KIND_META` (`lib/library/kinds.ts`) and its upload to `lib/library/upload.ts`.

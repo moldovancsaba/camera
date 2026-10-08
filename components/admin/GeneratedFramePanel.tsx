@@ -19,6 +19,7 @@ import { FRAME_PREVIEW_BACKDROP } from '@/lib/gds/tokens/colors';
 import type { FrameDesign } from '@/lib/frame/context';
 import { describeSnapshotChanges } from '@/lib/frame/diff';
 import { eventEmoji } from '@/lib/frame/emoji';
+import AssetThumbnail from '@/components/admin/library/AssetThumbnail';
 import { fillMessage, messageTokens, validateMessages } from '@/lib/frame/messages';
 
 interface Limits {
@@ -26,11 +27,23 @@ interface Limits {
   maxLength: number;
 }
 
+/** A frame of the event that can carry a message: assigned, switched on, with a message area (camera#366). */
+interface CarrierFrame {
+  frameId: string;
+  name: string;
+  imageUrl: string;
+}
+
 interface Loaded {
   frameDesign: FrameDesign | null;
   defaultMessages: string[];
   limits: Limits;
+  availableFrames?: CarrierFrame[];
 }
+
+/** The frame chosen for each message of a design, in the order of its messages; '' where a message has none. */
+const framesOf = (design: Pick<FrameDesign, 'messages' | 'messageFrames'> | null, messages: readonly string[]): string[] =>
+  messages.map((message) => design?.messageFrames?.[message] ?? '');
 
 interface ImageCounts {
   total: number;
@@ -79,6 +92,8 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame }: { ev
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draft, setDraft] = useState<string[]>([]);
+  // The frame chosen for each message, in the order of `draft` ('' = the generated layout).
+  const [draftFrames, setDraftFrames] = useState<string[]>([]);
   const [busy, setBusy] = useState<Busy>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
 
@@ -89,7 +104,10 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame }: { ev
       const base = from ?? current;
       return base ? { ...base, frameDesign } : base;
     });
-    if (frameDesign) setDraft(frameDesign.messages);
+    if (frameDesign) {
+      setDraft(frameDesign.messages);
+      setDraftFrames(framesOf(frameDesign, frameDesign.messages));
+    }
   }, []);
 
   useEffect(() => {
@@ -98,7 +116,9 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame }: { ev
       .then((data) => {
         if (cancelled) return;
         setLoaded(data);
-        setDraft(data.frameDesign?.messages ?? data.defaultMessages);
+        const messages = data.frameDesign?.messages ?? data.defaultMessages;
+        setDraft(messages);
+        setDraftFrames(framesOf(data.frameDesign, messages));
       })
       .catch((error: unknown) => {
         if (!cancelled) setLoadError(error instanceof Error ? error.message : 'Could not load the generated frame');
@@ -111,7 +131,9 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame }: { ev
   const design = loaded?.frameDesign ?? null;
   const limits = loaded?.limits ?? { maxMessages: 10, maxLength: 80 };
   const saved = design?.messages ?? loaded?.defaultMessages ?? [];
-  const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  const savedFrames = framesOf(design, saved);
+  const carriers = loaded?.availableFrames ?? [];
+  const dirty = JSON.stringify(draft) !== JSON.stringify(saved) || JSON.stringify(draftFrames) !== JSON.stringify(savedFrames);
   const validation = useMemo(() => validateMessages(draft.map((message) => message)), [draft]);
   const validationError = validation.ok ? null : validation.error;
 
@@ -140,7 +162,12 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame }: { ev
       if (!validation.ok) throw new Error(validation.error);
       const result = await call<{ frameDesign: FrameDesign; variants: ImageCounts }>(
         endpoint,
-        { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: validation.messages }) },
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          // The frame of a message goes by the text of the message, so it stays with the message (camera#366).
+          body: JSON.stringify({ messages: validation.messages, messageFrames: Object.fromEntries(validation.messages.flatMap((message, index) => (draftFrames[index] ? [[message, draftFrames[index]]] : []))) }),
+        },
         'Could not save the messages'
       );
       adopt(result.frameDesign);
@@ -185,13 +212,16 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame }: { ev
 
   const context = design?.context ?? null;
   const variants = design?.variants ?? [];
-  const move = (from: number, to: number) =>
-    setDraft((list) => {
-      if (to < 0 || to >= list.length) return list;
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= draft.length) return;
+    const swap = <T,>(list: T[]): T[] => {
       const next = [...list];
       [next[from], next[to]] = [next[to], next[from]];
       return next;
-    });
+    };
+    setDraft(swap);
+    setDraftFrames(swap);
+  };
 
   return (
     <section aria-labelledby="generated-frame-title" style={section}>
@@ -234,6 +264,7 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame }: { ev
                     />
                   </div>
                   <span style={{ fontSize: '0.875rem' }}>{variant.message ?? 'No message'}</span>
+                  {variant.frameId ? <span style={muted}>Written on the frame “{carriers.find((frame) => frame.frameId === variant.frameId)?.name ?? 'a frame of this event'}”.</span> : null}
                   {variant.logo === 'failed' ? <span style={muted}>The logo could not be fetched; it is retried at the next refresh.</span> : null}
                   {variant.font.note ? <span style={muted}>{variant.font.note}</span> : null}
                 </li>
@@ -306,9 +337,16 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame }: { ev
             Use <code>{'{partner1}'}</code> and <code>{'{partner2}'}</code> for the two sides on the frame (home and visitor, or the two sides of an event name
             like “A - B”); a message that cannot be filled for this event is skipped.
           </p>
+          <p style={{ ...muted, margin: '0 0 0.75rem' }}>
+            {carriers.length > 0
+              ? 'Each message can be written on one of the frames of this event that carry messages (the Frame choice of the message); a message with no frame uses the generated layout.'
+              : 'To write messages on your own frames, assign or upload a frame below and give it a message area (Message area on its card): a text-free frame that carries the messages of this event.'}
+          </p>
           <ol style={{ display: 'grid', gap: '0.75rem', listStyle: 'none', margin: 0, padding: 0 }}>
             {draft.map((message, index) => {
               const filled = tokens ? fillMessage(message, tokens) : null;
+              const chosenId = draftFrames[index] ?? '';
+              const chosen = carriers.find((frame) => frame.frameId === chosenId);
               return (
                 <li key={index} style={{ display: 'grid', gap: '0.25rem' }}>
                   <Group gap="xs" align="flex-start" wrap="wrap">
@@ -329,10 +367,41 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame }: { ev
                     <Button type="button" variant="light" size="xs" aria-label={`Move message ${index + 1} down`} disabled={busy !== null || index === draft.length - 1} onClick={() => move(index, index + 1)}>
                       Down
                     </Button>
-                    <Button type="button" variant="light" color="red" size="xs" aria-label={`Remove message ${index + 1}`} disabled={busy !== null} onClick={() => setDraft((list) => list.filter((_, at) => at !== index))}>
+                    <Button type="button" variant="light" color="red" size="xs" aria-label={`Remove message ${index + 1}`} disabled={busy !== null} onClick={() => { setDraft((list) => list.filter((_, at) => at !== index)); setDraftFrames((list) => list.filter((_, at) => at !== index)); }}>
                       Remove
                     </Button>
                   </Group>
+                  {carriers.length > 0 || chosenId ? (
+                    <Group gap="xs" align="center" wrap="wrap">
+                      <label style={{ alignItems: 'center', display: 'inline-flex', fontSize: '0.8125rem', gap: '0.5rem' }}>
+                        Frame
+                        <select
+                          aria-label={`Frame for message ${index + 1}`}
+                          value={chosenId}
+                          disabled={busy !== null}
+                          onChange={(event) => {
+                            const value = event.currentTarget.value;
+                            setDraftFrames((list) => list.map((item, at) => (at === index ? value : item)));
+                          }}
+                          style={{ minHeight: 32 }}
+                        >
+                          <option value="">Generated layout (no frame)</option>
+                          {carriers.map((frame) => (
+                            <option key={frame.frameId} value={frame.frameId}>
+                              {frame.name}
+                            </option>
+                          ))}
+                          {chosenId && !chosen ? <option value={chosenId}>A frame that is no longer available</option> : null}
+                        </select>
+                      </label>
+                      {chosen ? <AssetThumbnail url={chosen.imageUrl} name={chosen.name} noun="frame" width={96} /> : null}
+                    </Group>
+                  ) : null}
+                  {chosenId && !chosen ? (
+                    <span role="alert" style={{ color: 'var(--gds-color-danger, inherit)', fontSize: '0.8125rem' }}>
+                      The frame chosen for this message is no longer available (not assigned to this event, switched off, or without a message area): the generated layout is used until you choose another.
+                    </span>
+                  ) : null}
                   <span style={muted}>
                     {message.trim().length}/{limits.maxLength}
                     {tokens && message.trim() ? (filled === null ? ' · skipped for this event (it needs a name this event does not have)' : message.includes('{') ? ` · reads “${filled}”` : '') : ''}
@@ -348,13 +417,13 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame }: { ev
             </p>
           ) : null}
           <Group gap="xs" mt="md" wrap="wrap">
-            <Button type="button" variant="light" size="xs" disabled={busy !== null || draft.length >= limits.maxMessages} onClick={() => setDraft((list) => [...list, ''])}>
+            <Button type="button" variant="light" size="xs" disabled={busy !== null || draft.length >= limits.maxMessages} onClick={() => { setDraft((list) => [...list, '']); setDraftFrames((list) => [...list, '']); }}>
               Add message
             </Button>
             <Button type="button" size="xs" loading={busy === 'save'} disabled={busy !== null || !dirty || validationError !== null} onClick={() => void save()}>
               Save messages
             </Button>
-            <Button type="button" variant="light" size="xs" disabled={busy !== null || !dirty} onClick={() => setDraft(saved)}>
+            <Button type="button" variant="light" size="xs" disabled={busy !== null || !dirty} onClick={() => { setDraft(saved); setDraftFrames(savedFrames); }}>
               Discard changes
             </Button>
             <Button type="button" variant="light" size="xs" loading={busy === 'reset'} disabled={busy !== null} onClick={() => void reset()}>

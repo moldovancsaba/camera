@@ -20,6 +20,8 @@ import {
   FormSection,
 } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock, useGdsConfirm, useGdsToasts } from '@sovereignsquad/gds-core/client';
+import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
+import { parseMessageArea, type MessageArea } from '@/lib/frame/message-area';
 
 interface FrameRecord {
   _id: string;
@@ -37,6 +39,8 @@ interface FrameRecord {
   createdAt?: string;
   updatedAt?: string;
   createdBy?: string;
+  /** Where a message is written on this frame (camera#366); the frame then carries the messages of an event. */
+  messageArea?: unknown;
 }
 
 const CATEGORY_OPTIONS = [
@@ -250,6 +254,25 @@ export default function EditFramePage({ params }: { params: Promise<{ id: string
           </div>
         </AdminCrudForm>
       </form>
+
+      <FormSection
+        title="Message area"
+        description="For a text-free frame that carries the messages of an event: where the message is written on it. Leave it off for a complete frame."
+      >
+        <MessageAreaEditor
+          pictureUrl={frame.imageUrl}
+          name={frame.name}
+          value={parseMessageArea(frame.messageArea)}
+          onSave={async (area: MessageArea | null) => {
+            const response = await fetch(`/api/frames/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messageArea: area }) });
+            if (!response.ok) {
+              const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+              throw new Error(payload?.error || 'The message area could not be saved');
+            }
+            setFrame((current) => (current ? { ...current, messageArea: area ?? undefined } : current));
+          }}
+        />
+      </FormSection>
     </EditorScaffold>
   );
 }

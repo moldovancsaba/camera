@@ -207,3 +207,20 @@ test('a redraw run draws again only the events whose images are stale, never tak
   assert.deepEqual(d.refreshed, [], 'the snapshot stays as it is');
   assert.deepEqual([result.processed, result.completed, result.imagesDrawn, result.done], [1, 1, 5, true]);
 });
+
+test('an event that only has text-free frames that carry messages still gets the generated frame: they are not a frame of its own', async () => {
+  const { fakeDb: libraryDb } = await import('@/lib/library/fake-db');
+  const { db } = libraryDb({
+    frames: [{ frameId: 'carrier', messageArea: { messageBox: { x: 1, y: 1, width: 10, height: 10 } } }, { frameId: 'complete' }],
+    partners: [{ partnerId: 'p1', logoUrl: 'https://i.ibb.co/x.png' }],
+    events: [
+      { _id: 'only-carrier', name: 'A', messmassEventId: 'm1', partnerId: 'p1', frames: [{ frameId: 'carrier', isActive: true }] },
+      { _id: 'complete-frame', name: 'B', messmassEventId: 'm2', partnerId: 'p1', frames: [{ frameId: 'complete', isActive: true }] },
+      { _id: 'both', name: 'C', messmassEventId: 'm3', partnerId: 'p1', frames: [{ frameId: 'carrier', isActive: true }, { frameId: 'complete', isActive: true }] },
+    ],
+  });
+  const report = await dryRun(db, {}, deps());
+  assert.equal(report.total, 3);
+  assert.equal(report.ownFrame, 2, 'a complete frame is an own frame, with or without a carrier next to it');
+  assert.equal(report.todo, 1, 'the event with only a carrier is still to do');
+});

@@ -32,6 +32,7 @@ import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-em
 import { captureFrameOf } from '@/lib/frame/capture';
 import { normalizePhotoVettingInput, photoVettingRequired } from '@/lib/events/photo-vetting';
 import { applyEventBrandColours } from '@/lib/events/brand-colours';
+import { parseMessageArea } from '@/lib/frame/message-area';
 import { withDefaultJourneyPages } from '@/lib/events/default-pages';
 import { sanitizeCheckboxes } from '@/lib/events/consent';
 import { eventGetsDefaults, getDefaultsRollout } from '@/lib/admin/defaults-rollout';
@@ -75,6 +76,10 @@ interface EventFrameDetails {
   /** The library item's own switch and age: the capture page offers active frames, newest first (camera#361). */
   isActive?: boolean;
   createdAt?: string;
+  /** What the library item stores; only whether it has a usable one leaves this route (`hasMessageArea`). */
+  messageArea?: unknown;
+  /** The frame carries the messages of an event (camera#366): it is not a complete frame the guest picks. */
+  hasMessageArea?: boolean;
 }
 
 interface EventFrameAssignment {
@@ -171,6 +176,7 @@ export const GET = withErrorHandler(async (
           hashtags: frameDetails.hashtags,
           isActive: frameDetails.isActive,
           createdAt: frameDetails.createdAt,
+          hasMessageArea: parseMessageArea(frameDetails.messageArea) !== null,
         } : null
       };
     });

@@ -2,6 +2,7 @@
  * What the library APIs return and the library pages read (camera#361). Types only: a page imports this file without pulling in any server code.
  */
 
+import type { MessageArea } from '@/lib/frame/message-area';
 import type { LibraryKind, LibraryScope } from './kinds';
 
 /** What the pages need of an item: its picture, name and owner. */
@@ -18,6 +19,8 @@ export interface LibraryItemView {
   /** The item's own switch in the library (an inactive item cannot be newly taken). */
   itemActive: boolean;
   createdAt: string | null;
+  /** A frame that carries the messages of an event (camera#366): where the message is written. Null for a complete frame and for the other kinds. */
+  messageArea: MessageArea | null;
 }
 
 export interface PartnerLibraryEntry extends LibraryItemView {
