@@ -128,6 +128,7 @@ Item numbers run continuously and never restart. A number can be commented on in
 77. The share page is one page, the same as the page linked in the email: with vetting on the user arrives through the email link; with vetting off it is the visible page by default after the save.
 78. One shared component draws both; the in-flow step uses it (no navigation away; NEXT only in the flow); one canonical set of texts in the event's share page settings, with the share texts of the selfie-taking settings still honoured when the new field is empty; live with the global switch; "show the share page" keeps working.
 79. Item 78 agreed.
+99. Delivered in two steps (#339). **Step 1 (this change): the texts of item 74.** Ten fixed texts of the public photo page and its two notices are settings of the event's share page (`sharePage.texts`): Download button, Create Your Own button, Related photos heading, Original photo label, the waiting notice (heading, text), the not-approved notice (heading, text, hint) and the Take another photo button. Empty = the default text, nothing is frozen into the event. The fixed label "Photo with Camera frame" was not in the agreed list and stays fixed. **Step 2 (open): the one shared component of items 77 and 78.**
 
 ### Part 4: one screen instead of reframe and "Love it" (#344, client feedback 2026-10-08)
 

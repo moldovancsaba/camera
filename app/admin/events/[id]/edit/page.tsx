@@ -50,7 +50,24 @@ import {
 import {
   DEFAULT_EVENT_SHARE_PAGE_SETTINGS,
   normalizeEventSharePageSettings,
+  SHARE_PAGE_TEXT_DEFAULTS,
+  type SharePageTextKey,
+  type SharePageTexts,
 } from '@/lib/events/share-page-settings';
+
+// The fixed words of the public photo page and its notices, in the order of the page (camera#339); an empty field means the text in grey.
+const SHARE_TEXT_FIELDS: Array<{ key: SharePageTextKey; label: string; long?: boolean }> = [
+  { key: 'downloadButton', label: 'Download button text' },
+  { key: 'createYourOwnButton', label: 'Create Your Own button text' },
+  { key: 'relatedPhotosTitle', label: 'Related photos heading' },
+  { key: 'originalPhotoLabel', label: 'Original photo label' },
+  { key: 'waitingTitle', label: 'Waiting for approval: heading' },
+  { key: 'waitingMessage', label: 'Waiting for approval: text', long: true },
+  { key: 'notApprovedTitle', label: 'Not approved: heading' },
+  { key: 'notApprovedMessage', label: 'Not approved: text', long: true },
+  { key: 'notApprovedHint', label: 'Not approved: hint under the text' },
+  { key: 'takeAnotherPhotoButton', label: 'Take another photo button text' },
+];
 import {
   DEFAULT_SUBMISSION_EMAIL_BODY,
   DEFAULT_SUBMISSION_EMAIL_SUBJECT,
@@ -117,6 +134,7 @@ interface EventRecord {
     includeCheckedInTryOnResult?: boolean;
     showCreateYourOwnButton?: boolean;
     pendingTryOnMessage?: string | null;
+    texts?: Record<string, string>;
   };
 }
 
@@ -207,6 +225,7 @@ export default function EditEventPage({
   const [pendingTryOnMessage, setPendingTryOnMessage] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.pendingTryOnMessage
   );
+  const [shareTexts, setShareTexts] = useState<SharePageTexts>({});
   const [resultSlideshowMode, setResultSlideshowMode] =
     useState<EventTryOnResultSlideshowMode>('disabled');
   const [applyFrameToReturnedResults, setApplyFrameToReturnedResults] = useState(false);
@@ -326,6 +345,7 @@ export default function EditEventPage({
         setIncludeCheckedInTryOnResult(sharePageSettings.includeCheckedInTryOnResult);
         setShowCreateYourOwnButton(sharePageSettings.showCreateYourOwnButton);
         setPendingTryOnMessage(sharePageSettings.pendingTryOnMessage);
+        setShareTexts(sharePageSettings.texts);
         setResultSlideshowMode(
           eventData.tryOn?.resultSlideshowMode ||
             (eventData.tryOn?.includeApprovedResultsInSlideshows ? 'mixed_with_originals' : 'disabled')
@@ -546,6 +566,7 @@ export default function EditEventPage({
         includeCheckedInTryOnResult,
         showCreateYourOwnButton,
         pendingTryOnMessage,
+        texts: shareTexts,
       },
     };
 
@@ -912,6 +933,32 @@ export default function EditEventPage({
               minRows={2}
               description="Shown on the shareable result page when a try-on was requested but no approved result is available yet."
             />
+            <Text size="sm" c="dimmed">
+              The fixed words of the shareable photo page and of its waiting and not-approved notices. Leave a field empty to keep the text in grey.
+            </Text>
+            {SHARE_TEXT_FIELDS.map(({ key, label, long }) =>
+              long ? (
+                <Textarea
+                  key={key}
+                  label={label}
+                  value={shareTexts[key] ?? ''}
+                  onChange={(event) => setShareTexts((current) => ({ ...current, [key]: event.currentTarget.value }))}
+                  placeholder={SHARE_PAGE_TEXT_DEFAULTS[key]}
+                  autosize
+                  minRows={2}
+                  maxLength={500}
+                />
+              ) : (
+                <TextInput
+                  key={key}
+                  label={label}
+                  value={shareTexts[key] ?? ''}
+                  onChange={(event) => setShareTexts((current) => ({ ...current, [key]: event.currentTarget.value }))}
+                  placeholder={SHARE_PAGE_TEXT_DEFAULTS[key]}
+                  maxLength={500}
+                />
+              )
+            )}
           </FormSection>
 
           <FormSection

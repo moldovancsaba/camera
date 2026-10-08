@@ -22,6 +22,7 @@ import { listApprovedShareVariants } from '@/lib/tryon/publication';
 import {
   DEFAULT_PENDING_TRYON_MESSAGE,
   normalizeEventSharePageSettings,
+  sharePageText,
   type EventSharePageSettings,
 } from '@/lib/events/share-page-settings';
 import {
@@ -73,6 +74,7 @@ const FALLBACK_SHARE_PAGE_SETTINGS: EventSharePageSettings = {
   includeCheckedInTryOnResult: false,
   showCreateYourOwnButton: false,
   pendingTryOnMessage: DEFAULT_PENDING_TRYON_MESSAGE,
+  texts: {},
 };
 
 interface TryOnVariantLike {
@@ -404,6 +406,7 @@ export default async function SharePage({ params }: Props) {
           state={shareState}
           eventName={noticeEvent?.name ?? 'Shared photo'}
           captureHref={noticeEvent?.mongoId ? `/capture/${noticeEvent.mongoId}` : '/capture'}
+          settings={noticeEvent?.sharePageSettings}
         />
       </ThemedPage>
     );
@@ -487,7 +490,7 @@ export default async function SharePage({ params }: Props) {
       addUniqueShareVariant({
         id: `${(submission.submissionKind === 'original' ? currentSubmissionId : submission.sourceSubmissionId) ?? currentSubmissionId}:original-capture`,
         imageUrl: sourceImageUrl,
-        label: 'Original photo taken',
+        label: sharePageText(sharePageSettings, 'originalPhotoLabel'),
       });
     }
 
@@ -659,16 +662,16 @@ export default async function SharePage({ params }: Props) {
                 download
                 size="lg"
               >
-                Download
+                {sharePageText(sharePageSettings, 'downloadButton')}
               </Button>
             ) : (
               <Button size="lg" disabled>
-                Download
+                {sharePageText(sharePageSettings, 'downloadButton')}
               </Button>
             )}
             {sharePageSettings.showCreateYourOwnButton ? (
               <Button component="a" href={createYourOwnHref} variant="default" size="lg">
-                Create Your Own
+                {sharePageText(sharePageSettings, 'createYourOwnButton')}
               </Button>
             ) : null}
           </Group>
@@ -682,10 +685,7 @@ export default async function SharePage({ params }: Props) {
           {galleryVariants.length > 0 ? (
             <Stack gap="md" mt="xl">
               <Text fw={700}>
-            {enforcedSharePageSettings.includeTryOnResult ||
-            enforcedSharePageSettings.includeFramedTryOnResult
-              ? 'Related photos'
-              : 'Related photos'}
+            {sharePageText(sharePageSettings, 'relatedPhotosTitle')}
               </Text>
               <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
                 {galleryVariants.map((variant) => (

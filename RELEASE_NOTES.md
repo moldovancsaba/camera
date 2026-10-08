@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — share page: the fixed texts are editable per event (camera#339, step 1)
+
+- **Added (planning items 74 and 75):** the fixed words of the public photo page (`/share/...`, the page the email links to) and of its two notices are settings of the event's share page (`sharePage.texts`, event editor, section "Share page"): Download button, Create Your Own button, Related photos heading, Original photo label, the "Waiting for approval" notice (heading, text), the "Not approved" notice (heading, text, hint under it) and the Take another photo button. An empty field means the text the page always showed, nothing is frozen into the event, so no event changes until an editor writes a text. `lib/events/share-page-settings.ts` (`SHARE_PAGE_TEXT_DEFAULTS`, `sharePageText`). The pending try-on message was editable before and is unchanged.
+- **Not part of this step:** the one shared component for the in-flow share step and the email page (items 77 and 78) is the second step of #339. The label "Photo with Camera frame" under related photos was not in the agreed list and stays fixed.
+- **Verified:** unit tests (defaults, empty fallback, limits, unknown keys dropped, the notice with own and default texts, the page passing the event's texts to the notice and showing its own Download text); type-check; lint. Not seen: the new fields in the event editor by a person, and the public page of a real event with own texts.
+
 ## Unreleased — colours of the user flow: repaired, not replaced; event colours; no leaks (camera#336)
 
 - **Changed (planning items 60 to 62, accepted by the owner):** a text, label or link colour that fails the contrast rule is **made darker or lighter keeping its hue** (steps of 5%) instead of being replaced by black or white; white or black only when no variant can pass. MTK x Vasas: the navy text on the page blue is `#003d6c` (4.63:1), not black. Dimmed text, placeholders and the edge of an input are shades of the text colour that are repaired to 4.5:1 and 3:1. The link colour also reads on a ticked consent card.

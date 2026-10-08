@@ -34,13 +34,13 @@ function matches(doc: Doc, filter: Record<string, unknown>): boolean {
   return false;
 }
 
-function mockDb(t: TestContext, docs: Doc[]) {
+function mockDb(t: TestContext, docs: Doc[], eventExtra: Record<string, unknown> = {}) {
   t.mock.module('@/lib/db/mongodb', {
     namedExports: {
       connectToDatabase: async () => ({
         collection: (name: string) => ({
           findOne: async (filter: Record<string, unknown>) => {
-            if (name === 'events') return { _id: EVENT_ID, eventId: 'event-uuid', name: 'Derby' };
+            if (name === 'events') return { _id: EVENT_ID, eventId: 'event-uuid', name: 'Derby', ...eventExtra };
             return docs.find((doc) => matches(doc, filter)) ?? null;
           },
           find: () => ({ sort: () => ({ toArray: async () => [] }), toArray: async () => [] }),
@@ -138,4 +138,26 @@ test('the share page and its notices are drawn in the theme of the event', async
   const { whole } = await render(page, TOKEN);
   const theme = whole?.props.theme as { source: string; background: string } | undefined;
   assert.ok(theme && /^#[0-9a-f]{6}$/.test(theme.background), 'the wrapper carries the resolved theme of the event');
+});
+
+/** Every string the page renders, found by walking the element tree. */
+function textsOf(node: unknown, found: string[] = []): string[] {
+  if (typeof node === 'string') found.push(node);
+  else if (Array.isArray(node)) node.forEach((child) => textsOf(child, found));
+  else if (node && typeof node === 'object' && 'props' in node) textsOf((node as Element).props.children, found);
+  return found;
+}
+
+test('the event\'s own texts reach the waiting notice and the photo page; without them the page keeps its fixed words', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'pending_review' })], { sharePage: { texts: { waitingTitle: 'Un attimo', downloadButton: 'Scarica' } } });
+  const waiting = await render(await importPage('own-waiting'), TOKEN);
+  assert.equal((waiting.element?.props.settings as { texts?: Record<string, string> } | undefined)?.texts?.waitingTitle, 'Un attimo');
+});
+
+test('an approved photo page shows the event\'s own download text instead of Download', async (t) => {
+  mockDb(t, [photo({ shareToken: TOKEN, reviewStatus: 'approved', isShareVisible: true })], { sharePage: { texts: { downloadButton: 'Scarica' } } });
+  const own = await render(await importPage('own-download'), TOKEN);
+  const ownTexts = textsOf(own.element);
+  assert.ok(ownTexts.includes('Scarica'), `texts: ${ownTexts.join('|')}`);
+  assert.equal(ownTexts.includes('Download'), false);
 });
