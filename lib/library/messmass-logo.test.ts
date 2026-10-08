@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import sharp from 'sharp';
 import { fakeDb } from './fake-db';
-import { importMessmassLogo, messmassLogoState } from './messmass-logo';
+import { importMessmassLogo, messmassLogoDefaultRows, messmassLogoState } from './messmass-logo';
 import { loadEventLibrary, loadPartnerLibrary } from './db';
 
 const NOW = '2026-10-08T12:00:00.000Z';
@@ -32,7 +32,7 @@ function seed(partners = [partner()]) {
   });
 }
 
-test('the logo from messmass is stored as a logo of the partner, measured, pointing at the same file, and assigned to nothing', async () => {
+test('the logo from messmass is stored as a logo of the partner, measured, pointing at the same file, and the import itself assigns nothing', async () => {
   const { db, data } = seed();
   const fetch = fakeFetch(await picture(640, 320));
   const result = await importMessmassLogo(db, partner(), { createdBy: 'u1', now: NOW, fetchImpl: fetch.impl });
@@ -127,4 +127,20 @@ test('the state says whether the logo can be imported, or the item when it is', 
   const state = await messmassLogoState(db, partner());
   assert.equal(state.item?.source, 'messmass');
   assert.equal(state.problem, null);
+});
+
+test('the default rows: every scenario, each after the logos already there; none where the logo already is a default', () => {
+  assert.deepEqual(
+    messmassLogoDefaultRows([], 'm').map((row) => [row.scenario, row.order]),
+    [['slideshow-transition', 0], ['onboarding-thankyou', 0], ['loading-slideshow', 0], ['loading-capture', 0]]
+  );
+  const rows = messmassLogoDefaultRows(
+    [
+      { logoId: 'a', scenario: 'onboarding-thankyou', order: 0 },
+      { logoId: 'b', scenario: 'onboarding-thankyou', order: 4 },
+      { logoId: 'm', scenario: 'loading-capture', order: 0 },
+    ],
+    'm'
+  );
+  assert.deepEqual(rows.map((row) => [row.scenario, row.order]), [['slideshow-transition', 0], ['onboarding-thankyou', 5], ['loading-slideshow', 0]]);
 });

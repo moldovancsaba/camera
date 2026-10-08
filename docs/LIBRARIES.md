@@ -95,13 +95,17 @@ The same three levels as frames (pages `/admin/partners/<id>/logos` and `/admin/
   shows in one scenario stays available for the others). Switching off and removing act on that scenario only and make the list the event's own. An upload on the event page is
   assigned at once in the scenario the editor chooses (`onboarding-thankyou` by default) with order 0, like an assignment.
 - **Global list.** `GET /api/logos`, `/admin/logos` and the logo picker of the landing page editor show global logos only; `/admin/logos?scope=all` lists every logo.
-- **The logo from messmass** (decision 120: in the partner library only). messmass provisioning keeps the partner's logo as `Partner.logoUrl`, a file on the logo bucket
-  (`docs/LOGO_STORAGE.md`); the pages users see show it through the event's theme when the event has no active logo of its own for those pages (then the event's emoji). The button
-  "Import the logo from messmass" on the partner page (`POST /api/partners/<id>/library/import-messmass-logo`) makes it a logo of the partner: `scope: 'partner'`,
-  `source: 'messmass'`, `sourceUrl`, pointing at the same file (the bucket's files never change, so no copy is made), after a checked download (https, a host camera trusts for
-  logos, no redirect, 8 seconds, 5 MB, an image) and measured with sharp. It is **assigned to nothing**, no event, scenario or default, so the pages users see do not change until an
-  editor assigns it. Importing the same address again returns the same logo. On 2026-10-08, 192 partners had a logo address, all on the logo bucket (135 distinct files: 129 PNG,
-  5 JPEG, 1 WebP, at most 678 KB), every one importable; none is imported yet, and provisioning does not import it.
+- **The logo from messmass** (decision 120: in the partner library only; owner answer 153, 2026-10-09: an automatic default is collected automatically and made the default).
+  messmass provisioning keeps the partner's logo as `Partner.logoUrl`, a file on the logo bucket (`docs/LOGO_STORAGE.md`). It is **collected automatically**: when messmass
+  creates or links a partner that has a logo, camera imports it after the response (`collectPartnerLogo`, `lib/messmass/provision.ts`; best effort, a failure is logged), and the
+  button "Import the logo from messmass" on the partner page does the same for a partner that has none yet (`POST /api/partners/<id>/library/import-messmass-logo`). Importing makes
+  it a logo of the partner: `scope: 'partner'`, `source: 'messmass'`, `sourceUrl`, pointing at the same file (the bucket's files never change, so no copy is made), after a checked
+  download (https, a host camera trusts for logos, no redirect, 8 seconds, 5 MB, an image) and measured with sharp. **A new import also makes it a default of the partner**
+  (`makeMessmassLogoDefault`, `lib/library/messmass-logo.ts`): a row in every scenario, each **after** the logos the partner already has there (its own choices come first), and the
+  events inherit it the way every partner default is inherited: new events copy the partner's defaults when they are created, and the events that follow them get the changed list through
+  the same cascade a change on the partner page runs (`updateChildEventsFromPartner`); an event that edited its own logo list does not follow and keeps its own. **Importing the same address again
+  changes nothing**, so a default an editor took off later is not put back. The scenario ticks themselves are going away (owner, 2026-10-09: the library must not ask where a logo shows;
+  `docs/BUILDING_BRICKS.md`). On 2026-10-08, 192 partners had a logo address, all on the logo bucket (135 distinct files: 129 PNG, 5 JPEG, 1 WebP, at most 678 KB), every one importable.
 - **What users see did not change:** read-only on the real data, the event logo API (`GET /api/events/<id>/logos`, what the capture page and the slideshow read) answered the
   same before and after this change for all 214 events, by both ids (428 answers), and the event page shows the same order and the same shown logo as that API for the 10 events
   with logos. `components/capture/CaptureStageShell.test.tsx` keeps the order of the stage pages: the event's logo for those pages, else the theme's logo, else the emoji.

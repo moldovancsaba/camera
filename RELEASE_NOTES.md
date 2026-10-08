@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the logo from messmass is collected and made the partner's default automatically (camera#412, register 153)
+
+- **Changed (owner answer 153, 2026-10-09: "automatic default means we collect it automatically and we make it a default"):** the partner's logo from messmass is no longer imported "assigned to nothing". A **new import** (the button on the partner's logo page, and now **messmass provisioning**, which collects the logo after the response when it creates or links a partner that has one) puts the logo into the partner's logo library and makes it a **default of the partner in every scenario, after the logos the partner already has there**. The events inherit it the way every partner default is inherited: new events copy the defaults when they are created, and the events that follow the partner's defaults get it through the same cascade a change on the partner page runs; **an event that edited its own logo list keeps its own**. Importing the same address again changes nothing, so a default an editor took off is not put back. The partner page and the import message say so.
+- **Not changed:** existing partners are not touched by this release (no backfill ran); the scenario ticks stay until the logo model is simplified (register 155/156).
+- **Verified:** unit tests (the default rows, the route: partner defaults, an inheriting event, an event with its own list, a second import, a taken-off default, existing defaults first; provisioning: collect, idempotent, a failed download never throws); type-check; the full CI chain. **Not seen by the owner.**
+
 ## Unreleased — the MTK x Vasas event is in the libraries (data; camera#369, epic camera#361)
 
 - **Changed (data, 2026-10-08, owner's go):** the real event MTK Budapest x Vasas FC now uses the libraries. The owner moved the designers' picture into the library (two event frames, every message
