@@ -1,7 +1,7 @@
 /**
  * An upload into a library (camera#361): the file checks every kind shares, the file store, and the item with its owner written on it: one partner or
- * one event. What differs per kind (accepted files, stored shape) is an `Uploader` in `uploaders/`, registered below; only frames so far, logos and
- * images join with their packages.
+ * one event. What differs per kind (accepted files, stored shape) is an `Uploader` in `uploaders/`, registered below; frames and logos so far,
+ * images join with their package.
  */
 
 import type { Db, Document } from 'mongodb';
@@ -9,11 +9,13 @@ import { generateTimestamp } from '@/lib/db/schemas';
 import { uploadImage } from '@/lib/imgbb/upload';
 import { KIND_META, type LibraryKind } from './kinds';
 import { framesUploader } from './uploaders/frames';
+import { logosUploader } from './uploaders/logos';
 import type { Uploader } from './uploaders/types';
 
 /** The kinds that can be uploaded here. A kind adds its uploader to this object. */
 const UPLOADERS: Partial<Record<LibraryKind, Uploader>> = {
   frames: framesUploader,
+  logos: logosUploader,
 };
 
 export const UPLOAD_KINDS = Object.keys(UPLOADERS) as LibraryKind[];

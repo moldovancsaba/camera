@@ -156,6 +156,92 @@ test('an event cannot take a global item its partner does not have', async () =>
   assert.match(refused.ok ? '' : refused.reason, /partner library/);
 });
 
+// Logos (camera#367): the same levels; a default carries its scenario and order, and a logo is assigned once per scenario.
+const logo = (logoId: string, extra: Record<string, unknown> = {}) => ({ logoId, name: `Logo ${logoId}`, imageUrl: `https://img.example/${logoId}.png`, thumbnailUrl: `https://img.example/${logoId}.png`, isActive: true, createdAt: '2026-10-01T00:00:00.000Z', ...extra });
+const row = (logoId: string, scenario: string, order: number, isActive = true) => ({ logoId, scenario, order, isActive, addedAt: NOW, addedBy: 'system' });
+
+function seedLogos() {
+  return fakeDb({
+    logos: [logo('lg1'), logo('lg2'), logo('lg3', { isActive: false }), logo('lp1', { scope: 'partner', partnerId: 'P', source: 'messmass' }), logo('lx1', { scope: 'partner', partnerId: 'OTHER' }), logo('le1', { scope: 'event', eventId: EVENT_UUID, partnerId: 'P' })],
+    partners: [{ partnerId: 'P', name: 'Partner P', defaultLogos: [row('lg1', 'slideshow-transition', 0), row('lg1', 'onboarding-thankyou', 1)] }],
+    events: [{ _id: EVENT, eventId: EVENT_UUID, partnerId: 'P', name: 'Event', logos: [row('lg1', 'slideshow-transition', 0), row('lg1', 'onboarding-thankyou', 1), row('le1', 'loading-capture', 0)] }],
+  });
+}
+const logoPartner = (extra: Record<string, unknown> = {}) => ({ partnerId: 'P', name: 'Partner P', defaultLogos: [row('lg1', 'slideshow-transition', 0), row('lg1', 'onboarding-thankyou', 1)], ...extra });
+
+test('a partner that never saved a logo library has its default logos and what its events use; its own upload and its messmass logo are in it', async () => {
+  const { db } = seedLogos();
+  const library = await loadPartnerLibrary(db, logoPartner(), 'logos');
+  assert.equal(library.saved, false);
+  assert.deepEqual(ids(library.items.filter((i) => i.via === 'assigned')), ['lg1']);
+  assert.deepEqual(ids(library.items.filter((i) => i.via === 'own')), ['lp1']);
+  assert.equal(library.items.find((i) => i.id === 'lp1')?.source, 'messmass');
+  assert.equal(library.items.find((i) => i.id === 'lg1')?.isDefault, true);
+  assert.deepEqual(ids(library.available), ['lg2'], 'lg3 is off; the uploads of others are never offered');
+});
+
+test('logo defaults are saved with their scenario and order, and must be in the library', async () => {
+  const { db, data } = seedLogos();
+  const wanted = [{ logoId: 'lg1', scenario: 'loading-capture' as const, order: 0 }, { logoId: 'lp1', scenario: 'onboarding-thankyou' as const, order: 1 }];
+  const result = await savePartnerLibrary(db, logoPartner(), 'logos', { logoDefaults: wanted }, NOW);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.defaultsChanged, true);
+  assert.deepEqual(result.logoDefaults, wanted);
+  assert.deepEqual(result.defaults, ['lg1', 'lp1']);
+  assert.deepEqual((data.partners[0] as { defaultLogos: unknown }).defaultLogos, wanted);
+  assert.deepEqual((data.partners[0] as { library: { logos: string[] } }).library.logos, ['lg1'], 'the first save keeps what the partner had');
+
+  const outside = await savePartnerLibrary(db, logoPartner(), 'logos', { logoDefaults: [{ logoId: 'lg2', scenario: 'loading-capture', order: 0 }] }, NOW);
+  assert.deepEqual([outside.ok, outside.ok ? 0 : outside.status], [false, 400], 'lg2 is global but not in the library');
+  const other = await savePartnerLibrary(db, logoPartner(), 'logos', { logoDefaults: [{ logoId: 'lx1', scenario: 'loading-capture', order: 0 }] }, NOW);
+  assert.equal(other.ok, false, "another partner's upload is never a default here");
+  const framesWithScenario = await savePartnerLibrary(db, logoPartner(), 'frames', { logoDefaults: wanted }, NOW);
+  assert.equal(framesWithScenario.ok, false);
+});
+
+test('an edit that does not touch the logo defaults keeps them and does not cascade; removing a default logo drops its rows', async () => {
+  const { db, data } = seedLogos();
+  const add = await savePartnerLibrary(db, logoPartner(), 'logos', { add: ['lg2'] }, NOW);
+  assert.equal(add.ok && add.defaultsChanged, false);
+  assert.deepEqual(add.ok && add.logoDefaults, [{ logoId: 'lg1', scenario: 'slideshow-transition', order: 0 }, { logoId: 'lg1', scenario: 'onboarding-thankyou', order: 1 }]);
+  assert.equal((data.partners[0] as { defaultLogos: unknown[] }).defaultLogos.length, 2, 'unchanged');
+
+  const removed = await savePartnerLibrary(db, logoPartner({ library: { frames: [], logos: ['lg1', 'lg2'] } }), 'logos', { remove: ['lg1'] }, NOW);
+  assert.equal(removed.ok, true);
+  if (!removed.ok) return;
+  assert.equal(removed.defaultsChanged, true);
+  assert.deepEqual(removed.logoDefaults, []);
+  assert.deepEqual(removed.removedInUse, { lg1: 1 }, 'the event keeps its logo, and says so');
+  assert.deepEqual((data.partners[0] as { defaultLogos: unknown[] }).defaultLogos, []);
+});
+
+test('an event takes a logo of its partner library or its own; a logo it shows in one scenario stays available for another', async () => {
+  const { db } = seedLogos();
+  const event = (await db.collection('events').findOne({ _id: EVENT }))!;
+  const library = await loadEventLibrary(db, event, 'logos');
+  assert.deepEqual(library.assigned.map((e) => [e.id, e.assignment.scenario]), [['lg1', 'slideshow-transition'], ['lg1', 'onboarding-thankyou'], ['le1', 'loading-capture']], 'one entry per assignment');
+  assert.deepEqual(ids(library.available), ['le1', 'lg1', 'lp1'], 'the page leaves out, per scenario, what is assigned there');
+  assert.equal((await checkEventAssign(db, event, 'logos', 'lg1')).ok, true);
+  assert.equal((await checkEventAssign(db, event, 'logos', 'lp1')).ok, true, "the partner's logo from messmass");
+  assert.equal((await checkEventAssign(db, event, 'logos', 'le1')).ok, true);
+  const global = await checkEventAssign(db, event, 'logos', 'lg2');
+  assert.equal(global.ok, false);
+  assert.match(global.ok ? '' : global.reason, /partner library/);
+  assert.equal((await checkEventAssign(db, event, 'logos', 'lx1')).ok, false);
+  assert.equal((await checkEventAssign(db, event, 'logos', 'lg3')).ok, false, 'switched off');
+});
+
+test('deleting a partner logo upload also takes it out of the defaults; an event upload goes from every scenario', async () => {
+  const { db, data } = seedLogos();
+  await db.collection('partners').updateOne({ partnerId: 'P' }, { $set: { defaultLogos: [row('lp1', 'loading-slideshow', 0), row('lg1', 'loading-capture', 1)] } });
+  assert.deepEqual(await deleteLibraryUpload(db, 'logos', 'lp1', { scope: 'partner', partnerId: 'P' }), { ok: true });
+  assert.deepEqual((data.partners[0] as { defaultLogos: Array<{ logoId: string }> }).defaultLogos.map((r) => r.logoId), ['lg1']);
+  await db.collection('events').updateOne({ _id: EVENT }, { $push: { logos: row('le1', 'onboarding-thankyou', 0) } as never });
+  assert.deepEqual(await deleteLibraryUpload(db, 'logos', 'le1', { scope: 'event', eventId: EVENT_UUID }), { ok: true });
+  assert.deepEqual((data.events[0] as { logos: Array<{ logoId: string }> }).logos.map((r) => r.logoId), ['lg1', 'lg1']);
+});
+
 test('an event upload is deleted from its event with its assignment; another event\'s upload and a global item are refused', async () => {
   const { db, data } = seed();
   const refusedOther = await deleteLibraryUpload(db, 'frames', 'e2', { scope: 'event', eventId: EVENT_UUID });

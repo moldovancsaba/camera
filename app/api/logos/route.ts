@@ -1,8 +1,8 @@
 /**
  * Logos API - List and Create
  * 
- * GET: List all logos with pagination
- * POST: Create new logo (global admin only)
+ * GET: List the logos of the global library with pagination (camera#361: a logo of one partner or one event is not offered to everyone)
+ * POST: Create new logo in the global library (global admin only)
  * 
  * Why logos exist:
  * - Separate from frames (logos are for branding, frames are for photo overlays)
@@ -16,6 +16,7 @@ import type { Filter } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { uploadImage } from '@/lib/imgbb/upload';
 import { generateId } from '@/lib/db/schemas';
+import { GLOBAL_FILTER } from '@/lib/library/db';
 import {
   withErrorHandler,
   requireAdmin,
@@ -36,8 +37,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const db = await connectToDatabase();
     
-  // Build query
-  const query: Filter<{ isActive?: boolean }> = {};
+  // Build query: the global library only; the logos a partner or an event has for itself (and the logo imported from messmass) are not listed here.
+  const query: Filter<{ isActive?: boolean; scope?: string | null }> = { $or: GLOBAL_FILTER.$or };
   if (active !== null) query.isActive = active === 'true';
 
   // Get total count
@@ -161,6 +162,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     mimeType: uploadResult.mimeType,
     isActive,
     usageCount: 0,
+    scope: 'global',
     createdBy: session.user.id,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

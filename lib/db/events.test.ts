@@ -102,3 +102,30 @@ test('a frame the partner removes from its library stays on the events that use 
   assert.deepEqual(framesOf('does-not'), ['f2'], 'it follows the defaults, which are now f2');
 });
 
+test('a logo the partner removes from its library stays on the events that use it, also when the logo defaults change with it (decision 116)', async (t) => {
+  const NOW = '2026-10-08T12:00:00.000Z';
+  const scenario = 'onboarding-thankyou';
+  const assigned = (logoId: string, order: number) => ({ logoId, scenario, order, isActive: true, addedAt: NOW, addedBy: 'system' });
+  const logo = (logoId: string) => ({ logoId, name: logoId, imageUrl: `https://img.example/${logoId}.png`, isActive: true });
+  const seeded = fakeDb({
+    frames: [],
+    logos: [logo('l1'), logo('l2')],
+    partners: [{ partnerId: 'P', name: 'Partner P', defaultLogos: [{ logoId: 'l1', scenario, order: 0 }, { logoId: 'l2', scenario, order: 1 }], library: { frames: [], logos: ['l1', 'l2'] } }],
+    events: [
+      { eventId: 'uses', partnerId: 'P', logos: [assigned('l1', 0), assigned('l2', 1)] },
+      { eventId: 'does-not', partnerId: 'P', logos: [assigned('l2', 1)] },
+    ],
+  });
+  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
+  const { updateChildEventsFromPartner } = await importEvents('library-removal-logos');
+
+  const saved = await savePartnerLibrary(seeded.db, seeded.data.partners[0], 'logos', { remove: ['l1'] }, NOW);
+  assert.equal(saved.ok, true);
+  if (!saved.ok || !saved.logoDefaults) return;
+  await updateChildEventsFromPartner('P', { defaultLogos: saved.logoDefaults as Parameters<typeof updateChildEventsFromPartner>[1]['defaultLogos'] });
+
+  const logosOf = (eventId: string) => (eventDoc(seeded.data, eventId).logos as Array<{ logoId: string }>).map((l) => l.logoId);
+  assert.deepEqual(logosOf('uses'), ['l1', 'l2'], 'it had l1 and keeps it');
+  assert.deepEqual(logosOf('does-not'), ['l2'], 'it follows the defaults, which are now l2');
+});
+
