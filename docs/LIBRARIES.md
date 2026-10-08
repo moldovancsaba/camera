@@ -70,7 +70,7 @@ is the same as before (checked on the real data: 14 of 14 events).
 
 - **A message area on a frame** (`Frame.messageArea`, `lib/frame/message-area.ts`): where a message is written on a text-free frame (a box in the 1920 x 1080 frame, a colour,
   optional top and bottom territories): the same data the older `frameDesign.base` holds. A frame **with** a message area carries the messages of an event and is **not** a frame
-  the guest picks; a frame without one is a complete frame, as before. It is edited on the card of a frame the level owns (the Message area button of a partner or event
+  the user picks; a frame without one is a complete frame, as before. It is edited on the card of a frame the level owns (the Message area button of a partner or event
   upload) and on the global frame's edit page, with a preview of the boxes on the picture; saving redraws the events whose messages are written on that frame.
 - **The frame of each message** (`frameDesign.messageFrames`: the text of a message to a frame id): chosen in the generated frame panel of the event, one frame per message, among
   the event's frames that are assigned, switched on, switched on in the library, and have a message area. The choice goes by the text of the message, so it stays with the
@@ -78,7 +78,7 @@ is the same as before (checked on the real data: 14 of 14 events).
 - **Drawing** (`lib/frame/variants.ts`): for each message: the chosen frame (written with the event's font, `renderBaseFrame`), else the older base picture, else the generated
   layout. The image key covers the frame's picture and message area, so only the messages of a changed frame are drawn again; a message with no frame keeps the key it had.
   A chosen frame that is no longer usable falls back quietly (the panel says so); a picture that cannot be fetched fails the run and leaves the images as they were.
-- **Guests:** an event whose only active frames carry messages has **no frame of its own**, so the generated frames apply (`captureFrameOf`, the capture page, the rollout in
+- **Users:** an event whose only active frames carry messages has **no frame of its own**, so the generated frames apply (`captureFrameOf`, the capture page, the rollout in
   `lib/frame/backfill.ts`); the event data tells the capture page which assigned frames carry messages (`hasMessageArea`).
 
 ## Logos (LIB-4, camera#367)
@@ -109,6 +109,7 @@ The same three levels as frames (pages `/admin/partners/<id>/logos` and `/admin/
 
 - **Done (LIB-1, LIB-2, LIB-3, LIB-4):** the core, the partner and event pages for frames, upload at both levels, the one-way rule in the API, the global list global-only, the message
   area of a frame and the frame of each message, and logos on the three levels with the logo from messmass as a partner library item (see Logos above).
-- **Next:** LIB-5 an Images library, LIB-6 the MTK migration (assigning the imported logo where MTK needs it), LIB-7 the audit fixes (frame deletion that also cleans the libraries,
-  paging of long lists).
+- **Built (LIB-6, camera#369):** the move of an event's older base picture into the library, a button in the generated frame panel (docs/FRAME_BASE.md, "Moving the base into the
+  library"). It is **not applied to any real event**: the MTK x Vasas event moves last, after the owner has seen the library pages work and says go.
+- **Next:** LIB-5 an Images library, LIB-7 the audit fixes (frame deletion that also cleans the libraries, paging of long lists).
 - A **logo** or an **image** joins a kind by adding it to `LIBRARY_KINDS` and `KIND_META` (`lib/library/kinds.ts`) and its upload to `lib/library/upload.ts`.
