@@ -33,6 +33,11 @@ export const cameraAdminVocabularyPacks = [
     'restore-orphaned-result': { defaultMessage: 'Restore prior result', icon: GdsIcons.Refresh, feedback: savedFeedback },
     remove: { defaultMessage: 'Remove', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'pin-to-slideshow': { defaultMessage: 'Add to slideshow', icon: GdsIcons.Add, feedback: savedFeedback },
+    'submit-prompt-rerun': { defaultMessage: 'Rerun with this prompt', icon: GdsIcons.Refresh, feedback: savedFeedback },
+    'cancel-prompt-rerun': { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
+  }),
+  createGdsVocabularyPack('defaults-rollout', {
+    save: { defaultMessage: 'Save', icon: GdsIcons.Save, feedback: savedFeedback },
   }),
   createGdsVocabularyPack('tryon-moderation', {
     action: { defaultMessage: 'Moderation action', icon: GdsIcons.Check, feedback: savedFeedback },
@@ -107,6 +112,9 @@ export const cameraAdminVocabularyPacks = [
     'add-accept': { defaultMessage: 'Add accept page', icon: GdsIcons.Add, feedback: savedFeedback },
     'add-cta': { defaultMessage: 'Add CTA page', icon: GdsIcons.Add, feedback: savedFeedback },
     'add-restart': { defaultMessage: 'Add restart page', icon: GdsIcons.Add, feedback: savedFeedback },
+    'add-welcome': { defaultMessage: 'Add welcome page', icon: GdsIcons.Add, feedback: savedFeedback },
+    'add-checkbox': { defaultMessage: 'Add checkbox', icon: GdsIcons.Add, feedback: savedFeedback },
+    'remove-checkbox': { defaultMessage: 'Remove checkbox', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'save-page': { defaultMessage: 'Save page', icon: GdsIcons.Save, feedback: savedFeedback },
     'cancel-page': { defaultMessage: 'Cancel page', icon: GdsIcons.Cancel, feedback: openedFeedback },
   }),
