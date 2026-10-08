@@ -158,8 +158,10 @@ pictures move into the libraries with LIB-6 (camera#369). The index definitions 
 - **Done (LIB-1 to LIB-5):** the core, the partner and event pages for frames, upload at both levels, the one-way rule in the API, the global list global-only, the message area of a
   frame and the frame of each message, logos on the three levels with the logo from messmass as a partner library item (section Logos), and the Images library on the three levels
   with the picture picker of the picture fields (section Images).
-- **Built (LIB-6, camera#369):** the move of an event's older base picture into the library, a button in the generated frame panel (docs/FRAME_BASE.md, "Moving the base into the
-  library"). It is **not applied to any real event**: the MTK x Vasas event moves last, after the owner has seen the library pages work and says go.
+- **Done (LIB-6, camera#369):** the move of an event's older base picture into the library, a button in the generated frame panel (docs/FRAME_BASE.md, "Moving the base into the
+  library"). **Applied to the MTK x Vasas event on 2026-10-08:** its two frames, its logo (in the partner library of MTK Budapest, assigned to nothing) and its six pictures (welcome page
+  background, left image, right image and screen picture, e-mail footer picture, giant screen overlay: items of the event's Images library that point at the addresses the event already
+  uses) are library items, and nothing a user sees changed. The old base data of that event was removed afterwards.
 - **Next:** LIB-7 the audit fixes (docs/LIBRARY_AUDIT.md: refuse deleting an item that is in use, paging of long lists).
 - A kind joins by adding it to `LIBRARY_KINDS` and `KIND_META` (`lib/library/kinds.ts`) and its uploader to `lib/library/upload.ts`; a kind that events do not
   assign (images) answers false in `isAssignedKind`.
