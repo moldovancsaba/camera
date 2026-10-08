@@ -48,3 +48,39 @@ test('a message area that is not usable is refused and writes nothing', async (t
   assert.equal('messageArea' in data.frames[0], false);
   assert.equal((data.frames[0] as { name: string }).name, 'Frame');
 });
+
+function setupDelete(t: TestContext, extra: { events?: Array<Record<string, unknown>>; partners?: Array<Record<string, unknown>> } = {}) {
+  const seeded = fakeDb({ frames: [{ _id: FRAME_OID, frameId: 'f1', name: 'Frame', isActive: true }], events: extra.events ?? [], partners: extra.partners ?? [] });
+  t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
+  t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAdmin: async () => ADMIN } });
+  return seeded;
+}
+const del = (id = String(FRAME_OID)) => [new NextRequest(`http://localhost/api/frames/${id}`, { method: 'DELETE' }), { params: Promise.resolve({ id }) }] as const;
+const errorOf = async (response: Response) => ((await response.json()) as { error?: string }).error ?? '';
+
+test('a frame that nothing uses is deleted, and an unknown frame is not found', async (t) => {
+  const { data } = setupDelete(t);
+  const { DELETE } = await importRoute('delete-unused');
+  assert.equal((await DELETE(...del(String(new ObjectId())))).status, 404);
+  assert.equal((await DELETE(...del())).status, 200);
+  assert.equal(data.frames.length, 0);
+});
+
+test('a frame that an event has assigned is not deleted: the answer says how many events, and the frame stays', async (t) => {
+  const { data } = setupDelete(t, { events: [{ eventId: 'e1', frames: [{ frameId: 'f1', isActive: true }] }, { eventId: 'e2', frames: [{ frameId: 'f1', isActive: false }] }] });
+  const { DELETE } = await importRoute('delete-event');
+  const response = await DELETE(...del());
+  assert.equal(response.status, 409);
+  assert.match(await errorOf(response), /used by 2 events\. Switch it off instead/);
+  assert.equal(data.frames.length, 1);
+});
+
+test('a frame that a partner library holds, or a partner makes a default, is not deleted either', async (t) => {
+  const { data } = setupDelete(t, { partners: [{ partnerId: 'P', defaultFrames: ['f1'], library: { frames: ['f1'], logos: [] } }] });
+  const { DELETE } = await importRoute('delete-partner');
+  const response = await DELETE(...del());
+  assert.equal(response.status, 409);
+  assert.match(await errorOf(response), /1 partner library, 1 partner that makes it a default for new events/);
+  assert.equal(data.frames.length, 1);
+});
+

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ObjectId } from 'mongodb';
 import { fakeDb } from './fake-db';
-import { checkEventAssign, deleteLibraryUpload, itemView, loadEventLibrary, loadPartnerLibrary, savePartnerLibrary, updateLibraryUpload } from './db';
+import { checkEventAssign, deleteLibraryUpload, inUseSentence, itemView, loadEventLibrary, loadPartnerLibrary, savePartnerLibrary, updateLibraryUpload, usageOfItem } from './db';
 
 /** A colour from its digits: the colour gate allows no raw hex literal in a test. */
 const hex = (digits: string) => `#${digits}`;
@@ -302,3 +302,23 @@ test("only the owner's level can change an upload: not a global frame, not anoth
   const logo = await updateLibraryUpload(db, 'logos', 'l1', level, { messageArea: AREA }, NOW);
   assert.equal(logo.ok, false, 'a logo has no message area');
 });
+
+test('where an item is used: the events that have it, the partner libraries that hold it, the partners that default it; and the sentence that refuses its deletion', async () => {
+  const { db } = fakeDb({
+    events: [{ eventId: 'e1', frames: [assignment('g1')], logos: [{ logoId: 'l1', scenario: 'onboarding-thankyou' }] }, { eventId: 'e2', frames: [assignment('g1'), assignment('g2')] }, { eventId: 'e3', frames: [] }],
+    partners: [
+      { partnerId: 'P', defaultFrames: ['g1'], defaultLogos: [{ logoId: 'l1', scenario: 'onboarding-thankyou', order: 0 }], library: { frames: ['g1', 'g2'], logos: ['l1'] } },
+      { partnerId: 'Q', library: { frames: ['g1'], logos: [] } },
+      { partnerId: 'R' },
+    ],
+  });
+  assert.deepEqual(await usageOfItem(db, 'frames', 'g1'), { events: 2, partnerLibraries: 2, partnerDefaults: 1 });
+  assert.deepEqual(await usageOfItem(db, 'frames', 'g2'), { events: 1, partnerLibraries: 1, partnerDefaults: 0 });
+  assert.deepEqual(await usageOfItem(db, 'logos', 'l1'), { events: 1, partnerLibraries: 1, partnerDefaults: 1 });
+  assert.deepEqual(await usageOfItem(db, 'frames', 'unused'), { events: 0, partnerLibraries: 0, partnerDefaults: 0 });
+
+  assert.equal(inUseSentence('frame', { events: 0, partnerLibraries: 0, partnerDefaults: 0 }), null, 'an unused item may be deleted');
+  assert.match(inUseSentence('frame', { events: 2, partnerLibraries: 2, partnerDefaults: 1 }) ?? '', /^This frame is used by 2 events, 2 partner libraries, 1 partner that makes it a default for new events\. Switch it off instead/);
+  assert.match(inUseSentence('logo', { events: 1, partnerLibraries: 0, partnerDefaults: 0 }) ?? '', /^This logo is used by 1 event\. Switch it off instead/);
+});
+

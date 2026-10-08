@@ -39,6 +39,7 @@ have it: they keep it, and their page says "No longer in the partner library" (t
 - An event takes an item that is in its **partner's library**, or the partner's own upload, or its **own upload** (`canEventAssign`); an event with no partner takes only its own uploads.
 - An item that is switched off in its library cannot be newly taken.
 - The same item is not assigned to an event twice.
+- A **global** frame or logo that an event has assigned, a partner library holds or a partner makes a default for new events **cannot be deleted** (`DELETE /api/frames/<id>`, `DELETE /api/logos/<id>`: 409 with the counts, `usageOfItem` and `inUseSentence` in `lib/library/db.ts`, camera#392). Switching it off retires it: nobody can take it any more, and the events that have it keep it. An upload at the partner or event level is deleted on its own page, which refuses while an event of the partner has it.
 
 ## The API
 

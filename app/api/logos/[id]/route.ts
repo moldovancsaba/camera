@@ -7,12 +7,14 @@
  */
 
 import { NextRequest } from 'next/server';
-import { ObjectId, type Document, type UpdateFilter } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
+import { inUseSentence, usageOfItem } from '@/lib/library/db';
 import {
   withErrorHandler,
   requireAdmin,
   apiSuccess,
+  apiError,
   apiNotFound,
   apiBadRequest,
   apiNoContent,
@@ -130,14 +132,14 @@ export const DELETE = withErrorHandler(async (request: NextRequest, context: Rou
     throw apiNotFound('Logo');
   }
 
-  // Delete the logo
-  await db.collection('logos').deleteOne({ _id: new ObjectId(id) });
+  // A logo that an event or a partner library uses is not deleted (camera#392): it used to be pulled from every event without a word, so a live event lost its logo.
+  // Switch it off instead.
+  const refusal = inUseSentence('logo', await usageOfItem(db, 'logos', String(logo.logoId)));
+  if (refusal) {
+    throw apiError(refusal, 409);
+  }
 
-  // Also remove all event logo assignments for this logo
-  await db.collection('events').updateMany(
-    { 'logos.logoId': logo.logoId },
-    { $pull: { logos: { logoId: logo.logoId } } } as unknown as UpdateFilter<Document>
-  );
+  await db.collection('logos').deleteOne({ _id: new ObjectId(id) });
 
   return apiNoContent();
 });
