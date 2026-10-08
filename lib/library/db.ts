@@ -179,9 +179,20 @@ export type SavePartnerLibraryResult =
   | { ok: false; status: 400 | 404; reason: string };
 
 /**
+ * Events that use an item that leaves the partner's library keep it (decision 116, camera#361). The defaults cascade replaces the whole list of an event
+ * that follows the defaults, so such an event stops following them: its list is its own from now on (the flag an edit of the list sets).
+ */
+async function keepInEvents(db: Db, partnerId: string, kind: LibraryKind, ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  await db
+    .collection(COLLECTIONS.EVENTS)
+    .updateMany({ partnerId, [`${kind}.${KIND_META[kind].idField}`]: { $in: ids }, [`${kind}Overridden`]: { $ne: true } }, { $set: { [`${kind}Overridden`]: true } });
+}
+
+/**
  * Edits a partner's library: adds items of the global library, removes items, sets the defaults for new events. The first save turns what the
  * partner had before (its defaults and what its events use) into its own saved list for every kind, so nothing disappears. Removing an item
- * does not touch the events that already use it; the result says how many do.
+ * does not take it away from the events that already use it (they stop following the defaults, see keepInEvents); the result says how many do.
  */
 export async function savePartnerLibrary(db: Db, partner: Document, kind: LibraryKind, change: PartnerLibraryChange, now: string): Promise<SavePartnerLibraryResult> {
   const add = [...new Set(change.add ?? [])];
@@ -227,6 +238,7 @@ export async function savePartnerLibrary(db: Db, partner: Document, kind: Librar
   const set: Record<string, unknown> = { 'library.frames': library.frames, 'library.logos': library.logos, updatedAt: now };
   if (defaultsChanged && kind === 'frames') set.defaultFrames = defaults;
   await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId: text(partner.partnerId) }, { $set: set });
+  await keepInEvents(db, text(partner.partnerId), kind, remove);
 
   const removedInUse: Record<string, number> = {};
   for (const id of remove) {
