@@ -47,6 +47,7 @@ const FALLBACK_SHARE_PAGE_SETTINGS: EventSharePageSettings = {
   includeCheckedInTryOnResult: false,
   showCreateYourOwnButton: false,
   pendingTryOnMessage: DEFAULT_EVENT_SHARE_PAGE_SETTINGS.pendingTryOnMessage,
+  texts: {},
 };
 
 interface TryOnVariantLike {

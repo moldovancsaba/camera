@@ -6,18 +6,22 @@
 import PublicShell from '@/components/public/PublicPageShell';
 import { Alert, Button, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import AutoRefresh from '@/components/share/AutoRefresh';
+import { sharePageText, type SharePageTexts } from '@/lib/events/share-page-settings';
 
 interface PhotoStatusNoticeProps {
   state: 'waiting' | 'not_approved';
   eventName: string;
   /** Where "Take another photo" goes (the capture page of the event). */
   captureHref: string;
+  /** The event's share page settings: its own texts for the notice, the defaults where it has none. */
+  settings?: { texts?: SharePageTexts } | null;
 }
 
 // The title is a flex row as wide as the alert, so it is centred with the text under it by centring the row.
 const CENTERED_ALERT = { title: { justifyContent: 'center' } };
 
-export default function PhotoStatusNotice({ state, eventName, captureHref }: PhotoStatusNoticeProps) {
+export default function PhotoStatusNotice({ state, eventName, captureHref, settings }: PhotoStatusNoticeProps) {
+  const text = (key: Parameters<typeof sharePageText>[1]) => sharePageText(settings, key);
   return (
     <PublicShell size="sm">
       <Stack gap="lg" align="center" ta="center" data-share-state={state}>
@@ -26,21 +30,21 @@ export default function PhotoStatusNotice({ state, eventName, captureHref }: Pho
         </Title>
         {state === 'waiting' ? (
           <>
-            <Alert color="blue" variant="light" title="Waiting for approval" styles={CENTERED_ALERT}>
-              Your photo is waiting for approval. This page updates by itself, and we will email you the link as soon as it is approved.
+            <Alert color="blue" variant="light" title={text('waitingTitle')} styles={CENTERED_ALERT}>
+              {text('waitingMessage')}
             </Alert>
             <AutoRefresh />
           </>
         ) : (
           <>
-            <Alert color="gray" variant="light" title="Not approved" styles={CENTERED_ALERT}>
-              Your photo could not be approved, so it will not be published.
+            <Alert color="gray" variant="light" title={text('notApprovedTitle')} styles={CENTERED_ALERT}>
+              {text('notApprovedMessage')}
             </Alert>
             <Text size="sm" c="dimmed">
-              You are welcome to take another photo.
+              {text('notApprovedHint')}
             </Text>
             <Button component="a" href={captureHref} size="lg">
-              Take another photo
+              {text('takeAnotherPhotoButton')}
             </Button>
           </>
         )}
