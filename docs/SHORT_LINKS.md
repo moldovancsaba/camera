@@ -45,6 +45,13 @@ QR code as an SVG file (dark modules on a transparent background, any colour wit
 Android / iPhone / other for QR links), a form to add a link, and a switch to turn a link off. Routes: `GET/POST/PATCH /api/admin/events/[id]/short-links`
 and `GET .../[slug]/qr` (viewer to read, manager to change).
 
+## Checking it without touching real data
+
+messmass is production, so no test visit is counted on an event linked to messmass (CLAUDE.md section 8). What can be checked safely: a HEAD request on a link
+(`curl -I -A "<phone user agent>" https://go.messmass.com/<slug>` answers 302 to the capture page and is never counted), a request with a bot user agent, the
+messmass route without its secret (401), and the slideshow page of the event (the QR decodes to the link). The first real scan is the end-to-end proof: after it,
+open the Tracked links panel; the count and the "last sent" time show that the push worked, and the event's stats in messmass move by that scan.
+
 ## Known limits
 
 - Counts are visits, not unique people, and "today" is the UTC day.
