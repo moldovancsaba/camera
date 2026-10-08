@@ -52,7 +52,7 @@ interface ImageCounts {
 }
 
 type Notice = { severity: 'success' | 'warning' | 'error' | 'info'; title: string; lines: string[] };
-type Busy = 'save' | 'reset' | 'refresh' | null;
+type Busy = 'save' | 'reset' | 'refresh' | 'move' | 'retire' | null;
 
 const section = { border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
 const sectionHead = { padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' } as const;
@@ -88,7 +88,7 @@ function Swatch({ colour, label }: { colour: string; label: string }) {
   );
 }
 
-export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame }: { eventId: string; hasOwnActiveFrame: boolean }) {
+export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame, onLibraryChanged }: { eventId: string; hasOwnActiveFrame: boolean; onLibraryChanged?: () => void | Promise<void> }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draft, setDraft] = useState<string[]>([]);
@@ -183,6 +183,21 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame }: { ev
       );
       adopt(result.frameDesign);
       return { severity: 'success', title: 'Messages reset to the default list', lines: [countText(result.variants)] };
+    });
+
+  // The designers' picture stored as data on the event moves into the library (camera#369): the frames appear in the Assigned frames and every message chooses one.
+  const moveBase = () =>
+    run('move', async () => {
+      const result = await call<{ variants: ImageCounts }>(`${endpoint}/migrate-base`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }, 'Could not move the picture into the library');
+      await onLibraryChanged?.();
+      return { severity: 'success', title: 'Moved into the library', lines: ['The pictures are frames of this event now and every message chose the one it used before.', countText(result.variants)] };
+    });
+
+  const retireBase = () =>
+    run('retire', async () => {
+      await call<{ retired: boolean }>(`${endpoint}/migrate-base`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ retire: true }) }, 'Could not remove the old data');
+      await onLibraryChanged?.();
+      return { severity: 'success', title: 'The old data is removed', lines: ['The frames in the library are the only source of the pictures now.'] };
     });
 
   const refresh = () =>
@@ -329,6 +344,32 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame }: { ev
             </p>
           </div>
         </div>
+
+        {design?.base ? (
+          <div>
+            <h4 style={{ margin: '0 0 0.5rem' }}>The designers’ picture of this event</h4>
+            {design.messages.length > 0 && design.messages.every((message) => design.messageFrames?.[message]) ? (
+              <>
+                <p style={{ ...muted, margin: '0 0 0.5rem' }}>
+                  The pictures are frames of this event now, and every message chooses one (see the Frame of each message below). The old data on the event is still kept: check the images above, then remove it.
+                </p>
+                <Button type="button" variant="light" size="xs" loading={busy === 'retire'} disabled={busy !== null} onClick={() => void retireBase()}>
+                  Remove the old data
+                </Button>
+              </>
+            ) : (
+              <>
+                <p style={{ ...muted, margin: '0 0 0.5rem' }}>
+                  The pictures this event’s frames are written on are stored as data on the event, in no library (the older way). Move them into the library to see them under Assigned frames and to choose a frame
+                  for each message. The guests get the same pictures; the old data stays until you remove it.
+                </p>
+                <Button type="button" variant="light" size="xs" loading={busy === 'move'} disabled={busy !== null} onClick={() => void moveBase()}>
+                  Move it into the library
+                </Button>
+              </>
+            )}
+          </div>
+        ) : null}
 
         <div>
           <h4 style={{ margin: '0 0 0.25rem' }}>Messages</h4>

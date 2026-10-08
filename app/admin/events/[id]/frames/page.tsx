@@ -137,6 +137,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
       <GeneratedFramePanel
         key={library.assigned.map((entry) => `${entry.id}:${entry.assignment.isActive === true ? 1 : 0}:${entry.messageArea ? 1 : 0}`).join(',')}
         eventId={eventId}
+        onLibraryChanged={reload}
         hasOwnActiveFrame={library.assigned.some((entry) => entry.assignment.isActive === true && entry.messageArea === null)}
       />
 

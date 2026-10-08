@@ -119,7 +119,8 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
           for (const path of Object.keys((update.$unset as Doc) ?? {})) unsetPath(doc, path);
           for (const [path, value] of Object.entries((update.$push as Doc) ?? {})) {
             const arr = (doc[path] as unknown[] | undefined) ?? [];
-            doc[path] = [...arr, value];
+            const each = value && typeof value === 'object' && Array.isArray((value as Doc).$each) ? ((value as Doc).$each as unknown[]) : [value];
+            doc[path] = [...arr, ...each];
           }
           for (const [path, cond] of Object.entries((update.$pull as Doc) ?? {})) {
             const arr = (doc[path] as unknown[] | undefined) ?? [];
