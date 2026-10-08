@@ -21,6 +21,7 @@ import {
   CAMERA_DEFAULT_BRAND_COLOR,
 } from '@/lib/gds/tokens/colors';
 import { SELECTED_TINT } from '@/lib/theme/event-theme';
+import { useT } from '@/components/i18n/UiLanguageProvider';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
 
 export interface AcceptPageConfig {
@@ -60,6 +61,7 @@ export default function AcceptPage({
   brandBorderColor = CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
 }: AcceptPageProps) {
+  const { t } = useT();
   const items = consentCheckboxes(config);
   const [checked, setChecked] = useState<boolean[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +70,7 @@ export default function AcceptPage({
 
   const handleNext = () => {
     if (!accepted) {
-      setError('You must accept to continue');
+      setError(t('accept.mustAccept'));
       return;
     }
 
@@ -130,7 +132,7 @@ export default function AcceptPage({
                         href={item.linkUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        aria-label={`${item.text} (opens in a new tab)`}
+                        aria-label={t('accept.newTab', { text: item.text })}
                         onClick={(event) => event.stopPropagation()}
                         ml={6}
                         fw={800}
@@ -163,8 +165,8 @@ export default function AcceptPage({
 
       <Group grow>
         {onBack ? (
-          <Button variant="light" size={buttonSize} onClick={onBack} aria-label="Go back to previous page">
-            Back
+          <Button variant="light" size={buttonSize} onClick={onBack} aria-label={t('common.backAria')}>
+            {t('common.back')}
           </Button>
         ) : null}
         <Button

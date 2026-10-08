@@ -36,10 +36,13 @@ export function translate(language: UiLanguage, key: MessageKey, values?: Messag
 /**
  * A text an editor may have set: the editor's own text when there is one, else the dictionary text. The settings editors saved before the language
  * existed hold the English default as if it were their own (the page editor pre-fills and saves the defaults), so in another language a stored text that
- * is exactly the English default counts as not set, and the language's own text shows instead.
+ * is exactly the English default counts as not set, and the language's own text shows instead. Several keys may be given when the editor seeded more than one English
+ * wording for the same field; the first key is the text shown.
  */
-export function textOr(language: UiLanguage, key: MessageKey, stored: string | null | undefined, values?: MessageValues): string {
+export function textOr(language: UiLanguage, key: MessageKey | readonly MessageKey[], stored: string | null | undefined, values?: MessageValues): string {
+  const keys = Array.isArray(key) ? (key as readonly MessageKey[]) : [key as MessageKey];
   const own = typeof stored === 'string' ? stored.trim() : '';
-  if (own && (language === DEFAULT_UI_LANGUAGE || own !== translate(DEFAULT_UI_LANGUAGE, key, values))) return stored as string;
-  return translate(language, key, values);
+  const isEnglishDefault = keys.some((candidate) => own === translate(DEFAULT_UI_LANGUAGE, candidate, values));
+  if (own && (language === DEFAULT_UI_LANGUAGE || !isEnglishDefault)) return stored as string;
+  return translate(language, keys[0], values);
 }

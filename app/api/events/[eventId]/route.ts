@@ -27,7 +27,7 @@ import { normalizeEventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-po
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
-import { isUiLanguage, UI_LANGUAGES } from '@/lib/i18n';
+import { isUiLanguage, normalizeUiLanguage, UI_LANGUAGES } from '@/lib/i18n';
 import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
 import { captureFrameOf } from '@/lib/frame/capture';
 import { normalizePhotoVettingInput, photoVettingRequired } from '@/lib/events/photo-vetting';
@@ -196,7 +196,7 @@ export const GET = withErrorHandler(async (
     event: {
       ...publicEvent,
       theme: await loadEventTheme(db, event as unknown as Record<string, unknown>),
-      ...(forGuest ? { customPages: withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault }) } : {}),
+      ...(forGuest ? { customPages: withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language: normalizeUiLanguage((event as { uiLanguage?: unknown }).uiLanguage) }) } : {}),
       photoVettingRequired: vettingRequired,
       _id: event._id.toString(),
       generatedFrame: captureFrameOf({ frames: event.frames, frameDesign: frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'] }),

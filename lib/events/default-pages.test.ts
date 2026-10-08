@@ -64,3 +64,19 @@ test('the pages of the event are never changed or removed, only added to', () =>
   assert.equal(JSON.stringify(own), copy);
   for (const original of own) assert.ok(result.includes(original));
 });
+
+test('in Hungarian the default consent and login pages are Hungarian, with the Hungarian legal pages; English is unchanged', async () => {
+  const { withDefaultJourneyPages, DEFAULT_CONSENT_CHECKBOXES } = await import('./default-pages');
+  const english = withDefaultJourneyPages([], { vettingRequired: true, consentDefault: true });
+  const hungarian = withDefaultJourneyPages([], { vettingRequired: true, consentDefault: true, language: 'hu' });
+  const consent = (pages: typeof english) => pages.find((page) => page.pageId === 'default-consent')!;
+  const login = (pages: typeof english) => pages.find((page) => page.pageId === 'default-identity')!;
+  assert.equal(consent(english).config.title, 'Before we start');
+  assert.deepEqual(consent(english).config.checkboxes, DEFAULT_CONSENT_CHECKBOXES.map((box) => ({ ...box })));
+  assert.equal(consent(hungarian).config.title, 'Mielőtt elkezdjük');
+  assert.equal(consent(hungarian).config.buttonText, 'Tovább');
+  assert.deepEqual((consent(hungarian).config.checkboxes ?? []).map((box) => box.linkUrl), ['https://seyuselfies.com/hu/legal/terms', 'https://seyuselfies.com/hu/legal/cookies', 'https://seyuselfies.com/hu/policies']);
+  assert.equal(login(english).config.title, 'Who are you?');
+  assert.equal(login(hungarian).config.title, 'Ki vagy te?');
+  assert.equal(login(hungarian).config.nameLabel, 'A neved');
+});

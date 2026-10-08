@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Box, Button, Group, Stack, Text } from '@/components/gds/PublicPrimitives';
 import type { TourController } from '@/lib/tour/useTourController';
+import { useT } from '@/components/i18n/UiLanguageProvider';
 import styles from './TourOverlay.module.css';
 
 interface TargetRect {
@@ -63,6 +64,7 @@ function tooltipPosition(rect: TargetRect | null): CSSProperties {
  * (lib/tour/useTourController.ts).
  */
 export default function TourOverlay({ controller }: { controller: TourController }) {
+  const { t } = useT();
   const { isOpen, isTopMost, currentStep, currentIndex, totalSteps, next, back, skip } = controller;
   const [rect, setRect] = useState<TargetRect | null>(null);
   // True while polling for a target that hasn't mounted yet -- kept separate
@@ -206,20 +208,20 @@ export default function TourOverlay({ controller }: { controller: TourController
               {currentStep.description}
             </Text>
             <Text size="xs" c="dimmed">
-              Step {currentIndex + 1} of {totalSteps}
+              {t('tour.step', { n: currentIndex + 1, total: totalSteps })}
             </Text>
             <Group justify="space-between">
               <Button variant="subtle" size="xs" onClick={skip}>
-                Skip
+                {t('tour.skip')}
               </Button>
               <Group gap="xs">
                 {currentIndex > 0 ? (
                   <Button variant="default" size="xs" onClick={back}>
-                    Back
+                    {t('tour.back')}
                   </Button>
                 ) : null}
                 <Button size="xs" onClick={next}>
-                  {isLastStep ? 'Done' : 'Next'}
+                  {isLastStep ? t('tour.done') : t('tour.next')}
                 </Button>
               </Group>
             </Group>
@@ -227,7 +229,7 @@ export default function TourOverlay({ controller }: { controller: TourController
         </Box>
       </div>
       <div aria-live="polite" style={srOnlyStyle}>
-        {`Step ${currentIndex + 1} of ${totalSteps}: ${typeof currentStep.title === 'string' ? currentStep.title : ''}`}
+        {t('tour.step.live', { n: currentIndex + 1, total: totalSteps, title: typeof currentStep.title === 'string' ? currentStep.title : '' })}
       </div>
     </>
   );

@@ -32,3 +32,14 @@ test('the try-on sentence is added to the default waiting message only, an own m
   assert.equal(approvalTexts(undefined, true).waitingMessage, DEFAULT_APPROVAL_TEXTS.waitingMessage + TRY_ON_WAITING_SENTENCE);
   assert.equal(approvalTexts({ pendingWaitingMessage: 'Presto avrai il link.' }, true).waitingMessage, 'Presto avrai il link.');
 });
+
+test('in Hungarian the defaults are Hungarian, a stored English default counts as not set, an own text wins, the try-on sentence follows the language', () => {
+  const hu = approvalTexts({}, false, 'hu');
+  assert.equal(hu.title, 'Köszönjük!');
+  assert.match(hu.waitingMessage, /jóváhagyásra vár/);
+  assert.deepEqual(approvalTexts({ pendingTitle: 'Thank you!', pendingSavedMessage: 'Thank you! Your photo is waiting for approval.' }, false, 'hu'), approvalTexts({}, false, 'hu'));
+  assert.equal(approvalTexts({ pendingTitle: 'Köszi!' }, false, 'hu').title, 'Köszi!');
+  assert.match(approvalTexts({}, true, 'hu').waitingMessage, /Ezután készül el a próbaképed\.$/);
+  assert.equal(redirectingText('Opening…', 'hu'), 'Megnyitás…');
+  assert.equal(redirectingText(undefined, 'en'), 'Opening…');
+});
