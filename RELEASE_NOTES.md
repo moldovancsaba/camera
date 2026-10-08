@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the frame lists show the frames' pictures (camera#357)
+
+- **Fixed (owner report, 2026-10-08):** the event frames page (assigned and available lists), the partner frames page and the style panel printed the bare word "Image" instead of a frame's picture. They drew the picture only from `thumbnailUrl`, and the frames of the library never had one (they carry `imageUrl`). A frame is now shown by its thumbnail when it has one, else by the frame itself (`lib/frames/thumbnail.ts`, `FrameThumbnail`), on a neutral grey so a transparent frame is visible, at least 160 px wide in the lists; a frame with no picture at all says "No picture". The event data these pages read carries `imageUrl` next to `thumbnailUrl`. The global Frames list was already fine.
+- **Verified:** unit tests of the helper; type-check; lint; a real browser on the built page with the real library data (10 frames on `i.ibb.co`): every picture loaded, at least 120 px wide, no bare "Image", also with two frames assigned; a frame without a picture says "No picture". Not yet seen by the owner on the live pages.
+
 ## Unreleased — UI language of an event, step 1: the core and the setting (camera#352)
 
 - **Added:** `Event.uiLanguage` (`en` default, `hu`), settable in the event editor ("Customization", "User interface language") and by `PATCH /api/events/<id>`; the guest `GET` returns it. A language layer (`lib/i18n`: the English and Hungarian dictionaries, `translate`, `textOr`) and `UiLanguageProvider` / `useT()` for client components, set from the capture layout; the document language (`<html lang>`) follows. An editor's own text still wins over the dictionary, and a stored text that equals the English default counts as not set in another language (the page editor saved the defaults as if they were the editor's own). `docs/UI_LANGUAGE.md`.
