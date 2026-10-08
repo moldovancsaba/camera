@@ -186,7 +186,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
                   noun="frame"
                   scope={item.scope}
                   wide={editing === item.id}
-                  note={item.messageArea ? 'Guests never pick this frame: the messages of an event are written on it.' : undefined}
+                  note={item.messageArea ? 'Users never pick this frame: the messages of an event are written on it.' : undefined}
                   badges={
                     <>
                       {item.messageArea ? <LabelTag tone="info" label="Carries messages" /> : null}

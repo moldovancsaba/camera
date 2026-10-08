@@ -51,7 +51,7 @@ interface ImageCounts {
   reused: number;
 }
 
-type Notice = { severity: 'success' | 'warning' | 'error' | 'info'; title: string; lines: string[] };
+export type Notice = { severity: 'success' | 'warning' | 'error' | 'info'; title: string; lines: string[] };
 type Busy = 'save' | 'reset' | 'refresh' | 'move' | 'retire' | null;
 
 const section = { border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
@@ -88,14 +88,26 @@ function Swatch({ colour, label }: { colour: string; label: string }) {
   );
 }
 
-export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame, onLibraryChanged }: { eventId: string; hasOwnActiveFrame: boolean; onLibraryChanged?: () => void | Promise<void> }) {
+export default function GeneratedFramePanel({
+  eventId,
+  hasOwnActiveFrame,
+  onLibraryChanged,
+  initialNotice = null,
+}: {
+  eventId: string;
+  hasOwnActiveFrame: boolean;
+  /** Called after the panel changed the frames of the event (the base picture moved into the library, or removed) with the notice it shows; the page reloads its lists. */
+  onLibraryChanged?: (notice: Notice) => void | Promise<void>;
+  /** The notice the panel starts with: the page starts the panel again when the frames change, which would otherwise lose the confirmation. */
+  initialNotice?: Notice | null;
+}) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draft, setDraft] = useState<string[]>([]);
   // The frame chosen for each message, in the order of `draft` ('' = the generated layout).
   const [draftFrames, setDraftFrames] = useState<string[]>([]);
   const [busy, setBusy] = useState<Busy>(null);
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(initialNotice);
 
   const endpoint = `/api/admin/events/${eventId}/frame-design`;
 
@@ -109,6 +121,15 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame, onLibr
       setDraftFrames(framesOf(frameDesign, frameDesign.messages));
     }
   }, []);
+
+  /** Reads the design again (after the frames of the event changed under the panel). */
+  const reloadDesign = async () => {
+    const data = await call<Loaded>(endpoint, undefined, 'Could not load the generated frame');
+    setLoaded(data);
+    const messages = data.frameDesign?.messages ?? data.defaultMessages;
+    setDraft(messages);
+    setDraftFrames(framesOf(data.frameDesign, messages));
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -189,15 +210,19 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame, onLibr
   const moveBase = () =>
     run('move', async () => {
       const result = await call<{ variants: ImageCounts }>(`${endpoint}/migrate-base`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }, 'Could not move the picture into the library');
-      await onLibraryChanged?.();
-      return { severity: 'success', title: 'Moved into the library', lines: ['The pictures are frames of this event now and every message chose the one it used before.', countText(result.variants)] };
+      const done: Notice = { severity: 'success', title: 'Moved into the library', lines: ['The pictures are frames of this event now and every message chose the one it used before.', countText(result.variants)] };
+      await reloadDesign();
+      await onLibraryChanged?.(done);
+      return done;
     });
 
   const retireBase = () =>
     run('retire', async () => {
       await call<{ retired: boolean }>(`${endpoint}/migrate-base`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ retire: true }) }, 'Could not remove the old data');
-      await onLibraryChanged?.();
-      return { severity: 'success', title: 'The old data is removed', lines: ['The frames in the library are the only source of the pictures now.'] };
+      const done: Notice = { severity: 'success', title: 'The old data is removed', lines: ['The frames in the library are the only source of the pictures now.'] };
+      await reloadDesign();
+      await onLibraryChanged?.(done);
+      return done;
     });
 
   const refresh = () =>
@@ -247,7 +272,7 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame, onLibr
         <p style={{ ...muted, margin: '0.5rem 0 0' }}>
           {hasOwnActiveFrame
             ? 'This event has an active frame of its own, so the generated frame is not used. It applies again as soon as no own frame is active.'
-            : 'This event has no active frame of its own, so guests get this generated frame: your partner’s logo, the teams, the theme colours and a random message on every photo.'}
+            : 'This event has no active frame of its own, so users get this generated frame: your partner’s logo, the teams, the theme colours and a random message on every photo.'}
         </p>
       </div>
 
@@ -262,7 +287,7 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame, onLibr
           <h4 style={{ margin: '0 0 0.5rem' }}>Images ({variants.length})</h4>
           {variants.length === 0 ? (
             <p style={muted}>
-              No images yet. Use “Refresh from messmass” to take the snapshot and draw them; until they exist guests see no generated frame.
+              No images yet. Use “Refresh from messmass” to take the snapshot and draw them; until they exist users see no generated frame.
             </p>
           ) : (
             <ul style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))', listStyle: 'none', margin: 0, padding: 0 }}>
@@ -353,7 +378,7 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame, onLibr
                 <p style={{ ...muted, margin: '0 0 0.5rem' }}>
                   The pictures are frames of this event now, and every message chooses one (see the Frame of each message below). The old data on the event is still kept: check the images above, then remove it.
                 </p>
-                <Button type="button" variant="light" size="xs" loading={busy === 'retire'} disabled={busy !== null} onClick={() => void retireBase()}>
+                <Button type="button" variant="light" size="xs" loading={busy === 'retire'} disabled={busy !== null || dirty} onClick={() => void retireBase()}>
                   Remove the old data
                 </Button>
               </>
@@ -361,13 +386,14 @@ export default function GeneratedFramePanel({ eventId, hasOwnActiveFrame, onLibr
               <>
                 <p style={{ ...muted, margin: '0 0 0.5rem' }}>
                   The pictures this event’s frames are written on are stored as data on the event, in no library (the older way). Move them into the library to see them under Assigned frames and to choose a frame
-                  for each message. The guests get the same pictures; the old data stays until you remove it.
+                  for each message. The users get the same pictures; the old data stays until you remove it.
                 </p>
-                <Button type="button" variant="light" size="xs" loading={busy === 'move'} disabled={busy !== null} onClick={() => void moveBase()}>
+                <Button type="button" variant="light" size="xs" loading={busy === 'move'} disabled={busy !== null || dirty} onClick={() => void moveBase()}>
                   Move it into the library
                 </Button>
               </>
             )}
+            {dirty ? <p style={{ ...muted, margin: '0.5rem 0 0' }}>Save or reset your changes to the messages first: this reloads the messages.</p> : null}
           </div>
         ) : null}
 

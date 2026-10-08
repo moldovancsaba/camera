@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ObjectId } from 'mongodb';
+import sharp from 'sharp';
 import { fakeDb } from '@/lib/library/fake-db';
 import { CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
+import { baseImageFor, parseFrameBase, renderBaseFrame } from './base';
+import { resolveFrameFont } from './fonts';
+import { chosenFrameId, frameBaseOf, loadMessageFrames } from './message-frames';
 import { migrateBaseToLibrary, retireBase } from './migrate-base';
 
 const NOW = '2026-10-09T08:00:00.000Z';
@@ -79,3 +83,35 @@ test('the old data is removed only when every message chooses a frame that exist
   assert.ok(stored(data).frameDesign.messageFrames, 'the choices stay');
   assert.equal((await retireBase(db, { ...moved, frameDesign: stored(data).frameDesign }, NOW)).ok, false, 'nothing left to remove');
 });
+
+// A transparent 1920x1080 frame with a solid band at the top, like the designers' pictures.
+async function picture(band: { r: number; g: number; b: number }): Promise<Buffer> {
+  const bandPng = await sharp({ create: { width: 1920, height: 100, channels: 4, background: { ...band, alpha: 1 } } }).png().toBuffer();
+  return sharp({ create: { width: 1920, height: 1080, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite([{ input: bandPng, top: 0, left: 0 }]).png().toBuffer();
+}
+
+test('the images drawn from the moved frames are byte for byte the images the base drew, for every message: users see the same pictures', async () => {
+  const { db, event } = setup();
+  const result = await migrateBaseToLibrary(db, event, 'admin-1', NOW);
+  assert.equal(result.ok, true);
+
+  const moved = (await db.collection('events').findOne({ _id: event._id }))!;
+  const frames = await loadMessageFrames(db, moved);
+  const bytes = new Map<string, Buffer>([[base.images[0].imageUrl, await picture({ r: 24, g: 156, b: 216 })], [base.images[1].imageUrl, await picture({ r: 216, g: 24, b: 120 })]]);
+  const font = await resolveFrameFont({ name: 's', resolvedFrom: 'event', fontFamily: 'Inter', fontSource: 'google', fontFile: null, headingColor: ['#', '000000ff'].join(''), heroBackground: ['#', 'ffffffff'].join('') });
+  const oldBase = parseFrameBase(base)!;
+
+  const seen = new Set<string>();
+  for (const [index, message] of messages.entries()) {
+    const before = await renderBaseFrame({ base: oldBase, imageBytes: bytes.get(baseImageFor(oldBase, message).imageUrl)!, message, font });
+    const frameId = chosenFrameId(moved.frameDesign as { messages: string[]; messageFrames?: Record<string, string> }, index);
+    const frame = frameId ? frames.get(frameId) : undefined;
+    assert.ok(frame, `the message "${message}" chose a frame that can be loaded`);
+    const after = await renderBaseFrame({ base: frameBaseOf(frame), imageBytes: bytes.get(frame.imageUrl)!, message, font });
+    assert.ok(before.png.equals(after.png), `"${message}" is drawn the same`);
+    assert.deepEqual(after.layers, before.layers, `"${message}" keeps its territories`);
+    seen.add(frame.imageUrl);
+  }
+  assert.equal(seen.size, 2, 'both colourways are used, so a wrong picture would have shown');
+});
+
