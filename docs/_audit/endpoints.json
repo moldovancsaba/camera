@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-08T10:34:54+00:00",
-  "repo": "camera",
-  "head": "96c4bee",
+  "generated": "2026-10-08T10:48:09+00:00",
+  "repo": "camera-hu",
+  "head": "44f5caf",
   "counts": {
-   "endpoints": 112,
-   "collections": 6,
+   "endpoints": 118,
+   "collections": 7,
    "env": 59,
    "outbound-hosts": 29,
-   "docs": 55
+   "docs": 56
   }
  },
  "items": [
@@ -713,6 +713,42 @@
    "no_auth_marker": true
   },
   {
+   "path": "/api/events/[eventId]/library/items/[itemId]",
+   "methods": [
+    "DELETE"
+   ],
+   "file": "app/api/events/[eventId]/library/items/[itemId]/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/events/[eventId]/library",
+   "methods": [
+    "GET"
+   ],
+   "file": "app/api/events/[eventId]/library/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/events/[eventId]/library/upload",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/events/[eventId]/library/upload/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
    "path": "/api/events/[eventId]/logos/[logoId]",
    "methods": [
     "PATCH",
@@ -1103,6 +1139,43 @@
    "file": "app/api/observability/client-error/route.ts",
    "auth_markers": [],
    "no_auth_marker": true
+  },
+  {
+   "path": "/api/partners/[partnerId]/library/items/[itemId]",
+   "methods": [
+    "DELETE"
+   ],
+   "file": "app/api/partners/[partnerId]/library/items/[itemId]/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/partners/[partnerId]/library",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/partners/[partnerId]/library/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/partners/[partnerId]/library/upload",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/partners/[partnerId]/library/upload/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
   },
   {
    "path": "/api/partners/[partnerId]",

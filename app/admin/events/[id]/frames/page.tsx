@@ -1,160 +1,104 @@
 'use client';
 
-import SemanticButton from '@/components/gds/CameraSemanticButton';
 /**
- * Event Frame Management Page
+ * Event library: frames (camera#361, docs/LIBRARIES.md)
  *
- * Manage frame assignments for an event.
+ * The frames of one event. "Assigned" are the frames the event uses; the event takes them from its partner's library (never straight from the
+ * global library) or uploads its own. Frames the event has not taken yet are listed under "Available" with their pictures.
  */
 
-import { useEffect, useState } from 'react';
-import FrameThumbnail from '@/components/admin/FrameThumbnail';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import GeneratedFramePanel from '@/components/admin/GeneratedFramePanel';
-import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
+import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
+import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
+import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
+import type { EventLibrary } from '@/lib/library/types';
 
-interface EventFrameAssignment {
-  frameId: string;
-  isActive: boolean;
-}
-
-interface EventRecord {
-  name: string;
-  frames?: EventFrameAssignment[];
-}
-
-interface FrameRecord {
-  frameId: string;
-  name: string;
-  thumbnailUrl?: string;
-  imageUrl?: string;
-  hashtags?: string[];
-}
-
-interface EventResponse {
-  data?: { event?: EventRecord };
-  event?: EventRecord;
+interface Payload<T> {
+  data?: T;
   error?: string;
 }
 
-interface FramesResponse {
-  data?: { frames?: FrameRecord[] };
-  error?: string;
-}
+const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' } as const;
+const SECTION = { border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
 
-function getErrorMessage(error: unknown): string {
+function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
+}
+
+async function call<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init);
+  const payload = (await response.json().catch(() => null)) as Payload<T> | null;
+  if (!response.ok || !payload) throw new Error(payload?.error || `Request failed (${response.status})`);
+  return payload.data as T;
 }
 
 export default function EventFramesPage({ params }: { params: Promise<{ id: string }> }) {
   const [eventId, setEventId] = useState('');
-  const [event, setEvent] = useState<EventRecord | null>(null);
-  const [availableFrames, setAvailableFrames] = useState<FrameRecord[]>([]);
-  const [assignedFrames, setAssignedFrames] = useState<EventFrameAssignment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [eventName, setEventName] = useState<string | null>(null);
+  const [library, setLibrary] = useState<EventLibrary | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     params.then((resolved) => setEventId(resolved.id));
   }, [params]);
 
-  useEffect(() => {
+  const reload = useCallback(async () => {
     if (!eventId) return;
-
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const eventResponse = await fetch(`/api/events/${eventId}`);
-        const eventData: EventResponse = await eventResponse.json();
-        if (!eventResponse.ok) {
-          throw new Error(eventData.error || 'Failed to load event');
-        }
-
-        const eventRecord = eventData.data?.event || eventData.event;
-        if (!eventRecord) {
-          throw new Error('Event not found');
-        }
-        setEvent(eventRecord);
-        setAssignedFrames(eventRecord.frames || []);
-
-        const framesResponse = await fetch('/api/frames?active=true&limit=100');
-        const framesData: FramesResponse = await framesResponse.json();
-        if (!framesResponse.ok) {
-          throw new Error(framesData.error || 'Failed to load frames');
-        }
-        setAvailableFrames(framesData.data?.frames || []);
-      } catch (fetchError) {
-        setError(getErrorMessage(fetchError));
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void fetchData();
+    setLibrary(await call<EventLibrary>(`/api/events/${eventId}/library?kind=frames`));
   }, [eventId]);
 
-  const refreshEvent = async () => {
-    const eventResponse = await fetch(`/api/events/${eventId}`);
-    const eventData: EventResponse = await eventResponse.json();
-    const eventRecord = eventData.data?.event || eventData.event;
-    if (!eventRecord) {
-      throw new Error('Event not found');
-    }
-    setEvent(eventRecord);
-    setAssignedFrames(eventRecord.frames || []);
-  };
-
-  const handleAssignFrame = async (frameId: string) => {
-    try {
-      const response = await fetch(`/api/events/${eventId}/frames`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ frameId, isActive: true }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to assign frame');
+  useEffect(() => {
+    if (!eventId) return;
+    void (async () => {
+      try {
+        setLoading(true);
+        const loaded = await call<{ event?: { name: string } }>(`/api/events/${eventId}`);
+        if (!loaded.event) throw new Error('Event not found');
+        setEventName(loaded.event.name);
+        await reload();
+      } catch (loadError) {
+        setError(errorText(loadError));
+      } finally {
+        setLoading(false);
       }
-      await refreshEvent();
-    } catch (assignError) {
-      alert(getErrorMessage(assignError));
-    }
-  };
+    })();
+  }, [eventId, reload]);
 
-  const handleRemoveFrame = async (frameId: string) => {
-    if (!confirm('Remove this frame from the event?')) return;
-
+  const act = async (run: () => Promise<unknown>) => {
+    setBusy(true);
+    setActionError(null);
     try {
-      const response = await fetch(`/api/events/${eventId}/frames/${frameId}`, { method: 'DELETE' });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to remove frame');
-      }
-      await refreshEvent();
-    } catch (removeError) {
-      alert(getErrorMessage(removeError));
+      await run();
+      await reload();
+    } catch (actionFailure) {
+      setActionError(errorText(actionFailure));
+    } finally {
+      setBusy(false);
     }
   };
 
-  const handleToggleFrame = async (frameId: string) => {
-    try {
-      const response = await fetch(`/api/events/${eventId}/frames/${frameId}/toggle`, { method: 'PATCH' });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to toggle frame');
-      }
-      await refreshEvent();
-    } catch (toggleError) {
-      alert(getErrorMessage(toggleError));
-    }
+  const assign = (frameId: string) =>
+    act(() => call(`/api/events/${eventId}/frames`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ frameId, isActive: true }) }));
+  const remove = (frameId: string, name: string) => {
+    if (!confirm(`Remove "${name}" from this event?`)) return Promise.resolve();
+    return act(() => call(`/api/events/${eventId}/frames/${frameId}`, { method: 'DELETE' }));
+  };
+  const toggle = (frameId: string) => act(() => call(`/api/events/${eventId}/frames/${frameId}/toggle`, { method: 'PATCH' }));
+  const deleteUpload = (frameId: string, name: string) => {
+    if (!confirm(`Delete "${name}"? It was uploaded for this event and is removed for good.`)) return Promise.resolve();
+    return act(() => call(`/api/events/${eventId}/library/items/${frameId}?kind=frames`, { method: 'DELETE' }));
   };
 
-  if (isLoading) {
-    return <StateBlock variant="loading" title="Loading frames..." />;
-  }
+  if (loading) return <StateBlock variant="loading" title="Loading frames..." />;
 
-  if (error || !event) {
+  if (error || !eventName || !library) {
     return (
       <div style={{ display: 'grid', gap: '1rem' }}>
         <InlineAlert title="Error" message={error || 'Event not found'} severity="error" />
@@ -163,15 +107,14 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const assignedFrameIds = assignedFrames.map((frame) => frame.frameId);
-  const unassignedFrames = availableFrames.filter((frame) => !assignedFrameIds.includes(frame.frameId));
+  const partnerName = library.partner?.name ?? 'its partner';
 
   return (
     <div style={{ display: 'grid', gap: '2rem' }}>
       <nav aria-label="Breadcrumb">
         <Link href="/admin/events">Events</Link>
         <span aria-hidden> / </span>
-        <Link href={`/admin/events/${eventId}`}>{event.name}</Link>
+        <Link href={`/admin/events/${eventId}`}>{eventName}</Link>
         <span aria-hidden> / </span>
         <span>Frames</span>
       </nav>
@@ -179,93 +122,129 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
       <WorkspaceHeader
         eyebrow="Events"
         title="Manage Event Frames"
-        description={`Assign and manage frames for ${event.name}`}
+        description={`The frames of ${eventName}. It takes them from the library of ${partnerName}, or you upload frames for this event only.`}
       />
 
-      <GeneratedFramePanel eventId={eventId} hasOwnActiveFrame={assignedFrames.some((frame) => frame.isActive)} />
+      <GeneratedFramePanel eventId={eventId} hasOwnActiveFrame={library.assigned.some((entry) => entry.assignment.isActive === true)} />
 
-      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))' }}>
-        <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
-          <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
-            <h3 style={{ margin: 0 }}>Assigned Frames ({assignedFrames.length})</h3>
-          </div>
-          <div style={{ display: 'grid', gap: '0.75rem', padding: '1rem' }}>
-            {assignedFrames.length === 0 ? (
-              <p style={{ color: 'var(--gds-color-muted)', margin: '2rem 0', textAlign: 'center' }}>
-                No frames assigned yet
-              </p>
-            ) : (
-              assignedFrames.map((frameAssignment) => {
-                const frame = availableFrames.find((availableFrame) => availableFrame.frameId === frameAssignment.frameId);
+      {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}
+      {!library.partner ? <InlineAlert title="No partner" message="This event has no partner, so it has no library to take frames from. You can still upload frames for this event." severity="warning" /> : null}
+      {library.missing.length > 0 ? (
+        <InlineAlert
+          title={`${library.missing.length} assigned frame${library.missing.length === 1 ? '' : 's'} no longer exist${library.missing.length === 1 ? 's' : ''}`}
+          message={
+            <span style={{ display: 'grid', gap: '0.5rem' }}>
+              {library.missing.map((entry) => (
+                <span key={entry.id} style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <code>{entry.id}</code>
+                  <SemanticButton action="event-frames:remove" variant="danger" size="xs" disabled={busy} onClick={() => void act(() => call(`/api/events/${eventId}/frames/${entry.id}`, { method: 'DELETE' }))}>
+                    Remove frame
+                  </SemanticButton>
+                </span>
+              ))}
+            </span>
+          }
+          severity="warning"
+        />
+      ) : null}
+
+      <section style={SECTION}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+          <h3 style={{ margin: 0 }}>Assigned Frames ({library.assigned.length})</h3>
+          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>The frames this event uses. An event with its own list is no longer changed by the defaults of its partner.</p>
+        </div>
+        <div style={{ padding: '1rem' }}>
+          {library.assigned.length === 0 ? (
+            <p style={{ color: 'var(--gds-color-muted)', margin: '2rem 0', textAlign: 'center' }}>No frames assigned yet</p>
+          ) : (
+            <div style={GRID}>
+              {library.assigned.map((entry) => {
+                const active = entry.assignment.isActive === true;
                 return (
-                  <article key={frameAssignment.frameId} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.75rem', padding: '0.75rem' }}>
-                    <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
-                      <div style={{ alignItems: 'center', display: 'flex', gap: '0.75rem' }}>
-                        <FrameThumbnail frame={frame} />
-                        <div>
-                          <strong style={{ fontSize: '0.875rem' }}>
-                            {frame?.name || frameAssignment.frameId}
-                          </strong>
-                          <code style={{ color: 'var(--gds-color-muted)', display: 'block', fontSize: '0.75rem' }}>
-                            {frameAssignment.frameId}
-                          </code>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <SemanticButton
-                          action="event-frames:toggle"
-                          variant="secondary"
-                          size="xs"
-                          onClick={() => void handleToggleFrame(frameAssignment.frameId)}
-                        >
-                          {frameAssignment.isActive ? 'Active' : 'Inactive'}
+                  <LibraryItemCard
+                    key={entry.id}
+                    name={entry.name}
+                    imageUrl={entry.imageUrl}
+                    thumbnailUrl={entry.thumbnailUrl}
+                    noun="frame"
+                    scope={entry.scope}
+                    badges={
+                      <>
+                        <LabelTag tone={active ? 'success' : 'neutral'} label={active ? 'Active' : 'Inactive'} />
+                        {!entry.stillInPartnerLibrary ? <LabelTag tone="warning" label="No longer in the partner library" /> : null}
+                        {!entry.itemActive ? <LabelTag tone="warning" label="Switched off in the library" /> : null}
+                      </>
+                    }
+                    actions={
+                      <>
+                        <SemanticButton action={active ? 'library:switch-off' : 'library:switch-on'} variant="secondary" size="xs" disabled={busy} onClick={() => void toggle(entry.id)}>
+                          {active ? 'Switch off' : 'Switch on'}
                         </SemanticButton>
-                        <SemanticButton action="event-frames:remove" variant="danger" size="xs" onClick={() => void handleRemoveFrame(frameAssignment.frameId)}>
-                          Remove
+                        <SemanticButton action="event-frames:remove" variant="danger" size="xs" disabled={busy} onClick={() => void remove(entry.id, entry.name)}>
+                          Remove frame
                         </SemanticButton>
-                      </div>
-                    </div>
-                  </article>
+                        {entry.scope === 'event' ? (
+                          <SemanticButton action="library:delete-upload" variant="danger" size="xs" disabled={busy} onClick={() => void deleteUpload(entry.id, entry.name)}>
+                            Delete upload
+                          </SemanticButton>
+                        ) : null}
+                      </>
+                    }
+                  />
                 );
-              })
-            )}
-          </div>
-        </section>
+              })}
+            </div>
+          )}
+        </div>
+      </section>
 
-        <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
-          <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
-            <h3 style={{ margin: 0 }}>Available Frames ({unassignedFrames.length})</h3>
-          </div>
-          <div style={{ display: 'grid', gap: '0.75rem', padding: '1rem' }}>
-            {unassignedFrames.length === 0 ? (
-              <p style={{ color: 'var(--gds-color-muted)', margin: '2rem 0', textAlign: 'center' }}>
-                All frames are assigned
-              </p>
-            ) : (
-              unassignedFrames.map((frame) => (
-                <article key={frame.frameId} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.75rem', padding: '0.75rem' }}>
-                  <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
-                    <div style={{ alignItems: 'center', display: 'flex', gap: '0.75rem' }}>
-                      <FrameThumbnail frame={frame} />
-                      <div>
-                        <strong style={{ fontSize: '0.875rem' }}>
-                          {frame.name}
-                        </strong>
-                        <span style={{ color: 'var(--gds-color-muted)', display: 'block', fontSize: '0.75rem' }}>
-                          {frame.hashtags?.join(', ') || 'No hashtags'}
-                        </span>
-                      </div>
-                    </div>
-                    <SemanticButton action="event-frames:assign" size="xs" onClick={() => void handleAssignFrame(frame.frameId)}>
-                      Assign
+      <section style={SECTION}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+          <h3 style={{ margin: 0 }}>Available Frames ({library.available.length})</h3>
+          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>
+            From the library of {partnerName}, and uploads for this event, that the event has not taken yet. A frame that is not listed here has to be added to the partner library first.
+            {library.partner ? (
+              <>
+                {' '}
+                <Link href={`/admin/partners/${library.partner.adminId}/frames`}>Open the library of {library.partner.name}</Link>
+              </>
+            ) : null}
+          </p>
+        </div>
+        <div style={{ padding: '1rem' }}>
+          {library.available.length === 0 ? (
+            <p style={{ color: 'var(--gds-color-muted)', margin: '2rem 0', textAlign: 'center' }}>Nothing left to assign</p>
+          ) : (
+            <div style={GRID}>
+              {library.available.map((item) => (
+                <LibraryItemCard
+                  key={item.id}
+                  name={item.name}
+                  imageUrl={item.imageUrl}
+                  thumbnailUrl={item.thumbnailUrl}
+                  noun="frame"
+                  scope={item.scope}
+                  actions={
+                    <SemanticButton action="event-frames:assign" size="xs" disabled={busy} onClick={() => void assign(item.id)}>
+                      Assign frame
                     </SemanticButton>
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
-      </div>
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section style={SECTION}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+          <h3 style={{ margin: 0 }}>Upload a frame for this event</h3>
+          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>It is assigned to this event at once. No other event can take it.</p>
+        </div>
+        <div style={{ padding: '1rem' }}>
+          <LibraryUploadForm endpoint={`/api/events/${eventId}/library/upload`} kind="frames" noun="frame" accept="image/png,image/svg+xml" acceptWords="PNG or SVG" onUploaded={reload} />
+        </div>
+      </section>
 
       <Link href={`/admin/events/${eventId}`}>← Back to Event</Link>
     </div>
