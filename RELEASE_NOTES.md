@@ -1,5 +1,17 @@
 # RELEASE_NOTES.md
 
+## Unreleased — library fixes: uploads on the server, and removing an item keeps it on the events (camera#385; epic camera#361)
+
+- **Fixed:** an upload on a partner or event library page failed on the server with "FileReader is not defined": the upload helper turned the file into text with `FileReader`, which Node does not
+  have. It now reads the file's bytes directly. The route tests replace the helper with a fake, which is why nothing showed it before; the new tests give the helper a real `File` and check the
+  stored bytes and name.
+- **Fixed:** an SVG was stored as `image/svg`, which a browser does not draw in an image; it is stored as `image/svg+xml`.
+- **Fixed (decision 116):** removing an item from a partner library also took it from the events that follow the partner's defaults, because the change of the defaults replaces the whole list of
+  such an event. An event that uses a removed item now stops following the defaults (the same flag an edit of its list sets), so its list stays as it is and its page says "No longer in the
+  partner library". Events that do not use the item keep following the defaults.
+- **Verified:** unit tests (the upload of a File and of an SVG, the flag set only on the events that use the item, and the real defaults cascade run after a removal, which fails without the fix);
+  type-check; lint; the full CI chain on a UTC clock. **Not seen by the owner;** one upload on a partner library page after the merge is the check.
+
 ## Unreleased — UI language of an event, step 3: the public photo page and the emails (camera#352)
 
 - **Changed:** the public photo page (`/share/...`, the page the email links to) and its waiting and not-approved notices are in the event's language: the ten fixed texts of the share page settings, the pending try-on message, the picture labels and alt texts, "Guest", the date under the photo (Hungarian date format), the header logo's alt text, the tab title, the description and the link preview texts. An event's own text still wins; a stored text that is exactly the English default counts as not set in Hungarian, as in the capture flow.
