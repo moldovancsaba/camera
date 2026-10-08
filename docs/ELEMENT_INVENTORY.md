@@ -2,7 +2,7 @@
 
 Research of 2026-10-09 (camera#412, register item 151), read from the code of `main` at 6db8dcd. **Nothing was run and nothing was changed.** It answers the owner's request to collect *all* elements needed to deliver an event (texts, graphics, anything visible on a screen, in an e-mail or in any admin screen), and to find which relates to what. The brick model that is built on it is [BUILDING_BRICKS.md](BUILDING_BRICKS.md).
 
-**477 rows in five readings** (flow 138, texts 72, graphics 108, admin editors 68, data model 91). The same element can appear in more than one reading (the logo appears in all five); that overlap is the finding, not an error. Every row in the JSON files carries file and line references; the tables below shorten long cells (marked …). The full records are in [`_research/element-inventory/`](_research/element-inventory/).
+**477 rows in five readings** (flow 138, texts 72, graphics 108, admin editors 68, data model 91), and a sixth reading that measures how the admin screens use the design system (section F, 128 files). The same element can appear in more than one reading (the logo appears in all five); that overlap is the finding, not an error. Every row in the JSON files carries file and line references; the tables below shorten long cells (marked …). The full records are in [`_research/element-inventory/`](_research/element-inventory/).
 
 ## How the rows split into brick types
 
@@ -23,7 +23,7 @@ Each row of the flow, texts, graphics and data-model readings has a kind. Mapped
 
 ## Reading the findings first
 
-The five sections below each start with what the reader found (the shortest way into the data) and then give the full table.
+The sections below each start with what the reader found (the shortest way into the data) and then give the full table.
 
 ---
 
@@ -749,6 +749,80 @@ Risks:
 | mdl-089 | Audit fields: Partner and Event createdBy, createdAt, updatedAt; Even… | setting | n/a | none | display only | none |
 | mdl-090 | landing_page_css_presets (LandingPageCssPreset: name, className, css,… | setting | no | LandingPage.customCssPresetId | PATCH /api/landing-pages/[id] stores the preset's className and css on the landing page (customCssClassName, customCss) at save time (app/api/landing-pages/[id… | none: the landing page holds a copy, not a reference; a later preset… |
 | mdl-091 | leather_suits catalog (LeatherSuit: name, garmentType, sleeveStyle, a… | list | no | none | Event.tryOn.allowedLeatherSuitIds is an allow-list over this global catalog; empty list = all active suits (lib/tryon/enqueue-for-submission.ts:96-110) | none |
+
+---
+
+## F. How the admin screens use the design system (register item 152)
+
+### GDS use in the camera admin: findings (measured 2026-10-09, main 6db8dcd, GDS 6.3.0)
+Scope: 128 files (57 app/admin, 56 components/admin, 15 components/gds; 53 are page.tsx), 26,598 lines. Every number, per file, is in gds.json. Read-only scan, cross-checked with grep. Nothing was run in a browser or on a phone.
+
+#### Overall picture
+- The owner's fear is confirmed, and it is worse than "hard-coded": 835 `style={{` objects in 79 files, 855 px/rem/em literals, 831 raw div/span/p/label/input/h1-h4 tags (plus 230 other raw tags). Inline styles in app/admin + components/admin grew 620 -> 792 (+28%) in the 8 days since gds_fix_handover.md, mostly in the new library screens (+19 partners/logos, +16 partners/images, +16 events/frames) and GeneratedFramePanel (+39), which copied the same pattern.
+- Tokens are almost not used, and the ones that are used do not exist. 220 `var(--gds-...)` references in admin code; 213 (97%) name tokens no GDS version defines: `--gds-color-muted` 107, `--gds-color-border` 85, surface 13, shadow 3, accent/danger/space-2 5. Checked in gds-theme styles.css and dist, gds-core and gds-admin dist, app/globals.css. An undefined var makes the whole declaration invalid, so `border: 1px solid var(--gds-color-border)` draws no border, "muted" text is not dimmed, `--gds-color-surface` is transparent. By CSS rules, not yet confirmed in a browser; it is the likely cause of the "messy, unfinished" look (cards without edges).
+- The 7 valid references sit in the two hand-rolled modals. Zero uses of any `--gds-space/radius/font-size/weight/elevation` token. Using them would not work either: camera runs the plain `gdsTheme`, which emits only colour roles, overlay, motion, safe-area at `:root`; axis tokens exist only in preset/brand lanes (gds#765, `gdsTheme = baseTheme`, no cssVariablesResolver). In this lane the real scale is `--mantine-*` (63 uses) and component props (Mantine spacing/radius props with a token such as `gap="md"`: 163 uses, numeric ones: 29).
+- Values drift: 18 distinct border-radius, 24 gap, 30 padding values; 36% of spacing and 55% of radius literals are not on the GDS scale (0.5rem 84x, 1.5rem 71x, 0.35rem 51x, radius 0.875rem 14x, font 0.8125rem 14x). 57 raw `--mantine-color-<palette>` colours, 133 `dimmed` greys (#868e96) where `--gds-text-meta` exists.
+- Of 2,456 JSX element uses: GDS components 22.5% (SemanticButton 168, InlineAlert 80, FormSection 43, StateBlock 37, LabelTag 32: the button/form/status layer is good), Mantine via the `PublicPrimitives` barrel 27.8% (683; 293 are names GDS does not export: Text 181, Card 23, Title 15...), raw HTML 43.2%, camera composites 6.5%. Zero uses of GdsStack/Inline/Grid/Split, PageTitle/SectionTitle/CardTitle, BodyText/MetadataText/LabelText, SectionPanel, GdsBreadcrumbs, AdminResourceGrid.
+- File verdicts: 54 conform (28 have no UI of their own), 39 mixed, 35 hardcoded. File level flatters: 14 of the 16 users of AdminListPageShell "conform" while the shell itself has 11 inline styles and a raw `<form><input><button>`.
+- Also non-standard and phone-relevant: 38 `<Link><Button>` nestings (anchor around button), 27 native alert/confirm/prompt (10 in the library pages built this week; useGdsConfirm is used in 15 files), 12 hand-rolled `<nav>` breadcrumbs + 6 Mantine Breadcrumbs + 0 GdsBreadcrumbs, 72 Tailwind `className` with `@import "tailwindcss"` still in globals.css.
+- Why nothing flagged it: check-gds-boundaries.mjs only bans the string `@mantine/core` in app/admin and components/gds (components/admin is not scanned) and allowlists PublicPrimitives.tsx, which re-exports 29 Mantine names under a gds/ path (24 importers). gds-compliance runs with strictMode off. ESLint `gds/no-raw-design-values` covers 4 globs (not admin) and only matches strings like "padding: 12px". Findings today: 0.
+
+#### Five worst screens (page + the admin components it imports: inline styles / undefined-token refs / raw tags)
+1. events/[id] overview 166 / 55 / 130: StyleSections 62, LandingPageManager 20, EventGalleryUpload 20, EventGallery 17, SlideshowManager 14, SlideshowLayoutManager 13.
+2. partners/[id] overview 136 / 29 / 88: StyleSections 62, PartnerUserAccessManager 28, AuthorizationMatrix 20, page 20. Phone defects in source: `gridColumn:'span 2'` inside a 1-column SimpleGrid (implicit 2nd track), `columnCount: 5` photo wall (5 columns at 375 px), 8 `textDecoration:none` links around buttons.
+3. tryon/vetting 78 / 18 / 58: TryOnQueueTable 40, AdminListPageShell 11, TryOnResultModerationTable 10.
+4. events/[id]/frames 76 / 19 / 76: GeneratedFramePanel 39 (+39 since 10-01), page 18, native confirm x2.
+5. events/[id]/edit 69 / 20 / 69: CustomPagesManager 46 (local Field/Area on raw `<input>`, hand-rolled modal, alert/confirm), ImagePicker 12.
+Owner pages: partner logo library ranks 11th (32 / 14 / 35 with its cards); events/[id]/logos 12th, partners/[id]/frames 9th. All six library pages (partner and event frames, images, logos) repeat one copy-pasted block.
+
+#### Partner logo library and partner overview (literal values and the GDS replacement: gds.json ownerScreens)
+- Logo library: 21 inline objects + 2 style constants. `SECTION` (border var undefined, radius 1rem) x4 -> `SectionPanel`; section header (padding 1.5rem + borderBottom + h3 + muted p) x4 -> its title/description; `GRID` (auto-fill minmax 280px) -> `GdsGrid columns="auto-fill"`; `display:grid;gap:1rem|2rem|.5rem` -> `GdsStack gap="md|xl|xs"`; empty `<p>` (muted, 2rem margin) -> `StateBlock variant="empty"`; 2 native confirm -> `confirmDestructive`; hand-rolled `<nav>` -> `GdsBreadcrumbs`. LibraryItemCard (6 more inline objects, border var undefined, radius .75rem) -> `MediaPreviewCard`; AssetThumbnail (gray-3, radius 6) -> `GdsMediaFrame`.
+- Overview: 20 inline objects + 70 Mantine Card/Title/Text/Group uses (no GDS panel). `textDecoration:none` x8 -> `SemanticButton component={Link}`; `letterSpacing .08em` captions x5 -> LabelText in a FactList; `span 2` -> `GdsSplit ratio="1:2"`; `columnCount` wall -> `GdsGrid` + `GdsMediaFrame`; section headers x2 -> `SectionPanel`; border-separated event rows -> `ResponsiveDataView`/`ListItemSection`; emoji empty states -> `StateBlock`.
+
+#### Shared admin kit
+Use as they are (installed, tested by GDS): `GdsBreadcrumbs`; gds-admin `PageHeader`/`WorkspaceHeader` (breadcrumbs, status, primary/secondary/overflow actions); `SectionPanel` (title, description, action, tone incl. `critical` for danger zones); `GdsStack`, `GdsInline`, `GdsCluster`, `GdsGrid`, `GdsSplit`, `GdsColumnGrid`, `GdsMediaFrame`; text roles `PageTitle/SectionTitle/CardTitle/BodyText/MetadataText/LabelText`; `StateBlock`, `InlineAlert`, `BannerNotice` (already used); `LabelTag`, `StatusBadge`, `CountBadge`; `MediaPreviewCard`, `ListingCard`, `AdminResourceManager` (`hideWhenNoMedia`), `AdminDataTable`/`ResponsiveDataView`; `DataToolbar`, `ActionBar`; `AdminCrudForm` + `Admin*` fields, `FormField`, `UploadDropzone`; `useGdsConfirm`, `useGdsToasts`, `AdminModal`.
+Missing, make once in `components/admin/kit/` (composition over the list above, no style props, no CSS of its own):
+1. `AdminPage`: GdsBreadcrumbs + `WorkspaceHeader` (extend camera's wrapper, which forwards no breadcrumbs/secondary actions) + `GdsStack gap="lg"` + back link. List pages (AdminListPageShell, 16 users) and edit pages (AdminEditorScaffold, 16) have a frame; the 18+ detail, workspace and library pages have none.
+2. `LibrarySection`: SectionPanel + count + empty StateBlock + GdsGrid (replaces `const SECTION`/`GRID` in 7/8 files and the header pattern copied 22 times).
+3. `LibraryItemCard` rebuilt on MediaPreviewCard + GdsMediaFrame + LabelTag, so Logos inventory and partner/event library show one card.
+4. `LinkButton` (CameraSemanticButton + `component={Link}`): ends 38 anchor-around-button sites.
+5. `FactList` (term/value rows; GDS `DetailFactsTable` is only in 6.8, camera is pinned to 6.3). 6. `ToolbarSearch` for DataToolbar's searchSlot, to drop the raw form in AdminListPageShell.
+Rule for the kit: spacing/radius only through GDS props or `--mantine-*`; colour only through `--gds-*` names that exist; text only through text roles; never `style`.
+
+#### Gate so it cannot drift (new script in `gds:check`, plus ESLint selectors; ratchet: per-file baseline may only fall, new files start at 0)
+- R2 undefined `--gds-*` name (allowlist read from the installed package): 213 violations in 38 files; one mechanical fix (muted -> MetadataText or `--gds-text-meta`, border -> SectionPanel or `--gds-border-card`).
+- R1 `style={{` with a size literal (px/rem/em or numeric length) in app/admin, components/admin, components/gds: 609 in 73 files (835 in 79 for any inline style = what `compliance.strictMode: true` flags per file via strict.inline-style).
+- R3 raw div/span/p/ul/label/input/h1-h4 in app/admin pages: 272 (831 in all three dirs). R4 import of PublicPrimitives in app/admin: 5 files (24 overall). R5 native alert/confirm/prompt: 27. R6 hand-rolled breadcrumb: 18. R7 anchor around button: 38. R8 `c="dimmed"`/`--mantine-color-dimmed`: 133. R9 raw palette `--mantine-color-*`: 57.
+- Also: add components/admin to check-gds-boundaries.mjs and widen the ESLint GDS globs to app/admin and components/admin. The 2026-10-02 strict dry run (205 findings, 97 files) was not re-run.
+- Suggested order: R2 fix first (cheap, visible on every screen) -> kit -> migrate the five screens and the library pages -> switch the gate on.
+
+
+### The twenty pages with the most inline styles
+
+| Page | Parts | Inline styles | px/rem literals | Undefined token refs | Raw layout tags | GDS components | Mantine primitives |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| app/admin/events/[id]/page.tsx | 17 | 166 | 198 | 55 | 130 | 66 | 91 |
+| app/admin/partners/[id]/page.tsx | 12 | 136 | 138 | 29 | 88 | 31 | 74 |
+| app/admin/tryon/vetting/page.tsx | 13 | 78 | 72 | 18 | 58 | 52 | 107 |
+| app/admin/events/[id]/frames/page.tsx | 9 | 76 | 80 | 19 | 76 | 32 | 30 |
+| app/admin/events/[id]/edit/page.tsx | 8 | 69 | 88 | 20 | 69 | 49 | 81 |
+| app/admin/tryon/queue/page.tsx | 9 | 61 | 58 | 14 | 52 | 20 | 12 |
+| app/admin/users/page.tsx | 8 | 61 | 31 | 4 | 53 | 18 | 0 |
+| app/admin/tryon/analytics/page.tsx | 11 | 53 | 22 | 3 | 42 | 9 | 20 |
+| app/admin/partners/[id]/frames/page.tsx | 8 | 35 | 38 | 13 | 33 | 26 | 18 |
+| app/admin/partners/[id]/edit/page.tsx | 3 | 34 | 34 | 10 | 33 | 11 | 0 |
+| app/admin/partners/[id]/logos/page.tsx | 6 | 32 | 37 | 14 | 35 | 22 | 0 |
+| app/admin/events/[id]/logos/page.tsx | 6 | 30 | 43 | 13 | 34 | 23 | 0 |
+| app/admin/partners/[id]/images/page.tsx | 6 | 27 | 31 | 12 | 29 | 16 | 0 |
+| app/admin/page.tsx | 5 | 25 | 11 | 0 | 16 | 8 | 0 |
+| app/admin/tryon/setups/[id]/edit/page.tsx | 3 | 23 | 17 | 0 | 28 | 20 | 0 |
+| app/admin/events/[id]/images/page.tsx | 6 | 22 | 26 | 9 | 23 | 13 | 0 |
+| app/admin/events/[id]/slideshows/[slideshowId]/page.tsx | 9 | 22 | 28 | 5 | 30 | 24 | 85 |
+| app/admin/events/[id]/slideshows/new/page.tsx | 9 | 22 | 28 | 5 | 30 | 24 | 85 |
+| app/admin/images/page.tsx | 7 | 22 | 27 | 9 | 21 | 14 | 0 |
+| app/admin/frames/generated/page.tsx | 6 | 21 | 10 | 1 | 19 | 11 | 20 |
+
+Per-file numbers for all 128 files: `_research/element-inventory/gds.json`.
 
 ---
 

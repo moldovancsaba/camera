@@ -153,9 +153,23 @@ The components that make it possible exist or are one step away:
 - **One list and form** for frames, logos, garments, setups, partners, events (the new and edit copies collapse).
 - **The one unavoidable addition:** the existing pages editor and the text groups of Edit event are mounted at partner and global level with a level prop, so a default exists above the event. This is rule 18 applied to every element.
 
-Fix first, whatever else happens: the partner-user dead ends (Queue and Analytics tabs, dashboard tiles, the try-on setup list, the landing logo upload, the delete-event button); the partner link to a `#logos` section that does not exist; per-event access checks on the slideshow, layout and landing editor pages; the empty states that read a different list than the cards.
+Fix first, whatever else happens: the undefined design tokens (7.1, step 1); the partner-user dead ends (Queue and Analytics tabs, dashboard tiles, the try-on setup list, the landing logo upload, the delete-event button); the partner link to a `#logos` section that does not exist; per-event access checks on the slideshow, layout and landing editor pages; the empty states that read a different list than the cards.
 
-**Design system:** the audit of whether the admin screens use GDS tokens or hard-coded styles (register item 152) is a separate result; its recommendation (shared admin building blocks and a gate for inline styles) is added here when it lands.
+### 7.1 The design system (register item 152, measured 2026-10-09)
+
+The owner feared that GDS tokens are not used and styles are hard-coded. Measured over the 128 files of `app/admin`, `components/admin` and `components/gds` (read-only; per-file numbers in `_research/element-inventory/gds.json`, summary in the inventory, section F): **the fear is confirmed, and it is worse than hard-coded.**
+
+- **213 of 220 `var(--gds-...)` references name tokens GDS never defines** (`--gds-color-border` 85, `--gds-color-muted` 107, surface, shadow). I checked the source: no installed GDS package and no file of this repo defines `--gds-color-border`; GDS defines `--gds-border-card`. By CSS rules an undefined variable makes the declaration invalid, so a card gets no border and "muted" text is not dimmed. This is the likely cause of the unfinished look; it is **not yet confirmed in a browser** (an admin sign-in is needed).
+- 835 inline `style={{...}}` objects in 79 files, 28% more in 8 days (the new library screens copied the pattern); 855 px/rem literals; 831 raw div/span/p tags; only 22.5% of element uses are GDS components (the button, form and status layer is good: `SemanticButton`, `InlineAlert`, `FormSection`, `StateBlock`, `LabelTag`); the layout primitives (`GdsStack`, `GdsGrid`, `SectionPanel`), the text roles and `GdsBreadcrumbs` are never used.
+- The gates report 0 violations because they only ban the string `@mantine/core` (the `PublicPrimitives` barrel re-exports Mantine, `components/admin` is not scanned) and the colour gate only catches hex values.
+- Camera runs the plain `gdsTheme`, which emits colour roles only: GDS spacing and radius tokens do not exist in this lane, so the real scale is the component props (`gap="md"`) and `--mantine-*`.
+
+Recommendation, in this order (each its own change, checked in a browser):
+
+1. **Fix the undefined tokens** (one mechanical change in 38 files: borders through `SectionPanel` or `--gds-border-card`, muted text through `MetadataText` or `--gds-text-meta`). Cheap and visible on every screen.
+2. **A small shared admin kit in `components/admin/kit/`**, composed from GDS parts, with no style props and no CSS of its own: `AdminPage` (breadcrumbs, `WorkspaceHeader`, stack), `LibrarySection` (panel, count, empty state, grid; replaces the copy in 7 library files and the header pattern copied 22 times), `LibraryItemCard` on `MediaPreviewCard`, `LinkButton` (ends 38 anchor-around-button sites), `FactList`, `ToolbarSearch`. This is the `LibraryPage(level, kind)` and setting-group component of section 7 built from the same parts.
+3. **A gate so it cannot drift**: a script in `gds:check` (undefined `--gds-*` names; inline styles with a size literal; raw layout tags in pages; native `alert`/`confirm`; hand-rolled breadcrumbs; anchor around button) with a per-file baseline that may only fall and new files starting at 0; add `components/admin` to the boundary check and widen the lint globs.
+4. Migrate the five worst screens (event overview, partner overview, try-on vetting, event frames, event edit) and the library pages onto the kit.
 
 ## 8. Proposed order for 139
 
@@ -163,7 +177,7 @@ Each step ships alone, is checked in a real browser at phone width where it is v
 
 | Step | Content | Issues |
 |---|---|---|
-| **0 Logo** | the messmass logo is collected into the partner library and made a default automatically (153); the partner page reads the same list as the cards (fixes "No logos assigned yet"); the places go (155); which logo shows when there are several waits for 156 | #369, #367 |
+| **0 Logo** | the messmass logo is collected into the partner library and made a default automatically (153), inherited by every event that follows the partner (**built, PR #414; the backfill of the 190 existing partners waits for the owner's go**); the places go (155); which logo shows when there are several waits for 156 | #369, #367 |
 | **1 Journey view** | the page editor shows the whole journey with the default pages (welcome, consent, login, selfie taking), "Customise", the steps that are not pages; the default welcome page | #378, #330 |
 | **2 Parts and default slideshow** | stadium background and sample selfie as Images library items with tags; the default slideshow with its overlay, window, QR, QR text and the **URL text** field; the main slideshow rule | #326, #328 |
 | **3 Welcome page screen** | the layout and the renderer of 6.2; the picture follows its sources; the welcome page uses it | #327 |
@@ -183,3 +197,4 @@ Numbers continue the register. 153, 154 and 155 are answered; 156 is the only lo
 - **161** The editors move to the Global, Partner and Event workspaces of section 7, one editor at a time. a) yes, starting after steps 1 to 3 b) differently (say how).
 - **162** The order of 139 as in section 8. a) yes b) change it.
 - **163** What of 139 must be live on Friday 16 October: a) nothing (the MTK event keeps its hand-made welcome page screen picture, 139 lands after), b) steps 0 and 1 only, c) all of steps 0 to 4.
+- **164** The design-system repair of 7.1: a) fix the undefined tokens now, before step 1 (cards get their borders, muted text is dimmed on every admin screen; a visible change, mechanical, checked in a browser), then the kit and the gate as part of 161; b) leave it until 139 is done.
