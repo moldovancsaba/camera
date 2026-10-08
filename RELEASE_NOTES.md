@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the old capture page: no pledge wall checkbox either (camera#344, item 94)
+
+- **Removed (owner decision, 2026-10-08, taken after being told the page has no consent step):** the checkbox "Share my photo on the public pledge wall" on the old no-event capture page (`/capture`, reached from the profile and the share page). Its photos are saved with the wall choice on (`shareOptIn: true`), as on the event page. That page has no zoom screen and no "Love it" screen (one preview with Save & Share and Download), so nothing else changes there.
+- **Verified:** type-check and lint; a real browser on the built app, mocked answers, nothing written: the preview shows no pledge wall text, Save & Share saves once with `shareOptIn: true`.
+
 ## Unreleased — one screen instead of reframe and "Love it": Continue saves (camera#344)
 
 - **Changed (client feedback via the owner, 2026-10-08):** after the shutter there is **one screen**: the zoom and move screen with Retake, Reset and Continue. **Continue saves the photo** and leads to the waiting-for-approval screen (vetted events) or the share screen. The separate "Love it / Try again" screen is gone for good. The frame notice ("Your photo will get its frame after it has been approved.") and, on events with try-on, the suit choice are on the one screen above the buttons. A save that fails leaves the user on the screen with the error shown and Continue ready; Retake goes back to the camera and saves nothing.
