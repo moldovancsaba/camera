@@ -1,8 +1,8 @@
 /**
  * Style Sections Component
  *
- * Unified display component for Brand Colors, Assigned Frames, and Event Logos.
- * Used on both partner detail and event detail pages.
+ * Unified display component for Brand Colors, Assigned Frames, and Event Logos,
+ * with the way to the Images library. Used on both partner detail and event detail pages.
  */
 
 'use client';
@@ -347,6 +347,23 @@ export default function StyleSections({
             </div>
           </div>
         )}
+      </section>
+
+      {/* The Images library (camera#368): the pictures the picture fields choose from. */}
+      <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+        <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
+          <div>
+            <h3 style={{ margin: 0 }}>{isPartner ? 'Partner Images' : 'Event Images'}</h3>
+            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
+              {isPartner
+                ? 'The pictures the events of this partner can use: on the welcome page, the CTA page, in the email footer and on the giant screen.'
+                : 'The pictures this event can use: on the welcome page, the CTA page, in the email footer and on the giant screen.'}
+            </p>
+          </div>
+          <Link href={isPartner ? `/admin/partners/${id}/images` : `/admin/events/${id}/images`} style={{ textDecoration: 'none' }}>
+            <SemanticButton action="style-sections:manage-images">Manage Images</SemanticButton>
+          </Link>
+        </div>
       </section>
     </div>
   );

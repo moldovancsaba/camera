@@ -2,7 +2,8 @@
 
 /**
  * Upload an item into a library at the level of the page it is on (camera#361): a partner page uploads for the partner, an event page for the
- * event. The picture is shown before it is sent, so nobody uploads blind. One form for frames now; logos and images use it later.
+ * event. The picture is shown before it is sent, so nobody uploads blind. One form for every kind (frames and images so far). It is a <form>, so it is
+ * not for use inside another form: the picture picker (ImagePicker) has its own upload for that.
  */
 
 import { useState } from 'react';
@@ -10,16 +11,22 @@ import { InlineAlert, UploadDropzone } from '@sovereignsquad/gds-core/client';
 import { AdminTextInput } from '@sovereignsquad/gds-admin/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import MediaCard from '@/components/media/MediaPreviewCard';
+import type { LibraryKind } from '@/lib/library/kinds';
 
 interface LibraryUploadFormProps {
-  /** The upload route of the level: `/api/partners/<id>/library/upload` or `/api/events/<id>/library/upload`. */
+  /** The upload route of the level: `/api/partners/<id>/library/upload`, `/api/events/<id>/library/upload`, or `/api/images` for the global images. */
   endpoint: string;
-  kind: 'frames' | 'logos';
-  /** What the item is: "frame", "logo". */
+  kind: LibraryKind;
+  /** What the item is: "frame", "logo", "image". */
   noun: string;
   /** The file types the dropzone offers, as an accept list, and the same in words. */
   accept: string;
   acceptWords: string;
+  /** The largest file, in bytes, and the same in words ("4 MB"); a bigger one is refused before it is sent. */
+  maxBytes?: number;
+  maxWords?: string;
+  /** The example in the empty name field. */
+  namePlaceholder?: string;
   /** Called after a successful upload, so the page can reload its lists. */
   onUploaded: () => void | Promise<void>;
 }
@@ -28,7 +35,7 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'The upload failed';
 }
 
-export default function LibraryUploadForm({ endpoint, kind, noun, accept, acceptWords, onUploaded }: LibraryUploadFormProps) {
+export default function LibraryUploadForm({ endpoint, kind, noun, accept, acceptWords, maxBytes, maxWords, namePlaceholder = 'e.g. Blue match frame', onUploaded }: LibraryUploadFormProps) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -40,6 +47,10 @@ export default function LibraryUploadForm({ endpoint, kind, noun, accept, accept
     const allowed = accept.split(',').map((type) => type.trim());
     if (!allowed.includes(selected.type)) {
       setError(`Only ${acceptWords} files are allowed.`);
+      return;
+    }
+    if (maxBytes && selected.size > maxBytes) {
+      setError(`The file is too big: ${maxWords ?? `${Math.round(maxBytes / 1048576)} MB`} at most.`);
       return;
     }
     const reader = new FileReader();
@@ -98,13 +109,13 @@ export default function LibraryUploadForm({ endpoint, kind, noun, accept, accept
         <UploadDropzone
           accept={accept}
           title="Click to upload or drag and drop"
-          description={`${acceptWords.toUpperCase()}`}
+          description={maxWords ? `${acceptWords.toUpperCase()}, UP TO ${maxWords.toUpperCase()}` : `${acceptWords.toUpperCase()}`}
           onFilesSelected={(files) => choose(files[0] ?? null)}
           actionLabel={`Choose ${noun}`}
         />
       )}
       {error ? <InlineAlert title="Upload failed" message={error} severity="error" /> : null}
-      <AdminTextInput name="name" label={`${noun[0].toUpperCase()}${noun.slice(1)} name`} value={name} onChange={setName} required placeholder="e.g. Blue match frame" />
+      <AdminTextInput name="name" label={`${noun[0].toUpperCase()}${noun.slice(1)} name`} value={name} onChange={setName} required placeholder={namePlaceholder} />
       <div>
         <SemanticButton action="library:upload" type="submit" loading={busy} disabled={!file || !name.trim()}>
           Upload

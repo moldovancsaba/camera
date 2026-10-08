@@ -102,6 +102,7 @@ export const cameraAdminVocabularyPacks = [
     'manage-logos': { defaultMessage: 'Manage logos', icon: GdsIcons.Gallery, feedback: openedFeedback },
     'assign-logos': { defaultMessage: 'Assign logos', icon: GdsIcons.Add, feedback: savedFeedback },
     'manage-logo-assignments': { defaultMessage: 'Manage logo assignments', icon: GdsIcons.Settings, feedback: openedFeedback },
+    'manage-images': { defaultMessage: 'Manage images', icon: GdsIcons.Gallery, feedback: openedFeedback },
   }),
   createGdsVocabularyPack('custom-pages', {
     'save-all': { defaultMessage: 'Save all', icon: GdsIcons.Save, feedback: savedFeedback },
@@ -144,6 +145,14 @@ export const cameraAdminVocabularyPacks = [
   }),
   // The libraries (camera#361): the same actions on the partner and the event page, for frames now and for logos and images later.
   createGdsVocabularyPack('library', {
+    // The Images library and its picture picker (camera#368).
+    choose: { defaultMessage: 'Choose from the library', icon: GdsIcons.Gallery, feedback: openedFeedback },
+    close: { defaultMessage: 'Close the library', icon: GdsIcons.Close, feedback: openedFeedback },
+    use: { defaultMessage: 'Use this picture', icon: GdsIcons.Check, feedback: savedFeedback },
+    'upload-here': { defaultMessage: 'Upload here', icon: GdsIcons.Upload, feedback: openedFeedback },
+    'cancel-upload': { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
+    'clear-picture': { defaultMessage: 'Clear the picture', icon: GdsIcons.Clear, feedback: savedFeedback },
+    delete: { defaultMessage: 'Delete from the library', icon: GdsIcons.Delete, feedback: deletedFeedback },
     add: { defaultMessage: 'Add to library', icon: GdsIcons.Add, feedback: savedFeedback },
     remove: { defaultMessage: 'Remove from library', icon: GdsIcons.Delete, feedback: deletedFeedback },
     upload: { defaultMessage: 'Upload', icon: GdsIcons.Upload, feedback: savedFeedback },

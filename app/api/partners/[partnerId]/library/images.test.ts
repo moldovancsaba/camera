@@ -47,7 +47,7 @@ test("GET kind=images: the partner's own uploads, and the global images it can a
   const { GET } = await importRoute('get');
   const response = await GET(get('?kind=images'), params);
   assert.equal(response.status, 200);
-  const body = (await response.json()) as { data: Library & { available: Array<{ id: string; imageUrl: string }> } };
+  const body = (await response.json()) as { data: { items: Library['items']; available: Array<{ id: string; imageUrl: string }> } };
   assert.deepEqual(ids(body.data.items), ['p1']);
   assert.deepEqual(ids(body.data.available), ['g1', 'g2']);
   assert.equal(body.data.available.find((i) => i.id === 'g1')?.imageUrl, 'https://img.example/g1.png');
