@@ -98,8 +98,8 @@ the imgbb mirror), on the same three levels: Global Images, the partner's images
   (`lib/library/uploaders/images.ts`): at the global level (`POST /api/images`), for a partner and for an event.
 - **Pages:** Global Images `/admin/images` (global admins, menu Libraries: upload, switch off or on, delete; `?scope=all` lists every upload with whose it
   is, changed only on its own page), partner Images `/admin/partners/<id>/images` (add from the global library, upload, remove, delete an own upload),
-  event Images `/admin/events/<id>/images` (the pictures the event can use, upload, delete an own upload). The style sections of the partner and event
-  pages link to them. Every list shows the pictures and where each comes from.
+  event Images `/admin/events/<id>/images` (the pictures the event can use, upload, delete an own upload; it links to the partner's Images page). The
+  style sections of the partner and event pages link to them. Every list shows the pictures and where each comes from.
 - **The picture picker** (`components/admin/library/ImagePicker.tsx`, helpers in `lib/library/picker.ts`): the current picture, or "No picture";
   "Choose from the library" lists the images of the level of the page (an event editor: the event's library; a partner page: the partner's; a global
   page: the global one) with their pictures, and one click chooses one; "Upload here" uploads at that level and chooses the picture; "Clear the
