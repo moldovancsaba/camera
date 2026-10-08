@@ -326,7 +326,7 @@ export default async function PartnerDetailPage({
         <Link href={`/admin/partners/${id}/frames`} style={{ textDecoration: 'none' }}>
           <AccentPanel tone={cameraInfoToneMap.blue} variant="subtle" title="Resources">
             <Text size="sm" c="dimmed">
-              Manage default frames and logos in partner context instead of starting from the global inventory.
+              Manage the library of frames and logos of this partner, and the defaults for its new events.
             </Text>
           </AccentPanel>
         </Link>

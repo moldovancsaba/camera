@@ -141,6 +141,18 @@ export const cameraAdminVocabularyPacks = [
     remove: { defaultMessage: 'Remove frame', icon: GdsIcons.Delete, feedback: deletedFeedback },
     assign: { defaultMessage: 'Assign frame', icon: GdsIcons.Add, feedback: savedFeedback },
   }),
+  // The libraries (camera#361): the same actions on the partner and the event page, for frames now and for logos and images later.
+  createGdsVocabularyPack('library', {
+    add: { defaultMessage: 'Add to library', icon: GdsIcons.Add, feedback: savedFeedback },
+    remove: { defaultMessage: 'Remove from library', icon: GdsIcons.Delete, feedback: deletedFeedback },
+    upload: { defaultMessage: 'Upload', icon: GdsIcons.Upload, feedback: savedFeedback },
+    'clear-upload': { defaultMessage: 'Choose another file', icon: GdsIcons.Clear, feedback: openedFeedback },
+    'delete-upload': { defaultMessage: 'Delete upload', icon: GdsIcons.Delete, feedback: deletedFeedback },
+    'default-on': { defaultMessage: 'Make a default', icon: GdsIcons.Check, feedback: savedFeedback },
+    'default-off': { defaultMessage: 'Remove the default', icon: GdsIcons.Cancel, feedback: savedFeedback },
+    'switch-on': { defaultMessage: 'Switch on', icon: GdsIcons.Toggle, feedback: savedFeedback },
+    'switch-off': { defaultMessage: 'Switch off', icon: GdsIcons.Toggle, feedback: savedFeedback },
+  }),
   createGdsVocabularyPack('partner-frames', {
     'save-defaults': { defaultMessage: 'Save defaults', icon: GdsIcons.Save, feedback: savedFeedback },
     cancel: { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },

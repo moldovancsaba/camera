@@ -48,7 +48,8 @@ export async function DELETE(
       { _id: new ObjectId(eventId) },
       {
         $pull: { frames: { frameId } } as Document,
-        $set: { updatedAt: generateTimestamp() },
+        // The event now has its own list: a later change of the partner's defaults no longer replaces it.
+        $set: { updatedAt: generateTimestamp(), framesOverridden: true },
       }
     );
 

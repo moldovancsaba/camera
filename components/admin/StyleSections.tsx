@@ -223,7 +223,7 @@ export default function StyleSections({
               variant="empty"
               title="No frames assigned yet"
               description={isPartner
-                ? 'Set default frames that will be assigned to new events.'
+                ? 'Add frames to the partner library and mark the defaults that are assigned to its new events.'
                 : 'Assign frames to this event to make them available for users.'}
               action={
                 <Link href={isPartner ? `/admin/partners/${id}/frames` : `/admin/events/${id}/frames`} style={{ textDecoration: 'none' }}>
@@ -264,7 +264,7 @@ export default function StyleSections({
               })}
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
-              <Link href={isPartner ? `/admin/partners/${id}/edit#frames` : `/admin/events/${id}/frames`} style={{ textDecoration: 'none' }}>
+              <Link href={isPartner ? `/admin/partners/${id}/frames` : `/admin/events/${id}/frames`} style={{ textDecoration: 'none' }}>
                 <SemanticButton action="style-sections:manage-frame-assignments" variant="secondary">Manage frame assignments →</SemanticButton>
               </Link>
             </div>

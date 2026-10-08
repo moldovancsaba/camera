@@ -22,6 +22,7 @@ import {
 } from '@/lib/api';
 import { assertPartnerMongoWorkspaceAccess } from '@/lib/partners/authorization';
 import { pushPartnerToMessmass } from '@/lib/messmassClient';
+import { partnerLibraryIds } from '@/lib/library/db';
 
 export const GET = withErrorHandler(async (
   _request: NextRequest,
@@ -113,6 +114,18 @@ export const PATCH = withErrorHandler(async (
   const existingPartner = await db.collection(COLLECTIONS.PARTNERS).findOne({ _id: new ObjectId(partnerId) });
   if (!existingPartner) {
     throw apiNotFound('Partner');
+  }
+
+  // A default frame for new events is always an item of the partner's own library (camera#361): the library page sets it.
+  if (defaultFrames !== undefined) {
+    if (!Array.isArray(defaultFrames) || defaultFrames.some((id) => typeof id !== 'string')) {
+      throw apiBadRequest('defaultFrames must be a list of frame ids');
+    }
+    const inLibrary = await partnerLibraryIds(db, existingPartner, 'frames');
+    const outside = (defaultFrames as string[]).filter((id) => !inLibrary.has(id));
+    if (outside.length > 0) {
+      throw apiBadRequest(`A default frame must be in the partner library: ${outside.join(', ')}`);
+    }
   }
 
   const result = await db.collection(COLLECTIONS.PARTNERS).findOneAndUpdate(

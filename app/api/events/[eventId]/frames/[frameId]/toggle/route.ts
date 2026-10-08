@@ -63,6 +63,8 @@ export async function PATCH(
         $set: {
           'frames.$.isActive': newStatus,
           updatedAt: generateTimestamp(),
+          // The event now has its own list: a later change of the partner's defaults no longer replaces it.
+          framesOverridden: true,
         },
       }
     );

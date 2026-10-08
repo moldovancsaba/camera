@@ -71,6 +71,9 @@ interface EventFrameDetails {
   width?: number;
   height?: number;
   hashtags?: string[];
+  /** The library item's own switch and age: the capture page offers active frames, newest first (camera#361). */
+  isActive?: boolean;
+  createdAt?: string;
 }
 
 interface EventFrameAssignment {
@@ -165,6 +168,8 @@ export const GET = withErrorHandler(async (
           width: frameDetails.width,
           height: frameDetails.height,
           hashtags: frameDetails.hashtags,
+          isActive: frameDetails.isActive,
+          createdAt: frameDetails.createdAt,
         } : null
       };
     });

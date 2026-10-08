@@ -12,6 +12,7 @@ import { COLLECTIONS, Event, generateTimestamp } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
 import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError, apiForbidden } from '@/lib/api/responses';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
+import { checkEventAssign } from '@/lib/library/db';
 
 type EventFrameAssignment = Event['frames'][number];
 
@@ -42,7 +43,6 @@ export async function POST(
 
     const db = await connectToDatabase();
     const eventsCollection = db.collection(COLLECTIONS.EVENTS);
-    const framesCollection = db.collection(COLLECTIONS.FRAMES);
     const eventAccess = await getPartnerScopedAccessForEvent(db, eventId, session, 'manager');
     if (!eventAccess.allowed) {
       return apiForbidden('Partner-level Events manager access is required');
@@ -54,10 +54,10 @@ export async function POST(
       return apiNotFound('Event');
     }
 
-    // Verify frame exists (use frameId UUID)
-    const frame = await framesCollection.findOne({ frameId });
-    if (!frame) {
-      return apiNotFound('Frame');
+    // One way only (camera#361): an event takes a frame from its partner's library, or its own upload, never straight from the global library.
+    const allowed = await checkEventAssign(db, event, 'frames', frameId);
+    if (!allowed.ok) {
+      return allowed.status === 404 ? apiNotFound('Frame') : apiBadRequest(allowed.reason);
     }
 
     // Check if frame is already assigned
