@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the event editor no longer crashes on an unknown action (camera#359)
+
+- **Fixed (owner report, 2026-10-08):** the event page editor crashed with "Unknown semantic action: custom-pages:add-welcome". Buttons written `action="pack:id"` throw when drawn if the admin vocabulary does not register the action. The welcome button (#308), the consent editor's checkbox buttons and the Journey defaults Save button (#330) had no registration; a scan found six such actions (the two try-on rerun dialog buttons were older). All six are registered, so the page editor, the consent page editor, the Journey defaults settings page and the rerun dialog open.
+- **Added:** a unit test scans every `action="pack:id"` in `app`, `components` and `lib` and fails when one is missing from `lib/gds/camera-admin-vocabulary.ts`, so an unknown action cannot reach the browser again.
+- **Verified:** the test (it found exactly the six before the fix); a real browser on the built app with the four editors rendered with mocked data and nothing written: each opens, shows its buttons ("Add welcome page", "Add checkbox", "Remove checkbox", "Save", "Rerun with this prompt", "Cancel"), no crash. Not yet opened by the owner on the live site.
+
 ## Unreleased — UI language of an event, step 2: the texts of the capture flow (camera#352)
 
 - **Changed:** every default text of the capture flow now comes from the dictionary of the event's language (`lib/i18n`, English and Hungarian): the default consent and login pages (built in the language on the server; the consent boxes link to `seyuselfies.com/<language>/legal/...`), the camera screens, the photo screen (Retake, Reset, Continue, zoom and fit controls), the waiting and share screens, the CTA and restart pages, the social login buttons, the try-on selector, the tour, the save and email notices, the tab title and the link preview text. **English is exactly as before** (every English text was checked word for word against the code on main, and the flow was run in a real browser). No event has a language yet, so no event looks different.
