@@ -43,10 +43,14 @@ async function setup(t: TestContext, options: { allowed?: boolean; logoUrl?: str
 
 const params = { params: Promise.resolve({ partnerId: String(PARTNER_MONGO_ID) }) };
 const url = `http://localhost/api/partners/${PARTNER_MONGO_ID}/library/import-messmass-logo`;
-interface Body { data: { item: { id: string; scope: string; source?: string; imageUrl: string } | null; created?: boolean; logoUrl?: string | null; problem?: string | null }; error?: string }
+interface Body { data: { item: { id: string; scope: string; source?: string; imageUrl: string } | null; created?: boolean; madeDefault?: boolean; eventsUpdated?: number; logoUrl?: string | null; problem?: string | null }; error?: string }
+interface DefaultRow { logoId: string; scenario: string; order: number }
+const SCENARIOS = ['loading-capture', 'loading-slideshow', 'onboarding-thankyou', 'slideshow-transition'];
 
-test('POST imports the logo as a partner item from messmass (201); a second POST returns the same item (200)', async (t) => {
+test('POST imports the logo as a partner item from messmass (201) and makes it a default; a second POST returns the same item (200) and changes nothing', async (t) => {
   const { data, minRoles, downloads } = await setup(t);
+  const own = { logoId: 'mine', scenario: 'onboarding-thankyou', order: 0, isActive: true };
+  data.events.push({ eventId: 'e-own', partnerId: 'P', logosOverridden: true, logos: [own] });
   const { POST } = await importRoute('import');
   const first = await POST(new NextRequest(url, { method: 'POST' }), params);
   assert.equal(first.status, 201);
@@ -55,13 +59,47 @@ test('POST imports the logo as a partner item from messmass (201); a second POST
   assert.equal(body.data.item?.scope, 'partner');
   assert.equal(body.data.item?.source, 'messmass');
   assert.equal(body.data.item?.imageUrl, R2);
+  assert.equal(body.data.madeDefault, true);
+  assert.equal(body.data.eventsUpdated, 1, 'only the event that follows the partner defaults inherits it');
+
+  const defaults = (data.partners[0] as { defaultLogos: DefaultRow[] }).defaultLogos;
+  assert.deepEqual(defaults.map((row) => row.scenario).sort(), SCENARIOS, 'a default in every scenario');
+  assert.ok(defaults.every((row) => row.logoId === body.data.item?.id && row.order === 0));
+  const following = (data.events[0] as { logos: Array<{ logoId: string; scenario: string; addedBy: string }> }).logos;
+  assert.deepEqual(following.map((row) => row.scenario).sort(), SCENARIOS, 'the event inherits what the partner has: no copy of its own');
+  assert.ok(following.every((row) => row.logoId === body.data.item?.id && row.addedBy === 'system'));
+  assert.deepEqual((data.events[1] as { logos: unknown[] }).logos, [own], 'an event with its own logo list keeps it');
+
   const again = await POST(new NextRequest(url, { method: 'POST' }), params);
   assert.equal(again.status, 200);
-  assert.equal(((await again.json()) as Body).data.item?.id, body.data.item?.id);
+  const second = (await again.json()) as Body;
+  assert.equal(second.data.item?.id, body.data.item?.id);
+  assert.equal(second.data.madeDefault, false);
   assert.equal(data.logos.length, 1);
   assert.deepEqual(downloads, [R2]);
   assert.deepEqual(minRoles, ['manager', 'manager'], 'importing needs manager access to the partner');
-  assert.deepEqual(data.events[0].logos, [], 'no event is changed');
+});
+
+test('an editor who took the logo off a scenario does not get it back from a second import', async (t) => {
+  const { data } = await setup(t);
+  const { POST } = await importRoute('untick');
+  await POST(new NextRequest(url, { method: 'POST' }), params);
+  const partner = data.partners[0] as { defaultLogos: DefaultRow[] };
+  partner.defaultLogos = partner.defaultLogos.filter((row) => row.scenario !== 'loading-capture');
+  await POST(new NextRequest(url, { method: 'POST' }), params);
+  assert.deepEqual(partner.defaultLogos.map((row) => row.scenario).sort(), ['loading-slideshow', 'onboarding-thankyou', 'slideshow-transition']);
+});
+
+test('a partner that has default logos already keeps them first: the logo from messmass comes after them in each scenario', async (t) => {
+  const { data } = await setup(t);
+  (data.partners[0] as { defaultLogos?: DefaultRow[] }).defaultLogos = [
+    { logoId: 'chosen', scenario: 'onboarding-thankyou', order: 0 },
+    { logoId: 'second', scenario: 'onboarding-thankyou', order: 1 },
+  ];
+  const { POST } = await importRoute('after');
+  const item = ((await (await POST(new NextRequest(url, { method: 'POST' }), params)).json()) as Body).data.item;
+  const onboarding = (data.partners[0] as { defaultLogos: DefaultRow[] }).defaultLogos.filter((row) => row.scenario === 'onboarding-thankyou');
+  assert.deepEqual(onboarding.map((row) => [row.logoId, row.order]), [['chosen', 0], ['second', 1], [item?.id, 2]]);
 });
 
 test('GET says whether the logo can be imported, then that it is', async (t) => {

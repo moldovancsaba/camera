@@ -162,11 +162,13 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
 
   const importFromMessmass = () =>
     run(async () => {
-      await call<{ item: LibraryItemView; created: boolean }>(`/api/partners/${partnerId}/library/import-messmass-logo`, { method: 'POST' });
+      const done = await call<{ item: LibraryItemView; created: boolean; madeDefault: boolean; eventsUpdated: number }>(`/api/partners/${partnerId}/library/import-messmass-logo`, { method: 'POST' });
       await reload();
       setNotice({
         title: 'Imported',
-        message: 'The logo from messmass is now in this library. Its events can take it on their logo pages; nothing changed on the pages users see.',
+        message: done.madeDefault
+          ? `The logo from messmass is now in this library and a default of this partner. ${done.eventsUpdated} event${done.eventsUpdated === 1 ? '' : 's'} that follow${done.eventsUpdated === 1 ? 's' : ''} the partner's defaults got it; new events get it when they are created. An event that chose its own logos keeps them.`
+          : 'The logo from messmass is in this library.',
       });
     });
 
@@ -217,7 +219,7 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
           <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
             <h3 style={{ margin: 0 }}>The logo from messmass</h3>
             <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>
-              The pages users see for {partner.name} already show this logo. Import it to have it in this library, so its events can also choose it on their logo pages. Importing changes nothing on the guest pages.
+              This is the logo messmass has for {partner.name}. Importing puts it in this library and makes it a default of the partner; its events that follow the partner&apos;s defaults get it too, and an event that chose its own logos keeps them.
             </p>
           </div>
           <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem', padding: '1rem' }}>

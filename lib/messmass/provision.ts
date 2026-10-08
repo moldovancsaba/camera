@@ -18,6 +18,7 @@ import { after } from 'next/server';
 import { refreshFrameDesign } from '@/lib/frame/sync';
 import { generateFrameVariants } from '@/lib/frame/variants';
 import { defaultPhotoVetting } from '@/lib/events/photo-vetting';
+import { collectMessmassLogo } from '@/lib/library/messmass-logo';
 
 function ci(name: string) {
   return { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
@@ -43,6 +44,26 @@ export async function upsertOrganization(input: { messmassOrganizationId?: strin
   return { organizationId: doc.organizationId, name: doc.name, created: true, linked: false };
 }
 
+/**
+ * The partner's logo from messmass is collected into its library and made its default (camera#412, owner answer 153: an automatic default is collected
+ * automatically and made the default). Idempotent: a logo already imported is left as it is, so an editor's choice is never undone. Never throws.
+ */
+export async function collectPartnerLogo(partnerId: string): Promise<void> {
+  try {
+    const db = await connectToDatabase();
+    const partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId });
+    if (!partner || !partner.logoUrl) return;
+    await collectMessmassLogo(db, partner, { createdBy: 'messmass', now: generateTimestamp() });
+  } catch (error) {
+    console.warn('the logo from messmass could not be collected for a provisioned partner', error);
+  }
+}
+
+/** After the response, so provisioning stays quick (the download is bounded to 8 seconds); a failure is logged and the import button on the partner page still works. */
+function collectPartnerLogoLater(partnerId: string, logoUrl: string) {
+  if (logoUrl) after(() => collectPartnerLogo(partnerId));
+}
+
 export async function upsertPartner(input: { messmassPartnerId?: string; name: string; logoUrl?: string; organizationId?: string }) {
   const db = await connectToDatabase();
   const name = String(input.name || '').trim();
@@ -57,6 +78,7 @@ export async function upsertPartner(input: { messmassPartnerId?: string; name: s
     if (input.organizationId) set.organizationId = input.organizationId;
     if (input.logoUrl && !partner.logoUrl) set.logoUrl = input.logoUrl;
     await db.collection(COLLECTIONS.PARTNERS).updateOne({ _id: partner._id }, { $set: set });
+    collectPartnerLogoLater(String(partner.partnerId), String(set.logoUrl || partner.logoUrl || ''));
     return { partnerId: partner.partnerId, name: partner.name, created: false, linked: true };
   }
   const doc: Record<string, unknown> = {
@@ -65,6 +87,7 @@ export async function upsertPartner(input: { messmassPartnerId?: string; name: s
     messmassPartnerId: input.messmassPartnerId, source: 'messmass', createdAt: now, updatedAt: now,
   };
   await db.collection(COLLECTIONS.PARTNERS).insertOne(doc);
+  collectPartnerLogoLater(doc.partnerId as string, input.logoUrl || '');
   return { partnerId: doc.partnerId as string, name: doc.name as string, created: true, linked: false };
 }
 
