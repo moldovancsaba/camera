@@ -190,7 +190,7 @@ test('in Hungarian the photo page shows the Hungarian defaults, alt text and dat
   const { whole, element } = await render(await importPage('hungarian-page'), TOKEN);
   assert.equal(whole?.props.language, 'hu', 'the page is wrapped in the language of the event');
   const texts = textsOf(element);
-  const date = new Date(CREATED_AT).toLocaleString('hu-HU', DATE_OPTIONS);
+  const date = new Date(CREATED_AT).toLocaleString('hu-HU', { ...DATE_OPTIONS, timeZone: 'Europe/Budapest' });
   assert.match(date, /okt\./);
   for (const word of ['Derby', 'Letöltés', 'Készítsd el a sajátodat', date]) assert.ok(texts.includes(word), `${word} in ${texts.join('|')}`);
   assert.deepEqual(withProp(element, 'alt').map((image) => image.props.alt), ['Fotó kerettel']);
