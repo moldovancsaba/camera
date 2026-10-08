@@ -137,9 +137,15 @@ async function canFetchImage(url: string): Promise<boolean> {
 }
 
 /**
- * Convert File or Blob to base64 string
+ * Convert File or Blob to base64 string. On the server there is no FileReader (Node has none), so the bytes are read directly: the library
+ * uploads (lib/library/upload.ts) pass the uploaded File as it is.
  */
 async function fileToBase64(file: File | Blob): Promise<string> {
+  if (typeof FileReader === 'undefined') {
+    const base64 = Buffer.from(await file.arrayBuffer()).toString('base64');
+    if (!base64) throw new Error('Invalid base64 image payload');
+    return base64;
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {

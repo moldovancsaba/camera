@@ -29,6 +29,16 @@ test('a mirror that does not answer is left behind: the upload still returns the
   assert.ok(Date.now() - started < 2000, 'the call did not wait for the mirror');
 });
 
+test('an uploaded File is read on the server, where there is no FileReader (the library uploads pass the File as it is)', async (t) => {
+  const { uploadImage } = await load(t, 'file', 'hangs');
+  assert.equal(typeof (globalThis as { FileReader?: unknown }).FileReader, 'undefined', 'the server has no FileReader');
+  const file = new File([Buffer.from(await png(), 'base64')], 'logo.png', { type: 'image/png' });
+  const result = await uploadImage(file, { name: 'logo', mirrorWaitMs: 50 });
+  assert.equal(result.imageUrl, 'https://blob.example.test/photo.png');
+  assert.equal(result.mimeType, 'image/png');
+  assert.equal(result.fileSize, file.size);
+});
+
 test('a mirror that answers in time is still kept', async (t) => {
   const { uploadImage } = await load(t, 'works', 'works');
   const result = await uploadImage(await png(), { name: 'x', mirrorWaitMs: 2000, validatePublicUrl: false });
