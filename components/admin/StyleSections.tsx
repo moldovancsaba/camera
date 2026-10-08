@@ -16,6 +16,7 @@ import {
   CAMERA_DEFAULT_BRAND_COLOR,
 } from '@/lib/gds/tokens/colors';
 import StyleInheritanceIndicator from './StyleInheritanceIndicator';
+import type { ButtonColourSource } from '@/lib/theme/event-theme';
 
 interface FrameAssignment {
   frameId: string;
@@ -41,12 +42,38 @@ interface ScenarioSummary {
   name: string;
 }
 
+/** The colours the guests get on the buttons of an event, and where they come from (camera#380); the event page resolves them with the guest pages' own function. */
+export interface ThemeColours {
+  fill: string;
+  label: string;
+  ring: string;
+  source: ButtonColourSource;
+  /** The name of the messmass style of the event, when it has one. */
+  styleName: string | null;
+}
+
+/** What the source line under the colours says. */
+function colourSourceText(source: ButtonColourSource, styleName: string | null, hasOwn: boolean, overridden: boolean, partnerName?: string): string {
+  switch (source) {
+    case 'welcome':
+      return 'The colours of the Start button on the welcome page: they come first and give every button of the flow its look.';
+    case 'event':
+      return overridden || !hasOwn ? 'This event\'s own colours.' : `The default colours of ${partnerName ?? 'the partner'}.`;
+    case 'messmass':
+      return styleName ? `From messmass: the style "${styleName}" of the event's report.` : 'From messmass: the style of the event\'s report.';
+    default:
+      return 'The system default look: this event has no messmass style yet.';
+  }
+}
+
 interface StyleSectionsProps {
   type: 'partner' | 'event';
   id: string;
-  brandColor?: string;
-  brandBorderColor?: string;
+  brandColor?: string | null;
+  brandBorderColor?: string | null;
   brandColorsOverridden?: boolean;
+  /** Event only: the colours the guests really get and their source. */
+  themeColours?: ThemeColours;
   frames?: FrameAssignment[];
   framesOverridden?: boolean;
   logos?: LogoAssignment[];
@@ -103,6 +130,7 @@ export default function StyleSections({
   brandColor,
   brandBorderColor,
   brandColorsOverridden,
+  themeColours,
   frames = [],
   framesOverridden,
   logos = [],
@@ -123,6 +151,8 @@ export default function StyleSections({
                 <StyleInheritanceIndicator
                   styleField="brandColors"
                   isOverridden={brandColorsOverridden === true}
+                  hasOwnValue={Boolean(brandColor || brandBorderColor)}
+                  followsMessmass={!brandColor && !brandBorderColor}
                   eventId={id}
                   partnerName={partnerName}
                 />
@@ -130,8 +160,8 @@ export default function StyleSections({
             </div>
             <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
               {isPartner
-                ? 'Default colors for all child events (can be overridden)'
-                : 'Used throughout the event experience: buttons, inputs, checkboxes, and camera interface'}
+                ? 'The colours the events of this partner start with. When none are set, every event follows the colours of its messmass style; an event can still set its own.'
+                : 'The colours of the buttons, inputs, checkboxes and the camera screens, as the users see them. By default they come from messmass; Edit Colors sets your own.'}
             </p>
           </div>
           <Link href={isPartner ? `/admin/partners/${id}/edit` : `/admin/events/${id}/edit`} style={{ textDecoration: 'none' }}>
@@ -140,61 +170,50 @@ export default function StyleSections({
         </div>
 
         <div style={{ display: 'grid', gap: '1.5rem', padding: '1.5rem' }}>
-          <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
-            <div style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
-              <ColorPreviewSwatch color={brandColor || CAMERA_DEFAULT_BRAND_COLOR} />
-              <div style={{ display: 'grid', gap: '0.25rem' }}>
-                <strong style={{ fontSize: '0.875rem' }}>
-                  Primary Color
-                </strong>
-                <code style={{ fontWeight: 700 }}>
-                  {brandColor || CAMERA_DEFAULT_BRAND_COLOR}
-                </code>
-                <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
-                  Buttons, camera button fill, focus states
-                </span>
+          {isPartner && !brandColor && !brandBorderColor ? (
+            <StateBlock variant="empty" title="No default colours" description="The events of this partner follow the colours of their messmass style. Set default colours only when every event of the partner should share them." />
+          ) : (
+            <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
+              <div style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
+                <ColorPreviewSwatch color={themeColours?.fill ?? brandColor ?? CAMERA_DEFAULT_BRAND_COLOR} />
+                <div style={{ display: 'grid', gap: '0.25rem' }}>
+                  <strong style={{ fontSize: '0.875rem' }}>Primary Color</strong>
+                  <code style={{ fontWeight: 700 }}>{themeColours?.fill ?? brandColor ?? CAMERA_DEFAULT_BRAND_COLOR}</code>
+                  <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>Buttons, camera button fill, focus states</span>
+                </div>
+              </div>
+
+              <div style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
+                <ColorPreviewSwatch color={themeColours?.ring ?? brandBorderColor ?? CAMERA_DEFAULT_BRAND_BORDER_COLOR} />
+                <div style={{ display: 'grid', gap: '0.25rem' }}>
+                  <strong style={{ fontSize: '0.875rem' }}>Border/Accent Color</strong>
+                  <code style={{ fontWeight: 700 }}>{themeColours?.ring ?? brandBorderColor ?? CAMERA_DEFAULT_BRAND_BORDER_COLOR}</code>
+                  <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>Input borders, checkboxes, camera button border</span>
+                </div>
               </div>
             </div>
+          )}
+          {isEvent && themeColours ? (
+            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', margin: 0 }}>
+              {colourSourceText(themeColours.source, themeColours.styleName, Boolean(brandColor || brandBorderColor), brandColorsOverridden === true, partnerName)}
+              {themeColours.source === 'welcome' && (brandColor || brandBorderColor) ? ' The colours set here are kept, but they do not show while the welcome page sets its own.' : ''}
+            </p>
+          ) : null}
+        </div>
 
-            <div style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
-              <ColorPreviewSwatch color={brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR} />
-              <div style={{ display: 'grid', gap: '0.25rem' }}>
-                <strong style={{ fontSize: '0.875rem' }}>
-                  Border/Accent Color
-                </strong>
-                <code style={{ fontWeight: 700 }}>
-                  {brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR}
-                </code>
-                <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
-                  Input borders, checkboxes, camera button border
-                </span>
-              </div>
+        {isEvent && themeColours ? (
+          <div style={{ padding: '1.5rem', borderTop: '1px solid var(--gds-color-border)' }}>
+            <strong style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem' }}>Color Preview</strong>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <button type="button" style={{ backgroundColor: themeColours.fill, border: `2px solid ${themeColours.ring}`, borderRadius: '999px', color: themeColours.label, fontWeight: 700, padding: '0.75rem 1.25rem' }} disabled>
+                Primary Button
+              </button>
+              <button type="button" style={{ backgroundColor: themeColours.label, border: `2px solid ${themeColours.ring}`, borderRadius: '999px', color: themeColours.fill, fontWeight: 700, padding: '0.75rem 1.25rem' }} disabled>
+                Bordered Button
+              </button>
             </div>
           </div>
-        </div>
-
-        <div style={{ padding: '1.5rem', borderTop: '1px solid var(--gds-color-border)' }}>
-          <strong style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
-            Color Preview
-          </strong>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-            <button type="button" style={{ backgroundColor: brandColor || CAMERA_DEFAULT_BRAND_COLOR, border: 0, borderRadius: '0.75rem', padding: '0.75rem 1rem' }} disabled>
-              Primary Button
-            </button>
-            <button
-              type="button"
-              style={{
-                borderColor: brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR,
-                color: brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR,
-                borderRadius: '0.75rem',
-                padding: '0.75rem 1rem',
-              }}
-              disabled
-            >
-              Bordered Button
-            </button>
-          </div>
-        </div>
+        ) : null}
       </section>
 
       <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>

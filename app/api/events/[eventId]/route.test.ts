@@ -234,3 +234,37 @@ test('GET returns the system default look for an event that has no snapshot yet'
   const theme = event.theme as { source: string; dark: boolean };
   assert.deepEqual([theme.source, theme.dark], ['event', false]);
 });
+
+// --- Brand colours come from messmass by default (camera#380) -----------------------------------------------------------------------------------------
+
+const hex = (digits: string) => `#${digits}`;
+const OWN_PRIMARY = hex('1b3a69');
+const OWN_BORDER = hex('189cd8');
+
+test('PATCH without brand colours leaves them alone: saving the editor never stamps a colour or the custom flag', async (t) => {
+  const h = mockDeps(t, { event: { customPages: [] }, session: ADMIN });
+  const { PATCH } = await importRouteModule('colours-untouched');
+  assert.equal((await PATCH(patchRequest({ loadingText: 'Hello' }), params)).status, 200);
+  for (const key of ['brandColor', 'brandBorderColor', 'brandColorsOverridden']) assert.equal(key in h.updates[0], false, key);
+});
+
+test('PATCH with colours stores them, checked as #RRGGBB, and marks the event custom', async (t) => {
+  const h = mockDeps(t, { event: { customPages: [] }, session: ADMIN });
+  const { PATCH } = await importRouteModule('colours-set');
+  assert.equal((await PATCH(patchRequest({ brandColor: OWN_PRIMARY, brandBorderColor: OWN_BORDER }), params)).status, 200);
+  assert.equal(h.updates[0].brandColor, OWN_PRIMARY);
+  assert.equal(h.updates[0].brandBorderColor, OWN_BORDER);
+  assert.equal(h.updates[0].brandColorsOverridden, true);
+  assert.equal((await PATCH(patchRequest({ brandColor: 'blue' }), params)).status, 400);
+  assert.equal((await PATCH(patchRequest({ brandBorderColor: '#12' }), params)).status, 400);
+  assert.equal(h.updates.length, 1, 'a refused colour writes nothing');
+});
+
+test('PATCH with both colours cleared takes the event back to messmass: no colours and not custom', async (t) => {
+  const h = mockDeps(t, { event: { customPages: [], brandColor: OWN_PRIMARY, brandBorderColor: OWN_BORDER, brandColorsOverridden: true }, session: ADMIN });
+  const { PATCH } = await importRouteModule('colours-cleared');
+  assert.equal((await PATCH(patchRequest({ brandColor: null, brandBorderColor: null }), params)).status, 200);
+  assert.equal(h.updates[0].brandColor, null);
+  assert.equal(h.updates[0].brandBorderColor, null);
+  assert.equal(h.updates[0].brandColorsOverridden, false);
+});

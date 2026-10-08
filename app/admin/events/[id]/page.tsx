@@ -12,7 +12,8 @@ import { ObjectId } from 'mongodb';
 import { StatsStrip } from '@/components/gds/ClientWrappers';
 import { Breadcrumbs, Button, Card, Code, Group, SimpleGrid, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
-import StyleSections from '@/components/admin/StyleSections';
+import StyleSections, { type ThemeColours } from '@/components/admin/StyleSections';
+import { loadEventTheme } from '@/lib/theme/load';
 import SlideshowManager from '@/components/admin/SlideshowManager';
 import SlideshowLayoutManager from '@/components/admin/SlideshowLayoutManager';
 import LandingPageManager from '@/components/admin/LandingPageManager';
@@ -67,8 +68,8 @@ interface EventDoc {
   isActive?: boolean;
   shortUrlSlug?: string;
   greatestHitsSlug?: string;
-  brandColor?: string;
-  brandBorderColor?: string;
+  brandColor?: string | null;
+  brandBorderColor?: string | null;
   brandColorsOverridden?: boolean;
   framesOverridden?: boolean;
   logosOverridden?: boolean;
@@ -156,6 +157,7 @@ export default async function EventDetailPage({
   let slideshowLayouts: SlideshowLayoutDoc[] = [];
   let landingPages: LandingPageDoc[] = [];
   let eventStats: EventSpecificStats | null = null;
+  let themeColours: ThemeColours | null = null;
   let dbError: string | null = null;
   const session = await getSession();
   let canManageEvent = isGlobalAdminSession(session);
@@ -178,6 +180,14 @@ export default async function EventDetailPage({
 
     partner = (await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId })) as PartnerDoc | null;
     eventStats = await collectEventSpecificStats(db, event.eventId);
+    // The colours the guests really get, from the same function the guest pages use, and where they come from (camera#380).
+    try {
+      const theme = await loadEventTheme(db, event as unknown as Record<string, unknown>);
+      const style = (event as unknown as { frameDesign?: { context?: { style?: { name?: unknown } } } }).frameDesign?.context?.style;
+      themeColours = { fill: theme.buttonBackground, label: theme.buttonText, ring: theme.buttonRing, source: theme.buttonSource, styleName: typeof style?.name === 'string' ? style.name : null };
+    } catch (error) {
+      console.error('Error resolving the event theme for the colours panel:', error);
+    }
 
     const inactiveEmails = await getInactiveUserEmails();
 
@@ -477,6 +487,7 @@ export default async function EventDetailPage({
           brandColor={event.brandColor}
           brandBorderColor={event.brandBorderColor}
           brandColorsOverridden={event.brandColorsOverridden}
+          themeColours={themeColours ?? undefined}
           frames={event.frames?.map((frame) => ({
             frameId: frame.frameId,
             isActive: frame.isActive !== false,
