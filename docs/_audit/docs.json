@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-08T17:11:51+00:00",
+  "generated": "2026-10-08T23:12:31+00:00",
   "repo": "camera",
-  "head": "75c595b",
+  "head": "6db8dcd",
   "counts": {
    "endpoints": 122,
    "collections": 8,
    "env": 59,
    "outbound-hosts": 30,
-   "docs": 57
+   "docs": 59
   }
  },
  "items": [
@@ -81,6 +81,10 @@
    "title": "Branching model"
   },
   {
+   "file": "docs/BUILDING_BRICKS.md",
+   "title": "Building bricks: one way to build every element of an event"
+  },
+  {
    "file": "docs/CAMERA_MODULE_PLAN.md",
    "title": "Camera module plan"
   },
@@ -91,6 +95,10 @@
   {
    "file": "docs/DOCUMENTATION.md",
    "title": "Documentation Maintenance"
+  },
+  {
+   "file": "docs/ELEMENT_INVENTORY.md",
+   "title": "Element inventory: everything an event needs, and what relates to what"
   },
   {
    "file": "docs/EMAIL_TEMPLATES.md",
