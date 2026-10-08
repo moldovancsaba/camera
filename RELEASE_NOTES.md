@@ -1,5 +1,17 @@
 # RELEASE_NOTES.md
 
+## Unreleased — libraries, step 6: move an event's designers' picture into the library (camera#369; epic camera#361)
+
+- **Added (owner direction, 2026-10-08: the designers' frames are listed under Assigned frames and every message chooses one):** the generated frame panel of an event that still has the
+  older `frameDesign.base` picture offers **Move it into the library**. It creates an event frame for each picture of the base (the box, colour and territories become the frame's message
+  area), assigns them, makes every message choose the frame of the picture it uses today, and draws the images again. **Remove the old data** then takes the base off the event, only when
+  every message chooses a frame that exists, is on and carries messages. Doing it twice changes nothing more. The button asks for unsaved message edits to be saved first.
+- **Verified:** unit tests (the frames and their message area, the choice of each message, doing it twice, refusing the removal while a message would lose its picture, the route's access and
+  errors, and **byte-for-byte equal images** for every message between the base and the moved frames); type-check; lint; the full CI chain; a real browser on the production build with a stateful
+  fake API, nothing written: the move, a failed move, the confirmation that survives the page starting again with the new frames, the removal that makes the section go away, unsaved edits, phone
+  width. **Not applied to any real event, not seen by the owner;** the MTK x Vasas event moves last (decision 118), after the owner has seen the library pages work.
+- **Changed (wording):** the library pages say "users", not "guests" (the dictionary).
+
 ## Unreleased — library fixes: uploads on the server, and removing an item keeps it on the events (camera#385; epic camera#361)
 
 - **Fixed:** an upload on a partner or event library page failed on the server with "FileReader is not defined": the upload helper turned the file into text with `FileReader`, which Node does not

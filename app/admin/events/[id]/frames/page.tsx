@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
-import GeneratedFramePanel from '@/components/admin/GeneratedFramePanel';
+import GeneratedFramePanel, { type Notice } from '@/components/admin/GeneratedFramePanel';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
@@ -47,6 +47,8 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+  // What the panel said after it changed the frames: the panel starts again with the new frames, and takes the message with it.
+  const [panelNotice, setPanelNotice] = useState<Notice | null>(null);
 
   useEffect(() => {
     params.then((resolved) => setEventId(resolved.id));
@@ -137,6 +139,11 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
       <GeneratedFramePanel
         key={library.assigned.map((entry) => `${entry.id}:${entry.assignment.isActive === true ? 1 : 0}:${entry.messageArea ? 1 : 0}`).join(',')}
         eventId={eventId}
+        onLibraryChanged={async (notice) => {
+          setPanelNotice(notice);
+          await reload();
+        }}
+        initialNotice={panelNotice}
         hasOwnActiveFrame={library.assigned.some((entry) => entry.assignment.isActive === true && entry.messageArea === null)}
       />
 
@@ -182,7 +189,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                     noun="frame"
                     scope={entry.scope}
                     wide={editing === entry.id}
-                    note={entry.messageArea ? 'Guests never pick this frame: the messages of this event are written on it.' : undefined}
+                    note={entry.messageArea ? 'Users never pick this frame: the messages of this event are written on it.' : undefined}
                     badges={
                       <>
                         <LabelTag tone={active ? 'success' : 'neutral'} label={active ? 'Active' : 'Inactive'} />
