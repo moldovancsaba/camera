@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the Waiting list of the approver looks for new photos by itself (camera#373)
+
+- **Changed (found while writing the how-to for the MTK approver):** the Waiting list of an event's Vetting tab refreshed only after a decision, so a photo taken in the meantime appeared only
+  after a reload of the page. It now asks the server every 10 seconds, only on the Waiting list, only while the page is on screen, and never while a decision is in flight or a rejection
+  reason is being written; the page says so. The two notices after a decision say "the user", not "the guest" (the dictionary).
+- **Verified:** a unit test of the rule (which lists, hidden page, decision in flight, rejection reason); type-check; lint; the full CI chain. The timer itself is not exercised in a browser here
+  (the refresh needs the server and a sign-in): the first real check is a second tab on an event that is not linked to messmass. **Not seen by the owner.**
+
 ## Unreleased — libraries, step 4: logos on three levels, the messmass logo as a partner library item (camera#367)
 
 - **Added (owner report, 2026-10-08):** logos have the three levels of the frames (epic camera#361). **Partner logos** (`/admin/partners/<id>/logos`): the partner's library with
