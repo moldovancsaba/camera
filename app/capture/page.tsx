@@ -14,7 +14,7 @@ import CameraCapture from '@/components/camera/CameraCapture';
 import FileUpload from '@/components/camera/FileUpload';
 import ShareOverlay from '@/components/capture/ShareOverlay';
 import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
-import { Button, Checkbox } from '@mantine/core';
+import { Button } from '@mantine/core';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import { cropCaptureToAspect } from '@/lib/camera/frame-crop';
 import type { FullFrameCapture } from '@/lib/camera/frame-capture';
@@ -99,9 +99,6 @@ export default function CapturePage() {
   const [frameIntrinsicAspect, setFrameIntrinsicAspect] = useState<number | null>(null);
   const [selectedTryOnSuitId, setSelectedTryOnSuitId] = useState<string | null>(null);
   const [tryOnResult, setTryOnResult] = useState<TryOnSubmissionResult | null>(null);
-  // Public pledge-wall opt-in: defaults to checked so fan photos appear on the event wall.
-  // The capturer can uncheck to keep their photo private.
-  const [shareOptIn, setShareOptIn] = useState(true);
 
   // Fetch active frames
   useEffect(() => {
@@ -269,7 +266,8 @@ export default function CapturePage() {
           requestTryOn: Boolean(selectedTryOnSuitId),
           leatherSuitId: selectedTryOnSuitId,
           tryOnSourceImageData: selectedTryOnSuitId ? capturedImage : null,
-          shareOptIn,
+          // No separate pledge wall choice any more, as in the event flow (camera#344, owner decision 2026-10-08).
+          shareOptIn: true,
         }),
       });
 
@@ -366,7 +364,6 @@ export default function CapturePage() {
     setShareUrl(null);
     setSelectedTryOnSuitId(null);
     setTryOnResult(null);
-    setShareOptIn(false);
     setStep('select-frame');
   };
 
@@ -530,20 +527,6 @@ export default function CapturePage() {
                         selectedSuitId={selectedTryOnSuitId}
                         onChange={setSelectedTryOnSuitId}
                         disabled={isSaving}
-                      />
-                    </div>
-                  ) : null}
-
-                  {!submissionId ? (
-                    <div className="app-surface-card app-surface-card-pad-sm">
-                      <Checkbox
-                        id="share-opt-in"
-                        checked={shareOptIn}
-                        onChange={(e) => setShareOptIn(e.currentTarget.checked)}
-                        label="Share my photo on the public pledge wall"
-                        aria-label="Share my photo on the public pledge wall"
-                        description="Your photo will appear on the public pledge wall. Uncheck to keep it private."
-                        styles={{ label: { lineHeight: 1.6 } }}
                       />
                     </div>
                   ) : null}
