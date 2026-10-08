@@ -8,7 +8,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
  */
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
+import FrameThumbnail from '@/components/admin/FrameThumbnail';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
@@ -23,6 +23,7 @@ interface FrameRecord {
   frameId: string;
   name: string;
   thumbnailUrl?: string;
+  imageUrl?: string;
 }
 
 interface PartnerResponse {
@@ -169,11 +170,7 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
               >
                 <span style={{ alignItems: 'center', display: 'grid', gap: '0.75rem', justifyItems: 'center' }}>
                   {isSelected ? <LabelTag tone="success" label="Selected" /> : null}
-                  {frame.thumbnailUrl ? (
-                    <Image src={frame.thumbnailUrl} alt={frame.name} width={128} height={128} unoptimized style={{ width: '100%', height: 128, objectFit: 'contain' }} />
-                  ) : (
-                    <span aria-hidden>Image</span>
-                  )}
+                  <FrameThumbnail frame={frame} width="100%" />
                   <strong style={{ display: '-webkit-box', fontSize: '0.875rem', overflow: 'hidden', textAlign: 'center', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}>
                     {frame.name}
                   </strong>

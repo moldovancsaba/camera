@@ -31,6 +31,7 @@ interface FrameDetailsDoc {
   frameId: string;
   name?: string;
   thumbnailUrl?: string;
+  imageUrl?: string;
   width?: number;
   height?: number;
   hashtags?: string[];
@@ -239,6 +240,7 @@ export default async function PartnerDetailPage({
                 frameId: frameDetails.frameId,
                 name: frameDetails.name,
                 thumbnailUrl: frameDetails.thumbnailUrl,
+                imageUrl: frameDetails.imageUrl,
                 width: frameDetails.width,
                 height: frameDetails.height,
                 hashtags: frameDetails.hashtags,

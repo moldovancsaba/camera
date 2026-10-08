@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the frame lists show the frames' pictures (camera#357)
+
+- **Fixed (owner report, 2026-10-08):** the event frames page (assigned and available lists), the partner frames page and the style panel printed the bare word "Image" instead of a frame's picture. They drew the picture only from `thumbnailUrl`, and the frames of the library never had one (they carry `imageUrl`). A frame is now shown by its thumbnail when it has one, else by the frame itself (`lib/frames/thumbnail.ts`, `FrameThumbnail`), on a neutral grey so a transparent frame is visible, at least 160 px wide in the lists; a frame with no picture at all says "No picture". The event data these pages read carries `imageUrl` next to `thumbnailUrl`. The global Frames list was already fine.
+- **Verified:** unit tests of the helper; type-check; lint; a real browser on the built page with the real library data (10 frames on `i.ibb.co`): every picture loaded, at least 120 px wide, no bare "Image", also with two frames assigned; a frame without a picture says "No picture". Not yet seen by the owner on the live pages.
+
 ## Unreleased — the event editor no longer crashes on an unknown action (camera#359)
 
 - **Fixed (owner report, 2026-10-08):** the event page editor crashed with "Unknown semantic action: custom-pages:add-welcome". Buttons written `action="pack:id"` throw when drawn if the admin vocabulary does not register the action. The welcome button (#308), the consent editor's checkbox buttons and the Journey defaults Save button (#330) had no registration; a scan found six such actions (the two try-on rerun dialog buttons were older). All six are registered, so the page editor, the consent page editor, the Journey defaults settings page and the rerun dialog open.

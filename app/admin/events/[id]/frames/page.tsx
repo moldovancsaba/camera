@@ -8,7 +8,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
  */
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
+import FrameThumbnail from '@/components/admin/FrameThumbnail';
 import Link from 'next/link';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import GeneratedFramePanel from '@/components/admin/GeneratedFramePanel';
@@ -28,6 +28,7 @@ interface FrameRecord {
   frameId: string;
   name: string;
   thumbnailUrl?: string;
+  imageUrl?: string;
   hashtags?: string[];
 }
 
@@ -200,11 +201,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                   <article key={frameAssignment.frameId} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.75rem', padding: '0.75rem' }}>
                     <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
                       <div style={{ alignItems: 'center', display: 'flex', gap: '0.75rem' }}>
-                        {frame?.thumbnailUrl ? (
-                          <Image src={frame.thumbnailUrl} alt={frame.name} width={64} height={64} unoptimized style={{ width: 64, height: 'auto', objectFit: 'contain' }} />
-                        ) : (
-                          <span aria-hidden>Image</span>
-                        )}
+                        <FrameThumbnail frame={frame} />
                         <div>
                           <strong style={{ fontSize: '0.875rem' }}>
                             {frame?.name || frameAssignment.frameId}
@@ -249,11 +246,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
                 <article key={frame.frameId} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.75rem', padding: '0.75rem' }}>
                   <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
                     <div style={{ alignItems: 'center', display: 'flex', gap: '0.75rem' }}>
-                      {frame.thumbnailUrl ? (
-                        <Image src={frame.thumbnailUrl} alt={frame.name} width={64} height={64} unoptimized style={{ width: 64, height: 'auto', objectFit: 'contain' }} />
-                      ) : (
-                        <span aria-hidden>Image</span>
-                      )}
+                      <FrameThumbnail frame={frame} />
                       <div>
                         <strong style={{ fontSize: '0.875rem' }}>
                           {frame.name}
