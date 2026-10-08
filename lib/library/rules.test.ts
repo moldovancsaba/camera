@@ -73,7 +73,8 @@ test('an edit adds, then removes; an id in both stays removed; order is kept', (
 test('the kinds are read from a request value, and the ids of a kind from an event and a partner', () => {
   assert.equal(parseKind('frames'), 'frames');
   assert.equal(parseKind('logos'), 'logos');
-  for (const bad of ['images', '', null, undefined, 7, 'Frames']) assert.equal(parseKind(bad), null, String(bad));
+  assert.equal(parseKind('images'), 'images');
+  for (const bad of ['fonts', '', null, undefined, 7, 'Frames']) assert.equal(parseKind(bad), null, String(bad));
 
   const event = { frames: [{ frameId: 'f1' }, { frameId: 'f1' }, { frameId: 'f2' }, null, { nope: 1 }], logos: [{ logoId: 'l1', scenario: 'a' }, { logoId: 'l1', scenario: 'b' }] };
   assert.deepEqual(eventAssignedIds('frames', event), ['f1', 'f2']);

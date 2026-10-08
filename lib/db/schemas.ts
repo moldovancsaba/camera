@@ -38,6 +38,8 @@ export const COLLECTIONS = {
   EVENTS: 'events',
   FRAMES: 'frames',
   LOGOS: 'logos',
+  /** The Images library (camera#368): pictures a picture field chooses, on the three levels of docs/LIBRARIES.md. */
+  IMAGES: 'images',
   SUBMISSIONS: 'submissions',
   LEATHER_SUITS: 'leather_suits',
   TRYON_JOBS: 'tryon_jobs',
@@ -157,7 +159,7 @@ export interface Partner {
    * are not listed here (they carry `scope: 'partner'` and its `partnerId`). Missing means the partner has not saved a library yet: what it
    * had before (its defaults and what its events use) counts as its library until the first save.
    */
-  library?: { frames?: string[]; logos?: string[] };
+  library?: { frames?: string[]; logos?: string[]; images?: string[] };
   defaultFrames?: string[];          // Default frame IDs to assign to new events (always items of the partner's library)
   defaultLogos?: Array<{             // Default logo assignments for new events
     logoId: string;                  // Reference to logo
@@ -547,6 +549,37 @@ export interface Frame {
    * area is not a complete frame the guest picks; an event's messages choose it (`frameDesign.messageFrames`).
    */
   messageArea?: { messageBox: { x: number; y: number; width: number; height: number }; messageColor?: string; layers?: Array<{ id: 'header' | 'footer'; x: number; y: number; width: number; height: number }> };
+}
+
+// ============================================================================
+// IMAGES COLLECTION
+// ============================================================================
+
+/**
+ * A picture of the Images library (camera#368, docs/LIBRARIES.md): what a picture field chooses (the welcome page pictures, the CTA page
+ * picture, the email footer, the slideshow screen overlay). The field keeps the plain address (`imageUrl`), so the pages that draw it do not
+ * read this collection. The id is `pictureId`, not `imageId`: on a frame `imageId` is the asset id of the imgbb mirror. Not assigned to an event
+ * (no list on the event); an event's library is what its fields may choose from.
+ */
+export interface LibraryImage {
+  _id?: ObjectId;                    // MongoDB document ID
+  pictureId: string;                 // Unique picture identifier (UUID)
+  name: string;                      // Human-readable name
+  description: string;               // Optional notes; may be an empty string
+  imageUrl: string;                  // The picture's address (Vercel Blob), the string a field stores
+  thumbnailUrl: string;              // Same as imageUrl (Blob has no separate thumbnail)
+  width: number;                     // Size in pixels, read from the file (0 when it cannot be read, e.g. an SVG without a size)
+  height: number;
+  fileSize: number | null;           // Bytes
+  mimeType: string;                  // e.g. "image/png", "image/svg+xml"
+  isActive: boolean;                 // Switched off: no longer offered to be newly chosen; fields that use it keep it
+  createdBy: string;                 // Admin user ID from SSO
+  createdAt: string;                 // ISO 8601 timestamp with milliseconds UTC
+  updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
+  // Who owns the picture: missing scope = global. See lib/library.
+  scope?: 'global' | 'partner' | 'event';
+  partnerId?: string;                // partner UUID, for scope 'partner' (and the partner of an event upload)
+  eventId?: string;                  // the event's UUID (Event.eventId), for scope 'event'
 }
 
 // ============================================================================

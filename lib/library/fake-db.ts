@@ -1,6 +1,7 @@
 /**
  * A database of plain arrays for the tests of the libraries: just the calls lib/library and its routes make (find with sort and limit,
- * findOne, countDocuments, insertOne, updateOne with $set, $push and $pull, updateMany with $set, deleteOne). Filters: equality (null matches a missing field),
+ * findOne, countDocuments, insertOne, updateOne with $set, $push and $pull, updateMany with $set and $pull (also on a dotted path such as
+ * `library.images`), deleteOne). Filters: equality (null matches a missing field),
  * $in, $nin, $ne, $exists, $or and dotted paths through arrays (`frames.frameId`); $set (also `frames.$.isActive`), $unset, $push and $pull. Not part of the app.
  */
 
@@ -9,7 +10,8 @@ import type { Db } from 'mongodb';
 type Doc = Record<string, unknown>;
 
 function valuesAt(doc: unknown, path: string[]): unknown[] {
-  if (path.length === 0) return [doc];
+  // As in MongoDB, a value matches an array field when it is the array or one of its elements (`{ 'library.images': id }`).
+  if (path.length === 0) return Array.isArray(doc) ? [doc, ...doc] : [doc];
   if (Array.isArray(doc)) return doc.flatMap((item) => valuesAt(item, path));
   if (doc && typeof doc === 'object') return valuesAt((doc as Doc)[path[0]], path.slice(1));
   return [undefined];
@@ -130,7 +132,17 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
         updateMany: async (filter: Doc, update: Doc) => {
           calls.push({ collection: name, op: 'updateMany', args: [filter, update] });
           const docs = list(name).filter((d) => matches(d, filter));
-          for (const doc of docs) for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(doc, path, value, filter);
+          for (const doc of docs) {
+            for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(doc, path, value, filter);
+            for (const [path, cond] of Object.entries((update.$pull as Doc) ?? {})) {
+              const parts = path.split('.');
+              const parent = parts.slice(0, -1).reduce<Doc | undefined>((at, part) => (at && at[part] && typeof at[part] === 'object' ? (at[part] as Doc) : undefined), doc);
+              const key = parts[parts.length - 1];
+              if (parent && Array.isArray(parent[key])) {
+                parent[key] = (parent[key] as unknown[]).filter((item) => !(cond && typeof cond === 'object' ? matches(item as Doc, cond as Doc) : item === cond));
+              }
+            }
+          }
           return { matchedCount: docs.length, modifiedCount: docs.length };
         },
         findOneAndUpdate: async (filter: Doc, update: Doc) => {

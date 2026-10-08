@@ -68,7 +68,7 @@ test('GET returns the partner library with pictures, what it can still add, and 
 test('GET refuses a kind that does not exist', async (t) => {
   setup(t);
   const { GET } = await importRoute('get-bad-kind');
-  assert.equal((await GET(get('?kind=images'), params)).status, 400);
+  assert.equal((await GET(get('?kind=fonts'), params)).status, 400);
   assert.equal((await GET(get(''), params)).status, 400);
 });
 
