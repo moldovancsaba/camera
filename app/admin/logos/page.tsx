@@ -1,10 +1,13 @@
 /**
- * Logos Admin Page
+ * Logos Admin Page: the global library of logos. `?scope=all` also lists what partners and events have for themselves (their uploads and the
+ * partner logos imported from messmass), which no other partner can take (camera#361, camera#367).
  */
 
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { GLOBAL_FILTER } from '@/lib/library/db';
+import { scopeOf } from '@/lib/library/rules';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { redirect } from 'next/navigation';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
@@ -22,6 +25,17 @@ interface Logo {
   imageUrl: string;
   isActive: boolean;
   usageCount?: number;
+  scope?: 'global' | 'partner' | 'event' | null;
+  partnerId?: string | null;
+  eventId?: string | null;
+  source?: string | null;
+}
+
+interface OwnerRef {
+  _id?: unknown;
+  partnerId?: string;
+  eventId?: string;
+  name: string;
 }
 
 interface PartnerLogoUsage {
@@ -41,7 +55,7 @@ interface EventLogoUsage {
 export default async function LogosPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ search?: string }>;
+  searchParams?: Promise<{ search?: string; scope?: string }>;
 }) {
   const session = await getSession();
   if (!isGlobalAdminSession(session)) {
@@ -55,10 +69,11 @@ export default async function LogosPage({
   let dbError = null;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
+  const showAll = resolvedSearchParams?.scope === 'all';
 
   try {
     const db = await connectToDatabase();
-    const query = search
+    const searchFilter = search
       ? {
           $or: [
             { name: { $regex: search, $options: 'i' } },
@@ -66,7 +81,9 @@ export default async function LogosPage({
             { logoId: { $regex: search, $options: 'i' } },
           ],
         }
-      : {};
+      : null;
+    // The global library by default; `?scope=all` also lists the logos partners and events have for themselves.
+    const query = showAll ? (searchFilter ?? {}) : searchFilter ? { $and: [GLOBAL_FILTER, searchFilter] } : GLOBAL_FILTER;
     const [logos, totalLogos, matchingLogoIds] = await Promise.all([
       db
         .collection(COLLECTIONS.LOGOS)
@@ -129,6 +146,17 @@ export default async function LogosPage({
       eventAssignmentTotal = eventAssignments[0]?.total ?? 0;
     }
 
+    // Who owns a logo that is not global: its partner, or its event.
+    const ownLogos = (logos as Logo[]).filter((logo) => scopeOf(logo) !== 'global');
+    const ownerPartnerIds = [...new Set(ownLogos.map((logo) => logo.partnerId).filter((value): value is string => typeof value === 'string' && value.length > 0))];
+    const ownerEventIds = [...new Set(ownLogos.map((logo) => logo.eventId).filter((value): value is string => typeof value === 'string' && value.length > 0))];
+    const [ownerPartners, ownerEvents] = await Promise.all([
+      ownerPartnerIds.length ? (db.collection(COLLECTIONS.PARTNERS).find({ partnerId: { $in: ownerPartnerIds } }, { projection: { partnerId: 1, name: 1 } }).toArray() as unknown as Promise<OwnerRef[]>) : Promise.resolve([] as OwnerRef[]),
+      ownerEventIds.length ? (db.collection(COLLECTIONS.EVENTS).find({ eventId: { $in: ownerEventIds } }, { projection: { eventId: 1, name: 1 } }).toArray() as unknown as Promise<OwnerRef[]>) : Promise.resolve([] as OwnerRef[]),
+    ]);
+    const partnerByUuid = new Map(ownerPartners.map((partner) => [partner.partnerId, partner]));
+    const eventByUuid = new Map(ownerEvents.map((event) => [event.eventId, event]));
+
     logoRows = [];
     for (const logo of logos as Logo[]) {
       const id = mongoIdString(logo._id);
@@ -137,6 +165,7 @@ export default async function LogosPage({
       const eventAssignments = eventUsageByLogoId.get(logo.logoId) || [];
       const primaryPartner = partnerAssignments[0];
       const primaryEvent = eventAssignments[0];
+      const scope = scopeOf(logo);
       logoRows.push({
         id,
         logoId: logo.logoId,
@@ -151,6 +180,9 @@ export default async function LogosPage({
         primaryPartnerName: primaryPartner?.name ?? null,
         primaryEventAdminId: mongoIdString(primaryEvent?._id),
         primaryEventName: primaryEvent?.name ?? null,
+        scope,
+        source: logo.source ?? null,
+        ownerName: scope === 'partner' ? (partnerByUuid.get(logo.partnerId ?? '')?.name ?? null) : scope === 'event' ? (eventByUuid.get(logo.eventId ?? '')?.name ?? null) : null,
       });
     }
   } catch (error) {
@@ -162,7 +194,7 @@ export default async function LogosPage({
     <AdminListPageShell
       eyebrow="Resource Inventory"
       title="Global Logos"
-      description="Shared logo inventory across partners, event scenarios, and app experiences."
+      description={showAll ? 'Every logo, including the ones partners and events have for themselves.' : 'The global library: logos collected for every partner to take into its own library.'}
       primaryAction={{ href: '/admin/logos/new', label: 'Upload Shared Logo', iconKey: 'plus' }}
       stats={
         !dbError
@@ -177,8 +209,10 @@ export default async function LogosPage({
         defaultValue: search,
         label: 'Search',
         placeholder: 'Search logo name, description, or logo ID',
-        clearHref: '/admin/logos',
+        clearHref: showAll ? '/admin/logos?scope=all' : '/admin/logos',
+        hiddenFields: showAll ? { scope: 'all' } : undefined,
       }}
+      toolbarTrailing={{ href: showAll ? '/admin/logos' : '/admin/logos?scope=all', label: showAll ? 'Show the global library only' : 'Show every logo (partners and events too)' }}
       dbError={dbError}
     >
       <LogosInventoryList logos={logoRows} />

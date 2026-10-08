@@ -60,10 +60,33 @@ test('a bad upload changes nothing on the event', async (t) => {
   const { POST } = await importRoute('bad');
   assert.equal((await POST(post({ kind: 'frames', name: '' }, png()), params)).status, 400);
   assert.equal((await POST(post({ kind: 'frames', name: 'x' }, new File([new Uint8Array([1])], 'a.gif', { type: 'image/gif' })), params)).status, 400);
-  assert.equal((await POST(post({ kind: 'logos', name: 'x' }, png()), params)).status, 400);
+  assert.equal((await POST(post({ kind: 'logos', name: 'x', scenario: 'nowhere' }, png()), params)).status, 400, 'a logo needs a scenario that exists');
   assert.deepEqual(stored, []);
   assert.deepEqual((data.events[0] as { frames: unknown[] }).frames, []);
+  assert.equal((data.events[0] as { logos?: unknown[] }).logos, undefined);
   assert.equal((data.events[0] as { framesOverridden?: boolean }).framesOverridden, undefined);
+  assert.equal((data.events[0] as { logosOverridden?: boolean }).logosOverridden, undefined);
+});
+
+test('a logo uploaded for an event is assigned at once in the scenario chosen, and the event now has its own logo list', async (t) => {
+  const { data } = setup(t);
+  const { POST } = await importRoute('logo');
+  const response = await POST(post({ kind: 'logos', name: 'Match crest', scenario: 'loading-capture' }, png()), params);
+  assert.equal(response.status, 201);
+  const logo = data.logos[0] as Record<string, unknown>;
+  assert.deepEqual([logo.scope, logo.eventId, logo.partnerId], ['event', 'e-uuid', 'P']);
+  const event = data.events[0] as { logos: Array<Record<string, unknown>>; logosOverridden?: boolean; framesOverridden?: boolean };
+  assert.deepEqual(event.logos.map((l) => [l.logoId, l.scenario, l.order, l.isActive, l.addedBy]), [[logo.logoId, 'loading-capture', 0, true, 'a1']]);
+  assert.equal(event.logosOverridden, true, 'a later change of the partner defaults must not replace it');
+  assert.equal(event.framesOverridden, undefined, 'the frames are not touched');
+  assert.deepEqual((data.events[0] as { frames: unknown[] }).frames, []);
+});
+
+test('a logo uploaded without a scenario goes on top of the guest pages (onboarding-thankyou)', async (t) => {
+  const { data } = setup(t);
+  const { POST } = await importRoute('logo-default');
+  assert.equal((await POST(post({ kind: 'logos', name: 'Match crest' }, png()), params)).status, 201);
+  assert.equal(((data.events[0] as { logos: Array<{ scenario: string }> }).logos)[0].scenario, 'onboarding-thankyou');
 });
 
 test('without manager access to the event nothing is uploaded', async (t) => {

@@ -24,6 +24,8 @@ export interface LibraryItemCardProps {
   /** What the item is: "frame", "logo", "image". */
   noun: string;
   scope: LibraryScopeName;
+  /** Where an item that was not uploaded came from: `messmass` for the partner's logo imported from messmass (camera#367). */
+  source?: string | null;
   /** More tags next to the origin (default for new events, not in the partner library any more...). */
   badges?: ReactNode;
   note?: ReactNode;
@@ -33,8 +35,10 @@ export interface LibraryItemCardProps {
   wide?: boolean;
 }
 
-export default function LibraryItemCard({ name, imageUrl, thumbnailUrl, noun, scope, badges, note, actions, children, wide }: LibraryItemCardProps) {
-  const origin = SCOPE_LABEL[scope];
+const FROM_MESSMASS = { label: 'From messmass', tone: 'info' } as const;
+
+export default function LibraryItemCard({ name, imageUrl, thumbnailUrl, noun, scope, source, badges, note, actions, children, wide }: LibraryItemCardProps) {
+  const origin = source === 'messmass' ? FROM_MESSMASS : SCOPE_LABEL[scope];
   return (
     <article style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.75rem', padding: '0.75rem', display: 'grid', gap: '0.75rem', alignContent: 'start', ...(wide ? { gridColumn: '1 / -1' } : {}) }}>
       <AssetThumbnail url={imageUrl ?? thumbnailUrl ?? null} name={name} noun={noun} width="100%" />
@@ -44,7 +48,7 @@ export default function LibraryItemCard({ name, imageUrl, thumbnailUrl, noun, sc
           <LabelTag tone={origin.tone} label={origin.label} />
           {badges}
         </div>
-        {note ? <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>{note}</span> : null}
+        {note ? <div style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>{note}</div> : null}
       </div>
       {actions ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>{actions}</div> : null}
       {children}
