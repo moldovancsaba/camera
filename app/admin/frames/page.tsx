@@ -2,9 +2,11 @@
  * Admin Frames Listing
  */
 
+import type { Filter } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS, type Frame } from '@/lib/db/schemas';
+import { GLOBAL_FILTER } from '@/lib/library/db';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import { redirect } from 'next/navigation';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
@@ -22,6 +24,7 @@ interface FrameListItem {
   description?: string;
   category?: string;
   isActive: boolean;
+  scope?: 'global' | 'partner' | 'event';
   ownershipLevel?: 'global' | 'partner' | 'event';
   partnerId?: string | null;
   eventId?: string | null;
@@ -42,6 +45,7 @@ interface EventRef {
 }
 
 function inferFrameScope(frame: FrameListItem): 'global' | 'partner' | 'event' {
+  if (frame.scope) return frame.scope;
   if (frame.ownershipLevel) return frame.ownershipLevel;
   if (frame.eventId) return 'event';
   if (frame.partnerId) return 'partner';
@@ -51,7 +55,7 @@ function inferFrameScope(frame: FrameListItem): 'global' | 'partner' | 'event' {
 export default async function FramesPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ search?: string }>;
+  searchParams?: Promise<{ search?: string; scope?: string }>;
 }) {
   const session = await getSession();
   if (!isGlobalAdminSession(session)) {
@@ -65,10 +69,12 @@ export default async function FramesPage({
   let dbError = null;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
+  const showAll = resolvedSearchParams?.scope === 'all';
 
   try {
     const db = await connectToDatabase();
-    const query = search
+    // The global library by default; `?scope=all` also lists what partners and events uploaded for themselves (camera#361).
+    const searchFilter = search
       ? {
           $or: [
             { name: { $regex: search, $options: 'i' } },
@@ -76,7 +82,8 @@ export default async function FramesPage({
             { category: { $regex: search, $options: 'i' } },
           ],
         }
-      : {};
+      : null;
+    const query = (showAll ? (searchFilter ?? {}) : searchFilter ? { $and: [GLOBAL_FILTER, searchFilter] } : GLOBAL_FILTER) as unknown as Filter<Frame>;
     const [frameDocs, totalFrames, activeFrames, matchingFrameIdDocs, eventAssignments] = await Promise.all([
       db
         .collection<Frame>(COLLECTIONS.FRAMES)
@@ -182,7 +189,7 @@ export default async function FramesPage({
     <AdminListPageShell
       eyebrow="Resource Inventory"
       title="Global Frames"
-      description="Shared frame inventory across partners and app experiences."
+      description={showAll ? 'Every frame, including the ones partners and events uploaded for themselves.' : 'The global library: frames collected for every partner to take into its own library.'}
       primaryAction={{ href: '/admin/frames/new', label: 'Add Shared Frame', iconKey: 'plus' }}
       stats={
         !dbError
@@ -197,8 +204,10 @@ export default async function FramesPage({
         defaultValue: search,
         label: 'Search',
         placeholder: 'Search frame name, description, or category',
-        clearHref: '/admin/frames',
+        clearHref: showAll ? '/admin/frames?scope=all' : '/admin/frames',
+        hiddenFields: showAll ? { scope: 'all' } : undefined,
       }}
+      toolbarTrailing={{ href: showAll ? '/admin/frames' : '/admin/frames?scope=all', label: showAll ? 'Show the global library only' : 'Show every upload (partners and events too)' }}
       dbError={dbError}
     >
       <FramesInventoryList frames={frameRows} />

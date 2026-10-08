@@ -307,6 +307,10 @@ Core collections:
 
 Schema definitions live in [lib/db/schemas.ts](lib/db/schemas.ts).
 
+**Libraries.** `frames` and `logos` form three levels, Global -> Partner -> Event, one way only (camera#361): an item is global unless it carries `scope`
+`partner` or `event`; a partner's library is `Partner.library` plus its own uploads; an event takes items from its partner's library or uploads its own
+(`Event.frames[]`, `Event.logos[]`). See [docs/LIBRARIES.md](docs/LIBRARIES.md); the code is in `lib/library/`.
+
 ## 9. Submission pipeline
 
 Primary path:
@@ -348,7 +352,8 @@ Major API groups:
 - auth: `/api/auth/**`
 - partners: `/api/partners/**`
 - events: `/api/events/**`
-- frames: `/api/frames/**`
+- frames: `/api/frames/**` (the global library)
+- libraries: `/api/partners/[partnerId]/library/**` and `/api/events/[eventId]/library/**` (docs/LIBRARIES.md)
 - logos: `/api/logos/**`
 - submissions: `/api/submissions/**`
 - slideshows: `/api/slideshows/**`

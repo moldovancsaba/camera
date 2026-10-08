@@ -10,6 +10,7 @@ import type { Filter } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { uploadImage } from '@/lib/imgbb/upload';
 import { generateId, type Frame, type NewFrame } from '@/lib/db/schemas';
+import { GLOBAL_FILTER } from '@/lib/library/db';
 import {
   withErrorHandler,
   requireAdmin,
@@ -33,6 +34,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     
     // Build query
   const query: Filter<Frame> = {};
+  // The global library only: a frame uploaded for one partner or one event is not offered to everyone (camera#361).
+  query.$or = GLOBAL_FILTER.$or as unknown as Filter<Frame>['$or'];
     if (category) query.category = category;
     if (active !== null) query.isActive = active === 'true';
 
@@ -144,6 +147,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     fileSize: uploadResult.fileSize,
     mimeType: uploadResult.mimeType,
     isActive,
+    scope: 'global',
     createdBy: session.user.id,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

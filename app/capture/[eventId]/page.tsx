@@ -113,6 +113,8 @@ interface EventData {
 interface EventFrameAssignment {
   frameId: string;
   isActive: boolean;
+  /** The library item behind the assignment, as the event data carries it (null when the item no longer exists). */
+  frameDetails?: { frameId: string; name?: string; imageUrl?: string; width?: number; height?: number; isActive?: boolean; createdAt?: string } | null;
 }
 
 interface EventLogo {
@@ -125,12 +127,6 @@ interface EventLogosResponse {
     logos?: Record<string, EventLogo[]>;
   };
   logos?: Record<string, EventLogo[]>;
-}
-
-interface EventFramesResponse {
-  data?: {
-    frames?: Frame[];
-  };
 }
 
 // Collected data from custom pages
@@ -533,18 +529,17 @@ export default function EventCapturePage({
         }
 
         // Get frames assigned to this event
-        const activeFrameAssignments = (eventData.frames || []).filter((frame: EventFrameAssignment) => frame.isActive);
+        const activeFrameAssignments: EventFrameAssignment[] = (eventData.frames || []).filter((frame: EventFrameAssignment) => frame.isActive);
         const frameIds = activeFrameAssignments.map((frame: EventFrameAssignment) => frame.frameId);
 
         if (frameIds.length > 0) {
-          // Fetch frame details
-          const framesResponse = await fetch('/api/frames?active=true&limit=100');
-          const framesData: EventFramesResponse = await framesResponse.json();
-          
-          // Filter to only frames assigned to this event (using frameId UUID)
-          const eventFrames = (framesData.data?.frames || []).filter((frame) => 
-            frameIds.includes(frame.frameId)
-          );
+          // The frames of this event: the active library items behind its active assignments, newest first, read from the event data itself
+          // (a separate list of the library would miss an event's own uploads, camera#361).
+          const eventFrames: Frame[] = activeFrameAssignments
+            .map((assignment: EventFrameAssignment) => assignment.frameDetails)
+            .filter((details): details is NonNullable<EventFrameAssignment['frameDetails']> => !!details && details.isActive !== false && typeof details.imageUrl === 'string' && details.imageUrl.length > 0)
+            .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))
+            .map((details) => ({ frameId: details.frameId, name: details.name ?? '', imageUrl: details.imageUrl as string, width: details.width ?? 0, height: details.height ?? 0 }));
           setFrames(eventFrames);
           
           // Auto-select if only one frame

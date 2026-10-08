@@ -152,7 +152,13 @@ export interface Partner {
     secondary?: string;              // Default secondary brand color (hex)
     accent?: string;                 // Default accent brand color (hex)
   };
-  defaultFrames?: string[];          // Default frame IDs to assign to new events
+  /**
+   * The partner's library (camera#361, docs/LIBRARIES.md): the ids of the items it took from the GLOBAL library, per kind. Its own uploads
+   * are not listed here (they carry `scope: 'partner'` and its `partnerId`). Missing means the partner has not saved a library yet: what it
+   * had before (its defaults and what its events use) counts as its library until the first save.
+   */
+  library?: { frames?: string[]; logos?: string[] };
+  defaultFrames?: string[];          // Default frame IDs to assign to new events (always items of the partner's library)
   defaultLogos?: Array<{             // Default logo assignments for new events
     logoId: string;                  // Reference to logo
     scenario: LogoScenario;          // Where/when to display this logo
@@ -485,6 +491,11 @@ export interface Logo {
   // Usage statistics
   usageCount?: number;               // Number of events using this logo
   lastUsedAt?: string;               // ISO 8601 timestamp of last use
+
+  // Who owns the logo (camera#361): missing scope = global, the library admins fill. See lib/library.
+  scope?: 'global' | 'partner' | 'event';
+  partnerId?: string;                // partner UUID, for scope 'partner' (and the partner of an event upload)
+  eventId?: string;                  // the event's UUID (Event.eventId), for scope 'event'
 }
 
 // ============================================================================
@@ -502,9 +513,10 @@ export interface Logo {
  * silently returns nothing rather than failing, which is the exact bug this
  * shape replaced.
  *
- * Frames are flat and global — there is no ownership hierarchy, no per-partner
- * activation, and no stored dimensions. Per-event frame selection lives on the
- * event (`Event.frames[]`), not here.
+ * Frames have no stored dimensions. Per-event frame selection lives on the
+ * event (`Event.frames[]`), not here. Ownership (camera#361): a frame is global
+ * unless it carries `scope: 'partner'` or `scope: 'event'` (see lib/library); the
+ * partner's list of global frames it took is `Partner.library.frames`.
  */
 export interface Frame {
   _id?: ObjectId;                    // MongoDB document ID
@@ -521,6 +533,10 @@ export interface Frame {
   createdBy: string;                 // Admin user ID from SSO
   createdAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
+  // Who owns the frame (camera#361): missing scope = global. See lib/library.
+  scope?: 'global' | 'partner' | 'event';
+  partnerId?: string;                // partner UUID, for scope 'partner' (and the partner of an event upload)
+  eventId?: string;                  // the event's UUID (Event.eventId), for scope 'event'
 }
 
 // ============================================================================

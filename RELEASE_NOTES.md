@@ -1,5 +1,25 @@
 # RELEASE_NOTES.md
 
+## Unreleased — libraries, step 1: Global → Partner → Event for frames (camera#364, camera#365; epic camera#361)
+
+- **Added (owner direction, 2026-10-08):** three libraries, one way only. A partner has a **library**: the frames it takes from the global library plus its own uploads; an event
+  takes its frames from its **partner's library** or uploads its own. New pages: **partner Frames** (`/admin/partners/<id>/frames`: add from the global library, upload for the partner,
+  mark a frame as a default for new events, remove, delete an own upload) and **event Frames** (`/admin/events/<id>/frames`: Assigned and Available from the partner library, upload for
+  the event, switch off, remove), with **pictures everywhere** and the origin of every frame (global library, partner upload, event upload). New API under `/api/partners/<id>/library/**`
+  and `/api/events/<id>/library/**`; the model, the data and the rules are in `docs/LIBRARIES.md`, the code in `lib/library/`.
+- **Nothing is lost:** a partner that has not saved a library has what it already had (its default frames and the frames its events use); the first change makes that its own list.
+  Removing a frame from a partner library does not take it from the events that have it; they say so on their page. Existing frames are global (no scope = global).
+- **Changed:** an event can no longer take a frame straight from the global library (the assign call refuses it with a plain message); `PATCH /api/partners/<id>` accepts default
+  frames from the partner's library only; removing or switching off a frame on an event now also marks the event's list as its own (before, only adding did), so a later change
+  of the partner's defaults no longer brings a removed frame back; the global frame list (`/admin/frames`, `GET /api/frames`) shows global frames only, `?scope=all` lists every upload.
+- **Changed:** the capture page reads an event's frames from the event data (the library item behind each active assignment) instead of a separate list of the first 100 frames of the
+  library, so an event's own upload works. Checked on the real data (read-only): the same frames, in the same order, for all 14 events that have frames.
+- **Verified:** unit tests (the rules, the library on a fake database, every new route and the changed ones: partner library, upload, event library, event frame routes, global list, partner defaults);
+  type-check; lint; the full CI chain; a real browser on the production build with the real library pictures (10 frames) and a stateful fake API, nothing written: both pages, every picture loaded and
+  at least 120 px wide, add, default, remove, delete upload, upload with a preview, assign, switch off, remove, no horizontal scroll at phone width. **Not seen by the owner** on the live pages,
+  and not run against the real database (no write was made there): the first partner library save happens when the owner uses the page.
+- **Not yet:** messages choosing their frame (camera#366), logos (camera#367), images (camera#368), the MTK event (camera#369), the audit fixes (camera#370).
+
 ## Unreleased — the frame lists show the frames' pictures (camera#357)
 
 - **Fixed (owner report, 2026-10-08):** the event frames page (assigned and available lists), the partner frames page and the style panel printed the bare word "Image" instead of a frame's picture. They drew the picture only from `thumbnailUrl`, and the frames of the library never had one (they carry `imageUrl`). A frame is now shown by its thumbnail when it has one, else by the frame itself (`lib/frames/thumbnail.ts`, `FrameThumbnail`), on a neutral grey so a transparent frame is visible, at least 160 px wide in the lists; a frame with no picture at all says "No picture". The event data these pages read carries `imageUrl` next to `thumbnailUrl`. The global Frames list was already fine.
