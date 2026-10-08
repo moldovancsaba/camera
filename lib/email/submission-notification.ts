@@ -6,7 +6,7 @@ import {
   DEFAULT_SUBMISSION_EMAIL_SENDER_NAME,
   emailDefaults,
 } from '@/lib/email/submission-template-defaults';
-import { translate, type UiLanguage } from '@/lib/i18n';
+import { DEFAULT_UI_LANGUAGE, translate, type UiLanguage } from '@/lib/i18n';
 
 export interface SubmissionNotificationInput {
   recipientEmail?: string | null;
@@ -132,12 +132,12 @@ export async function sendSubmissionResultEmail(
     return { sent: false, skipped: true, reason: 'missing_from_address' };
   }
 
-  const language = input.language ?? 'en';
+  const language = input.language ?? DEFAULT_UI_LANGUAGE;
   const defaults = emailDefaults(language);
   const eventName = input.eventName?.trim() || translate(language, 'email.eventFallback');
   // The recipient resolver says "there" when the user gave no name; in another language that becomes the language's own word.
   const givenName = input.recipientName?.trim();
-  const recipientName = givenName && givenName !== 'there' ? givenName : translate(language, 'email.nameFallback');
+  const recipientName = givenName && givenName !== translate(DEFAULT_UI_LANGUAGE, 'email.nameFallback') ? givenName : translate(language, 'email.nameFallback');
   const termsUrl = input.termsUrl?.trim() || defaults.termsUrl;
   const subject = renderTemplate(
     normalizeTemplate(input.subjectTemplate, defaults.subject, 180),

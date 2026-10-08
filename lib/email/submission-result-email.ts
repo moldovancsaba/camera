@@ -11,9 +11,9 @@ import {
   DEFAULT_EVENT_TERMS_URL,
   DEFAULT_SUBMISSION_EMAIL_SENDER_NAME,
   emailDefaults,
-  ownEmailTemplate,
+  emailTemplateIn,
 } from '@/lib/email/submission-template-defaults';
-import { normalizeUiLanguage, type UiLanguage } from '@/lib/i18n';
+import { DEFAULT_UI_LANGUAGE, normalizeUiLanguage, translate, type UiLanguage } from '@/lib/i18n';
 
 export interface SubmissionEmailPolicy {
   enabled: boolean;
@@ -95,7 +95,8 @@ export function resolveSubmissionResultEmailRecipient(submission: {
   userEmail?: string;
   userName?: string | null;
 }): SubmissionEmailRecipient {
-  const name = readString(submission.userInfo?.name) || readString(submission.userName) || 'there';
+  // "there" when no name is known: the sender puts the word of the event's language in its place (camera#352).
+  const name = readString(submission.userInfo?.name) || readString(submission.userName) || translate(DEFAULT_UI_LANGUAGE, 'email.nameFallback');
   const candidateEmail =
     readString(submission.userInfo?.email) ||
     (submission.userEmail && submission.userEmail !== 'anonymous@event' ? submission.userEmail : null);
@@ -106,7 +107,11 @@ export function resolveSubmissionResultEmailRecipient(submission: {
   };
 }
 
-export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLanguage = 'en'): SubmissionEmailPolicy {
+/**
+ * The email settings of an event. With a language (camera#352) the templates are the ones sent in it: a stored English default becomes the same
+ * default in the language, and so does the stored English terms link; without one (the event API, which stores what it reads) nothing changes.
+ */
+export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLanguage = DEFAULT_UI_LANGUAGE): SubmissionEmailPolicy {
   const source = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
   const enabled = Boolean(source.submissionResultEmailEnabled);
 
@@ -117,8 +122,8 @@ export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLangu
     'submissionResultEmailSendAfterTryOnResubmissionApproved'
   );
 
-  // A template stored as the English default counts as not set in another language (ownEmailTemplate).
-  const own = (value: string) => ownEmailTemplate(language, value || null) ?? '';
+  // In another language a stored English default is read as the same default in that language (emailTemplateIn).
+  const own = (template: string) => emailTemplateIn(language, template || null) ?? '';
   const legacySubject = own(readTemplate(source.submissionResultEmailSubject, 180));
   const legacyBody = own(readTemplate(source.submissionResultEmailBody, 5000, true));
   const subjectTemplateAfterSave = own(readTemplate(
@@ -139,6 +144,14 @@ export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLangu
     own(readTemplate(source.submissionResultEmailBodyAfterTryOnResubmissionApproved, 5000, true)) ||
     bodyTemplateAfterRelatedPhotosReady ||
     legacyBody;
+
+  // The event editor saves the English terms link when the field is left as it is: in another language that link counts as not set, and the legal page
+  // of the language is linked.
+  const storedTermsUrl = readString(source.termsUrl);
+  const termsUrl =
+    storedTermsUrl && (language === DEFAULT_UI_LANGUAGE || storedTermsUrl !== DEFAULT_EVENT_TERMS_URL)
+      ? storedTermsUrl
+      : emailDefaults(language).termsUrl;
 
   return {
     enabled,
@@ -166,8 +179,7 @@ export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLangu
     bodyTemplateAfterRelatedPhotosReady,
     subjectTemplateAfterTryOnResubmissionApproved,
     bodyTemplateAfterTryOnResubmissionApproved,
-    // The terms link stored as the English default counts as not set in another language: the language's own legal page is used.
-    termsUrl: (language === 'en' || readString(source.termsUrl) !== DEFAULT_EVENT_TERMS_URL ? readString(source.termsUrl) : null) || emailDefaults(language).termsUrl,
+    termsUrl,
     language,
   };
 }

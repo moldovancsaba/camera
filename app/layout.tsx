@@ -7,6 +7,7 @@ import { preconnect, preinit } from "react-dom";
 import '@sovereignsquad/gds-theme/styles.css';
 import "./globals.css";
 import Providers from './providers';
+import { DEFAULT_UI_LANGUAGE, translate } from '@/lib/i18n';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,8 +28,8 @@ export async function generateMetadata(): Promise<Metadata> {
   await headers().catch(() => null);
   return {
     title: "Camera",
-    description:
-      "Capture and share photos at your events with branded frames and flows.",
+    // The same text is the description of the share page's notices, in the event's language there (lib/i18n).
+    description: translate(DEFAULT_UI_LANGUAGE, 'meta.app.description'),
     applicationName: "Camera",
   };
 }

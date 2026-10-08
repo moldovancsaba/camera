@@ -1,10 +1,10 @@
-import { translate, type UiLanguage } from '@/lib/i18n';
+import { DEFAULT_UI_LANGUAGE, translate, type MessageKey, type UiLanguage } from '@/lib/i18n';
 
 /**
  * The default wording of the emails to the user, in the language of the event (camera#352). The English constants are the dictionary's English texts,
  * for code that has no language (the admin forms, the preview); the sender uses `emailDefaults(language)`.
  */
-export function emailDefaults(language: UiLanguage = 'en') {
+export function emailDefaults(language: UiLanguage = DEFAULT_UI_LANGUAGE) {
   return {
     subject: translate(language, 'email.subject'),
     body: translate(language, 'email.body'),
@@ -16,7 +16,7 @@ export function emailDefaults(language: UiLanguage = 'en') {
   };
 }
 
-const ENGLISH = emailDefaults('en');
+const ENGLISH = emailDefaults(DEFAULT_UI_LANGUAGE);
 
 export const DEFAULT_SUBMISSION_EMAIL_SUBJECT = ENGLISH.subject;
 export const DEFAULT_SUBMISSION_EMAIL_SENDER_NAME = 'The Selfie';
@@ -34,14 +34,17 @@ export const SUBMISSION_EMAIL_TEMPLATE_HELP =
 
 const normalizeNewlines = (value: string) => value.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
+/** The defaults the event editor pre-fills in its email fields, so an event may hold them as if they were the editor's own. */
+const PREFILLED_DEFAULT_KEYS = ['email.subject', 'email.body', 'email.subjectResubmission', 'email.bodyResubmission'] as const satisfies readonly MessageKey[];
+
 /**
- * A template an editor may have stored: the editor's own text, or null when it is empty or exactly one of the English defaults. The event editor
- * pre-fills and saves the English defaults as if they were the editor's own, so in another language such a stored template counts as not set and the
- * language's own default is sent; in English nothing changes.
+ * A template an editor may have stored, as it is sent in the language. The event editor pre-fills and saves the English defaults as if they were the
+ * editor's own, so in another language a stored template that is exactly one of the English defaults counts as not set: the same default in the
+ * language is sent instead (an updated-photo text stays the updated-photo text). An editor's own text is sent as written; in English nothing changes.
  */
-export function ownEmailTemplate(language: UiLanguage, stored: string | null): string | null {
+export function emailTemplateIn(language: UiLanguage, stored: string | null): string | null {
   if (!stored) return null;
-  if (language === 'en') return stored;
-  const english = [ENGLISH.subject, ENGLISH.body, ENGLISH.resubmissionSubject, ENGLISH.resubmissionBody, ENGLISH.notApprovedSubject, ENGLISH.notApprovedBody];
-  return english.some((text) => normalizeNewlines(text) === normalizeNewlines(stored)) ? null : stored;
+  if (language === DEFAULT_UI_LANGUAGE) return stored;
+  const key = PREFILLED_DEFAULT_KEYS.find((candidate) => normalizeNewlines(translate(DEFAULT_UI_LANGUAGE, candidate)) === normalizeNewlines(stored));
+  return key ? translate(language, key) : stored;
 }
