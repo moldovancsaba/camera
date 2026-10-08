@@ -190,4 +190,8 @@ export const hu: Record<MessageKey, string> = {
   'tryon.bottom.aria': 'Alsó kiválasztása a szett kiegészítéséhez',
   'tryon.preview.bottom': 'A kiválasztott alsó előnézete',
   'tryon.outfitNote': 'A teljes szett elkészítése nagyjából kétszer annyi ideig tart, mint egyetlen ruháé.',
+  'meta.capture.description': 'Fotók és megosztás: {name}.',
+  'meta.capture.invalid': 'Fotózás',
+  'meta.capture.notFound': 'Az esemény nem található',
+  'meta.event': 'Esemény',
 };

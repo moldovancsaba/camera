@@ -189,6 +189,10 @@ export const en = {
   'tryon.bottom.aria': 'Select a bottom to complete the outfit',
   'tryon.preview.bottom': 'Selected bottom preview',
   'tryon.outfitNote': 'Outfit renders take about twice as long as a single garment.',
+  'meta.capture.description': 'Photos and sharing for {name}.',
+  'meta.capture.invalid': 'Capture',
+  'meta.capture.notFound': 'Event not found',
+  'meta.event': 'Event',
 } as const;
 
 export type MessageKey = keyof typeof en;

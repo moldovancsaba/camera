@@ -7,7 +7,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { loadEventTheme } from '@/lib/theme/load';
 import EventThemeScope from '@/components/theme/EventThemeScope';
 import UiLanguageProvider from '@/components/i18n/UiLanguageProvider';
-import { normalizeUiLanguage } from '@/lib/i18n';
+import { normalizeUiLanguage, translate, type UiLanguage } from '@/lib/i18n';
 
 function stripHtml(s: string): string {
   return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -18,7 +18,7 @@ function metaDescription(event: {
   description?: string;
   location?: string;
   eventDate?: string;
-}): string {
+}, language: UiLanguage): string {
   const raw =
     typeof event.description === 'string' ? event.description.trim() : '';
   if (raw) {
@@ -36,7 +36,7 @@ function metaDescription(event: {
     const line = `${event.name} — ${parts.join(' · ')}`;
     return line.length > 320 ? `${line.slice(0, 317)}…` : line;
   }
-  return `Photos and sharing for ${event.name}.`;
+  return translate(language, 'meta.capture.description', { name: event.name });
 }
 
 export async function generateMetadata({
@@ -46,25 +46,26 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { eventId } = await params;
   if (!ObjectId.isValid(eventId)) {
-    return { title: 'Capture' };
+    return { title: translate('en', 'meta.capture.invalid') };
   }
 
   const event = await loadCaptureEvent(eventId);
 
   if (!event) {
-    return { title: 'Event not found' };
+    return { title: translate('en', 'meta.capture.notFound') };
   }
 
+  const language = normalizeUiLanguage(event.uiLanguage);
   const name =
     typeof event.name === 'string' && event.name.trim()
       ? event.name.trim()
-      : 'Event';
+      : translate(language, 'meta.event');
   const description = metaDescription({
     name,
     description: event.description as string | undefined,
     location: event.location as string | undefined,
     eventDate: event.eventDate as string | undefined,
-  });
+  }, language);
 
   const logoRaw =
     typeof event.logoUrl === 'string' ? event.logoUrl.trim() : '';
