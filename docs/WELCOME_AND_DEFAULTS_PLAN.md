@@ -136,7 +136,7 @@ Item numbers run continuously and never restart. A number can be commented on in
 | 91 | The pledge wall checkbox is **removed**; the consent page covers it; every photo is saved with the wall choice on. |
 | 92 | The "Love it" and "Try again" screen and buttons are gone for good; their two text settings leave the page editor (stored values stay). |
 | 93 | The frame notice and the try-on choice move to the one screen above the buttons; a failed save keeps the user on the screen with Continue ready. |
-| 94 | Open, for the owner: the old no-event page `/capture` has no zoom screen and no "Love it" screen (one preview with Save & Share and Download), so there is nothing to merge; it has the pledge wall checkbox but **no consent step**, so the checkbox stays there until the owner decides. Not changed. |
+| 94 | Decided by the owner on 2026-10-08: the old no-event page `/capture` has no zoom screen and no "Love it" screen (one preview with Save & Share and Download), so nothing is merged there; the pledge wall checkbox is **removed there too** (that page has no consent step, so its photos are now always shown on the wall; the owner chose this knowing it). |
 
 ### Delivery
 

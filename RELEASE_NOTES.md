@@ -6,6 +6,10 @@
 - **Added (#333):** the four texts a user reads while a photo waits for approval are settings of the selfie-taking page (section "Photo approval texts"): the heading ("Thank you!"), the saved message, the frame notice above Continue, and the waiting message with the email information. Empty = the text the code always showed, so no event changes until an editor writes one. The try-on sentence is added to the default waiting message only; an own waiting message is shown as written. `lib/events/page-texts.ts`.
 - **Not built (#338):** the "Back button text" setting. The capture page never passes a Back button to the consent, login, CTA or restart page, so no user ever sees one and the text would have no effect; decided by the owner on 2026-10-08: the flow stays one-way and #338 closes as not needed (planning item 95).
 - **Verified:** unit tests for the defaults and the fallback; a real browser on the built app, mocked answers, nothing written: custom texts on the screen and the waiting screen, defaults without settings, the CTA button text after a press.
+## Unreleased — the old capture page: no pledge wall checkbox either (camera#344, item 94)
+
+- **Removed (owner decision, 2026-10-08, taken after being told the page has no consent step):** the checkbox "Share my photo on the public pledge wall" on the old no-event capture page (`/capture`, reached from the profile and the share page). Its photos are saved with the wall choice on (`shareOptIn: true`), as on the event page. That page has no zoom screen and no "Love it" screen (one preview with Save & Share and Download), so nothing else changes there.
+- **Verified:** type-check and lint; a real browser on the built app, mocked answers, nothing written: the preview shows no pledge wall text, Save & Share saves once with `shareOptIn: true`.
 
 ## Unreleased — one screen instead of reframe and "Love it": Continue saves (camera#344)
 
