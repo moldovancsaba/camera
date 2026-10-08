@@ -23,7 +23,14 @@ export interface SerializedLogoRow {
   primaryPartnerName?: string | null;
   primaryEventAdminId?: string | null;
   primaryEventName?: string | null;
+  /** Who owns the logo (camera#361): the global library, one partner, or one event; its name for a partner or an event. */
+  scope?: 'global' | 'partner' | 'event';
+  ownerName?: string | null;
+  /** `messmass` for a partner's logo imported from messmass (camera#367). */
+  source?: string | null;
 }
+
+const OWNER_LABEL = { global: 'Global', partner: 'Partner', event: 'Event' } as const;
 
 export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow[] }) {
   const records: Array<AdminResourceRecord & SerializedLogoRow> = logos.map((logo) => ({
@@ -33,14 +40,21 @@ export default function LogosInventoryList({ logos }: { logos: SerializedLogoRow
     description: logo.description || 'Shared logo',
     mediaSrc: logo.imageUrl,
     mediaAlt: logo.name,
-    status: getStatusChipContent({ tone: logo.isActive ? 'active' : 'inactive' }),
+    status:
+      logo.scope && logo.scope !== 'global'
+        ? getStatusChipContent(
+            { tone: logo.scope === 'event' ? 'active' : 'info', label: logo.source === 'messmass' ? 'Partner, from messmass' : OWNER_LABEL[logo.scope] },
+            { tone: logo.isActive ? 'active' : 'inactive' }
+          )
+        : getStatusChipContent({ tone: logo.isActive ? 'active' : 'inactive' }),
     metadata: [
+      logo.scope && logo.scope !== 'global' ? { label: OWNER_LABEL[logo.scope], value: logo.ownerName || 'Unknown' } : null,
       { label: 'Partner defaults', value: String(logo.partnerDefaultCount) },
       { label: 'Event assignments', value: String(logo.eventAssignmentCount) },
       { label: 'Usage', value: String(logo.usageCount) },
       logo.primaryPartnerName ? { label: 'Partner', value: logo.primaryPartnerName } : null,
       !logo.primaryPartnerName && logo.primaryEventName ? { label: 'Event', value: logo.primaryEventName } : null,
-      !logo.primaryPartnerName && !logo.primaryEventName ? { label: 'Scope', value: 'Unassigned shared logo' } : null,
+      !logo.primaryPartnerName && !logo.primaryEventName && (!logo.scope || logo.scope === 'global') ? { label: 'Scope', value: 'Unassigned shared logo' } : null,
     ].filter((item): item is { label: string; value: string } => Boolean(item)),
   }));
   const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedLogoRow>> = [

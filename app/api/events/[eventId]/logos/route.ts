@@ -2,8 +2,9 @@
  * Event Logos API Endpoint
  * 
  * Manages logo assignments for events with scenario support
- * POST: Assign a logo to an event scenario (sets logosOverridden flag)
- * GET: List logos assigned to event (grouped by scenario)
+ * POST: Assign a logo to an event scenario (sets logosOverridden flag). One way only (camera#361): the logo comes from the partner's library or
+ *       is the event's own upload, never straight from the global library.
+ * GET: List logos assigned to event (grouped by scenario). The guest pages read it (capture page, slideshow): its answer must not change.
  */
 
 import { NextRequest } from 'next/server';
@@ -14,6 +15,7 @@ import { getSession } from '@/lib/auth/session';
 import { optionalAuth } from '@/lib/api';
 import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError, apiForbidden } from '@/lib/api/responses';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
+import { checkEventAssign } from '@/lib/library/db';
 
 type EventLogoAssignment = Event['logos'][number];
 type GroupedEventLogos = Record<LogoScenario, Array<EventLogoAssignment & Pick<Logo, 'name' | 'imageUrl' | 'thumbnailUrl'>>>;
@@ -83,10 +85,10 @@ export async function POST(
       return apiNotFound('Event');
     }
 
-    // Verify logo exists (use logoId UUID)
-    const logo = await logosCollection.findOne({ logoId });
-    if (!logo) {
-      return apiNotFound('Logo');
+    // One way only (camera#361): an event takes a logo from its partner's library, or its own upload, never straight from the global library.
+    const allowed = await checkEventAssign(db, event, 'logos', String(logoId));
+    if (!allowed.ok) {
+      return allowed.status === 404 ? apiNotFound('Logo') : apiBadRequest(allowed.reason);
     }
 
     // Check if logo is already assigned to this scenario

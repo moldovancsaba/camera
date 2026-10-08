@@ -24,6 +24,7 @@ import { assertPartnerMongoWorkspaceAccess } from '@/lib/partners/authorization'
 import { pushPartnerToMessmass } from '@/lib/messmassClient';
 import { partnerLibraryIds } from '@/lib/library/db';
 import { parsePartnerBrandDefaults } from '@/lib/events/brand-colours';
+import { parseLogoDefaults, type LogoDefault } from '@/lib/library/logos';
 
 export const GET = withErrorHandler(async (
   _request: NextRequest,
@@ -115,7 +116,6 @@ export const PATCH = withErrorHandler(async (
     updates.defaultBrandColors = brandDefaults.value;
   }
   if (defaultFrames !== undefined) updates.defaultFrames = defaultFrames;
-  if (defaultLogos !== undefined) updates.defaultLogos = defaultLogos;
 
   const db = await connectToDatabase();
   const existingPartner = await db.collection(COLLECTIONS.PARTNERS).findOne({ _id: new ObjectId(partnerId) });
@@ -133,6 +133,22 @@ export const PATCH = withErrorHandler(async (
     if (outside.length > 0) {
       throw apiBadRequest(`A default frame must be in the partner library: ${outside.join(', ')}`);
     }
+  }
+
+  // The same for a default logo (camera#367): an item of the partner's library, with a known scenario and an order.
+  let logoDefaults: LogoDefault[] | undefined;
+  if (defaultLogos !== undefined) {
+    const parsed = parseLogoDefaults(defaultLogos);
+    if (!parsed.ok) {
+      throw apiBadRequest(parsed.reason);
+    }
+    const inLibrary = await partnerLibraryIds(db, existingPartner, 'logos');
+    const outside = [...new Set(parsed.rows.map((row) => row.logoId))].filter((id) => !inLibrary.has(id));
+    if (outside.length > 0) {
+      throw apiBadRequest(`A default logo must be in the partner library: ${outside.join(', ')}`);
+    }
+    logoDefaults = parsed.rows;
+    updates.defaultLogos = logoDefaults;
   }
 
   const result = await db.collection(COLLECTIONS.PARTNERS).findOneAndUpdate(
@@ -174,7 +190,7 @@ export const PATCH = withErrorHandler(async (
     const cascadeUpdates: Record<string, unknown> = {};
     if (brandDefaults?.ok) cascadeUpdates.defaultBrandColors = brandDefaults.value;
     if (defaultFrames !== undefined) cascadeUpdates.defaultFrames = defaultFrames;
-    if (defaultLogos !== undefined) cascadeUpdates.defaultLogos = defaultLogos;
+    if (logoDefaults !== undefined) cascadeUpdates.defaultLogos = logoDefaults;
     cascadeResult = await updateChildEventsFromPartner(existingPartner.partnerId, cascadeUpdates);
   }
 
