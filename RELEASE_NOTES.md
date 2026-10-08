@@ -6,6 +6,12 @@
 - **Not changed:** existing partners are not touched by this release (no backfill ran); the scenario ticks stay until the logo model is simplified (register 155/156).
 - **Verified:** unit tests (the default rows, the route: partner defaults, an inheriting event, an event with its own list, a second import, a taken-off default, existing defaults first; provisioning: collect, idempotent, a failed download never throws); type-check; the full CI chain. **Not seen by the owner.**
 
+## Unreleased — research: the building bricks and the inventory of every element (camera#412, register item 151)
+
+- **Added (docs only, owner request 2026-10-09: "collect all elements ... which is related to what ... make an expected way how we can use the building bricks ... recommend how to re-organise the existing management and editor capabilities"):** `docs/ELEMENT_INVENTORY.md`, 477 rows read from the code of `main` in five readings (the user flow, texts and e-mails, graphics and screens, the admin editors, the data model), each with its findings and the full records in `docs/_research/element-inventory/`; and the measurement of how the 128 admin files use the design system (213 of 220 `--gds-*` references name tokens GDS never defines, 835 inline style objects; section F and `docs/BUILDING_BRICKS.md` 7.1), and `docs/BUILDING_BRICKS.md`, the proposal: five kinds of brick (Words, Picture, Look, Link, Switch) and compositions (page, screen, frame, message, result), one rule for every slot (event's own, partner's own, global default, built-in; messmass is a source), the agreed mandatory pages and how their defaults are generated, the recipe of the welcome page screen from the default slideshow's parts, how the editors can be re-organised without new editors, and the proposed order of item 139.
+- **Records the owner's answers of 2026-10-09:** the logo imported from messmass is automatically the partner's default logo (153) and stays on all six MTK Budapest events (154); the logo library does not ask where a logo shows (155). `docs/LIBRARIES.md` is updated when those steps are built.
+- **Verified:** nothing was run or changed in the product; every row carries file and line references from a read of the code. **Not built, not seen by the owner.**
+
 ## Unreleased — the MTK x Vasas event is in the libraries (data; camera#369, epic camera#361)
 
 - **Changed (data, 2026-10-08, owner's go):** the real event MTK Budapest x Vasas FC now uses the libraries. The owner moved the designers' picture into the library (two event frames, every message
