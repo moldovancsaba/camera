@@ -197,6 +197,7 @@ Ordered by expected benefit per effort. Rules that apply to every step (from `CL
 - Not to do: no `createImageBitmap` for every slide; no View Transitions; do not keep more than the queue window of decoded images.
 
 ### S5. Startup: show the first picture early (C5)
+- **Status 2026-10-09: done** (first 2 slides + the overlay, logo and background alongside, the rest behind in the queue; once mode unchanged). Measured in a production build on a modelled link of 600 KB/s shared by eleven 300 KB pictures: the stage appeared at **about 6.0 s before (all 11 loaded) and 1.65 s after**. Found on the way: `settings` were set early, so the 2.5 s timer filled the queue and counted the head as played while the loading screen was still showing; settings are now set when the show starts. Notes: `docs/SLIDESHOW_LOGIC.md` section 10.
 - What: show the stage as soon as the first 1-2 slides are decoded and the overlay PNG is loaded; load logos, background, overlay in parallel with `Promise.allSettled`; preload the remaining queue in the background; preload the overlay (`new Image()` with decode) before first show so there is no pop-in.
 - Files: `SlideshowPlayerCore.tsx` (`loadInitialBuffer`), maybe `ScreenDesignLayers.tsx`.
 - Verify: time-to-first-picture mark (S1) on Fast 4G with cache disabled: from about N x image time to about 2 x image time.

@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — slideshow: the show starts on the first two pictures (issue 476, step S5 of the fix plan)
+
+- **Changed (the start, "sometimes it needs 10 to 20 seconds"):** the screen used to wait until **all eleven pictures of the first answer** had loaded before it showed anything. Now it starts as soon as the **first 2 slides and the screen design's picture** are ready (the picture is waited for 4 s at most); the other slides of the answer load behind them, three at a time, and join the queue as each is ready. The loading-screen logo and the failover background load alongside and are no longer waited for. **Measured** in a production build with eleven 300 KB pictures sharing a modelled 600 KB/s link: the stage appeared at **about 6.0 s before and 1.65 s after**; the design's picture was already there (no pop-in). The saving grows with the picture weight and the number of pictures.
+- **Fixed (found while measuring):** the settings were set as soon as the first answer arrived, so while the screen still showed only its loading picture the 2.5 s timer could fill the queue and **the head slide was counted as played** (and its hold timer started) with nothing shown. The settings are now set when the show starts.
+- **Not changed:** the once mode (the whole pass is awaited, it has an end), the order and fairness, the look.
+- **Documentation:** release notes, ARCHITECTURE.md, SLIDESHOW_LOGIC.md ("The start"), the research plan status, HANDOVER.
+- **Verified:** type-check; lint; the full CI chain; and the **real player in a production build** on the modelled link: first picture 1.65 s (before: 6.0 s, read from the same log), no slide counted as played before the show started, the queue refilled to 10 and no repeat. The first-slide-failed fallback (wait for the whole answer and start on what loaded) is the old path and was read, **not run**. **Not seen on the live screen.**
+
 ## Unreleased — slideshow: the preload is the request the screen uses (issue 476, step S4a of the fix plan)
 
 - **Fixed (no visible change):** the player preloaded every picture with `crossOrigin = 'anonymous'` (a CORS-mode request), while the screen shows it with a plain `<img>` (a no-cors request). The browser treats them as **two different requests**, so every picture was fetched **twice** and the swap waited for the second one (from the HTTP cache when the host allows it, from the network when it does not). **Measured on Chrome 152** with a small cross-origin test page: a CORS preload followed by a plain `<img>` gives 2 resource entries, a plain preload gives 1. We never read the pixels, so the preload is now plain too.
