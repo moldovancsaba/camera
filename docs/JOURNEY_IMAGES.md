@@ -5,14 +5,22 @@ pictures; camera writes the words.
 
 ## CTA page with a picture
 
-A CTA page (`cta`) can carry `backgroundImageUrl`. The page then fills the screen with the picture (scaled to cover, centred, in any
-orientation), puts a soft dark veil over it, and writes the page's own title (big, uppercase), its text (italic) and its buttons over it in
+A CTA page (`cta`) can carry `backgroundImageUrl`. The page then shows the **whole picture, fitted to the screen with its aspect ratio kept** (`object-fit:
+contain`, centred, in any orientation; the event's page colour shows around it; before 2026-10-09 it was cropped to fill, owner report 209, camera#491), puts a
+soft dark veil over it, and writes the page's own title (big, uppercase), its text (italic) and its buttons over it in
 white: a round visit button (`visitButtonText`, opens the page's address) and a quieter outline button for the next step (`buttonText`). The
 buttons use the club's colours (`buttonColor`, `buttonTextColor`, `buttonBorderColor`, hex). Without a picture the page is the plain card it
 always was. Set in the admin pages editor of the event (CTA page, "Picture page") with the picture picker: chosen from the event's images library
 (its partner's library and its own uploads, `docs/LIBRARIES.md`), uploaded there (PNG, JPEG, WebP or SVG, up to 4 MB), or pasted as an address; the
 page keeps the plain address either way. Settings of the page: `lib/db/schemas.ts` (`CustomPage.config`), component `components/capture/CTAPage.tsx`,
 the round buttons `components/capture/PillButton.tsx` (shared with the welcome step).
+
+Three optional switches on a picture page (camera#491; `lib/capture/cta-layout.ts` decides, `ctaLayout`): **`hideTexts`** hides the title and the text (the title stays for a screen
+reader, visually hidden), **`pictureLink`** makes the **whole picture a link** to the page's address (a full-page button, `aria-label` = the visit button text), and **`hideButtons`**
+hides the visit and continue buttons. The buttons only go when something else leads on: the picture is the link, or the page is the last one (continue button off), so a page is
+never a dead end by accident (the editor says so). A tap on a picture whose buttons are hidden opens the address in a **new tab and goes on to the next page** when the page is not the
+last, and goes to the address in the **same tab** on the last page. When nothing is written over the picture the dark veil is not drawn. A page with no address has no visit button and no
+link (before, a page with no address but a known photo id linked to "?submissionId=…").
 
 Hand over to the designers: a portrait-safe picture (guests are on phones; the picture is cropped to the screen), dark enough at its middle for
 white text, no text and no button drawn in it.
