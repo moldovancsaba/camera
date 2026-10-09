@@ -57,6 +57,8 @@ export const cameraAdminVocabularyPacks = [
     open: { defaultMessage: 'Open slideshow', icon: GdsIcons.Eye, feedback: openedFeedback },
     'copy-url': { defaultMessage: 'Copy URL', icon: GdsIcons.Copy, feedback: savedFeedback },
     'editor-action': { defaultMessage: 'Slideshow action', icon: GdsIcons.Edit, feedback: savedFeedback },
+    'make-default': { defaultMessage: 'Make default', icon: GdsIcons.Check, feedback: savedFeedback },
+    'create-default': { defaultMessage: 'Create the default slideshow', icon: GdsIcons.Add, feedback: savedFeedback },
   }),
   createGdsVocabularyPack('slideshow-layouts', {
     create: { defaultMessage: 'Create layout', icon: GdsIcons.Add, feedback: savedFeedback },

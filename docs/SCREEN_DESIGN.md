@@ -25,6 +25,29 @@ Overlay: the designers' `Seyu_MTK_VASAS_Overlay2.png` (stored in the R2 bucket u
 24.375` (468 px); text "SZKENNELJ BE!" `x 73.44, y 48.7, width 24.48, size 5.6` in the event's font. At 1920×1080 the rendered QR is 468×468 at
 (1412, 30), the window 1330×748 at (40, 33), as in the example.
 
+## The default screen of every event (camera#326, camera#327; step 7 of docs/BUILDING_BRICKS.md section 8)
+
+Every event gets a **default slideshow** with a ready-made screen design, so no event starts with an empty stage and nobody has to lay one out. It is what the welcome page screen
+and the giant screen start from; an editor changes it, or makes another slideshow and sets that as the default.
+
+- **Layout:** the MTK x Vasas measures above are the default layout (`DEFAULT_STAGE` in `lib/screen/default-stage.ts`): photo window, QR code, a line of text under the QR code, and a band under
+  the window for the written address. One layout, in percent of the 16:9 stage, used by the live stage and (next) by the picture of the welcome page.
+- **Picture:** drawn by the server (`renderDefaultOverlay`, `@napi-rs/canvas`) in the event's own colours (its page colour and its button colour, from the messmass style): a night-stadium
+  background (gradient, floodlight glows, a faint pitch circle and half-way line), panels for the QR code and the texts, an accent border round the window, and a transparent window.
+  The same colours give the same picture. Stored in Vercel Blob under `screens/<event uuid>/default-<hash>.png`.
+- **QR code and address:** the event's tracked **"Giant screen"** link (placement "Giant screen", kind QR, `lib/short-links/store.ts`) is made if the event has none, and reused if it has one, so
+  the scans are counted on their own and reach messmass like every tracked link. The QR points at `https://go.messmass.com/<slug>`; under the window the same address is written without
+  the protocol.
+- **Call to action:** one short line picked **once at random** from the dictionary (`screen.qrText.1` to `4`, English and Hungarian; the language is the event's `uiLanguage`) and stored in the
+  design, so the screen does not change between visits. The Hungarian wording is a draft for MTK to review. Every line fits one line of the panel (a test checks it).
+- **When it is made:** for every **new** event, after the response (the admin form, messmass provisioning, savetheworld provisioning); on demand with **Create the default slideshow** on the
+  event's slideshows list when it has none (`POST /api/admin/events/<id>/default-slideshow`). Making it twice changes nothing. **Existing events get nothing automatically**; a backfill
+  needs the owner's go.
+- **The default flag:** `Slideshow.isDefault`, at most one per event. **Make default** on any slideshow's card sets it (`PUT` of the same route; the new one is flagged before the old flag is
+  taken off, so an event is never without one). The default slideshow cannot be deleted: make another the default first.
+- **Not yet:** the sample selfie in the window when no photo exists (needs the picture slots, step 5), the stored picture of the welcome page screen drawn from this layout (step 8), the
+  text levels (global, partner, event) for the call to action (step 6).
+
 ## Limits
 
 - 16:9 only: the design is positioned for the designers' 1920×1080 stage; another stage aspect shifts it.

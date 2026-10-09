@@ -232,6 +232,11 @@ export const en = {
   'sharePage.meta.from': 'From {event}',
   'sharePage.meta.title': 'Photo of {name} — {event}',
   'sharePage.meta.description': 'Photo from {event}',
+  'screen.slideshow.name': 'Default slideshow',
+  'screen.qrText.1': 'Scan & smile',
+  'screen.qrText.2': 'Scan to join',
+  'screen.qrText.3': 'Be on screen',
+  'screen.qrText.4': 'Your photo!',
 } as const;
 
 export type MessageKey = keyof typeof en;

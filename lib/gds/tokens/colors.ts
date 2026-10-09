@@ -4,6 +4,8 @@ export const CAMERA_DEFAULT_CTA_BRAND_COLOR = '#9333EA';
 
 export const CAMERA_STAGE_WHITE = '#FFFFFF';
 export const CAMERA_STAGE_BLACK = '#000000';
+/** The QR code on the light panel of the default giant screen (lib/screen/default-stage.ts): near black, a little blue so it sits well on the stage. */
+export const CAMERA_STAGE_QR_DARK = '#0b1220';
 
 // The system default report style of messmass (heading colour and hero background, #RRGGBBAA), used for a generated
 // event frame when no theme is known (camera#231). Same values as DEFAULT_REPORT_STYLE_COLORS in messmass.

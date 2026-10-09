@@ -1248,6 +1248,8 @@ export interface Slideshow {
   stageAspect?: number | null;
   /** A giant-screen design: a picture over the stage with a window for the photos, a QR code and texts (camera#309). */
   screenDesign?: import('@/lib/slideshow/screen-design').ScreenDesign | null;
+  /** The slideshow the event's welcome page screen and its giant screen start from (camera#326): the generated one, or the one an editor set as default. At most one per event. */
+  isDefault?: boolean;
   
   // Admin tracking
   createdBy: string;                 // Admin user ID from SSO who created this slideshow

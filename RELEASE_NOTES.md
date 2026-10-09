@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the default slideshow of every event: a generated giant-screen design (camera#326, camera#327, step 7a; admin only, new events only)
+
+- **Added:** every **new** event gets a **default slideshow** with a ready-made screen design: a night-stadium picture drawn in the event's own colours with a transparent photo window, the event's tracked **"Giant screen"** link as a QR code (made if the event has none, reused if it has one), one short call to action picked once at random from the dictionary (English and Hungarian; the Hungarian wording is a draft for MTK to review) and the link's address written under the window. It is made after the response, so creating an event stays quick, and making it twice changes nothing.
+- **Added:** `Slideshow.isDefault` (at most one per event) and, on the event's slideshows list, **Create the default slideshow** (when the event has none) and **Make default** on every other card. The new default is flagged before the old flag is taken off, so an event is never without one. **The default slideshow cannot be deleted** (make another the default first).
+- **Not changed:** no existing event gets a slideshow; nothing a user sees on any live event changes (the welcome page does not use the default slideshow yet, that is step 8); the MTK Budapest x Vasas event keeps its own screen. A backfill for existing events needs the owner's go.
+- **Verified:** type-check; lint; unit tests (the layout parts inside the stage and not overlapping, the transparent window, the accent border, the white QR panel, the same colours give the same picture; the generator: link, picture, texts, idempotent, a retry after a failed upload leaves one link, existing slideshows untouched, Hungarian texts, every line fits the panel; the route; the delete guard); the full CI chain. **Not seen on a real event** (it needs the storage token the deployment has).
+
 ## Unreleased — several logos in a place: one is picked at random (camera#419, owner decision 156; user-visible on a few events)
 
 - **Changed (owner, 2026-10-09: "one logo, use it; more than one, the system always shows random"):** the capture page (the loading screen and the pages of the user journey) and the slideshow loading screen now **pick one of the logos of a place at random** instead of always showing the first. One logo is used as it is. The capture page makes **one draw per visit** and uses it for every place, so a user sees the same logo throughout; the slideshow picks on load.

@@ -17,6 +17,8 @@ interface Slideshow {
   slideshowId: string;
   name: string;
   isActive: boolean;
+  /** The slideshow the welcome page screen and the giant screen start from (camera#327). */
+  isDefault?: boolean;
   createdAt: string;
   bufferSize?: number;
   transitionDurationMs?: number;
@@ -57,6 +59,22 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
     }
   };
 
+  const [busy, setBusy] = useState(false);
+  const hasDefault = slideshows.some((slideshow) => slideshow.isDefault);
+
+  // One call to the default-slideshow route, then a reload so the list shows what the server holds (a new one has its picture and link).
+  const callDefault = async (method: 'POST' | 'PUT', body?: object) => {
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/admin/events/${eventId}/default-slideshow`, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+      if (!response.ok) throw new Error(((await response.json().catch(() => null)) as { error?: string } | null)?.error || `Request failed (${response.status})`);
+      window.location.reload();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'The default slideshow could not be changed');
+      setBusy(false);
+    }
+  };
+
   const copySlideshowUrl = (slideshowId: string) => {
     const url = `${window.location.origin}/slideshow/${slideshowId}`;
     navigator.clipboard.writeText(url);
@@ -72,11 +90,18 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
             Display submissions on screens during the event
           </p>
         </div>
-        <Link href={`/admin/events/${eventId}/slideshows/new`} style={{ textDecoration: 'none' }}>
-          <SemanticButton action="slideshows:create" leftSection={<IconPlus size={16} />}>
-            New Slideshow
-          </SemanticButton>
-        </Link>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          {hasDefault ? null : (
+            <SemanticButton action="slideshows:create-default" variant="secondary" loading={busy} disabled={busy} onClick={() => void callDefault('POST')}>
+              Create the default slideshow
+            </SemanticButton>
+          )}
+          <Link href={`/admin/events/${eventId}/slideshows/new`} style={{ textDecoration: 'none' }}>
+            <SemanticButton action="slideshows:create" leftSection={<IconPlus size={16} />}>
+              New Slideshow
+            </SemanticButton>
+          </Link>
+        </div>
       </div>
 
       {slideshows.length === 0 ? (
@@ -95,12 +120,15 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
                   <strong>{slideshow.name}</strong>
                   <div style={{ marginTop: '0.25rem' }}>
                     <LabelTag tone={slideshow.isActive ? 'success' : 'neutral'} label={slideshow.isActive ? 'Active' : 'Inactive'} />
+                    {slideshow.isDefault ? <LabelTag tone="info" label="Default" /> : null}
                   </div>
                 </div>
                 <SemanticButton
                   action="slideshows:delete"
                   variant="danger"
                   size="xs"
+                  disabled={slideshow.isDefault}
+                  title={slideshow.isDefault ? 'Make another slideshow the default first' : undefined}
                   onClick={() => void handleDeleteSlideshow(slideshow._id)}
                   aria-label="Delete"
                 >
@@ -133,6 +161,11 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
                 >
                   Copy public URL
                 </SemanticButton>
+                {slideshow.isDefault ? null : (
+                  <SemanticButton action="slideshows:make-default" fullWidth variant="secondary" size="xs" disabled={busy} onClick={() => void callDefault('PUT', { slideshowId: slideshow.slideshowId })}>
+                    Make default
+                  </SemanticButton>
+                )}
               </div>
             </article>
           ))}

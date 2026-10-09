@@ -402,6 +402,11 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
+    // The default slideshow is what the welcome page screen and the giant screen start from: it is replaced (make another the default), never just removed (camera#327).
+    if (existing.isDefault === true) {
+      return NextResponse.json({ error: 'This is the default slideshow of the event. Make another slideshow the default first, then delete this one.' }, { status: 409 });
+    }
+
     await db.collection(COLLECTIONS.SLIDESHOWS).deleteOne({ _id: new ObjectId(id) });
 
     return NextResponse.json({ success: true });

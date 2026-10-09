@@ -1,6 +1,6 @@
 /**
  * A database of plain arrays for the tests of the libraries: just the calls lib/library and its routes make (find with sort and limit,
- * findOne, countDocuments, insertOne, updateOne with $set, $push and $pull, updateMany with $set and $pull (also on a dotted path such as
+ * findOne, countDocuments, insertOne, updateOne with $set, $push and $pull, updateMany with $set, $unset and $pull (also on a dotted path such as
  * `library.images`), deleteOne). Filters: equality (null matches a missing field),
  * $in, $nin, $ne, $exists, $or and dotted paths through arrays (`frames.frameId`; a plain value also matches an array that holds it); $set (also `frames.$.isActive`), $unset, $push and $pull. Not part of the app.
  */
@@ -155,6 +155,7 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
           for (const doc of docs) {
             for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(doc, path, value, filter);
             for (const [path, cond] of Object.entries((update.$pull as Doc) ?? {})) pullFrom(doc, path, cond);
+            for (const path of Object.keys((update.$unset as Doc) ?? {})) unsetPath(doc, path);
           }
           return { matchedCount: docs.length, modifiedCount: docs.length };
         },
