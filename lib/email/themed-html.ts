@@ -25,11 +25,13 @@ export interface ThemedEmailInput {
   bodyText?: string;
   /** The message with its variables filled in (`resolveRich`); used instead of `bodyText` when given. */
   content?: RBlock[];
+  /** The legal part with its variables filled in: small print in the muted colour under the message and the button (epic 463, E2); omitted when there is none. */
+  legal?: RBlock[] | null;
   /** The main link, shown as a button as well as in the text; omitted when there is none. */
   button?: { label: string; url: string } | null;
 }
 
-export function renderThemedEmail({ theme, eventName, bodyText, content, button }: ThemedEmailInput): string {
+export function renderThemedEmail({ theme, eventName, bodyText, content, legal, button }: ThemedEmailInput): string {
   const font = emailFont(theme.font.family);
   const mark = theme.logoUrl
     ? `<img src="${escapeHtml(theme.logoUrl)}" alt="${escapeHtml(eventName)}" height="56" style="display:block;margin:0 auto;border:0;max-height:56px;max-width:240px;height:auto;" />`
@@ -41,6 +43,8 @@ export function renderThemedEmail({ theme, eventName, bodyText, content, button 
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 8px 0;"><tr><td bgcolor="${theme.buttonBackground}" style="background:${theme.buttonBackground};border-radius:8px;"><a href="${escapeHtml(button.url)}" style="display:inline-block;padding:14px 28px;font-family:${font};font-size:16px;font-weight:700;color:${theme.buttonText};text-decoration:none;">${escapeHtml(button.label)}</a></td></tr></table>`
     : '';
 
+  const legalPart = legal && legal.length > 0 ? `<div style="margin-top:20px;color:${theme.cardMuted};">${richHtml(legal, { link: theme.link }, 'small')}</div>` : '';
+
   const footer = theme.emailFooterImageUrl
     ? `\n<tr><td style="padding:16px 0 0 0;"><img src="${escapeHtml(theme.emailFooterImageUrl)}" alt="${escapeHtml(eventName)}" width="560" style="display:block;width:100%;max-width:560px;height:auto;border:0;border-radius:${theme.radius};" /></td></tr>`
     : '';
@@ -51,7 +55,7 @@ export function renderThemedEmail({ theme, eventName, bodyText, content, button 
 <tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
 <tr><td style="padding:8px 0 20px 0;font-family:${font};text-align:center;color:${theme.heading};">${mark}<div style="margin-top:12px;font-size:20px;font-weight:700;color:${theme.heading};">${escapeHtml(eventName)}</div></td></tr>
-<tr><td bgcolor="${theme.cardBackground}" style="background:${theme.cardBackground};border:1px solid ${theme.cardBorder};border-radius:${theme.radius};padding:24px;font-family:${font};font-size:16px;line-height:1.55;color:${theme.cardText};">${paragraphs}${cta}</td></tr>${footer}
+<tr><td bgcolor="${theme.cardBackground}" style="background:${theme.cardBackground};border:1px solid ${theme.cardBorder};border-radius:${theme.radius};padding:24px;font-family:${font};font-size:16px;line-height:1.55;color:${theme.cardText};">${paragraphs}${cta}${legalPart}</td></tr>${footer}
 </table>
 </td></tr>
 </table>

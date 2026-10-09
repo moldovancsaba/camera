@@ -6,6 +6,7 @@ import { sendSubmissionResultEmail, type SubmissionNotificationResult, type Subm
 import { sanitizeEmail } from '@/lib/security/sanitize';
 import { loadEventTheme } from '@/lib/theme/load';
 import { emailFactsOf } from '@/lib/email/event-link';
+import { loadEventLegal } from '@/lib/email/legal';
 import type { EventFacts } from '@/lib/email/variables';
 import type { EventTheme } from '@/lib/theme/event-theme';
 import { getConfiguredSiteUrl } from '@/lib/site-url';
@@ -438,7 +439,8 @@ export function buildSubmissionEmailInput(
   eventName: string | null,
   mode: SubmissionEmailMode = 'after_save',
   theme: EventTheme | null = null,
-  facts: EventFacts | null = null
+  facts: EventFacts | null = null,
+  legal: string | null = null
 ): SubmissionNotificationInput | null {
   const recipient = resolveSubmissionResultEmailRecipient(submission);
   if (!recipient.email) {
@@ -471,6 +473,7 @@ export function buildSubmissionEmailInput(
     language: policy.language,
     texts: policy.texts,
     facts,
+    legal,
   };
 }
 
@@ -481,9 +484,10 @@ export async function sendSubmissionResultEmailByPolicy(
   policy: SubmissionEmailPolicy,
   mode: SubmissionEmailMode,
   theme: EventTheme | null = null,
-  facts: EventFacts | null = null
+  facts: EventFacts | null = null,
+  legal: string | null = null
 ): Promise<SendSubmissionEmailMetadataResult> {
-  const input = buildSubmissionEmailInput(submission, shareUrl, policy, eventName, mode, theme, facts);
+  const input = buildSubmissionEmailInput(submission, shareUrl, policy, eventName, mode, theme, facts, legal);
   if (!input) {
     const now = new Date().toISOString();
 
@@ -508,6 +512,12 @@ export async function sendSubmissionResultEmailByPolicy(
 export async function textsOf(db: Db, event: WithId<Event> | null): Promise<TextOverrides | null> {
   if (!event) return null;
   return (await loadEventTexts(db, event).catch(() => null))?.overrides ?? null;
+}
+
+/** The legal part that applies to the event in its language (epic 463): the event's own, its partner's, or the general one; null when no level has one, or the read fails. */
+export async function legalOf(db: Db, event: WithId<Event> | null): Promise<string | null> {
+  if (!event) return null;
+  return (await loadEventLegal(db, event).catch(() => null))?.effective?.text ?? null;
 }
 
 /** The theme of the event for its guest emails; null when it cannot be loaded, and the email then keeps its plain layout. */
@@ -562,7 +572,8 @@ export async function dispatchPendingRelatedEmailForSubmission(
     policy,
     'after_related',
     await themeOf(db, event),
-    emailFactsOf(event)
+    emailFactsOf(event),
+    await legalOf(db, event)
   );
 
   if (!result.shouldRetry) {
@@ -617,7 +628,8 @@ export async function dispatchTryOnResubmissionApprovalEmailForSubmission(
     policy,
     'after_tryon_resubmission_approved',
     await themeOf(db, event),
-    emailFactsOf(event)
+    emailFactsOf(event),
+    await legalOf(db, event)
   );
 }
 
@@ -667,7 +679,8 @@ export async function dispatchPendingSubmissionEmailForSubmission(
       policy,
       'after_save',
       await themeOf(db, event),
-      emailFactsOf(event)
+      emailFactsOf(event),
+      await legalOf(db, event)
     );
 
     mergedResult.shouldRetry = mergedResult.shouldRetry || afterSaveResult.shouldRetry;
