@@ -23,6 +23,8 @@ export interface SlotItem {
   source?: string;
   /** The level that holds it in the chain (`partner`, `event`, `place`, `own`). */
   level?: string;
+  /** The library no longer has it: what is shown is the level's snapshot of it (the fail-safe, issue 421). */
+  lost?: boolean;
 }
 
 export interface SlotPanelProps {
@@ -48,6 +50,8 @@ export interface SlotPanelProps {
   upload?: { endpoint: string; extraFields: Record<string, string>; accept: string; acceptWords: string; maxBytes?: number; maxWords?: string };
   /** Called after an upload so the page can reload. */
   onUploaded?: () => void | Promise<void>;
+  /** Makes a lost item this level's own ("Keep as own"); when absent a lost item can only be removed. */
+  onKeepLost?: (id: string) => Promise<void> | void;
 }
 
 const MODE_LABEL: Record<SlotMode, { label: string; tone: 'neutral' | 'info' | 'success' | 'warning' }> = {
@@ -59,7 +63,7 @@ const MODE_LABEL: Record<SlotMode, { label: string; tone: 'neutral' | 'info' | '
 
 const initialOf = (value: SlotValue) => ({ items: [...(value.items ?? [])], useDefault: value.useDefault !== false });
 
-export default function SlotPanel({ title, description, noun, parentName, value, mode, defaultItems, effective, candidates, busy, error, onChange, upload, onUploaded }: SlotPanelProps) {
+export default function SlotPanel({ title, description, noun, parentName, value, mode, defaultItems, effective, candidates, busy, error, onChange, upload, onUploaded, onKeepLost }: SlotPanelProps) {
   const [pick, setPick] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const own = initialOf(value);
@@ -73,7 +77,12 @@ export default function SlotPanel({ title, description, noun, parentName, value,
   const add = (id: string) => save([...own.items, id], own.useDefault);
   const remove = (id: string) => save(own.items.filter((item) => item !== id), own.useDefault);
 
+  const lostItems = effective.filter((item) => item.lost);
+  const lostOwn = lostItems.filter((item) => ownIds.has(item.id));
+  const lostInherited = lostItems.filter((item) => !ownIds.has(item.id));
+
   const levelTag = (item: SlotItem) => {
+    if (item.lost) return <LabelTag tone="warning" label="No longer in the library" />;
     if (item.source === 'messmass') return <LabelTag tone="info" label="From messmass" />;
     return item.level === 'own' || ownIds.has(item.id) ? <LabelTag tone="success" label="Own" /> : <LabelTag tone="neutral" label={defaultLabel} />;
   };
@@ -82,6 +91,20 @@ export default function SlotPanel({ title, description, noun, parentName, value,
     <SectionPanel title={title} description={description} action={<LabelTag tone={topLevel.tone} label={topLevel.label} />}>
       <GdsStack gap="md">
         {error ? <InlineAlert title="That did not work" message={error} severity="error" /> : null}
+        {lostOwn.length > 0 ? (
+          <InlineAlert
+            title={`A ${noun} was lost at the library`}
+            message={`The library no longer has ${lostOwn.map((item) => `"${item.name}"`).join(', ')}. This event keeps showing it, from what it saved. Keep it as this event's own ${noun}, or remove it.`}
+            severity="warning"
+          />
+        ) : null}
+        {lostInherited.length > 0 ? (
+          <InlineAlert
+            title={`A ${noun} was lost at the library`}
+            message={`${parentName ? `${parentName[0].toUpperCase()}${parentName.slice(1)}` : 'The library'} uses ${lostInherited.map((item) => `"${item.name}"`).join(', ')}, which the library no longer has. It is still shown here, from what the event saved. To stop showing it, replace the default with a ${noun} of your own.`}
+            severity="warning"
+          />
+        ) : null}
 
         {effective.length === 0 ? (
           <StateBlock variant="empty" title={`No ${noun} is used here`} description={mode === 'none' ? `You chose to show no ${noun} here.` : `There is no ${noun} to use yet. Pick one or upload one.`} />
@@ -97,6 +120,11 @@ export default function SlotPanel({ title, description, noun, parentName, value,
                   status={levelTag(item)}
                   hideWhenNoMedia={false}
                 />
+                {item.lost && ownIds.has(item.id) && onKeepLost ? (
+                  <SemanticButton action="slot:keep-lost" size="xs" disabled={busy} onClick={() => void onKeepLost(item.id)}>
+                    Keep as own
+                  </SemanticButton>
+                ) : null}
                 {ownIds.has(item.id) ? (
                   <SemanticButton action="slot:remove" variant="secondary" size="xs" disabled={busy} onClick={() => void remove(item.id)}>
                     Remove

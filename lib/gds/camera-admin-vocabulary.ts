@@ -162,6 +162,7 @@ export const cameraAdminVocabularyPacks = [
     none: { defaultMessage: 'Show nothing here', icon: GdsIcons.Cancel, feedback: savedFeedback },
     'upload-open': { defaultMessage: 'Upload a new one', icon: GdsIcons.Upload, feedback: openedFeedback },
     'upload-close': { defaultMessage: 'Close the upload', icon: GdsIcons.Close, feedback: openedFeedback },
+    'keep-lost': { defaultMessage: 'Keep as own', icon: GdsIcons.Check, feedback: savedFeedback },
   }),
   createGdsVocabularyPack('library', {
     // The Images library and its picture picker (camera#368).

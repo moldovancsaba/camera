@@ -10,12 +10,13 @@
  */
 
 import type { Db, Document } from 'mongodb';
-import { COLLECTIONS } from '@/lib/db/schemas';
+import { COLLECTIONS, generateId } from '@/lib/db/schemas';
 import { checkEventAssign, fieldsOf, itemView, loadEventLibrary, loadPartnerLibrary, savePartnerLibrary } from '@/lib/library/db';
 import { canPartnerAssign, scopeOf } from '@/lib/library/rules';
+import type { LibraryScope } from '@/lib/library/kinds';
 import type { LibraryItemView } from '@/lib/library/types';
 import { LOGO_PLACE_SLOTS, LOGO_SCENARIO_IDS, LOGO_SLOT, LOGO_SLOT_IDS, eventSlotsFromLegacy, isOnSlotModel, logoChain, partnerLogoValue, resolveEventLogos, type LogoEvent, type LogoPartner } from './logo';
-import { nextSnapshots, type Snapshots } from './snapshot';
+import { lostItem, nextSnapshots, type SnapshotItem, type Snapshots } from './snapshot';
 import { resolveSlot, slotMode, type ResolvedItem, type SlotMode, type SlotValue } from './resolve';
 
 const MAX_ITEMS = 50;
@@ -110,6 +111,8 @@ export async function setEventLogoSlot(db: Db, event: Document, slotId: string, 
 export interface LogoItemView extends LibraryItemView {
   /** The level that holds the logo in the chain: `partner`, `event` or `place`. */
   level?: string;
+  /** The library no longer has this logo: what the event shows is its snapshot of it (the fail-safe, issue 421). */
+  lost?: boolean;
 }
 
 export interface SlotPanelData {
@@ -125,10 +128,18 @@ export interface SlotPanelData {
   effective: LogoItemView[];
 }
 
-const withView = (resolved: readonly ResolvedItem[], views: Map<string, LibraryItemView>): LogoItemView[] =>
+/** What the editor sees of a logo the library no longer has: the event's snapshot of it, marked lost. */
+function viewOfSnapshot(item: SnapshotItem): LibraryItemView {
+  return { id: item.id, kind: 'logos', name: item.name, description: '', imageUrl: item.imageUrl, thumbnailUrl: item.thumbnailUrl, ...(item.source ? { source: item.source } : {}), scope: item.scope as LibraryScope, itemActive: false, createdAt: item.takenAt, messageArea: null };
+}
+
+/** The items with their views; an id the library no longer has is shown from the event's snapshot, marked lost, instead of silently dropped (`lostFor` gives it). */
+const withView = (resolved: readonly ResolvedItem[], views: Map<string, LibraryItemView>, lostFor?: (id: string) => SnapshotItem | null): LogoItemView[] =>
   resolved.flatMap((entry) => {
     const view = views.get(entry.id);
-    return view ? [{ ...view, level: entry.level }] : [];
+    if (view) return [{ ...view, level: entry.level }];
+    const lost = lostFor?.(entry.id);
+    return lost ? [{ ...viewOfSnapshot(lost), level: entry.level, lost: true }] : [];
   });
 
 async function viewsOf(db: Db, ids: readonly string[]): Promise<Map<string, LibraryItemView>> {
@@ -190,6 +201,8 @@ export async function loadEventLogoPanels(db: Db, event: Document): Promise<Even
   const ids = [...new Set(panels.flatMap((panel) => [...panel.effective, ...panel.defaults, ...(panel.value.items ?? []).map((id) => ({ id, level: 'own' }))].map((item) => item.id)))];
   const views = await viewsOf(db, ids);
   const library = await loadEventLibrary(db, event, 'logos');
+  // A logo the library lost is still shown from the event's snapshot, marked lost, so the editor sees what the event shows (issue 421).
+  const lostFor = (id: string) => lostItem(event.slotSnapshots as Snapshots | undefined, '', id);
   return {
     onModel,
     partner: library.partner,
@@ -197,9 +210,9 @@ export async function loadEventLogoPanels(db: Db, event: Document): Promise<Even
       slotId: panel.slotId,
       value: panel.value,
       mode: slotMode(panel.value),
-      defaultItems: withView(panel.defaults, views),
-      ownItems: withView((panel.value.items ?? []).map((id) => ({ id, level: 'own' })), views),
-      effective: withView(panel.effective, views),
+      defaultItems: withView(panel.defaults, views, lostFor),
+      ownItems: withView((panel.value.items ?? []).map((id) => ({ id, level: 'own' })), views, lostFor),
+      effective: withView(panel.effective, views, lostFor),
     })),
     candidates: library.available,
   };
@@ -218,3 +231,51 @@ export async function addLogoToPartnerSlot(db: Db, partner: Document, logoId: st
   return setPartnerLogo(db, partner, { items: [...(partnerLogoValue(partner as LogoPartner).items ?? []), logoId] }, now);
 }
 
+
+/**
+ * "Keep as own" (the lost state of the fail-safe, issue 421): a logo this event chose from a library that no longer has it becomes the event's own logo, made from the event's
+ * snapshot of it, and takes its place in every place of the event that used it. Only a logo the event itself chose can be kept this way (a lost logo that came from the partner's
+ * default is the partner's to fix, and the event keeps showing it meanwhile). The snapshot's picture address is used as it is; nothing is fetched or copied.
+ */
+export async function keepLostLogoAsOwn(db: Db, event: Document, lostId: string, now: string): Promise<StoreResult<{ logoId: string; places: string[] }>> {
+  if (!isOnSlotModel(event as LogoEvent)) return { ok: false, status: 400, reason: 'This event still has its logos as they were; nothing is lost.' };
+  const snapshot = lostItem(event.slotSnapshots as Snapshots | undefined, '', lostId);
+  if (!snapshot) return { ok: false, status: 404, reason: 'The event has no record of this logo.' };
+  if ((await logoDocs(db, [lostId])).has(lostId)) return { ok: false, status: 400, reason: 'This logo is still in the library.' };
+  if (!snapshot.imageUrl) return { ok: false, status: 400, reason: 'The event has no picture address for this logo.' };
+
+  const stored = (event.slots as Record<string, SlotValue>) ?? {};
+  const places = Object.entries(stored).filter(([, value]) => value.items?.includes(lostId)).map(([slotId]) => slotId);
+  if (places.length === 0) return { ok: false, status: 400, reason: 'This event did not choose this logo itself, so it cannot be kept as its own.' };
+
+  const logoId = generateId();
+  await db.collection(COLLECTIONS.LOGOS).insertOne({
+    logoId,
+    name: snapshot.name || 'Logo',
+    description: 'Kept by the event when the library no longer had it.',
+    imageUrl: snapshot.imageUrl,
+    thumbnailUrl: snapshot.thumbnailUrl ?? snapshot.imageUrl,
+    width: snapshot.width ?? 0,
+    height: snapshot.height ?? 0,
+    fileSize: 0,
+    mimeType: snapshot.mimeType ?? 'image/png',
+    isActive: true,
+    usageCount: 0,
+    createdBy: 'system',
+    createdAt: now,
+    updatedAt: now,
+    scope: 'event',
+    partnerId: text(event.partnerId),
+    eventId: text(event.eventId),
+  });
+
+  // Each place that used the lost logo uses the new one instead, in the same position; what else it chose is untouched.
+  let current = event;
+  for (const slotId of places) {
+    const value = stored[slotId];
+    const saved = await setEventLogoSlot(db, current, slotId, { items: (value.items ?? []).map((id) => (id === lostId ? logoId : id)), ...(value.useDefault === false ? { useDefault: false } : {}) }, now);
+    if (!saved.ok) return saved;
+    current = { ...current, slots: saved.value.slots };
+  }
+  return { ok: true, value: { logoId, places } };
+}
