@@ -7,6 +7,13 @@
 - **Verified:** type-check; lint; the route tests next to every wrapped route; the guard test.
 - **Known limit (not changed):** the log records the path and the status, not the body, so it cannot tell an approval from a rejection on the review route: the vetting record itself (`reviewHistory`: action, who, when, reason) holds that.
 
+## Unreleased — fixed: a welcome page without a picture of its own showed no giant screen (issue 520; owner screenshot 2026-10-09: a question mark where the screen should be)
+
+- **Cause (read in the code):** the capture page copied every field of the public event into its state except `welcomeScreen`, so `event.welcomeScreen.url`, the picture drawn from the default slideshow, was always empty and the welcome step had nothing to show unless the page had a picture of its own. The welcome-picture work of issues 327 and 520 (the redraw on every save, the drawn picture) was correct and stored, and never reached the page. Found when the MTK welcome page, whose static picture was cleared so that it follows the slideshow, showed an empty space above START.
+- **Fixed:** `welcomeScreenOf` (a plain https address only) takes it over from the event data and `welcomeScreenImage` picks the page's own picture, else the drawn one (`lib/events/welcome-screen-url.ts`, unit-tested).
+- **Data:** the static picture of the MTK x Vasas welcome page was put back at once as the undo (it had been cleared at the owner's request); it is cleared again after this is live and looked at.
+- **Lesson:** the data was checked, the page was not: the welcome page is looked at in a browser before such a picture is removed.
+
 
 ## Unreleased — activity log: who did what and when, every refused or failed request, and a weekly CSV to the owner (issue 517; owner request 2026-10-09)
 
