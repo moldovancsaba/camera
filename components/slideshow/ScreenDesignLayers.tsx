@@ -9,19 +9,19 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { CAMERA_STAGE_BLACK, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
 import { fontFaceCss, fontStack, googleFontHref } from '@/lib/theme/css';
-import { estimateFitSize, fitSize, type ResolvedScreenDesign, type ScreenDesignText } from '@/lib/slideshow/screen-design';
+import { estimateFitSize, fitSize, FIT_MAX_SIZE, type ResolvedScreenDesign, type ScreenDesignText } from '@/lib/slideshow/screen-design';
 
 /** The size, in % of the stage height, at which a line that fills its box is measured. */
 const FIT_REFERENCE = 10;
 
 /**
  * One line of text. With `fit` it is scaled to fill the box width exactly (owner, 2026-10-09): the line is measured at a reference size and scaled by the ratio of the box to the line,
- * again when the font arrives or the box changes; `size` caps it. Until it is measured the size is an estimate, so nothing is hidden and nothing jumps much.
+ * again when the font arrives or the box changes; `size` is not used then. Until it is measured the size is an estimate, so nothing is hidden and nothing jumps much.
  */
 function ScreenText({ t, font }: { t: ScreenDesignText; font: string | undefined }) {
   const box = useRef<HTMLDivElement>(null);
   const line = useRef<HTMLSpanElement>(null);
-  const [fitted, setFitted] = useState(() => estimateFitSize(t.text, t.width, t.size));
+  const [fitted, setFitted] = useState(() => estimateFitSize(t.text, t.width, FIT_MAX_SIZE));
 
   useLayoutEffect(() => {
     const wrap = box.current;
@@ -30,7 +30,7 @@ function ScreenText({ t, font }: { t: ScreenDesignText; font: string | undefined
     const measure = () => {
       const previous = el.style.fontSize;
       el.style.fontSize = `${FIT_REFERENCE}cqh`;
-      const next = fitSize(el.getBoundingClientRect().width, FIT_REFERENCE, wrap.getBoundingClientRect().width, t.size);
+      const next = fitSize(el.getBoundingClientRect().width, FIT_REFERENCE, wrap.getBoundingClientRect().width, FIT_MAX_SIZE);
       el.style.fontSize = previous;
       setFitted((current) => (Math.abs(current - next) > 0.01 ? next : current));
     };
@@ -43,7 +43,7 @@ function ScreenText({ t, font }: { t: ScreenDesignText; font: string | undefined
       observer.disconnect();
       document.fonts?.removeEventListener('loadingdone', measure);
     };
-  }, [t.fit, t.text, t.size, t.width, font]);
+  }, [t.fit, t.text, t.width, font]);
 
   return (
     <div

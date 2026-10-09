@@ -61,3 +61,19 @@ test('anything but true or false for the crossfade is refused and nothing is sto
   assert.equal('crossfade' in (data.slideshows.find((s) => s.slideshowId === 's-other') as object), false);
 });
 
+
+test('a screen design that is refused says what is wrong, stores nothing, and the refusal is logged (owner, 2026-10-09: "do you save the errors?")', async (t) => {
+  const { data } = setup(t);
+  const logged: Array<{ event: string; context: Record<string, unknown> }> = [];
+  t.mock.module('@/lib/observability/logger', { namedExports: { logWarn: (event: string, _message: string, context: Record<string, unknown>) => { logged.push({ event, context }); } } });
+  const { PATCH } = await importRoute('design-refused');
+  const design = { overlayImageUrl: 'https://images.example.test/overlay.png', window: { left: 2, top: 3, width: 69, height: 69 }, photoFit: 'cover', qr: { url: 'go.messmass.com/mtk-vasas', x: 73, y: 2, size: 24 } };
+  const response = await PATCH(patch(OTHER_ID, { screenDesign: design }));
+  assert.equal(response.status, 400);
+  assert.match(((await response.json()) as { error: string }).error, /QR code address must start with https:\/\//);
+  assert.equal('screenDesign' in (data.slideshows.find((s) => s.slideshowId === 's-other') as object), false, 'nothing is stored');
+  assert.equal(logged.length, 1);
+  assert.equal(logged[0].event, 'slideshow.save_refused');
+  assert.equal(logged[0].context.slideshowId, String(OTHER_ID));
+  assert.match(String(logged[0].context.error), /QR code address/);
+});

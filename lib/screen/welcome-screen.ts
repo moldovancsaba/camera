@@ -11,7 +11,7 @@
 import { createCanvas, loadImage, type SKRSContext2D } from '@napi-rs/canvas';
 import QRCode from 'qrcode';
 import { CAMERA_STAGE_BLACK, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
-import { fitSize, type ScreenDesign } from '@/lib/slideshow/screen-design';
+import { FIT_MAX_SIZE, fitSize, type ScreenDesign } from '@/lib/slideshow/screen-design';
 import { mix } from '@/lib/theme/color';
 import { STAGE_HEIGHT, STAGE_WIDTH, type StageColours } from './default-stage';
 
@@ -106,9 +106,9 @@ export async function renderWelcomeScreen(sources: WelcomeScreenSources): Promis
     const width = px(text.width, STAGE_WIDTH);
     let size = px(text.size, STAGE_HEIGHT);
     if (text.fit) {
-      // One line that fills its box, as on the live stage (components/slideshow/ScreenDesignLayers.tsx): measure it at a reference size, scale by box over line, capped by `size`.
+      // One line that fills its box, as on the live stage (components/slideshow/ScreenDesignLayers.tsx): measure it at a reference size, scale by box over line (`size` is not used).
       ctx.font = `700 ${FIT_REFERENCE_PX}px ${sources.fontStack}`;
-      size = fitSize(ctx.measureText(text.text).width, FIT_REFERENCE_PX, width, size);
+      size = fitSize(ctx.measureText(text.text).width, FIT_REFERENCE_PX, width, px(FIT_MAX_SIZE, STAGE_HEIGHT));
     }
     ctx.font = `700 ${size}px ${sources.fontStack}`;
     ctx.fillStyle = text.color && HEX.test(text.color) ? text.color : CAMERA_STAGE_WHITE;

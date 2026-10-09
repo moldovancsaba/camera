@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { designFromDraft, draftFromDesign, emptyDraft, placeUnderWindow } from './ScreenDesignFields';
+import { designFromDraft, draftFromDesign, emptyDraft, placeUnderWindow, withHttps } from './ScreenDesignFields';
 import { parseScreenDesign } from '@/lib/slideshow/screen-design';
 import { chosenValue } from '@/lib/library/picker';
 
@@ -52,4 +52,16 @@ test('a text keeps its own fit setting through the editor: a fixed size stays fi
     { text: 'Filled', x: 1, y: 90, width: 60, size: 9, align: 'center' as const, fit: true },
   ] };
   assert.deepEqual(designFromDraft(draftFromDesign(design)), design);
+});
+
+test('a QR code address typed without https:// gets it, so the save is not refused (owner, 2026-10-09: "screenDesign.qr needs an https address")', () => {
+  assert.equal(withHttps('go.messmass.com/mtk-vasas'), 'https://go.messmass.com/mtk-vasas');
+  assert.equal(withHttps('  //go.messmass.com/mtk-vasas '), 'https://go.messmass.com/mtk-vasas');
+  assert.equal(withHttps('https://go.messmass.com/mtk-vasas'), 'https://go.messmass.com/mtk-vasas', 'an https address is left as typed');
+  assert.equal(withHttps('http://go.messmass.com/x'), 'http://go.messmass.com/x', 'another protocol is not guessed at: the check says what is wrong');
+  assert.equal(withHttps('   '), '');
+  const typed = { ...draft(R2_OVERLAY), ...WINDOW, qrUrl: 'go.messmass.com/mtk-vasas', qrX: '73.54', qrY: '2.78', qrSize: '24.375' };
+  const design = designFromDraft(typed);
+  assert.equal(design?.qr?.url, 'https://go.messmass.com/mtk-vasas');
+  assert.ok(parseScreenDesign(design).ok);
 });

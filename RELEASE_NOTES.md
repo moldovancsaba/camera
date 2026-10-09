@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the line under the photos really fills its box; a refused slideshow save says what is wrong and is logged (owner reports 2026-10-09)
+
+- **Fixed ("it is not scaled"):** a text that fills its box was capped at the size stored with it (10 % of the stage height), so an address such as `FANSELFIE.ME/MTK` stayed at about 80 % of the box. A fit text now ignores the stored size and takes the size that fills the box exactly (at most 30 %, the largest size a text can have), on the live stage and in the server picture of the welcome page. In the editor the Size field is greyed out while **Fill the box** is ticked. The default band is drawn for a nominal line of 12 %.
+- **Fixed (the save that was refused):** the check of the QR code said only "needs an https address, x, y and size in percent", so an editor who typed `go.messmass.com/mtk-vasas` in **QR code address** could not tell what was wrong. The editor now adds `https://` to an address typed without it, and the check names the part that is wrong (the address; or left, top and side as numbers inside the stage).
+- **Logged:** a refused screen design save is written to the log as `slideshow.save_refused` with the slideshow, the user and the reason (it was invisible before; only the person who pressed Save saw it). This is the Vercel log, not a stored list.
+- **Verified:** type-check; lint; unit tests (a fit line is not held back by its stored size, the server picture reaching both edges with a stored size of 4, the https rule, the specific QR errors, the refused save is stored nowhere and logged); the real stage component measured in a browser with the owner's text: box 709 px, line 709 px, size 12.2 % although 10 is stored.
+
+
 ## Unreleased — the address under the photos is the event's own, one line that fills its box (owner report 2026-10-09)
 
 - **The written address uses the event's own short address whenever it has one** (owner: "instead of Fotózz! go.messmass.com/nts5kd it has to be go.messmass.com/mtk-vasas, or what the user adds"). The default slideshow wrote the slug of the tracked "Giant screen" link (a random code like `nts5kd`); it now writes `Event.shortUrlSlug` (`go.messmass.com/mtk-vasas`) and falls back to the link's slug only when the event has no address of its own. The QR code still points at the tracked link, so its scans stay counted on their own; both addresses reach the capture page and both are counted.

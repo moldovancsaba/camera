@@ -25,7 +25,7 @@ const TEXT_ROWS = 3;
 // A new text fills its box by default (owner, 2026-10-09): one line scaled to the box width.
 const blankText = (): ScreenDesignTextDraft => ({ text: '', x: '', y: '', width: '', size: '', color: '', fit: true });
 
-/** Where a text typed into a row that has no place yet goes by default: under the photo window, as wide as the window, scaled to fill that width (`size` is the largest it may take). */
+/** Where a text typed into a row that has no place yet goes by default: under the photo window, as wide as the window, scaled to fill that width (`size` is then not used; it only has to be a number). */
 export function placeUnderWindow(row: ScreenDesignTextDraft, window: { left: string; top: string; width: string; height: string }): ScreenDesignTextDraft {
   if (row.x || row.y || row.width || row.size) return row;
   const top = Number(window.top), height = Number(window.height);
@@ -51,6 +51,12 @@ export function draftFromDesign(d: ScreenDesign | null | undefined): ScreenDesig
   };
 }
 
+/** An address typed without its protocol (`go.messmass.com/mtk-vasas`) means https: the QR code only takes https, and nobody should have to type it. */
+export function withHttps(value: string): string {
+  const v = value.trim();
+  return v && !/^[a-z][a-z0-9+.-]*:/i.test(v) ? `https://${v.replace(/^\/+/, '')}` : v;
+}
+
 /** `null` removes the design (no picture); a value that is not a number is sent as NaN so the API names the problem. */
 export function designFromDraft(draft: ScreenDesignDraft): ScreenDesign | null {
   if (!draft.overlayImageUrl.trim()) return null;
@@ -61,16 +67,16 @@ export function designFromDraft(draft: ScreenDesignDraft): ScreenDesign | null {
     photoFit: draft.photoFit,
   };
   if (draft.fontFamily.trim()) out.fontFamily = draft.fontFamily.trim();
-  if (draft.qrUrl.trim()) out.qr = { url: draft.qrUrl.trim(), x: n(draft.qrX), y: n(draft.qrY), size: n(draft.qrSize), ...(draft.qrColor.trim() ? { color: draft.qrColor.trim() } : {}) };
+  if (draft.qrUrl.trim()) out.qr = { url: withHttps(draft.qrUrl), x: n(draft.qrX), y: n(draft.qrY), size: n(draft.qrSize), ...(draft.qrColor.trim() ? { color: draft.qrColor.trim() } : {}) };
   const texts = draft.texts.filter((t) => t.text.trim()).map((t) => ({ text: t.text, x: n(t.x), y: n(t.y), width: n(t.width), size: n(t.size), align: 'center' as const, ...(t.fit ? { fit: true as const } : {}), ...(t.color.trim() ? { color: t.color.trim() } : {}) }));
   if (texts.length) out.texts = texts;
   return out;
 }
 
-function Num({ label, value, onChange, helper }: { label: string; value: string; onChange: (v: string) => void; helper?: string }) {
+function Num({ label, value, onChange, helper, disabled }: { label: string; value: string; onChange: (v: string) => void; helper?: string; disabled?: boolean }) {
   return (
     <Field label={label} helper={helper}>
-      <NumberInput value={value === '' ? '' : Number(value)} min={0} max={100} step={0.1} decimalScale={3} onChange={(v) => onChange(v === '' || v === undefined ? '' : String(v))} />
+      <NumberInput value={value === '' ? '' : Number(value)} min={0} max={100} step={0.1} decimalScale={3} disabled={disabled} onChange={(v) => onChange(v === '' || v === undefined ? '' : String(v))} />
     </Field>
   );
 }
@@ -103,7 +109,7 @@ export default function ScreenDesignFields({ draft, onChange, eventMongoId }: { 
         <Select value={draft.photoFit} onChange={(v) => set('photoFit', v === 'contain' ? 'contain' : 'cover')} data={[{ value: 'cover', label: 'Cover (crop to fill)' }, { value: 'contain', label: 'Contain (whole photo)' }]} />
       </Field>
 
-      <Field label="QR code address" helper="Camera draws the QR code. Where it points: https only.">
+      <Field label="QR code address" helper="Camera draws the QR code. Where it points: an https address (https:// is added when you leave it out).">
         <TextInput value={draft.qrUrl} onChange={(e) => set('qrUrl', e.target.value)} placeholder="https://go.messmass.com/…" />
       </Field>
       <SimpleGrid cols={{ base: 2, sm: 4 }}>
@@ -121,7 +127,7 @@ export default function ScreenDesignFields({ draft, onChange, eventMongoId }: { 
           <Num label="Left (%)" value={t.x} onChange={(v) => setText(i, { x: v })} />
           <Num label="Top (%)" value={t.y} onChange={(v) => setText(i, { y: v })} />
           <Num label="Box width (%)" value={t.width} onChange={(v) => setText(i, { width: v })} />
-          <Num label={t.fit ? 'Largest size (%)' : 'Size (%)'} value={t.size} onChange={(v) => setText(i, { size: v })} />
+          <Num label="Size (%)" value={t.size} onChange={(v) => setText(i, { size: v })} disabled={t.fit} helper={t.fit ? 'Set by the box width' : undefined} />
           <Field label="Fill the box" helper="Scale the line to the box width."><Checkbox checked={t.fit} onChange={(e) => setText(i, { fit: e.currentTarget.checked })} aria-label={`Text ${i + 1} fills the box width`} /></Field>
           <Field label="Colour"><TextInput value={t.color} onChange={(e) => setText(i, { color: e.target.value })} placeholder="#RRGGBB" /></Field>
         </SimpleGrid>
