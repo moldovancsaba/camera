@@ -196,6 +196,8 @@ export default function GeneratedFramePanel({
   const [draft, setDraft] = useState<string[]>([]);
   // The frames chosen for each message, in the order of `draft` (none = the generated layout).
   const [draftFrames, setDraftFrames] = useState<string[][]>([]);
+  // Where the dark area of the designs comes from: their own layers, or the mask of the generated frame.
+  const [draftDarkArea, setDraftDarkArea] = useState<'frame' | 'generated'>('frame');
   const [busy, setBusy] = useState<Busy>(null);
   const [notice, setNotice] = useState<Notice | null>(initialNotice);
 
@@ -209,6 +211,7 @@ export default function GeneratedFramePanel({
     if (frameDesign) {
       setDraft(frameDesign.messages);
       setDraftFrames(framesOf(frameDesign, frameDesign.messages));
+      setDraftDarkArea(frameDesign.darkArea ?? 'frame');
     }
     onDesignChanged?.();
   }, [onDesignChanged]);
@@ -220,6 +223,7 @@ export default function GeneratedFramePanel({
     const messages = data.frameDesign?.messages ?? data.defaultMessages;
     setDraft(messages);
     setDraftFrames(framesOf(data.frameDesign, messages));
+    setDraftDarkArea(data.frameDesign?.darkArea ?? 'frame');
   };
 
   useEffect(() => {
@@ -231,6 +235,7 @@ export default function GeneratedFramePanel({
         const messages = data.frameDesign?.messages ?? data.defaultMessages;
         setDraft(messages);
         setDraftFrames(framesOf(data.frameDesign, messages));
+        setDraftDarkArea(data.frameDesign?.darkArea ?? 'frame');
       })
       .catch((error: unknown) => {
         if (!cancelled) setLoadError(error instanceof Error ? error.message : 'Could not load the generated frame');
@@ -245,7 +250,8 @@ export default function GeneratedFramePanel({
   const saved = design?.messages ?? loaded?.defaultMessages ?? [];
   const savedFrames = framesOf(design, saved);
   const carriers = loaded?.availableFrames ?? [];
-  const dirty = JSON.stringify(draft) !== JSON.stringify(saved) || JSON.stringify(draftFrames) !== JSON.stringify(savedFrames);
+  const savedDarkArea = design?.darkArea ?? 'frame';
+  const dirty = JSON.stringify(draft) !== JSON.stringify(saved) || JSON.stringify(draftFrames) !== JSON.stringify(savedFrames) || draftDarkArea !== savedDarkArea;
   const validation = useMemo(() => validateMessages(draft.map((message) => message)), [draft]);
   const validationError = validation.ok ? null : validation.error;
 
@@ -278,7 +284,7 @@ export default function GeneratedFramePanel({
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           // The frames of a message go by the text of the message, so they stay with the message (camera#366).
-          body: JSON.stringify({ messages: validation.messages, messageFrames: Object.fromEntries(validation.messages.flatMap((message, index) => (draftFrames[index]?.length ? [[message, draftFrames[index]]] : []))) }),
+          body: JSON.stringify({ messages: validation.messages, messageFrames: Object.fromEntries(validation.messages.flatMap((message, index) => (draftFrames[index]?.length ? [[message, draftFrames[index]]] : []))), darkArea: draftDarkArea }),
         },
         'Could not save the messages'
       );
@@ -546,6 +552,20 @@ export default function GeneratedFramePanel({
               onChange={(index, ids) => setDraftFrames((list) => list.map((item, at) => (at === index ? ids : item)))}
             />
           ) : null}
+          {carriers.length > 0 || draftFrames.some((ids) => ids.length > 0) ? (
+            <fieldset disabled={busy !== null} style={{ border: 0, display: 'grid', gap: '0.375rem', margin: '1rem 0 0', padding: 0 }}>
+              <legend style={{ fontWeight: 600, padding: 0 }}>Dark area of the designs</legend>
+              <p style={{ ...muted, margin: 0 }}>The part of the picture users keep their face away from while they move and zoom the photo, shown at 50 % black.</p>
+              <label style={{ alignItems: 'baseline', display: 'flex', gap: '0.5rem' }}>
+                <input type="radio" name="dark-area" checked={draftDarkArea === 'frame'} onChange={() => setDraftDarkArea('frame')} />
+                <span>The design’s own: the header and footer its designer drew</span>
+              </label>
+              <label style={{ alignItems: 'baseline', display: 'flex', gap: '0.5rem' }}>
+                <input type="radio" name="dark-area" checked={draftDarkArea === 'generated'} onChange={() => setDraftDarkArea('generated')} />
+                <span>The mask of the generated frame: the logo, the teams, the bar and the message box, whatever the design</span>
+              </label>
+            </fieldset>
+          ) : null}
           {validationError ? (
             <p role="alert" style={{ color: 'var(--mantine-color-error)', margin: '0.5rem 0 0' }}>
               {validationError}
@@ -558,7 +578,7 @@ export default function GeneratedFramePanel({
             <Button type="button" size="xs" loading={busy === 'save'} disabled={busy !== null || !dirty || validationError !== null} onClick={() => void save()}>
               Save messages
             </Button>
-            <Button type="button" variant="light" size="xs" disabled={busy !== null || !dirty} onClick={() => { setDraft(saved); setDraftFrames(savedFrames); }}>
+            <Button type="button" variant="light" size="xs" disabled={busy !== null || !dirty} onClick={() => { setDraft(saved); setDraftFrames(savedFrames); setDraftDarkArea(savedDarkArea); }}>
               Discard changes
             </Button>
             <Button type="button" variant="light" size="xs" loading={busy === 'reset'} disabled={busy !== null} onClick={() => void reset()}>

@@ -4,6 +4,7 @@
  * GET /api/admin/events/[id]/frame-design      the snapshot and the message list (viewer)
  * PUT /api/admin/events/[id]/frame-design      { messages: string[], messageFrames?: { [message]: frameId | frameId[] } } or { reset: true } (manager); the frame images are
  *   generated afterwards, one per usable message (a 502 means the list is saved but the images are not; repeat the request).
+ *   `darkArea` (`frame`, the default, or `generated`) says where the dark area of the designs comes from: their own layers, or the mask of the generated default frame.
  *   `messageFrames` says which frames of the event (assigned, switched on, with a message area) each message is written on, one id or a list (camera#366, issue 449).
  * The GET answer also lists those frames (`availableFrames`) so the editor can offer them.
  *
@@ -68,7 +69,7 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
 
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== 'object') throw apiBadRequest('A JSON body is required');
-  const saved = await saveFrameMessages(db, event, body as { messages?: unknown; reset?: unknown; messageFrames?: unknown });
+  const saved = await saveFrameMessages(db, event, body as { messages?: unknown; reset?: unknown; messageFrames?: unknown; darkArea?: unknown });
   const images = await generateFrameVariants(db, { ...event, frameDesign: saved }).catch((error: unknown) => {
     console.error(`Event ${id}: frame images could not be generated`, error);
     throw apiError('The messages were saved but the frame images could not be generated. Try again.', 502);

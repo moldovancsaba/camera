@@ -8,7 +8,7 @@ import { createCanvas, loadImage, type Canvas } from '@napi-rs/canvas';
 import { cssColour } from '@/lib/gds/tokens/color-css';
 import type { FrameContext } from './context';
 import { EMOJI_ALIAS, ensureEmojiFont, type ResolvedFont } from './fonts';
-import { DEFAULT_FRAME_HEIGHT, DEFAULT_FRAME_WIDTH, layoutFrame, type FrameLayout } from './layout';
+import { DEFAULT_FRAME_HEIGHT, DEFAULT_FRAME_WIDTH, layerBoxes, layoutFrame, type FrameLayout, type LayerId } from './layout';
 
 /** Bump when the drawing changes, so stored images are regenerated. */
 export const FRAME_RENDER_VERSION = 4;
@@ -57,7 +57,7 @@ export function drawEmojiLogo(emoji: string): Canvas | null {
   return cropped;
 }
 
-export async function renderFrame(input: {
+export interface FrameInput {
   context: FrameContext;
   message: string | null;
   logoBytes: Buffer | null;
@@ -66,7 +66,10 @@ export async function renderFrame(input: {
   font: ResolvedFont;
   width?: number;
   height?: number;
-}): Promise<RenderedFrame> {
+}
+
+/** The layout of the generated frame for one message, with the logo (or the event's emoji) it would draw and the context to draw on: shared by the drawing and by the mask. */
+async function prepareFrame(input: FrameInput) {
   const width = input.width ?? DEFAULT_FRAME_WIDTH;
   const height = input.height ?? DEFAULT_FRAME_HEIGHT;
   const { context, font } = input;
@@ -107,6 +110,22 @@ export async function renderFrame(input: {
     message: input.message,
     measure,
   });
+
+  return { canvas, ctx, layout, logo, logoState, width, height, headingColor, heroBackground };
+}
+
+/**
+ * The dark area of the generated frame for one message as layer boxes (the logo, the teams, the bar with its line, the message), without drawing anything: the mask a design that
+ * carries messages can borrow (`FrameDesign.darkArea`).
+ */
+export async function generatedLayers(input: FrameInput): Promise<Array<{ id: LayerId; x: number; y: number; width: number; height: number }>> {
+  const { layout } = await prepareFrame(input);
+  return layerBoxes(layout).map(({ id, rect }) => ({ id, ...rect }));
+}
+
+export async function renderFrame(input: FrameInput): Promise<RenderedFrame> {
+  const { canvas, ctx, layout, logo, logoState, heroBackground, headingColor } = await prepareFrame(input);
+  const { font } = input;
 
   // The bar, then the 1% line above it (the sides and the bottom of the frame clip it away).
   ctx.fillStyle = cssColour(heroBackground);
