@@ -1257,6 +1257,8 @@ export interface Slideshow {
   submissionSourceMode?: 'originals_only' | 'approved_tryon_only' | 'originals_and_approved_tryon';
   /** Submission _ids (as strings) manually pinned into this slideshow's rotation, in addition to whatever submissionSourceMode already matches. */
   manualSubmissionIds?: string[];
+  /** Two picture layers: the next picture fades in over the one before instead of replacing it (camera#476, S4b). Off until the owner has seen it. */
+  crossfade?: boolean;
   /** When an admin last pressed "Reload the screen" (ISO time). Playlist answers carry it as `reloadToken`; an open full-screen player that sees a new one reloads (camera#476, S8b). */
   reloadRequestedAt?: string;
 

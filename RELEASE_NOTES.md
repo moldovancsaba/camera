@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — slideshow: an optional crossfade, off until you have seen it (issue 476, step S4b; owner answer 210 a)
+
+- **Added (owner: "build it, test it, go live only after I have seen it"):** a **Crossfade** checkbox in the slideshow editor, **off by default for every slideshow, so nothing changes on any screen until you switch it on**. On: the next picture is drawn as a new layer that appears at opacity 0 and **fades in over the picture before** (over the slideshow's fade duration), which stays underneath until the fade is over and is then dropped, so at most two pictures are drawn. Off: exactly as before (the picture is replaced).
+- **Why:** the old fade only faded the new picture in while the old one was already gone, so a late picture looked like a freeze; with two layers the old picture stays until the new one is fully shown. The next picture is one of the first slides of the queue, so it is already loaded and decoded (step S4a).
+- **Owner step:** open a **test slideshow**, tick **Crossfade**, save and look at the screen (set a fade duration of about 1000 ms); when you like it, tick it on the real screen's slideshow. It is a per-slideshow switch, so the MTK screen is untouched until you do.
+- **Documentation:** release notes, ARCHITECTURE.md, SLIDESHOW_LOGIC.md, the research plan status, HANDOVER; the editor guide with the other guides.
+- **Verified:** type-check; lint; unit tests (the API stores the switch as a boolean, turns it off again, refuses anything else and stores nothing); the full CI chain; and the **real player in a production build**: with the switch on, every change showed two layers (the previous picture below, the new one above) for the fade and one afterwards, the new layer mounted at opacity 0 with a 1200 ms transition and went to 1 a moment later; with the switch off no layer appeared and one picture was drawn, as before. **Not seen as moving pictures on a real screen** (the embedded browser throttles frames): look at it before you switch it on, as above.
+
 ## Unreleased — slideshow: the screen reloads itself every 3 hours, and an admin can reload it now (issue 476, step S8b; owner answer 212)
 
 - **Added (owner: "every 3 hours and add a manual button for the admin"):** a full-screen slideshow page **reloads itself every 3 hours**, at a slide boundary so no picture is cut; the show restarts from the server's queue in a moment (the start is fast since step S5). A layout cell never reloads (it would reload the whole layout).

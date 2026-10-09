@@ -43,6 +43,7 @@ interface SlideshowValue {
   refreshStrategy?: 'continuous' | 'batch';
   playMode?: 'once' | 'loop';
   orderMode?: 'fixed' | 'random';
+  crossfade?: boolean;
   backgroundPrimaryColor?: string;
   backgroundAccentColor?: string;
   backgroundImageUrl?: string | null;
@@ -94,6 +95,7 @@ export default function SlideshowEditor({
   const [orderMode, setOrderMode] = useState<'fixed' | 'random'>(
     initialSlideshow?.orderMode ?? 'fixed'
   );
+  const [crossfade, setCrossfade] = useState(initialSlideshow?.crossfade === true);
   const [viewportScale, setViewportScale] = useState<'fit' | 'fill'>(
     initialSlideshow?.viewportScale ?? 'fit'
   );
@@ -142,6 +144,7 @@ export default function SlideshowEditor({
       refreshStrategy,
       playMode,
       orderMode,
+      crossfade,
       backgroundPrimaryColor: backgroundPrimaryColor.trim() || SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
       backgroundAccentColor: backgroundAccentColor.trim() || SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
       backgroundImageUrl: backgroundImageUrl.trim() || null,
@@ -388,6 +391,13 @@ export default function SlideshowEditor({
                 />
               </Field>
             </SimpleGrid>
+
+            <Field
+              label="Crossfade"
+              helper="Off: a picture is replaced by the next one (with the fade above). On: the next picture fades in over the one before, which stays until it is fully shown. It is new: try it on a test screen first."
+            >
+              <Checkbox checked={crossfade} onChange={(e) => setCrossfade(e.target.checked)} label="Crossfade between pictures" />
+            </Field>
 
             <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="lg">
               <Field label="Playback">
