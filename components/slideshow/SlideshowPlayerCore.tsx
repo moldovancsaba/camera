@@ -210,6 +210,8 @@ export function SlideshowPlayerCore({
   const [preloader] = useState(() => createPreloader<HTMLImageElement>({ load: loadImage }));
   /** Photos whose picture would not load, until when: not asked for again, not queued, for a few minutes. */
   const brokenRef = useRef<Map<string, number>>(new Map());
+  /** Photos already reported to the server as not loading, in this page's life: once is enough. */
+  const reportedRef = useRef<Set<string>>(new Set());
   const refillBackoffRef = useRef({ ms: 0, until: 0 });
   const loadBackoffRef = useRef(0);
   /** Slides of the first answer that are still loading after the show has started; the refill leaves a gap they will fill alone. */
@@ -305,6 +307,12 @@ export function SlideshowPlayerCore({
           } else {
             if (result.ms > 0) record('preload', { ms: result.ms, outcome: result.reason, host: hostOf(sub.imageUrl) });
             brokenRef.current.set(sub._id, Date.now() + PRELOAD_FAIL_TTL_MS);
+            // A picture that failed outright (not one that was only slow) is reported: the server asks the picture's host itself, and if it is really gone the photo is hidden everywhere,
+            // not only here and not only for a few minutes (lib/media/broken.ts). The report never holds the show up.
+            if (result.reason === 'error' && result.ms > 0 && !reportedRef.current.has(sub._id) && reportedRef.current.size < 200) {
+              reportedRef.current.add(sub._id);
+              void fetch('/api/media/broken', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ submissionId: sub._id }), keepalive: true }).catch(() => undefined);
+            }
           }
           return result.ok;
         })

@@ -134,6 +134,17 @@ test('a vetted photo that is waiting or rejected is never in a playlist, pinned 
   }
 });
 
+test('a picture that is gone is never in a playlist, pinned or not, whatever the source mode; one that answers is', () => {
+  for (const mode of ['originals_only', 'approved_tryon_only', 'originals_and_approved_tryon'] as const) {
+    const broken = baseDoc({ submissionKind: 'original', reviewStatus: 'approved', isSlideshowEligible: true, mediaHealth: { broken: true, checkedAt: 'x' } });
+    assert.equal(matches(broken, filterFor(mode)), false, `${mode} pinned`);
+    const unpinned = buildPlaylistMatchFilter({ eventIdKeys, inactiveEmails, submissionSourceMode: mode, manualObjectIds: [], excludeOids: [] });
+    assert.equal(matches(broken, unpinned), false, `${mode} unpinned`);
+  }
+  const fine = baseDoc({ submissionKind: 'original', reviewStatus: 'approved', mediaHealth: { broken: false, checkedAt: 'x' } });
+  assert.equal(matches(fine, buildPlaylistMatchFilter({ eventIdKeys, inactiveEmails, submissionSourceMode: 'originals_only', manualObjectIds: [], excludeOids: [] })), true);
+});
+
 test('an approved vetted photo and a photo from before vetting are in an originals playlist', () => {
   for (const reviewStatus of ['approved', undefined]) {
     const doc = baseDoc({ submissionKind: 'original', reviewStatus });

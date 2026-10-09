@@ -16,6 +16,8 @@ export async function galleryFilter(eventUuid: string): Promise<Document> {
     $and: [
       { $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }] },
       { isArchived: { $ne: true } },
+      // A picture that is gone is not shown, in any gallery (lib/media/broken.ts); the page says how many it hides.
+      { 'mediaHealth.broken': { $ne: true } },
       // A photo of a vetted event that is waiting or rejected is handled under Photos, not shown in the gallery (camera#268).
       { $or: [{ photoReview: { $exists: false } }, { reviewStatus: 'approved' }] },
       { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: [eventUuid] } }] },

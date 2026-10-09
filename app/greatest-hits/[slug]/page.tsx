@@ -67,6 +67,8 @@ async function loadGreatestHits(slug: string) {
       'tryOnModerationArchive.archived': true,
       'tryOnModerationArchive.bucket': 'approved',
       'metadata.tryOnGreat': true,
+      // A picture that is gone is not shown (lib/media/broken.ts).
+      'mediaHealth.broken': { $ne: true },
       $or: eventQuery,
     })
     .sort({ approvedAt: -1, createdAt: -1 })

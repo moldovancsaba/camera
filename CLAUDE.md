@@ -19,6 +19,10 @@ Report only what a tool actually returned. Never fabricate or extrapolate a resu
 you didn't observe — if you can't verify something, say so plainly instead of
 guessing.
 
+**Look for what exists before you add anything (owner, 2026-10-09: "you invented a shitshow instead of checking the code").** Before adding a control, a screen, a rule or a style: search the code and its history (`git log -S`, the
+component that already draws it, the design system's component) for the thing that exists or used to. If it is there, fix or restore it; do not add a second one beside it (the full-screen button of issue 487 was added next to a
+control the player already had, which a migration had turned into a white card).
+
 ## 1. AI-assistant branding ban (non-negotiable, owner directive 2026-07-31)
 
 Every AI system used in this repo or its development workflow — Claude, GPT/Codex,
@@ -204,6 +208,9 @@ any auth code here:
   `302` to `vercel.com/sso-api` when hitting a preview URL is that gate, not an app
   bug. Don't spend time debugging it as one.
 
+- **A second worktree that shares `node_modules` through a symlink must exclude it** (`echo node_modules >> "$(git rev-parse --git-path info/exclude)"`): `.gitignore` has `node_modules/`, which does not match a
+  symlink, so `git add -A` commits the link, and a later checkout in the other worktree **replaces its real `node_modules` directory with that link** (a link to itself). Never `git add -A` there before excluding it.
+
 ## 6. Documentation
 
 Update the relevant existing doc (`ARCHITECTURE.md` for structural changes,
@@ -251,6 +258,20 @@ design). So:
 - **Live checks that write nothing are fine:** HEAD requests on a short link (never counted), requests with a bot user agent, unauthenticated calls that must answer
   401 or 404, read-only database queries, and rendering a page. The first real scan after launch is the end-to-end proof, and it is the owner's to make.
 - A decoder, screenshot or seed helper must take its input as an argument; a helper that silently reads a fixed file once reported a wrong QR as right.
+
+## 9. A picture that cannot be shown is hidden, never shown as an error (owner directive 2026-10-09)
+
+The giant screen showed ImgBB's "imgbb.com image not found" tile as if it were a photo, and the owner's rule is general: **for any item** (a photo, a logo, a frame, a page picture), **not showing it is always
+better than showing an error.** What that means in code:
+
+- **A host that lost a file answers 404 and may still send a picture** (ImgBB: HTTP 404 plus a 180 x 180 PNG), and a browser draws an image body whatever the status, so `<img>` fires `load`. Never rely on `onerror`
+  alone. The browser can recognise the stand-in by host and size (`lib/media/placeholder.ts`); the **server** is the one that knows the status.
+- **`lib/media/broken.ts` is the one place:** `checkPicture` asks the picture's own host (a one-byte range request; only a clear 404, 410 or non-image answer means broken, a timeout or a 5xx never does),
+  `verifySubmission` records `Submission.mediaHealth = { broken, reason, checkedAt }`, `reportBroken` is what a screen calls (the server never takes the screen's word), `scanBatch` is the check of every photo
+  (admin card **Broken pictures** on the Slideshows page, `scripts/scan-broken-pictures.ts`).
+- **A broken photo is left out by the one visibility rule** (`lib/submissions/visibility.ts`: `isPubliclyVisible`, `publiclyVisibleClauses`, `notWaitingOrRejectedClause`, which the share page, the share download, the
+  slideshow candidates, the user pages and the feeds already use), and by the playlist, the gallery filter and greatest hits. **A new surface that shows pictures uses that rule; it does not write its own filter.**
+- A new kind of item (a logo, a frame, a page picture) gets the same treatment: a check, a mark, and the surfaces that draw it leave it out. Nothing is deleted by hiding, and a picture that answers again comes back.
 
 ## Next.js App Router: two `page.tsx` resolving to the same route fails silently
 
