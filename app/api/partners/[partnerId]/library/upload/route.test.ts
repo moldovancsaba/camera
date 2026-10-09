@@ -103,7 +103,7 @@ test('a user without manager access to the partner cannot upload for it', async 
   assert.equal(data.frames.length, 0);
 });
 
-test('a logo uploaded with slot=logo becomes one of the partner\'s logos at once (camera#419), next to the ones it has', async (t) => {
+test('a logo uploaded with slot=logo becomes one of the partner\'s logos at once (issue 419), next to the ones it has', async (t) => {
   const { data } = setup(t);
   (data.partners[0] as Record<string, unknown>).slots = { logo: { items: ['existing'] } };
   const { POST } = await importRoute('slot-logo');

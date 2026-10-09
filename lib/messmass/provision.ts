@@ -136,6 +136,8 @@ export async function provisionEvent(input: { messmassEventId: string; messmassP
     framesOverridden: defaults.framesOverridden,
     logos: defaults.logos || [],
     logosOverridden: defaults.logosOverridden,
+    // On the slot model from the start (camera#419): the event looks at its partner for its logo and stores only what an editor sets.
+    slots: {},
     tryOn: { enabled: false, setupId: null, allowedLeatherSuitIds: [], vettingEnabled: true, includeApprovedResultsInSlideshows: false, resultSlideshowMode: 'disabled' },
     // Photo vetting (camera#263): the default of the rollout.
     photoVetting: defaultPhotoVetting(),

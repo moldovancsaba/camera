@@ -145,6 +145,15 @@ export const cameraAdminVocabularyPacks = [
     assign: { defaultMessage: 'Assign frame', icon: GdsIcons.Add, feedback: savedFeedback },
   }),
   // The libraries (camera#361): the same actions on the partner and the event page, for frames now and for logos and images later.
+  createGdsVocabularyPack('slot', {
+    // The panel of a slot (camera#418): use the default, pick from the library, replace, add more, show nothing.
+    add: { defaultMessage: 'Use this one', icon: GdsIcons.Add, feedback: savedFeedback },
+    remove: { defaultMessage: 'Remove', icon: GdsIcons.Delete, feedback: deletedFeedback },
+    'use-default': { defaultMessage: 'Use the default again', icon: GdsIcons.Refresh, feedback: savedFeedback },
+    none: { defaultMessage: 'Show nothing here', icon: GdsIcons.Cancel, feedback: savedFeedback },
+    'upload-open': { defaultMessage: 'Upload a new one', icon: GdsIcons.Upload, feedback: openedFeedback },
+    'upload-close': { defaultMessage: 'Close the upload', icon: GdsIcons.Close, feedback: openedFeedback },
+  }),
   createGdsVocabularyPack('library', {
     // The Images library and its picture picker (camera#368).
     choose: { defaultMessage: 'Choose from the library', icon: GdsIcons.Gallery, feedback: openedFeedback },

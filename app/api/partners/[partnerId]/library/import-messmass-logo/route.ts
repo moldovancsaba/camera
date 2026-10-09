@@ -2,8 +2,8 @@
  * The partner's logo from messmass as a library item (camera#367, lib/library/messmass-logo.ts)
  *
  * GET:  whether the partner has a logo from messmass, whether it is imported (the item), and why it cannot be when it cannot. Viewer and above.
- * POST: import it: a logo that belongs to this partner (`scope: 'partner'`, `source: 'messmass'`), in its library at once, and made a default of the partner
- *       (every scenario, after the logos it already has; the events that follow its defaults get it too, nothing is taken away; camera#412).
+ * POST: import it: a logo that belongs to this partner (`scope: 'partner'`, `source: 'messmass'`), in its library at once, and one of the partner's logos
+ *       (`Partner.slots.logo`, after the logos it already has; its events look at the partner, nothing is copied into them; camera#412, camera#419).
  *       A second call returns the logo already imported and changes nothing (200); a new import answers 201. Partner managers and global admins.
  */
 
@@ -31,6 +31,6 @@ export const POST = withErrorHandler(async (_request: NextRequest, context: { pa
   const { partner } = await assertPartnerMongoWorkspaceAccess(db, session, partnerId, 'manager');
   const { imported: result, madeDefault } = await collectMessmassLogo(db, partner, { createdBy: session.user.id, now: generateTimestamp() });
   if (!result.ok) throw apiError(result.reason, result.status);
-  const body = { item: itemView('logos', result.item), created: result.created, madeDefault: Boolean(madeDefault?.added.length), eventsUpdated: madeDefault?.eventsUpdated ?? 0 };
+  const body = { item: itemView('logos', result.item), created: result.created, madeDefault: Boolean(madeDefault?.added) };
   return result.created ? apiCreated(body) : apiSuccess(body);
 });

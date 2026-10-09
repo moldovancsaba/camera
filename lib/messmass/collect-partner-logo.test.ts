@@ -21,24 +21,22 @@ async function setup(t: TestContext, options: { logoUrl?: string; fetchFails?: b
   return { ...seeded, collectPartnerLogo };
 }
 
-test('a partner that messmass gave a logo gets it in its library and as a default, and its event inherits it', async (t) => {
+test('a partner that messmass gave a logo gets it in its library and as its logo; its event looks at the partner, nothing is copied', async (t) => {
   const { data, collectPartnerLogo } = await setup(t);
   await collectPartnerLogo('P');
   assert.equal(data.logos.length, 1);
   assert.equal(data.logos[0].source, 'messmass');
-  const partner = data.partners[0] as { defaultLogos: Array<{ logoId: string; scenario: string }> };
-  assert.equal(partner.defaultLogos.length, 4);
-  assert.ok(partner.defaultLogos.every((row) => row.logoId === data.logos[0].logoId));
-  assert.equal((data.events[0] as { logos: unknown[] }).logos.length, 4);
+  assert.deepEqual((data.partners[0] as { slots: { logo: { items: string[] } } }).slots.logo.items, [data.logos[0].logoId]);
+  assert.deepEqual((data.events[0] as { logos: unknown[] }).logos, []);
 });
 
 test('calling it again changes nothing, so a default an editor took off stays off', async (t) => {
   const { data, collectPartnerLogo } = await setup(t);
   await collectPartnerLogo('P');
-  (data.partners[0] as { defaultLogos: unknown[] }).defaultLogos = [];
+  (data.partners[0] as { slots: { logo: { items: string[] } } }).slots.logo.items = [];
   await collectPartnerLogo('P');
   assert.equal(data.logos.length, 1);
-  assert.deepEqual((data.partners[0] as { defaultLogos: unknown[] }).defaultLogos, []);
+  assert.deepEqual((data.partners[0] as { slots: { logo: { items: string[] } } }).slots.logo.items, []);
 });
 
 test('a logo that cannot be downloaded is logged and never throws: provisioning is not held back', async (t) => {
@@ -46,7 +44,7 @@ test('a logo that cannot be downloaded is logged and never throws: provisioning 
   const { data, collectPartnerLogo } = await setup(t, { fetchFails: true });
   await collectPartnerLogo('P');
   assert.equal(data.logos.length, 0);
-  assert.equal((data.partners[0] as { defaultLogos?: unknown }).defaultLogos, undefined);
+  assert.equal((data.partners[0] as { slots?: unknown }).slots, undefined);
 });
 
 test('a partner without a logo, or one that does not exist, is left alone', async (t) => {

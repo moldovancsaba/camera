@@ -1,56 +1,62 @@
 'use client';
 
 /**
- * Event library: logos (camera#367, docs/LIBRARIES.md)
- *
- * The logos of one event, per scenario (where a logo is shown). "Assigned" are the logos the event uses in a scenario; the event takes them from
- * its partner's library (never straight from the global library) or uploads its own. The same logo can be assigned to several scenarios, and
- * switching it off or removing it acts on one scenario. In each scenario the guests see the first active logo.
+ * The logos of one event (camera#419, docs/BUILDING_BRICKS.md; owner, 2026-10-09). The logo is chosen at the place of use, the default by default:
+ * the event's logo is used on every page and screen of the event unless a place below has its own, and the event's logo itself is the partner's unless the event
+ * chooses. At each place: use the default, pick one from the partner's library, upload a new one, replace the default, add more, or show nothing. One logo is
+ * used as it is; several are picked at random. The library never says where a logo shows.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { GdsStack, InlineAlert, SectionPanel, StateBlock } from '@sovereignsquad/gds-core/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
-import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
-import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
-import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
-import { AdminSelect } from '@sovereignsquad/gds-admin/client';
-import { DEFAULT_UPLOAD_SCENARIO, LOGO_SCENARIOS, inGuestOrder, isLogoScenario, shownLogo, type LogoScenarioId } from '@/lib/library/logos';
-import type { EventLibrary, EventLibraryEntry } from '@/lib/library/types';
+import SlotPanel, { type SlotItem } from '@/components/admin/kit/SlotPanel';
+import type { SlotMode, SlotValue } from '@/lib/slots/resolve';
 
 interface Payload<T> {
   data?: T;
   error?: string;
 }
 
-const COLUMNS = { display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', padding: '1rem' } as const;
-const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))' } as const;
-const SECTION = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
-const EMPTY = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.75rem', color: 'var(--mantine-color-dimmed)', margin: 0, padding: '2rem 1rem', textAlign: 'center' } as const;
-const ACCEPT = 'image/png,image/jpeg,image/svg+xml,image/webp';
-
-/** The scenarios for the upload, the one offered first (and chosen) being where an upload goes when the editor does not choose. */
-const UPLOAD_SCENARIOS = [...LOGO_SCENARIOS].sort((a, b) => Number(b.id === DEFAULT_UPLOAD_SCENARIO) - Number(a.id === DEFAULT_UPLOAD_SCENARIO)).map((scenario) => ({ value: scenario.id, label: scenario.name }));
-
-function errorText(error: unknown): string {
-  return error instanceof Error ? error.message : 'An unexpected error occurred';
+interface PanelData {
+  slotId: string;
+  value: SlotValue;
+  mode: SlotMode;
+  defaultItems: SlotItem[];
+  ownItems: SlotItem[];
+  effective: SlotItem[];
 }
+
+interface Panels {
+  onModel: boolean;
+  partner: { partnerId: string; adminId: string; name: string } | null;
+  slots: PanelData[];
+  candidates: Array<SlotItem & { scope: string }>;
+}
+
+const ACCEPT = 'image/png,image/jpeg,image/svg+xml,image/webp';
+/** The places of use that have a screen, with the words the editor sees (the slideshow transition has no screen yet). */
+const PLACES = [
+  { slotId: 'logo-pages', title: 'On the pages of the user journey', description: 'At the top of the welcome, consent, login and other pages.' },
+  { slotId: 'logo-capture-loading', title: 'While the capture app loads', description: 'The screen a user sees before the event page is ready.' },
+  { slotId: 'logo-slideshow-loading', title: 'While the slideshow loads', description: 'The screen the slideshow shows before the first photo.' },
+] as const;
+
+const errorText = (error: unknown): string => (error instanceof Error ? error.message : 'An unexpected error occurred');
 
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const payload = (await response.json().catch(() => null)) as Payload<T> | null;
-  if (!response.ok || !payload) throw new Error(payload?.error || `Request failed (${response.status})`);
-  return payload.data as T;
+  if (!response.ok || !payload?.data) throw new Error(payload?.error || `Request failed (${response.status})`);
+  return payload.data;
 }
-
-const scenarioOf = (entry: { assignment: Record<string, unknown> }) => entry.assignment.scenario;
 
 export default function EventLogosPage({ params }: { params: Promise<{ id: string }> }) {
   const [eventId, setEventId] = useState('');
   const [eventName, setEventName] = useState<string | null>(null);
-  const [library, setLibrary] = useState<EventLibrary | null>(null);
-  const [uploadScenario, setUploadScenario] = useState<LogoScenarioId>(DEFAULT_UPLOAD_SCENARIO);
+  const [panels, setPanels] = useState<Panels | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -61,8 +67,7 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
   }, [params]);
 
   const reload = useCallback(async () => {
-    if (!eventId) return;
-    setLibrary(await call<EventLibrary>(`/api/events/${eventId}/library?kind=logos`));
+    if (eventId) setPanels(await call<Panels>(`/api/events/${eventId}/logo-slots`));
   }, [eventId]);
 
   useEffect(() => {
@@ -82,56 +87,78 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
     })();
   }, [eventId, reload]);
 
-  const act = async (run: () => Promise<unknown>) => {
+  const choose = async (slotId: string, value: SlotValue) => {
     setBusy(true);
     setActionError(null);
     try {
-      await run();
-      await reload();
-    } catch (actionFailure) {
-      setActionError(errorText(actionFailure));
+      const saved = await call<{ panels: Panels }>(`/api/events/${eventId}/logo-slots`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slotId, value }),
+      });
+      setPanels(saved.panels);
+    } catch (failure) {
+      setActionError(errorText(failure));
     } finally {
       setBusy(false);
     }
   };
 
-  const scenarioName = (scenario: unknown) => LOGO_SCENARIOS.find((s) => s.id === scenario)?.name ?? String(scenario ?? 'no scenario');
-  const assign = (logoId: string, scenario: LogoScenarioId) =>
-    act(() => call(`/api/events/${eventId}/logos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logoId, scenario, isActive: true }) }));
-  // With a scenario only that assignment goes; an assignment without a known scenario is removed as a whole (the logo from the event).
-  const removeUrl = (logoId: string, scenario: unknown) => `/api/events/${eventId}/logos/${logoId}${isLogoScenario(scenario) ? `?scenario=${scenario}` : ''}`;
-  const remove = (logoId: string, scenario: unknown, name: string) => {
-    if (!confirm(`Remove "${name}" from ${scenarioName(scenario)}?`)) return Promise.resolve();
-    return act(() => call(removeUrl(logoId, scenario), { method: 'DELETE' }));
-  };
-  const toggle = (logoId: string, scenario: unknown) =>
-    act(() =>
-      call(`/api/events/${eventId}/logos/${logoId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'toggle', ...(isLogoScenario(scenario) ? { scenario } : {}) }),
-      })
-    );
-  const deleteUpload = (logoId: string, name: string) => {
-    if (!confirm(`Delete "${name}"? It was uploaded for this event and is removed for good, from every scenario.`)) return Promise.resolve();
-    return act(() => call(`/api/events/${eventId}/library/items/${logoId}?kind=logos`, { method: 'DELETE' }));
+  const deleteUpload = async (logoId: string, name: string) => {
+    if (!confirm(`Delete "${name}"? It was uploaded for this event and is removed for good, from every place that uses it.`)) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await call(`/api/events/${eventId}/library/items/${logoId}?kind=logos`, { method: 'DELETE' });
+      await reload();
+    } catch (failure) {
+      setActionError(errorText(failure));
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (loading) return <StateBlock variant="loading" title="Loading logos..." />;
-
-  if (error || !eventName || !library) {
+  if (error || !panels) {
     return (
-      <div style={{ display: 'grid', gap: '1rem' }}>
-        <InlineAlert title="Error" message={error || 'Event not found'} severity="error" />
+      <GdsStack gap="md">
+        <InlineAlert title="Error" message={error || 'Could not load the logos'} severity="error" />
         <Link href="/admin/events">← Back to Events</Link>
-      </div>
+      </GdsStack>
     );
   }
 
-  const partnerName = library.partner?.name ?? 'its partner';
+  const panelOf = (slotId: string) => panels.slots.find((panel) => panel.slotId === slotId);
+  const partnerName = panels.partner ? 'the partner' : null;
+  const uploads = panels.candidates.filter((item) => item.scope === 'event');
+  const upload = (slotId: string) => ({ endpoint: `/api/events/${eventId}/library/upload`, extraFields: { slot: slotId }, accept: ACCEPT, acceptWords: 'PNG, JPG, SVG or WebP', maxBytes: 4 * 1024 * 1024, maxWords: '4 MB' });
+
+  const render = (slotId: string, title: string, description: string, parentName: string | null) => {
+    const panel = panelOf(slotId);
+    if (!panel) return null;
+    return (
+      <SlotPanel
+        key={slotId}
+        title={title}
+        description={description}
+        noun="logo"
+        parentName={parentName}
+        value={panel.value}
+        mode={panel.mode}
+        defaultItems={panel.defaultItems}
+        effective={panel.effective}
+        candidates={panels.candidates}
+        busy={busy}
+        error={actionError}
+        onChange={(value) => choose(slotId, value)}
+        upload={upload(slotId)}
+        onUploaded={reload}
+      />
+    );
+  };
 
   return (
-    <div style={{ display: 'grid', gap: '2rem' }}>
+    <GdsStack gap="lg">
       <nav aria-label="Breadcrumb">
         <Link href="/admin/events">Events</Link>
         <span aria-hidden> / </span>
@@ -142,183 +169,43 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
 
       <WorkspaceHeader
         eyebrow="Events"
-        title="Manage Event Logos"
-        description={`Assign logos to scenarios for ${eventName}. It takes them from the library of ${partnerName}, or you upload logos for this event only.`}
+        title={`Logos: ${eventName}`}
+        description={
+          panels.partner
+            ? `The logo of this event is the logo of ${panels.partner.name} unless you choose another here. Each place below uses the event's logo unless you choose another there.`
+            : 'This event has no partner, so it uses only the logos you choose here.'
+        }
+        primaryAction={panels.partner ? { href: `/admin/partners/${panels.partner.adminId}/logos`, label: "The partner's logos" } : undefined}
       />
 
-      <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
-        When a scenario has more than one active logo, users see the first one in the list.
-      </p>
-
-      {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}
-      {!library.partner ? <InlineAlert title="No partner" message="This event has no partner, so it has no library to take logos from. You can still upload logos for this event." severity="warning" /> : null}
-      {library.missing.length > 0 ? (
+      {panels.onModel ? null : (
         <InlineAlert
-          title={`${library.missing.length} assigned logo${library.missing.length === 1 ? '' : 's'} no longer exist${library.missing.length === 1 ? 's' : ''}`}
-          message={
-            <span style={{ display: 'grid', gap: '0.5rem' }}>
-              {library.missing.map((entry, index) => (
-                <span key={`${entry.id}-${String(scenarioOf(entry))}-${index}`} style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <code>{entry.id}</code>
-                  <span>{scenarioName(scenarioOf(entry))}</span>
-                  <SemanticButton action="event-logos:remove" variant="danger" size="xs" disabled={busy} onClick={() => void act(() => call(removeUrl(entry.id, scenarioOf(entry)), { method: 'DELETE' }))}>
-                    Remove logo
-                  </SemanticButton>
-                </span>
-              ))}
-            </span>
-          }
-          severity="warning"
+          title="This event still has its logos as they were"
+          message="What is shown below is what the event shows today. The first change you save moves it to the new way of choosing, and keeps everything it shows now."
+          severity="info"
         />
+      )}
+
+      {render('logo', 'The logo of this event', 'Used on every page and screen of the event unless a place below has its own.', partnerName)}
+
+      <SectionPanel title="Places of use" description="Each place uses the event's logo unless you choose another one for that place only.">
+        <GdsStack gap="md">{PLACES.map((place) => render(place.slotId, place.title, place.description, 'the event'))}</GdsStack>
+      </SectionPanel>
+
+      {uploads.length > 0 ? (
+        <SectionPanel title="Uploaded for this event" description="Logos only this event can use. Deleting one takes it out of every place that uses it.">
+          <GdsStack gap="sm">
+            {uploads.map((item) => (
+              <div key={item.id} style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'space-between' }}>
+                <span>{item.name}</span>
+                <SemanticButton action="library:delete-upload" variant="danger" size="xs" disabled={busy} onClick={() => void deleteUpload(item.id, item.name)}>
+                  Delete upload
+                </SemanticButton>
+              </div>
+            ))}
+          </GdsStack>
+        </SectionPanel>
       ) : null}
-
-      <div style={{ display: 'grid', gap: '1.5rem' }}>
-        {LOGO_SCENARIOS.map((scenario) => {
-          // In the order the guest pages use, and the one they show (the first active), as the capture page and the slideshow pick it.
-          const rows = library.assigned.filter((entry) => scenarioOf(entry) === scenario.id).map((entry) => ({ entry, order: entry.assignment.order, isActive: entry.assignment.isActive }));
-          const assigned = inGuestOrder(rows).map((row) => row.entry);
-          const shown = scenario.shownToGuests ? shownLogo(rows)?.entry ?? null : null;
-          const taken = new Set(assigned.map((entry) => entry.id));
-          const available = library.available.filter((item) => !taken.has(item.id));
-          return (
-            <section key={scenario.id} style={SECTION}>
-              <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
-                <h3 style={{ margin: 0 }}>{scenario.name}</h3>
-                <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>{scenario.description}</p>
-                {scenario.id === 'onboarding-thankyou' && !shown ? (
-                  <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: '0.35rem 0 0' }}>
-                    With no active logo here, these pages show the partner&apos;s logo from messmass, or the event&apos;s emoji.
-                  </p>
-                ) : null}
-              </div>
-              <div style={COLUMNS}>
-                <div style={{ display: 'grid', gap: '0.75rem', alignContent: 'start' }}>
-                  <strong style={{ fontSize: '0.875rem' }}>Assigned ({assigned.length})</strong>
-                  {assigned.length === 0 ? (
-                    <p style={EMPTY}>No logos assigned</p>
-                  ) : (
-                    <div style={GRID}>
-                      {assigned.map((entry) => (
-                        <AssignedLogo
-                          key={`${entry.id}-${scenario.id}`}
-                          entry={entry}
-                          shown={entry === shown}
-                          busy={busy}
-                          onToggle={() => void toggle(entry.id, scenario.id)}
-                          onRemove={() => void remove(entry.id, scenario.id, entry.name)}
-                          onDelete={() => void deleteUpload(entry.id, entry.name)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div style={{ display: 'grid', gap: '0.75rem', alignContent: 'start' }}>
-                  <strong style={{ fontSize: '0.875rem' }}>Available ({available.length})</strong>
-                  {available.length === 0 ? (
-                    <p style={EMPTY}>Nothing left to assign</p>
-                  ) : (
-                    <div style={GRID}>
-                      {available.map((item) => (
-                        <LibraryItemCard
-                          key={item.id}
-                          name={item.name}
-                          imageUrl={item.imageUrl}
-                          thumbnailUrl={item.thumbnailUrl}
-                          noun="logo"
-                          scope={item.scope}
-                          source={item.source}
-                          actions={
-                            <SemanticButton action="event-logos:assign" size="xs" disabled={busy} onClick={() => void assign(item.id, scenario.id)}>
-                              Assign logo
-                            </SemanticButton>
-                          }
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
-          );
-        })}
-      </div>
-
-      <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
-        A logo that is not listed under Available has to be added to the library of {partnerName} first.
-        {library.partner ? (
-          <>
-            {' '}
-            <Link href={`/admin/partners/${library.partner.adminId}/logos`}>Open the library of {library.partner.name}</Link>
-          </>
-        ) : null}
-      </p>
-
-      <section style={SECTION}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
-          <h3 style={{ margin: 0 }}>Upload a logo for this event</h3>
-          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>It is assigned to this event at once, in the scenario you choose. No other event can take it.</p>
-        </div>
-        <div style={{ padding: '1rem' }}>
-          <LibraryUploadForm
-            endpoint={`/api/events/${eventId}/library/upload`}
-            kind="logos"
-            noun="logo"
-            accept={ACCEPT}
-            acceptWords="PNG, JPG, SVG or WebP"
-            namePlaceholder="e.g. Club crest"
-            extraFields={{ scenario: uploadScenario }}
-            onUploaded={reload}
-          >
-            <AdminSelect
-              name="scenario"
-              label="Show it in"
-              value={uploadScenario}
-              onChange={(value) => setUploadScenario(isLogoScenario(value) ? value : DEFAULT_UPLOAD_SCENARIO)}
-              data={UPLOAD_SCENARIOS}
-              allowDeselect={false}
-            />
-          </LibraryUploadForm>
-        </div>
-      </section>
-
-      <Link href={`/admin/events/${eventId}`}>← Back to Event</Link>
-    </div>
-  );
-}
-
-function AssignedLogo({ entry, shown, busy, onToggle, onRemove, onDelete }: { entry: EventLibraryEntry; shown: boolean; busy: boolean; onToggle: () => void; onRemove: () => void; onDelete: () => void }) {
-  const active = entry.assignment.isActive === true;
-  return (
-    <LibraryItemCard
-      name={entry.name}
-      imageUrl={entry.imageUrl}
-      thumbnailUrl={entry.thumbnailUrl}
-      noun="logo"
-      scope={entry.scope}
-      source={entry.source}
-      badges={
-        <>
-          <LabelTag tone={active ? 'success' : 'neutral'} label={active ? 'Active' : 'Inactive'} />
-          {shown ? <LabelTag tone="info" label="Users see this one" /> : null}
-          {!entry.stillInPartnerLibrary ? <LabelTag tone="warning" label="No longer in the partner library" /> : null}
-          {!entry.itemActive ? <LabelTag tone="warning" label="Switched off in the library" /> : null}
-        </>
-      }
-      actions={
-        <>
-          <SemanticButton action={active ? 'library:switch-off' : 'library:switch-on'} variant="secondary" size="xs" disabled={busy} onClick={onToggle}>
-            {active ? 'Switch off' : 'Switch on'}
-          </SemanticButton>
-          <SemanticButton action="event-logos:remove" variant="danger" size="xs" disabled={busy} onClick={onRemove}>
-            Remove logo
-          </SemanticButton>
-          {entry.scope === 'event' ? (
-            <SemanticButton action="library:delete-upload" variant="danger" size="xs" disabled={busy} onClick={onDelete}>
-              Delete upload
-            </SemanticButton>
-          ) : null}
-        </>
-      }
-    />
+    </GdsStack>
   );
 }
