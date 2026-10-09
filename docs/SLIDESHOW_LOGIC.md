@@ -80,6 +80,8 @@ Typical responsibilities:
 5. optionally shuffle or rotate based on playback mode and `instanceKey`
 6. build slide payloads for the browser
 
+The route accepts `limit` (slides wanted), `instanceKey` (a layout cell) and `exclude` (a comma-separated list of submission ids the player already holds, at most 100; a longer list is cut). A submission in `exclude` is not eligible for that answer; when that leaves nothing, the route answers from the whole pool, because a pool smaller than the player's queue repeats by nature.
+
 ## 7. Submission eligibility
 
 Playlist sourcing excludes or accounts for:
@@ -129,6 +131,13 @@ Behavior:
 - advances on configured timing
 - posts play counts asynchronously
 
+**The queue** is `[current, ...upcoming]`, `bufferSize + 1` slides deep. Its rules are in [lib/slideshow/queue.ts](../lib/slideshow/queue.ts) (pure functions, tested in `queue.test.ts`) and the player writes the queue in one place (`commitQueue`: the ref is the truth, the state only draws it).
+
+- **A refill after each advance** asks the server for the slides the queue is short of and sends `exclude` = the ids of every submission already in the queue. The server counts a play only when a slide becomes the current one, so a photo that waits in the queue still looks unplayed to it; without `exclude` the "least played, oldest first" answer is by construction the photo next to the head, and in fixed order the queue filled with copies of it (the screen stood still for `bufferSize + 1` slides: 20 s at buffer 3 and 5 s hold, 55 s at buffer 10; camera#476).
+- **Only slides the queue does not hold are appended** (`appendFresh`). A full queue asks the server nothing: the 2.5 s timer is kept as the retry when the queue is short, and costs no request otherwise (before, two of three playlist calls per slide were useless).
+- **When the server has nothing new** (a pool smaller than the queue, or the network is down) the loop goes on from the **seed**, every slide the player has received, in the order it arrived, continuing after the slide the queue ends with (`appendFromSeed`). With one slide left in the queue the player moves on to the next slide of the seed instead of repeating the same picture.
+- A photo added while the show runs reaches the end of the queue at the next refill, so it appears about `bufferSize` slides later; a shallower `bufferSize` shows new photos sooner.
+
 The player is used in:
 
 - fullscreen slideshow pages
@@ -162,7 +171,7 @@ The model still stores fade-related timing, but current player behavior must alw
 
 ### Buffering
 
-`bufferSize` is a target queue depth, not a “total number of slides in the show”.
+`bufferSize` is a target queue depth, not a “total number of slides in the show”. Do not raise it to hide a stall: the depth is also how long a newly added photo waits for its turn. Never append a slide the queue already holds (`lib/slideshow/queue.ts`).
 
 ### Layout independence
 

@@ -352,13 +352,15 @@ Public slideshow behavior is driven by:
 - `lib/slideshow/playlist.ts`
 - `app/api/slideshows/[slideshowId]/playlist/route.ts`
 - `components/slideshow/SlideshowPlayerCore.tsx`
+- `lib/slideshow/queue.ts` (the queue rules of the player, pure and unit-tested)
 
 Key properties:
 
 - fairness via `playCount`
 - aspect-aware single or mosaic slides
-- queue-based browser playback
+- queue-based browser playback: a refill sends `exclude` (the submission ids already queued) and appends only slides the queue does not hold, so the fixed-order screen never shows one photo for `bufferSize + 1` slides (camera#476); when the server has nothing new the loop continues from the seed (every slide received, in order). The player writes its queue in one place (`commitQueue`), the ref is the truth and the state only draws it
 - composite layouts through `slideshow_layouts`
+- the research and the fix plan for the freeze: `docs/_research/SLIDESHOW_FREEZE_RESEARCH.md` (steps S1 to S8; S2 is this queue fix)
 
 Reference:
 - [docs/SLIDESHOW_LOGIC.md](docs/SLIDESHOW_LOGIC.md)

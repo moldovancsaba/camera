@@ -4,8 +4,9 @@
 /**
  * Slideshow playback: FIFO queue `[current, …upcoming]`.
  * `bufferSize` (settings) = how many slides to keep **behind** the one on screen → total slots = bufferSize + 1.
- * Loop mode tops up asynchronously; at full depth we still try to pull one more unique slide in the
- * background so the next advance does not wait on a burst fetch.
+ * Loop mode tops up asynchronously after each advance. The queue rules (what to ask the server, what to append, what to do when the
+ * server has nothing new) live in `lib/slideshow/queue.ts` and are tested there; a refill tells the server which photos the queue already
+ * holds (`exclude`) and never appends one twice (camera#476).
  */
 
 import { pickRandom } from '@/lib/slots/resolve';
@@ -24,23 +25,19 @@ import {
   type ViewportScaleMode,
 } from '@/lib/slideshow/viewport-scale';
 import {
-  expandPlaylistToLength,
-  type Slide as PlaylistSlide,
-} from '@/lib/slideshow/playlist';
+  advanceLoop,
+  excludeIds,
+  freshSlides,
+  mergeAnswer,
+  mergeSeed,
+  slideKey,
+} from '@/lib/slideshow/queue';
 import { PlaybackSurface } from '@sovereignsquad/gds-core/client';
 import {
   CAMERA_STAGE_BLACK,
   SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
   SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
 } from '@/lib/gds/tokens/colors';
-
-/** Bridge playlist `Slide` (AspectRatio enum) to player `Slide` (string literals); same runtime values. */
-function expandPlayerPlaylist(base: Slide[], targetLen: number): Slide[] {
-  return expandPlaylistToLength(
-    base as unknown as PlaylistSlide[],
-    targetLen
-  ) as unknown as Slide[];
-}
 
 const DEFAULT_BG_PRIMARY = SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY;
 const DEFAULT_BG_ACCENT = SLIDESHOW_DEFAULT_BACKGROUND_ACCENT;
@@ -90,31 +87,6 @@ export interface SlideshowPlayerCoreProps {
   delayMs?: number | string;
   variant?: 'fullscreen' | 'embedded';
   className?: string;
-}
-
-function slideKey(slide: Slide): string {
-  return slide.submissions.map((s) => s._id).join('-');
-}
-
-function cloneSlide(slide: Slide): Slide {
-  return {
-    type: slide.type,
-    aspectRatio: slide.aspectRatio,
-    submissions: slide.submissions.map((s) => ({ ...s })),
-  };
-}
-
-/** Extend offline loop seed with slides we have not seen yet (by submission ids). */
-function mergeSeedSlides(existing: Slide[] | null, chunk: Slide[]): Slide[] {
-  const base = existing?.length ? [...existing] : [];
-  const keys = new Set(base.map(slideKey));
-  for (const sl of chunk) {
-    if (!keys.has(slideKey(sl))) {
-      keys.add(slideKey(sl));
-      base.push(cloneSlide(sl));
-    }
-  }
-  return base;
 }
 
 /** Admin `bufferSize` = upcoming prefetches; cap matches PATCH API (1–50). */
@@ -209,22 +181,17 @@ export function SlideshowPlayerCore({
     bufferTargetRef.current = totalQueueSlotsFromBufferSize(settings.bufferSize);
   }, [settings]);
 
-  useEffect(() => {
-    slideQueueRef.current = slideQueue;
-  }, [slideQueue]);
-
-  /** Loop mode: never drain to [] on a single slide; restore from seed when offline. */
-  const computeNextLoopQueue = useCallback((q: Slide[]): Slide[] => {
-    const seed = loopSeedSlidesRef.current;
-    const target = bufferTargetRef.current;
-    if (q.length === 0) {
-      if (!seed?.length) return q;
-      return expandPlayerPlaylist(seed, Math.max(target, seed.length));
-    }
-    if (q.length === 1) {
-      return expandPlayerPlaylist(q, 2).slice(1);
-    }
-    return q.slice(1);
+  /**
+   * The one place the queue is written. The ref is the truth (it changes at once, so the next read in the same tick sees it) and the state
+   * mirrors it for drawing. Returns whether the queue changed, so a caller knows if the screen moves on.
+   */
+  const commitQueue = useCallback((update: (q: Slide[]) => Slide[]): boolean => {
+    const prev = slideQueueRef.current;
+    const next = update(prev);
+    if (next === prev) return false;
+    slideQueueRef.current = next;
+    setSlideQueue(next);
+    return true;
   }, []);
 
   useEffect(() => {
@@ -268,10 +235,11 @@ export function SlideshowPlayerCore({
   );
 
   const fetchPlaylistChunk = useCallback(
-    async (limit: number): Promise<Slide[]> => {
+    async (limit: number, exclude: string[] = []): Promise<Slide[]> => {
       const lim = Math.max(1, Math.min(50, Math.floor(limit)));
       try {
         const qs = new URLSearchParams({ limit: String(lim) });
+        if (exclude.length > 0) qs.set('exclude', exclude.join(','));
         if (instanceKey?.trim()) {
           qs.set('instanceKey', instanceKey.trim().slice(0, 256));
         }
@@ -289,71 +257,35 @@ export function SlideshowPlayerCore({
     [slideshowId, instanceKey]
   );
 
-  /** Keep loop queue at target depth; optionally prefetch +1 when already full (continuous pull). */
+  /**
+   * Top the loop queue up to its target depth. A full queue asks the server nothing. A refill tells the server which photos the queue
+   * holds and appends only photos it does not hold; when the server has nothing new (a pool smaller than the queue, or no network) the
+   * loop goes on from the slides already seen.
+   */
   const maintainLoopBuffer = useCallback(async () => {
     const s = settingsRef.current;
     if (!s || s.playMode === 'once') return;
     if (refillBusyRef.current) return;
+    if (slideQueueRef.current.length >= bufferTargetRef.current) return;
     refillBusyRef.current = true;
     try {
       const target = bufferTargetRef.current;
-
-      /** When queue is exactly at target, pull one more unique slide in the background (not batch-on-dip-only). */
-      const tryPrefetchOnePastTarget = async () => {
-        if (slideQueueRef.current.length !== target) return;
-        const chunk = await fetchPlaylistChunk(1);
-        if (chunk.length === 0) return;
-        const fresh = chunk[0];
-        const keys = new Set(slideQueueRef.current.map(slideKey));
-        if (keys.has(slideKey(fresh))) return;
-        loopSeedSlidesRef.current = mergeSeedSlides(loopSeedSlidesRef.current, chunk);
-        await preloadSlide(fresh);
-        setSlideQueue((curr) => {
-          if (curr.length !== target) return curr;
-          if (curr.some((sl) => slideKey(sl) === slideKey(fresh))) return curr;
-          return [...curr, fresh];
-        });
-        await new Promise((r) => setTimeout(r, 0));
-      };
-
-      await tryPrefetchOnePastTarget();
-
-      const refillFromSeed = async (need: number) => {
-        const seed = loopSeedSlidesRef.current;
-        if (!seed?.length || need <= 0) return;
-        const filler = expandPlayerPlaylist(seed, Math.min(Math.max(need, 1), 50));
-        if (filler.length === 0) return;
-        await Promise.allSettled(filler.map((sl) => preloadSlide(sl)));
-        setSlideQueue((curr) => {
-          if (curr.length >= target) return curr;
-          const stillNeed = target - curr.length;
-          return [...curr, ...filler.slice(0, stillNeed)];
-        });
-      };
-
       for (let round = 0; round < 12; round++) {
-        const len = slideQueueRef.current.length;
-        if (len >= target) break;
-        const need = target - len;
-        const chunk = await fetchPlaylistChunk(Math.min(need, 25));
-        if (chunk.length > 0) {
-          loopSeedSlidesRef.current = mergeSeedSlides(loopSeedSlidesRef.current, chunk);
-          await Promise.allSettled(chunk.map((sl) => preloadSlide(sl)));
-          setSlideQueue((curr) => {
-            if (curr.length >= target) return curr;
-            const stillNeed = target - curr.length;
-            const take = chunk.slice(0, Math.max(stillNeed, 1));
-            return [...curr, ...take];
-          });
-        } else {
-          await refillFromSeed(need);
+        const queue = slideQueueRef.current;
+        if (queue.length >= target) break;
+        const answer = await fetchPlaylistChunk(Math.min(target - queue.length, 25), excludeIds(queue));
+        const fresh = freshSlides(slideQueueRef.current, answer);
+        if (fresh.length > 0) {
+          loopSeedSlidesRef.current = mergeSeed(loopSeedSlidesRef.current, fresh);
+          await Promise.allSettled(fresh.map((sl) => preloadSlide(sl)));
         }
-        await new Promise((r) => setTimeout(r, 0));
+        commitQueue((q) => mergeAnswer(q, answer, loopSeedSlidesRef.current, target));
+        if (fresh.length === 0) break;
       }
     } finally {
       refillBusyRef.current = false;
     }
-  }, [fetchPlaylistChunk, preloadSlide]);
+  }, [fetchPlaylistChunk, preloadSlide, commitQueue]);
 
   const loadInitialBuffer = useCallback(async () => {
     try {
@@ -421,7 +353,7 @@ export function SlideshowPlayerCore({
       if (playlist.length > 0) {
         await Promise.all(playlist.map(preloadSlide));
         setDisplayEpoch(0);
-        setSlideQueue(playlist);
+        commitQueue(() => playlist);
         if (data.slideshow.playMode === 'once') {
           loopSeedSlidesRef.current = null;
           onceInitialRef.current = playlist.map((sl) => ({
@@ -429,13 +361,13 @@ export function SlideshowPlayerCore({
             submissions: sl.submissions.map((s) => ({ ...s })),
           }));
         } else {
-          loopSeedSlidesRef.current = mergeSeedSlides(null, playlist);
+          loopSeedSlidesRef.current = mergeSeed(null, playlist);
           void maintainLoopBuffer();
         }
       } else {
         loopSeedSlidesRef.current = null;
         setDisplayEpoch(0);
-        setSlideQueue([]);
+        commitQueue(() => []);
       }
 
       setIsLoading(false);
@@ -444,7 +376,7 @@ export function SlideshowPlayerCore({
       setError(err instanceof Error ? err.message : 'Failed to load slideshow');
       setIsLoading(false);
     }
-  }, [slideshowId, instanceKey, preloadImage, preloadSlide, maintainLoopBuffer, delayMs]);
+  }, [slideshowId, instanceKey, preloadImage, preloadSlide, maintainLoopBuffer, commitQueue, delayMs]);
 
   useLayoutEffect(() => {
     if (!settings) return;
@@ -531,32 +463,19 @@ export function SlideshowPlayerCore({
       const playMode = sNow?.playMode === 'once' ? 'once' : 'loop';
 
       if (playMode === 'once') {
-        let advanced = false;
-        let ended = false;
-        setSlideQueue((q) => {
-          if (q.length <= 1) {
-            ended = true;
-            return q;
-          }
-          advanced = true;
-          return q.slice(1);
-        });
-        if (ended) {
+        if (slideQueueRef.current.length <= 1) {
           setPlaybackEnded(true);
           setIsPlaying(false);
+          return;
         }
-        if (advanced) setDisplayEpoch((e) => e + 1);
+        commitQueue((q) => q.slice(1));
+        setDisplayEpoch((e) => e + 1);
         return;
       }
 
-      let advanced = false;
-      setSlideQueue((q) => {
-        const next = computeNextLoopQueue(q);
-        if (next === q) return q;
-        advanced = true;
-        return next;
-      });
-      if (advanced) setDisplayEpoch((e) => e + 1);
+      if (commitQueue((q) => advanceLoop(q, loopSeedSlidesRef.current, bufferTargetRef.current))) {
+        setDisplayEpoch((e) => e + 1);
+      }
       void maintainLoopBuffer();
     }, holdMs);
 
@@ -572,7 +491,7 @@ export function SlideshowPlayerCore({
     variant,
     updatePlayCounts,
     maintainLoopBuffer,
-    computeNextLoopQueue,
+    commitQueue,
   ]);
 
   useEffect(() => {
@@ -590,9 +509,9 @@ export function SlideshowPlayerCore({
     const seed = loopSeedSlidesRef.current;
     if (!seed?.length) return;
     const target = bufferTargetRef.current;
-    setSlideQueue(expandPlayerPlaylist(seed, Math.max(target, seed.length)));
+    commitQueue((q) => advanceLoop(q, seed, target));
     void maintainLoopBuffer();
-  }, [settings, isPlaying, slideQueue.length, maintainLoopBuffer]);
+  }, [settings, isPlaying, slideQueue.length, maintainLoopBuffer, commitQueue]);
 
   useEffect(() => {
     if (!settings || settings.playMode === 'once' || !isPlaying) return;
@@ -663,31 +582,20 @@ export function SlideshowPlayerCore({
     setPlaybackEnded(false);
 
     if (playMode === 'once') {
-      let advanced = false;
-      setSlideQueue((q) => {
-        if (q.length <= 1) return q;
-        advanced = true;
-        return q.slice(1);
-      });
-      if (advanced) setDisplayEpoch((e) => e + 1);
+      if (commitQueue((q) => (q.length <= 1 ? q : q.slice(1)))) setDisplayEpoch((e) => e + 1);
       return;
     }
 
-    let advanced = false;
-    setSlideQueue((q) => {
-      const next = computeNextLoopQueue(q);
-      if (next === q) return q;
-      advanced = true;
-      return next;
-    });
-    if (advanced) setDisplayEpoch((e) => e + 1);
+    if (commitQueue((q) => advanceLoop(q, loopSeedSlidesRef.current, bufferTargetRef.current))) {
+      setDisplayEpoch((e) => e + 1);
+    }
     void maintainLoopBuffer();
-  }, [maintainLoopBuffer, computeNextLoopQueue]);
+  }, [maintainLoopBuffer, commitQueue]);
 
   const manualBack = useCallback(() => {
     pendingInitialDelayRef.current = false;
     setPlaybackEnded(false);
-    setSlideQueue((q) => {
+    commitQueue((q) => {
       if (q.length < 2) return q;
       const last = q[q.length - 1];
       return [last, ...q.slice(0, -1)];
@@ -697,7 +605,7 @@ export function SlideshowPlayerCore({
     if (s && s.playMode !== 'once') {
       void maintainLoopBuffer();
     }
-  }, [maintainLoopBuffer]);
+  }, [maintainLoopBuffer, commitQueue]);
 
   useEffect(() => {
     if (variant !== 'fullscreen') return;
@@ -943,8 +851,8 @@ export function SlideshowPlayerCore({
             onClick={() => {
               if (playbackEnded && onceInitialRef.current?.length) {
                 pendingInitialDelayRef.current = delayMs > 0;
-                setSlideQueue(
-                  onceInitialRef.current.map((sl) => ({
+                commitQueue(() =>
+                  (onceInitialRef.current ?? []).map((sl) => ({
                     ...sl,
                     submissions: sl.submissions.map((s) => ({ ...s })),
                   }))
