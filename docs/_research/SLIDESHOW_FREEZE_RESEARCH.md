@@ -166,6 +166,7 @@ Ordered by expected benefit per effort. Rules that apply to every step (from `CL
 - Optional stop-gap (owner decision, changes ordering semantics: random ignores fairness): set `orderMode: random` on that slideshow. Verify by the same network log. Not a fix.
 
 ### S1. Instrumentation (section 5) first
+- **Status 2026-10-09: done** (PR of branch `feat/slideshow-diagnostics`): the events of section 5 except the `?debug=1` copy to `sessionStorage` (the ring is in memory and in `window.__slideshowLog`; the beacon flushes on `pagehide`), no report script. Notes: `RUNBOOK.md` "Slideshow diagnostics".
 - Files: new `lib/slideshow/diagnostics.ts` (event types, sanitiser), new `components/slideshow/useSlideshowDiagnostics.ts` (ring buffer, heartbeat, beacon), new `app/api/observability/slideshow-diagnostic/route.ts` (copy of `capture-diagnostic/route.ts` pattern, `RATE_LIMITS.DIAGNOSTICS`), small hooks in `SlideshowPlayerCore.tsx`; unit tests for the sanitiser.
 - Verify: unit tests; local run shows `?debug=1` overlay; Vercel runtime log shows `camera.slideshow_diagnostic` lines.
 - Risk: low (no behaviour change; beacon is best-effort, size-bounded). Do not log image URLs with query strings or any personal data; hash ids.

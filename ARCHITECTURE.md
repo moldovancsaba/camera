@@ -221,6 +221,9 @@ Reference:
   records keyed by the digest the user sees — so client/RSC render crashes reach
   the same alertable stream. This is the durable follow-up to the v2.14.0
   digest-4053814135 incident, which was invisible until logs were tailed by hand.
+- The giant-screen player beacons what it does (slides shown, playlist calls, preloads, the refill lock, a heartbeat, stalls) to
+  `POST /api/observability/slideshow-diagnostic`, which only logs `camera.slideshow_diagnostic` (camera#476; `RUNBOOK.md`,
+  "Slideshow diagnostics"), like the capture diagnostics (`/api/observability/capture-diagnostic`).
 
 ## 6. Middleware and routing behavior
 
@@ -353,6 +356,7 @@ Public slideshow behavior is driven by:
 - `app/api/slideshows/[slideshowId]/playlist/route.ts`
 - `components/slideshow/SlideshowPlayerCore.tsx`
 - `lib/slideshow/queue.ts` (the queue rules of the player, pure and unit-tested)
+- `lib/slideshow/diagnostics.ts`, `components/slideshow/useSlideshowDiagnostics.ts`, `SlideshowDebugPanel.tsx`, `app/api/observability/slideshow-diagnostic/route.ts` (what the screen reports about itself: slides shown, playlist calls, preloads, the refill lock, heartbeat, stalls; logged only, `?debug=1` panel), `lib/slideshow/server-timing.ts` (`Server-Timing` of the playlist call)
 
 Key properties:
 

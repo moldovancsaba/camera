@@ -10,6 +10,9 @@
  */
 
 import { pickRandom } from '@/lib/slots/resolve';
+import SlideshowDebugPanel from '@/components/slideshow/SlideshowDebugPanel';
+import { useSlideshowDiagnostics } from '@/components/slideshow/useSlideshowDiagnostics';
+import { hostOf, shortId } from '@/lib/slideshow/diagnostics';
 import ScreenDesignLayers, { screenWindowStyle } from '@/components/slideshow/ScreenDesignLayers';
 import type { ResolvedScreenDesign } from '@/lib/slideshow/screen-design';
 import {
@@ -130,6 +133,13 @@ function viewportModeForStage(
   return slideshowViewportScale === 'fill' ? 'fill' : 'fit';
 }
 
+/** The browser's own timings of one picture (the last fetch, and how often it was fetched), for the diagnostics. Inline pictures have none. */
+function pictureTimings(url: string): { fetches: number; last?: PerformanceResourceTiming } {
+  if (url.startsWith('data:')) return { fetches: 0 };
+  const entries = performance.getEntriesByName(url) as PerformanceResourceTiming[];
+  return { fetches: entries.length, last: entries[entries.length - 1] };
+}
+
 export function SlideshowPlayerCore({
   slideshowId,
   instanceKey,
@@ -165,9 +175,28 @@ export function SlideshowPlayerCore({
   /** Slides we can repeat from when the network is down or playlist fetch returns empty (loop mode). */
   const loopSeedSlidesRef = useRef<Slide[] | null>(null);
   const refillBusyRef = useRef(false);
+  const isPlayingRef = useRef(true);
+  const lastShownRef = useRef<{ key: string; at: number } | null>(null);
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   /** Black stage floor until configured failover background image is preloaded / painted */
   const [failoverBgImageReady, setFailoverBgImageReady] = useState(true);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  // What the screen reports about itself (camera#476): see useSlideshowDiagnostics.
+  const { record } = useSlideshowDiagnostics({
+    slideshowId,
+    variant,
+    getState: () => ({
+      active: settingsRef.current !== null && isPlayingRef.current && slideQueueRef.current.length > 0,
+      holdMs: transitionMsRef.current,
+      queueLen: slideQueueRef.current.length,
+      preloaded: preloadedImages.current.size,
+      busy: refillBusyRef.current,
+    }),
+  });
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -207,17 +236,20 @@ export function SlideshowPlayerCore({
 
       const img = new Image();
       img.crossOrigin = 'anonymous';
+      const startedAt = performance.now();
       img.onload = () => {
         preloadedImages.current.set(url, img);
+        record('preload', { ms: performance.now() - startedAt, outcome: 'ok', bytes: pictureTimings(url).last?.transferSize || undefined, host: hostOf(url) });
         resolve();
       };
       img.onerror = () => {
         console.warn(`Failed to preload image: ${url}`);
+        record('preload', { ms: performance.now() - startedAt, outcome: 'error', host: hostOf(url) });
         reject();
       };
       img.src = url;
     });
-  }, []);
+  }, [record]);
 
   const preloadSlide = useCallback(
     async (slide: Slide): Promise<void> => {
@@ -235,8 +267,9 @@ export function SlideshowPlayerCore({
   );
 
   const fetchPlaylistChunk = useCallback(
-    async (limit: number, exclude: string[] = []): Promise<Slide[]> => {
+    async (limit: number, exclude: string[] = []): Promise<{ slides: Slide[]; status: number; ms: number; serverMs?: number }> => {
       const lim = Math.max(1, Math.min(50, Math.floor(limit)));
+      const startedAt = performance.now();
       try {
         const qs = new URLSearchParams({ limit: String(lim) });
         if (exclude.length > 0) qs.set('exclude', exclude.join(','));
@@ -247,11 +280,11 @@ export function SlideshowPlayerCore({
           `/api/slideshows/${slideshowId}/playlist?${qs.toString()}`,
           { cache: 'no-store' }
         );
-        if (!response.ok) return [];
+        if (!response.ok) return { slides: [], status: response.status, ms: performance.now() - startedAt };
         const data = await response.json();
-        return (data.playlist || []) as Slide[];
+        return { slides: (data.playlist || []) as Slide[], status: response.status, ms: performance.now() - startedAt, serverMs: data.diagnostics?.generationMs };
       } catch {
-        return [];
+        return { slides: [], status: 0, ms: performance.now() - startedAt };
       }
     },
     [slideshowId, instanceKey]
@@ -268,13 +301,17 @@ export function SlideshowPlayerCore({
     if (refillBusyRef.current) return;
     if (slideQueueRef.current.length >= bufferTargetRef.current) return;
     refillBusyRef.current = true;
+    const lockedAt = performance.now();
     try {
       const target = bufferTargetRef.current;
       for (let round = 0; round < 12; round++) {
         const queue = slideQueueRef.current;
         if (queue.length >= target) break;
-        const answer = await fetchPlaylistChunk(Math.min(target - queue.length, 25), excludeIds(queue));
+        const limit = Math.min(target - queue.length, 25);
+        const exclude = excludeIds(queue);
+        const { slides: answer, status, ms, serverMs } = await fetchPlaylistChunk(limit, exclude);
         const fresh = freshSlides(slideQueueRef.current, answer);
+        record('playlist', { limit, excl: exclude.length, status, ms, got: answer.length, fresh: fresh.length, serverMs });
         if (fresh.length > 0) {
           loopSeedSlidesRef.current = mergeSeed(loopSeedSlidesRef.current, fresh);
           await Promise.allSettled(fresh.map((sl) => preloadSlide(sl)));
@@ -284,8 +321,9 @@ export function SlideshowPlayerCore({
       }
     } finally {
       refillBusyRef.current = false;
+      record('lock', { ms: performance.now() - lockedAt });
     }
-  }, [fetchPlaylistChunk, preloadSlide, commitQueue]);
+  }, [fetchPlaylistChunk, preloadSlide, commitQueue, record]);
 
   const loadInitialBuffer = useCallback(async () => {
     try {
@@ -304,12 +342,15 @@ export function SlideshowPlayerCore({
         initialQuery.length > 0
           ? `/api/slideshows/${slideshowId}/playlist?${initialQuery}`
           : `/api/slideshows/${slideshowId}/playlist`;
+      const loadStartedAt = performance.now();
       const response = await fetch(playlistUrl, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(`Failed to load slideshow: ${response.status}`);
       }
 
       const data = await response.json();
+      const got = Array.isArray(data.playlist) ? data.playlist.length : 0;
+      record('playlist', { limit: 0, excl: 0, status: response.status, ms: performance.now() - loadStartedAt, got, fresh: got, serverMs: data.diagnostics?.generationMs });
 
       if (!data.slideshow || !data.playlist) {
         throw new Error('Invalid slideshow data');
@@ -373,10 +414,11 @@ export function SlideshowPlayerCore({
       setIsLoading(false);
     } catch (err) {
       console.error('Failed to load initial buffer:', err);
+      record('error', { msg: `load: ${err instanceof Error ? err.message : 'failed'}` });
       setError(err instanceof Error ? err.message : 'Failed to load slideshow');
       setIsLoading(false);
     }
-  }, [slideshowId, instanceKey, preloadImage, preloadSlide, maintainLoopBuffer, commitQueue, delayMs]);
+  }, [slideshowId, instanceKey, preloadImage, preloadSlide, maintainLoopBuffer, commitQueue, record, delayMs]);
 
   useLayoutEffect(() => {
     if (!settings) return;
@@ -527,6 +569,31 @@ export function SlideshowPlayerCore({
   const headFadeKey =
     settings && headSlide ? `${displayEpoch}:${slideKey(headSlide)}` : '';
 
+  // Each slide that becomes the one on screen is reported: a repeat, the gap since the last, and how its picture reached the screen.
+  useEffect(() => {
+    const head = headFadeKey ? slideQueueRef.current[0] : undefined;
+    if (!head) return;
+    const sub = head.submissions[0];
+    const now = performance.now();
+    const key = slideKey(head);
+    const { fetches, last } = pictureTimings(sub.imageUrl);
+    const preloaded = preloadedImages.current.get(sub.imageUrl);
+    record('slide_shown', {
+      id: shortId(sub._id),
+      dup: lastShownRef.current?.key === key,
+      q: slideQueueRef.current.length,
+      gapMs: lastShownRef.current ? now - lastShownRef.current.at : undefined,
+      fetches,
+      loadMs: last?.duration,
+      bytes: last?.transferSize || undefined,
+      nw: preloaded?.naturalWidth,
+      nh: preloaded?.naturalHeight,
+      host: hostOf(sub.imageUrl),
+      preloaded: preloaded !== undefined,
+    });
+    lastShownRef.current = { key, at: now };
+  }, [headFadeKey, record]);
+
   useLayoutEffect(() => {
     if (!headFadeKey) {
       setFadeOpaque(true);
@@ -645,6 +712,7 @@ export function SlideshowPlayerCore({
   if (isLoading) {
     return (
       <div className={`${outerStateClass} overflow-hidden relative ${className}`} aria-busy="true">
+        <SlideshowDebugPanel />
         <PlaybackSurface
           title={settings?.name ?? 'Slideshow'}
           state="loading"
@@ -916,6 +984,7 @@ export function SlideshowPlayerCore({
       style={failoverBackgroundStyle}
       onMouseMove={handleMouseMove}
     >
+      <SlideshowDebugPanel />
       <PlaybackSurface
         title={settings.name}
         state={playbackState}

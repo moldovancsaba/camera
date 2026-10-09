@@ -1,13 +1,13 @@
 {
  "_meta": {
-  "generated": "2026-10-09T10:38:56+00:00",
+  "generated": "2026-10-09T10:50:03+00:00",
   "repo": "camera",
-  "head": "53786be",
+  "head": "3920c32",
   "counts": {
-   "endpoints": 140,
+   "endpoints": 141,
    "collections": 8,
    "env": 59,
-   "outbound-hosts": 30,
+   "outbound-hosts": 31,
    "docs": 64
   }
  },
@@ -1354,6 +1354,15 @@
     "POST"
    ],
    "file": "app/api/observability/client-error/route.ts",
+   "auth_markers": [],
+   "no_auth_marker": true
+  },
+  {
+   "path": "/api/observability/slideshow-diagnostic",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/observability/slideshow-diagnostic/route.ts",
    "auth_markers": [],
    "no_auth_marker": true
   },
