@@ -1,12 +1,13 @@
 /**
  * The generated default frame as the guest capture page uses it (camera#236): what is derived from
- * `events.frameDesign`, which variant a shutter press gets, the territories shown before the real composition, and the
- * checked record of the variant a submission used. Pure and client-safe (no server imports).
+ * `events.frameDesign` and the editor's setting, which variant a shutter press gets, the territories shown before the real composition, and the
+ * checked record of the variant a submission used. Which layout and message a user gets under the setting is `choose.ts`. Pure and client-safe (no server imports).
  */
 
 import type { FrameVariant } from './context';
 import type { LayerId } from './layout';
 import { MAX_FRAME_MESSAGES, pickMessage } from './messages';
+import { storedFrameSelection, type SelectMode } from './selection';
 
 /** One generated image of the frame, as the capture page needs it. */
 export interface CaptureVariant {
@@ -21,10 +22,18 @@ export interface CaptureVariant {
   frameId: string | null;
 }
 
+/** The editor's setting as the capture page uses it (lib/frame/selection.ts), with a picked message as its position in the message list; null where the event never set it. */
+export interface CaptureSelection {
+  layout: { mode: SelectMode; pick: string | null };
+  message: { mode: SelectMode; pick: number | null };
+}
+
 export interface CaptureFrame {
   width: number;
   height: number;
   variants: CaptureVariant[];
+  /** Set only when an editor saved how users get the layout and the message; without it the page keeps the random image at every shutter press. */
+  selection: CaptureSelection | null;
 }
 
 /** A layer box as fractions (0..1) of the frame, for the 50% black territory shown before the real composition. */
@@ -51,7 +60,17 @@ interface FrameAssignmentRow {
 
 interface EventWithFrames {
   frames?: FrameAssignmentRow[] | null;
-  frameDesign?: { variants?: FrameVariant[] | null } | null;
+  frameDesign?: { variants?: FrameVariant[] | null; messages?: string[] | null } | null;
+  /** How users get the layout and the message (`Event.frameSelection`). */
+  frameSelection?: unknown;
+}
+
+/** The saved setting for the page: a picked message becomes its position in the message list, and a pick that is no longer in the list becomes none (the page then draws at random). */
+function captureSelectionOf(stored: unknown, messages: readonly string[]): CaptureSelection | null {
+  const selection = storedFrameSelection(stored);
+  if (!selection) return null;
+  const at = selection.message.pick === null ? -1 : messages.indexOf(selection.message.pick);
+  return { layout: selection.layout, message: { mode: selection.message.mode, pick: at >= 0 ? at : null } };
 }
 
 /**
@@ -72,7 +91,7 @@ export function captureFrameOf(event: EventWithFrames): CaptureFrame | null {
     .filter((variant) => variant.imageUrl && variant.width > 0 && variant.height > 0)
     .map(({ index, message, imageUrl, width, height, layers, frameId }) => ({ index, message, imageUrl, width, height, layers, frameId: frameId ?? null }));
   if (variants.length === 0) return null;
-  return { width: variants[0].width, height: variants[0].height, variants };
+  return { width: variants[0].width, height: variants[0].height, variants, selection: captureSelectionOf(event.frameSelection, event.frameDesign?.messages ?? []) };
 }
 
 /** A random variant for one shutter press, never the one used last time when another exists. */
@@ -84,28 +103,6 @@ export function pickVariant(
   // A message on several designs has several images with one position, so "not the last one" is by position first and falls back to any image when that leaves none.
   const others = frame.variants.filter((variant) => variant.index !== previousIndex);
   return pickMessage(others.length > 0 && frame.variants.length > 1 ? others : frame.variants, null, random);
-}
-
-/** How a user gets the message of the generated frame: `random` (the default, a new one at every shutter press) or `user` (the user chooses before taking the photo). */
-export type FrameChoice = 'random' | 'user';
-
-/** The setting of an event: only the exact word `user` turns the choice on, so an event that never set it keeps the random message it always had. */
-export function normalizeFrameChoice(value: unknown): FrameChoice {
-  return value === 'user' ? 'user' : 'random';
-}
-
-/**
- * The messages a user can choose from when the event lets the user choose: the images of the generated frame that carry a message, in the order of the event's message list.
- * Fewer than two is no choice (the one message is used as it is), so the list is empty then.
- */
-export function messageChoices(frame: CaptureFrame | null | undefined): CaptureVariant[] {
-  const withMessage = (frame?.variants ?? []).filter((variant) => variant.index !== null && Boolean(variant.message));
-  return withMessage.length >= 2 ? withMessage : [];
-}
-
-/** The variant a user chose (its position in the message list), or null when it is not one of the frame's images. */
-export function variantByIndex(frame: CaptureFrame | null | undefined, index: number | null): CaptureVariant | null {
-  return index === null ? null : (frame?.variants.find((variant) => variant.index === index) ?? null);
 }
 
 export function territoriesOf(variant: Pick<CaptureVariant, 'width' | 'height' | 'layers'>): Territory[] {

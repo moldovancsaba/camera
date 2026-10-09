@@ -237,6 +237,9 @@ export const en = {
   'flow.step.selectMessage': 'Choose message',
   'flow.selectMessage.title': 'Choose your message',
   'flow.changeMessage': 'Change message',
+  'flow.step.selectLayout': 'Choose design',
+  'flow.selectLayout.title': 'Choose your design',
+  'flow.changeLayout': 'Change design',
 } as const;
 
 export type MessageKey = keyof typeof en;
