@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the dark area of the designs can be the mask of the generated frame (owner, 2026-10-09, answers 194 and 195; changes no event until an editor chooses it)
+
+- **Added (owner: "right now use the auto generated default frame's mask", keep blue and pink):** under the table **Which message goes on which design** a choice **Dark area of the designs**: **the design's own** (the header and footer its designer drew, the default and what every event has) or **the mask of the generated frame** (the logo, the teams, the bar and the message box of the auto generated default frame for that message, whatever the design). Saving draws nothing again: the images stay, only the dark boxes of each image change; choosing the design's own brings the designer's boxes back.
+- **Changed in the code:** `FrameDesign.darkArea` (`generated`; nothing stored means the design's own), saved with the messages (`PUT /api/admin/events/<id>/frame-design`, `darkArea`: `frame` or `generated`), kept when the snapshot is refreshed, cleared by "Reset to the default list"; `generatedLayers` (lib/frame/render.ts) gives the mask without drawing; the image generation sets the layers of every image written on a design from it.
+- **Not set on any event:** the owner chooses it for MTK x Vasas in the admin (with the table and the selection setting).
+- **Verified:** type-check; lint; unit tests (own layers by default, the mask when asked, nothing redrawn, back to the own layers, a new image gets the mask, the logo box when the partner has a logo, the setting saved, refused, kept on a refresh and cleared by a reset); the full CI chain. **Not seen in a browser** (admin radio only; the capture page reads the layers as before).
+
 ## Unreleased — the dark area is one method for every event and every kind of design (owner, 2026-10-09, answer 193; user-visible on every event with a complete frame of its own)
 
 - **Changed (owner: "everywhere, properly, as a unified general method"):** a **complete frame of the event's own** is its **50 % black silhouette** (the whole non-transparent graphic) in the **move-and-zoom step and in the live view of a desktop webcam**, on **every event**, not only on events whose editor saved the selection setting (the first form of segment S5). The real frame shows again in the preview and in the result. If the silhouette cannot be made (the picture cannot be read) an event that is not vetted shows the real frame, as it did before; a vetted event never shows the real frame (camera#265).

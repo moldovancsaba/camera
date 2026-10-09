@@ -75,6 +75,7 @@ export async function refreshFrameDesign(db: Db, event: Document, deps: RefreshD
     ...(existing?.base ? { base: existing.base } : {}),
     // The frames the messages chose belong to the event too (camera#366).
     ...(existing?.messageFrames ? { messageFrames: existing.messageFrames } : {}),
+    ...(existing?.darkArea ? { darkArea: existing.darkArea } : {}),
     ...(existing?.variants ? { variants: existing.variants } : {}),
     ...(existing?.generatedAt ? { generatedAt: existing.generatedAt } : {}),
   };
@@ -91,7 +92,7 @@ export async function refreshFrameDesign(db: Db, event: Document, deps: RefreshD
 export async function saveFrameMessages(
   db: Db,
   event: Document,
-  input: { messages?: unknown; reset?: unknown; messageFrames?: unknown },
+  input: { messages?: unknown; reset?: unknown; messageFrames?: unknown; darkArea?: unknown },
   deps: RefreshDeps = defaultDeps
 ): Promise<FrameDesign> {
   const current: FrameDesign = (event.frameDesign as FrameDesign | undefined) ?? (await refreshFrameDesign(db, event, deps)).design;
@@ -109,21 +110,33 @@ export async function saveFrameMessages(
     if (!checked.ok) throw apiBadRequest(checked.error);
     chosen = checked.messageFrames;
   }
+  // Where the dark area of the designs comes from: the designs' own layers (the default, nothing stored) or the mask of the generated frame; a reset clears it with the designs.
+  let darkArea: FrameDesign['darkArea'] = input.reset === true ? undefined : current.darkArea;
+  if (input.reset !== true && input.darkArea !== undefined) {
+    if (input.darkArea !== 'frame' && input.darkArea !== 'generated') throw apiBadRequest('darkArea must be frame or generated');
+    darkArea = input.darkArea === 'generated' ? 'generated' : undefined;
+  }
   // A choice belongs to a message text: it goes with the message when the message goes.
   chosen = Object.fromEntries(Object.entries(chosen).filter(([message]) => messages.includes(message)));
   const hasChoices = Object.keys(chosen).length > 0;
 
-  const { messageFrames: _previous, ...rest } = current;
+  const { messageFrames: _previous, darkArea: _darkArea, ...rest } = current;
   void _previous;
+  void _darkArea;
   const design: FrameDesign = {
     ...rest,
     messages,
     messagesOverridden: !sameList(messages, DEFAULT_FRAME_MESSAGES),
     updatedAt: deps.now(),
     ...(hasChoices ? { messageFrames: chosen } : {}),
+    ...(darkArea ? { darkArea } : {}),
   };
   const set: Record<string, unknown> = { 'frameDesign.messages': design.messages, 'frameDesign.messagesOverridden': design.messagesOverridden, 'frameDesign.updatedAt': design.updatedAt, updatedAt: design.updatedAt };
   if (hasChoices) set['frameDesign.messageFrames'] = chosen;
-  await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: event._id }, hasChoices ? { $set: set } : { $set: set, $unset: { 'frameDesign.messageFrames': '' } });
+  if (darkArea) set['frameDesign.darkArea'] = darkArea;
+  const unset: Record<string, ''> = {};
+  if (!hasChoices) unset['frameDesign.messageFrames'] = '';
+  if (!darkArea) unset['frameDesign.darkArea'] = '';
+  await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: event._id }, Object.keys(unset).length > 0 ? { $set: set, $unset: unset } : { $set: set });
   return design;
 }

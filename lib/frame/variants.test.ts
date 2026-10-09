@@ -323,3 +323,42 @@ test('adding a design to a message draws only the new image; the others are reus
   assert.deepEqual([next.generated, next.reused], [1, 2]);
   assert.deepEqual(next.design.variants!.map((v) => [v.index, v.frameId ?? null]), [[0, 'f-blue'], [0, 'f-pink'], [1, 'f-pink']]);
 });
+
+const MTK_LAYERS = [{ id: 'header' as const, x: 0, y: 0, width: 1920, height: 100 }, { id: 'footer' as const, x: 0, y: 980, width: 1920, height: 100 }];
+
+test('the dark area of a design is its own layers by default, and the mask of the generated frame when the event says so; the images are not redrawn for it', async () => {
+  const frames = [libraryFrame('f-blue', { messageArea: { ...AREA, layers: MTK_LAYERS } })];
+  const h = await chosenHarness(frames);
+  const d: FrameDesign = { ...design({}, ['HAJRÁ', 'Go!'], null), messageFrames: { HAJRÁ: 'f-blue' } };
+  const e = { ...event(d), frames: [assignment('f-blue')] };
+  const own = await generateFrameVariants(h.db, e, h.deps);
+  assert.deepEqual(own.design.variants![0].layers, MTK_LAYERS, 'the designer’s header and footer');
+  assert.equal(own.design.variants![1].frameId ?? null, null);
+
+  const again = await chosenHarness(frames);
+  const mask = await generateFrameVariants(again.db, { ...e, frameDesign: { ...own.design, darkArea: 'generated' } }, again.deps);
+  assert.deepEqual([mask.generated, mask.reused], [0, 2], 'nothing is drawn again');
+  const onBlue = mask.design.variants![0];
+  assert.equal(onBlue.frameId, 'f-blue');
+  assert.deepEqual(onBlue.layers.map((layer) => layer.id), ['teams', 'bar', 'message'], 'the mask of the generated frame: teams, bar and message boxes (no logo here: the partner has none)');
+  assert.ok(onBlue.layers.find((layer) => layer.id === 'bar')!.y > 800, 'the bar is at the bottom of the frame');
+  assert.equal(mask.design.variants![1].imageUrl, own.design.variants![1].imageUrl, 'a message on the generated layout is untouched');
+
+  const back = await generateFrameVariants(again.db, { ...e, frameDesign: { ...mask.design, darkArea: 'frame' } }, again.deps);
+  assert.deepEqual(back.design.variants![0].layers, MTK_LAYERS, 'back to the design’s own layers');
+});
+
+test('a new image written on a design gets the mask of the generated frame for its message when the event says so', async () => {
+  const h = await chosenHarness([libraryFrame('f-blue', { messageArea: { ...AREA, layers: MTK_LAYERS } })]);
+  const d: FrameDesign = { ...design({}, ['HAJRÁ'], null), darkArea: 'generated', messageFrames: { HAJRÁ: 'f-blue' } };
+  const result = await generateFrameVariants(h.db, { ...event(d), frames: [assignment('f-blue')] }, h.deps);
+  assert.equal(result.generated, 1);
+  assert.deepEqual(result.design.variants![0].layers.map((layer) => layer.id), ['teams', 'bar', 'message']);
+});
+
+test('the mask of the generated frame has the logo box when the partner has a logo that can be had', async () => {
+  const h = await chosenHarness([libraryFrame('f-blue', { messageArea: { ...AREA, layers: MTK_LAYERS } })]);
+  const d: FrameDesign = { ...design({}, ['HAJRÁ']), darkArea: 'generated', messageFrames: { HAJRÁ: 'f-blue' } };
+  const result = await generateFrameVariants(h.db, { ...event(d), frames: [assignment('f-blue')] }, { ...h.deps, fetchLogo: async () => PNG });
+  assert.deepEqual(result.design.variants![0].layers.map((layer) => layer.id), ['logo', 'teams', 'bar', 'message']);
+});

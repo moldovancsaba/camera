@@ -18,7 +18,7 @@ import { fetchLogo } from './logo';
 import { eventEmoji, withoutEmoji } from './emoji';
 import { chosenFrameIds, frameBaseOf, loadMessageFrames, type MessageFrame } from './message-frames';
 import { messageTokens, usableMessages } from './messages';
-import { FRAME_RENDER_VERSION, renderFrame } from './render';
+import { FRAME_RENDER_VERSION, generatedLayers, renderFrame } from './render';
 
 export interface VariantDeps {
   upload: (pathname: string, png: Buffer) => Promise<string>;
@@ -91,12 +91,20 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
         })
       : [{ index: null, message: null, chosen: undefined }];
 
+  // The dark area of an image written on a library frame: the layers its designer put in the message area, or (`design.darkArea` is `generated`) the mask of the generated default frame for
+  // that message. It is not part of the image, so a change of it does not redraw anything: kept images get their layers set again.
+  const layersOf = async (chosen: MessageFrame, message: string | null, own: FrameVariant['layers']): Promise<FrameVariant['layers']> => {
+    if (design.darkArea !== 'generated') return own;
+    if (logoBytes === undefined) logoBytes = context.partner?.logoUrl ? await deps.fetchLogo(context.partner.logoUrl) : null;
+    return generatedLayers({ context: shown, message, logoBytes, emoji, font });
+  };
+
   for (const job of jobs) {
     const chosen = job.chosen;
     const key = variantKey(design, job.message, font, chosen);
     const kept = existing.find((variant) => reusable(variant, key));
     if (kept) {
-      variants.push({ ...kept, index: job.index });
+      variants.push({ ...kept, index: job.index, ...(chosen ? { layers: await layersOf(chosen, job.message, (chosen.area.layers ?? []).map((layer) => ({ ...layer }))) } : {}) });
       continue;
     }
 
@@ -116,7 +124,7 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
         imageUrl,
         width: rendered.width,
         height: rendered.height,
-        layers: rendered.layers,
+        layers: await layersOf(chosen, job.message, rendered.layers),
         key,
         font: { family: font.family, used: font.used, note: font.note, retry: font.retry },
         logo: 'none',
