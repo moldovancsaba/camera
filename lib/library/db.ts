@@ -7,6 +7,7 @@
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { logoDefaultsOf, sameLogoDefaults, type LogoDefault } from './logos';
+import { LOGO_SLOT, LOGO_SLOT_IDS } from '@/lib/slots/logo';
 import {
   KIND_META,
   LIBRARY_KINDS,
@@ -30,7 +31,7 @@ const LIST_LIMIT = 500;
 const text = (value: unknown): string => (typeof value === 'string' ? value : '');
 const urlOrNull = (value: unknown): string | null => (typeof value === 'string' && value ? value : null);
 /** The owner fields of a stored item. */
-const fieldsOf = (doc: Document): ScopeFields => ({ scope: doc.scope as ScopeFields['scope'], partnerId: text(doc.partnerId) || null, eventId: text(doc.eventId) || null });
+export const fieldsOf = (doc: Document): ScopeFields => ({ scope: doc.scope as ScopeFields['scope'], partnerId: text(doc.partnerId) || null, eventId: text(doc.eventId) || null });
 const coll = (db: Db, kind: LibraryKind) => db.collection(KIND_META[kind].collection);
 const idOf = (kind: LibraryKind, doc: Document): string => text(doc[KIND_META[kind].idField]);
 
@@ -261,6 +262,8 @@ export async function savePartnerLibrary(db: Db, partner: Document, kind: Librar
   if (logoDefaultsChanged) set.defaultLogos = logoDefaults;
   await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId: text(partner.partnerId) }, { $set: set });
   await keepInEvents(db, text(partner.partnerId), kind, remove);
+  // A logo taken out of the partner library is no longer the partner's logo (camera#419); the events that chose it themselves keep it, as for frames.
+  if (kind === 'logos' && remove.length) await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId: text(partner.partnerId) }, { $pull: { [`slots.${LOGO_SLOT}.items`]: { $in: remove } } as Document });
 
   const removedInUse: Record<string, number> = {};
   // An image is not assigned, so no event "uses" one here: a picture field that shows it keeps its address, and the picture keeps showing.
@@ -281,10 +284,12 @@ export interface ItemUsage {
 
 export async function usageOfItem(db: Db, kind: LibraryKind, itemId: string): Promise<ItemUsage> {
   const idField = KIND_META[kind].idField;
-  const events = await db.collection(COLLECTIONS.EVENTS).countDocuments({ [`${kind}.${idField}`]: itemId });
+  // A logo is also used through the slot model (camera#419): an event holds it in `slots.<slot>.items`, a partner makes it its logo in `slots.logo.items`.
+  const eventUse: Document[] = [{ [`${kind}.${idField}`]: itemId }, ...(kind === 'logos' ? LOGO_SLOT_IDS.map((slot) => ({ [`slots.${slot}.items`]: itemId })) : [])];
+  const events = await db.collection(COLLECTIONS.EVENTS).countDocuments(eventUse.length > 1 ? { $or: eventUse } : eventUse[0]);
   const partnerLibraries = await db.collection(COLLECTIONS.PARTNERS).countDocuments({ [`library.${kind}`]: itemId });
-  const defaultsPath = kind === 'frames' ? 'defaultFrames' : kind === 'logos' ? 'defaultLogos.logoId' : null;
-  const partnerDefaults = defaultsPath ? await db.collection(COLLECTIONS.PARTNERS).countDocuments({ [defaultsPath]: itemId }) : 0;
+  const defaultsPaths = kind === 'frames' ? ['defaultFrames'] : kind === 'logos' ? ['defaultLogos.logoId', `slots.${LOGO_SLOT}.items`] : [];
+  const partnerDefaults = defaultsPaths.length ? await db.collection(COLLECTIONS.PARTNERS).countDocuments(defaultsPaths.length > 1 ? { $or: defaultsPaths.map((path) => ({ [path]: itemId })) } : { [defaultsPaths[0]]: itemId }) : 0;
   return { events, partnerLibraries, partnerDefaults };
 }
 
@@ -366,12 +371,15 @@ export async function deleteLibraryUpload(db: Db, kind: LibraryKind, itemId: str
   if (level.scope === 'event') {
     if (scope !== 'event' || text(item.eventId) !== level.eventId) return { ok: false, status: 400, reason: `Only a ${noun} uploaded for this event can be deleted here.` };
     if (assigned) await db.collection(COLLECTIONS.EVENTS).updateOne({ eventId: level.eventId }, { $pull: { [kind]: { [idField]: itemId } } as Document });
+    // On the slot model the event holds it in its slots too (camera#419): taken out of every place it was chosen in.
+    if (kind === 'logos') await db.collection(COLLECTIONS.EVENTS).updateOne({ eventId: level.eventId }, { $pull: Object.fromEntries(LOGO_SLOT_IDS.map((slot) => [`slots.${slot}.items`, itemId])) as Document });
   } else {
     if (scope !== 'partner' || text(item.partnerId) !== level.partnerId) return { ok: false, status: 400, reason: `Only a ${noun} uploaded for this partner can be deleted here.` };
-    const inUse = assigned ? await db.collection(COLLECTIONS.EVENTS).countDocuments({ partnerId: level.partnerId, [`${kind}.${idField}`]: itemId }) : 0;
+    const holds: Document[] = [{ [`${kind}.${idField}`]: itemId }, ...(kind === 'logos' ? LOGO_SLOT_IDS.map((slot) => ({ [`slots.${slot}.items`]: itemId })) : [])];
+    const inUse = assigned ? await db.collection(COLLECTIONS.EVENTS).countDocuments({ partnerId: level.partnerId, $or: holds }) : 0;
     if (inUse > 0) return { ok: false, status: 409, reason: `${inUse} event${inUse === 1 ? '' : 's'} still use${inUse === 1 ? 's' : ''} this ${noun}. Remove it from them first.` };
     if (kind === 'frames') await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId: level.partnerId }, { $pull: { defaultFrames: itemId } as Document });
-    if (kind === 'logos') await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId: level.partnerId }, { $pull: { defaultLogos: { logoId: itemId } } as Document });
+    if (kind === 'logos') await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId: level.partnerId }, { $pull: { defaultLogos: { logoId: itemId }, [`slots.${LOGO_SLOT}.items`]: itemId } as Document });
   }
   await coll(db, kind).deleteOne({ [idField]: itemId });
   return { ok: true };

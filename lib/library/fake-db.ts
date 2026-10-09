@@ -35,6 +35,19 @@ function matchesValue(value: unknown, want: unknown): boolean {
   return value === want || (typeof value === 'object' && value !== null && String(value) === String(want));
 }
 
+/** `$pull` on a plain or dotted path (`slots.logo.items`): takes out the elements that equal the condition, match it, or are in its `$in` list. */
+function pullFrom(doc: Doc, path: string, cond: unknown): void {
+  const parts = path.split('.');
+  const parent = parts.slice(0, -1).reduce<Doc | undefined>((at, part) => (at && at[part] && typeof at[part] === 'object' ? (at[part] as Doc) : undefined), doc);
+  const key = parts[parts.length - 1];
+  if (!parent || !Array.isArray(parent[key])) return;
+  const isIn = cond && typeof cond === 'object' && Array.isArray((cond as Doc).$in);
+  parent[key] = (parent[key] as unknown[]).filter((item) => {
+    if (isIn) return !((cond as Doc).$in as unknown[]).includes(item);
+    return !(cond && typeof cond === 'object' ? matches(item as Doc, cond as Doc) : item === cond);
+  });
+}
+
 export function matches(doc: Doc, filter: Doc): boolean {
   return Object.entries(filter).every(([key, want]) => {
     if (key === '$or') return (want as Doc[]).some((f) => matches(doc, f));
@@ -133,10 +146,7 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
             const each = value && typeof value === 'object' && Array.isArray((value as Doc).$each) ? ((value as Doc).$each as unknown[]) : [value];
             doc[path] = [...arr, ...each];
           }
-          for (const [path, cond] of Object.entries((update.$pull as Doc) ?? {})) {
-            const arr = (doc[path] as unknown[] | undefined) ?? [];
-            doc[path] = arr.filter((item) => !(cond && typeof cond === 'object' ? matches(item as Doc, cond as Doc) : item === cond));
-          }
+          for (const [path, cond] of Object.entries((update.$pull as Doc) ?? {})) pullFrom(doc, path, cond);
           return { matchedCount: 1, modifiedCount: 1 };
         },
         updateMany: async (filter: Doc, update: Doc) => {
@@ -144,14 +154,7 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
           const docs = list(name).filter((d) => matches(d, filter));
           for (const doc of docs) {
             for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(doc, path, value, filter);
-            for (const [path, cond] of Object.entries((update.$pull as Doc) ?? {})) {
-              const parts = path.split('.');
-              const parent = parts.slice(0, -1).reduce<Doc | undefined>((at, part) => (at && at[part] && typeof at[part] === 'object' ? (at[part] as Doc) : undefined), doc);
-              const key = parts[parts.length - 1];
-              if (parent && Array.isArray(parent[key])) {
-                parent[key] = (parent[key] as unknown[]).filter((item) => !(cond && typeof cond === 'object' ? matches(item as Doc, cond as Doc) : item === cond));
-              }
-            }
+            for (const [path, cond] of Object.entries((update.$pull as Doc) ?? {})) pullFrom(doc, path, cond);
           }
           return { matchedCount: docs.length, modifiedCount: docs.length };
         },

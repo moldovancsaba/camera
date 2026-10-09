@@ -166,6 +166,8 @@ export interface Partner {
     scenario: LogoScenario;          // Where/when to display this logo
     order: number;                   // Order for random selection
   }>;
+  /** What the partner chose for the slots of the brick model (lib/slots): only what an editor set, never a copy of a parent. `slots.logo` is the partner's logo, the default of its events. */
+  slots?: Record<string, { items?: string[]; useDefault?: boolean }>;
   
   // Statistics
   eventCount?: number;               // Cached count of partner's events
@@ -430,6 +432,8 @@ export interface Event {
   brandColorsOverridden?: boolean;   // Whether event has custom brand colors
   framesOverridden?: boolean;        // Whether event has custom frame assignments
   logosOverridden?: boolean;         // Whether event has custom logo assignments
+  /** What the event chose for the slots of the brick model (lib/slots): only what an editor set. Present (even empty) once the event is on the slot model; before that its `logos` list is read as it always was. */
+  slots?: Record<string, { items?: string[]; useDefault?: boolean }>;
   
   // Generated default frame (docs/DEFAULT_FRAME_PLAN.md): the messmass snapshot it is built from and the editable message list.
   // Applies only while the event has no active frame of its own; see lib/frame/.
