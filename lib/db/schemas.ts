@@ -434,6 +434,8 @@ export interface Event {
   logosOverridden?: boolean;         // Whether event has custom logo assignments
   /** What the event chose for the slots of the brick model (lib/slots): only what an editor set. Present (even empty) once the event is on the slot model; before that its `logos` list is read as it always was. */
   slots?: Record<string, { items?: string[]; useDefault?: boolean }>;
+  /** The last-known-good snapshot of what the event uses in each place (lib/slots/snapshot.ts, camera#421): read only for an item the library no longer has. */
+  slotSnapshots?: Record<string, Array<{ id: string; name: string; imageUrl: string | null; thumbnailUrl: string | null; mimeType: string | null; width: number | null; height: number | null; source?: string; scope: string; takenAt: string }>>;
   
   // Generated default frame (docs/DEFAULT_FRAME_PLAN.md): the messmass snapshot it is built from and the editable message list.
   // Applies only while the event has no active frame of its own; see lib/frame/.

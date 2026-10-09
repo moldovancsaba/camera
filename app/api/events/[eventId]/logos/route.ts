@@ -16,10 +16,11 @@ import { optionalAuth } from '@/lib/api';
 import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError, apiForbidden } from '@/lib/api/responses';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
 import { checkEventAssign } from '@/lib/library/db';
-import { LOGO_SCENARIO_IDS, isOnSlotModel, resolveEventLogos, type LogoEvent, type LogoPartner } from '@/lib/slots/logo';
+import { LOGO_PLACE_SLOTS, LOGO_SCENARIO_IDS, isOnSlotModel, resolveEventLogos, type LogoEvent, type LogoPartner } from '@/lib/slots/logo';
+import { lostItem, nextSnapshots, type Snapshots } from '@/lib/slots/snapshot';
 
 type EventLogoAssignment = Event['logos'][number];
-type GroupedEventLogos = Record<LogoScenario, Array<EventLogoAssignment & Pick<Logo, 'name' | 'imageUrl' | 'thumbnailUrl'> & { level: string }>>;
+type GroupedEventLogos = Record<LogoScenario, Array<EventLogoAssignment & Pick<Logo, 'name' | 'imageUrl' | 'thumbnailUrl'> & { level: string; lost?: boolean }>>;
 
 function buildEventLookupQuery(eventIdentifier: string): Record<string, unknown> {
   const normalized = eventIdentifier.trim();
@@ -189,12 +190,22 @@ export async function GET(
       const slotLogos = await logosCollection
         .find({ logoId: { $in: [...new Set(Object.values(resolved).flatMap((items) => items.map((item) => item.id)))] } })
         .toArray();
+      const byId = new Map(slotLogos.map((candidate) => [String(candidate.logoId), candidate as Record<string, unknown>]));
+      // The fail-safe (camera#421): the event keeps a snapshot of what it uses; it is refreshed here only when the live items differ from it (a page view does not
+      // write otherwise), and an item the library no longer has is still served from it, marked lost, so a parent that loses a logo does not take it from the event.
+      const placeIds = Object.fromEntries(LOGO_SCENARIO_IDS.map((scenario) => [LOGO_PLACE_SLOTS[scenario], resolved[scenario].map((item) => item.id)]));
+      const { snapshots, changed } = nextSnapshots(event.slotSnapshots as Snapshots | undefined, placeIds, byId, generateTimestamp());
+      if (changed) await eventsCollection.updateOne({ _id: event._id }, { $set: { slotSnapshots: snapshots } });
       for (const scenario of LOGO_SCENARIO_IDS) {
         resolved[scenario].forEach((item, index) => {
-          const logo = slotLogos.find((candidate) => candidate.logoId === item.id);
-          // A logo the library no longer has is left out, as before.
+          const logo = byId.get(item.id);
           if (logo) {
-            groupedLogos[scenario as LogoScenario].push({ logoId: item.id, scenario: scenario as LogoScenario, order: index, isActive: true, addedAt: '', level: item.level, name: logo.name, imageUrl: logo.imageUrl, thumbnailUrl: logo.thumbnailUrl });
+            groupedLogos[scenario as LogoScenario].push({ logoId: item.id, scenario: scenario as LogoScenario, order: index, isActive: true, addedAt: '', level: item.level, name: String(logo.name), imageUrl: String(logo.imageUrl), thumbnailUrl: logo.thumbnailUrl as string });
+            return;
+          }
+          const lost = lostItem(snapshots, LOGO_PLACE_SLOTS[scenario], item.id);
+          if (lost?.imageUrl) {
+            groupedLogos[scenario as LogoScenario].push({ logoId: item.id, scenario: scenario as LogoScenario, order: index, isActive: true, addedAt: '', level: item.level, lost: true, name: lost.name, imageUrl: lost.imageUrl, thumbnailUrl: lost.thumbnailUrl as string });
           }
         });
       }

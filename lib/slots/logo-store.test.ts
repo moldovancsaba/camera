@@ -143,3 +143,17 @@ test('deleting an event\'s own upload takes it out of its slots; a partner\'s ow
   assert.equal(refused.ok, false);
   if (!refused.ok) assert.equal(refused.status, 409);
 });
+
+test('saving a slot also refreshes the event\'s snapshot of what each place uses, and a logo that is lost later is still in it', async () => {
+  const { db, data } = seed({ partner: { slots: { logo: { items: ['p1'] } } }, event: { slots: {} } });
+  await setEventLogoSlot(db, eventDoc(data), 'logo', { items: ['e1'] }, NOW);
+  const snapshots = (eventDoc(data) as unknown as { slotSnapshots: Record<string, Array<{ id: string; name: string }>> }).slotSnapshots;
+  assert.deepEqual(snapshots['logo-pages'].map((i) => i.id), ['e1', 'p1']);
+  assert.equal(snapshots['logo-pages'][1].name, 'Logo p1');
+
+  // the partner's logo is deleted from the library: the next save keeps what the event had, in the snapshot
+  data.logos.splice(data.logos.findIndex((l) => l.logoId === 'p1'), 1);
+  await setEventLogoSlot(db, eventDoc(data), 'logo-pages', { items: ['e1'] }, NOW);
+  const after = (eventDoc(data) as unknown as { slotSnapshots: Record<string, Array<{ id: string }>> }).slotSnapshots;
+  assert.ok(after['logo-pages'].some((i) => i.id === 'p1'), 'the lost logo is still known to the event');
+});
