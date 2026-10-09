@@ -1,18 +1,20 @@
 import { DEFAULT_UI_LANGUAGE, translate, type MessageKey, type UiLanguage } from '@/lib/i18n';
+import type { TextOverrides } from '@/lib/i18n/overrides';
 
 /**
  * The default wording of the emails to the user, in the language of the event (camera#352). The English constants are the dictionary's English texts,
  * for code that has no language (the admin forms, the preview); the sender uses `emailDefaults(language)`.
  */
-export function emailDefaults(language: UiLanguage = DEFAULT_UI_LANGUAGE) {
+export function emailDefaults(language: UiLanguage = DEFAULT_UI_LANGUAGE, texts?: TextOverrides | null) {
+  const tr = (key: MessageKey) => translate(language, key, undefined, texts);
   return {
-    subject: translate(language, 'email.subject'),
-    body: translate(language, 'email.body'),
-    resubmissionSubject: translate(language, 'email.subjectResubmission'),
-    resubmissionBody: translate(language, 'email.bodyResubmission'),
-    notApprovedSubject: translate(language, 'email.notApprovedSubject'),
-    notApprovedBody: translate(language, 'email.notApprovedBody'),
-    termsUrl: translate(language, 'email.termsUrl'),
+    subject: tr('email.subject'),
+    body: tr('email.body'),
+    resubmissionSubject: tr('email.subjectResubmission'),
+    resubmissionBody: tr('email.bodyResubmission'),
+    notApprovedSubject: tr('email.notApprovedSubject'),
+    notApprovedBody: tr('email.notApprovedBody'),
+    termsUrl: tr('email.termsUrl'),
   };
 }
 
@@ -42,9 +44,9 @@ const PREFILLED_DEFAULT_KEYS = ['email.subject', 'email.body', 'email.subjectRes
  * editor's own, so in another language a stored template that is exactly one of the English defaults counts as not set: the same default in the
  * language is sent instead (an updated-photo text stays the updated-photo text). An editor's own text is sent as written; in English nothing changes.
  */
-export function emailTemplateIn(language: UiLanguage, stored: string | null): string | null {
+export function emailTemplateIn(language: UiLanguage, stored: string | null, texts?: TextOverrides | null): string | null {
   if (!stored) return null;
   if (language === DEFAULT_UI_LANGUAGE) return stored;
   const key = PREFILLED_DEFAULT_KEYS.find((candidate) => normalizeNewlines(translate(DEFAULT_UI_LANGUAGE, candidate)) === normalizeNewlines(stored));
-  return key ? translate(language, key) : stored;
+  return key ? translate(language, key, undefined, texts) : stored;
 }

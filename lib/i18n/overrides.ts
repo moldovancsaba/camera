@@ -11,7 +11,7 @@
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { en, type MessageKey } from '@/lib/i18n/messages.en';
-import { UI_LANGUAGES, normalizeUiLanguage, type UiLanguage } from '@/lib/i18n';
+import { UI_LANGUAGES, isUiLanguage, normalizeUiLanguage, type UiLanguage } from '@/lib/i18n';
 
 export const TEXT_MAX = 500;
 
@@ -114,18 +114,36 @@ export async function saveEventTexts(db: Db, eventId: string, texts: TextsByLang
   return result.matchedCount > 0;
 }
 
+/**
+ * The language of an event's users (issue 353, the partner's default language): the event's own, else its partner's, else English. An event that never set a language
+ * **follows its partner** each time it is read (nothing is copied down), so setting the partner's language changes every event that has none, and an event that set its own keeps it.
+ */
+export function eventLanguage(event: { uiLanguage?: unknown } | null | undefined, partner?: { uiLanguage?: unknown } | null): UiLanguage {
+  if (isUiLanguage(event?.uiLanguage)) return event.uiLanguage;
+  return normalizeUiLanguage(partner?.uiLanguage);
+}
+
+/** The event with its language filled in from its partner when it has none of its own, for the code that reads `uiLanguage` from an event document (the e-mails). One small read, only for an event with no language. */
+export async function withEffectiveLanguage<T extends { uiLanguage?: unknown; partnerId?: unknown }>(db: Db, event: T): Promise<T> {
+  if (isUiLanguage(event.uiLanguage) || typeof event.partnerId !== 'string' || !event.partnerId) return event;
+  const partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }, { projection: { uiLanguage: 1 } });
+  return isUiLanguage(partner?.uiLanguage) ? { ...event, uiLanguage: partner.uiLanguage } : event;
+}
+
 export interface EventTexts {
   language: UiLanguage;
   /** What the event's users see instead of the code dictionary: global, then the partner's, then the event's own, merged for the event's language. */
   overrides: TextOverrides;
   /** The levels as they are stored, for the editors: what each level wrote, and what it takes from above. */
   levels: { global: TextsByLanguage; partner: TextsByLanguage; event: TextsByLanguage };
+  /** The event's partner document (null when it has none), loaded for the levels, so a caller that needs more of the partner does not read it again. */
+  partner: Document | null;
 }
 
 /** The wordings that apply to an event, level by level and merged. Two reads (the global setting and the partner), none when nothing was ever written. */
 export async function loadEventTexts(db: Db, event: Document, partner?: Document | null): Promise<EventTexts> {
-  const language = normalizeUiLanguage(event.uiLanguage);
   const partnerDoc = partner === undefined ? (typeof event.partnerId === 'string' && event.partnerId ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }) : null) : partner;
+  const language = eventLanguage(event, partnerDoc);
   const levels = { global: await getGlobalTexts(db), partner: storedTexts(partnerDoc?.texts), event: storedTexts(event.texts) };
-  return { language, overrides: overridesFor(language, levels.global, levels.partner, levels.event), levels };
+  return { language, overrides: overridesFor(language, levels.global, levels.partner, levels.event), levels, partner: partnerDoc ?? null };
 }

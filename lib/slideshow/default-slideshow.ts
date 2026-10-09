@@ -15,6 +15,7 @@ import type { Db, Document } from 'mongodb';
 import { COLLECTIONS, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { SLIDESHOW_DEFAULT_BACKGROUND_ACCENT, SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY } from '@/lib/gds/tokens/colors';
 import { translate, normalizeUiLanguage, type MessageKey } from '@/lib/i18n';
+import { withEffectiveLanguage } from '@/lib/i18n/overrides';
 import { DEFAULT_STAGE, renderDefaultOverlay, stagePalette } from '@/lib/screen/default-stage';
 import { createShortLink, listShortLinks } from '@/lib/short-links/store';
 import { defaultGoShortOrigin } from '@/lib/site-hosts';
@@ -77,7 +78,8 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
   const png = renderDefaultOverlay(colours);
   const overlayImageUrl = await deps.upload(`screens/${eventUuid}/default-${createHash('sha256').update(png).digest('hex').slice(0, 16)}.png`, png);
 
-  const language = normalizeUiLanguage(event.uiLanguage);
+  // The language of the event, or of its partner when the event has none (issue 353).
+  const language = normalizeUiLanguage((await withEffectiveLanguage(db, event)).uiLanguage);
   const { window, qr, qrText, urlText } = DEFAULT_STAGE;
   const now = deps.now();
   const slideshowId = generateId();

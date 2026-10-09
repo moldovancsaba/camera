@@ -154,6 +154,10 @@ export const cameraAdminVocabularyPacks = [
     clear: { defaultMessage: 'Use the one from above', icon: GdsIcons.Refresh, feedback: savedFeedback },
     discard: { defaultMessage: 'Discard the changes', icon: GdsIcons.Cancel, feedback: openedFeedback },
   }),
+  createGdsVocabularyPack('partner-pictures', {
+    // The default pictures of a partner (issue 368).
+    save: { defaultMessage: 'Save the pictures', icon: GdsIcons.Save, feedback: savedFeedback },
+  }),
   createGdsVocabularyPack('slot', {
     // The panel of a slot (camera#418): use the default, pick from the library, replace, add more, show nothing.
     add: { defaultMessage: 'Use this one', icon: GdsIcons.Add, feedback: savedFeedback },

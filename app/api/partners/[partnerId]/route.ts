@@ -24,6 +24,7 @@ import { assertPartnerMongoWorkspaceAccess } from '@/lib/partners/authorization'
 import { pushPartnerToMessmass } from '@/lib/messmassClient';
 import { partnerLibraryIds } from '@/lib/library/db';
 import { parsePartnerBrandDefaults } from '@/lib/events/brand-colours';
+import { UI_LANGUAGES, isUiLanguage } from '@/lib/i18n';
 import { parseLogoDefaults, type LogoDefault } from '@/lib/library/logos';
 
 export const GET = withErrorHandler(async (
@@ -91,6 +92,7 @@ export const PATCH = withErrorHandler(async (
     defaultBrandColors,
     defaultFrames,
     defaultLogos,
+    uiLanguage,
   } = body;
 
   const updates: Record<string, unknown> = {
@@ -108,6 +110,12 @@ export const PATCH = withErrorHandler(async (
   if (contactName !== undefined) updates.contactName = contactName?.trim() || null;
   if (logoUrl !== undefined) updates.logoUrl = logoUrl?.trim() || null;
   if (isActive !== undefined) updates.isActive = Boolean(isActive);
+  // The language of the partner's events that did not set their own: they follow it (issue 353). Empty takes it away (English).
+  if (uiLanguage !== undefined) {
+    if (uiLanguage === null || uiLanguage === '') updates.uiLanguage = null;
+    else if (isUiLanguage(uiLanguage)) updates.uiLanguage = uiLanguage;
+    else throw apiBadRequest('uiLanguage must be one of: ' + UI_LANGUAGES.join(', '));
+  }
   // The default colours of the partner's events (camera#380): by default none, so the events follow messmass; only a colour somebody picked is stored.
   let brandDefaults: ReturnType<typeof parsePartnerBrandDefaults> | undefined;
   if (defaultBrandColors !== undefined) {
