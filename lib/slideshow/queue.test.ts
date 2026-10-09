@@ -8,7 +8,6 @@ import {
   appendFromSeed,
   excludeIds,
   freshSlides,
-  mergeAnswer,
   mergeSeed,
   slideKey,
   type QueueSlide,
@@ -22,6 +21,14 @@ test('excludeIds lists every submission id of the queue once and stops at the ca
   assert.deepEqual(excludeIds([slide('a'), { submissions: [{ _id: 'b' }, { _id: 'a' }] }, slide('c')]), ['a', 'b', 'c']);
   const long = Array.from({ length: 150 }, (_, i) => slide(`s${i}`));
   assert.equal(excludeIds(long).length, EXCLUDE_CAP);
+});
+
+test('excludeIds adds the photos that would not load after the queue\'s own, and the cap cuts those first', () => {
+  assert.deepEqual(excludeIds(slides('a', 'b'), ['x', 'a', 'y']), ['a', 'b', 'x', 'y']);
+  const queue = Array.from({ length: 98 }, (_, i) => slide(`s${i}`));
+  const ids = excludeIds(queue, ['bad1', 'bad2', 'bad3', 'bad4']);
+  assert.equal(ids.length, EXCLUDE_CAP);
+  assert.ok(ids.includes('s97') && ids.includes('bad2') && !ids.includes('bad3'));
 });
 
 test('freshSlides drops what the queue holds and what the answer says twice', () => {
@@ -47,13 +54,6 @@ test('appendFromSeed continues the loop after the last queued slide and prefers 
   const q = slides('a');
   assert.equal(appendFromSeed(q, null, 3), q);
   assert.equal(appendFromSeed(q, [], 3), q);
-});
-
-test('mergeAnswer takes the fresh slides of the answer and falls back on the seed when the answer has nothing new', () => {
-  const seed = slides('a', 'b', 'c');
-  assert.deepEqual(keys(mergeAnswer(slides('a', 'b'), slides('c'), seed, 3)), ['a', 'b', 'c']);
-  // the server could only answer with what is queued (pool smaller than the queue)
-  assert.deepEqual(keys(mergeAnswer(slides('a', 'b'), slides('a', 'b', 'a'), seed, 4)), ['a', 'b', 'c', 'a']);
 });
 
 test('advanceLoop drops the current slide, moves on from the last slide, and restores an empty queue from the seed', () => {
@@ -117,9 +117,12 @@ function play({ pool, bufferSize, ticks, onTick, answers }: {
     for (let round = 0; round < 12 && queue.length < target; round++) {
       const answer = ask(Math.min(target - queue.length, 25), excludeIds(queue));
       const fresh = freshSlides(queue, answer);
-      seed = mergeSeed(seed, answer);
-      queue = mergeAnswer(queue, answer, seed, target);
-      if (fresh.length === 0) break;
+      seed = mergeSeed(seed, fresh);
+      for (const sl of fresh) queue = appendFresh(queue, [sl], target);
+      if (fresh.length === 0) {
+        queue = appendFromSeed(queue, seed, target);
+        break;
+      }
     }
   }
   return shown;
