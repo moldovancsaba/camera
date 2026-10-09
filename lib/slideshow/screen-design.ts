@@ -17,10 +17,10 @@ export interface ScreenDesignText {
   y: number;
   /** Box width, % of the stage width. */
   width: number;
-  /** Font size, % of the stage height. With `fit` it is the largest size the line may take. */
+  /** Font size, % of the stage height. With `fit` it is not used: the line takes the size that fills the box. */
   size: number;
   align: 'left' | 'center' | 'right';
-  /** One line scaled so that it fills the box width (owner, 2026-10-09: the default); `size` then only caps it, so a short text does not grow without end. */
+  /** One line scaled so that it fills the box width exactly (owner, 2026-10-09: the default; a cap on the size left a short address at 80 % of the box, "it is not scaled"). */
   fit?: boolean;
   /** Hex colour; white when omitted. */
   color?: string;
@@ -55,6 +55,9 @@ export interface ResolvedScreenDesign extends ScreenDesign {
 
 /** The stage is 16:9, so a box `w` % of its width is `w * 16/9` % of its height wide. */
 export const STAGE_ASPECT = 16 / 9;
+
+/** The largest size a text can have, % of the stage height (the same limit the check puts on `size`); a line that fills its box never goes above it. */
+export const FIT_MAX_SIZE = 30;
 
 /** The size (any unit) a line that measures `measured` at `reference` takes to fill `box` (the unit of `measured`), never above `max`. */
 export function fitSize(measured: number, reference: number, box: number, max: number): number {
@@ -107,7 +110,8 @@ export function parseScreenDesign(input: unknown): Result {
   if (d.qr !== undefined && d.qr !== null) {
     const q = d.qr as Record<string, unknown>;
     const x = num(q.x, 0, 100), y = num(q.y, 0, 100), size = num(q.size, 2, 100);
-    if (!isHttps(q.url, 300) || x === null || y === null || size === null || x + size > 100.01) return { ok: false, error: 'screenDesign.qr needs an https address, x, y and size in percent, inside the stage' };
+    if (!isHttps(q.url, 300)) return { ok: false, error: 'screenDesign.qr: the QR code address must start with https:// (for example https://go.messmass.com/mtk-vasas) and be at most 300 characters' };
+    if (x === null || y === null || size === null || x + size > 100.01) return { ok: false, error: 'screenDesign.qr: left, top and side must be numbers in percent, and left plus side must stay inside the stage (at most 100)' };
     if (q.color !== undefined && q.color !== '' && !(typeof q.color === 'string' && HEX.test(q.color))) return { ok: false, error: 'screenDesign.qr.color must be a hex colour' };
     out.qr = { url: q.url, x, y, size, ...(q.color ? { color: String(q.color) } : {}) };
   }

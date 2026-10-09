@@ -95,6 +95,17 @@ test('the address is drawn in its colour inside its box, one line scaled to fill
   assert.ok((await countNear(png, { x: u.x + u.width - edge, y: u.y, w: edge, h: (u.size * STAGE_HEIGHT) / STAGE_WIDTH * 1.3 }, text, 30)) > 20, 'and ends near the right edge');
 });
 
+test('a line that fills its box is not held back by its stored size: a short address still reaches both edges of the box (owner, 2026-10-09)', async () => {
+  const u = DEFAULT_STAGE.addressText;
+  const short: ScreenDesign = { ...design, texts: [{ text: 'fanselfie.me/mtk', x: u.x, y: u.y, width: u.width, size: 4, align: 'center', fit: true, color: palette.text }] };
+  const png = await renderWelcomeScreen(await sources({ design: short }));
+  const text = rgbOf(palette.text);
+  const edge = u.width * 0.12;
+  const h = (30 * STAGE_HEIGHT) / STAGE_WIDTH * 1.3;
+  assert.ok((await countNear(png, { x: u.x, y: u.y, w: edge, h }, text, 30)) > 20, 'starts near the left edge although its size says 4');
+  assert.ok((await countNear(png, { x: u.x + u.width - edge, y: u.y, w: edge, h }, text, 30)) > 20, 'ends near the right edge');
+});
+
 test('the same sources give the same picture; another QR address gives another', async () => {
   const a = await renderWelcomeScreen(await sources());
   assert.ok(a.equals(await renderWelcomeScreen(await sources())));

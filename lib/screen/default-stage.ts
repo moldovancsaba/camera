@@ -17,13 +17,14 @@ export const STAGE_HEIGHT = 1080;
 
 /**
  * Where the parts sit, % of the stage: the photo window and the QR code's size measured from the MTK x Vasas design. Under the photos there is **one line, the written address**
- * (owner, 2026-10-09: the event's own slug when it has one, else the tracked link's), as wide as the window and scaled to fill that width (`fit`; `size` is the largest it may take). The
- * QR code sits alone, centred in its panel (the panel spans 2 % to 98 % of the height, the QR code is `size x 16/9` % tall).
+ * (owner, 2026-10-09: the event's own slug when it has one, else the tracked link's), as wide as the window and scaled to fill that width exactly (`fit`: the line takes whatever size
+ * fills the box; `size` here is only the nominal height the band is drawn for). The QR code sits alone, centred in its panel (the panel spans 2 % to 98 % of the height, the QR code is
+ * `size x 16/9` % tall).
  */
 export const DEFAULT_STAGE = {
   window: { left: 2.075, top: 3.081, width: 69.274, height: 69.273 },
   qr: { x: 73.54, y: 28.33, size: 24.375 },
-  addressText: { x: 2.075, y: 80.9, width: 69.274, size: 10 },
+  addressText: { x: 2.075, y: 78.6, width: 69.274, size: 12 },
 } as const;
 
 /** The space the band keeps above and below the address line, % of the stage height. */
@@ -97,7 +98,7 @@ export function renderDefaultOverlay(colours: StageColours): Buffer {
   ctx.fillStyle = `${panelFill}d9`;
   roundedRect(ctx, px(72.5, STAGE_WIDTH), px(2, STAGE_HEIGHT), px(26.2, STAGE_WIDTH), px(96, STAGE_HEIGHT), 30);
   ctx.fill();
-  // The band holds the one line, the written address (the line is 1.15 times its largest size tall).
+  // The band holds the one line, the written address (the line is 1.15 times its nominal size tall; the fitted line takes the size that fills the width).
   const band = DEFAULT_STAGE.addressText;
   const bandTop = band.y - BAND_PADDING;
   const bandBottom = band.y + band.size * 1.15 + BAND_PADDING;

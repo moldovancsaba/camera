@@ -17,6 +17,7 @@ import {
 } from '@/lib/gds/tokens/colors';
 import { normalizeStageAspectInput } from '@/lib/slideshow/stage-aspect';
 import { parseScreenDesign } from '@/lib/slideshow/screen-design';
+import { logWarn } from '@/lib/observability/logger';
 import { scheduleWelcomeScreen } from '@/lib/screen/welcome-screen-store';
 import {
   getPartnerScopedAccessForEvent,
@@ -297,6 +298,8 @@ export async function PATCH(request: NextRequest) {
     if (screenDesign !== undefined) {
       const parsed = parseScreenDesign(screenDesign);
       if (!parsed.ok) {
+        // A refused save is only seen by the person who pressed Save unless it is logged (owner, 2026-10-09: "do you save the errors?").
+        logWarn('slideshow.save_refused', 'A slideshow save was refused: the screen design did not pass the check', { slideshowId: id, userId: session.user?.id ?? null, error: parsed.error });
         return NextResponse.json({ error: parsed.error }, { status: 400 });
       }
       updates.screenDesign = parsed.value;

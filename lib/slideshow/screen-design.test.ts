@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { estimateFitSize, fitSize, parseScreenDesign, qrSvg, resolveScreenDesign } from './screen-design';
+import { estimateFitSize, FIT_MAX_SIZE, fitSize, parseScreenDesign, qrSvg, resolveScreenDesign } from './screen-design';
 
 const HOST = 'https://images.example.test';
 const hex = (digits: string) => `#${digits}`; // colours are assembled from digits: the design-system check bans raw colour literals, tests included
@@ -101,7 +101,7 @@ test('a text that fills its box is kept as such, and a text that does not stays 
   assert.equal('fit' in (parsed.value.texts?.[2] ?? {}), false);
 });
 
-test('a line that fills its box takes the size at which it is exactly as wide as the box, never above the largest size', () => {
+test('a line that fills its box takes the size at which it is exactly as wide as the box, never above the largest size a text can have', () => {
   // Measured 400 wide at size 10: a box of 800 needs size 20, a box of 200 needs 5, and the largest size caps it.
   assert.equal(fitSize(400, 10, 800, 30), 20);
   assert.equal(fitSize(400, 10, 200, 30), 5);
@@ -113,4 +113,29 @@ test('a line that fills its box takes the size at which it is exactly as wide as
   assert.ok(guess > 6 && guess <= 10, `the estimate is ${guess}`);
   assert.equal(estimateFitSize('Hi', 69.274, 10), 10);
   assert.ok(estimateFitSize('x'.repeat(200), 69.274, 10) < 3, 'a very long line gets small, it never wraps');
+});
+
+test('a line that fills its box is not held back by the size stored with it (owner, 2026-10-09: "it is not scaled")', () => {
+  // FANSELFIE.ME/MTK in a box as wide as the photo window: at the stored size 10 it reached about 80 % of the box; filling takes more than 10.
+  const box = 69.274 * (16 / 9);
+  const measuredAt10 = 16 * 0.6 * 10 * 0.85; // a 16 character line, 80 % of the box at size 10 (box is about 123 wide)
+  const size = fitSize(measuredAt10, 10, box, FIT_MAX_SIZE);
+  assert.ok(size > 10, `the line fills the box at ${size}, above the stored 10`);
+  assert.ok(Math.abs((measuredAt10 * size) / 10 - box) < 1e-9, 'and is exactly as wide as the box');
+  assert.equal(FIT_MAX_SIZE, 30, 'the largest size a text can have is the one the check allows');
+  const stored = parseScreenDesign({ ...good, texts: [{ text: 'x', x: 2, y: 80, width: 69, size: FIT_MAX_SIZE, align: 'center', fit: true }] });
+  assert.ok(stored.ok, 'a text at the largest size passes the check');
+});
+
+test('a refused QR code says which part is wrong: the address, or the place and size', () => {
+  const withQr = (qr: object) => parseScreenDesign({ ...good, qr });
+  const noHttps = withQr({ url: 'go.example.test/mtk-vasas', x: 73, y: 2, size: 24 });
+  assert.ok(!noHttps.ok && /address must start with https:\/\//.test(noHttps.error), 'the address');
+  const http = withQr({ url: 'http://go.example.test/x', x: 73, y: 2, size: 24 });
+  assert.ok(!http.ok && /https:\/\//.test(http.error));
+  const blank = withQr({ url: 'https://go.example.test/x', x: 73, y: null, size: 24 });
+  assert.ok(!blank.ok && /left, top and side must be numbers/.test(blank.error), 'a number that is missing');
+  const outside = withQr({ url: 'https://go.example.test/x', x: 80, y: 2, size: 24 });
+  assert.ok(!outside.ok && /inside the stage/.test(outside.error), 'a QR code that leaves the stage');
+  assert.ok(withQr({ url: 'https://go.example.test/x', x: 73, y: 2, size: 24 }).ok);
 });
