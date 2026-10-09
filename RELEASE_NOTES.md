@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — a new logo from messmass replaces the earlier one in the partner's logos (camera#419, owner answer 169)
+
+- **Changed:** when messmass sends a different logo address for a partner it already has, camera replaces the partner's address **only if the one it has is the one it took from messmass** (or it has none; an address set by hand is kept), imports the new logo, and puts it **in the place of the earlier one in the partner's logos**; the earlier logo stays in the library. It never replaces a logo the partner chose itself, and if the editor took the earlier logo out, the new one is not put in. Events look at the partner, so they show the new logo at once.
+- **Not changed:** nothing happens until messmass sends a different address; no partner is touched; the first import is as before.
+- **Verified:** unit tests (the new logo in the earlier one's place with the own choices kept and the earlier logo still in the library; not put in when the editor took the earlier one out; the address rule); type-check; lint; the full CI chain. **Not seen by the owner.**
+
 ## Unreleased — the logo pages on the slot panel: no more ticks (camera#419, step 4.3 of the order of 139; admin only)
 
 - **Changed (owner, 2026-10-09: "we choose logos for the event; the library must not ask where a logo shows"):** the partner's and the event's logo pages are rebuilt on one **slot panel** (`components/admin/kit/SlotPanel.tsx`, built on the GDS section, grid, media card and layout parts). The **partner** chooses its logos (the default of all its events, which look at it): pick one from its library or the global logos, upload a new one, remove one; its library below only manages what it holds. The **event** chooses its logo and, for each place of use that has a screen (the pages of the user journey, the loading screen of the capture app, the loading screen of the slideshow), **uses the default, picks one from the partner's library, uploads a new one, adds more, replaces the default, or shows nothing**; several logos are picked at random by the page. The four ticks per logo and the scenario lists are gone from the screens. An event not on the new model shows what it shows today; its first saved change moves it over and keeps everything it shows.

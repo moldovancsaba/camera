@@ -95,21 +95,37 @@ export async function importMessmassLogo(
 }
 
 export interface MessmassLogoDefault {
-  /** True when the logo became one of the partner's logos (false when it already was). */
+  /** True when the logo became one of the partner's logos, or took the place of an earlier logo from messmass (false when nothing changed). */
   added: boolean;
+  /** True when it took the place of an earlier logo from messmass. */
+  replaced?: boolean;
 }
 
 /**
- * Makes the imported logo one of the partner's logos (camera#419, owner answers 153 and 169): it joins `Partner.slots.logo`, after the logos the partner already
- * has (its own choices come first; a partner not on the slot model yet keeps what its old default rows amount to). Nothing is copied into the events: they look
- * at the partner, so an event that stored nothing uses it at once, and an event with a choice of its own keeps it.
+ * Makes the imported logo one of the partner's logos (camera#419, owner answers 153 and 169): the default of its events, which look at the partner, so nothing is
+ * copied into them. It joins `Partner.slots.logo` after the logos the partner already has (its own choices come first; a partner not on the slot model yet keeps
+ * what its old default rows amount to). **A new logo from messmass replaces the earlier one**: it takes its place in the list and the earlier one stays in the library,
+ * but never over an own choice, and if the editor took the earlier one out, the new one is not put in.
  */
 export async function makeMessmassLogoDefault(db: Db, partner: Document, item: Document, now: string): Promise<MessmassLogoDefault> {
   const logoId = text(item.logoId);
+  const partnerId = text(partner.partnerId);
   const current = partnerLogoValue(partner as LogoPartner).items ?? [];
   if (current.includes(logoId)) return { added: false };
-  await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId: text(partner.partnerId) }, { $set: { [`slots.${LOGO_SLOT}`]: { items: [...current, logoId] }, updatedAt: now } });
-  return { added: true };
+  const earlier = (await db.collection(COLLECTIONS.LOGOS).find({ scope: 'partner', partnerId, source: 'messmass' }).toArray()).map((doc) => text(doc.logoId)).filter((id) => id && id !== logoId);
+  let items: string[];
+  let replaced = false;
+  if (earlier.length === 0) {
+    items = [...current, logoId];
+  } else if (current.some((id) => earlier.includes(id))) {
+    const at = current.findIndex((id) => earlier.includes(id));
+    items = current.flatMap((id, index) => (index === at ? [logoId] : earlier.includes(id) ? [] : [id]));
+    replaced = true;
+  } else {
+    return { added: false };
+  }
+  await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId }, { $set: { [`slots.${LOGO_SLOT}`]: { items }, updatedAt: now } });
+  return replaced ? { added: true, replaced: true } : { added: true };
 }
 
 /**
@@ -125,3 +141,16 @@ export async function collectMessmassLogo(
   const madeDefault = imported.ok && imported.created ? await makeMessmassLogoDefault(db, partner, imported.item, input.now) : null;
   return { imported, madeDefault };
 }
+
+/**
+ * The logo address to store when messmass sends one for a partner that exists (camera#419, owner answer 169): the partner's address is replaced only when the one it
+ * has now is the one camera imported from messmass (so it is messmass's own, not something set by hand), or when it has none. Otherwise null: keep what it has.
+ */
+export function nextPartnerLogoUrl(current: unknown, incoming: unknown, importedAddresses: readonly string[]): string | null {
+  const next = text(incoming);
+  const now = text(current);
+  if (!next || next === now) return null;
+  if (!now || importedAddresses.includes(now)) return next;
+  return null;
+}
+
