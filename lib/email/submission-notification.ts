@@ -1,5 +1,7 @@
 import { sanitizeEmail } from '@/lib/security/sanitize';
 import { renderThemedEmail } from '@/lib/email/themed-html';
+import { fillPlain, parseRich, resolveRich, richHtml, richText } from '@/lib/email/rich';
+import { URL_VARIABLES, emailValues, type EventFacts } from '@/lib/email/variables';
 import type { EventTheme } from '@/lib/theme/event-theme';
 import { getResendApiKey, sendEmail } from '@/lib/email/send';
 import {
@@ -26,6 +28,8 @@ export interface SubmissionNotificationInput {
   language?: UiLanguage;
   /** The wordings written for the event's partner or the event in that language (lib/i18n/overrides.ts): used instead of the dictionary text. */
   texts?: TextOverrides | null;
+  /** What is known about the event and its partner (the teams, the date, the place...), for the variables of the text (lib/email/variables.ts, epic 463). */
+  facts?: EventFacts | null;
 }
 
 export type SubmissionNotificationResult =
@@ -69,15 +73,6 @@ function getEmailFrom(senderName?: string | null): string {
   return `"${escapedName}" <${configuredFrom}>`;
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 function normalizeRecipient(value?: string | null): string {
   const email = sanitizeEmail(value || '');
   if (!email || email === 'anonymous@event' || email === 'anonymous@event.com') {
@@ -92,17 +87,6 @@ function normalizeTemplate(value: string | null | undefined, fallback: string, m
     return fallback;
   }
   return normalized.slice(0, maxLength);
-}
-
-function renderTemplate(
-  template: string,
-  values: { recipientName: string; eventName: string; shareUrl: string; termsUrl: string }
-): string {
-  return template
-    .replace(/\{name\}/gi, values.recipientName)
-    .replace(/\{event\}/gi, values.eventName)
-    .replace(/\{link\}/gi, values.shareUrl)
-    .replace(/\{terms\}/gi, values.termsUrl);
 }
 
 export async function sendSubmissionResultEmail(
@@ -142,17 +126,17 @@ export async function sendSubmissionResultEmail(
   const givenName = input.recipientName?.trim();
   const recipientName = givenName && givenName !== translate(DEFAULT_UI_LANGUAGE, 'email.nameFallback') ? givenName : translate(language, 'email.nameFallback', undefined, input.texts);
   const termsUrl = input.termsUrl?.trim() || defaults.termsUrl;
-  const subject = renderTemplate(
-    normalizeTemplate(input.subjectTemplate, defaults.subject, 180),
-    { recipientName, eventName, shareUrl: input.shareUrl, termsUrl }
-  )
-    .replace(/\s+/g, ' ')
-    .trim();
-  const bodyText = renderTemplate(
-    normalizeTemplate(input.bodyTemplate, defaults.body, 5000),
-    { recipientName, eventName, shareUrl: input.shareUrl, termsUrl }
-  );
-  const safeBody = escapeHtml(bodyText).replace(/\n/g, '<br />');
+  // The variables are filled after the text is read (lib/email/rich.ts), so a value, a name a user typed, is never markup. One that has no value for this event is left out and logged.
+  const values = emailValues({ recipientName, eventName, shareUrl: input.shareUrl, termsUrl, facts: input.facts, language });
+  const subjectFilled = fillPlain(normalizeTemplate(input.subjectTemplate, defaults.subject, 180), values);
+  const subject = subjectFilled.text.replace(/\s+/g, ' ').trim();
+  const body = resolveRich(parseRich(normalizeTemplate(input.bodyTemplate, defaults.body, 5000)), values, URL_VARIABLES);
+  const bodyText = richText(body.blocks);
+  const notFilled = [...new Set([...subjectFilled.missing, ...body.missing])];
+  const notKnown = [...new Set([...subjectFilled.unknown, ...body.unknown])];
+  if (notFilled.length > 0 || notKnown.length > 0) {
+    console.warn('[email] Submission result email: variables left out', { eventName: input.eventName || null, withoutValue: notFilled, unknown: notKnown });
+  }
 
   const result = await sendEmail({
     from,
@@ -160,11 +144,9 @@ export async function sendSubmissionResultEmail(
     subject,
     text: bodyText,
     html: input.theme
-      ? renderThemedEmail({ theme: input.theme, eventName, bodyText, button: { label: input.buttonLabel?.trim() || translate(language, 'email.buttonOpen'), url: input.shareUrl } })
+      ? renderThemedEmail({ theme: input.theme, eventName, content: body.blocks, button: { label: input.buttonLabel?.trim() || translate(language, 'email.buttonOpen'), url: input.shareUrl } })
       : `
-      <div style="font-family: Arial, sans-serif; line-height: 1.5;">
-        <p>${safeBody}</p>
-      </div>
+      <div style="font-family: Arial, sans-serif; line-height: 1.5;">${richHtml(body.blocks, { link: 'inherit' })}</div>
     `,
   });
 

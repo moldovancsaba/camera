@@ -5,6 +5,7 @@
  */
 
 import type { Event } from '@/lib/db/schemas';
+import { eventFactsOf } from '@/lib/email/variables';
 import { emailDefaults } from '@/lib/email/submission-template-defaults';
 import { normalizeUiLanguage, translate } from '@/lib/i18n';
 import type { TextOverrides } from '@/lib/i18n/overrides';
@@ -55,6 +56,7 @@ export async function sendPhotoApprovedEmail(
     buttonLabel: translate(language, 'email.buttonSee', undefined, texts),
     language,
     texts,
+    facts: eventFactsOf(event),
   });
 }
 
@@ -84,5 +86,6 @@ export async function sendPhotoNotApprovedEmail(
     buttonLabel: translate(language, 'email.buttonAnother', undefined, texts),
     language,
     texts,
+    facts: eventFactsOf(event),
   });
 }
