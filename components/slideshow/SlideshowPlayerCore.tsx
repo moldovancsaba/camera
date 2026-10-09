@@ -15,6 +15,7 @@ import { useSlideshowDiagnostics } from '@/components/slideshow/useSlideshowDiag
 import { hostOf, shortId } from '@/lib/slideshow/diagnostics';
 import { PRELOAD_FAIL_TTL_MS, createPreloader } from '@/lib/slideshow/preload';
 import { fetchWithTimeout, nextBackoffMs } from '@/lib/slideshow/resilience';
+import { reloadReason } from '@/lib/slideshow/reload';
 import { recentReloads, watchdogAction } from '@/lib/slideshow/watchdog';
 import ScreenDesignLayers, { screenWindowStyle } from '@/components/slideshow/ScreenDesignLayers';
 import type { ResolvedScreenDesign } from '@/lib/slideshow/screen-design';
@@ -209,6 +210,10 @@ export function SlideshowPlayerCore({
   const pendingStartRef = useRef(0);
   /** Counts the starts, so what a start left running never reaches the queue of a later one. */
   const loadGenerationRef = useRef(0);
+  /** When the page opened and the admin's reload token it opened with and last saw (lib/slideshow/reload.ts): it reloads every 3 hours and when an admin asks. */
+  const openedAtRef = useRef(0);
+  const openedTokenRef = useRef<string | null>(null);
+  const latestTokenRef = useRef<string | null>(null);
   const loadRetryTimerRef = useRef<number | null>(null);
   const loadRef = useRef<() => Promise<void>>(async () => undefined);
   const pendingInitialDelayRef = useRef(delayMs > 0);
@@ -230,6 +235,10 @@ export function SlideshowPlayerCore({
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
+
+  useEffect(() => {
+    openedAtRef.current = Date.now();
+  }, []);
 
   // What the screen reports about itself (camera#476): see useSlideshowDiagnostics.
   const stallHandlerRef = useRef<(stalledMs: number) => void>(() => undefined);
@@ -307,7 +316,7 @@ export function SlideshowPlayerCore({
   }, []);
 
   const fetchPlaylistChunk = useCallback(
-    async (limit: number, exclude: string[] = []): Promise<{ slides: Slide[]; status: number; ms: number; serverMs?: number }> => {
+    async (limit: number, exclude: string[] = []): Promise<{ slides: Slide[]; status: number; ms: number; serverMs?: number; reloadToken?: string | null }> => {
       const lim = Math.max(1, Math.min(50, Math.floor(limit)));
       const startedAt = performance.now();
       try {
@@ -323,7 +332,7 @@ export function SlideshowPlayerCore({
           async (response) => ({ status: response.status, data: response.ok ? await response.json() : null })
         );
         if (!data) return { slides: [], status, ms: performance.now() - startedAt };
-        return { slides: (data.playlist || []) as Slide[], status, ms: performance.now() - startedAt, serverMs: data.diagnostics?.generationMs };
+        return { slides: (data.playlist || []) as Slide[], status, ms: performance.now() - startedAt, serverMs: data.diagnostics?.generationMs, reloadToken: data.slideshow?.reloadToken ?? null };
       } catch {
         return { slides: [], status: 0, ms: performance.now() - startedAt };
       }
@@ -361,7 +370,8 @@ export function SlideshowPlayerCore({
         if (queue.length >= target) break;
         const limit = Math.min(target - queue.length, 25);
         const exclude = excludeIds(queue, brokenIds());
-        const { slides: answer, status, ms, serverMs } = await fetchPlaylistChunk(limit, exclude);
+        const { slides: answer, status, ms, serverMs, reloadToken } = await fetchPlaylistChunk(limit, exclude);
+        if (reloadToken !== undefined) latestTokenRef.current = reloadToken;
         const fresh = freshSlides(slideQueueRef.current, answer);
         record('playlist', { limit, excl: exclude.length, status, ms, got: answer.length, fresh: fresh.length, serverMs });
         const backoffMs = nextBackoffMs(refillBackoffRef.current.ms, status === 200);
@@ -422,6 +432,8 @@ export function SlideshowPlayerCore({
       // `settings` is set only when the show starts: while the screen still shows its loading picture, nothing may count a slide as played,
       // start a hold timer or refill the queue (a refill used to fill it, and the head was counted as played, at the first 2.5 s tick).
       bufferTargetRef.current = totalQueueSlotsFromBufferSize(data.slideshow.bufferSize);
+      openedTokenRef.current = data.slideshow.reloadToken ?? null;
+      latestTokenRef.current = openedTokenRef.current;
       const generation = ++loadGenerationRef.current;
       pendingStartRef.current = 0;
 
@@ -619,6 +631,14 @@ export function SlideshowPlayerCore({
         return;
       }
 
+      // At a slide boundary, so no picture is cut: reload every 3 hours and when an admin asked (lib/slideshow/reload.ts).
+      const reason = reloadReason({ variant, openedAt: openedAtRef.current, now: Date.now(), token: latestTokenRef.current, openedToken: openedTokenRef.current });
+      if (reason) {
+        record('error', { msg: `reload: ${reason}` });
+        window.location.reload();
+        return;
+      }
+
       if (commitQueue((q) => advanceLoop(q, loopSeedSlidesRef.current, bufferTargetRef.current))) {
         setDisplayEpoch((e) => e + 1);
       }
@@ -638,6 +658,7 @@ export function SlideshowPlayerCore({
     updatePlayCounts,
     maintainLoopBuffer,
     commitQueue,
+    record,
   ]);
 
   useEffect(() => {

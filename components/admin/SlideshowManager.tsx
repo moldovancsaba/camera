@@ -89,6 +89,20 @@ export default function SlideshowManager({ eventId, initialSlideshows, welcomeSc
     }
   };
 
+  // Asks every open copy of the screen to reload at its next slide (the player sees the request in its next playlist answer, camera#476).
+  const reloadScreen = async (slideshowId: string) => {
+    if (!confirm('Reload every open copy of this screen? Each reloads at its next picture and restarts in a moment.')) return;
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/slideshows/${slideshowId}/reload`, { method: 'POST' });
+      if (!response.ok) throw new Error(((await response.json().catch(() => null)) as { error?: string } | null)?.error || `Request failed (${response.status})`);
+      alert('Asked. The screen reloads at its next picture, a few seconds from now.');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'The screen could not be asked to reload');
+    }
+    setBusy(false);
+  };
+
   const copySlideshowUrl = (slideshowId: string) => {
     const url = `${window.location.origin}/slideshow/${slideshowId}`;
     navigator.clipboard.writeText(url);
@@ -192,6 +206,9 @@ export default function SlideshowManager({ eventId, initialSlideshows, welcomeSc
                   onClick={() => copySlideshowUrl(slideshow.slideshowId)}
                 >
                   Copy public URL
+                </SemanticButton>
+                <SemanticButton action="slideshows:reload-screen" fullWidth variant="secondary" size="xs" disabled={busy} title="Reloads every open copy of this screen at its next picture; a screen also reloads itself every 3 hours" onClick={() => void reloadScreen(slideshow.slideshowId)}>
+                  Reload the screen
                 </SemanticButton>
                 {slideshow.isDefault ? null : (
                   <SemanticButton action="slideshows:make-default" fullWidth variant="secondary" size="xs" disabled={busy} onClick={() => void callDefault('PUT', { slideshowId: slideshow.slideshowId })}>
