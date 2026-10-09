@@ -12,6 +12,8 @@ import { InlineAlert, LabelTag } from '@sovereignsquad/gds-core/client';
 interface Props {
   eventMongoId: string;
   onUploaded: (submission: Record<string, unknown>) => void;
+  /** The event has a frame to put on an uploaded photo (camera#488). */
+  frameAvailable?: boolean;
 }
 
 type UploadStatus = 'queued' | 'preparing' | 'uploading' | 'done' | 'error';
@@ -281,7 +283,9 @@ async function filesFromDataTransfer(dataTransfer: DataTransfer): Promise<File[]
 export default function EventGalleryUpload({
   eventMongoId,
   onUploaded,
+  frameAvailable = false,
 }: Props) {
+  const [withFrame, setWithFrame] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const activeUploadsRef = useRef(0);
@@ -361,6 +365,7 @@ export default function EventGalleryUpload({
         formData.append('file', prepared.file);
         if (prepared.width > 0) formData.append('imageWidth', String(prepared.width));
         if (prepared.height > 0) formData.append('imageHeight', String(prepared.height));
+        if (withFrame && frameAvailable) formData.append('withFrame', '1');
 
         const res = await fetch(
           `/api/admin/events/${encodeURIComponent(eventMongoId)}/gallery-upload`,
@@ -387,12 +392,13 @@ export default function EventGalleryUpload({
         }
 
         onUploaded(submission);
+        const frameNote = typeof json.data?.frameNote === 'string' ? json.data.frameNote : null;
         setQueueItems((prev) =>
           updateItem(prev, item.id, {
             status: 'done',
-            message: prepared.transformed
-              ? `Uploaded after compression (${formatBytes(prepared.file.size)})`
-              : 'Uploaded',
+            message:
+              frameNote ??
+              `${prepared.transformed ? `Uploaded after compression (${formatBytes(prepared.file.size)})` : 'Uploaded'}${json.data?.framed ? ', with the frame' : ''}`,
           })
         );
       } catch (error) {
@@ -406,7 +412,7 @@ export default function EventGalleryUpload({
         activeUploadsRef.current = Math.max(0, activeUploadsRef.current - 1);
       }
     },
-    [eventMongoId, onUploaded]
+    [eventMongoId, onUploaded, withFrame, frameAvailable]
   );
 
   useEffect(() => {
@@ -468,6 +474,15 @@ export default function EventGalleryUpload({
             </p>
             <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
               Supported: {ACCEPT_COPY}. Target upload size per file: under {formatBytes(MAX_DIRECT_UPLOAD_BYTES)}.
+            </p>
+            <label style={{ alignItems: 'center', display: 'flex', fontSize: '0.875rem', gap: '0.5rem', marginTop: '0.25rem', opacity: frameAvailable ? 1 : 0.6 }}>
+              <input type="checkbox" checked={withFrame && frameAvailable} disabled={!frameAvailable} onChange={(event) => setWithFrame(event.target.checked)} />
+              Add the event&apos;s frame to the photos I upload
+            </label>
+            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
+              {frameAvailable
+                ? 'The photo is cropped to the frame\'s shape and the frame laid over it, so it looks like the photos the guests take. The plain upload is kept.'
+                : 'The event has no frame yet (the Frames page), so there is nothing to add.'}
             </p>
           </div>
           <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>

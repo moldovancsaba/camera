@@ -1,7 +1,7 @@
 /**
  * Admin-only: upload an existing image file into an event's gallery (new submission).
  *
- * POST multipart/form-data: file (required), imageWidth, imageHeight (optional, from client probe)
+ * POST multipart/form-data: file (required), imageWidth, imageHeight (optional, from client probe), withFrame ('1': put the event's frame on the photo, camera#488)
  */
 
 import { NextRequest } from 'next/server';
@@ -9,6 +9,11 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { uploadImage } from '@/lib/imgbb/upload';
+import { fetchImageBuffer } from '@/lib/tryon/frame-composition';
+import { frameGalleryPhoto, loadGalleryFrames, pickGalleryFrame, type FramedUpload, type GalleryFrame } from '@/lib/gallery/frame';
+import { ensureScreenPicture } from '@/lib/submissions/screen-picture';
+import { runAfterResponse } from '@/lib/api/run-after-response';
+import { logWarn } from '@/lib/observability/logger';
 import {
   withErrorHandler,
   requireAuth,
@@ -97,6 +102,33 @@ export const POST = withErrorHandler(
       name: `admin-gallery-${eventUuid}-${Date.now()}`,
     });
 
+    // The event's frame on the photo, when the editor asked (camera#488): the photo is cropped to the frame's shape and the frame laid over it as for a guest's photo. The
+    // plain upload above is kept as the original; if the frame cannot be added the photo is added without it and the answer says so.
+    let framed: { frame: GalleryFrame; upload: FramedUpload } | null = null;
+    let frameNote: string | null = null;
+    if (formData.get('withFrame') === '1') {
+      try {
+        const frame = pickGalleryFrame(await loadGalleryFrames(db, event));
+        if (frame) {
+          framed = {
+            frame,
+            upload: await frameGalleryPhoto(buffer, frame, `admin-gallery-framed-${eventUuid}-${Date.now()}`, {
+              fetchImage: fetchImageBuffer,
+              upload: async (data, name) => {
+                const r = await uploadImage(data, { name });
+                return { imageUrl: r.imageUrl, deleteUrl: r.deleteUrl, imageId: r.imageId, fileSize: r.fileSize, mimeType: r.mimeType };
+              },
+            }),
+          };
+        } else {
+          frameNote = 'The event has no frame yet, so the photo was added without one.';
+        }
+      } catch (error) {
+        logWarn('gallery.frame_failed', 'The frame could not be put on an uploaded photo; it was added without', { eventId: eventUuid, error: error instanceof Error ? error.message : String(error) });
+        frameNote = 'The frame could not be added, so the photo was added without one.';
+      }
+    }
+
     const adminLabel =
       session.user.name || session.user.email || 'Admin';
 
@@ -104,20 +136,23 @@ export const POST = withErrorHandler(
       userId: session.user.id,
       userEmail: session.user.email || 'admin@upload',
       userName: `${adminLabel} (gallery upload)`,
-      frameId: null,
-      frameName: null,
+      frameId: framed?.frame.frameId ?? null,
+      frameName: framed?.frame.frameName ?? null,
       frameCategory: null,
+      ...(framed?.frame.variant ? { frameVariant: framed.frame.variant } : {}),
       partnerId: (event.partnerId as string) || null,
       partnerName: (partner?.name as string) || null,
       eventId: eventUuid,
       eventIds: [eventUuid],
       eventName: (event.name as string) || null,
-      imageUrl: uploadResult.imageUrl,
-      finalImageUrl: uploadResult.imageUrl,
-      deleteUrl: uploadResult.deleteUrl,
-      imageId: uploadResult.imageId,
-      fileSize: uploadResult.fileSize,
-      mimeType: uploadResult.mimeType,
+      imageUrl: framed?.upload.imageUrl ?? uploadResult.imageUrl,
+      finalImageUrl: framed?.upload.imageUrl ?? uploadResult.imageUrl,
+      // The plain upload stays the original when a frame was put on it.
+      ...(framed ? { originalImageUrl: uploadResult.imageUrl } : {}),
+      deleteUrl: framed?.upload.deleteUrl ?? uploadResult.deleteUrl,
+      imageId: framed?.upload.imageId ?? uploadResult.imageId,
+      fileSize: framed?.upload.fileSize ?? uploadResult.fileSize,
+      mimeType: framed?.upload.mimeType ?? uploadResult.mimeType,
       consents: [] as unknown[],
       isArchived: false,
       shareCount: 0,
@@ -130,10 +165,11 @@ export const POST = withErrorHandler(
         ip:
           request.headers.get('x-forwarded-for') ||
           request.headers.get('x-real-ip'),
-        finalFileSize: uploadResult.fileSize,
-        finalWidth: imageWidth || 1920,
-        finalHeight: imageHeight || 1080,
+        finalFileSize: framed?.upload.fileSize ?? uploadResult.fileSize,
+        finalWidth: framed?.upload.width ?? (imageWidth || 1920),
+        finalHeight: framed?.upload.height ?? (imageHeight || 1080),
         adminGalleryUpload: true,
+        ...(framed ? { galleryFrame: true } : {}),
         adminUploadedBy: session.user.id,
         adminUploadedAt: now,
       },
@@ -145,11 +181,18 @@ export const POST = withErrorHandler(
       .collection(COLLECTIONS.SUBMISSIONS)
       .insertOne(submission);
 
+    // The screen-sized picture for the giant screen, after the answer (camera#476, S7).
+    runAfterResponse(async () => {
+      await ensureScreenPicture(db, { _id: result.insertedId, imageUrl: submission.imageUrl, finalImageUrl: submission.finalImageUrl });
+    });
+
     return apiCreated({
       submission: {
         ...submission,
         _id: result.insertedId.toString(),
       },
+      framed: framed !== null,
+      frameNote,
     });
   }
 );

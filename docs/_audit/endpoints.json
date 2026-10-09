@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-09T14:45:24+00:00",
+  "generated": "2026-10-09T14:58:23+00:00",
   "repo": "camera",
-  "head": "1eff222",
+  "head": "0521691",
   "counts": {
-   "endpoints": 142,
+   "endpoints": 143,
    "collections": 8,
    "env": 59,
    "outbound-hosts": 31,
@@ -171,6 +171,18 @@
     "PUT"
    ],
    "file": "app/api/admin/events/[id]/frame-selection/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/events/[id]/gallery-frame",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/admin/events/[id]/gallery-frame/route.ts",
    "auth_markers": [
     "requireAuth",
     "withErrorHandler"
