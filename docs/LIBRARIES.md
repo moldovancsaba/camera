@@ -110,6 +110,18 @@ The same three levels as frames (pages `/admin/partners/<id>/logos` and `/admin/
   same before and after this change for all 214 events, by both ids (428 answers), and the event page shows the same order and the same shown logo as that API for the 10 events
   with logos. `components/capture/CaptureStageShell.test.tsx` keeps the order of the stage pages: the event's logo for those pages, else the theme's logo, else the emoji.
 
+### The logo on the slot model (camera#419, step 4 of the order in docs/BUILDING_BRICKS.md; data and API done, the pages follow)
+
+The owner's model (2026-10-09): the logo is chosen **at the place of use**, the default by default; the library does not say where a logo shows. Stored as **slots** (`lib/slots/`), only what an editor set, never a copy:
+
+- **`Partner.slots.logo = { items?, useDefault? }`**: the partner's logos, the default of its events. A global logo it picks is added to its library in the same step; its own uploads are fine. "No logo" is `{ items: [] }`. Nothing is pushed into events: they look at it.
+- **`Event.slots.logo`** and one place of use per former scenario: `logo-pages` (the pages of the user journey), `logo-capture-loading`, `logo-slideshow-loading`, `logo-slideshow-transition` (no screen shows it yet). A place uses the event's logo by default; the event's logo uses the partner's. **Use the default** stores nothing; **add more** is own items next to the default; **replace** is own items with `useDefault: false`; **none** is no items with `useDefault: false`. One logo is used as it is; several are picked at random by the page.
+- **Resolution** is `lib/slots/resolve.ts` (pure); `lib/slots/logo.ts` builds the chain for a place; `GET /api/events/<id>/logos` answers from it **for an event on the model** (`Event.slots` exists, even empty) and, for an event not on it, exactly as before from its own `logos` list: nothing changes for an existing event until it is migrated.
+- **The first save of an event not on the model seeds its slots from its old list** (`eventSlotsFromLegacy`): an event that follows its partner and shows what the partner's defaults give stays following; otherwise its list is kept as it showed (one `logo` slot when every scenario is the same, else one place per scenario), all as "replace". The old `logos` list and `logosOverridden` are never deleted or changed. A partner not on the model is read from its `defaultLogos` rows until it saves a choice.
+- **API:** `GET` and `PUT /api/events/<id>/logo-slots` (`{ slotId, value }`; the panels with what each place uses now, what it takes from above, what it chose itself, and the logos that can be picked; Events managers to save) and `GET` and `PUT /api/partners/<id>/logo-slot` (`{ value: { items } }`; managers to save). The same one-way rules as before: an event picks from its partner's library or its own uploads, a partner from the global library or its own uploads.
+- **Who uses a logo** (`usageOfItem`, the refusal to delete a global logo in use, `deleteLibraryUpload`, removing a logo from the partner library) counts and cleans the slots too, so a logo cannot be deleted from under the slot model.
+- **Still to come in this step:** the partner and event logo pages on the slot panel (the ticks go), the random pick on the pages of the user journey and the slideshow, the new messmass logo replacing the imported default, and the migration and collect for existing partners and events (with the owner's go).
+
 ## Images (LIB-5, camera#368)
 
 The pictures of the picture fields: the welcome page (background, left image, right image, giant screen), the CTA page picture, the email footer and the

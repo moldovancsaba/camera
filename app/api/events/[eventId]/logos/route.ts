@@ -16,9 +16,10 @@ import { optionalAuth } from '@/lib/api';
 import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError, apiForbidden } from '@/lib/api/responses';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
 import { checkEventAssign } from '@/lib/library/db';
+import { LOGO_SCENARIO_IDS, isOnSlotModel, resolveEventLogos, type LogoEvent, type LogoPartner } from '@/lib/slots/logo';
 
 type EventLogoAssignment = Event['logos'][number];
-type GroupedEventLogos = Record<LogoScenario, Array<EventLogoAssignment & Pick<Logo, 'name' | 'imageUrl' | 'thumbnailUrl'>>>;
+type GroupedEventLogos = Record<LogoScenario, Array<EventLogoAssignment & Pick<Logo, 'name' | 'imageUrl' | 'thumbnailUrl'> & { level: string }>>;
 
 function buildEventLookupQuery(eventIdentifier: string): Record<string, unknown> {
   const normalized = eventIdentifier.trim();
@@ -174,15 +175,6 @@ export async function GET(
       }
     }
 
-    // Get full logo details for assigned logos
-    const logoAssignments = (event.logos ?? []) as EventLogoAssignment[];
-    const logoIds = logoAssignments.map((logoAssignment) => logoAssignment.logoId);
-
-    const logos = await logosCollection
-      .find({ logoId: { $in: logoIds } })
-      .toArray();
-
-    // Merge logo details with assignments and group by scenario
     const groupedLogos: GroupedEventLogos = {
       'slideshow-transition': [],
       'onboarding-thankyou': [],
@@ -190,11 +182,39 @@ export async function GET(
       'loading-capture': [],
     };
 
+    if (isOnSlotModel(event as LogoEvent)) {
+      // An event on the slot model (camera#419): the logos of each place of use come from its chain (partner, event, place), `lib/slots/logo.ts`.
+      const partner = event.partnerId ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }) : null;
+      const resolved = resolveEventLogos(partner as LogoPartner | null, event as LogoEvent);
+      const slotLogos = await logosCollection
+        .find({ logoId: { $in: [...new Set(Object.values(resolved).flatMap((items) => items.map((item) => item.id)))] } })
+        .toArray();
+      for (const scenario of LOGO_SCENARIO_IDS) {
+        resolved[scenario].forEach((item, index) => {
+          const logo = slotLogos.find((candidate) => candidate.logoId === item.id);
+          // A logo the library no longer has is left out, as before.
+          if (logo) {
+            groupedLogos[scenario as LogoScenario].push({ logoId: item.id, scenario: scenario as LogoScenario, order: index, isActive: true, addedAt: '', level: item.level, name: logo.name, imageUrl: logo.imageUrl, thumbnailUrl: logo.thumbnailUrl });
+          }
+        });
+      }
+      return apiSuccess({ eventId: event._id.toString(), eventName: event.name, logos: groupedLogos });
+    }
+
+    // An event that is not on the model yet answers as it always did: its own list, grouped by scenario, in order (the guest pages read this; it must not change).
+    const logoAssignments = (event.logos ?? []) as EventLogoAssignment[];
+    const logoIds = logoAssignments.map((logoAssignment) => logoAssignment.logoId);
+
+    const logos = await logosCollection
+      .find({ logoId: { $in: logoIds } })
+      .toArray();
+
     for (const assignment of logoAssignments) {
       const logo = logos.find((item) => item.logoId === assignment.logoId);
       if (logo) {
         groupedLogos[assignment.scenario].push({
           ...assignment,
+          level: 'event',
           name: logo.name,
           imageUrl: logo.imageUrl,
           thumbnailUrl: logo.thumbnailUrl,

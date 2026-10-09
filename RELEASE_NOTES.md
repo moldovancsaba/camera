@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the logo on the slot model: data, chain and routes (camera#419, step 4.1 and 4.2 of the order of 139; no screen uses it yet)
+
+- **Added:** the logo as a slot (`lib/slots/logo.ts`, `lib/slots/logo-store.ts`): `Partner.slots.logo` and `Event.slots` (`logo` and one place of use per former scenario), resolved with the slot resolver (use the default, add more, replace, none; one logo as it is, several for the page to pick at random). `GET /api/events/<id>/logos` answers from the chain **only for an event that is on the model** (its `slots` exists); every existing event is answered exactly as before from its own list, and no event is on the model yet. New routes: `GET` and `PUT /api/events/<id>/logo-slots` and `GET` and `PUT /api/partners/<id>/logo-slot` (the panels with what each place uses, what it takes from above and what it chose; the saves, with the one-way library rules). The first save of an event not on the model **seeds its slots from its old list** so it keeps showing what it showed; the old list is never deleted or changed.
+- **Changed:** who uses a logo now counts and cleans the slots too (`usageOfItem`, the refusal to delete a global logo in use, deleting an upload, removing a logo from the partner library), so nothing can be deleted from under the slot model. The test fake database learns `$pull` on a dotted path.
+- **Not changed:** what any page or any event shows today; no page calls the new routes yet; nothing was migrated and no production data was written.
+- **Verified:** unit tests (the chain; the seed never changes what an event shows, five cases; the store: partner and event saves, refusals, "use the default" stores nothing, who-uses counting, deleting; the panels; both routes with access checks; the event logos route answers an event on the model from its chain and every other event as before); type-check; lint; the full CI chain. **Not seen by the owner (nothing visible yet).**
+
 ## Unreleased — handover and working rules brought up to date (docs only, 2026-10-09)
 
 - **Changed (docs only):** `HANDOVER.md` has a current-state section for 2026-10-09 (the brick model and where its documents are, what was delivered, the order of what is next, what was left undone on purpose, the findings to remember); `CLAUDE.md` section 5 gains two rules that cost time (a worktree directory must not be named `tokens` or `theme`; admin colours come from `--mantine-*` tokens). The board stays the single source of truth for open work.

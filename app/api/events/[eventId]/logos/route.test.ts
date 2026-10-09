@@ -15,7 +15,7 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 const logo = (logoId: string, extra: Record<string, unknown> = {}) => ({ logoId, name: `Logo ${logoId}`, imageUrl: `https://img.example/${logoId}.png`, thumbnailUrl: `https://img.example/${logoId}-t.png`, isActive: true, ...extra });
 const row = (logoId: string, scenario: string, order: number, isActive = true) => ({ logoId, scenario, order, isActive, addedAt: NOW, addedBy: 'system' });
 
-function setup(t: TestContext, eventLogos: unknown[] = []) {
+function setup(t: TestContext, eventLogos: unknown[] = [], on: { eventSlots?: Record<string, unknown>; partnerSlots?: Record<string, unknown> } = {}) {
   const seeded = fakeDb({
     logos: [
       logo('g1'),
@@ -26,8 +26,8 @@ function setup(t: TestContext, eventLogos: unknown[] = []) {
       logo('e1', { scope: 'event', eventId: 'e-uuid', partnerId: 'P' }),
       logo('e2', { scope: 'event', eventId: 'other-uuid', partnerId: 'P' }),
     ],
-    partners: [{ partnerId: 'P', name: 'Partner P', library: { frames: [], logos: ['g1', 'g3'] } }],
-    events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', name: 'Event', isActive: true, logos: eventLogos }],
+    partners: [{ partnerId: 'P', name: 'Partner P', library: { frames: [], logos: ['g1', 'g3'] }, ...(on.partnerSlots ? { slots: on.partnerSlots } : {}) }],
+    events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', name: 'Event', isActive: true, logos: eventLogos, ...(on.eventSlots ? { slots: on.eventSlots } : {}) }],
   });
   t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
   t.mock.module('@/lib/auth/session', { namedExports: { getSession: async () => ADMIN } });
@@ -115,5 +115,27 @@ test('the logo id must be a plain text, and order and isActive plain values: an 
   assert.equal((await POST(post({ logoId: 'g1', scenario: 'onboarding-thankyou', isActive: 'yes' }), params)).status, 400);
   assert.deepEqual(rows(data), [], 'nothing was stored');
   assert.equal(data.events[0].logosOverridden, undefined);
+});
+
+test('an event on the slot model: each place of use answers from its chain (partner, event, place); the old list is not read', async (t) => {
+  setup(t, [row('g2', 'onboarding-thankyou', 0)], {
+    partnerSlots: { logo: { items: ['p1'] } },
+    eventSlots: { logo: { items: ['g1'] }, 'logo-capture-loading': { items: ['e1'], useDefault: false } },
+  });
+  const { GET } = await importRoute('slots');
+  const body = (await (await GET(new NextRequest('http://localhost/api/events/e-uuid/logos'), { params: Promise.resolve({ eventId: 'e-uuid' }) })).json()) as { data: { logos: Grouped } };
+  const view = (scenario: string) => body.data.logos[scenario].map((r) => `${r.logoId}:${(r as unknown as { level: string }).level}`);
+  assert.deepEqual(view('onboarding-thankyou'), ['g1:event', 'p1:partner'], 'the event\'s own logo, then the partner\'s; the old row g2 is not read');
+  assert.deepEqual(view('loading-capture'), ['e1:place'], 'replaced in this place only');
+  assert.deepEqual(view('loading-slideshow'), ['g1:event', 'p1:partner']);
+  assert.equal(body.data.logos['onboarding-thankyou'].every((r) => r.isActive), true);
+  assert.equal(body.data.logos['onboarding-thankyou'][0].imageUrl, 'https://img.example/g1.png');
+});
+
+test('an event on the slot model with nothing stored uses the partner\'s logo; one the library no longer has is left out', async (t) => {
+  setup(t, [], { partnerSlots: { logo: { items: ['gone', 'p1'] } }, eventSlots: {} });
+  const { GET } = await importRoute('slots-partner');
+  const body = (await (await GET(new NextRequest('http://localhost/api/events/e-uuid/logos'), { params: Promise.resolve({ eventId: 'e-uuid' }) })).json()) as { data: { logos: Grouped } };
+  assert.deepEqual(body.data.logos['loading-capture'].map((r) => r.logoId), ['p1']);
 });
 
