@@ -20,7 +20,7 @@ function world(t: TestContext, options: { frames?: boolean; signedIn?: boolean; 
   const guest = new ObjectId();
   const seeded = fakeDb({
     events: [{ _id: EVENT_ID, eventId: 'e1', name: 'MTK', frames: options.frames === false ? [] : [{ frameId: 'f1', isActive: true }] }],
-    frames: [{ frameId: 'f1', name: 'Blue', imageUrl: 'https://store.test/f1.png', hasMessageArea: false }],
+    frames: [{ frameId: 'f1', name: 'Blue', imageUrl: 'https://store.test/f1.png' }],
     submissions: [
       { _id: uploaded, eventId: 'e1', eventIds: ['e1'], imageUrl: 'https://store.test/up.jpg', finalImageUrl: 'https://store.test/up.jpg', screenImageUrl: 'https://store.test/old-screen.webp', metadata: { adminGalleryUpload: true } },
       { _id: already, eventId: 'e1', eventIds: ['e1'], imageUrl: 'https://store.test/done.jpg', metadata: { adminGalleryUpload: true, galleryFrame: true } },

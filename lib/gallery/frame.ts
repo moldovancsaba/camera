@@ -7,6 +7,7 @@
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { captureFrameOf, isOwnActiveFrame, type RecordedFrameVariant } from '@/lib/frame/capture';
+import { parseMessageArea } from '@/lib/frame/message-area';
 import { composeUploadWithFrame } from '@/lib/photo-vetting/compose';
 
 export interface GalleryFrame {
@@ -17,17 +18,22 @@ export interface GalleryFrame {
   variant: RecordedFrameVariant | null;
 }
 
+/** A frame as the library stores it: a text-free frame that carries messages has a `messageArea` (the event API answers it as `hasMessageArea`, which a stored document does not have). */
 interface FrameRow {
   frameId?: string;
   name?: string;
   imageUrl?: string;
-  hasMessageArea?: boolean;
+  messageArea?: unknown;
 }
 
 export async function loadGalleryFrames(db: Db, event: Document): Promise<GalleryFrame[]> {
   const assigned = Array.isArray(event.frames) ? (event.frames as Array<{ frameId?: string; isActive?: boolean }>).filter((row) => row.isActive && typeof row.frameId === 'string') : [];
   const docs = assigned.length > 0 ? ((await db.collection(COLLECTIONS.FRAMES).find({ frameId: { $in: assigned.map((row) => row.frameId as string) } }).toArray()) as FrameRow[]) : [];
-  const rows = assigned.map((row) => ({ ...row, frameDetails: docs.find((doc) => doc.frameId === row.frameId) ?? null }));
+  // A frame with a message area is an ingredient of the generated frame, not a frame of its own (as in lib/frame/capture.ts): what the guests get for it is the generated image with its message.
+  const rows = assigned.map((row) => {
+    const doc = docs.find((candidate) => candidate.frameId === row.frameId);
+    return { ...row, frameDetails: doc ? { ...doc, hasMessageArea: parseMessageArea(doc.messageArea) !== null } : null };
+  });
   const own = rows
     .filter((row) => isOwnActiveFrame({ isActive: row.isActive, frameDetails: row.frameDetails }) && row.frameDetails?.imageUrl)
     .map((row): GalleryFrame => ({ imageUrl: row.frameDetails!.imageUrl as string, frameId: row.frameId as string, frameName: row.frameDetails!.name ?? null, variant: null }));
