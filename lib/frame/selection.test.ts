@@ -10,6 +10,7 @@ import {
   situationOf,
   storedFrameSelection,
   todaysSelection,
+  withPreviews,
 } from './selection';
 import { loadSelectionContext } from './selection-options';
 
@@ -133,4 +134,25 @@ test('an event with complete frames of its own offers them as layouts, and today
   assert.deepEqual(context.layouts.map((layout) => layout.id), ['home', 'away']);
   assert.equal(context.messages.length, 0, 'a complete frame carries no message');
   assert.equal(context.today.layout.mode, 'user');
+});
+
+test('the previews are the images already drawn: a design with its first message, a message on its first design, a complete frame as it is (segment S4)', () => {
+  const images = [
+    { index: 0, imageUrl: 'https://blob.test/blue-0.png', frameId: 'blue' },
+    { index: 0, imageUrl: 'https://blob.test/pink-0.png', frameId: 'pink' },
+    { index: 1, imageUrl: 'https://blob.test/blue-1.png', frameId: 'blue' },
+    { index: 2, imageUrl: 'https://blob.test/gen-2.png', frameId: null },
+  ];
+  const layouts = [
+    { id: 'blue', name: 'blue', previewUrl: 'https://img.example/blue.png' },
+    { id: 'pink', name: 'pink', previewUrl: 'https://img.example/pink.png' },
+    { id: GENERATED_LAYOUT, name: 'Generated layout' },
+  ];
+  const messages = ['A', 'B', 'C'].map((text) => ({ text, shown: text }));
+  const result = withPreviews(layouts, messages, images, ['A', 'B', 'C']);
+  assert.deepEqual(result.layouts.map((layout) => layout.previewUrl), ['https://blob.test/blue-0.png', 'https://blob.test/pink-0.png', 'https://blob.test/gen-2.png']);
+  assert.deepEqual(result.messages.map((message) => message.previewUrl), ['https://blob.test/blue-0.png', 'https://blob.test/blue-1.png', 'https://blob.test/gen-2.png']);
+
+  const own = withPreviews([{ id: 'home', name: 'Home', previewUrl: 'https://img.example/home.png' }, { id: 'x', name: 'No picture' }], [], null, []);
+  assert.deepEqual(own.layouts.map((layout) => layout.previewUrl), ['https://img.example/home.png', null], 'a complete frame is shown as it is; none without a picture');
 });

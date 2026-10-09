@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/gds/PublicPrimitives';
 import { Group, InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
+import AssetThumbnail from '@/components/admin/library/AssetThumbnail';
 import type { FrameSelection, LayoutOption, LayoutSituation, MessageOption, SelectMode, SelectionPart } from '@/lib/frame/selection';
 
 interface Loaded {
@@ -156,6 +157,26 @@ export default function FrameSelectionPanel({ eventId }: { eventId: string }) {
             <InlineAlert title={notice.title} message={notice.message} severity={notice.severity} />
           </div>
         ) : null}
+
+        <div>
+          <h4 style={{ margin: '0 0 0.5rem' }}>The layouts ({loaded.layouts.length})</h4>
+          <ul style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', listStyle: 'none', margin: 0, padding: 0 }}>
+            {loaded.layouts.map((layout) => (
+              <li key={layout.id} style={{ display: 'grid', gap: '0.25rem' }}>
+                <AssetThumbnail url={layout.previewUrl} name={layout.name} noun="layout" width="100%" />
+                <span style={{ fontSize: '0.875rem' }}>
+                  {layout.name}
+                  {draft.layout.mode === 'editor' && draft.layout.pick === layout.id ? ' · chosen for users' : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {loaded.messages.length > 0 ? (
+            <p style={{ ...muted, margin: '0.5rem 0 0' }}>
+              {loaded.messages.length} {loaded.messages.length === 1 ? 'message' : 'messages'}: {loaded.messages.map((message) => message.shown).join(' · ')}
+            </p>
+          ) : null}
+        </div>
 
         {!choosesLayout && !choosesMessage ? (
           <p style={{ ...muted, margin: 0 }}>
