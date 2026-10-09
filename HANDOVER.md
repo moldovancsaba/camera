@@ -79,6 +79,7 @@ The board ([#24](https://github.com/users/moldovancsaba/projects/24)) is the sin
   #207 (constraints), #208 (whole-frame capture), #209 (reframe step); #210
   (storage of the original and the reframe record) in review. Next: #211 privacy
   (file deletion, consent wording), #212 lenses, #205 test harness.
+- **Frame slots (issue [#502](https://github.com/moldovancsaba/camera/issues/502), client request 2026-10-09, owner answer 218 "full delivery now", plan `docs/FRAME_SLOTS_PLAN.md`):** the generated frame can be composed from up to twelve optional slots (six text, six picture) per event on the Frames page; an event without slots is drawn exactly as before. Built: model, layout, drawing, save, preview, panel. Left: partner and general defaults, the guide, and setting up the MTK frame from the client's strips (needs the owner's go).
 - **Generated default frame (owner-approved 2026-10-06, epic camera#231, plan `docs/DEFAULT_FRAME_PLAN.md`):** every
   event without an active frame of its own gets a frame built from messmass data (partner logo top right, teams text
   top left, theme-coloured bar with a random message per photo; 1920x1080). Merged: layout engine, messmass endpoint,

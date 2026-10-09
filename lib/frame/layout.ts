@@ -11,6 +11,8 @@
  * margin (y 864..1026).
  */
 
+import type { SlotPosition } from './slots';
+
 export const DEFAULT_FRAME_WIDTH = 1920;
 export const DEFAULT_FRAME_HEIGHT = 1080;
 
@@ -48,25 +50,28 @@ export interface FrameLayout {
   message: { text: string; fontSize: number; rect: Rect } | null;
 }
 
-export type LayerId = 'logo' | 'teams' | 'bar' | 'message' | 'header' | 'footer';
+/** `picture-<position>` and `text-<position>` are the layers of the slots of issue 502 that have no name of their own (lib/frame/slot-layout.ts). */
+export type LayerId = 'logo' | 'teams' | 'bar' | 'message' | 'header' | 'footer' | `picture-${SlotPosition}` | `text-${SlotPosition}`;
 
-const SAFETY_MARGIN = 0.05;
-const LOGO_BOX = 0.15;
-const TEAMS_LEFT = 0.1;
-const TEAMS_TOP = 0.1;
-const TEAMS_WIDTH = 0.2;
-const TEAMS_MAX_FONT = 0.1;
-const TEAMS_MIN_FONT = 0.03;
-const TEAMS_MAX_HEIGHT = 0.25;
-const BAR_HEIGHT = 0.2;
-const BAR_LINE = 0.01;
-const MESSAGE_FONT = 0.8;
-const LINE_HEIGHT = 1.15;
+export const SAFETY_MARGIN = 0.05;
+export const LOGO_BOX = 0.15;
+export const TEAMS_LEFT = 0.1;
+export const TEAMS_TOP = 0.1;
+export const TEAMS_WIDTH = 0.2;
+export const TEAMS_MAX_FONT = 0.1;
+export const TEAMS_MIN_FONT = 0.03;
+export const TEAMS_MAX_HEIGHT = 0.25;
+/** The box of a corner text is as tall as the teams text may be (slots of issue 502 use it for every corner). */
+export const CORNER_TEXT_MAX_HEIGHT = TEAMS_MAX_HEIGHT;
+export const BAR_HEIGHT = 0.2;
+export const BAR_LINE = 0.01;
+export const MESSAGE_FONT = 0.8;
+export const LINE_HEIGHT = 1.15;
 /** Text width is linear in the font size, so one probe size gives the size that fits a width. */
-const PROBE = 100;
+export const PROBE = 100;
 
-const round = (value: number) => Math.round(value * 100) / 100;
-const rect = (x: number, y: number, width: number, height: number): Rect => ({
+export const round = (value: number) => Math.round(value * 100) / 100;
+export const rect = (x: number, y: number, width: number, height: number): Rect => ({
   x: round(x),
   y: round(y),
   width: round(width),
@@ -103,13 +108,13 @@ function textBlock(lines: string[], fontSize: number, width: number, height: num
 }
 
 /** The line cut at its end, with an ellipsis, until it fits the width. */
-function cutToFit(text: string, measure: Measure, size: number, boxWidth: number): string {
+export function cutToFit(text: string, measure: Measure, size: number, boxWidth: number): string {
   const chars = Array.from(text.trimEnd());
   while (chars.length > 0 && measure(`${chars.join('').trimEnd()}…`, size) > boxWidth) chars.pop();
   return `${chars.join('').trimEnd()}…`;
 }
 
-const ellipsize = (line: string, measure: Measure, size: number, boxWidth: number) =>
+export const ellipsize = (line: string, measure: Measure, size: number, boxWidth: number) =>
   measure(line, size) <= boxWidth ? line : cutToFit(line, measure, size, boxWidth);
 
 /**
@@ -149,7 +154,7 @@ export function splitMatchName(name: string): [string, string] | null {
 }
 
 /** Greedy word wrap at one size; a word wider than the box is broken by characters. */
-function wrap(words: string[], measure: Measure, size: number, boxWidth: number): string[] {
+export function wrap(words: string[], measure: Measure, size: number, boxWidth: number): string[] {
   const lines: string[] = [];
   let line = '';
   for (const word of words) {

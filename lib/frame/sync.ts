@@ -76,6 +76,8 @@ export async function refreshFrameDesign(db: Db, event: Document, deps: RefreshD
     // The frames the messages chose belong to the event too (camera#366).
     ...(existing?.messageFrames ? { messageFrames: existing.messageFrames } : {}),
     ...(existing?.darkArea ? { darkArea: existing.darkArea } : {}),
+    // The slots belong to the event too (issue 502).
+    ...(existing?.slots ? { slots: existing.slots } : {}),
     ...(existing?.variants ? { variants: existing.variants } : {}),
     ...(existing?.generatedAt ? { generatedAt: existing.generatedAt } : {}),
   };

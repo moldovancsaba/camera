@@ -13,6 +13,7 @@ import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import GeneratedFramePanel, { type Notice } from '@/components/admin/GeneratedFramePanel';
 import FrameSelectionPanel from '@/components/admin/FrameSelectionPanel';
+import FrameSlotsPanel from '@/components/admin/FrameSlotsPanel';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
@@ -151,6 +152,9 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
         initialNotice={panelNotice}
         hasOwnActiveFrame={library.assigned.some((entry) => entry.assignment.isActive === true && entry.messageArea === null)}
       />
+
+      {/* The slots the generated frame is composed of (issue 502): up to six texts and six pictures, each optional. */}
+      <FrameSlotsPanel eventId={eventId} onDesignChanged={onDesignChanged} />
 
       <FrameSelectionPanel
         key={`${designVersion}:${library.assigned.map((entry) => `${entry.id}:${entry.assignment.isActive === true ? 1 : 0}:${entry.messageArea ? 1 : 0}`).join(',')}`}

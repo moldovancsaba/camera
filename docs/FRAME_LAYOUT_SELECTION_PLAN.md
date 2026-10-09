@@ -108,4 +108,4 @@ The image of a photo is drawn when the camera step opens (S2), so the live view 
 | S2 #446 capture flow | merged (#457) |
 | S5 #447 dark area | merged (#458); one general method for every event and every kind of design since the owner's answer 193 (this pull request) |
 | S4 #448 layout previews | merged (#459) |
-| S6 #450, S7 #451, S8 #452, S9 #453 | after the match |
+| S6 #450, S7 #451, S8 #452, S9 #453 | after the match; **S7 is brought forward by the client's request of 2026-10-09 (owner answer 218, issue 502, docs/FRAME_SLOTS_PLAN.md)** |

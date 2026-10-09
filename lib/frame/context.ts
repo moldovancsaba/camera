@@ -10,6 +10,7 @@ import { createHash } from 'node:crypto';
 import { EVENT_THEME_DEFAULT, FRAME_SYSTEM_BAR_COLOR, FRAME_SYSTEM_HEADING_COLOR } from '@/lib/gds/tokens/colors';
 import type { FrameBase } from './base';
 import type { LayerId } from './layout';
+import type { FrameSlots } from './slots';
 
 export interface FrameTeam {
   id: string;
@@ -105,6 +106,11 @@ export interface FrameDesign {
    * the frame's message area (header and footer bars); `generated` is the mask of the auto generated default frame (logo, teams, bar and message boxes), whatever the design.
    */
   darkArea?: 'frame' | 'generated';
+  /**
+   * The slots of the generated frame (issue 502, docs/FRAME_SLOTS_PLAN.md): which of the six text and six picture positions are on and what each shows. Absent: the default frame, drawn by
+   * the generated layout exactly as before. A library frame a message chose, or the older base picture, still takes precedence over the slots for that message.
+   */
+  slots?: FrameSlots;
   /** One image per usable message (camera#235); absent until the first generation. */
   variants?: FrameVariant[];
   generatedAt?: string;
