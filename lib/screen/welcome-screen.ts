@@ -11,9 +11,12 @@
 import { createCanvas, loadImage, type SKRSContext2D } from '@napi-rs/canvas';
 import QRCode from 'qrcode';
 import { CAMERA_STAGE_BLACK, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
-import type { ScreenDesign } from '@/lib/slideshow/screen-design';
+import { fitSize, type ScreenDesign } from '@/lib/slideshow/screen-design';
 import { mix } from '@/lib/theme/color';
 import { STAGE_HEIGHT, STAGE_WIDTH, type StageColours } from './default-stage';
+
+/** The size a line that fills its box is measured at. */
+const FIT_REFERENCE_PX = 100;
 
 /** Raise when the drawing changes, so every stored picture is drawn again. */
 export const WELCOME_SCREEN_RENDER_VERSION = 1;
@@ -99,9 +102,14 @@ export async function renderWelcomeScreen(sources: WelcomeScreenSources): Promis
   if (design.qr) drawQr(ctx, design.qr.url, design.qr.color, px(design.qr.x, STAGE_WIDTH), px(design.qr.y, STAGE_HEIGHT), px(design.qr.size, STAGE_WIDTH));
 
   for (const text of design.texts ?? []) {
-    const size = px(text.size, STAGE_HEIGHT);
     const left = px(text.x, STAGE_WIDTH);
     const width = px(text.width, STAGE_WIDTH);
+    let size = px(text.size, STAGE_HEIGHT);
+    if (text.fit) {
+      // One line that fills its box, as on the live stage (components/slideshow/ScreenDesignLayers.tsx): measure it at a reference size, scale by box over line, capped by `size`.
+      ctx.font = `700 ${FIT_REFERENCE_PX}px ${sources.fontStack}`;
+      size = fitSize(ctx.measureText(text.text).width, FIT_REFERENCE_PX, width, size);
+    }
     ctx.font = `700 ${size}px ${sources.fontStack}`;
     ctx.fillStyle = text.color && HEX.test(text.color) ? text.color : CAMERA_STAGE_WHITE;
     ctx.textAlign = text.align;

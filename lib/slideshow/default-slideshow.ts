@@ -1,7 +1,7 @@
 /**
  * The default slideshow of an event (camera#327, docs/BUILDING_BRICKS.md 6.2 and 8, owner decisions 110-121 and 165-169): a giant-screen design every event gets without anyone
  * making it. It is made of the stage layout (lib/screen/default-stage.ts), the event's own colours, a QR code that points at a tracked "Giant screen" link of the event, one
- * short call to action picked once at random from the dictionary, and the written address of the link under the window. It is added next to the event's other slideshows and flagged
+ * one line under the window, the written address (the event's own short address when it has one, else the tracked link's), as wide as the window and scaled to fill it. It is added next to the event's other slideshows and flagged
  * `isDefault`: the welcome page screen and the giant screen start from it, an editor changes it or makes another and sets that as the default.
  *
  * Idempotent: an event that already has a default slideshow gets nothing new, an existing "Giant screen" link is reused, so a retry after a failure leaves no second copy. The
@@ -9,12 +9,12 @@
  * without Blob, a network or a database.
  */
 
-import { createHash, randomInt } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { put } from '@vercel/blob';
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { SLIDESHOW_DEFAULT_BACKGROUND_ACCENT, SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY } from '@/lib/gds/tokens/colors';
-import { translate, normalizeUiLanguage, type MessageKey } from '@/lib/i18n';
+import { translate, normalizeUiLanguage } from '@/lib/i18n';
 import { withEffectiveLanguage } from '@/lib/i18n/overrides';
 import { DEFAULT_STAGE, renderDefaultOverlay, stagePalette } from '@/lib/screen/default-stage';
 import { createShortLink, listShortLinks } from '@/lib/short-links/store';
@@ -24,21 +24,15 @@ import { loadEventTheme } from '@/lib/theme/load';
 /** The name of the tracked link behind the QR code of the default screen, as the event's links list shows it. */
 export const GIANT_SCREEN_PLACEMENT = 'Giant screen';
 
-/** The calls to action the default screen picks from (one is stored per event, so a screen does not change between visits). Each is written big under the photos, on one line (the keys keep their old name `qrText`: the Dictionary stores wordings by key). */
-export const QR_TEXT_KEYS: readonly MessageKey[] = ['screen.qrText.1', 'screen.qrText.2', 'screen.qrText.3', 'screen.qrText.4'];
-
 export interface DefaultSlideshowDeps {
   /** Stores the picture of the stage and returns its public https address. */
   upload: (pathname: string, png: Buffer) => Promise<string>;
-  /** A whole number from 0 up to, not including, `max`. */
-  pickIndex: (max: number) => number;
   origin: () => string;
   now: () => string;
 }
 
 const defaultDeps: DefaultSlideshowDeps = {
   upload: async (pathname, png) => (await put(pathname, png, { access: 'public', contentType: 'image/png', addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 31536000 })).url,
-  pickIndex: (max) => randomInt(max),
   origin: defaultGoShortOrigin,
   now: generateTimestamp,
 };
@@ -50,8 +44,14 @@ export async function findDefaultSlideshow(db: Db, eventUuid: string): Promise<D
   return db.collection(COLLECTIONS.SLIDESHOWS).findOne({ eventId: eventUuid, isDefault: true });
 }
 
-/** The written address of a link: the public address without the protocol. */
-const written = (origin: string, slug: string): string => `${origin.replace(/^https?:\/\//, '')}/${slug}`;
+/**
+ * The address written under the photos (owner, 2026-10-09): the event's own short address (`shortUrlSlug`, e.g. go.messmass.com/mtk-vasas) whenever it has one, else the slug of the
+ * tracked "Giant screen" link. It is the public address without the protocol. The QR code keeps pointing at the tracked link, so its scans are still counted on their own.
+ */
+export function writtenAddress(origin: string, event: Document, linkSlug: string): string {
+  const own = typeof event.shortUrlSlug === 'string' ? event.shortUrlSlug.trim() : '';
+  return `${origin.replace(/^https?:\/\//, '')}/${own || linkSlug}`;
+}
 
 /** Makes the default slideshow of the event unless it has one. `event` is the stored event (its `_id`, `eventId`, `name`, `uiLanguage`, `frameDesign`). */
 export async function ensureDefaultSlideshow(db: Db, event: Document, deps: DefaultSlideshowDeps = defaultDeps): Promise<EnsureResult> {
@@ -80,7 +80,7 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
 
   // The language of the event, or of its partner when the event has none (issue 353).
   const language = normalizeUiLanguage((await withEffectiveLanguage(db, event)).uiLanguage);
-  const { window, qr, ctaText, urlText } = DEFAULT_STAGE;
+  const { window, qr, addressText } = DEFAULT_STAGE;
   const now = deps.now();
   const slideshowId = generateId();
   await db.collection(COLLECTIONS.SLIDESHOWS).insertOne({
@@ -107,8 +107,7 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
       photoFit: 'cover',
       qr: { url: `${origin}/${slug}`, x: qr.x, y: qr.y, size: qr.size, color: palette.qr },
       texts: [
-        { text: translate(language, QR_TEXT_KEYS[deps.pickIndex(QR_TEXT_KEYS.length)]), x: ctaText.x, y: ctaText.y, width: ctaText.width, size: ctaText.size, align: 'center', color: palette.text },
-        { text: written(origin, slug), x: urlText.x, y: urlText.y, width: urlText.width, size: urlText.size, align: 'center', color: palette.text },
+        { text: writtenAddress(origin, event, slug), x: addressText.x, y: addressText.y, width: addressText.width, size: addressText.size, align: 'center', fit: true, color: palette.text },
       ],
     },
     createdBy: 'system',

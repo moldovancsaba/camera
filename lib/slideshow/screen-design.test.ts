@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseScreenDesign, qrSvg, resolveScreenDesign } from './screen-design';
+import { estimateFitSize, fitSize, parseScreenDesign, qrSvg, resolveScreenDesign } from './screen-design';
 
 const HOST = 'https://images.example.test';
 const hex = (digits: string) => `#${digits}`; // colours are assembled from digits: the design-system check bans raw colour literals, tests included
@@ -86,4 +86,31 @@ test('the texts are written in the event\'s own font unless the design sets one'
   assert.deepEqual(resolveScreenDesign(noFont, themeFont)?.font, themeFont);
   assert.equal(resolveScreenDesign(noFont)?.font, undefined, 'no font known: the player uses its default');
   assert.equal(resolveScreenDesign({ ...good, fontFamily: 'Poppins' }, themeFont)?.fontFamily, 'Poppins', 'a font set on the design is kept next to the event font, and wins in the player');
+});
+
+test('a text that fills its box is kept as such, and a text that does not stays as it was', () => {
+  const texts = [
+    { text: 'go.example.test/mtk-vasas', x: 2, y: 80, width: 69, size: 10, align: 'center', fit: true },
+    { text: 'Scan me', x: 2, y: 60, width: 69, size: 6, align: 'center', fit: false },
+    { text: 'Plain', x: 2, y: 70, width: 69, size: 6, align: 'center' },
+  ];
+  const parsed = parseScreenDesign({ ...good, texts });
+  assert.ok(parsed.ok && parsed.value);
+  assert.equal(parsed.value.texts?.[0].fit, true);
+  assert.equal('fit' in (parsed.value.texts?.[1] ?? {}), false, 'only true is kept');
+  assert.equal('fit' in (parsed.value.texts?.[2] ?? {}), false);
+});
+
+test('a line that fills its box takes the size at which it is exactly as wide as the box, never above the largest size', () => {
+  // Measured 400 wide at size 10: a box of 800 needs size 20, a box of 200 needs 5, and the largest size caps it.
+  assert.equal(fitSize(400, 10, 800, 30), 20);
+  assert.equal(fitSize(400, 10, 200, 30), 5);
+  assert.equal(fitSize(400, 10, 800, 12), 12, 'a short line does not grow without end');
+  assert.equal(fitSize(0, 10, 800, 12), 12, 'an empty measure keeps the largest size');
+  assert.equal(fitSize(400, 10, 0, 12), 12, 'a box with no width yet keeps the largest size');
+  // The first guess before measuring: the address of the MTK event in a box as wide as the photo window never exceeds the largest size and is not tiny.
+  const guess = estimateFitSize('go.messmass.com/mtk-vasas', 69.274, 10);
+  assert.ok(guess > 6 && guess <= 10, `the estimate is ${guess}`);
+  assert.equal(estimateFitSize('Hi', 69.274, 10), 10);
+  assert.ok(estimateFitSize('x'.repeat(200), 69.274, 10) < 3, 'a very long line gets small, it never wraps');
 });

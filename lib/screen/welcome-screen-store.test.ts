@@ -31,7 +31,6 @@ async function eventWithDefaultSlideshow(extra: Record<string, unknown> = {}) {
   const seeded = fakeDb({ events: [event], partners: [{ partnerId: 'p1', name: 'MTK' }] });
   const made = await ensureDefaultSlideshow(seeded.db, event, {
     upload: async (pathname) => `https://blob.example/${pathname}`,
-    pickIndex: () => 0,
     origin: () => 'https://go.messmass.com',
     now: () => '2026-10-09T10:00:00.000Z',
   });

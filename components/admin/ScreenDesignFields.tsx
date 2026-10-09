@@ -6,12 +6,12 @@
  * checks (lib/slideshow/screen-design.ts).
  */
 
-import { Field, NumberInput, Select, SimpleGrid, Text, TextInput } from '@/components/gds/PublicPrimitives';
+import { Checkbox, Field, NumberInput, Select, SimpleGrid, Text, TextInput } from '@/components/gds/PublicPrimitives';
 import ImagePicker from '@/components/admin/library/ImagePicker';
 import { OVERLAY_PICTURE_TYPES, OVERLAY_PICTURE_WORDS } from '@/lib/library/image-files';
 import type { ScreenDesign } from '@/lib/slideshow/screen-design';
 
-export interface ScreenDesignTextDraft { text: string; x: string; y: string; width: string; size: string; color: string }
+export interface ScreenDesignTextDraft { text: string; x: string; y: string; width: string; size: string; color: string; fit: boolean }
 export interface ScreenDesignDraft {
   overlayImageUrl: string;
   left: string; top: string; width: string; height: string;
@@ -22,7 +22,16 @@ export interface ScreenDesignDraft {
 }
 
 const TEXT_ROWS = 3;
-const blankText = (): ScreenDesignTextDraft => ({ text: '', x: '', y: '', width: '', size: '', color: '' });
+// A new text fills its box by default (owner, 2026-10-09): one line scaled to the box width.
+const blankText = (): ScreenDesignTextDraft => ({ text: '', x: '', y: '', width: '', size: '', color: '', fit: true });
+
+/** Where a text typed into a row that has no place yet goes by default: under the photo window, as wide as the window, scaled to fill that width (`size` is the largest it may take). */
+export function placeUnderWindow(row: ScreenDesignTextDraft, window: { left: string; top: string; width: string; height: string }): ScreenDesignTextDraft {
+  if (row.x || row.y || row.width || row.size) return row;
+  const top = Number(window.top), height = Number(window.height);
+  if (!window.left.trim() || !window.width.trim() || !window.top.trim() || !window.height.trim() || !Number.isFinite(top + height)) return row;
+  return { ...row, x: window.left, width: window.width, y: String(Math.min(88, Math.round((top + height + 8.5) * 10) / 10)), size: '10' };
+}
 
 export const emptyDraft = (): ScreenDesignDraft => ({
   overlayImageUrl: '', left: '', top: '', width: '', height: '', photoFit: 'cover', fontFamily: '',
@@ -33,7 +42,7 @@ const s = (v: number | undefined) => (v === undefined ? '' : String(v));
 
 export function draftFromDesign(d: ScreenDesign | null | undefined): ScreenDesignDraft {
   if (!d) return emptyDraft();
-  const texts = (d.texts ?? []).map((t) => ({ text: t.text, x: s(t.x), y: s(t.y), width: s(t.width), size: s(t.size), color: t.color ?? '' }));
+  const texts = (d.texts ?? []).map((t) => ({ text: t.text, x: s(t.x), y: s(t.y), width: s(t.width), size: s(t.size), color: t.color ?? '', fit: t.fit === true }));
   while (texts.length < TEXT_ROWS) texts.push(blankText());
   return {
     overlayImageUrl: d.overlayImageUrl, left: s(d.window.left), top: s(d.window.top), width: s(d.window.width), height: s(d.window.height),
@@ -53,7 +62,7 @@ export function designFromDraft(draft: ScreenDesignDraft): ScreenDesign | null {
   };
   if (draft.fontFamily.trim()) out.fontFamily = draft.fontFamily.trim();
   if (draft.qrUrl.trim()) out.qr = { url: draft.qrUrl.trim(), x: n(draft.qrX), y: n(draft.qrY), size: n(draft.qrSize), ...(draft.qrColor.trim() ? { color: draft.qrColor.trim() } : {}) };
-  const texts = draft.texts.filter((t) => t.text.trim()).map((t) => ({ text: t.text, x: n(t.x), y: n(t.y), width: n(t.width), size: n(t.size), align: 'center' as const, ...(t.color.trim() ? { color: t.color.trim() } : {}) }));
+  const texts = draft.texts.filter((t) => t.text.trim()).map((t) => ({ text: t.text, x: n(t.x), y: n(t.y), width: n(t.width), size: n(t.size), align: 'center' as const, ...(t.fit ? { fit: true as const } : {}), ...(t.color.trim() ? { color: t.color.trim() } : {}) }));
   if (texts.length) out.texts = texts;
   return out;
 }
@@ -69,7 +78,7 @@ function Num({ label, value, onChange, helper }: { label: string; value: string;
 /** `eventMongoId` is the event of the slideshow: the overlay is chosen from that event's images library (camera#368). */
 export default function ScreenDesignFields({ draft, onChange, eventMongoId }: { draft: ScreenDesignDraft; onChange: (next: ScreenDesignDraft) => void; eventMongoId: string }) {
   const set = <K extends keyof ScreenDesignDraft>(key: K, value: ScreenDesignDraft[K]) => onChange({ ...draft, [key]: value });
-  const setText = (i: number, patch: Partial<ScreenDesignTextDraft>) => onChange({ ...draft, texts: draft.texts.map((t, j) => (j === i ? { ...t, ...patch } : t)) });
+  const setText = (i: number, patch: Partial<ScreenDesignTextDraft>) => onChange({ ...draft, texts: draft.texts.map((t, j) => (j === i ? (patch.text !== undefined ? placeUnderWindow({ ...t, ...patch }, draft) : { ...t, ...patch }) : t)) });
 
   return (
     <>
@@ -105,14 +114,15 @@ export default function ScreenDesignFields({ draft, onChange, eventMongoId }: { 
       </SimpleGrid>
 
       <Field label="Font" helper="A Google font name, e.g. Roboto."><TextInput value={draft.fontFamily} onChange={(e) => set('fontFamily', e.target.value)} placeholder="Roboto" /></Field>
-      <Text size="sm" fw={600}>Texts (centred in a box; % of the stage, size is % of its height)</Text>
+      <Text size="sm" fw={600}>Texts (one line, centred in a box; % of the stage, size is % of its height)</Text>
       {draft.texts.map((t, i) => (
-        <SimpleGrid key={i} cols={{ base: 2, sm: 6 }}>
+        <SimpleGrid key={i} cols={{ base: 2, sm: 7 }}>
           <Field label={`Text ${i + 1}`}><TextInput value={t.text} onChange={(e) => setText(i, { text: e.target.value })} /></Field>
           <Num label="Left (%)" value={t.x} onChange={(v) => setText(i, { x: v })} />
           <Num label="Top (%)" value={t.y} onChange={(v) => setText(i, { y: v })} />
           <Num label="Box width (%)" value={t.width} onChange={(v) => setText(i, { width: v })} />
-          <Num label="Size (%)" value={t.size} onChange={(v) => setText(i, { size: v })} />
+          <Num label={t.fit ? 'Largest size (%)' : 'Size (%)'} value={t.size} onChange={(v) => setText(i, { size: v })} />
+          <Field label="Fill the box" helper="Scale the line to the box width."><Checkbox checked={t.fit} onChange={(e) => setText(i, { fit: e.currentTarget.checked })} aria-label={`Text ${i + 1} fills the box width`} /></Field>
           <Field label="Colour"><TextInput value={t.color} onChange={(e) => setText(i, { color: e.target.value })} placeholder="#RRGGBB" /></Field>
         </SimpleGrid>
       ))}

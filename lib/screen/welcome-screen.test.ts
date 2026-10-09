@@ -18,8 +18,7 @@ const design: ScreenDesign = {
   photoFit: 'cover',
   qr: { url: 'https://go.messmass.com/abc123', x: DEFAULT_STAGE.qr.x, y: DEFAULT_STAGE.qr.y, size: DEFAULT_STAGE.qr.size, color: CAMERA_STAGE_QR_DARK },
   texts: [
-    { text: 'Scan & smile', x: DEFAULT_STAGE.ctaText.x, y: DEFAULT_STAGE.ctaText.y, width: DEFAULT_STAGE.ctaText.width, size: DEFAULT_STAGE.ctaText.size, align: 'center', color: palette.text },
-    { text: 'go.messmass.com/abc123', x: DEFAULT_STAGE.urlText.x, y: DEFAULT_STAGE.urlText.y, width: DEFAULT_STAGE.urlText.width, size: DEFAULT_STAGE.urlText.size, align: 'center', color: palette.text },
+    { text: 'go.messmass.com/abc123', x: DEFAULT_STAGE.addressText.x, y: DEFAULT_STAGE.addressText.y, width: DEFAULT_STAGE.addressText.width, size: DEFAULT_STAGE.addressText.size, align: 'center', fit: true, color: palette.text },
   ],
 };
 
@@ -85,13 +84,15 @@ test('the QR code is drawn on its panel: dark modules and light gaps in the QR b
   assert.ok(dark / (dark + light) > 0.3 && dark / (dark + light) < 0.7);
 });
 
-test('the texts are drawn in their colour inside their boxes: the call to action and the written address', async () => {
+test('the address is drawn in its colour inside its box, one line scaled to fill the box width', async () => {
   const png = await renderWelcomeScreen(await sources());
   const text = rgbOf(palette.text);
-  const q = DEFAULT_STAGE.ctaText;
-  const u = DEFAULT_STAGE.urlText;
-  assert.ok((await countNear(png, { x: q.x, y: q.y, w: q.width, h: (q.size * STAGE_HEIGHT) / STAGE_WIDTH * 1.3 }, text, 30)) > 300, 'the call to action');
+  const u = DEFAULT_STAGE.addressText;
   assert.ok((await countNear(png, { x: u.x, y: u.y, w: u.width, h: (u.size * STAGE_HEIGHT) / STAGE_WIDTH * 1.3 }, text, 30)) > 500, 'the address');
+  // A line that fills its box reaches from near the left edge of the box to near the right edge (the box is as wide as the photo window).
+  const edge = u.width * 0.12;
+  assert.ok((await countNear(png, { x: u.x, y: u.y, w: edge, h: (u.size * STAGE_HEIGHT) / STAGE_WIDTH * 1.3 }, text, 30)) > 20, 'the line starts near the left edge of the box');
+  assert.ok((await countNear(png, { x: u.x + u.width - edge, y: u.y, w: edge, h: (u.size * STAGE_HEIGHT) / STAGE_WIDTH * 1.3 }, text, 30)) > 20, 'and ends near the right edge');
 });
 
 test('the same sources give the same picture; another QR address gives another', async () => {
