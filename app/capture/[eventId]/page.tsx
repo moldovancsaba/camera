@@ -98,6 +98,8 @@ interface EventData {
   photoVettingRequired?: boolean;
   /** The picture of the giant screen drawn from the event's default slideshow (issue 327): shown on a welcome page that has no picture of its own. */
   welcomeScreen?: { url: string };
+  /** The event sends the welcome e-mail (epic 463): the page tells the server who registered, and only then. */
+  welcomeEmailEnabled?: boolean;
   /** How users get the layout and the message (epic 444): the editor's setting; the page reads it through `generatedFrame.selection`, and for the event's own frames from here. */
   frameSelection?: unknown;
   tryOn?: {
@@ -494,6 +496,7 @@ export default function EventCapturePage({
           tryOn: eventData.tryOn,
           generatedFrame: eventData.generatedFrame ?? null,
           frameSelection: eventData.frameSelection ?? null,
+          welcomeEmailEnabled: eventData.welcomeEmailEnabled === true,
           photoVettingRequired: eventData.photoVettingRequired === true,
         });
         
@@ -758,6 +761,21 @@ export default function EventCapturePage({
     setSelectedFrame(frame);
     setStep('capture-photo');
   };
+
+  // The welcome e-mail (epic 463): once the user is identified (a typed name and e-mail, or a sign-in) and the event sends it, the server is told, once for each address on this device. The
+  // server sends it once for each event and address anyway; the address is not verified, so the e-mail is only the welcome note and the link to the event.
+  const welcomedFor = useRef<string | null>(null);
+  const identifiedEmail = collectedData.userInfo?.email?.trim().toLowerCase() || '';
+  const identifiedName = collectedData.userInfo?.name || '';
+  useEffect(() => {
+    if (!event?.welcomeEmailEnabled || !identifiedEmail || welcomedFor.current === identifiedEmail) return;
+    welcomedFor.current = identifiedEmail;
+    void fetch(`/api/events/${encodeURIComponent(eventId)}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: identifiedName, email: identifiedEmail }),
+    }).catch(() => undefined);
+  }, [event?.welcomeEmailEnabled, identifiedEmail, identifiedName, eventId]);
 
   // How users get the layout and the message (epic 444). The generated frame carries the editor's setting; without it the page keeps the random image at every shutter press.
   const selection = frames.length === 0 ? (generatedFrame?.selection ?? null) : null;

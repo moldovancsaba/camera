@@ -75,6 +75,8 @@ function mockRouteDeps(
       dispatchPendingSubmissionEmailForSubmission: async () => null,
     },
   });
+  // The "arrived" e-mail (epic 463) is its own module: here it has nothing to send.
+  t.mock.module('@/lib/email/triggers', { namedExports: { dispatchArrivedEmail: async () => null } });
 }
 
 function buildPatch(): NextRequest {
@@ -165,6 +167,7 @@ function mockDeleteDeps(
   t.mock.module('@/lib/email/submission-result-email', {
     namedExports: { dispatchPendingSubmissionEmailForSubmission: async () => null },
   });
+  t.mock.module('@/lib/email/triggers', { namedExports: { dispatchArrivedEmail: async () => null } });
 }
 
 function buildDelete(): NextRequest {

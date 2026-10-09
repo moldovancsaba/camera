@@ -70,7 +70,7 @@ test('GET: an event that never chose has approved and declined on, the others of
   assert.deepEqual(data.types.map((row) => [row.type, row.enabled, row.chosen]), [['welcome', false, null], ['arrived', false, null], ['approved', true, null], ['declined', true, null], ['followUp', false, null]]);
   assert.ok(data.types.every((row) => row.subject === null && row.body === null && row.defaultSubject && row.defaultBody));
   assert.ok(byType(data, 'welcome').defaultBody.includes('{eventlink}') && byType(data, 'approved').defaultSubject.includes('{event}'));
-  assert.deepEqual(data.types.map((row) => row.sent), [false, false, true, true, false], 'only approved and declined are sent yet');
+  assert.deepEqual(data.types.map((row) => row.sent), [true, true, true, true, false], 'everything but the follow up is sent');
   assert.equal(byType(data, 'arrived').buttonLabel, null);
   assert.equal(data.tryOn, null, 'an event without try-on has no try-on e-mails');
   assert.deepEqual([data.senderName, data.termsUrl], [null, null]);

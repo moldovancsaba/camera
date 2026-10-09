@@ -29,6 +29,7 @@ import {
   optionalAuth,
 } from '@/lib/api';
 import { dispatchPendingSubmissionEmailForSubmission } from '@/lib/email/submission-result-email';
+import { dispatchArrivedEmail } from '@/lib/email/triggers';
 import { deleteSubmissionFiles } from '@/lib/submissions/delete-files';
 
 interface FinalizeSubmissionBody {
@@ -243,6 +244,14 @@ export const PATCH = withErrorHandler(async (
             ...submission,
             _id: objectId,
           };
+
+    // The "arrived" e-mail (epic 463) for a user whose address is known only now; it is sent once, so a photo that already sent it at creation does not send it again.
+    try {
+      const arrived = await dispatchArrivedEmail(db, { ...(updatedSubmission as Submission), _id: objectId });
+      if (arrived && Object.keys(arrived.metadataPatch).length > 0) await applySubmissionMetadataPatch(db, objectId, arrived.metadataPatch);
+    } catch (error) {
+      console.warn('[email] The arrived e-mail could not be sent', error instanceof Error ? error.message : error);
+    }
 
     emailResult = await dispatchPendingSubmissionEmailForSubmission(db, {
       ...(updatedSubmission as Submission),

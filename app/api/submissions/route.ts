@@ -14,6 +14,8 @@ import { head as blobHead, put as blobPut } from '@vercel/blob';
 import { sanitizeReframeRecord } from '@/lib/camera/reframe';
 import { blobStoreHostFromToken, verifyOriginalImage } from '@/lib/submissions/original-image';
 import { logWarn } from '@/lib/observability/logger';
+import { dispatchArrivedEmail } from '@/lib/email/triggers';
+import { runAfterResponse } from '@/lib/api/run-after-response';
 import { sanitizeFrameVariant, type RecordedFrameVariant } from '@/lib/frame/capture';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
 import { guestIdentity, newShareToken, storePendingPhoto } from '@/lib/photo-vetting/pending';
@@ -424,6 +426,17 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     const result = await db.collection('submissions').insertOne(submission);
     const submissionId = getSubmissionMongoIdString(result.insertedId);
+
+    // The "arrived" e-mail (epic 463), when the event has it on and the user's address is already known: after the answer is sent, so it never slows the photo. Without an address yet
+    // the finalize call sends it once the contact is saved.
+    runAfterResponse(async () => {
+      try {
+        const arrived = await dispatchArrivedEmail(db, { ...submission, _id: result.insertedId });
+        if (arrived && Object.keys(arrived.metadataPatch).length > 0) await db.collection('submissions').updateOne({ _id: result.insertedId }, { $set: arrived.metadataPatch });
+      } catch (error) {
+        logWarn('submission.arrived_email_failed', 'The arrived e-mail could not be sent', { submissionId, error: error instanceof Error ? error.message : String(error) });
+      }
+    });
 
     // A pending photo answers with what the waiting screen needs and nothing public: no picture, no share link (camera#266).
     if (vetted) {

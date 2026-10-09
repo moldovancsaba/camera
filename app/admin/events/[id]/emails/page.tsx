@@ -204,7 +204,7 @@ export default function EventEmailsPage({ params }: { params: Promise<{ id: stri
               </h3>
               <p style={{ ...muted, margin: '0.25rem 0 0' }}>{row.when}</p>
             </div>
-            {!row.sent ? <InlineAlert title="Not sent yet" message={row.type === 'followUp' ? 'The text and the switch are saved, but nothing sends this e-mail yet: the daily job that sends it is added later.' : 'The text and the switch are saved, but this e-mail is not sent yet: the trigger comes in the next release.'} severity="info" /> : null}
+            {!row.sent ? <InlineAlert title="Not sent yet" message="The text and the switch are saved, but nothing sends this e-mail yet: the daily job that sends it is added later." severity="info" /> : null}
             <Group gap="md" wrap="wrap" align="center">
               <Checkbox
                 label="Send this e-mail"

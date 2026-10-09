@@ -378,3 +378,17 @@ test('GET as a guest: a picture field a page left empty shows the partner\'s def
   const admin = (await (await GET(getRequest(), params)).json()) as { data: { event: { customPages: Array<{ pageId: string; config: Record<string, string> }> } } };
   assert.equal(admin.data.event.customPages.find((p) => p.pageId === 'w')!.config.backgroundImageUrl, undefined, 'the editor reads the stored pages');
 });
+
+const welcomeFlag = async (t: TestContext, event: Record<string, unknown>, caseId: string) => {
+  mockDeps(t, { event });
+  const route = await importRouteModule(caseId);
+  return ((await (await route.GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { welcomeEmailEnabled: boolean } } }).data.event.welcomeEmailEnabled;
+};
+
+test('GET tells the capture page the event does not send the welcome e-mail unless an editor switched it on (epic 463)', async (t) => {
+  assert.equal(await welcomeFlag(t, {}, 'get-welcome-off'), false);
+});
+
+test('GET tells the capture page the event sends the welcome e-mail when an editor switched it on (epic 463)', async (t) => {
+  assert.equal(await welcomeFlag(t, { notifications: { types: { welcome: { enabled: true } } } }, 'get-welcome-on'), true);
+});
