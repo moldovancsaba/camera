@@ -119,3 +119,12 @@ test('an id the library no longer has stays in the list, marked missing, instead
   ]);
 });
 
+
+test('one draw per visit gives the same logo in every place that has the same list, and every logo is reachable across visits', () => {
+  const list = ['a', 'b', 'c'];
+  for (const draw of [0, 0.2, 0.5, 0.99]) {
+    assert.equal(pickRandom(list, () => draw), pickRandom([...list], () => draw), 'two places, same list, same draw: the same logo');
+  }
+  const seen = new Set([0.05, 0.4, 0.9].map((draw) => pickRandom(list, () => draw)));
+  assert.deepEqual([...seen].sort(), ['a', 'b', 'c']);
+});
