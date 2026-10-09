@@ -3,28 +3,27 @@ import { test } from 'node:test';
 import { fakeDb } from '@/lib/library/fake-db';
 import { parseScreenDesign } from './screen-design';
 import { DEFAULT_STAGE } from '@/lib/screen/default-stage';
-import { GIANT_SCREEN_PLACEMENT, QR_TEXT_KEYS, ensureDefaultSlideshow, findDefaultSlideshow, type DefaultSlideshowDeps } from './default-slideshow';
+import { GIANT_SCREEN_PLACEMENT, ensureDefaultSlideshow, findDefaultSlideshow, writtenAddress, type DefaultSlideshowDeps } from './default-slideshow';
 import { en } from '@/lib/i18n/messages.en';
 import { hu } from '@/lib/i18n/messages.hu';
 
 const EVENT = { _id: 'mongo-1', eventId: 'event-uuid-1', name: 'MTK x Vasas', partnerId: 'p1', frameDesign: undefined as unknown };
 
-function deps(uploads: Array<{ pathname: string; bytes: number }> = [], pick = 0): DefaultSlideshowDeps {
+function deps(uploads: Array<{ pathname: string; bytes: number }> = []): DefaultSlideshowDeps {
   return {
     upload: async (pathname, png) => {
       uploads.push({ pathname, bytes: png.length });
       return `https://blob.example/${pathname}`;
     },
-    pickIndex: () => pick,
     origin: () => 'https://go.messmass.com',
     now: () => '2026-10-09T10:00:00.000Z',
   };
 }
 
-test('a new event gets a default slideshow: picture, tracked link, one call to action and the written address', async () => {
+test('a new event gets a default slideshow: picture, tracked link and one line, the written address', async () => {
   const { db, data } = fakeDb({ events: [EVENT], partners: [{ partnerId: 'p1', name: 'MTK' }] });
   const uploads: Array<{ pathname: string; bytes: number }> = [];
-  const result = await ensureDefaultSlideshow(db, EVENT, deps(uploads, 2));
+  const result = await ensureDefaultSlideshow(db, EVENT, deps(uploads));
   assert.ok(result.ok && result.created);
 
   const links = data.short_links;
@@ -42,13 +41,14 @@ test('a new event gets a default slideshow: picture, tracked link, one call to a
   assert.equal(show.isDefault, true);
   assert.equal(show.isActive, true);
   assert.equal(show.name, en['screen.slideshow.name']);
-  const design = show.screenDesign as { qr: { url: string; x: number }; texts: Array<{ text: string; x: number; y: number }> };
+  const design = show.screenDesign as { qr: { url: string; x: number }; texts: Array<{ text: string; x: number; y: number; width: number; size: number; fit?: boolean }> };
   assert.equal(design.qr.url, `https://go.messmass.com/${links[0].slug}`);
   assert.equal(design.qr.x, DEFAULT_STAGE.qr.x);
-  assert.equal(design.texts[0].text, en['screen.qrText.3'], 'the call to action is the one picked');
-  assert.equal(design.texts[1].text, `go.messmass.com/${links[0].slug}`, 'the written address has no protocol');
-  assert.equal(design.texts[0].x, DEFAULT_STAGE.ctaText.x);
-  assert.ok(design.texts[0].y < design.texts[1].y, 'the call to action is the big text above the address, both under the photos');
+  assert.equal(design.texts.length, 1, 'one line under the photos');
+  assert.equal(design.texts[0].text, `go.messmass.com/${links[0].slug}`, 'the written address has no protocol; an event without an address of its own writes its link');
+  assert.equal(design.texts[0].fit, true, 'scaled to fill the box');
+  assert.equal(design.texts[0].x, DEFAULT_STAGE.window.left);
+  assert.equal(design.texts[0].width, DEFAULT_STAGE.window.width, 'the box is as wide as the photo window');
   assert.ok(parseScreenDesign(show.screenDesign).ok, 'the stored design passes the same check as an editor\'s');
 });
 
@@ -86,21 +86,23 @@ test('the slideshows an event already has are left as they are, and its default 
   assert.equal((data.slideshows[0] as { isDefault?: boolean }).isDefault, undefined, 'the existing one is not flagged');
 });
 
-test('a Hungarian event gets Hungarian texts', async () => {
+test('a Hungarian event gets its Hungarian slideshow name', async () => {
   const event = { ...EVENT, uiLanguage: 'hu' };
   const { db, data } = fakeDb({ events: [event], partners: [{ partnerId: 'p1', name: 'MTK' }] });
-  await ensureDefaultSlideshow(db, event, deps([], 0));
-  const show = data.slideshows[0] as { name: string; screenDesign: { texts: Array<{ text: string }> } };
+  await ensureDefaultSlideshow(db, event, deps());
+  const show = data.slideshows[0] as { name: string };
   assert.equal(show.name, hu['screen.slideshow.name']);
-  assert.equal(show.screenDesign.texts[0].text, hu['screen.qrText.1']);
 });
 
-test('every call to action and a typical written address fit on one line of the band under the photos, in both languages', () => {
-  // Bold text at the stage's size is about 0.6 of its size wide per character; the band is 69.274% of the width, the size 7.2% of the height of a 16:9 stage.
-  const maxCharacters = Math.floor((DEFAULT_STAGE.ctaText.width / 100) * 1920 / (0.6 * (DEFAULT_STAGE.ctaText.size / 100) * 1080));
-  for (const key of QR_TEXT_KEYS) {
-    assert.ok(en[key as keyof typeof en].length <= maxCharacters, `${key} (en) is too long for the band`);
-    assert.ok(hu[key as keyof typeof hu].length <= maxCharacters, `${key} (hu) is too long for the band`);
-  }
-  for (const address of ['go.messmass.com/abcdef', 'go.messmass.com/mtk-vasas']) assert.ok(address.length <= maxCharacters, `${address} is too long for the band`);
+test('the written address is the event\'s own short address whenever it has one, else the tracked link (owner, 2026-10-09)', async () => {
+  assert.equal(writtenAddress('https://go.messmass.com', { shortUrlSlug: 'mtk-vasas' }, 'nts5kd'), 'go.messmass.com/mtk-vasas');
+  assert.equal(writtenAddress('https://go.messmass.com', { shortUrlSlug: '  mtk-vasas ' }, 'nts5kd'), 'go.messmass.com/mtk-vasas');
+  for (const none of [{}, { shortUrlSlug: null }, { shortUrlSlug: '' }, { shortUrlSlug: '   ' }]) assert.equal(writtenAddress('https://go.messmass.com', none, 'nts5kd'), 'go.messmass.com/nts5kd');
+
+  const event = { ...EVENT, shortUrlSlug: 'mtk-vasas' };
+  const { db, data } = fakeDb({ events: [event], partners: [{ partnerId: 'p1', name: 'MTK' }] });
+  await ensureDefaultSlideshow(db, event, deps());
+  const design = (data.slideshows[0] as { screenDesign: { qr: { url: string }; texts: Array<{ text: string }> } }).screenDesign;
+  assert.equal(design.texts[0].text, 'go.messmass.com/mtk-vasas');
+  assert.equal(design.qr.url, `https://go.messmass.com/${data.short_links[0].slug}`, 'the QR code still points at the tracked link, so its scans are counted on their own');
 });

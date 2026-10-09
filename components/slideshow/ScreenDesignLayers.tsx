@@ -6,10 +6,68 @@
  * arrives drawn (an SVG made by the server).
  */
 
-import type { CSSProperties } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { CAMERA_STAGE_BLACK, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
 import { fontFaceCss, fontStack, googleFontHref } from '@/lib/theme/css';
-import type { ResolvedScreenDesign } from '@/lib/slideshow/screen-design';
+import { estimateFitSize, fitSize, type ResolvedScreenDesign, type ScreenDesignText } from '@/lib/slideshow/screen-design';
+
+/** The size, in % of the stage height, at which a line that fills its box is measured. */
+const FIT_REFERENCE = 10;
+
+/**
+ * One line of text. With `fit` it is scaled to fill the box width exactly (owner, 2026-10-09): the line is measured at a reference size and scaled by the ratio of the box to the line,
+ * again when the font arrives or the box changes; `size` caps it. Until it is measured the size is an estimate, so nothing is hidden and nothing jumps much.
+ */
+function ScreenText({ t, font }: { t: ScreenDesignText; font: string | undefined }) {
+  const box = useRef<HTMLDivElement>(null);
+  const line = useRef<HTMLSpanElement>(null);
+  const [fitted, setFitted] = useState(() => estimateFitSize(t.text, t.width, t.size));
+
+  useLayoutEffect(() => {
+    const wrap = box.current;
+    const el = line.current;
+    if (!t.fit || !wrap || !el) return;
+    const measure = () => {
+      const previous = el.style.fontSize;
+      el.style.fontSize = `${FIT_REFERENCE}cqh`;
+      const next = fitSize(el.getBoundingClientRect().width, FIT_REFERENCE, wrap.getBoundingClientRect().width, t.size);
+      el.style.fontSize = previous;
+      setFitted((current) => (Math.abs(current - next) > 0.01 ? next : current));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(wrap);
+    document.fonts?.addEventListener('loadingdone', measure);
+    void document.fonts?.ready.then(measure);
+    return () => {
+      observer.disconnect();
+      document.fonts?.removeEventListener('loadingdone', measure);
+    };
+  }, [t.fit, t.text, t.size, t.width, font]);
+
+  return (
+    <div
+      ref={box}
+      data-screen-text
+      className="pointer-events-none absolute z-[4]"
+      style={{
+        left: `${t.x}%`,
+        top: `${t.y}%`,
+        width: `${t.width}%`,
+        fontSize: `${t.fit ? fitted : t.size}cqh`,
+        lineHeight: 1.15,
+        whiteSpace: 'nowrap',
+        fontWeight: 700,
+        textAlign: t.align,
+        color: t.color && HEX.test(t.color) ? t.color : CAMERA_STAGE_WHITE,
+        fontFamily: font,
+        textShadow: `0 0.3cqh 0.8cqh color-mix(in srgb, ${CAMERA_STAGE_BLACK} 35%, transparent)`,
+      }}
+    >
+      <span ref={line}>{t.text}</span>
+    </div>
+  );
+}
 
 const HEX = /^#[0-9a-f]{3,8}$/i;
 
@@ -58,26 +116,7 @@ export default function ScreenDesignLayers({ design }: { design: ResolvedScreenD
         />
       ) : null}
       {(design.texts ?? []).map((t, i) => (
-        <div
-          key={i}
-          data-screen-text
-          className="pointer-events-none absolute z-[4]"
-          style={{
-            left: `${t.x}%`,
-            top: `${t.y}%`,
-            width: `${t.width}%`,
-            fontSize: `${t.size}cqh`,
-            lineHeight: 1.15,
-            whiteSpace: 'nowrap',
-            fontWeight: 700,
-            textAlign: t.align,
-            color: t.color && HEX.test(t.color) ? t.color : CAMERA_STAGE_WHITE,
-            fontFamily: font,
-            textShadow: `0 0.3cqh 0.8cqh color-mix(in srgb, ${CAMERA_STAGE_BLACK} 35%, transparent)`,
-          }}
-        >
-          {t.text}
-        </div>
+        <ScreenText key={i} t={t} font={font} />
       ))}
     </>
   );

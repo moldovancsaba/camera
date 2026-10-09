@@ -16,16 +16,18 @@ export const STAGE_WIDTH = 1920;
 export const STAGE_HEIGHT = 1080;
 
 /**
- * Where the parts sit, % of the stage: the photo window and the QR code's size measured from the MTK x Vasas design. The call to action is the **big text under the
- * photos**, the written address under it (camera#487, owner report 206: the big text lacked the call to action); the QR code sits alone, centred in its panel
- * (the panel spans 2 % to 98 % of the height, the QR code is `size x 16/9` % tall).
+ * Where the parts sit, % of the stage: the photo window and the QR code's size measured from the MTK x Vasas design. Under the photos there is **one line, the written address**
+ * (owner, 2026-10-09: the event's own slug when it has one, else the tracked link's), as wide as the window and scaled to fill that width (`fit`; `size` is the largest it may take). The
+ * QR code sits alone, centred in its panel (the panel spans 2 % to 98 % of the height, the QR code is `size x 16/9` % tall).
  */
 export const DEFAULT_STAGE = {
   window: { left: 2.075, top: 3.081, width: 69.274, height: 69.273 },
   qr: { x: 73.54, y: 28.33, size: 24.375 },
-  ctaText: { x: 2.075, y: 75, width: 69.274, size: 7.2 },
-  urlText: { x: 2.075, y: 86, width: 69.274, size: 7.2 },
+  addressText: { x: 2.075, y: 80.9, width: 69.274, size: 10 },
 } as const;
+
+/** The space the band keeps above and below the address line, % of the stage height. */
+const BAND_PADDING = 1.5;
 
 export interface StageColours {
   /** The page colour of the event, opaque #RRGGBB. */
@@ -95,10 +97,10 @@ export function renderDefaultOverlay(colours: StageColours): Buffer {
   ctx.fillStyle = `${panelFill}d9`;
   roundedRect(ctx, px(72.5, STAGE_WIDTH), px(2, STAGE_HEIGHT), px(26.2, STAGE_WIDTH), px(96, STAGE_HEIGHT), 30);
   ctx.fill();
-  // The band holds both lines: the call to action and the written address (each line is about 1.15 times its size tall).
-  const { ctaText, urlText: band } = DEFAULT_STAGE;
-  const bandTop = ctaText.y - 0.9;
-  const bandBottom = band.y + band.size * 1.15 + 1.1;
+  // The band holds the one line, the written address (the line is 1.15 times its largest size tall).
+  const band = DEFAULT_STAGE.addressText;
+  const bandTop = band.y - BAND_PADDING;
+  const bandBottom = band.y + band.size * 1.15 + BAND_PADDING;
   roundedRect(ctx, px(band.x, STAGE_WIDTH), px(bandTop, STAGE_HEIGHT), px(band.width, STAGE_WIDTH), px(bandBottom - bandTop, STAGE_HEIGHT), 26);
   ctx.fill();
 

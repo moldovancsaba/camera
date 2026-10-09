@@ -17,9 +17,11 @@ export interface ScreenDesignText {
   y: number;
   /** Box width, % of the stage width. */
   width: number;
-  /** Font size, % of the stage height. */
+  /** Font size, % of the stage height. With `fit` it is the largest size the line may take. */
   size: number;
   align: 'left' | 'center' | 'right';
+  /** One line scaled so that it fills the box width (owner, 2026-10-09: the default); `size` then only caps it, so a short text does not grow without end. */
+  fit?: boolean;
   /** Hex colour; white when omitted. */
   color?: string;
 }
@@ -49,6 +51,20 @@ export interface ScreenDesignFont {
 export interface ResolvedScreenDesign extends ScreenDesign {
   qrSvg?: string;
   font?: ScreenDesignFont;
+}
+
+/** The stage is 16:9, so a box `w` % of its width is `w * 16/9` % of its height wide. */
+export const STAGE_ASPECT = 16 / 9;
+
+/** The size (any unit) a line that measures `measured` at `reference` takes to fill `box` (the unit of `measured`), never above `max`. */
+export function fitSize(measured: number, reference: number, box: number, max: number): number {
+  if (!(measured > 0) || !(box > 0)) return max;
+  return Math.min(max, (reference * box) / measured);
+}
+
+/** A first guess before the line can be measured (server render, font not loaded yet): bold letters are about 0.6 of their size wide. Size in % of the stage height. */
+export function estimateFitSize(text: string, widthPercent: number, max: number): number {
+  return fitSize(Math.max(1, text.length) * 0.6, 1, widthPercent * STAGE_ASPECT, max);
 }
 
 const HEX = /^#[0-9a-f]{3,8}$/i;
@@ -105,7 +121,7 @@ export function parseScreenDesign(input: unknown): Result {
         return { ok: false, error: 'each screenDesign text needs a text (up to 120 characters), x, y, width and size in percent' };
       }
       if (t.color !== undefined && t.color !== '' && !(typeof t.color === 'string' && HEX.test(t.color))) return { ok: false, error: 'screenDesign text color must be a hex colour' };
-      out.texts.push({ text: t.text.trim(), x, y, width, size, align: t.align === 'left' || t.align === 'right' ? t.align : 'center', ...(t.color ? { color: String(t.color) } : {}) });
+      out.texts.push({ text: t.text.trim(), x, y, width, size, align: t.align === 'left' || t.align === 'right' ? t.align : 'center', ...(t.fit === true ? { fit: true } : {}), ...(t.color ? { color: String(t.color) } : {}) });
     }
   }
   return { ok: true, value: out };

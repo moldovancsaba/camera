@@ -31,15 +31,19 @@ Every event gets a **default slideshow** with a ready-made screen design, so no 
 and the giant screen start from; an editor changes it, or makes another slideshow and sets that as the default.
 
 - **Layout:** the MTK x Vasas measures above are the default layout (`DEFAULT_STAGE` in `lib/screen/default-stage.ts`): photo window, the QR code centred alone in its panel, and a **band under the
-  window with two big lines: the call to action, then the written address** (camera#487, owner report 206: the big text lacked the call to action; before, the call to action was a small line under the QR code). One layout, in percent of the 16:9 stage, used by the live stage and (next) by the picture of the welcome page.
+  window with one big line, the written address** (owner, 2026-10-09: one line, as wide as the window, scaled to fill that width; the earlier two-line band of camera#487 with the call to action above the address is gone). One layout, in percent of the 16:9 stage, used by the live stage and by the picture of the welcome page.
 - **Picture:** drawn by the server (`renderDefaultOverlay`, `@napi-rs/canvas`) in the event's own colours (its page colour and its button colour, from the messmass style): a night-stadium
   background (gradient, floodlight glows, a faint pitch circle and half-way line), panels for the QR code and the texts, an accent border round the window, and a transparent window.
   The same colours give the same picture. Stored in Vercel Blob under `screens/<event uuid>/default-<hash>.png`.
 - **QR code and address:** the event's tracked **"Giant screen"** link (placement "Giant screen", kind QR, `lib/short-links/store.ts`) is made if the event has none, and reused if it has one, so
-  the scans are counted on their own and reach messmass like every tracked link. The QR points at `https://go.messmass.com/<slug>`; under the window, below the call to action, the same address is written without
-  the protocol.
-- **Call to action:** one short line picked **once at random** from the dictionary (`screen.qrText.1` to `4`, English and Hungarian; the language is the event's `uiLanguage`; the keys keep their old name because the Dictionary stores wordings by key) and stored in the
-  design, so the screen does not change between visits. It is the **big text under the photos**, as big as the address. The Hungarian wording is a draft for MTK to review. Every line and a typical address fit one line of the band (a test checks it).
+  the scans are counted on their own and reach messmass like every tracked link. The QR points at `https://go.messmass.com/<link slug>`. **The address written under the window is the event's own short address
+  whenever it has one** (`Event.shortUrlSlug`, e.g. `go.messmass.com/mtk-vasas`), else the tracked link's (`go.messmass.com/<link slug>`), without the protocol (`writtenAddress` in
+  `lib/slideshow/default-slideshow.ts`; owner, 2026-10-09: the written address is never the link's random code when the event has an address of its own). Both addresses reach the capture page and both are counted; only the QR's scans are counted as "Giant screen". What an editor types in a text is kept as typed.
+- **A text that fills its box (`fit`, owner, 2026-10-09):** a screen design text can be one line scaled so that it fills the width of its box (`ScreenDesignText.fit`); `size` is then the largest size it may take, so a short text does not grow without end and a long one never wraps.
+  The live stage measures the line at a reference size and scales it by box over line (again when the font arrives or the box changes, `components/slideshow/ScreenDesignLayers.tsx`); the server picture of the welcome page does the same with the canvas measure; both use `fitSize` (`lib/slideshow/screen-design.ts`).
+  The default address text is `fit`, with a box as wide as the photo window. In the slideshow editor a text typed into an empty row is put under the window, as wide as the window, with **Fill the box** ticked; a text without it keeps its fixed size.
+- **No call to action line by default:** the earlier default had a call to action picked at random from the dictionary (`screen.qrText.1` to `4`) above the address; it is not part of the default any more. The wordings stay in the Dictionary, and a designed screen
+  (like the MTK x Vasas one) keeps its own call to action next to its QR code.
   **Existing default slideshows keep the layout they were made with**: only a new event, or a default slideshow made again, gets this layout (an editor can also move the texts of a design by hand).
 - **When it is made:** for every **new** event, after the response (the admin form, messmass provisioning, savetheworld provisioning); on demand with **Create the default slideshow** on the
   event's slideshows list when it has none (`POST /api/admin/events/<id>/default-slideshow`). Making it twice changes nothing. **Existing events get nothing automatically**; a backfill
