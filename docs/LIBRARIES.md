@@ -125,6 +125,15 @@ The owner's model (2026-10-09): the logo is chosen **at the place of use**, the 
 - **A new logo from messmass replaces the earlier one (owner answer 169):** when messmass sends a different logo address for a partner (`POST /api/internal/messmass/partners`), the partner's address is replaced **only if the one it has is the one camera took from messmass** (or it has none), the new logo is imported, and it **takes the place of the earlier one in the partner's logos** (the earlier one stays in the library); **never over an own choice**, and if the editor took the earlier one out, the new one is not put in (`makeMessmassLogoDefault`, `nextPartnerLogoUrl`). The events look at the partner, so they show it at once.
 - **Still to come in this step:** the random pick on the pages of the user journey and the slideshow (they still show the first logo; the owner is asked first because five old events of AS Roma have two logos in a place), and the migration and collect for existing partners and events (with the owner's go).
 
+### The fail-safe snapshot (camera#421, step 4b; owner requirement 2026-10-09: if a parent element is deleted or lost, the children still have it)
+
+With "follow, no copies" an event stores only what its editor chose and looks at its parent, so a parent that loses an item would take it from every child. To prevent that an event on the slot model keeps a **last-known-good snapshot** of what it uses in each place (`Event.slotSnapshots`, `lib/slots/snapshot.ts`): per item its name, picture addresses, size and type, whose item it was and when it was last seen. It **never overrides the parent**: it is read only for an item the library no longer has.
+
+- **Written:** with every save of a slot (`setEventLogoSlot`), and by `GET /api/events/<id>/logos` when the live items differ from the snapshot (a page view that finds nothing changed writes nothing). An item whose library entry is gone is **kept as it was**, never dropped; an item the event no longer uses is dropped.
+- **Read:** `GET /api/events/<id>/logos` serves a logo the library no longer has from the snapshot, marked `lost: true`, in every place that uses it, so the capture page and the slideshow keep showing it.
+- **Not yet (phases of #421):** the "lost at the parent" state in the editor with Keep as own and Remove; archiving instead of deleting; the daily check that the pictures of used items still answer; the snapshot for frames; the backfill of snapshots for events nobody has opened yet.
+- **Phase 0 measurement (2026-10-09, read-only):** 197 logos and 12 frames; every referenced logo exists; one frame id held by one test event has no item in the library any more (the case the snapshot is for); 163 picture addresses, all answering; 8 picture fields hold a plain address with no item behind them.
+
 ## Images (LIB-5, camera#368)
 
 The pictures of the picture fields: the welcome page (background, left image, right image, giant screen), the CTA page picture, the email footer and the

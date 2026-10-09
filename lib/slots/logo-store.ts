@@ -14,7 +14,8 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { checkEventAssign, fieldsOf, itemView, loadEventLibrary, loadPartnerLibrary, savePartnerLibrary } from '@/lib/library/db';
 import { canPartnerAssign, scopeOf } from '@/lib/library/rules';
 import type { LibraryItemView } from '@/lib/library/types';
-import { LOGO_PLACE_SLOTS, LOGO_SCENARIO_IDS, LOGO_SLOT, LOGO_SLOT_IDS, eventSlotsFromLegacy, isOnSlotModel, logoChain, partnerLogoValue, type LogoEvent, type LogoPartner } from './logo';
+import { LOGO_PLACE_SLOTS, LOGO_SCENARIO_IDS, LOGO_SLOT, LOGO_SLOT_IDS, eventSlotsFromLegacy, isOnSlotModel, logoChain, partnerLogoValue, resolveEventLogos, type LogoEvent, type LogoPartner } from './logo';
+import { nextSnapshots, type Snapshots } from './snapshot';
 import { resolveSlot, slotMode, type ResolvedItem, type SlotMode, type SlotValue } from './resolve';
 
 const MAX_ITEMS = 50;
@@ -71,6 +72,15 @@ export async function setPartnerLogo(db: Db, partner: Document, input: unknown, 
   return { ok: true, value };
 }
 
+/** The snapshots of an event with these slots: what each place would use, from the library as it is now (an item it no longer has keeps its earlier snapshot). */
+export async function eventLogoSnapshots(db: Db, partner: Document | null, event: Document, slots: Record<string, SlotValue>, now: string): Promise<Snapshots> {
+  const resolved = resolveEventLogos(partner as LogoPartner | null, { slots });
+  const ids = [...new Set(Object.values(resolved).flatMap((items) => items.map((item) => item.id)))];
+  const docs = await logoDocs(db, ids);
+  const bySlot = Object.fromEntries(LOGO_SCENARIO_IDS.map((scenario) => [LOGO_PLACE_SLOTS[scenario], resolved[scenario].map((item) => item.id)]));
+  return nextSnapshots(event.slotSnapshots as Snapshots | undefined, bySlot, docs, now).snapshots;
+}
+
 async function partnerOf(db: Db, event: Document): Promise<Document | null> {
   const partnerId = text(event.partnerId);
   return partnerId ? await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId }) : null;
@@ -91,7 +101,9 @@ export async function setEventLogoSlot(db: Db, event: Document, slotId: string, 
   const slots = { ...base };
   if (slotMode(parsed.value) === 'default') delete slots[slotId];
   else slots[slotId] = parsed.value;
-  await db.collection(COLLECTIONS.EVENTS).updateOne({ eventId: text(event.eventId) }, { $set: { slots, updatedAt: now } });
+  // The event keeps a snapshot of what it uses in each place (the fail-safe, camera#421): refreshed with every save.
+  const snapshots = await eventLogoSnapshots(db, partner, event, slots, now);
+  await db.collection(COLLECTIONS.EVENTS).updateOne({ eventId: text(event.eventId) }, { $set: { slots, slotSnapshots: snapshots, updatedAt: now } });
   return { ok: true, value: { slots, seeded } };
 }
 

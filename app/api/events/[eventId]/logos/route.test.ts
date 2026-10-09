@@ -15,7 +15,7 @@ const importRoute = (caseId: string) => import('./route?case=' + caseId) as Prom
 const logo = (logoId: string, extra: Record<string, unknown> = {}) => ({ logoId, name: `Logo ${logoId}`, imageUrl: `https://img.example/${logoId}.png`, thumbnailUrl: `https://img.example/${logoId}-t.png`, isActive: true, ...extra });
 const row = (logoId: string, scenario: string, order: number, isActive = true) => ({ logoId, scenario, order, isActive, addedAt: NOW, addedBy: 'system' });
 
-function setup(t: TestContext, eventLogos: unknown[] = [], on: { eventSlots?: Record<string, unknown>; partnerSlots?: Record<string, unknown> } = {}) {
+function setup(t: TestContext, eventLogos: unknown[] = [], on: { eventSlots?: Record<string, unknown>; partnerSlots?: Record<string, unknown>; eventExtra?: Record<string, unknown> } = {}) {
   const seeded = fakeDb({
     logos: [
       logo('g1'),
@@ -27,7 +27,7 @@ function setup(t: TestContext, eventLogos: unknown[] = [], on: { eventSlots?: Re
       logo('e2', { scope: 'event', eventId: 'other-uuid', partnerId: 'P' }),
     ],
     partners: [{ partnerId: 'P', name: 'Partner P', library: { frames: [], logos: ['g1', 'g3'] }, ...(on.partnerSlots ? { slots: on.partnerSlots } : {}) }],
-    events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', name: 'Event', isActive: true, logos: eventLogos, ...(on.eventSlots ? { slots: on.eventSlots } : {}) }],
+    events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', name: 'Event', isActive: true, logos: eventLogos, ...(on.eventSlots ? { slots: on.eventSlots } : {}), ...(on.eventExtra ?? {}) }],
   });
   t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
   t.mock.module('@/lib/auth/session', { namedExports: { getSession: async () => ADMIN } });
@@ -137,5 +137,36 @@ test('an event on the slot model with nothing stored uses the partner\'s logo; o
   const { GET } = await importRoute('slots-partner');
   const body = (await (await GET(new NextRequest('http://localhost/api/events/e-uuid/logos'), { params: Promise.resolve({ eventId: 'e-uuid' }) })).json()) as { data: { logos: Grouped } };
   assert.deepEqual(body.data.logos['loading-capture'].map((r) => r.logoId), ['p1']);
+});
+
+const eventDoc = (data: ReturnType<typeof setup>['data']) => data.events[0] as { slotSnapshots?: Record<string, Array<{ id: string; name: string; imageUrl: string | null }>> };
+const getLogos = async (id: string) => {
+  const { GET } = await importRoute(id);
+  return (await (await GET(new NextRequest('http://localhost/api/events/e-uuid/logos'), { params: Promise.resolve({ eventId: 'e-uuid' }) })).json()) as { data: { logos: Record<string, Array<{ logoId: string; imageUrl: string; lost?: boolean; name: string }>> } };
+};
+
+test('an event on the slot model keeps a snapshot of what it uses; a page view writes it only when it differs', async (t) => {
+  const { data } = setup(t, [], { partnerSlots: { logo: { items: ['p1'] } }, eventSlots: {} });
+  await getLogos('snap-first');
+  assert.deepEqual(eventDoc(data).slotSnapshots?.['logo-pages']?.map((i) => i.id), ['p1'], 'the first view takes the snapshot');
+  const before = JSON.stringify(eventDoc(data).slotSnapshots);
+  await getLogos('snap-second');
+  assert.equal(JSON.stringify(eventDoc(data).slotSnapshots), before, 'a second view with nothing changed changes nothing');
+});
+
+test('THE FAIL-SAFE: a logo the library no longer has is still served from the event\'s snapshot, marked lost, in every place that uses it', async (t) => {
+  const snapshot = { id: 'gone', name: 'Lost logo', imageUrl: 'https://img.example/gone.png', thumbnailUrl: null, mimeType: 'image/png', width: 10, height: 5, scope: 'partner', takenAt: NOW };
+  const kept = setup(t, [], { partnerSlots: { logo: { items: ['gone', 'p1'] } }, eventSlots: {}, eventExtra: { slotSnapshots: { 'logo-pages': [snapshot], 'logo-capture-loading': [snapshot] } } });
+  const body = await getLogos('lost-kept');
+  assert.deepEqual(body.data.logos['onboarding-thankyou'].map((r) => [r.logoId, r.lost ?? false]), [['gone', true], ['p1', false]]);
+  assert.equal(body.data.logos['onboarding-thankyou'][0].imageUrl, 'https://img.example/gone.png');
+  assert.deepEqual(body.data.logos['loading-slideshow'].map((r) => [r.logoId, r.lost ?? false]), [['gone', true], ['p1', false]], 'the same lost logo is kept in the places where it was not snapshotted yet');
+  assert.deepEqual(eventDoc(kept.data).slotSnapshots?.['logo-pages']?.map((i) => i.id), ['gone', 'p1'], 'the lost one stays in the snapshot, and p1 joins it');
+});
+
+test('an event that is not on the model is answered as before and gets no snapshot', async (t) => {
+  const { data } = setup(t, [row('g1', 'onboarding-thankyou', 0)]);
+  await getLogos('legacy-no-snapshot');
+  assert.equal(eventDoc(data).slotSnapshots, undefined);
 });
 
