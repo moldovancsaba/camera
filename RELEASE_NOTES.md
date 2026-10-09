@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — slideshow: the preload is the request the screen uses (issue 476, step S4a of the fix plan)
+
+- **Fixed (no visible change):** the player preloaded every picture with `crossOrigin = 'anonymous'` (a CORS-mode request), while the screen shows it with a plain `<img>` (a no-cors request). The browser treats them as **two different requests**, so every picture was fetched **twice** and the swap waited for the second one (from the HTTP cache when the host allows it, from the network when it does not). **Measured on Chrome 152** with a small cross-origin test page: a CORS preload followed by a plain `<img>` gives 2 resource entries, a plain preload gives 1. We never read the pixels, so the preload is now plain too.
+- **Changed:** background preloads are **low priority** (`fetchPriority`), so the picture on screen and our own calls are not held up by them; the pictures needed at once (the start) are high. The first **3 slides of the queue are decoded** ahead (`decode()`), so the swap does not decode a multi-megapixel picture on the screen's device; no more than 3, so memory is not pinned.
+- **Not built, needs the owner's go (S4b):** two stacked picture layers, so the change from one picture to the next is a true crossfade and the old picture stays until the new one is shown. It is a visible change on a live screen.
+- **Documentation:** release notes, ARCHITECTURE.md, SLIDESHOW_LOGIC.md (section 10), the research plan status (open question 9 is settled for Chrome), HANDOVER.
+- **Verified:** type-check; lint; unit tests (the loader is told whether a picture is urgent); the full CI chain; the cross-origin experiment above. **Not seen on the live screen**: the S1 diagnostics (`fetches` per shown picture, 1 when it works) will show it there.
+
 ## Unreleased — slideshow: a cheaper playlist call (issue 476, step S6 of the fix plan)
 
 - **Changed (no visible change):** every playlist call (about one per slide per screen) read the **whole pool of the event as full documents** (user info, consents, IP and device data, play history) and sorted them in memory, and it scanned the submissions for deactivated accounts. Now the query keeps only the fields a slide needs (`_id`, the picture addresses, `createdAt`, `playCount`, the picture's size) **before** it sorts, and the list of deactivated accounts is **kept for a minute** per server instance (read again at once on the instance where an admin changes an account's status). Measured read-only on the MTK x Vasas pool (36 photos): the same order and the same slide fields, **85 KB became 18 KB** and the query 56 ms became 31 ms; the saving grows with the pool.

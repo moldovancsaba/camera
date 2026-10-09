@@ -144,11 +144,19 @@ const LOGO_TIMEOUT_MS = 5000;
 const REFILL_LOCK_MAX_MS = 20_000;
 /** How many slides at the head of the queue are kept loaded; deeper ones were loaded when they were appended. */
 const PRELOAD_AHEAD = 4;
+/** How many of them are also decoded, so the swap does not decode a multi-megapixel picture on the screen's device; more would pin memory. */
+const DECODE_AHEAD = 3;
 
-function loadImage(url: string): Promise<HTMLImageElement> {
+/**
+ * One picture load. No `crossOrigin`: we never read the pixels, and the screen shows the picture with a plain `<img>`; a CORS-mode preload is a
+ * different request from it, so the browser fetched every picture twice and the swap waited for the second (measured on Chrome 152: a CORS preload
+ * followed by a plain `<img>` gives 2 resource entries, a plain preload gives 1; camera#476). Background loads are low priority so the picture on
+ * screen and our own calls are not held up by them.
+ */
+function loadImage(url: string, { urgent }: { urgent: boolean }): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    img.fetchPriority = urgent ? 'high' : 'low';
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error('image failed'));
     img.src = url;
@@ -257,11 +265,13 @@ export function SlideshowPlayerCore({
 
   /** Loads every picture of a slide (bounded, at most a few at a time) and says whether all of them are ready. A photo that fails is remembered as broken for a while. */
   const preloadSlide = useCallback(
-    async (slide: Slide, urgent = false): Promise<boolean> => {
+    async (slide: Slide, urgent = false, decode = false): Promise<boolean> => {
       const results = await Promise.all(
         slide.submissions.map(async (sub) => {
           const result = await preloader.preload(sub.imageUrl, { urgent });
           if (result.ok) {
+            // decode() can reject for a picture the browser can still draw; the show does not depend on it.
+            if (decode) await result.value.decode().catch(() => undefined);
             brokenRef.current.delete(sub._id);
             if (result.ms > 0) record('preload', { ms: result.ms, outcome: 'ok', bytes: pictureTimings(sub.imageUrl).last?.transferSize || undefined, host: hostOf(sub.imageUrl) });
           } else {
@@ -508,7 +518,7 @@ export function SlideshowPlayerCore({
   // Keep the first slides of the queue loaded (ready ones cost nothing) and let go of pictures the queue no longer holds, so memory does not grow for hours.
   useEffect(() => {
     preloader.prune(new Set(slideQueue.flatMap((sl) => sl.submissions.map((sub) => sub.imageUrl))));
-    for (const sl of slideQueue.slice(0, PRELOAD_AHEAD)) void preloadSlide(sl);
+    slideQueue.slice(0, PRELOAD_AHEAD).forEach((sl, i) => void preloadSlide(sl, false, i < DECODE_AHEAD));
   }, [slideQueue, preloader, preloadSlide]);
 
   const updatePlayCounts = useCallback(

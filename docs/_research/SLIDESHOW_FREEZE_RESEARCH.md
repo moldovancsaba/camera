@@ -189,6 +189,7 @@ Ordered by expected benefit per effort. Rules that apply to every step (from `CL
 - Not to do: do not make timeouts shorter than a slow-but-working link needs (log first, tune from S1 data); do not retry without backoff.
 
 ### S4. Make preload real: same request, decoded, double-buffered (C3)
+- **Status 2026-10-09: S4a done** (no `crossOrigin` on the preload, `fetchPriority` low for background loads, `decode()` for the first 3 slides). **Settled by a test on Chrome 152 (this resolves open question 9 for that browser):** a CORS-mode `Image` preload followed by a plain `<img>` gives 2 resource entries (the picture is fetched again, here from the HTTP cache), a plain preload gives 1. **S4b (two stacked layers, a true crossfade) is not built:** it is a visible change on a live screen and needs the owner's go.
 - What: drop `crossOrigin` on the preload (we never read pixels), or set the same attribute on both; after `onload` call `await img.decode()` (guarded by the timeout); render two stacked `<img>` layers A/B: set `src` on the hidden one, `await decode()`, then flip opacity so the fade becomes a true crossfade; give each layer a key per slide; mark background preloads `fetchPriority = 'low'`; keep the layer's `onError` to skip to the next ready slide.
 - Files: `SlideshowPlayerCore.tsx` (`renderSlide`, 771-852, and the fade effect 611-629).
 - Verify: S1 log: `imgComplete=true` and `decodeMs` recorded at every swap, `getEntriesByName(url).length === 1`; visual check of the crossfade at 4K in Chrome; memory flat over 1 h.
