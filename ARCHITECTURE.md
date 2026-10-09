@@ -465,6 +465,13 @@ event's Texts), the partner's default pictures (`lib/events/partner-pictures.ts`
   complete frames the event uploads. `Event.frameDesign.messageFrames[message]` is one frame id or a list: a message can be written on several designs; `lib/frame/variants.ts` draws one
   image for each message and design (at most 40, reused by key). `Event.frameSelection` says how users get the layout and the message, each `editor`, `random` or `user`
   (`lib/frame/selection*.ts`, panel on the event's Frames page, `GET`/`PUT /api/admin/events/<id>/frame-selection`).
+- **Frame slots** (issue 502, [docs/FRAME_SLOTS_PLAN.md](docs/FRAME_SLOTS_PLAN.md)): the generated layout can be composed from up to twelve optional slots, six text and six picture, at the six positions (top and
+  bottom, left, centre and right). `Event.frameDesign.slots` (`lib/frame/slots.ts`: the model, `DEFAULT_SLOTS`, the defensive `parseSlots`, `resolveSlotPictures`) says what each shows; an event without
+  `slots` is drawn by the old generated layout, untouched. `lib/frame/slot-layout.ts` is the geometry and the text fitting (pure; the default slots give the same numbers as `layoutFrame`, tested), `renderSlotFrame` in
+  `lib/frame/render.ts` draws (the default slots are pixel-identical to the generated frame, tested with the real canvas), `lib/frame/variants.ts` uses it for a message that chose no library frame (precedence: a library frame the
+  message chose, the older base picture, slots, the generated layout), the key of an image holds the slots only when the event has them. A picture slot can hold up to six pictures and say which message uses which
+  (blue and pink strips). `PUT /api/admin/events/<id>/frame-slots` saves (slots equal to the default are stored as none) and draws the images, `POST .../frame-slots/preview` draws the draft as a picture with the notes
+  (a text that is cut, slots that overlap); the panel is `components/admin/FrameSlotsPanel.tsx` on the event's Frames page.
 - **The capture flow** asks `lib/frame/choose.ts` (pure) for everything: the step (design, then message, then the camera), the designs and messages to offer (a message only on the designs it is
   written on), what a change of design keeps, and the draw of the image of a photo, which happens **when the camera step opens** so the live view and the move-and-zoom step show the dark area
   of that design. An event with no saved selection keeps the random image at every shutter press.

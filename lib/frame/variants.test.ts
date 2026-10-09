@@ -362,3 +362,68 @@ test('the mask of the generated frame has the logo box when the partner has a lo
   const result = await generateFrameVariants(h.db, { ...event(d), frames: [assignment('f-blue')] }, { ...h.deps, fetchLogo: async () => PNG });
   assert.deepEqual(result.design.variants![0].layers.map((layer) => layer.id), ['logo', 'teams', 'bar', 'message']);
 });
+
+// --- Slots (issue 502) ---
+
+const BLOB = 'https://abc123.public.blob.vercel-storage.com/frames';
+const strip = async (r: number, g: number, b: number) => (await import('sharp')).default({ create: { width: 1920, height: 100, channels: 4, background: { r, g, b, alpha: 1 } } }).png().toBuffer();
+const withSlots = (d: FrameDesign, slots: NonNullable<FrameDesign['slots']>, messages = ['HAJRÁ, MTK!', 'MTK SZÍV!']): FrameDesign => ({ ...d, messages, slots });
+const stripSlots = {
+  text: { 'bottom-center': { source: 'message' as const } },
+  picture: { 'bottom-center': { source: 'picture' as const, images: [{ key: 'blue', imageUrl: `${BLOB}/blue.png` }, { key: 'pink', imageUrl: `${BLOB}/pink.png` }], byMessage: { 'MTK SZÍV!': 'pink' } } },
+};
+
+test('a design with slots is drawn from them: one image per message, the picture each message is mapped to, the layers of the slots', async () => {
+  const fetched: string[] = [];
+  const { db, deps, uploads } = harness({
+    fetchBaseImage: async (url) => (fetched.push(url), url.endsWith('pink.png') ? strip(250, 140, 170) : strip(20, 160, 220)),
+  });
+  const e = event(withSlots(design({}, [], null), stripSlots));
+  const result = await generateFrameVariants(db, e, deps);
+  assert.equal(result.generated, 2);
+  const variants = result.design.variants!;
+  assert.deepEqual(variants.map((v) => v.message), ['HAJRÁ, MTK!', 'MTK SZÍV!']);
+  assert.deepEqual(variants[0].layers.map((l) => l.id), ['picture-bottom-center', 'message']);
+  assert.deepEqual(variants[0].layers[0], { id: 'picture-bottom-center', x: 0, y: 980, width: 1920, height: 100 });
+  assert.deepEqual([...new Set(fetched)].sort(), [`${BLOB}/blue.png`, `${BLOB}/pink.png`], 'each picture fetched once, however many messages use it');
+  assert.equal(uploads.length, 2);
+  assert.notEqual(variants[0].key, variants[1].key, 'the two messages use different pictures and words');
+});
+
+test('slots change the key of an image, a design without them keeps the key it always had, and a picture the message does not use does not', () => {
+  const d = design({}, ['A', 'B'], null);
+  const font = { family: 'Inter', used: 'bundled' as const, stack: 'Inter', note: null, retry: false };
+  const plain = variantKey(d, 'A', font, undefined, 'A');
+  assert.equal(plain, variantKey({ ...d, slots: undefined }, 'A', font, undefined, 'A'));
+  const slots = { text: {}, picture: { 'bottom-center': { source: 'picture' as const, images: [{ key: 'blue', imageUrl: `${BLOB}/blue.png` }, { key: 'pink', imageUrl: `${BLOB}/pink.png` }], byMessage: { B: 'pink' } } } };
+  const a = variantKey({ ...d, slots }, 'A', font, undefined, 'A');
+  assert.notEqual(a, plain);
+  // changing the picture of B leaves the image of A as it is
+  const other = { ...slots, picture: { 'bottom-center': { ...slots.picture['bottom-center'], images: [slots.picture['bottom-center'].images[0], { key: 'pink', imageUrl: `${BLOB}/pink2.png` }] } } };
+  assert.equal(variantKey({ ...d, slots: other }, 'A', font, undefined, 'A'), a);
+  assert.notEqual(variantKey({ ...d, slots: other }, 'B', font, undefined, 'B'), variantKey({ ...d, slots }, 'B', font, undefined, 'B'));
+});
+
+test('a changed picture redraws only the messages that use it; the others are reused', async () => {
+  const first = harness({ fetchBaseImage: async () => strip(1, 2, 3) });
+  const e = event(withSlots(design({}, [], null), stripSlots));
+  const generated = (await generateFrameVariants(first.db, e, first.deps)).design;
+  const second = harness({ fetchBaseImage: async () => strip(1, 2, 3) });
+  const changed = withSlots(generated, { ...stripSlots, picture: { 'bottom-center': { ...stripSlots.picture['bottom-center'], images: [stripSlots.picture['bottom-center'].images[0], { key: 'pink', imageUrl: `${BLOB}/pink2.png` }] } } });
+  const result = await generateFrameVariants(second.db, event(changed), second.deps);
+  assert.equal(result.generated, 1);
+  assert.equal(result.reused, 1);
+});
+
+test('a picture of the slots that cannot be fetched fails the run and writes nothing', async () => {
+  const { db, deps, writes } = harness({ fetchBaseImage: async () => null });
+  await assert.rejects(generateFrameVariants(db, event(withSlots(design({}, [], null), stripSlots)), deps), /The picture "blue" of the bottom center slot could not be fetched/);
+  assert.equal(writes.length, 0);
+});
+
+test('slots without a picture source need no fetch: the default slots give the same layer names as the generated frame', async () => {
+  const { db, deps } = harness();
+  const e = event({ ...design({}, ['Go!'], null), slots: { text: { 'top-left': { source: 'teams' }, 'bottom-center': { source: 'message' } }, picture: { 'top-right': { source: 'partnerLogo' }, 'bottom-center': { source: 'bar' } } } });
+  const variants = (await generateFrameVariants(db, e, deps)).design.variants!;
+  assert.deepEqual(variants[0].layers.map((l) => l.id).sort(), ['bar', 'message', 'teams']);
+});

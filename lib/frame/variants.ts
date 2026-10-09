@@ -18,7 +18,9 @@ import { fetchLogo } from './logo';
 import { eventEmoji, withoutEmoji } from './emoji';
 import { chosenFrameIds, frameBaseOf, loadMessageFrames, type MessageFrame } from './message-frames';
 import { messageTokens, usableMessages } from './messages';
-import { FRAME_RENDER_VERSION, generatedLayers, renderFrame } from './render';
+import { FRAME_RENDER_VERSION, generatedLayers, renderFrame, renderSlotFrame, slotLayers } from './render';
+import { slotLayerBoxes } from './slot-layout';
+import { resolveSlotPictures, slotsForMessage, type SlotPosition } from './slots';
 
 export interface VariantDeps {
   upload: (pathname: string, png: Buffer) => Promise<string>;
@@ -38,6 +40,15 @@ const defaultDeps: VariantDeps = {
   now: () => new Date().toISOString(),
 };
 
+/**
+ * What the frame draws of the event: with no partner logo the event's emoji is drawn as the logo and taken out of the name (camera#274), so a message that uses the name does not
+ * carry it either. A partner with a logo keeps the name as it is.
+ */
+export function shownContext(context: FrameDesign['context']): { shown: FrameDesign['context']; emoji: string | null } {
+  const emoji = context.partner?.logoUrl ? null : eventEmoji(context.event, context.partner?.name);
+  return { shown: emoji ? { ...context, event: { ...context.event, name: withoutEmoji(context.event.name, emoji) } } : context, emoji };
+}
+
 export interface GenerateResult {
   design: FrameDesign;
   generated: number;
@@ -45,12 +56,14 @@ export interface GenerateResult {
 }
 
 /** Everything that decides the image: what is drawn, the message, the font actually used, the size and the drawing code. */
-export function variantKey(design: FrameDesign, message: string | null, font: ResolvedFont, frame?: MessageFrame): string {
+export function variantKey(design: FrameDesign, message: string | null, font: ResolvedFont, frame?: MessageFrame, template: string | null = null): string {
   const decides: unknown[] = [contextHash(design.context), message, font.family, font.used, DEFAULT_FRAME_WIDTH, DEFAULT_FRAME_HEIGHT, FRAME_RENDER_VERSION];
   // The frame a message chose (camera#366) decides the image, and the older base picture does not apply to that message. A base picture changes the image;
   // a design with neither keeps the key it always had, so nothing is redrawn.
   if (frame) decides.push({ frame: frame.frameId, imageUrl: frame.imageUrl, area: frame.area });
   else if (design.base) decides.push(design.base);
+  // The slots (issue 502) decide the image, with each picture slot reduced to the picture this message uses; a design without them keeps the key it always had.
+  else if (design.slots) decides.push({ slots: slotsForMessage(design.slots, template) });
   return createHash('sha256').update(JSON.stringify(decides)).digest('hex');
 }
 
@@ -65,8 +78,7 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
   // The placeholders name the sides the frame shows (the pairing in the event name when the home partner is a competition).
   // No partner logo: the event's emoji is drawn as the logo and taken out of the name (camera#274), so a message that uses the
   // name does not carry it either. A partner with a logo keeps the name as it is.
-  const emoji = context.partner?.logoUrl ? null : eventEmoji(context.event, context.partner?.name);
-  const shown = emoji ? { ...context, event: { ...context.event, name: withoutEmoji(context.event.name, emoji) } } : context;
+  const { shown, emoji } = shownContext(context);
   const usable = usableMessages(
     design.messages,
     messageTokens({ home: shown.event.homeTeam?.name, visitor: shown.event.visitorTeam?.name, eventName: shown.event.name })
@@ -93,18 +105,37 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
 
   // The dark area of an image written on a library frame: the layers its designer put in the message area, or (`design.darkArea` is `generated`) the mask of the generated default frame for
   // that message. It is not part of the image, so a change of it does not redraw anything: kept images get their layers set again.
-  const layersOf = async (chosen: MessageFrame, message: string | null, own: FrameVariant['layers']): Promise<FrameVariant['layers']> => {
+  // The pictures a message needs for the slots (issue 502): the one each picture slot maps it to, fetched once; a picture that cannot be fetched fails the run and leaves the images as they were.
+  const slotPictures = async (template: string | null): Promise<Partial<Record<SlotPosition, Buffer>>> => {
+    const out: Partial<Record<SlotPosition, Buffer>> = {};
+    if (!design.slots) return out;
+    for (const [position, image] of Object.entries(resolveSlotPictures(design.slots, template)) as Array<[SlotPosition, { key: string; imageUrl: string }]>) {
+      let bytes = baseBytes.get(image.imageUrl);
+      if (!bytes) {
+        bytes = (await deps.fetchBaseImage(image.imageUrl)) ?? undefined;
+        if (!bytes) throw new Error(`The picture "${image.key}" of the ${position.replace('-', ' ')} slot could not be fetched`);
+        baseBytes.set(image.imageUrl, bytes);
+      }
+      out[position] = bytes;
+    }
+    return out;
+  };
+  const templateOf = (index: number | null): string | null => (index === null ? null : design.messages[index] ?? null);
+
+  const layersOf = async (chosen: MessageFrame, message: string | null, own: FrameVariant['layers'], index: number | null): Promise<FrameVariant['layers']> => {
     if (design.darkArea !== 'generated') return own;
     if (logoBytes === undefined) logoBytes = context.partner?.logoUrl ? await deps.fetchLogo(context.partner.logoUrl) : null;
+    // With slots the dark area is the mask of the slots, otherwise the mask of the generated default frame.
+    if (design.slots) return slotLayers({ context: shown, message, logoBytes, emoji, font, slots: design.slots, pictureBytes: await slotPictures(templateOf(index)) });
     return generatedLayers({ context: shown, message, logoBytes, emoji, font });
   };
 
   for (const job of jobs) {
     const chosen = job.chosen;
-    const key = variantKey(design, job.message, font, chosen);
+    const key = variantKey(design, job.message, font, chosen, templateOf(job.index));
     const kept = existing.find((variant) => reusable(variant, key));
     if (kept) {
-      variants.push({ ...kept, index: job.index, ...(chosen ? { layers: await layersOf(chosen, job.message, (chosen.area.layers ?? []).map((layer) => ({ ...layer }))) } : {}) });
+      variants.push({ ...kept, index: job.index, ...(chosen ? { layers: await layersOf(chosen, job.message, (chosen.area.layers ?? []).map((layer) => ({ ...layer })), job.index) } : {}) });
       continue;
     }
 
@@ -124,7 +155,7 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
         imageUrl,
         width: rendered.width,
         height: rendered.height,
-        layers: await layersOf(chosen, job.message, rendered.layers),
+        layers: await layersOf(chosen, job.message, rendered.layers, job.index),
         key,
         font: { family: font.family, used: font.used, note: font.note, retry: font.retry },
         logo: 'none',
@@ -163,6 +194,25 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
     }
 
     if (logoBytes === undefined) logoBytes = context.partner?.logoUrl ? await deps.fetchLogo(context.partner.logoUrl) : null;
+    if (design.slots) {
+      // The slots of the event (issue 502): the generated frame, composed from its slots.
+      const rendered = await renderSlotFrame({ context: shown, message: job.message, logoBytes, emoji, font, slots: design.slots, pictureBytes: await slotPictures(templateOf(job.index)) });
+      const imageUrl = await deps.upload(`frames/generated/${event.eventId}/${key.slice(0, 32)}.png`, rendered.png);
+      variants.push({
+        index: job.index,
+        message: job.message,
+        imageUrl,
+        width: rendered.layout.width,
+        height: rendered.layout.height,
+        layers: slotLayerBoxes(rendered.layout).map(({ id, rect }) => ({ id, ...rect })),
+        key,
+        font: { family: font.family, used: font.used, note: font.note, retry: font.retry },
+        logo: rendered.logo,
+        renderVersion: FRAME_RENDER_VERSION,
+      });
+      generated += 1;
+      continue;
+    }
     const rendered = await renderFrame({ context: shown, message: job.message, logoBytes, emoji, font });
     const imageUrl = await deps.upload(`frames/generated/${event.eventId}/${key.slice(0, 32)}.png`, rendered.png);
     variants.push({

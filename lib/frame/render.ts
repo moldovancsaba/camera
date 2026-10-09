@@ -4,11 +4,13 @@
  * Server side only (@napi-rs/canvas).
  */
 
-import { createCanvas, loadImage, type Canvas } from '@napi-rs/canvas';
+import { createCanvas, loadImage, type Canvas, type Image } from '@napi-rs/canvas';
 import { cssColour } from '@/lib/gds/tokens/color-css';
 import type { FrameContext } from './context';
 import { EMOJI_ALIAS, ensureEmojiFont, type ResolvedFont } from './fonts';
 import { DEFAULT_FRAME_HEIGHT, DEFAULT_FRAME_WIDTH, layerBoxes, layoutFrame, type FrameLayout, type LayerId } from './layout';
+import { layoutSlots, slotLayerBoxes, type SlotLayout } from './slot-layout';
+import { SLOT_POSITIONS, type FrameSlots, type SlotPosition } from './slots';
 
 /** Bump when the drawing changes, so stored images are regenerated. */
 export const FRAME_RENDER_VERSION = 4;
@@ -68,8 +70,8 @@ export interface FrameInput {
   height?: number;
 }
 
-/** The layout of the generated frame for one message, with the logo (or the event's emoji) it would draw and the context to draw on: shared by the drawing and by the mask. */
-async function prepareFrame(input: FrameInput) {
+/** The logo (or the event's emoji), the canvas and the text measure that every generated frame starts from: shared by the default layout and by slots. */
+async function prepareAssets(input: FrameInput) {
   const width = input.width ?? DEFAULT_FRAME_WIDTH;
   const height = input.height ?? DEFAULT_FRAME_HEIGHT;
   const { context, font } = input;
@@ -100,6 +102,14 @@ async function prepareFrame(input: FrameInput) {
     return ctx.measureText(text).width;
   };
 
+  return { canvas, ctx, measure, logo, logoState, width, height, headingColor, heroBackground };
+}
+
+/** The layout of the generated frame for one message, with the logo (or the event's emoji) it would draw and the context to draw on: shared by the drawing and by the mask. */
+async function prepareFrame(input: FrameInput) {
+  const assets = await prepareAssets(input);
+  const { context } = input;
+  const { logo, width, height, measure } = assets;
   const layout = layoutFrame({
     width,
     height,
@@ -110,8 +120,7 @@ async function prepareFrame(input: FrameInput) {
     message: input.message,
     measure,
   });
-
-  return { canvas, ctx, layout, logo, logoState, width, height, headingColor, heroBackground };
+  return { ...assets, layout };
 }
 
 /**
@@ -148,6 +157,95 @@ export async function renderFrame(input: FrameInput): Promise<RenderedFrame> {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(layout.message.text, layout.message.rect.x + layout.message.rect.width / 2, layout.message.rect.y + layout.message.rect.height / 2);
+  }
+
+  return { png: canvas.toBuffer('image/png'), layout, logo: logoState };
+}
+
+
+export interface SlotFrameInput extends FrameInput {
+  slots: FrameSlots;
+  /** The bytes of the picture each `picture` slot draws for this message (chosen by lib/frame/slots.ts `resolveSlotPictures`, fetched by the caller). */
+  pictureBytes: Partial<Record<SlotPosition, Buffer>>;
+}
+
+export interface RenderedSlotFrame {
+  png: Buffer;
+  layout: SlotLayout;
+  logo: RenderedFrame['logo'];
+}
+
+async function prepareSlotFrame(input: SlotFrameInput) {
+  const assets = await prepareAssets(input);
+  const { context } = input;
+  const images: Partial<Record<SlotPosition, Image>> = {};
+  const sizes: Partial<Record<SlotPosition, { width: number; height: number }>> = {};
+  for (const position of SLOT_POSITIONS) {
+    const bytes = input.pictureBytes[position];
+    if (!bytes) continue;
+    try {
+      const image = await loadImage(bytes);
+      images[position] = image;
+      sizes[position] = { width: image.width, height: image.height };
+    } catch {
+      // Not an image we can draw: the layout reports it as a picture that could not be drawn.
+    }
+  }
+  const layout = layoutSlots({
+    width: assets.width,
+    height: assets.height,
+    slots: input.slots,
+    logo: assets.logo ? { width: assets.logo.width, height: assets.logo.height } : null,
+    pictures: sizes,
+    home: context.event.homeTeam?.name,
+    visitor: context.event.visitorTeam?.name,
+    eventName: context.event.name,
+    message: input.message,
+    measure: assets.measure,
+  });
+  return { ...assets, images, layout };
+}
+
+/** The dark area of a frame made of slots for one message, as layer boxes, without drawing anything. */
+export async function slotLayers(input: SlotFrameInput): Promise<Array<{ id: LayerId; x: number; y: number; width: number; height: number }>> {
+  const { layout } = await prepareSlotFrame(input);
+  return slotLayerBoxes(layout).map(({ id, rect }) => ({ id, ...rect }));
+}
+
+/** Draws a frame from its slots (docs/FRAME_SLOTS_PLAN.md): the generated bars and the pictures first, then the texts on top. */
+export async function renderSlotFrame(input: SlotFrameInput): Promise<RenderedSlotFrame> {
+  const { canvas, ctx, layout, logo, logoState, images, heroBackground, headingColor } = await prepareSlotFrame(input);
+  const { font } = input;
+
+  for (const picture of layout.pictures) {
+    if (picture.kind === 'bar') {
+      ctx.fillStyle = cssColour(heroBackground);
+      ctx.fillRect(picture.rect.x, picture.rect.y, picture.rect.width, picture.rect.height);
+      if (picture.line) {
+        ctx.fillStyle = cssColour(headingColor);
+        ctx.fillRect(picture.line.x, picture.line.y, picture.line.width, picture.line.height);
+      }
+    } else if (picture.kind === 'logo') {
+      if (logo) ctx.drawImage(logo, picture.rect.x, picture.rect.y, picture.rect.width, picture.rect.height);
+    } else {
+      const image = images[picture.position];
+      if (image) ctx.drawImage(image, picture.rect.x, picture.rect.y, picture.rect.width, picture.rect.height);
+    }
+  }
+
+  for (const text of layout.texts) {
+    ctx.fillStyle = cssColour(text.colour ?? headingColor);
+    ctx.font = `700 ${text.fontSize}px ${font.stack}`;
+    if (text.oneLine) {
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text.lines[0], text.rect.x + text.rect.width / 2, text.rect.y + text.rect.height / 2);
+    } else {
+      ctx.textAlign = text.align === 'right' ? 'right' : 'left';
+      ctx.textBaseline = 'top';
+      const x = text.align === 'right' ? text.rect.x + text.rect.width : text.rect.x;
+      text.lines.forEach((line, i) => ctx.fillText(line, x, text.rect.y + i * text.lineHeight));
+    }
   }
 
   return { png: canvas.toBuffer('image/png'), layout, logo: logoState };
