@@ -25,7 +25,9 @@ export interface CustomPagesManagerProps {
   initialPages: CustomPage[];
   /** What decides which default pages the event gets (`GET /api/events/<id>`): with it the list is the journey as the user goes through it (camera#378). */
   journeyContext?: JourneyContext;
-  onSave: (pages: CustomPage[]) => Promise<void>;
+  /** The consent page is shown as one checkbox on the Who-are-you page (issue 523): the one setting both page editors show. */
+  acceptanceOnWhoAreYou?: boolean;
+  onSave: (pages: CustomPage[], options: { acceptanceOnWhoAreYou: boolean }) => Promise<void>;
 }
 
 function Field({
@@ -124,8 +126,10 @@ function DividerLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function CustomPagesManager({ eventId, initialPages, journeyContext, onSave }: CustomPagesManagerProps) {
+export default function CustomPagesManager({ eventId, initialPages, journeyContext, acceptanceOnWhoAreYou = false, onSave }: CustomPagesManagerProps) {
   const [pages, setPages] = useState<CustomPage[]>(initialPages);
+  // One value for the two checkboxes (the Who-are-you editor's "Show acceptance" and the consent editor's "Show it on Who-are-you"): both read and write it here, so they are always the same one.
+  const [acceptanceHere, setAcceptanceHere] = useState(acceptanceOnWhoAreYou);
   const [showModal, setShowModal] = useState(false);
   const [editingPage, setEditingPage] = useState<CustomPage | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -324,7 +328,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
         ...p,
         order: typeof p.order === 'number' && Number.isFinite(p.order) ? p.order : Number(p.order),
       }));
-      await onSave(pagesToSave);
+      await onSave(pagesToSave, { acceptanceOnWhoAreYou: acceptanceHere });
     } catch (error) {
       console.error('Failed to save pages:', error);
       const msg = error instanceof Error ? error.message : 'Failed to save pages. Please try again.';
@@ -529,6 +533,8 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
             <PageEditModal
               page={editingPage}
               eventId={eventId}
+              acceptanceHere={acceptanceHere}
+              onAcceptanceChange={setAcceptanceHere}
               onSave={handleSavePage}
               onCancel={() => {
                 setShowModal(false);
@@ -550,11 +556,15 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
 function PageEditModal({
   page,
   eventId,
+  acceptanceHere,
+  onAcceptanceChange,
   onSave,
   onCancel,
 }: {
   page: CustomPage;
   eventId: string;
+  acceptanceHere: boolean;
+  onAcceptanceChange: (value: boolean) => void;
   onSave: (page: CustomPage) => void;
   onCancel: () => void;
 }) {
@@ -823,6 +833,16 @@ function PageEditModal({
           <>
             <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
               <div style={{ display: 'grid', gap: '1rem' }}>
+                <Check
+                  checked={acceptanceHere}
+                  onChange={onAcceptanceChange}
+                  label="Show acceptance"
+                  helper="Shows the consent page's checkboxes here as one small checkbox with one sentence, under the intro text; everything on this page stays off until it is ticked, and the consent page is no longer a step of its own. Off: two pages, one after the other. The same setting as “Show it on Who-are-you” on the consent page editor; it is saved with Save all."
+                />
+              </div>
+            </section>
+            <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+              <div style={{ display: 'grid', gap: '1rem' }}>
                 <h4 style={{ margin: 0 }}>Authentication Options</h4>
                 <Check
                   checked={enableSSOLogin}
@@ -891,6 +911,16 @@ function PageEditModal({
 
         {page.pageType === CustomPageType.ACCEPT ? (
           <>
+            <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                <Check
+                  checked={acceptanceHere}
+                  onChange={onAcceptanceChange}
+                  label="Show it on Who-are-you"
+                  helper="Shows these checkboxes on the Who-are-you page as one small checkbox with one sentence (the three usual legal pages make the sentence; any other list is shown one after the other), and this page is no longer a step of its own. Off: two pages, one after the other. The same setting as “Show acceptance” on the Who-are-you page editor; it is saved with Save all."
+                />
+              </div>
+            </section>
             <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
               <div style={{ display: 'grid', gap: '1rem' }}>
                 <h4 style={{ margin: 0 }}>Checkboxes (every one is required)</h4>

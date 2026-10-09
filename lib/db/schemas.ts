@@ -338,6 +338,11 @@ export interface Event {
   frameChoice?: 'random' | 'user' | null;
   /** The guided tour of the capture flow (tips on the first visit and a "Show tour" link) is off unless this is true (camera#356). */
   tourEnabled?: boolean;
+  /**
+   * The consent page is shown as one small checkbox with one sentence on the Who-are-you page instead of a page of its own, and that page is disabled until it is ticked (issue 523,
+   * client feedback 2026-10-09). One setting that both page editors show. Off or missing: the two pages one after the other (lib/events/acceptance.ts).
+   */
+  acceptanceOnWhoAreYou?: boolean;
   /** Set on events created with the journey defaults (the default consent page and the like); existing events get them through the global switch (lib/admin/defaults-rollout.ts). */
   journeyDefaults?: boolean;
   /** What was last pushed to messmass from the tracked links of this event (camera#320, lib/short-links/sync.ts). */
@@ -665,6 +670,8 @@ export interface UserConsent {
   linkUrl?: string;            // The https address the checkbox linked to, when it had one (camera#330)
   accepted: boolean;           // Always true (required to proceed)
   acceptedAt: string;          // ISO 8601 timestamp when user checked the box
+  /** The one sentence the user ticked when the checkboxes were shown as one on the Who-are-you page (issue 523): exactly what was read. */
+  shownText?: string;
 }
 
 export type SubmissionTryOnRequestStatus =

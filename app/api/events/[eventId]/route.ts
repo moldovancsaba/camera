@@ -276,6 +276,7 @@ export const PATCH = withErrorHandler(async (
     photoVetting,
     uiLanguage,
     tourEnabled,
+    acceptanceOnWhoAreYou,
   } = body;
 
   const tryOnSetupId =
@@ -403,6 +404,11 @@ export const PATCH = withErrorHandler(async (
   if (tourEnabled !== undefined) {
     if (typeof tourEnabled !== 'boolean') throw apiBadRequest('tourEnabled must be true or false');
     updateFields.tourEnabled = tourEnabled;
+  }
+  // The consent page as one checkbox on the Who-are-you page (issue 523): off unless an editor turns it on.
+  if (acceptanceOnWhoAreYou !== undefined) {
+    if (typeof acceptanceOnWhoAreYou !== 'boolean') throw apiBadRequest('acceptanceOnWhoAreYou must be true or false');
+    updateFields.acceptanceOnWhoAreYou = acceptanceOnWhoAreYou;
   }
   // The language of the user interface (camera#352): a language we have, or empty for the default (English).
   if (uiLanguage !== undefined) {

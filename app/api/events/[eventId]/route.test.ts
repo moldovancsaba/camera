@@ -392,3 +392,23 @@ test('GET tells the capture page the event does not send the welcome e-mail unle
 test('GET tells the capture page the event sends the welcome e-mail when an editor switched it on (epic 463)', async (t) => {
   assert.equal(await welcomeFlag(t, { notifications: { types: { welcome: { enabled: true } } } }, 'get-welcome-on'), true);
 });
+
+test('PATCH: the acceptance on the Who-are-you page (issue 523) is a true or false, refused otherwise, and left alone when absent', async (t) => {
+  const h = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-acceptance');
+  assert.equal((await PATCH(patchRequest({ acceptanceOnWhoAreYou: true }), params)).status, 200);
+  assert.equal(h.updates[0].acceptanceOnWhoAreYou, true);
+  assert.equal((await PATCH(patchRequest({ acceptanceOnWhoAreYou: false }), params)).status, 200);
+  assert.equal(h.updates[1].acceptanceOnWhoAreYou, false);
+  for (const bad of ['yes', 1, null, {}]) assert.equal((await PATCH(patchRequest({ acceptanceOnWhoAreYou: bad }), params)).status, 400, String(bad));
+  assert.equal((await PATCH(patchRequest({ loadingText: 'Hello' }), params)).status, 200);
+  assert.equal('acceptanceOnWhoAreYou' in h.updates[2], false);
+  assert.equal(h.updates.length, 3, 'a refused value writes nothing');
+});
+
+test('GET as a guest carries the acceptance switch, so the capture page knows to show the consent on the Who-are-you page', async (t) => {
+  mockDeps(t, { event: { acceptanceOnWhoAreYou: true, customPages: [] } });
+  const { GET } = await importRouteModule('get-acceptance');
+  const body = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { acceptanceOnWhoAreYou?: boolean } } };
+  assert.equal(body.data.event.acceptanceOnWhoAreYou, true);
+});

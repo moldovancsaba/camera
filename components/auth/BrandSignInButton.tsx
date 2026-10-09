@@ -47,11 +47,14 @@ const LOOK: Record<BrandProvider, { mark: ReactNode; background: string; color: 
   facebook: { mark: <FacebookMark />, background: SOCIAL_FACEBOOK_BLUE, color: CAMERA_STAGE_WHITE, border: `1px solid ${SOCIAL_FACEBOOK_BLUE}` },
 };
 
-export default function BrandSignInButton({ provider, href, label }: { provider: BrandProvider; href: string; label: string }) {
+export default function BrandSignInButton({ provider, href, label, disabled = false }: { provider: BrandProvider; href: string; label: string; disabled?: boolean }) {
   const look = LOOK[provider];
   return (
     <a
-      href={href}
+      // A disabled button has no address: nothing to follow with a tap, a key or a long press, and the page says so to a screen reader (the acceptance on the Who-are-you page, issue 523).
+      href={disabled ? undefined : href}
+      aria-disabled={disabled || undefined}
+      role={disabled ? 'link' : undefined}
       data-brand-signin={provider}
       className="brand-signin"
       style={{
@@ -68,7 +71,9 @@ export default function BrandSignInButton({ provider, href, label }: { provider:
         gap: 12,
         justifyContent: 'center',
         minHeight: 48,
+        opacity: disabled ? 0.45 : 1,
         padding: '0 20px',
+        pointerEvents: disabled ? 'none' : undefined,
         textDecoration: 'none',
         whiteSpace: 'nowrap',
         width: '100%',

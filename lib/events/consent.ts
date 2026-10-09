@@ -56,6 +56,8 @@ export interface ConsentRecord {
   linkUrl?: string;
   accepted: boolean;
   acceptedAt: string;
+  /** The one sentence the user ticked when the checkboxes were shown as one on the Who-are-you page (issue 523): exactly what was read. */
+  shownText?: string;
 }
 
 /**
@@ -64,7 +66,7 @@ export interface ConsentRecord {
  */
 export function consentRecords(
   page: { pageId: string; pageType: 'accept' | 'cta'; checkboxText?: string },
-  data: { accepted: boolean; acceptedAt: string; items?: ConsentCheckbox[] },
+  data: { accepted: boolean; acceptedAt: string; items?: ConsentCheckbox[]; shownText?: string },
 ): ConsentRecord[] {
   if (data.items && data.items.length > 0) {
     return data.items.map((item) => ({
@@ -74,6 +76,7 @@ export function consentRecords(
       ...(item.linkUrl ? { linkUrl: item.linkUrl } : {}),
       accepted: data.accepted,
       acceptedAt: data.acceptedAt,
+      ...(data.shownText ? { shownText: data.shownText } : {}),
     }));
   }
   return [{ pageId: page.pageId, pageType: page.pageType, checkboxText: page.checkboxText || '', accepted: data.accepted, acceptedAt: data.acceptedAt }];
