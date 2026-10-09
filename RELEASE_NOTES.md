@@ -9,6 +9,11 @@
 - **Not covered yet:** a logo, a frame or a page picture that is gone (the rule is written and the check is built for photos); the pictures in e-mails.
 - **Documentation:** release notes, CLAUDE.md (section 9), ARCHITECTURE.md. **Verified:** type-check; lint; unit tests (the check: gone only when clearly gone, never on an unclear answer, only our image hosts; verify, clear, report, the scan by id in bounded batches; the visibility rule and its query clauses, the playlist with pinned photos, the gallery filter, the feeds; both routes with their access and rate-limit rules); the full CI chain. **Not checked:** the card with a real admin login, and nothing is marked yet in the real data (that is the next step, after this is live).
 
+## Unreleased — documentation: storage architecture so that no picture is ever lost (issue 509; owner question 2026-10-09)
+
+- **Added `docs/STORAGE_ARCHITECTURE.md`:** how a picture travels today (verified in the code and in the real data, read-only), the measured reliability of ImgBB, the facts about R2, Vercel Blob and Backblaze B2 with their sources, the recommendation (R2 as the primary store of every picture, ImgBB as a verified extra copy of the public pictures, one more copy at a provider under credentials the application does not hold, Vercel Blob only as the temporary landing place), the manifest, the queue and the daily verification, the phases, and what is needed from the owner.
+- **Not built:** nothing changes in the live capture path before the 16 October match; this is the plan the owner asked for.
+
 ## Unreleased — gallery: the frame is on by default for uploaded photos, the right frames are used, and the photos uploaded before can be framed in one press (issue 488; owner report 2026-10-09)
 
 - **Fixed (owner: "the frame did not get added to the uploaded images yet"):** three causes, found in the code and in the real data (read-only):

@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-09T18:14:44+00:00",
+  "generated": "2026-10-09T18:47:13+00:00",
   "repo": "camera",
-  "head": "ca0965d",
+  "head": "35c2a1f",
   "counts": {
    "endpoints": 150,
    "collections": 8,
    "env": 59,
    "outbound-hosts": 31,
-   "docs": 66
+   "docs": 67
   }
  },
  "items": [
@@ -199,6 +199,10 @@
   {
    "file": "docs/SLIDESHOW_LOGIC.md",
    "title": "Slideshow Logic"
+  },
+  {
+   "file": "docs/STORAGE_ARCHITECTURE.md",
+   "title": "Storage architecture: how we never lose an image"
   },
   {
    "file": "docs/TEXT_LEVELS.md",

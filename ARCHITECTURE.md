@@ -511,5 +511,6 @@ event's Texts), the partner's default pictures (`lib/events/partner-pictures.ts`
 - [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)
 - [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md)
 - [docs/BUILDING_BRICKS.md](docs/BUILDING_BRICKS.md), [docs/TEXT_LEVELS.md](docs/TEXT_LEVELS.md), [docs/LIBRARIES.md](docs/LIBRARIES.md)
+- [docs/STORAGE_ARCHITECTURE.md](docs/STORAGE_ARCHITECTURE.md) (where every picture lives, the copies, and the plan so that none is ever lost; recommendation of 2026-10-09, not built yet)
 - [docs/FRAME_LAYOUT_SELECTION_PLAN.md](docs/FRAME_LAYOUT_SELECTION_PLAN.md), [docs/DEFAULT_FRAME_PLAN.md](docs/DEFAULT_FRAME_PLAN.md)
 - [docs/EMAIL_FORMAT_PLAN.md](docs/EMAIL_FORMAT_PLAN.md), [docs/EMAIL_TEMPLATES.md](docs/EMAIL_TEMPLATES.md)
