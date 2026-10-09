@@ -1,23 +1,16 @@
 /**
  * The HTML of a guest email in the theme of the event (camera#285, J6): the event's page colour as a header band with its logo (or emoji),
  * the message on a card with the card colours, and the main link as a button in the theme's button colours. Table layout with inline styles,
- * as email clients need; the plain-text part of the email is unchanged. Pure; unit-tested in themed-html.test.ts.
+ * as email clients need; the words are drawn by lib/email/rich.ts (bold, italic, titles, links, small and large text). Pure; unit-tested in themed-html.test.ts.
  */
 
+import { escapeHtml } from '@/lib/email/escape';
+import { parseRich, resolveRich, richHtml, type RBlock } from '@/lib/email/rich';
 import type { EventTheme } from '@/lib/theme/event-theme';
 
-export const escapeHtml = (value: string): string =>
-  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+export { escapeHtml };
 
 const FONT_FALLBACK = "Arial, 'Helvetica Neue', Helvetica, sans-serif";
-const URL_IN_TEXT = /(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"])/g;
-
-/** One plain-text paragraph as HTML: escaped, its links as anchors in the link colour, its line breaks kept. */
-export function paragraphHtml(text: string, linkColour: string): string {
-  const escaped = escapeHtml(text);
-  const linked = escaped.replace(URL_IN_TEXT, (url) => `<a href="${url}" style="color:${linkColour};text-decoration:underline;">${url}</a>`);
-  return linked.replace(/\n/g, '<br />');
-}
 
 /** The family as an email font stack: the event's own font first (clients that have it), then web-safe fonts. */
 function emailFont(family: string): string {
@@ -28,25 +21,22 @@ function emailFont(family: string): string {
 export interface ThemedEmailInput {
   theme: EventTheme;
   eventName: string;
-  /** The message, plain text; paragraphs are separated by blank lines. */
-  bodyText: string;
+  /** The message as the editor wrote it (lib/email/rich.ts), variables already filled in; a text with no markup reads as plain text, paragraphs separated by blank lines. */
+  bodyText?: string;
+  /** The message with its variables filled in (`resolveRich`); used instead of `bodyText` when given. */
+  content?: RBlock[];
   /** The main link, shown as a button as well as in the text; omitted when there is none. */
   button?: { label: string; url: string } | null;
 }
 
-export function renderThemedEmail({ theme, eventName, bodyText, button }: ThemedEmailInput): string {
+export function renderThemedEmail({ theme, eventName, bodyText, content, button }: ThemedEmailInput): string {
   const font = emailFont(theme.font.family);
   const mark = theme.logoUrl
     ? `<img src="${escapeHtml(theme.logoUrl)}" alt="${escapeHtml(eventName)}" height="56" style="display:block;margin:0 auto;border:0;max-height:56px;max-width:240px;height:auto;" />`
     : theme.emoji
       ? `<div style="font-size:44px;line-height:1;text-align:center;">${escapeHtml(theme.emoji)}</div>`
       : '';
-  const paragraphs = bodyText
-    .split(/\n{2,}/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((part) => `<p style="margin:0 0 16px 0;">${paragraphHtml(part, theme.link)}</p>`)
-    .join('');
+  const paragraphs = richHtml(content ?? resolveRich(parseRich(bodyText ?? ''), {}).blocks, { link: theme.link });
   const cta = button
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 8px 0;"><tr><td bgcolor="${theme.buttonBackground}" style="background:${theme.buttonBackground};border-radius:8px;"><a href="${escapeHtml(button.url)}" style="display:inline-block;padding:14px 28px;font-family:${font};font-size:16px;font-weight:700;color:${theme.buttonText};text-decoration:none;">${escapeHtml(button.label)}</a></td></tr></table>`
     : '';

@@ -5,6 +5,8 @@ import { listApprovedShareVariants } from '@/lib/tryon/publication';
 import { sendSubmissionResultEmail, type SubmissionNotificationResult, type SubmissionNotificationInput } from '@/lib/email/submission-notification';
 import { sanitizeEmail } from '@/lib/security/sanitize';
 import { loadEventTheme } from '@/lib/theme/load';
+import { emailFactsOf } from '@/lib/email/event-link';
+import type { EventFacts } from '@/lib/email/variables';
 import type { EventTheme } from '@/lib/theme/event-theme';
 import { getConfiguredSiteUrl } from '@/lib/site-url';
 import {
@@ -435,7 +437,8 @@ export function buildSubmissionEmailInput(
   policy: SubmissionEmailPolicy,
   eventName: string | null,
   mode: SubmissionEmailMode = 'after_save',
-  theme: EventTheme | null = null
+  theme: EventTheme | null = null,
+  facts: EventFacts | null = null
 ): SubmissionNotificationInput | null {
   const recipient = resolveSubmissionResultEmailRecipient(submission);
   if (!recipient.email) {
@@ -467,6 +470,7 @@ export function buildSubmissionEmailInput(
     theme,
     language: policy.language,
     texts: policy.texts,
+    facts,
   };
 }
 
@@ -476,9 +480,10 @@ export async function sendSubmissionResultEmailByPolicy(
   shareUrl: string,
   policy: SubmissionEmailPolicy,
   mode: SubmissionEmailMode,
-  theme: EventTheme | null = null
+  theme: EventTheme | null = null,
+  facts: EventFacts | null = null
 ): Promise<SendSubmissionEmailMetadataResult> {
-  const input = buildSubmissionEmailInput(submission, shareUrl, policy, eventName, mode, theme);
+  const input = buildSubmissionEmailInput(submission, shareUrl, policy, eventName, mode, theme, facts);
   if (!input) {
     const now = new Date().toISOString();
 
@@ -556,7 +561,8 @@ export async function dispatchPendingRelatedEmailForSubmission(
     shareUrl,
     policy,
     'after_related',
-    await themeOf(db, event)
+    await themeOf(db, event),
+    emailFactsOf(event)
   );
 
   if (!result.shouldRetry) {
@@ -610,7 +616,8 @@ export async function dispatchTryOnResubmissionApprovalEmailForSubmission(
     shareUrl,
     policy,
     'after_tryon_resubmission_approved',
-    await themeOf(db, event)
+    await themeOf(db, event),
+    emailFactsOf(event)
   );
 }
 
@@ -659,7 +666,8 @@ export async function dispatchPendingSubmissionEmailForSubmission(
       shareUrl,
       policy,
       'after_save',
-      await themeOf(db, event)
+      await themeOf(db, event),
+      emailFactsOf(event)
     );
 
     mergedResult.shouldRetry = mergedResult.shouldRetry || afterSaveResult.shouldRetry;

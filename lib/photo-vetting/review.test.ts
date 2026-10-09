@@ -238,6 +238,15 @@ test('rejection keeps the photo private, makes no picture, cancels the held try-
   assert.match(String(calls.rejectedMails[0]), /\/capture\/event-uuid$/);
 });
 
+test('the not-approved e-mail links an event with a URL slug by its short link, the editor’s setting', async () => {
+  const { photo, frame } = await fixtures();
+  const submission = pendingSubmission();
+  const { db } = fakeDb(submission, { event: { _id: new ObjectId(), eventId: 'event-uuid', name: 'Derby', shortUrlSlug: 'derby' } });
+  const { deps: d, calls } = deps(photo, frame);
+  await rejectPhoto(db, submission as never, ACTOR, 'Not suitable', d);
+  assert.match(String(calls.rejectedMails[0]), /^https:\/\/[^/]+\/derby$/);
+});
+
 test('only a pending photo can be rejected', async () => {
   const { photo, frame } = await fixtures();
   const { deps: d, calls } = deps(photo, frame);

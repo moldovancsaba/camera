@@ -8,12 +8,18 @@ Event result email setups support three delivery modes:
 - `after_related`: send when the share page has the configured related photos available.
 - `after_tryon_resubmission_approved`: send an update after an admin-approved try-on rerun result.
 
-Supported placeholders:
+Supported variables (`lib/email/variables.ts`; a variable with no value for the event is left out of the e-mail, never sent as `{name}`):
 
 - `{name}`: participant display name.
 - `{event}`: event name.
 - `{link}`: public share page URL.
 - `{terms}`: event terms and conditions URL.
+- `{eventlink}`: the link to the event: its own short link when the editor set a URL slug (the default), else its capture page.
+- `{partner}`: the partner (club or organiser); `{home}`, `{visitor}`, `{teams}`: the two sides of the match (`{partner1}`, `{partner2}` are other names for the first two); `{date}`: the date of the event in the language of the event; `{location}`: the place of the event.
+
+### Format of the words (`lib/email/rich.ts`)
+
+Paragraphs are separated by a blank line. A paragraph that starts with `# ` is a title, `-# ` is small text, `+# ` is large text. Inside a paragraph: `**bold**`, `*italic*`, `[label](https://address)` (a link, bold and underlined; the address may be `{link}` or `{terms}`), a bare web address (a link). A backslash writes the next sign as it is (`\*`). Nothing else is markup and raw HTML is always escaped. A text with none of these is drawn exactly as plain text always was.
 
 ### Canonical body style
 

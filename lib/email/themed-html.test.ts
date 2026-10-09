@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { resolveEventTheme } from '@/lib/theme/event-theme';
 import { nativeFrameContext } from '@/lib/frame/context';
-import { escapeHtml, paragraphHtml, renderThemedEmail } from './themed-html';
+import { parseRich, resolveRich, richHtml } from './rich';
+import { escapeHtml, renderThemedEmail } from './themed-html';
+
+const paragraphHtml = (text: string, link: string) => richHtml(resolveRich(parseRich(text), {}).blocks, { link });
 
 const NOW = '2026-10-06T12:00:00.000Z';
 const theme = resolveEventTheme({ context: nativeFrameContext({ eventName: '🏀 Hungary x Iceland', partnerName: 'MKOSZ', partnerLogoUrl: null }, NOW) });
@@ -12,7 +15,7 @@ test('text is escaped, links become anchors in the link colour and line breaks a
   const html = paragraphHtml('Hi <Ann>,\nsee https://camera.test/share/abc123. Thanks', theme.link);
   assert.ok(html.includes('Hi &lt;Ann&gt;,<br />see <a href="https://camera.test/share/abc123"'), html);
   assert.ok(html.includes(`color:${theme.link}`));
-  assert.ok(html.endsWith('. Thanks'), 'the full stop after the link stays outside it');
+  assert.ok(html.endsWith('. Thanks</p>'), 'the full stop after the link stays outside it');
   assert.equal(html.includes('<Ann>'), false);
 });
 

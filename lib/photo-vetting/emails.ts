@@ -5,6 +5,7 @@
  */
 
 import type { Event } from '@/lib/db/schemas';
+import { captureLinkOf, emailFactsOf, shortLinkOf } from '@/lib/email/event-link';
 import { emailDefaults } from '@/lib/email/submission-template-defaults';
 import { normalizeUiLanguage, translate } from '@/lib/i18n';
 import type { TextOverrides } from '@/lib/i18n/overrides';
@@ -26,8 +27,9 @@ export function approvedShareUrl(shareToken: string, baseUrl: string = getConfig
   return buildSubmissionShareUrl(shareToken, baseUrl);
 }
 
-export function takeAnotherPhotoUrl(eventKey: string, baseUrl: string = getConfiguredSiteUrl()): string {
-  return `${baseUrl.replace(/\/$/, '')}/capture/${encodeURIComponent(eventKey)}`;
+export function takeAnotherPhotoUrl(eventKey: string, baseUrl: string = getConfiguredSiteUrl(), event?: { shortUrlSlug?: unknown } | null): string {
+  // The event's own short link when the editor set a URL slug (owner, 2026-10-09), else its capture page.
+  return shortLinkOf(event) ?? captureLinkOf(eventKey, baseUrl);
 }
 
 /** "Your photo is ready": the event's own after-save wording when it has one, the standard text in the event's language otherwise. */
@@ -55,6 +57,7 @@ export async function sendPhotoApprovedEmail(
     buttonLabel: translate(language, 'email.buttonSee', undefined, texts),
     language,
     texts,
+    facts: emailFactsOf(event),
   });
 }
 
@@ -84,5 +87,6 @@ export async function sendPhotoNotApprovedEmail(
     buttonLabel: translate(language, 'email.buttonAnother', undefined, texts),
     language,
     texts,
+    facts: emailFactsOf(event),
   });
 }

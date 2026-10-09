@@ -208,7 +208,7 @@ export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor:
   let email: 'sent' | 'skipped' | 'failed' = 'skipped';
   try {
     const event = await resolveEventForSubmission(db, submission).catch(() => null);
-    const result = await deps.sendNotApproved(submission, event, takeAnotherPhotoUrl(String(submission.eventId ?? event?._id ?? '')), undefined, await themeOf(db, event), await textsOf(db, event));
+    const result = await deps.sendNotApproved(submission, event, takeAnotherPhotoUrl(String(submission.eventId ?? event?._id ?? ''), undefined, event), undefined, await themeOf(db, event), await textsOf(db, event));
     email = result.sent ? 'sent' : 'skipped' in result && result.skipped ? 'skipped' : 'failed';
     await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id }, { $set: { 'metadata.rejectionEmailSent': result.sent, 'metadata.rejectionEmailAt': at } });
   } catch (error) {
