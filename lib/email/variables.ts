@@ -32,6 +32,7 @@ export const EMAIL_VARIABLES: readonly EmailVariable[] = [
   { name: 'teams', label: 'The two teams', sample: { en: 'MTK Budapest – Vasas FC', hu: 'MTK Budapest – Vasas FC' } },
   { name: 'date', label: 'The date of the event', sample: { en: '16 October 2026', hu: '2026. október 16.' } },
   { name: 'location', label: 'The place of the event', sample: { en: 'Budapest', hu: 'Budapest' } },
+  { name: 'eventlink', label: 'The link to the event (its short link when the event has a URL slug)', sample: { en: 'https://go.example/mtk', hu: 'https://go.example/mtk' }, url: true },
   { name: 'link', label: 'The link to the photo', sample: { en: 'https://camera.example/share/abc123', hu: 'https://camera.example/share/abc123' }, url: true },
   { name: 'terms', label: 'The link to the terms and policies', sample: { en: 'https://seyuselfies.com/en/policies/', hu: 'https://seyuselfies.com/hu/policies/' }, url: true },
   { name: 'partner1', label: 'The first side (same as the home team)', sample: { en: 'MTK Budapest', hu: 'MTK Budapest' }, aliasOf: 'home' },
@@ -58,6 +59,8 @@ export interface EventFacts {
   partnerName?: string | null;
   home?: string | null;
   visitor?: string | null;
+  /** The link to the event: its short link when it has a URL slug, else its capture page (lib/email/event-link.ts). */
+  eventLink?: string | null;
 }
 
 const clean = (value: unknown): string | undefined => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
@@ -113,6 +116,7 @@ export function emailValues(input: {
     teams: home && visitor ? `${home} – ${visitor}` : undefined,
     date: formatEventDate(facts.date, language),
     location: clean(facts.location),
+    eventlink: clean(facts.eventLink),
     link: clean(input.shareUrl),
     terms: clean(input.termsUrl),
   };

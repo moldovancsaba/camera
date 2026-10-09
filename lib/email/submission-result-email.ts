@@ -5,7 +5,8 @@ import { listApprovedShareVariants } from '@/lib/tryon/publication';
 import { sendSubmissionResultEmail, type SubmissionNotificationResult, type SubmissionNotificationInput } from '@/lib/email/submission-notification';
 import { sanitizeEmail } from '@/lib/security/sanitize';
 import { loadEventTheme } from '@/lib/theme/load';
-import { eventFactsOf, type EventFacts } from '@/lib/email/variables';
+import { emailFactsOf } from '@/lib/email/event-link';
+import type { EventFacts } from '@/lib/email/variables';
 import type { EventTheme } from '@/lib/theme/event-theme';
 import { getConfiguredSiteUrl } from '@/lib/site-url';
 import {
@@ -561,7 +562,7 @@ export async function dispatchPendingRelatedEmailForSubmission(
     policy,
     'after_related',
     await themeOf(db, event),
-    eventFactsOf(event)
+    emailFactsOf(event)
   );
 
   if (!result.shouldRetry) {
@@ -616,7 +617,7 @@ export async function dispatchTryOnResubmissionApprovalEmailForSubmission(
     policy,
     'after_tryon_resubmission_approved',
     await themeOf(db, event),
-    eventFactsOf(event)
+    emailFactsOf(event)
   );
 }
 
@@ -666,7 +667,7 @@ export async function dispatchPendingSubmissionEmailForSubmission(
       policy,
       'after_save',
       await themeOf(db, event),
-      eventFactsOf(event)
+      emailFactsOf(event)
     );
 
     mergedResult.shouldRetry = mergedResult.shouldRetry || afterSaveResult.shouldRetry;

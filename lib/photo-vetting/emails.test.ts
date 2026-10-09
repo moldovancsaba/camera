@@ -92,6 +92,8 @@ test('in Hungarian the not-approved email is Hungarian and keeps its fixed wordi
 test('links: the share link carries the token, the retake link the event key', () => {
   assert.equal(approvedShareUrl('tok', 'https://x.test/'), 'https://x.test/share/tok');
   assert.equal(takeAnotherPhotoUrl('a b', 'https://x.test/'), 'https://x.test/capture/a%20b');
+  assert.match(takeAnotherPhotoUrl('e1', 'https://x.test/', { shortUrlSlug: 'mtk' }), /^https:\/\/[^/]+\/mtk$/, 'an event with a URL slug is linked by its short link');
+  assert.equal(takeAnotherPhotoUrl('e1', 'https://x.test/', { shortUrlSlug: '' }), 'https://x.test/capture/e1', 'no slug: the capture page');
 });
 
 test('a wording written for the partner or the event reaches the sender: the not-approved texts, the button label and the sender\'s defaults use it', async () => {

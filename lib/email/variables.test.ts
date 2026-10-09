@@ -17,7 +17,7 @@ test('the values come from the user, the event and the two sides of the match', 
     eventName: 'MTK Budapest x Vasas FC',
     shareUrl: 'https://camera.test/share/abc',
     termsUrl: 'https://seyuselfies.com/hu/policies/',
-    facts: { date: '2026-10-16T00:00:00.000Z', location: 'Budapest', partnerName: 'MTK Budapest', home: 'MTK Budapest', visitor: 'Vasas FC' },
+    facts: { date: '2026-10-16T00:00:00.000Z', location: 'Budapest', partnerName: 'MTK Budapest', home: 'MTK Budapest', visitor: 'Vasas FC', eventLink: 'https://go.messmass.com/mtk' },
     language: 'hu',
   });
   assert.deepEqual(values, {
@@ -31,6 +31,7 @@ test('the values come from the user, the event and the two sides of the match', 
     teams: 'MTK Budapest – Vasas FC',
     date: '2026. október 16.',
     location: 'Budapest',
+    eventlink: 'https://go.messmass.com/mtk',
     link: 'https://camera.test/share/abc',
     terms: 'https://seyuselfies.com/hu/policies/',
   });
@@ -59,10 +60,10 @@ test('the facts are read from an event document and its messmass snapshot', () =
 test('the catalogue: every variable has a sample in both languages, the menu lists each once, and the links are the two address variables', () => {
   for (const variable of EMAIL_VARIABLES) assert.ok(variable.sample.en && variable.sample.hu, variable.name);
   assert.equal(new Set(EMAIL_VARIABLES.map((variable) => variable.name)).size, EMAIL_VARIABLES.length);
-  assert.deepEqual(MENU_VARIABLES.map((variable) => variable.name), ['name', 'event', 'partner', 'home', 'visitor', 'teams', 'date', 'location', 'link', 'terms']);
-  assert.deepEqual(URL_VARIABLES, ['link', 'terms']);
+  assert.deepEqual(MENU_VARIABLES.map((variable) => variable.name), ['name', 'event', 'partner', 'home', 'visitor', 'teams', 'date', 'location', 'eventlink', 'link', 'terms']);
+  assert.deepEqual(URL_VARIABLES, ['eventlink', 'link', 'terms']);
   const samples = sampleValues('hu');
   assert.equal(samples.date, '2026. október 16.');
-  const out = resolveRich(parseRich('{name} {event} {partner} {home} {visitor} {teams} {date} {location} {link} {terms} {partner1} {partner2}'), samples, URL_VARIABLES);
+  const out = resolveRich(parseRich('{name} {event} {partner} {home} {visitor} {teams} {date} {location} {link} {terms} {partner1} {partner2} {eventlink}'), samples, URL_VARIABLES);
   assert.deepEqual([out.missing, out.unknown], [[], []], 'every name in the catalogue is known');
 });
