@@ -16,17 +16,19 @@ export interface SocialLoginButtonsProps {
   /** The capture page the login starts on and its step: the login brings the guest back there (lib/auth/capture-return.ts). */
   captureEventId?: string;
   capturePage?: number;
+  /** Both buttons are off (the acceptance on the Who-are-you page is not ticked yet). */
+  disabled?: boolean;
 }
 
-export default function SocialLoginButtons({ fromLogout, captureEventId, capturePage }: SocialLoginButtonsProps) {
+export default function SocialLoginButtons({ fromLogout, captureEventId, capturePage, disabled = false }: SocialLoginButtonsProps) {
   const { t } = useT();
   const googleHref = socialLoginHref('google', { fromLogout, captureEventId, capturePage });
   const facebookHref = socialLoginHref('facebook', { fromLogout, captureEventId, capturePage });
 
   return (
     <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 15rem), 1fr))' }}>
-      <BrandSignInButton provider="google" href={googleHref} label={t('social.google.aria')} />
-      <BrandSignInButton provider="facebook" href={facebookHref} label={t('social.facebook.aria')} />
+      <BrandSignInButton provider="google" href={googleHref} label={t('social.google.aria')} disabled={disabled} />
+      <BrandSignInButton provider="facebook" href={facebookHref} label={t('social.facebook.aria')} disabled={disabled} />
     </div>
   );
 }

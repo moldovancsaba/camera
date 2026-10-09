@@ -17,7 +17,8 @@ import { loginOptions } from '@/lib/events/identity-page';
 import { useT } from '@/components/i18n/UiLanguageProvider';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import CaptureStageShell from '@/components/capture/CaptureStageShell';
-import { Button, Divider, Group, Stack, TextInput, Title } from '@mantine/core';
+import { Anchor, Box, Button, Checkbox, Divider, Group, Stack, TextInput, Title } from '@mantine/core';
+import type { SentencePart } from '@/lib/events/acceptance';
 import {
   CAMERA_DEFAULT_BRAND_COLOR,
 } from '@/lib/gds/tokens/colors';
@@ -42,8 +43,21 @@ export interface WhoAreYouPageData {
   email: string;
 }
 
+/**
+ * The consent page shown as one checkbox with one sentence on this page (issue 523; client feedback 2026-10-09). Everything on the page is off until it is ticked. The page that owns the
+ * flow records the acceptance when it is given (a sign-in leaves the page), so the box only reports the tick.
+ */
+export interface WhoAreYouAcceptance {
+  sentence: SentencePart[];
+  /** Ticked already (the user came back to this page after accepting). */
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}
+
 export interface WhoAreYouPageProps {
   config: WhoAreYouPageConfig;
+  /** Present when the event shows its acceptance here instead of on a page of its own. */
+  acceptance?: WhoAreYouAcceptance;
   onNext: (data: WhoAreYouPageData) => void;
   onBack?: () => void;
   logoUrl?: string | null;
@@ -56,6 +70,7 @@ export interface WhoAreYouPageProps {
 
 export default function WhoAreYouPage({
   config,
+  acceptance,
   onNext,
   onBack,
   logoUrl,
@@ -68,6 +83,9 @@ export default function WhoAreYouPage({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [errors, setErrors] = useState<{ name?: string; email?: string }>({});
+  // With the acceptance on this page nothing works until its box is ticked.
+  const [accepted, setAccepted] = useState(acceptance?.checked === true);
+  const locked = acceptance !== undefined && !accepted;
 
   // At least one way to say who you are stays on (planning item 36); an empty text falls back to its default.
   const { sso: enableSSOLogin, form: enablePseudoReg } = loginOptions(config);
@@ -98,6 +116,7 @@ export default function WhoAreYouPage({
   };
 
   const handleNext = () => {
+    if (locked) return;
     if (validate()) {
       onNext({
         name: name.trim(),
@@ -119,12 +138,40 @@ export default function WhoAreYouPage({
       description={own('login.description', config.description)}
       logoUrl={logoUrl}
     >
+      {acceptance ? (
+        <Box p="xs" style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 'var(--mantine-radius-md)' }} data-acceptance>
+          <Checkbox
+            size="xs"
+            checked={accepted}
+            onChange={(event) => {
+              setAccepted(event.currentTarget.checked);
+              acceptance.onChange(event.currentTarget.checked);
+            }}
+            aria-required
+            label={
+              <span style={{ fontSize: '0.75rem', lineHeight: 1.35 }}>
+                {acceptance.sentence.map((part, index) =>
+                  part.linkUrl ? (
+                    // A link opens its page in a new tab, so the user does not lose the flow; a tap on it does not tick the box.
+                    <Anchor key={index} href={part.linkUrl} target="_blank" rel="noopener noreferrer" fw={700} td="underline" inherit onClick={(event) => event.stopPropagation()}>
+                      {part.text}
+                    </Anchor>
+                  ) : (
+                    <span key={index}>{part.text}</span>
+                  )
+                )}
+              </span>
+            }
+          />
+        </Box>
+      ) : null}
+
       {enableSSOLogin ? (
         <Stack gap="xs">
           <Title order={4} ta="center">
             {socialHeading}
           </Title>
-          <SocialLoginButtons captureEventId={eventId} capturePage={pageIndex} />
+          <SocialLoginButtons captureEventId={eventId} capturePage={pageIndex} disabled={locked} />
         </Stack>
       ) : null}
 
@@ -150,6 +197,7 @@ export default function WhoAreYouPage({
             }}
             onKeyDown={handleKeyPress}
             placeholder={own(['login.namePlaceholderEditor', 'login.namePlaceholder'], config.namePlaceholder)}
+            disabled={locked}
             aria-label={nameLabel}
             error={errors.name}
           />
@@ -167,6 +215,7 @@ export default function WhoAreYouPage({
             }}
             onKeyDown={handleKeyPress}
             placeholder={own(['login.emailPlaceholderEditor', 'login.emailPlaceholder'], config.emailPlaceholder)}
+            disabled={locked}
             aria-label={emailLabel}
             error={errors.email}
           />
@@ -177,7 +226,7 @@ export default function WhoAreYouPage({
                 {t('common.back')}
               </Button>
             ) : null}
-            <Button onClick={handleNext} color={brandColor} size={buttonSize} aria-label={buttonText}>
+            <Button onClick={handleNext} color={brandColor} size={buttonSize} aria-label={buttonText} disabled={locked}>
               {buttonText}
             </Button>
           </Group>

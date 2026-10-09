@@ -281,6 +281,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           pageType: consent.pageType,
           checkboxText: String(consent.checkboxText),
           ...(safeLinkUrl(consent.linkUrl) ? { linkUrl: safeLinkUrl(consent.linkUrl) } : {}),
+          ...(typeof consent.shownText === 'string' && consent.shownText.trim() ? { shownText: consent.shownText.trim().slice(0, 600) } : {}),
           accepted: true,
           acceptedAt:
             typeof consent.acceptedAt === 'string' && consent.acceptedAt.trim()

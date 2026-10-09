@@ -34,7 +34,9 @@ import {
 } from '@/lib/tour/config/captureTourSteps';
 import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoAreYouPage';
 import AcceptPage, { type AcceptPageData } from '@/components/capture/AcceptPage';
-import { consentRecords } from '@/lib/events/consent';
+import { consentCheckboxes, consentRecords } from '@/lib/events/consent';
+import { acceptanceOnLogin, acceptanceSentence, sentenceText } from '@/lib/events/acceptance';
+import { forgetConsents, recallConsents, rememberConsents } from '@/lib/capture/consent-memory';
 import { approvalTexts } from '@/lib/events/page-texts';
 import { useT, useUiTexts } from '@/components/i18n/UiLanguageProvider';
 import { translate, type MessageKey, type MessageValues, type UiLanguage } from '@/lib/i18n';
@@ -86,6 +88,7 @@ interface EventData {
   customPages: CustomPage[];  // Custom page flow
   loadingText?: string;  // Customizable loading text
   tourEnabled?: boolean; // The guided tour is off unless the event turns it on (camera#356)
+  acceptanceOnWhoAreYou?: boolean; // The consent page is one checkbox on the Who-are-you page (issue 523)
   logoUrl?: string;  // Optional event logo URL
   showLogo: boolean;  // Whether to display logo on pages
   brandColor?: string;  // Primary brand color (hex)
@@ -322,7 +325,9 @@ export default function EventCapturePage({
   const [saveRequested, setSaveRequested] = useState(false);
   const vetted = event?.photoVettingRequired === true;
   
-  const { onboardingPages, thankYouPages, takePhotoPage } = splitCustomPages(customPages);
+  // With the acceptance on the Who-are-you page (issue 523) the consent page is not a step of its own: its checkboxes are shown there as one (lib/events/acceptance.ts).
+  const { pages: journeyPages, acceptPage: acceptanceBox } = acceptanceOnLogin(customPages, event?.acceptanceOnWhoAreYou === true);
+  const { onboardingPages, thankYouPages, takePhotoPage } = splitCustomPages(journeyPages);
 
   // Keep camera scope identifier for per-event/camera try-on setup resolution.
   useEffect(() => {
@@ -406,13 +411,15 @@ export default function EventCapturePage({
           .then(res => res.json())
           .then(sessionData => {
             if (sessionData.authenticated && sessionData.user) {
-              // Auto-populate userInfo from authenticated session
+              // Auto-populate userInfo from authenticated session, and what was accepted before the sign-in (the page's own state went with the redirect, lib/capture/consent-memory.ts)
+              const remembered = recallConsents(window.sessionStorage, eventId);
               setCollectedData(prev => ({
                 ...prev,
                 userInfo: {
                   name: sessionData.user.name || '',
                   email: sessionData.user.email || '',
                 },
+                consents: [...prev.consents, ...remembered.filter((record) => !prev.consents.some((c) => c.pageId === record.pageId && c.checkboxText === record.checkboxText))],
               }));
               
               // Advance to next page (skip who-are-you since we have the data)
@@ -433,7 +440,7 @@ export default function EventCapturePage({
         window.history.replaceState({}, '', window.location.pathname);
       }
     }
-  }, []); // Empty deps array - only run once on mount
+  }, [eventId]); // Runs once on mount: the event id of the page never changes
 
   // OAuth / SSO sign-in failed (callback redirected here with ?error=&message=)
   useEffect(() => {
@@ -492,6 +499,7 @@ export default function EventCapturePage({
           customPages: eventData.customPages || [],
           loadingText: eventData.loadingText,
           tourEnabled: eventData.tourEnabled === true,
+          acceptanceOnWhoAreYou: eventData.acceptanceOnWhoAreYou === true,
           logoUrl: eventData.logoUrl,
           showLogo: eventData.showLogo || false,
           brandColor: eventData.brandColor,
@@ -1160,15 +1168,24 @@ export default function EventCapturePage({
    * Stores consent and moves to next page
    */
   const handleConsentComplete = (page: CustomPage, data: AcceptPageData | CTAPageData) => {
-    setCollectedData(prev => ({
-      ...prev,
-      consents: [
-        ...prev.consents,
-        // A consent page with several checkboxes leaves one record per checkbox: its exact text, its link and the time (camera#330).
-        ...consentRecords({ pageId: page.pageId, pageType: page.pageType as 'accept' | 'cta', checkboxText: page.config.checkboxText }, data),
-      ],
-    }));
+    // A consent page with several checkboxes leaves one record per checkbox: its exact text, its link and the time (camera#330).
+    const consents = [...collectedData.consents, ...consentRecords({ pageId: page.pageId, pageType: page.pageType as 'accept' | 'cta', checkboxText: page.config.checkboxText }, data)];
+    setCollectedData(prev => ({ ...prev, consents }));
+    // A sign-in on a later page leaves this page and comes back: what was accepted is kept for it (issue 523).
+    rememberConsents(window.sessionStorage, eventId, consents);
     handleNextPage();
+  };
+
+  /**
+   * The acceptance box on the Who-are-you page (issue 523) was ticked or cleared: the consent records of the consent page are made (one per checkbox, with the one sentence the user read)
+   * or taken away. They are recorded when the box is ticked, not when the page is left, because a sign-in leaves the page and brings the user back to it.
+   */
+  const handleAcceptanceChange = (page: CustomPage, checked: boolean, shownText: string) => {
+    const items = consentCheckboxes(page.config);
+    const others = collectedData.consents.filter((record) => record.pageId !== page.pageId);
+    const consents = checked ? [...others, ...consentRecords({ pageId: page.pageId, pageType: 'accept', checkboxText: page.config.checkboxText }, { accepted: true, acceptedAt: new Date().toISOString(), items, shownText })] : others;
+    setCollectedData(prev => ({ ...prev, consents }));
+    rememberConsents(window.sessionStorage, eventId, consents);
   };
   
   /**
@@ -1276,6 +1293,7 @@ export default function EventCapturePage({
     
     // Reset flow state
     setCollectedData({ consents: [] });
+    forgetConsents(window.sessionStorage, eventId);
     
     // ALWAYS restart from the very beginning
     if (hasAnyOnboardingPages) {
@@ -1332,6 +1350,18 @@ export default function EventCapturePage({
             eventId={eventId}
             pageIndex={currentPageIndex}
             onNext={handleWhoAreYouComplete}
+            acceptance={
+              acceptanceBox
+                ? (() => {
+                    const sentence = acceptanceSentence(consentCheckboxes(acceptanceBox.config), language, uiTexts);
+                    return {
+                      sentence,
+                      checked: collectedData.consents.some((record) => record.pageId === acceptanceBox.pageId),
+                      onChange: (checked: boolean) => handleAcceptanceChange(acceptanceBox, checked, sentenceText(sentence)),
+                    };
+                  })()
+                : undefined
+            }
           />
         );
       

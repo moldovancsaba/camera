@@ -51,3 +51,13 @@ test('a consent page with a list leaves one record per checkbox with its exact t
   assert.deepEqual(consentRecords({ pageId: 'c', pageType: 'cta', checkboxText: 'https://example.com' }, { accepted: true, acceptedAt: when, items: [] }), [{ pageId: 'c', pageType: 'cta', checkboxText: 'https://example.com', accepted: true, acceptedAt: when }]);
 });
 
+
+test('records made from the one checkbox on the Who-are-you page keep the sentence the user read, on every record', () => {
+  const items = [{ text: 'I accept the Terms and conditions', linkUrl: 'https://example.test/terms' }, { text: 'I have read the Privacy policy' }];
+  const records = consentRecords({ pageId: 'p1', pageType: 'accept' }, { accepted: true, acceptedAt: '2026-10-09T20:00:00.000Z', items, shownText: 'Elfogadom az Általános Szerződési Feltételeket' });
+  assert.equal(records.length, 2, 'still one record per document');
+  assert.ok(records.every((r) => r.shownText === 'Elfogadom az Általános Szerződési Feltételeket' && r.accepted === true && r.acceptedAt === '2026-10-09T20:00:00.000Z'));
+  assert.equal(records[0].linkUrl, 'https://example.test/terms');
+  const plain = consentRecords({ pageId: 'p1', pageType: 'accept' }, { accepted: true, acceptedAt: 'x', items });
+  assert.ok(plain.every((r) => !('shownText' in r)), 'a separate consent page leaves records as before');
+});

@@ -90,6 +90,8 @@ interface EventRecord {
   customPages?: CustomPage[];
   /** What decides which default pages the event gets: the page editor builds the journey from it (camera#378). */
   journeyContext?: JourneyContext;
+  /** The consent page is one checkbox on the Who-are-you page (issue 523). */
+  acceptanceOnWhoAreYou?: boolean;
   tryOn?: {
     enabled?: boolean;
     setupId?: string | null;
@@ -938,12 +940,13 @@ export default function EditEventPage({
         eventId={mongoId}
         initialPages={customPages}
         journeyContext={event?.journeyContext}
-        onSave={async (pages) => {
+        acceptanceOnWhoAreYou={event?.acceptanceOnWhoAreYou === true}
+        onSave={async (pages, options) => {
           try {
             const response = await fetch(`/api/events/${mongoId}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ customPages: pages }),
+              body: JSON.stringify({ customPages: pages, acceptanceOnWhoAreYou: options.acceptanceOnWhoAreYou }),
             });
 
             if (!response.ok) {
