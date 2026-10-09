@@ -1,6 +1,6 @@
 # Building bricks: one way to build every element of an event
 
-Research and proposal of 2026-10-09 for [camera#412](https://github.com/moldovancsaba/camera/issues/412) (register item 151, the first step of item 139). The facts come from [ELEMENT_INVENTORY.md](ELEMENT_INVENTORY.md) (477 rows read from the code of `main`, nothing run). **This is a proposal: nothing in it is built yet.** Parts the owner already decided are marked **(decided)**; the rest is confirmed by number in section 9.
+Research and proposal of 2026-10-09 for [camera#412](https://github.com/moldovancsaba/camera/issues/412) (register item 151, the first step of item 139). The facts come from [ELEMENT_INVENTORY.md](ELEMENT_INVENTORY.md) (477 rows read from the code of `main`, nothing run). **Status 2026-10-09 evening:** the owner answered questions 156 to 164 (section 9) and the model below follows those answers. Built so far: the first form of the messmass logo default (PR #414, to be replaced in step 4 of section 8) and the repair of the undefined design tokens (camera#415). Parts the owner decided are marked **(decided)**.
 
 ## 1. In one page
 
@@ -27,8 +27,14 @@ How it reads with bricks:
 
 - A logo is a **Picture brick**, a library item. The slot is simply "logo". It resolves: the event's logos, else the partner's logos (the messmass import is one of them, flagged), else the global default, else none.
 - **Automatic (decided, 153 yes, 154 keep):** provisioning collects the partner logo from messmass into the partner's library and makes it a default in the same step. The people who set up and tune an event find it there and replace it if they want. The six MTK Budapest events keep it.
-- **No places (the owner, 155):** the library does not ask where a logo shows. The logo shows wherever a logo shows (the pages, the loading screens, the share page, the e-mail). The four ticks, the scenario on each assignment and the "Users see this one" marker go away; the library cards say only "default" and "from messmass".
-- **One question remains (156):** when an event has more than one logo, the system picks one at random (a feature the code half has, `selectRandomLogo` is unused, but nothing agreed it) or always the first. I recommend one random pick per user visit, so the logo does not change between pages. Until the owner answers, the first by order is shown, as today.
+- **The perspective is the place of use, not the logo (decided, 155 and 156).** "We choose logos for the event, never events for the logos." The library never asks where a logo shows, and no logo is pushed to events. Every place where the system uses a logo uses **the default by default**, and the editor chooses there: in the event's settings for the whole event, and where a place has settings of its own (a page, the slideshow, the loading screen of the capture app) in those. The four former scenarios are only four places of use; they are not set in the library any more. At every place the options are the same:
+  - **use the default** (what the parent has; the default logo is itself an item of the library);
+  - **upload** a new logo and assign it;
+  - **select** one from the parent's library (the partner from the global library, the event from the partner's library);
+  - **replace** the default;
+  - **add more**.
+- **One logo: it is used. More than one: always a random one (decided, 156).** (`selectRandomLogo` exists and nothing calls it.) My reading, for the owner to confirm (168): "add more" keeps the default in use next to the added ones, and the random pick is among all of them.
+- **When messmass has a new logo (decided, 156), camera recognises it, replaces the imported default, and it goes down to every child that uses the default.** My reading, for the owner to confirm (169): it never replaces a logo the partner or the event chose itself.
 - The partner page, the library card and the event page all ask the same resolver, so none can say "none" while one exists.
 
 ## 3. The bricks
@@ -57,11 +63,13 @@ Order, for every slot: **event's own, partner's own, global default, built-in de
 
 1. **The first that has a value wins, and the screen says which one it is:** "Own", "From the partner", "From messmass", "Global default", "Built-in". Today only the try-on setup and the button colour record the winner.
 2. **messmass is a source, not a fourth level.** What messmass provides lands at the partner or the event as the default there, flagged "From messmass" (the logo, the colours, the names). An own value replaces it; "Use the default again" brings it back.
-3. **Following means no copy.** An event stores only what an editor set. A change of the partner or the global default shows at once on every event that follows, and never touches an event's own values. Today colours, frames and logos are copied into the event and a cascade replaces whole lists, which drops what an event assigned itself; that goes against "nothing already set is deleted" (data-model reading, finding 2). Existing copies are measured first and migrated without deleting anything.
+3. **Following means no copy (my reading of 158 and 161, for the owner to confirm: 167).** An event stores only what an editor set. A change of the partner or the global default shows at once on every event that follows, and never touches an event's own values. Today colours, frames and logos are copied into the event and a cascade replaces whole lists, which drops what an event assigned itself; that goes against "nothing already set is deleted" (data-model reading, finding 2). Existing copies are measured first and migrated without deleting anything.
 4. **Empty means follow.** A text field saves empty while it shows the default (grey placeholder). The English default is never saved as the event's own. Today the edit forms freeze English defaults into events and a heuristic (`textOr`, the stored English counts as unset in Hungarian) repairs it afterwards.
 5. **"Use the default" clears one slot and nothing else.**
 6. **Nothing is deleted by following.** A library item in use cannot be deleted (built, #392); a page the editor deletes returns the default of its place (#378).
-7. **One resolver per brick type in code**, so a screen asks and does not hold its own truth. It replaces or wraps the ones that exist today: `resolveEventTheme` and the theme loader, `textOr` and its relatives (`own`, `sharePageText`, `pendingTryOnText`, `emailTemplateIn`), the `normalize*` functions, the journey defaults, the frame and logo picks, the try-on setup resolver. The library rules (an offer filter, not a value resolver) and the messmass snapshot stay.
+7. **Choosing happens at the place of use (decided).** The same panel at every place, for every brick: use the default, upload and assign, select from the parent's library, replace, add more. One item is used as it is, several are picked at random. A library only holds items; it does not say where they show.
+8. **Words (decided, 158):** *default* is what comes from above, *own* is what was set at this level. What a partner sets is the partner's own and its events' default; what an event sets is its own, and a later change of the partner does not override it. In the screens: "Default (from the partner)" and "Own".
+9. **One resolver per brick type in code**, so a screen asks and does not hold its own truth. It replaces or wraps the ones that exist today: `resolveEventTheme` and the theme loader, `textOr` and its relatives (`own`, `sharePageText`, `pendingTryOnText`, `emailTemplateIn`), the `normalize*` functions, the journey defaults, the frame and logo picks, the try-on setup resolver. The library rules (an offer filter, not a value resolver) and the messmass snapshot stay.
 
 How each family behaves today against the rule:
 
@@ -101,7 +109,7 @@ Logo (Picture), heading (Words), text (Words), optional picture (Picture), butto
 
 ### 6.2 The welcome page screen picture = the default slideshow stage (item 139)
 
-The picture is the composition of the event's **main slideshow**. Today they share nothing: the stage is live in the browser, the welcome picture is a hand-made image pasted into the page.
+The picture is the composition of the event's **default slideshow**. Today they share nothing: the stage is live in the browser, the welcome picture is a hand-made image pasted into the page.
 
 | Slot | Brick | Default | Today |
 |---|---|---|---|
@@ -120,7 +128,7 @@ Build in four parts, each on what exists:
 3. The QR target comes from the tracked link, so the picture and the stage cannot disagree.
 4. A rebuild on any source change (theme refresh, frame change, link change) and a marker that the picture is generated, so an editor's own picture is never overwritten.
 
-**Main slideshow rule (proposal, question 160):** no flag exists. The main slideshow of an event is the default slideshow every event gets (items 1 to 5), unless an editor marks another slideshow as main.
+**Default slideshow rule (decided, 160):** every event gets a default slideshow made from the default elements; the editor modifies it, or creates another and sets it as the default; wherever a slideshow is needed, the default one is used. There is no "main" flag: it is the default slideshow.
 
 ### 6.3 Frame
 
@@ -171,30 +179,41 @@ Recommendation, in this order (each its own change, checked in a browser):
 3. **A gate so it cannot drift**: a script in `gds:check` (undefined `--gds-*` names; inline styles with a size literal; raw layout tags in pages; native `alert`/`confirm`; hand-rolled breadcrumbs; anchor around button) with a per-file baseline that may only fall and new files starting at 0; add `components/admin` to the boundary check and widen the lint globs.
 4. Migrate the five worst screens (event overview, partner overview, try-on vetting, event frames, event edit) and the library pages onto the kit.
 
-## 8. Proposed order for 139
+## 8. The order of 139 (left to me by the owner: by dependency and recommendation, everything is delivered)
 
-Each step ships alone, is checked in a real browser at phone width where it is visible, and updates its issue and docs. No step changes what a user sees on the day of the match without the owner's go.
+Each step ships alone, is checked in a real browser at phone width where it is visible, and updates its issue and docs. A step that changes what users see on the day of the match waits for the owner's go.
 
-| Step | Content | Issues |
-|---|---|---|
-| **0 Logo** | the messmass logo is collected into the partner library and made a default automatically (153), inherited by every event that follows the partner (**built, PR #414; the backfill of the 190 existing partners waits for the owner's go**); the places go (155); which logo shows when there are several waits for 156 | #369, #367 |
-| **1 Journey view** | the page editor shows the whole journey with the default pages (welcome, consent, login, selfie taking), "Customise", the steps that are not pages; the default welcome page | #378, #330 |
-| **2 Parts and default slideshow** | stadium background and sample selfie as Images library items with tags; the default slideshow with its overlay, window, QR, QR text and the **URL text** field; the main slideshow rule | #326, #328 |
-| **3 Welcome page screen** | the layout and the renderer of 6.2; the picture follows its sources; the welcome page uses it | #327 |
-| **4 Toggles** | random or user-selected frame and message; frame toggles with positions | #329, #331 |
+| Step | Content | Depends on | Issues |
+|---|---|---|---|
+| **1 Token repair** | the 213 undefined design tokens replaced, a gate against them (done, PR #416) | none | #415 |
+| **2 Journey view** | the page editor shows the whole journey with the default pages (welcome, consent, login, selfie taking), "Customise", the steps that are not pages; the default welcome page | the journey function that exists | #378, #330 |
+| **3 Foundation** | the shared admin kit; the slot resolver (own, else the parent's default, follow without copying, random, source shown) and the slot panel at every level (use the default, upload, select from the parent's library, replace, add more) | 1 | new |
+| **4 Logo on slots** | the places of use instead of the library ticks, random pick, messmass change detection, migration of the data, the collect for the 190 partners; replaces the first form of PR #414 | 3 | #369, #367 |
+| **5 Pictures on slots** | the picture fields as slots; library tags (sample selfie, stadium background, QR text) | 3 | #368 |
+| **6 Text levels** | the Dictionary (global default texts, English and Hungarian), partner and event levels, the partner's default language, the default pages' texts at every level | 3 | #353, plan item 19 |
+| **7 Default slideshow** | generated per event from the default elements, with the default flag, the URL text field and the sample selfie fallback | 5, 6 | #326, #328 |
+| **8 Welcome page screen** | the layout and the renderer of 6.2; the picture follows its sources | 7 | #327 |
+| **9 Toggles** | random or user-selected frame and message; frame toggles with positions | frames model | #329, #331 |
+| **10 Workspaces** | the editors regrouped into global, partner and event workspaces, one editor at a time while 3 to 9 land, the menu last (shown to the owner as screens first) | runs along 3 to 9 | #412 |
 
-The image gallery in the editor (#368, the acceptance of #369) stays unaccepted until the owner accepts 139 (owner, 139). After 139: text levels and the Dictionary screen, the editor regrouping of section 7 one editor at a time, the design-system fixes (152), and the logged defects of section 5. The order differs from my first sketch (the picture of step 3 is rendered from the parts of step 2, so the parts come first).
+Why this order: step 2 does not depend on the new model, so the owner sees the whole journey early. Everything from step 4 on needs the slot resolver of step 3. The default slideshow needs the picture and text slots, and the welcome page screen needs the default slideshow. The image gallery in the editor (#368, the acceptance of #369) stays unaccepted until the owner accepts 139.
 
-## 9. Questions for the owner
+## 9. The owner's answers (2026-10-09) and what is left
 
-Numbers continue the register. 153, 154 and 155 are answered; 156 is the only logo question left.
+| # | Answer |
+|---|---|
+| 153, 154, 155 | the messmass logo is the partner's default automatically; it stays on the six MTK events; the library does not ask where a logo shows |
+| 156 | the question was framed wrongly: see section 2 (place of use; one logo used, several always random; options at every place) |
+| 157 | yes, the one rule (section 4) |
+| 158 | the owner asked for an explanation and gave the model: a new partner gets the defaults from messmass and the dictionary, an event gets what its partner has, and what an editor sets is its own and is never overridden (section 4, items 3 and 8) |
+| 159 | yes: global default texts (i18n, English and Hungarian), partner and event levels, a new partner imports the global ones and a new event the partner's |
+| 160 | yes: the default slideshow (6.2) |
+| 161 | yes in principle: a one-way ticket, editors add items at global, partner and event level, the children inherit the default, the editor selects which one is used |
+| 162, 163 | left to me: section 8, everything is delivered |
+| 164 | do it now: done, PR #416 |
 
-- **156** When an event has more than one logo: a) a random pick, once per user visit (my recommendation), b) always the first.
-- **157** One rule for every brick: event's own, partner's own, global default, built-in; messmass fills the partner or event level flagged "From messmass". Confirm, or say what differs.
-- **158** Following, not copying: from now an event stores only what an editor set; partner and global changes show on every event that follows; existing copies stay, nothing is deleted (I measure before any migration). a) yes b) keep copying for colours, frames, logos.
-- **159** Texts get a partner level and a global level (the Dictionary screen of item 19), empty follows, the partner chooses its default language (#353). a) yes, after the 16th b) only what 139 needs now.
-- **160** The main slideshow of an event is the default slideshow, unless an editor marks another as main. Yes, or another rule.
-- **161** The editors move to the Global, Partner and Event workspaces of section 7, one editor at a time. a) yes, starting after steps 1 to 3 b) differently (say how).
-- **162** The order of 139 as in section 8. a) yes b) change it.
-- **163** What of 139 must be live on Friday 16 October: a) nothing (the MTK event keeps its hand-made welcome page screen picture, 139 lands after), b) steps 0 and 1 only, c) all of steps 0 to 4.
-- **164** The design-system repair of 7.1: a) fix the undefined tokens now, before step 1 (cards get their borders, muted text is dimmed on every admin screen; a visible change, mechanical, checked in a browser), then the kit and the gate as part of 161; b) leave it until 139 is done.
+Still to confirm, because they are my readings:
+
+- **167** Following, not photocopying (section 4, item 3): the event stores nothing for an element until an editor sets one; it looks at its parent each time, so a change at the partner shows on the event at once unless the event has its own. Is that what you mean?
+- **168** "Add more" keeps the default in use next to the added logos, and the random pick is among all of them.
+- **169** A new logo from messmass replaces the old imported default and goes down to the children that use the default, but never replaces a logo the partner or the event chose itself.
