@@ -413,6 +413,22 @@ be compared per device and browser (camera#204, plan `docs/CAMERA_MODULE_PLAN.md
 - **Limits:** the beacon is rate limited to 300 requests a minute per IP (a venue can share one
   IP); excess records are dropped. It never blocks or delays capture.
 
+## Slideshow diagnostics (anonymous, camera#476)
+
+The giant-screen player reports what it does, so a freeze leaves evidence (`docs/_research/SLIDESHOW_FREEZE_RESEARCH.md`, step S1).
+
+- **What is sent** (`lib/slideshow/diagnostics.ts`, `components/slideshow/useSlideshowDiagnostics.ts`): in batches of at most 100 events, every minute, when 90 are waiting, when the page is hidden or closed, and at once on a stall.
+  - `slide_shown`: the photo (last 6 characters of its id), whether it is the same as the one before (`dup`), the queue length, the gap since the previous slide, how often the browser fetched its picture (`fetches`, 2 or more means the preload did not serve the screen), the load time and size where the browser says them, the picture's size, its host (never the path).
+  - `playlist`: the call (`limit`, `excl` = ids sent as exclude), status, round trip `ms`, `serverMs` (the route's own `generationMs`), `got` and `fresh` slides.
+  - `preload`: time and outcome (ok, error) of each image preload. `lock`: how long one refill held the single-flight lock.
+  - `heartbeat` every 10 s: visibility, the longest gap between two animation frames (`rafGapMs`, a page that stops painting shows here), long tasks, JS heap (Chrome), preloaded pictures, queue length, online, network class.
+  - `stall`: the show should be moving and no slide became current for two holds and five seconds (not while the page is hidden or paused); `error`: a window error or an unhandled rejection (80 characters).
+- **What is never sent or kept:** pictures, addresses with paths or queries, names, e-mails, cookies, IP addresses, device ids. A record is only a structured log line (`camera.slideshow_diagnostic`, a warning when the batch has a stall or an error), never in the database; unknown fields are dropped by an allowlist. The server adds the user agent (200 characters).
+- **Reading it:** Vercel runtime logs of project `04_camera`, filter `camera.slideshow_diagnostic`; group by `batch.session` (one page load) and read the 30 events around each `stall`. Did the same id repeat (`dup`)? Was a call or the lock stuck (`ms`, `lock`)? Was a picture fetched twice or late (`fetches`, `loadMs`)? Did the page stop painting (`rafGapMs`, `vis`)? Was memory climbing (`heapMb`, `preloaded`)? There is no report script yet (the capture one is `npm run camera:diagnostics-report`).
+- **On the screen:** open the screen with `?debug=1` for a small panel with the last events in the corner, and `window.__slideshowLog` in the developer tools holds the last 300. Without `?debug=1` nothing is shown.
+- **Server side:** `GET /api/slideshows/<id>/playlist` answers with a `Server-Timing` header (phases `rate`, `slideshow`, `event`, `inactive`, `aggregate`, `theme`, `total`), visible in the network tab, and a call over one second leaves one `slideshow.playlist_slow` warning with the phases, the pool size and the limit.
+- **Limits:** the beacon is rate limited to 300 requests a minute per IP, a layout page with many cells sends one stream for each cell, and a stall is not reported while the page is hidden.
+
 ## Scheduled jobs and workers
 
 **Vercel Cron: try-on completion backstop (paused since v12.3.40).** The job that

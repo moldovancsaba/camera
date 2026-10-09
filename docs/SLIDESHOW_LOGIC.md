@@ -173,6 +173,10 @@ The model still stores fade-related timing, but current player behavior must alw
 
 `bufferSize` is a target queue depth, not a “total number of slides in the show”. Do not raise it to hide a stall: the depth is also how long a newly added photo waits for its turn. Never append a slide the queue already holds (`lib/slideshow/queue.ts`).
 
+### Diagnostics
+
+The player reports what it does (slides shown with a repeat flag, playlist calls, preloads, the refill lock, a 10 s heartbeat, stalls, errors) to `POST /api/observability/slideshow-diagnostic`, which only logs `camera.slideshow_diagnostic`. `?debug=1` shows the last events in a corner panel. The playlist route answers with a `Server-Timing` header. What is sent and how to read it: `RUNBOOK.md`, "Slideshow diagnostics".
+
 ### Layout independence
 
 Composite layout cells do not duplicate slideshow business logic. They reuse the same player core with different embedding constraints.

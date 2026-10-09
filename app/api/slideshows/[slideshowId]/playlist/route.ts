@@ -28,6 +28,8 @@ import { getInactiveUserEmails } from '@/lib/db/sso';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
 import type { Event } from '@/lib/db/schemas';
 import { EXCLUDE_CAP } from '@/lib/slideshow/queue';
+import { SLOW_PLAYLIST_MS, createLapTimer } from '@/lib/slideshow/server-timing';
+import { logWarn } from '@/lib/observability/logger';
 import {
   SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
   SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
@@ -189,8 +191,10 @@ export async function GET(
   { params }: { params: Promise<{ slideshowId: string }> }
 ) {
   const startedAt = Date.now();
+  const timer = createLapTimer();
   try {
     await checkRateLimit(request, RATE_LIMITS.SLIDESHOW_PLAYLIST);
+    timer.lap('rate');
 
     const { slideshowId } = await params;
     const { searchParams } = request.nextUrl;
@@ -208,6 +212,7 @@ export async function GET(
     const slideshow = await db
       .collection(COLLECTIONS.SLIDESHOWS)
       .findOne({ slideshowId });
+    timer.lap('slideshow');
 
     if (!slideshow) {
       return NextResponse.json({ error: 'Slideshow not found' }, { status: 404 });
@@ -243,6 +248,7 @@ export async function GET(
       : defaultLimit;
 
     const event = await findEventForSlideshow(db, String(slideshow.eventId));
+    timer.lap('event');
 
     if (!event) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
@@ -273,6 +279,7 @@ export async function GET(
 
     // Emails mirrored as inactive on submissions (cameraAccountDisabled); not SSO MongoDB
     const inactiveEmails = await getInactiveUserEmails();
+    timer.lap('inactive');
     if (dbg) {
       console.log(`[Playlist] Filtering out ${inactiveEmails.size} inactive users`);
     }
@@ -348,6 +355,7 @@ export async function GET(
       }
       submissions = await fetchSubmissionsSorted([]);
     }
+    timer.lap('aggregate');
 
     const orderMode = slideshow.orderMode === 'random' ? 'random' : 'fixed';
     if (orderMode === 'random' && submissions.length > 1) {
@@ -370,7 +378,16 @@ export async function GET(
     if (slideshow.screenDesign) {
       const { font } = await loadEventTheme(db, event as unknown as Record<string, unknown>);
       screenDesign = resolveScreenDesign(slideshow.screenDesign, { family: font.family, source: font.source, url: font.url });
+      timer.lap('theme');
     }
+
+    // The phases of this call for the browser's network tab; a slow call also leaves one warning line with them (camera#476).
+    const answerHeaders = () => {
+      if (timer.totalMs() > SLOW_PLAYLIST_MS) {
+        logWarn('slideshow.playlist_slow', 'slow playlist call', { slideshowId, ms: timer.totalMs(), phases: timer.laps, pool: submissions.length, limit });
+      }
+      return { ...PLAYLIST_NO_CACHE_HEADERS, 'Server-Timing': timer.header() };
+    };
 
     const bgPrimary =
       typeof slideshow.backgroundPrimaryColor === 'string' && slideshow.backgroundPrimaryColor
@@ -440,7 +457,7 @@ export async function GET(
           submissionSourceMode,
         },
         },
-        { headers: PLAYLIST_NO_CACHE_HEADERS }
+        { headers: answerHeaders() }
       );
     }
 
@@ -484,7 +501,7 @@ export async function GET(
         orderMode,
       },
       },
-      { headers: PLAYLIST_NO_CACHE_HEADERS }
+      { headers: answerHeaders() }
     );
   } catch (error) {
     if (error instanceof NextResponse) {
