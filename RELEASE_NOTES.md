@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the logo editor shows a logo the library lost, with Keep as own and Remove (issue 421, step 4b; admin only)
+
+- **Changed:** on an event's logo pages a logo the library no longer has is now **shown from the event's snapshot**, marked **No longer in the library**, with a warning (it was dropped from the page while the capture page and the slideshow still showed it). For a logo the **event chose itself**, **Keep as own** makes an own logo of the event from the snapshot (same picture address) and puts it in the lost logo's place and position in every place of the event that used it; **Remove** takes it out as before. A lost logo that comes from the partner's default is shown with a warning that it is the partner's to fix; the event keeps showing it, and a place can replace the default.
+- **Added:** `POST /api/events/<id>/logo-slots/keep` (`{ id }`, manager access).
+- **Not changed:** what any user sees; nothing is created or changed until an editor presses Keep as own. Frames, archive-instead-of-delete, the picture check and the backfill of snapshots are the open phases.
+- **Verified:** type-check; lint; unit tests (the panels show a lost logo from the snapshot; Keep as own: the own logo, its place and position, every place, nothing lost afterwards; the refusals; the route and its access); the full CI chain. The lost panels were seen in a production build (a temporary harness with a lost own logo and a lost inherited one, removed); not seen on a real event (none has a lost logo).
+
 ## Unreleased — the sidebar shows the menu of the event or partner you are in (issue 426, step 10, first move; admin only)
 
 - **Changed (owner idea, 2026-10-09):** inside one event (`/admin/events/<id>/...`) or one partner (`/admin/partners/<id>/...`) the admin sidebar shows **that item's own menu** with **Back to the main menu** at the top and the **name** of the event or partner under its kind. The event menu: Overview, Edit and pages, Vetting, Queue and Analytics (global admins only), Logos, Frames, Images, Slideshows, Landing pages. The partner menu: Overview, Edit, Logos, Frames, Images. Every editor of an event is now one click away instead of a card to find; a partner user no longer sees Queue and Analytics, which sent them away. The same menu is in the phone drawer. The **tab bar** of the event pages is removed (the menu carries its items). The admin tour points at the new menu inside an event or partner and starts by itself only on the main pages.
