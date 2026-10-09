@@ -26,7 +26,7 @@ import { Button, Group, Stack, Text } from '@mantine/core';
 import { CAMERA_DEFAULT_CTA_BRAND_COLOR, CAMERA_STAGE_BLACK, CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
 import { redirectingText } from '@/lib/events/page-texts';
-import { useT } from '@/components/i18n/UiLanguageProvider';
+import { useT, useUiTexts } from '@/components/i18n/UiLanguageProvider';
 
 export interface CTAPageConfig {
   title: string;
@@ -71,13 +71,14 @@ export default function CTAPage({
   submissionId,
 }: CTAPageProps) {
   const { t, own, language } = useT();
+  const texts = useUiTexts();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const hasButton = config.hasButton !== false;
   const urlToVisit = submissionId
     ? `${config.checkboxText}${config.checkboxText.includes('?') ? '&' : '?'}submissionId=${submissionId}`
     : config.checkboxText;
   const visitButtonText = own('cta.visitDefault', config.visitButtonText);
-  const opening = redirectingText(config.redirectingText, language);
+  const opening = redirectingText(config.redirectingText, language, texts);
 
   const handleRedirect = () => {
     if (urlToVisit) {

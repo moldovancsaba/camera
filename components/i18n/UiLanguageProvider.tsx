@@ -31,6 +31,8 @@ export default function UiLanguageProvider({ language, texts = null, children }:
 }
 
 export const useUiLanguage = (): UiLanguage => useContext(UiLanguageContext);
+/** The wordings written for the event's partner or the event (null when none or outside a provider), for the helpers that take them as an argument. */
+export const useUiTexts = (): TextOverrides | null => useContext(UiTextsContext);
 
 export function useT() {
   const language = useUiLanguage();
