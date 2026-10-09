@@ -4,12 +4,14 @@
  * The giant screen shows one new photo every few seconds over a venue link that is not always reliable, and the picture it was given was the full-size one: a
  * composed JPEG at frame size, quality 92 (a megabyte or more), or a try-on PNG at frame size (several). A wall that shows at most 1920 pixels cannot use the
  * extra. So when a photo becomes public its screen picture is made once: the longest edge at most 1920 px, WebP quality 80, stored in the Blob store with a one-year
- * cache header under `screen-pictures/<submission id>.webp`, and named in `Submission.screenImageUrl`. The playlist sends it instead of `imageUrl` when it exists; the
- * original is never changed or removed. A photo that is already small enough names its own picture (`screenImageUrl` = `imageUrl`), so it is not looked at again.
+ * cache header under `screen-pictures/<submission id>-<hash of the picture>.webp`, and named in `Submission.screenImageUrl`. The playlist sends it instead of `imageUrl` when it
+ * exists; the original is never changed or removed. **The address changes with the picture** (owner, 2026-10-09: the slideshow showed the unframed version of a photo the gallery had
+ * framed): the file is cached for a year by the CDN and by every browser that showed it, so a picture written over the same address is never seen by the screens that have it. A new picture is a new address. A photo that is already small enough names its own picture (`screenImageUrl` = `imageUrl`), so it is not looked at again.
  *
  * Nothing here may fail a photo: it runs after the response, and a failure is logged and the slideshow keeps using the original.
  */
 
+import { createHash } from 'node:crypto';
 import { put } from '@vercel/blob';
 import type { Db, ObjectId } from 'mongodb';
 import sharp from 'sharp';
@@ -21,6 +23,11 @@ export const SCREEN_PICTURE_LONG_EDGE = 1920;
 export const SCREEN_PICTURE_QUALITY = 80;
 /** A picture at most this long (in pixels) and this heavy (in bytes) is already a screen picture. */
 export const SCREEN_PICTURE_KEEP_BYTES = 150_000;
+
+/** The address of a screen picture: the submission and the first 12 hex digits of the hash of the picture, so the same picture is the same address and another picture never is. */
+export function screenPicturePath(submissionId: string, picture: Buffer): string {
+  return `screen-pictures/${submissionId}-${createHash('sha256').update(picture).digest('hex').slice(0, 12)}.webp`;
+}
 
 export interface ScreenPicture {
   buffer: Buffer;
@@ -79,7 +86,7 @@ export async function ensureScreenPicture(
       await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id }, { $set: { screenImageUrl: sourceUrl } });
       return { outcome: 'reused-original', sourceBytes: source.length, screenBytes: source.length };
     }
-    const stored = await deps.put(`screen-pictures/${String(submission._id)}.webp`, picture.buffer, { contentType: 'image/webp', cacheControlMaxAge: 31_536_000 });
+    const stored = await deps.put(screenPicturePath(String(submission._id), picture.buffer), picture.buffer, { contentType: 'image/webp', cacheControlMaxAge: 31_536_000 });
     await db.collection(COLLECTIONS.SUBMISSIONS).updateOne(
       { _id: submission._id },
       { $set: { screenImageUrl: stored.url, screenImageBytes: picture.buffer.length, 'metadata.screenWidth': picture.width, 'metadata.screenHeight': picture.height } }
