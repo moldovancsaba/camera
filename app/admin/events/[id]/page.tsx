@@ -17,14 +17,13 @@ import { loadEventTheme } from '@/lib/theme/load';
 import SlideshowManager from '@/components/admin/SlideshowManager';
 import SlideshowLayoutManager from '@/components/admin/SlideshowLayoutManager';
 import LandingPageManager from '@/components/admin/LandingPageManager';
-import EventGallery from '@/components/admin/EventGallery';
 import ShortLinksPanel from '@/components/admin/ShortLinksPanel';
 import EventExportControls from '@/components/admin/EventExportControls';
 import DeleteEventButton from '@/components/admin/DeleteEventButton';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { getInactiveUserEmails } from '@/lib/db/sso';
+import { loadGallerySubmissions } from '@/lib/gallery/submissions';
 import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { collectEventSpecificStats, type EventSpecificStats } from '@/lib/tryon/analytics';
@@ -88,17 +87,6 @@ interface PartnerDoc {
   _id: ObjectId;
 }
 
-interface SubmissionDoc {
-  _id: ObjectId;
-  imageUrl?: string;
-  finalImageUrl?: string;
-  previewImageUrl?: string | null;
-  userName?: string;
-  userEmail?: string;
-  eventName?: string;
-  createdAt: string;
-}
-
 interface SlideshowDoc {
   _id: ObjectId;
   [key: string]: unknown;
@@ -154,7 +142,7 @@ export default async function EventDetailPage({
 
   let event: EventDoc | null = null;
   let partner: PartnerDoc | null = null;
-  let submissions: SubmissionDoc[] = [];
+  let photoCount = 0;
   let slideshows: SlideshowDoc[] = [];
   let slideshowLayouts: SlideshowLayoutDoc[] = [];
   let landingPages: LandingPageDoc[] = [];
@@ -191,37 +179,8 @@ export default async function EventDetailPage({
       console.error('Error resolving the event theme for the colours panel:', error);
     }
 
-    const inactiveEmails = await getInactiveUserEmails();
-
-    submissions = (await db
-      .collection(COLLECTIONS.SUBMISSIONS)
-      .find({
-        $and: [
-          { $or: [{ eventId: event.eventId }, { eventIds: { $in: [event.eventId] } }] },
-          { isArchived: { $ne: true } },
-          // A photo of a vetted event that is waiting or rejected is handled under Photos, not shown in the gallery (camera#268).
-          { $or: [{ photoReview: { $exists: false } }, { reviewStatus: 'approved' }] },
-          {
-            $or: [
-              { hiddenFromEvents: { $exists: false } },
-              { hiddenFromEvents: { $nin: [event.eventId] } },
-            ],
-          },
-          {
-            $and: [
-              {
-                $or: [{ userEmail: { $nin: Array.from(inactiveEmails) } }, { userId: 'anonymous' }],
-              },
-              {
-                $or: [{ 'userInfo.isActive': { $ne: false } }, { userInfo: { $exists: false } }],
-              },
-            ],
-          },
-        ],
-      })
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .toArray()) as SubmissionDoc[];
+    // The gallery has its own page; the overview only says how many photos it holds (camera#488).
+    photoCount = (await loadGallerySubmissions(db, event.eventId, 1)).total;
 
     slideshows = (await db
       .collection(COLLECTIONS.SLIDESHOWS)
@@ -532,20 +491,18 @@ export default async function EventDetailPage({
         }))}
       />
 
-      <Card p={0}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
-          <Title order={2}>Event Gallery</Title>
-          <Text c="dimmed" mt="xs">
-            Photos visible in Event Slideshows ({submissions.length})
-          </Text>
-        </div>
-        <EventGallery
-          eventId={id}
-          eventName={event.name}
-          initialSubmissions={JSON.parse(JSON.stringify(submissions))}
-          slideshows={JSON.parse(JSON.stringify(slideshows))}
-          canManage={canManageEvent}
-        />
+      <Card>
+        <Group justify="space-between" align="center" wrap="wrap">
+          <div>
+            <Title order={2}>Event Gallery</Title>
+            <Text c="dimmed" mt="xs">
+              {photoCount} photo{photoCount === 1 ? '' : 's'} visible in the event&apos;s slideshows
+            </Text>
+          </div>
+          <Link href={`/admin/events/${id}/gallery`} style={{ textDecoration: 'none' }}>
+            <Button>Open the gallery</Button>
+          </Link>
+        </Group>
       </Card>
 
       {canManageEvent ? <EventExportControls eventId={id} /> : null}

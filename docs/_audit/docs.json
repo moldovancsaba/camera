@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-09T14:30:05+00:00",
+  "generated": "2026-10-09T14:45:24+00:00",
   "repo": "camera",
-  "head": "2118541",
+  "head": "1eff222",
   "counts": {
    "endpoints": 142,
    "collections": 8,
    "env": 59,
    "outbound-hosts": 31,
-   "docs": 64
+   "docs": 65
   }
  },
  "items": [
@@ -255,6 +255,10 @@
   {
    "file": "docs/_audit/drift-register.md",
    "title": "camera drift register \u2014 fleet audit P3, first edition"
+  },
+  {
+   "file": "docs/_research/GALLERY_MULTISELECT_RESEARCH.md",
+   "title": "Event gallery: selecting several photos at once (research, camera#488, owner report 207)"
   },
   {
    "file": "docs/_research/SLIDESHOW_FREEZE_RESEARCH.md",

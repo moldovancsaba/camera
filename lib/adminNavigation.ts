@@ -257,6 +257,7 @@ export const EVENT_CONTEXT_MENU: AdminContextItem[] = [
   { label: 'Overview', description: 'The event at a glance.', iconKey: 'layoutDashboard', path: '', isVisible: everyone },
   { label: 'Edit and pages', description: 'The event settings and the pages of the user journey.', iconKey: 'adjustments', path: '/edit', isVisible: everyone },
   { label: 'Vetting', description: 'Photos waiting for approval and try-on results.', iconKey: 'userShield', path: '/vetting', isVisible: everyone },
+  { label: 'Gallery', description: 'The photos of the event: upload, select several at once, remove.', iconKey: 'photoScan', path: '/gallery', isVisible: everyone },
   { label: 'Queue', description: 'The try-on queue of the event.', iconKey: 'sparkles', path: '/queue', isVisible: globalAdminOnly },
   { label: 'Analytics', description: 'Try-on analytics of the event.', iconKey: 'brandDatabricks', path: '/analytics', isVisible: globalAdminOnly },
   { label: 'Logos', description: 'The logo of the event and of each place it shows.', iconKey: 'photo', path: '/logos', isVisible: everyone },

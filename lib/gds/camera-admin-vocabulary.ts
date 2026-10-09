@@ -70,6 +70,7 @@ export const cameraAdminVocabularyPacks = [
     'copy-url': { defaultMessage: 'Copy URL', icon: GdsIcons.Copy, feedback: savedFeedback },
   }),
   createGdsVocabularyPack('event-gallery', {
+    'select-mode': { defaultMessage: 'Select mode', icon: GdsIcons.Toggle, feedback: savedFeedback },
     'upload-images': { defaultMessage: 'Upload images', icon: GdsIcons.Upload, feedback: savedFeedback },
     'upload-folder': { defaultMessage: 'Upload folder', icon: GdsIcons.Upload, feedback: savedFeedback },
     'clear-finished': { defaultMessage: 'Clear finished', icon: GdsIcons.Clear, feedback: savedFeedback },

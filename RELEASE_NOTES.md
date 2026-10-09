@@ -1,5 +1,18 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the event gallery has its own page and menu entry, and photos are easy to select (issue 488, owner report 207, first part)
+
+- **Changed (owner, 2026-10-09: "needs its own menu and separated from the overview"):** the event's gallery moved from the bottom of the overview to its own page, **Gallery** in the event menu (`/admin/events/<id>/gallery`). The overview keeps a short card with the number of photos and a button that opens it, and no longer loads the photos, so it opens faster. The gallery page shows the 100 newest photos (the overview showed 50) and says how many there are in all.
+- **Added (owner: "select the first and the last with Shift and select all in the interval, or select with the cursor like on desktop; make a research which one is feasible"):** both are feasible and both are built, without a new library:
+  - click a checkbox, then **Shift+click** another: everything between them is selected (either direction; the range takes the state of the first click); **Ctrl/Cmd+click** adds or takes one; it works on the picture as well as on the checkbox;
+  - **drag a box** from the space between the pictures: the photos it touches are selected (Shift or Ctrl/Cmd keeps what was selected); a click on the empty space lets go of the selection;
+  - a **Select mode** button: a drag starts anywhere and a tap selects instead of opening, so it works with a finger;
+  - **Ctrl/Cmd+A** selects every shown photo (only while the focus is in the gallery), **Esc** clears; the number selected is announced to screen readers; selected photos have an outline.
+- **Research:** `docs/_research/GALLERY_MULTISELECT_RESEARCH.md` (options, the libraries checked and why none is used, the accessibility guidance, what was checked in a browser and what was not).
+- **Not yet (the rest of issue 488):** the option to add the event's frame to uploaded images and to the selected photos.
+- **Documentation:** release notes, ARCHITECTURE.md, the research document, HANDOVER; the editor guide with the frame option.
+- **Verified:** type-check; lint; unit tests (the range in both directions, with and without an anchor, the state of the anchor, photos no longer shown staying selected, toggling, the box touching and not touching, additive and replacing drags; the menu now lists Gallery for admins and partner users and marks it active on its page); the full CI chain; and the **real gallery component in a production build with real mouse events**: first click plus Shift+click on the fourth selected exactly the first four, a dragged box selected exactly the two photos it touched, Ctrl+A selected all 24 and left the browser's select-all alone outside the gallery, Esc cleared, Select mode made a click select instead of open. **Not checked:** a finger on a real phone; there is no auto-scroll while dragging.
+
 ## Unreleased — slideshow: the giant screen is sent a screen-sized picture of each photo (issue 476, step S7; owner answer 211 b)
 
 - **Added (the weight of the pictures on a link that is not always reliable):** when a photo becomes public (approved, or created on an event without approval) a **screen-sized picture** is made once, after the answer: **WebP, at most 1920 px on the longest edge, quality 80**, stored in the Blob store (one-year cache) and named in `Submission.screenImageUrl`. The slideshow sends it to the screen instead of the full-size photo (a composed JPEG of a megabyte or more); a photo without one is sent as before. **Measured read-only on 12 real photos: 8.1 MB became 1.1 MB (14 %).** The original is never changed, the screen picture is deleted together with its submission, and a failure is only logged: the screen keeps the original.
