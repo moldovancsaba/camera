@@ -107,3 +107,9 @@ test('the private photo of a vetted photo that is still pending is deleted with 
   assert.deepEqual(fileUrls, ['https://store.test/pending/e1/abc-xyz.jpg']);
   assert.deepEqual(ownedUrls({ photoReview: { photoUrl: null } }).fileUrls, [], 'after approval the file is gone and the field is null');
 });
+
+test('the screen-sized picture is deleted with the submission, once even when it is the photo itself', () => {
+  const own = ownedUrls({ imageUrl: 'https://store.test/a.jpg', screenImageUrl: 'https://store.test/screen-pictures/1.webp' });
+  assert.deepEqual(own.fileUrls, ['https://store.test/a.jpg', 'https://store.test/screen-pictures/1.webp']);
+  assert.deepEqual(ownedUrls({ imageUrl: 'https://store.test/a.jpg', screenImageUrl: 'https://store.test/a.jpg' }).fileUrls, ['https://store.test/a.jpg']);
+});

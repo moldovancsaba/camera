@@ -763,6 +763,9 @@ export interface Submission {
   // Image URLs (all hosted on imgbb.com)
   imageUrl?: string;                 // Legacy/current primary public image URL used by share/slideshow/admin surfaces
   previewImageUrl?: string | null;   // Smaller downscaled imgbb image for grid/list thumbnails; fall back to imageUrl/finalImageUrl when absent
+  /** The giant screen's picture: longest edge at most 1920 px, WebP (camera#476, S7, lib/submissions/screen-picture.ts). The slideshow sends it instead of `imageUrl` when it exists; equal to `imageUrl` when that is already small. */
+  screenImageUrl?: string | null;
+  screenImageBytes?: number;
   deleteUrl?: string;                // ImgBB delete URL when the image is managed by Camera
   // The pure full-frame camera image (camera#210): not cropped, not framed, not mirrored, stored in Vercel
   // Blob under originals/<eventId>/ and never returned by a public route. Submissions made before

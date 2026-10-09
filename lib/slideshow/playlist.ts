@@ -164,12 +164,15 @@ export function generatePlaylist(
         : undefined;
     const width = Number(metadata?.finalWidth || metadata?.originalWidth || 1920);
     const height = Number(metadata?.finalHeight || metadata?.originalHeight || 1080);
+    // The giant screen gets the screen-sized picture when there is one (camera#476, S7), the original otherwise.
     const imageUrl =
-      typeof sub.imageUrl === 'string'
-        ? sub.imageUrl
-        : typeof sub.finalImageUrl === 'string'
-          ? sub.finalImageUrl
-          : '';
+      typeof sub.screenImageUrl === 'string' && sub.screenImageUrl
+        ? sub.screenImageUrl
+        : typeof sub.imageUrl === 'string'
+          ? sub.imageUrl
+          : typeof sub.finalImageUrl === 'string'
+            ? sub.finalImageUrl
+            : '';
     const aspectRatio = detectAspectRatio(width, height);
     playlist.push({
       type: 'single',
