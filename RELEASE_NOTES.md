@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the logo migration was run on the real data (data, 2026-10-09; camera#419, owner's go)
+
+- **Changed (data, owner's go: "run it now"):** the messmass logo of **190 partners** was collected into their libraries and made their logo (`Partner.slots.logo`), and **all 213 events were moved to the slot model**: 211 follow their partner (nothing stored on the event), 2 keep their own list. The old `logos` lists and `defaultLogos` rows were left as they were. The script (outside the repo) ran a dry run first, wrote an undo file before each write, and is idempotent.
+- **Verified (live logos API of every event, before and after):** 113 events answer exactly as before; **100 events newly show their partner's logo in every place** (they showed none; all 2025 events of partners such as MTK tippmix, DVTK, Újpest, Orlen Wisla Plock, One Veszprém, Industria Kielce); **no event lost a logo**; the MTK Budapest events, including the 16 October match, did not change. Database: 190 partners with a logo slot, 192 messmass logo items (2 were imported before), 213 of 213 events on the model, 2 with their own list. Nothing on messmass was written.
+- **Docs:** `docs/LIBRARIES.md` and `HANDOVER.md`.
+
 ## Unreleased — a new logo from messmass replaces the earlier one in the partner's logos (camera#419, owner answer 169)
 
 - **Changed:** when messmass sends a different logo address for a partner it already has, camera replaces the partner's address **only if the one it has is the one it took from messmass** (or it has none; an address set by hand is kept), imports the new logo, and puts it **in the place of the earlier one in the partner's logos**; the earlier logo stays in the library. It never replaces a logo the partner chose itself, and if the editor took the earlier logo out, the new one is not put in. Events look at the partner, so they show the new logo at once.
