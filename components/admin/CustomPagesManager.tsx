@@ -578,6 +578,10 @@ function PageEditModal({
   const [checkboxes, setCheckboxes] = useState<Array<{ text: string; linkUrl: string }>>(() => (page.config.checkboxes ?? []).map((item) => ({ text: item.text, linkUrl: item.linkUrl ?? '' })));
   // For CTA pages: hasButton determines if button is shown (if false, it's an end page)
   const [hasButton, setHasButton] = useState(page.config.hasButton !== false);
+  // Picture pages only (camera#491)
+  const [hideTexts, setHideTexts] = useState(page.config.hideTexts === true);
+  const [hideButtons, setHideButtons] = useState(page.config.hideButtons === true);
+  const [pictureLink, setPictureLink] = useState(page.config.pictureLink === true);
   const [visitButtonText, setVisitButtonText] = useState(page.config.visitButtonText || 'Visit Now');
   // Empty = the default text, shown as the placeholder (camera#337)
   const [redirectingText, setRedirectingText] = useState(page.config.redirectingText || '');
@@ -703,6 +707,9 @@ function PageEditModal({
         }),
         ...(page.pageType === CustomPageType.CTA && {
           backgroundImageUrl: backgroundImageUrl.trim() || undefined,
+          hideTexts: hideTexts || undefined,
+          hideButtons: hideButtons || undefined,
+          pictureLink: pictureLink || undefined,
           buttonColor: buttonColor.trim() || undefined,
           buttonTextColor: buttonTextColor.trim() || undefined,
           buttonBorderColor: buttonBorderColor.trim() || undefined,
@@ -737,7 +744,25 @@ function PageEditModal({
                 value={backgroundImageUrl}
                 onChange={setBackgroundImageUrl}
                 level={pictureLevel}
-                helper="Fills the screen behind the title, the text and the buttons, which camera writes over it (white, with a soft dark veil). Leave empty for the plain card."
+                helper="The whole picture fits the screen and keeps its shape (the page colour of the event shows around it); the title, the text and the buttons are written over it (white, with a soft dark veil) unless you hide them below. Leave empty for the plain card."
+              />
+              <Check
+                checked={hideTexts}
+                onChange={setHideTexts}
+                label="Hide the title and the text"
+                helper="Only the picture and the buttons show. A screen reader still reads the title."
+              />
+              <Check
+                checked={pictureLink}
+                onChange={setPictureLink}
+                label="The whole picture is a link to the URL"
+                helper="A tap on the picture goes to the URL above. With the buttons hidden and Show Continue Button on, it opens the URL in a new tab and goes on to the next page; on the last page it goes to the URL in the same tab."
+              />
+              <Check
+                checked={hideButtons}
+                onChange={setHideButtons}
+                label="Hide the buttons"
+                helper="Works when the picture is a link, or when this is the last page (Show Continue Button off). Otherwise the buttons stay, so nobody gets stuck on the page."
               />
               <Field label="Button colour" value={buttonColor} onChange={setButtonColor} placeholder="#RRGGBB" />
               <Field label="Button label colour" value={buttonTextColor} onChange={setButtonTextColor} placeholder="#RRGGBB" />

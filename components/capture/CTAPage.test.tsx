@@ -49,3 +49,44 @@ test('an end page (no continue button) shows only the visit button, and a page w
   assert.equal(/Visit URL/.test(noLink), false);
   assert.match(noLink, /aria-label="Continue"/);
 });
+
+test('the picture fits the page and keeps its shape, and the darkening is there while there is writing over it', async (t) => {
+  const { default: CTAPage } = await load(t, 'fit');
+  const html = renderToStaticMarkup(<CTAPage config={config} pageId="p1" onNext={() => undefined} />);
+  assert.match(html, /object-fit:contain/);
+  assert.equal(/object-fit:cover/.test(html), false);
+  assert.match(html, /linear-gradient/);
+});
+
+test('the title and the text can be hidden: the heading stays for a screen reader, drawn as nothing', async (t) => {
+  const { default: CTAPage } = await load(t, 'hide-texts');
+  const html = renderToStaticMarkup(<CTAPage config={{ ...config, hideTexts: true }} pageId="p1" onNext={() => undefined} />);
+  assert.match(html, /<h1 style="[^"]*clip:rect\(0 0 0 0\)[^"]*">New loyalty system<\/h1>/);
+  assert.equal(/Register, shop and enjoy the benefits/.test(html), false);
+  assert.match(html, /aria-label="Continue"/);
+});
+
+test('a picture that is the link, with the buttons hidden: one full-size button, no other button, and no darkening', async (t) => {
+  const { default: CTAPage } = await load(t, 'link');
+  const html = renderToStaticMarkup(<CTAPage config={{ ...config, hideTexts: true, hideButtons: true, pictureLink: true }} pageId="p1" onNext={() => undefined} />);
+  assert.match(html, /<button[^>]*data-cta-picture-link[^>]*aria-label="Join"/);
+  assert.equal(/aria-label="Visit URL"/.test(html), false);
+  assert.equal(/aria-label="Continue"/.test(html), false);
+  assert.equal(/linear-gradient/.test(html), false, 'nothing is written over the picture, so nothing darkens it');
+});
+
+test('the buttons stay when nothing else leads on, so a page is never a dead end by accident', async (t) => {
+  const { default: CTAPage } = await load(t, 'no-dead-end');
+  const html = renderToStaticMarkup(<CTAPage config={{ ...config, hideButtons: true }} pageId="p1" onNext={() => undefined} />);
+  assert.match(html, /aria-label="Visit URL"/);
+  assert.match(html, /aria-label="Continue"/);
+  assert.equal(/data-cta-picture-link/.test(html), false);
+});
+
+test('a page with no address has no visit button and no link, even when a photo id is known', async (t) => {
+  const { default: CTAPage } = await load(t, 'no-address');
+  const html = renderToStaticMarkup(<CTAPage config={{ ...config, checkboxText: '', pictureLink: true }} pageId="p1" submissionId="s1" onNext={() => undefined} />);
+  assert.equal(/Visit URL/.test(html), false);
+  assert.equal(/data-cta-picture-link/.test(html), false);
+});
+
