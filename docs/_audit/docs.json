@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-09T06:01:17+00:00",
+  "generated": "2026-10-09T06:28:20+00:00",
   "repo": "camera",
-  "head": "bc15c5b",
+  "head": "84a57f4",
   "counts": {
    "endpoints": 132,
    "collections": 8,
    "env": 59,
    "outbound-hosts": 30,
-   "docs": 61
+   "docs": 62
   }
  },
  "items": [
@@ -115,6 +115,10 @@
   {
    "file": "docs/FRAME_BASE.md",
    "title": "Frames from the designers' picture (frame base)"
+  },
+  {
+   "file": "docs/FRAME_LAYOUT_SELECTION_PLAN.md",
+   "title": "Layout and message selection at an event (client feedback 2026-10-09)"
   },
   {
    "file": "docs/GDS_CAMERA_ADOPTION.md",
