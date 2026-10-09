@@ -16,7 +16,7 @@ import { resolveFrameFont, type ResolvedFont } from './fonts';
 import { DEFAULT_FRAME_HEIGHT, DEFAULT_FRAME_WIDTH, layerBoxes } from './layout';
 import { fetchLogo } from './logo';
 import { eventEmoji, withoutEmoji } from './emoji';
-import { chosenFrameId, frameBaseOf, loadMessageFrames, type MessageFrame } from './message-frames';
+import { chosenFrameIds, frameBaseOf, loadMessageFrames, type MessageFrame } from './message-frames';
 import { messageTokens, usableMessages } from './messages';
 import { FRAME_RENDER_VERSION, renderFrame } from './render';
 
@@ -71,9 +71,6 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
     design.messages,
     messageTokens({ home: shown.event.homeTeam?.name, visitor: shown.event.visitorTeam?.name, eventName: shown.event.name })
   );
-  // No usable message: one frame without a message layer, so the event still has its frame.
-  const jobs = usable.length > 0 ? usable.map((m) => ({ index: m.index as number | null, message: m.text as string | null })) : [{ index: null, message: null }];
-
   const font = await deps.resolveFont(context.style);
   const existing = design.variants ?? [];
   const variants: FrameVariant[] = [];
@@ -84,9 +81,18 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
   const chosenFrames = Object.keys(design.messageFrames ?? {}).length > 0 ? await loadMessageFrames(db, event) : new Map<string, MessageFrame>();
   let generated = 0;
 
+  // One image for each message and each design it is written on; a message on no usable design has the one image on the older picture or the generated layout. No usable message: one
+  // frame without a message layer, so the event still has its frame.
+  const jobs: Array<{ index: number | null; message: string | null; chosen: MessageFrame | undefined }> =
+    usable.length > 0
+      ? usable.flatMap((m) => {
+          const frames = chosenFrameIds(design, m.index).flatMap((id) => chosenFrames.get(id) ?? []);
+          return (frames.length > 0 ? frames : [undefined]).map((chosen) => ({ index: m.index, message: m.text, chosen }));
+        })
+      : [{ index: null, message: null, chosen: undefined }];
+
   for (const job of jobs) {
-    const frameId = chosenFrameId(design, job.index);
-    const chosen = frameId ? chosenFrames.get(frameId) : undefined;
+    const chosen = job.chosen;
     const key = variantKey(design, job.message, font, chosen);
     const kept = existing.find((variant) => reusable(variant, key));
     if (kept) {

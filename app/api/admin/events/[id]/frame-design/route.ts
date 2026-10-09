@@ -2,9 +2,9 @@
  * The generated default frame of an event: the messmass snapshot and the editable message list (camera#234).
  *
  * GET /api/admin/events/[id]/frame-design      the snapshot and the message list (viewer)
- * PUT /api/admin/events/[id]/frame-design      { messages: string[], messageFrames?: { [message]: frameId } } or { reset: true } (manager); the frame images are
+ * PUT /api/admin/events/[id]/frame-design      { messages: string[], messageFrames?: { [message]: frameId | frameId[] } } or { reset: true } (manager); the frame images are
  *   generated afterwards, one per usable message (a 502 means the list is saved but the images are not; repeat the request).
- *   `messageFrames` says which frame of the event (assigned, switched on, with a message area) each message is written on (camera#366).
+ *   `messageFrames` says which frames of the event (assigned, switched on, with a message area) each message is written on, one id or a list (camera#366, issue 449).
  * The GET answer also lists those frames (`availableFrames`) so the editor can offer them.
  *
  * `[id]` is the Mongo _id of the event, as in the other admin event routes.
@@ -28,7 +28,7 @@ import type { Session } from '@/lib/auth/session';
 import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
 import { DEFAULT_FRAME_MESSAGES, MAX_FRAME_MESSAGES, MAX_FRAME_MESSAGE_LENGTH } from '@/lib/frame/messages';
 import { saveFrameMessages } from '@/lib/frame/sync';
-import { loadMessageFrames } from '@/lib/frame/message-frames';
+import { loadMessageFrames, MAX_FRAME_IMAGES } from '@/lib/frame/message-frames';
 import { generateFrameVariants } from '@/lib/frame/variants';
 
 type RouteContext = { params?: Promise<{ id: string }> };
@@ -52,12 +52,12 @@ export const GET = withErrorHandler(async (request: NextRequest, context?: Route
   return apiSuccess({
     frameDesign: event.frameDesign ?? null,
     defaultMessages: DEFAULT_FRAME_MESSAGES,
-    limits: { maxMessages: MAX_FRAME_MESSAGES, maxLength: MAX_FRAME_MESSAGE_LENGTH },
+    limits: { maxMessages: MAX_FRAME_MESSAGES, maxLength: MAX_FRAME_MESSAGE_LENGTH, maxImages: MAX_FRAME_IMAGES },
     availableFrames: [...carriers.values()].map(({ frameId, name, imageUrl }) => ({ frameId, name, imageUrl })),
   });
 });
 
-// Rendering and uploading up to 10 images takes a few seconds.
+// Rendering and uploading up to 40 images (a message on several designs is one image on each) takes a few seconds to half a minute.
 export const maxDuration = 60;
 
 export const PUT = withErrorHandler(async (request: NextRequest, context?: RouteContext) => {

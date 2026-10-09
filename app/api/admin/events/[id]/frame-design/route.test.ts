@@ -66,7 +66,7 @@ test('GET returns the snapshot, the default list and the limits to a viewer', as
   assert.deepEqual(access, [{ id, role: 'viewer' }]);
   assert.equal(body.data.frameDesign.messagesOverridden, false);
   assert.deepEqual(body.data.defaultMessages, [...DEFAULT_FRAME_MESSAGES]);
-  assert.deepEqual(body.data.limits, { maxMessages: 10, maxLength: 80 });
+  assert.deepEqual(body.data.limits, { maxMessages: 10, maxLength: 80, maxImages: 40 });
 });
 
 test('GET for an event without a snapshot returns null, not an error', async (t) => {

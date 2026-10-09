@@ -68,3 +68,22 @@ test('a new snapshot keeps the frames of the messages', async () => {
   assert.deepEqual(result.design.messageFrames, { HAJRÁ: 'f-blue' });
   assert.deepEqual(stored(data).messageFrames, { HAJRÁ: 'f-blue' });
 });
+
+test('a message on several designs is saved as a list, a single design stays a plain id, and a design that is not usable refuses the whole save (issue 449)', async () => {
+  const { db, data, event } = setup();
+  const design = await saveFrameMessages(db, event, { messages: ['HAJRÁ', 'MTK!', 'Go!'], messageFrames: { HAJRÁ: ['f-blue', 'f-pink'], 'MTK!': ['f-pink'], 'Go!': [] } }, deps);
+  assert.deepEqual(design.messageFrames, { HAJRÁ: ['f-blue', 'f-pink'], 'MTK!': 'f-pink' });
+  assert.deepEqual(stored(data).messageFrames, { HAJRÁ: ['f-blue', 'f-pink'], 'MTK!': 'f-pink' });
+  await assert.rejects(
+    saveFrameMessages(db, event, { messages: ['HAJRÁ'], messageFrames: { HAJRÁ: ['f-blue', 'f-off'] } }, deps),
+    (error: unknown) => error instanceof Response && error.status === 400
+  );
+  assert.deepEqual(stored(data).messageFrames, { HAJRÁ: ['f-blue', 'f-pink'], 'MTK!': 'f-pink' }, 'a refused save writes nothing');
+});
+
+test('saving only the messages keeps the list of designs of a message that stays', async () => {
+  const { db, data, event } = setup({ messageFrames: { HAJRÁ: ['f-blue', 'f-pink'], 'MTK!': 'f-pink' } });
+  const design = await saveFrameMessages(db, event, { messages: ['HAJRÁ', 'New'] }, deps);
+  assert.deepEqual(design.messageFrames, { HAJRÁ: ['f-blue', 'f-pink'] });
+  assert.deepEqual(stored(data).messageFrames, { HAJRÁ: ['f-blue', 'f-pink'] });
+});

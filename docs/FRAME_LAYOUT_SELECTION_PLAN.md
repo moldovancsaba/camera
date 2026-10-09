@@ -90,8 +90,8 @@ Every existing event keeps what it does today until its editor sets the selectio
 
 | Segment | Status |
 |---|---|
-| S1 #445 selection settings | built (this pull request) |
-| S3 #449 messages per design | next |
+| S1 #445 selection settings | built, pull request #455 |
+| S3 #449 messages per design | built (this pull request); S1 #445 merged as #455 |
 | S2 #446 capture flow | after S3 |
 | S4 #448 layout previews | after S2 |
 | S5 #447 dark area | after S4 |

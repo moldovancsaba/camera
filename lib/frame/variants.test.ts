@@ -292,3 +292,34 @@ test('a chosen frame whose picture cannot be fetched fails the run and writes no
   await assert.rejects(generateFrameVariants(h.db, e, { ...h.deps, fetchBaseImage: async () => null }), /could not be fetched/);
   assert.deepEqual(h.uploads, []);
 });
+
+test('a message on several designs gets one image on each, in the order of the message list, and an unchosen design adds none (issue 449)', async () => {
+  const h = await chosenHarness([libraryFrame('f-blue'), libraryFrame('f-pink'), libraryFrame('f-green')]);
+  const d: FrameDesign = { ...design({}, ['A', 'B', 'C']), messageFrames: { A: ['f-blue', 'f-pink'], B: 'f-pink', C: ['f-pink', 'f-blue'] } };
+  const e = { ...event(d), frames: [assignment('f-blue'), assignment('f-pink'), assignment('f-green')] };
+  const result = await generateFrameVariants(h.db, e, h.deps);
+  const variants = result.design.variants!;
+  assert.deepEqual(variants.map((v) => [v.index, v.frameId ?? null]), [[0, 'f-blue'], [0, 'f-pink'], [1, 'f-pink'], [2, 'f-pink'], [2, 'f-blue']]);
+  assert.equal(new Set(variants.map((v) => v.key)).size, 5, 'every message and design pair has its own image');
+  assert.equal(new Set(variants.map((v) => v.imageUrl)).size, 5);
+  assert.deepEqual(h.fetched.sort(), ['https://i.ibb.co/f-blue.png', 'https://i.ibb.co/f-pink.png'], 'one fetch per picture');
+});
+
+test('a message on one design that is gone and one that is there is drawn on the one that is there; with none it keeps the layout', async () => {
+  const h = await chosenHarness([libraryFrame('f-blue'), libraryFrame('f-off', { isActive: false })]);
+  const d: FrameDesign = { ...design({}, ['A', 'B']), messageFrames: { A: ['f-off', 'f-blue'], B: ['f-off'] } };
+  const e = { ...event(d), frames: [assignment('f-blue'), assignment('f-off')] };
+  const variants = (await generateFrameVariants(h.db, e, h.deps)).design.variants!;
+  assert.deepEqual(variants.map((v) => [v.index, v.frameId ?? null]), [[0, 'f-blue'], [1, null]]);
+});
+
+test('adding a design to a message draws only the new image; the others are reused', async () => {
+  const h = await chosenHarness([libraryFrame('f-blue'), libraryFrame('f-pink')]);
+  const d: FrameDesign = { ...design({}, ['A', 'B']), messageFrames: { A: 'f-blue', B: 'f-pink' } };
+  const e = { ...event(d), frames: [assignment('f-blue'), assignment('f-pink')] };
+  const first = await generateFrameVariants(h.db, e, h.deps);
+  const more = await chosenHarness([libraryFrame('f-blue'), libraryFrame('f-pink')]);
+  const next = await generateFrameVariants(more.db, { ...e, frameDesign: { ...first.design, messageFrames: { A: ['f-blue', 'f-pink'], B: 'f-pink' } } }, more.deps);
+  assert.deepEqual([next.generated, next.reused], [1, 2]);
+  assert.deepEqual(next.design.variants!.map((v) => [v.index, v.frameId ?? null]), [[0, 'f-blue'], [0, 'f-pink'], [1, 'f-pink']]);
+});

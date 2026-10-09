@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { fakeDb } from '@/lib/library/fake-db';
-import { chosenFrameId, frameBaseOf, loadMessageFrames, parseMessageFrames, validateMessageFrames } from './message-frames';
+import { chosenFrameIds, frameBaseOf, loadMessageFrames, parseMessageFrames, validateMessageFrames } from './message-frames';
 
 /** A colour from its digits: the colour gate allows no raw hex literal in a test. */
 const hex = (digits: string) => `#${digits}`;
@@ -23,12 +23,13 @@ test('the submitted choices must name messages of the list and frame ids; an emp
 
 test('the frame of a message is read by its text; a message with no choice has none', () => {
   const design = { messages: ['HAJRÁ', 'MTK!', 'Go!'], messageFrames: { HAJRÁ: 'f-blue', 'MTK!': 'f-pink' } };
-  assert.equal(chosenFrameId(design, 0), 'f-blue');
-  assert.equal(chosenFrameId(design, 1), 'f-pink');
-  assert.equal(chosenFrameId(design, 2), null);
-  assert.equal(chosenFrameId(design, null), null, 'the image without a message has no frame');
-  assert.equal(chosenFrameId(design, 9), null);
-  assert.equal(chosenFrameId({ messages: ['a'] }, 0), null);
+  assert.deepEqual(chosenFrameIds(design, 0), ['f-blue']);
+  assert.deepEqual(chosenFrameIds(design, 1), ['f-pink']);
+  assert.deepEqual(chosenFrameIds(design, 2), []);
+  assert.deepEqual(chosenFrameIds(design, null), [], 'the image without a message has no frame');
+  assert.deepEqual(chosenFrameIds(design, 9), []);
+  assert.deepEqual(chosenFrameIds({ messages: ['a'] }, 0), []);
+  assert.deepEqual(chosenFrameIds({ messages: ['a'], messageFrames: { a: ['f-blue', 'f-pink'] } }, 0), ['f-blue', 'f-pink'], 'a message on several designs');
 });
 
 test('a library frame becomes the same base the older designer picture uses, so it is drawn the same way', () => {
@@ -71,4 +72,31 @@ test('the choices are checked against the frames the event can use, with a plain
   assert.match(refused.ok ? '' : refused.error, /HAJRÁ.*message area/);
   assert.equal((await validateMessageFrames(db, event, messages, { HAJRÁ: 'unknown' })).ok, false);
   assert.equal((await validateMessageFrames(db, event, messages, { Other: 'ok' })).ok, false);
+});
+
+test('a message can be on several designs: one id stays a plain id, several are a list without repeats, and an empty list means none (issue 449)', () => {
+  const messages = ['A', 'B', 'C'];
+  assert.deepEqual(parseMessageFrames({ A: ['f1', 'f2'], B: ['f1'], C: ['', 'f2', 'f2'] }, messages), { ok: true, messageFrames: { A: ['f1', 'f2'], B: 'f1', C: 'f2' } });
+  assert.deepEqual(parseMessageFrames({ A: [] }, messages), { ok: true, messageFrames: {} });
+  for (const bad of [{ A: [7] }, { A: ['x'.repeat(81)] }, { A: [['f1']] }]) assert.equal(parseMessageFrames(bad, messages).ok, false, JSON.stringify(bad));
+});
+
+test('the pictures are capped: one for each message on each design, a message on none counts one', () => {
+  const messages = Array.from({ length: 10 }, (_, i) => `M${i}`);
+  const on = (frames: string[]) => Object.fromEntries(messages.map((m) => [m, frames]));
+  const over = parseMessageFrames(on(['f1', 'f2', 'f3', 'f4', 'f5']), messages);
+  assert.equal(over.ok, false, '10 messages on 5 designs is 50 pictures');
+  assert.match(over.ok ? '' : over.error, /50 pictures.*at most 40/);
+  assert.equal(parseMessageFrames(on(['f1', 'f2', 'f3', 'f4']), messages).ok, true, '40 is the cap');
+  assert.equal(parseMessageFrames({ M0: ['f1', 'f2', 'f3', 'f4', 'f5', 'f6'] }, messages).ok, true, 'the others count one each: 6 + 9 = 15');
+});
+
+test('every design of a message must be one the event can use', async () => {
+  const { db } = fakeDb({ frames: [frame('ok'), frame('plain', { messageArea: undefined })] });
+  const event = { frames: [row('ok'), row('plain')] };
+  const messages = ['HAJRÁ', 'MTK!'];
+  assert.deepEqual(await validateMessageFrames(db, event, messages, { HAJRÁ: ['ok'] }), { ok: true, messageFrames: { HAJRÁ: 'ok' } });
+  const refused = await validateMessageFrames(db, event, messages, { HAJRÁ: ['ok', 'plain'] });
+  assert.equal(refused.ok, false);
+  assert.match(refused.ok ? '' : refused.error, /HAJRÁ.*message area/);
 });

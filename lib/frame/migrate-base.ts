@@ -10,6 +10,7 @@ import { COLLECTIONS, generateId } from '@/lib/db/schemas';
 import { parseFrameBase } from './base';
 import type { FrameDesign } from './context';
 import type { MessageArea } from './message-area';
+import { frameIdsOf, framesOfMessage } from './selection';
 
 export interface MigrationSummary {
   /** The frames of the event that came from the base picture, in the order of the pictures. */
@@ -96,9 +97,9 @@ export async function retireBase(db: Db, event: Document, now: string): Promise<
   const design = event.frameDesign as FrameDesign | undefined;
   if (!design?.base) return { ok: false, status: 400, reason: 'This event has no base picture data to remove.' };
   const choices = design.messageFrames ?? {};
-  const missing = design.messages.filter((message) => !choices[message]);
+  const missing = design.messages.filter((message) => framesOfMessage(choices, message).length === 0);
   if (missing.length > 0) return { ok: false, status: 400, reason: `Every message must choose a frame first. Without one: ${missing.map((m) => `"${m}"`).join(', ')}.` };
-  const ids = [...new Set(Object.values(choices))];
+  const ids = frameIdsOf(choices);
   const found = await db.collection(COLLECTIONS.FRAMES).find({ frameId: { $in: ids }, messageArea: { $exists: true }, isActive: { $ne: false } }).toArray();
   const usable = new Set(found.map((frame) => String(frame.frameId)));
   const gone = ids.filter((id) => !usable.has(id));
