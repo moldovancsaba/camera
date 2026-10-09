@@ -18,7 +18,7 @@ const design: ScreenDesign = {
   photoFit: 'cover',
   qr: { url: 'https://go.messmass.com/abc123', x: DEFAULT_STAGE.qr.x, y: DEFAULT_STAGE.qr.y, size: DEFAULT_STAGE.qr.size, color: CAMERA_STAGE_QR_DARK },
   texts: [
-    { text: 'Scan & smile', x: DEFAULT_STAGE.qrText.x, y: DEFAULT_STAGE.qrText.y, width: DEFAULT_STAGE.qrText.width, size: DEFAULT_STAGE.qrText.size, align: 'center', color: palette.text },
+    { text: 'Scan & smile', x: DEFAULT_STAGE.ctaText.x, y: DEFAULT_STAGE.ctaText.y, width: DEFAULT_STAGE.ctaText.width, size: DEFAULT_STAGE.ctaText.size, align: 'center', color: palette.text },
     { text: 'go.messmass.com/abc123', x: DEFAULT_STAGE.urlText.x, y: DEFAULT_STAGE.urlText.y, width: DEFAULT_STAGE.urlText.width, size: DEFAULT_STAGE.urlText.size, align: 'center', color: palette.text },
   ],
 };
@@ -88,7 +88,7 @@ test('the QR code is drawn on its panel: dark modules and light gaps in the QR b
 test('the texts are drawn in their colour inside their boxes: the call to action and the written address', async () => {
   const png = await renderWelcomeScreen(await sources());
   const text = rgbOf(palette.text);
-  const q = DEFAULT_STAGE.qrText;
+  const q = DEFAULT_STAGE.ctaText;
   const u = DEFAULT_STAGE.urlText;
   assert.ok((await countNear(png, { x: q.x, y: q.y, w: q.width, h: (q.size * STAGE_HEIGHT) / STAGE_WIDTH * 1.3 }, text, 30)) > 300, 'the call to action');
   assert.ok((await countNear(png, { x: u.x, y: u.y, w: u.width, h: (u.size * STAGE_HEIGHT) / STAGE_WIDTH * 1.3 }, text, 30)) > 500, 'the address');

@@ -15,12 +15,16 @@ import { bestOfWhiteOrBlack, isDark, mix } from '@/lib/theme/color';
 export const STAGE_WIDTH = 1920;
 export const STAGE_HEIGHT = 1080;
 
-/** Where the parts sit, % of the stage: the photo window and QR code measured from the MTK x Vasas design, the written address under the window. */
+/**
+ * Where the parts sit, % of the stage: the photo window and the QR code's size measured from the MTK x Vasas design. The call to action is the **big text under the
+ * photos**, the written address under it (camera#487, owner report 206: the big text lacked the call to action); the QR code sits alone, centred in its panel
+ * (the panel spans 2 % to 98 % of the height, the QR code is `size x 16/9` % tall).
+ */
 export const DEFAULT_STAGE = {
   window: { left: 2.075, top: 3.081, width: 69.274, height: 69.273 },
-  qr: { x: 73.54, y: 2.78, size: 24.375 },
-  qrText: { x: 73.44, y: 48.7, width: 24.48, size: 5.6 },
-  urlText: { x: 2.075, y: 78, width: 69.274, size: 7 },
+  qr: { x: 73.54, y: 28.33, size: 24.375 },
+  ctaText: { x: 2.075, y: 75, width: 69.274, size: 7.2 },
+  urlText: { x: 2.075, y: 86, width: 69.274, size: 7.2 },
 } as const;
 
 export interface StageColours {
@@ -91,8 +95,11 @@ export function renderDefaultOverlay(colours: StageColours): Buffer {
   ctx.fillStyle = `${panelFill}d9`;
   roundedRect(ctx, px(72.5, STAGE_WIDTH), px(2, STAGE_HEIGHT), px(26.2, STAGE_WIDTH), px(96, STAGE_HEIGHT), 30);
   ctx.fill();
-  const band = DEFAULT_STAGE.urlText;
-  roundedRect(ctx, px(band.x, STAGE_WIDTH), px(band.y - 1, STAGE_HEIGHT), px(band.width, STAGE_WIDTH), px(band.size + 5, STAGE_HEIGHT), 26);
+  // The band holds both lines: the call to action and the written address (each line is about 1.15 times its size tall).
+  const { ctaText, urlText: band } = DEFAULT_STAGE;
+  const bandTop = ctaText.y - 0.9;
+  const bandBottom = band.y + band.size * 1.15 + 1.1;
+  roundedRect(ctx, px(band.x, STAGE_WIDTH), px(bandTop, STAGE_HEIGHT), px(band.width, STAGE_WIDTH), px(bandBottom - bandTop, STAGE_HEIGHT), 26);
   ctx.fill();
 
   // The light panel behind the QR code.

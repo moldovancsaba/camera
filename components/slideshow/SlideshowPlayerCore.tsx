@@ -42,6 +42,7 @@ import {
 import { PlaybackSurface } from '@sovereignsquad/gds-core/client';
 import {
   CAMERA_STAGE_BLACK,
+  CAMERA_STAGE_WHITE,
   SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
   SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
 } from '@/lib/gds/tokens/colors';
@@ -719,12 +720,30 @@ export function SlideshowPlayerCore({
 
   const toggleFullscreen = useCallback(() => {
     if (variant !== 'fullscreen' || !containerRef.current) return;
+    // A browser may refuse (iPhone Safari has no full screen for a page); the show goes on either way.
     if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen();
+      void containerRef.current.requestFullscreen?.()?.catch(() => undefined);
     } else {
-      document.exitFullscreen();
+      void document.exitFullscreen().catch(() => undefined);
     }
   }, [variant]);
+
+  // The full-screen button in the corner: shown for a few seconds when the page opens and whenever the pointer moves or the screen is touched, then it fades (camera#487).
+  const [cornerVisible, setCornerVisible] = useState(true);
+  const [canFullscreen, setCanFullscreen] = useState(false);
+  const cornerTimerRef = useRef<number | null>(null);
+  const wakeCorner = useCallback(() => {
+    setCornerVisible(true);
+    if (cornerTimerRef.current !== null) window.clearTimeout(cornerTimerRef.current);
+    cornerTimerRef.current = window.setTimeout(() => setCornerVisible(false), 3000);
+  }, []);
+  useEffect(() => {
+    setCanFullscreen(typeof document.documentElement.requestFullscreen === 'function' && document.fullscreenEnabled !== false);
+    wakeCorner();
+    return () => {
+      if (cornerTimerRef.current !== null) window.clearTimeout(cornerTimerRef.current);
+    };
+  }, [wakeCorner]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -1139,9 +1158,56 @@ export function SlideshowPlayerCore({
         variant === 'fullscreen' ? ' flex items-center justify-center' : ''
       }`}
       style={failoverBackgroundStyle}
-      onMouseMove={handleMouseMove}
+      onMouseMove={() => {
+        handleMouseMove();
+        wakeCorner();
+      }}
+      onPointerDown={wakeCorner}
+      onDoubleClick={variant === 'fullscreen' ? toggleFullscreen : undefined}
     >
       <SlideshowDebugPanel />
+      {variant === 'fullscreen' && canFullscreen ? (
+        <button
+          type="button"
+          data-fullscreen-button
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleFullscreen();
+          }}
+          onDoubleClick={(event) => event.stopPropagation()}
+          aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
+          title="Full screen (F, or double-click the picture)"
+          tabIndex={cornerVisible ? 0 : -1}
+          style={{
+            position: 'fixed',
+            top: 12,
+            right: 12,
+            zIndex: 50,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 14px',
+            border: 0,
+            borderRadius: 999,
+            cursor: 'pointer',
+            font: '600 14px/1 system-ui, sans-serif',
+            color: CAMERA_STAGE_WHITE,
+            background: `color-mix(in srgb, ${CAMERA_STAGE_BLACK} 70%, transparent)`,
+            opacity: cornerVisible ? 1 : 0,
+            pointerEvents: cornerVisible ? 'auto' : 'none',
+            transition: 'opacity 300ms',
+          }}
+        >
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+            {isFullscreen ? (
+              <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
+            ) : (
+              <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+            )}
+          </svg>
+          {isFullscreen ? 'Exit full screen' : 'Full screen'}
+        </button>
+      ) : null}
       <PlaybackSurface
         title={settings.name}
         state={playbackState}
