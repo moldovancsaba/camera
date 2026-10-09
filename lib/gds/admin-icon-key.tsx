@@ -2,6 +2,7 @@
 
 import {
   IconAdjustments,
+  IconArrowLeft,
   IconBrandDatabricks,
   IconBuildingStore,
   IconCalendarEvent,
@@ -21,6 +22,7 @@ import {
 
 export type AdminIconKey =
   | 'adjustments'
+  | 'arrowLeft'
   | 'brandDatabricks'
   | 'buildingStore'
   | 'calendarEvent'
@@ -39,6 +41,7 @@ export type AdminIconKey =
 
 const iconMap = {
   adjustments: IconAdjustments,
+  arrowLeft: IconArrowLeft,
   brandDatabricks: IconBrandDatabricks,
   buildingStore: IconBuildingStore,
   calendarEvent: IconCalendarEvent,
