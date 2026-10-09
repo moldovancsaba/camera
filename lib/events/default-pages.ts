@@ -11,6 +11,7 @@ import { withRequiredIdentityPage } from './identity-page';
 import { translate, type UiLanguage } from '@/lib/i18n';
 
 export const DEFAULT_CONSENT_PAGE_ID = 'default-consent';
+export const DEFAULT_WELCOME_PAGE_ID = 'default-welcome';
 
 /**
  * The three legal pages every user accepts (owner, 2026-10-07): all required, in the language of the event (camera#352); the links go to the legal
@@ -45,6 +46,26 @@ export function defaultConsentPage(order: number, now: string = new Date().toISO
   } as CustomPage;
 }
 
+/**
+ * The default welcome page (issue 327, docs/BUILDING_BRICKS.md 6.2): step 0 with the giant screen and the Start button. It carries no picture of its own: the capture page shows the picture
+ * drawn from the event's default slideshow (`Event.welcomeScreen`) on every welcome page that has none, so the page follows it and an own picture on a page always wins.
+ */
+export function defaultWelcomePage(order: number, now: string = new Date().toISOString(), language: UiLanguage = 'en'): CustomPage {
+  return {
+    pageId: DEFAULT_WELCOME_PAGE_ID,
+    pageType: 'welcome' as CustomPage['pageType'],
+    order,
+    isActive: true,
+    config: {
+      title: translate(language, 'welcome.title'),
+      buttonText: translate(language, 'welcome.button'),
+      screenImageAlt: translate(language, 'welcome.screenAlt'),
+    },
+    createdAt: now,
+    updatedAt: now,
+  } as CustomPage;
+}
+
 /** True when an active consent ("accept") page comes before the photo (before the take-photo page, or anywhere if there is none). */
 export function hasConsentPageBeforePhoto(pages: readonly CustomPage[]): boolean {
   const active = [...pages].filter((page) => page.isActive).sort((a, b) => a.order - b.order);
@@ -58,9 +79,16 @@ export function hasConsentPageBeforePhoto(pages: readonly CustomPage[]): boolean
  */
 export function withDefaultJourneyPages(
   pages: readonly CustomPage[] | null | undefined,
-  options: { vettingRequired: boolean; consentDefault: boolean; now?: string; language?: UiLanguage },
+  options: { vettingRequired: boolean; consentDefault: boolean; now?: string; language?: UiLanguage; hasWelcomeScreen?: boolean },
 ): CustomPage[] {
-  const own = [...(pages ?? [])];
+  const stored = [...(pages ?? [])];
+  // The default welcome page: only for an event that gets the journey defaults, has the picture drawn from its default slideshow and has no welcome page of its own (a switched off one
+  // counts: the editor chose). It goes first, so the consent page follows it.
+  const withWelcome =
+    options.consentDefault && options.hasWelcomeScreen && !stored.some((page) => page.pageType === 'welcome')
+      ? [defaultWelcomePage((stored.length > 0 ? Math.min(...stored.map((page) => page.order)) : 0) - 3, options.now, options.language), ...stored]
+      : stored;
+  const own = withWelcome;
   let withConsent = own;
   if (options.consentDefault && !hasConsentPageBeforePhoto(own)) {
     const sorted = [...own].sort((a, b) => a.order - b.order);

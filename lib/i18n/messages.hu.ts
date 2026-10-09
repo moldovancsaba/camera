@@ -238,4 +238,7 @@ export const hu: Record<MessageKey, string> = {
   'screen.qrText.2': 'Csatlakozz!',
   'screen.qrText.3': 'Légy képen!',
   'screen.qrText.4': 'Fotózz!',
+  'welcome.title': 'Üdvözöljük',
+  'welcome.button': 'Indítás',
+  'welcome.screenAlt': 'Az óriáskijelző az élő fényképekkel és a beolvasható QR-kóddal',
 };

@@ -92,6 +92,8 @@ interface EventData {
   generatedFrame?: CaptureFrame | null;
   /** Photo vetting is required (camera#263): the photo waits for approval, and the real frame is never shown before it. */
   photoVettingRequired?: boolean;
+  /** The picture of the giant screen drawn from the event's default slideshow (issue 327): shown on a welcome page that has no picture of its own. */
+  welcomeScreen?: { url: string };
   tryOn?: {
     enabled: boolean;
     setupId?: string | null;
@@ -1287,7 +1289,8 @@ export default function EventCapturePage({
               backgroundImageUrl: currentPage.config.backgroundImageUrl,
               bottomImageUrl: currentPage.config.bottomImageUrl,
               cornerImageUrl: currentPage.config.cornerImageUrl,
-              screenImageUrl: currentPage.config.screenImageUrl,
+              // A picture set on the page is the page's own and wins; otherwise the page follows the one drawn from the default slideshow.
+              screenImageUrl: currentPage.config.screenImageUrl || event?.welcomeScreen?.url,
               screenImageAlt: currentPage.config.screenImageAlt,
               buttonColor: currentPage.config.buttonColor,
               buttonTextColor: currentPage.config.buttonTextColor,

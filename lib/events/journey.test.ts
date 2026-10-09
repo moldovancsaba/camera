@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { CustomPage } from '@/lib/db/schemas';
-import { DEFAULT_CONSENT_PAGE_ID, withDefaultJourneyPages } from './default-pages';
+import { DEFAULT_CONSENT_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, withDefaultJourneyPages } from './default-pages';
 import { DEFAULT_IDENTITY_PAGE_ID } from './identity-page';
 import { customiseDefault, effectiveJourney, type JourneyContext, type JourneyRow } from './journey';
 
@@ -118,4 +118,17 @@ test('the stored pages are never changed by building the journey', () => {
   const copy = structuredClone(stored);
   effectiveJourney(stored, ALL, NOW);
   assert.deepEqual(stored, copy);
+});
+
+test('the default welcome page is the first row, marked Default with its reason, when the event has the picture; Customise makes an own welcome page that keeps following the picture', () => {
+  const stored = [page('take-photo', 0)];
+  const rows = effectiveJourney(stored, { ...ALL, hasWelcomeScreen: true }, NOW);
+  assert.equal(label(rows[0]), `default:${DEFAULT_WELCOME_PAGE_ID}`);
+  const first = rows[0];
+  assert.ok(first.kind === 'default' && /default slideshow/.test(first.reason));
+  const own = customiseDefault(first.page, () => 'own-welcome-id', NOW);
+  assert.equal((own.config as { screenImageUrl?: string }).screenImageUrl, undefined, 'no picture is copied into the own page');
+  const withOwn = effectiveJourney([...stored, own], { ...ALL, hasWelcomeScreen: true }, NOW);
+  assert.equal(withOwn.some((row) => row.kind === 'default' && row.page.pageId === DEFAULT_WELCOME_PAGE_ID), false, 'the own page wins');
+  assert.equal(effectiveJourney(stored, ALL, NOW).some((row) => row.kind === 'default' && row.page.pageId === DEFAULT_WELCOME_PAGE_ID), false, 'no picture, no default welcome page');
 });
