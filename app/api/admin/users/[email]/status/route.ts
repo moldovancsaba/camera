@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/api';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { clearInactiveUserEmailsCache } from '@/lib/db/sso';
 import { setCameraAccountDisabledForEmail } from '@/lib/sso/submission-account';
 
 export async function PATCH(
@@ -54,6 +55,8 @@ export async function PATCH(
         !isActive,
         { actorUserId: session.user.id }
       );
+
+      clearInactiveUserEmailsCache();
 
       if (modified === 0) {
         return NextResponse.json(

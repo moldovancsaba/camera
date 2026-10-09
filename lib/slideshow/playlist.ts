@@ -184,7 +184,6 @@ export function generatePlaylist(
       ],
     });
     n++;
-    console.log(`[Playlist] Single-image slide ${n}/${limit} (${sub._id})`);
   }
   return playlist;
 }

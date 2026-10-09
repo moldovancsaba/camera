@@ -82,6 +82,8 @@ Typical responsibilities:
 
 The route accepts `limit` (slides wanted), `instanceKey` (a layout cell) and `exclude` (a comma-separated list of submission ids the player already holds, at most 100; a longer list is cut). A submission in `exclude` is not eligible for that answer; when that leaves nothing, the route answers from the whole pool, because a pool smaller than the player's queue repeats by nature.
 
+**What one call costs** (camera#476, step S6): the pool query (`buildPlaylistPipeline` in the route) keeps only the fields a slide needs (`_id`, the picture addresses, `createdAt`, `playCount`, the picture's size) **before** it sorts, so the whole pool is no longer read as full documents (user info, consents, IP and device data, play history) and sorted in memory; there is no `$limit`, because the `instanceKey` rotation and the random order need the whole pool. The list of deactivated accounts (`getInactiveUserEmails`, a scan of the submissions) is kept for **a minute** per server instance and read again at once on the instance that changes an account's status (`clearInactiveUserEmailsCache`); so a deactivated account's photos leave a slideshow within a minute at most. The route answers with a `Server-Timing` header and logs a call over one second (RUNBOOK, "Slideshow diagnostics"); the per-slide log line is gone.
+
 ## 7. Submission eligibility
 
 Playlist sourcing excludes or accounts for:

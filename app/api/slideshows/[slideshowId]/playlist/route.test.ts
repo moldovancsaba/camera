@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ObjectId } from 'mongodb';
-import { buildPlaylistMatchFilter } from './route';
+import { buildPlaylistMatchFilter, buildPlaylistPipeline } from './route';
 
 type Op =
   | { $eq: unknown }
@@ -141,4 +141,21 @@ test('an approved vetted photo and a photo from before vetting are in an origina
     const filter = buildPlaylistMatchFilter({ eventIdKeys, inactiveEmails, submissionSourceMode: 'originals_only', manualObjectIds: [], excludeOids: [] });
     assert.equal(matches(doc, filter), true, String(reviewStatus));
   }
+});
+
+test('the playlist query cuts the documents down to what a slide needs before it sorts, and sorts least played first, then oldest', () => {
+  const filter = { eventId: 'e1' };
+  const [match, project, sort] = buildPlaylistPipeline(filter) as unknown as Array<Record<string, Record<string, unknown>>>;
+  assert.deepEqual(Object.keys(match), ['$match']);
+  assert.equal(match.$match, filter);
+  assert.deepEqual(Object.keys(project), ['$project']);
+  assert.deepEqual(sort.$sort, { normalizedPlayCount: 1, createdAt: 1 });
+  const kept = Object.keys(project.$project);
+  for (const needed of ['_id', 'imageUrl', 'finalImageUrl', 'createdAt', 'metadata.finalWidth', 'metadata.originalHeight', 'normalizedPlayCount']) {
+    assert.ok(kept.includes(needed), `${needed} is kept`);
+  }
+  for (const heavy of ['userInfo', 'userEmail', 'consents', 'metadata', 'slideshowPlays', 'userAgent']) {
+    assert.ok(!kept.includes(heavy), `${heavy} is not read`);
+  }
+  assert.deepEqual(project.$project.normalizedPlayCount, { $ifNull: ['$playCount', 0] });
 });

@@ -116,6 +116,33 @@ export interface BuildPlaylistMatchFilterOptions {
  * the same moderation state, hiddenFromEvents, and account-standing as baseFilter, so a
  * pin can never bypass those.
  */
+/**
+ * The playlist query: the eligible pool, cut down to the fields a slide needs *before* the sort, in fairness order (least played, then oldest).
+ * Without the `$project` every call read the whole pool as full documents (user info, consents, IP and device data, play history) and sorted
+ * them in memory (camera#476). `instanceKey` rotation and the random order need the whole pool, so there is no `$limit`.
+ */
+export function buildPlaylistPipeline(matchFilter: object) {
+  return [
+    { $match: matchFilter },
+    {
+      $project: {
+        _id: 1,
+        imageUrl: 1,
+        finalImageUrl: 1,
+        createdAt: 1,
+        playCount: 1,
+        hiddenFromEvents: 1,
+        'metadata.finalWidth': 1,
+        'metadata.originalWidth': 1,
+        'metadata.finalHeight': 1,
+        'metadata.originalHeight': 1,
+        normalizedPlayCount: { $ifNull: ['$playCount', 0] },
+      },
+    },
+    { $sort: { normalizedPlayCount: 1, createdAt: 1 } },
+  ];
+}
+
 export function buildPlaylistMatchFilter({
   eventIdKeys,
   inactiveEmails,
@@ -334,18 +361,7 @@ export async function GET(
 
     const fetchSubmissionsSorted = async (excludeOids: ObjectId[]) => {
       const matchFilter = buildMatchFilter(excludeOids);
-      return db
-        .collection(COLLECTIONS.SUBMISSIONS)
-        .aggregate([
-          { $match: matchFilter },
-          {
-            $addFields: {
-              normalizedPlayCount: { $ifNull: ['$playCount', 0] },
-            },
-          },
-          { $sort: { normalizedPlayCount: 1, createdAt: 1 } },
-        ])
-        .toArray();
+      return db.collection(COLLECTIONS.SUBMISSIONS).aggregate(buildPlaylistPipeline(matchFilter)).toArray();
     };
 
     let submissions = await fetchSubmissionsSorted(excludeObjectIds);
