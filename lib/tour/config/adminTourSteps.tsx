@@ -11,7 +11,24 @@ export interface AdminNavigationAccess {
  * navigationAccess object AdminChrome already receives -- unlike the
  * capture tour's steps, none of these need a runtime DOM check.
  */
-export function getAdminTourSteps(navigationAccess: AdminNavigationAccess): TourStepConfig[] {
+export function getAdminTourSteps(navigationAccess: AdminNavigationAccess, options: { inContext?: boolean } = {}): TourStepConfig[] {
+  // Inside one event or partner the sidebar shows that item's own menu (issue 426), so the steps that point at main menu items have nothing to point at: the tour then is the context menu and the account panel.
+  if (options.inContext) {
+    return [
+      {
+        id: 'admin-context-menu',
+        targetSelector: '[data-tour-id="admin-context-menu"]',
+        title: 'This event or partner',
+        description: 'Everything about it is in this menu. "Back to the main menu" is always the first item.',
+      },
+      {
+        id: 'admin-account-panel',
+        targetSelector: '[data-tour-id="admin-account-panel"]',
+        title: 'Your account',
+        description: 'Check your role, jump back to the public app, or log out from here.',
+      },
+    ];
+  }
   const steps: TourStepConfig[] = [];
 
   if (navigationAccess.hasEventsAccess) {
