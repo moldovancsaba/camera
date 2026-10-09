@@ -1,6 +1,6 @@
 /**
  * A database of plain arrays for the tests of the libraries: just the calls lib/library and its routes make (find with sort and limit,
- * findOne, countDocuments, insertOne, updateOne with $set, $push and $pull, updateMany with $set, $unset and $pull (also on a dotted path such as
+ * findOne, countDocuments, insertOne, updateOne with $set, $push and $pull (and `upsert` with plain filters), updateMany with $set, $unset and $pull (also on a dotted path such as
  * `library.images`), deleteOne). Filters: equality (null matches a missing field),
  * $in, $nin, $ne, $exists, $or and dotted paths through arrays (`frames.frameId`; a plain value also matches an array that holds it); $set (also `frames.$.isActive`), $unset, $push and $pull. Not part of the app.
  */
@@ -135,10 +135,19 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
           list(name).push({ ...doc });
           return { insertedId: doc._id ?? 'new' };
         },
-        updateOne: async (filter: Doc, update: Doc) => {
+        updateOne: async (filter: Doc, update: Doc, options?: { upsert?: boolean }) => {
           calls.push({ collection: name, op: 'updateOne', args: [filter, update] });
           const doc = list(name).find((d) => matches(d, filter));
-          if (!doc) return { matchedCount: 0, modifiedCount: 0 };
+          if (!doc) {
+            // An upsert inserts a document made of the plain equalities of the filter and the $set.
+            if (options?.upsert) {
+              const fresh: Doc = Object.fromEntries(Object.entries(filter).filter(([key, value]) => !key.startsWith('$') && (value === null || typeof value !== 'object')));
+              for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(fresh, path, value, filter);
+              list(name).push(fresh);
+              return { matchedCount: 0, modifiedCount: 0, upsertedCount: 1 };
+            }
+            return { matchedCount: 0, modifiedCount: 0 };
+          }
           for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(doc, path, value, filter);
           for (const path of Object.keys((update.$unset as Doc) ?? {})) unsetPath(doc, path);
           for (const [path, value] of Object.entries((update.$push as Doc) ?? {})) {

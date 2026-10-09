@@ -1,4 +1,5 @@
 import { DEFAULT_UI_LANGUAGE, textOr, translate, type MessageKey, type UiLanguage } from '@/lib/i18n';
+import type { TextOverrides } from '@/lib/i18n/overrides';
 
 /**
  * The fixed texts of the public photo page and of its waiting and not-approved notices (camera#339, planning items 74 and 75). Each has a default in
@@ -32,16 +33,16 @@ const SHARE_PAGE_TEXT_MAX_LENGTH = 500;
  * The text of the page: the event's own, or the default in the event's language when it has none. A stored text that is exactly the English default
  * counts as not set in another language (`textOr`).
  */
-export function sharePageText(settings: { texts?: SharePageTexts } | null | undefined, key: SharePageTextKey, language: UiLanguage = DEFAULT_UI_LANGUAGE): string {
-  return textOr(language, SHARE_PAGE_TEXT_KEYS[key], settings?.texts?.[key]);
+export function sharePageText(settings: { texts?: SharePageTexts } | null | undefined, key: SharePageTextKey, language: UiLanguage = DEFAULT_UI_LANGUAGE, texts?: TextOverrides | null): string {
+  return textOr(language, SHARE_PAGE_TEXT_KEYS[key], settings?.texts?.[key], undefined, texts);
 }
 
 /**
  * The message shown while a requested try-on picture is not ready: the event's own, or the default in the event's language. The event editor
  * pre-fills and saves the English default, so in another language that stored default counts as not set.
  */
-export function pendingTryOnText(settings: { pendingTryOnMessage?: string | null } | null | undefined, language: UiLanguage = DEFAULT_UI_LANGUAGE): string {
-  return textOr(language, 'sharePage.pendingTryOn', settings?.pendingTryOnMessage);
+export function pendingTryOnText(settings: { pendingTryOnMessage?: string | null } | null | undefined, language: UiLanguage = DEFAULT_UI_LANGUAGE, texts?: TextOverrides | null): string {
+  return textOr(language, 'sharePage.pendingTryOn', settings?.pendingTryOnMessage, undefined, texts);
 }
 
 /** Only the texts an editor really wrote are kept (trimmed, limited); everything else stays the default. */

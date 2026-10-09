@@ -104,6 +104,19 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
     }
   };
 
+  const keepLost = async (id: string) => {
+    setBusy(true);
+    setActionError(null);
+    try {
+      const kept = await call<{ panels: Panels }>(`/api/events/${eventId}/logo-slots/keep`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      setPanels(kept.panels);
+    } catch (failure) {
+      setActionError(errorText(failure));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const deleteUpload = async (logoId: string, name: string) => {
     if (!confirm(`Delete "${name}"? It was uploaded for this event and is removed for good, from every place that uses it.`)) return;
     setBusy(true);
@@ -153,6 +166,7 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
         onChange={(value) => choose(slotId, value)}
         upload={upload(slotId)}
         onUploaded={reload}
+        onKeepLost={keepLost}
       />
     );
   };

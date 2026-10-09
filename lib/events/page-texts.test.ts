@@ -43,3 +43,13 @@ test('in Hungarian the defaults are Hungarian, a stored English default counts a
   assert.equal(redirectingText('Opening…', 'hu'), 'Megnyitás…');
   assert.equal(redirectingText(undefined, 'en'), 'Opening…');
 });
+
+test('a wording written for the partner or the event replaces the dictionary text, and an editor\'s own text on the page still wins', () => {
+  const texts = { 'cta.opening': 'Egy pillanat…', 'approval.title': 'Várunk a jóváhagyásra' };
+  assert.equal(redirectingText('', 'en', texts), 'Egy pillanat…');
+  assert.equal(redirectingText('My own', 'en', texts), 'My own');
+  assert.equal(approvalTexts(undefined, false, 'en', texts).title, 'Várunk a jóváhagyásra');
+  assert.equal(approvalTexts({ pendingTitle: 'Own title' }, false, 'en', texts).title, 'Own title');
+  assert.equal(approvalTexts(undefined, false, 'en', texts).savedMessage, DEFAULT_APPROVAL_TEXTS.savedMessage, 'a text with no wording is the dictionary one');
+  assert.equal(approvalTexts(undefined, false, 'en', null).title, DEFAULT_APPROVAL_TEXTS.title);
+});

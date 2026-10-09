@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { fakeDb } from '@/lib/library/fake-db';
 import { deleteLibraryUpload, usageOfItem } from '@/lib/library/db';
-import { loadEventLogoPanels, loadPartnerLogoPanel, parseSlotValue, setEventLogoSlot, setPartnerLogo } from './logo-store';
+import { keepLostLogoAsOwn, loadEventLogoPanels, loadPartnerLogoPanel, parseSlotValue, setEventLogoSlot, setPartnerLogo } from './logo-store';
 
 const NOW = '2026-10-09T10:00:00.000Z';
 const logo = (logoId: string, extra: Record<string, unknown> = {}) => ({ logoId, name: `Logo ${logoId}`, imageUrl: `https://img.example/${logoId}.png`, thumbnailUrl: `https://img.example/${logoId}-t.png`, isActive: true, createdAt: NOW, ...extra });
@@ -156,4 +156,57 @@ test('saving a slot also refreshes the event\'s snapshot of what each place uses
   await setEventLogoSlot(db, eventDoc(data), 'logo-pages', { items: ['e1'] }, NOW);
   const after = (eventDoc(data) as unknown as { slotSnapshots: Record<string, Array<{ id: string }>> }).slotSnapshots;
   assert.ok(after['logo-pages'].some((i) => i.id === 'p1'), 'the lost logo is still known to the event');
+});
+
+test('the panels show a logo the library lost from the event\'s snapshot, marked lost, instead of dropping it', async () => {
+  const { db, data } = seed({ partner: { slots: { logo: { items: ['p1'] } } }, event: { slots: {} } });
+  await setEventLogoSlot(db, eventDoc(data), 'logo', { items: ['e1'] }, NOW);
+  data.logos.splice(data.logos.findIndex((l) => l.logoId === 'e1'), 1);
+  const panels = await loadEventLogoPanels(db, eventDoc(data));
+  const place = panels.slots.find((s) => s.slotId === 'logo-pages');
+  const lost = place?.effective.find((i) => i.id === 'e1');
+  assert.ok(lost, 'the lost logo is still listed');
+  assert.equal(lost?.lost, true);
+  assert.equal(lost?.name, 'Logo e1');
+  assert.equal(lost?.imageUrl, 'https://img.example/e1.png');
+  assert.ok(panels.slots.find((s) => s.slotId === 'logo')?.ownItems.some((i) => i.id === 'e1' && i.lost), 'it is one of the event\'s own choices');
+  assert.ok(!place?.effective.find((i) => i.id === 'p1')?.lost, 'a logo the library has is not marked');
+});
+
+test('"Keep as own": a logo the event chose and the library lost becomes the event\'s own logo, in the same place and position, in every place that used it', async () => {
+  const { db, data } = seed({ partner: { slots: { logo: { items: ['p1'] } } }, event: { slots: {} } });
+  await setEventLogoSlot(db, eventDoc(data), 'logo', { items: ['e1'] }, NOW);
+  await setEventLogoSlot(db, eventDoc(data), 'logo-pages', { items: ['g1', 'e1'], useDefault: false }, NOW);
+  data.logos.splice(data.logos.findIndex((l) => l.logoId === 'e1'), 1);
+
+  const result = await keepLostLogoAsOwn(db, eventDoc(data), 'e1', NOW);
+  assert.ok(result.ok);
+  if (!result.ok) return;
+  const kept = data.logos.find((l) => l.logoId === result.value.logoId) as Record<string, unknown>;
+  assert.equal(kept.scope, 'event');
+  assert.equal(kept.eventId, 'e-uuid');
+  assert.equal(kept.imageUrl, 'https://img.example/e1.png', 'the picture address of the snapshot is used as it is');
+  assert.equal(kept.name, 'Logo e1');
+  assert.deepEqual([...result.value.places].sort(), ['logo', 'logo-pages']);
+  const slots = (eventDoc(data) as unknown as { slots: Record<string, { items: string[]; useDefault?: boolean }> }).slots;
+  assert.deepEqual(slots['logo'].items, [result.value.logoId]);
+  assert.deepEqual(slots['logo-pages'], { items: ['g1', result.value.logoId], useDefault: false }, 'the position and the rest of the choice are kept');
+
+  const panels = await loadEventLogoPanels(db, eventDoc(data));
+  const place = panels.slots.find((s) => s.slotId === 'logo-pages');
+  assert.ok(place?.effective.every((i) => !i.lost), 'nothing is lost any more');
+});
+
+test('"Keep as own" refuses what it should: a logo still in the library, one the event did not choose itself, one it has no record of, an event not on the model', async () => {
+  const { db, data } = seed({ partner: { slots: { logo: { items: ['p1'] } } }, event: { slots: {} } });
+  await setEventLogoSlot(db, eventDoc(data), 'logo', { items: ['e1'] }, NOW);
+  assert.equal((await keepLostLogoAsOwn(db, eventDoc(data), 'e1', NOW)).ok, false, 'still in the library');
+  assert.equal((await keepLostLogoAsOwn(db, eventDoc(data), 'nope', NOW)).ok, false, 'no record');
+  // the partner's logo is lost: it is the partner's default, not the event's own choice
+  data.logos.splice(data.logos.findIndex((l) => l.logoId === 'p1'), 1);
+  const lostDefault = await keepLostLogoAsOwn(db, eventDoc(data), 'p1', NOW);
+  assert.ok(!lostDefault.ok && lostDefault.status === 400 && /did not choose/.test(lostDefault.reason));
+  const legacyEvent = seed();
+  assert.equal((await keepLostLogoAsOwn(legacyEvent.db, eventDoc(legacyEvent.data), 'e1', NOW)).ok, false, 'an event not on the model has nothing lost');
+  assert.equal(data.logos.filter((l) => (l as { createdBy?: string }).createdBy === 'system').length, 0, 'nothing was created');
 });

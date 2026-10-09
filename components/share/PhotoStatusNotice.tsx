@@ -7,6 +7,7 @@ import PublicShell from '@/components/public/PublicPageShell';
 import { Alert, Button, Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import AutoRefresh from '@/components/share/AutoRefresh';
 import { sharePageText, type SharePageTexts } from '@/lib/events/share-page-settings';
+import { useUiTexts } from '@/components/i18n/UiLanguageProvider';
 import type { UiLanguage } from '@/lib/i18n';
 
 interface PhotoStatusNoticeProps {
@@ -24,7 +25,8 @@ interface PhotoStatusNoticeProps {
 const CENTERED_ALERT = { title: { justifyContent: 'center' } };
 
 export default function PhotoStatusNotice({ state, eventName, captureHref, settings, language }: PhotoStatusNoticeProps) {
-  const text = (key: Parameters<typeof sharePageText>[1]) => sharePageText(settings, key, language);
+  const texts = useUiTexts();
+  const text = (key: Parameters<typeof sharePageText>[1]) => sharePageText(settings, key, language, texts);
   return (
     <PublicShell size="sm">
       <Stack gap="lg" align="center" ta="center" data-share-state={state}>

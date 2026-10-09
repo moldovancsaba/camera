@@ -6,6 +6,7 @@
 
 import { en, type MessageKey } from '@/lib/i18n/messages.en';
 import { hu } from '@/lib/i18n/messages.hu';
+import type { TextOverrides } from '@/lib/i18n/overrides';
 
 export const UI_LANGUAGES = ['en', 'hu'] as const;
 export type UiLanguage = (typeof UI_LANGUAGES)[number];
@@ -27,9 +28,12 @@ export function isUiLanguage(value: unknown): value is UiLanguage {
 
 export type MessageValues = Record<string, string | number>;
 
-/** The text in the language; `{name}` markers are replaced by the matching value (a marker with no value stays as it is). */
-export function translate(language: UiLanguage, key: MessageKey, values?: MessageValues): string {
-  const text = DICTIONARIES[language][key] ?? en[key];
+/**
+ * The text in the language; `{name}` markers are replaced by the matching value (a marker with no value stays as it is). `overrides` are the wordings an admin wrote for the partner or
+ * the event in this language (lib/i18n/overrides.ts); a key they do not have uses the code dictionary.
+ */
+export function translate(language: UiLanguage, key: MessageKey, values?: MessageValues, overrides?: TextOverrides | null): string {
+  const text = overrides?.[key] ?? DICTIONARIES[language][key] ?? en[key];
   return values ? text.replace(/\{(\w+)\}/g, (marker, name: string) => (name in values ? String(values[name]) : marker)) : text;
 }
 
@@ -39,10 +43,10 @@ export function translate(language: UiLanguage, key: MessageKey, values?: Messag
  * is exactly the English default counts as not set, and the language's own text shows instead. Several keys may be given when the editor seeded more than one English
  * wording for the same field; the first key is the text shown.
  */
-export function textOr(language: UiLanguage, key: MessageKey | readonly MessageKey[], stored: string | null | undefined, values?: MessageValues): string {
+export function textOr(language: UiLanguage, key: MessageKey | readonly MessageKey[], stored: string | null | undefined, values?: MessageValues, overrides?: TextOverrides | null): string {
   const keys = Array.isArray(key) ? (key as readonly MessageKey[]) : [key as MessageKey];
   const own = typeof stored === 'string' ? stored.trim() : '';
   const isEnglishDefault = keys.some((candidate) => own === translate(DEFAULT_UI_LANGUAGE, candidate, values));
   if (own && (language === DEFAULT_UI_LANGUAGE || !isEnglishDefault)) return stored as string;
-  return translate(language, keys[0], values);
+  return translate(language, keys[0], values, overrides);
 }

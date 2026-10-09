@@ -1,17 +1,31 @@
 {
  "_meta": {
-  "generated": "2026-10-09T03:19:30+00:00",
+  "generated": "2026-10-09T03:40:01+00:00",
   "repo": "camera",
-  "head": "1316750",
+  "head": "ca7858f",
   "counts": {
-   "endpoints": 127,
+   "endpoints": 131,
    "collections": 8,
    "env": 59,
    "outbound-hosts": 30,
-   "docs": 59
+   "docs": 60
   }
  },
  "items": [
+  {
+   "path": "/api/admin/dictionary",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/admin/dictionary/route.ts",
+   "auth_markers": [
+    "isGlobalAdminSession",
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
   {
    "path": "/api/admin/events/[id]/default-slideshow",
    "methods": [
@@ -799,6 +813,18 @@
    "no_auth_marker": false
   },
   {
+   "path": "/api/events/[eventId]/logo-slots/keep",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/events/[eventId]/logo-slots/keep/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
    "path": "/api/events/[eventId]/logo-slots",
    "methods": [
     "GET",
@@ -876,6 +902,19 @@
     "POST"
    ],
    "file": "app/api/events/[eventId]/submissions/bulk-remove/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/events/[eventId]/texts",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/events/[eventId]/texts/route.ts",
    "auth_markers": [
     "requireAuth",
     "withErrorHandler"
@@ -1316,6 +1355,19 @@
    "file": "app/api/partners/[partnerId]/submissions/[submissionId]/route.ts",
    "auth_markers": [
     "isGlobalAdminSession",
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/partners/[partnerId]/texts",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/partners/[partnerId]/texts/route.ts",
+   "auth_markers": [
     "requireAuth",
     "withErrorHandler"
    ],

@@ -28,6 +28,7 @@ import {
   type EventSharePageSettings,
 } from '@/lib/events/share-page-settings';
 import { DEFAULT_UI_LANGUAGE, normalizeUiLanguage, translate, type UiLanguage } from '@/lib/i18n';
+import { loadEventTexts, type TextOverrides } from '@/lib/i18n/overrides';
 import { formatDateTime } from '@/lib/i18n/date';
 import {
   type ShareVariantCard,
@@ -100,10 +101,10 @@ interface TryOnVariantLike {
 export const dynamic = 'force-dynamic';
 
 /** The page in the theme and the language of its event (camera#285, camera#352); a page whose event is unknown keeps the default look, in English. */
-function ThemedPage({ theme, language, children }: { theme: EventTheme | null; language: UiLanguage; children: React.ReactNode }) {
+function ThemedPage({ theme, language, texts, children }: { theme: EventTheme | null; language: UiLanguage; texts?: TextOverrides | null; children: React.ReactNode }) {
   return theme ? (
     <EventThemeScope theme={theme}>
-      <UiLanguageProvider language={language}>{children}</UiLanguageProvider>
+      <UiLanguageProvider language={language} texts={texts}>{children}</UiLanguageProvider>
     </EventThemeScope>
   ) : (
     <>{children}</>
@@ -132,7 +133,7 @@ function getSubmissionEventLookupKeys(submission: Record<string, unknown>): stri
 async function resolveEventForSubmission(
   db: Db,
   submission: Record<string, unknown>
-): Promise<{ mongoId: string; name: string; sharePageSettings: EventSharePageSettings; theme: EventTheme; language: UiLanguage } | null> {
+): Promise<{ mongoId: string; name: string; sharePageSettings: EventSharePageSettings; theme: EventTheme; language: UiLanguage; texts: TextOverrides } | null> {
   const eventLookupKeys = getSubmissionEventLookupKeys(submission);
   if (!eventLookupKeys.length) {
     return null;
@@ -152,10 +153,12 @@ async function resolveEventForSubmission(
   if (!eventDoc?._id) return null;
   // The page speaks the language of the event (camera#352).
   const language = normalizeUiLanguage(eventDoc.uiLanguage);
+  // ... with the wordings written for the partner or the event (issue 353); a failed read costs nothing but those wordings.
+  const texts = (await loadEventTexts(db, eventDoc).catch(() => null))?.overrides ?? {};
   const name =
     typeof eventDoc.name === 'string' && eventDoc.name.trim()
       ? eventDoc.name.trim()
-      : translate(language, 'meta.event');
+      : translate(language, 'meta.event', undefined, texts);
   const sharePage = eventDoc.sharePage && typeof eventDoc.sharePage === 'object'
     ? eventDoc.sharePage
     : null;
@@ -166,6 +169,7 @@ async function resolveEventForSubmission(
     // The page is drawn with the theme of the event (camera#285).
     theme: await loadEventTheme(db, eventDoc),
     language,
+    texts,
   };
 }
 
@@ -181,7 +185,7 @@ function isLegacyGuestName(value: string): boolean {
   return value.trim().toLowerCase() === 'event guest';
 }
 
-function resolveDisplayName(userName: string | null, userInfoName: string | null, language: UiLanguage): string {
+function resolveDisplayName(userName: string | null, userInfoName: string | null, language: UiLanguage, texts?: TextOverrides | null): string {
   const normalizedUserInfoName = userInfoName?.trim();
   if (normalizedUserInfoName && !isLikelyEmail(normalizedUserInfoName) && !isLegacyGuestName(normalizedUserInfoName)) {
     return normalizedUserInfoName;
@@ -190,7 +194,7 @@ function resolveDisplayName(userName: string | null, userInfoName: string | null
   if (normalizedUserName && !isLikelyEmail(normalizedUserName) && !isLegacyGuestName(normalizedUserName)) {
     return normalizedUserName;
   }
-  return translate(language, 'sharePage.guest');
+  return translate(language, 'sharePage.guest', undefined, texts);
 }
 
 function buildTryOnVariantCards(
@@ -264,9 +268,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       const noticeEvent = await resolveEventForSubmission(db, submission).catch(() => null);
       const noticeLanguage = noticeEvent?.language ?? DEFAULT_UI_LANGUAGE;
       return {
-        title: translate(noticeLanguage, 'sharePage.meta.yourPhoto'),
+        title: translate(noticeLanguage, 'sharePage.meta.yourPhoto', undefined, noticeEvent?.texts),
         // The product's description, as the root layout gives every page; here in the event's language.
-        description: translate(noticeLanguage, 'meta.app.description'),
+        description: translate(noticeLanguage, 'meta.app.description', undefined, noticeEvent?.texts),
         robots: { index: false, follow: false },
       };
     }
@@ -280,14 +284,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     const event = await resolveEventForSubmission(db, submission);
     const language = event?.language ?? DEFAULT_UI_LANGUAGE;
-    const eventLabel = event?.name ?? translate(language, 'sharePage.sharedPhoto');
+    const eventLabel = event?.name ?? translate(language, 'sharePage.sharedPhoto', undefined, event?.texts);
     const displayName = resolveDisplayName(
       readString(submission.userName),
       readString(submission.userInfo?.name),
-      language
+      language,
+      event?.texts
     );
-    const photoOf = translate(language, 'sharePage.meta.photoOf', { name: displayName });
-    const from = translate(language, 'sharePage.meta.from', { event: eventLabel });
+    const photoOf = translate(language, 'sharePage.meta.photoOf', { name: displayName }, event?.texts);
+    const from = translate(language, 'sharePage.meta.from', { event: eventLabel }, event?.texts);
     const submissionImageUrl = readString(submission.imageUrl);
     const openGraph: NonNullable<Metadata['openGraph']> = {
       title: photoOf,
@@ -313,8 +318,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
 
     return {
-      title: translate(language, 'sharePage.meta.title', { name: displayName, event: eventLabel }),
-      description: translate(language, 'sharePage.meta.description', { event: eventLabel }),
+      title: translate(language, 'sharePage.meta.title', { name: displayName, event: eventLabel }, event?.texts),
+      description: translate(language, 'sharePage.meta.description', { event: eventLabel }, event?.texts),
       openGraph,
       twitter,
     };
@@ -413,10 +418,10 @@ export default async function SharePage({ params }: Props) {
     const noticeEvent = await resolveEventForSubmission(noticeDb, lookup.doc);
     const noticeLanguage = noticeEvent?.language ?? DEFAULT_UI_LANGUAGE;
     return (
-      <ThemedPage theme={noticeEvent?.theme ?? null} language={noticeLanguage}>
+      <ThemedPage theme={noticeEvent?.theme ?? null} language={noticeLanguage} texts={noticeEvent?.texts}>
         <PhotoStatusNotice
           state={shareState}
-          eventName={noticeEvent?.name ?? translate(noticeLanguage, 'sharePage.sharedPhoto')}
+          eventName={noticeEvent?.name ?? translate(noticeLanguage, 'sharePage.sharedPhoto', undefined, noticeEvent?.texts)}
           captureHref={noticeEvent?.mongoId ? `/capture/${noticeEvent.mongoId}` : '/capture'}
           settings={noticeEvent?.sharePageSettings}
           language={noticeLanguage}
@@ -432,6 +437,7 @@ export default async function SharePage({ params }: Props) {
   const db = await connectToDatabase();
   const event = await resolveEventForSubmission(db, submission as unknown as Record<string, unknown>);
   const language = event?.language ?? DEFAULT_UI_LANGUAGE;
+  const texts = event?.texts ?? null;
   const sharePageSettings = event?.sharePageSettings ?? FALLBACK_SHARE_PAGE_SETTINGS;
   const hasTryOnRequest = Boolean(submission.tryOnRequest?.requested);
   const enforcedSharePageSettings = hasTryOnRequest
@@ -483,7 +489,7 @@ export default async function SharePage({ params }: Props) {
           addUniqueShareVariant({
             id: `${currentSubmissionId}:camera-result`,
             imageUrl: submissionImage,
-            label: translate(language, 'sharePage.cameraResult'),
+            label: translate(language, 'sharePage.cameraResult', undefined, texts),
           });
         }
       } else if (sourceDoc && typeof sourceDoc.imageUrl === 'string' && sourceDoc.imageUrl.trim()) {
@@ -494,7 +500,7 @@ export default async function SharePage({ params }: Props) {
           addUniqueShareVariant({
             id: `${submission.sourceSubmissionId}:camera-result`,
             imageUrl: sourceResultImage,
-            label: translate(language, 'sharePage.cameraResult'),
+            label: translate(language, 'sharePage.cameraResult', undefined, texts),
           });
         }
       }
@@ -504,7 +510,7 @@ export default async function SharePage({ params }: Props) {
       addUniqueShareVariant({
         id: `${(submission.submissionKind === 'original' ? currentSubmissionId : submission.sourceSubmissionId) ?? currentSubmissionId}:original-capture`,
         imageUrl: sourceImageUrl,
-        label: sharePageText(sharePageSettings, 'originalPhotoLabel', language),
+        label: sharePageText(sharePageSettings, 'originalPhotoLabel', language, texts),
       });
     }
 
@@ -605,7 +611,7 @@ export default async function SharePage({ params }: Props) {
   const downloadableImageHref = hasDownloadableImage && featuredVariant && submission.id
     ? `/api/share/${submission.id}/download?variant=${encodeURIComponent(featuredVariant.id)}`
     : null;
-  const pendingTryOnMessage = pendingTryOnText(sharePageSettings, language);
+  const pendingTryOnMessage = pendingTryOnText(sharePageSettings, language, texts);
 
   const showPendingTryOnMessage =
     hasTryOnRequest &&
@@ -618,9 +624,9 @@ export default async function SharePage({ params }: Props) {
     createYourOwnHref = `/capture/${event.mongoId}`;
   }
 
-  const headline = event?.name ?? translate(language, 'sharePage.sharedPhoto');
+  const headline = event?.name ?? translate(language, 'sharePage.sharedPhoto', undefined, texts);
   return (
-    <ThemedPage theme={event?.theme ?? null} language={language}>
+    <ThemedPage theme={event?.theme ?? null} language={language} texts={texts}>
     <PublicShell size="lg">
       <Stack gap="xl">
         <Stack align="center" gap="xs" ta="center">
@@ -679,16 +685,16 @@ export default async function SharePage({ params }: Props) {
                 download
                 size="lg"
               >
-                {sharePageText(sharePageSettings, 'downloadButton', language)}
+                {sharePageText(sharePageSettings, 'downloadButton', language, texts)}
               </Button>
             ) : (
               <Button size="lg" disabled>
-                {sharePageText(sharePageSettings, 'downloadButton', language)}
+                {sharePageText(sharePageSettings, 'downloadButton', language, texts)}
               </Button>
             )}
             {sharePageSettings.showCreateYourOwnButton ? (
               <Button component="a" href={createYourOwnHref} variant="default" size="lg">
-                {sharePageText(sharePageSettings, 'createYourOwnButton', language)}
+                {sharePageText(sharePageSettings, 'createYourOwnButton', language, texts)}
               </Button>
             ) : null}
           </SimpleGrid>
@@ -702,7 +708,7 @@ export default async function SharePage({ params }: Props) {
           {galleryVariants.length > 0 ? (
             <Stack gap="md" mt="xl">
               <Text fw={700}>
-            {sharePageText(sharePageSettings, 'relatedPhotosTitle', language)}
+            {sharePageText(sharePageSettings, 'relatedPhotosTitle', language, texts)}
               </Text>
               <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
                 {galleryVariants.map((variant) => (
