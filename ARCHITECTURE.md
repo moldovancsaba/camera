@@ -120,6 +120,13 @@ Partner detail pages are the primary daily operational surface. They expose:
 - Events inventory and event instance detail
 - Try-On App workspace, live queue, garment catalog, and vetting queue
 
+### Contextual menus (issue 426)
+
+Inside an event or a partner the sidebar shows that item's own menu (`lib/adminNavigation.ts`, `components/admin/AdminChrome.tsx`), with "Back to the main menu" first; a test fails when a page
+under `app/admin/events/[id]` or `app/admin/partners/[id]` is not an item of its menu. The **event** menu: Overview, Edit and pages, Vetting, Queue, Analytics, Logos, Frames, Images,
+Texts, Slideshows, Landing pages (and Emails with the e-mail epic). The **partner** menu: Overview, Edit, Logos, Frames, Images, Pictures, Texts, Emails. The global **Settings** group:
+Vetting card display, Journey defaults, Dictionary, Emails (the general level).
+
 ### Cross-cutting admin preferences
 
 The first admin-preferences surface not scoped to a specific partner, event, or app: a top-level
@@ -313,6 +320,11 @@ Schema definitions live in [lib/db/schemas.ts](lib/db/schemas.ts).
 (`Event.frames[]`, `Event.logos[]`). See [docs/LIBRARIES.md](docs/LIBRARIES.md); the code is in `lib/library/`. `images` has the same three levels but is
 not assigned to an event: a picture field keeps the plain address of one picture, chosen with the picture picker (`components/admin/library/ImagePicker.tsx`).
 
+**Settings and levels added in October 2026** (the model is in [docs/BUILDING_BRICKS.md](docs/BUILDING_BRICKS.md)): `admin_settings` also holds `dictionary` (the global wordings, [docs/TEXT_LEVELS.md](docs/TEXT_LEVELS.md))
+and `email-legal` (the general legal part of the e-mails); `Partner.texts`, `Partner.pictures`, `Partner.uiLanguage`, `Partner.emailLegal`; `Event.texts`, `Event.uiLanguage` (an event that
+sets none follows its partner), `Event.emailLegal`, `Event.frameSelection`, `Event.welcomeScreen`, `Event.slotSnapshots` (the last-known-good copy of the slots an event uses),
+`Event.frameDesign` (the generated frame: snapshot, messages, `messageFrames`, `darkArea`, one image per message and design).
+
 ## 9. Submission pipeline
 
 Primary path:
@@ -328,6 +340,9 @@ Important implementation note:
 
 - the persisted submission shape is leaner and more compatibility-driven than the broad TypeScript interfaces suggest
 - consumers still rely on fields like `imageUrl`, `eventId`, `eventIds`, and metadata dimensions
+
+Step 6 of the pipeline is also where the e-mails start: a saved photo may send "arrived" and, when it is approved (at once without vetting, by a moderator with it), "approved" with the links;
+a declined photo sends "declined" (section 16).
 
 ## 10. Slideshow architecture
 
@@ -355,6 +370,9 @@ Major API groups:
 - partners: `/api/partners/**`
 - events: `/api/events/**`
 - frames: `/api/frames/**` (the global library)
+- emails: `/api/admin/emails/legal` (general legal part), `/api/admin/emails/preview` (the editor's preview), `/api/partners/[partnerId]/email-legal`, `/api/events/[eventId]/email-legal`
+- frame selection: `/api/admin/events/[id]/frame-selection`, `/api/admin/events/[id]/frame-design` (messages, their designs, the dark area)
+- texts: `/api/admin/dictionary`, `/api/partners/[partnerId]/texts`, `/api/events/[eventId]/texts`
 - libraries: `/api/partners/[partnerId]/library/**` and `/api/events/[eventId]/library/**` (docs/LIBRARIES.md)
 - images: `/api/images/**` (the global Images library)
 - logos: `/api/logos/**`
@@ -422,7 +440,42 @@ A from-scratch spotlight/backdrop product tour (no vendored GDS or third-party e
 
 **Admin** (`admin:v1`) mounts once in `components/admin/AdminChrome.tsx`, auto-starting on first visit, filtered by the same `navigationAccess` the layout already computes (a partner-only admin sees a shorter tour than a global admin). **Capture** (`capture:select-frame:v1` / `capture:photo:v1` / `capture:preview:v1`) is three phase-scoped mini-tours rather than one linear tour in `app/capture/[eventId]/page.tsx`, because the underlying DOM is conditionally mounted per flow `step` — there's no single moment all targets coexist. Each mini-tour auto-starts when its phase becomes active and self-skips steps whose target will never exist for the current event (e.g. the frame-picker step for a single-frame event, which auto-selects and skips straight past `select-frame`).
 
-## 14. Canonical references
+## 14. Levels: slots, texts and the legal part
+
+Everything an event shows is one of five bricks (Words, Picture, Look, Link, Switch) chosen **at the place of use**, with the default coming from above (docs/BUILDING_BRICKS.md). One rule for
+every level (global, partner, event): **an event follows its partner and the partner follows the global level each time it is read; nothing is copied down; what a level sets is its own and is
+never overridden by a later change above.** Implemented for the logo slots (`lib/slots/*`), the text levels (`lib/i18n/overrides.ts`: the code dictionary, the Dictionary, a partner's Texts, an
+event's Texts), the partner's default pictures (`lib/events/partner-pictures.ts`), the partner's default language (`eventLanguage`) and the legal part of the e-mails (`lib/email/legal*.ts`).
+
+## 15. Frames, layouts and messages at an event
+
+([docs/FRAME_LAYOUT_SELECTION_PLAN.md](docs/FRAME_LAYOUT_SELECTION_PLAN.md), [docs/DEFAULT_FRAME_PLAN.md](docs/DEFAULT_FRAME_PLAN.md), [docs/LIBRARIES.md](docs/LIBRARIES.md).)
+
+- **Layouts** are the designs of the event: library frames with a message area (text-free, carrying messages), the generated layout (logo, teams, bar, message from the messmass snapshot) and
+  complete frames the event uploads. `Event.frameDesign.messageFrames[message]` is one frame id or a list: a message can be written on several designs; `lib/frame/variants.ts` draws one
+  image for each message and design (at most 40, reused by key). `Event.frameSelection` says how users get the layout and the message, each `editor`, `random` or `user`
+  (`lib/frame/selection*.ts`, panel on the event's Frames page, `GET`/`PUT /api/admin/events/<id>/frame-selection`).
+- **The capture flow** asks `lib/frame/choose.ts` (pure) for everything: the step (design, then message, then the camera), the designs and messages to offer (a message only on the designs it is
+  written on), what a change of design keeps, and the draw of the image of a photo, which happens **when the camera step opens** so the live view and the move-and-zoom step show the dark area
+  of that design. An event with no saved selection keeps the random image at every shutter press.
+- **The dark area** is one method for every event (`lib/frame/dark-area.ts`): the boxes of the layers of the image (a frame's own layers, or the mask of the generated frame when
+  `frameDesign.darkArea` is `generated`) and, for a complete own frame, its 50 % black silhouette in the live view and the move-and-zoom step; a vetted event never shows the real frame.
+
+## 16. E-mails to the user
+
+([docs/EMAIL_FORMAT_PLAN.md](docs/EMAIL_FORMAT_PLAN.md), [docs/EMAIL_TEMPLATES.md](docs/EMAIL_TEMPLATES.md).)
+
+- **One composer.** `lib/email/compose.ts` makes the subject, the themed HTML and the plain-text part from a subject template, a message template, the legal part and the values of the
+  variables; the sender (`lib/email/submission-notification.ts`, through Resend) and the editor's preview (`POST /api/admin/emails/preview`) both call it.
+- **The words** are written in a small safe markup (`lib/email/rich.ts`): paragraphs, titles, small and large text, bold, italic, labelled links; nothing else is markup and HTML is escaped. The
+  **variables** (`lib/email/variables.ts`: name, event, partner, home, visitor, teams, date, location, eventlink, link, terms) are filled after the text is read, so a value is never markup; one with
+  no value is left out. `{eventlink}` and the "take another photo" link use the event's own short link when it has a URL slug (`lib/email/event-link.ts`).
+- **The legal part** is one slot with three levels per language (general, partner, event; `lib/email/legal-rules.ts`, stores in `lib/email/legal.ts`, routes `/api/admin/emails/legal`,
+  `/api/partners/<id>/email-legal`, `/api/events/<id>/email-legal`), drawn as small print after the button.
+- **Editors:** the toolbar editor (`components/admin/kit/EmailTextEditor.tsx`, pure operations in `lib/email/editor-ops.ts`) with the live preview (`EmailPreview.tsx`); pages `Emails` at the general
+  level (`/admin/settings/emails`) and at the partner level (`/admin/partners/<id>/emails`).
+
+## 17. Canonical references
 
 - [README.md](README.md)
 - [docs/BRANCHING.md](docs/BRANCHING.md)
@@ -432,3 +485,6 @@ A from-scratch spotlight/backdrop product tour (no vendored GDS or third-party e
 - [docs/SLIDESHOW_LOGIC.md](docs/SLIDESHOW_LOGIC.md)
 - [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)
 - [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md)
+- [docs/BUILDING_BRICKS.md](docs/BUILDING_BRICKS.md), [docs/TEXT_LEVELS.md](docs/TEXT_LEVELS.md), [docs/LIBRARIES.md](docs/LIBRARIES.md)
+- [docs/FRAME_LAYOUT_SELECTION_PLAN.md](docs/FRAME_LAYOUT_SELECTION_PLAN.md), [docs/DEFAULT_FRAME_PLAN.md](docs/DEFAULT_FRAME_PLAN.md)
+- [docs/EMAIL_FORMAT_PLAN.md](docs/EMAIL_FORMAT_PLAN.md), [docs/EMAIL_TEMPLATES.md](docs/EMAIL_TEMPLATES.md)

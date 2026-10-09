@@ -26,8 +26,8 @@ test('a partner user does not see Queue and Analytics, which would send them awa
 
 test('the partner menu has its own pages', () => {
   const menu = adminContextMenu({ kind: 'partner', id: ID }, `/admin/partners/${ID}`, GLOBAL_ADMIN);
-  assert.deepEqual(menu.items.map((item) => item.label), ['Overview', 'Edit', 'Logos', 'Frames', 'Images', 'Pictures', 'Texts']);
-  assert.deepEqual(menu.items.map((item) => item.href), [`/admin/partners/${ID}`, `/admin/partners/${ID}/edit`, `/admin/partners/${ID}/logos`, `/admin/partners/${ID}/frames`, `/admin/partners/${ID}/images`, `/admin/partners/${ID}/pictures`, `/admin/partners/${ID}/texts`]);
+  assert.deepEqual(menu.items.map((item) => item.label), ['Overview', 'Edit', 'Logos', 'Frames', 'Images', 'Pictures', 'Texts', 'Emails']);
+  assert.deepEqual(menu.items.map((item) => item.href), [`/admin/partners/${ID}`, `/admin/partners/${ID}/edit`, `/admin/partners/${ID}/logos`, `/admin/partners/${ID}/frames`, `/admin/partners/${ID}/images`, `/admin/partners/${ID}/pictures`, `/admin/partners/${ID}/texts`, `/admin/partners/${ID}/emails`]);
 });
 
 const activeLabels = (pathname: string, kind: 'event' | 'partner' = 'event') =>
