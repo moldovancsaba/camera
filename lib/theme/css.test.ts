@@ -87,3 +87,14 @@ test('the chosen segment is drawn in the button colours with the button label co
 test('on a narrow phone the Google and Facebook buttons stack instead of clipping a label', () => {
   assert.match(EVENT_THEME_CSS, /@media \(max-width: 380px\)[^@]*SimpleGrid-root:has\(> a\.mantine-Button-root\[href\*='provider='\]\)[^}]*grid-template-columns: minmax\(0, 1fr\) !important/);
 });
+
+test('the notices of the capture flow are drawn in the card colours of the event, with variables only', () => {
+  assert.match(EVENT_THEME_CSS, /\.mantine-Notification-root \{[^}]*background: var\(--event-card-bg\)/);
+  assert.match(EVENT_THEME_CSS, /\.mantine-Notification-root \{[^}]*border-radius: var\(--event-radius\)/);
+  assert.match(EVENT_THEME_CSS, /\.mantine-Notification-root \{[^}]*font-family: var\(--event-font\)/);
+});
+
+test('an alert on a themed page is a card of the event, not a box of another colour', () => {
+  assert.match(EVENT_THEME_CSS, /\.event-theme \.mantine-Alert-root \{[^}]*--alert-bg: var\(--event-card-bg\)/);
+  assert.match(EVENT_THEME_CSS, /\.event-theme \.mantine-Alert-root \{[^}]*border-radius: var\(--event-radius\)/);
+});

@@ -83,9 +83,9 @@ export default function ShareOverlay({
   const suggestedMessageLabel = suggestedMessageLabelProp ?? t('share.suggested');
   // Safe centring (camera#222): the card is centred when it fits and scrolls inside itself when the
   // screen is shorter than the card, instead of being clipped at both ends.
-  const shellClassName = overlay
-    ? 'absolute inset-0 overflow-y-auto bg-black/55 backdrop-blur-sm'
-    : '';
+  // The veil, when there is one, is the page colour of the event, never black (owner, 2026-10-09: the dark veil was a colour of no theme).
+  const shellClassName = overlay ? 'absolute inset-0 overflow-y-auto' : '';
+  const shellStyle = overlay ? { background: 'color-mix(in srgb, var(--event-bg, var(--mantine-color-body)) 80%, transparent)', backdropFilter: 'blur(2px)' } : undefined;
   const centerClassName = overlay
     ? 'app-safe-pad flex min-h-full items-center justify-center'
     : '';
@@ -94,7 +94,7 @@ export default function ShareOverlay({
     : '';
 
   return (
-    <div className={shellClassName}>
+    <div className={shellClassName} style={shellStyle}>
       <div className={centerClassName}>
         <div className={panelClassName} data-event-stage>
           <PublicFlowShell

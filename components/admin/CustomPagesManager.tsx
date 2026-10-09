@@ -1094,7 +1094,7 @@ function PageEditModal({
               onChange={setPendingSavedMessage}
               rows={2}
               placeholder={DEFAULT_APPROVAL_TEXTS.savedMessage}
-              helper="The notification after the photo was saved."
+              helper="An extra notification after the photo was saved. Leave it empty: the waiting card already says the photo waits, and a second message on top of it runs into the card."
             />
             <Area
               label="Waiting Message"
