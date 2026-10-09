@@ -52,15 +52,15 @@ const event = (extra: Record<string, unknown>) => ({ eventId: 'e1', ...extra });
 
 test('an event with a frame of its own uses it; a text-free frame with a message area is not one', async () => {
   const { db } = fakeDb({ frames: [
-    { frameId: 'f1', name: 'Blue', imageUrl: 'https://store.test/f1.png', hasMessageArea: false },
-    { frameId: 'f2', name: 'Message base', imageUrl: 'https://store.test/f2.png', hasMessageArea: true },
+    { frameId: 'f1', name: 'Blue', imageUrl: 'https://store.test/f1.png' },
+    { frameId: 'f2', name: 'Message base', imageUrl: 'https://store.test/f2.png', messageArea: { messageBox: { x: 96, y: 864, width: 1728, height: 162 } } },
   ] });
   const frames = await loadGalleryFrames(db, event({ frames: [{ frameId: 'f1', isActive: true }, { frameId: 'f2', isActive: true }] }));
   assert.deepEqual(frames.map((f) => [f.frameId, f.frameName, f.imageUrl, f.variant]), [['f1', 'Blue', 'https://store.test/f1.png', null]]);
 });
 
 test('without a frame of its own the generated frame is used, one image for each message, recorded as a guest photo records it', async () => {
-  const { db } = fakeDb({ frames: [{ frameId: 'f2', name: 'Message base', imageUrl: 'https://store.test/f2.png', hasMessageArea: true }] });
+  const { db } = fakeDb({ frames: [{ frameId: 'f2', name: 'Message base', imageUrl: 'https://store.test/f2.png', messageArea: { messageBox: { x: 96, y: 864, width: 1728, height: 162 } } }] });
   const design = { messages: ['Go MTK', 'Hajra'], variants: [
     { index: 0, message: 'Go MTK', imageUrl: 'https://store.test/frames/generated/a.png', width: 1080, height: 1350, layers: [], frameId: null },
     { index: 1, message: 'Hajra', imageUrl: 'https://store.test/frames/generated/b.png', width: 1080, height: 1350, layers: [], frameId: null },
@@ -96,4 +96,19 @@ test('framing a photo fetches the frame, composes, stores the result and reports
   assert.deepEqual(fetched, ['https://store.test/f1.png']);
   assert.deepEqual(stored, ['name-1:true']);
   assert.deepEqual([result.imageUrl, result.width, result.height], ['https://store.test/framed.jpg', 200, 250]);
+});
+
+test('the MTK shape: two text-free frames that carry messages give the generated images with their messages (what guests get), never the bare frames', async () => {
+  const area = { messageBox: { x: 96, y: 864, width: 1728, height: 162 } };
+  const { db } = fakeDb({ frames: [
+    { frameId: 'blue', name: 'MTK: blue', imageUrl: 'https://store.test/blue.png', messageArea: area },
+    { frameId: 'pink', name: 'MTK: pink', imageUrl: 'https://store.test/pink.png', messageArea: area },
+  ] });
+  const design = { messages: ['HAJRÁ, MTK!', 'MTK SZÍV!'], variants: [
+    { index: 0, message: 'HAJRÁ, MTK!', imageUrl: 'https://store.test/frames/generated/a.png', width: 1920, height: 1080, layers: [], frameId: 'blue' },
+    { index: 1, message: 'MTK SZÍV!', imageUrl: 'https://store.test/frames/generated/b.png', width: 1920, height: 1080, layers: [], frameId: 'pink' },
+  ] };
+  const frames = await loadGalleryFrames(db, event({ frames: [{ frameId: 'blue', isActive: true }, { frameId: 'pink', isActive: true }], frameDesign: design }));
+  assert.deepEqual(frames.map((f) => f.imageUrl), ['https://store.test/frames/generated/a.png', 'https://store.test/frames/generated/b.png']);
+  assert.deepEqual(frames.map((f) => f.variant?.message), ['HAJRÁ, MTK!', 'MTK SZÍV!']);
 });

@@ -72,6 +72,7 @@ export const cameraAdminVocabularyPacks = [
   createGdsVocabularyPack('event-gallery', {
     'select-mode': { defaultMessage: 'Select mode', icon: GdsIcons.Toggle, feedback: savedFeedback },
     'frame-selected': { defaultMessage: 'Add the frame to the selected', icon: GdsIcons.Gallery, feedback: savedFeedback },
+    'frame-uploaded': { defaultMessage: 'Add the frame to the uploaded photos', icon: GdsIcons.Gallery, feedback: savedFeedback },
     'upload-images': { defaultMessage: 'Upload images', icon: GdsIcons.Upload, feedback: savedFeedback },
     'upload-folder': { defaultMessage: 'Upload folder', icon: GdsIcons.Upload, feedback: savedFeedback },
     'clear-finished': { defaultMessage: 'Clear finished', icon: GdsIcons.Clear, feedback: savedFeedback },

@@ -51,6 +51,8 @@ interface EventGalleryProps {
   canManage?: boolean;
   /** The event has a frame to put on photos (camera#488). */
   hasFrame?: boolean;
+  /** Photos an editor uploaded here that have no frame yet: the gallery offers to frame them all in one press. */
+  unframedUploadIds?: string[];
 }
 
 type RemoveState = {
@@ -113,6 +115,7 @@ export default function EventGallery({
   slideshows,
   canManage = true,
   hasFrame = false,
+  unframedUploadIds = [],
 }: EventGalleryProps) {
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -267,10 +270,10 @@ export default function EventGallery({
   };
 
   const [frameState, setFrameState] = useState<{ busy: boolean; message: string | null; error: string | null }>({ busy: false, message: null, error: null });
+  const [unframed, setUnframed] = useState(unframedUploadIds);
 
   // Puts the event's frame on the selected photos that were uploaded here (the server skips the others and says why), 25 at a time (camera#488).
-  const frameSelected = async () => {
-    const ids = [...selectedIds];
+  const frameIds = async (ids: string[]) => {
     if (ids.length === 0) return;
     if (!confirm(`Add the event's frame to ${ids.length} photo${ids.length === 1 ? '' : 's'}? Only photos uploaded here that have no frame are changed; the plain upload is kept.`)) return;
     setFrameState({ busy: true, message: null, error: null });
@@ -288,6 +291,7 @@ export default function EventGallery({
         framed.push(...(json.data?.framed ?? []));
         skipped.push(...(json.data?.skipped ?? []));
       }
+      setUnframed((current) => current.filter((id) => !framed.some((f) => f.id === id)));
       const newUrl = new Map(framed.map((f) => [f.id, f.imageUrl]));
       setSubmissions((prev) => prev.map((s) => (newUrl.has(submissionIdOf(s)) ? { ...s, imageUrl: newUrl.get(submissionIdOf(s)), finalImageUrl: newUrl.get(submissionIdOf(s)), previewImageUrl: null } : s)));
       const why = [...new Set(skipped.map((s) => s.reason))].join('; ');
@@ -296,6 +300,8 @@ export default function EventGallery({
       setFrameState({ busy: false, message: null, error: error instanceof Error ? error.message : 'The frame could not be added' });
     }
   };
+
+  const frameSelected = () => frameIds([...selectedIds]);
 
   const startSingleConfirm = (submissionId: string) => {
     setRemoveState((prev) => ({
@@ -360,6 +366,18 @@ export default function EventGallery({
           eventMongoId={eventId}
           onUploaded={handleUploaded}
           frameAvailable={hasFrame}
+        />
+      ) : null}
+      {canManage && hasFrame && unframed.length > 0 ? (
+        <InlineAlert
+          title={`${unframed.length} photo${unframed.length === 1 ? '' : 's'} uploaded here ${unframed.length === 1 ? 'has' : 'have'} no frame`}
+          message="They look different from the photos the guests take. Add the event's frame to all of them; the plain uploads are kept."
+          severity="info"
+          action={
+            <SemanticButton action="event-gallery:frame-uploaded" type="button" onClick={() => void frameIds(unframed)} disabled={frameState.busy} variant="secondary">
+              {frameState.busy ? 'Adding the frame…' : `Add the frame to the ${unframed.length}`}
+            </SemanticButton>
+          }
         />
       ) : null}
 

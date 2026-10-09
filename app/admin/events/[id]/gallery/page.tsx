@@ -31,6 +31,10 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
 
   const { submissions, total } = await loadGallerySubmissions(db, String(event.eventId), GALLERY_PAGE_SIZE);
   const hasFrame = (await loadGalleryFrames(db, event)).length > 0;
+  // Photos an editor uploaded that have no frame yet (before the option existed, or uploaded with it off): the gallery offers to frame them in one press.
+  const unframedUploadIds = hasFrame
+    ? (await db.collection(COLLECTIONS.SUBMISSIONS).find({ eventId: event.eventId, 'metadata.adminGalleryUpload': true, 'metadata.galleryFrame': { $ne: true }, isArchived: { $ne: true } }).project({ _id: 1 }).limit(500).toArray()).map((row) => String(row._id))
+    : [];
   const slideshows = await db.collection(COLLECTIONS.SLIDESHOWS).find({ $or: [{ eventId: event.eventId }, { eventId: id }] }).sort({ createdAt: -1 }).toArray();
 
   return (
@@ -57,6 +61,7 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
           slideshows={JSON.parse(JSON.stringify(slideshows))}
           canManage={canManage}
           hasFrame={hasFrame}
+          unframedUploadIds={unframedUploadIds}
         />
       </Card>
     </Stack>

@@ -17,7 +17,7 @@ function world(t: TestContext, options: { frames?: boolean; frameFetchFails?: bo
   const seeded = fakeDb({
     events: [{ _id: EVENT_ID, eventId: 'e1', name: 'MTK', partnerId: 'p1', frames: options.frames === false ? [] : [{ frameId: 'f1', isActive: true }] }],
     partners: [{ partnerId: 'p1', name: 'MTK Budapest' }],
-    frames: [{ frameId: 'f1', name: 'Blue', imageUrl: 'https://store.test/f1.png', hasMessageArea: false }],
+    frames: [{ frameId: 'f1', name: 'Blue', imageUrl: 'https://store.test/f1.png' }],
     submissions: [],
   });
   const uploads: string[] = [];

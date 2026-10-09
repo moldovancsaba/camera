@@ -285,7 +285,8 @@ export default function EventGalleryUpload({
   onUploaded,
   frameAvailable = false,
 }: Props) {
-  const [withFrame, setWithFrame] = useState(false);
+  // On by default whenever the event has a frame (owner, 2026-10-09: an automatic default is also the default; the editor switches it off, it is not an extra to remember).
+  const [withFrame, setWithFrame] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const activeUploadsRef = useRef(0);
