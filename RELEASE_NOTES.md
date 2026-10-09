@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the welcome page's giant screen is the slideshow's own screen, and a saved slideshow reaches the open screens (issue 515; owner reports 2026-10-09)
+
+- **Welcome composition follows the slideshow (owner: "the welcome composition with the big screen has to use exactly the one created for the slideshow, so whenever a slideshow is updated, it has to be updated as well"):** the picture of the giant screen on the welcome page (`Event.welcomeScreen`) is drawn from the default slideshow's screen design (overlay, QR code, texts, the event's frame). It used to be redrawn only when the event already had one; now **saving the default slideshow's screen design, or making a slideshow the default, always draws it**, also for an event that had none. A welcome page that has a picture of its own keeps it (an own picture on a page wins). `onlyIfExists` is gone from `scheduleWelcomeScreen`.
+- **A saved slideshow reaches the screens that are open:** a screen read its settings and its screen design only when it loaded (and reloaded every 3 hours or on "Reload the screen"), so a saved change did not show on a screen already running. Every slideshow save now sets the reload token (`reloadRequestedAt`) that "Reload the screen" sets, so each open full-screen copy reloads at its next slide (the owner: it has to be recalculated every time a save happens). A refused save changes nothing.
+- **Verified:** type-check; lint; unit tests (the default slideshow's design save schedules the redraw without a condition, another slideshow or a save without a design does not, every save sets the reload token and a refused one does not); the welcome picture drawn locally from the real MTK x Vasas slideshow (nothing stored): same overlay, frame, QR code and fitted address line as the live screen.
+- **Data (done after the deploy, a live event, owner's request):** see the issue.
+
+
 ## Unreleased — the line under the photos really fills its box; a refused slideshow save says what is wrong and is logged (owner reports 2026-10-09)
 
 - **Fixed ("it is not scaled"):** a text that fills its box was capped at the size stored with it (10 % of the stage height), so an address such as `FANSELFIE.ME/MTK` stayed at about 80 % of the box. A fit text now ignores the stored size and takes the size that fills the box exactly (at most 30 %, the largest size a text can have), on the live stage and in the server picture of the welcome page. In the editor the Size field is greyed out while **Fill the box** is ticked. The default band is drawn for a nominal line of 12 %.

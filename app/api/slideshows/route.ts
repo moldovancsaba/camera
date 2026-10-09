@@ -241,6 +241,9 @@ export async function PATCH(request: NextRequest) {
     const updates: Record<string, unknown> = {
       updatedAt: generateTimestamp(),
     };
+    // An open screen reads its settings and its screen design when it loads: a save asks every open copy to reload at its next slide (lib/slideshow/reload.ts), so a saved change shows
+    // on the screens without anybody pressing "Reload the screen" (owner, 2026-10-09: it has to be recalculated every time a save happens).
+    updates.reloadRequestedAt = updates.updatedAt;
 
     if (name !== undefined) updates.name = name;
     if (bufferSize !== undefined) updates.bufferSize = Math.max(1, Math.min(50, parseInt(bufferSize)));
@@ -368,10 +371,10 @@ export async function PATCH(request: NextRequest) {
       { returnDocument: 'after' }
     );
 
-    // The welcome page screen follows the default slideshow: a changed screen design redraws the picture the event already has.
+    // The welcome page screen is the default slideshow's screen: a saved screen design draws it again, also for an event that had none (owner, 2026-10-09).
     if (existing.isDefault === true && screenDesign !== undefined) {
       const event = await db.collection(COLLECTIONS.EVENTS).findOne({ eventId: existing.eventId }, { projection: { _id: 1 } });
-      if (event) scheduleWelcomeScreen(event._id, { onlyIfExists: true });
+      if (event) scheduleWelcomeScreen(event._id);
     }
 
     return NextResponse.json({ success: true, slideshow: result });

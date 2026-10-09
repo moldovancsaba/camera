@@ -65,7 +65,7 @@ test('PUT makes another slideshow of the event the default and takes the flag of
   const response = await PUT(req('PUT', { slideshowId: 's-new' }), params);
   assert.equal(response.status, 200);
   assert.deepEqual(flags(data), { 's-old': false, 's-new': true, 's-other': false });
-  assert.deepEqual(refreshes.map((r) => r.options), [{ onlyIfExists: true }], 'a welcome page screen picture the event already has is redrawn from the new default; none is made for an event without one');
+  assert.equal(refreshes.length, 1, 'the welcome page screen is drawn from the new default, whether the event had a picture or not');
 });
 
 test('PUT refuses a slideshow of another event or an unknown one, and changes nothing', async (t) => {
