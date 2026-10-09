@@ -17,6 +17,8 @@ export interface CaptureVariant {
   width: number;
   height: number;
   layers: FrameVariant['layers'];
+  /** The library frame (design) this image is written on; null for the generated layout. A message on several designs has one image for each (issue 449). */
+  frameId: string | null;
 }
 
 export interface CaptureFrame {
@@ -68,7 +70,7 @@ export function captureFrameOf(event: EventWithFrames): CaptureFrame | null {
   if (event.frames?.some(isOwnActiveFrame)) return null;
   const variants = (event.frameDesign?.variants ?? [])
     .filter((variant) => variant.imageUrl && variant.width > 0 && variant.height > 0)
-    .map(({ index, message, imageUrl, width, height, layers }) => ({ index, message, imageUrl, width, height, layers }));
+    .map(({ index, message, imageUrl, width, height, layers, frameId }) => ({ index, message, imageUrl, width, height, layers, frameId: frameId ?? null }));
   if (variants.length === 0) return null;
   return { width: variants[0].width, height: variants[0].height, variants };
 }
@@ -79,7 +81,9 @@ export function pickVariant(
   previousIndex: number | null,
   random: () => number = Math.random
 ): CaptureVariant | null {
-  return pickMessage(frame.variants, previousIndex, random);
+  // A message on several designs has several images with one position, so "not the last one" is by position first and falls back to any image when that leaves none.
+  const others = frame.variants.filter((variant) => variant.index !== previousIndex);
+  return pickMessage(others.length > 0 && frame.variants.length > 1 ? others : frame.variants, null, random);
 }
 
 /** How a user gets the message of the generated frame: `random` (the default, a new one at every shutter press) or `user` (the user chooses before taking the photo). */

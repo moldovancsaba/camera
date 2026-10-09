@@ -103,7 +103,7 @@ export async function saveFrameMessages(
     if (!checked.ok) throw apiBadRequest(checked.error);
     messages = checked.messages;
   }
-  let chosen: Record<string, string> = input.reset === true ? {} : { ...(current.messageFrames ?? {}) };
+  let chosen: Record<string, string | string[]> = input.reset === true ? {} : { ...(current.messageFrames ?? {}) };
   if (input.reset !== true && input.messageFrames !== undefined) {
     const checked = await validateMessageFrames(db, event, messages, input.messageFrames);
     if (!checked.ok) throw apiBadRequest(checked.error);

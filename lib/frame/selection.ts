@@ -107,6 +107,11 @@ export function framesOfMessage(messageFrames: MessageFrameChoices | undefined, 
   return [...new Set(ids.filter((id): id is string => typeof id === 'string' && id !== ''))];
 }
 
+/** Every frame id any message is written on, each once. */
+export function frameIdsOf(messageFrames: MessageFrameChoices | undefined): string[] {
+  return [...new Set(Object.keys(messageFrames ?? {}).flatMap((message) => framesOfMessage(messageFrames, message)))];
+}
+
 /**
  * The layouts of an event, in the order users meet them. The event's own complete frames when it has any (the generated frame is not used then); otherwise the frames its
  * messages are written on (only those that can still carry a message), and the generated layout when some message is not written on a frame or the event has no message.

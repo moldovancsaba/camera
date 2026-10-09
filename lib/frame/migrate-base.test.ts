@@ -6,7 +6,7 @@ import { fakeDb } from '@/lib/library/fake-db';
 import { CAMERA_STAGE_WHITE } from '@/lib/gds/tokens/colors';
 import { baseImageFor, parseFrameBase, renderBaseFrame } from './base';
 import { resolveFrameFont } from './fonts';
-import { chosenFrameId, frameBaseOf, loadMessageFrames } from './message-frames';
+import { chosenFrameIds, frameBaseOf, loadMessageFrames } from './message-frames';
 import { migrateBaseToLibrary, retireBase } from './migrate-base';
 
 const NOW = '2026-10-09T08:00:00.000Z';
@@ -104,7 +104,7 @@ test('the images drawn from the moved frames are byte for byte the images the ba
   const seen = new Set<string>();
   for (const [index, message] of messages.entries()) {
     const before = await renderBaseFrame({ base: oldBase, imageBytes: bytes.get(baseImageFor(oldBase, message).imageUrl)!, message, font });
-    const frameId = chosenFrameId(moved.frameDesign as { messages: string[]; messageFrames?: Record<string, string> }, index);
+    const frameId = chosenFrameIds(moved.frameDesign as { messages: string[]; messageFrames?: Record<string, string> }, index)[0] ?? null;
     const frame = frameId ? frames.get(frameId) : undefined;
     assert.ok(frame, `the message "${message}" chose a frame that can be loaded`);
     const after = await renderBaseFrame({ base: frameBaseOf(frame), imageBytes: bytes.get(frame.imageUrl)!, message, font });

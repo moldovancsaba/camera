@@ -21,10 +21,13 @@ import { describeSnapshotChanges } from '@/lib/frame/diff';
 import { eventEmoji } from '@/lib/frame/emoji';
 import AssetThumbnail from '@/components/admin/library/AssetThumbnail';
 import { fillMessage, messageTokens, validateMessages } from '@/lib/frame/messages';
+import { framesOfMessage } from '@/lib/frame/selection';
 
 interface Limits {
   maxMessages: number;
   maxLength: number;
+  /** One picture for each message on each design. */
+  maxImages?: number;
 }
 
 /** A frame of the event that can carry a message: assigned, switched on, with a message area (camera#366). */
@@ -41,9 +44,9 @@ interface Loaded {
   availableFrames?: CarrierFrame[];
 }
 
-/** The frame chosen for each message of a design, in the order of its messages; '' where a message has none. */
-const framesOf = (design: Pick<FrameDesign, 'messages' | 'messageFrames'> | null, messages: readonly string[]): string[] =>
-  messages.map((message) => design?.messageFrames?.[message] ?? '');
+/** The frames chosen for each message of a design, in the order of its messages; an empty list where a message has none (it is on the generated layout). */
+const framesOf = (design: Pick<FrameDesign, 'messages' | 'messageFrames'> | null, messages: readonly string[]): string[][] =>
+  messages.map((message) => framesOfMessage(design?.messageFrames, message));
 
 interface ImageCounts {
   total: number;
@@ -88,6 +91,90 @@ function Swatch({ colour, label }: { colour: string; label: string }) {
   );
 }
 
+/**
+ * Which message goes on which design (issue 449): a row for each message, a column for each design of the event that carries messages. A message on no design is on the generated
+ * layout. Every tick is one picture, drawn when the messages are saved.
+ */
+function MessageDesignTable({
+  messages,
+  frames,
+  carriers,
+  maxImages,
+  disabled,
+  onChange,
+}: {
+  messages: string[];
+  frames: string[][];
+  carriers: CarrierFrame[];
+  maxImages: number;
+  disabled: boolean;
+  onChange: (index: number, ids: string[]) => void;
+}) {
+  const known = new Set(carriers.map((frame) => frame.frameId));
+  const images = frames.reduce((total, ids) => total + Math.max(1, ids.length), 0);
+  return (
+    <div style={{ marginTop: '1rem' }}>
+      <h4 style={{ margin: '0 0 0.25rem' }}>Which message goes on which design</h4>
+      <p style={{ ...muted, margin: '0 0 0.5rem' }}>
+        Tick the designs a message can be written on. With several ticks the message appears on each of them, and a user who chooses a design is offered the messages ticked for it. A
+        message with no tick is written on the generated layout. This makes {images} {images === 1 ? 'picture' : 'pictures'} (at most {maxImages}).
+      </p>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse', minWidth: '100%' }}>
+          <thead>
+            <tr>
+              <th scope="col" style={{ padding: '0.375rem 0.75rem', textAlign: 'left' }}>
+                Message
+              </th>
+              {carriers.map((frame) => (
+                <th key={frame.frameId} scope="col" style={{ padding: '0.375rem 0.75rem', textAlign: 'center', verticalAlign: 'bottom' }}>
+                  <div style={{ display: 'grid', gap: '0.25rem', justifyItems: 'center' }}>
+                    <AssetThumbnail url={frame.imageUrl} name={frame.name} noun="frame" width={72} />
+                    <span style={{ fontWeight: 600 }}>{frame.name}</span>
+                  </div>
+                </th>
+              ))}
+              <th scope="col" style={{ padding: '0.375rem 0.75rem', textAlign: 'center', verticalAlign: 'bottom' }}>
+                Generated layout
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {messages.map((message, index) => {
+              const ids = frames[index] ?? [];
+              const gone = ids.filter((id) => !known.has(id));
+              return (
+                <tr key={index} style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}>
+                  <th scope="row" style={{ fontWeight: 400, padding: '0.375rem 0.75rem', textAlign: 'left' }}>
+                    {message.trim() || '(empty message)'}
+                    {gone.length > 0 ? (
+                      <span role="alert" style={{ color: 'var(--mantine-color-error)', display: 'block', fontSize: '0.8125rem' }}>
+                        A design chosen for this message is no longer available (not assigned to this event, switched off, or without a message area). Untick it or choose another.
+                      </span>
+                    ) : null}
+                  </th>
+                  {carriers.map((frame) => (
+                    <td key={frame.frameId} style={{ padding: '0.375rem 0.75rem', textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Message ${index + 1} on ${frame.name}`}
+                        checked={ids.includes(frame.frameId)}
+                        disabled={disabled}
+                        onChange={(event) => onChange(index, event.currentTarget.checked ? [...ids, frame.frameId] : ids.filter((id) => id !== frame.frameId))}
+                      />
+                    </td>
+                  ))}
+                  <td style={{ color: 'var(--mantine-color-dimmed)', padding: '0.375rem 0.75rem', textAlign: 'center' }}>{ids.length === 0 ? 'yes' : ''}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function GeneratedFramePanel({
   eventId,
   hasOwnActiveFrame,
@@ -107,8 +194,8 @@ export default function GeneratedFramePanel({
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draft, setDraft] = useState<string[]>([]);
-  // The frame chosen for each message, in the order of `draft` ('' = the generated layout).
-  const [draftFrames, setDraftFrames] = useState<string[]>([]);
+  // The frames chosen for each message, in the order of `draft` (none = the generated layout).
+  const [draftFrames, setDraftFrames] = useState<string[][]>([]);
   const [busy, setBusy] = useState<Busy>(null);
   const [notice, setNotice] = useState<Notice | null>(initialNotice);
 
@@ -190,8 +277,8 @@ export default function GeneratedFramePanel({
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          // The frame of a message goes by the text of the message, so it stays with the message (camera#366).
-          body: JSON.stringify({ messages: validation.messages, messageFrames: Object.fromEntries(validation.messages.flatMap((message, index) => (draftFrames[index] ? [[message, draftFrames[index]]] : []))) }),
+          // The frames of a message go by the text of the message, so they stay with the message (camera#366).
+          body: JSON.stringify({ messages: validation.messages, messageFrames: Object.fromEntries(validation.messages.flatMap((message, index) => (draftFrames[index]?.length ? [[message, draftFrames[index]]] : []))) }),
         },
         'Could not save the messages'
       );
@@ -377,7 +464,7 @@ export default function GeneratedFramePanel({
         {design?.base ? (
           <div>
             <h4 style={{ margin: '0 0 0.5rem' }}>The designers’ picture of this event</h4>
-            {design.messages.length > 0 && design.messages.every((message) => design.messageFrames?.[message]) ? (
+            {design.messages.length > 0 && design.messages.every((message) => framesOfMessage(design.messageFrames, message).length > 0) ? (
               <>
                 <p style={{ ...muted, margin: '0 0 0.5rem' }}>
                   The pictures are frames of this event now, and every message chooses one (see the Frame of each message below). The old data on the event is still kept: check the images above, then remove it.
@@ -410,14 +497,12 @@ export default function GeneratedFramePanel({
           </p>
           <p style={{ ...muted, margin: '0 0 0.75rem' }}>
             {carriers.length > 0
-              ? 'Each message can be written on one of the frames of this event that carry messages (the Frame choice of the message); a message with no frame uses the generated layout.'
+              ? 'Each message can be written on one, several or all of the frames of this event that carry messages (the table below the list); a message on no frame uses the generated layout.'
               : 'To write messages on your own frames, assign or upload a frame below and give it a message area (Message area on its card): a text-free frame that carries the messages of this event.'}
           </p>
           <ol style={{ display: 'grid', gap: '0.75rem', listStyle: 'none', margin: 0, padding: 0 }}>
             {draft.map((message, index) => {
               const filled = tokens ? fillMessage(message, tokens) : null;
-              const chosenId = draftFrames[index] ?? '';
-              const chosen = carriers.find((frame) => frame.frameId === chosenId);
               return (
                 <li key={index} style={{ display: 'grid', gap: '0.25rem' }}>
                   <Group gap="xs" align="flex-start" wrap="wrap">
@@ -442,37 +527,6 @@ export default function GeneratedFramePanel({
                       Remove
                     </Button>
                   </Group>
-                  {carriers.length > 0 || chosenId ? (
-                    <Group gap="xs" align="center" wrap="wrap">
-                      <label style={{ alignItems: 'center', display: 'inline-flex', fontSize: '0.8125rem', gap: '0.5rem' }}>
-                        Frame
-                        <select
-                          aria-label={`Frame for message ${index + 1}`}
-                          value={chosenId}
-                          disabled={busy !== null}
-                          onChange={(event) => {
-                            const value = event.currentTarget.value;
-                            setDraftFrames((list) => list.map((item, at) => (at === index ? value : item)));
-                          }}
-                          style={{ minHeight: 32 }}
-                        >
-                          <option value="">Generated layout (no frame)</option>
-                          {carriers.map((frame) => (
-                            <option key={frame.frameId} value={frame.frameId}>
-                              {frame.name}
-                            </option>
-                          ))}
-                          {chosenId && !chosen ? <option value={chosenId}>A frame that is no longer available</option> : null}
-                        </select>
-                      </label>
-                      {chosen ? <AssetThumbnail url={chosen.imageUrl} name={chosen.name} noun="frame" width={96} /> : null}
-                    </Group>
-                  ) : null}
-                  {chosenId && !chosen ? (
-                    <span role="alert" style={{ color: 'var(--mantine-color-error)', fontSize: '0.8125rem' }}>
-                      The frame chosen for this message is no longer available (not assigned to this event, switched off, or without a message area): the generated layout is used until you choose another.
-                    </span>
-                  ) : null}
                   <span style={muted}>
                     {message.trim().length}/{limits.maxLength}
                     {tokens && message.trim() ? (filled === null ? ' · skipped for this event (it needs a name this event does not have)' : message.includes('{') ? ` · reads “${filled}”` : '') : ''}
@@ -482,13 +536,23 @@ export default function GeneratedFramePanel({
             })}
           </ol>
           {draft.length === 0 ? <p style={muted}>No messages: the frame is drawn without a message.</p> : null}
+          {carriers.length > 0 || draftFrames.some((ids) => ids.length > 0) ? (
+            <MessageDesignTable
+              messages={draft}
+              frames={draftFrames}
+              carriers={carriers}
+              maxImages={limits.maxImages ?? 40}
+              disabled={busy !== null}
+              onChange={(index, ids) => setDraftFrames((list) => list.map((item, at) => (at === index ? ids : item)))}
+            />
+          ) : null}
           {validationError ? (
             <p role="alert" style={{ color: 'var(--mantine-color-error)', margin: '0.5rem 0 0' }}>
               {validationError}
             </p>
           ) : null}
           <Group gap="xs" mt="md" wrap="wrap">
-            <Button type="button" variant="light" size="xs" disabled={busy !== null || draft.length >= limits.maxMessages} onClick={() => { setDraft((list) => [...list, '']); setDraftFrames((list) => [...list, '']); }}>
+            <Button type="button" variant="light" size="xs" disabled={busy !== null || draft.length >= limits.maxMessages} onClick={() => { setDraft((list) => [...list, '']); setDraftFrames((list) => [...list, []]); }}>
               Add message
             </Button>
             <Button type="button" size="xs" loading={busy === 'save'} disabled={busy !== null || !dirty || validationError !== null} onClick={() => void save()}>

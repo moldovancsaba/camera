@@ -44,7 +44,7 @@ test('no variants, or none with an image, means no generated frame', () => {
 
 test('the capture view carries only what the page draws with, not the render internals', () => {
   const frame = captureFrameOf({ frameDesign: { variants } })!;
-  assert.deepEqual(Object.keys(frame.variants[0]).sort(), ['height', 'imageUrl', 'index', 'layers', 'message', 'width']);
+  assert.deepEqual(Object.keys(frame.variants[0]).sort(), ['frameId', 'height', 'imageUrl', 'index', 'layers', 'message', 'width']);
   assert.equal(frame.width, 1920);
   assert.equal(frame.height, 1080);
 });
@@ -113,7 +113,7 @@ test('a text-free frame with a message area carries the messages of the event: i
   assert.equal(captureFrameOf({ frames: [{ isActive: false, frameDetails: { hasMessageArea: false } }], frameDesign: { variants } })?.variants.length, 3);
 });
 
-const choiceVariant = (index: number | null, message: string | null) => ({ index, message, imageUrl: `https://img.example/${index}.png`, width: 1920, height: 1080, layers: [] });
+const choiceVariant = (index: number | null, message: string | null) => ({ index, message, imageUrl: `https://img.example/${index}.png`, width: 1920, height: 1080, layers: [], frameId: null });
 
 test('only the exact word "user" lets the user choose: an event that never set it keeps the random message', () => {
   assert.equal(normalizeFrameChoice('user'), 'user');
@@ -135,4 +135,16 @@ test('the variant a user chose is found by its position in the message list', ()
   assert.equal(variantByIndex(frame, 7), null);
   assert.equal(variantByIndex(frame, null), null);
   assert.equal(variantByIndex(null, 0), null);
+});
+
+test('the capture variants carry the design they are written on, null for the generated layout', () => {
+  const frame = captureFrameOf({ frameDesign: { variants: [variant(0, 'A', { frameId: 'blue' }), variant(0, 'A', { frameId: 'pink', imageUrl: url('p') }), variant(1, 'B')] } })!;
+  assert.deepEqual(frame.variants.map((v) => [v.index, v.frameId]), [[0, 'blue'], [0, 'pink'], [1, null]]);
+});
+
+test('a message on several designs has several images with one position: the pick still works, and one message on two designs is still picked', () => {
+  const frame = captureFrameOf({ frameDesign: { variants: [variant(0, 'A', { frameId: 'blue' }), variant(0, 'A', { frameId: 'pink', imageUrl: url('p') }), variant(1, 'B', { frameId: 'blue', imageUrl: url('q') })] } })!;
+  for (const random of [0, 0.5, 0.99]) assert.equal(pickVariant(frame, 0, () => random)?.index, 1, 'not the message of the last photo while another exists');
+  const only = captureFrameOf({ frameDesign: { variants: [variant(0, 'A', { frameId: 'blue' }), variant(0, 'A', { frameId: 'pink', imageUrl: url('p') })] } })!;
+  for (const random of [0, 0.5, 0.99]) assert.ok(pickVariant(only, 0, () => random), 'one message on two designs: an image is still picked');
 });

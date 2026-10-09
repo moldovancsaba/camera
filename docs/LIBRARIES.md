@@ -73,7 +73,8 @@ is the same as before (checked on the real data: 14 of 14 events).
   optional top and bottom territories): the same data the older `frameDesign.base` holds. A frame **with** a message area carries the messages of an event and is **not** a frame
   the user picks; a frame without one is a complete frame, as before. It is edited on the card of a frame the level owns (the Message area button of a partner or event
   upload) and on the global frame's edit page, with a preview of the boxes on the picture; saving redraws the events whose messages are written on that frame.
-- **The frame of each message** (`frameDesign.messageFrames`: the text of a message to a frame id): chosen in the generated frame panel of the event, one frame per message, among
+- **The frames of each message** (`frameDesign.messageFrames`: the text of a message to a frame id, or to a list of frame ids when the message goes on several designs, issue 449): chosen in
+  the table **Which message goes on which design** in the generated frame panel of the event (one image for each message and design, at most 40), among
   the event's frames that are assigned, switched on, switched on in the library, and have a message area. The choice goes by the text of the message, so it stays with the
   message when messages are moved; it is checked on save (400 with a plain message) and dropped when its message goes or the list is reset. A snapshot refresh keeps it.
 - **Drawing** (`lib/frame/variants.ts`): for each message: the chosen frame (written with the event's font, `renderBaseFrame`), else the older base picture, else the generated
