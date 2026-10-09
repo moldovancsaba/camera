@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-09T03:05:20+00:00",
+  "generated": "2026-10-09T03:13:16+00:00",
   "repo": "camera",
-  "head": "e665979",
+  "head": "21c5e55",
   "counts": {
-   "endpoints": 127,
+   "endpoints": 128,
    "collections": 8,
    "env": 59,
    "outbound-hosts": 30,
@@ -180,6 +180,18 @@
    "file": "app/api/admin/migrate-frames/route.ts",
    "auth_markers": [
     "requireAdmin",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/nav-context",
+   "methods": [
+    "GET"
+   ],
+   "file": "app/api/admin/nav-context/route.ts",
+   "auth_markers": [
+    "requireAuth",
     "withErrorHandler"
    ],
    "no_auth_marker": false

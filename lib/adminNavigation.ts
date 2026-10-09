@@ -199,3 +199,88 @@ export function getVisibleAdminNavSections(access: AdminNavigationAccess): Admin
     items: section.items.filter((item) => item.isVisible(access)),
   })).filter((section) => section.items.length > 0);
 }
+
+// ---------------------------------------------------------------------------
+// The context menu (issue 426, docs/BUILDING_BRICKS.md section 7): inside one event or one partner the sidebar shows that item's own menu, with "Back to the main
+// menu" first, instead of the main menu plus a tab bar. The context comes from the path alone, so deep links and bookmarks work unchanged.
+// ---------------------------------------------------------------------------
+
+export type AdminContextKind = 'event' | 'partner';
+
+export interface AdminContext {
+  kind: AdminContextKind;
+  /** The Mongo id of the event or the partner, as it is in the path. */
+  id: string;
+}
+
+/** `/admin/events/<id>` and everything under it is the event's context, `/admin/partners/<id>` the partner's; `new` and every other path are the main menu. */
+export function adminContextOf(pathname: string): AdminContext | null {
+  const match = /^\/admin\/(events|partners)\/([^/?#]+)(?:\/|$)/.exec(pathname);
+  if (!match || match[2] === 'new') return null;
+  return { kind: match[1] === 'events' ? 'event' : 'partner', id: match[2] };
+}
+
+export interface AdminContextItem {
+  label: string;
+  description: string;
+  iconKey: string;
+  /** The path after the event's or partner's own, with an optional #anchor for a section of the overview page; empty is the overview. */
+  path: string;
+  /** Paths (after the base) that make this item the active one, besides its own: the pages it opens, such as the editor of one slideshow. */
+  also?: string[];
+  tourId?: string;
+  isVisible: (access: AdminNavigationAccess) => boolean;
+}
+
+const everyone = () => true;
+const globalAdminOnly = (access: AdminNavigationAccess) => access.isGlobalAdmin;
+
+/**
+ * The event menu: every page of an event, so each editor is one click away. Queue and Analytics are for global admins (a partner user is sent away from
+ * them). The slideshow, landing page and layout editors are reached from their lists on the overview, so those items point at the section there.
+ */
+export const EVENT_CONTEXT_MENU: AdminContextItem[] = [
+  { label: 'Overview', description: 'The event at a glance.', iconKey: 'layoutDashboard', path: '', isVisible: everyone },
+  { label: 'Edit and pages', description: 'The event settings and the pages of the user journey.', iconKey: 'adjustments', path: '/edit', isVisible: everyone },
+  { label: 'Vetting', description: 'Photos waiting for approval and try-on results.', iconKey: 'userShield', path: '/vetting', isVisible: everyone },
+  { label: 'Queue', description: 'The try-on queue of the event.', iconKey: 'sparkles', path: '/queue', isVisible: globalAdminOnly },
+  { label: 'Analytics', description: 'Try-on analytics of the event.', iconKey: 'brandDatabricks', path: '/analytics', isVisible: globalAdminOnly },
+  { label: 'Logos', description: 'The logo of the event and of each place it shows.', iconKey: 'photo', path: '/logos', isVisible: everyone },
+  { label: 'Frames', description: 'The frames of the event.', iconKey: 'frame', path: '/frames', isVisible: everyone },
+  { label: 'Images', description: 'The pictures the event can use.', iconKey: 'photo', path: '/images', isVisible: everyone },
+  { label: 'Slideshows', description: 'The slideshows and the welcome page screen.', iconKey: 'photoScan', path: '#slideshows', also: ['/slideshows', '/layouts'], isVisible: everyone },
+  { label: 'Landing pages', description: 'The landing pages of the event.', iconKey: 'world', path: '#landing-pages', also: ['/landing-pages'], isVisible: everyone },
+];
+
+/** The partner menu: its pages. Its events and its users are cards on the overview that lead to the events list and the users page, which are main-menu pages, so they are not items here. */
+export const PARTNER_CONTEXT_MENU: AdminContextItem[] = [
+  { label: 'Overview', description: 'The partner at a glance.', iconKey: 'buildingStore', path: '', isVisible: everyone },
+  { label: 'Edit', description: 'The partner settings.', iconKey: 'adjustments', path: '/edit', isVisible: everyone },
+  { label: 'Logos', description: 'The logo of the partner: the default of all its events.', iconKey: 'photo', path: '/logos', isVisible: everyone },
+  { label: 'Frames', description: 'The frames of the partner.', iconKey: 'frame', path: '/frames', isVisible: everyone },
+  { label: 'Images', description: 'The pictures the partner and its events can use.', iconKey: 'photo', path: '/images', isVisible: everyone },
+];
+
+export interface AdminContextMenu {
+  title: string;
+  items: Array<{ label: string; href: string; iconKey: string; active: boolean; tourId?: string }>;
+}
+
+/** The menu of a context for a user: the items that user may see, each with its address and whether the path being shown belongs to it. */
+export function adminContextMenu(context: AdminContext, pathname: string, access: AdminNavigationAccess): AdminContextMenu {
+  const base = `/admin/${context.kind === 'event' ? 'events' : 'partners'}/${context.id}`;
+  const defs = context.kind === 'event' ? EVENT_CONTEXT_MENU : PARTNER_CONTEXT_MENU;
+  const clean = pathname.split(/[?#]/)[0].replace(/\/$/, '');
+  const inside = (relative: string) => clean === base + relative || clean.startsWith(`${base}${relative}/`);
+  return {
+    title: context.kind === 'event' ? 'Event' : 'Partner',
+    items: defs
+      .filter((item) => item.isVisible(access))
+      .map((item) => {
+        const own = item.path.startsWith('#') ? '' : item.path;
+        // The overview is active only on its own address; an item that points at a section of it is active on the pages that section opens, never on the overview itself.
+        const active = item.path === '' ? clean === base : [own, ...(item.also ?? [])].filter(Boolean).some(inside);
+        return { label: item.label, href: base + item.path, iconKey: item.iconKey, active, tourId: item.tourId };
+      }),
+  };
+}
