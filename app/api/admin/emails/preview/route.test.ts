@@ -48,7 +48,7 @@ function setup(t: TestContext, options: { allowed?: boolean } = {}) {
 }
 const url = 'http://localhost/api/admin/emails/preview';
 const post = (body: unknown) => new NextRequest(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-type Answer = { data: { subject: string; html: string; text: string; warnings: { withoutValue: string[]; unknown: string[] }; language: string } };
+type Answer = { data: { subject: string; html: string; text: string; warnings: { withoutValue: string[]; unknown: string[]; refusedPictures: string[] }; language: string } };
 
 test('without an event the default look and sample values are used, and the legal part given is small print after the button', async (t) => {
   setup(t);
@@ -59,7 +59,7 @@ test('without an event the default look and sample values are used, and the lega
   assert.ok(data.html.includes('font-size:22px') && data.html.includes('Szia Anna!'));
   assert.ok(data.html.indexOf('font-size:12px') > data.html.indexOf('display:inline-block;padding:14px'), 'the legal part is after the button');
   assert.ok(data.text.endsWith('Jogi rész: https://seyuselfies.com/hu/policies/'));
-  assert.deepEqual(data.warnings, { withoutValue: [], unknown: [] });
+  assert.deepEqual(data.warnings, { withoutValue: [], unknown: [], refusedPictures: [] });
 });
 
 test('with an event the e-mail uses its name, teams, date and short link, and the legal part that applies to it unless one is given', async (t) => {
@@ -87,7 +87,10 @@ test('a variable the event has no value for is left out and reported; a name tha
   assert.equal(noTeams.data.text, 'Go !  on', 'the variable is left out; the words around it stay as typed');
   assert.deepEqual(noTeams.data.warnings.withoutValue.sort(), ['date', 'home', 'teams']);
   const sample = (await (await POST(post({ subject: 'x', body: '{teams} {visitor}' }))).json()) as Answer;
-  assert.deepEqual(sample.data.warnings, { withoutValue: [], unknown: [] }, 'sample values fill every variable');
+  assert.deepEqual(sample.data.warnings, { withoutValue: [], unknown: [], refusedPictures: [] }, 'sample values fill every variable');
+  const pictures = (await (await POST(post({ subject: 'x', body: 'Hi\n\n![Banner](https://abc123.public.blob.vercel-storage.com/m/b.png)\n\n![Tracker](https://evil.test/t.png)', legal: '' }))).json()) as Answer;
+  assert.ok(pictures.data.html.includes('src="https://abc123.public.blob.vercel-storage.com/m/b.png"') && !pictures.data.html.includes('evil.test'));
+  assert.deepEqual(pictures.data.warnings.refusedPictures, ['https://evil.test/t.png']);
 });
 
 test('a bad body is refused; without access to the event nothing is read; nothing is written', async (t) => {

@@ -140,8 +140,13 @@ export async function sendSubmissionResultEmail(
     eventName,
     button: input.noButton ? null : { label: input.buttonLabel?.trim() || translate(language, 'email.buttonOpen'), url: input.shareUrl },
   });
-  if (composed.warnings.withoutValue.length > 0 || composed.warnings.unknown.length > 0) {
-    console.warn('[email] Submission result email: variables left out', { eventName: input.eventName || null, withoutValue: composed.warnings.withoutValue, unknown: composed.warnings.unknown });
+  if (composed.warnings.withoutValue.length > 0 || composed.warnings.unknown.length > 0 || composed.warnings.refusedPictures.length > 0) {
+    console.warn('[email] Submission result email: variables or pictures left out', {
+      eventName: input.eventName || null,
+      withoutValue: composed.warnings.withoutValue,
+      unknown: composed.warnings.unknown,
+      refusedPictures: composed.warnings.refusedPictures,
+    });
   }
 
   const result = await sendEmail({ from, to: recipientEmail, subject: composed.subject, text: composed.text, html: composed.html });

@@ -7,6 +7,8 @@
  * - a paragraph that starts with `# ` is a title, `-# ` is small text, `+# ` is large text;
  * - `**bold**`, `*italic*`, `[label](https://address)` (a link, shown bold and underlined), a bare web address (a link, as before);
  * - `{variable}` (lib/email/variables.ts), also as the address of a link: `[Your photo]({link})`;
+ * - a paragraph that is only `![description](https://picture)` is a picture, and `[![description](https://picture)](https://address)` is a picture that is a link (issue 376: "a picture with
+ *   a URL linked behind it"); the picture must be from the app's own storage (`allowedImage`), anything else is left out and reported;
  * - a backslash writes the next sign as it is: `\*`, `\[`.
  *
  * A text that has none of these reads exactly as it did when e-mails were plain text.
@@ -16,6 +18,7 @@
  */
 
 import { escapeHtml } from '@/lib/email/escape';
+import { allowedImage } from '@/lib/theme/event-theme';
 
 export type BlockKind = 'normal' | 'title' | 'small' | 'large';
 
@@ -28,10 +31,20 @@ export type Inline =
   | { t: 'link'; label: Inline[]; href: Part[] }
   | { t: 'br' };
 
-export interface Block {
+export interface TextBlock {
   kind: BlockKind;
   inlines: Inline[];
 }
+
+/** A paragraph that is a picture, as the editor wrote it: the address of the picture is as written, the link behind it may be a variable. */
+export interface PictureBlock {
+  kind: 'picture';
+  alt: string;
+  src: string;
+  href: Part[] | null;
+}
+
+export type Block = TextBlock | PictureBlock;
 
 const VARIABLE = /\{([A-Za-z][A-Za-z0-9_]*)\}/g;
 const ESCAPABLE = '\\*[]()#{}+-';
@@ -123,6 +136,16 @@ function parseInline(src: string, allowLinks: boolean): Inline[] {
 
 const PREFIXES: Array<[string, BlockKind]> = [['-# ', 'small'], ['+# ', 'large'], ['# ', 'title']];
 
+const PICTURE = /^!\[([^\]\n]*)\]\(([^)\s]+)\)$/;
+const LINKED_PICTURE = /^\[!\[([^\]\n]*)\]\(([^)\s]+?)\)\]\(([^)\s]+)\)$/;
+
+function pictureBlock(part: string): PictureBlock | null {
+  const linked = LINKED_PICTURE.exec(part);
+  if (linked) return { kind: 'picture', alt: linked[1].trim(), src: linked[2], href: splitVariables(linked[3]) };
+  const plain = PICTURE.exec(part);
+  return plain ? { kind: 'picture', alt: plain[1].trim(), src: plain[2], href: null } : null;
+}
+
 /** The text an editor wrote as blocks. Empty paragraphs are dropped. */
 export function parseRich(source: string): Block[] {
   return source
@@ -130,12 +153,14 @@ export function parseRich(source: string): Block[] {
     .split(/\n{2,}/)
     .map((part) => part.trim())
     .filter(Boolean)
-    .map((part) => {
+    .map((part): Block => {
+      const picture = pictureBlock(part);
+      if (picture) return picture;
       const prefix = PREFIXES.find(([mark]) => part.startsWith(mark));
       const text = prefix ? part.slice(prefix[0].length).trimStart() : part;
-      return { kind: prefix?.[1] ?? 'normal', inlines: parseInline(text, true) } satisfies Block;
+      return { kind: prefix?.[1] ?? 'normal', inlines: parseInline(text, true) };
     })
-    .filter((block) => block.inlines.length > 0);
+    .filter((block) => block.kind === 'picture' || block.inlines.length > 0);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -157,13 +182,25 @@ export type RInline =
   | { t: 'link'; label: RInline[]; href: string | null }
   | { t: 'br' };
 
-export interface RBlock {
+export interface RTextBlock {
   kind: BlockKind;
   inlines: RInline[];
 }
 
+/** A picture that passed the checks: its address is one the e-mail may load, the link behind it (if any) is an address the e-mail may link to. */
+export interface RPictureBlock {
+  kind: 'picture';
+  alt: string;
+  src: string;
+  href: string | null;
+}
+
+export type RBlock = RTextBlock | RPictureBlock;
+
 export interface Resolved {
   blocks: RBlock[];
+  /** The addresses of pictures that are not from the app's own storage (or not https): they are left out of the e-mail. */
+  refusedPictures: string[];
   /** Known variables used by the text that have no value for this event. */
   missing: string[];
   /** Names used by the text that are not variables at all (a typo). */
@@ -182,6 +219,7 @@ export function safeHref(href: string): string | null {
 export function resolveRich(blocks: Block[], values: Values, urlVariables: readonly string[] = ['link', 'terms']): Resolved {
   const missing = new Set<string>();
   const unknown = new Set<string>();
+  const refusedPictures: string[] = [];
 
   const valueOf = (name: string): string => {
     if (!Object.hasOwn(values, name)) {
@@ -191,6 +229,16 @@ export function resolveRich(blocks: Block[], values: Values, urlVariables: reado
     const value = values[name]?.trim();
     if (!value) missing.add(name);
     return value ?? '';
+  };
+
+  const resolveBlock = (block: Block): RBlock | null => {
+    if (block.kind !== 'picture') return { kind: block.kind, inlines: block.inlines.map(resolveInline) };
+    const src = allowedImage(block.src);
+    if (!src) {
+      refusedPictures.push(block.src);
+      return null;
+    }
+    return { kind: 'picture', alt: block.alt, src, href: block.href ? safeHref(block.href.map((part) => (part.kind === 'lit' ? part.text : valueOf(part.name))).join('')) : null };
   };
 
   const resolveInline = (inline: Inline): RInline => {
@@ -215,10 +263,11 @@ export function resolveRich(blocks: Block[], values: Values, urlVariables: reado
   };
 
   const resolved = blocks
-    .map((block) => ({ kind: block.kind, inlines: block.inlines.map(resolveInline) }))
+    .map(resolveBlock)
+    .filter((block): block is RBlock => block !== null)
     // A paragraph that is empty once the variables are left out (only a variable with no value) is dropped.
-    .filter((block) => block.inlines.some((inline) => inline.t !== 'br' && inlineText(inline).trim() !== ''));
-  return { blocks: resolved, missing: [...missing], unknown: [...unknown] };
+    .filter((block) => block.kind === 'picture' || block.inlines.some((inline) => inline.t !== 'br' && inlineText(inline).trim() !== ''));
+  return { blocks: resolved, refusedPictures, missing: [...missing], unknown: [...unknown] };
 }
 
 function inlineText(inline: RInline): string {
@@ -296,7 +345,15 @@ const BLOCK_STYLE: Record<BlockKind, string> = {
 
 /** The blocks as email HTML: one paragraph each, with inline styles (email clients need them). `defaultKind` is the size of a paragraph with no prefix (the legal part is small print). */
 export function richHtml(blocks: RBlock[], style: RichStyle, defaultKind: BlockKind = 'normal'): string {
-  return blocks.map((block) => `<p style="${BLOCK_STYLE[block.kind === 'normal' ? defaultKind : block.kind]}">${block.inlines.map((inline) => inlineHtml(inline, style)).join('')}</p>`).join('');
+  return blocks
+    .map((block) => {
+      if (block.kind === 'picture') {
+        const image = `<img src="${escapeHtml(block.src)}" alt="${escapeHtml(block.alt)}" style="display:inline-block;max-width:100%;height:auto;border:0;" />`;
+        return `<p style="margin:0 0 16px 0;text-align:center;">${block.href ? `<a href="${escapeHtml(block.href)}" style="text-decoration:none;">${image}</a>` : image}</p>`;
+      }
+      return `<p style="${BLOCK_STYLE[block.kind === 'normal' ? defaultKind : block.kind]}">${block.inlines.map((inline) => inlineHtml(inline, style)).join('')}</p>`;
+    })
+    .join('');
 }
 
 function inlineTextOf(inline: RInline): string {
@@ -317,5 +374,8 @@ function inlineTextOf(inline: RInline): string {
 
 /** The blocks as the plain-text part of the email: no markup, a link as `label (address)`, paragraphs separated by a blank line. */
 export function richText(blocks: RBlock[]): string {
-  return blocks.map((block) => block.inlines.map(inlineTextOf).join('').trim()).join('\n\n');
+  return blocks
+    .map((block) => (block.kind === 'picture' ? (block.href ? `${block.alt || 'Picture'}: ${block.href}` : block.alt) : block.inlines.map(inlineTextOf).join('').trim()))
+    .filter((paragraph) => paragraph !== '')
+    .join('\n\n');
 }

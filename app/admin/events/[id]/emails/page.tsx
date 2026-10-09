@@ -230,6 +230,7 @@ export default function EventEmailsPage({ params }: { params: Promise<{ id: stri
                   value={draft.body}
                   onChange={(body) => set(row.type, { body })}
                   disabled={saving}
+                  pictureLevel={{ scope: 'event', eventId: id }}
                   description={`${draft.subject === row.defaultSubject && draft.body === row.defaultBody ? 'This is the default text.' : 'This event has its own text.'} ${row.buttonLabel ? `The button says “${row.buttonLabel}”.` : 'This e-mail has no button.'}`}
                 />
               </div>
@@ -255,7 +256,7 @@ export default function EventEmailsPage({ params }: { params: Promise<{ id: stri
                 onChange={(event) => setTryOnDrafts((current) => (current ? { ...current, [mode]: { ...current[mode], enabled: event.currentTarget.checked } } : current))}
               />
               <EmailTextEditor label="Subject" kind="subject" value={tryOnDrafts[mode].subject} onChange={(subject) => setTryOnDrafts((current) => (current ? { ...current, [mode]: { ...current[mode], subject } } : current))} disabled={saving} />
-              <EmailTextEditor label="Message" kind="body" value={tryOnDrafts[mode].body} onChange={(body) => setTryOnDrafts((current) => (current ? { ...current, [mode]: { ...current[mode], body } } : current))} disabled={saving} />
+              <EmailTextEditor label="Message" kind="body" value={tryOnDrafts[mode].body} onChange={(body) => setTryOnDrafts((current) => (current ? { ...current, [mode]: { ...current[mode], body } } : current))} disabled={saving} pictureLevel={{ scope: 'event', eventId: id }} />
             </div>
           ))}
         </section>

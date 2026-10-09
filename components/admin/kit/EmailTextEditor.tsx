@@ -2,14 +2,17 @@
 
 /**
  * The toolbar editor of the words of an e-mail (epic 463, docs/EMAIL_FORMAT_PLAN.md, segment E4; owner answer 197): a text with buttons for bold, italic, title, small and large text, a
- * link and a menu of variables. It writes the markup of lib/email/rich.ts, so nothing but those marks can be in an e-mail; the preview (EmailPreview) shows the result next to it. A
+ * link, a picture (issue 376; only where the page gives it a library to choose from) and a menu of variables. It writes the markup of lib/email/rich.ts, so nothing but those marks can be in an e-mail; the preview (EmailPreview) shows the result next to it. A
  * subject is one line with the variable menu only. The page saves; this edits a draft.
  */
 
 import { useRef, useState } from 'react';
+import { InlineAlert } from '@sovereignsquad/gds-core/client';
 import { Button, Group, Textarea, TextInput } from '@/components/gds/PublicPrimitives';
-import { insertAt, linkAddressProblem, makeLink, paragraphKindAt, setParagraphKind, wrapSelection, type Edit } from '@/lib/email/editor-ops';
+import ImagePicker from '@/components/admin/library/ImagePicker';
+import { insertAt, linkAddressProblem, makeLink, makePicture, paragraphKindAt, pictureProblem, setParagraphKind, wrapSelection, type Edit } from '@/lib/email/editor-ops';
 import { MENU_VARIABLES } from '@/lib/email/variables';
+import type { PickerLevel } from '@/lib/library/picker';
 
 export interface EmailTextEditorProps {
   label: string;
@@ -21,6 +24,8 @@ export interface EmailTextEditorProps {
   description?: string;
   placeholder?: string;
   error?: string | null;
+  /** The library a picture is chosen from (and uploaded to); without it the toolbar has no Picture button. A picture is for the message, not for the subject or the small print. */
+  pictureLevel?: PickerLevel;
 }
 
 const muted = { color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' } as const;
@@ -47,11 +52,13 @@ function VariableMenu({ disabled, onPick }: { disabled?: boolean; onPick: (name:
   );
 }
 
-export default function EmailTextEditor({ label, value, onChange, kind, disabled, description, placeholder, error }: EmailTextEditorProps) {
+export default function EmailTextEditor({ label, value, onChange, kind, disabled, description, placeholder, error, pictureLevel }: EmailTextEditorProps) {
   const area = useRef<HTMLTextAreaElement | null>(null);
   const line = useRef<HTMLInputElement | null>(null);
   const [link, setLink] = useState<{ start: number; end: number; address: string } | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [picture, setPicture] = useState<{ cursor: number; src: string; description: string; link: string } | null>(null);
+  const [pictureError, setPictureError] = useState<string | null>(null);
   // Where the cursor is, to show which kind the paragraph under it is (refs are not read while drawing).
   const [cursor, setCursor] = useState(0);
 
@@ -112,6 +119,22 @@ export default function EmailTextEditor({ label, value, onChange, kind, disabled
         >
           Link
         </Button>
+        {pictureLevel && kind === 'body' ? (
+          <Button
+            type="button"
+            variant="light"
+            size="xs"
+            disabled={disabled}
+            onMouseDown={keepSelection}
+            onClick={() => {
+              setPicture({ cursor: selection().start, src: '', description: '', link: '' });
+              setPictureError(null);
+            }}
+            aria-label="Add a picture"
+          >
+            Picture
+          </Button>
+        ) : null}
         <VariableMenu disabled={disabled} onPick={(name) => apply(insertAt(value, selection().start, selection().end, `{${name}}`))} />
       </Group>
     );
@@ -163,6 +186,50 @@ export default function EmailTextEditor({ label, value, onChange, kind, disabled
                 Cancel
               </Button>
             </Group>
+          ) : null}
+          {picture && pictureLevel ? (
+            <div style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 8, display: 'grid', gap: '0.5rem', padding: '0.75rem' }}>
+              <ImagePicker
+                label="Picture"
+                helper="PNG or JPEG. It is added under the paragraph you are in, in its own paragraph, as wide as the e-mail."
+                value={picture.src}
+                onChange={(src) => setPicture({ ...picture, src })}
+                level={pictureLevel}
+                fileTypes={['image/png', 'image/jpeg']}
+                fileTypeWords="PNG or JPEG"
+              />
+              <TextInput
+                label="What the picture shows"
+                description="Read out for people who cannot see it, and shown where an e-mail app does not load pictures."
+                value={picture.description}
+                onChange={(event) => setPicture({ ...picture, description: event.currentTarget.value })}
+                maxLength={120}
+              />
+              <TextInput
+                label="Where a tap on the picture goes (optional)"
+                placeholder="https://… or {link}"
+                value={picture.link}
+                onChange={(event) => setPicture({ ...picture, link: event.currentTarget.value })}
+              />
+              {pictureError ? <InlineAlert title="The picture cannot be added" message={pictureError} severity="error" /> : null}
+              <Group gap="xs" wrap="wrap">
+                <Button
+                  type="button"
+                  size="xs"
+                  onClick={() => {
+                    const problem = pictureProblem(picture.src, picture.link);
+                    if (problem) return setPictureError(problem);
+                    apply(makePicture(value, picture.cursor, picture.src, picture.description, picture.link));
+                    setPicture(null);
+                  }}
+                >
+                  Add the picture
+                </Button>
+                <Button type="button" variant="light" size="xs" onClick={() => setPicture(null)}>
+                  Cancel
+                </Button>
+              </Group>
+            </div>
           ) : null}
           <Textarea
             ref={area}
