@@ -356,7 +356,7 @@ Public slideshow behavior is driven by:
 - `app/api/slideshows/[slideshowId]/playlist/route.ts`
 - `components/slideshow/SlideshowPlayerCore.tsx`
 - `lib/slideshow/queue.ts` (the queue rules of the player, pure and unit-tested)
-- `lib/slideshow/resilience.ts` (deadlines for requests, retry backoff) and `lib/slideshow/preload.ts` (the picture preloader: deadline, at most 3 loads at a time, a late picture is kept, failures remembered for 2 minutes, prune); every wait of the player is bounded and the refill lock is always released (camera#476, S3). The preload is the request the screen uses (no `crossOrigin`, low priority in the background, the first 3 slides decoded ahead; S4a)
+- `lib/slideshow/resilience.ts` (deadlines for requests, retry backoff) and `lib/slideshow/preload.ts` (the picture preloader: deadline, at most 3 loads at a time, a late picture is kept, failures remembered for 2 minutes, prune); every wait of the player is bounded and the refill lock is always released (camera#476, S3). The preload is the request the screen uses (no `crossOrigin`, low priority in the background, the first 3 slides decoded ahead; S4a). The show starts on the first 2 slides and the screen design's picture; the rest of the first answer joins the queue as it loads (S5)
 - `lib/slideshow/diagnostics.ts`, `components/slideshow/useSlideshowDiagnostics.ts`, `SlideshowDebugPanel.tsx`, `app/api/observability/slideshow-diagnostic/route.ts` (what the screen reports about itself: slides shown, playlist calls, preloads, the refill lock, heartbeat, stalls; logged only, `?debug=1` panel), `lib/slideshow/server-timing.ts` (`Server-Timing` of the playlist call)
 
 Key properties:

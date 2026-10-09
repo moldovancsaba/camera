@@ -142,6 +142,10 @@ const API_TIMEOUT_MS = 8000;
 const LOGO_TIMEOUT_MS = 5000;
 /** One refill releases the single-flight lock after this, whatever is still in flight. */
 const REFILL_LOCK_MAX_MS = 20_000;
+/** The show starts when this many slides (and the screen design's picture) are ready; the rest of the first answer loads while it plays. */
+const START_SLIDES = 2;
+/** The screen design's picture is waited for this long at most: a start without it is better than no start. */
+const OVERLAY_WAIT_MS = 4000;
 /** How many slides at the head of the queue are kept loaded; deeper ones were loaded when they were appended. */
 const PRELOAD_AHEAD = 4;
 /** How many of them are also decoded, so the swap does not decode a multi-megapixel picture on the screen's device; more would pin memory. */
@@ -199,6 +203,10 @@ export function SlideshowPlayerCore({
   const brokenRef = useRef<Map<string, number>>(new Map());
   const refillBackoffRef = useRef({ ms: 0, until: 0 });
   const loadBackoffRef = useRef(0);
+  /** Slides of the first answer that are still loading after the show has started; the refill leaves a gap they will fill alone. */
+  const pendingStartRef = useRef(0);
+  /** Counts the starts, so what a start left running never reaches the queue of a later one. */
+  const loadGenerationRef = useRef(0);
   const loadRetryTimerRef = useRef<number | null>(null);
   const loadRef = useRef<() => Promise<void>>(async () => undefined);
   const pendingInitialDelayRef = useRef(delayMs > 0);
@@ -329,7 +337,7 @@ export function SlideshowPlayerCore({
     const s = settingsRef.current;
     if (!s || s.playMode === 'once') return;
     if (refillBusyRef.current) return;
-    if (slideQueueRef.current.length >= bufferTargetRef.current) return;
+    if (slideQueueRef.current.length + pendingStartRef.current >= bufferTargetRef.current) return;
     if (Date.now() < refillBackoffRef.current.until) return;
     refillBusyRef.current = true;
     const lockedAt = performance.now();
@@ -406,47 +414,63 @@ export function SlideshowPlayerCore({
         throw new Error('Invalid slideshow data');
       }
 
+      // `settings` is set only when the show starts: while the screen still shows its loading picture, nothing may count a slide as played,
+      // start a hold timer or refill the queue (a refill used to fill it, and the head was counted as played, at the first 2.5 s tick).
       bufferTargetRef.current = totalQueueSlotsFromBufferSize(data.slideshow.bufferSize);
-      setSettings(data.slideshow);
+      const generation = ++loadGenerationRef.current;
+      pendingStartRef.current = 0;
 
+      // The loading-screen logo and the failover background are not waited for: they must not hold the first picture back.
       if (data.slideshow.eventId) {
-        try {
-          const logoData = await fetchWithTimeout(`/api/events/${data.slideshow.eventId}/logos`, {}, LOGO_TIMEOUT_MS, async (r) => (r.ok ? r.json() : null));
-          if (logoData) {
-            const loadingLogos =
-              logoData.data?.logos?.['loading-slideshow'] ||
-              logoData.logos?.['loading-slideshow'] ||
-              [];
+        void fetchWithTimeout(`/api/events/${data.slideshow.eventId}/logos`, {}, LOGO_TIMEOUT_MS, async (r) => (r.ok ? r.json() : null))
+          .then((logoData) => {
+            const loadingLogos = logoData?.data?.logos?.['loading-slideshow'] || logoData?.logos?.['loading-slideshow'] || [];
             // One logo is used as it is; several are picked at random (camera#419).
             const activeLogo = pickRandom<{ isActive?: boolean; imageUrl?: string }>(loadingLogos.filter((l: { isActive?: boolean }) => l.isActive));
-            if (activeLogo?.imageUrl) {
-              setLogoUrl(activeLogo.imageUrl);
-            }
-          }
-        } catch {
-          /* ignore */
-        }
+            if (activeLogo?.imageUrl) setLogoUrl(activeLogo.imageUrl);
+          })
+          .catch(() => undefined);
       }
-
       const failoverBgUrl = (data.slideshow.backgroundImageUrl || '').trim();
       setFailoverBgImageReady(!failoverBgUrl);
       if (failoverBgUrl) {
         // A background that will not load (or is too slow) shows the gradient below it.
-        await preloader.preload(failoverBgUrl, { urgent: true });
-        setFailoverBgImageReady(true);
+        void preloader.preload(failoverBgUrl, { urgent: true }).then(() => setFailoverBgImageReady(true));
       }
 
+      // The screen design's picture is loaded with the first slides, so the design does not pop in after the photos.
+      const overlayUrl: string | undefined = data.slideshow.screenDesign?.overlayImageUrl;
+      const overlayReady = overlayUrl
+        ? Promise.race([preloader.preload(overlayUrl, { urgent: true }), new Promise((resolve) => setTimeout(resolve, OVERLAY_WAIT_MS))])
+        : Promise.resolve();
+
       const received = (data.playlist || []) as Slide[];
-      // Only slides whose picture loaded start the show (a slide that fails is out for a few minutes); the refill fills the gap.
-      const loadedFlags = await Promise.all(received.map((sl) => preloadSlide(sl, true)));
-      const playlist = received.filter((_, i) => loadedFlags[i]);
-      if (received.length > 0 && playlist.length === 0) {
-        throw new Error('No picture could be loaded');
+      const isOnce = data.slideshow.playMode === 'once';
+      // Loop: the first START_SLIDES are loaded at once, the rest of the answer behind them (a few at a time); the show starts on the first ones.
+      // Once: the whole pass must be there, as it has an end.
+      const startCount = isOnce ? received.length : Math.min(START_SLIDES, received.length);
+      const loading = received.map((sl, i) => preloadSlide(sl, i < startCount));
+      const firstFlags = await Promise.all(loading.slice(0, startCount));
+      await overlayReady;
+      let playlist: Slide[];
+      let rest: Array<{ slide: Slide; loaded: Promise<boolean> }> = [];
+      if (firstFlags.every(Boolean)) {
+        playlist = received.slice(0, startCount);
+        rest = received.slice(startCount).map((slide, i) => ({ slide, loaded: loading[startCount + i] }));
+      } else {
+        // A first slide failed: wait for the whole answer, and start on what loaded (a slide that fails is out for a few minutes; the refill fills the gap).
+        const flags = await Promise.all(loading);
+        playlist = received.filter((_, i) => flags[i]);
+        if (received.length > 0 && playlist.length === 0) throw new Error('No picture could be loaded');
       }
+      if (generation !== loadGenerationRef.current) return;
+
+      settingsRef.current = data.slideshow;
+      setSettings(data.slideshow);
       if (playlist.length > 0) {
         setDisplayEpoch(0);
         commitQueue(() => playlist);
-        if (data.slideshow.playMode === 'once') {
+        if (isOnce) {
           loopSeedSlidesRef.current = null;
           onceInitialRef.current = playlist.map((sl) => ({
             ...sl,
@@ -454,6 +478,19 @@ export function SlideshowPlayerCore({
           }));
         } else {
           loopSeedSlidesRef.current = mergeSeed(null, playlist);
+          pendingStartRef.current = rest.length;
+          for (const { slide, loaded } of rest) {
+            void loaded.then((ok) => {
+              if (generation !== loadGenerationRef.current) return;
+              pendingStartRef.current -= 1;
+              if (ok) {
+                loopSeedSlidesRef.current = mergeSeed(loopSeedSlidesRef.current, [slide]);
+                commitQueue((q) => appendFresh(q, [slide], bufferTargetRef.current));
+              }
+              // The whole first answer is in (or failed): fill any gap the usual way.
+              if (pendingStartRef.current === 0) void maintainLoopBuffer();
+            });
+          }
           void maintainLoopBuffer();
         }
       } else {
