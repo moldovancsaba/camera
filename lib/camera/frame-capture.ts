@@ -48,13 +48,20 @@ export function blobToDataUrl(blob: Blob): Promise<string> {
 export async function captureFullFrame(
   video: HTMLVideoElement,
   canvas: HTMLCanvasElement,
-  facingMode: FacingModeValue
+  facingMode: FacingModeValue,
+  /** The part of the picture to keep, as fractions (the tight view, lib/camera/view.ts); the whole picture when missing. */
+  crop?: { x: number; y: number; width: number; height: number } | null
 ): Promise<FullFrameCapture | null> {
   if (!video.videoWidth || !video.videoHeight) {
     return null;
   }
 
-  const { width, height } = capCanvasSize(video.videoWidth, video.videoHeight, {
+  const sx = crop ? Math.round(crop.x * video.videoWidth) : 0;
+  const sy = crop ? Math.round(crop.y * video.videoHeight) : 0;
+  const sw = crop ? Math.max(1, Math.round(crop.width * video.videoWidth)) : video.videoWidth;
+  const sh = crop ? Math.max(1, Math.round(crop.height * video.videoHeight)) : video.videoHeight;
+
+  const { width, height } = capCanvasSize(sw, sh, {
     maxLongSide: ORIGINAL_MAX_LONG_SIDE,
     maxPixels: ORIGINAL_MAX_PIXELS,
   });
@@ -71,7 +78,7 @@ export async function captureFullFrame(
   ctx.fillRect(0, 0, width, height);
 
   try {
-    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, 0, 0, width, height);
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, width, height);
   } catch (error) {
     console.error('Error drawing video to canvas:', error);
     return null;

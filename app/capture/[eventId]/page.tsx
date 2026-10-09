@@ -54,6 +54,7 @@ import { storedFrameSelection } from '@/lib/frame/selection';
 import { darkAreaUrl } from '@/lib/frame/dark-area';
 import SystemCameraCapture from '@/components/camera/SystemCameraCapture';
 import { captureOverride, chooseCaptureMethod, hasStillCapture, type CaptureMethod } from '@/lib/camera/still-capture';
+import { viewsOverride } from '@/lib/camera/view';
 import { pickRandom } from '@/lib/slots/resolve';
 import { detectTouchPrimaryDevice } from '@/lib/camera/constraints';
 import {
@@ -281,9 +282,13 @@ export default function EventCapturePage({
   // How the photo is taken in this environment (camera#257): the device's own camera on every touch device, a real still or
   // the video frame on a desktop webcam. Known after mount.
   const [captureMethod, setCaptureMethod] = useState<CaptureMethod | null>(null);
+  // `?views=1` (issue 525): the live view with the portrait or landscape and wide or tight choices, to try on a phone; the device's own camera app is not used then.
+  const [captureViews, setCaptureViews] = useState(false);
   useEffect(() => {
+    const views = viewsOverride(window.location.search);
+    setCaptureViews(views);
     setCaptureMethod(
-      chooseCaptureMethod({ touchPrimary: detectTouchPrimaryDevice(), stillCapture: hasStillCapture(), override: captureOverride(window.location.search) })
+      chooseCaptureMethod({ touchPrimary: detectTouchPrimaryDevice(), stillCapture: hasStillCapture(), override: captureOverride(window.location.search), views })
     );
   }, []);
   const [compositeImage, setCompositeImage] = useState<string | null>(null);
@@ -1719,6 +1724,7 @@ export default function EventCapturePage({
                   promptDescription={cameraPromptDescription}
                   buttonSize={eventButtonSize}
                   stillCapture={captureMethod === 'still'}
+                  viewControls={captureViews}
                   autoStart
                 />
               ) : null}

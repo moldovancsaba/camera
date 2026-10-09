@@ -43,11 +43,13 @@ export function captureOverride(search: string): CaptureMethod | null {
 /**
  * The device's own camera on every touch device; on a desktop webcam a real still where the browser can take one, else the
  * video frame. A forced `still` without `ImageCapture` falls back to the frame (it cannot work); a forced `system` or
- * `frame` is honoured anywhere (the way back to the old capture is `?capture=frame`).
+ * `frame` is honoured anywhere (the way back to the old capture is `?capture=frame`). `?views=1` (the view controls) uses the live view, as `frame`.
  */
-export function chooseCaptureMethod(env: { touchPrimary: boolean; stillCapture: boolean; override?: CaptureMethod | null }): CaptureMethod {
+export function chooseCaptureMethod(env: { touchPrimary: boolean; stillCapture: boolean; override?: CaptureMethod | null; views?: boolean }): CaptureMethod {
   if (env.override === 'frame' || env.override === 'system') return env.override;
   if (env.override === 'still') return env.stillCapture ? 'still' : 'frame';
+  // The view controls (portrait or landscape, wide or tight; lib/camera/view.ts) are on the page's own live view, which the device's camera app does not have (issue 525).
+  if (env.views) return 'frame';
   if (env.touchPrimary) return 'system';
   return env.stillCapture ? 'still' : 'frame';
 }
