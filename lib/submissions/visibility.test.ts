@@ -43,12 +43,22 @@ test('no photo at all is not public', () => {
 
 test('the query clauses express the same rule', () => {
   const clauses = publiclyVisibleClauses(['e1', 'u1']);
-  assert.equal(clauses.length, 3);
+  assert.equal(clauses.length, 4);
   assert.deepEqual(clauses[0], { isArchived: { $ne: true } });
-  assert.deepEqual(clauses[1], { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: ['e1', 'u1'] } }] });
-  const review = clauses[2] as { $or: Array<{ $and: object[] }> };
+  assert.deepEqual(clauses[1], { 'mediaHealth.broken': { $ne: true } }, 'a picture that is gone is not public');
+  assert.deepEqual(clauses[2], { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: ['e1', 'u1'] } }] });
+  const review = clauses[3] as { $or: Array<{ $and: object[] }> };
   assert.deepEqual(review.$or[0].$and[1], { reviewStatus: { $nin: ['pending_review', 'rejected'] } });
   assert.deepEqual(review.$or[1].$and, [{ submissionKind: 'tryon_result' }, { reviewStatus: 'approved' }, { isShareVisible: { $ne: false } }]);
+});
+
+test('a picture that is gone is never public, whatever else is true of the photo; only a real true counts', () => {
+  assert.equal(isPubliclyVisible({ submissionKind: 'original', reviewStatus: 'approved', mediaBroken: true }), false);
+  assert.equal(isPubliclyVisible({ submissionKind: 'tryon_result', reviewStatus: 'approved', isShareVisible: true, mediaBroken: true }), false);
+  assert.equal(isPubliclyVisible({ submissionKind: 'original', reviewStatus: 'approved', mediaBroken: false }), true);
+  assert.equal(isPubliclyVisible(visibilityInputOf({ reviewStatus: 'approved', mediaHealth: { broken: true, checkedAt: 'x' } })), false);
+  assert.equal(isPubliclyVisible(visibilityInputOf({ reviewStatus: 'approved', mediaHealth: { broken: false, checkedAt: 'x' } })), true);
+  assert.equal(isPubliclyVisible(visibilityInputOf({ reviewStatus: 'approved', mediaHealth: { broken: 'yes' } })), true, 'a non-boolean flag is not a verdict');
 });
 
 test('the rule reads a database document defensively: odd values never make a photo public by accident', () => {

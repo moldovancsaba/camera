@@ -76,6 +76,9 @@ export const RATE_LIMITS = {
   // Slideshow play-count bumps (public; generous for multi-slide batches)
   SLIDESHOW_PLAYED: { max: 200, windowMs: 60 * 1000 },
 
+  /** A screen reporting a picture it could not load (public; each report makes the server ask the picture's host, so it is capped per IP) */
+  MEDIA_REPORT: { max: 30, windowMs: 60 * 1000 },
+
   /** Public playlist generation (polls often; cap per IP per route path) */
   SLIDESHOW_PLAYLIST: { max: 180, windowMs: 60 * 1000 },
 

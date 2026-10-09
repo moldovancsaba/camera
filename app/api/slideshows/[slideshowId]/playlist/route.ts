@@ -161,6 +161,8 @@ export function buildPlaylistMatchFilter({
       ],
     },
     { isArchived: { $ne: true } },
+    // A picture that is gone is never shown on a screen, pinned or not (lib/media/broken.ts).
+    { 'mediaHealth.broken': { $ne: true } },
     hiddenFromEventsClause(eventIdKeys),
     accountActiveClause(inactiveEmails),
   ];
@@ -196,6 +198,7 @@ export function buildPlaylistMatchFilter({
   const pinnedAnd: object[] = [
     { _id: { $in: manualObjectIds } },
     { isArchived: { $ne: true } },
+    { 'mediaHealth.broken': { $ne: true } },
     hiddenFromEventsClause(eventIdKeys),
     accountActiveClause(inactiveEmails),
     pinnedReviewStateClause(),

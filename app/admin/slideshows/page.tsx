@@ -5,6 +5,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import ScreenPicturesCard from '@/components/admin/ScreenPicturesCard';
+import MediaHealthCard from '@/components/admin/MediaHealthCard';
 import SlideshowsInventoryList, {
   type SerializedSlideshowRow,
 } from '@/components/gds/SlideshowsInventoryList';
@@ -158,6 +159,7 @@ export default async function SlideshowsInventoryPage({
       toolbarHint="Use the global slideshow inventory to find and edit event players."
       dbError={dbError}
     >
+      <MediaHealthCard />
       <ScreenPicturesCard />
       <SlideshowsInventoryList slideshows={slideshowRows} />
     </AdminListPageShell>

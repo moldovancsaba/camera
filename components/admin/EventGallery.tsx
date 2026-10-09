@@ -51,6 +51,8 @@ interface EventGalleryProps {
   canManage?: boolean;
   /** The event has a frame to put on photos (camera#488). */
   hasFrame?: boolean;
+  /** Photos of the event that are left out because their picture is gone (never shown as an error, lib/media/broken.ts). */
+  hiddenBroken?: number;
   /** Photos an editor uploaded here that have no frame yet: the gallery offers to frame them all in one press. */
   unframedUploadIds?: string[];
 }
@@ -115,6 +117,7 @@ export default function EventGallery({
   slideshows,
   canManage = true,
   hasFrame = false,
+  hiddenBroken = 0,
   unframedUploadIds = [],
 }: EventGalleryProps) {
   const [submissions, setSubmissions] = useState(initialSubmissions);
@@ -345,6 +348,13 @@ export default function EventGallery({
             frameAvailable={hasFrame}
           />
         ) : null}
+        {hiddenBroken > 0 ? (
+          <InlineAlert
+            title={`${hiddenBroken} photo${hiddenBroken === 1 ? ' is' : 's are'} hidden`}
+            message="Their pictures are gone from the host, so they are not shown anywhere. Nothing was deleted."
+            severity="info"
+          />
+        ) : null}
         <StateBlock
           variant="empty"
           title="No submissions yet"
@@ -366,6 +376,13 @@ export default function EventGallery({
           eventMongoId={eventId}
           onUploaded={handleUploaded}
           frameAvailable={hasFrame}
+        />
+      ) : null}
+      {hiddenBroken > 0 ? (
+        <InlineAlert
+          title={`${hiddenBroken} photo${hiddenBroken === 1 ? ' is' : 's are'} hidden`}
+          message={`The picture of ${hiddenBroken === 1 ? 'this photo is' : 'these photos are'} gone from its host, so ${hiddenBroken === 1 ? 'it is' : 'they are'} not shown anywhere (a screen, a gallery or a share page). Nothing was deleted; if the picture comes back it is shown again at the next check.`}
+          severity="info"
         />
       ) : null}
       {canManage && hasFrame && unframed.length > 0 ? (

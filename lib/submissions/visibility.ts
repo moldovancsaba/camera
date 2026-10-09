@@ -8,6 +8,8 @@
  * - A plain photo is public unless its review says `pending_review` or `rejected`. A missing status is public: photos saved
  *   before vetting existed carry none, and that must not hide history (the plan backfills them as approved).
  * - A try-on result is public only when it was approved and was not turned off for sharing, as the share page already requires.
+ * - A picture that is gone (its host answers 404, or serves its "image not found" stand-in): never public (`mediaHealth.broken`, lib/media/broken.ts). Not showing a picture is better
+ *   than showing an error, on every surface (owner, 2026-10-09).
  *
  * Pure and DOM-free, unit-tested in visibility.test.ts.
  */
@@ -20,6 +22,8 @@ export interface VisibilityInput {
   isShareVisible?: boolean | null;
   eventId?: string | null;
   eventIds?: readonly string[] | null;
+  /** The picture is known to be gone. */
+  mediaBroken?: boolean | null;
 }
 
 /** Every event reference a photo belongs to (the UUID and the ids it was filed under), without duplicates. */
@@ -51,14 +55,15 @@ export function visibilityInputOf(doc: Record<string, unknown> | null | undefine
     isShareVisible: typeof doc.isShareVisible === 'boolean' ? doc.isShareVisible : null,
     eventId: text(doc.eventId),
     eventIds: texts(doc.eventIds),
+    mediaBroken: (doc.mediaHealth as { broken?: unknown } | undefined)?.broken === true,
   };
 }
 
 export function isPubliclyVisible(submission: VisibilityInput | null | undefined): boolean {
   if (!submission) return false;
   if (submission.isArchived === true) return false;
+  if (submission.mediaBroken === true) return false;
   if (isHiddenFromAllEvents(submission)) return false;
-
   if (submission.submissionKind === 'tryon_result') {
     return submission.reviewStatus === 'approved' && submission.isShareVisible !== false;
   }
@@ -69,12 +74,14 @@ export function isPubliclyVisible(submission: VisibilityInput | null | undefined
 export const UNPUBLISHED_REVIEW_STATUSES = ['pending_review', 'rejected'] as const;
 
 /** `reviewStatus` is neither of them; a missing status passes (photos from before vetting carry none). For feeds that already restrict the kind. */
-export const notWaitingOrRejectedClause = { reviewStatus: { $nin: [...UNPUBLISHED_REVIEW_STATUSES] } };
+export const notWaitingOrRejectedClause = { reviewStatus: { $nin: [...UNPUBLISHED_REVIEW_STATUSES] }, 'mediaHealth.broken': { $ne: true } };
 
 /** The same rule for a MongoDB query on plain photos and approved try-on results (the shape the slideshow routes use). */
 export function publiclyVisibleClauses(eventIdKeys: readonly string[]): object[] {
   return [
     { isArchived: { $ne: true } },
+    // A picture that is gone is not shown (lib/media/broken.ts).
+    { 'mediaHealth.broken': { $ne: true } },
     { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: [...eventIdKeys] } }] },
     {
       $or: [
