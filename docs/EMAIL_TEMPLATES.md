@@ -1,5 +1,7 @@
 # Email template verification
 
+> The format, the legal part, the editor and the variables are being redesigned: see `docs/EMAIL_FORMAT_PLAN.md` (epic #463). What follows describes the e-mails as they are today.
+
 Event result email setups support three delivery modes:
 
 - `after_save`: send immediately when the saved result is ready.
