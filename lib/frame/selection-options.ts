@@ -14,6 +14,7 @@ import {
   situationOf,
   storedFrameSelection,
   todaysSelection,
+  withPreviews,
   type FrameSelection,
   type LayoutOption,
   type LayoutSituation,
@@ -39,18 +40,19 @@ async function ownFramesOf(db: Db, event: Document): Promise<LayoutOption[]> {
   return [...new Set(assigned)].flatMap((frameId) => {
     const doc = byId.get(frameId);
     if (!doc || doc.isActive === false || typeof doc.imageUrl !== 'string' || !doc.imageUrl || parseMessageArea(doc.messageArea)) return [];
-    return [{ id: frameId, name: typeof doc.name === 'string' && doc.name ? doc.name : frameId }];
+    return [{ id: frameId, name: typeof doc.name === 'string' && doc.name ? doc.name : frameId, previewUrl: doc.imageUrl }];
   });
 }
 
 export async function loadSelectionContext(db: Db, event: Document): Promise<SelectionContext> {
   const design = (event.frameDesign as FrameDesign | undefined) ?? null;
   const ownFrames = await ownFramesOf(db, event);
-  const carriers = [...(await loadMessageFrames(db, event)).values()].map((frame) => ({ id: frame.frameId, name: frame.name }));
-  const layouts = layoutOptionsOf({ ownFrames, carriers, design });
+  const carriers = [...(await loadMessageFrames(db, event)).values()].map((frame) => ({ id: frame.frameId, name: frame.name, previewUrl: frame.imageUrl }));
+  const options = layoutOptionsOf({ ownFrames, carriers, design });
+  const { layouts, messages } = withPreviews(options, ownFrames.length > 0 ? [] : messageOptionsOf(design), design?.variants, design?.messages ?? []);
   return {
     layouts,
-    messages: ownFrames.length > 0 ? [] : messageOptionsOf(design),
+    messages,
     situation: situationOf(layouts),
     selection: storedFrameSelection(event.frameSelection),
     today: todaysSelection(ownFrames.length),

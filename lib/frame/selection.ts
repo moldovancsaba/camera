@@ -31,6 +31,8 @@ export interface FrameSelection {
 export interface LayoutOption {
   id: string;
   name: string;
+  /** A picture of the layout for the editor (segment S4): the design with its first message, a complete frame as it is. */
+  previewUrl?: string | null;
 }
 
 export interface MessageOption {
@@ -38,6 +40,26 @@ export interface MessageOption {
   text: string;
   /** The message as users read it, with the names filled in. */
   shown: string;
+  /** A picture of the message on its first design, when an image exists. */
+  previewUrl?: string | null;
+}
+
+/** The images of an event's frame, as far as the previews need them (`FrameDesign.variants`). */
+export type PreviewImages = ReadonlyArray<{ index: number | null; imageUrl: string; frameId?: string | null }>;
+
+/**
+ * The previews of the layouts and messages from the images already drawn (segment S4): a design is shown with its first message, the generated layout with its first message, a message on
+ * its first design. A layout that has no image yet keeps the picture it came with (a complete frame as it is, a design as the bare frame).
+ */
+export function withPreviews(layouts: readonly LayoutOption[], messages: readonly MessageOption[], images: PreviewImages | null | undefined, listed: readonly string[]): { layouts: LayoutOption[]; messages: MessageOption[] } {
+  const drawn = images ?? [];
+  return {
+    layouts: layouts.map((layout) => ({ ...layout, previewUrl: drawn.find((image) => (image.frameId ?? GENERATED_LAYOUT) === layout.id)?.imageUrl ?? layout.previewUrl ?? null })),
+    messages: messages.map((message) => {
+      const at = listed.indexOf(message.text);
+      return { ...message, previewUrl: at >= 0 ? (drawn.find((image) => image.index === at)?.imageUrl ?? null) : null };
+    }),
+  };
 }
 
 /** A: only the generated layout exists. B: one layout the editor made. C: more than one (nothing to choose from when there is one). */
