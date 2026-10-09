@@ -135,7 +135,7 @@ export default function HashtagInput({
       <div
         style={{
           alignItems: 'center',
-          border: '1px solid var(--gds-color-border)',
+          border: '1px solid var(--mantine-color-default-border)',
           borderRadius: '0.75rem',
           display: 'flex',
           flexWrap: 'wrap',
@@ -180,10 +180,10 @@ export default function HashtagInput({
           ref={suggestionsRef}
           role="listbox"
           style={{
-            background: 'var(--gds-color-surface)',
-            border: '1px solid var(--gds-color-border)',
+            background: 'var(--mantine-color-body)',
+            border: '1px solid var(--mantine-color-default-border)',
             borderRadius: '0.75rem',
-            boxShadow: 'var(--gds-shadow-lg)',
+            boxShadow: 'var(--mantine-shadow-lg)',
             marginTop: 4,
             maxHeight: 240,
             overflowY: 'auto',
@@ -203,14 +203,14 @@ export default function HashtagInput({
                   onClick={() => addHashtag(hashtag)}
                   data-active={index === focusedIndex || undefined}
                   style={{
-                    background: index === focusedIndex ? 'var(--gds-color-surface-muted)' : 'transparent',
+                    background: index === focusedIndex ? 'var(--mantine-color-default-hover)' : 'transparent',
                     border: 0,
                     padding: '0.65rem 0.75rem',
                     textAlign: 'left',
                   }}
                 >
                   <span style={{ fontSize: '0.875rem' }}>#{hashtag}</span>
-                  <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>(existing)</span>
+                  <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>(existing)</span>
                 </button>
               ))}
             </div>
@@ -232,12 +232,12 @@ export default function HashtagInput({
               }}
             >
               <span style={{ fontSize: '0.875rem' }}>#{inputValue.toLowerCase()}</span>
-              <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>(create new)</span>
+              <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>(create new)</span>
             </button>
           )}
 
           {suggestions.length === 0 && !inputValue.trim() && (
-            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0, padding: '1rem', textAlign: 'center' }}>
+            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0, padding: '1rem', textAlign: 'center' }}>
               Type to search or create hashtags
             </p>
           )}
@@ -245,7 +245,7 @@ export default function HashtagInput({
       )}
 
       {/* Helper text */}
-      <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
+      <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
         Press Enter to add, Backspace to remove. Multiple hashtags allowed.
       </p>
     </div>

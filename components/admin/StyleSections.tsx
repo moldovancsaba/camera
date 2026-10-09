@@ -96,7 +96,7 @@ function ColorPreviewSwatch({ color }: { color: string }) {
         height: 64,
         borderRadius: 16,
         backgroundColor: color,
-        border: '1px solid var(--gds-color-border)',
+        border: '1px solid var(--mantine-color-default-border)',
         flexShrink: 0,
       }}
     />
@@ -111,9 +111,9 @@ function ScenarioCountCard({
   count: number;
 }) {
   return (
-    <article style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+    <article style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
       <div style={{ alignItems: 'center', display: 'grid', gap: '0.5rem', justifyItems: 'center' }}>
-        <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', textAlign: 'center' }}>
+        <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', textAlign: 'center' }}>
           {name}
         </span>
         <strong style={{ fontSize: '0.875rem' }}>
@@ -142,8 +142,8 @@ export default function StyleSections({
 
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
-      <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
-        <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--gds-color-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
+      <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+        <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--mantine-color-default-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
           <div>
             <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
               <h3 style={{ margin: 0 }}>{isPartner ? 'Default Brand Colors' : 'Brand Colors'}</h3>
@@ -158,7 +158,7 @@ export default function StyleSections({
                 />
               ) : null}
             </div>
-            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
+            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
               {isPartner
                 ? 'The colours the events of this partner start with. When none are set, every event follows the colours of its messmass style; an event can still set its own.'
                 : 'The colours of the buttons, inputs, checkboxes and the camera screens, as the users see them. By default they come from messmass; Edit Colors sets your own.'}
@@ -179,7 +179,7 @@ export default function StyleSections({
                 <div style={{ display: 'grid', gap: '0.25rem' }}>
                   <strong style={{ fontSize: '0.875rem' }}>Primary Color</strong>
                   <code style={{ fontWeight: 700 }}>{themeColours?.fill ?? brandColor ?? CAMERA_DEFAULT_BRAND_COLOR}</code>
-                  <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>Buttons, camera button fill, focus states</span>
+                  <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>Buttons, camera button fill, focus states</span>
                 </div>
               </div>
 
@@ -188,13 +188,13 @@ export default function StyleSections({
                 <div style={{ display: 'grid', gap: '0.25rem' }}>
                   <strong style={{ fontSize: '0.875rem' }}>Border/Accent Color</strong>
                   <code style={{ fontWeight: 700 }}>{themeColours?.ring ?? brandBorderColor ?? CAMERA_DEFAULT_BRAND_BORDER_COLOR}</code>
-                  <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>Input borders, checkboxes, camera button border</span>
+                  <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>Input borders, checkboxes, camera button border</span>
                 </div>
               </div>
             </div>
           )}
           {isEvent && themeColours ? (
-            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', margin: 0 }}>
+            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', margin: 0 }}>
               {colourSourceText(themeColours.source, themeColours.styleName, Boolean(brandColor || brandBorderColor), brandColorsOverridden === true, partnerName)}
               {themeColours.source === 'welcome' && (brandColor || brandBorderColor) ? ' The colours set here are kept, but they do not show while the welcome page sets its own.' : ''}
             </p>
@@ -202,7 +202,7 @@ export default function StyleSections({
         </div>
 
         {isEvent && themeColours ? (
-          <div style={{ padding: '1.5rem', borderTop: '1px solid var(--gds-color-border)' }}>
+          <div style={{ padding: '1.5rem', borderTop: '1px solid var(--mantine-color-default-border)' }}>
             <strong style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.75rem' }}>Color Preview</strong>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
               <button type="button" style={{ backgroundColor: themeColours.fill, border: `2px solid ${themeColours.ring}`, borderRadius: '999px', color: themeColours.label, fontWeight: 700, padding: '0.75rem 1.25rem' }} disabled>
@@ -216,8 +216,8 @@ export default function StyleSections({
         ) : null}
       </section>
 
-      <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
-        <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--gds-color-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
+      <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+        <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--mantine-color-default-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
           <div>
             <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
               <h3 style={{ margin: 0 }}>{isPartner ? 'Default Frames' : 'Assigned Frames'}</h3>
@@ -265,13 +265,13 @@ export default function StyleSections({
                 const frameName = frameDetails.name || 'Unnamed Frame';
 
                 return (
-                  <article key={index} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+                  <article key={index} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
                     <div style={{ alignItems: 'center', display: 'grid', gap: '0.5rem', justifyItems: 'center' }}>
                       <FrameThumbnail frame={{ name: frameName, thumbnailUrl: frameDetails.thumbnailUrl, imageUrl: frameDetails.imageUrl }} width="100%" />
                       <strong style={{ fontSize: '0.875rem', overflow: 'hidden', textAlign: 'center', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
                         {frameName}
                       </strong>
-                      <code style={{ color: 'var(--gds-color-muted)', display: 'block', fontSize: '0.75rem', overflow: 'hidden', textAlign: 'center', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
+                      <code style={{ color: 'var(--mantine-color-dimmed)', display: 'block', fontSize: '0.75rem', overflow: 'hidden', textAlign: 'center', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
                         {frameAssignment.frameId}
                       </code>
                       <strong style={{ fontSize: '0.75rem' }}>
@@ -291,8 +291,8 @@ export default function StyleSections({
         )}
       </section>
 
-      <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
-        <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--gds-color-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
+      <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+        <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--mantine-color-default-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
           <div>
             <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
               <h3 style={{ margin: 0 }}>{isPartner ? 'Default Logos' : 'Event Logos'}</h3>
@@ -350,11 +350,11 @@ export default function StyleSections({
       </section>
 
       {/* The Images library (camera#368): the pictures the picture fields choose from. */}
-      <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+      <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' }}>
         <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
           <div>
             <h3 style={{ margin: 0 }}>{isPartner ? 'Partner Images' : 'Event Images'}</h3>
-            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
+            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
               {isPartner
                 ? 'The pictures the events of this partner can use: on the welcome page, the CTA page, in the email footer and on the giant screen.'
                 : 'The pictures this event can use: on the welcome page, the CTA page, in the email footer and on the giant screen.'}

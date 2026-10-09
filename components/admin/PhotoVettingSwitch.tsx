@@ -45,13 +45,13 @@ export default function PhotoVettingSwitch({ eventId, required, canChange }: Pho
   };
 
   return (
-    <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', padding: '1rem', display: 'grid', gap: '0.75rem' }}>
+    <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', padding: '1rem', display: 'grid', gap: '0.75rem' }}>
       <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
         <div style={{ display: 'grid', gap: '0.25rem' }}>
           <strong style={{ fontSize: '0.875rem' }} data-vetting-state={required ? 'on' : 'off'}>
             Photo vetting is {required ? 'on' : 'off'} for this event
           </strong>
-          <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0 }}>
+          <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
             {required
               ? 'New photos wait here until an event manager approves them. The guest sees the shapes of the frame, and gets the link by email after approval.'
               : 'New photos are published at once, with the frame, as before.'}

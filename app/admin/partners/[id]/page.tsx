@@ -465,7 +465,7 @@ export default async function PartnerDetailPage({
           />
 
           <Card p={0}>
-            <Group justify="space-between" align="flex-start" p="xl" style={{ borderBottom: '1px solid var(--gds-color-border)', padding: '1.5rem' }}>
+            <Group justify="space-between" align="flex-start" p="xl" style={{ borderBottom: '1px solid var(--mantine-color-default-border)', padding: '1.5rem' }}>
               <div>
                 <Title order={3}>Events</Title>
                 <Text size="sm" c="dimmed" mt="xs">
@@ -503,7 +503,7 @@ export default async function PartnerDetailPage({
                     align="flex-start"
                     p="xl"
                     wrap="wrap"
-                    style={index > 0 ? { borderTop: '1px solid var(--gds-color-border)' } : undefined}
+                    style={index > 0 ? { borderTop: '1px solid var(--mantine-color-default-border)' } : undefined}
                   >
                     <Stack gap={4} maw={720}>
                       <Link href={`/admin/events/${event._id}`} style={{ textDecoration: 'none' }}>
@@ -545,7 +545,7 @@ export default async function PartnerDetailPage({
       </SimpleGrid>
 
       <Card p={0}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <Title order={2}>Partner Gallery</Title>
           <Text c="dimmed" mt="xs">
             All photos captured across {partner.name}&apos;s events

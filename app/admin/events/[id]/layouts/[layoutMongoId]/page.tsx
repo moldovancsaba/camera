@@ -52,7 +52,7 @@ export default async function EditSlideshowLayoutPage({
       <h1 style={{ margin: 0 }}>
         Slideshow layout
       </h1>
-      <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
+      <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
         Event: {event.name} · Assign each region to a slideshow, set delay offsets and fit/fill.
       </p>
       </div>

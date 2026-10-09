@@ -26,8 +26,8 @@ interface Payload<T> {
 
 const COLUMNS = { display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', padding: '1rem' } as const;
 const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))' } as const;
-const SECTION = { border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
-const EMPTY = { border: '1px solid var(--gds-color-border)', borderRadius: '0.75rem', color: 'var(--gds-color-muted)', margin: 0, padding: '2rem 1rem', textAlign: 'center' } as const;
+const SECTION = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
+const EMPTY = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.75rem', color: 'var(--mantine-color-dimmed)', margin: 0, padding: '2rem 1rem', textAlign: 'center' } as const;
 const ACCEPT = 'image/png,image/jpeg,image/svg+xml,image/webp';
 
 /** The scenarios for the upload, the one offered first (and chosen) being where an upload goes when the editor does not choose. */
@@ -146,7 +146,7 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
         description={`Assign logos to scenarios for ${eventName}. It takes them from the library of ${partnerName}, or you upload logos for this event only.`}
       />
 
-      <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
+      <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
         When a scenario has more than one active logo, users see the first one in the list.
       </p>
 
@@ -182,11 +182,11 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
           const available = library.available.filter((item) => !taken.has(item.id));
           return (
             <section key={scenario.id} style={SECTION}>
-              <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+              <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
                 <h3 style={{ margin: 0 }}>{scenario.name}</h3>
-                <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>{scenario.description}</p>
+                <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>{scenario.description}</p>
                 {scenario.id === 'onboarding-thankyou' && !shown ? (
-                  <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: '0.35rem 0 0' }}>
+                  <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: '0.35rem 0 0' }}>
                     With no active logo here, these pages show the partner&apos;s logo from messmass, or the event&apos;s emoji.
                   </p>
                 ) : null}
@@ -243,7 +243,7 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
         })}
       </div>
 
-      <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
+      <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
         A logo that is not listed under Available has to be added to the library of {partnerName} first.
         {library.partner ? (
           <>
@@ -254,9 +254,9 @@ export default function EventLogosPage({ params }: { params: Promise<{ id: strin
       </p>
 
       <section style={SECTION}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>Upload a logo for this event</h3>
-          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>It is assigned to this event at once, in the scenario you choose. No other event can take it.</p>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>It is assigned to this event at once, in the scenario you choose. No other event can take it.</p>
         </div>
         <div style={{ padding: '1rem' }}>
           <LibraryUploadForm

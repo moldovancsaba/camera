@@ -24,7 +24,7 @@ interface Payload<T> {
 }
 
 const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' } as const;
-const SECTION = { border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
+const SECTION = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
@@ -119,9 +119,9 @@ export default function EventImagesPage({ params }: { params: Promise<{ id: stri
       {!library.partner ? <InlineAlert title="No partner" message="This event has no partner, so it has no library to take images from. You can still upload images for this event." severity="warning" /> : null}
 
       <section style={SECTION}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>Images of this event ({library.available.length})</h3>
-          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>
             From the library of {partnerName}, and uploads for this event. A picture that is not listed here has to be added to the partner library first.
             {library.partner ? (
               <>
@@ -133,7 +133,7 @@ export default function EventImagesPage({ params }: { params: Promise<{ id: stri
         </div>
         <div style={{ padding: '1rem' }}>
           {library.available.length === 0 ? (
-            <p style={{ color: 'var(--gds-color-muted)', margin: '2rem 0', textAlign: 'center' }}>No images yet. Add images to the library of {partnerName}, or upload one below.</p>
+            <p style={{ color: 'var(--mantine-color-dimmed)', margin: '2rem 0', textAlign: 'center' }}>No images yet. Add images to the library of {partnerName}, or upload one below.</p>
           ) : (
             <div style={GRID}>
               {library.available.map((item) => (
@@ -159,9 +159,9 @@ export default function EventImagesPage({ params }: { params: Promise<{ id: stri
       </section>
 
       <section style={SECTION}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>Upload an image for this event</h3>
-          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>It is in the list above at once. No other event can take it.</p>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>It is in the list above at once. No other event can take it.</p>
         </div>
         <div style={{ padding: '1rem' }}>
           <LibraryUploadForm

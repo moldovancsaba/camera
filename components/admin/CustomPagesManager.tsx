@@ -53,7 +53,7 @@ function Field({
         placeholder={placeholder}
         style={{ minHeight: 44, padding: '0 0.75rem' }}
       />
-      {helper ? <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>{helper}</span> : null}
+      {helper ? <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', fontWeight: 400 }}>{helper}</span> : null}
     </label>
   );
 }
@@ -86,7 +86,7 @@ function Area({
         rows={rows}
         style={{ padding: '0.75rem' }}
       />
-      {helper ? <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>{helper}</span> : null}
+      {helper ? <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', fontWeight: 400 }}>{helper}</span> : null}
     </label>
   );
 }
@@ -108,14 +108,14 @@ function Check({
         <input type="checkbox" checked={checked} onChange={(event) => onChange(event.currentTarget.checked)} />
         {label}
       </span>
-      {helper ? <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem' }}>{helper}</span> : null}
+      {helper ? <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>{helper}</span> : null}
     </label>
   );
 }
 
 function DividerLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ borderTop: '1px solid var(--gds-color-border)', paddingTop: '1rem' }}>
+    <div style={{ borderTop: '1px solid var(--mantine-color-default-border)', paddingTop: '1rem' }}>
       <strong>{children}</strong>
     </div>
   );
@@ -331,12 +331,12 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
   };
 
   return (
-    <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', padding: '1.5rem' }}>
+    <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', padding: '1.5rem' }}>
       <div style={{ display: 'grid', gap: '1.5rem' }}>
         <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
           <div style={{ display: 'grid', gap: '0.25rem' }}>
             <h2 style={{ margin: 0 }}>Event Pages</h2>
-            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
+            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
               Configure onboarding and thank you pages for this event
             </p>
           </div>
@@ -358,7 +358,7 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
           sortedPages.map((page, index) => (
               <article
               key={page.pageId}
-                style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}
+                style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}
             >
               {/* Order indicators */}
                 <div style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
@@ -390,7 +390,7 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
               {/* Page info */}
                   <div style={{ display: 'grid', flex: 1, gap: '0.25rem' }}>
                     <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      <code style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem' }}>
+                      <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>
                     #{index + 1}
                       </code>
                       <LabelTag tone="neutral" label={page.pageType} />
@@ -481,7 +481,7 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
           aria-labelledby="custom-page-editor-title"
           style={{ background: 'var(--gds-overlay-scrim)', inset: 0, display: 'grid', placeItems: 'center', padding: '1rem', position: 'fixed', zIndex: 1000 }}
         >
-          <div style={{ background: 'var(--gds-overlay-surface)', border: '1px solid var(--gds-border-card)', borderRadius: '1rem', maxHeight: '90vh', maxWidth: 760, overflowY: 'auto', padding: '1.5rem', width: '100%' }}>
+          <div style={{ background: 'var(--gds-overlay-surface)', border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', maxHeight: '90vh', maxWidth: 760, overflowY: 'auto', padding: '1.5rem', width: '100%' }}>
           <h2 id="custom-page-editor-title" style={{ marginTop: 0 }}>{editingPage ? `Edit ${editingPage.pageType} Page` : 'Edit Page'}</h2>
           {editingPage ? (
             <PageEditModal
@@ -687,7 +687,7 @@ function PageEditModal({
         )}
 
         {page.pageType === CustomPageType.CTA ? (
-          <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+          <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
             <div style={{ display: 'grid', gap: '1rem' }}>
               <h4 style={{ margin: 0 }}>Picture page (optional)</h4>
               <ImagePicker
@@ -705,7 +705,7 @@ function PageEditModal({
         ) : null}
 
         {page.pageType === CustomPageType.WELCOME ? (
-          <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+          <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
             <div style={{ display: 'grid', gap: '1rem' }}>
               <h4 style={{ margin: 0 }}>Landing page elements (each one is optional)</h4>
               <Field
@@ -754,7 +754,7 @@ function PageEditModal({
 
         {page.pageType === CustomPageType.WHO_ARE_YOU ? (
           <>
-            <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+            <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
               <div style={{ display: 'grid', gap: '1rem' }}>
                 <h4 style={{ margin: 0 }}>Authentication Options</h4>
                 <Check
@@ -824,14 +824,14 @@ function PageEditModal({
 
         {page.pageType === CustomPageType.ACCEPT ? (
           <>
-            <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+            <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
               <div style={{ display: 'grid', gap: '1rem' }}>
                 <h4 style={{ margin: 0 }}>Checkboxes (every one is required)</h4>
-                <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
+                <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
                   The user must tick every checkbox to continue. A link opens that page in a new tab. Leave the list empty to use the single text below.
                 </p>
                 {checkboxes.map((item, index) => (
-                  <div key={index} style={{ display: 'grid', gap: '0.5rem', borderTop: index > 0 ? '1px solid var(--gds-color-border)' : undefined, paddingTop: index > 0 ? '0.75rem' : 0 }}>
+                  <div key={index} style={{ display: 'grid', gap: '0.5rem', borderTop: index > 0 ? '1px solid var(--mantine-color-default-border)' : undefined, paddingTop: index > 0 ? '0.75rem' : 0 }}>
                     <Field
                       label={`Checkbox ${index + 1} text`}
                       value={item.text}
@@ -911,7 +911,7 @@ function PageEditModal({
             />
 
             <DividerLabel>Share options screen language</DividerLabel>
-            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
+            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
               Shown after save when share options are enabled. Email delivery is controlled separately in the event notification settings.
             </p>
             <Field

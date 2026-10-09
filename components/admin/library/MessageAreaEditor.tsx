@@ -104,7 +104,7 @@ export default function MessageAreaEditor({ pictureUrl, name, value, disabled = 
 
   const off = disabled || busy;
   return (
-    <Stack gap="sm" style={{ borderTop: '1px solid var(--gds-color-border)', paddingTop: '0.75rem' }}>
+    <Stack gap="sm" style={{ borderTop: '1px solid var(--mantine-color-default-border)', paddingTop: '0.75rem' }}>
       <Checkbox
         checked={carries}
         disabled={off}

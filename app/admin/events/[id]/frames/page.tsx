@@ -25,7 +25,7 @@ interface Payload<T> {
 }
 
 const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' } as const;
-const SECTION = { border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
+const SECTION = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
@@ -169,13 +169,13 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
       ) : null}
 
       <section style={SECTION}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>Assigned Frames ({library.assigned.length})</h3>
-          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>The frames this event uses. An event with its own list is no longer changed by the defaults of its partner.</p>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>The frames this event uses. An event with its own list is no longer changed by the defaults of its partner.</p>
         </div>
         <div style={{ padding: '1rem' }}>
           {library.assigned.length === 0 ? (
-            <p style={{ color: 'var(--gds-color-muted)', margin: '2rem 0', textAlign: 'center' }}>No frames assigned yet</p>
+            <p style={{ color: 'var(--mantine-color-dimmed)', margin: '2rem 0', textAlign: 'center' }}>No frames assigned yet</p>
           ) : (
             <div style={GRID}>
               {library.assigned.map((entry) => {
@@ -231,9 +231,9 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
       </section>
 
       <section style={SECTION}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>Available Frames ({library.available.length})</h3>
-          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>
             From the library of {partnerName}, and uploads for this event, that the event has not taken yet. A frame that is not listed here has to be added to the partner library first.
             {library.partner ? (
               <>
@@ -245,7 +245,7 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
         </div>
         <div style={{ padding: '1rem' }}>
           {library.available.length === 0 ? (
-            <p style={{ color: 'var(--gds-color-muted)', margin: '2rem 0', textAlign: 'center' }}>Nothing left to assign</p>
+            <p style={{ color: 'var(--mantine-color-dimmed)', margin: '2rem 0', textAlign: 'center' }}>Nothing left to assign</p>
           ) : (
             <div style={GRID}>
               {library.available.map((item) => (
@@ -270,9 +270,9 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
       </section>
 
       <section style={SECTION}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>Upload a frame for this event</h3>
-          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>It is assigned to this event at once. No other event can take it.</p>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>It is assigned to this event at once. No other event can take it.</p>
         </div>
         <div style={{ padding: '1rem' }}>
           <LibraryUploadForm endpoint={`/api/events/${eventId}/library/upload`} kind="frames" noun="frame" accept="image/png,image/svg+xml" acceptWords="PNG or SVG" onUploaded={reload} />

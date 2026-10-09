@@ -81,12 +81,12 @@ export default function SlideshowLayoutManager({
   };
 
   return (
-    <section style={{ background: 'var(--gds-color-surface)', border: '1px solid var(--gds-color-border)', borderRadius: '1rem', padding: '1.5rem' }}>
+    <section style={{ background: 'var(--mantine-color-body)', border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', padding: '1.5rem' }}>
       <div style={{ display: 'grid', gap: '1.5rem' }}>
         <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
           <div>
             <h2 style={{ margin: 0 }}>Event Slideshow Layouts</h2>
-            <p style={{ color: 'var(--gds-color-muted)', margin: '0.25rem 0 0' }}>
+            <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.25rem 0 0' }}>
               Combine multiple slideshows on one screen.
             </p>
           </div>
@@ -110,7 +110,7 @@ export default function SlideshowLayoutManager({
             {layouts.map((layout) => (
               <article
                 key={layout._id}
-                style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}
+                style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}
               >
                 <div style={{ display: 'grid', gap: '0.75rem' }}>
                   <div style={{ alignItems: 'flex-start', display: 'flex', gap: '0.75rem', justifyContent: 'space-between' }}>
@@ -131,7 +131,7 @@ export default function SlideshowLayoutManager({
                     Delete
                     </SemanticButton>
                   </div>
-                  <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0 }}>
+                  <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
                     Created {new Date(layout.createdAt).toLocaleDateString()}
                   </p>
                   <Link href={`/admin/events/${eventMongoId}/layouts/${layout._id}`} style={{ textDecoration: 'none' }}>

@@ -65,11 +65,11 @@ export default function LandingPageManager({
   };
 
   return (
-    <section style={{ background: 'var(--gds-color-surface)', border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
-      <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--gds-color-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
+    <section style={{ background: 'var(--mantine-color-body)', border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+      <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--mantine-color-default-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
         <div>
           <h2 style={{ margin: 0 }}>Experience Landing Pages</h2>
-          <p style={{ color: 'var(--gds-color-muted)', margin: '0.5rem 0 0' }}>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.5rem 0 0' }}>
             Public experience surfaces for this event. They can embed a slideshow or layout and route visitors into
             app actions like capture.
           </p>
@@ -97,13 +97,13 @@ export default function LandingPageManager({
       ) : (
         <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', padding: '1.5rem' }}>
           {landingPages.map((page) => (
-            <article key={page._id} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', display: 'grid', gap: '1rem', padding: '1rem' }}>
+            <article key={page._id} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', display: 'grid', gap: '1rem', padding: '1rem' }}>
               <div style={{ alignItems: 'flex-start', display: 'flex', gap: '0.75rem', justifyContent: 'space-between' }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <strong style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {page.title?.trim() || page.slug}
                   </strong>
-                  <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0', wordBreak: 'break-all' }}>
+                  <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: '0.25rem 0 0', wordBreak: 'break-all' }}>
                     /landing/{page.slug}
                   </p>
                   <div style={{ marginTop: '0.75rem' }}>
@@ -122,10 +122,10 @@ export default function LandingPageManager({
               </div>
 
               <div style={{ display: 'grid', gap: '0.35rem' }}>
-                <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0 }}>
+                <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
                   Embedded experience: {page.targetType === 'layout' ? 'Layout' : 'Slideshow'} · {page.targetName}
                 </p>
-                <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0 }}>
+                <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
                   Created {new Date(page.createdAt).toLocaleDateString()}
                 </p>
               </div>
