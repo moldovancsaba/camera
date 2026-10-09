@@ -2,6 +2,7 @@ import { sanitizeEmail } from '@/lib/security/sanitize';
 import { renderThemedEmail } from '@/lib/email/themed-html';
 import { fillPlain, parseRich, resolveRich, richHtml, richText } from '@/lib/email/rich';
 import { URL_VARIABLES, emailValues, type EventFacts } from '@/lib/email/variables';
+import { withoutStandardLegalTail } from '@/lib/email/legal';
 import type { EventTheme } from '@/lib/theme/event-theme';
 import { getResendApiKey, sendEmail } from '@/lib/email/send';
 import {
@@ -30,6 +31,8 @@ export interface SubmissionNotificationInput {
   texts?: TextOverrides | null;
   /** What is known about the event and its partner (the teams, the date, the place...), for the variables of the text (lib/email/variables.ts, epic 463). */
   facts?: EventFacts | null;
+  /** The legal part that applies to the event in its language (lib/email/legal.ts), as the editor wrote it; null when no level has one. It is shown as small print under the message and the button. */
+  legal?: string | null;
 }
 
 export type SubmissionNotificationResult =
@@ -130,10 +133,14 @@ export async function sendSubmissionResultEmail(
   const values = emailValues({ recipientName, eventName, shareUrl: input.shareUrl, termsUrl, facts: input.facts, language });
   const subjectFilled = fillPlain(normalizeTemplate(input.subjectTemplate, defaults.subject, 180), values);
   const subject = subjectFilled.text.replace(/\s+/g, ' ').trim();
-  const body = resolveRich(parseRich(normalizeTemplate(input.bodyTemplate, defaults.body, 5000)), values, URL_VARIABLES);
-  const bodyText = richText(body.blocks);
-  const notFilled = [...new Set([...subjectFilled.missing, ...body.missing])];
-  const notKnown = [...new Set([...subjectFilled.unknown, ...body.unknown])];
+  const legalSource = input.legal?.trim() || null;
+  // With a legal part the standard terms paragraph at the end of a template is not written twice.
+  const bodyTemplate = normalizeTemplate(input.bodyTemplate, defaults.body, 5000);
+  const body = resolveRich(parseRich(legalSource ? withoutStandardLegalTail(bodyTemplate) : bodyTemplate), values, URL_VARIABLES);
+  const legal = legalSource ? resolveRich(parseRich(legalSource), values, URL_VARIABLES) : null;
+  const bodyText = [richText(body.blocks), legal ? richText(legal.blocks) : ''].filter(Boolean).join('\n\n');
+  const notFilled = [...new Set([...subjectFilled.missing, ...body.missing, ...(legal?.missing ?? [])])];
+  const notKnown = [...new Set([...subjectFilled.unknown, ...body.unknown, ...(legal?.unknown ?? [])])];
   if (notFilled.length > 0 || notKnown.length > 0) {
     console.warn('[email] Submission result email: variables left out', { eventName: input.eventName || null, withoutValue: notFilled, unknown: notKnown });
   }
@@ -144,9 +151,9 @@ export async function sendSubmissionResultEmail(
     subject,
     text: bodyText,
     html: input.theme
-      ? renderThemedEmail({ theme: input.theme, eventName, content: body.blocks, button: { label: input.buttonLabel?.trim() || translate(language, 'email.buttonOpen'), url: input.shareUrl } })
+      ? renderThemedEmail({ theme: input.theme, eventName, content: body.blocks, legal: legal?.blocks ?? null, button: { label: input.buttonLabel?.trim() || translate(language, 'email.buttonOpen'), url: input.shareUrl } })
       : `
-      <div style="font-family: Arial, sans-serif; line-height: 1.5;">${richHtml(body.blocks, { link: 'inherit' })}</div>
+      <div style="font-family: Arial, sans-serif; line-height: 1.5;">${richHtml(body.blocks, { link: 'inherit' })}${legal ? `<div style="opacity:0.75;">${richHtml(legal.blocks, { link: 'inherit' }, 'small')}</div>` : ''}</div>
     `,
   });
 

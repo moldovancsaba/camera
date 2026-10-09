@@ -90,7 +90,7 @@ Later, with your go (a production data write): move the long legal paragraph out
 |---|---|
 | E1 #464 format | built (this pull request, with E5) |
 | E5 #468 variables | built (this pull request): `{partner}`, `{home}`, `{visitor}`, `{teams}`, `{date}`, `{location}`, `{eventlink}` and the four old ones |
-| E2 #465 legal part | next |
+| E2 #465 legal part | built (this pull request): `lib/email/legal.ts`, the three routes `GET`/`PUT /api/admin/emails/legal`, `/api/partners/<id>/email-legal`, `/api/events/<id>/email-legal`; the pages come with E3 |
 | E4 #467 editor | after E2 |
 | E3 #466 Emails menu | after E4 |
 | E6 #469 test e-mail | after E3 |

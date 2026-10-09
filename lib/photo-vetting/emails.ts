@@ -39,7 +39,8 @@ export async function sendPhotoApprovedEmail(
   shareUrl: string,
   send: EmailSender = sendSubmissionResultEmail,
   theme: EventTheme | null = null,
-  texts: TextOverrides | null = null
+  texts: TextOverrides | null = null,
+  legal: string | null = null
 ): Promise<SubmissionNotificationResult> {
   const recipient = resolveSubmissionResultEmailRecipient(submission);
   const language = normalizeUiLanguage(event?.uiLanguage);
@@ -58,6 +59,7 @@ export async function sendPhotoApprovedEmail(
     language,
     texts,
     facts: emailFactsOf(event),
+    legal,
   });
 }
 
@@ -68,7 +70,8 @@ export async function sendPhotoNotApprovedEmail(
   captureUrl: string,
   send: EmailSender = sendSubmissionResultEmail,
   theme: EventTheme | null = null,
-  texts: TextOverrides | null = null
+  texts: TextOverrides | null = null,
+  legal: string | null = null
 ): Promise<SubmissionNotificationResult> {
   const recipient = resolveSubmissionResultEmailRecipient(submission);
   const language = normalizeUiLanguage(event?.uiLanguage);
@@ -88,5 +91,6 @@ export async function sendPhotoNotApprovedEmail(
     language,
     texts,
     facts: emailFactsOf(event),
+    legal,
   });
 }

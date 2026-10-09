@@ -65,3 +65,8 @@ Use `POST /api/admin/events/{eventMongoId}/email-preview` to render and validate
 
 The preview endpoint returns `validations[]` with `missingPlaceholders`, `missingValues`, `warnings`, `renderedSubject`, and `renderedBodyPreview`. It never calls the email provider and never mutates submission email flags.
 ### Supported placeholders
+
+
+## The legal part (epic 463, `lib/email/legal.ts`)
+
+The legal part is the same at every e-mail of an event, so it is one slot with three levels, written once per language in the format above: the **general** one (a global admin), the **partner's** and the **event's**. An event follows its partner and the partner follows the general one each time it is read; what a level sets is its own and the default of the levels below; a later change above never overrides an own value. It is drawn as **small print under the message and the button**, in the muted colour of the card, and appended to the plain-text part. Where no level has a legal part for the event's language, nothing is added. When there is one, the standard last paragraph of the default e-mails ("Policies and General Terms and Conditions: {terms}") is left out of the message so the terms are not written twice; a legal paragraph an editor wrote in their own words stays in the message until it is moved. Stored as `admin_settings` `email-legal`, `Partner.emailLegal`, `Event.emailLegal`; routes `GET`/`PUT /api/admin/emails/legal`, `/api/partners/<id>/email-legal`, `/api/events/<id>/email-legal`.

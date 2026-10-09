@@ -75,3 +75,35 @@ test('in Hungarian a guest without a name gets the Hungarian word, and the plain
   assert.match(sent[0].text ?? '', /^Szia rajongó!/);
   assert.ok(sent[0].html.includes('Szia rajongó!') && sent[0].html.includes('font-family: Arial'));
 });
+
+test('a legal part is small print under the message and the button, in the muted colour, and the standard terms paragraph is not written twice', async (t) => {
+  const { sent, send } = await setup(t);
+  const legal = 'Terms and policies: {terms}\n\n**Questions?** [Write to us](mailto:hello@example.test)';
+  await send({ ...defaultsOnly, theme: theme(), legal });
+  const message = sent[0];
+  const button = message.html.indexOf('display:inline-block;padding:14px');
+  const small = message.html.indexOf('font-size:12px');
+  assert.ok(button > 0 && small > button, 'after the button');
+  assert.ok(message.html.includes(`color:${theme().cardMuted}`));
+  assert.ok(message.html.includes('href="https://seyuselfies.com/en/policies/"'), 'the terms variable is a link in the legal part');
+  assert.ok(message.html.includes('<strong>Questions?</strong>') && message.html.includes('href="mailto:hello@example.test"'));
+  assert.equal((message.text ?? '').split('Policies and General Terms and Conditions').length, 1, 'the standard paragraph is not in the message');
+  assert.equal((message.html.match(/seyuselfies\.com\/en\/policies/g) ?? []).length, 2, 'the terms address once, as a link (href and its text)');
+  assert.ok((message.text ?? '').endsWith('Terms and policies: https://seyuselfies.com/en/policies/\n\nQuestions? Write to us (mailto:hello@example.test)'));
+});
+
+test('without a legal part the e-mail is exactly what it was, the standard terms paragraph included', async (t) => {
+  const { sent, send } = await setup(t);
+  await send({ ...defaultsOnly, theme: theme(), legal: null });
+  await send({ ...defaultsOnly, theme: theme() });
+  assert.equal(sent[0].text, sent[1].text);
+  assert.ok((sent[0].text ?? '').endsWith('Policies and General Terms and Conditions:\nhttps://seyuselfies.com/en/policies/'));
+  assert.equal(sent[0].html.includes('font-size:12px'), false);
+});
+
+test('an editor’s own legal paragraph in the body stays when a legal part is set, and the plain layout also gets the small print', async (t) => {
+  const { sent, send } = await setup(t);
+  await send({ ...base, bodyTemplate: 'Hi {name}\n\nOur own terms paragraph: {terms}', termsUrl: 'https://t.test/p', legal: 'Small print' });
+  assert.ok((sent[0].text ?? '').includes('Our own terms paragraph: https://t.test/p'));
+  assert.ok(sent[0].html.includes('Small print') && sent[0].html.includes('font-size:12px'));
+});

@@ -294,9 +294,9 @@ const BLOCK_STYLE: Record<BlockKind, string> = {
   small: 'margin:0 0 10px 0;font-size:12px;line-height:1.45;',
 };
 
-/** The blocks as email HTML: one paragraph each, with inline styles (email clients need them). */
-export function richHtml(blocks: RBlock[], style: RichStyle): string {
-  return blocks.map((block) => `<p style="${BLOCK_STYLE[block.kind]}">${block.inlines.map((inline) => inlineHtml(inline, style)).join('')}</p>`).join('');
+/** The blocks as email HTML: one paragraph each, with inline styles (email clients need them). `defaultKind` is the size of a paragraph with no prefix (the legal part is small print). */
+export function richHtml(blocks: RBlock[], style: RichStyle, defaultKind: BlockKind = 'normal'): string {
+  return blocks.map((block) => `<p style="${BLOCK_STYLE[block.kind === 'normal' ? defaultKind : block.kind]}">${block.inlines.map((inline) => inlineHtml(inline, style)).join('')}</p>`).join('');
 }
 
 function inlineTextOf(inline: RInline): string {
