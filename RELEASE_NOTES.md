@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the logo migration was run on the real data (data, 2026-10-09; camera#419, owner's go)
+
+- **Changed (data, owner's go: "run it now"):** the messmass logo of **190 partners** was collected into their libraries and made their logo (`Partner.slots.logo`), and **all 213 events were moved to the slot model**: 211 follow their partner (nothing stored on the event), 2 keep their own list. The old `logos` lists and `defaultLogos` rows were left as they were. The script (outside the repo) ran a dry run first, wrote an undo file before each write, and is idempotent.
+- **Verified (live logos API of every event, before and after):** 113 events answer exactly as before; **100 events newly show their partner's logo in every place** (they showed none; all 2025 events of partners such as MTK tippmix, DVTK, Újpest, Orlen Wisla Plock, One Veszprém, Industria Kielce); **no event lost a logo**; the MTK Budapest events, including the 16 October match, did not change. Database: 190 partners with a logo slot, 192 messmass logo items (2 were imported before), 213 of 213 events on the model, 2 with their own list. Nothing on messmass was written.
+- **Docs:** `docs/LIBRARIES.md` and `HANDOVER.md`.
+
 ## Unreleased — several logos in a place: one is picked at random (camera#419, owner decision 156; user-visible on a few events)
 
 - **Changed (owner, 2026-10-09: "one logo, use it; more than one, the system always shows random"):** the capture page (the loading screen and the pages of the user journey) and the slideshow loading screen now **pick one of the logos of a place at random** instead of always showing the first. One logo is used as it is. The capture page makes **one draw per visit** and uses it for every place, so a user sees the same logo throughout; the slideshow picks on load.
