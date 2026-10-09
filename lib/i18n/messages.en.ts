@@ -237,6 +237,9 @@ export const en = {
   'screen.qrText.2': 'Scan to join',
   'screen.qrText.3': 'Be on screen',
   'screen.qrText.4': 'Your photo!',
+  'welcome.title': 'Welcome',
+  'welcome.button': 'Start',
+  'welcome.screenAlt': 'The giant screen with the live photos and the QR code to scan',
 } as const;
 
 export type MessageKey = keyof typeof en;

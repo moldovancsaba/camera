@@ -63,7 +63,8 @@ the stage draws it live, so the welcome page and the stage show one design (`lib
   (`POST /api/admin/events/<id>/welcome-screen`, which also makes the default slideshow when there is none: this is how an existing event gets one, by an admin's choice); and **again, only if the event already has
   one,** when the event's default slideshow is changed (Make default) or the screen design of the default slideshow is saved. A refresh never gives an event a picture it did not have.
 - **Limits:** a text that is wider than its box is drawn like the stage draws it (not shrunk); the line is placed in the middle of a 1.15 line box, which is the stage's within a pixel or two, not identical.
-- **Not yet (step 8b):** the welcome page that shows this picture for an event with no welcome page of its own (a default welcome page), the sample selfie in the window.
+- **Shown on the welcome page (step 8b):** the capture page's welcome step shows it on any welcome page with no picture of its own (`event.welcomeScreen.url`), and an event that gets the journey defaults, has the picture and has no welcome page of its own gets a default welcome page (docs/JOURNEY_DEFAULT_PAGES.md). An event without the picture is unchanged.
+- **Not yet:** the sample selfie in the window (step 5).
 
 ## Limits
 

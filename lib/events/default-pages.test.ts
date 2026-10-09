@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { CustomPage } from '@/lib/db/schemas';
-import { DEFAULT_CONSENT_CHECKBOXES, DEFAULT_CONSENT_PAGE_ID, defaultConsentPage, hasConsentPageBeforePhoto, withDefaultJourneyPages } from './default-pages';
+import { DEFAULT_CONSENT_CHECKBOXES, DEFAULT_CONSENT_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, defaultConsentPage, defaultWelcomePage, hasConsentPageBeforePhoto, withDefaultJourneyPages } from './default-pages';
 import { DEFAULT_IDENTITY_PAGE_ID } from './identity-page';
 
 const page = (pageType: string, order: number, isActive = true, pageId = `${pageType}-${order}`): CustomPage =>
@@ -79,4 +79,31 @@ test('in Hungarian the default consent and login pages are Hungarian, with the H
   assert.equal(login(english).config.title, 'Who are you?');
   assert.equal(login(hungarian).config.title, 'Ki vagy te?');
   assert.equal(login(hungarian).config.nameLabel, 'A neved');
+});
+
+test('an event with the picture drawn from its default slideshow and no welcome page of its own gets the default welcome page first, then consent, then login', () => {
+  const own = [page('take-photo', 0), page('cta', 1)];
+  const pages = withDefaultJourneyPages(own, { vettingRequired: true, consentDefault: true, hasWelcomeScreen: true, ...OPTIONS });
+  assert.deepEqual(sequence(pages), [DEFAULT_WELCOME_PAGE_ID, DEFAULT_CONSENT_PAGE_ID, DEFAULT_IDENTITY_PAGE_ID, 'take-photo-0', 'cta-1']);
+  assert.deepEqual(sequence(withDefaultJourneyPages([], { vettingRequired: true, consentDefault: true, hasWelcomeScreen: true, ...OPTIONS })), [DEFAULT_WELCOME_PAGE_ID, DEFAULT_CONSENT_PAGE_ID, DEFAULT_IDENTITY_PAGE_ID]);
+});
+
+test('no default welcome page without the picture, without the journey defaults, or when the event has a welcome page of its own (switched off counts)', () => {
+  const noPicture = [page('take-photo', 0)];
+  assert.ok(!sequence(withDefaultJourneyPages(noPicture, { vettingRequired: true, consentDefault: true, ...OPTIONS })).includes(DEFAULT_WELCOME_PAGE_ID));
+  assert.ok(!sequence(withDefaultJourneyPages(noPicture, { vettingRequired: true, consentDefault: true, hasWelcomeScreen: false, ...OPTIONS })).includes(DEFAULT_WELCOME_PAGE_ID));
+  assert.deepEqual(withDefaultJourneyPages(noPicture, { vettingRequired: false, consentDefault: false, hasWelcomeScreen: true, ...OPTIONS }), noPicture, 'an event that does not get the defaults is left exactly as it is');
+  const ownWelcome = [page('welcome', -1), page('take-photo', 0)];
+  assert.ok(!sequence(withDefaultJourneyPages(ownWelcome, { vettingRequired: true, consentDefault: true, hasWelcomeScreen: true, ...OPTIONS })).includes(DEFAULT_WELCOME_PAGE_ID));
+  const switchedOff = [page('welcome', -1, false), page('take-photo', 0)];
+  assert.ok(!sequence(withDefaultJourneyPages(switchedOff, { vettingRequired: true, consentDefault: true, hasWelcomeScreen: true, ...OPTIONS })).includes(DEFAULT_WELCOME_PAGE_ID), 'the editor switched the welcome page off: no default is put in its place');
+});
+
+test('the default welcome page carries no picture of its own (the capture page follows the one drawn from the default slideshow) and speaks the language of the event', () => {
+  const en = defaultWelcomePage(-3, OPTIONS.now);
+  assert.equal(en.pageType, 'welcome');
+  assert.equal((en.config as { screenImageUrl?: string }).screenImageUrl, undefined);
+  assert.equal((en.config as { buttonText: string }).buttonText, 'Start');
+  const hu = defaultWelcomePage(-3, OPTIONS.now, 'hu');
+  assert.equal((hu.config as { buttonText: string }).buttonText, 'Indítás');
 });
