@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — slideshow: the screen recovers from a freeze by itself (issue 476, step S8a of the fix plan)
+
+- **Added:** when the screen stands still (no slide became current for two holds and five seconds, the page visible and the show playing) it now **goes to the next slide by itself**, and if the picture has not moved a minute after the stall began it **reloads the page** (the show restarts from the server's queue, nothing is lost): at most **3 times in 10 minutes**, after that it only keeps skipping, because a reload loop is worse than a still picture. A layout cell never reloads (it would reload the other cells). Each action is reported (`watchdog: next slide`, `watchdog: reload`) with the stall itself, so the logs show it.
+- **Added:** the full-screen page keeps the **display awake** (Screen Wake Lock, asked again after the page was hidden).
+- **Added:** an **operator checklist** for the venue's computer in `RUNBOOK.md` (full screen and nothing laid over the window, no sleep, the flag for covered windows to test, what to look at with `?debug=1` before the event).
+- **Not built (owner's decision):** a **scheduled soft reload** every few hours; it blinks the screen. And the editor guide of the giant screen (comes with the full-screen option, issue 487).
+- **Documentation:** release notes, RUNBOOK.md, ARCHITECTURE.md, SLIDESHOW_LOGIC.md, the research plan status, HANDOVER.
+- **Verified:** type-check; lint; unit tests (the decision: young stall skips, a minute reloads, three reloads in ten minutes stop it, old reloads do not count, a bad stored history is none); the full CI chain; and the **real player in a production build** with a simulated freeze (the clock moved on while no slide changed): a stall went to the next slide, and a stall of a minute reloaded the page once, recorded it in the session and the show restarted. The cap was not run in the browser; the wake lock is supported by the test browser but whether it keeps a real display awake was **not tried**. **Not seen on the live screen.**
+
 ## Unreleased — slideshow: the show starts on the first two pictures (issue 476, step S5 of the fix plan)
 
 - **Changed (the start, "sometimes it needs 10 to 20 seconds"):** the screen used to wait until **all eleven pictures of the first answer** had loaded before it showed anything. Now it starts as soon as the **first 2 slides and the screen design's picture** are ready (the picture is waited for 4 s at most); the other slides of the answer load behind them, three at a time, and join the queue as each is ready. The loading-screen logo and the failover background load alongside and are no longer waited for. **Measured** in a production build with eleven 300 KB pictures sharing a modelled 600 KB/s link: the stage appeared at **about 6.0 s before and 1.65 s after**; the design's picture was already there (no pop-in). The saving grows with the picture weight and the number of pictures.

@@ -429,6 +429,16 @@ The giant-screen player reports what it does, so a freeze leaves evidence (`docs
 - **Server side:** `GET /api/slideshows/<id>/playlist` answers with a `Server-Timing` header (phases `rate`, `slideshow`, `event`, `inactive`, `aggregate`, `theme`, `total`), visible in the network tab, and a call over one second leaves one `slideshow.playlist_slow` warning with the phases, the pool size and the limit.
 - **Limits:** the beacon is rate limited to 300 requests a minute per IP, a layout page with many cells sends one stream for each cell, and a stall is not reported while the page is hidden.
 
+## Giant-screen operator checklist (camera#476)
+
+For whoever sets up the screen that shows `/slideshow/<id>` at a venue. The player now recovers from a stall by itself, but a good setup prevents most of them.
+
+- **What the page does by itself:** it keeps the display awake (Screen Wake Lock, re-asked when the page becomes visible again; needs https, which production has); if no slide has changed for two holds and five seconds while the page is visible it reports the stall and goes to the next slide; if the picture has not moved a minute after the stall began it **reloads the page** (the show restarts from the server's queue, nothing is lost), **at most 3 times in 10 minutes**, after that it only keeps skipping; a request to our server gives up after 8 s and a picture after 20 s, and a screen that cannot start retries by itself.
+- **Set up the screen's computer:** wired network if there is any; no display sleep and no screen saver (the wake lock helps but the operating system's own settings are the first line); the browser's window **full screen** (the F key, or the button in the control bar; or the browser's kiosk mode) and **nothing laid over it**: a window that is covered counts as hidden, and a hidden page's timers are slowed or stopped (on Windows Chromium treats a fully covered window as hidden; the flag `--disable-features=CalculateNativeWinOcclusion` turns that off, **to be tested on the Chrome build in use**, I have not run it); no other app popping notifications over the show; browser auto-update not scheduled during the event.
+- **Check before the event:** open the screen's address once with `?debug=1` and look at the corner panel for a minute: `slide_shown` lines with `dup=false`, `fetches=1`, a `heartbeat` every 10 s with `vis=visible` and a small `rafGapMs`, no `stall` or `error`.
+- **After a freeze:** Vercel runtime logs of `04_camera`, filter `camera.slideshow_diagnostic` (see "Slideshow diagnostics" above); a watchdog action appears as an `error` event with `watchdog: next slide` or `watchdog: reload`.
+- **Not built yet:** a scheduled soft reload every few hours (the plan's S8 b; needs the owner's decision, because it blinks the screen), and an editor guide of the giant screen.
+
 ## Scheduled jobs and workers
 
 **Vercel Cron: try-on completion backstop (paused since v12.3.40).** The job that
