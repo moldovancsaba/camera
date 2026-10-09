@@ -7,6 +7,7 @@ import { sanitizeEmail } from '@/lib/security/sanitize';
 import { loadEventTheme } from '@/lib/theme/load';
 import { emailFactsOf } from '@/lib/email/event-link';
 import { loadEventLegal } from '@/lib/email/legal';
+import { EMAIL_TYPES, EMAIL_TYPE_INFO, parseTypeSettings, type EmailType, type ResolvedType } from '@/lib/email/types';
 import type { EventFacts } from '@/lib/email/variables';
 import type { EventTheme } from '@/lib/theme/event-theme';
 import { getConfiguredSiteUrl } from '@/lib/site-url';
@@ -34,6 +35,8 @@ export interface SubmissionEmailPolicy {
   subjectTemplateAfterTryOnResubmissionApproved?: string | null;
   bodyTemplateAfterTryOnResubmissionApproved?: string | null;
   termsUrl: string;
+  /** The five e-mails a user can get (lib/email/types.ts): whether each is on, and the event's own subject and message when it has them. */
+  types: Record<EmailType, ResolvedType>;
   /** The language of the event: the defaults the email falls back to, and the words around the name and the event (camera#352). */
   language: UiLanguage;
   /** The wordings written for the event's partner or the event in that language (issue 353); absent: the dictionary. */
@@ -119,7 +122,7 @@ export function resolveSubmissionResultEmailRecipient(submission: {
  */
 export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLanguage = DEFAULT_UI_LANGUAGE, texts?: TextOverrides | null): SubmissionEmailPolicy {
   const source = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
-  const enabled = Boolean(source.submissionResultEmailEnabled);
+  const typeSettings = parseTypeSettings(source.types);
 
   const hasExplicitAfterSave = hasOwnProperty(source, 'submissionResultEmailSendAfterSave');
   const hasExplicitAfterRelated = hasOwnProperty(source, 'submissionResultEmailSendAfterRelatedPhotosReady');
@@ -127,17 +130,26 @@ export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLangu
     source,
     'submissionResultEmailSendAfterTryOnResubmissionApproved'
   );
+  // The old master switch, when an editor stored it as off, still turns the old switches off. An event that stored nothing follows the defaults of the five types (owner, 2026-10-09):
+  // approved is on, so an event that never chose sends it (answer 204).
+  const masterOff = hasOwnProperty(source, 'submissionResultEmailEnabled') && !source.submissionResultEmailEnabled;
+  const legacyApproved = masterOff ? false : hasExplicitAfterSave ? Boolean(source.submissionResultEmailSendAfterSave) : true;
+  const sendAfterSave = typeSettings.approved?.enabled ?? legacyApproved;
+  const sendAfterRelatedPhotosReady = masterOff ? false : hasExplicitAfterRelated ? Boolean(source.submissionResultEmailSendAfterRelatedPhotosReady) : false;
+  const sendAfterTryOnResubmissionApproved = masterOff ? false : hasExplicitAfterTryOnResubmissionApproved ? Boolean(source.submissionResultEmailSendAfterTryOnResubmissionApproved) : false;
+  const enabled = sendAfterSave || sendAfterRelatedPhotosReady || sendAfterTryOnResubmissionApproved;
 
   // In another language a stored English default is read as the same default in that language (emailTemplateIn).
   const own = (template: string) => emailTemplateIn(language, template || null, texts) ?? '';
   const legacySubject = own(readTemplate(source.submissionResultEmailSubject, 180));
   const legacyBody = own(readTemplate(source.submissionResultEmailBody, 5000, true));
-  const subjectTemplateAfterSave = own(readTemplate(
+  // The approved type's own subject and message are the "after save" pair (one e-mail, two ways it is reached).
+  const subjectTemplateAfterSave = typeSettings.approved?.subject ?? (own(readTemplate(
     source.submissionResultEmailSubjectAfterSave,
     180
-  )) || legacySubject;
+  )) || legacySubject);
   const bodyTemplateAfterSave =
-    own(readTemplate(source.submissionResultEmailBodyAfterSave, 5000, true)) || legacyBody;
+    typeSettings.approved?.body ?? (own(readTemplate(source.submissionResultEmailBodyAfterSave, 5000, true)) || legacyBody);
   const subjectTemplateAfterRelatedPhotosReady =
     own(readTemplate(source.submissionResultEmailSubjectAfterRelatedPhotosReady, 180)) || legacySubject;
   const bodyTemplateAfterRelatedPhotosReady =
@@ -159,23 +171,26 @@ export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLangu
       ? storedTermsUrl
       : emailDefaults(language, texts).termsUrl;
 
+  const types = Object.fromEntries(
+    EMAIL_TYPES.map((type) => {
+      const stored = typeSettings[type];
+      const chosen = stored?.enabled ?? null;
+      const resolved: ResolvedType = {
+        enabled: type === 'approved' ? sendAfterSave : (chosen ?? EMAIL_TYPE_INFO[type].defaultOn),
+        chosen,
+        subject: stored?.subject ?? null,
+        body: stored?.body ?? null,
+      };
+      return [type, resolved];
+    })
+  ) as Record<EmailType, ResolvedType>;
+
   return {
     enabled,
-    sendAfterSave: enabled
-      ? hasExplicitAfterSave
-        ? Boolean(source.submissionResultEmailSendAfterSave)
-        : true
-      : false,
-    sendAfterRelatedPhotosReady: enabled
-      ? hasExplicitAfterRelated
-        ? Boolean(source.submissionResultEmailSendAfterRelatedPhotosReady)
-        : false
-      : false,
-    sendAfterTryOnResubmissionApproved: enabled
-      ? hasExplicitAfterTryOnResubmissionApproved
-        ? Boolean(source.submissionResultEmailSendAfterTryOnResubmissionApproved)
-        : false
-      : false,
+    sendAfterSave,
+    sendAfterRelatedPhotosReady,
+    sendAfterTryOnResubmissionApproved,
+    types,
     subjectTemplate: legacySubject || null,
     bodyTemplate: legacyBody || null,
     senderName: readSenderName(source.submissionResultEmailSenderName),

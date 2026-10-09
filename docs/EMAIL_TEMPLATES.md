@@ -74,3 +74,16 @@ The words of an e-mail and the legal part are written with a toolbar editor (`co
 ## The legal part (epic 463, `lib/email/legal-rules.ts` and `lib/email/legal.ts`)
 
 The legal part is the same at every e-mail of an event, so it is one slot with three levels, written once per language in the format above: the **general** one (a global admin), the **partner's** and the **event's**. An event follows its partner and the partner follows the general one each time it is read; what a level sets is its own and the default of the levels below; a later change above never overrides an own value. It is drawn as **small print under the message and the button**, in the muted colour of the card, and appended to the plain-text part. Where no level has a legal part for the event's language, nothing is added. When there is one, the standard last paragraph of the default e-mails ("Policies and General Terms and Conditions: {terms}") is left out of the message so the terms are not written twice; a legal paragraph an editor wrote in their own words stays in the message until it is moved. Stored as `admin_settings` `email-legal`, `Partner.emailLegal`, `Event.emailLegal`; routes `GET`/`PUT /api/admin/emails/legal`, `/api/partners/<id>/email-legal`, `/api/events/<id>/email-legal`.
+
+
+## The five e-mail types (epic 463, `lib/email/types.ts`)
+
+| Type | When | On by default | Stored |
+|---|---|---|---|
+| welcome | when somebody registers (gives name and e-mail, or signs in, before the photo) | no | `notifications.types.welcome` |
+| arrived | when somebody submits a photo (later other media) | no | `types.arrived` |
+| approved | when the photo is approved, with the links: at once for an event without vetting, by a moderator with it | **yes** | `types.approved`; the old "after save" pair is the same e-mail |
+| declined | when a moderator declines the photo | **yes** | `types.declined` |
+| follow up | one week after the event, to users with an approved photo | no | `types.follow up` (`followUp`); **not sent yet**: the daily job is added later |
+
+Each type has `enabled` (a switch), `subject` and `body` (the event's own, in the format above). **A stored choice wins; an event with none follows the default** (owner, answer 204: "on" means every event, including ones that never turned e-mails on). The old fields keep their meaning: `submissionResultEmailEnabled: false` stored by an editor still turns the old switches off, the three modes' own subject/body stay, the two try-on e-mails (`after related photos`, `after approved resubmission`) are unchanged. For a vetted photo the approved e-mail is how the user gets the link, so only the new switch `types.approved.enabled = false` stops it. The default texts are the dictionary keys `email.welcomeSubject/Body`, `email.arrivedSubject/Body`, `email.followUpSubject/Body` (English and Hungarian, with the standard terms line, which a legal part replaces) and the existing `email.subject/body` (approved) and `email.notApprovedSubject/Body` (declined). `PATCH /api/events/<id>` stores only what the editor chose (`lib/email/notification-settings.ts`), nothing is filled in with a default.

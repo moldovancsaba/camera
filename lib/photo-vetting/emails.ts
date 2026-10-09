@@ -45,6 +45,8 @@ export async function sendPhotoApprovedEmail(
   const recipient = resolveSubmissionResultEmailRecipient(submission);
   const language = normalizeUiLanguage(event?.uiLanguage);
   const policy = normalizeSubmissionEmailPolicy(event?.notifications, language, texts);
+  // For a vetted photo the approved e-mail is how the user gets the link, so it is sent whatever the old switches say; only an editor who chose "off" for the approved e-mail stops it.
+  if (policy.types.approved.chosen === false) return { sent: false, skipped: true, reason: 'event_email_disabled' };
   return send({
     recipientEmail: recipient.email,
     recipientName: recipient.name,
@@ -63,7 +65,7 @@ export async function sendPhotoApprovedEmail(
   });
 }
 
-/** "Not approved": fixed wording in the event's language, so a typed address that is not the guest's own only ever receives a harmless note. */
+/** "Declined": the standard wording in the event's language unless the event wrote its own; a short note with a link to take another photo, so a typed address that is not the guest's own only ever receives a harmless note. */
 export async function sendPhotoNotApprovedEmail(
   submission: RecipientSource,
   event: EventForEmail,
@@ -77,6 +79,8 @@ export async function sendPhotoNotApprovedEmail(
   const language = normalizeUiLanguage(event?.uiLanguage);
   const policy = normalizeSubmissionEmailPolicy(event?.notifications, language, texts);
   const defaults = emailDefaults(language, texts);
+  // Declined is on unless an editor chose off; the event's own subject and message replace the standard ones.
+  if (!policy.types.declined.enabled) return { sent: false, skipped: true, reason: 'event_email_disabled' };
   return send({
     recipientEmail: recipient.email,
     recipientName: recipient.name,
@@ -84,8 +88,8 @@ export async function sendPhotoNotApprovedEmail(
     shareUrl: captureUrl,
     termsUrl: policy.termsUrl,
     senderName: policy.senderName,
-    subjectTemplate: defaults.notApprovedSubject,
-    bodyTemplate: defaults.notApprovedBody,
+    subjectTemplate: policy.types.declined.subject ?? defaults.notApprovedSubject,
+    bodyTemplate: policy.types.declined.body ?? defaults.notApprovedBody,
     theme,
     buttonLabel: translate(language, 'email.buttonAnother', undefined, texts),
     language,

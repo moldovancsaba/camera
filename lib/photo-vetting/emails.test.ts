@@ -110,3 +110,26 @@ test('a wording written for the partner or the event reaches the sender: the not
   await sendPhotoNotApprovedEmail(guest, { name: 'Derby' } as never, 'https://x.test/capture/e1', plain.send);
   assert.equal(plain.calls[0].subjectTemplate, NOT_APPROVED_SUBJECT, 'no wording: exactly what it always was');
 });
+
+test('the approved e-mail of a vetted photo stops only when the editor chose off for the approved type; the old switches never stop it', async () => {
+  const { calls, send } = recorder();
+  const off = await sendPhotoApprovedEmail(guest, { name: 'Derby', notifications: { types: { approved: { enabled: false } } } } as never, 'https://x.test/share/tok', send);
+  assert.deepEqual([off.sent, 'skipped' in off && off.skipped], [false, true]);
+  assert.equal(calls.length, 0);
+  const oldOff = await sendPhotoApprovedEmail(guest, { name: 'Derby', notifications: { submissionResultEmailEnabled: false, submissionResultEmailSendAfterSave: false } } as never, 'https://x.test/share/tok', send);
+  assert.equal(oldOff.sent, true, 'the old switches never turned the link off for a vetted photo');
+  const on = await sendPhotoApprovedEmail(guest, { name: 'Derby', notifications: { types: { approved: { enabled: true, subject: 'Own {event}', body: 'Own {link}' } } } } as never, 'https://x.test/share/tok', send);
+  assert.equal(on.sent, true);
+  assert.deepEqual([calls[1].subjectTemplate, calls[1].bodyTemplate], ['Own {event}', 'Own {link}']);
+});
+
+test('the declined e-mail is on by default, the event can write its own subject and message, and an editor can switch it off', async () => {
+  const { calls, send } = recorder();
+  await sendPhotoNotApprovedEmail(guest, { name: 'Derby' } as never, 'https://x.test/capture/e1', send);
+  assert.equal(calls[0].subjectTemplate, NOT_APPROVED_SUBJECT, 'on, with the standard wording, for an event that never chose');
+  await sendPhotoNotApprovedEmail(guest, { name: 'Derby', notifications: { types: { declined: { subject: 'Sorry {name}', body: 'Try again: {link}' } } } } as never, 'https://x.test/capture/e1', send);
+  assert.deepEqual([calls[1].subjectTemplate, calls[1].bodyTemplate], ['Sorry {name}', 'Try again: {link}']);
+  const off = await sendPhotoNotApprovedEmail(guest, { name: 'Derby', notifications: { types: { declined: { enabled: false } } } } as never, 'https://x.test/capture/e1', send);
+  assert.deepEqual([off.sent, 'skipped' in off && off.skipped], [false, true]);
+  assert.equal(calls.length, 2, 'nothing was sent when it is off');
+});
