@@ -39,15 +39,15 @@ const REASON: Record<string, string> = {
 function stepsAfterPhoto(context: JourneyContext): JourneyRow[] {
   if (context.vettingRequired) {
     return [
-      { kind: 'step', id: 'waiting', title: 'Waiting for approval', description: 'After Continue saves the photo the user waits until it is approved. Built in.', editedIn: 'The take-photo page below (approval texts) and Edit event, Public result page.' },
-      { kind: 'step', id: 'emails', title: 'E-mails', description: 'The user gets the saved e-mail, then the approved or not-approved e-mail with the link. Built in.', editedIn: 'Edit event, Email module.' },
-      { kind: 'step', id: 'result', title: 'The public photo page', description: 'The page the e-mail links to: the photo and its download. Built in.', editedIn: 'Edit event, Public result page.' },
+      { kind: 'step', id: 'waiting', title: 'Waiting for approval', description: 'After Continue saves the photo the user waits until it is approved. Built in.', editedIn: 'The take-photo page in this list (approval texts) and the Public result page section above.' },
+      { kind: 'step', id: 'emails', title: 'E-mails', description: 'The user gets the saved e-mail, then the approved or not-approved e-mail with the link. Built in.', editedIn: 'The Email module section above.' },
+      { kind: 'step', id: 'result', title: 'The public photo page', description: 'The page the e-mail links to: the photo and its download. Built in.', editedIn: 'The Public result page section above.' },
     ];
   }
   return [
-    { kind: 'step', id: 'share', title: 'Share screen', description: 'After Continue saves the photo the user can copy the link and share it. Built in.', editedIn: 'The take-photo page below (share texts) and Edit event, Public result page.' },
-    { kind: 'step', id: 'emails', title: 'E-mails', description: 'The user gets the saved e-mail when an address is known. Built in.', editedIn: 'Edit event, Email module.' },
-    { kind: 'step', id: 'result', title: 'The public photo page', description: 'The page the e-mail links to: the photo and its download. Built in.', editedIn: 'Edit event, Public result page.' },
+    { kind: 'step', id: 'share', title: 'Share screen', description: 'After Continue saves the photo the user can copy the link and share it. Built in.', editedIn: 'The take-photo page in this list (share texts) and the Public result page section above.' },
+    { kind: 'step', id: 'emails', title: 'E-mails', description: 'The user gets the saved e-mail when an address is known. Built in.', editedIn: 'The Email module section above.' },
+    { kind: 'step', id: 'result', title: 'The public photo page', description: 'The page the e-mail links to: the photo and its download. Built in.', editedIn: 'The Public result page section above.' },
   ];
 }
 
