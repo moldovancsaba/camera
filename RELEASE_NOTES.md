@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the slideshow shows the framed version of a photo the gallery framed (issue 488; owner report 2026-10-09: "the gallery updated and made the frame on the uploaded images and it is great! But the slideshow shows the wrong version")
+
+- **Cause (read in the data and the headers):** the screen picture of a photo (the WebP the giant screen plays, `screenImageUrl`) was stored at `screen-pictures/<submission id>.webp` with a one-year cache header and `allowOverwrite`. When the gallery framed an upload it cleared the field and made the picture again from the framed photo **at the same address**: the file was overwritten, but the CDN and every browser that had already shown the unframed one keep a file for a year, so the screens kept the old version. The gallery card showed the right one because it uses the photo itself.
+- **Fixed:** the address of a screen picture now carries the hash of the picture (`screen-pictures/<id>-<12 hex digits>.webp`, `screenPicturePath`): a new picture is a new address, so no cache can show the old one, and the same picture is the same address. Nothing else is written over an address that may be cached.
+- **Data (after the deploy, a live event, the owner's report):** the 20 photos framed today get their screen picture made again at a new address, and the main screen is asked to reload, so every open screen fetches the new pictures. The 340 other screen pictures were never overwritten and are unchanged.
+- **Verified:** type-check; lint; unit tests (the address carries the hash, another picture for the same submission gets another address, the same picture the same).
+
+
 ## Unreleased — the welcome page's giant screen is the slideshow's own screen, and a saved slideshow reaches the open screens (issue 515; owner reports 2026-10-09)
 
 - **Welcome composition follows the slideshow (owner: "the welcome composition with the big screen has to use exactly the one created for the slideshow, so whenever a slideshow is updated, it has to be updated as well"):** the picture of the giant screen on the welcome page (`Event.welcomeScreen`) is drawn from the default slideshow's screen design (overlay, QR code, texts, the event's frame). It used to be redrawn only when the event already had one; now **saving the default slideshow's screen design, or making a slideshow the default, always draws it**, also for an event that had none. A welcome page that has a picture of its own keeps it (an own picture on a page wins). `onlyIfExists` is gone from `scheduleWelcomeScreen`.

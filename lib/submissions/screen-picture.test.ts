@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { ObjectId } from 'mongodb';
 import sharp from 'sharp';
 import { fakeDb } from '@/lib/library/fake-db';
-import { SCREEN_PICTURE_LONG_EDGE, ensureScreenPicture, makeScreenPicture, type ScreenPictureDeps } from './screen-picture';
+import { SCREEN_PICTURE_LONG_EDGE, ensureScreenPicture, makeScreenPicture, screenPicturePath, type ScreenPictureDeps } from './screen-picture';
 
 /** A noisy photo (noise does not compress, so it is heavy like a real one). */
 const photo = (width: number, height: number, quality = 92) =>
@@ -51,9 +51,9 @@ test('a heavy photo gets its screen picture stored once, with a year-long cache,
   const result = await ensureScreenPicture(w.db, { _id: w.id, imageUrl: 'https://store.test/a.jpg', finalImageUrl: 'https://store.test/a.jpg' }, w.deps);
   assert.equal(result.outcome, 'made');
   assert.equal(w.puts.length, 1);
-  assert.equal(w.puts[0].pathname, `screen-pictures/${String(w.id)}.webp`);
+  assert.match(w.puts[0].pathname, new RegExp(`^screen-pictures/${String(w.id)}-[0-9a-f]{12}\\.webp$`));
   assert.deepEqual(w.puts[0].options, { contentType: 'image/webp', cacheControlMaxAge: 31_536_000 });
-  assert.equal(w.row().screenImageUrl, `https://store.test/screen-pictures/${String(w.id)}.webp`);
+  assert.equal(w.row().screenImageUrl, `https://store.test/${w.puts[0].pathname}`);
   assert.equal(w.row().screenImageBytes, w.puts[0].bytes);
   assert.equal(w.row().imageUrl, 'https://store.test/a.jpg', 'the original is never changed');
 });
@@ -86,4 +86,18 @@ test('a dry run measures and changes nothing', async () => {
   assert.equal(result.outcome, 'made');
   assert.ok(result.screenBytes && result.sourceBytes && result.screenBytes < result.sourceBytes);
   assert.deepEqual([w.puts.length, 'screenImageUrl' in w.row()], [0, false]);
+});
+
+test('a picture made again for the same submission, from another source (a photo that was framed later), gets another address, so no cache can show the old one (owner, 2026-10-09)', async () => {
+  const unframed = await photo(3000, 2000);
+  const framed = await photo(3000, 2000);
+  const w1 = world(unframed);
+  await ensureScreenPicture(w1.db, { _id: w1.id, imageUrl: 'https://store.test/a.jpg', finalImageUrl: 'https://store.test/a.jpg' }, w1.deps);
+  const w2 = world(framed);
+  await ensureScreenPicture(w2.db, { _id: w1.id, imageUrl: 'https://store.test/framed.jpg', finalImageUrl: 'https://store.test/framed.jpg' }, w2.deps);
+  assert.notEqual(w1.puts[0].pathname, w2.puts[0].pathname, 'another picture, another address');
+  // The same picture is the same address, so asking twice stores one file.
+  const picture = (await makeScreenPicture(framed)).buffer;
+  assert.equal(screenPicturePath('abc', picture), screenPicturePath('abc', Buffer.from(picture)));
+  assert.notEqual(screenPicturePath('abc', picture), screenPicturePath('abd', picture));
 });
