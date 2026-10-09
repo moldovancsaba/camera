@@ -12,6 +12,7 @@ import {
   normalizeStoredSafetyColor,
 } from '@/lib/slideshow/layout-presentation';
 import { normalizeSlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
+import { withErrorHandler } from '@/lib/api/withErrorHandler';
 
 function normalizeDelayMs(raw: unknown): number {
   if (typeof raw === 'number' && Number.isFinite(raw)) {
@@ -26,10 +27,10 @@ function normalizeDelayMs(raw: unknown): number {
   return 0;
 }
 
-export async function GET(
+export const GET = withErrorHandler(async (
   _request: NextRequest,
   { params }: { params: Promise<{ layoutId: string }> }
-) {
+) => {
   try {
     await checkRateLimit(_request, RATE_LIMITS.SLIDESHOW_LAYOUT_GET);
 
@@ -83,4 +84,4 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+});

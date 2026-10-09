@@ -25,6 +25,7 @@ import {
   getPartnerScopedAccessForEventUuid,
   isGlobalAdminSession,
 } from '@/lib/partners/authorization';
+import { withErrorHandler } from '@/lib/api/withErrorHandler';
 
 const DEFAULT_ROWS = 2;
 const DEFAULT_COLS = 2;
@@ -71,7 +72,7 @@ async function assertSlideshowsForEvent(
 /**
  * POST — create layout (admin)
  */
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   try {
     const session = await getSession();
     if (!session) {
@@ -169,12 +170,12 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * GET — list layouts for event (event UUID in query, same as slideshows)
  */
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   try {
     const session = await getSession();
     if (!session) {
@@ -215,12 +216,12 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * PATCH — update layout (admin)
  */
-export async function PATCH(request: NextRequest) {
+export const PATCH = withErrorHandler(async (request: NextRequest) => {
   try {
     const session = await getSession();
     if (!session) {
@@ -367,12 +368,12 @@ export async function PATCH(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * DELETE — remove layout (admin)
  */
-export async function DELETE(request: NextRequest) {
+export const DELETE = withErrorHandler(async (request: NextRequest) => {
   try {
     const session = await getSession();
     if (!session) {
@@ -413,4 +414,4 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

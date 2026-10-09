@@ -13,13 +13,14 @@ import { getSession } from '@/lib/auth/session';
 import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError, apiForbidden } from '@/lib/api/responses';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
 import { checkEventAssign } from '@/lib/library/db';
+import { withErrorHandler } from '@/lib/api/withErrorHandler';
 
 type EventFrameAssignment = Event['frames'][number];
 
-export async function POST(
+export const POST = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
-) {
+) => {
   try {
     // Authentication check
     const session = await getSession();
@@ -97,4 +98,4 @@ export async function POST(
     console.error('Error assigning frame:', error);
     return apiError(error instanceof Error ? error.message : 'Failed to assign frame');
   }
-}
+});

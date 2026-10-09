@@ -10,11 +10,12 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { clearInactiveUserEmailsCache } from '@/lib/db/sso';
 import { setCameraAccountDisabledForEmail } from '@/lib/sso/submission-account';
+import { withErrorHandler } from '@/lib/api/withErrorHandler';
 
-export async function PATCH(
+export const PATCH = withErrorHandler(async (
   request: NextRequest,
   context: { params: Promise<{ email: string }> }
-) {
+) => {
   try {
     const session = await requireAdmin();
     const { email } = await context.params;
@@ -131,4 +132,4 @@ export async function PATCH(
       { status: 500 }
     );
   }
-}
+});

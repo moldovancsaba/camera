@@ -9,8 +9,9 @@ import { requireAdmin } from '@/lib/api';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { resolveSsoUserIdByEmail } from '@/lib/sso/submission-account';
+import { withErrorHandler } from '@/lib/api/withErrorHandler';
 
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   try {
     const session = await requireAdmin();
 
@@ -109,4 +110,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
