@@ -100,6 +100,11 @@ export interface FrameDesign {
    * generated layout, as before.
    */
   messageFrames?: Record<string, string | string[]>;
+  /**
+   * Where the dark area of a design that carries messages comes from (owner, answer 194/195, 2026-10-09): `frame` (default, what a missing value means) is the layers its designer put in
+   * the frame's message area (header and footer bars); `generated` is the mask of the auto generated default frame (logo, teams, bar and message boxes), whatever the design.
+   */
+  darkArea?: 'frame' | 'generated';
   /** One image per usable message (camera#235); absent until the first generation. */
   variants?: FrameVariant[];
   generatedAt?: string;

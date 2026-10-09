@@ -92,7 +92,7 @@ The dark area is the part of the picture a design covers, shown at 50 % black at
 
 | Kind of design | Dark area | Where it comes from |
 |---|---|---|
-| A library frame with a message area (MTK blue and pink: a header and a footer bar of 100 px) | the boxes of its layers | the layers stored with the image of the message on that frame (`FrameVariant.layers`), drawn as territories |
+| A library frame with a message area (MTK blue and pink: a header and a footer bar of 100 px) | the boxes of its layers, **or the mask of the generated frame** when the event says so (`FrameDesign.darkArea` = `generated`, owner answers 194 and 195: the logo, teams, bar and message boxes whatever the design) | the layers stored with the image of the message on that frame (`FrameVariant.layers`), drawn as territories; chosen with the radio **Dark area of the designs** under the table of messages by designs |
 | The generated layout | the boxes of its layers | the same |
 | A complete frame of the event's own | the whole non-transparent graphic at 50 % black (the owner's answers 189 and 193: one general method, every event) | `frameSilhouette`, in the live view of a webcam and in the move-and-zoom step; if the picture cannot be read the real frame shows, as before |
 | Any own frame of a vetted event | the same silhouette, never the real frame (camera#265) | unchanged |

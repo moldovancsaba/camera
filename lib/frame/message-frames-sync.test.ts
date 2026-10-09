@@ -87,3 +87,27 @@ test('saving only the messages keeps the list of designs of a message that stays
   assert.deepEqual(design.messageFrames, { HAJRÁ: ['f-blue', 'f-pink'] });
   assert.deepEqual(stored(data).messageFrames, { HAJRÁ: ['f-blue', 'f-pink'] });
 });
+
+test('where the dark area of the designs comes from is saved with the messages, refused when it is not one of the two, kept on a snapshot refresh and cleared by a reset', async () => {
+  const { db, data, event } = setup({ messageFrames: { HAJRÁ: 'f-blue' } });
+  const saved = await saveFrameMessages(db, event, { messages: ['HAJRÁ', 'MTK!', 'Go!'], darkArea: 'generated' }, deps);
+  assert.equal(saved.darkArea, 'generated');
+  assert.equal(stored(data).darkArea, 'generated');
+  assert.deepEqual(saved.messageFrames, { HAJRÁ: 'f-blue' }, 'the designs of the messages stay');
+
+  const kept = await saveFrameMessages(db, { ...event, frameDesign: stored(data) }, { messages: ['HAJRÁ', 'MTK!', 'Go!'] }, deps);
+  assert.equal(kept.darkArea, 'generated', 'saving only the messages keeps it');
+
+  await assert.rejects(saveFrameMessages(db, { ...event, frameDesign: stored(data) }, { messages: ['HAJRÁ'], darkArea: 'sideways' }, deps), (error: unknown) => error instanceof Response && error.status === 400);
+  assert.equal(stored(data).darkArea, 'generated', 'a refused save writes nothing');
+
+  const own = await saveFrameMessages(db, { ...event, frameDesign: stored(data) }, { messages: ['HAJRÁ'], darkArea: 'frame' }, deps);
+  assert.equal(own.darkArea, undefined);
+  assert.equal(stored(data).darkArea, undefined, 'the default stores nothing');
+
+  await saveFrameMessages(db, { ...event, frameDesign: stored(data) }, { messages: ['HAJRÁ'], darkArea: 'generated' }, deps);
+  const refreshed = await refreshFrameDesign(db, { ...event, frameDesign: stored(data) }, { ...deps, messmassConfigured: () => false });
+  assert.equal(refreshed.design.darkArea, 'generated', 'a snapshot refresh keeps it');
+  const reset = await saveFrameMessages(db, { ...event, frameDesign: stored(data) }, { reset: true }, deps);
+  assert.equal(reset.darkArea, undefined, 'a reset clears it with the designs');
+});
