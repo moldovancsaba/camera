@@ -167,6 +167,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         iconKey: 'adjustments',
         isVisible: (access) => access.isGlobalAdmin,
       },
+      {
+        href: '/admin/dictionary',
+        label: 'Dictionary',
+        description: 'Every default text of the user journey in English and Hungarian, and the global wording of each.',
+        iconKey: 'adjustments',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
     ],
   },
   {
@@ -248,6 +255,7 @@ export const EVENT_CONTEXT_MENU: AdminContextItem[] = [
   { label: 'Logos', description: 'The logo of the event and of each place it shows.', iconKey: 'photo', path: '/logos', isVisible: everyone },
   { label: 'Frames', description: 'The frames of the event.', iconKey: 'frame', path: '/frames', isVisible: everyone },
   { label: 'Images', description: 'The pictures the event can use.', iconKey: 'photo', path: '/images', isVisible: everyone },
+  { label: 'Texts', description: 'The wording of the default texts for this event.', iconKey: 'adjustments', path: '/texts', isVisible: everyone },
   { label: 'Slideshows', description: 'The slideshows and the welcome page screen.', iconKey: 'photoScan', path: '#slideshows', also: ['/slideshows', '/layouts'], isVisible: everyone },
   { label: 'Landing pages', description: 'The landing pages of the event.', iconKey: 'world', path: '#landing-pages', also: ['/landing-pages'], isVisible: everyone },
 ];
@@ -259,6 +267,7 @@ export const PARTNER_CONTEXT_MENU: AdminContextItem[] = [
   { label: 'Logos', description: 'The logo of the partner: the default of all its events.', iconKey: 'photo', path: '/logos', isVisible: everyone },
   { label: 'Frames', description: 'The frames of the partner.', iconKey: 'frame', path: '/frames', isVisible: everyone },
   { label: 'Images', description: 'The pictures the partner and its events can use.', iconKey: 'photo', path: '/images', isVisible: everyone },
+  { label: 'Texts', description: 'The wording of the default texts for all events of the partner.', iconKey: 'adjustments', path: '/texts', isVisible: everyone },
 ];
 
 export interface AdminContextMenu {
