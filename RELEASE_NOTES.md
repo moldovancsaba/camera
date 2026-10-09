@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — e-mails to the user, segment E6: send a test e-mail to myself (epic 463, issue 469)
+
+- **Added (my proposal for the match; the owner wants the epic before 16 Oct):** every preview of an e-mail has **Send me a test e-mail**: the e-mail as drawn, made and sent by the same code a user's e-mail goes through, to **the e-mail address of the signed-in editor and nobody else** (a recipient in the request is ignored), with `[Test]` in front of the subject, in the look and with the data of the event (name, teams, date, short link, legal part) when the preview is of an event. So the owner can read the real e-mail on a phone before any user gets it. Nothing is stored.
+- **Answers:** 503 when the server has no e-mail key or sender address ("not configured"), 502 with the provider's reason when the send fails, 400 for an editor whose account has no e-mail address, 403 without manager access to the event.
+- **Added:** `POST /api/admin/emails/test`; the button in `EmailPreview`, so it is on the event Emails page, the partner page and the general page.
+- **Documentation:** release notes, ARCHITECTURE.md, EMAIL_TEMPLATES.md, the plan, HANDOVER.
+- **Verified:** type-check; lint; unit tests (only the editor's own address, the [Test] prefix, the event's look and data and legal part, the sample for no event, no button, an editor without an address, access, 503 and 502); the full CI chain. **No e-mail was sent by the tests (the sender is replaced); the button was not pressed against the live server.**
+
 ## Unreleased — e-mails to the user, segment E8: the welcome and arrived e-mails are sent when an event switches them on (epic 463, issue 474)
 
 - **Added (owner, 2026-10-09; answer 201):** **welcome** is sent when the user is **identified**, before the photo: the capture page tells the server (`POST /api/events/<id>/register`) the name and e-mail the user typed on the "Who are you" step or signed in with, and only for an event that has welcome on. It is sent **once for each event and address** (one row in the new `email_registrations`, claimed before the send, given back if the send fails). The address is not verified, so the e-mail is the welcome note and the link to the event (its short link when it has a URL slug); the answer never says whether an e-mail went.

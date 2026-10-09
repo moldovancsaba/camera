@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { InlineAlert } from '@sovereignsquad/gds-core/client';
+import { Button } from '@/components/gds/PublicPrimitives';
 
 interface Preview {
   subject: string;
@@ -31,6 +32,7 @@ const muted = { color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' } as
 export default function EmailPreview({ eventId, language, subject, body, legal, buttonLabel }: EmailPreviewProps) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [test, setTest] = useState<{ sending: boolean; message: string | null; failed: boolean }>({ sending: false, message: null, failed: false });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -58,6 +60,23 @@ export default function EmailPreview({ eventId, language, subject, body, legal, 
       controller.abort();
     };
   }, [eventId, language, subject, body, legal, buttonLabel]);
+
+  /** Sends the e-mail as drawn to the e-mail address of the signed-in editor, so it can be read on a phone before a user gets it. */
+  const sendTest = async () => {
+    setTest({ sending: true, message: null, failed: false });
+    try {
+      const response = await fetch('/api/admin/emails/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, language, subject, body, ...(legal === undefined ? {} : { legal }), buttonLabel }),
+      });
+      const payload = (await response.json().catch(() => null)) as { data?: { to: string }; error?: string } | null;
+      if (!response.ok || !payload?.data) throw new Error(payload?.error || `Request failed (${response.status})`);
+      setTest({ sending: false, message: `Sent to ${payload.data.to}. Open it on your phone.`, failed: false });
+    } catch (failure) {
+      setTest({ sending: false, message: failure instanceof Error ? failure.message : 'The test e-mail could not be sent', failed: true });
+    }
+  };
 
   return (
     <section aria-label="Preview of the e-mail" style={{ display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
@@ -89,6 +108,15 @@ export default function EmailPreview({ eventId, language, subject, body, legal, 
       ) : (
         <div style={muted}>{error ? '' : 'Drawing the e-mail…'}</div>
       )}
+      <div style={{ display: 'grid', gap: '0.25rem' }}>
+        <div>
+          <Button type="button" variant="light" size="xs" loading={test.sending} disabled={test.sending || !preview} onClick={() => void sendTest()}>
+            Send me a test e-mail
+          </Button>
+        </div>
+        <div style={muted}>Sent only to your own e-mail address, with [Test] in the subject, so you can read it on your phone. Nothing is stored.</div>
+        {test.message ? <InlineAlert title={test.failed ? 'Not sent' : 'Sent'} message={test.message} severity={test.failed ? 'error' : 'info'} /> : null}
+      </div>
     </section>
   );
 }

@@ -371,7 +371,7 @@ Major API groups:
 - partners: `/api/partners/**`
 - events: `/api/events/**`
 - frames: `/api/frames/**` (the global library)
-- emails: `/api/admin/emails/legal` (general legal part), `/api/admin/emails/preview` (the editor's preview), `/api/partners/[partnerId]/email-legal`, `/api/events/[eventId]/email-legal`
+- emails: `/api/admin/emails/legal` (general legal part), `/api/admin/emails/preview` (the editor's preview), `/api/admin/emails/test` (a test e-mail to the editor), `/api/admin/events/[id]/emails` (an event's five e-mails), `/api/events/[eventId]/register` (welcome), `/api/partners/[partnerId]/email-legal`, `/api/events/[eventId]/email-legal`
 - frame selection: `/api/admin/events/[id]/frame-selection`, `/api/admin/events/[id]/frame-design` (messages, their designs, the dark area)
 - texts: `/api/admin/dictionary`, `/api/partners/[partnerId]/texts`, `/api/events/[eventId]/texts`
 - libraries: `/api/partners/[partnerId]/library/**` and `/api/events/[eventId]/library/**` (docs/LIBRARIES.md)
@@ -476,6 +476,7 @@ event's Texts), the partner's default pictures (`lib/events/partner-pictures.ts`
   `/api/partners/<id>/email-legal`, `/api/events/<id>/email-legal`), drawn as small print after the button.
 - **Triggers** (`lib/email/triggers.ts`): **welcome** when somebody registers (`POST /api/events/<id>/register`, called by the capture page once the user is identified and only when the event has welcome on; one row for each event and address in `email_registrations`, claimed before the send so it goes once), **arrived** when a photo is submitted (`dispatchArrivedEmail` after `POST /api/submissions`, and at the finalize call when the address is known only then; `metadata.arrivedEmailSentAt`). **Follow up** has its text and switch but no trigger and no job yet.
 - **Event page:** `Emails` in the event menu (`/admin/events/<id>/emails`, route `GET`/`PUT /api/admin/events/<id>/emails`, view in `lib/email/event-emails.ts`, merge of the stored settings in `lib/email/notification-settings.ts`): the five types, the sender and terms, the two try-on e-mails and the event's legal part. The e-mail fields are no longer in the event form or the new-event form.
+- **Test e-mail** (`POST /api/admin/emails/test`): the e-mail as drawn, sent through the same sender to the signed-in editor's own address only.
 - **Editors:** the toolbar editor (`components/admin/kit/EmailTextEditor.tsx`, pure operations in `lib/email/editor-ops.ts`) with the live preview (`EmailPreview.tsx`); pages `Emails` at the general
   level (`/admin/settings/emails`) and at the partner level (`/admin/partners/<id>/emails`).
 
