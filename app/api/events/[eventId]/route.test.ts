@@ -347,6 +347,21 @@ test('GET as a guest: an event without the picture, or with a welcome page of it
   assert.ok(!noPicture.data.event.customPages.some((page) => page.pageId === 'default-welcome'));
 });
 
+test('PATCH: the frame message choice is stored only as "user"; random and an empty value take it away; anything else is refused; absent leaves it alone', async (t) => {
+  const h = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-frame-choice');
+  assert.equal((await PATCH(patchRequest({ frameChoice: 'user' }), params)).status, 200);
+  assert.equal(h.updates[0].frameChoice, 'user');
+  assert.equal((await PATCH(patchRequest({ frameChoice: 'random' }), params)).status, 200);
+  assert.equal(h.updates[1].frameChoice, null, 'random is the default, so nothing is stored');
+  assert.equal((await PATCH(patchRequest({ frameChoice: '' }), params)).status, 200);
+  assert.equal(h.updates[2].frameChoice, null);
+  for (const bad of ['both', 'USER', 7, {}, true]) assert.equal((await PATCH(patchRequest({ frameChoice: bad }), params)).status, 400, String(bad));
+  assert.equal((await PATCH(patchRequest({ loadingText: 'Hello' }), params)).status, 200);
+  assert.equal('frameChoice' in h.updates[3], false);
+  assert.equal(h.updates.length, 4, 'a refused value writes nothing');
+});
+
 test('GET as a guest: a picture field a page left empty shows the partner\'s default picture, never stored; the editor reads the stored pages; the page\'s own picture wins', async (t) => {
   mockDeps(t, {
     event: {

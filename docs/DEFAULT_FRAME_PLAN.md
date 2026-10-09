@@ -201,6 +201,10 @@ that message. For each message the order is **the frame it chose, else the event
 image key it had, so no event is redrawn by this. A frame that carries messages is not a frame the user picks; an event whose only active frames carry messages has no frame of its own, so
 the generated frames apply, in the capture page, the rollout and the backfill alike.
 
+## The user can choose the message (issue 329, 2026-10-09)
+
+A setting of the event, **How a user gets the frame message** (event editor, Customization): **Random** (the default, and what an event that never set it keeps) or **The user chooses**. With *random* nothing changes: the shutter press picks a message, never the one before. With *the user chooses*, and only while the generated frame is in use (the event has no frame of its own) and has **at least two messages**, a step **Choose your message** comes before the camera: the images of the generated frame that carry a message are shown with their text, the user taps one, and that image is the frame of the photo; a **Change message** button on the camera step goes back, and a new photo (restart) asks again. With one message there is nothing to choose and the one message is used as it is. The setting is stored on the event as `frameChoice` (`user`, or nothing for random; `PATCH /api/events/<id>`), the helpers are `normalizeFrameChoice`, `messageChoices` and `variantByIndex` in `lib/frame/capture.ts` (unit-tested). An uploaded frame the user picks (the existing frame step) is not affected; choosing among messages written on a library frame (issue 366) is the same choice, because each such message is one image. The guided tour has no step for the new screen yet. The Hungarian texts of the screen are a draft for MTK to review.
+
 ## Not covered
 
 - Per-event frame editing beyond the message list, colours and logo toggle (F7 starts with those).

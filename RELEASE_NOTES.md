@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the user can choose the frame message (issue 329, step 9; only an event that switches it on)
+
+- **Added:** an event setting, **How a user gets the frame message** (event editor, Customization): **Random** or **The user chooses**. **Random is the default and what every existing event keeps**: nothing changes for them. With *the user chooses*, while the generated frame is in use and has at least two messages, a step **Choose your message** comes before the camera (the messages of the generated frame are shown, the user taps one, that image is the frame of the photo); **Change message** on the camera step goes back; a new photo asks again. With one message there is nothing to choose.
+- **Not changed:** the random pick at every shutter press for events on *random*; the frame step for uploaded frames; what is stored with a submission (the message and image it used, as before). The setting is stored as `frameChoice` (`PATCH /api/events/<id>`: `user`, or `random`/empty to take it away).
+- **Not yet:** a tour step for the new screen. The Hungarian texts ("Üzenet", "Válaszd ki az üzeneted", "Üzenet váltása") are a draft for MTK to review.
+- **Verified:** type-check; lint; unit tests (the setting is only `user` when exactly that, the choices need two messages and skip the image without a message, the chosen variant is found by position, the PATCH rules); the full CI chain. **Not seen in a browser on a real event** (it needs an event with a generated frame and the setting on); the unchanged random path was checked by reading every changed condition: each is false for an event on *random*.
+
 ## Unreleased — a partner's default pictures: the welcome page, the CTA page and the e-mail footer (issue 368, step 5; changes an event only when its partner sets a picture)
 
 - **Added:** a partner can choose **default pictures** (the partner menu, **Pictures**): the welcome page's background, left image, right image and giant screen picture, the CTA page's background picture and the e-mail footer picture, chosen from the partner's Images library with the same picker as the page editor. Every event of the partner whose page or setting has **no picture in that field** shows the partner's (read each time, nothing is copied into the event); a picture an event set itself always wins, and the page editor still shows only what the event stored.

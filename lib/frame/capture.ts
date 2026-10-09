@@ -82,6 +82,28 @@ export function pickVariant(
   return pickMessage(frame.variants, previousIndex, random);
 }
 
+/** How a user gets the message of the generated frame: `random` (the default, a new one at every shutter press) or `user` (the user chooses before taking the photo). */
+export type FrameChoice = 'random' | 'user';
+
+/** The setting of an event: only the exact word `user` turns the choice on, so an event that never set it keeps the random message it always had. */
+export function normalizeFrameChoice(value: unknown): FrameChoice {
+  return value === 'user' ? 'user' : 'random';
+}
+
+/**
+ * The messages a user can choose from when the event lets the user choose: the images of the generated frame that carry a message, in the order of the event's message list.
+ * Fewer than two is no choice (the one message is used as it is), so the list is empty then.
+ */
+export function messageChoices(frame: CaptureFrame | null | undefined): CaptureVariant[] {
+  const withMessage = (frame?.variants ?? []).filter((variant) => variant.index !== null && Boolean(variant.message));
+  return withMessage.length >= 2 ? withMessage : [];
+}
+
+/** The variant a user chose (its position in the message list), or null when it is not one of the frame's images. */
+export function variantByIndex(frame: CaptureFrame | null | undefined, index: number | null): CaptureVariant | null {
+  return index === null ? null : (frame?.variants.find((variant) => variant.index === index) ?? null);
+}
+
 export function territoriesOf(variant: Pick<CaptureVariant, 'width' | 'height' | 'layers'>): Territory[] {
   return variant.layers
     .filter((layer) => layer.width > 0 && layer.height > 0)

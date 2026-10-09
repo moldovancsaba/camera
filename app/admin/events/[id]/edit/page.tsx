@@ -46,6 +46,7 @@ import {
   type EventButtonSize,
 } from '@/lib/events/visual-settings';
 import { isUiLanguage, normalizeUiLanguage, UI_LANGUAGES, UI_LANGUAGE_LABELS, type UiLanguage } from '@/lib/i18n';
+import { normalizeFrameChoice, type FrameChoice } from '@/lib/frame/capture';
 import {
   DEFAULT_EVENT_SHARE_PAGE_SETTINGS,
   normalizeEventSharePageSettings,
@@ -130,6 +131,7 @@ interface EventRecord {
     buttonSize?: EventButtonSize;
   };
   uiLanguage?: string | null;
+  frameChoice?: string | null;
   tourEnabled?: boolean;
   sharePage?: {
     includeOriginalCapture?: boolean;
@@ -238,6 +240,7 @@ export default function EditEventPage({
   // '' = the event sets no language of its own and follows its partner's (issue 353); the language the event shows now, whichever way, is `shownLanguage`.
   const [uiLanguage, setUiLanguage] = useState<UiLanguage | ''>('');
   const [shownLanguage, setShownLanguage] = useState<UiLanguage>('en');
+  const [frameChoice, setFrameChoice] = useState<FrameChoice>('random');
   const [tourEnabled, setTourEnabled] = useState(false);
   const [resultSlideshowMode, setResultSlideshowMode] =
     useState<EventTryOnResultSlideshowMode>('disabled');
@@ -363,6 +366,7 @@ export default function EditEventPage({
         setShareTexts(sharePageSettings.texts);
         setUiLanguage(isUiLanguage(eventData.uiLanguage) ? eventData.uiLanguage : '');
         setShownLanguage(normalizeUiLanguage(eventData.journeyContext?.language ?? eventData.uiLanguage));
+        setFrameChoice(normalizeFrameChoice(eventData.frameChoice));
         setTourEnabled(eventData.tourEnabled === true);
         setResultSlideshowMode(
           eventData.tryOn?.resultSlideshowMode ||
@@ -577,6 +581,7 @@ export default function EditEventPage({
         buttonSize,
       },
       uiLanguage,
+      frameChoice,
       tourEnabled,
       sharePage: {
         includeOriginalCapture,
@@ -716,6 +721,18 @@ export default function EditEventPage({
               ]}
               value={uiLanguage}
               onChange={(value) => setUiLanguage(isUiLanguage(value) ? value : '')}
+              allowDeselect={false}
+            />
+
+            <Select
+              label="How a user gets the frame message"
+              description="Random: the user is given a message at every shutter press, as it always was. User chooses: the user picks one of the messages before taking the photo (when the event has at least two)."
+              data={[
+                { value: 'random', label: 'Random' },
+                { value: 'user', label: 'The user chooses' },
+              ]}
+              value={frameChoice}
+              onChange={(value) => setFrameChoice(normalizeFrameChoice(value))}
               allowDeselect={false}
             />
 
