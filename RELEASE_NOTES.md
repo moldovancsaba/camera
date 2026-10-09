@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the fail-safe snapshot: a logo the library loses is still kept by the events that use it (camera#421, step 4b, first part)
+
+- **Added (owner requirement 2026-10-09: "if a parent element is deleted or lost, we still have it on the children's side"):** an event on the slot model keeps a **last-known-good snapshot** of the logos it uses in each place (`Event.slotSnapshots`: name, picture addresses, size, whose item it was, when it was last seen). It **never overrides the parent**: `GET /api/events/<id>/logos` reads it only for a logo the library no longer has, and serves it marked `lost: true`, so the capture page and the slideshow keep showing it. The snapshot is written with every save of a slot and refreshed by that same answer only when the live items differ from it (a page view that finds nothing changed writes nothing); a logo whose library entry is gone is **kept as it was**, never dropped.
+- **Phase 0 measured on the real data (read-only):** one frame id held by one test event has no library item any more (the case this is for); every logo exists; the 163 picture addresses of the library all answer.
+- **What happens in production after this deploys:** each event on the model gets its snapshot the first time its logos are read (a small write, once, nothing visible). No page, no screen and no answer changes for any event whose logos all exist.
+- **Not yet:** the lost state in the editor (Keep as own, Remove), archiving instead of deleting, the daily picture check, the snapshot for frames (the other phases of #421).
+- **Verified:** unit tests (the snapshot rules, including the fail-safe case; the logos route keeps a snapshot, writes only when it differs, serves a lost logo marked lost in every place, and gives an event not on the model no snapshot; saving a slot refreshes the snapshot); type-check; lint; the full CI chain.
+
 ## Unreleased — the logo migration was run on the real data (data, 2026-10-09; camera#419, owner's go)
 
 - **Changed (data, owner's go: "run it now"):** the messmass logo of **190 partners** was collected into their libraries and made their logo (`Partner.slots.logo`), and **all 213 events were moved to the slot model**: 211 follow their partner (nothing stored on the event), 2 keep their own list. The old `logos` lists and `defaultLogos` rows were left as they were. The script (outside the repo) ran a dry run first, wrote an undo file before each write, and is idempotent.
