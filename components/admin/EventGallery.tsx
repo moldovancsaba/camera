@@ -49,6 +49,8 @@ interface EventGalleryProps {
   initialSubmissions: SubmissionRecord[];
   slideshows: SlideshowRecord[];
   canManage?: boolean;
+  /** The event has a frame to put on photos (camera#488). */
+  hasFrame?: boolean;
 }
 
 type RemoveState = {
@@ -110,6 +112,7 @@ export default function EventGallery({
   initialSubmissions,
   slideshows,
   canManage = true,
+  hasFrame = false,
 }: EventGalleryProps) {
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -263,6 +266,37 @@ export default function EventGallery({
     }
   };
 
+  const [frameState, setFrameState] = useState<{ busy: boolean; message: string | null; error: string | null }>({ busy: false, message: null, error: null });
+
+  // Puts the event's frame on the selected photos that were uploaded here (the server skips the others and says why), 25 at a time (camera#488).
+  const frameSelected = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    if (!confirm(`Add the event's frame to ${ids.length} photo${ids.length === 1 ? '' : 's'}? Only photos uploaded here that have no frame are changed; the plain upload is kept.`)) return;
+    setFrameState({ busy: true, message: null, error: null });
+    const framed: Array<{ id: string; imageUrl: string }> = [];
+    const skipped: Array<{ id: string; reason: string }> = [];
+    try {
+      for (let i = 0; i < ids.length; i += 25) {
+        const response = await fetch(`/api/admin/events/${eventId}/gallery-frame`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ submissionIds: ids.slice(i, i + 25) }),
+        });
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(typeof json.error === 'string' ? json.error : typeof json.message === 'string' ? json.message : 'The frame could not be added');
+        framed.push(...(json.data?.framed ?? []));
+        skipped.push(...(json.data?.skipped ?? []));
+      }
+      const newUrl = new Map(framed.map((f) => [f.id, f.imageUrl]));
+      setSubmissions((prev) => prev.map((s) => (newUrl.has(submissionIdOf(s)) ? { ...s, imageUrl: newUrl.get(submissionIdOf(s)), finalImageUrl: newUrl.get(submissionIdOf(s)), previewImageUrl: null } : s)));
+      const why = [...new Set(skipped.map((s) => s.reason))].join('; ');
+      setFrameState({ busy: false, message: `Framed ${framed.length} photo${framed.length === 1 ? '' : 's'}${skipped.length ? `; ${skipped.length} left as they were (${why})` : ''}.`, error: null });
+    } catch (error) {
+      setFrameState({ busy: false, message: null, error: error instanceof Error ? error.message : 'The frame could not be added' });
+    }
+  };
+
   const startSingleConfirm = (submissionId: string) => {
     setRemoveState((prev) => ({
       ...prev,
@@ -302,6 +336,7 @@ export default function EventGallery({
           <EventGalleryUpload
             eventMongoId={eventId}
             onUploaded={handleUploaded}
+            frameAvailable={hasFrame}
           />
         ) : null}
         <StateBlock
@@ -324,6 +359,7 @@ export default function EventGallery({
         <EventGalleryUpload
           eventMongoId={eventId}
           onUploaded={handleUploaded}
+          frameAvailable={hasFrame}
         />
       ) : null}
 
@@ -356,6 +392,17 @@ export default function EventGallery({
             >
               {allSelected ? 'Clear selection' : 'Select all visible'}
             </SemanticButton>
+            {selectedIds.length > 0 && hasFrame ? (
+              <SemanticButton
+                action="event-gallery:frame-selected"
+                type="button"
+                onClick={() => void frameSelected()}
+                disabled={frameState.busy}
+                variant="secondary"
+              >
+                {frameState.busy ? 'Adding the frame…' : `Add the frame to ${selectedIds.length} selected`}
+              </SemanticButton>
+            ) : null}
             {selectedIds.length > 0 ? (
               removeState.bulkConfirm ? (
                 <>
@@ -397,6 +444,16 @@ export default function EventGallery({
         {removeState.error ? (
           <div style={{ marginTop: '1rem' }}>
             <InlineAlert title="Remove failed" message={removeState.error} severity="error" />
+          </div>
+        ) : null}
+        {frameState.error ? (
+          <div style={{ marginTop: '1rem' }}>
+            <InlineAlert title="The frame was not added" message={frameState.error} severity="error" />
+          </div>
+        ) : null}
+        {frameState.message ? (
+          <div style={{ marginTop: '1rem' }}>
+            <InlineAlert title="Frame" message={frameState.message} severity="info" />
           </div>
         ) : null}
       </section>

@@ -13,6 +13,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { loadGallerySubmissions, GALLERY_PAGE_SIZE } from '@/lib/gallery/submissions';
+import { loadGalleryFrames } from '@/lib/gallery/frame';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 
 export default async function EventGalleryPage({ params }: { params: Promise<{ id: string }> }) {
@@ -29,6 +30,7 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
   if (!event) notFound();
 
   const { submissions, total } = await loadGallerySubmissions(db, String(event.eventId), GALLERY_PAGE_SIZE);
+  const hasFrame = (await loadGalleryFrames(db, event)).length > 0;
   const slideshows = await db.collection(COLLECTIONS.SLIDESHOWS).find({ $or: [{ eventId: event.eventId }, { eventId: id }] }).sort({ createdAt: -1 }).toArray();
 
   return (
@@ -54,6 +56,7 @@ export default async function EventGalleryPage({ params }: { params: Promise<{ i
           initialSubmissions={JSON.parse(JSON.stringify(submissions))}
           slideshows={JSON.parse(JSON.stringify(slideshows))}
           canManage={canManage}
+          hasFrame={hasFrame}
         />
       </Card>
     </Stack>

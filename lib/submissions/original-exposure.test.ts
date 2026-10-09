@@ -15,6 +15,8 @@ import { test } from 'node:test';
 const ALLOWED: Record<string, string> = {
   'app/admin/tryon/vetting/page.tsx': 'admin moderation page (signed-in admins)',
   'app/api/admin/tryon-results/route.ts': 'admin API (requires an admin session)',
+  'app/api/admin/events/[id]/gallery-frame/route.ts': 'admin API (Events manager role): keeps the editor\'s plain upload as the original when a frame is put on it; reads it only to frame the photo, returns the new picture and no original',
+  'app/api/admin/events/[id]/gallery-upload/route.ts': 'admin API (Events manager role): stores the editor\'s own plain upload as the original of the framed picture; the answer goes to that signed-in editor',
   'app/api/e2e/bootstrap/route.ts': 'dev-only test fixtures, blocked in production',
   'app/api/internal/fanmass/events/[eventId]/media/route.ts': 'service-to-service feed behind a shared secret; asks for the raw fan photo by design',
   'app/api/internal/savetheworld/pledges/route.ts': 'only documents that the original is never shown on the public wall',
