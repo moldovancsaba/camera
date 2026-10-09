@@ -318,6 +318,8 @@ export interface Event {
   greatestHitsSlug?: string | null;
   /** The language of the user interface of this event (camera#352): the default texts of the journey, the public photo page and the user emails come from its dictionary. English when missing. */
   uiLanguage?: 'en' | 'hu';
+  /** How a user gets the message of the generated frame (issue 329): `random` (a new one at every shutter press, the default and what a missing value means) or `user` (the user chooses before taking the photo). */
+  frameChoice?: 'random' | 'user' | null;
   /** The guided tour of the capture flow (tips on the first visit and a "Show tour" link) is off unless this is true (camera#356). */
   tourEnabled?: boolean;
   /** Set on events created with the journey defaults (the default consent page and the like); existing events get them through the global switch (lib/admin/defaults-rollout.ts). */

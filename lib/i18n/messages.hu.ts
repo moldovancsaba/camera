@@ -241,4 +241,7 @@ export const hu: Record<MessageKey, string> = {
   'welcome.title': 'Üdvözöljük',
   'welcome.button': 'Indítás',
   'welcome.screenAlt': 'Az óriáskijelző az élő fényképekkel és a beolvasható QR-kóddal',
+  'flow.step.selectMessage': 'Üzenet',
+  'flow.selectMessage.title': 'Válaszd ki az üzeneted',
+  'flow.changeMessage': 'Üzenet váltása',
 };

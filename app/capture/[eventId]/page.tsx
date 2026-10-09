@@ -46,7 +46,7 @@ import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep';
 import type { FullFrameCapture } from '@/lib/camera/frame-capture';
 import { frameSilhouette } from '@/lib/frame/silhouette';
-import { pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory } from '@/lib/frame/capture';
+import { pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory, messageChoices, normalizeFrameChoice, variantByIndex } from '@/lib/frame/capture';
 import SystemCameraCapture from '@/components/camera/SystemCameraCapture';
 import { captureOverride, chooseCaptureMethod, hasStillCapture, type CaptureMethod } from '@/lib/camera/still-capture';
 import { pickRandom } from '@/lib/slots/resolve';
@@ -94,6 +94,8 @@ interface EventData {
   photoVettingRequired?: boolean;
   /** The picture of the giant screen drawn from the event's default slideshow (issue 327): shown on a welcome page that has no picture of its own. */
   welcomeScreen?: { url: string };
+  /** How a user gets the message of the generated frame (issue 329): `user` lets the user choose before taking the photo; anything else is random. */
+  frameChoice?: string | null;
   tryOn?: {
     enabled: boolean;
     setupId?: string | null;
@@ -282,7 +284,9 @@ export default function EventCapturePage({
   const [pendingApproval, setPendingApproval] = useState(false);
   // An own frame as a 50% black silhouette, shown instead of the real frame while the photo of a vetted event waits.
   const [silhouetteUrl, setSilhouetteUrl] = useState<string | null>(null);
-  const [step, setStep] = useState<'select-frame' | 'capture-photo' | 'reframe' | 'preview'>('select-frame');
+  const [step, setStep] = useState<'select-frame' | 'select-message' | 'capture-photo' | 'reframe' | 'preview'>('select-frame');
+  // The message the user chose (its place in the event's message list) when the event lets the user choose; null until chosen.
+  const [chosenVariantIndex, setChosenVariantIndex] = useState<number | null>(null);
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
   /** Intrinsic frame bitmap aspect (w/h); preview matches composite via `previewAspectWidthOverHeight`. */
   const [frameIntrinsicAspect, setFrameIntrinsicAspect] = useState<number | null>(null);
@@ -742,6 +746,19 @@ export default function EventCapturePage({
     setStep('capture-photo');
   };
 
+  // The user chooses the message when the event is set so, the generated frame is the one in use and it has at least two messages (issue 329).
+  const messageOptions = useMemo(
+    () => (normalizeFrameChoice(event?.frameChoice) === 'user' && frames.length === 0 ? messageChoices(generatedFrame) : []),
+    [event?.frameChoice, frames.length, generatedFrame]
+  );
+  const userChoosesMessage = messageOptions.length > 0;
+
+  const handleMessageSelect = (variant: CaptureVariant) => {
+    setChosenVariantIndex(variant.index);
+    setSelectedFrame(variantFrame(variant));
+    setStep('capture-photo');
+  };
+
   // Territories of the generated frame for the live view, taken from its first image (the layers are the same in all of them).
   const liveTerritories = useMemo(
     () => (generatedFrame && frames.length === 0 ? territoriesOf(generatedFrame.variants[0]) : undefined),
@@ -757,7 +774,8 @@ export default function EventCapturePage({
   // The camera records the whole image; the fan then moves and zooms it inside the frame in the
   // reframe step (camera#209), whose default is the largest crop that fills the frame.
   const handleCameraCapture = (capture: FullFrameCapture) => {
-    if (generatedFrame) {
+    // The message the user chose is kept; otherwise a random one is picked for this shutter press.
+    if (generatedFrame && !(userChoosesMessage && chosenVariantIndex !== null && variantByIndex(generatedFrame, chosenVariantIndex))) {
       const variant = pickVariant(generatedFrame, lastVariantIndex.current);
       if (variant) {
         lastVariantIndex.current = variant.index;
@@ -1034,7 +1052,7 @@ export default function EventCapturePage({
       return;
     }
     if (frames.length === 0) {
-      setStep('capture-photo');
+      setStep(userChoosesMessage ? 'select-message' : 'capture-photo');
       return;
     }
     setStep('select-frame');
@@ -1145,8 +1163,9 @@ export default function EventCapturePage({
     setIsFinalizingSubmission(false);
     // A chosen frame is kept; a generated variant is picked again at the next shutter press.
     setSelectedFrame((current) => (current?.generated ? null : current));
+    setChosenVariantIndex(null);
     setFlowPhase('capture');
-    setStep(frames.length > 1 && !selectedFrame ? 'select-frame' : 'capture-photo');
+    setStep(frames.length > 1 && !selectedFrame ? 'select-frame' : userChoosesMessage ? 'select-message' : 'capture-photo');
   };
 
   const handleRestartFlow = () => {
@@ -1445,19 +1464,19 @@ export default function EventCapturePage({
                 step === 'preview' ? '[@media(max-height:640px)]:hidden' : ''
               }`}
             >
-              {/* Only show frame selection step if multiple frames */}
-              {frames.length > 1 && (
+              {/* Only show the selection step if there are multiple frames, or the user chooses the message */}
+              {(frames.length > 1 || userChoosesMessage) && (
                 <>
                   <div className="flex flex-col items-center">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                      step === 'select-frame' ? ' ' : '   '
+                      step === 'select-frame' || step === 'select-message' ? ' ' : '   '
                     }`}>
                       1
                     </div>
                     <p className={`text-[10px] font-medium text-center mt-1 ${
-                      step === 'select-frame' ? ' ' : ' '
+                      step === 'select-frame' || step === 'select-message' ? ' ' : ' '
                     }`}>
-                      {t('flow.step.selectFrame')}
+                      {userChoosesMessage ? t('flow.step.selectMessage') : t('flow.step.selectFrame')}
                     </p>
                   </div>
                   <div className="w-4 h-0.5  "></div>
@@ -1467,7 +1486,7 @@ export default function EventCapturePage({
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
                   step === 'capture-photo' ? ' ' : '   '
                 }`}>
-                  {frames.length > 1 ? '2' : '1'}
+                  {frames.length > 1 || userChoosesMessage ? '2' : '1'}
                 </div>
                 <p className={`text-[10px] font-medium text-center mt-1 ${
                   step === 'capture-photo' ? ' ' : ' '
@@ -1480,7 +1499,7 @@ export default function EventCapturePage({
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
                   (step === 'reframe' || step === 'preview') ? ' ' : '   '
                 }`}>
-                  {frames.length > 1 ? '3' : '2'}
+                  {frames.length > 1 || userChoosesMessage ? '3' : '2'}
                 </div>
                 <p className={`text-[10px] font-medium text-center mt-1 ${
                   (step === 'reframe' || step === 'preview') ? ' ' : ' '
@@ -1530,10 +1549,41 @@ export default function EventCapturePage({
           </div>
         )}
 
+        {/* Step 1b: the user chooses the message of the generated frame (issue 329) */}
+        {step === 'select-message' && (
+          <div className="h-full flex items-center justify-center p-4">
+            <div className="w-full max-w-6xl">
+              <h2 className="mb-4 text-center text-lg font-bold">{t('flow.selectMessage.title')}</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-tour-id="capture-message-grid">
+                {messageOptions.map((variant) => (
+                  <button
+                    key={variant.index}
+                    type="button"
+                    onClick={() => handleMessageSelect(variant)}
+                    className="overflow-hidden rounded-lg border-2 transition-all"
+                    aria-label={variant.message ?? undefined}
+                    data-message-choice
+                  >
+                    <Image src={variant.imageUrl} alt="" width={800} height={450} unoptimized className="h-auto max-h-[40vh] w-full object-contain" />
+                    <span className="block p-2 text-sm font-semibold">{variant.message}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Step 2: Photo Capture - Fullscreen */}
         {step === 'capture-photo' && (
           <div className="app-safe-area fixed inset-0 z-40 flex flex-col">
             {/* Minimal header with change frame button - only show if multiple frames */}
+            {userChoosesMessage && (
+              <div className="absolute top-4 right-4 z-50">
+                <Button type="button" onClick={() => setStep('select-message')} size={eventButtonSize} radius="md" variant="light" data-tour-id="capture-change-message-button">
+                  {t('flow.changeMessage')}
+                </Button>
+              </div>
+            )}
             {frames.length > 1 && (
               <div className="absolute top-4 right-4 z-50">
                 <Button

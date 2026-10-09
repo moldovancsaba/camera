@@ -46,6 +46,7 @@ import {
   type EventButtonSize,
 } from '@/lib/events/visual-settings';
 import { DEFAULT_UI_LANGUAGE, normalizeUiLanguage, UI_LANGUAGES, UI_LANGUAGE_LABELS, type UiLanguage } from '@/lib/i18n';
+import { normalizeFrameChoice, type FrameChoice } from '@/lib/frame/capture';
 import {
   DEFAULT_EVENT_SHARE_PAGE_SETTINGS,
   normalizeEventSharePageSettings,
@@ -130,6 +131,7 @@ interface EventRecord {
     buttonSize?: EventButtonSize;
   };
   uiLanguage?: string | null;
+  frameChoice?: string | null;
   tourEnabled?: boolean;
   sharePage?: {
     includeOriginalCapture?: boolean;
@@ -236,6 +238,7 @@ export default function EditEventPage({
   );
   const [shareTexts, setShareTexts] = useState<SharePageTexts>({});
   const [uiLanguage, setUiLanguage] = useState<UiLanguage>(DEFAULT_UI_LANGUAGE);
+  const [frameChoice, setFrameChoice] = useState<FrameChoice>('random');
   const [tourEnabled, setTourEnabled] = useState(false);
   const [resultSlideshowMode, setResultSlideshowMode] =
     useState<EventTryOnResultSlideshowMode>('disabled');
@@ -360,6 +363,7 @@ export default function EditEventPage({
         setPendingTryOnMessage(sharePageSettings.pendingTryOnMessage);
         setShareTexts(sharePageSettings.texts);
         setUiLanguage(normalizeUiLanguage(eventData.uiLanguage));
+        setFrameChoice(normalizeFrameChoice(eventData.frameChoice));
         setTourEnabled(eventData.tourEnabled === true);
         setResultSlideshowMode(
           eventData.tryOn?.resultSlideshowMode ||
@@ -574,6 +578,7 @@ export default function EditEventPage({
         buttonSize,
       },
       uiLanguage,
+      frameChoice,
       tourEnabled,
       sharePage: {
         includeOriginalCapture,
@@ -710,6 +715,18 @@ export default function EditEventPage({
               data={UI_LANGUAGES.map((language) => ({ value: language, label: UI_LANGUAGE_LABELS[language] }))}
               value={uiLanguage}
               onChange={(value) => setUiLanguage(normalizeUiLanguage(value))}
+              allowDeselect={false}
+            />
+
+            <Select
+              label="How a user gets the frame message"
+              description="Random: the user is given a message at every shutter press, as it always was. User chooses: the user picks one of the messages before taking the photo (when the event has at least two)."
+              data={[
+                { value: 'random', label: 'Random' },
+                { value: 'user', label: 'The user chooses' },
+              ]}
+              value={frameChoice}
+              onChange={(value) => setFrameChoice(normalizeFrameChoice(value))}
               allowDeselect={false}
             />
 
