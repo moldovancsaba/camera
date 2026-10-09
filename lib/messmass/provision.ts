@@ -19,7 +19,7 @@ import { refreshFrameDesign } from '@/lib/frame/sync';
 import { generateFrameVariants } from '@/lib/frame/variants';
 import { defaultPhotoVetting } from '@/lib/events/photo-vetting';
 import { collectMessmassLogo, nextPartnerLogoUrl } from '@/lib/library/messmass-logo';
-import { scheduleDefaultSlideshow } from '@/lib/slideshow/default-slideshow';
+import { scheduleScreenForNewEvent } from '@/lib/screen/new-event-screen';
 
 function ci(name: string) {
   return { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
@@ -167,6 +167,6 @@ export async function provisionEvent(input: { messmassEventId: string; messmassP
     .catch((error) => {
       console.warn('frame design snapshot failed for a provisioned event', error);
     });
-  scheduleDefaultSlideshow(res.insertedId);
+  scheduleScreenForNewEvent(res.insertedId);
   return { eventId: doc.eventId as string, mongoId: String(res.insertedId), partnerId: partner.partnerId, created: true };
 }

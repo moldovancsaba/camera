@@ -312,7 +312,7 @@ test('GET carries the journey context: what decides which default pages the even
   mockDeps(t, { event: { photoVetting: STORED_VETTING, journeyDefaults: true, uiLanguage: 'hu', customPages: [] } });
   const { GET } = await importRouteModule('get-journey-context');
   const admin = (await (await GET(getRequest(), params)).json()) as { data: { event: { journeyContext: unknown; customPages: unknown[] } } };
-  assert.deepEqual(admin.data.event.journeyContext, { vettingRequired: true, consentDefault: true, language: 'hu' });
+  assert.deepEqual(admin.data.event.journeyContext, { vettingRequired: true, consentDefault: true, language: 'hu', hasWelcomeScreen: false });
   assert.deepEqual(admin.data.event.customPages, [], 'the editor still reads the stored pages: the defaults are built from the context');
   const guest = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { journeyContext: unknown } } };
   assert.deepEqual(guest.data.event.journeyContext, admin.data.event.journeyContext, 'one answer for both');
@@ -322,6 +322,27 @@ test('GET: an event that does not get the journey defaults and needs no vetting 
   mockDeps(t, { event: { photoVetting: { required: false }, customPages: [] } });
   const { GET } = await importRouteModule('get-journey-context-none');
   const body = (await (await GET(getRequest(), params)).json()) as { data: { event: { journeyContext: unknown } } };
-  assert.deepEqual(body.data.event.journeyContext, { vettingRequired: false, consentDefault: false, language: 'en' });
+  assert.deepEqual(body.data.event.journeyContext, { vettingRequired: false, consentDefault: false, language: 'en', hasWelcomeScreen: false });
 });
 
+
+test('GET as a guest: an event with the picture drawn from its default slideshow and no welcome page of its own gets the default welcome page first; the editor reads the stored pages and knows why', async (t) => {
+  mockDeps(t, { event: { photoVetting: { required: false }, journeyDefaults: true, customPages: [], welcomeScreen: { url: 'https://blob.example/screens/e/welcome-1.png', key: 'k', generatedAt: 'x', renderVersion: 1 } } });
+  const { GET } = await importRouteModule('get-default-welcome');
+  const guest = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { customPages: Array<{ pageId: string; pageType: string; order: number }>; journeyContext: { hasWelcomeScreen: boolean }; welcomeScreen: { url: string } } } };
+  const inOrder = [...guest.data.event.customPages].sort((a, b) => a.order - b.order);
+  assert.equal(inOrder[0].pageId, 'default-welcome');
+  assert.equal(inOrder[0].pageType, 'welcome');
+  assert.equal(inOrder[1].pageId, 'default-consent', 'the consent page follows it');
+  assert.equal(guest.data.event.welcomeScreen.url, 'https://blob.example/screens/e/welcome-1.png', 'the capture page shows this on a welcome page that has no picture of its own');
+  assert.equal(guest.data.event.journeyContext.hasWelcomeScreen, true);
+  const admin = (await (await GET(getRequest(), params)).json()) as { data: { event: { customPages: unknown[] } } };
+  assert.deepEqual(admin.data.event.customPages, [], 'the editor reads the stored pages');
+});
+
+test('GET as a guest: an event without the picture, or with a welcome page of its own, gets no default welcome page', async (t) => {
+  mockDeps(t, { event: { photoVetting: { required: false }, journeyDefaults: true, customPages: [] } });
+  const { GET } = await importRouteModule('get-no-default-welcome');
+  const noPicture = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { customPages: Array<{ pageId: string }> } } };
+  assert.ok(!noPicture.data.event.customPages.some((page) => page.pageId === 'default-welcome'));
+});

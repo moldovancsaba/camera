@@ -784,7 +784,7 @@ function PageEditModal({
                 value={screenImageUrl}
                 onChange={setScreenImageUrl}
                 level={pictureLevel}
-                helper="Shown on a 3D giant screen above the Start button (drawn by camera, tilted and swaying). 16:9 works best. Leave empty and the page has no giant screen."
+                helper="Shown on a 3D giant screen above the Start button (drawn by camera, tilted and swaying). 16:9 works best. Leave empty: an event that has the picture drawn from its default slideshow (Slideshows, Welcome page screen) shows that one; any other event has no giant screen."
               />
               <Field label="Giant screen picture description" value={screenImageAlt} onChange={setScreenImageAlt} placeholder="What the screen shows, for screen readers" />
               <Field label="Start button colour" value={buttonColor} onChange={setButtonColor} placeholder="e.g., the club's official colour, as #RRGGBB" />

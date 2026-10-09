@@ -7,7 +7,7 @@
 
 import { CustomPageType, generateId, type CustomPage } from '@/lib/db/schemas';
 import type { UiLanguage } from '@/lib/i18n';
-import { DEFAULT_CONSENT_PAGE_ID, withDefaultJourneyPages } from './default-pages';
+import { DEFAULT_CONSENT_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, withDefaultJourneyPages } from './default-pages';
 import { DEFAULT_IDENTITY_PAGE_ID } from './identity-page';
 
 /** What the server knows that decides which default pages an event gets (`GET /api/events/<id>`, `journeyContext`). */
@@ -16,6 +16,8 @@ export interface JourneyContext {
   /** True when the event gets the journey defaults: created with them, or the global switch is on (lib/admin/defaults-rollout.ts). */
   consentDefault: boolean;
   language: UiLanguage;
+  /** True when the event has the welcome page screen picture drawn from its default slideshow: it then gets the default welcome page (issue 327). */
+  hasWelcomeScreen?: boolean;
 }
 
 export type JourneyStepId = 'waiting' | 'share' | 'emails' | 'result';
@@ -25,9 +27,10 @@ export type JourneyRow =
   | { kind: 'default'; page: CustomPage; reason: string }
   | { kind: 'step'; id: JourneyStepId; title: string; description: string; editedIn: string };
 
-const isDefaultPage = (page: CustomPage) => page.pageId === DEFAULT_CONSENT_PAGE_ID || page.pageId === DEFAULT_IDENTITY_PAGE_ID;
+const isDefaultPage = (page: CustomPage) => page.pageId === DEFAULT_WELCOME_PAGE_ID || page.pageId === DEFAULT_CONSENT_PAGE_ID || page.pageId === DEFAULT_IDENTITY_PAGE_ID;
 
 const REASON: Record<string, string> = {
+  [DEFAULT_WELCOME_PAGE_ID]: "The first thing a user sees: the giant screen drawn from this event's default slideshow and a Start button. This page is used until you make your own welcome page.",
   [DEFAULT_CONSENT_PAGE_ID]: 'Every user accepts the terms, the cookies and the privacy policy first. This page is used until you make your own consent page.',
   [DEFAULT_IDENTITY_PAGE_ID]: 'A photo that is checked before it is shown needs an e-mail or a social login. This page is used until you make your own login page.',
 };
@@ -57,7 +60,7 @@ function stepsAfterPhoto(context: JourneyContext): JourneyRow[] {
  * An event with no take-photo page has everything before the photo, as the user's page treats it.
  */
 export function effectiveJourney(storedPages: readonly CustomPage[] | null | undefined, context: JourneyContext, now?: string): JourneyRow[] {
-  const pages = withDefaultJourneyPages(storedPages, { vettingRequired: context.vettingRequired, consentDefault: context.consentDefault, now, language: context.language });
+  const pages = withDefaultJourneyPages(storedPages, { vettingRequired: context.vettingRequired, consentDefault: context.consentDefault, now, language: context.language, hasWelcomeScreen: context.hasWelcomeScreen });
   const rows: JourneyRow[] = [...pages]
     .sort((a, b) => a.order - b.order)
     .map((page) => (isDefaultPage(page) ? { kind: 'default', page, reason: REASON[page.pageId] } : { kind: 'own', page }));

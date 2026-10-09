@@ -36,9 +36,11 @@ interface Slideshow {
 interface Props {
   eventId: string;
   initialSlideshows: Slideshow[];
+  /** The picture of the welcome page screen drawn from the default slideshow, when the event has one. */
+  welcomeScreen?: { url: string; generatedAt: string } | null;
 }
 
-export default function SlideshowManager({ eventId, initialSlideshows }: Props) {
+export default function SlideshowManager({ eventId, initialSlideshows, welcomeScreen = null }: Props) {
   const [slideshows, setSlideshows] = useState<Slideshow[]>(initialSlideshows);
 
   const handleDeleteSlideshow = async (slideshowId: string) => {
@@ -75,6 +77,18 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
     }
   };
 
+  const drawWelcomeScreen = async () => {
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/admin/events/${eventId}/welcome-screen`, { method: 'POST' });
+      if (!response.ok) throw new Error(((await response.json().catch(() => null)) as { error?: string } | null)?.error || `Request failed (${response.status})`);
+      window.location.reload();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'The welcome page screen could not be drawn');
+      setBusy(false);
+    }
+  };
+
   const copySlideshowUrl = (slideshowId: string) => {
     const url = `${window.location.origin}/slideshow/${slideshowId}`;
     navigator.clipboard.writeText(url);
@@ -101,6 +115,24 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
               New Slideshow
             </SemanticButton>
           </Link>
+        </div>
+      </div>
+
+      <div style={{ alignItems: 'center', borderBottom: '1px solid var(--mantine-color-default-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', padding: '1rem 1.5rem' }}>
+        {welcomeScreen ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={welcomeScreen.url} alt="The welcome page screen drawn from the default slideshow" width={192} height={108} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.5rem', height: 'auto', width: '12rem' }} />
+        ) : null}
+        <div style={{ flex: '1 1 16rem' }}>
+          <strong>Welcome page screen</strong>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.25rem 0 0.75rem' }}>
+            {welcomeScreen
+              ? `Drawn from the default slideshow on ${new Date(welcomeScreen.generatedAt).toLocaleDateString()}. It is drawn again when the default slideshow changes.`
+              : 'The picture of the giant screen the welcome page shows, drawn from the default slideshow. Not drawn yet.'}
+          </p>
+          <SemanticButton action="slideshows:draw-welcome-screen" variant="secondary" size="xs" loading={busy} disabled={busy} onClick={() => void drawWelcomeScreen()}>
+            {welcomeScreen ? 'Draw it again' : 'Draw the welcome page screen'}
+          </SemanticButton>
         </div>
       </div>
 

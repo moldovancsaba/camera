@@ -60,6 +60,8 @@ interface EventDoc {
   // Event.messmassEventId) — read by fanmass, stored on this document already,
   // just never linked to before.
   messmassEventId?: string;
+  /** The picture of the welcome page screen drawn from the default slideshow (lib/screen/welcome-screen-store.ts). */
+  welcomeScreen?: { url: string; generatedAt: string };
   description?: string;
   eventDate?: string;
   location?: string;
@@ -504,7 +506,7 @@ export default async function EventDetailPage({
         />
       </SimpleGrid>
 
-      <SlideshowManager eventId={id} initialSlideshows={JSON.parse(JSON.stringify(slideshows))} />
+      <SlideshowManager eventId={id} initialSlideshows={JSON.parse(JSON.stringify(slideshows))} welcomeScreen={event.welcomeScreen ? { url: event.welcomeScreen.url, generatedAt: event.welcomeScreen.generatedAt } : null} />
 
       <SlideshowLayoutManager
         eventMongoId={id}
