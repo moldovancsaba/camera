@@ -1,13 +1,14 @@
 /**
- * Saves the slots of an event's generated frame (docs/FRAME_SLOTS_PLAN.md, issue 502). Throws a 400 for slots the editor may not save. Slots equal to the default frame are stored as
- * "no slots", so the event keeps drawing the default frame with the images it already has. The images are drawn afterwards by generateFrameVariants.
+ * Saves the slots of an event's generated frame (docs/FRAME_SLOTS_PLAN.md, issue 502). Throws a 400 for slots the editor may not save. Slots equal to what the event follows (its partner's
+ * default, the general default, or the built-in default frame) are stored as "no slots", so the event keeps following and keeps the images it already has. The images are drawn afterwards by generateFrameVariants.
  */
 
 import type { Db, Document } from 'mongodb';
 import { apiBadRequest } from '@/lib/api';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import type { FrameDesign } from './context';
-import { isDefaultSlots, parseSlots, type FrameSlots } from './slots';
+import { parseSlots, sameSlots, type FrameSlots } from './slots';
+import { loadInheritedSlots, slotsOrDefault } from './slots-inherit';
 import { refreshFrameDesign, type RefreshDeps } from './sync';
 
 /** A choice of picture belongs to a message text: it goes with the message when the message goes. */
@@ -32,7 +33,9 @@ export async function saveFrameSlots(db: Db, event: Document, input: { slots?: u
   if (input.reset !== true) {
     const checked = parseSlots(input.slots);
     if (!checked.ok) throw apiBadRequest(checked.error);
-    slots = isDefaultSlots(checked.slots) ? undefined : withoutGoneMessages(checked.slots, current.messages);
+    // Slots that are what the event follows anyway (the partner's default, the general default, or the built-in default frame) are stored as none: the event keeps following.
+    const followed = await loadInheritedSlots(db, event);
+    slots = sameSlots(checked.slots, slotsOrDefault(followed.slots)) ? undefined : withoutGoneMessages(checked.slots, current.messages);
   }
   const updatedAt = (deps?.now ?? (() => new Date().toISOString()))();
   const { slots: _previous, ...rest } = current;

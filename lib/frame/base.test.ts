@@ -87,7 +87,7 @@ test('variants are drawn from the base: one image per message on its own colourw
   const uploads: Array<{ path: string; png: Buffer }> = [];
   const fetched: string[] = [];
   const writes: Array<Record<string, unknown>> = [];
-  const db = { collection: () => ({ updateOne: async (_f: unknown, u: { $set: Record<string, unknown> }) => (writes.push(u.$set), { matchedCount: 1 }) }) } as unknown as Db;
+  const db = { collection: () => ({ findOne: async () => null, updateOne: async (_f: unknown, u: { $set: Record<string, unknown> }) => (writes.push(u.$set), { matchedCount: 1 }) }) } as unknown as Db;
   const deps: VariantDeps = {
     upload: async (path, png) => (uploads.push({ path, png }), `https://blob.test/${path}`),
     fetchLogo: async () => null,
@@ -113,7 +113,7 @@ test('variants are drawn from the base: one image per message on its own colourw
 
 test('a picture that cannot be fetched stops the run and leaves the images as they were', async () => {
   const writes: unknown[] = [];
-  const db = { collection: () => ({ updateOne: async () => (writes.push(1), { matchedCount: 1 }) }) } as unknown as Db;
+  const db = { collection: () => ({ findOne: async () => null, updateOne: async () => (writes.push(1), { matchedCount: 1 }) }) } as unknown as Db;
   const deps: VariantDeps = { upload: async (p) => p, fetchLogo: async () => null, fetchBaseImage: async () => null, resolveFont: (s) => resolveFrameFont(s), now: () => NOW };
   await assert.rejects(generateFrameVariants(db, { _id: new ObjectId(), eventId: 'e', name: 'x', frameDesign: designWith(true) }, deps), /base picture/);
   assert.equal(writes.length, 0);

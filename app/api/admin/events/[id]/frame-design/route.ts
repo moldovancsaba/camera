@@ -6,7 +6,7 @@
  *   generated afterwards, one per usable message (a 502 means the list is saved but the images are not; repeat the request).
  *   `darkArea` (`frame`, the default, or `generated`) says where the dark area of the designs comes from: their own layers, or the mask of the generated default frame.
  *   `messageFrames` says which frames of the event (assigned, switched on, with a message area) each message is written on, one id or a list (camera#366, issue 449).
- * The GET answer also lists those frames (`availableFrames`) so the editor can offer them.
+ * The GET answer also lists those frames (`availableFrames`) so the editor can offer them, and `inheritedSlots` (`{ slots, source }`: what the slots follow when the event has none of its own).
  *
  * `[id]` is the Mongo _id of the event, as in the other admin event routes.
  */
@@ -31,6 +31,7 @@ import { DEFAULT_FRAME_MESSAGES, MAX_FRAME_MESSAGES, MAX_FRAME_MESSAGE_LENGTH } 
 import { saveFrameMessages } from '@/lib/frame/sync';
 import { loadMessageFrames, MAX_FRAME_IMAGES } from '@/lib/frame/message-frames';
 import { generateFrameVariants } from '@/lib/frame/variants';
+import { loadInheritedSlots } from '@/lib/frame/slots-inherit';
 
 type RouteContext = { params?: Promise<{ id: string }> };
 
@@ -55,6 +56,8 @@ export const GET = withErrorHandler(async (request: NextRequest, context?: Route
     defaultMessages: DEFAULT_FRAME_MESSAGES,
     limits: { maxMessages: MAX_FRAME_MESSAGES, maxLength: MAX_FRAME_MESSAGE_LENGTH, maxImages: MAX_FRAME_IMAGES },
     availableFrames: [...carriers.values()].map(({ frameId, name, imageUrl }) => ({ frameId, name, imageUrl })),
+    // What the event's slots follow when it has none of its own (issue 502): its partner's default, the general default, or the built-in default frame.
+    inheritedSlots: await loadInheritedSlots(db, event),
   });
 });
 

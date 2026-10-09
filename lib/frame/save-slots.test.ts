@@ -11,10 +11,10 @@ const BLOB = 'https://abc123.public.blob.vercel-storage.com/frames';
 const base = nativeFrameContext({ eventName: 'MTK x Vasas' }, NOW);
 const design = (extra: Partial<FrameDesign> = {}): FrameDesign => ({ context: { ...base, inputHash: contextHash(base) }, messages: ['HAJRÁ, MTK!', 'MTK SZÍV!'], messagesOverridden: true, updatedAt: NOW, ...extra });
 
-function world(frameDesign: FrameDesign | undefined) {
+function world(frameDesign: FrameDesign | undefined, partner: Record<string, unknown> | null = null) {
   const updates: Array<{ filter: unknown; update: Record<string, Record<string, unknown>> }> = [];
-  const db = { collection: () => ({ findOne: async () => null, updateOne: async (filter: unknown, update: Record<string, Record<string, unknown>>) => (updates.push({ filter, update }), { matchedCount: 1 }) }) } as unknown as Db;
-  const event = { _id: new ObjectId(), eventId: 'e1', name: 'MTK x Vasas', ...(frameDesign ? { frameDesign } : {}) };
+  const db = { collection: (name: string) => ({ findOne: async () => (name === 'partners' ? partner : null), updateOne: async (filter: unknown, update: Record<string, Record<string, unknown>>) => (updates.push({ filter, update }), { matchedCount: 1 }) }) } as unknown as Db;
+  const event = { _id: new ObjectId(), eventId: 'e1', name: 'MTK x Vasas', partnerId: 'p1', ...(frameDesign ? { frameDesign } : {}) };
   return { db, event, updates };
 }
 const deps = { fetchContext: async () => null, messmassConfigured: () => false, now: () => NOW };
@@ -70,4 +70,16 @@ test('an event with no snapshot yet gets one first (the fallback made from its o
 test('withoutGoneMessages keeps a slot with no map as it is', () => {
   const slots: FrameSlots = { text: {}, picture: { 'top-right': { source: 'partnerLogo' } } };
   assert.deepEqual(withoutGoneMessages(slots, ['x']), slots);
+});
+
+test('slots that are what the event follows are stored as none: the partner\'s default, not only the built-in default frame', async () => {
+  const partnerDefault: FrameSlots = { text: { 'top-left': { source: 'custom', text: 'Partner' } }, picture: {} };
+  const { db, event, updates } = world(design(), { defaultFrameSlots: partnerDefault });
+  const same = await saveFrameSlots(db, event, { slots: partnerDefault }, deps);
+  assert.equal(same.slots, undefined, 'the event keeps following');
+  assert.deepEqual(updates[0].update.$unset, { 'frameDesign.slots': '' });
+  // the built-in default frame is now a choice of its own: the event no longer follows the partner
+  const explicit = await saveFrameSlots(db, event, { slots: JSON.parse(JSON.stringify(DEFAULT_SLOTS)) }, deps);
+  assert.deepEqual(explicit.slots, DEFAULT_SLOTS);
+  assert.deepEqual(updates[1].update.$set['frameDesign.slots'], DEFAULT_SLOTS);
 });

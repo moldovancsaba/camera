@@ -33,7 +33,7 @@ function harness(over: Partial<VariantDeps> = {}) {
   const uploads: string[] = [];
   const logoCalls: string[] = [];
   const writes: Array<Record<string, unknown>> = [];
-  const db = { collection: () => ({ updateOne: async (_f: unknown, u: { $set: Record<string, unknown> }) => (writes.push(u.$set), { matchedCount: 1 }) }) } as unknown as Db;
+  const db = { collection: () => ({ findOne: async () => null, updateOne: async (_f: unknown, u: { $set: Record<string, unknown> }) => (writes.push(u.$set), { matchedCount: 1 }) }) } as unknown as Db;
   const deps: VariantDeps = {
     upload: async (pathname) => (uploads.push(pathname), `https://blob.test/${pathname}`),
     fetchLogo: async (url) => (logoCalls.push(url), null),
@@ -426,4 +426,38 @@ test('slots without a picture source need no fetch: the default slots give the s
   const e = event({ ...design({}, ['Go!'], null), slots: { text: { 'top-left': { source: 'teams' }, 'bottom-center': { source: 'message' } }, picture: { 'top-right': { source: 'partnerLogo' }, 'bottom-center': { source: 'bar' } } } });
   const variants = (await generateFrameVariants(db, e, deps)).design.variants!;
   assert.deepEqual(variants[0].layers.map((l) => l.id).sort(), ['bar', 'message', 'teams']);
+});
+
+// --- Slots that an event follows (issue 502, segment 5) ---
+
+function followingHarness(partner: Record<string, unknown> | null, setting: Record<string, unknown> | null = null) {
+  const h = harness();
+  const writes = h.writes;
+  const db = { collection: (name: string) => ({ findOne: async () => (name === 'partners' ? partner : name === 'admin_settings' ? setting : null), updateOne: async (_f: unknown, u: { $set: Record<string, unknown> }) => (writes.push(u.$set), { matchedCount: 1 }) }) } as unknown as Db;
+  return { ...h, db };
+}
+const labelled = (text: string) => ({ text: { 'top-left': { source: 'custom' as const, text } }, picture: {} });
+
+test('an event with no slots of its own is drawn with its partner\'s default, and the default is not copied onto the event', async () => {
+  const { db, deps, writes } = followingHarness({ defaultFrameSlots: labelled('Partner') });
+  const d = design({}, ['Go!'], null);
+  const result = await generateFrameVariants(db, { ...event(d), partnerId: 'p1' }, deps);
+  assert.deepEqual(result.design.variants![0].layers.map((l) => l.id), ['text-top-left']);
+  assert.equal(result.design.slots, undefined, 'the design the event keeps has no slots');
+  assert.equal(Object.keys(writes[0]).some((key) => key.includes('slots')), false, 'nothing about slots is written to the event');
+});
+
+test('the general default applies when the partner has none, an event\'s own slots win over both, and a change of the default redraws the images', async () => {
+  const general = followingHarness({}, { slots: labelled('General') });
+  const d = design({}, ['Go!'], null);
+  const first = await generateFrameVariants(general.db, { ...event(d), partnerId: 'p1' }, general.deps);
+  assert.deepEqual(first.design.variants![0].layers.map((l) => l.id), ['text-top-left']);
+  const own = await generateFrameVariants(general.db, { ...event({ ...d, slots: { text: { 'top-right': { source: 'custom', text: 'Own' } }, picture: {} } }), partnerId: 'p1' }, general.deps);
+  assert.deepEqual(own.design.variants![0].layers.map((l) => l.id), ['text-top-right']);
+  // the same event after the partner sets a default: the key changes, so the image is drawn again
+  const changed = followingHarness({ defaultFrameSlots: labelled('Partner') }, { slots: labelled('General') });
+  const again = await generateFrameVariants(changed.db, { ...event(first.design), partnerId: 'p1' }, changed.deps);
+  assert.equal(again.generated, 1);
+  const unchanged = await generateFrameVariants(changed.db, { ...event(again.design), partnerId: 'p1' }, changed.deps);
+  assert.equal(unchanged.generated, 0, 'nothing changed: nothing is drawn');
 });

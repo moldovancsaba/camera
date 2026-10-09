@@ -15,6 +15,7 @@ import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
+import DefaultSlotsPanel from '@/components/admin/DefaultSlotsPanel';
 import type { MessageArea } from '@/lib/frame/message-area';
 import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
 import type { PartnerLibrary } from '@/lib/library/types';
@@ -279,6 +280,9 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
           <LibraryUploadForm endpoint={`/api/partners/${partnerId}/library/upload`} kind="frames" noun="frame" accept="image/png,image/svg+xml" acceptWords="PNG or SVG" onUploaded={reload} />
         </div>
       </section>
+
+      {/* The slots the generated frames of this partner's events are composed of until an event sets its own (issue 502). */}
+      <DefaultSlotsPanel level={{ scope: 'partner', partnerMongoId: partnerId }} />
 
       <Link href={`/admin/partners/${partnerId}`}>← Back to Partner</Link>
     </div>

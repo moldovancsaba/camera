@@ -175,6 +175,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
+        href: '/admin/settings/frame-slots',
+        label: 'Frame slots',
+        description: 'The slots every generated frame is composed of until a partner or an event sets its own.',
+        iconKey: 'frame',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
+      {
         href: '/admin/settings/emails',
         label: 'Emails',
         description: 'The e-mails to the users: the general legal part every partner and event follows.',
