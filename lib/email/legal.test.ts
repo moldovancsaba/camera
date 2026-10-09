@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { fakeDb } from '@/lib/library/fake-db';
 import { emailDefaults } from './submission-template-defaults';
-import { getGlobalLegal, loadEventLegal, parseLegal, resolveLegal, saveEventLegal, saveGlobalLegal, savePartnerLegal, storedLegal, withoutStandardLegalTail, LEGAL_MAX } from './legal';
+import { standardLegalLine, getGlobalLegal, loadEventLegal, parseLegal, resolveLegal, saveEventLegal, saveGlobalLegal, savePartnerLegal, storedLegal, withoutStandardLegalTail, LEGAL_MAX } from './legal';
 
 const GLOBAL = { en: 'General terms: {terms}', hu: 'Általános feltételek: {terms}' };
 
@@ -64,4 +64,10 @@ test('the stores: the general part, the partner’s and the event’s are writte
   assert.deepEqual(loaded.levels.partner, { hu: 'MTK feltételek' }, 'the partner’s own is untouched by the event’s');
 
   assert.equal(await saveEventLegal(db, 'nope', {}, 'now'), false);
+});
+
+test('the standard line is a start for a legal part in each language, and it is exactly the paragraph that is left out when a legal part is set', () => {
+  assert.equal(standardLegalLine('en'), 'Policies and General Terms and Conditions:\n{terms}');
+  assert.equal(standardLegalLine('hu'), 'Szabályzatok és Általános Szerződési Feltételek:\n{terms}');
+  for (const language of ['en', 'hu'] as const) assert.equal(withoutStandardLegalTail(`Hello\n\n${standardLegalLine(language)}`), 'Hello');
 });

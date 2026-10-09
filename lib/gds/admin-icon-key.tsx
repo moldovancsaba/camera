@@ -8,6 +8,7 @@ import {
   IconCalendarEvent,
   IconFrame,
   IconLayoutDashboard,
+  IconMail,
   IconPhoto,
   IconPhotoScan,
   IconPlus,
@@ -28,6 +29,7 @@ export type AdminIconKey =
   | 'calendarEvent'
   | 'frame'
   | 'layoutDashboard'
+  | 'mail'
   | 'photo'
   | 'photoScan'
   | 'plus'
@@ -47,6 +49,7 @@ const iconMap = {
   calendarEvent: IconCalendarEvent,
   frame: IconFrame,
   layoutDashboard: IconLayoutDashboard,
+  mail: IconMail,
   photo: IconPhoto,
   photoScan: IconPhotoScan,
   plus: IconPlus,

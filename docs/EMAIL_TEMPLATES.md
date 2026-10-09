@@ -67,6 +67,10 @@ The preview endpoint returns `validations[]` with `missingPlaceholders`, `missin
 ### Supported placeholders
 
 
-## The legal part (epic 463, `lib/email/legal.ts`)
+## The editor and the preview (epic 463, segment E4)
+
+The words of an e-mail and the legal part are written with a toolbar editor (`components/admin/kit/EmailTextEditor.tsx`): bold, italic, title, large and small text, a link (the address must be https, http or mailto, or `{link}`, `{terms}`, `{eventlink}`) and a menu of variables; next to it the preview (`EmailPreview.tsx`) draws the e-mail at the width of a phone in the look of the event, from the text as typed (saved or not), and says which variables it could not fill. The preview is `POST /api/admin/emails/preview`, which calls the same composer as the sender (`lib/email/compose.ts`), so it is what a user gets. Pages: `Emails` under Settings (the general legal part) and `Emails` in the partner menu (the partner's).
+
+## The legal part (epic 463, `lib/email/legal-rules.ts` and `lib/email/legal.ts`)
 
 The legal part is the same at every e-mail of an event, so it is one slot with three levels, written once per language in the format above: the **general** one (a global admin), the **partner's** and the **event's**. An event follows its partner and the partner follows the general one each time it is read; what a level sets is its own and the default of the levels below; a later change above never overrides an own value. It is drawn as **small print under the message and the button**, in the muted colour of the card, and appended to the plain-text part. Where no level has a legal part for the event's language, nothing is added. When there is one, the standard last paragraph of the default e-mails ("Policies and General Terms and Conditions: {terms}") is left out of the message so the terms are not written twice; a legal paragraph an editor wrote in their own words stays in the message until it is moved. Stored as `admin_settings` `email-legal`, `Partner.emailLegal`, `Event.emailLegal`; routes `GET`/`PUT /api/admin/emails/legal`, `/api/partners/<id>/email-legal`, `/api/events/<id>/email-legal`.

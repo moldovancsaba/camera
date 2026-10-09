@@ -84,13 +84,30 @@ Each ships alone, changes no e-mail until an editor changes it, is tested, docum
 
 Later, with your go (a production data write): move the long legal paragraph out of the MTK x Vasas body into the legal part of the MTK partner, once E2 exists.
 
-## 8. Segment status
+## 8. The five e-mail types (owner, 2026-10-09)
+
+*"We need the following email types: welcome, when somebody registers (off default); arrived, when somebody submits a photo or later other media (off default); approved, when we approve, with the links (on default); declined, when we decline (on default); follow up, one week after the event to look back at the memory (off default)."*
+
+| Type | When | Default | What exists today | What is built (segment) |
+|---|---|---|---|---|
+| **welcome** | when the user identifies: gives name and e-mail on the "Who are you" step, or signs in, before the photo (answer 201) | off | nothing | E7 the type and its texts, E8 the trigger |
+| **arrived** | when a photo is submitted (later other media) | off | nothing: the "after save" e-mail is the link, sent when the photo is ready | E7, E8 |
+| **approved** | when the photo is approved, with the links | **on** | the "after save" e-mail (events without vetting) and the "photo approved" e-mail (vetted events) | E7 unifies them |
+| **declined** | when the photo is declined | **on** | the "not approved" e-mail, fixed wording | E7 makes it editable |
+| **follow up** | seven days after the event, to look back at the memory; to users with an approved photo (answer 202) | off | nothing | E7 the type, texts and switch; **no job yet** (answer 203): nothing is sent until the daily job is added |
+
+"On by default" (answer 204) means **every event, including ones that never turned e-mails on**: an event with no stored choice follows the default, a choice stored in its notifications wins. The two
+try-on e-mails of today (related photos ready, approved resubmission) stay as extra types for events that use try-on.
+
+## 9. Segment status
 
 | Segment | Status |
 |---|---|
-| E1 #464 format | built (this pull request, with E5) |
-| E5 #468 variables | built (this pull request): `{partner}`, `{home}`, `{visitor}`, `{teams}`, `{date}`, `{location}`, `{eventlink}` and the four old ones |
-| E2 #465 legal part | built (this pull request): `lib/email/legal.ts`, the three routes `GET`/`PUT /api/admin/emails/legal`, `/api/partners/<id>/email-legal`, `/api/events/<id>/email-legal`; the pages come with E3 |
-| E4 #467 editor | after E2 |
-| E3 #466 Emails menu | after E4 |
+| E1 #464 format | merged (#471) |
+| E5 #468 variables | catalogue, values, missing-value rule and the slug link merged (#471); the insert menu and the preview warnings are in E4 (this pull request) |
+| E2 #465 legal part | merged (#472) |
+| E4 #467 editor | built (this pull request): `lib/email/compose.ts`, `POST /api/admin/emails/preview`, the toolbar editor and the preview, the legal part editor |
+| E3 #466 Emails menu | general and partner pages built (this pull request); the event page with the five types follows E7 |
+| E7 #473 the five types | next |
+| E8 #474 the triggers | after E7 |
 | E6 #469 test e-mail | after E3 |

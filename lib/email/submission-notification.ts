@@ -1,8 +1,6 @@
 import { sanitizeEmail } from '@/lib/security/sanitize';
-import { renderThemedEmail } from '@/lib/email/themed-html';
-import { fillPlain, parseRich, resolveRich, richHtml, richText } from '@/lib/email/rich';
-import { URL_VARIABLES, emailValues, type EventFacts } from '@/lib/email/variables';
-import { withoutStandardLegalTail } from '@/lib/email/legal';
+import { composeEmail } from '@/lib/email/compose';
+import { emailValues, type EventFacts } from '@/lib/email/variables';
 import type { EventTheme } from '@/lib/theme/event-theme';
 import { getResendApiKey, sendEmail } from '@/lib/email/send';
 import {
@@ -131,31 +129,20 @@ export async function sendSubmissionResultEmail(
   const termsUrl = input.termsUrl?.trim() || defaults.termsUrl;
   // The variables are filled after the text is read (lib/email/rich.ts), so a value, a name a user typed, is never markup. One that has no value for this event is left out and logged.
   const values = emailValues({ recipientName, eventName, shareUrl: input.shareUrl, termsUrl, facts: input.facts, language });
-  const subjectFilled = fillPlain(normalizeTemplate(input.subjectTemplate, defaults.subject, 180), values);
-  const subject = subjectFilled.text.replace(/\s+/g, ' ').trim();
-  const legalSource = input.legal?.trim() || null;
-  // With a legal part the standard terms paragraph at the end of a template is not written twice.
-  const bodyTemplate = normalizeTemplate(input.bodyTemplate, defaults.body, 5000);
-  const body = resolveRich(parseRich(legalSource ? withoutStandardLegalTail(bodyTemplate) : bodyTemplate), values, URL_VARIABLES);
-  const legal = legalSource ? resolveRich(parseRich(legalSource), values, URL_VARIABLES) : null;
-  const bodyText = [richText(body.blocks), legal ? richText(legal.blocks) : ''].filter(Boolean).join('\n\n');
-  const notFilled = [...new Set([...subjectFilled.missing, ...body.missing, ...(legal?.missing ?? [])])];
-  const notKnown = [...new Set([...subjectFilled.unknown, ...body.unknown, ...(legal?.unknown ?? [])])];
-  if (notFilled.length > 0 || notKnown.length > 0) {
-    console.warn('[email] Submission result email: variables left out', { eventName: input.eventName || null, withoutValue: notFilled, unknown: notKnown });
+  const composed = composeEmail({
+    subjectTemplate: normalizeTemplate(input.subjectTemplate, defaults.subject, 180),
+    bodyTemplate: normalizeTemplate(input.bodyTemplate, defaults.body, 5000),
+    legal: input.legal,
+    values,
+    theme: input.theme ?? null,
+    eventName,
+    button: { label: input.buttonLabel?.trim() || translate(language, 'email.buttonOpen'), url: input.shareUrl },
+  });
+  if (composed.warnings.withoutValue.length > 0 || composed.warnings.unknown.length > 0) {
+    console.warn('[email] Submission result email: variables left out', { eventName: input.eventName || null, withoutValue: composed.warnings.withoutValue, unknown: composed.warnings.unknown });
   }
 
-  const result = await sendEmail({
-    from,
-    to: recipientEmail,
-    subject,
-    text: bodyText,
-    html: input.theme
-      ? renderThemedEmail({ theme: input.theme, eventName, content: body.blocks, legal: legal?.blocks ?? null, button: { label: input.buttonLabel?.trim() || translate(language, 'email.buttonOpen'), url: input.shareUrl } })
-      : `
-      <div style="font-family: Arial, sans-serif; line-height: 1.5;">${richHtml(body.blocks, { link: 'inherit' })}${legal ? `<div style="opacity:0.75;">${richHtml(legal.blocks, { link: 'inherit' }, 'small')}</div>` : ''}</div>
-    `,
-  });
+  const result = await sendEmail({ from, to: recipientEmail, subject: composed.subject, text: composed.text, html: composed.html });
 
   if (!result.sent) {
     console.error('[email] Submission result email failed', {

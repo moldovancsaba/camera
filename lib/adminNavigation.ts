@@ -174,6 +174,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         iconKey: 'adjustments',
         isVisible: (access) => access.isGlobalAdmin,
       },
+      {
+        href: '/admin/settings/emails',
+        label: 'Emails',
+        description: 'The e-mails to the users: the general legal part every partner and event follows.',
+        iconKey: 'mail',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
     ],
   },
   {
@@ -269,6 +276,7 @@ export const PARTNER_CONTEXT_MENU: AdminContextItem[] = [
   { label: 'Images', description: 'The pictures the partner and its events can use.', iconKey: 'photo', path: '/images', isVisible: everyone },
   { label: 'Pictures', description: 'The default pictures of the welcome page, the CTA page and the e-mails of all events of the partner.', iconKey: 'photo', path: '/pictures', isVisible: everyone },
   { label: 'Texts', description: 'The wording of the default texts for all events of the partner.', iconKey: 'adjustments', path: '/texts', isVisible: everyone },
+  { label: 'Emails', description: 'The legal part of the e-mails of all events of the partner.', iconKey: 'mail', path: '/emails', isVisible: everyone },
 ];
 
 export interface AdminContextMenu {
