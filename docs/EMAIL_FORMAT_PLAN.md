@@ -1,6 +1,6 @@
 # The e-mails to the user: one format, one legal part, an editor, variables (client feedback 2026-10-09)
 
-Tracker: epic [#463](https://github.com/moldovancsaba/camera/issues/463) on board [#24](https://github.com/users/moldovancsaba/projects/24); segments E1 [#464](https://github.com/moldovancsaba/camera/issues/464), E2 [#465](https://github.com/moldovancsaba/camera/issues/465), E3 [#466](https://github.com/moldovancsaba/camera/issues/466), E4 [#467](https://github.com/moldovancsaba/camera/issues/467), E5 [#468](https://github.com/moldovancsaba/camera/issues/468), E6 [#469](https://github.com/moldovancsaba/camera/issues/469). Separate request: the social login buttons, [#462](https://github.com/moldovancsaba/camera/issues/462). Status: **triaged, waiting for the owner's answers 196 to 200** (section 7). Nothing in this plan is built, and no e-mail changes until an editor changes it.
+Tracker: epic [#463](https://github.com/moldovancsaba/camera/issues/463) on board [#24](https://github.com/users/moldovancsaba/projects/24); segments E1 [#464](https://github.com/moldovancsaba/camera/issues/464), E2 [#465](https://github.com/moldovancsaba/camera/issues/465), E3 [#466](https://github.com/moldovancsaba/camera/issues/466), E4 [#467](https://github.com/moldovancsaba/camera/issues/467), E5 [#468](https://github.com/moldovancsaba/camera/issues/468), E6 [#469](https://github.com/moldovancsaba/camera/issues/469). Separate request: the social login buttons, [#462](https://github.com/moldovancsaba/camera/issues/462). Status: **answered by the owner 2026-10-09 (section 7), delivery before the match on Friday 2026-10-16**; segment status in section 8. No e-mail changes until an editor changes it.
 
 ## 1. The client feedback (verbatim, two screenshots of the MTK x Vasas e-mail, 2026-10-09)
 
@@ -70,12 +70,27 @@ Each ships alone, changes no e-mail until an editor changes it, is tested, docum
 
 **Suggested order:** E1, E2, E5, E4, E3, E6. The sending path changes in E2 only, and only for an event whose legal part someone sets.
 
-## 7. Questions to the owner (to answer by number)
+## 7. The owner's answers (2026-10-09)
 
-196. **When?** The match is on Friday 2026-10-16. a) The format and the legal part as small print first (E1, E2 with a simple page), the editor and the menu after the match; b) everything after the match; c) everything before. *Recommended: a) only if you want the legal text smaller for the match, otherwise b); an e-mail change on a live event is user-visible, so I would not ship it on the match day itself.*
-197. **Which editor?** a) A toolbar over the text with the live preview next to it (small, safe, no new library); b) a fully visual editor (Tiptap: new extensions to install, more work and more to maintain). *Recommended: a).*
-198. **Where does the legal part sit?** a) Small print **after the button**, in a muted colour; b) before the button, as today but smaller. *Recommended: a).*
-199. **A variable the event has no value for** (an event without teams): a) leave it out and warn the editor in the preview; b) leave the whole sentence out. *Recommended: a).*
-200. **Which e-mails go into the Emails menu?** a) All of the user's e-mails (the three result e-mails, "approved", "not approved"); b) only the result e-mails first. *Recommended: a), one place for all.*
+| # | Question | Answer |
+|---|---|---|
+| 196 | When? | **Everything before the match** (Friday 2026-10-16): E1 to E6. |
+| 197 | Which editor? | **A toolbar over the text with the live preview next to it** (no new library). |
+| 198 | Where does the legal part sit? | **Small print after the button**, in a muted colour. |
+| 199 | A variable with no value for the event | **Left out of the e-mail; the editor is warned in the preview.** |
+| 200 | Which e-mails go into the Emails menu? | Not answered; I proceed with the recommended: **all of the user's e-mails** (the three result e-mails, approved, not approved). |
+
+**Added by the owner, 2026-10-09 (the "not approved" e-mail screenshot):** *"In the emails, when we have slug, we always need to use those links set it in the editor as the default behaviour."* So whenever an e-mail links to the event itself (the "take another photo" link of the not-approved e-mail, the new variable `{eventlink}`), it uses the **event's own short link** (`<go origin>/<URL slug>`, the URL slug field of the event editor, counted as a link visit) when the event has a slug, and the capture page only when it has none (`lib/email/event-link.ts`). The photo link `{link}` is the share page of that photo and has no slug.
 
 Later, with your go (a production data write): move the long legal paragraph out of the MTK x Vasas body into the legal part of the MTK partner, once E2 exists.
+
+## 8. Segment status
+
+| Segment | Status |
+|---|---|
+| E1 #464 format | built (this pull request, with E5) |
+| E5 #468 variables | built (this pull request): `{partner}`, `{home}`, `{visitor}`, `{teams}`, `{date}`, `{location}`, `{eventlink}` and the four old ones |
+| E2 #465 legal part | next |
+| E4 #467 editor | after E2 |
+| E3 #466 Emails menu | after E4 |
+| E6 #469 test e-mail | after E3 |

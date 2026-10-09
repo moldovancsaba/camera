@@ -14,6 +14,7 @@ Supported variables (`lib/email/variables.ts`; a variable with no value for the 
 - `{event}`: event name.
 - `{link}`: public share page URL.
 - `{terms}`: event terms and conditions URL.
+- `{eventlink}`: the link to the event: its own short link when the editor set a URL slug (the default), else its capture page.
 - `{partner}`: the partner (club or organiser); `{home}`, `{visitor}`, `{teams}`: the two sides of the match (`{partner1}`, `{partner2}` are other names for the first two); `{date}`: the date of the event in the language of the event; `{location}`: the place of the event.
 
 ### Format of the words (`lib/email/rich.ts`)
