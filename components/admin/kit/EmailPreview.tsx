@@ -12,7 +12,7 @@ import { Button } from '@/components/gds/PublicPrimitives';
 interface Preview {
   subject: string;
   html: string;
-  warnings: { withoutValue: string[]; unknown: string[] };
+  warnings: { withoutValue: string[]; unknown: string[]; refusedPictures: string[] };
 }
 
 export interface EmailPreviewProps {
@@ -96,6 +96,13 @@ export default function EmailPreview({ eventId, language, subject, body, legal, 
           ) : null}
           {preview.warnings.unknown.length > 0 ? (
             <InlineAlert title="Not a variable" message={`${preview.warnings.unknown.map((name) => `{${name}}`).join(', ')} ${preview.warnings.unknown.length === 1 ? 'is' : 'are'} not a variable and is left out. Use the Variable menu.`} severity="warning" />
+          ) : null}
+          {preview.warnings.refusedPictures.length > 0 ? (
+            <InlineAlert
+              title="Picture left out"
+              message={`${preview.warnings.refusedPictures.length === 1 ? 'A picture is' : 'Pictures are'} not from the app's own storage, so ${preview.warnings.refusedPictures.length === 1 ? 'it is' : 'they are'} not in the e-mail: ${preview.warnings.refusedPictures.join(', ')}. Choose it with the Picture button.`}
+              severity="warning"
+            />
           ) : null}
           <iframe
             title="The e-mail as a user gets it"

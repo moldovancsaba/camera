@@ -19,7 +19,7 @@ Supported variables (`lib/email/variables.ts`; a variable with no value for the 
 
 ### Format of the words (`lib/email/rich.ts`)
 
-Paragraphs are separated by a blank line. A paragraph that starts with `# ` is a title, `-# ` is small text, `+# ` is large text. Inside a paragraph: `**bold**`, `*italic*`, `[label](https://address)` (a link, bold and underlined; the address may be `{link}` or `{terms}`), a bare web address (a link). A backslash writes the next sign as it is (`\*`). Nothing else is markup and raw HTML is always escaped. A text with none of these is drawn exactly as plain text always was.
+Paragraphs are separated by a blank line. A paragraph that starts with `# ` is a title, `-# ` is small text, `+# ` is large text. Inside a paragraph: `**bold**`, `*italic*`, `[label](https://address)` (a link, bold and underlined; the address may be `{link}` or `{terms}`), a bare web address (a link). A paragraph that is only `![what it shows](https://picture)` is a **picture** (centred, as wide as the e-mail at most), and `[![what it shows](https://picture)](https://address)` is a picture that is a link; the address behind it may be `{link}`, `{terms}` or `{eventlink}`. The picture must be in the app's own storage (the Blob store, the logo storage or imgbb): any other address is left out of the e-mail and the preview says so. The plain-text part names it by its description (and the address when it is a link). The editor's **Picture** button chooses or uploads one from the event's image library (PNG or JPEG: e-mail apps do not all draw WebP or SVG). A backslash writes the next sign as it is (`\*`). Nothing else is markup and raw HTML is always escaped. A text with none of these is drawn exactly as plain text always was.
 
 ### Canonical body style
 

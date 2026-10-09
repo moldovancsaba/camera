@@ -2,7 +2,7 @@
  * The preview of an e-mail for the editor (epic 463, docs/EMAIL_FORMAT_PLAN.md): the subject, the themed HTML and the plain-text part exactly as a user would get them, made by the same
  * function the sender uses (lib/email/compose.ts), from the texts the editor has typed so far, which need not be saved. Nothing is stored and nothing is sent.
  *
- * POST /api/admin/emails/preview   { eventId?, language?, subject, body, legal?, buttonLabel? (null: no button) } -> { subject, html, text, warnings: { withoutValue, unknown }, language }
+ * POST /api/admin/emails/preview   { eventId?, language?, subject, body, legal?, buttonLabel? (null: no button) } -> { subject, html, text, warnings: { withoutValue, unknown, refusedPictures }, language }
  *   With `eventId` (the Mongo _id of an event, viewer access) the e-mail is drawn in the look of that event, with its name, teams, date and link, and, unless `legal` is given, with the
  *   legal part that applies to it. Without one the default look and sample values are used. `warnings` lists the variables the e-mail could not fill (left out) and the names that
  *   are not variables.

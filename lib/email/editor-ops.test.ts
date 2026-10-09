@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { insertAt, linkAddressProblem, makeLink, paragraphKindAt, setParagraphKind, wrapSelection } from './editor-ops';
-import { parseRich } from './rich';
+import { insertAt, linkAddressProblem, makeLink, makePicture, paragraphKindAt, pictureProblem, setParagraphKind, wrapSelection } from './editor-ops';
+import { parseRich, type TextBlock } from './rich';
 
 test('bold and italic go around the selection and come off again; with nothing selected a word to type over is put in', () => {
   assert.deepEqual(wrapSelection('Hello world', 6, 11, '**'), { text: 'Hello **world**', start: 8, end: 13 });
@@ -16,12 +16,12 @@ test('what the toolbar writes is read back by the format: bold, italic, a link, 
   let edit = wrapSelection('Hello world', 6, 11, '**');
   edit = setParagraphKind(edit.text, 0, 'title');
   assert.equal(edit.text, '# Hello **world**');
-  const block = parseRich(edit.text)[0];
+  const block = parseRich(edit.text)[0] as TextBlock;
   assert.equal(block.kind, 'title');
   assert.ok(block.inlines.some((inline) => inline.t === 'bold'));
   const link = makeLink('See the photo now', 4, 13, 'https://camera.test/p');
   assert.equal(link.text, 'See [the photo](https://camera.test/p) now');
-  assert.ok(parseRich(link.text)[0].inlines.some((inline) => inline.t === 'link'));
+  assert.ok((parseRich(link.text)[0] as TextBlock).inlines.some((inline) => inline.t === 'link'));
 });
 
 test('a paragraph becomes a title, small or large text; the same kind again, or another, replaces the mark', () => {
@@ -46,4 +46,30 @@ test('a link takes the selected words as its label, or a label to type over; a v
 test('the address of a link: https, http, mailto or a link variable', () => {
   for (const ok of ['https://a.test/x', 'http://a.test', 'mailto:a@b.hu', '{link}', '{terms}', '{EVENTLINK}']) assert.equal(linkAddressProblem(ok), null, ok);
   for (const bad of ['', '   ', 'a.test', 'javascript:alert(1)', 'https://a.test/ x', '{name}', 'ftp://a.test']) assert.notEqual(linkAddressProblem(bad), null, bad);
+});
+
+test('a picture is added as a paragraph of its own after the paragraph with the cursor, with the link around it when there is one', () => {
+  const src = 'https://abc123.public.blob.vercel-storage.com/m/b.png';
+  const text = 'One\n\nTwo words\n\nThree';
+  const middle = makePicture(text, 6, src, 'The stadium');
+  assert.equal(middle.text, `One\n\nTwo words\n\n![The stadium](${src})\n\nThree`);
+  assert.equal(middle.start, middle.text.indexOf('\n\nThree'), 'the cursor is after the picture');
+  assert.equal(makePicture(text, text.length, src, '').text, `${text}\n\n![](${src})`);
+  assert.equal(makePicture('', 0, src, 'x').text, `![x](${src})`);
+  assert.equal(makePicture('Hi', 0, src, 'x', ' {link} ').text, `Hi\n\n[![x](${src})]({link})`);
+  assert.equal(makePicture('Hi', 0, src, 'a [bad]\nname').text, `Hi\n\n![a bad name](${src})`, 'brackets and line breaks in the description would end the markup early');
+  // what the editor writes is read back as a picture by the format
+  const read = parseRich(makePicture('Hi', 0, src, 'x', 'https://camera.test/p').text);
+  assert.deepEqual(read.map((block) => block.kind), ['normal', 'picture']);
+});
+
+test('a picture needs the app\'s own storage; a link, when given, needs a good address', () => {
+  const src = 'https://abc123.public.blob.vercel-storage.com/m/b.png';
+  assert.equal(pictureProblem(src, ''), null);
+  assert.equal(pictureProblem(src, '{eventlink}'), null);
+  assert.ok(pictureProblem('', '')?.includes('Choose'));
+  assert.ok(pictureProblem('https://evil.test/t.png', '')?.includes('app\'s own storage'));
+  assert.ok(pictureProblem('http://i.ibb.co/a.png', '')?.includes('app\'s own storage'));
+  assert.ok(pictureProblem(`${src}?a=(1)`, '')?.includes('app\'s own storage'));
+  assert.ok(pictureProblem(src, 'javascript:x')?.includes('must start with https://'));
 });

@@ -28,7 +28,7 @@ export interface Composed {
   html: string;
   text: string;
   /** Variables the texts use that this e-mail could not fill: left out of it. */
-  warnings: { withoutValue: string[]; unknown: string[] };
+  warnings: { withoutValue: string[]; unknown: string[]; refusedPictures: string[] };
 }
 
 export function composeEmail(input: ComposeInput): Composed {
@@ -49,6 +49,7 @@ export function composeEmail(input: ComposeInput): Composed {
     warnings: {
       withoutValue: [...new Set([...subjectFilled.missing, ...body.missing, ...(legal?.missing ?? [])])],
       unknown: [...new Set([...subjectFilled.unknown, ...body.unknown, ...(legal?.unknown ?? [])])],
+      refusedPictures: [...new Set([...body.refusedPictures, ...(legal?.refusedPictures ?? [])])],
     },
   };
 }

@@ -4,6 +4,7 @@
  */
 
 import type { BlockKind } from '@/lib/email/rich';
+import { allowedImage } from '@/lib/theme/event-theme';
 
 export interface Edit {
   text: string;
@@ -80,4 +81,25 @@ export function linkAddressProblem(address: string): string | null {
   if (/^\{(link|terms|eventlink)\}$/i.test(value)) return null;
   if (/^(https?:\/\/|mailto:)[^\s()"<>]+$/i.test(value)) return null;
   return 'The address must start with https:// (or mailto:), or be {link}, {terms} or {eventlink}.';
+}
+
+/**
+ * A picture (issue 376) as a paragraph of its own after the paragraph with the cursor: the format reads a picture only when it is the whole paragraph. With a link the picture is
+ * written inside it, so a tap on the picture goes to the address. Brackets and line breaks in the description would end the markup early, so they become spaces.
+ */
+export function makePicture(text: string, cursor: number, src: string, description: string, link = ''): Edit {
+  const picture = `![${description.replace(/[[\]\r\n\s]+/g, ' ').trim()}](${src.trim()})`;
+  const markup = link.trim() ? `[${picture}](${link.trim()})` : picture;
+  if (!text.trim()) return { text: markup, start: markup.length, end: markup.length };
+  const { to } = paragraphAt(text, cursor);
+  const at = to + 2 + markup.length;
+  return { text: `${text.slice(0, to)}\n\n${markup}${text.slice(to)}`, start: at, end: at };
+}
+
+/** Why a picture cannot be added yet, in words for the editor; null when it can. The picture must be one the e-mail may load (the app's own storage). */
+export function pictureProblem(src: string, link: string): string | null {
+  const value = src.trim();
+  if (!value) return 'Choose a picture first.';
+  if (!/^https:\/\/[^\s()]+$/.test(value) || !allowedImage(value)) return 'This picture is not in the app\'s own storage, so the e-mail would not show it. Upload it or choose it from the library.';
+  return link.trim() ? linkAddressProblem(link) : null;
 }

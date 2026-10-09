@@ -114,3 +114,46 @@ test('the plain-text part has no markup: a link is its label and its address, pa
   assert.equal(text('# Title\n\nHi **Ann**, see [the photo](https://camera.test/p) or *later*\nBye'), 'Title\n\nHi Ann, see the photo (https://camera.test/p) or later\nBye');
   assert.equal(text('[https://camera.test/p](https://camera.test/p)'), 'https://camera.test/p', 'a label that is the address is not repeated');
 });
+
+const PIC = 'https://abc123.public.blob.vercel-storage.com/mail/banner.png';
+
+test('a paragraph that is only a picture becomes a centred picture, with its description as the alternative text', () => {
+  const out = html(`Hi\n\n![The stadium](${PIC})\n\nBye`);
+  assert.equal(parseRich(`![x](${PIC})`)[0].kind, 'picture');
+  assert.ok(out.includes(`<p style="margin:0 0 16px 0;text-align:center;"><img src="${PIC}" alt="The stadium" style="display:inline-block;max-width:100%;height:auto;border:0;" /></p>`), out);
+  assert.equal((out.match(/<p /g) ?? []).length, 3, 'the text around it is still two paragraphs');
+});
+
+test('a picture inside a link is a picture that is a link; a variable may be the address, and a missing one drops the link, not the picture', () => {
+  const out = html(`[![Banner](${PIC})]({link})`, { link: 'https://camera.test/share/abc' });
+  assert.ok(out.includes('<a href="https://camera.test/share/abc" style="text-decoration:none;"><img src="'), out);
+  assert.ok(html(`[![Banner](${PIC})](https://seyuselfies.com/hu/)`).includes('<a href="https://seyuselfies.com/hu/"'));
+  const unlinked = resolveRich(parseRich(`[![Banner](${PIC})]({link})`), { link: undefined }, URLS);
+  assert.equal(richHtml(unlinked.blocks, STYLE).includes('<a '), false);
+  assert.deepEqual(unlinked.missing, ['link']);
+  assert.equal(html(`[![Banner](${PIC})](javascript:x)`).includes('javascript'), false, 'an address that is not http(s) is no link');
+});
+
+test('a picture from anywhere but the app\'s own storage is left out and reported, never sent', () => {
+  const bad = ['https://evil.test/track.png?x=1', 'http://i.ibb.co/a/b.png', 'data:image/png;base64,AAAA', 'https://evilbl.public.blob.vercel-storage.com.evil.test/a.png'];
+  for (const src of bad) {
+    const resolved = resolveRich(parseRich(`Hi\n\n![x](${src})`), {}, URLS);
+    assert.deepEqual(resolved.refusedPictures, [src]);
+    assert.equal(richHtml(resolved.blocks, STYLE).includes('<img'), false, src);
+    assert.equal(richText(resolved.blocks), 'Hi');
+  }
+});
+
+test('the description and the address are escaped; a picture with other words around it is ordinary text', () => {
+  const out = html(`![a "quote" <b>](${PIC})`);
+  assert.ok(out.includes('alt="a &quot;quote&quot; &lt;b&gt;"') && !out.includes('<b>'), out);
+  const mixed = parseRich(`See ![x](${PIC}) here`);
+  assert.equal(mixed[0].kind, 'normal');
+  assert.equal(html(`See ![x](${PIC}) here`).includes('<img'), false);
+});
+
+test('the plain-text part names a picture by its description, and by its address when it is a link', () => {
+  assert.equal(text(`Hi\n\n![The stadium](${PIC})`), 'Hi\n\nThe stadium');
+  assert.equal(text(`[![Open the photo](${PIC})](https://camera.test/p)`), 'Open the photo: https://camera.test/p');
+  assert.equal(text(`![](${PIC})\n\nBye`), 'Bye', 'a picture with no description adds no empty line');
+});
