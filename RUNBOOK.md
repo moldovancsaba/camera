@@ -113,7 +113,8 @@ of the shutter, then the guest zooms and pans anywhere in it, presses "Continue"
 The full-size photo stays in the browser during the reframe step and is dropped afterwards; nothing is uploaded for it.
 
 - **Every touch device** (iPhone, iPad, Android phones and tablets, any browser): the device's own camera app, through a file
-  input with `capture`. The front camera is the first choice, "Use the back camera" is a second button. The photo is used
+  input with `capture`. The page has one "Take photo" button; the camera app opens on the front camera and the user changes between all
+  the cameras in it (the second "Use the back camera" button was removed, owner 2026-10-09). The photo is used
   as the camera gave it (an iPhone Air front camera: 18 MP, 4896 x 3672) with its EXIF orientation applied, not re-encoded;
   only a photo above 40 MP is scaled down once. There is no live view inside the page on these devices; the frame's boxes
   show in the reframe step. The camera app may add its own "Use photo" tap.

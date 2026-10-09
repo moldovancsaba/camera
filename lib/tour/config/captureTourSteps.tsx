@@ -21,8 +21,8 @@ export function getCaptureSelectFrameSteps(language: UiLanguage = 'en'): TourSte
 
 export function getCapturePhotoSteps(options: { hasMultipleFrames: boolean; method?: 'system' | 'still' | 'frame' | null; language?: UiLanguage }): TourStepConfig[] {
   const t = (key: Parameters<typeof translate>[1]) => translate(options.language ?? 'en', key);
-  // Touch devices take the photo with their own camera app (camera#257): there is no live shutter or camera switch on the
-  // page, only the "Take photo" button, so that is what the tour points at.
+  // Touch devices take the photo with their own camera app (camera#257): there is no live shutter on the page, only the "Take photo" button, so that is what
+  // the tour points at. Changing between the cameras is done in the camera app; the page has no switch (owner, 2026-10-09).
   const deviceCameraSteps: TourStepConfig[] = [
     {
       id: 'capture-take-photo',
@@ -38,17 +38,6 @@ export function getCapturePhotoSteps(options: { hasMultipleFrames: boolean; meth
       targetSelector: '[data-tour-id="capture-shutter"]',
       title: t('tour.takePhoto.title'),
       description: t('tour.shutter.text'),
-    },
-    {
-      id: 'capture-switch-camera',
-      targetSelector: '[data-tour-id="capture-switch-camera"]',
-      title: t('tour.switchCamera.title'),
-      description: t('tour.switchCamera.text'),
-      // Device-dependent -- CameraCapture only renders this button when
-      // hasMultipleCameras is true, and doesn't expose that state to the
-      // parent, so availability is checked against the live DOM instead.
-      isAvailable: () =>
-        typeof document !== 'undefined' && !!document.querySelector('[data-tour-id="capture-switch-camera"]'),
     },
   ];
 

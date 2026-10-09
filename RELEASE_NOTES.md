@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the back camera button and every camera switch are removed (owner, 2026-10-09, from a phone screenshot of the MTK x Vasas event; user-visible, on every event)
+
+- **Removed:** the second button on the photo screen of every phone, **"Use the back camera"** ("Hátsó kamera használata"). The page has one **Take photo** button that opens the device's own camera app on the front camera, where the user changes between all the cameras (owner: "we call the camera app where the user can change between all cameras, the button is fully obsolete").
+- **Removed from the system too:** the front/back switch of the live camera (the round button and the "Change camera" button of the bottom bar, `switchCamera`, the camera-count state), the `initialFacingMode` options of both camera components and the second file input (`capture="environment"`), the dictionary texts `camera.useBack`, `camera.useFront`, `camera.switch.aria`, `camera.changeCamera`, `tour.switchCamera.title` and `tour.switchCamera.text` (English and Hungarian), and the tour step that pointed at the switch. A test fails if any of them comes back (`components/camera/SystemCameraCapture.test.tsx`). Older submissions that recorded a back camera keep their record (the diagnostics still accept the value); nothing new can produce it.
+- **Not changed:** the front camera is the camera that opens, the photo is used as the camera gave it, the mirrored live view of a webcam, the Take photo button. The number of cameras a device lists is still counted for the anonymous diagnostics, with no control.
+- **Verified:** type-check; lint; unit tests (one button and one `capture="user"` input in English and Hungarian, no source or dictionary mentions the switch, the tour is the shutter and, with several frames, the frame step); the full CI chain. **Not seen on a phone** (the owner's phone has the last word).
+
 ## Unreleased — capture flow messages: one look, no overlap, no black veil (issue 441, client feedback from the MTK x Vasas event; user-visible, on every event)
 
 - **Fixed (owner, 2026-10-09, two phone screenshots):** the waiting-for-approval card and the share card were drawn over a **black 55 % blurred veil** that dimmed the whole page (the event's bright blue became dark teal); they now sit **beside the photo (landscape) or under it (portrait) as cards in the event's colours**, with no veil. The theme itself was imported correctly: the real MTK event gives page `#00b5e4`, cards `#f3f4f6`, text `#004c87`.
