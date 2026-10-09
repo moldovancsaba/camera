@@ -109,6 +109,7 @@ export const cameraAdminVocabularyPacks = [
     'move-up': { defaultMessage: 'Move up', icon: GdsIcons.TrendingUp, feedback: savedFeedback },
     'move-down': { defaultMessage: 'Move down', icon: GdsIcons.TrendingDown, feedback: savedFeedback },
     edit: { defaultMessage: 'Edit', icon: GdsIcons.Edit, feedback: savedFeedback },
+    'customise-default': { defaultMessage: 'Customise', icon: GdsIcons.Edit, feedback: savedFeedback },
     delete: { defaultMessage: 'Delete', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'add-who-are-you': { defaultMessage: 'Add identity page', icon: GdsIcons.Add, feedback: savedFeedback },
     'add-accept': { defaultMessage: 'Add accept page', icon: GdsIcons.Add, feedback: savedFeedback },

@@ -36,6 +36,7 @@ import { FormSection } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import type { TryOnSetup } from '@/lib/db/schemas';
+import type { JourneyContext } from '@/lib/events/journey';
 import type { TryOnSuitOption } from '@/lib/tryon/suits';
 import type { EventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 import {
@@ -96,6 +97,8 @@ interface EventRecord {
   greatestHitsSlug?: string;
   eventId?: string;
   customPages?: CustomPage[];
+  /** What decides which default pages the event gets: the page editor builds the journey from it (camera#378). */
+  journeyContext?: JourneyContext;
   tryOn?: {
     enabled?: boolean;
     setupId?: string | null;
@@ -1154,6 +1157,7 @@ export default function EditEventPage({
         key={customPages.length}
         eventId={mongoId}
         initialPages={customPages}
+        journeyContext={event?.journeyContext}
         onSave={async (pages) => {
           try {
             const response = await fetch(`/api/events/${mongoId}`, {

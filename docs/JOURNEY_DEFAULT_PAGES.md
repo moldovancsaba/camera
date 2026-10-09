@@ -10,6 +10,16 @@ Welcome page, **consent page**, **login page** ("Who are you?"), selfie taking, 
 - **Login page**: unchanged in content; added for an event that requires vetting (all events now) when it has no login page before the photo. It now sits after the consent page: an event's own consent page right after the welcome page keeps the login behind it.
 - **An event's own pages win**: an own consent or login page before the photo is kept and no default of that kind is added.
 
+## The journey view in the page editor (camera#378, items 134 to 137)
+
+The list in the event editor ("Pages of the user journey", `components/admin/CustomPagesManager.tsx`) is the journey **as the user goes through it**, built by `effectiveJourney` (`lib/events/journey.ts`) from the stored pages with the **same function the user's page uses** (`withDefaultJourneyPages`), so the editor and the user cannot disagree (a test compares them). What decides which defaults the event gets (`vettingRequired`, `consentDefault`, `language`) comes from `GET /api/events/<id>` as `journeyContext`.
+
+- **Own pages** are listed as before (move, edit, delete); a page that is switched off stays in the list, marked "Switched off", because the editor must be able to reach it.
+- **Default pages** (the consent and the login page) are rows marked **Default**, with a sentence saying why they are there. They cannot be deleted or moved; they stay in their place (welcome first, then consent, then login) whatever the own pages do.
+- **Customise** opens the editor on a **new own page filled with the default's texts, in the default's place**; it is stored only when the editor saves the page and then "Save Pages". The own page wins, so the user's journey does not change by it. **Deleting the own page brings the default back.**
+- **Built-in steps** are rows marked **Built in**, after the take-photo page: the waiting screen (with approval) or the share screen (without), the e-mails and the public photo page. They are not pages; each says where its texts are edited.
+- **Not yet:** a default **welcome page**. None is added for the user today, so none is listed; it comes with the welcome page screen (docs/BUILDING_BRICKS.md, steps 7 and 8), and its text needs the dictionary levels first.
+
 ## The consent page
 
 The `accept` page type takes a **list of checkboxes** (`config.checkboxes`: a text and an optional https link each, up to ten), all required: Continue works only when every one is ticked. A page that only has the older single `checkboxText` shows one checkbox, exactly as before. The finished page leaves **one consent record per checkbox** in the submission's `consents` list (the exact text, the link, the time; `UserConsent.linkUrl` is new and optional). The server does not refuse a photo without a recorded consent (owner decision, item 43): the page itself blocks the user. The admin pages editor edits the list (add, remove, text, link); saving drops a link that is not https and any checkbox without a text.

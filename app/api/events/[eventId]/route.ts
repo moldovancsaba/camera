@@ -202,7 +202,9 @@ export const GET = withErrorHandler(async (
   }
 
   // The default consent page comes with the journey defaults: an event created with them, or any event once the global switch is on (camera#330).
-  const consentDefault = forGuest ? eventGetsDefaults(event as { journeyDefaults?: unknown }, await getDefaultsRollout(db)) : false;
+  // The page editor asks too (camera#378): it shows the journey from the same function, so it needs to know which defaults the event gets.
+  const consentDefault = eventGetsDefaults(event as { journeyDefaults?: unknown }, await getDefaultsRollout(db));
+  const language = normalizeUiLanguage((event as { uiLanguage?: unknown }).uiLanguage);
 
   // Return event with serialized _id
   // customPages is included automatically
@@ -210,8 +212,10 @@ export const GET = withErrorHandler(async (
     event: {
       ...publicEvent,
       theme: await loadEventTheme(db, event as unknown as Record<string, unknown>),
-      ...(forGuest ? { customPages: withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language: normalizeUiLanguage((event as { uiLanguage?: unknown }).uiLanguage) }) } : {}),
+      ...(forGuest ? { customPages: withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language }) } : {}),
       photoVettingRequired: vettingRequired,
+      // What decides which default pages this event gets (lib/events/journey.ts): the page editor builds the journey from it.
+      journeyContext: { vettingRequired, consentDefault, language },
       _id: event._id.toString(),
       generatedFrame: captureFrameOf({ frames: event.frames, frameDesign: frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'] }),
     }
