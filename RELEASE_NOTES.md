@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — research: why the giant-screen slideshow can freeze for 10 to 20 seconds (issue 476; documentation only, nothing is changed)
+
+- **Added (docs):** `docs/_research/SLIDESHOW_FREEZE_RESEARCH.md`, the read-only investigation of the client feedback that the slideshow freezes although it pre-loads continuously: how the player loads and caches today, eleven ranked root-cause candidates with file and line references, the research on newer ways (as of October 2026), a small-step fix plan (S0 to S8) with how to verify each, and the instrumentation to add first so the next freeze leaves evidence.
+- **Most likely cause (a judgement from the code and a simulation of our own queue, not yet seen on the live screen):** the refill asks the server for the least played photo without sending what is already queued and appends the answer without a duplicate check, so in the default fixed order the queue fills with copies of the same photo: runs of buffer size + 1 identical slides (20 s at buffer 3, 55 s at the default 10 with a 5 s hold). Second: no timeout on any request and a single-flight refill lock, so one stalled request stops refilling. The cheapest check (the slideshow's order, buffer and hold in the admin, and the photo ids in the network log) is in the report and on the issue.
+- **Verified:** the central lines of the code and the simulation numbers were re-read and re-run. **Nothing was run against the live screen, the database or production.** The fix is the owner's decision (issue 476).
+
 ## Unreleased — e-mails to the user, segment E8: the welcome and arrived e-mails are sent when an event switches them on (epic 463, issue 474)
 
 - **Added (owner, 2026-10-09; answer 201):** **welcome** is sent when the user is **identified**, before the photo: the capture page tells the server (`POST /api/events/<id>/register`) the name and e-mail the user typed on the "Who are you" step or signed in with, and only for an event that has welcome on. It is sent **once for each event and address** (one row in the new `email_registrations`, claimed before the send, given back if the send fails). The address is not verified, so the e-mail is the welcome note and the link to the event (its short link when it has a URL slug); the answer never says whether an e-mail went.
