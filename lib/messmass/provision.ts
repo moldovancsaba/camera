@@ -18,7 +18,7 @@ import { after } from 'next/server';
 import { refreshFrameDesign } from '@/lib/frame/sync';
 import { generateFrameVariants } from '@/lib/frame/variants';
 import { defaultPhotoVetting } from '@/lib/events/photo-vetting';
-import { collectMessmassLogo } from '@/lib/library/messmass-logo';
+import { collectMessmassLogo, nextPartnerLogoUrl } from '@/lib/library/messmass-logo';
 
 function ci(name: string) {
   return { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
@@ -76,7 +76,12 @@ export async function upsertPartner(input: { messmassPartnerId?: string; name: s
     const set: Record<string, unknown> = { updatedAt: now };
     if (input.messmassPartnerId) set.messmassPartnerId = input.messmassPartnerId;
     if (input.organizationId) set.organizationId = input.organizationId;
-    if (input.logoUrl && !partner.logoUrl) set.logoUrl = input.logoUrl;
+    if (input.logoUrl) {
+      // A new logo from messmass replaces the address camera took from it earlier, never one that was set by hand (camera#419).
+      const imported = (await db.collection(COLLECTIONS.LOGOS).find({ scope: 'partner', partnerId: partner.partnerId, source: 'messmass' }).toArray()).map((doc) => String(doc.sourceUrl ?? ''));
+      const next = nextPartnerLogoUrl(partner.logoUrl, input.logoUrl, imported);
+      if (next) set.logoUrl = next;
+    }
     await db.collection(COLLECTIONS.PARTNERS).updateOne({ _id: partner._id }, { $set: set });
     collectPartnerLogoLater(String(partner.partnerId), String(set.logoUrl || partner.logoUrl || ''));
     return { partnerId: partner.partnerId, name: partner.name, created: false, linked: true };
