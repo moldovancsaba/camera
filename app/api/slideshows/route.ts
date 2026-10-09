@@ -17,6 +17,7 @@ import {
 } from '@/lib/gds/tokens/colors';
 import { normalizeStageAspectInput } from '@/lib/slideshow/stage-aspect';
 import { parseScreenDesign } from '@/lib/slideshow/screen-design';
+import { scheduleWelcomeScreen } from '@/lib/screen/welcome-screen-store';
 import {
   getPartnerScopedAccessForEvent,
   getPartnerScopedAccessForEventUuid,
@@ -354,6 +355,12 @@ export async function PATCH(request: NextRequest) {
       { $set: updates },
       { returnDocument: 'after' }
     );
+
+    // The welcome page screen follows the default slideshow: a changed screen design redraws the picture the event already has.
+    if (existing.isDefault === true && screenDesign !== undefined) {
+      const event = await db.collection(COLLECTIONS.EVENTS).findOne({ eventId: existing.eventId }, { projection: { _id: 1 } });
+      if (event) scheduleWelcomeScreen(event._id, { onlyIfExists: true });
+    }
 
     return NextResponse.json({ success: true, slideshow: result });
   } catch (error) {

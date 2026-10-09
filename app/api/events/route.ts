@@ -31,7 +31,7 @@ import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
 import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
 import { defaultPhotoVetting } from '@/lib/events/photo-vetting';
-import { scheduleDefaultSlideshow } from '@/lib/slideshow/default-slideshow';
+import { scheduleScreenForNewEvent } from '@/lib/screen/new-event-screen';
 import { trackedSlugExists } from '@/lib/short-links/store';
 
 function normalizeEventNotificationSettings(value: unknown) {
@@ -283,7 +283,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   };
 
   const result = await db.collection(COLLECTIONS.EVENTS).insertOne(event);
-  scheduleDefaultSlideshow(result.insertedId);
+  scheduleScreenForNewEvent(result.insertedId);
 
   return apiCreated({
     event: {

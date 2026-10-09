@@ -11,6 +11,8 @@ const ADMIN = { appRole: 'admin', user: { id: 'a1', email: 'admin@example.com', 
 type RouteModule = typeof import('./route');
 const importRoute = (caseId: string) => import('./route?case=' + caseId) as Promise<RouteModule>;
 
+const refreshes: Array<{ eventId: unknown; options: unknown }> = [];
+
 function setup(t: TestContext, options: { denied?: boolean; ensure?: { ok: true; slideshowId: string; created: boolean } | { ok: false; reason: string } } = {}) {
   const seeded = fakeDb({
     events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', name: 'Event', partnerId: 'P' }],
@@ -21,6 +23,8 @@ function setup(t: TestContext, options: { denied?: boolean; ensure?: { ok: true;
     ],
   });
   const roles: string[] = [];
+  refreshes.length = 0;
+  t.mock.module('@/lib/screen/welcome-screen-store', { namedExports: { scheduleWelcomeScreen: (eventId: unknown, options: unknown) => refreshes.push({ eventId, options }) } });
   t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
   t.mock.module('@/lib/api', { namedExports: { ...apiReal, requireAuth: async () => ADMIN, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/partners/authorization', {
@@ -61,6 +65,7 @@ test('PUT makes another slideshow of the event the default and takes the flag of
   const response = await PUT(req('PUT', { slideshowId: 's-new' }), params);
   assert.equal(response.status, 200);
   assert.deepEqual(flags(data), { 's-old': false, 's-new': true, 's-other': false });
+  assert.deepEqual(refreshes.map((r) => r.options), [{ onlyIfExists: true }], 'a welcome page screen picture the event already has is redrawn from the new default; none is made for an event without one');
 });
 
 test('PUT refuses a slideshow of another event or an unknown one, and changes nothing', async (t) => {
@@ -70,6 +75,7 @@ test('PUT refuses a slideshow of another event or an unknown one, and changes no
   assert.equal((await PUT(req('PUT', { slideshowId: 'nope' }), params)).status, 404);
   assert.equal((await PUT(req('PUT', {}), params)).status, 400);
   assert.deepEqual(flags(data), { 's-old': true, 's-new': false, 's-other': false });
+  assert.equal(refreshes.length, 0);
 });
 
 test('without access nothing is changed', async (t) => {

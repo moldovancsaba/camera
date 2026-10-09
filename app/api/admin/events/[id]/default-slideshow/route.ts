@@ -14,6 +14,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { apiBadRequest, apiError, apiNotFound, apiSuccess, checkRateLimit, RATE_LIMITS, requireAuth, withErrorHandler } from '@/lib/api';
 import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
+import { scheduleWelcomeScreen } from '@/lib/screen/welcome-screen-store';
 import { ensureDefaultSlideshow } from '@/lib/slideshow/default-slideshow';
 
 type RouteContext = { params?: Promise<{ id: string }> };
@@ -48,5 +49,7 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
   if (!own) throw apiNotFound('Slideshow');
   await slideshows.updateOne({ slideshowId }, { $set: { isDefault: true, updatedAt: generateTimestamp() } });
   await slideshows.updateMany({ eventId: event.eventId, slideshowId: { $ne: slideshowId }, isDefault: true }, { $unset: { isDefault: '' } });
+  // The welcome page screen follows its source: a picture the event already has is drawn again from the new default (an event without one gets none from this).
+  scheduleWelcomeScreen(event._id, { onlyIfExists: true });
   return apiSuccess({ slideshowId });
 });
