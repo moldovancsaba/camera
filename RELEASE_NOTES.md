@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — layout and message selection, segment S4: previews of the layouts (epic 444, issue 448; an admin screen and nothing user-visible)
+
+- **Added:** the panel **How users get the layout and the message** (event Frames page) shows **The layouts** with a picture of each: a design is shown with its first message, the generated layout with its first message, a complete frame of the event's own as it is, and the layout the editor chose for users is marked. The messages are listed under them. The pictures are the images already drawn (nothing is drawn for this), read with the options (`withPreviews`).
+- **Already there:** the design step of the capture flow (segment S2) shows every design with its first message (or the message the user chose when the design carries it), and the frame step shows each complete frame as it is.
+- **Verified:** type-check; lint; unit tests (previews from the drawn images, a complete frame as it is, none without a picture); the full CI chain.
+
 ## Unreleased — layout and message selection, segment S5: the dark area of the design in the shoot (epic 444, issue 447; only an event whose editor saved the setting sees a change)
 
 - **Added (owner, 2026-10-09, answer 189):** a **complete frame of the event's own** is shown in the move-and-zoom step as its **dark area: the whole non-transparent graphic at 50 % black**, as the frame of a vetted event already was, **for an event whose editor saved the selection setting**; the real frame shows again in the preview. An event that never saved it keeps the real frame there, exactly as before (to be switched for every event only on the owner's word).

@@ -106,6 +106,6 @@ The image of a photo is drawn when the camera step opens (S2), so the live view 
 | S1 #445 selection settings | built, pull request #455 |
 | S3 #449 messages per design | built (this pull request); S1 #445 merged as #455 |
 | S2 #446 capture flow | built (this pull request), stacked on S3 #449 |
-| S4 #448 layout previews | after S2 |
+| S4 #448 layout previews | built (this pull request), stacked on S5 #447 |
 | S5 #447 dark area | built (this pull request), stacked on S2 #446 |
 | S6 #450, S7 #451, S8 #452, S9 #453 | after the match |
