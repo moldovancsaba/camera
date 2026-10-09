@@ -102,3 +102,22 @@ test('a user without manager access to the partner cannot upload for it', async 
   assert.deepEqual(stored, []);
   assert.equal(data.frames.length, 0);
 });
+
+test('a logo uploaded with slot=logo becomes one of the partner\'s logos at once (camera#419), next to the ones it has', async (t) => {
+  const { data } = setup(t);
+  (data.partners[0] as Record<string, unknown>).slots = { logo: { items: ['existing'] } };
+  const { POST } = await importRoute('slot-logo');
+  (data.logos as Array<Record<string, unknown>>).push({ logoId: 'existing', name: 'Existing', imageUrl: 'https://img.example/e.png', isActive: true, scope: 'partner', partnerId: 'P' });
+  const response = await POST(post({ kind: 'logos', slot: 'logo', name: 'New logo' }, png()), params);
+  assert.equal(response.status, 201);
+  const own = data.logos.find((logo) => logo.name === 'New logo') as Record<string, unknown>;
+  assert.equal(own.scope, 'partner');
+  assert.deepEqual((data.partners[0] as { slots: { logo: { items: string[] } } }).slots.logo.items, ['existing', own.logoId as string]);
+});
+
+test('a logo uploaded without a slot only joins the partner library, as before', async (t) => {
+  const { data } = setup(t);
+  const { POST } = await importRoute('no-slot');
+  assert.equal((await POST(post({ kind: 'logos', name: 'Plain' }, png()), params)).status, 201);
+  assert.equal((data.partners[0] as { slots?: unknown }).slots, undefined);
+});

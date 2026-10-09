@@ -1,6 +1,7 @@
 /**
  * Partner library upload (camera#361): POST a file as an item that belongs to this partner (`scope: 'partner'`). It is in the partner's library at
- * once and no other partner can take it. Multipart: `kind`, `file`, `name`, `description?`, `category?`. Partner managers and global admins.
+ * once and no other partner can take it. Multipart: `kind`, `file`, `name`, `description?`, `category?`; for a logo also `slot=logo` (camera#419) to make it
+ * one of the partner's logos at once. Partner managers and global admins.
  */
 
 import { NextRequest } from 'next/server';
@@ -10,6 +11,9 @@ import { assertPartnerMongoWorkspaceAccess } from '@/lib/partners/authorization'
 import { parseKind } from '@/lib/library/kinds';
 import { createLibraryItem } from '@/lib/library/upload';
 import { itemView } from '@/lib/library/db';
+import { generateTimestamp } from '@/lib/db/schemas';
+import { LOGO_SLOT } from '@/lib/slots/logo';
+import { addLogoToPartnerSlot } from '@/lib/slots/logo-store';
 
 export const POST = withErrorHandler(async (request: NextRequest, context: { params: Promise<{ partnerId: string }> }) => {
   const session = await requireAuth();
@@ -30,5 +34,9 @@ export const POST = withErrorHandler(async (request: NextRequest, context: { par
     owner: { scope: 'partner', partnerId: String(partner.partnerId) },
   });
   if (!result.ok) throw apiBadRequest(result.reason);
+  if (kind === 'logos' && form.get('slot') === LOGO_SLOT) {
+    const added = await addLogoToPartnerSlot(db, partner, String(result.item.logoId), generateTimestamp());
+    if (!added.ok) throw apiBadRequest(added.reason);
+  }
   return apiCreated({ item: itemView(kind, result.item) });
 });
