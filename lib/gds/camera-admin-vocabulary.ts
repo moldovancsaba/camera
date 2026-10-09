@@ -59,6 +59,7 @@ export const cameraAdminVocabularyPacks = [
     'editor-action': { defaultMessage: 'Slideshow action', icon: GdsIcons.Edit, feedback: savedFeedback },
     'make-default': { defaultMessage: 'Make default', icon: GdsIcons.Check, feedback: savedFeedback },
     'create-default': { defaultMessage: 'Create the default slideshow', icon: GdsIcons.Add, feedback: savedFeedback },
+    'draw-welcome-screen': { defaultMessage: 'Draw the welcome page screen', icon: GdsIcons.Capture, feedback: savedFeedback },
   }),
   createGdsVocabularyPack('slideshow-layouts', {
     create: { defaultMessage: 'Create layout', icon: GdsIcons.Add, feedback: savedFeedback },

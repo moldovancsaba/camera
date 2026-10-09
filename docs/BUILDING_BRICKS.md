@@ -193,7 +193,7 @@ Each step ships alone, is checked in a real browser at phone width where it is v
 | **5 Pictures on slots** | the picture fields as slots; library tags (sample selfie, stadium background, QR text) | 3 | #368 |
 | **6 Text levels** | the Dictionary (global default texts, English and Hungarian), partner and event levels, the partner's default language, the default pages' texts at every level | 3 | #353, plan item 19 |
 | **7 Default slideshow** | generated per event from the default elements, with the default flag and the written address (URL text). **7a done:** the stage layout, the generated picture, the tracked "Giant screen" link, the call to action from the dictionary, `isDefault`, the creation hook for new events, "Create" and "Make default" on the slideshows list (docs/SCREEN_DESIGN.md). The sample selfie fallback waits for the picture slots | none of 5 and 6 (see the note below) | #326, #328 |
-| **8 Welcome page screen** | the layout and the renderer of 6.2; the picture follows its sources | 7 | #327 |
+| **8 Welcome page screen** | the layout and the renderer of 6.2; the picture follows its sources. **8a done:** the server renderer, the stored picture `Event.welcomeScreen` keyed by its sources, drawn for new events, on request, and again when the default slideshow changes (docs/SCREEN_DESIGN.md). **8b:** the default welcome page that shows it, for events that have the picture | 7 | #327 |
 | **9 Toggles** | random or user-selected frame and message; frame toggles with positions | frames model | #329, #331 |
 | **10 Workspaces** | the editors regrouped into global, partner and event workspaces, one editor at a time while 3 to 9 land, the menu last (shown to the owner as screens first) | runs along 3 to 9 | #412 |
 
