@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { CaptureFrame, CaptureSelection, CaptureVariant } from './capture';
+import { territoriesOf } from './capture';
 import { NO_CHOICE, chooseLayout, drawOwnFrame, drawVariant, fitting, layoutIdOf, layoutsToChoose, messagesToChoose, nextStep, variantKeyOf, type Choice } from './choose';
 
 /** The MTK x Vasas event: blue carries messages 0 and 1, pink carries 2 and 3; message 0 is also on pink (a message on several designs). */
@@ -147,4 +148,34 @@ test('the frames of the event’s own: the editor’s pick, a random one that is
   for (const r of [0, 0.4, 0.99]) assert.notEqual(drawOwnFrame(own, RANDOM, 'a', () => r)?.frameId, 'a');
   assert.equal(drawOwnFrame([{ frameId: 'only' }], RANDOM, 'only')?.frameId, 'only');
   assert.equal(drawOwnFrame([], RANDOM, null), null);
+});
+
+/** The message area layers of the two real MTK x Vasas frames (blue and pink): a header and a footer bar of the 1920 x 1080 picture. */
+const MTK_LAYERS: CaptureVariant['layers'] = [
+  { id: 'header', x: 0, y: 0, width: 1920, height: 100 },
+  { id: 'footer', x: 0, y: 980, width: 1920, height: 100 },
+];
+
+test('the dark area is that of the design the photo gets: the real MTK header and footer on both designs', () => {
+  const real = VARIANTS.map((v) => ({ ...v, layers: MTK_LAYERS }));
+  const both = frame(sel(USER, USER), real);
+  for (const layoutId of ['blue', 'pink']) {
+    const drawn = drawVariant(both, { layoutId, messageIndex: layoutId === 'blue' ? 1 : 2 }, null)!;
+    assert.equal(layoutIdOf(drawn), layoutId);
+    const boxes = territoriesOf(drawn);
+    assert.deepEqual(boxes.map((box) => box.id), ['header', 'footer']);
+    assert.deepEqual(boxes[0], { id: 'header', left: 0, top: 0, width: 1, height: 100 / 1080 });
+    assert.deepEqual(boxes[1], { id: 'footer', left: 0, top: 980 / 1080, width: 1, height: 100 / 1080 });
+  }
+});
+
+test('a design with another layout has another dark area, and a change of design changes it', () => {
+  const split = VARIANTS.map((v) => ({ ...v, layers: v.frameId === 'blue' ? [MTK_LAYERS[0]] : [MTK_LAYERS[1]] }));
+  const both = frame(sel(USER, USER), split);
+  const onBlue = drawVariant(both, { layoutId: 'blue', messageIndex: 0 }, null)!;
+  const moved = chooseLayout(both, { layoutId: 'blue', messageIndex: 0 }, 'pink');
+  const onPink = drawVariant(both, moved, null)!;
+  assert.deepEqual(territoriesOf(onBlue).map((box) => box.id), ['header']);
+  assert.deepEqual(territoriesOf(onPink).map((box) => box.id), ['footer']);
+  assert.equal(onPink.index, 0, 'the message stayed because pink offers it');
 });

@@ -50,6 +50,7 @@ import { frameSilhouette } from '@/lib/frame/silhouette';
 import { pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory } from '@/lib/frame/capture';
 import { NO_CHOICE, chooseLayout, drawOwnFrame, drawVariant, layoutIdOf, layoutsToChoose, messagesToChoose, nextStep, variantKeyOf, type Choice } from '@/lib/frame/choose';
 import { storedFrameSelection } from '@/lib/frame/selection';
+import { needsSilhouette, reframeOverlayUrl } from '@/lib/frame/dark-area';
 import SystemCameraCapture from '@/components/camera/SystemCameraCapture';
 import { captureOverride, chooseCaptureMethod, hasStillCapture, type CaptureMethod } from '@/lib/camera/still-capture';
 import { pickRandom } from '@/lib/slots/resolve';
@@ -604,10 +605,12 @@ export default function EventCapturePage({
     };
   }, [selectedFrame?.frameId, selectedFrame?.imageUrl, selectedFrame?.generated]);
 
-  // The own frame of a vetted event is shown as a silhouette, never as the real frame (camera#265).
+  // The own frame of a vetted event is shown as a silhouette, never as the real frame (camera#265); so is the own frame of an event whose editor saved how users get the layout, as its
+  // dark area in the shoot (epic 444, lib/frame/dark-area.ts).
+  const hasSelection = storedFrameSelection(event?.frameSelection) !== null;
   const ownFrameUrl = selectedFrame && !selectedFrame.generated ? selectedFrame.imageUrl : null;
   useEffect(() => {
-    if (!vetted || !ownFrameUrl) {
+    if (!needsSilhouette({ vetted, hasSelection }) || !ownFrameUrl) {
       setSilhouetteUrl(null);
       return;
     }
@@ -618,7 +621,7 @@ export default function EventCapturePage({
     return () => {
       cancelled = true;
     };
-  }, [vetted, ownFrameUrl]);
+  }, [vetted, hasSelection, ownFrameUrl]);
 
   const compositeImageWithFrame = useCallback(async () => {
     if (!capturedImage || !selectedFrame) return;
@@ -1697,7 +1700,7 @@ export default function EventCapturePage({
               frameAspect={captureAspect}
               // The generated frame shows as territories until the preview step; own frames as before. A vetted event
               // never shows the real frame: its own frame shows as a silhouette (camera#265).
-              frameImageUrl={vetted ? silhouetteUrl : selectedFrame?.generated ? null : selectedFrame?.imageUrl ?? null}
+              frameImageUrl={reframeOverlayUrl({ vetted, hasSelection, generated: Boolean(selectedFrame?.generated), frameUrl: selectedFrame?.imageUrl ?? null, silhouetteUrl })}
               territories={selectedFrame?.generated?.territories}
               buttonSize={eventButtonSize}
               onDone={handleReframeDone}
