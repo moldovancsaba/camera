@@ -138,6 +138,15 @@ Behavior:
 - **When the server has nothing new** (a pool smaller than the queue, or the network is down) the loop goes on from the **seed**, every slide the player has received, in the order it arrived, continuing after the slide the queue ends with (`appendFromSeed`). With one slide left in the queue the player moves on to the next slide of the seed instead of repeating the same picture.
 - A photo added while the show runs reaches the end of the queue at the next refill, so it appears about `bufferSize` slides later; a shallower `bufferSize` shows new photos sooner.
 
+**Every wait is bounded** (camera#476, step S3; `lib/slideshow/resilience.ts`, `lib/slideshow/preload.ts`):
+
+- A request to our server (playlist, logos, played) gives up after **8 s** (5 s for the logo), covering the body too. A screen that cannot start shows the error and **tries again by itself** after 1, 2, 4, 8, then every 15 s.
+- A picture gets **20 s** from the moment its load starts (not from the time spent waiting for a place). A picture that is too slow is reported as failed to the refill but **keeps loading**; if it arrives later it is ready. At most **3 loads run at a time**, in the order they were asked for; the first pictures at start skip the line; a load that hangs gives its place back after the deadline.
+- A **photo whose picture does not load** is not appended and not retried for 2 minutes; its id is sent in `exclude` so the server does not hand it out again at once. At start, only slides whose picture loaded start the show, the refill fills the gap.
+- The refill appends **each slide as soon as its picture is ready** (no waiting for the slowest) and **releases its single-flight lock after 20 s** whatever is still in flight. After a failed answer the next refill waits 1, 2, 4, 8, then 15 s; a good answer ends the waiting.
+- The preloader keeps only the pictures of the queue (the browser's HTTP cache holds the rest), and the first 4 slides of the queue are kept loaded; before, the whole queue was preloaded again at every change and nothing was ever released.
+- What this does not do yet: decode the picture before the swap and show two layers (step S4), show the first picture before all start pictures are loaded (S5), cheaper server calls (S6), screen-sized pictures (S7), a watchdog and a scheduled soft reload (S8).
+
 The player is used in:
 
 - fullscreen slideshow pages

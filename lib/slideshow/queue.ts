@@ -35,10 +35,14 @@ export function mergeSeed<S extends QueueSlide>(existing: S[] | null, chunk: S[]
   return base;
 }
 
-/** The submission ids the queue holds, for the `exclude` parameter of the playlist call. */
-export function excludeIds(queue: QueueSlide[], cap: number = EXCLUDE_CAP): string[] {
+/**
+ * The submission ids for the `exclude` parameter of the playlist call: those the queue holds, then `also` (photos whose picture would not
+ * load a moment ago, so the server does not hand them out again at once). The queue's ids come first when the cap cuts.
+ */
+export function excludeIds(queue: QueueSlide[], also: Iterable<string> = [], cap: number = EXCLUDE_CAP): string[] {
   const ids = new Set<string>();
   for (const slide of queue) for (const sub of slide.submissions) ids.add(sub._id);
+  for (const id of also) ids.add(id);
   return [...ids].slice(0, cap);
 }
 
@@ -78,12 +82,6 @@ export function appendFromSeed<S extends QueueSlide>(queue: S[], seed: S[] | nul
     out.push(cloneSlide(i < unseen.length ? unseen[i] : ordered[(resume + i - unseen.length) % ordered.length]));
   }
   return out;
-}
-
-/** What the server's answer does to the queue: its fresh slides, or - when it has nothing new for us - the loop continued from the seed. */
-export function mergeAnswer<S extends QueueSlide>(queue: S[], answer: S[], seed: S[] | null, target: number): S[] {
-  const next = appendFresh(queue, answer, target);
-  return next === queue ? appendFromSeed(queue, seed, target) : next;
 }
 
 /**

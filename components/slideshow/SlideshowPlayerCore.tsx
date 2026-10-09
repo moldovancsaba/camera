@@ -13,6 +13,8 @@ import { pickRandom } from '@/lib/slots/resolve';
 import SlideshowDebugPanel from '@/components/slideshow/SlideshowDebugPanel';
 import { useSlideshowDiagnostics } from '@/components/slideshow/useSlideshowDiagnostics';
 import { hostOf, shortId } from '@/lib/slideshow/diagnostics';
+import { PRELOAD_FAIL_TTL_MS, createPreloader } from '@/lib/slideshow/preload';
+import { fetchWithTimeout, nextBackoffMs } from '@/lib/slideshow/resilience';
 import ScreenDesignLayers, { screenWindowStyle } from '@/components/slideshow/ScreenDesignLayers';
 import type { ResolvedScreenDesign } from '@/lib/slideshow/screen-design';
 import {
@@ -29,9 +31,10 @@ import {
 } from '@/lib/slideshow/viewport-scale';
 import {
   advanceLoop,
+  appendFresh,
+  appendFromSeed,
   excludeIds,
   freshSlides,
-  mergeAnswer,
   mergeSeed,
   slideKey,
 } from '@/lib/slideshow/queue';
@@ -133,6 +136,25 @@ function viewportModeForStage(
   return slideshowViewportScale === 'fill' ? 'fill' : 'fit';
 }
 
+/** A request to our own server gives up after this; the picture loads have their own, longer deadline (lib/slideshow/preload.ts). */
+const API_TIMEOUT_MS = 8000;
+/** The loading-screen logo is not worth holding the start for. */
+const LOGO_TIMEOUT_MS = 5000;
+/** One refill releases the single-flight lock after this, whatever is still in flight. */
+const REFILL_LOCK_MAX_MS = 20_000;
+/** How many slides at the head of the queue are kept loaded; deeper ones were loaded when they were appended. */
+const PRELOAD_AHEAD = 4;
+
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('image failed'));
+    img.src = url;
+  });
+}
+
 /** The browser's own timings of one picture (the last fetch, and how often it was fetched), for the diagnostics. Inline pictures have none. */
 function pictureTimings(url: string): { fetches: number; last?: PerformanceResourceTiming } {
   if (url.startsWith('data:')) return { fetches: 0 };
@@ -164,7 +186,13 @@ export function SlideshowPlayerCore({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const hideControlsTimeout = useRef<NodeJS.Timeout | null>(null);
-  const preloadedImages = useRef<Map<string, HTMLImageElement>>(new Map());
+  const [preloader] = useState(() => createPreloader<HTMLImageElement>({ load: loadImage }));
+  /** Photos whose picture would not load, until when: not asked for again, not queued, for a few minutes. */
+  const brokenRef = useRef<Map<string, number>>(new Map());
+  const refillBackoffRef = useRef({ ms: 0, until: 0 });
+  const loadBackoffRef = useRef(0);
+  const loadRetryTimerRef = useRef<number | null>(null);
+  const loadRef = useRef<() => Promise<void>>(async () => undefined);
   const pendingInitialDelayRef = useRef(delayMs > 0);
   const onceInitialRef = useRef<Slide[] | null>(null);
   const settingsRef = useRef<SlideshowSettings | null>(null);
@@ -193,7 +221,7 @@ export function SlideshowPlayerCore({
       active: settingsRef.current !== null && isPlayingRef.current && slideQueueRef.current.length > 0,
       holdMs: transitionMsRef.current,
       queueLen: slideQueueRef.current.length,
-      preloaded: preloadedImages.current.size,
+      preloaded: preloader.size(),
       busy: refillBusyRef.current,
     }),
   });
@@ -227,44 +255,33 @@ export function SlideshowPlayerCore({
     pendingInitialDelayRef.current = delayMs > 0;
   }, [slideshowId, delayMs, instanceKey]);
 
-  const preloadImage = useCallback((url: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      if (preloadedImages.current.has(url)) {
-        resolve();
-        return;
-      }
-
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      const startedAt = performance.now();
-      img.onload = () => {
-        preloadedImages.current.set(url, img);
-        record('preload', { ms: performance.now() - startedAt, outcome: 'ok', bytes: pictureTimings(url).last?.transferSize || undefined, host: hostOf(url) });
-        resolve();
-      };
-      img.onerror = () => {
-        console.warn(`Failed to preload image: ${url}`);
-        record('preload', { ms: performance.now() - startedAt, outcome: 'error', host: hostOf(url) });
-        reject();
-      };
-      img.src = url;
-    });
-  }, [record]);
-
+  /** Loads every picture of a slide (bounded, at most a few at a time) and says whether all of them are ready. A photo that fails is remembered as broken for a while. */
   const preloadSlide = useCallback(
-    async (slide: Slide): Promise<void> => {
-      await Promise.allSettled(
+    async (slide: Slide, urgent = false): Promise<boolean> => {
+      const results = await Promise.all(
         slide.submissions.map(async (sub) => {
-          try {
-            await preloadImage(sub.imageUrl);
-          } catch {
-            console.warn(`[Preload] Failed to preload ${sub._id}`);
+          const result = await preloader.preload(sub.imageUrl, { urgent });
+          if (result.ok) {
+            brokenRef.current.delete(sub._id);
+            if (result.ms > 0) record('preload', { ms: result.ms, outcome: 'ok', bytes: pictureTimings(sub.imageUrl).last?.transferSize || undefined, host: hostOf(sub.imageUrl) });
+          } else {
+            if (result.ms > 0) record('preload', { ms: result.ms, outcome: result.reason, host: hostOf(sub.imageUrl) });
+            brokenRef.current.set(sub._id, Date.now() + PRELOAD_FAIL_TTL_MS);
           }
+          return result.ok;
         })
       );
+      return results.every(Boolean);
     },
-    [preloadImage]
+    [preloader, record]
   );
+
+  /** The photos not to be asked for again at once. */
+  const brokenIds = useCallback((): string[] => {
+    const now = Date.now();
+    for (const [id, until] of brokenRef.current) if (until <= now) brokenRef.current.delete(id);
+    return [...brokenRef.current.keys()];
+  }, []);
 
   const fetchPlaylistChunk = useCallback(
     async (limit: number, exclude: string[] = []): Promise<{ slides: Slide[]; status: number; ms: number; serverMs?: number }> => {
@@ -276,13 +293,14 @@ export function SlideshowPlayerCore({
         if (instanceKey?.trim()) {
           qs.set('instanceKey', instanceKey.trim().slice(0, 256));
         }
-        const response = await fetch(
+        const { status, data } = await fetchWithTimeout(
           `/api/slideshows/${slideshowId}/playlist?${qs.toString()}`,
-          { cache: 'no-store' }
+          { cache: 'no-store' },
+          API_TIMEOUT_MS,
+          async (response) => ({ status: response.status, data: response.ok ? await response.json() : null })
         );
-        if (!response.ok) return { slides: [], status: response.status, ms: performance.now() - startedAt };
-        const data = await response.json();
-        return { slides: (data.playlist || []) as Slide[], status: response.status, ms: performance.now() - startedAt, serverMs: data.diagnostics?.generationMs };
+        if (!data) return { slides: [], status, ms: performance.now() - startedAt };
+        return { slides: (data.playlist || []) as Slide[], status, ms: performance.now() - startedAt, serverMs: data.diagnostics?.generationMs };
       } catch {
         return { slides: [], status: 0, ms: performance.now() - startedAt };
       }
@@ -292,38 +310,58 @@ export function SlideshowPlayerCore({
 
   /**
    * Top the loop queue up to its target depth. A full queue asks the server nothing. A refill tells the server which photos the queue
-   * holds and appends only photos it does not hold; when the server has nothing new (a pool smaller than the queue, or no network) the
-   * loop goes on from the slides already seen.
+   * holds (and which pictures would not load) and appends only photos it does not hold, each as soon as its picture is ready; when the
+   * server has nothing new (a pool smaller than the queue, or no network) the loop goes on from the slides already seen.
+   * Every wait is bounded: a request gives up after 8 s, a picture after 20 s, the lock is released after 20 s whatever is in flight, and
+   * after a failed answer the next refill waits 1, 2, 4, 8, then 15 s (camera#476).
    */
   const maintainLoopBuffer = useCallback(async () => {
     const s = settingsRef.current;
     if (!s || s.playMode === 'once') return;
     if (refillBusyRef.current) return;
     if (slideQueueRef.current.length >= bufferTargetRef.current) return;
+    if (Date.now() < refillBackoffRef.current.until) return;
     refillBusyRef.current = true;
     const lockedAt = performance.now();
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      refillBusyRef.current = false;
+      record('lock', { ms: performance.now() - lockedAt });
+    };
+    const deadline = window.setTimeout(release, REFILL_LOCK_MAX_MS);
     try {
       const target = bufferTargetRef.current;
-      for (let round = 0; round < 12; round++) {
+      for (let round = 0; round < 12 && !released; round++) {
         const queue = slideQueueRef.current;
         if (queue.length >= target) break;
         const limit = Math.min(target - queue.length, 25);
-        const exclude = excludeIds(queue);
+        const exclude = excludeIds(queue, brokenIds());
         const { slides: answer, status, ms, serverMs } = await fetchPlaylistChunk(limit, exclude);
         const fresh = freshSlides(slideQueueRef.current, answer);
         record('playlist', { limit, excl: exclude.length, status, ms, got: answer.length, fresh: fresh.length, serverMs });
-        if (fresh.length > 0) {
-          loopSeedSlidesRef.current = mergeSeed(loopSeedSlidesRef.current, fresh);
-          await Promise.allSettled(fresh.map((sl) => preloadSlide(sl)));
+        const backoffMs = nextBackoffMs(refillBackoffRef.current.ms, status === 200);
+        refillBackoffRef.current = { ms: backoffMs, until: Date.now() + backoffMs };
+        const loaded: Slide[] = [];
+        await Promise.all(
+          fresh.map(async (sl) => {
+            if (!(await preloadSlide(sl))) return;
+            loaded.push(sl);
+            commitQueue((q) => appendFresh(q, [sl], target));
+          })
+        );
+        if (loaded.length > 0) loopSeedSlidesRef.current = mergeSeed(loopSeedSlidesRef.current, loaded);
+        if (loaded.length === 0) {
+          commitQueue((q) => appendFromSeed(q, loopSeedSlidesRef.current, target));
+          break;
         }
-        commitQueue((q) => mergeAnswer(q, answer, loopSeedSlidesRef.current, target));
-        if (fresh.length === 0) break;
       }
     } finally {
-      refillBusyRef.current = false;
-      record('lock', { ms: performance.now() - lockedAt });
+      window.clearTimeout(deadline);
+      release();
     }
-  }, [fetchPlaylistChunk, preloadSlide, commitQueue, record]);
+  }, [fetchPlaylistChunk, preloadSlide, brokenIds, commitQueue, record]);
 
   const loadInitialBuffer = useCallback(async () => {
     try {
@@ -343,14 +381,16 @@ export function SlideshowPlayerCore({
           ? `/api/slideshows/${slideshowId}/playlist?${initialQuery}`
           : `/api/slideshows/${slideshowId}/playlist`;
       const loadStartedAt = performance.now();
-      const response = await fetch(playlistUrl, { cache: 'no-store' });
-      if (!response.ok) {
-        throw new Error(`Failed to load slideshow: ${response.status}`);
+      const { status, data } = await fetchWithTimeout(playlistUrl, { cache: 'no-store' }, API_TIMEOUT_MS, async (response) => ({
+        status: response.status,
+        data: response.ok ? await response.json() : null,
+      }));
+      if (!data) {
+        throw new Error(`Failed to load slideshow: ${status}`);
       }
 
-      const data = await response.json();
       const got = Array.isArray(data.playlist) ? data.playlist.length : 0;
-      record('playlist', { limit: 0, excl: 0, status: response.status, ms: performance.now() - loadStartedAt, got, fresh: got, serverMs: data.diagnostics?.generationMs });
+      record('playlist', { limit: 0, excl: 0, status, ms: performance.now() - loadStartedAt, got, fresh: got, serverMs: data.diagnostics?.generationMs });
 
       if (!data.slideshow || !data.playlist) {
         throw new Error('Invalid slideshow data');
@@ -361,9 +401,8 @@ export function SlideshowPlayerCore({
 
       if (data.slideshow.eventId) {
         try {
-          const logoResponse = await fetch(`/api/events/${data.slideshow.eventId}/logos`);
-          if (logoResponse.ok) {
-            const logoData = await logoResponse.json();
+          const logoData = await fetchWithTimeout(`/api/events/${data.slideshow.eventId}/logos`, {}, LOGO_TIMEOUT_MS, async (r) => (r.ok ? r.json() : null));
+          if (logoData) {
             const loadingLogos =
               logoData.data?.logos?.['loading-slideshow'] ||
               logoData.logos?.['loading-slideshow'] ||
@@ -382,17 +421,19 @@ export function SlideshowPlayerCore({
       const failoverBgUrl = (data.slideshow.backgroundImageUrl || '').trim();
       setFailoverBgImageReady(!failoverBgUrl);
       if (failoverBgUrl) {
-        try {
-          await preloadImage(failoverBgUrl);
-        } catch {
-          /* show gradient fallback below image layer */
-        }
+        // A background that will not load (or is too slow) shows the gradient below it.
+        await preloader.preload(failoverBgUrl, { urgent: true });
         setFailoverBgImageReady(true);
       }
 
-      const playlist = (data.playlist || []) as Slide[];
+      const received = (data.playlist || []) as Slide[];
+      // Only slides whose picture loaded start the show (a slide that fails is out for a few minutes); the refill fills the gap.
+      const loadedFlags = await Promise.all(received.map((sl) => preloadSlide(sl, true)));
+      const playlist = received.filter((_, i) => loadedFlags[i]);
+      if (received.length > 0 && playlist.length === 0) {
+        throw new Error('No picture could be loaded');
+      }
       if (playlist.length > 0) {
-        await Promise.all(playlist.map(preloadSlide));
         setDisplayEpoch(0);
         commitQueue(() => playlist);
         if (data.slideshow.playMode === 'once') {
@@ -411,14 +452,18 @@ export function SlideshowPlayerCore({
         commitQueue(() => []);
       }
 
+      loadBackoffRef.current = 0;
       setIsLoading(false);
     } catch (err) {
       console.error('Failed to load initial buffer:', err);
       record('error', { msg: `load: ${err instanceof Error ? err.message : 'failed'}` });
       setError(err instanceof Error ? err.message : 'Failed to load slideshow');
       setIsLoading(false);
+      // A screen that cannot start tries again by itself (1, 2, 4, 8, then every 15 s) instead of waiting for someone to reload it.
+      loadBackoffRef.current = nextBackoffMs(loadBackoffRef.current, false);
+      loadRetryTimerRef.current = window.setTimeout(() => void loadRef.current(), loadBackoffRef.current);
     }
-  }, [slideshowId, instanceKey, preloadImage, preloadSlide, maintainLoopBuffer, commitQueue, record, delayMs]);
+  }, [slideshowId, instanceKey, preloader, preloadSlide, maintainLoopBuffer, commitQueue, record, delayMs]);
 
   useLayoutEffect(() => {
     if (!settings) return;
@@ -452,25 +497,32 @@ export function SlideshowPlayerCore({
   }, [variant, objectFit, settings, slideshowId]);
 
   useEffect(() => {
-    loadInitialBuffer();
+    loadRef.current = loadInitialBuffer;
+    void loadInitialBuffer();
+    return () => {
+      if (loadRetryTimerRef.current !== null) window.clearTimeout(loadRetryTimerRef.current);
+      loadRetryTimerRef.current = null;
+    };
   }, [loadInitialBuffer]);
 
+  // Keep the first slides of the queue loaded (ready ones cost nothing) and let go of pictures the queue no longer holds, so memory does not grow for hours.
   useEffect(() => {
-    if (slideQueue.length === 0) return;
-    void Promise.all(slideQueue.map((s) => preloadSlide(s)));
-  }, [slideQueue, preloadSlide]);
+    preloader.prune(new Set(slideQueue.flatMap((sl) => sl.submissions.map((sub) => sub.imageUrl))));
+    for (const sl of slideQueue.slice(0, PRELOAD_AHEAD)) void preloadSlide(sl);
+  }, [slideQueue, preloader, preloadSlide]);
 
   const updatePlayCounts = useCallback(
     async (slide: Slide) => {
       try {
         const submissionIds = slide.submissions.map((s) => s._id);
-        const response = await fetch(`/api/slideshows/${slideshowId}/played`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ submissionIds }),
-        });
-        if (!response.ok) {
-          console.warn(`[PlayCount] API returned ${response.status}`);
+        const status = await fetchWithTimeout(
+          `/api/slideshows/${slideshowId}/played`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ submissionIds }) },
+          API_TIMEOUT_MS,
+          async (response) => response.status
+        );
+        if (status < 200 || status > 299) {
+          console.warn(`[PlayCount] API returned ${status}`);
         }
       } catch (err) {
         console.error('[PlayCount] ERROR:', err);
@@ -577,7 +629,7 @@ export function SlideshowPlayerCore({
     const now = performance.now();
     const key = slideKey(head);
     const { fetches, last } = pictureTimings(sub.imageUrl);
-    const preloaded = preloadedImages.current.get(sub.imageUrl);
+    const preloaded = preloader.get(sub.imageUrl);
     record('slide_shown', {
       id: shortId(sub._id),
       dup: lastShownRef.current?.key === key,
@@ -592,7 +644,7 @@ export function SlideshowPlayerCore({
       preloaded: preloaded !== undefined,
     });
     lastShownRef.current = { key, at: now };
-  }, [headFadeKey, record]);
+  }, [headFadeKey, preloader, record]);
 
   useLayoutEffect(() => {
     if (!headFadeKey) {
