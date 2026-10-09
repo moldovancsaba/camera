@@ -235,7 +235,7 @@ export default function CardDisplaySettingsPage() {
               Save
             </SemanticButton>
             {settings.updatedAt ? (
-              <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }} suppressHydrationWarning>
+              <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }} suppressHydrationWarning>
                 Last saved {new Date(settings.updatedAt).toLocaleString()}
                 {settings.updatedBy ? ` by ${settings.updatedBy}` : ''}
               </span>

@@ -455,18 +455,18 @@ export default function EventGalleryUpload({
   const busy = pendingCount > 0;
 
   return (
-    <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', padding: '1rem' }}>
+    <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', padding: '1rem' }}>
       <div style={{ display: 'grid', gap: '1rem' }}>
         <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
           <div style={{ display: 'grid', gap: '0.25rem' }}>
             <strong style={{ fontSize: '0.875rem' }}>
               Add photos to this event
             </strong>
-            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0 }}>
+            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
               Drag and drop images, upload multiple files at once, or import a folder. Large files
               are resized/compressed in the browser to fit the current Vercel upload path.
             </p>
-            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0 }}>
+            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
               Supported: {ACCEPT_COPY}. Target upload size per file: under {formatBytes(MAX_DIRECT_UPLOAD_BYTES)}.
             </p>
           </div>
@@ -532,7 +532,7 @@ export default function EventGalleryUpload({
           onDrop={onDrop}
           data-active={dragActive || undefined}
           style={{
-            border: '1px dashed var(--gds-color-border)',
+            border: '1px dashed var(--mantine-color-default-border)',
             borderRadius: '1rem',
             padding: '2rem',
             textAlign: 'center',
@@ -541,7 +541,7 @@ export default function EventGalleryUpload({
           <strong style={{ fontSize: '0.875rem' }}>
             Drop images here
           </strong>
-          <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
+          <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
             Files and folders are accepted. Uploads run in a controlled queue of {MAX_PARALLEL_UPLOADS}.
           </p>
         </div>
@@ -557,7 +557,7 @@ export default function EventGalleryUpload({
         ) : null}
 
         {queueItems.length > 0 ? (
-          <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', maxHeight: 288, overflowY: 'auto' }}>
+          <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', maxHeight: 288, overflowY: 'auto' }}>
             <div style={{ display: 'grid' }}>
               {queueItems.map((item) => (
                 <div key={item.id} style={{ padding: '0.75rem' }}>
@@ -566,12 +566,12 @@ export default function EventGalleryUpload({
                       <strong style={{ fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {item.sourceLabel}
                       </strong>
-                      <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
+                      <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
                         Original: {formatBytes(item.file.size)}
                         {item.finalSizeBytes != null ? ` · Upload: ${formatBytes(item.finalSizeBytes)}` : ''}
                       </span>
                       {item.message ? (
-                        <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
+                        <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
                           {item.message}
                         </span>
                       ) : null}

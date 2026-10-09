@@ -69,6 +69,52 @@ for (const scannedRoot of scannedRoots) {
   }
 }
 
+// A `var(--gds-...)` that is undefined makes the whole declaration invalid: a border is not drawn, "muted" text is not dimmed (camera issue 415: 213 such
+// references, `--gds-color-border` and `--gds-color-muted`, names no GDS package defines). And the role tokens GDS does define with `light-dark()`
+// (--gds-border-card, --gds-text-meta, --gds-bg-surface...) do not work either in camera's production build: Next's CSS pass turns `light-dark(a, b)`
+// into `var(--lightningcss-light, a) var(--lightningcss-dark, b)`, the two switches are defined nowhere, so the value becomes the pair "a b" and
+// every declaration that uses it is invalid (measured in the built page, 2026-10-09). Colours in app/, components/ and lib/ therefore come from
+// `--mantine-*` tokens (`--mantine-color-default-border`, `--mantine-color-dimmed`, `--mantine-color-body`...), which resolve in both schemes.
+function gdsNames() {
+  const defined = new Set();
+  const lightDark = new Set();
+  const base = join(root, 'node_modules', '@sovereignsquad');
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      const stats = statSync(full);
+      if (stats.isDirectory()) {
+        if (entry !== 'node_modules') walk(full);
+      } else if (/\.(css|js|mjs|cjs)$/.test(entry)) {
+        const text = readFileSync(full, 'utf8');
+        for (const match of text.matchAll(/--gds-[a-z0-9]+(?:-[a-z0-9]+)*/g)) defined.add(match[0]);
+        if (entry.endsWith('.css')) for (const match of text.matchAll(/(--gds-[a-z0-9]+(?:-[a-z0-9]+)*)\s*:\s*light-dark\(/g)) lightDark.add(match[1]);
+      }
+    }
+  };
+  walk(base);
+  return { defined, lightDark };
+}
+
+const { defined: known, lightDark } = gdsNames();
+if (known.size < 50) {
+  findings.push(`the installed @sovereignsquad packages define only ${known.size} --gds-* names: is node_modules installed?`);
+} else {
+  for (const scannedRoot of ['app', 'components', 'lib']) {
+    for (const filePath of listSourceFiles(join(root, scannedRoot))) {
+      if (/\.test\.[tj]sx?$/.test(filePath)) continue;
+      const lines = readFileSync(filePath, 'utf8').split('\n');
+      lines.forEach((line, index) => {
+        for (const match of line.matchAll(/var\((--gds-[a-z0-9]+(?:-[a-z0-9]+)*)/g)) {
+          const where = `${normalizePath(relative(root, filePath))}:${index + 1}: ${match[1]}`;
+          if (!known.has(match[1])) findings.push(`${where} is not defined by any installed GDS package`);
+          else if (lightDark.has(match[1])) findings.push(`${where} is defined with light-dark(), which the production build turns into an invalid value: use a --mantine-* token`);
+        }
+      });
+    }
+  }
+}
+
 if (findings.length > 0) {
   console.error('GDS boundary check failed:');
   for (const finding of findings) {

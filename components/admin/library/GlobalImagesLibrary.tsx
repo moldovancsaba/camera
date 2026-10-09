@@ -21,7 +21,7 @@ interface Payload<T> {
 }
 
 const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' } as const;
-const SECTION = { border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
+const SECTION = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
@@ -106,10 +106,10 @@ export default function GlobalImagesLibrary({ showAll }: { showAll: boolean }) {
       {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}
 
       <section style={SECTION}>
-        <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--gds-color-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
+        <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--mantine-color-default-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
           <div>
             <h3 style={{ margin: 0 }}>{showAll ? `Every upload (${items.length})` : `In the global library (${items.length})`}</h3>
-            <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>
+            <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>
               A picture switched off is no longer offered to be newly chosen; a page that already shows it keeps it.
             </p>
           </div>
@@ -117,7 +117,7 @@ export default function GlobalImagesLibrary({ showAll }: { showAll: boolean }) {
         </div>
         <div style={{ padding: '1rem' }}>
           {items.length === 0 ? (
-            <p style={{ color: 'var(--gds-color-muted)', margin: '2rem 0', textAlign: 'center' }}>No images yet. Upload the first one below.</p>
+            <p style={{ color: 'var(--mantine-color-dimmed)', margin: '2rem 0', textAlign: 'center' }}>No images yet. Upload the first one below.</p>
           ) : (
             <div style={GRID}>
               {items.map((item) => (
@@ -150,9 +150,9 @@ export default function GlobalImagesLibrary({ showAll }: { showAll: boolean }) {
       </section>
 
       <section style={SECTION}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>Upload an image to the global library</h3>
-          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>Every partner can then add it to its own library.</p>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>Every partner can then add it to its own library.</p>
         </div>
         <div style={{ padding: '1rem' }}>
           <LibraryUploadForm

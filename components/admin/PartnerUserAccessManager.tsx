@@ -131,10 +131,10 @@ export default function PartnerUserAccessManager({
   }
 
   return (
-    <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
-      <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+    <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+      <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
         <h3 style={{ margin: 0 }}>Partner User Access</h3>
-        <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
+        <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
           Manage partner-scoped app access separately from global Camera roles. This is the source of truth for who
           can operate this partner inside Events.
         </p>
@@ -181,7 +181,7 @@ export default function PartnerUserAccessManager({
         </div>
 
         <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
-          <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0, maxWidth: 760 }}>
+          <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0, maxWidth: 760 }}>
             If the user has not appeared in Camera yet, the email assignment is still saved and will match later when
             they sign in or create activity.
           </p>
@@ -207,17 +207,17 @@ export default function PartnerUserAccessManager({
         ) : (
           <div style={{ display: 'grid', gap: '1rem' }}>
             {assignments.map((assignment) => (
-              <article key={assignment.accessId} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+              <article key={assignment.accessId} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
                 <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))' }}>
                   <div style={{ display: 'grid', gap: '0.25rem' }}>
                     <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <strong>{assignment.userName?.trim() || assignment.userEmail}</strong>
                       <LabelTag tone={assignment.isActive ? 'success' : 'neutral'} label={assignment.isActive ? 'Active' : 'Inactive'} />
                     </div>
-                    <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem' }}>
+                    <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>
                       {assignment.userEmail}
                     </span>
-                    <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
+                    <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
                       Updated {new Date(assignment.updatedAt).toLocaleString()}
                     </span>
                   </div>

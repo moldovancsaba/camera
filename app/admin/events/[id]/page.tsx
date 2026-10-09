@@ -398,7 +398,7 @@ export default async function EventDetailPage({
               </Button>
             </Link>
             {typeof event.shortUrlSlug === 'string' && event.shortUrlSlug.trim() ? (
-              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--gds-color-border)' }}>
+              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--mantine-color-default-border)' }}>
                 <Text size="sm" fw={600} mb="xs">
                   Short link
                 </Text>
@@ -531,7 +531,7 @@ export default async function EventDetailPage({
       />
 
       <Card p={0}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <Title order={2}>Event Gallery</Title>
           <Text c="dimmed" mt="xs">
             Photos visible in Event Slideshows ({submissions.length})

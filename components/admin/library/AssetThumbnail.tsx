@@ -25,7 +25,7 @@ export default function AssetThumbnail({ url, name, noun = 'item', width = 160, 
   const size = typeof width === 'number' ? `${width}px` : width;
   if (!url) {
     return (
-      <div role="img" aria-label={`This ${noun} has no picture`} style={{ ...BOX, width: size, display: 'grid', placeItems: 'center', color: 'var(--gds-color-muted)', fontSize: '0.75rem', textAlign: 'center' }}>
+      <div role="img" aria-label={`This ${noun} has no picture`} style={{ ...BOX, width: size, display: 'grid', placeItems: 'center', color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', textAlign: 'center' }}>
         No picture
       </div>
     );

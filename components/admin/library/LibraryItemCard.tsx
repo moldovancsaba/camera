@@ -40,7 +40,7 @@ const FROM_MESSMASS = { label: 'From messmass', tone: 'info' } as const;
 export default function LibraryItemCard({ name, imageUrl, thumbnailUrl, noun, scope, source, badges, note, actions, children, wide }: LibraryItemCardProps) {
   const origin = source === 'messmass' ? FROM_MESSMASS : SCOPE_LABEL[scope];
   return (
-    <article style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.75rem', padding: '0.75rem', display: 'grid', gap: '0.75rem', alignContent: 'start', ...(wide ? { gridColumn: '1 / -1' } : {}) }}>
+    <article style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.75rem', padding: '0.75rem', display: 'grid', gap: '0.75rem', alignContent: 'start', ...(wide ? { gridColumn: '1 / -1' } : {}) }}>
       <AssetThumbnail url={imageUrl ?? thumbnailUrl ?? null} name={name} noun={noun} width="100%" />
       <div style={{ display: 'grid', gap: '0.35rem', minWidth: 0 }}>
         <strong style={{ fontSize: '0.875rem', overflowWrap: 'anywhere' }}>{name}</strong>
@@ -48,7 +48,7 @@ export default function LibraryItemCard({ name, imageUrl, thumbnailUrl, noun, sc
           <LabelTag tone={origin.tone} label={origin.label} />
           {badges}
         </div>
-        {note ? <div style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>{note}</div> : null}
+        {note ? <div style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>{note}</div> : null}
       </div>
       {actions ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>{actions}</div> : null}
       {children}

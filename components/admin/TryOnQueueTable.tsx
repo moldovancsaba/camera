@@ -176,7 +176,7 @@ function SourceImagePreview({ row }: { row: QueueRow }) {
   const imageUrl = row.source.imageUrl.trim();
   if (!imageUrl) {
     return (
-      <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem' }}>
+      <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>
         No source image
       </span>
     );
@@ -186,7 +186,7 @@ function SourceImagePreview({ row }: { row: QueueRow }) {
     return (
       <div
         style={{
-          border: '1px dashed var(--gds-color-border)',
+          border: '1px dashed var(--mantine-color-default-border)',
           borderRadius: 12,
           display: 'grid',
           gap: '0.35rem',
@@ -195,7 +195,7 @@ function SourceImagePreview({ row }: { row: QueueRow }) {
         }}
       >
         <strong style={{ fontSize: '0.75rem' }}>Source image unreachable</strong>
-        <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
+        <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
           The host no longer serves this file (deleted or expired upload). Use
           &ldquo;Replace photo &amp; rerun&rdquo; to upload it again.
         </span>
@@ -210,8 +210,8 @@ function SourceImagePreview({ row }: { row: QueueRow }) {
     <div style={{ display: 'grid', gap: '0.5rem' }}>
       <div
         style={{
-          background: 'var(--gds-color-surface-muted)',
-          border: '1px solid var(--gds-color-border)',
+          background: 'var(--mantine-color-default-hover)',
+          border: '1px solid var(--mantine-color-default-border)',
           borderRadius: 12,
           height: 132,
           overflow: 'hidden',
@@ -522,10 +522,10 @@ export default function TryOnQueueTable({
           render: (row) => (
             <>
               <strong>{row.jobId}</strong>
-              <p suppressHydrationWarning style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
+              <p suppressHydrationWarning style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
                 Created {new Date(row.createdAt).toLocaleString()}
               </p>
-              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
+              <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
                 Submission {row.source.submissionId}
               </p>
               {/* On phones only the first columns fit without horizontal
@@ -543,7 +543,7 @@ export default function TryOnQueueTable({
           render: (row) => (
             <>
               <StatusBadge {...getStatusBadgeProps(toneForStatus(row.status), formatStatusLabel(row.status))} />
-              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.5rem 0 0' }}>
+              <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: '0.5rem 0 0' }}>
                 Stage: {formatStatusLabel(row.stage)}
               </p>
               {row.error?.message ? (
@@ -633,7 +633,7 @@ export default function TryOnQueueTable({
                             </select>
                           </label>
                         ) : (
-                          <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
+                          <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
                             Preset list unavailable
                           </span>
                         )}
@@ -713,9 +713,6 @@ export default function TryOnQueueTable({
                 {row.source.imageUrl}
               </span>
               {row.source.eventName || row.source.eventMongoId ? (
-                // --gds-color-muted (the previous token here) is not a variable GDS
-                // defines; it resolved to nothing. Mantine's dimmed token is what the
-                // rest of this admin uses for secondary text.
                 <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
                   Event {row.source.eventName ?? row.source.eventMongoId}
                 </span>
@@ -749,11 +746,11 @@ export default function TryOnQueueTable({
           render: (row) => (
             <>
               <span style={{ fontSize: '0.875rem' }}>{row.processing.workerId || 'Unclaimed'}</span>
-              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
+              <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
                 Attempts {row.processing.attemptCount}
               </p>
               {row.processing.nextAttemptAt ? (
-                <p suppressHydrationWarning style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
+                <p suppressHydrationWarning style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
                   Next {new Date(row.processing.nextAttemptAt).toLocaleString()}
                 </p>
               ) : null}
@@ -765,7 +762,7 @@ export default function TryOnQueueTable({
           label: 'Result',
           render: (row) => (
             <div style={{ alignItems: 'flex-start', display: 'grid', gap: '0.5rem' }}>
-              <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
+              <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
                 {recoveryHint(row)}
               </span>
               {row.result.publicResultUrl ? (
@@ -773,7 +770,7 @@ export default function TryOnQueueTable({
                   Open result
                 </a>
               ) : (
-                <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem' }}>
+                <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>
                   No result yet
                 </span>
               )}
@@ -792,7 +789,7 @@ export default function TryOnQueueTable({
           />
         </div>
       ) : (
-        <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0, textAlign: 'center' }}>
+        <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0, textAlign: 'center' }}>
           All {totalCount} matching jobs loaded.
         </p>
       )}

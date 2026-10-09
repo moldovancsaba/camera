@@ -132,8 +132,8 @@ export default function UserManagementActions({ user, currentUserEmail }: UserMa
   };
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--gds-space-2, 0.5rem)' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--gds-space-2, 0.5rem)' }}>
+    <div style={{ display: 'grid', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
         {(user.type === 'real' || user.type === 'administrator') ? (
           <SemanticButton
             action={user.role === 'admin' ? 'users:demote' : 'users:promote'}
@@ -189,9 +189,9 @@ export default function UserManagementActions({ user, currentUserEmail }: UserMa
           <div
             style={{
               background: 'var(--gds-overlay-surface)',
-              border: '1px solid var(--gds-border-card)',
-              borderRadius: 'var(--gds-radius-lg, 1rem)',
-              boxShadow: 'var(--gds-shadow-xl)',
+              border: '1px solid var(--mantine-color-default-border)',
+              borderRadius: '1rem',
+              boxShadow: 'var(--mantine-shadow-xl)',
               display: 'grid',
               gap: '1rem',
               maxWidth: 520,
@@ -214,7 +214,7 @@ export default function UserManagementActions({ user, currentUserEmail }: UserMa
                 style={{ minHeight: 42, padding: '0 0.75rem' }}
               />
             </label>
-            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
+            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
               This transfers all submissions from the pseudo user to the real user account. This action cannot be undone.
             </p>
             <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>

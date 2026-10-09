@@ -48,7 +48,7 @@ export default function TryOnFunnelChart({ funnel }: { funnel: TryOnFunnelMetric
               <strong style={{ fontSize: '0.875rem' }}>{step.label}</strong>
               <div
                 style={{
-                  background: 'var(--gds-color-surface-muted)',
+                  background: 'var(--mantine-color-default-hover)',
                   borderRadius: 999,
                   height: 10,
                   overflow: 'hidden',
@@ -56,13 +56,13 @@ export default function TryOnFunnelChart({ funnel }: { funnel: TryOnFunnelMetric
               >
                 <div
                   style={{
-                    background: 'var(--gds-color-accent)',
+                    background: 'var(--mantine-primary-color-filled)',
                     height: '100%',
                     width: `${base > 0 ? Math.min(100, (step.value / base) * 100) : 0}%`,
                   }}
                 />
               </div>
-              <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
+              <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
                 {step.value} ({pct(step.value, base)})
               </span>
             </div>
