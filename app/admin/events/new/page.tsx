@@ -39,15 +39,6 @@ import {
 import {
   DEFAULT_EVENT_SHARE_PAGE_SETTINGS,
 } from '@/lib/events/share-page-settings';
-import {
-  DEFAULT_SUBMISSION_EMAIL_BODY,
-  DEFAULT_SUBMISSION_EMAIL_SUBJECT,
-  DEFAULT_SUBMISSION_EMAIL_SENDER_NAME,
-  DEFAULT_EVENT_TERMS_URL,
-  DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY,
-  DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT,
-  SUBMISSION_EMAIL_TEMPLATE_HELP,
-} from '@/lib/email/submission-template-defaults';
 
 interface PartnerOption {
   _id: string;
@@ -83,36 +74,6 @@ export default function NewEventPage() {
   const [tryOnEnabled, setTryOnEnabled] = useState(false);
   const [tryOnOutfitEnabled, setTryOnOutfitEnabled] = useState(false);
   const [localAiQualityGateEnabled, setLocalAiQualityGateEnabled] = useState(false);
-  const [submissionResultEmailEnabled, setSubmissionResultEmailEnabled] = useState(false);
-  const [submissionResultEmailSendAfterSave, setSubmissionResultEmailSendAfterSave] = useState(true);
-  const [submissionResultEmailSendAfterRelatedPhotosReady, setSubmissionResultEmailSendAfterRelatedPhotosReady] =
-    useState(false);
-  const [
-    submissionResultEmailSendAfterTryOnResubmissionApproved,
-    setSubmissionResultEmailSendAfterTryOnResubmissionApproved,
-  ] = useState(false);
-  const [submissionResultEmailSubjectAfterSave, setSubmissionResultEmailSubjectAfterSave] = useState(
-    DEFAULT_SUBMISSION_EMAIL_SUBJECT
-  );
-  const [submissionResultEmailBodyAfterSave, setSubmissionResultEmailBodyAfterSave] = useState(
-    DEFAULT_SUBMISSION_EMAIL_BODY
-  );
-  const [submissionResultEmailSubjectAfterRelatedPhotosReady, setSubmissionResultEmailSubjectAfterRelatedPhotosReady] =
-    useState(DEFAULT_SUBMISSION_EMAIL_SUBJECT);
-  const [submissionResultEmailBodyAfterRelatedPhotosReady, setSubmissionResultEmailBodyAfterRelatedPhotosReady] =
-    useState(DEFAULT_SUBMISSION_EMAIL_BODY);
-  const [
-    submissionResultEmailSubjectAfterTryOnResubmissionApproved,
-    setSubmissionResultEmailSubjectAfterTryOnResubmissionApproved,
-  ] = useState(DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT);
-  const [
-    submissionResultEmailBodyAfterTryOnResubmissionApproved,
-    setSubmissionResultEmailBodyAfterTryOnResubmissionApproved,
-  ] = useState(DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY);
-  const [submissionResultEmailSenderName, setSubmissionResultEmailSenderName] = useState(
-    DEFAULT_SUBMISSION_EMAIL_SENDER_NAME
-  );
-  const [termsUrl, setTermsUrl] = useState(DEFAULT_EVENT_TERMS_URL);
   const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
   const [includeOriginalCapture, setIncludeOriginalCapture] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeOriginalCapture
@@ -337,22 +298,6 @@ export default function NewEventPage() {
         includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
         resultSlideshowMode,
       },
-      notifications: {
-        submissionResultEmailEnabled,
-        submissionResultEmailSendAfterSave,
-        submissionResultEmailSendAfterRelatedPhotosReady,
-        submissionResultEmailSendAfterTryOnResubmissionApproved,
-        submissionResultEmailSubject: submissionResultEmailSubjectAfterSave,
-        submissionResultEmailBody: submissionResultEmailBodyAfterSave,
-        submissionResultEmailSubjectAfterSave,
-        submissionResultEmailBodyAfterSave,
-        submissionResultEmailSubjectAfterRelatedPhotosReady,
-        submissionResultEmailBodyAfterRelatedPhotosReady,
-        submissionResultEmailSubjectAfterTryOnResubmissionApproved,
-        submissionResultEmailBodyAfterTryOnResubmissionApproved,
-        submissionResultEmailSenderName,
-        termsUrl,
-      },
       visualSettings: {
         buttonSize,
       },
@@ -516,124 +461,6 @@ export default function NewEventPage() {
               name="showLogo"
               disabled={!logoFile && !logoPreview}
               label="Display logo on event pages"
-            />
-          </FormSection>
-
-          <FormSection
-            title="Email module"
-            description="Optional email module. It does not add a visible page to the capture flow; it sends after a submission is saved."
-          >
-            <TextInput
-              label="Sender display name"
-              value={submissionResultEmailSenderName}
-              onChange={(event) => setSubmissionResultEmailSenderName(event.currentTarget.value)}
-              description="Shown as the display name in the Resend From header."
-              placeholder={DEFAULT_SUBMISSION_EMAIL_SENDER_NAME}
-            />
-            <Checkbox
-              checked={submissionResultEmailEnabled}
-              onChange={(event) => {
-                const checked = event.currentTarget.checked;
-                setSubmissionResultEmailEnabled(checked);
-                if (
-                  checked &&
-                  !submissionResultEmailSendAfterSave &&
-                  !submissionResultEmailSendAfterRelatedPhotosReady &&
-                  !submissionResultEmailSendAfterTryOnResubmissionApproved
-                ) {
-                  setSubmissionResultEmailSendAfterSave(true);
-                }
-              }}
-              label="Email the user's result page link after save"
-              description="Requires a collected or authenticated email address. This is independent from the capture flow share-options screen."
-            />
-            <TextInput
-              label="General Terms and Conditions / Privacy Policy URL"
-              value={termsUrl}
-              onChange={(event) => setTermsUrl(event.currentTarget.value)}
-              disabled={!submissionResultEmailEnabled}
-              description="Used by the {terms} email template placeholder."
-              placeholder={DEFAULT_EVENT_TERMS_URL}
-            />
-            <Checkbox
-              checked={submissionResultEmailSendAfterSave}
-              onChange={(event) => setSubmissionResultEmailSendAfterSave(event.currentTarget.checked)}
-              disabled={!submissionResultEmailEnabled}
-              label="Send email immediately after save"
-            />
-            <TextInput
-              label="Email subject after save"
-              value={submissionResultEmailSubjectAfterSave}
-              onChange={(event) => setSubmissionResultEmailSubjectAfterSave(event.currentTarget.value)}
-              disabled={!submissionResultEmailEnabled || !submissionResultEmailSendAfterSave}
-              description={SUBMISSION_EMAIL_TEMPLATE_HELP}
-            />
-            <Textarea
-              label="Email body after save"
-              value={submissionResultEmailBodyAfterSave}
-              onChange={(event) => setSubmissionResultEmailBodyAfterSave(event.currentTarget.value)}
-              disabled={!submissionResultEmailEnabled || !submissionResultEmailSendAfterSave}
-              autosize
-              minRows={6}
-              description="Plain text only. Include {link} where the result page URL should appear."
-            />
-            <Checkbox
-              checked={submissionResultEmailSendAfterRelatedPhotosReady}
-              onChange={(event) =>
-                setSubmissionResultEmailSendAfterRelatedPhotosReady(event.currentTarget.checked)
-              }
-              disabled={!submissionResultEmailEnabled}
-              label="Send email when related photos are ready"
-              description="Useful for send-at-the-end behavior after approved try-on photos are available."
-            />
-            <TextInput
-              label="Email subject when related photos are ready"
-              value={submissionResultEmailSubjectAfterRelatedPhotosReady}
-              onChange={(event) =>
-                setSubmissionResultEmailSubjectAfterRelatedPhotosReady(event.currentTarget.value)
-              }
-              disabled={!submissionResultEmailEnabled || !submissionResultEmailSendAfterRelatedPhotosReady}
-              description={SUBMISSION_EMAIL_TEMPLATE_HELP}
-            />
-            <Textarea
-              label="Email body when related photos are ready"
-              value={submissionResultEmailBodyAfterRelatedPhotosReady}
-              onChange={(event) =>
-                setSubmissionResultEmailBodyAfterRelatedPhotosReady(event.currentTarget.value)
-              }
-              disabled={!submissionResultEmailEnabled || !submissionResultEmailSendAfterRelatedPhotosReady}
-              autosize
-              minRows={6}
-              description="Plain text only. Include {link} where the result page URL should appear."
-            />
-            <Checkbox
-              checked={submissionResultEmailSendAfterTryOnResubmissionApproved}
-              onChange={(event) =>
-                setSubmissionResultEmailSendAfterTryOnResubmissionApproved(event.currentTarget.checked)
-              }
-              disabled={!submissionResultEmailEnabled}
-              label="Send update email after approved resubmitted try-on result"
-              description="Sends only when an admin resubmits a try-on job and later approves the new result."
-            />
-            <TextInput
-              label="Email subject after approved resubmission"
-              value={submissionResultEmailSubjectAfterTryOnResubmissionApproved}
-              onChange={(event) =>
-                setSubmissionResultEmailSubjectAfterTryOnResubmissionApproved(event.currentTarget.value)
-              }
-              disabled={!submissionResultEmailEnabled || !submissionResultEmailSendAfterTryOnResubmissionApproved}
-              description={SUBMISSION_EMAIL_TEMPLATE_HELP}
-            />
-            <Textarea
-              label="Email body after approved resubmission"
-              value={submissionResultEmailBodyAfterTryOnResubmissionApproved}
-              onChange={(event) =>
-                setSubmissionResultEmailBodyAfterTryOnResubmissionApproved(event.currentTarget.value)
-              }
-              disabled={!submissionResultEmailEnabled || !submissionResultEmailSendAfterTryOnResubmissionApproved}
-              autosize
-              minRows={6}
-              description="Plain text only. Include {link} where the updated result page URL should appear."
             />
           </FormSection>
 

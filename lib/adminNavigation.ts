@@ -263,6 +263,7 @@ export const EVENT_CONTEXT_MENU: AdminContextItem[] = [
   { label: 'Frames', description: 'The frames of the event.', iconKey: 'frame', path: '/frames', isVisible: everyone },
   { label: 'Images', description: 'The pictures the event can use.', iconKey: 'photo', path: '/images', isVisible: everyone },
   { label: 'Texts', description: 'The wording of the default texts for this event.', iconKey: 'adjustments', path: '/texts', isVisible: everyone },
+  { label: 'Emails', description: 'The five e-mails the users get, their texts, the legal part and the sender.', iconKey: 'mail', path: '/emails', isVisible: everyone },
   { label: 'Slideshows', description: 'The slideshows and the welcome page screen.', iconKey: 'photoScan', path: '#slideshows', also: ['/slideshows', '/layouts'], isVisible: everyone },
   { label: 'Landing pages', description: 'The landing pages of the event.', iconKey: 'world', path: '#landing-pages', also: ['/landing-pages'], isVisible: everyone },
 ];

@@ -76,6 +76,10 @@ The words of an e-mail and the legal part are written with a toolbar editor (`co
 The legal part is the same at every e-mail of an event, so it is one slot with three levels, written once per language in the format above: the **general** one (a global admin), the **partner's** and the **event's**. An event follows its partner and the partner follows the general one each time it is read; what a level sets is its own and the default of the levels below; a later change above never overrides an own value. It is drawn as **small print under the message and the button**, in the muted colour of the card, and appended to the plain-text part. Where no level has a legal part for the event's language, nothing is added. When there is one, the standard last paragraph of the default e-mails ("Policies and General Terms and Conditions: {terms}") is left out of the message so the terms are not written twice; a legal paragraph an editor wrote in their own words stays in the message until it is moved. Stored as `admin_settings` `email-legal`, `Partner.emailLegal`, `Event.emailLegal`; routes `GET`/`PUT /api/admin/emails/legal`, `/api/partners/<id>/email-legal`, `/api/events/<id>/email-legal`.
 
 
+## The Emails page of an event (epic 463)
+
+`Emails` in the event menu (`/admin/events/<id>/emails`) holds everything an editor sets about the e-mails of one event: for each of the five types a switch (shown as On or Off and whether it is the default or a choice; "Use the default" takes the choice away), the subject and the message in the toolbar editor with the preview beside it, the sender display name and the link to the terms, the two older try-on e-mails for an event that uses try-on, and the legal part of the event. A switch and a text that are the default are not stored: the event follows the default. `GET`/`PUT /api/admin/events/<id>/emails`. The footer picture of the e-mails stays with the other pictures (Edit and pages, and the partner's Pictures).
+
 ## The five e-mail types (epic 463, `lib/email/types.ts`)
 
 | Type | When | On by default | Stored |
