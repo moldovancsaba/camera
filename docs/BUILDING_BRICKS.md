@@ -136,6 +136,8 @@ Frame picture (Picture) with a message area, messages (Words), toggles for team,
 
 ### 6.4 The three e-mails
 
+> Epic [#463](https://github.com/moldovancsaba/camera/issues/463) (`docs/EMAIL_FORMAT_PLAN.md`, 2026-10-09): one rich format for the words, one legal part with three levels, an Emails menu, an editor and variables.
+
 Subject and body (Words), footer picture (Picture), logo (Picture), look, links. The e-mails use one source of text per language, empty means the default, nothing frozen (today a legacy pair of subject and body is stored next to the three mode fields, and the editor writes it from the after-save pair).
 
 ### 6.5 The result (share step and public photo page)
