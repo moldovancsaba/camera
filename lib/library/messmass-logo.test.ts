@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import sharp from 'sharp';
 import { fakeDb } from './fake-db';
-import { importMessmassLogo, makeMessmassLogoDefault, messmassLogoState } from './messmass-logo';
+import { importMessmassLogo, makeMessmassLogoDefault, messmassLogoState, nextPartnerLogoUrl } from './messmass-logo';
 import { loadEventLibrary, loadPartnerLibrary } from './db';
 
 const NOW = '2026-10-08T12:00:00.000Z';
@@ -149,10 +149,48 @@ test('a partner with nothing becomes a partner with the one logo; a partner alre
   await makeMessmassLogoDefault(db, data.partners[0], first.item, NOW);
   assert.deepEqual((data.partners[0] as { slots: { logo: { items: string[] } } }).slots.logo.items, [first.item.logoId]);
 
-  (data.partners[0] as { slots?: unknown }).slots = { logo: { items: ['own'] } };
-  const other = await importMessmassLogo(db, { ...data.partners[0], logoUrl: R2.replace('abc123', 'new999') }, { createdBy: 'u1', now: NOW, fetchImpl: fakeFetch(await picture(10, 10)).impl });
-  assert.ok(other.ok);
-  if (!other.ok) return;
-  await makeMessmassLogoDefault(db, data.partners[0], other.item, NOW);
-  assert.deepEqual((data.partners[0] as { slots: { logo: { items: string[] } } }).slots.logo.items, ['own', other.item.logoId as string]);
+  const other = seed([partner({ partnerId: 'Q', logoUrl: R2.replace('abc123', 'q555'), slots: { logo: { items: ['own'] } } })]);
+  const imported = await importMessmassLogo(other.db, other.data.partners[0], { createdBy: 'u1', now: NOW, fetchImpl: fakeFetch(await picture(10, 10)).impl });
+  assert.ok(imported.ok);
+  if (!imported.ok) return;
+  await makeMessmassLogoDefault(other.db, other.data.partners[0], imported.item, NOW);
+  assert.deepEqual((other.data.partners[0] as { slots: { logo: { items: string[] } } }).slots.logo.items, ['own', imported.item.logoId as string]);
 });
+
+const NEW_URL = R2.replace('abc123', 'new999');
+
+test('a new logo from messmass takes the place of the earlier one in the partner\'s logos, never over an own choice; the earlier one stays in the library', async () => {
+  const { db, data } = seed();
+  const first = await importMessmassLogo(db, data.partners[0], { createdBy: 'u1', now: NOW, fetchImpl: fakeFetch(await picture(10, 10)).impl });
+  assert.ok(first.ok);
+  if (!first.ok) return;
+  (data.partners[0] as { slots?: unknown }).slots = { logo: { items: ['own', first.item.logoId as string, 'other'] } };
+  const next = await importMessmassLogo(db, { ...data.partners[0], logoUrl: NEW_URL }, { createdBy: 'u1', now: NOW, fetchImpl: fakeFetch(await picture(12, 12)).impl });
+  assert.ok(next.ok && next.created);
+  if (!next.ok) return;
+  assert.deepEqual(await makeMessmassLogoDefault(db, data.partners[0], next.item, NOW), { added: true, replaced: true });
+  assert.deepEqual((data.partners[0] as { slots: { logo: { items: string[] } } }).slots.logo.items, ['own', next.item.logoId as string, 'other'], 'in the same place; the own choices stay');
+  assert.equal(data.logos.filter((l) => l.source === 'messmass').length, 2, 'the earlier logo is still in the library');
+});
+
+test('if the editor took the earlier logo from messmass out of the partner\'s logos, a new one from messmass is not put in', async () => {
+  const { db, data } = seed();
+  const first = await importMessmassLogo(db, data.partners[0], { createdBy: 'u1', now: NOW, fetchImpl: fakeFetch(await picture(10, 10)).impl });
+  assert.ok(first.ok);
+  (data.partners[0] as { slots?: unknown }).slots = { logo: { items: ['own'] } };
+  const next = await importMessmassLogo(db, { ...data.partners[0], logoUrl: NEW_URL }, { createdBy: 'u1', now: NOW, fetchImpl: fakeFetch(await picture(12, 12)).impl });
+  assert.ok(next.ok);
+  if (!next.ok) return;
+  assert.deepEqual(await makeMessmassLogoDefault(db, data.partners[0], next.item, NOW), { added: false });
+  assert.deepEqual((data.partners[0] as { slots: { logo: { items: string[] } } }).slots.logo.items, ['own']);
+});
+
+test('the partner\'s logo address is replaced by a new one from messmass only when it is the one camera took from messmass, or when it has none', () => {
+  assert.equal(nextPartnerLogoUrl(undefined, R2, []), R2);
+  assert.equal(nextPartnerLogoUrl('', R2, []), R2);
+  assert.equal(nextPartnerLogoUrl(R2, NEW_URL, [R2]), NEW_URL, 'the current one was imported from messmass: it is messmass\'s own');
+  assert.equal(nextPartnerLogoUrl('https://own.example/logo.png', NEW_URL, [R2]), null, 'set by hand: kept');
+  assert.equal(nextPartnerLogoUrl(R2, R2, [R2]), null, 'the same address: nothing to do');
+  assert.equal(nextPartnerLogoUrl(R2, '', [R2]), null);
+});
+
