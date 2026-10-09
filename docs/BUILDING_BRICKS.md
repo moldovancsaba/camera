@@ -216,5 +216,19 @@ Why this order: step 2 does not depend on the new model, so the owner sees the w
 | 161 | yes in principle: a one-way ticket, editors add items at global, partner and event level, the children inherit the default, the editor selects which one is used |
 | 162, 163 | left to me: section 8, everything is delivered |
 | 164 | do it now: done, PR #416 |
+| 165 to 172, 176, 178 | merge the pull requests of steps 1 to 4 (#413, #414, #416, #417, #420, #422, #423, #428): done |
+| 177 | **standing permission:** I merge a pull request myself once its Verify check is green and report it; I still ask first for anything that changes what users see on live events, any write to production data (backfills, migrations, switches) and anything that touches messmass |
+| 179 | run the logo migration on the real data: done (190 partners collected, 213 events on the model, no logo lost; docs/LIBRARIES.md) |
 
 Confirmed by the owner on 2026-10-09: **167** following, not photocopying; **168** "add more" keeps the default next to the added logos, random among all, "replace" removes the default for that place; **169** a new logo from messmass replaces the old imported default and goes down, never over an own choice. All questions of the brick model are answered.
+
+**Open questions to the owner (asked 2026-10-09, in the order of the register):**
+
+| # | Question | My recommendation |
+|---|---|---|
+| 180 | Existing events: today only **new** events get the default slideshow, the generated welcome page screen picture and a default welcome page (when they have no welcome page of their own). A read-only check of the real data found 212 events, only 2 with a welcome page of their own, so a backfill would give 210 events a new welcome page; 4 of them are upcoming (10 Oct Szeged, 14 Oct Zaragoza and Valencia, 7 Nov MTK x Honvéd). a) not before the match on 16 Oct; after it a dry run and the owner's go; b) now for every event without its own welcome page; c) only the events the owner names; d) only the 4 upcoming events now | a |
+| 181 | The photo window of the welcome page screen shows a head-and-shoulders stand-in. a) I generate illustrated stand-ins now and the owner replaces them later; b) the owner sends 3 to 5 images cleared for commercial use; c) keep the stand-in | a |
+| 182 | [Task] MTK to check the Hungarian wording of the new texts (the Dictionary now lets them write it themselves): the call-to-action lines on the screen, the name of the default slideshow, the welcome page title, button and screen description, the three texts of the Choose your message step | |
+| 183 | [Task] The owner looks at the admin screens (174), the page editor's journey (175), and the new event and partner menu, Texts and Pictures pages | |
+
+**Delivered since (2026-10-09):** step 4 with the migration of the real data; step 4b first part and the lost-logo state in the editor; step 6 (the Dictionary and the partner and event Texts, the partner's default language, the e-mails and the public photo page reading the wordings); step 5b (a partner's default pictures); step 7a (the default slideshow); step 8 (the welcome page screen picture and the default welcome page); step 9, #329 (the user chooses the frame message); step 10, the first move (the context menu, #426). **Not done, and why:** #331 (toggles and positions on uploaded frames) changes how frames are drawn, so it waits until after the match; the shared admin kit (#418) and the regrouping of the event editor are admin refactors I keep away from the week of the match unless the owner says otherwise; the sample selfies wait for question 181; the clean-up of the old logo fields waits for the owner's go.
