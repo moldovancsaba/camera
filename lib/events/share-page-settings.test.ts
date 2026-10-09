@@ -72,3 +72,13 @@ test('the pending try-on message: the event’s own, else the default in the eve
   assert.equal(pendingTryOnText({ pendingTryOnMessage: 'Soon.' }, 'hu'), 'Soon.');
   assert.equal(pendingTryOnText({ pendingTryOnMessage: 'Soon.' }, 'en'), 'Soon.');
 });
+
+test('a wording written for the partner or the event replaces the dictionary text of the public page; the editor\'s own text still wins', () => {
+  const texts = { 'sharePage.pendingTryOn': 'Soon!', 'sharePage.downloadButton': 'Letöltés' };
+  assert.equal(pendingTryOnText({}, 'en', texts), 'Soon!');
+  assert.equal(pendingTryOnText({ pendingTryOnMessage: 'Own message' }, 'en', texts), 'Own message');
+  assert.equal(sharePageText({}, 'downloadButton', 'en', texts), 'Letöltés');
+  assert.equal(sharePageText({ texts: { downloadButton: 'Own' } }, 'downloadButton', 'en', texts), 'Own');
+  assert.equal(pendingTryOnText({}, 'en', null), DEFAULT_PENDING_TRYON_MESSAGE);
+  assert.equal(sharePageText({}, 'relatedPhotosTitle', 'en', null), SHARE_PAGE_TEXT_DEFAULTS.relatedPhotosTitle);
+});

@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-09T03:13:16+00:00",
+  "generated": "2026-10-09T03:25:26+00:00",
   "repo": "camera",
-  "head": "21c5e55",
+  "head": "09d2040",
   "counts": {
-   "endpoints": 128,
+   "endpoints": 131,
    "collections": 8,
    "env": 59,
    "outbound-hosts": 30,
-   "docs": 59
+   "docs": 60
   }
  },
  "items": [
@@ -183,6 +183,10 @@
   {
    "file": "docs/SLIDESHOW_LOGIC.md",
    "title": "Slideshow Logic"
+  },
+  {
+   "file": "docs/TEXT_LEVELS.md",
+   "title": "Text levels: the Dictionary, a partner's texts, an event's texts"
   },
   {
    "file": "docs/TRYON_ADMIN_GUIDE.md",

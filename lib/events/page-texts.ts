@@ -5,6 +5,7 @@
  */
 
 import { textOr, translate, type UiLanguage } from '@/lib/i18n';
+import type { TextOverrides } from '@/lib/i18n/overrides';
 
 export const DEFAULT_REDIRECTING_TEXT = translate('en', 'cta.opening');
 
@@ -27,18 +28,18 @@ export interface ApprovalTextSettings {
 }
 
 /** The text shown on the visit button of a CTA page after it was pressed. */
-export function redirectingText(value: string | null | undefined, language: UiLanguage = 'en'): string {
-  return textOr(language, 'cta.opening', value);
+export function redirectingText(value: string | null | undefined, language: UiLanguage = 'en', texts?: TextOverrides | null): string {
+  return textOr(language, 'cta.opening', value, undefined, texts);
 }
 
 /** The four texts of the approval wait, from the settings of the selfie-taking page (or none). */
-export function approvalTexts(settings: ApprovalTextSettings | null | undefined, tryOnChosen: boolean, language: UiLanguage = 'en') {
-  const own = textOr(language, 'approval.waiting', settings?.pendingWaitingMessage);
-  const ownIsDefault = own === translate(language, 'approval.waiting');
+export function approvalTexts(settings: ApprovalTextSettings | null | undefined, tryOnChosen: boolean, language: UiLanguage = 'en', texts?: TextOverrides | null) {
+  const own = textOr(language, 'approval.waiting', settings?.pendingWaitingMessage, undefined, texts);
+  const ownIsDefault = own === translate(language, 'approval.waiting', undefined, texts);
   return {
-    previewNotice: textOr(language, 'approval.previewNotice', settings?.pendingPreviewNotice),
-    savedMessage: textOr(language, 'approval.saved', settings?.pendingSavedMessage),
-    title: textOr(language, 'approval.title', settings?.pendingTitle),
-    waitingMessage: ownIsDefault && tryOnChosen ? `${own}${translate(language, 'approval.tryOn')}` : own,
+    previewNotice: textOr(language, 'approval.previewNotice', settings?.pendingPreviewNotice, undefined, texts),
+    savedMessage: textOr(language, 'approval.saved', settings?.pendingSavedMessage, undefined, texts),
+    title: textOr(language, 'approval.title', settings?.pendingTitle, undefined, texts),
+    waitingMessage: ownIsDefault && tryOnChosen ? `${own}${translate(language, 'approval.tryOn', undefined, texts)}` : own,
   };
 }

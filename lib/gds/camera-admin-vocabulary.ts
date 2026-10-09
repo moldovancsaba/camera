@@ -148,6 +148,12 @@ export const cameraAdminVocabularyPacks = [
     assign: { defaultMessage: 'Assign frame', icon: GdsIcons.Add, feedback: savedFeedback },
   }),
   // The libraries (camera#361): the same actions on the partner and the event page, for frames now and for logos and images later.
+  createGdsVocabularyPack('texts', {
+    // The text editors of the three levels (issue 353): save what was written, take a wording away, discard the unsaved changes.
+    save: { defaultMessage: 'Save the texts', icon: GdsIcons.Save, feedback: savedFeedback },
+    clear: { defaultMessage: 'Use the one from above', icon: GdsIcons.Refresh, feedback: savedFeedback },
+    discard: { defaultMessage: 'Discard the changes', icon: GdsIcons.Cancel, feedback: openedFeedback },
+  }),
   createGdsVocabularyPack('slot', {
     // The panel of a slot (camera#418): use the default, pick from the library, replace, add more, show nothing.
     add: { defaultMessage: 'Use this one', icon: GdsIcons.Add, feedback: savedFeedback },

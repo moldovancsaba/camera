@@ -27,3 +27,18 @@ test('inside a Hungarian provider the dictionary text shows, the stored English 
   assert.match(html, /data-language="hu"/);
   assert.match(html, /Esemény betöltése\.\.\. \| Esemény betöltése\.\.\. \| Egyedi szöveg/);
 });
+
+test('wordings written for the partner or the event show instead of the dictionary text; an editor\'s own text still wins; a key without a wording uses the dictionary', () => {
+  const html = renderToStaticMarkup(
+    <UiLanguageProvider language="hu" texts={{ 'event.loading': 'Pillanat...' }}>
+      <Probe />
+    </UiLanguageProvider>
+  );
+  assert.match(html, /Pillanat\.\.\. \| Pillanat\.\.\. \| Egyedi szöveg/);
+  const none = renderToStaticMarkup(
+    <UiLanguageProvider language="hu" texts={{}}>
+      <Probe />
+    </UiLanguageProvider>
+  );
+  assert.match(none, /Esemény betöltése\.\.\./);
+});

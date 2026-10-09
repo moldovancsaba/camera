@@ -34,7 +34,7 @@ import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoA
 import AcceptPage, { type AcceptPageData } from '@/components/capture/AcceptPage';
 import { consentRecords } from '@/lib/events/consent';
 import { approvalTexts } from '@/lib/events/page-texts';
-import { useT } from '@/components/i18n/UiLanguageProvider';
+import { useT, useUiTexts } from '@/components/i18n/UiLanguageProvider';
 import { translate, type MessageKey, type MessageValues, type UiLanguage } from '@/lib/i18n';
 import { errorText } from '@/lib/i18n/errors';
 import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
@@ -249,6 +249,7 @@ export default function EventCapturePage({
 }) {
   const { eventId } = use(params);
   const { t, own, language } = useT();
+  const uiTexts = useUiTexts();
   
   const [event, setEvent] = useState<EventData | null>(null);
   const [loadingLogoUrl, setLoadingLogoUrl] = useState<string | null>(null);
@@ -334,7 +335,7 @@ export default function EventCapturePage({
     savedMessage: pendingSavedMessage,
     title: pendingTitle,
     waitingMessage: pendingWaitingMessage,
-  } = approvalTexts(takePhotoConfig, Boolean(selectedTryOnSuitId), language);
+  } = approvalTexts(takePhotoConfig, Boolean(selectedTryOnSuitId), language, uiTexts);
   const cameraPromptTitle = own('camera.ready.title', takePhotoConfig?.cameraPromptTitle);
   const cameraPromptDescription = own('camera.prompt.desktop', takePhotoConfig?.cameraPromptDescription);
   const errorFrameMessage = own('flow.errorFrame', takePhotoConfig?.errorFrameMessage);

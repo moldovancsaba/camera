@@ -1,17 +1,31 @@
 {
  "_meta": {
-  "generated": "2026-10-09T03:13:16+00:00",
+  "generated": "2026-10-09T03:25:26+00:00",
   "repo": "camera",
-  "head": "21c5e55",
+  "head": "09d2040",
   "counts": {
-   "endpoints": 128,
+   "endpoints": 131,
    "collections": 8,
    "env": 59,
    "outbound-hosts": 30,
-   "docs": 59
+   "docs": 60
   }
  },
  "items": [
+  {
+   "path": "/api/admin/dictionary",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/admin/dictionary/route.ts",
+   "auth_markers": [
+    "isGlobalAdminSession",
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
   {
    "path": "/api/admin/events/[id]/default-slideshow",
    "methods": [
@@ -895,6 +909,19 @@
    "no_auth_marker": false
   },
   {
+   "path": "/api/events/[eventId]/texts",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/events/[eventId]/texts/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
    "path": "/api/events",
    "methods": [
     "GET",
@@ -1328,6 +1355,19 @@
    "file": "app/api/partners/[partnerId]/submissions/[submissionId]/route.ts",
    "auth_markers": [
     "isGlobalAdminSession",
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/partners/[partnerId]/texts",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/partners/[partnerId]/texts/route.ts",
+   "auth_markers": [
     "requireAuth",
     "withErrorHandler"
    ],
