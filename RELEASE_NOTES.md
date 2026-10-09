@@ -22,6 +22,12 @@
 - **Verified:** type-check; lint; unit tests (the crops for both shapes from both stream shapes, shape plus tight, centred, the shape of the result, within 3 % left alone); the real component in a browser at phone size with a fake camera that always gives landscape 4:3: Portrait makes the stage 3:4 with one request and none afterwards, Landscape goes back with no request, tight keeps the shape and crops, and the photo is 756 x 1008, exactly the part shown.
 - **Not verified:** the owner's phone with this version. **Known and not changed:** the page gets the raw sensor stream, so in low light it is darker than the Camera app's own picture.
 
+## Unreleased — documentation: the analytics audit (issue 521; owner request 2026-10-09)
+
+- **Added `docs/ANALYTICS_AUDIT.md`:** how the Analytics menu really works (it is a try-on moderation report; its defects are listed), what is recorded today about guests, about the people who manage and about the screens, links, share page and e-mails (a table per area, DB or log only), what the production data supports today (measured: 1,667 submissions, 441,891 plays, 67 photos with a vetting history, 328 submissions with no consent record), the gaps (the whole guest journey is unrecorded; the share and download counters are only ever set to 0; the IP and the user-agent are stored on every photo and never read), how camera feeds messmass today (four visit counters, one channel) and what a feed of the photo and vetting numbers needs, and a proposal: three levels of knowing (anonymous counts, pseudonymous session, identified), one interaction record written through one function, the events and KPIs, a rebuilt Analytics menu, the messmass variables, the order of work and the owner's decisions 241 to 246.
+- **Found on the way and fixed separately:** ten management route files outside the activity log (issue 517).
+- **Not built:** nothing changes in the capture path or in messmass; no test data was written anywhere.
+
 
 ## Unreleased — activity log: who did what and when, every refused or failed request, and a weekly CSV to the owner (issue 517; owner request 2026-10-09)
 

@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-09T21:36:41+00:00",
+  "generated": "2026-10-09T22:27:12+00:00",
   "repo": "camera",
-  "head": "de1c24d",
+  "head": "026e102",
   "counts": {
    "endpoints": 152,
    "collections": 8,
    "env": 61,
    "outbound-hosts": 31,
-   "docs": 67
+   "docs": 68
   }
  },
  "items": [
@@ -71,6 +71,10 @@
   {
    "file": "business_requirements.md",
    "title": "Seyu 2.0 \u2013 SaaS version \u2014 Business & vendor requirements"
+  },
+  {
+   "file": "docs/ANALYTICS_AUDIT.md",
+   "title": "Analytics audit: what we know about the users and the service, what we could know, and how to feed messmass"
   },
   {
    "file": "docs/AUTHORIZATION.md",
