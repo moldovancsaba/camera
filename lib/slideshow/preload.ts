@@ -15,8 +15,8 @@
 import { TimeoutError, withTimeout } from '@/lib/slideshow/resilience';
 
 export interface PreloaderOptions<T> {
-  /** Starts one load; resolves when the picture is ready, rejects when it cannot be loaded. */
-  load: (url: string) => Promise<T>;
+  /** Starts one load; resolves when the picture is ready, rejects when it cannot be loaded. `urgent` is what the picture is needed for right now. */
+  load: (url: string, options: { urgent: boolean }) => Promise<T>;
   /** Deadline for a caller and for the place in the line. */
   timeoutMs?: number;
   concurrency?: number;
@@ -70,7 +70,7 @@ export function createPreloader<T>({ load, timeoutMs = PRELOAD_TIMEOUT_MS, concu
       // A load that hangs gives its place back after the deadline, so a few dead requests cannot stop all loading.
       const timer = setTimeout(giveOnce, timeoutMs);
       try {
-        const value = await load(url);
+        const value = await load(url, { urgent });
         ready.set(url, value);
         failedUntil.delete(url);
         return value;

@@ -104,3 +104,16 @@ test('prune forgets what is not kept', async () => {
   p.prune(new Set(['b']));
   assert.deepEqual([p.has('a'), p.has('b'), p.has('c'), p.size()], [false, true, false, 1]);
 });
+
+test('the loader is told whether the picture is needed right now', async () => {
+  const asked: Array<[string, boolean]> = [];
+  const p = createPreloader({
+    load: async (url, { urgent }) => {
+      asked.push([url, urgent]);
+      return url;
+    },
+  });
+  await p.preload('a', { urgent: true });
+  await p.preload('b');
+  assert.deepEqual(asked, [['a', true], ['b', false]]);
+});
