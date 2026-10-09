@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-09T02:41:19+00:00",
+  "generated": "2026-10-09T03:05:20+00:00",
   "repo": "camera",
-  "head": "a136ae1",
+  "head": "e665979",
   "counts": {
-   "endpoints": 126,
+   "endpoints": 127,
    "collections": 8,
    "env": 59,
    "outbound-hosts": 30,
@@ -780,6 +780,18 @@
     "POST"
    ],
    "file": "app/api/events/[eventId]/library/upload/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/events/[eventId]/logo-slots/keep",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/events/[eventId]/logo-slots/keep/route.ts",
    "auth_markers": [
     "requireAuth",
     "withErrorHandler"

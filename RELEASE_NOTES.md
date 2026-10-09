@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the logo editor shows a logo the library lost, with Keep as own and Remove (issue 421, step 4b; admin only)
+
+- **Changed:** on an event's logo pages a logo the library no longer has is now **shown from the event's snapshot**, marked **No longer in the library**, with a warning (it was dropped from the page while the capture page and the slideshow still showed it). For a logo the **event chose itself**, **Keep as own** makes an own logo of the event from the snapshot (same picture address) and puts it in the lost logo's place and position in every place of the event that used it; **Remove** takes it out as before. A lost logo that comes from the partner's default is shown with a warning that it is the partner's to fix; the event keeps showing it, and a place can replace the default.
+- **Added:** `POST /api/events/<id>/logo-slots/keep` (`{ id }`, manager access).
+- **Not changed:** what any user sees; nothing is created or changed until an editor presses Keep as own. Frames, archive-instead-of-delete, the picture check and the backfill of snapshots are the open phases.
+- **Verified:** type-check; lint; unit tests (the panels show a lost logo from the snapshot; Keep as own: the own logo, its place and position, every place, nothing lost afterwards; the refusals; the route and its access); the full CI chain. The lost panels were seen in a production build (a temporary harness with a lost own logo and a lost inherited one, removed); not seen on a real event (none has a lost logo).
+
 ## Unreleased — the welcome page shows the picture drawn from the default slideshow; a default welcome page (issue 327, step 8b; only events that have the picture)
 
 - **Changed:** the welcome step of the capture page shows the picture drawn from the event's default slideshow (`Event.welcomeScreen`) on **any welcome page that has no giant screen picture of its own**; a picture set on a page is the page's own and always wins. An event that gets the journey defaults, has the picture and **has no welcome page of its own** now also gets a **default welcome page** first (then consent, login, selfie): the giant screen and a Start button, in the language of the event ("Start", "Indítás"); a switched off welcome page counts as the editor's own choice and gets no default. In the page editor it is a row marked **Default**; **Customise** makes an own page that keeps following the picture (no picture is copied into it).
