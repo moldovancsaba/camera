@@ -61,7 +61,7 @@ function drawStandIn(ctx: SKRSContext2D, x: number, y: number, w: number, h: num
 
 function drawQr(ctx: SKRSContext2D, url: string, color: string | undefined, x: number, y: number, side: number): void {
   const { size, data } = QRCode.create(url, { errorCorrectionLevel: 'M' }).modules;
-  const module = side / size;
+  const cell = side / size;
   ctx.fillStyle = color && HEX.test(color) ? color : CAMERA_STAGE_WHITE;
   for (let row = 0; row < size; row += 1) {
     for (let col = 0; col < size; ) {
@@ -72,7 +72,7 @@ function drawQr(ctx: SKRSContext2D, url: string, color: string | undefined, x: n
       let run = 1;
       while (col + run < size && data[row * size + col + run]) run += 1;
       // A hair wider than the module so neighbouring runs never show a seam.
-      ctx.fillRect(x + col * module, y + row * module, run * module + 0.5, module + 0.5);
+      ctx.fillRect(x + col * cell, y + row * cell, run * cell + 0.5, cell + 0.5);
       col += run;
     }
   }
