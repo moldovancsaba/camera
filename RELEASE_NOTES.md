@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — slideshow: a cheaper playlist call (issue 476, step S6 of the fix plan)
+
+- **Changed (no visible change):** every playlist call (about one per slide per screen) read the **whole pool of the event as full documents** (user info, consents, IP and device data, play history) and sorted them in memory, and it scanned the submissions for deactivated accounts. Now the query keeps only the fields a slide needs (`_id`, the picture addresses, `createdAt`, `playCount`, the picture's size) **before** it sorts, and the list of deactivated accounts is **kept for a minute** per server instance (read again at once on the instance where an admin changes an account's status). Measured read-only on the MTK x Vasas pool (36 photos): the same order and the same slide fields, **85 KB became 18 KB** and the query 56 ms became 31 ms; the saving grows with the pool.
+- **Changed:** a photo of an account an admin deactivates leaves the slideshows within **a minute** on other server instances (at once on the instance that made the change). Before: at the next call.
+- **Removed:** the log line written for every slide of every call (`[Playlist] Single-image slide …`), which filled the server log.
+- **Not done on purpose (needs the owner):** a partial index for the deactivated-accounts lookup (a production index, `npm run db:ensure-indexes`; the cache makes it far less urgent), pinning the function region next to the database (needs the region facts), and a cache of the sorted pool (it would delay new photos).
+- **Documentation:** release notes, ARCHITECTURE.md, SLIDESHOW_LOGIC.md (section 6), the research plan status, the audit inventory, HANDOVER.
+- **Verified:** type-check; lint; unit tests (the query shape: `$project` before `$sort`, the needed fields kept, the heavy ones not; the cache: callers within the time share one load, reload after it, `clear`, a failed load not kept); the full CI chain; and the read-only old-versus-new comparison on the real pool above. **Nothing was written to the database.**
 ## Unreleased — slideshow: no wait is without limit any more (issue 476, step S3 of the fix plan)
 
 - **Fixed (the second cause of the freeze):** a request or a picture load that stalled used to hold the player still for as long as it hung: the refill was single-flight (one stalled request stopped all refilling), the start waited for all pictures, and a dead picture link was tried again at every change of the queue. Now:

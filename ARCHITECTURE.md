@@ -365,6 +365,7 @@ Key properties:
 - aspect-aware single or mosaic slides
 - queue-based browser playback: a refill sends `exclude` (the submission ids already queued) and appends only slides the queue does not hold, so the fixed-order screen never shows one photo for `bufferSize + 1` slides (camera#476); when the server has nothing new the loop continues from the seed (every slide received, in order). The player writes its queue in one place (`commitQueue`), the ref is the truth and the state only draws it
 - composite layouts through `slideshow_layouts`
+- the playlist call is lean (camera#476, S6): the pool query projects only what a slide needs before it sorts, and the inactive-accounts list is cached for a minute per instance (`lib/cache/ttl-once.ts`, `lib/db/sso.ts`)
 - the research and the fix plan for the freeze: `docs/_research/SLIDESHOW_FREEZE_RESEARCH.md` (steps S1 to S8; S2 is this queue fix)
 
 Reference:
