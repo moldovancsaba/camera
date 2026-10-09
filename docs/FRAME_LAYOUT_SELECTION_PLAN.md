@@ -94,7 +94,7 @@ The dark area is the part of the picture a design covers, shown at 50 % black at
 |---|---|---|
 | A library frame with a message area (MTK blue and pink: a header and a footer bar of 100 px) | the boxes of its layers | the layers stored with the image of the message on that frame (`FrameVariant.layers`), drawn as territories |
 | The generated layout | the boxes of its layers | the same |
-| A complete frame of the event's own | the whole non-transparent graphic at 50 % black (the owner's answer 189) | `frameSilhouette`, shown at the move-and-zoom step **for an event whose editor saved the selection setting**; an event that never saved it keeps showing the real frame there, as before |
+| A complete frame of the event's own | the whole non-transparent graphic at 50 % black (the owner's answers 189 and 193: one general method, every event) | `frameSilhouette`, in the live view of a webcam and in the move-and-zoom step; if the picture cannot be read the real frame shows, as before |
 | Any own frame of a vetted event | the same silhouette, never the real frame (camera#265) | unchanged |
 
 The image of a photo is drawn when the camera step opens (S2), so the live view and the move-and-zoom step always show the dark area of **the design that photo gets**, and a change of design changes it. Tests use the real message areas of the two MTK frames.
@@ -103,9 +103,9 @@ The image of a photo is drawn when the camera step opens (S2), so the live view 
 
 | Segment | Status |
 |---|---|
-| S1 #445 selection settings | built, pull request #455 |
-| S3 #449 messages per design | built (this pull request); S1 #445 merged as #455 |
-| S2 #446 capture flow | built (this pull request), stacked on S3 #449 |
-| S4 #448 layout previews | built (this pull request), stacked on S5 #447 |
-| S5 #447 dark area | built (this pull request), stacked on S2 #446 |
+| S1 #445 selection settings | merged (#455) |
+| S3 #449 messages per design | merged (#456) |
+| S2 #446 capture flow | merged (#457) |
+| S5 #447 dark area | merged (#458); one general method for every event and every kind of design since the owner's answer 193 (this pull request) |
+| S4 #448 layout previews | merged (#459) |
 | S6 #450, S7 #451, S8 #452, S9 #453 | after the match |

@@ -115,6 +115,8 @@ export interface CameraCaptureProps {
   autoStart?: boolean;
   /** Layer boxes of the generated event frame, drawn inside the frame guide as 50% black territories (camera#236). */
   territories?: readonly Territory[];
+  /** The 50% black silhouette of a complete frame of the event's own, drawn over the whole frame guide as the dark area (lib/frame/dark-area.ts). */
+  silhouetteUrl?: string | null;
   /**
    * The shutter takes a real photo from the camera (ImageCapture.takePhoto) at the largest size it offers, and uses the
    * video frame only when that fails (camera#257). False: the video frame, as before.
@@ -140,6 +142,7 @@ export default function CameraCapture({
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
   autoStart = false,
   territories,
+  silhouetteUrl,
   stillCapture = false,
 }: CameraCaptureProps) {
   const { t } = useT();
@@ -900,6 +903,7 @@ export default function CameraCapture({
                 }}
               >
                 {territories && territories.length > 0 && <FrameTerritories territories={territories} />}
+                {silhouetteUrl && <Image src={silhouetteUrl} alt="" aria-hidden="true" fill unoptimized className="pointer-events-none object-fill" data-frame-silhouette />}
               </div>
             )}
 

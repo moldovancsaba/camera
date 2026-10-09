@@ -50,7 +50,7 @@ import { frameSilhouette } from '@/lib/frame/silhouette';
 import { pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory } from '@/lib/frame/capture';
 import { NO_CHOICE, chooseLayout, drawOwnFrame, drawVariant, layoutIdOf, layoutsToChoose, messagesToChoose, nextStep, variantKeyOf, type Choice } from '@/lib/frame/choose';
 import { storedFrameSelection } from '@/lib/frame/selection';
-import { needsSilhouette, reframeOverlayUrl } from '@/lib/frame/dark-area';
+import { darkAreaUrl } from '@/lib/frame/dark-area';
 import SystemCameraCapture from '@/components/camera/SystemCameraCapture';
 import { captureOverride, chooseCaptureMethod, hasStillCapture, type CaptureMethod } from '@/lib/camera/still-capture';
 import { pickRandom } from '@/lib/slots/resolve';
@@ -605,12 +605,11 @@ export default function EventCapturePage({
     };
   }, [selectedFrame?.frameId, selectedFrame?.imageUrl, selectedFrame?.generated]);
 
-  // The own frame of a vetted event is shown as a silhouette, never as the real frame (camera#265); so is the own frame of an event whose editor saved how users get the layout, as its
-  // dark area in the shoot (epic 444, lib/frame/dark-area.ts).
-  const hasSelection = storedFrameSelection(event?.frameSelection) !== null;
+  // The dark area of an own frame is its silhouette (lib/frame/dark-area.ts): one method for every event, in the live view and in the move-and-zoom step; a vetted event never shows the
+  // real frame (camera#265).
   const ownFrameUrl = selectedFrame && !selectedFrame.generated ? selectedFrame.imageUrl : null;
   useEffect(() => {
-    if (!needsSilhouette({ vetted, hasSelection }) || !ownFrameUrl) {
+    if (!ownFrameUrl) {
       setSilhouetteUrl(null);
       return;
     }
@@ -621,7 +620,8 @@ export default function EventCapturePage({
     return () => {
       cancelled = true;
     };
-  }, [vetted, hasSelection, ownFrameUrl]);
+  }, [ownFrameUrl]);
+  const darkArea = darkAreaUrl({ vetted, generated: Boolean(selectedFrame?.generated), frameUrl: selectedFrame?.imageUrl ?? null, silhouetteUrl });
 
   const compositeImageWithFrame = useCallback(async () => {
     if (!capturedImage || !selectedFrame) return;
@@ -1679,6 +1679,7 @@ export default function EventCapturePage({
                   frameHeight={selectedFrame?.height || generatedFrame?.height || 1080}
                   previewAspectWidthOverHeight={captureAspect}
                   territories={liveTerritories}
+                  silhouetteUrl={selectedFrame?.generated ? null : silhouetteUrl}
                   captureButtonColor={event?.brandColor || CAMERA_DEFAULT_BRAND_COLOR}
                   captureButtonBorderColor={event?.brandBorderColor || CAMERA_DEFAULT_BRAND_BORDER_COLOR}
                   promptTitle={cameraPromptTitle}
@@ -1698,9 +1699,8 @@ export default function EventCapturePage({
             <ReframeStep
               capture={capturedOriginal}
               frameAspect={captureAspect}
-              // The generated frame shows as territories until the preview step; own frames as before. A vetted event
-              // never shows the real frame: its own frame shows as a silhouette (camera#265).
-              frameImageUrl={reframeOverlayUrl({ vetted, hasSelection, generated: Boolean(selectedFrame?.generated), frameUrl: selectedFrame?.imageUrl ?? null, silhouetteUrl })}
+              // The dark area of the design: territories for a generated frame or one with a message area, the silhouette of an own frame (camera#265, lib/frame/dark-area.ts).
+              frameImageUrl={darkArea}
               territories={selectedFrame?.generated?.territories}
               buttonSize={eventButtonSize}
               onDone={handleReframeDone}
