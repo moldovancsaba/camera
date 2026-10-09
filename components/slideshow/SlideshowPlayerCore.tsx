@@ -76,6 +76,8 @@ interface SlideshowSettings {
   refreshStrategy: 'continuous' | 'batch';
   playMode?: 'once' | 'loop';
   orderMode?: 'fixed' | 'random';
+  /** Two picture layers: the next picture fades in over the one before (camera#476, S4b). */
+  crossfade?: boolean;
   backgroundPrimaryColor?: string;
   backgroundAccentColor?: string;
   backgroundImageUrl?: string | null;
@@ -198,6 +200,9 @@ export function SlideshowPlayerCore({
   const [playbackEnded, setPlaybackEnded] = useState(false);
   const [displayEpoch, setDisplayEpoch] = useState(0);
   const [fadeOpaque, setFadeOpaque] = useState(true);
+  /** The slide that was on screen before, kept underneath while the next one fades in (crossfade only). */
+  const [outgoing, setOutgoing] = useState<Slide | null>(null);
+  const shownSlideRef = useRef<Slide | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const hideControlsTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -719,6 +724,21 @@ export function SlideshowPlayerCore({
     lastShownRef.current = { key, at: now };
   }, [headFadeKey, preloader, record]);
 
+  // Crossfade: the slide that was shown stays underneath until the next one has faded in over it (then it is dropped, so only two pictures are ever drawn).
+  const crossfade = settings?.crossfade === true;
+  useEffect(() => {
+    const head = headFadeKey ? slideQueueRef.current[0] : undefined;
+    const previous = shownSlideRef.current;
+    shownSlideRef.current = head ?? null;
+    if (!crossfade || !previous || !head || displayEpoch === 0 || fadeMsForUi <= 0) {
+      setOutgoing(null);
+      return;
+    }
+    setOutgoing(previous);
+    const done = window.setTimeout(() => setOutgoing(null), fadeMsForUi + 80);
+    return () => window.clearTimeout(done);
+  }, [headFadeKey, crossfade, displayEpoch, fadeMsForUi]);
+
   useLayoutEffect(() => {
     if (!headFadeKey) {
       setFadeOpaque(true);
@@ -1080,7 +1100,28 @@ export function SlideshowPlayerCore({
         className={screenDesign ? 'absolute z-[2] flex items-center justify-center overflow-hidden' : 'absolute inset-0 z-[2] flex items-center justify-center'}
         style={screenDesign ? screenWindowStyle(screenDesign) : undefined}
       >
-        {currentSlide ? (
+        {currentSlide && crossfade ? (
+          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+            {outgoing ? (
+              <div key={`out:${slideKey(outgoing)}`} data-slide-layer="outgoing" style={{ position: 'absolute', inset: 0 }}>
+                {renderSlide(outgoing)}
+              </div>
+            ) : null}
+            {/* A new layer for each slide: it appears at opacity 0 and fades in over the one underneath. */}
+            <div
+              key={`in:${headFadeKey}`}
+              data-slide-layer="incoming"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                opacity: fadeOpaque ? 1 : 0,
+                transition: fadeMsForUi > 0 ? `opacity ${fadeMsForUi}ms ease-in-out` : undefined,
+              }}
+            >
+              {renderSlide(currentSlide)}
+            </div>
+          </div>
+        ) : currentSlide ? (
           <div
             style={{
               width: '100%',

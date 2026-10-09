@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       refreshStrategy = 'continuous',
       playMode: bodyPlayMode,
       orderMode: bodyOrderMode,
+      crossfade: bodyCrossfade,
       stageAspect: bodyStageAspect,
       submissionSourceMode: bodySubmissionSourceMode,
     } = body;
@@ -114,6 +115,7 @@ export async function POST(request: NextRequest) {
       refreshStrategy,
       playMode,
       orderMode,
+      crossfade: bodyCrossfade === true,
       backgroundPrimaryColor,
       backgroundAccentColor,
       backgroundImageUrl,
@@ -221,6 +223,7 @@ export async function PATCH(request: NextRequest) {
       isActive,
       playMode,
       orderMode,
+      crossfade,
       backgroundPrimaryColor,
       backgroundAccentColor,
       backgroundImageUrl,
@@ -249,6 +252,12 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ error: 'playMode must be "once" or "loop"' }, { status: 400 });
       }
       updates.playMode = playMode;
+    }
+    if (crossfade !== undefined) {
+      if (typeof crossfade !== 'boolean') {
+        return NextResponse.json({ error: 'crossfade must be true or false' }, { status: 400 });
+      }
+      updates.crossfade = crossfade;
     }
     if (orderMode !== undefined) {
       if (orderMode !== 'fixed' && orderMode !== 'random') {

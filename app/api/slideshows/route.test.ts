@@ -40,3 +40,24 @@ test('any other slideshow is deleted as before', async (t) => {
   assert.equal((await DELETE(del(OTHER_ID))).status, 200);
   assert.deepEqual(data.slideshows.map((s) => s.slideshowId), ['s-default']);
 });
+
+const patch = (id: ObjectId, body: object) => new NextRequest(`http://localhost/api/slideshows?id=${id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+
+test('the crossfade is a switch an editor turns on and off, stored as a boolean (issue 476)', async (t) => {
+  const { data } = setup(t);
+  const { PATCH } = await importRoute('crossfade-on');
+  assert.equal((await PATCH(patch(OTHER_ID, { crossfade: true }))).status, 200);
+  assert.equal((data.slideshows.find((s) => s.slideshowId === 's-other') as { crossfade?: boolean }).crossfade, true);
+  assert.equal((await PATCH(patch(OTHER_ID, { crossfade: false }))).status, 200);
+  assert.equal((data.slideshows.find((s) => s.slideshowId === 's-other') as { crossfade?: boolean }).crossfade, false);
+});
+
+test('anything but true or false for the crossfade is refused and nothing is stored', async (t) => {
+  const { data } = setup(t);
+  const { PATCH } = await importRoute('crossfade-bad');
+  const response = await PATCH(patch(OTHER_ID, { crossfade: 'yes' }));
+  assert.equal(response.status, 400);
+  assert.match(((await response.json()) as { error: string }).error, /crossfade must be true or false/);
+  assert.equal('crossfade' in (data.slideshows.find((s) => s.slideshowId === 's-other') as object), false);
+});
+
