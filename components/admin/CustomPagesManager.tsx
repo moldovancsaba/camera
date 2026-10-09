@@ -14,14 +14,17 @@
 
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import { useState } from 'react';
-import { InlineAlert, LabelTag, StateBlock } from '@sovereignsquad/gds-core/client';
+import { InlineAlert, LabelTag } from '@sovereignsquad/gds-core/client';
 import ImagePicker from '@/components/admin/library/ImagePicker';
 import { CustomPageType, type CustomPage, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { DEFAULT_APPROVAL_TEXTS, DEFAULT_REDIRECTING_TEXT } from '@/lib/events/page-texts';
+import { customiseDefault, effectiveJourney, type JourneyContext } from '@/lib/events/journey';
 
 export interface CustomPagesManagerProps {
   eventId: string;
   initialPages: CustomPage[];
+  /** What decides which default pages the event gets (`GET /api/events/<id>`): with it the list is the journey as the user goes through it (camera#378). */
+  journeyContext?: JourneyContext;
   onSave: (pages: CustomPage[]) => Promise<void>;
 }
 
@@ -121,19 +124,11 @@ function DividerLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function CustomPagesManager({ eventId, initialPages, onSave }: CustomPagesManagerProps) {
+export default function CustomPagesManager({ eventId, initialPages, journeyContext, onSave }: CustomPagesManagerProps) {
   const [pages, setPages] = useState<CustomPage[]>(initialPages);
   const [showModal, setShowModal] = useState(false);
   const [editingPage, setEditingPage] = useState<CustomPage | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-
-  // Debug logging
-  console.log('CustomPagesManager render:', { 
-    eventId, 
-    initialPagesCount: initialPages.length, 
-    pagesCount: pages.length,
-    pages 
-  });
 
   /**
    * Add [Take Photo] placeholder if not present
@@ -177,6 +172,15 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
   // Get pages sorted by order, with [Take Photo] placeholder always first
   const pagesWithPlaceholder = ensureTakePhotoPlaceholder(pages);
   const sortedPages = [...pagesWithPlaceholder].sort((a, b) => a.order - b.order);
+  // The list is the journey as the user goes through it: the own pages, the default pages that are added when the page is read, and the steps that
+  // are not pages. Without the context (an editor that does not know it) it is the own pages only.
+  const rows = journeyContext ? effectiveJourney(pagesWithPlaceholder, journeyContext) : sortedPages.map((page) => ({ kind: 'own' as const, page }));
+
+  /** Customise a default page: the event's own page, filled with the default's texts, in the default's place; it is added when the editor saves it. */
+  const handleCustomise = (page: CustomPage) => {
+    setEditingPage(customiseDefault(page));
+    setShowModal(true);
+  };
 
   /**
    * Open modal to add new page
@@ -335,9 +339,11 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
       <div style={{ display: 'grid', gap: '1.5rem' }}>
         <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
           <div style={{ display: 'grid', gap: '0.25rem' }}>
-            <h2 style={{ margin: 0 }}>Event Pages</h2>
+            <h2 style={{ margin: 0 }}>Pages of the user journey</h2>
             <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
-              Configure onboarding and thank you pages for this event
+              {journeyContext
+                ? 'The journey in the order a user goes through it. A default page is used until you customise it; the steps marked built in are not pages, and the text next to them says where they are edited.'
+                : 'Configure the pages of the user journey for this event'}
             </p>
           </div>
           <SemanticButton
@@ -352,10 +358,45 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
 
       {/* Page List */}
         <div style={{ display: 'grid', gap: '0.75rem' }}>
-        {sortedPages.length === 0 ? (
-            <StateBlock variant="empty" title="No custom pages yet" description="Add pages to create onboarding or thank you flows." />
-        ) : (
-          sortedPages.map((page, index) => (
+        {rows.map((row, index) => {
+          if (row.kind === 'step') {
+            return (
+              <article key={`step-${row.id}`} style={{ border: '1px dashed var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+                <div style={{ display: 'grid', gap: '0.25rem' }}>
+                  <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>#{index + 1}</code>
+                    <LabelTag tone="neutral" label="Built in" />
+                  </div>
+                  <strong style={{ fontSize: '0.875rem' }}>{row.title}</strong>
+                  <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>{row.description}</span>
+                  <span style={{ fontSize: '0.8125rem' }}>Edited in: {row.editedIn}</span>
+                </div>
+              </article>
+            );
+          }
+          if (row.kind === 'default') {
+            return (
+              <article key={row.page.pageId} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+                <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'grid', flex: 1, gap: '0.25rem', minWidth: 0 }}>
+                    <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>#{index + 1}</code>
+                      <LabelTag tone="info" label="Default" />
+                      <LabelTag tone="neutral" label={row.page.pageType} />
+                    </div>
+                    <strong style={{ fontSize: '0.875rem' }}>{row.page.config.title || '[Untitled]'}</strong>
+                    <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>{row.reason}</span>
+                  </div>
+                  <SemanticButton action="custom-pages:customise-default" type="button" size="xs" variant="secondary" onClick={() => handleCustomise(row.page)}>
+                    Customise
+                  </SemanticButton>
+                </div>
+              </article>
+            );
+          }
+          const page = row.page;
+          const ownIndex = sortedPages.findIndex((p) => p.pageId === page.pageId);
+          return (
               <article
               key={page.pageId}
                 style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}
@@ -369,7 +410,7 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
                       variant="secondary"
                       size="compact-xs"
                   onClick={() => handleMoveUp(page.pageId)}
-                  disabled={index === 0}
+                  disabled={ownIndex === 0}
                   title="Move up"
                 >
                   ▲
@@ -380,7 +421,7 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
                       variant="secondary"
                       size="compact-xs"
                   onClick={() => handleMoveDown(page.pageId)}
-                  disabled={index === sortedPages.length - 1}
+                  disabled={ownIndex === sortedPages.length - 1}
                   title="Move down"
                 >
                   ▼
@@ -394,6 +435,7 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
                     #{index + 1}
                       </code>
                       <LabelTag tone="neutral" label={page.pageType} />
+                      {page.isActive ? null : <LabelTag tone="warning" label="Switched off: users do not see it" />}
                     </div>
                     <strong style={{ fontSize: '0.875rem' }}>
                     {page.config.title || '[Untitled]'}
@@ -425,8 +467,8 @@ export default function CustomPagesManager({ eventId, initialPages, onSave }: Cu
                   </div>
                 </div>
               </article>
-          ))
-        )}
+          );
+        })}
         </div>
 
       {/* Add Page Buttons */}

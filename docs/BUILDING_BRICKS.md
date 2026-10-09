@@ -33,8 +33,8 @@ How it reads with bricks:
   - **select** one from the parent's library (the partner from the global library, the event from the partner's library);
   - **replace** the default;
   - **add more**.
-- **One logo: it is used. More than one: always a random one (decided, 156).** (`selectRandomLogo` exists and nothing calls it.) My reading, for the owner to confirm (168): "add more" keeps the default in use next to the added ones, and the random pick is among all of them.
-- **When messmass has a new logo (decided, 156), camera recognises it, replaces the imported default, and it goes down to every child that uses the default.** My reading, for the owner to confirm (169): it never replaces a logo the partner or the event chose itself.
+- **One logo: it is used. More than one: always a random one (decided, 156).** (`selectRandomLogo` exists and nothing calls it.) Decided (168): "add more" keeps the default in use next to the added ones, and the random pick is among all of them; "replace" removes the default for that place.
+- **When messmass has a new logo (decided, 156), camera recognises it, replaces the imported default, and it goes down to every child that uses the default.** Decided (169): it never replaces a logo the partner or the event chose itself.
 - The partner page, the library card and the event page all ask the same resolver, so none can say "none" while one exists.
 
 ## 3. The bricks
@@ -63,7 +63,7 @@ Order, for every slot: **event's own, partner's own, global default, built-in de
 
 1. **The first that has a value wins, and the screen says which one it is:** "Own", "From the partner", "From messmass", "Global default", "Built-in". Today only the try-on setup and the button colour record the winner.
 2. **messmass is a source, not a fourth level.** What messmass provides lands at the partner or the event as the default there, flagged "From messmass" (the logo, the colours, the names). An own value replaces it; "Use the default again" brings it back.
-3. **Following means no copy (my reading of 158 and 161, for the owner to confirm: 167).** An event stores only what an editor set. A change of the partner or the global default shows at once on every event that follows, and never touches an event's own values. Today colours, frames and logos are copied into the event and a cascade replaces whole lists, which drops what an event assigned itself; that goes against "nothing already set is deleted" (data-model reading, finding 2). Existing copies are measured first and migrated without deleting anything.
+3. **Following means no copy (decided, 158, 161 and 167).** An event stores only what an editor set. A change of the partner or the global default shows at once on every event that follows, and never touches an event's own values. Today colours, frames and logos are copied into the event and a cascade replaces whole lists, which drops what an event assigned itself; that goes against "nothing already set is deleted" (data-model reading, finding 2). Existing copies are measured first and migrated without deleting anything.
 4. **Empty means follow.** A text field saves empty while it shows the default (grey placeholder). The English default is never saved as the event's own. Today the edit forms freeze English defaults into events and a heuristic (`textOr`, the stored English counts as unset in Hungarian) repairs it afterwards.
 5. **"Use the default" clears one slot and nothing else.**
 6. **Nothing is deleted by following.** A library item in use cannot be deleted (built, #392); a page the editor deletes returns the default of its place (#378).
@@ -213,8 +213,4 @@ Why this order: step 2 does not depend on the new model, so the owner sees the w
 | 162, 163 | left to me: section 8, everything is delivered |
 | 164 | do it now: done, PR #416 |
 
-Still to confirm, because they are my readings:
-
-- **167** Following, not photocopying (section 4, item 3): the event stores nothing for an element until an editor sets one; it looks at its parent each time, so a change at the partner shows on the event at once unless the event has its own. Is that what you mean?
-- **168** "Add more" keeps the default in use next to the added logos, and the random pick is among all of them.
-- **169** A new logo from messmass replaces the old imported default and goes down to the children that use the default, but never replaces a logo the partner or the event chose itself.
+Confirmed by the owner on 2026-10-09: **167** following, not photocopying; **168** "add more" keeps the default next to the added logos, random among all, "replace" removes the default for that place; **169** a new logo from messmass replaces the old imported default and goes down, never over an own choice. All questions of the brick model are answered.
