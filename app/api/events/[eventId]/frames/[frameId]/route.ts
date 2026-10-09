@@ -11,11 +11,12 @@ import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
 import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError, apiForbidden } from '@/lib/api/responses';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
+import { withErrorHandler } from '@/lib/api/withErrorHandler';
 
-export async function DELETE(
+export const DELETE = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string; frameId: string }> }
-) {
+) => {
   try {
     // Authentication check
     const session = await getSession();
@@ -64,4 +65,4 @@ export async function DELETE(
     console.error('Error removing frame:', error);
     return apiError(error instanceof Error ? error.message : 'Failed to remove frame');
   }
-}
+});

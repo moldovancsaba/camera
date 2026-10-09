@@ -1,8 +1,8 @@
 {
  "_meta": {
-  "generated": "2026-10-09T21:20:41+00:00",
+  "generated": "2026-10-09T21:36:41+00:00",
   "repo": "camera",
-  "head": "3ad3dd8",
+  "head": "de1c24d",
   "counts": {
    "endpoints": 152,
    "collections": 8,
@@ -816,7 +816,8 @@
    ],
    "file": "app/api/admin/users/[email]/role/route.ts",
    "auth_markers": [
-    "requireAdmin"
+    "requireAdmin",
+    "withErrorHandler"
    ],
    "no_auth_marker": false
   },
@@ -827,7 +828,8 @@
    ],
    "file": "app/api/admin/users/[email]/status/route.ts",
    "auth_markers": [
-    "requireAdmin"
+    "requireAdmin",
+    "withErrorHandler"
    ],
    "no_auth_marker": false
   },
@@ -838,7 +840,8 @@
    ],
    "file": "app/api/admin/users/merge/route.ts",
    "auth_markers": [
-    "requireAdmin"
+    "requireAdmin",
+    "withErrorHandler"
    ],
    "no_auth_marker": false
   },
@@ -925,7 +928,9 @@
     "DELETE"
    ],
    "file": "app/api/events/[eventId]/frames/[frameId]/route.ts",
-   "auth_markers": [],
+   "auth_markers": [
+    "withErrorHandler"
+   ],
    "no_auth_marker": true
   },
   {
@@ -934,7 +939,9 @@
     "PATCH"
    ],
    "file": "app/api/events/[eventId]/frames/[frameId]/toggle/route.ts",
-   "auth_markers": [],
+   "auth_markers": [
+    "withErrorHandler"
+   ],
    "no_auth_marker": true
   },
   {
@@ -943,7 +950,9 @@
     "POST"
    ],
    "file": "app/api/events/[eventId]/frames/route.ts",
-   "auth_markers": [],
+   "auth_markers": [
+    "withErrorHandler"
+   ],
    "no_auth_marker": true
   },
   {
@@ -1015,7 +1024,9 @@
     "DELETE"
    ],
    "file": "app/api/events/[eventId]/logos/[logoId]/route.ts",
-   "auth_markers": [],
+   "auth_markers": [
+    "withErrorHandler"
+   ],
    "no_auth_marker": true
   },
   {
@@ -1025,7 +1036,9 @@
     "POST"
    ],
    "file": "app/api/events/[eventId]/logos/route.ts",
-   "auth_markers": [],
+   "auth_markers": [
+    "withErrorHandler"
+   ],
    "no_auth_marker": true
   },
   {
@@ -1694,7 +1707,9 @@
     "GET"
    ],
    "file": "app/api/slideshow-layouts/[layoutId]/route.ts",
-   "auth_markers": [],
+   "auth_markers": [
+    "withErrorHandler"
+   ],
    "no_auth_marker": true
   },
   {
@@ -1707,7 +1722,8 @@
    ],
    "file": "app/api/slideshow-layouts/route.ts",
    "auth_markers": [
-    "isGlobalAdminSession"
+    "isGlobalAdminSession",
+    "withErrorHandler"
    ],
    "no_auth_marker": false
   },
@@ -1774,7 +1790,8 @@
    ],
    "file": "app/api/slideshows/route.ts",
    "auth_markers": [
-    "isGlobalAdminSession"
+    "isGlobalAdminSession",
+    "withErrorHandler"
    ],
    "no_auth_marker": false
   },

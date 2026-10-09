@@ -24,12 +24,13 @@ import {
   getPartnerScopedAccessForEventUuid,
   isGlobalAdminSession,
 } from '@/lib/partners/authorization';
+import { withErrorHandler } from '@/lib/api/withErrorHandler';
 
 /**
  * POST /api/slideshows
  * Create a new slideshow for an event
  */
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   try {
     const session = await getSession();
     if (!session) {
@@ -146,13 +147,13 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * GET /api/slideshows?eventId=...
  * List all slideshows for an event
  */
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   try {
     const session = await getSession();
     if (!session) {
@@ -194,13 +195,13 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * PATCH /api/slideshows?id=...
  * Update slideshow settings
  */
-export async function PATCH(request: NextRequest) {
+export const PATCH = withErrorHandler(async (request: NextRequest) => {
   try {
     const session = await getSession();
     if (!session) {
@@ -385,13 +386,13 @@ export async function PATCH(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * DELETE /api/slideshows?id=...
  * Delete a slideshow
  */
-export async function DELETE(request: NextRequest) {
+export const DELETE = withErrorHandler(async (request: NextRequest) => {
   try {
     const session = await getSession();
     if (!session) {
@@ -439,4 +440,4 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

@@ -8,11 +8,12 @@ import { requireAdmin } from '@/lib/api';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { resolveSsoUserIdByEmail } from '@/lib/sso/submission-account';
 import { updateUserAppRoleViaSso } from '@/lib/sso/update-app-permission';
+import { withErrorHandler } from '@/lib/api/withErrorHandler';
 
-export async function PATCH(
+export const PATCH = withErrorHandler(async (
   request: NextRequest,
   context: { params: Promise<{ email: string }> }
-) {
+) => {
   try {
     const session = await requireAdmin();
     const { email } = await context.params;
@@ -90,4 +91,4 @@ export async function PATCH(
       { status: 500 }
     );
   }
-}
+});

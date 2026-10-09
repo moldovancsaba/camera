@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — activity log: the management routes that were outside it are wrapped, and a test keeps it that way (issue 517)
+
+- **Fixed (found by the analytics audit, issue 521):** ten route files on management paths did not use the shared error handler, so what the people who manage the service do there was never recorded: the **slideshow editor's save and delete**, the slideshow layouts, the frames and logos of an event, and the users' role, status and merge routes. They are wrapped now (their own behaviour is unchanged; the handler only looks at the answer after it was sent).
+- **Added:** `lib/activity/coverage.test.ts` fails when a route on a management path does not use `withErrorHandler` (the screens' playlist and next-candidate routes are the two public exceptions), so a new route cannot silently stay out of the log.
+- **Verified:** type-check; lint; the route tests next to every wrapped route; the guard test.
+- **Known limit (not changed):** the log records the path and the status, not the body, so it cannot tell an approval from a rejection on the review route: the vetting record itself (`reviewHistory`: action, who, when, reason) holds that.
+
+
 ## Unreleased — activity log: who did what and when, every refused or failed request, and a weekly CSV to the owner (issue 517; owner request 2026-10-09)
 
 - **Added (owner: "log activities, error feedbacks, who did and when; weekly send it as csv to moldovancsaba@gmail.com so we have archived, and keep for a week then delete when the next you send out"; the answer to "Do you save the errors?" was no):** a record for every change the people who manage the service make and for every refused (4xx) or failed (5xx) request: when, who (account id, e-mail, role; none for an anonymous failure), method, path with only its ids, status, outcome and the reason the answer gave. No body, no IP address, no device, no stack, nothing a guest typed. Written after the answer, by the shared error handler, **on the production deployment only**, never failing a request; the same failure by the same person on the same path once a minute.

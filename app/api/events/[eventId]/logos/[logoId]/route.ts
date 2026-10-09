@@ -18,15 +18,16 @@ import { getSession } from '@/lib/auth/session';
 import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError, apiForbidden } from '@/lib/api/responses';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
 import { LOGO_SCENARIOS, isLogoScenario } from '@/lib/library/logos';
+import { withErrorHandler } from '@/lib/api/withErrorHandler';
 
 type EventLogoAssignment = Event['logos'][number];
 
 const SCENARIO_ERROR = `Invalid scenario. Must be one of: ${LOGO_SCENARIOS.map((scenario) => scenario.id).join(', ')}`;
 
-export async function DELETE(
+export const DELETE = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string; logoId: string }> }
-) {
+) => {
   try {
     // Authentication check
     const session = await getSession();
@@ -91,12 +92,12 @@ export async function DELETE(
     console.error('Error removing logo:', error);
     return apiError(error instanceof Error ? error.message : 'Failed to remove logo');
   }
-}
+});
 
-export async function PATCH(
+export const PATCH = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string; logoId: string }> }
-) {
+) => {
   try {
     // Authentication check
     const session = await getSession();
@@ -189,4 +190,4 @@ export async function PATCH(
     console.error('Error updating logo:', error);
     return apiError(error instanceof Error ? error.message : 'Failed to update logo');
   }
-}
+});

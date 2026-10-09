@@ -11,13 +11,14 @@ import { COLLECTIONS, Event, generateTimestamp } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
 import { apiSuccess, apiUnauthorized, apiBadRequest, apiNotFound, apiError, apiForbidden } from '@/lib/api/responses';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
+import { withErrorHandler } from '@/lib/api/withErrorHandler';
 
 type EventFrameAssignment = Event['frames'][number];
 
-export async function PATCH(
+export const PATCH = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string; frameId: string }> }
-) {
+) => {
   try {
     // Authentication check
     const session = await getSession();
@@ -77,4 +78,4 @@ export async function PATCH(
     console.error('Error toggling frame:', error);
     return apiError(error instanceof Error ? error.message : 'Failed to toggle frame');
   }
-}
+});

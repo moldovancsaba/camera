@@ -18,6 +18,7 @@ import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
 import { checkEventAssign } from '@/lib/library/db';
 import { LOGO_PLACE_SLOTS, LOGO_SCENARIO_IDS, isOnSlotModel, resolveEventLogos, type LogoEvent, type LogoPartner } from '@/lib/slots/logo';
 import { lostItem, nextSnapshots, type Snapshots } from '@/lib/slots/snapshot';
+import { withErrorHandler } from '@/lib/api/withErrorHandler';
 
 type EventLogoAssignment = Event['logos'][number];
 type GroupedEventLogos = Record<LogoScenario, Array<EventLogoAssignment & Pick<Logo, 'name' | 'imageUrl' | 'thumbnailUrl'> & { level: string; lost?: boolean }>>;
@@ -33,10 +34,10 @@ function buildEventLookupQuery(eventIdentifier: string): Record<string, unknown>
   return { $or: or };
 }
 
-export async function POST(
+export const POST = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
-) {
+) => {
   try {
     // Authentication check
     const session = await getSession();
@@ -145,12 +146,12 @@ export async function POST(
     console.error('Error assigning logo:', error);
     return apiError(error instanceof Error ? error.message : 'Failed to assign logo');
   }
-}
+});
 
-export async function GET(
+export const GET = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
-) {
+) => {
   try {
     const { eventId } = await params;
     
@@ -247,4 +248,4 @@ export async function GET(
     console.error('Error fetching event logos:', error);
     return apiError(error instanceof Error ? error.message : 'Failed to fetch event logos');
   }
-}
+});
