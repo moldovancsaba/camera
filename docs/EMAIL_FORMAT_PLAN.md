@@ -109,5 +109,5 @@ try-on e-mails of today (related photos ready, approved resubmission) stay as ex
 | E4 #467 editor | built (this pull request): `lib/email/compose.ts`, `POST /api/admin/emails/preview`, the toolbar editor and the preview, the legal part editor |
 | E3 #466 Emails menu | built: the general and partner pages (merged #475) and the **event page** with the five types, the sender and terms, the try-on e-mails and the legal part (this pull request); the e-mail fields left the long event form and the new-event form |
 | E7 #473 the five types | merged (#477): `lib/email/types.ts`, the policy reads `notifications.types`, the new defaults, the sanitizer `lib/email/notification-settings.ts`; welcome, arrived and follow up have their texts and switches but are not sent until E8 (and the daily job); the event page that edits them is E3 |
-| E8 #474 the triggers | built (this pull request): welcome (`POST /api/events/<id>/register`, `lib/email/triggers.ts`) and arrived (when a photo is submitted); **follow up has no trigger and no job** (answer 203) |
-| E6 #469 test e-mail | after E3 |
+| E8 #474 the triggers | merged (#479): welcome (`POST /api/events/<id>/register`, `lib/email/triggers.ts`) and arrived (when a photo is submitted); **follow up has no trigger and no job** (answer 203) |
+| E6 #469 test e-mail | built (this pull request): `POST /api/admin/emails/test` and the button **Send me a test e-mail** in every preview |
