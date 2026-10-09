@@ -49,7 +49,7 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
   if (!own) throw apiNotFound('Slideshow');
   await slideshows.updateOne({ slideshowId }, { $set: { isDefault: true, updatedAt: generateTimestamp() } });
   await slideshows.updateMany({ eventId: event.eventId, slideshowId: { $ne: slideshowId }, isDefault: true }, { $unset: { isDefault: '' } });
-  // The welcome page screen follows its source: a picture the event already has is drawn again from the new default (an event without one gets none from this).
-  scheduleWelcomeScreen(event._id, { onlyIfExists: true });
+  // The welcome page screen is the default slideshow's screen: it is drawn from the new default (owner, 2026-10-09).
+  scheduleWelcomeScreen(event._id);
   return apiSuccess({ slideshowId });
 });

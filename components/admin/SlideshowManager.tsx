@@ -141,8 +141,8 @@ export default function SlideshowManager({ eventId, initialSlideshows, welcomeSc
           <strong>Welcome page screen</strong>
           <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.25rem 0 0.75rem' }}>
             {welcomeScreen
-              ? `Drawn from the default slideshow on ${new Date(welcomeScreen.generatedAt).toLocaleDateString()}. It is drawn again when the default slideshow changes.`
-              : 'The picture of the giant screen the welcome page shows, drawn from the default slideshow. Not drawn yet.'}
+              ? `Drawn from the default slideshow on ${new Date(welcomeScreen.generatedAt).toLocaleDateString()}. It is drawn again every time the default slideshow is saved.`
+              : 'The picture of the giant screen the welcome page shows, drawn from the default slideshow. Not drawn yet; it is drawn when you save the default slideshow.'}
           </p>
           <SemanticButton action="slideshows:draw-welcome-screen" variant="secondary" size="xs" loading={busy} disabled={busy} onClick={() => void drawWelcomeScreen()}>
             {welcomeScreen ? 'Draw it again' : 'Draw the welcome page screen'}

@@ -4,8 +4,9 @@
  * `key` is the hash of all of it), so asking again costs nothing. It lives next to the pages, never in them: **a page's own `screenImageUrl` is never touched** and always wins when
  * the page is shown. Dependencies are injected so it is unit-tested without Blob, a network or a database.
  *
- * Rule for when it is made (owner, 2026-10-09: nothing user-visible on live events without the owner's go): it is made for a new event, with its default slideshow, or on request for an
- * event; a refresh only redraws a picture that already exists.
+ * Rule for when it is made (owner, 2026-10-09: "the welcome composition with the big screen has to use exactly the one created for the slideshow, so whenever a slideshow is updated, it
+ * has to be updated as well"): it is drawn for a new event with its default slideshow, on request, and **every time the default slideshow is saved or made the default** (also for an event that
+ * had none: saving the screen is the editor asking). A welcome page that has a picture of its own keeps it (an own picture on a page wins), so an event whose page should follow its screen has none.
  */
 
 import { createHash } from 'node:crypto';
@@ -76,14 +77,13 @@ export async function ensureWelcomeScreen(db: Db, event: Document, deps: Welcome
 }
 
 /**
- * For after a response: loads the event as stored now and draws its picture. With `onlyIfExists` it redraws a picture the event already has and does nothing for an event that has
- * none (a refresh follows what exists; it does not give a live event a new picture). A failure is logged, never thrown.
+ * For after a response: loads the event as stored now and draws its picture (nothing is done again when what it is drawn from has not changed). A failure is logged, never thrown.
  */
-export async function ensureWelcomeScreenLater(mongoId: ObjectId | string, options: { onlyIfExists?: boolean } = {}): Promise<void> {
+export async function ensureWelcomeScreenLater(mongoId: ObjectId | string): Promise<void> {
   try {
     const db = await connectToDatabase();
     const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(String(mongoId)) });
-    if (!event || (options.onlyIfExists && !event.welcomeScreen)) return;
+    if (!event) return;
     const result = await ensureWelcomeScreen(db, event);
     if (!result.ok) console.warn('the welcome page screen could not be drawn', result.reason);
   } catch (error) {
@@ -92,9 +92,9 @@ export async function ensureWelcomeScreenLater(mongoId: ObjectId | string, optio
 }
 
 /** Schedules `ensureWelcomeScreenLater` after the response; outside a request nothing is scheduled. */
-export function scheduleWelcomeScreen(mongoId: ObjectId | string, options: { onlyIfExists?: boolean } = {}): void {
+export function scheduleWelcomeScreen(mongoId: ObjectId | string): void {
   try {
-    after(() => ensureWelcomeScreenLater(mongoId, options));
+    after(() => ensureWelcomeScreenLater(mongoId));
   } catch {
     // not in a request: the picture is drawn when an admin asks for it
   }

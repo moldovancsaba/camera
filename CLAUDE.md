@@ -126,6 +126,18 @@ check it.
 - Clean up local test infrastructure (dev servers, scratch scripts) before
   considering a task done.
 
+### Definition of done for a fixing session (owner directive 2026-10-09)
+
+"When you fix an item, follow the DoD: update all documentation, code comments, version, SSOT (GitHub project board), README if required, architecture, user guides, help files, etc.; test, build, commit and make it live; then continue." So an item is done only when all of this is true, in the same change set where it can be:
+
+1. **Code comments** say what the code does and why (the owner's words for a rule), and no comment still describes the old behaviour.
+2. **Tests:** a unit test for the logic, a browser check of anything on screen (at a narrow width too), then the full CI chain (`npm run inventory:check`, `npm run release:check`) clean.
+3. **Documentation:** `RELEASE_NOTES.md` (what, why, verified, not done), `ARCHITECTURE.md` for structure, `RUNBOOK.md` for operations, the feature's own `docs/*.md`, `HANDOVER.md` for the current state, `README.md` when setup or running changes, a gotcha in section 5 above when one was learned.
+4. **User guides and help files:** the guides in the messmass repo (`docs/guides`, English and Hungarian) and any help text in the admin, kept true to what shipped.
+5. **Version:** the fleet runs in lockstep (camera and messmass share one number, `version:verify`), so the patch version is raised **once at the end of a fixing session** as one release in both repos, with the current-version stamps updated; not in every pull request.
+6. **SSOT, the project board (#24):** every item is an issue on it; tick only boxes that were verified, comment what shipped and what did not, move the status, and register new feedback as an issue and a bucket the moment it arrives (numbered, `focus-and-triage` rule).
+7. **Commit, pull request, `Verify`, merge, deployed and looked at live** (a read-only look; never test data into production messmass, section 8). Only then the next item.
+
 ## 4. This repo's role in the shared SSO ecosystem
 
 camera, messmass, fanmass, launchmass, and savetheworld all authenticate against a single OIDC
@@ -200,6 +212,9 @@ any auth code here:
 - **A worktree directory must not be named `tokens` or `theme`:** the GDS compliance check skips its raw-colour rule for any path that contains `/tokens/`
   or `/theme/`, so a local `release:check` passes where CI fails (camera#416: `#415` written in a script comment was read as a hex colour). Write issue
   numbers in source comments as `issue 415`, and name worktrees something else.
+- **A fit-to-width text must not be capped by a stored size** (owner, 2026-10-09: "it is not scaled"): a cap left a short address at 80 % of its box. A `fit` text ignores `size` and is measured on every display (live stage and server picture), so nothing goes stale after a save.
+- **Never use the browser's own `confirm()` / `alert()` for an admin action:** a browser or an embedded view can block it, and then the press does nothing at all (the gallery's frame button looked dead). Confirm in the page with the buttons the gallery already uses, show progress, and put the result next to the button, not far below.
+- **The design system's `InlineAlert` (a Mantine `Alert`) hides what is wider than its box**, and `SemanticButton` takes its label from the vocabulary (its children are ignored) and does not wrap: give a button inside an alert `styles` that let the label wrap, and check it at a narrow width.
 - **Colours in admin code come from `--mantine-*` tokens, not from `--gds-*` role tokens** (`--gds-border-card`, `--gds-text-meta`, `--gds-bg-*` are declared with
   `light-dark()`, which the production build turns into an invalid value; `gds_fix_handover.md`, update of 2026-10-09). `scripts/check-gds-boundaries.mjs`
   fails on an undefined `--gds-*` name or a `light-dark()` role token.
