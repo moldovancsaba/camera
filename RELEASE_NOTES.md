@@ -1,10 +1,20 @@
 # RELEASE_NOTES.md
 
+<<<<<<< HEAD
 ## Unreleased — research: why the giant-screen slideshow can freeze for 10 to 20 seconds (issue 476; documentation only, nothing is changed)
 
 - **Added (docs):** `docs/_research/SLIDESHOW_FREEZE_RESEARCH.md`, the read-only investigation of the client feedback that the slideshow freezes although it pre-loads continuously: how the player loads and caches today, eleven ranked root-cause candidates with file and line references, the research on newer ways (as of October 2026), a small-step fix plan (S0 to S8) with how to verify each, and the instrumentation to add first so the next freeze leaves evidence.
 - **Most likely cause (a judgement from the code and a simulation of our own queue, not yet seen on the live screen):** the refill asks the server for the least played photo without sending what is already queued and appends the answer without a duplicate check, so in the default fixed order the queue fills with copies of the same photo: runs of buffer size + 1 identical slides (20 s at buffer 3, 55 s at the default 10 with a 5 s hold). Second: no timeout on any request and a single-flight refill lock, so one stalled request stops refilling. The cheapest check (the slideshow's order, buffer and hold in the admin, and the photo ids in the network log) is in the report and on the issue.
 - **Verified:** the central lines of the code and the simulation numbers were re-read and re-run. **Nothing was run against the live screen, the database or production.** The fix is the owner's decision (issue 476).
+=======
+## Unreleased — e-mails to the user, segment E6: send a test e-mail to myself (epic 463, issue 469)
+
+- **Added (my proposal for the match; the owner wants the epic before 16 Oct):** every preview of an e-mail has **Send me a test e-mail**: the e-mail as drawn, made and sent by the same code a user's e-mail goes through, to **the e-mail address of the signed-in editor and nobody else** (a recipient in the request is ignored), with `[Test]` in front of the subject, in the look and with the data of the event (name, teams, date, short link, legal part) when the preview is of an event. So the owner can read the real e-mail on a phone before any user gets it. Nothing is stored.
+- **Answers:** 503 when the server has no e-mail key or sender address ("not configured"), 502 with the provider's reason when the send fails, 400 for an editor whose account has no e-mail address, 403 without manager access to the event.
+- **Added:** `POST /api/admin/emails/test`; the button in `EmailPreview`, so it is on the event Emails page, the partner page and the general page.
+- **Documentation:** release notes, ARCHITECTURE.md, EMAIL_TEMPLATES.md, the plan, HANDOVER.
+- **Verified:** type-check; lint; unit tests (only the editor's own address, the [Test] prefix, the event's look and data and legal part, the sample for no event, no button, an editor without an address, access, 503 and 502); the full CI chain. **No e-mail was sent by the tests (the sender is replaced); the button was not pressed against the live server.**
+>>>>>>> origin/main
 
 ## Unreleased — e-mails to the user, segment E8: the welcome and arrived e-mails are sent when an event switches them on (epic 463, issue 474)
 
