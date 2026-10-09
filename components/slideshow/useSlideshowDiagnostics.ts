@@ -56,15 +56,19 @@ export function useSlideshowDiagnostics(opts: {
   slideshowId: string;
   variant: 'fullscreen' | 'embedded';
   getState: () => SlideshowDiagnosticState;
+  /** Called after a stall has been reported, with how long the show has stood still (the player recovers from it, lib/slideshow/watchdog.ts). */
+  onStall?: (stalledMs: number) => void;
 }): { record: RecordDiagnostic } {
   const { slideshowId, variant } = opts;
   const getStateRef = useRef(opts.getState);
+  const onStallRef = useRef(opts.onStall);
   const ring = useRef<SlideshowEvent[]>([]);
   const unsent = useRef<SlideshowEvent[]>([]);
   const sinks = useRef<{ record: RecordDiagnostic; flush: () => void; lastShownAt: number }>({ record: () => undefined, flush: () => undefined, lastShownAt: 0 });
 
   useEffect(() => {
     getStateRef.current = opts.getState;
+    onStallRef.current = opts.onStall;
   });
 
   const record = useCallback<RecordDiagnostic>((type, fields) => {
@@ -184,6 +188,7 @@ export function useSlideshowDiagnostics(opts: {
         lastStall = now;
         sink.record('stall', { sinceMs: since, q: state.queueLen, busy: state.busy, vis: document.visibilityState });
         sink.flush();
+        onStallRef.current?.(since);
       }
     }, 1000);
 

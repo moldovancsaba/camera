@@ -15,6 +15,7 @@ import { useSlideshowDiagnostics } from '@/components/slideshow/useSlideshowDiag
 import { hostOf, shortId } from '@/lib/slideshow/diagnostics';
 import { PRELOAD_FAIL_TTL_MS, createPreloader } from '@/lib/slideshow/preload';
 import { fetchWithTimeout, nextBackoffMs } from '@/lib/slideshow/resilience';
+import { recentReloads, watchdogAction } from '@/lib/slideshow/watchdog';
 import ScreenDesignLayers, { screenWindowStyle } from '@/components/slideshow/ScreenDesignLayers';
 import type { ResolvedScreenDesign } from '@/lib/slideshow/screen-design';
 import {
@@ -230,12 +231,15 @@ export function SlideshowPlayerCore({
   }, [isPlaying]);
 
   // What the screen reports about itself (camera#476): see useSlideshowDiagnostics.
+  const stallHandlerRef = useRef<(stalledMs: number) => void>(() => undefined);
   const { record } = useSlideshowDiagnostics({
     slideshowId,
     variant,
+    onStall: (stalledMs) => stallHandlerRef.current(stalledMs),
     getState: () => ({
       active: settingsRef.current !== null && isPlayingRef.current && slideQueueRef.current.length > 0,
-      holdMs: transitionMsRef.current,
+      // The stagger of a layout cell or of a delayed start is part of the hold: a stall is judged against the longest hold there can be.
+      holdMs: transitionMsRef.current + delayMs,
       queueLen: slideQueueRef.current.length,
       preloaded: preloader.size(),
       busy: refillBusyRef.current,
@@ -772,6 +776,60 @@ export function SlideshowPlayerCore({
       void maintainLoopBuffer();
     }
   }, [maintainLoopBuffer, commitQueue]);
+
+  // The screen recovers from a stall by itself (lib/slideshow/watchdog.ts): next slide first, a reload if it has stood still for a minute
+  // (a full-screen page only, at most 3 times in 10 minutes). The stall has been reported to the server before this runs.
+  useEffect(() => {
+    stallHandlerRef.current = (stalledMs) => {
+      const key = `slideshow-reloads:${slideshowId}`;
+      const now = Date.now();
+      let reloads: number[] = [];
+      try {
+        reloads = recentReloads(sessionStorage.getItem(key), now);
+      } catch {
+        /* no session storage: no history, the cap cannot be kept, so no reload */
+        reloads = [now, now, now];
+      }
+      if (variant === 'fullscreen' && watchdogAction(stalledMs, reloads, now) === 'reload') {
+        try {
+          sessionStorage.setItem(key, JSON.stringify([...reloads, now]));
+        } catch {
+          /* checked above */
+        }
+        record('error', { msg: 'watchdog: reload' });
+        window.location.reload();
+        return;
+      }
+      record('error', { msg: 'watchdog: next slide' });
+      manualAdvance();
+    };
+  }, [slideshowId, variant, record, manualAdvance]);
+
+  // Keep the display awake while the show runs (a browser asks again after the page has been hidden).
+  useEffect(() => {
+    if (variant !== 'fullscreen') return;
+    let lock: WakeLockSentinel | null = null;
+    let stopped = false;
+    const acquire = async () => {
+      try {
+        const next = (await navigator.wakeLock?.request('screen')) ?? null;
+        if (stopped) void next?.release().catch(() => undefined);
+        else lock = next;
+      } catch {
+        /* not supported, or refused (battery saver): the show does not depend on it */
+      }
+    };
+    void acquire();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void acquire();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      stopped = true;
+      document.removeEventListener('visibilitychange', onVisible);
+      void lock?.release().catch(() => undefined);
+    };
+  }, [variant]);
 
   useEffect(() => {
     if (variant !== 'fullscreen') return;
