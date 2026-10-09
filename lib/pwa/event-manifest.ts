@@ -56,3 +56,24 @@ export function eventManifest(event: Record<string, unknown>, eventId: string, t
     icons: PWA_ICONS,
   };
 }
+
+/**
+ * The manifest of a giant screen (issue 487, owner: "like a full screen video, not to see the browser"): a home-screen icon opens that one slideshow with no browser bars. iPhone Safari has no
+ * full-screen call for a page, so installing it is the only way there; everywhere else the full-screen control of the player does it. Same colours as the event's pages.
+ */
+export function slideshowManifest(slideshow: Record<string, unknown>, event: Record<string, unknown>, slideshowId: string, theme?: { background: string } | null): GdsWebAppManifest {
+  const name = typeof slideshow.name === 'string' && slideshow.name.trim() ? slideshow.name.trim() : typeof event.name === 'string' && event.name.trim() ? event.name.trim() : 'Screen';
+  const path = `/slideshow/${slideshowId}`;
+  return {
+    name,
+    short_name: pwaShortName(name),
+    theme_color: pwaPageColor(theme, event.brandColor),
+    background_color: theme && HEX_COLOR.test(theme.background) ? theme.background : CAMERA_PWA_BACKGROUND_COLOR,
+    display: 'fullscreen',
+    orientation: 'any',
+    start_url: `${path}?source=pwa`,
+    scope: path,
+    id: path,
+    icons: PWA_ICONS,
+  };
+}

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { CAMERA_DEFAULT_BRAND_COLOR, CAMERA_DEFAULT_CTA_BRAND_COLOR, CAMERA_PWA_BACKGROUND_COLOR } from '@/lib/gds/tokens/colors';
-import { eventManifest, PWA_ICONS, pwaPageColor, pwaThemeColor } from './event-manifest';
+import { slideshowManifest, eventManifest, PWA_ICONS, pwaPageColor, pwaThemeColor } from './event-manifest';
 
 const ID = '66f1a2b3c4d5e6f708192a3b';
 
@@ -70,4 +70,19 @@ test('the installed app and the browser toolbar take the page colour of the even
   assert.equal(plain.background_color, CAMERA_PWA_BACKGROUND_COLOR);
   assert.equal(pwaPageColor({ background: 'not a colour' }, CAMERA_DEFAULT_BRAND_COLOR), CAMERA_DEFAULT_BRAND_COLOR);
   assert.equal(pwaPageColor(null, undefined), CAMERA_DEFAULT_BRAND_COLOR);
+});
+
+test('a giant screen installs as its own full-screen app that opens that one slideshow, in the event\'s colours', () => {
+  const m = slideshowManifest({ name: 'Main screen' }, { name: 'MTK x Vasas', brandColor: CAMERA_DEFAULT_CTA_BRAND_COLOR }, 'show-1', { background: `#${'189CD8'}` });
+  assert.equal(m.display, 'fullscreen');
+  assert.equal(m.start_url, '/slideshow/show-1?source=pwa');
+  assert.equal(m.scope, '/slideshow/show-1');
+  assert.equal(m.name, 'Main screen');
+  assert.equal(m.theme_color, `#${'189CD8'}`);
+  assert.equal(m.background_color, `#${'189CD8'}`);
+  // with no theme: the brand colour and the default splash colour; with no slideshow name: the event's name
+  const plain = slideshowManifest({}, { name: 'MTK x Vasas', brandColor: CAMERA_DEFAULT_CTA_BRAND_COLOR }, 'show-1');
+  assert.equal(plain.name, 'MTK x Vasas');
+  assert.equal(plain.theme_color, CAMERA_DEFAULT_CTA_BRAND_COLOR);
+  assert.equal(plain.background_color, CAMERA_PWA_BACKGROUND_COLOR);
 });

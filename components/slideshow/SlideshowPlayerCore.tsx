@@ -27,6 +27,7 @@ import {
   useLayoutEffect,
   type CSSProperties,
 } from 'react';
+import { isMissingImagePlaceholder } from '@/lib/media/placeholder';
 import {
   slideshowStageDimensions,
   type ViewportScaleMode,
@@ -40,7 +41,6 @@ import {
   mergeSeed,
   slideKey,
 } from '@/lib/slideshow/queue';
-import { PlaybackSurface } from '@sovereignsquad/gds-core/client';
 import {
   CAMERA_STAGE_BLACK,
   CAMERA_STAGE_WHITE,
@@ -166,7 +166,8 @@ function loadImage(url: string, { urgent }: { urgent: boolean }): Promise<HTMLIm
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.fetchPriority = urgent ? 'high' : 'low';
-    img.onload = () => resolve(img);
+    // A host's "image not found" stand-in loads like a photo (a browser draws an image body whatever the status): it is a failure, so the slide is skipped and never shown (lib/media/placeholder.ts).
+    img.onload = () => (isMissingImagePlaceholder(url, img.naturalWidth, img.naturalHeight) ? reject(new Error('image missing')) : resolve(img));
     img.onerror = () => reject(new Error('image failed'));
     img.src = url;
   });
@@ -195,8 +196,9 @@ export function SlideshowPlayerCore({
   const [error, setError] = useState<string | null>(null);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showControls, setShowControls] = useState(true);
   const [isPlaying, setIsPlaying] = useState(true);
+  /** A line that tells why the full-screen control does nothing on this device (iPhone Safari has no full screen for a page). */
+  const [fullscreenHint, setFullscreenHint] = useState<string | null>(null);
   const [playbackEnded, setPlaybackEnded] = useState(false);
   const [displayEpoch, setDisplayEpoch] = useState(0);
   const [fadeOpaque, setFadeOpaque] = useState(true);
@@ -205,7 +207,6 @@ export function SlideshowPlayerCore({
   const shownSlideRef = useRef<Slide | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const hideControlsTimeout = useRef<NodeJS.Timeout | null>(null);
   const [preloader] = useState(() => createPreloader<HTMLImageElement>({ load: loadImage }));
   /** Photos whose picture would not load, until when: not asked for again, not queued, for a few minutes. */
   const brokenRef = useRef<Map<string, number>>(new Map());
@@ -761,30 +762,38 @@ export function SlideshowPlayerCore({
 
   const toggleFullscreen = useCallback(() => {
     if (variant !== 'fullscreen' || !containerRef.current) return;
-    // A browser may refuse (iPhone Safari has no full screen for a page); the show goes on either way.
+    if (typeof containerRef.current.requestFullscreen !== 'function') {
+      // iPhone Safari has no full screen for a page: the Home Screen app is the way, and the show goes on either way.
+      setFullscreenHint('On an iPhone: tap Share, then Add to Home Screen, and open the screen from there without the browser bars.');
+      window.setTimeout(() => setFullscreenHint(null), 9000);
+      return;
+    }
+    // A browser may refuse; the show goes on either way.
     if (!document.fullscreenElement) {
-      void containerRef.current.requestFullscreen?.()?.catch(() => undefined);
+      void containerRef.current.requestFullscreen()?.catch(() => undefined);
     } else {
       void document.exitFullscreen().catch(() => undefined);
     }
   }, [variant]);
 
-  // The full-screen button in the corner: shown for a few seconds when the page opens and whenever the pointer moves or the screen is touched, then it fades (camera#487).
-  const [cornerVisible, setCornerVisible] = useState(true);
-  const [canFullscreen, setCanFullscreen] = useState(false);
-  const cornerTimerRef = useRef<number | null>(null);
-  const wakeCorner = useCallback(() => {
-    setCornerVisible(true);
-    if (cornerTimerRef.current !== null) window.clearTimeout(cornerTimerRef.current);
-    cornerTimerRef.current = window.setTimeout(() => setCornerVisible(false), 3000);
+  // The controls (pause, full screen) are a transparent bar at the bottom of the picture, like a media player's: they show when the pointer moves or the screen is touched, for a few
+  // seconds when the page opens, and fade away when nothing happens (the pointer too, in full screen). This is the control the player had before the GDS migration of 2026-05-29 moved it
+  // into a card; camera#487 added a second button on top instead of putting this one back.
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const controlsTimerRef = useRef<number | null>(null);
+  const wakeControls = useCallback(() => {
+    setControlsVisible(true);
+    if (controlsTimerRef.current !== null) window.clearTimeout(controlsTimerRef.current);
+    controlsTimerRef.current = window.setTimeout(() => setControlsVisible(false), 3000);
   }, []);
+  // Shown for a few seconds when the show starts (and when the page opens), so it is clear there are controls.
+  const started = settings !== null;
   useEffect(() => {
-    setCanFullscreen(typeof document.documentElement.requestFullscreen === 'function' && document.fullscreenEnabled !== false);
-    wakeCorner();
+    wakeControls();
     return () => {
-      if (cornerTimerRef.current !== null) window.clearTimeout(cornerTimerRef.current);
+      if (controlsTimerRef.current !== null) window.clearTimeout(controlsTimerRef.current);
     };
-  }, [wakeCorner]);
+  }, [wakeControls, started]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -793,17 +802,6 @@ export function SlideshowPlayerCore({
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
-
-  const handleMouseMove = () => {
-    if (variant !== 'fullscreen' || !isFullscreen) return;
-    setShowControls(true);
-    if (hideControlsTimeout.current) {
-      clearTimeout(hideControlsTimeout.current);
-    }
-    hideControlsTimeout.current = setTimeout(() => {
-      setShowControls(false);
-    }, 3000);
-  };
 
   const manualAdvance = useCallback(() => {
     pendingInitialDelayRef.current = false;
@@ -894,6 +892,7 @@ export function SlideshowPlayerCore({
   useEffect(() => {
     if (variant !== 'fullscreen') return;
     const handleKeyPress = (e: KeyboardEvent) => {
+      wakeControls();
       if (e.key === 'f' || e.key === 'F') {
         toggleFullscreen();
       } else if (e.key === ' ') {
@@ -907,7 +906,7 @@ export function SlideshowPlayerCore({
     };
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [variant, slideQueue.length, manualAdvance, manualBack, toggleFullscreen]);
+  }, [variant, slideQueue.length, manualAdvance, manualBack, toggleFullscreen, wakeControls]);
 
   const primary = settings?.backgroundPrimaryColor?.trim() || DEFAULT_BG_PRIMARY;
   const accent = settings?.backgroundAccentColor?.trim() || DEFAULT_BG_ACCENT;
@@ -924,35 +923,22 @@ export function SlideshowPlayerCore({
 
   const outerStateClass =
     variant === 'fullscreen' ? 'w-screen h-screen' : 'w-full h-full min-h-0 min-w-0';
-  const playbackMode = variant === 'fullscreen' ? 'fullscreen' : 'embedded';
 
   if (isLoading) {
     return (
-      <div className={`${outerStateClass} overflow-hidden relative ${className}`} aria-busy="true">
+      <div className={`${outerStateClass} overflow-hidden relative flex items-center justify-center ${className}`} aria-busy="true">
         <SlideshowDebugPanel />
-        <PlaybackSurface
-          title={settings?.name ?? 'Slideshow'}
-          state="loading"
-          mode={playbackMode}
-          statusMessage={logoUrl ? <img src={logoUrl} alt="" className="max-h-24 max-w-xs object-contain" /> : undefined}
-        />
+        {logoUrl ? <img src={logoUrl} alt="" className="max-h-24 max-w-xs object-contain" /> : null}
       </div>
     );
   }
 
   if (error || !settings) {
     return (
-      <div className={`${outerStateClass} overflow-hidden relative ${className}`}>
-        <PlaybackSurface
-          title="Slideshow"
-          state="error"
-          mode={playbackMode}
-          errorState={
-            <div className=" text-center text-sm md:text-xl px-2">
-              {error || 'Slideshow not found'}
-            </div>
-          }
-        />
+      <div className={`${outerStateClass} overflow-hidden relative flex items-center justify-center ${className}`}>
+        <div className="text-center text-sm md:text-xl px-2" style={{ color: 'var(--event-heading, currentColor)' }}>
+          {error || 'Slideshow not found'}
+        </div>
       </div>
     );
   }
@@ -1137,9 +1123,9 @@ export function SlideshowPlayerCore({
             {renderSlide(currentSlide)}
           </div>
         ) : (
-          <div className=" text-center px-4 max-w-lg">
+          <div className="text-center px-4 max-w-lg" style={{ color: 'var(--event-heading, currentColor)' }}>
             <div className="text-2xl md:text-4xl mb-2 md:mb-4">📸</div>
-            <div className=" mt-1 md:mt-2 text-xs md:text-base">No submissions yet</div>
+            <div className="mt-1 md:mt-2 text-xs md:text-base">No submissions yet</div>
           </div>
         )}
       </div>
@@ -1148,19 +1134,36 @@ export function SlideshowPlayerCore({
     </div>
   );
 
+  const controlButton = { background: 'none', border: 0, padding: '0.5rem', color: 'inherit', cursor: 'pointer', display: 'flex', borderRadius: 999 } as const;
   const playbackControls =
-    variant === 'fullscreen' && (!isFullscreen || showControls) ? (
-      <div className="bg-gradient-to-t  to-transparent p-6 transition-opacity">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-6">
+    variant === 'fullscreen' ? (
+      <div
+        data-playback-controls
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 40,
+          padding: '2.5rem 1.5rem max(1rem, env(safe-area-inset-bottom))',
+          background: `linear-gradient(to top, color-mix(in srgb, ${CAMERA_STAGE_BLACK} 80%, transparent), transparent)`,
+          opacity: controlsVisible || fullscreenHint ? 1 : 0,
+          pointerEvents: controlsVisible ? 'auto' : 'none',
+          transition: 'opacity 300ms',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem', maxWidth: '80rem', margin: '0 auto', color: CAMERA_STAGE_WHITE }}>
           <button
             type="button"
+            style={controlButton}
+            tabIndex={controlsVisible ? 0 : -1}
             onClick={() => {
               if (playbackEnded && onceInitialRef.current?.length) {
                 pendingInitialDelayRef.current = delayMs > 0;
                 commitQueue(() =>
                   (onceInitialRef.current ?? []).map((sl) => ({
                     ...sl,
-                    submissions: sl.submissions.map((s) => ({ ...s })),
+                    submissions: sl.submissions.map((sub) => ({ ...sub })),
                   }))
                 );
                 setPlaybackEnded(false);
@@ -1170,31 +1173,31 @@ export function SlideshowPlayerCore({
               }
               setIsPlaying(!isPlaying);
             }}
-            className="  transition-colors"
             title={isPlaying ? 'Pause' : 'Play'}
+            aria-label={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? (
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
                 <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
               </svg>
             ) : (
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
                 <path d="M8 5v14l11-7z" />
               </svg>
             )}
           </button>
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="  transition-colors"
-            title="Fullscreen (F)"
-          >
+          {fullscreenHint ? (
+            <span role="status" style={{ flex: 1, textAlign: 'center', fontSize: '0.9rem' }}>
+              {fullscreenHint}
+            </span>
+          ) : null}
+          <button type="button" data-fullscreen-button style={controlButton} tabIndex={controlsVisible ? 0 : -1} onClick={toggleFullscreen} title="Full screen (F, or double-click the picture)" aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}>
             {isFullscreen ? (
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
                 <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
               </svg>
             ) : (
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
                 <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
               </svg>
             )}
@@ -1204,99 +1207,41 @@ export function SlideshowPlayerCore({
     ) : null;
 
   const playbackOverlays = playbackEnded && currentSlide ? (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center   px-4 text-center">
+    <div
+      className="absolute inset-0 z-10 flex flex-col items-center justify-center px-4 text-center"
+      style={{ background: `color-mix(in srgb, ${CAMERA_STAGE_BLACK} 60%, transparent)`, color: CAMERA_STAGE_WHITE }}
+    >
       <p className="text-lg md:text-2xl font-semibold">Playback complete</p>
-      <p className="text-sm  mt-2">Press play to start again</p>
+      <p className="text-sm mt-2" style={{ opacity: 0.8 }}>Press play to start again</p>
     </div>
   ) : null;
-
-  const playbackState =
-    currentSlide == null ? 'empty' : isPlaying && !playbackEnded ? 'playing' : 'ready';
 
   return (
     <div
       ref={containerRef}
-      className={`${outerStateClass} overflow-hidden relative ${className}${
-        variant === 'fullscreen' ? ' flex items-center justify-center' : ''
-      }`}
-      style={failoverBackgroundStyle}
-      onMouseMove={() => {
-        handleMouseMove();
-        wakeCorner();
-      }}
-      onPointerDown={wakeCorner}
+      role="region"
+      aria-label={settings.name}
+      className={`${outerStateClass} overflow-hidden relative ${className}${variant === 'fullscreen' ? ' flex items-center justify-center' : ''}`}
+      style={{ ...failoverBackgroundStyle, ...(variant === 'fullscreen' && isFullscreen && !controlsVisible ? { cursor: 'none' } : {}) }}
+      onMouseMove={wakeControls}
+      onPointerDown={wakeControls}
       onDoubleClick={variant === 'fullscreen' ? toggleFullscreen : undefined}
     >
       <SlideshowDebugPanel />
-      {variant === 'fullscreen' && canFullscreen ? (
-        <button
-          type="button"
-          data-fullscreen-button
-          onClick={(event) => {
-            event.stopPropagation();
-            toggleFullscreen();
-          }}
-          onDoubleClick={(event) => event.stopPropagation()}
-          aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
-          title="Full screen (F, or double-click the picture)"
-          tabIndex={cornerVisible ? 0 : -1}
-          style={{
-            position: 'fixed',
-            top: 12,
-            right: 12,
-            zIndex: 50,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '8px 14px',
-            border: 0,
-            borderRadius: 999,
-            cursor: 'pointer',
-            font: '600 14px/1 system-ui, sans-serif',
-            color: CAMERA_STAGE_WHITE,
-            background: `color-mix(in srgb, ${CAMERA_STAGE_BLACK} 70%, transparent)`,
-            opacity: cornerVisible ? 1 : 0,
-            pointerEvents: cornerVisible ? 'auto' : 'none',
-            transition: 'opacity 300ms',
-          }}
-        >
-          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
-            {isFullscreen ? (
-              <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
-            ) : (
-              <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
-            )}
-          </svg>
-          {isFullscreen ? 'Exit full screen' : 'Full screen'}
-        </button>
+      {variant === 'fullscreen' ? (
+        canvasInner
+      ) : (
+        <div className="absolute inset-0" style={failoverBackgroundStyle}>
+          {canvasInner}
+        </div>
+      )}
+      {playbackOverlays}
+      {playbackControls}
+      {currentSlide ? (
+        <span className="sr-only" role="status">
+          {`${settings.eventName} · ${isPlaying ? 'Playing' : 'Paused'}`}
+        </span>
       ) : null}
-      <PlaybackSurface
-        title={settings.name}
-        state={playbackState}
-        mode={playbackMode}
-        media={
-          variant === 'fullscreen' ? (
-            canvasInner
-          ) : (
-            <div className="absolute inset-0" style={failoverBackgroundStyle}>
-              {canvasInner}
-            </div>
-          )
-        }
-        statusMessage={
-          currentSlide
-            ? `${settings.eventName} · ${isPlaying ? 'Playing' : 'Paused'}`
-            : undefined
-        }
-        controls={playbackControls}
-        overlays={playbackOverlays}
-        emptyState={
-          <div className=" text-center px-4 max-w-lg">
-            <div className="text-2xl md:text-4xl mb-2 md:mb-4">📸</div>
-            <div className=" mt-1 md:mt-2 text-xs md:text-base">No submissions yet</div>
-          </div>
-        }
-      />
     </div>
   );
 }
