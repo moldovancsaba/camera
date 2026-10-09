@@ -2,6 +2,10 @@
  * Event Gallery Client Component
  *
  * Client-side wrapper for event submission gallery with inline remove and bulk selection.
+ *
+ * Selecting several photos (camera#488, docs/_research/GALLERY_MULTISELECT_RESEARCH.md): a click on a checkbox, then a Shift+click on another selects everything between; Ctrl/Cmd+click
+ * adds or takes one; dragging a box from the space between the pictures selects those it touches (Select mode makes a drag start anywhere, and works with a finger);
+ * Ctrl/Cmd+A selects all shown, Esc clears. The rules are lib/gallery/selection.ts.
  */
 
 'use client';
@@ -9,9 +13,11 @@
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { InlineAlert, ListingCard, StateBlock, type ListingMetadataRow } from '@sovereignsquad/gds-core/client';
 import EventGalleryUpload from './EventGalleryUpload';
+import { GALLERY_PAGE_SIZE } from '@/lib/gallery/page-size';
+import { DRAG_THRESHOLD_PX, boxBetween, dragSelection, extendSelection, idsInBox, toggleId, type Box } from '@/lib/gallery/selection';
 
 interface SlideshowPlayInfo {
   count: number;
@@ -107,6 +113,12 @@ export default function EventGallery({
 }: EventGalleryProps) {
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectMode, setSelectMode] = useState(false);
+  const [dragBox, setDragBox] = useState<Box | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  /** The photo last clicked: where a Shift+click starts its range. */
+  const anchorRef = useRef<string | null>(null);
+  const dragRef = useRef<{ x: number; y: number; before: string[]; additive: boolean; active: boolean } | null>(null);
   const [removeState, setRemoveState] = useState<RemoveState>({
     singleConfirmId: null,
     bulkConfirm: false,
@@ -137,16 +149,67 @@ export default function EventGallery({
   };
 
   const handleUploaded = (submission: Record<string, unknown>) => {
-    setSubmissions((prev) => [submission as unknown as SubmissionRecord, ...prev].slice(0, 50));
+    setSubmissions((prev) => [submission as unknown as SubmissionRecord, ...prev].slice(0, GALLERY_PAGE_SIZE));
   };
 
-  const toggleSelected = (submissionId: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(submissionId)
-        ? prev.filter((id) => id !== submissionId)
-        : [...prev, submissionId]
-    );
+  /** A click on a checkbox or, with a modifier or in Select mode, on a picture: Shift extends from the last clicked photo, anything else toggles this one. */
+  const selectClick = (submissionId: string, shift: boolean) => {
+    const anchor = anchorRef.current;
+    setSelectedIds((prev) => (shift && anchor ? extendSelection(prev, allVisibleIds, anchor, submissionId, prev.includes(anchor)) : toggleId(prev, submissionId)));
+    if (!shift || !anchor) anchorRef.current = submissionId;
+    setRemoveState((prev) => ({ ...prev, bulkConfirm: false, error: null }));
   };
+
+  const cardBoxes = () =>
+    [...(gridRef.current?.querySelectorAll<HTMLElement>('[data-gallery-id]') ?? [])].map((el) => {
+      const r = el.getBoundingClientRect();
+      return { id: el.dataset.galleryId as string, box: { left: r.left, top: r.top, right: r.right, bottom: r.bottom } };
+    });
+
+  // A press on the space between the pictures (or anywhere in Select mode) followed by a move drags a box; the pictures it touches are selected.
+  const onGridPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!canManage || event.button !== 0) return;
+    const target = event.target as HTMLElement;
+    const onGap = event.target === event.currentTarget;
+    if (!onGap && !(selectMode && !target.closest('button, input, select, textarea'))) return;
+    dragRef.current = { x: event.clientX, y: event.clientY, before: selectedIds, additive: event.shiftKey || event.metaKey || event.ctrlKey, active: false };
+  };
+  const onGridPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    if (!drag.active) {
+      if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < DRAG_THRESHOLD_PX) return;
+      drag.active = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    const box = boxBetween({ x: drag.x, y: drag.y }, { x: event.clientX, y: event.clientY });
+    setDragBox(box);
+    setSelectedIds(dragSelection(drag.before, idsInBox(cardBoxes(), box), drag.additive));
+  };
+  const onGridPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    setDragBox(null);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    // A plain click on the space between the pictures lets go of the selection.
+    if (drag && !drag.active && !drag.additive && event.target === event.currentTarget) setSelectedIds([]);
+  };
+
+  // Ctrl/Cmd+A selects every shown photo while the focus is in the gallery; Esc lets go of the selection and leaves Select mode.
+  useEffect(() => {
+    if (!canManage) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelectedIds([]);
+        setSelectMode(false);
+      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a' && gridRef.current?.contains(document.activeElement)) {
+        event.preventDefault();
+        setSelectedIds(allVisibleIds);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [canManage, allVisibleIds]);
 
   const toggleSelectAll = () => {
     setSelectedIds(allSelected ? [] : allVisibleIds);
@@ -272,10 +335,19 @@ export default function EventGallery({
               Gallery actions
             </strong>
             <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
-              Select multiple images and remove them from {eventName} in one action.
+              Select multiple images and remove them from {eventName} in one action. Click a checkbox, then Shift+click another to select everything between them; Ctrl/Cmd+click adds or takes one; drag a box from the space between the pictures to select those it touches (Select mode starts a drag anywhere and works with a finger); Ctrl/Cmd+A selects all shown, Esc clears.
             </p>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <SemanticButton
+              action="event-gallery:select-mode"
+              type="button"
+              onClick={() => setSelectMode((on) => !on)}
+              variant={selectMode ? 'primary' : 'secondary'}
+              aria-pressed={selectMode}
+            >
+              {selectMode ? 'Select mode: on' : 'Select mode'}
+            </SemanticButton>
             <SemanticButton
               action="event-gallery:toggle-select-all"
               type="button"
@@ -330,7 +402,25 @@ export default function EventGallery({
       </section>
       ) : null}
 
-      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))' }}>
+      <div role="status" aria-live="polite" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+        {selectedIds.length} selected
+      </div>
+      <div
+        ref={gridRef}
+        // A press that can start a dragged box must not start a text selection either.
+        onMouseDown={(event) => {
+          const target = event.target as HTMLElement;
+          if (canManage && (event.target === event.currentTarget || (selectMode && !target.closest('button, input, select, textarea')))) {
+            event.preventDefault();
+            window.getSelection()?.removeAllRanges();
+          }
+        }}
+        onPointerDown={onGridPointerDown}
+        onPointerMove={onGridPointerMove}
+        onPointerUp={onGridPointerEnd}
+        onPointerCancel={onGridPointerEnd}
+        style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', touchAction: selectMode ? 'none' : undefined, userSelect: dragBox ? 'none' : undefined }}
+      >
         {submissions.map((submission) => {
           const submissionId = submissionIdOf(submission);
           const selected = selectedSet.has(submissionId);
@@ -417,8 +507,12 @@ export default function EventGallery({
           }
 
           return (
-            <ListingCard
+            <div
               key={submissionId}
+              data-gallery-id={submissionId}
+              style={{ outline: selected ? '3px solid var(--mantine-primary-color-filled)' : undefined, outlineOffset: 2, borderRadius: '0.875rem' }}
+            >
+            <ListingCard
               title={displayName}
               image={
                 <div style={{ position: 'relative' }}>
@@ -426,12 +520,22 @@ export default function EventGallery({
                     <input
                       type="checkbox"
                       checked={selected}
-                      onChange={() => toggleSelected(submissionId)}
+                      onClick={(event) => selectClick(submissionId, event.shiftKey)}
+                      onChange={() => undefined}
                       aria-label={selected ? 'Deselect image' : 'Select image'}
                       style={{ position: 'absolute', zIndex: 1, insetBlockStart: 8, insetInlineStart: 8 }}
                     />
                   ) : null}
-                  <Link href={`/share/${submission._id}`}>
+                  <Link
+                    href={`/share/${submission._id}`}
+                    onClick={(event) => {
+                      // With Shift or Ctrl/Cmd held, or in Select mode, a click on the picture selects it instead of opening it.
+                      if (canManage && (selectMode || event.shiftKey || event.metaKey || event.ctrlKey)) {
+                        event.preventDefault();
+                        selectClick(submissionId, event.shiftKey);
+                      }
+                    }}
+                  >
                     <Image
                       src={submission.previewImageUrl || submission.imageUrl || submission.finalImageUrl || 'data:image/gif;base64,R0lGODlhAQABAAAAACw='}
                       alt={`Photo of ${displayName}`}
@@ -446,13 +550,31 @@ export default function EventGallery({
               metadata={metadata}
               actions={actions}
             />
+            </div>
           );
         })}
       </div>
 
-      {submissions.length >= 50 && (
+      {dragBox ? (
+        <div
+          aria-hidden
+          style={{
+            position: 'fixed',
+            left: dragBox.left,
+            top: dragBox.top,
+            width: dragBox.right - dragBox.left,
+            height: dragBox.bottom - dragBox.top,
+            border: '1px solid var(--mantine-primary-color-filled)',
+            background: 'color-mix(in srgb, var(--mantine-primary-color-filled) 15%, transparent)',
+            pointerEvents: 'none',
+            zIndex: 1000,
+          }}
+        />
+      ) : null}
+
+      {submissions.length >= GALLERY_PAGE_SIZE && (
         <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0, textAlign: 'center' }}>
-          Showing the 50 most recent submissions
+          Showing the {GALLERY_PAGE_SIZE} most recent submissions
         </p>
       )}
     </div>

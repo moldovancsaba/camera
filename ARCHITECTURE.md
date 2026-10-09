@@ -123,8 +123,9 @@ Partner detail pages are the primary daily operational surface. They expose:
 ### Contextual menus (issue 426)
 
 Inside an event or a partner the sidebar shows that item's own menu (`lib/adminNavigation.ts`, `components/admin/AdminChrome.tsx`), with "Back to the main menu" first; a test fails when a page
-under `app/admin/events/[id]` or `app/admin/partners/[id]` is not an item of its menu. The **event** menu: Overview, Edit and pages, Vetting, Queue, Analytics, Logos, Frames, Images,
-Texts, Slideshows, Landing pages (and Emails with the e-mail epic). The **partner** menu: Overview, Edit, Logos, Frames, Images, Pictures, Texts, Emails. The global **Settings** group:
+under `app/admin/events/[id]` or `app/admin/partners/[id]` is not an item of its menu. The **event** menu: Overview, Edit and pages, Vetting, **Gallery**, Queue, Analytics, Logos, Frames, Images,
+Texts, Slideshows, Landing pages (and Emails with the e-mail epic). **The event gallery has its own page** (`app/admin/events/[id]/gallery/page.tsx`, the query in `lib/gallery/submissions.ts`, the component `components/admin/EventGallery.tsx`;
+camera#488): the overview only counts the photos and links to it. Selecting several photos (Shift+click range, a dragged box, Select mode, Ctrl+A, Esc) is `lib/gallery/selection.ts`; the research is `docs/_research/GALLERY_MULTISELECT_RESEARCH.md`. The **partner** menu: Overview, Edit, Logos, Frames, Images, Pictures, Texts, Emails. The global **Settings** group:
 Vetting card display, Journey defaults, Dictionary, Emails (the general level).
 
 ### Cross-cutting admin preferences

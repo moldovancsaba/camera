@@ -20,8 +20,8 @@ test('the context comes from the path: an event, a partner, or the main menu', (
 
 test('a partner user does not see Queue and Analytics, which would send them away; a global admin sees every item', () => {
   const labels = (access: AdminNavigationAccess) => adminContextMenu({ kind: 'event', id: ID }, `/admin/events/${ID}`, access).items.map((item) => item.label);
-  assert.deepEqual(labels(GLOBAL_ADMIN), ['Overview', 'Edit and pages', 'Vetting', 'Queue', 'Analytics', 'Logos', 'Frames', 'Images', 'Texts', 'Emails', 'Slideshows', 'Landing pages']);
-  assert.deepEqual(labels(PARTNER_USER), ['Overview', 'Edit and pages', 'Vetting', 'Logos', 'Frames', 'Images', 'Texts', 'Emails', 'Slideshows', 'Landing pages']);
+  assert.deepEqual(labels(GLOBAL_ADMIN), ['Overview', 'Edit and pages', 'Vetting', 'Gallery', 'Queue', 'Analytics', 'Logos', 'Frames', 'Images', 'Texts', 'Emails', 'Slideshows', 'Landing pages']);
+  assert.deepEqual(labels(PARTNER_USER), ['Overview', 'Edit and pages', 'Vetting', 'Gallery', 'Logos', 'Frames', 'Images', 'Texts', 'Emails', 'Slideshows', 'Landing pages']);
 });
 
 test('the partner menu has its own pages', () => {
@@ -37,6 +37,7 @@ test('exactly one item is active, and the overview is active only on its own add
   assert.deepEqual(activeLabels(`/admin/events/${ID}`), ['Overview']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/`), ['Overview']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/logos`), ['Logos']);
+  assert.deepEqual(activeLabels(`/admin/events/${ID}/gallery`), ['Gallery']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/edit`), ['Edit and pages']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/slideshows/new`), ['Slideshows']);
   assert.deepEqual(activeLabels(`/admin/events/${ID}/slideshows/abc123`), ['Slideshows']);
