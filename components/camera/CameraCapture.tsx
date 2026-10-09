@@ -59,7 +59,7 @@ import type { FacingModeValue } from '@/lib/camera/constraints';
 import { aspectsAgree, fullFrameFromBlob, takeStillBlob } from '@/lib/camera/still-capture';
 import { fillCropRect, toFractionRect } from '@/lib/camera/reframe';
 import { sampleVideoLumaStats, waitForVideoFrame } from '@/lib/camera/video-frame';
-import { DEFAULT_VIEW, TIGHT_KEEP, currentShape, viewCrop, wantedWindow, withField, withShape, type CameraView, type ViewField, type ViewShape } from '@/lib/camera/view';
+import { DEFAULT_VIEW, currentShape, viewAspect, viewRect, wantedWindow, withField, withShape, type CameraView, type ViewField, type ViewShape } from '@/lib/camera/view';
 import { useT } from '@/components/i18n/UiLanguageProvider';
 
 /** Supports hex (#rgb) or CSS `var(--token)` for branded capture UI. */
@@ -159,8 +159,10 @@ export default function CameraCapture({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(autoStart);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  // Width over height of the camera's own image, known once the video reports its size.
-  const [cameraAspect, setCameraAspect] = useState<number | null>(null);
+  // The size of the camera's own image, known once the video reports it. The shape of the live view (`cameraAspect`) is derived from it and from the view the person chose (lib/camera/view.ts).
+  const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
+  // What was asked of the camera and what it gave, for the line of text in the views mode (issue 525): so a phone that answers differently can be told from a screenshot.
+  const [askedSize, setAskedSize] = useState('');
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [orientation, setOrientation] = useState<'portrait' | 'landscape-left' | 'landscape-right'>('portrait');
   // The shutter unlocks after the first presented frame plus a short warm-up (see capture-policy.ts).
@@ -171,6 +173,12 @@ export default function CameraCapture({
   // The person's choice of view; the ref is what the camera start and the shape check read, so a press that restarts the camera is not read from an old render.
   const [view, setView] = useState<CameraView>(DEFAULT_VIEW);
   const viewRef = useRef<CameraView>(DEFAULT_VIEW);
+  // The shape asked of the camera by the last press, and whether the phone is known to ignore it (then a press only cuts the picture and the camera is not restarted again).
+  const askedShapeRef = useRef<ViewShape | null>(null);
+  const shapeIgnoredRef = useRef(false);
+  const [shapeIgnored, setShapeIgnored] = useState(false);
+  // Width over height of what the live view shows: the camera's image cut to the view chosen.
+  const cameraAspect = videoSize.width > 0 ? viewAspect(videoSize.width, videoSize.height, view) : null;
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -257,18 +265,29 @@ export default function CameraCapture({
     if (!stream || !video) return;
     const follow = () => {
       if (video.videoWidth > 0 && video.videoHeight > 0) {
-        const next = video.videoWidth / video.videoHeight;
-        setCameraAspect((current) => (current !== null && Math.abs(current - next) < 0.001 ? current : next));
+        const next = { width: video.videoWidth, height: video.videoHeight };
+        setVideoSize((current) => (current.width === next.width && current.height === next.height ? current : next));
+        // A press asked the camera for a shape: if the picture that came back still has another one, this phone ignores the request, and from now on a press only cuts the picture.
+        const explicit = viewRef.current.shape;
+        if (explicit !== 'auto' && askedShapeRef.current === explicit) {
+          if (currentShape(next.width, next.height) !== explicit) {
+            shapeIgnoredRef.current = true;
+            setShapeIgnored(true);
+          }
+          askedShapeRef.current = null;
+        }
       }
-      // A chosen view (portrait or landscape) is the shape wanted whatever way the phone is held; without one the window decides.
-      const wantedBox = wantedWindow(viewRef.current.shape, window.innerWidth, window.innerHeight);
-      const wanted = streamShapeMismatch({
-        touchPrimary: detectTouchPrimaryDevice(),
-        windowWidth: wantedBox.width,
-        windowHeight: wantedBox.height,
-        videoWidth: video.videoWidth,
-        videoHeight: video.videoHeight,
-      });
+      // Without a chosen view the window decides the shape and a stream that is the wrong way round is asked again. With one, the picture is cut to the view instead: nothing restarts.
+      const wanted =
+        viewRef.current.shape !== 'auto'
+          ? null
+          : streamShapeMismatch({
+              touchPrimary: detectTouchPrimaryDevice(),
+              windowWidth: window.innerWidth,
+              windowHeight: window.innerHeight,
+              videoWidth: video.videoWidth,
+              videoHeight: video.videoHeight,
+            });
       if (wanted === null) {
         mismatchRef.current = null;
         askedForRef.current = null;
@@ -431,6 +450,8 @@ export default function CameraCapture({
         : undefined;
 
       setStream(mediaStream);
+      const asked = diagRef.current.requested;
+      setAskedSize(asked?.width && asked?.height ? `${asked.width}×${asked.height}` : 'any size');
       
     } catch (err) {
       if (requestId !== startRequestRef.current) {
@@ -577,7 +598,7 @@ export default function CameraCapture({
             return 'retry';
           }
 
-          const captured = await captureFullFrame(video, canvas, FACING, viewCrop(viewRef.current.field));
+          const captured = await captureFullFrame(video, canvas, FACING, viewRect(video.videoWidth, video.videoHeight, viewRef.current));
           if (!captured) {
             encodeFailures += 1;
             return 'retry';
@@ -631,7 +652,11 @@ export default function CameraCapture({
     setView(next);
     const video = videoRef.current;
     const alreadyThatShape = !!video && video.videoWidth > 0 && currentShape(video.videoWidth, video.videoHeight) === next.shape;
-    if (next.shape !== previous.shape && !alreadyThatShape) void startCamera();
+    // The camera is asked for the new shape once; a phone that has shown it ignores the request is not asked again (the picture is cut to the shape instead, lib/camera/view.ts).
+    if (next.shape !== previous.shape && next.shape !== 'auto' && !alreadyThatShape && !shapeIgnoredRef.current) {
+      askedShapeRef.current = next.shape;
+      void startCamera();
+    }
   };
 
   /**
@@ -802,7 +827,7 @@ export default function CameraCapture({
 
       const readyHandler = () => {
         if (video.videoWidth > 0 && video.videoHeight > 0) {
-          setCameraAspect(video.videoWidth / video.videoHeight);
+          setVideoSize({ width: video.videoWidth, height: video.videoHeight });
           markPreviewReady();
           if (!hasFrameCallback && video.readyState >= 2) {
             unlockShutterAfterWarmup();
@@ -904,17 +929,30 @@ export default function CameraCapture({
         {!capturedImage ? (
           <>
             {/* Live Video Stream - the whole camera image (the stage has the camera's shape), mirrored for the front camera */}
+            {/* With the view controls the video is placed so that only the part the view keeps shows (the stage has the shape of that part); the shutter keeps the same part. */}
             <video
               ref={videoRef}
               autoPlay
               playsInline
               muted
-              className="w-full h-full object-contain"
-              style={{
-                // Mirrored for the front camera; the tight view shows the middle of the picture, the part the shutter keeps (lib/camera/view.ts).
-                transform: view.field === 'tight' ? `scaleX(-1) scale(${1 / TIGHT_KEEP})` : 'scaleX(-1)',
-              }}
+              className={viewControls ? 'absolute' : 'w-full h-full object-contain'}
+              style={
+                viewControls
+                  ? (() => {
+                      const rect = videoSize.width > 0 ? viewRect(videoSize.width, videoSize.height, view) : null;
+                      return rect
+                        ? { width: `${100 / rect.width}%`, height: `${100 / rect.height}%`, left: `${(-rect.x / rect.width) * 100}%`, top: `${(-rect.y / rect.height) * 100}%`, objectFit: 'fill' as const, transform: 'scaleX(-1)' }
+                        : { width: '100%', height: '100%', left: 0, top: 0, objectFit: 'contain' as const, transform: 'scaleX(-1)' };
+                    })()
+                  : { transform: 'scaleX(-1)' }
+              }
             />
+
+            {viewControls && stream && !isLoading && videoSize.width > 0 && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-9 z-20 px-2 text-center text-xs" style={{ color: CAMERA_STAGE_WHITE }} data-camera-readout>
+                {`${videoSize.width}×${videoSize.height}${askedSize ? ` (asked ${askedSize})` : ''}${shapeIgnored ? ' · this phone keeps its own shape: cut to the view' : ''}`}
+              </div>
+            )}
 
             {viewControls && stream && !isLoading && (
               <div className="absolute inset-x-0 top-2 z-20 flex flex-wrap items-center justify-center gap-2 px-2" role="group" aria-label={t('camera.view.group')}>

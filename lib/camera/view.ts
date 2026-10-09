@@ -40,10 +40,45 @@ export function wantedWindow(shape: ViewShape, windowWidth: number, windowHeight
   return { width: windowWidth, height: windowHeight };
 }
 
-/** The part of the camera picture a view keeps, as fractions of it (x, y, width, height), or null for the whole picture. */
-export function viewCrop(field: ViewField): { x: number; y: number; width: number; height: number } | null {
-  if (field !== 'tight') return null;
-  return { x: (1 - TIGHT_KEEP) / 2, y: (1 - TIGHT_KEEP) / 2, width: TIGHT_KEEP, height: TIGHT_KEEP };
+export const PORTRAIT_ASPECT = 3 / 4;
+export const LANDSCAPE_ASPECT = 4 / 3;
+
+export interface ViewRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * The part of the camera picture a view keeps, as fractions of it, or null for the whole picture. The **shape** comes first: when the person chose portrait or landscape and the picture
+ * the camera delivered has another shape (a phone that ignores the shape that was asked for, as the owner's iPhone did on 2026-10-09: both choices gave the same landscape picture), the middle of
+ * it is cut to the shape chosen, so a press always changes the picture. Then **tight** keeps the middle `TIGHT_KEEP` of what is left. Always centred.
+ */
+export function viewRect(videoWidth: number, videoHeight: number, view: CameraView): ViewRect | null {
+  let width = 1;
+  let height = 1;
+  if (view.shape !== 'auto' && videoWidth > 0 && videoHeight > 0) {
+    const wanted = view.shape === 'portrait' ? PORTRAIT_ASPECT : LANDSCAPE_ASPECT;
+    const have = videoWidth / videoHeight;
+    if (Math.abs(have - wanted) / wanted > 0.03) {
+      if (have > wanted) width = wanted / have;
+      else height = have / wanted;
+    }
+  }
+  if (view.field === 'tight') {
+    width *= TIGHT_KEEP;
+    height *= TIGHT_KEEP;
+  }
+  if (width >= 0.9999 && height >= 0.9999) return null;
+  return { x: (1 - width) / 2, y: (1 - height) / 2, width, height };
+}
+
+/** The width over the height of what the view keeps (the shape of the live view and of the photo), or 0 when the picture size is not known yet. */
+export function viewAspect(videoWidth: number, videoHeight: number, view: CameraView): number {
+  if (!(videoWidth > 0) || !(videoHeight > 0)) return 0;
+  const rect = viewRect(videoWidth, videoHeight, view);
+  return rect ? (rect.width * videoWidth) / (rect.height * videoHeight) : videoWidth / videoHeight;
 }
 
 /** The view after a press of one of the two choices; the other choice stays. Pressing the shape that is already chosen changes nothing. */
