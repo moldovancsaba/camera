@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the sidebar shows the menu of the event or partner you are in (issue 426, step 10, first move; admin only)
+
+- **Changed (owner idea, 2026-10-09):** inside one event (`/admin/events/<id>/...`) or one partner (`/admin/partners/<id>/...`) the admin sidebar shows **that item's own menu** with **Back to the main menu** at the top and the **name** of the event or partner under its kind. The event menu: Overview, Edit and pages, Vetting, Queue and Analytics (global admins only), Logos, Frames, Images, Slideshows, Landing pages. The partner menu: Overview, Edit, Logos, Frames, Images. Every editor of an event is now one click away instead of a card to find; a partner user no longer sees Queue and Analytics, which sent them away. The same menu is in the phone drawer. The **tab bar** of the event pages is removed (the menu carries its items). The admin tour points at the new menu inside an event or partner and starts by itself only on the main pages.
+- **Not changed:** every address, bookmark and deep link; what any page shows; the main menu on all other pages. Admin only: no user of a live event sees any difference.
+- **Added:** `GET /api/admin/nav-context?kind=event|partner&id=` (the name, viewer access; anyone else is refused like the pages are).
+- **Verified:** type-check; lint; unit tests (the context from the path, who sees which item, the active item for every page, and a test that fails when a page of an event or partner is left out of its menu; the route); the menus seen in a production build at desktop and phone width for a global admin, a partner user, an event, a partner and a main page (temporary harness, removed); the full CI chain.
+
 ## Unreleased — the default slideshow of every event: a generated giant-screen design (camera#326, camera#327, step 7a; admin only, new events only)
 
 - **Added:** every **new** event gets a **default slideshow** with a ready-made screen design: a night-stadium picture drawn in the event's own colours with a transparent photo window, the event's tracked **"Giant screen"** link as a QR code (made if the event has none, reused if it has one), one short call to action picked once at random from the dictionary (English and Hungarian; the Hungarian wording is a draft for MTK to review) and the link's address written under the window. It is made after the response, so creating an event stays quick, and making it twice changes nothing.

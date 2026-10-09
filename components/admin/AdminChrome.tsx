@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AppShell as GdsAppShell } from '@sovereignsquad/gds-admin/client';
@@ -11,7 +11,7 @@ import TourOverlay from '@/components/tour/TourOverlay';
 import TourReplayButton from '@/components/tour/TourReplayButton';
 import { useTourController } from '@/lib/tour/useTourController';
 import { getAdminTourSteps } from '@/lib/tour/config/adminTourSteps';
-import { getVisibleAdminNavSections, type AdminNavigationAccess } from '@/lib/adminNavigation';
+import { adminContextMenu, adminContextOf, getVisibleAdminNavSections, type AdminContext, type AdminNavigationAccess } from '@/lib/adminNavigation';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 
 interface AdminChromeProps {
@@ -28,13 +28,21 @@ interface AdminChromeProps {
 
 // closeMobileNavigation has been removed because GdsAppShell handles mobile menu collapse natively
 
-export default function AdminChrome({
+export default function AdminChrome(props: AdminChromeProps) {
+  return <AdminChromeView {...props} pathname={usePathname()} />;
+}
+
+/** The chrome for the path it is given (the page's own address); split off so the menus can be checked for any path. */
+export function AdminChromeView({
   session,
   navigationAccess,
   children,
-}: AdminChromeProps) {
-  const pathname = usePathname();
-  const tourController = useTourController('admin:v1', getAdminTourSteps(navigationAccess), { autoStart: true });
+  pathname,
+}: AdminChromeProps & { pathname: string }) {
+  // Inside one event or partner the sidebar shows that item's own menu (issue 426); the tour then points at that menu, and starts by itself only on the main pages.
+  const context = adminContextOf(pathname);
+  const contextName = useContextName(context);
+  const tourController = useTourController('admin:v1', getAdminTourSteps(navigationAccess, { inContext: Boolean(context) }), { autoStart: !context });
 
   useEffect(() => {
     const toggleButton = document.querySelector('button[aria-label="Toggle navigation"]');
@@ -47,7 +55,35 @@ export default function AdminChrome({
   // the dashboard's landing grid — see that file's header comment for why.
   const sections = getVisibleAdminNavSections(navigationAccess);
 
-  const primaryNavigation = (
+  const contextMenu = context ? adminContextMenu(context, pathname, navigationAccess) : null;
+
+  const primaryNavigation = context && contextMenu ? (
+    <div style={{ display: 'grid', gap: 'var(--mantine-spacing-md)' }}>
+      <SemanticNavLink
+        href={context.kind === 'event' ? '/admin/events' : '/admin/partners'}
+        active={false}
+        label="Back to the main menu"
+        icon={<AdminIcon iconKey="arrowLeft" size={18} />}
+      />
+      <div data-tour-id="admin-context-menu" style={{ display: 'grid', gap: 'var(--mantine-spacing-xs)' }}>
+        <div style={{ display: 'grid', gap: 2 }}>
+          <strong style={{ fontSize: 'var(--mantine-font-size-xs)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{contextMenu.title}</strong>
+          <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{contextName ?? ' '}</span>
+        </div>
+        <div style={{ display: 'grid', gap: 6 }}>
+          {contextMenu.items.map((item) => (
+            <SemanticNavLink
+              key={item.href}
+              href={item.href}
+              active={item.active}
+              label={item.label}
+              icon={<AdminIcon iconKey={item.iconKey as AdminIconKey} size={18} />}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  ) : (
     <div style={{ display: 'grid', gap: 'var(--mantine-spacing-xl)' }}>
       {sections.map((section) => (
         <div
@@ -152,6 +188,31 @@ export default function AdminChrome({
       </GdsAppShell>
     </div>
   );
+}
+
+/**
+ * The name of the event or partner whose menu is shown, from a small access-checked call (the page the user is on loads the record too, but the sidebar sits above every page).
+ * Asked once per event or partner: moving between its pages keeps the name.
+ */
+function useContextName(context: AdminContext | null): string | null {
+  const kind = context?.kind;
+  const id = context?.id;
+  const key = kind && id ? `${kind}:${id}` : null;
+  const [loaded, setLoaded] = useState<{ key: string; name: string } | null>(null);
+  useEffect(() => {
+    if (!key || !kind || !id) return;
+    let cancelled = false;
+    fetch(`/api/admin/nav-context?kind=${kind}&id=${id}`)
+      .then((response) => (response.ok ? (response.json() as Promise<{ data?: { name?: string } }>) : null))
+      .then((body) => {
+        if (!cancelled && body?.data?.name) setLoaded({ key, name: body.data.name });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [key, kind, id]);
+  return loaded && loaded.key === key ? loaded.name : null;
 }
 
 interface RenderedNavItem {
