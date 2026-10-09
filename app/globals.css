@@ -388,3 +388,15 @@ html[data-app-lock] body {
   }
 
 }
+
+/* The Google and Facebook sign-in buttons (components/auth/BrandSignInButton.tsx, camera#462): a touch of feedback, and a ring that is visible on any event colour. */
+.brand-signin:hover {
+  filter: brightness(0.96);
+}
+.brand-signin:active {
+  filter: brightness(0.92);
+}
+.brand-signin:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+}
