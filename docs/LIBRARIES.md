@@ -84,6 +84,8 @@ is the same as before (checked on the real data: 14 of 14 events).
 
 ## Logos (LIB-4, camera#367)
 
+> **Replaced on 2026-10-09 (camera#419):** the scenario ticks and per-scenario lists described in this section gave way to the slot model described at the end of it. The old data is read and kept until an event or a partner is migrated.
+
 The same three levels as frames (pages `/admin/partners/<id>/logos` and `/admin/events/<id>/logos`), with what is particular to logos (`lib/library/logos.ts`):
 
 - **Scenarios.** An event assigns a logo per scenario (`Event.logos[]`: `logoId`, `scenario`, `order`, `isActive`): `onboarding-thankyou` (on top of the pages of the user journey), `loading-capture` (the capture page while it loads), `loading-slideshow` (the slideshow while it loads) and `slideshow-transition` (no screen shows it yet). One logo can
@@ -95,17 +97,16 @@ The same three levels as frames (pages `/admin/partners/<id>/logos` and `/admin/
   shows in one scenario stays available for the others). Switching off and removing act on that scenario only and make the list the event's own. An upload on the event page is
   assigned at once in the scenario the editor chooses (`onboarding-thankyou` by default) with order 0, like an assignment.
 - **Global list.** `GET /api/logos`, `/admin/logos` and the logo picker of the landing page editor show global logos only; `/admin/logos?scope=all` lists every logo.
-- **The logo from messmass** (decision 120: in the partner library only; owner answer 153, 2026-10-09: an automatic default is collected automatically and made the default).
-  messmass provisioning keeps the partner's logo as `Partner.logoUrl`, a file on the logo bucket (`docs/LOGO_STORAGE.md`). It is **collected automatically**: when messmass
-  creates or links a partner that has a logo, camera imports it after the response (`collectPartnerLogo`, `lib/messmass/provision.ts`; best effort, a failure is logged), and the
-  button "Import the logo from messmass" on the partner page does the same for a partner that has none yet (`POST /api/partners/<id>/library/import-messmass-logo`). Importing makes
-  it a logo of the partner: `scope: 'partner'`, `source: 'messmass'`, `sourceUrl`, pointing at the same file (the bucket's files never change, so no copy is made), after a checked
-  download (https, a host camera trusts for logos, no redirect, 8 seconds, 5 MB, an image) and measured with sharp. **A new import also makes it a default of the partner**
-  (`makeMessmassLogoDefault`, `lib/library/messmass-logo.ts`): a row in every scenario, each **after** the logos the partner already has there (its own choices come first), and the
-  events inherit it the way every partner default is inherited: new events copy the partner's defaults when they are created, and the events that follow them get the changed list through
-  the same cascade a change on the partner page runs (`updateChildEventsFromPartner`); an event that edited its own logo list does not follow and keeps its own. **Importing the same address again
-  changes nothing**, so a default an editor took off later is not put back. The scenario ticks themselves are going away (owner, 2026-10-09: the library must not ask where a logo shows;
-  `docs/BUILDING_BRICKS.md`). On 2026-10-08, 192 partners had a logo address, all on the logo bucket (135 distinct files: 129 PNG, 5 JPEG, 1 WebP, at most 678 KB), every one importable.
+- **The logo from messmass** (decision 120: in the partner library only; owner answers 153 and 169, 2026-10-09). messmass provisioning keeps the partner's logo as `Partner.logoUrl`,
+  a file on the logo bucket (`docs/LOGO_STORAGE.md`). It is **collected automatically**: when messmass creates or links a partner that has a logo, camera imports it after
+  the response (`collectPartnerLogo`, `lib/messmass/provision.ts`; best effort, a failure is logged), and the button "Import the logo from messmass" on the partner page does
+  the same for a partner that has none yet (`POST /api/partners/<id>/library/import-messmass-logo`). Importing makes it a logo of the partner: `scope: 'partner'`,
+  `source: 'messmass'`, `sourceUrl`, pointing at the same file (the bucket's files never change, so no copy is made), after a checked download (https, a host camera trusts
+  for logos, no redirect, 8 seconds, 5 MB, an image) and measured with sharp. **A new import also makes it one of the partner's logos** (`makeMessmassLogoDefault`,
+  `Partner.slots.logo`, after the logos the partner already has; a partner not on the slot model yet keeps what its old default rows amount to): the default of its events, which
+  look at the partner, so **nothing is copied into them**; an event with a choice of its own keeps it. **Importing the same address again changes nothing**, so a logo an editor took
+  out later is not put back. The scenario ticks are gone (owner, 2026-10-09: the library must not ask where a logo shows). On 2026-10-08, 192 partners had a logo address,
+  all on the logo bucket (135 distinct files: 129 PNG, 5 JPEG, 1 WebP, at most 678 KB), every one importable.
 - **What users see did not change:** read-only on the real data, the event logo API (`GET /api/events/<id>/logos`, what the capture page and the slideshow read) answered the
   same before and after this change for all 214 events, by both ids (428 answers), and the event page shows the same order and the same shown logo as that API for the 10 events
   with logos. `components/capture/CaptureStageShell.test.tsx` keeps the order of the stage pages: the event's logo for those pages, else the theme's logo, else the emoji.
@@ -120,7 +121,8 @@ The owner's model (2026-10-09): the logo is chosen **at the place of use**, the 
 - **The first save of an event not on the model seeds its slots from its old list** (`eventSlotsFromLegacy`): an event that follows its partner and shows what the partner's defaults give stays following; otherwise its list is kept as it showed (one `logo` slot when every scenario is the same, else one place per scenario), all as "replace". The old `logos` list and `logosOverridden` are never deleted or changed. A partner not on the model is read from its `defaultLogos` rows until it saves a choice.
 - **API:** `GET` and `PUT /api/events/<id>/logo-slots` (`{ slotId, value }`; the panels with what each place uses now, what it takes from above, what it chose itself, and the logos that can be picked; Events managers to save) and `GET` and `PUT /api/partners/<id>/logo-slot` (`{ value: { items } }`; managers to save). The same one-way rules as before: an event picks from its partner's library or its own uploads, a partner from the global library or its own uploads.
 - **Who uses a logo** (`usageOfItem`, the refusal to delete a global logo in use, `deleteLibraryUpload`, removing a logo from the partner library) counts and cleans the slots too, so a logo cannot be deleted from under the slot model.
-- **Still to come in this step:** the partner and event logo pages on the slot panel (the ticks go), the random pick on the pages of the user journey and the slideshow, the new messmass logo replacing the imported default, and the migration and collect for existing partners and events (with the owner's go).
+- **The pages (camera#419, 4.3):** `/admin/partners/<id>/logos` and `/admin/events/<id>/logos` are built on the slot panel (`components/admin/kit/SlotPanel.tsx`): the partner chooses its logos; the event chooses its logo and, for each place of use that has a screen (the pages of the user journey, the loading screen of the capture app, the loading screen of the slideshow), uses the default, picks one from the partner's library, uploads a new one (the upload routes take `slot`), adds more, replaces the default, or shows nothing. The ticks per scenario are gone. An event not on the model shows what it shows today, and its first saved change moves it to the model (seeded from its old list).
+- **Still to come in this step:** the random pick on the pages of the user journey and the slideshow (they still show the first logo), the new messmass logo replacing the imported default, and the migration and collect for existing partners and events (with the owner's go).
 
 ## Images (LIB-5, camera#368)
 

@@ -55,6 +55,7 @@ test('provisionEvent: SAVETHEWORLD_APP_URL unset keeps customPages empty (no reg
   assert.equal(result.created, true);
   assert.equal(insertedDocs.length, 1);
   assert.deepEqual(insertedDocs[0].customPages, []);
+  assert.deepEqual(insertedDocs[0].slots, {}, 'a new event is on the slot model from the start: it looks at its partner for its logo');
 });
 
 test('provisionEvent: SAVETHEWORLD_APP_URL set adds a well-formed cta customPages entry', async (t) => {

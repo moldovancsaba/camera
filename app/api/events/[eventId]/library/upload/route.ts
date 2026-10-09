@@ -2,7 +2,8 @@
  * Event library upload (camera#361): POST a file as an item that belongs to this event (`scope: 'event'`). It is assigned to the event at once
  * (the event now has its own list, so partner changes no longer replace it) and no other event can take it. An image is not assigned
  * (camera#368): it joins the event's images library, which the picture fields choose from. Multipart: `kind`, `file`, `name`,
- * `description?`, `category?`; for a logo also `scenario?` (where it is shown, `onboarding-thankyou` when none is sent; camera#367).
+ * `description?`, `category?`; for a logo also `scenario?` (where it is shown, `onboarding-thankyou` when none is sent; camera#367), or `slot` (camera#419):
+ * the logo slot it joins (`logo` or a place of use), on the slot model, instead of the old list; no scenario is then needed.
  * Events managers of the partner and global admins.
  */
 
@@ -16,6 +17,8 @@ import { KIND_META, isAssignedKind, parseKind } from '@/lib/library/kinds';
 import { createLibraryItem } from '@/lib/library/upload';
 import { itemView } from '@/lib/library/db';
 import { DEFAULT_UPLOAD_SCENARIO, LOGO_SCENARIOS, isLogoScenario } from '@/lib/library/logos';
+import { LOGO_SLOT_IDS } from '@/lib/slots/logo';
+import { addLogoToEventSlot } from '@/lib/slots/logo-store';
 
 export const POST = withErrorHandler(async (request: NextRequest, context: { params: Promise<{ eventId: string }> }) => {
   const session = await requireAuth();
@@ -25,9 +28,13 @@ export const POST = withErrorHandler(async (request: NextRequest, context: { par
   const kind = parseKind(form.get('kind'));
   if (!kind) throw apiBadRequest('kind must be frames, logos or images');
   // A logo is assigned to one scenario at once; a bad scenario is refused before the file is stored.
+  // On the slot model a logo joins a slot (the event's logo or a place of use) and no scenario is needed (camera#419).
+  const sentSlot = kind === 'logos' ? form.get('slot') : null;
+  const slot = typeof sentSlot === 'string' && sentSlot ? sentSlot : null;
+  if (slot && !LOGO_SLOT_IDS.includes(slot)) throw apiBadRequest(`slot must be one of: ${LOGO_SLOT_IDS.join(', ')}`);
   const sentScenario = form.get('scenario');
   const scenario = kind === 'logos' ? (sentScenario === null || sentScenario === '' ? DEFAULT_UPLOAD_SCENARIO : sentScenario) : null;
-  if (kind === 'logos' && !isLogoScenario(scenario)) throw apiBadRequest(`scenario must be one of: ${LOGO_SCENARIOS.map((s) => s.id).join(', ')}`);
+  if (kind === 'logos' && !slot && !isLogoScenario(scenario)) throw apiBadRequest(`scenario must be one of: ${LOGO_SCENARIOS.map((s) => s.id).join(', ')}`);
 
   const db = await connectToDatabase();
   const access = await getPartnerScopedAccessForEvent(db, eventId, session, 'manager');
@@ -49,6 +56,12 @@ export const POST = withErrorHandler(async (request: NextRequest, context: { par
   if (!isAssignedKind(kind)) return apiCreated({ item: itemView(kind, result.item), assignment: null });
 
   const now = generateTimestamp();
+  if (slot) {
+    // The uploaded logo joins the slot; the old list is not touched.
+    const added = await addLogoToEventSlot(db, event, slot, String(result.item.logoId), now);
+    if (!added.ok) throw apiBadRequest(added.reason);
+    return apiCreated({ item: itemView(kind, result.item), assignment: null, slot: added.value.slots[slot] ?? null });
+  }
   // A logo's assignment carries its scenario and an order (0, as an assignment from the logo page gets).
   const assignment = {
     [KIND_META[kind].idField]: result.item[KIND_META[kind].idField],

@@ -12,10 +12,12 @@ const ADMIN = { appRole: 'admin', user: { id: 'a1', email: 'admin@example.com', 
 type RouteModule = typeof import('./route');
 const importRoute = (caseId: string) => import('./route?case=' + caseId) as Promise<RouteModule>;
 
-function setup(t: TestContext, options: { allowed?: boolean } = {}) {
+function setup(t: TestContext, options: { allowed?: boolean; event?: Record<string, unknown> } = {}) {
   const seeded = fakeDb({
     frames: [],
-    events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', name: 'Event', frames: [] }],
+    logos: [],
+    partners: [{ partnerId: 'P', name: 'Partner P' }],
+    events: [{ _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', name: 'Event', frames: [], logos: [], ...(options.event ?? {}) }],
   });
   const stored: string[] = [];
   t.mock.module('@/lib/db/mongodb', { namedExports: { connectToDatabase: async () => seeded.db } });
@@ -63,7 +65,7 @@ test('a bad upload changes nothing on the event', async (t) => {
   assert.equal((await POST(post({ kind: 'logos', name: 'x', scenario: 'nowhere' }, png()), params)).status, 400, 'a logo needs a scenario that exists');
   assert.deepEqual(stored, []);
   assert.deepEqual((data.events[0] as { frames: unknown[] }).frames, []);
-  assert.equal((data.events[0] as { logos?: unknown[] }).logos, undefined);
+  assert.deepEqual((data.events[0] as { logos?: unknown[] }).logos, []);
   assert.equal((data.events[0] as { framesOverridden?: boolean }).framesOverridden, undefined);
   assert.equal((data.events[0] as { logosOverridden?: boolean }).logosOverridden, undefined);
 });
@@ -96,3 +98,38 @@ test('without manager access to the event nothing is uploaded', async (t) => {
   assert.deepEqual(stored, []);
   assert.equal(data.frames.length, 0);
 });
+
+test('a logo uploaded with a slot joins that slot of the event (on the slot model), not the old list, and needs no scenario', async (t) => {
+  const { data } = setup(t);
+  const { POST } = await importRoute('slot-logo');
+  const response = await POST(post({ kind: 'logos', slot: 'logo', name: 'Own logo' }, png()), params);
+  assert.equal(response.status, 201);
+  const logo = data.logos[0] as Record<string, unknown>;
+  assert.equal(logo.scope, 'event');
+  const event = data.events[0] as { slots?: Record<string, { items?: string[] }>; logos: unknown[]; logosOverridden?: unknown };
+  assert.deepEqual(event.slots, { logo: { items: [logo.logoId as string] } });
+  assert.deepEqual(event.logos, [], 'the old list is not touched');
+  assert.equal(event.logosOverridden, undefined);
+  const body = (await response.json()) as { data: { slot: { items: string[] } } };
+  assert.deepEqual(body.data.slot.items, [logo.logoId]);
+});
+
+test('an upload to a place of use of an event that is not on the model seeds its slots from its old list first, so it keeps showing what it showed', async (t) => {
+  const old = [{ logoId: 'g1', scenario: 'onboarding-thankyou', order: 0, isActive: true }, { logoId: 'g1', scenario: 'loading-capture', order: 0, isActive: true }, { logoId: 'g1', scenario: 'loading-slideshow', order: 0, isActive: true }, { logoId: 'g1', scenario: 'slideshow-transition', order: 0, isActive: true }];
+  const { data } = setup(t, { event: { logos: old, logosOverridden: true } });
+  const { POST } = await importRoute('slot-seed');
+  assert.equal((await POST(post({ kind: 'logos', slot: 'logo-capture-loading', name: 'Loading logo' }, png()), params)).status, 201);
+  const event = data.events[0] as { slots: Record<string, { items?: string[]; useDefault?: boolean }>; logos: unknown[] };
+  assert.deepEqual(event.slots.logo, { items: ['g1'], useDefault: false });
+  assert.equal(event.slots['logo-capture-loading'].items?.length, 1);
+  assert.equal(event.logos.length, 4, 'the old list is still there');
+});
+
+test('an unknown slot is refused before the file is stored', async (t) => {
+  const { data, stored } = setup(t);
+  const { POST } = await importRoute('slot-bad');
+  assert.equal((await POST(post({ kind: 'logos', slot: 'frames', name: 'Nope' }, png()), params)).status, 400);
+  assert.deepEqual(stored, []);
+  assert.deepEqual(data.logos, []);
+});
+

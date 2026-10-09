@@ -251,6 +251,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     framesOverridden: inheritedDefaults.framesOverridden,
     logos: inheritedDefaults.logos || [],
     logosOverridden: inheritedDefaults.logosOverridden,
+    // On the slot model from the start (camera#419): the event looks at its partner for its logo and stores only what an editor sets.
+    slots: {},
     customPages: [],
     journeyDefaults: true, // the journey defaults (default consent page and the like) apply to events created from now on (camera#330)
     tryOn: {

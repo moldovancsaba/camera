@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import sharp from 'sharp';
 import { fakeDb } from './fake-db';
-import { importMessmassLogo, messmassLogoDefaultRows, messmassLogoState } from './messmass-logo';
+import { importMessmassLogo, makeMessmassLogoDefault, messmassLogoState } from './messmass-logo';
 import { loadEventLibrary, loadPartnerLibrary } from './db';
 
 const NOW = '2026-10-08T12:00:00.000Z';
@@ -129,18 +129,30 @@ test('the state says whether the logo can be imported, or the item when it is', 
   assert.equal(state.problem, null);
 });
 
-test('the default rows: every scenario, each after the logos already there; none where the logo already is a default', () => {
-  assert.deepEqual(
-    messmassLogoDefaultRows([], 'm').map((row) => [row.scenario, row.order]),
-    [['slideshow-transition', 0], ['onboarding-thankyou', 0], ['loading-slideshow', 0], ['loading-capture', 0]]
-  );
-  const rows = messmassLogoDefaultRows(
-    [
-      { logoId: 'a', scenario: 'onboarding-thankyou', order: 0 },
-      { logoId: 'b', scenario: 'onboarding-thankyou', order: 4 },
-      { logoId: 'm', scenario: 'loading-capture', order: 0 },
-    ],
-    'm'
-  );
-  assert.deepEqual(rows.map((row) => [row.scenario, row.order]), [['slideshow-transition', 0], ['onboarding-thankyou', 5], ['loading-slideshow', 0]]);
+test('the imported logo becomes one of the partner\'s logos, after the ones it has; a partner not on the slot model keeps what its old default rows amount to', async () => {
+  const { db, data } = seed([partner({ defaultLogos: [{ logoId: 'chosen', scenario: 'onboarding-thankyou', order: 0 }, { logoId: 'second', scenario: 'loading-capture', order: 1 }] })]);
+  const result = await importMessmassLogo(db, data.partners[0], { createdBy: 'u1', now: NOW, fetchImpl: fakeFetch(await picture(10, 10)).impl });
+  assert.ok(result.ok);
+  if (!result.ok) return;
+  assert.deepEqual(await makeMessmassLogoDefault(db, data.partners[0], result.item, NOW), { added: true });
+  assert.deepEqual((data.partners[0] as { slots: { logo: { items: string[] } } }).slots.logo.items, ['chosen', 'second', result.item.logoId as string]);
+  assert.deepEqual(await makeMessmassLogoDefault(db, data.partners[0], result.item, NOW), { added: false }, 'a second time changes nothing');
+  assert.equal(((data.partners[0] as { defaultLogos: unknown[] }).defaultLogos).length, 2, 'the old rows are left as they were');
+  assert.deepEqual(data.events[0].logos, [], 'nothing is copied into an event: it looks at the partner');
+});
+
+test('a partner with nothing becomes a partner with the one logo; a partner already on the model gets it appended', async () => {
+  const { db, data } = seed();
+  const first = await importMessmassLogo(db, data.partners[0], { createdBy: 'u1', now: NOW, fetchImpl: fakeFetch(await picture(10, 10)).impl });
+  assert.ok(first.ok);
+  if (!first.ok) return;
+  await makeMessmassLogoDefault(db, data.partners[0], first.item, NOW);
+  assert.deepEqual((data.partners[0] as { slots: { logo: { items: string[] } } }).slots.logo.items, [first.item.logoId]);
+
+  (data.partners[0] as { slots?: unknown }).slots = { logo: { items: ['own'] } };
+  const other = await importMessmassLogo(db, { ...data.partners[0], logoUrl: R2.replace('abc123', 'new999') }, { createdBy: 'u1', now: NOW, fetchImpl: fakeFetch(await picture(10, 10)).impl });
+  assert.ok(other.ok);
+  if (!other.ok) return;
+  await makeMessmassLogoDefault(db, data.partners[0], other.item, NOW);
+  assert.deepEqual((data.partners[0] as { slots: { logo: { items: string[] } } }).slots.logo.items, ['own', other.item.logoId as string]);
 });

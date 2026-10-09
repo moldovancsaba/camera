@@ -192,3 +192,17 @@ export async function loadEventLogoPanels(db: Db, event: Document): Promise<Even
     candidates: library.available,
   };
 }
+
+/** A logo that was just uploaded joins what the event chose for a slot (the default stays in use next to it unless the slot already replaced it). */
+export async function addLogoToEventSlot(db: Db, event: Document, slotId: string, logoId: string, now: string): Promise<StoreResult<{ slots: Record<string, SlotValue>; seeded: boolean }>> {
+  const partner = await partnerOf(db, event);
+  const stored: Record<string, SlotValue> = isOnSlotModel(event as LogoEvent) ? ((event.slots as Record<string, SlotValue>) ?? {}) : eventSlotsFromLegacy(event as never, partner as LogoPartner | null);
+  const current = stored[slotId];
+  return setEventLogoSlot(db, event, slotId, { items: [...(current?.items ?? []), logoId], ...(current?.useDefault === false ? { useDefault: false } : {}) }, now);
+}
+
+/** A logo that was just uploaded for the partner joins its logos. */
+export async function addLogoToPartnerSlot(db: Db, partner: Document, logoId: string, now: string): Promise<StoreResult<SlotValue>> {
+  return setPartnerLogo(db, partner, { items: [...(partnerLogoValue(partner as LogoPartner).items ?? []), logoId] }, now);
+}
+

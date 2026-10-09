@@ -5,17 +5,15 @@
  * messmass provisioning keeps the partner's logo only as `Partner.logoUrl`, a file on the logo bucket (docs/LOGO_STORAGE.md). Importing it stores a logo
  * that belongs to the partner (`scope: 'partner'`, `source: 'messmass'`, `sourceUrl`) and points at the same file: the bucket's files never change (they
  * are named by their hash), so no copy is made. The file is downloaded once to check that it is a picture and to measure it. A new import also makes the
- * logo a default of the partner (`makeMessmassLogoDefault`): it is added to every scenario after the logos the partner already has there, and the events
- * inherit it through the standard inheritance of partner defaults. A second import of the same address returns the logo already imported and
- * changes nothing, so a logo an editor un-ticked later is not ticked again.
+ * logo one of the partner's logos (`makeMessmassLogoDefault`, the slot model of camera#419): the default of its events, which look at the partner. A second import
+ * of the same address returns the logo already imported and changes nothing, so a logo an editor took out later is not put back.
  */
 
 import type { Db, Document } from 'mongodb';
 import sharp from 'sharp';
 import { COLLECTIONS, generateId } from '@/lib/db/schemas';
 import { fetchLogo, isAllowedLogoUrl } from '@/lib/frame/logo';
-import { updateChildEventsFromPartner } from '@/lib/db/events';
-import { LOGO_SCENARIOS, logoDefaultsOf, type LogoDefault } from './logos';
+import { LOGO_SLOT, partnerLogoValue, type LogoPartner } from '@/lib/slots/logo';
 
 /** The picture types a logo can be (the same as an upload, `POST /api/logos`), by the format sharp reads from the file. */
 const MIME_BY_FORMAT: Record<string, string> = { png: 'image/png', jpeg: 'image/jpeg', webp: 'image/webp', svg: 'image/svg+xml' };
@@ -96,38 +94,22 @@ export async function importMessmassLogo(
   return { ok: true, created: true, item };
 }
 
-/** The default rows that make `logoId` a default in every scenario it is not one in yet: each after the logos the partner already has there. */
-export function messmassLogoDefaultRows(current: readonly LogoDefault[], logoId: string): LogoDefault[] {
-  return LOGO_SCENARIOS.flatMap((scenario) => {
-    const there = current.filter((row) => row.scenario === scenario.id);
-    if (there.some((row) => row.logoId === logoId)) return [];
-    return [{ logoId, scenario: scenario.id, order: Math.max(-1, ...there.map((row) => row.order)) + 1 }];
-  });
-}
-
 export interface MessmassLogoDefault {
-  /** The default rows that were added to the partner (none when the logo already is a default in every scenario). */
-  added: LogoDefault[];
-  /** The events that inherited the partner's defaults through the standard cascade (the ones that follow them). */
-  eventsUpdated: number;
+  /** True when the logo became one of the partner's logos (false when it already was). */
+  added: boolean;
 }
 
 /**
- * Makes the imported logo a default of its partner and lets the events inherit it the way every partner default is inherited: new events copy the
- * partner's defaults when they are created (`inheritPartnerDefaults`), and the events that follow them get the changed list through the same
- * cascade a change on the partner page runs (`updateChildEventsFromPartner`; an event that has edited its own logo list, `logosOverridden`,
- * does not follow and keeps its own). The partner's other defaults stay, and the new logo comes after them (the first logo by order is the one users see).
+ * Makes the imported logo one of the partner's logos (camera#419, owner answers 153 and 169): it joins `Partner.slots.logo`, after the logos the partner already
+ * has (its own choices come first; a partner not on the slot model yet keeps what its old default rows amount to). Nothing is copied into the events: they look
+ * at the partner, so an event that stored nothing uses it at once, and an event with a choice of its own keeps it.
  */
 export async function makeMessmassLogoDefault(db: Db, partner: Document, item: Document, now: string): Promise<MessmassLogoDefault> {
-  const partnerId = text(partner.partnerId);
-  const current = logoDefaultsOf(partner);
-  const added = messmassLogoDefaultRows(current, text(item.logoId));
-  if (!added.length) return { added, eventsUpdated: 0 };
-  const defaultLogos = [...current, ...added];
-  await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId }, { $set: { defaultLogos, updatedAt: now } });
-  // The scenario ids are the values of `LogoScenario` (logos.test.ts keeps them equal), as in the partner library route.
-  const cascade = await updateChildEventsFromPartner(partnerId, { defaultLogos: defaultLogos as Parameters<typeof updateChildEventsFromPartner>[1]['defaultLogos'] });
-  return { added, eventsUpdated: cascade.logosUpdated };
+  const logoId = text(item.logoId);
+  const current = partnerLogoValue(partner as LogoPartner).items ?? [];
+  if (current.includes(logoId)) return { added: false };
+  await db.collection(COLLECTIONS.PARTNERS).updateOne({ partnerId: text(partner.partnerId) }, { $set: { [`slots.${LOGO_SLOT}`]: { items: [...current, logoId] }, updatedAt: now } });
+  return { added: true };
 }
 
 /**
