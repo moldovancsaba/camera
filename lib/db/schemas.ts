@@ -65,6 +65,8 @@ export const COLLECTIONS = {
   ACTIVITY_LOG: 'activity_log',
   /** One row for every weekly export that was sent: the period it covers, the rows, when (lib/activity/export.ts). */
   ACTIVITY_EXPORTS: 'activity_exports',
+  /** What the check of every other picture found (logos, frames, page pictures, e-mail pictures; issue 514, lib/media/pictures.ts): one row for each picture address, `_id` is the address. */
+  PICTURE_HEALTH: 'picture_health',
 } as const;
 
 // ============================================================================

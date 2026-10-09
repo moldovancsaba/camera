@@ -18,6 +18,12 @@ function setup(t: import('node:test').TestContext, options: { admin?: boolean } 
       scanBatch: async (_db: unknown, o: unknown) => (batches.push(o), { processed: 3, counts: { fine: 2, marked: 1 }, next: null, remaining: 0 }),
     },
   });
+  t.mock.module('@/lib/media/pictures', {
+    namedExports: {
+      brokenPictureRows: async () => [{ url: 'https://i.ibb.co/x/logo.png', reason: 'the picture is gone (http 404)', checkedAt: '2026-10-10T06:00:00.000Z', where: ['events: MTK'] }],
+      scanPictures: async (_db: unknown, o: unknown) => (batches.push(o), { processed: 2, broken: 1, cleared: 0, unknown: 0, remaining: 0 }),
+    },
+  });
   return { batches };
 }
 const post = (body?: unknown) => new NextRequest('http://localhost/api/admin/media-health', { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });
@@ -26,7 +32,11 @@ const get = () => new NextRequest('http://localhost/api/admin/media-health');
 test('a global admin reads the counts and runs a batch from a cursor', async (t) => {
   const { batches } = setup(t);
   const { GET, POST } = await importRoute('ok');
-  assert.deepEqual(((await (await GET(get())).json()) as { data: unknown }).data, { unchecked: 7, broken: 7 });
+  assert.deepEqual(((await (await GET(get())).json()) as { data: unknown }).data, {
+    unchecked: 7,
+    broken: 7,
+    items: { checked: 7, broken: [{ url: 'https://i.ibb.co/x/logo.png', reason: 'the picture is gone (http 404)', checkedAt: '2026-10-10T06:00:00.000Z', where: ['events: MTK'] }] },
+  });
   const after = new ObjectId().toHexString();
   assert.equal((await POST(post({ after, limit: 20, maxAgeDays: 0 }))).status, 200);
   const o = batches[0] as { after: ObjectId; limit: number; maxAgeDays: number };
@@ -34,6 +44,16 @@ test('a global admin reads the counts and runs a batch from a cursor', async (t)
   assert.equal(o.limit, 20);
   assert.equal(o.maxAgeDays, 0);
   assert.equal((await POST(post())).status, 200, 'no body starts the walk');
+});
+
+test('kind items checks the other pictures (logos, frames, page pictures), not the photos', async (t) => {
+  const { batches } = setup(t);
+  const { POST } = await importRoute('items');
+  const response = await POST(post({ kind: 'items', limit: 30 }));
+  assert.equal(response.status, 200);
+  assert.deepEqual(((await response.json()) as { data: unknown }).data, { processed: 2, broken: 1, cleared: 0, unknown: 0, remaining: 0 });
+  assert.deepEqual(batches, [{ limit: 30 }]);
+  assert.equal((await POST(post({ kind: 'items', limit: 'many' }))).status, 400);
 });
 
 test('a bad cursor, limit or age is a 400, and anybody who is not a global admin is refused', async (t) => {

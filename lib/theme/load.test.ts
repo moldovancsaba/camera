@@ -41,3 +41,17 @@ test('the e-mail footer picture is the event\'s own, else its partner\'s default
   assert.equal((await loadEventTheme(db, { ...base, partnerId: 'Q' })).emailFooterImageUrl, null);
   assert.equal((await loadEventTheme(db, base)).emailFooterImageUrl, null);
 });
+
+test('a logo or e-mail footer picture that its host no longer has is left out of the theme, and comes back when it answers again (issue 514)', async () => {
+  const { fakeDb } = await import('@/lib/library/fake-db');
+  const { loadEventTheme } = await import('./load');
+  const { clearBrokenCache } = await import('@/lib/media/pictures');
+  const FOOTER = 'https://store.public.blob.vercel-storage.com/own-footer.png';
+  const { db, data } = fakeDb({ partners: [], events: [], picture_health: [{ _id: FOOTER, broken: true, reason: 'the picture is gone (http 404)', checkedAt: '2026-10-10T06:00:00.000Z', where: [] }] });
+  clearBrokenCache();
+  const event = { eventId: 'e', name: 'Event', emailFooterImageUrl: FOOTER };
+  assert.equal((await loadEventTheme(db, event)).emailFooterImageUrl, null, 'gone: never shown as an error');
+  data.picture_health[0].broken = false;
+  clearBrokenCache();
+  assert.equal((await loadEventTheme(db, event)).emailFooterImageUrl, FOOTER);
+});

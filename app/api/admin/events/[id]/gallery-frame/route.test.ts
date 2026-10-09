@@ -110,7 +110,7 @@ test('someone without manager access to the event changes nothing', async (t) =>
 });
 
 test('no ids, more than 25, and an id that is not a photo of this event are refused or skipped', async (t) => {
-  const w = world(t);
+  world(t);
   assert.equal((await call('none', [])).status, 400);
   assert.equal((await call('many', Array.from({ length: 26 }, () => String(new ObjectId())))).status, 400);
   const stranger = String(new ObjectId());

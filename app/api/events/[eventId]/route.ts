@@ -40,6 +40,7 @@ import { storedPartnerPictures, withPartnerPictures } from '@/lib/events/partner
 import { sanitizeCheckboxes } from '@/lib/events/consent';
 import { eventGetsDefaults, getDefaultsRollout } from '@/lib/admin/defaults-rollout';
 import { loadEventTheme } from '@/lib/theme/load';
+import { brokenAddresses, withoutBroken } from '@/lib/media/pictures';
 import { needsThemeRefresh, refreshEventTheme } from '@/lib/theme/refresh';
 import { trackedSlugExists } from '@/lib/short-links/store';
 
@@ -132,6 +133,9 @@ export const GET = withErrorHandler(async (
 
   // Populate frame details for assigned frames
   // This enriches event.frames[] with full frame data (name, thumbnailUrl, etc.)
+  // A guest is not sent a frame whose picture is gone (issue 514); an admin still sees every frame, to fix it.
+  const forGuest = request.nextUrl.searchParams.get('audience') === 'guest';
+  const brokenPictures = forGuest ? await brokenAddresses(db) : new Set<string>();
   if (event.frames && event.frames.length > 0) {
     const frameIds = event.frames.map((frame) => frame.frameId);
     const frames = await db
@@ -140,7 +144,7 @@ export const GET = withErrorHandler(async (
       .toArray() as unknown as EventFrameDetails[];
     
     // Map frame details to each assignment
-    event.frames = event.frames.map((assignment) => {
+    event.frames = event.frames.filter((assignment) => !brokenPictures.has(frames.find((frame) => frame.frameId === assignment.frameId)?.imageUrl ?? '')).map((assignment) => {
       const frameDetails = frames.find((frame) => frame.frameId === assignment.frameId);
       return {
         ...assignment,
@@ -168,7 +172,6 @@ export const GET = withErrorHandler(async (
   // every vetted event asks for an email or a social login (camera#264). The admin editor reads the stored pages, never this one.
   const { frameDesign, photoVetting, ...publicEvent } = event;
   const vettingRequired = photoVettingRequired({ photoVetting: photoVetting as { required?: unknown } | undefined });
-  const forGuest = request.nextUrl.searchParams.get('audience') === 'guest';
 
   // The look of the guest pages (camera#285): the messmass style snapshot of the event, or for an event without one camera's own
   // name and partner logo with the system default look. A snapshot that is stale (messmass said something changed) or older than a
@@ -192,8 +195,10 @@ export const GET = withErrorHandler(async (
 
   // Return event with serialized _id
   // customPages is included automatically
+  // A guest is not sent a picture that its host no longer has (issue 514, CLAUDE.md section 9): a logo, a page picture, the welcome screen. The admin editor reads the stored values.
+  const shown = <T,>(value: T): T => withoutBroken(value, brokenPictures);
   return apiSuccess({
-    event: {
+    event: shown({
       ...publicEvent,
       theme: await loadEventTheme(db, event as unknown as Record<string, unknown>),
       ...(forGuest ? { customPages: withPartnerPictures(withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen, texts }), partnerPictures) } : {}),
@@ -204,7 +209,7 @@ export const GET = withErrorHandler(async (
       journeyContext: { vettingRequired, consentDefault, language, hasWelcomeScreen, texts },
       _id: event._id.toString(),
       generatedFrame: captureFrameOf({ frames: event.frames, frameDesign: frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'] }),
-    }
+    })
   });
 });
 

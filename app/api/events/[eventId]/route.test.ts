@@ -31,7 +31,7 @@ interface Harness {
 
 function mockDeps(
   t: TestContext,
-  options: { event: Record<string, unknown>; session?: Record<string, unknown> | null; partnerAllowed?: boolean; partner?: Record<string, unknown> }
+  options: { event: Record<string, unknown>; session?: Record<string, unknown> | null; partnerAllowed?: boolean; partner?: Record<string, unknown>; goneAddresses?: string[]; frameRows?: Array<Record<string, unknown>> }
 ): Harness {
   const h: Harness = { updates: [] };
   const event = { _id: new ObjectId(EVENT_ID), isActive: true, ...options.event };
@@ -57,7 +57,7 @@ function mockDeps(
       connectToDatabase: async () => ({
         collection: (name: string) => ({
           findOne: async () => (name === 'partners' && options.partner ? options.partner : event),
-          find: () => ({ toArray: async () => [] }),
+          find: () => ({ toArray: async () => (name === 'picture_health' ? (options.goneAddresses ?? []).map((_id) => ({ _id, broken: true })) : name === 'frames' ? (options.frameRows ?? []) : []) }),
           updateOne: async (_filter: unknown, update: { $set: Record<string, unknown> }) => {
             h.updates.push(update.$set);
             Object.assign(event, update.$set);
@@ -411,4 +411,46 @@ test('GET as a guest carries the acceptance switch, so the capture page knows to
   const { GET } = await importRouteModule('get-acceptance');
   const body = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { acceptanceOnWhoAreYou?: boolean } } };
   assert.equal(body.data.event.acceptanceOnWhoAreYou, true);
+});
+
+const GONE_LOGO = 'https://i.ibb.co/aaa/logo.png';
+const GONE_FRAME = 'https://i.ibb.co/bbb/frame.png';
+const GONE_PAGE = 'https://i.ibb.co/ccc/page.png';
+const goneWorld = () => ({
+  event: {
+    logoUrl: GONE_LOGO,
+    frames: [{ frameId: 'f1', isActive: true }, { frameId: 'f2', isActive: true }],
+    customPages: [{ pageId: 'welcome', pageType: 'welcome', order: 0, isActive: true, config: { backgroundImageUrl: GONE_PAGE, title: 'Hi' } }],
+  },
+  goneAddresses: [GONE_LOGO, GONE_FRAME, GONE_PAGE],
+  frameRows: [
+    { frameId: 'f1', name: 'Gone', imageUrl: GONE_FRAME, thumbnailUrl: GONE_FRAME },
+    { frameId: 'f2', name: 'Fine', imageUrl: 'https://i.ibb.co/ddd/fine.png', thumbnailUrl: 'https://i.ibb.co/ddd/fine.png' },
+  ],
+});
+type GoneBody = { data: { event: { logoUrl?: string; frames: Array<{ frameId: string }>; customPages: Array<{ pageId: string; config: { backgroundImageUrl?: string; title: string } }> } } };
+
+test('GET as a guest leaves out a logo, a page picture and a frame whose picture is gone (issue 514)', async (t) => {
+  const { clearBrokenCache } = await import('@/lib/media/pictures');
+  t.after(clearBrokenCache);
+  clearBrokenCache();
+  mockDeps(t, goneWorld());
+  const { GET } = await importRouteModule('get-gone-pictures');
+  const guest = ((await (await GET(getRequest('?audience=guest'), params)).json()) as GoneBody).data.event;
+  assert.equal('logoUrl' in guest, false, 'the gone logo is not sent');
+  assert.deepEqual(guest.frames.map((f) => f.frameId), ['f2'], 'the frame with a gone picture is not offered');
+  const welcome = guest.customPages.find((page) => page.pageId === 'welcome')!;
+  assert.equal('backgroundImageUrl' in welcome.config, false);
+  assert.equal(welcome.config.title, 'Hi');
+});
+
+test('GET for the editor (not a guest) still sends every picture, gone or not, so it can be fixed (issue 514)', async (t) => {
+  const { clearBrokenCache } = await import('@/lib/media/pictures');
+  t.after(clearBrokenCache);
+  clearBrokenCache();
+  mockDeps(t, goneWorld());
+  const { GET } = await importRouteModule('get-gone-pictures-editor');
+  const editor = ((await (await GET(getRequest(), params)).json()) as GoneBody).data.event;
+  assert.equal(editor.logoUrl, GONE_LOGO);
+  assert.equal(editor.frames.length, 2);
 });

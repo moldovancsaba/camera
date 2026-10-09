@@ -289,6 +289,8 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
   // --- activity log (issue 517): read by time for the weekly export, deleted by time after it ---
   await track(COLLECTIONS.ACTIVITY_LOG, () => db.collection(COLLECTIONS.ACTIVITY_LOG).createIndex({ at: 1 }, { name: 'activity_log_at' }));
   await track(COLLECTIONS.ACTIVITY_EXPORTS, () => db.collection(COLLECTIONS.ACTIVITY_EXPORTS).createIndex({ toAt: -1 }, { name: 'activity_exports_toAt' }));
+  // --- picture health (issue 514): the guest pages read the few broken addresses on every request, so that lookup is by the flag ---
+  await track(COLLECTIONS.PICTURE_HEALTH, () => db.collection(COLLECTIONS.PICTURE_HEALTH).createIndex({ broken: 1 }, { name: 'picture_health_broken' }));
 
   // --- try-on moderation audit ---
   await track(COLLECTIONS.TRYON_MODERATION_EVENTS, () =>
