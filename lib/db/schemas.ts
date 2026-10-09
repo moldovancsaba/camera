@@ -61,6 +61,10 @@ export const COLLECTIONS = {
   /** Server-side OAuth/session payload; browser holds only a small pointer cookie (`v:2`). */
   WEB_SESSIONS: 'web_sessions',
   ADMIN_SETTINGS: 'admin_settings',
+  /** What the people who manage the service did and every refused or failed request (issue 517, lib/activity/log.ts); kept until the weekly export after the one that sent it. */
+  ACTIVITY_LOG: 'activity_log',
+  /** One row for every weekly export that was sent: the period it covers, the rows, when (lib/activity/export.ts). */
+  ACTIVITY_EXPORTS: 'activity_exports',
 } as const;
 
 // ============================================================================

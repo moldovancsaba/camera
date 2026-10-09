@@ -327,7 +327,7 @@ not assigned to an event: a picture field keeps the plain address of one picture
 
 **Settings and levels added in October 2026** (the model is in [docs/BUILDING_BRICKS.md](docs/BUILDING_BRICKS.md)): `admin_settings` also holds `dictionary` (the global wordings, [docs/TEXT_LEVELS.md](docs/TEXT_LEVELS.md))
 and `email-legal` (the general legal part of the e-mails); `Partner.texts`, `Partner.pictures`, `Partner.uiLanguage`, `Partner.emailLegal`; `Event.texts`, `Event.uiLanguage` (an event that
-sets none follows its partner), `Event.emailLegal`, `Event.frameSelection`, `Event.acceptanceOnWhoAreYou` (the consent page as one checkbox on the Who-are-you page, `lib/events/acceptance.ts`, docs/JOURNEY_DEFAULT_PAGES.md), `Event.welcomeScreen`, `Event.slotSnapshots` (the last-known-good copy of the slots an event uses),
+sets none follows its partner), `activity_log` and `activity_exports` (the activity log and its weekly CSV, `lib/activity/*`, RUNBOOK), `Event.emailLegal`, `Event.frameSelection`, `Event.acceptanceOnWhoAreYou` (the consent page as one checkbox on the Who-are-you page, `lib/events/acceptance.ts`, docs/JOURNEY_DEFAULT_PAGES.md), `Event.welcomeScreen`, `Event.slotSnapshots` (the last-known-good copy of the slots an event uses),
 `Event.frameDesign` (the generated frame: snapshot, messages, `messageFrames`, `darkArea`, one image per message and design).
 
 ## 9. Submission pipeline

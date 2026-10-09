@@ -19,6 +19,8 @@ export interface SendEmailInput {
   text?: string;
   /** Full "Name <address>" string. Falls back to CAMERA_EMAIL_FROM when omitted. */
   from?: string;
+  /** Files sent with the mail (the weekly activity log, issue 517). */
+  attachments?: Array<{ filename: string; content: Buffer | string }>;
 }
 
 export type SendEmailResult =
@@ -97,6 +99,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       subject: input.subject,
       html: input.html,
       ...(input.text ? { text: input.text } : {}),
+      ...(input.attachments && input.attachments.length > 0 ? { attachments: input.attachments } : {}),
     });
 
     if (response.error) {

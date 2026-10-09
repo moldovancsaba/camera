@@ -25,6 +25,13 @@ function matchesValue(value: unknown, want: unknown): boolean {
       if (op === '$nin') return !(arg as unknown[]).some((a) => matchesValue(value, a));
       if (op === '$ne') return !matchesValue(value, arg);
       if (op === '$exists') return (value !== undefined) === Boolean(arg);
+      // Ranges on strings (ISO times) and numbers, as MongoDB compares them; a missing value is outside every range.
+      if (op === '$gt' || op === '$gte' || op === '$lt' || op === '$lte') {
+        if (value === undefined || value === null) return false;
+        const a = value as string | number;
+        const b = arg as string | number;
+        return op === '$gt' ? a > b : op === '$gte' ? a >= b : op === '$lt' ? a < b : a <= b;
+      }
       if (op === '$elemMatch') return Array.isArray(value) && value.some((item) => matches(item as Doc, arg as Doc));
       throw new Error(`fake db: unsupported operator ${op}`);
     });
@@ -125,9 +132,11 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
           };
           return cursor;
         },
-        findOne: async (filter: Doc) => {
-          const found = list(name).find((d) => matches(d, filter));
-          return found ? { ...found } : null;
+        findOne: async (filter: Doc, options?: { sort?: Record<string, 1 | -1> }) => {
+          let rows = list(name).filter((d) => matches(d, filter));
+          const [field, dir] = Object.entries(options?.sort ?? {})[0] ?? [];
+          if (field) rows = [...rows].sort((a, b) => String(a[field] ?? '').localeCompare(String(b[field] ?? '')) * (dir as number));
+          return rows[0] ? { ...rows[0] } : null;
         },
         countDocuments: async (filter: Doc = {}) => list(name).filter((d) => matches(d, filter)).length,
         insertOne: async (doc: Doc) => {
@@ -174,6 +183,18 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
           for (const [path, value] of Object.entries((update.$set as Doc) ?? {})) setPath(doc, path, value, filter);
           for (const path of Object.keys((update.$unset as Doc) ?? {})) unsetPath(doc, path);
           return { ...doc };
+        },
+        deleteMany: async (filter: Doc) => {
+          calls.push({ collection: name, op: 'deleteMany', args: [filter] });
+          const rows = list(name);
+          let deleted = 0;
+          for (let i = rows.length - 1; i >= 0; i -= 1) {
+            if (matches(rows[i], filter)) {
+              rows.splice(i, 1);
+              deleted += 1;
+            }
+          }
+          return { deletedCount: deleted };
         },
         deleteOne: async (filter: Doc) => {
           calls.push({ collection: name, op: 'deleteOne', args: [filter] });

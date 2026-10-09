@@ -23,6 +23,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiError } from './responses';
 import { reportServerError } from '@/lib/observability/logger';
+import { observeApiRequest } from '@/lib/activity/observe';
 
 /**
  * Route handler function type
@@ -80,36 +81,43 @@ type RouteHandler = (request: NextRequest, ...args: any[]) => Promise<NextRespon
  */
 export function withErrorHandler<T extends RouteHandler>(handler: T): T {
   return (async (request: NextRequest, ...args: Tail<Parameters<T>>) => {
-    try {
-      // Execute the wrapped handler
-      return await handler(request, ...args);
-    } catch (error) {
-      // If middleware threw a NextResponse (e.g., from requireAuth),
-      // return it directly
-      if (error instanceof NextResponse) {
-        return error;
-      }
-      
-      // Handle standard JavaScript errors — structured, queryable, alertable
-      if (error instanceof Error) {
-        reportServerError('api.error', error, {
-          url: request.url,
-          method: request.method,
-        });
+    const response = await answer(handler, request, args);
+    // The activity log (issue 517): every answer is looked at, after it has been sent, on the production deployment only.
+    observeApiRequest(request, response);
+    return response;
+  }) as T;
+}
 
-        // Return generic 500 error
-        // Don't expose internal error details to client
-        return apiError('Internal server error', 500);
-      }
+/** Runs the handler and turns whatever it throws into the answer (a thrown `NextResponse` is the answer, an error is a 500 that is reported). */
+async function answer<T extends RouteHandler>(handler: T, request: NextRequest, args: Tail<Parameters<T>>): Promise<NextResponse> {
+  try {
+    // Execute the wrapped handler
+    return await handler(request, ...args);
+  } catch (error) {
+    // If middleware threw a NextResponse (e.g., from requireAuth), return it directly
+    if (error instanceof NextResponse) {
+      return error;
+    }
 
-      // Handle unknown error types
-      reportServerError('api.unknown_error', error, {
+    // Handle standard JavaScript errors — structured, queryable, alertable
+    if (error instanceof Error) {
+      reportServerError('api.error', error, {
         url: request.url,
         method: request.method,
       });
-      return apiError('An unexpected error occurred', 500);
+
+      // Return generic 500 error
+      // Don't expose internal error details to client
+      return apiError('Internal server error', 500);
     }
-  }) as T;
+
+    // Handle unknown error types
+    reportServerError('api.unknown_error', error, {
+      url: request.url,
+      method: request.method,
+    });
+    return apiError('An unexpected error occurred', 500);
+  }
 }
 
 /**

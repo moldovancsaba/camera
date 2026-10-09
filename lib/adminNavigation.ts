@@ -182,6 +182,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
+        href: '/admin/settings/activity-log',
+        label: 'Activity log',
+        description: 'Who changed what and when, and every refused or failed request; mailed every Monday as a CSV.',
+        iconKey: 'adjustments',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
+      {
         href: '/admin/settings/emails',
         label: 'Emails',
         description: 'The e-mails to the users: the general legal part every partner and event follows.',

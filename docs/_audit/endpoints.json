@@ -1,17 +1,31 @@
 {
  "_meta": {
-  "generated": "2026-10-09T18:47:13+00:00",
+  "generated": "2026-10-09T21:20:41+00:00",
   "repo": "camera",
-  "head": "35c2a1f",
+  "head": "3ad3dd8",
   "counts": {
-   "endpoints": 150,
+   "endpoints": 152,
    "collections": 8,
-   "env": 59,
+   "env": 61,
    "outbound-hosts": 31,
    "docs": 67
   }
  },
  "items": [
+  {
+   "path": "/api/admin/activity-log",
+   "methods": [
+    "GET",
+    "POST"
+   ],
+   "file": "app/api/admin/activity-log/route.ts",
+   "auth_markers": [
+    "isGlobalAdminSession",
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
   {
    "path": "/api/admin/dictionary",
    "methods": [
@@ -1177,6 +1191,17 @@
     "withErrorHandler"
    ],
    "no_auth_marker": false
+  },
+  {
+   "path": "/api/internal/activity-export",
+   "methods": [
+    "GET"
+   ],
+   "file": "app/api/internal/activity-export/route.ts",
+   "auth_markers": [
+    "withErrorHandler"
+   ],
+   "no_auth_marker": true
   },
   {
    "path": "/api/internal/email/send",
