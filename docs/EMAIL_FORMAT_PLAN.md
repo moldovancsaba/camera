@@ -107,7 +107,7 @@ try-on e-mails of today (related photos ready, approved resubmission) stay as ex
 | E5 #468 variables | catalogue, values, missing-value rule and the slug link merged (#471); the insert menu and the preview warnings are in E4 (this pull request) |
 | E2 #465 legal part | merged (#472) |
 | E4 #467 editor | built (this pull request): `lib/email/compose.ts`, `POST /api/admin/emails/preview`, the toolbar editor and the preview, the legal part editor |
-| E3 #466 Emails menu | general and partner pages built (this pull request); the event page with the five types follows E7 |
-| E7 #473 the five types | built (this pull request): `lib/email/types.ts`, the policy reads `notifications.types`, the new defaults, the sanitizer `lib/email/notification-settings.ts`; welcome, arrived and follow up have their texts and switches but are not sent until E8 (and the daily job); the event page that edits them is E3 |
+| E3 #466 Emails menu | built: the general and partner pages (merged #475) and the **event page** with the five types, the sender and terms, the try-on e-mails and the legal part (this pull request); the e-mail fields left the long event form and the new-event form |
+| E7 #473 the five types | merged (#477): `lib/email/types.ts`, the policy reads `notifications.types`, the new defaults, the sanitizer `lib/email/notification-settings.ts`; welcome, arrived and follow up have their texts and switches but are not sent until E8 (and the daily job); the event page that edits them is E3 |
 | E8 #474 the triggers | after E7 |
 | E6 #469 test e-mail | after E3 |

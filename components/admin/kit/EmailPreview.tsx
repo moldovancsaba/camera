@@ -22,7 +22,8 @@ export interface EmailPreviewProps {
   body: string;
   /** The legal part to show; undefined lets the server use the one that applies to the event. */
   legal?: string | null;
-  buttonLabel?: string;
+  /** The label of the button; null for an e-mail with no button. */
+  buttonLabel?: string | null;
 }
 
 const muted = { color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' } as const;

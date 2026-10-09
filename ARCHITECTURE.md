@@ -473,6 +473,7 @@ event's Texts), the partner's default pictures (`lib/events/partner-pictures.ts`
   no value is left out. `{eventlink}` and the "take another photo" link use the event's own short link when it has a URL slug (`lib/email/event-link.ts`).
 - **The legal part** is one slot with three levels per language (general, partner, event; `lib/email/legal-rules.ts`, stores in `lib/email/legal.ts`, routes `/api/admin/emails/legal`,
   `/api/partners/<id>/email-legal`, `/api/events/<id>/email-legal`), drawn as small print after the button.
+- **Event page:** `Emails` in the event menu (`/admin/events/<id>/emails`, route `GET`/`PUT /api/admin/events/<id>/emails`, view in `lib/email/event-emails.ts`, merge of the stored settings in `lib/email/notification-settings.ts`): the five types, the sender and terms, the two try-on e-mails and the event's legal part. The e-mail fields are no longer in the event form or the new-event form.
 - **Editors:** the toolbar editor (`components/admin/kit/EmailTextEditor.tsx`, pure operations in `lib/email/editor-ops.ts`) with the live preview (`EmailPreview.tsx`); pages `Emails` at the general
   level (`/admin/settings/emails`) and at the partner level (`/admin/partners/<id>/emails`).
 

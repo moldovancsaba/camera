@@ -20,8 +20,8 @@ test('the context comes from the path: an event, a partner, or the main menu', (
 
 test('a partner user does not see Queue and Analytics, which would send them away; a global admin sees every item', () => {
   const labels = (access: AdminNavigationAccess) => adminContextMenu({ kind: 'event', id: ID }, `/admin/events/${ID}`, access).items.map((item) => item.label);
-  assert.deepEqual(labels(GLOBAL_ADMIN), ['Overview', 'Edit and pages', 'Vetting', 'Queue', 'Analytics', 'Logos', 'Frames', 'Images', 'Texts', 'Slideshows', 'Landing pages']);
-  assert.deepEqual(labels(PARTNER_USER), ['Overview', 'Edit and pages', 'Vetting', 'Logos', 'Frames', 'Images', 'Texts', 'Slideshows', 'Landing pages']);
+  assert.deepEqual(labels(GLOBAL_ADMIN), ['Overview', 'Edit and pages', 'Vetting', 'Queue', 'Analytics', 'Logos', 'Frames', 'Images', 'Texts', 'Emails', 'Slideshows', 'Landing pages']);
+  assert.deepEqual(labels(PARTNER_USER), ['Overview', 'Edit and pages', 'Vetting', 'Logos', 'Frames', 'Images', 'Texts', 'Emails', 'Slideshows', 'Landing pages']);
 });
 
 test('the partner menu has its own pages', () => {

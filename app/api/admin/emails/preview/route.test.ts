@@ -99,3 +99,12 @@ test('a bad body is refused; without access to the event nothing is read; nothin
   assert.equal(JSON.stringify(data.events).includes('emailLegal'), false);
   assert.equal(data.admin_settings.length, 0);
 });
+
+test('an e-mail with no button (buttonLabel null) is drawn without one', async (t) => {
+  setup(t);
+  const { POST } = await importRoute('nobutton');
+  const withButton = (await (await POST(post({ subject: 's', body: 'b' }))).json()) as Answer;
+  const without = (await (await POST(post({ subject: 's', body: 'b', buttonLabel: null }))).json()) as Answer;
+  assert.ok(withButton.data.html.includes('display:inline-block;padding:14px'));
+  assert.equal(without.data.html.includes('display:inline-block;padding:14px'), false);
+});

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BODY_MAX, EMAIL_TYPES, EMAIL_TYPE_INFO, SUBJECT_MAX, parseTypeSettings, typeDefaults } from './types';
-import { sanitizeNotificationSettings } from './notification-settings';
+import { mergeNotificationSettings, sanitizeNotificationSettings } from './notification-settings';
 
 test('there are five e-mail types, with the owner’s defaults: welcome, arrived and follow up off, approved and declined on', () => {
   assert.deepEqual([...EMAIL_TYPES], ['welcome', 'arrived', 'approved', 'declined', 'followUp']);
@@ -60,4 +60,33 @@ test('the settings a request sets are only what the editor chose: valid fields, 
   );
   for (const bad of ['javascript:alert(1)', 'not a url', 7, ['https://a.test'], 'ftp://a.test']) assert.equal('termsUrl' in sanitizeNotificationSettings({ termsUrl: bad }), false, String(bad));
   assert.equal('submissionResultEmailEnabled' in sanitizeNotificationSettings({ submissionResultEmailEnabled: 'true' }), false);
+});
+
+test('saving from the Emails page: the types are replaced, the old approved fields go, the rest stays, and a value of null takes a setting away', () => {
+  const existing = {
+    submissionResultEmailEnabled: true,
+    submissionResultEmailSendAfterSave: false,
+    submissionResultEmailSubjectAfterSave: 'Old subject',
+    submissionResultEmailBodyAfterSave: 'Old body {link}',
+    submissionResultEmailSendAfterRelatedPhotosReady: true,
+    submissionResultEmailSenderName: 'MTK',
+    termsUrl: 'https://old.example/terms',
+    types: { welcome: { enabled: true, subject: 'Hi' } },
+  };
+  const next = mergeNotificationSettings(existing, { types: { approved: { enabled: false }, followUp: { enabled: true } }, senderName: null, termsUrl: 'https://new.example/terms' });
+  assert.deepEqual(next, {
+    submissionResultEmailSendAfterRelatedPhotosReady: true,
+    termsUrl: 'https://new.example/terms',
+    types: { approved: { enabled: false }, followUp: { enabled: true } },
+  });
+  assert.deepEqual(mergeNotificationSettings(existing, {}), sanitizeNotificationSettings(existing), 'nothing to change: nothing changes');
+  assert.equal('types' in mergeNotificationSettings(existing, { types: {} }), false, 'no choices left: the types follow their defaults');
+  const tryOn = mergeNotificationSettings({}, { tryOn: { related: { enabled: true, subject: 'Related', body: 'Body' }, resubmission: { enabled: false } } });
+  assert.deepEqual(tryOn, {
+    submissionResultEmailSendAfterRelatedPhotosReady: true,
+    submissionResultEmailSubjectAfterRelatedPhotosReady: 'Related',
+    submissionResultEmailBodyAfterRelatedPhotosReady: 'Body',
+    submissionResultEmailSendAfterTryOnResubmissionApproved: false,
+  });
+  assert.equal('submissionResultEmailSubjectAfterRelatedPhotosReady' in mergeNotificationSettings(tryOn, { tryOn: { related: { subject: null } } }), false);
 });
