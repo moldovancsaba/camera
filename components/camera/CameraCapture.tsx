@@ -59,6 +59,7 @@ import type { FacingModeValue } from '@/lib/camera/constraints';
 import { aspectsAgree, fullFrameFromBlob, takeStillBlob } from '@/lib/camera/still-capture';
 import { fillCropRect, toFractionRect } from '@/lib/camera/reframe';
 import { sampleVideoLumaStats, waitForVideoFrame } from '@/lib/camera/video-frame';
+import { DEFAULT_VIEW, TIGHT_KEEP, currentShape, viewCrop, wantedWindow, withField, withShape, type CameraView, type ViewField, type ViewShape } from '@/lib/camera/view';
 import { useT } from '@/components/i18n/UiLanguageProvider';
 
 /** Supports hex (#rgb) or CSS `var(--token)` for branded capture UI. */
@@ -122,6 +123,11 @@ export interface CameraCaptureProps {
    * video frame only when that fails (camera#257). False: the video frame, as before.
    */
   stillCapture?: boolean;
+  /**
+   * Shows the two choices of the camera's view (issue 525; lib/camera/view.ts): portrait or landscape, and wide or tight. Landscape is a stream asked for in the landscape shape
+   * while the phone is held upright, tight is the middle of the picture, cut when the photo is taken. Off: the live view follows the way the phone is held, as it always did.
+   */
+  viewControls?: boolean;
 }
 
 export default function CameraCapture({ 
@@ -144,6 +150,7 @@ export default function CameraCapture({
   territories,
   silhouetteUrl,
   stillCapture = false,
+  viewControls = false,
 }: CameraCaptureProps) {
   const { t } = useT();
   const promptTitle = promptTitleProp ?? t('camera.ready.title');
@@ -161,6 +168,9 @@ export default function CameraCapture({
   const [isCapturing, setIsCapturing] = useState(false);
   const [captureNotice, setCaptureNotice] = useState<string | null>(null);
   
+  // The person's choice of view; the ref is what the camera start and the shape check read, so a press that restarts the camera is not read from an old render.
+  const [view, setView] = useState<CameraView>(DEFAULT_VIEW);
+  const viewRef = useRef<CameraView>(DEFAULT_VIEW);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -250,10 +260,12 @@ export default function CameraCapture({
         const next = video.videoWidth / video.videoHeight;
         setCameraAspect((current) => (current !== null && Math.abs(current - next) < 0.001 ? current : next));
       }
+      // A chosen view (portrait or landscape) is the shape wanted whatever way the phone is held; without one the window decides.
+      const wantedBox = wantedWindow(viewRef.current.shape, window.innerWidth, window.innerHeight);
       const wanted = streamShapeMismatch({
         touchPrimary: detectTouchPrimaryDevice(),
-        windowWidth: window.innerWidth,
-        windowHeight: window.innerHeight,
+        windowWidth: wantedBox.width,
+        windowHeight: wantedBox.height,
         videoWidth: video.videoWidth,
         videoHeight: video.videoHeight,
       });
@@ -369,9 +381,10 @@ export default function CameraCapture({
       // Camera mode: a 4:3 mode on a ladder of looser fallbacks (lib/camera/constraints.ts).
       // facingMode is always an ideal, so no user-agent sniffing decides whether to send it,
       // and there is no aspectRatio constraint the browser could crop the frame for.
+      const wantedBox = wantedWindow(viewRef.current.shape, window.innerWidth, window.innerHeight);
       const chain = buildVideoConstraintChain({
         facing: FACING,
-        portrait: window.innerHeight >= window.innerWidth,
+        portrait: wantedBox.height >= wantedBox.width,
         touchPrimary: detectTouchPrimaryDevice(),
       });
 
@@ -564,7 +577,7 @@ export default function CameraCapture({
             return 'retry';
           }
 
-          const captured = await captureFullFrame(video, canvas, FACING);
+          const captured = await captureFullFrame(video, canvas, FACING, viewCrop(viewRef.current.field));
           if (!captured) {
             encodeFailures += 1;
             return 'retry';
@@ -605,6 +618,20 @@ export default function CameraCapture({
       capturingRef.current = false;
       setIsCapturing(false);
     }
+  };
+
+  /**
+   * A press on the view controls (lib/camera/view.ts). A new shape restarts the camera for the shape asked for, unless the stream already has it; a new field (wide or tight) only
+   * changes what is shown and kept, so nothing restarts.
+   */
+  const chooseView = (next: CameraView) => {
+    const previous = viewRef.current;
+    if (next === previous) return;
+    viewRef.current = next;
+    setView(next);
+    const video = videoRef.current;
+    const alreadyThatShape = !!video && video.videoWidth > 0 && currentShape(video.videoWidth, video.videoHeight) === next.shape;
+    if (next.shape !== previous.shape && !alreadyThatShape) void startCamera();
   };
 
   /**
@@ -884,9 +911,35 @@ export default function CameraCapture({
               muted
               className="w-full h-full object-contain"
               style={{
-                transform: 'scaleX(-1)'
+                // Mirrored for the front camera; the tight view shows the middle of the picture, the part the shutter keeps (lib/camera/view.ts).
+                transform: view.field === 'tight' ? `scaleX(-1) scale(${1 / TIGHT_KEEP})` : 'scaleX(-1)',
               }}
             />
+
+            {viewControls && stream && !isLoading && (
+              <div className="absolute inset-x-0 top-2 z-20 flex flex-wrap items-center justify-center gap-2 px-2" role="group" aria-label={t('camera.view.group')}>
+                <div className="flex gap-1" role="group" aria-label={t('camera.view.shape')}>
+                  {(['portrait', 'landscape'] as const).map((shape: ViewShape) => {
+                    const on = (view.shape === 'auto' ? (cameraAspect !== null && cameraAspect < 1 ? 'portrait' : 'landscape') : view.shape) === shape;
+                    return (
+                      <Button key={shape} type="button" size="xs" radius="md" variant={on ? 'filled' : 'light'} aria-pressed={on} onClick={() => chooseView(withShape(viewRef.current, shape))}>
+                        {t(shape === 'portrait' ? 'camera.view.portrait' : 'camera.view.landscape')}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-1" role="group" aria-label={t('camera.view.field')}>
+                  {(['wide', 'tight'] as const).map((field: ViewField) => {
+                    const on = view.field === field;
+                    return (
+                      <Button key={field} type="button" size="xs" radius="md" variant={on ? 'filled' : 'light'} aria-pressed={on} onClick={() => chooseView(withField(viewRef.current, field))}>
+                        {t(field === 'wide' ? 'camera.view.wide' : 'camera.view.tight')}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Frame guide: dims what the frame will not keep; the whole image is still recorded. */}
             {stream && frameGuide && (
@@ -919,7 +972,7 @@ export default function CameraCapture({
 
             {/* Shutter warm-up and capture messages (announced, not colour-only) */}
             {stream && !isLoading && !isShutterReady && (
-              <div className="absolute inset-x-0 top-2 z-20 text-center text-xs" role="status">
+              <div className={`absolute inset-x-0 ${viewControls ? 'top-12' : 'top-2'} z-20 text-center text-xs`} role="status">
                 {t('camera.gettingReady')}
               </div>
             )}
