@@ -129,6 +129,7 @@ export function buildPlaylistPipeline(matchFilter: object) {
         _id: 1,
         imageUrl: 1,
         finalImageUrl: 1,
+        screenImageUrl: 1,
         createdAt: 1,
         playCount: 1,
         hiddenFromEvents: 1,

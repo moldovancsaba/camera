@@ -16,6 +16,7 @@ import { blobStoreHostFromToken, verifyOriginalImage } from '@/lib/submissions/o
 import { logWarn } from '@/lib/observability/logger';
 import { dispatchArrivedEmail } from '@/lib/email/triggers';
 import { runAfterResponse } from '@/lib/api/run-after-response';
+import { ensureScreenPicture } from '@/lib/submissions/screen-picture';
 import { sanitizeFrameVariant, type RecordedFrameVariant } from '@/lib/frame/capture';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
 import { guestIdentity, newShareToken, storePendingPhoto } from '@/lib/photo-vetting/pending';
@@ -437,6 +438,14 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         logWarn('submission.arrived_email_failed', 'The arrived e-mail could not be sent', { submissionId, error: error instanceof Error ? error.message : String(error) });
       }
     });
+
+    // A photo that is public at once (an event without photo approval) gets its screen-sized picture for the giant screen after the answer (camera#476, S7);
+    // a pending one gets it when it is approved.
+    if (!vetted && typeof submission.imageUrl === 'string') {
+      runAfterResponse(async () => {
+        await ensureScreenPicture(db, { _id: result.insertedId, imageUrl: submission.imageUrl, finalImageUrl: submission.finalImageUrl });
+      });
+    }
 
     // A pending photo answers with what the waiting screen needs and nothing public: no picture, no share link (camera#266).
     if (vetted) {

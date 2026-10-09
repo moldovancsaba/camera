@@ -151,7 +151,7 @@ test('the playlist query cuts the documents down to what a slide needs before it
   assert.deepEqual(Object.keys(project), ['$project']);
   assert.deepEqual(sort.$sort, { normalizedPlayCount: 1, createdAt: 1 });
   const kept = Object.keys(project.$project);
-  for (const needed of ['_id', 'imageUrl', 'finalImageUrl', 'createdAt', 'metadata.finalWidth', 'metadata.originalHeight', 'normalizedPlayCount']) {
+  for (const needed of ['_id', 'imageUrl', 'finalImageUrl', 'screenImageUrl', 'createdAt', 'metadata.finalWidth', 'metadata.originalHeight', 'normalizedPlayCount']) {
     assert.ok(kept.includes(needed), `${needed} is kept`);
   }
   for (const heavy of ['userInfo', 'userEmail', 'consents', 'metadata', 'slideshowPlays', 'userAgent']) {

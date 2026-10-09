@@ -440,6 +440,16 @@ For whoever sets up the screen that shows `/slideshow/<id>` at a venue. The play
 - **It reloads itself every 3 hours** (owner answer 212), at a slide boundary, so a picture is never cut: the show restarts from the server's queue in a moment. A layout cell never reloads. **Reload the screen now:** the **Reload the screen** button on the slideshow's card in the event's slideshows list (an Events manager of the partner, or a global admin): every open copy reloads at its next picture, a few seconds later. The reload is an `error` event in the diagnostics (`reload: scheduled`, `reload: admin`).
 - **Not built yet:** an editor guide of the giant screen (it comes in one messmass PR with the other guides).
 
+## Screen pictures (camera#476, step S7)
+
+The giant screen is sent a **screen-sized WebP** of each photo (longest edge at most 1920 px, quality 80), not the full-size photo (a composed JPEG of a megabyte or more, a try-on PNG of several). `lib/submissions/screen-picture.ts` makes it once when a photo becomes public, after the answer, and stores it as `screen-pictures/<submission id>.webp` (one-year cache) with its address in `Submission.screenImageUrl`.
+
+- **Check one:** the photo's document has `screenImageUrl`; the playlist answer (`/api/slideshows/<id>/playlist`) shows it as the slide's `imageUrl`. A photo without one is sent as before.
+- **Failure:** a warning `screen_picture.failed` in the Vercel logs (the photo is unaffected; the screen keeps the original). It is made again by the backfill below.
+- **Existing photos (the backfill, needs the owner's go):** `npx tsx scripts/backfill-screen-pictures.ts` is a **dry run** (counts per event, writes nothing; `--measure=12` downloads 12 samples to measure the saving; `--event=<uuid>` for one event). `--apply --event=<uuid> [--limit=200]` makes them (needs `BLOB_READ_WRITE_TOKEN`; three at a time; safe to repeat, a photo that has one is skipped). It only adds `screenImageUrl` (and `screenImageBytes`, `metadata.screenWidth/Height`) and new files under `screen-pictures/`; no original is touched, nothing is deleted. First dry run (2026-10-09): 352 photos on 10 slideshow events, 157.6 MB stored; 12 measured samples 8.1 MB to 1.1 MB (14 %); MTK x Vasas has 23 photos (11.2 MB), MTK x ETO 5 (2.3 MB).
+- **Undo:** unset `screenImageUrl` on the photos (the playlist then sends the original again) and delete the `screen-pictures/` files if you want the space back.
+- **Not covered:** try-on results (made by another path) keep the full-size picture for now.
+
 ## Scheduled jobs and workers
 
 **Vercel Cron: try-on completion backstop (paused since v12.3.40).** The job that

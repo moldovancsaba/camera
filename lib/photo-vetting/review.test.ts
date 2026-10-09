@@ -116,6 +116,20 @@ test('approval makes the picture from the photo and the recorded frame image, pu
   assert.ok(updates[0].filter.reviewStatus, 'the update is conditional on the status');
 });
 
+test('approval schedules the screen-sized picture of the published photo once, and a failure there does not undo the approval', async () => {
+  const { photo, frame } = await fixtures();
+  const scheduled: string[] = [];
+  const first = pendingSubmission();
+  const a = deps(photo, frame, { screenPicture: (_db, s) => void scheduled.push(`${s.imageUrl}|${s.finalImageUrl}`) });
+  assert.equal((await approvePhoto(fakeDb(first).db, first as never, ACTOR, a.deps)).ok, true);
+  assert.deepEqual(scheduled, ['https://store.test/submission-1.jpg|https://store.test/submission-1.jpg']);
+
+  const second = pendingSubmission();
+  const b = deps(photo, frame, { screenPicture: () => { throw new Error('queue is down'); } });
+  assert.equal((await approvePhoto(fakeDb(second).db, second as never, ACTOR, b.deps)).ok, true);
+  assert.equal(second.reviewStatus, 'approved');
+});
+
 test('approval of a guest who did not tick the pledge wall leaves it unshared', async () => {
   const { photo, frame } = await fixtures();
   const submission = pendingSubmission({ photoReview: { photoUrl: PHOTO_URL, photoSize: 10, photoMime: 'image/jpeg', shareOptIn: false, submittedAt: AT, tryOn: null } });

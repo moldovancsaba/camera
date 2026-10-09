@@ -10,13 +10,15 @@
  */
 
 import { del } from '@vercel/blob';
-import type { Db, Document, WithId } from 'mongodb';
+import type { Db, Document, ObjectId, WithId } from 'mongodb';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { uploadImage } from '@/lib/imgbb/upload';
 import { logWarn } from '@/lib/observability/logger';
 import { buildEmailMetadataPatch, legalOf, resolveEventForSubmission, textsOf, themeOf } from '@/lib/email/submission-result-email';
 import { enqueueTryOnForSubmission, type TryOnEnqueueOutcome } from '@/lib/tryon/enqueue-for-submission';
 import { fetchImageBuffer } from '@/lib/tryon/frame-composition';
+import { runAfterResponse } from '@/lib/api/run-after-response';
+import { ensureScreenPicture } from '@/lib/submissions/screen-picture';
 import sharp from 'sharp';
 import { composePhotoWithFrame } from '@/lib/photo-vetting/compose';
 import { approvedShareUrl, sendPhotoApprovedEmail, sendPhotoNotApprovedEmail, takeAnotherPhotoUrl } from '@/lib/photo-vetting/emails';
@@ -41,6 +43,8 @@ export interface ReviewDeps {
   enqueueTryOn: typeof enqueueTryOnForSubmission;
   sendApproved: typeof sendPhotoApprovedEmail;
   sendNotApproved: typeof sendPhotoNotApprovedEmail;
+  /** Makes the screen-sized picture of the approved photo (camera#476, S7), after the answer is sent; never throws. Absent in tests that do not care. */
+  screenPicture?: (db: Db, submission: { _id: ObjectId; imageUrl: string; finalImageUrl: string }) => void;
   now: () => string;
 }
 
@@ -54,6 +58,7 @@ export const defaultReviewDeps: ReviewDeps = {
   enqueueTryOn: enqueueTryOnForSubmission,
   sendApproved: sendPhotoApprovedEmail,
   sendNotApproved: sendPhotoNotApprovedEmail,
+  screenPicture: (db, submission) => runAfterResponse(() => ensureScreenPicture(db, submission).then(() => undefined)),
   now: () => new Date().toISOString(),
 };
 
@@ -133,6 +138,13 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
     }
   );
   if (won.matchedCount === 0) return { ok: false, reason: 'not_reviewable', message: 'Someone else already decided on this photo' };
+
+  // The picture for the giant screen is made after the answer; a failure there never touches the approval.
+  try {
+    deps.screenPicture?.(db, { _id: submission._id, imageUrl: picture.imageUrl, finalImageUrl: picture.imageUrl });
+  } catch (error) {
+    logWarn('screen_picture.not_scheduled', 'The screen picture could not be scheduled', { submissionId: String(submission._id), error: errorMessage(error) });
+  }
 
   const event = await resolveEventForSubmission(db, submission).catch(() => null);
 

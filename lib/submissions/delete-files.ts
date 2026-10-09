@@ -22,7 +22,7 @@ import { deleteImage } from '@/lib/imgbb/upload';
 import { blobStoreHostFromToken } from '@/lib/submissions/original-image';
 
 /** Display fields another submission may legitimately share a file through. */
-const SHARED_URL_FIELDS = ['imageUrl', 'finalImageUrl', 'originalImageUrl', 'previewImageUrl'] as const;
+const SHARED_URL_FIELDS = ['imageUrl', 'finalImageUrl', 'originalImageUrl', 'previewImageUrl', 'screenImageUrl'] as const;
 
 const IMGBB_DELETE_LINK = /^https:\/\/(?:[a-z0-9-]+\.)*(?:ibb\.co|imgbb\.com)\//i;
 
@@ -56,6 +56,8 @@ export function ownedUrls(submission: Document): { fileUrls: string[]; imgbbDele
       submission.finalImageUrl,
       submission.originalImageUrl,
       submission.previewImageUrl,
+      // The screen-sized picture made for the giant screen (camera#476, S7); equal to imageUrl when that was small enough, which the set de-duplicates.
+      submission.screenImageUrl,
       tryOn.sourceImageUrl,
       // The private plain photo of a vetted photo that has not been approved yet (camera#266).
       review.photoUrl,
