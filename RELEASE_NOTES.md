@@ -8,6 +8,12 @@
 - **Not yet:** the lost state in the editor (Keep as own, Remove), archiving instead of deleting, the daily picture check, the snapshot for frames (the other phases of #421).
 - **Verified:** unit tests (the snapshot rules, including the fail-safe case; the logos route keeps a snapshot, writes only when it differs, serves a lost logo marked lost in every place, and gives an event not on the model no snapshot; saving a slot refreshes the snapshot); type-check; lint; the full CI chain.
 
+## Unreleased — several logos in a place: one is picked at random (camera#419, owner decision 156; user-visible on a few events)
+
+- **Changed (owner, 2026-10-09: "one logo, use it; more than one, the system always shows random"):** the capture page (the loading screen and the pages of the user journey) and the slideshow loading screen now **pick one of the logos of a place at random** instead of always showing the first. One logo is used as it is. The capture page makes **one draw per visit** and uses it for every place, so a user sees the same logo throughout; the slideshow picks on load.
+- **Who sees a difference:** only an event that has two or more different logos in a place. Read-only check on the real data on 2026-10-09: five events, all of the partner AS Roma (AS Roma x Udine, Lupetto Day, AS Roma x AC Monza, x ACF Fiorentina, x AC Milan, all dated 2025), each with two logos in every place; no other event, and not the MTK Budapest event. Every other event shows the same logo as before.
+- **Verified:** type-check; lint; unit tests of the pick (one logo as it is, several reachable, the same draw gives the same logo in two places); the full CI chain. **Not seen on a real event.**
+
 ## Unreleased — a new logo from messmass replaces the earlier one in the partner's logos (camera#419, owner answer 169)
 
 - **Changed:** when messmass sends a different logo address for a partner it already has, camera replaces the partner's address **only if the one it has is the one it took from messmass** (or it has none; an address set by hand is kept), imports the new logo, and puts it **in the place of the earlier one in the partner's logos**; the earlier logo stays in the library. It never replaces a logo the partner chose itself, and if the editor took the earlier logo out, the new one is not put in. Events look at the partner, so they show the new logo at once.
