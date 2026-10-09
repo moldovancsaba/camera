@@ -69,7 +69,7 @@ for (const scannedRoot of scannedRoots) {
   }
 }
 
-// A `var(--gds-...)` that is undefined makes the whole declaration invalid: a border is not drawn, "muted" text is not dimmed (camera#415: 213 such
+// A `var(--gds-...)` that is undefined makes the whole declaration invalid: a border is not drawn, "muted" text is not dimmed (camera issue 415: 213 such
 // references, `--gds-color-border` and `--gds-color-muted`, names no GDS package defines). And the role tokens GDS does define with `light-dark()`
 // (--gds-border-card, --gds-text-meta, --gds-bg-surface...) do not work either in camera's production build: Next's CSS pass turns `light-dark(a, b)`
 // into `var(--lightningcss-light, a) var(--lightningcss-dark, b)`, the two switches are defined nowhere, so the value becomes the pair "a b" and
