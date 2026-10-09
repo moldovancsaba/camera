@@ -38,8 +38,8 @@ export interface ImagePickerProps {
 }
 
 const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))' } as const;
-const PANEL = { border: '1px solid var(--gds-color-border)', borderRadius: '0.75rem', display: 'grid', gap: '0.75rem', padding: '0.75rem' } as const;
-const MUTED = { color: 'var(--gds-color-muted)', fontSize: '0.8125rem' } as const;
+const PANEL = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.75rem', display: 'grid', gap: '0.75rem', padding: '0.75rem' } as const;
+const MUTED = { color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' } as const;
 
 function errorText(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;

@@ -431,7 +431,7 @@ function PreviewStrip({
         maxHeight: 320,
         borderRadius: 14,
         overflow: 'hidden',
-        background: 'var(--gds-color-surface-muted)',
+        background: 'var(--mantine-color-default-hover)',
       }}
     >
       <PreviewImage
@@ -510,7 +510,7 @@ function ReviewImagePanel({
           maxHeight: '70vh',
           borderRadius: 16,
           overflow: 'hidden',
-          background: 'var(--gds-color-surface-muted)',
+          background: 'var(--mantine-color-default-hover)',
         }}
       >
         <PreviewImage
@@ -536,7 +536,7 @@ function ReviewImagePanel({
               maxHeight: 360,
               borderRadius: 16,
               overflow: 'hidden',
-              background: 'var(--gds-color-surface-muted)',
+              background: 'var(--mantine-color-default-hover)',
             }}
           >
             <PreviewImage

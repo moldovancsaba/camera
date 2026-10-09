@@ -39,7 +39,7 @@ interface Payload<T> {
 }
 
 const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' } as const;
-const SECTION = { border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
+const SECTION = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
 const ACCEPT = 'image/png,image/jpeg,image/svg+xml,image/webp';
 
 function errorText(error: unknown): string {
@@ -216,9 +216,9 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
 
       {showImport && messmass?.logoUrl ? (
         <section style={SECTION}>
-          <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+          <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
             <h3 style={{ margin: 0 }}>The logo from messmass</h3>
-            <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>
+            <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>
               This is the logo messmass has for {partner.name}. Importing puts it in this library and makes it a default of the partner; its events that follow the partner&apos;s defaults get it too, and an event that chose its own logos keeps them.
             </p>
           </div>
@@ -236,15 +236,15 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
       ) : null}
 
       <section style={SECTION}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>In the partner library ({library.items.length})</h3>
-          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>
             A logo that is a default in a scenario is assigned there to every new event of {partner.name}, and follows changes here until an event edits its own list.
           </p>
         </div>
         <div style={{ padding: '1rem' }}>
           {library.items.length === 0 ? (
-            <p style={{ color: 'var(--gds-color-muted)', margin: '2rem 0', textAlign: 'center' }}>No logos yet. Add one from the global library below, or upload one.</p>
+            <p style={{ color: 'var(--mantine-color-dimmed)', margin: '2rem 0', textAlign: 'center' }}>No logos yet. Add one from the global library below, or upload one.</p>
           ) : (
             <div style={GRID}>
               {library.items.map((item) => (
@@ -299,13 +299,13 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
       </section>
 
       <section style={SECTION}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>Add from the global library ({library.available.length})</h3>
-          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>Logos collected by the global admins that {partner.name} does not have yet.</p>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>Logos collected by the global admins that {partner.name} does not have yet.</p>
         </div>
         <div style={{ padding: '1rem' }}>
           {library.available.length === 0 ? (
-            <p style={{ color: 'var(--gds-color-muted)', margin: '2rem 0', textAlign: 'center' }}>Every global logo is already in this library.</p>
+            <p style={{ color: 'var(--mantine-color-dimmed)', margin: '2rem 0', textAlign: 'center' }}>Every global logo is already in this library.</p>
           ) : (
             <div style={GRID}>
               {library.available.map((item) => (
@@ -329,9 +329,9 @@ export default function PartnerLogosPage({ params }: { params: Promise<{ id: str
       </section>
 
       <section style={SECTION}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>Upload a logo for {partner.name}</h3>
-          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>It goes into this library at once. No other partner can take it.</p>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>It goes into this library at once. No other partner can take it.</p>
         </div>
         <div style={{ padding: '1rem' }}>
           <LibraryUploadForm endpoint={`/api/partners/${partnerId}/library/upload`} kind="logos" noun="logo" accept={ACCEPT} acceptWords="PNG, JPG, SVG or WebP" namePlaceholder="e.g. Club crest" onUploaded={reload} />

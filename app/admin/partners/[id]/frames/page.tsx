@@ -30,7 +30,7 @@ interface Payload<T> {
 }
 
 const GRID = { display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' } as const;
-const SECTION = { border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
+const SECTION = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred';
@@ -173,15 +173,15 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
       {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}
 
       <section style={SECTION}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>In the partner library ({library.items.length})</h3>
-          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>
             A frame marked as a default is assigned to every new event of {partner.name}, and follows changes here until an event edits its own list.
           </p>
         </div>
         <div style={{ padding: '1rem' }}>
           {library.items.length === 0 ? (
-            <p style={{ color: 'var(--gds-color-muted)', margin: '2rem 0', textAlign: 'center' }}>No frames yet. Add one from the global library below, or upload one.</p>
+            <p style={{ color: 'var(--mantine-color-dimmed)', margin: '2rem 0', textAlign: 'center' }}>No frames yet. Add one from the global library below, or upload one.</p>
           ) : (
             <div style={GRID}>
               {library.items.map((item) => (
@@ -240,13 +240,13 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
       </section>
 
       <section style={SECTION}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>Add from the global library ({library.available.length})</h3>
-          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>Frames collected by the global admins that {partner.name} does not have yet.</p>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>Frames collected by the global admins that {partner.name} does not have yet.</p>
         </div>
         <div style={{ padding: '1rem' }}>
           {library.available.length === 0 ? (
-            <p style={{ color: 'var(--gds-color-muted)', margin: '2rem 0', textAlign: 'center' }}>Every global frame is already in this library.</p>
+            <p style={{ color: 'var(--mantine-color-dimmed)', margin: '2rem 0', textAlign: 'center' }}>Every global frame is already in this library.</p>
           ) : (
             <div style={GRID}>
               {library.available.map((item) => (
@@ -271,9 +271,9 @@ export default function PartnerFramesPage({ params }: { params: Promise<{ id: st
       </section>
 
       <section style={SECTION}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
           <h3 style={{ margin: 0 }}>Upload a frame for {partner.name}</h3>
-          <p style={{ color: 'var(--gds-color-muted)', margin: '0.35rem 0 0' }}>It goes into this library at once. No other partner can take it.</p>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.35rem 0 0' }}>It goes into this library at once. No other partner can take it.</p>
         </div>
         <div style={{ padding: '1rem' }}>
           <LibraryUploadForm endpoint={`/api/partners/${partnerId}/library/upload`} kind="frames" noun="frame" accept="image/png,image/svg+xml" acceptWords="PNG or SVG" onUploaded={reload} />

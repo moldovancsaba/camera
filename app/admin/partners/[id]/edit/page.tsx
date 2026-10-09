@@ -177,7 +177,7 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
               aria-describedby="partner-name-help"
               style={{ minHeight: 44, padding: '0 0.75rem' }}
             />
-              <span id="partner-name-help" style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>
+              <span id="partner-name-help" style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', fontWeight: 400 }}>
                 The name of the partner organization or brand.
               </span>
             </label>
@@ -220,7 +220,7 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
               />
               <span>
                 Use the colours of the messmass style
-                <span style={{ color: 'var(--gds-color-muted)', display: 'block', fontSize: '0.8125rem', fontWeight: 400 }}>
+                <span style={{ color: 'var(--mantine-color-dimmed)', display: 'block', fontSize: '0.8125rem', fontWeight: 400 }}>
                   On by default. Switch it off to give every event of this partner the colours below.
                 </span>
               </span>
@@ -239,7 +239,7 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
                 aria-describedby="partner-primary-color-help"
                 style={{ minHeight: 44 }}
               />
-                <span id="partner-primary-color-help" style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>
+                <span id="partner-primary-color-help" style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', fontWeight: 400 }}>
                   Used for buttons and focus states.
                 </span>
               </label>
@@ -256,35 +256,35 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
                 aria-describedby="partner-secondary-color-help"
                 style={{ minHeight: 44 }}
               />
-                <span id="partner-secondary-color-help" style={{ color: 'var(--gds-color-muted)', fontSize: '0.8125rem', fontWeight: 400 }}>
+                <span id="partner-secondary-color-help" style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', fontWeight: 400 }}>
                   Used for borders, inputs, and checkboxes.
                 </span>
               </label>
             </div>
-            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
+            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
               Changes to default styles automatically update child events that still inherit partner defaults. Events with custom styles keep their own values.
             </p>
           </FormSection>
 
-          <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+          <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
             <div style={{ display: 'grid', gap: '0.5rem' }}>
               <label style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
                 <input type="checkbox" name="isActive" defaultChecked={partner?.isActive} />
                 Partner is active (visible and usable)
               </label>
-              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
+              <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
                 Inactive partners will not be available for event creation
               </p>
             </div>
           </section>
 
-          <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+          <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
             <div style={{ display: 'grid', gap: '0.5rem' }}>
-              <strong style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem' }}>
+              <strong style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>
                 Partner ID (Read-only)
               </strong>
               <code style={{ display: 'block' }}>{partner?.partnerId}</code>
-              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0 }}>
+              <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
                 This ID is used to reference the partner across the system
               </p>
             </div>

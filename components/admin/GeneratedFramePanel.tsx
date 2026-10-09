@@ -54,10 +54,10 @@ interface ImageCounts {
 export type Notice = { severity: 'success' | 'warning' | 'error' | 'info'; title: string; lines: string[] };
 type Busy = 'save' | 'reset' | 'refresh' | 'move' | 'retire' | null;
 
-const section = { border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
-const sectionHead = { padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' } as const;
+const section = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
+const sectionHead = { padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' } as const;
 const sectionBody = { display: 'grid', gap: '1.25rem', padding: '1rem 1.5rem 1.5rem' } as const;
-const muted = { color: 'var(--gds-color-muted)', fontSize: '0.8125rem' } as const;
+const muted = { color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' } as const;
 
 function errorText(body: unknown, fallback: string): string {
   const message = body && typeof body === 'object' ? (body as { error?: unknown }).error : null;
@@ -79,7 +79,7 @@ function Swatch({ colour, label }: { colour: string; label: string }) {
     <span style={{ alignItems: 'center', display: 'inline-flex', gap: '0.5rem' }}>
       <span
         aria-hidden
-        style={{ backgroundColor: cssColour(colour), border: '1px solid var(--gds-color-border)', borderRadius: 4, display: 'inline-block', height: 18, width: 28 }}
+        style={{ backgroundColor: cssColour(colour), border: '1px solid var(--mantine-color-default-border)', borderRadius: 4, display: 'inline-block', height: 18, width: 28 }}
       />
       <span>
         {label} <code>{colour}</code>
@@ -465,7 +465,7 @@ export default function GeneratedFramePanel({
                     </Group>
                   ) : null}
                   {chosenId && !chosen ? (
-                    <span role="alert" style={{ color: 'var(--gds-color-danger, inherit)', fontSize: '0.8125rem' }}>
+                    <span role="alert" style={{ color: 'var(--mantine-color-error)', fontSize: '0.8125rem' }}>
                       The frame chosen for this message is no longer available (not assigned to this event, switched off, or without a message area): the generated layout is used until you choose another.
                     </span>
                   ) : null}
@@ -479,7 +479,7 @@ export default function GeneratedFramePanel({
           </ol>
           {draft.length === 0 ? <p style={muted}>No messages: the frame is drawn without a message.</p> : null}
           {validationError ? (
-            <p role="alert" style={{ color: 'var(--gds-color-danger, inherit)', margin: '0.5rem 0 0' }}>
+            <p role="alert" style={{ color: 'var(--mantine-color-error)', margin: '0.5rem 0 0' }}>
               {validationError}
             </p>
           ) : null}

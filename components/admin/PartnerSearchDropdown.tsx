@@ -58,8 +58,8 @@ export default function PartnerSearchDropdown({
         onClick={() => setIsOpen((value) => !value)}
         style={{
           alignItems: 'center',
-          background: 'var(--gds-color-surface)',
-          border: '1px solid var(--gds-color-border)',
+          background: 'var(--mantine-color-body)',
+          border: '1px solid var(--mantine-color-default-border)',
           borderRadius: '0.625rem',
           display: 'flex',
           justifyContent: 'space-between',
@@ -69,7 +69,7 @@ export default function PartnerSearchDropdown({
           width: '100%',
         }}
       >
-        <span style={{ color: selectedPartner ? 'inherit' : 'var(--gds-color-muted)', fontWeight: 700 }}>
+        <span style={{ color: selectedPartner ? 'inherit' : 'var(--mantine-color-dimmed)', fontWeight: 700 }}>
           {selectedPartner ? selectedPartner.name : 'Search partners...'}
         </span>
         <span aria-hidden>▾</span>
@@ -78,10 +78,10 @@ export default function PartnerSearchDropdown({
       {isOpen ? (
         <div
           style={{
-            background: 'var(--gds-color-surface)',
-            border: '1px solid var(--gds-color-border)',
+            background: 'var(--mantine-color-body)',
+            border: '1px solid var(--mantine-color-default-border)',
             borderRadius: '0.75rem',
-            boxShadow: 'var(--gds-shadow-lg))',
+            boxShadow: 'var(--mantine-shadow-lg)',
             display: 'grid',
             gap: '0.5rem',
             left: 0,
@@ -108,7 +108,7 @@ export default function PartnerSearchDropdown({
                   aria-selected={partner.partnerId === selectedPartnerId}
                   onClick={() => handleSelectPartner(partner)}
                   style={{
-                    background: partner.partnerId === selectedPartnerId ? 'var(--gds-color-surface-muted)' : 'transparent',
+                    background: partner.partnerId === selectedPartnerId ? 'var(--mantine-color-default-hover)' : 'transparent',
                     border: 0,
                     borderRadius: '0.5rem',
                     fontWeight: 700,
@@ -120,7 +120,7 @@ export default function PartnerSearchDropdown({
                 </button>
               ))
             ) : (
-              <span style={{ color: 'var(--gds-color-muted)', padding: '0.65rem 0.75rem' }}>No partners found</span>
+              <span style={{ color: 'var(--mantine-color-dimmed)', padding: '0.65rem 0.75rem' }}>No partners found</span>
             )}
           </div>
         </div>

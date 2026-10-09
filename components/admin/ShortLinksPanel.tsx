@@ -24,10 +24,10 @@ interface Loaded {
 
 type Notice = { severity: 'success' | 'error'; title: string; message: string };
 
-const section = { border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
-const sectionHead = { padding: '1.5rem', borderBottom: '1px solid var(--gds-color-border)' } as const;
+const section = { border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' } as const;
+const sectionHead = { padding: '1.5rem', borderBottom: '1px solid var(--mantine-color-default-border)' } as const;
 const sectionBody = { display: 'grid', gap: '1.25rem', padding: '1rem 1.5rem 1.5rem' } as const;
-const muted = { color: 'var(--gds-color-muted)', fontSize: '0.8125rem' } as const;
+const muted = { color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' } as const;
 const KINDS = [
   { value: 'qr', label: 'QR code (counted as scans, with the Android / iPhone split)' },
   { value: 'link', label: 'Plain link (counted as clicks)' },
@@ -147,7 +147,7 @@ export default function ShortLinksPanel({ eventId }: { eventId: string }) {
         ) : (
           <ul style={{ display: 'grid', gap: '0.75rem', listStyle: 'none', margin: 0, padding: 0 }}>
             {loaded.links.map((link) => (
-              <li key={link.slug} style={{ border: '1px solid var(--gds-color-border)', borderRadius: 8, display: 'grid', gap: '0.5rem', padding: '0.75rem 1rem' }}>
+              <li key={link.slug} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 8, display: 'grid', gap: '0.5rem', padding: '0.75rem 1rem' }}>
                 <Group gap="xs" wrap="wrap">
                   <Text fw={600}>{link.placement}</Text>
                   <Badge variant="light">{link.kind === 'qr' ? 'QR code' : 'Link'}</Badge>

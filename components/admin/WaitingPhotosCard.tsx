@@ -14,7 +14,7 @@ export default async function WaitingPhotosCard() {
   const total = events.reduce((sum, event) => sum + event.count, 0);
 
   return (
-    <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', padding: '1rem', display: 'grid', gap: '0.5rem' }} data-waiting-photos>
+    <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', padding: '1rem', display: 'grid', gap: '0.5rem' }} data-waiting-photos>
       <strong>
         Photos waiting for approval ({total})
       </strong>

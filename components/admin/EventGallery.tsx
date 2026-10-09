@@ -265,13 +265,13 @@ export default function EventGallery({
       ) : null}
 
       {canManage ? (
-      <section style={{ border: '1px solid var(--gds-color-border)', borderRadius: '1rem', padding: '1rem' }}>
+      <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', padding: '1rem' }}>
         <div style={{ alignItems: 'flex-start', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
           <div style={{ display: 'grid', gap: '0.25rem' }}>
             <strong style={{ fontSize: '0.875rem' }}>
               Gallery actions
             </strong>
-            <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0 }}>
+            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
               Select multiple images and remove them from {eventName} in one action.
             </p>
           </div>
@@ -451,7 +451,7 @@ export default function EventGallery({
       </div>
 
       {submissions.length >= 50 && (
-        <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.875rem', margin: 0, textAlign: 'center' }}>
+        <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0, textAlign: 'center' }}>
           Showing the 50 most recent submissions
         </p>
       )}

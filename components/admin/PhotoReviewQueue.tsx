@@ -191,7 +191,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
               </SemanticButton>
             ) : null}
           </div>
-          <span style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>
+          <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
             {selected.length > 0 ? `${selected.length} selected. ` : ''}
             {status === 'pending_review' ? 'Oldest first. Looks for new photos every 10 seconds. ' : ''}
             {items.length} shown
@@ -270,7 +270,7 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
                   {item.photoUrl ? (
                     <Image src={item.photoUrl} alt={`Photo of ${item.name}`} width={800} height={450} unoptimized style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }} />
                   ) : (
-                    <div style={{ aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', color: 'var(--gds-color-muted)', fontSize: '0.75rem' }}>No photo</div>
+                    <div style={{ aspectRatio: '16 / 9', display: 'grid', placeItems: 'center', color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>No photo</div>
                   )}
                 </div>
               }

@@ -64,11 +64,11 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
   };
 
   return (
-    <section style={{ background: 'var(--gds-color-surface)', border: '1px solid var(--gds-color-border)', borderRadius: '1rem', overflow: 'hidden' }}>
-      <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--gds-color-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
+    <section style={{ background: 'var(--mantine-color-body)', border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', overflow: 'hidden' }}>
+      <div style={{ alignItems: 'flex-start', borderBottom: '1px solid var(--mantine-color-default-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', padding: '1.5rem' }}>
         <div>
           <h2 style={{ margin: 0 }}>Event Slideshows</h2>
-          <p style={{ color: 'var(--gds-color-muted)', margin: '0.5rem 0 0' }}>
+          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.5rem 0 0' }}>
             Display submissions on screens during the event
           </p>
         </div>
@@ -89,7 +89,7 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
       ) : (
         <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', padding: '1.5rem' }}>
           {slideshows.map((slideshow) => (
-            <article key={slideshow._id} style={{ border: '1px solid var(--gds-color-border)', borderRadius: '0.875rem', display: 'grid', gap: '1rem', padding: '1rem' }}>
+            <article key={slideshow._id} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', display: 'grid', gap: '1rem', padding: '1rem' }}>
               <div style={{ alignItems: 'flex-start', display: 'flex', gap: '0.75rem', justifyContent: 'space-between' }}>
                 <div>
                   <strong>{slideshow.name}</strong>
@@ -108,7 +108,7 @@ export default function SlideshowManager({ eventId, initialSlideshows }: Props) 
                 </SemanticButton>
               </div>
 
-              <p style={{ color: 'var(--gds-color-muted)', fontSize: '0.75rem', margin: 0 }}>
+              <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
                 Created {new Date(slideshow.createdAt).toLocaleDateString()}
               </p>
 

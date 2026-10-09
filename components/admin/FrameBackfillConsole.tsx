@@ -40,7 +40,7 @@ const row = (label: string, value: string | number, note?: string) => (
     <dt>{label}</dt>
     <dd style={{ margin: 0 }}>
       <strong>{value}</strong>
-      {note ? <span style={{ color: 'var(--gds-color-muted)' }}> {note}</span> : null}
+      {note ? <span style={{ color: 'var(--mantine-color-dimmed)' }}> {note}</span> : null}
     </dd>
   </>
 );
