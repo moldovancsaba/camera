@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the slot resolver: the one mechanism behind every element (camera#418, step 3a of the order of 139; docs and code, nothing uses it yet)
+
+- **Added:** `lib/slots/resolve.ts`, pure and unit-tested: what a level stores for a slot is only what the editor set (own items and whether the default is used next to them), and `resolveSlot` gives what is used at a level from the chain above it: **use the default** (nothing stored), **add more** (own items next to the default), **replace** (own items only), **none**; own items first, an item held by two levels is used once; `pickRandom` (one item as it is, several at random); `lookUp` keeps an id the library no longer has in the list, marked missing, instead of dropping it, which is the hook of the fail-safe gate (camera#421, owner requirement of 2026-10-09: a deleted or lost parent item is still kept by the children). Owner model and confirmations: `docs/BUILDING_BRICKS.md`.
+- **Not changed:** nothing in the product calls it yet; the logo is the first consumer (camera#419). `docs/BUILDING_BRICKS.md` gains step 4b, the fail-safe gate.
+- **Verified:** 13 unit tests (every mode, a level between, no copy to go stale, an item held twice, a place under the event, random with every item reachable, a missing item); type-check; lint; the full CI chain. **Not built into any screen.**
+
 ## Unreleased — the page editor shows the whole journey, defaults included (camera#378, camera#330; step 2 of the order of 139)
 
 - **Added (owner report 2026-10-08: the journey in the editor "still does not represent the true"):** the list in the event editor is now **"Pages of the user journey"**: the event's own pages, the **default consent and login pages as rows marked Default** (they exist for every user but were invisible in the editor), and the steps that are not pages (the waiting or share screen, the e-mails, the public photo page) as **Built in** rows that say where their texts are edited, all in the order a user goes through them. A default row has **Customise**: it opens a new own page filled with the default's texts, in the default's place; the own page wins, so the user's journey does not change; deleting it brings the default back. A page that is switched off stays reachable and is marked.
