@@ -233,4 +233,9 @@ export const hu: Record<MessageKey, string> = {
   'sharePage.meta.from': 'Esemény: {event}',
   'sharePage.meta.title': '{name} fotója — {event}',
   'sharePage.meta.description': 'Fotó az eseményről: {event}',
+  'screen.slideshow.name': 'Alapértelmezett vetítés',
+  'screen.qrText.1': 'Szkenneld!',
+  'screen.qrText.2': 'Csatlakozz!',
+  'screen.qrText.3': 'Légy képen!',
+  'screen.qrText.4': 'Fotózz!',
 };

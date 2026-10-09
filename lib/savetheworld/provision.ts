@@ -9,6 +9,7 @@ import { COLLECTIONS, CustomPageType, generateId, generateTimestamp } from '@/li
 import { inheritPartnerDefaults } from '@/lib/db/events';
 import { apiBadRequest, apiNotFound } from '@/lib/api';
 import { defaultPhotoVetting } from '@/lib/events/photo-vetting';
+import { scheduleDefaultSlideshow } from '@/lib/slideshow/default-slideshow';
 
 function ci(name: string) {
   return { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
@@ -107,5 +108,6 @@ export async function provisionEvent(input: { savetheworldEventId: string; partn
     updatedAt: now,
   };
   const res = await db.collection(COLLECTIONS.EVENTS).insertOne(doc);
+  scheduleDefaultSlideshow(res.insertedId);
   return { eventId, mongoId: String(res.insertedId), partnerId: partner.partnerId, created: true };
 }
