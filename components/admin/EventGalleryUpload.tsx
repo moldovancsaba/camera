@@ -482,7 +482,7 @@ export default function EventGalleryUpload({
             </label>
             <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
               {frameAvailable
-                ? 'The photo is cropped to the frame\'s shape and the frame laid over it, so it looks like the photos the guests take. The plain upload is kept.'
+                ? 'The photo is cropped to the frame\'s shape and the frame laid over it, so it looks like the photos the users take. The plain upload is kept.'
                 : 'The event has no frame yet (the Frames page), so there is nothing to add.'}
             </p>
           </div>

@@ -22,6 +22,9 @@ import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorizat
 
 export const MAX_FRAMED_AT_ONCE = 25;
 
+/** Each photo is fetched, framed and stored (with its mirror), a few seconds each: the gallery asks for five at a time, and a request may run for a minute (the default is far shorter). */
+export const maxDuration = 60;
+
 const defaultDeps: GalleryFrameDeps = {
   fetchImage: fetchImageBuffer,
   upload: async (data, name) => {
