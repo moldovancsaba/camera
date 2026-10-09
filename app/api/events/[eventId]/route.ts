@@ -28,7 +28,7 @@ import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/part
 import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
 import { isUiLanguage, UI_LANGUAGES } from '@/lib/i18n';
-import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
+import { sanitizeNotificationSettings } from '@/lib/email/notification-settings';
 import { captureFrameOf } from '@/lib/frame/capture';
 import { normalizePhotoVettingInput, photoVettingRequired } from '@/lib/events/photo-vetting';
 import { applyEventBrandColours } from '@/lib/events/brand-colours';
@@ -41,31 +41,6 @@ import { eventGetsDefaults, getDefaultsRollout } from '@/lib/admin/defaults-roll
 import { loadEventTheme } from '@/lib/theme/load';
 import { needsThemeRefresh, refreshEventTheme } from '@/lib/theme/refresh';
 import { trackedSlugExists } from '@/lib/short-links/store';
-
-function normalizeEventNotificationSettings(value: unknown) {
-  const notificationPolicy = normalizeSubmissionEmailPolicy(value);
-  return {
-    submissionResultEmailEnabled: notificationPolicy.enabled,
-    submissionResultEmailSubject: notificationPolicy.subjectTemplate || null,
-    submissionResultEmailBody: notificationPolicy.bodyTemplate || null,
-    submissionResultEmailSubjectAfterSave: notificationPolicy.subjectTemplateAfterSave || null,
-    submissionResultEmailBodyAfterSave: notificationPolicy.bodyTemplateAfterSave || null,
-    submissionResultEmailSubjectAfterRelatedPhotosReady:
-      notificationPolicy.subjectTemplateAfterRelatedPhotosReady || null,
-    submissionResultEmailBodyAfterRelatedPhotosReady:
-      notificationPolicy.bodyTemplateAfterRelatedPhotosReady || null,
-    submissionResultEmailSubjectAfterTryOnResubmissionApproved:
-      notificationPolicy.subjectTemplateAfterTryOnResubmissionApproved || null,
-    submissionResultEmailBodyAfterTryOnResubmissionApproved:
-      notificationPolicy.bodyTemplateAfterTryOnResubmissionApproved || null,
-    submissionResultEmailSenderName: notificationPolicy.senderName,
-    submissionResultEmailSendAfterSave: notificationPolicy.sendAfterSave,
-    submissionResultEmailSendAfterRelatedPhotosReady: notificationPolicy.sendAfterRelatedPhotosReady,
-    submissionResultEmailSendAfterTryOnResubmissionApproved:
-      notificationPolicy.sendAfterTryOnResubmissionApproved,
-    termsUrl: notificationPolicy.termsUrl,
-  };
-}
 
 interface EventFrameDetails {
   frameId: string;
@@ -418,7 +393,7 @@ export const PATCH = withErrorHandler(async (
   }
 
   if (notifications !== undefined) {
-    updateFields.notifications = normalizeEventNotificationSettings(notifications);
+    updateFields.notifications = sanitizeNotificationSettings(notifications);
   }
 
   // The guided tour is off unless an editor turns it on (camera#356).

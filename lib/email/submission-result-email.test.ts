@@ -93,3 +93,39 @@ test('an event with no language of its own is read with its partner\'s, so its e
   assert.deepEqual(await textsOf(db, follows), { 'email.buttonSee': 'Nézd meg' });
   assert.equal(await textsOf(db, null), null);
 });
+
+test('the five types: approved and declined are on for an event that never chose (owner, answer 204); welcome, arrived and follow up are off', () => {
+  for (const never of [undefined, null, {}, { submissionResultEmailSubject: 'Old subject' }]) {
+    const policy = normalizeSubmissionEmailPolicy(never);
+    assert.deepEqual(
+      ['welcome', 'arrived', 'approved', 'declined', 'followUp'].map((type) => policy.types[type as keyof typeof policy.types].enabled),
+      [false, false, true, true, false],
+      JSON.stringify(never)
+    );
+    assert.equal(policy.sendAfterSave, true, 'the approved e-mail is the after-save e-mail');
+    assert.equal(policy.enabled, true);
+    assert.equal(policy.types.approved.chosen, null, 'nothing was chosen: it follows the default');
+  }
+});
+
+test('a choice stored by an editor wins: the old switches keep their meaning, and the new switches override them', () => {
+  const off = normalizeSubmissionEmailPolicy({ submissionResultEmailEnabled: false });
+  assert.deepEqual([off.enabled, off.sendAfterSave, off.types.approved.enabled], [false, false, false], 'the old master switch stored as off still turns approved off');
+  assert.equal(off.types.approved.chosen, null, 'but it is not a choice of the new switch, so a vetted event still sends the link');
+  const afterSaveOff = normalizeSubmissionEmailPolicy({ submissionResultEmailEnabled: true, submissionResultEmailSendAfterSave: false, submissionResultEmailSendAfterRelatedPhotosReady: true });
+  assert.deepEqual([afterSaveOff.sendAfterSave, afterSaveOff.sendAfterRelatedPhotosReady, afterSaveOff.enabled], [false, true, true]);
+  const newOn = normalizeSubmissionEmailPolicy({ submissionResultEmailEnabled: false, types: { approved: { enabled: true }, welcome: { enabled: true }, declined: { enabled: false } } });
+  assert.deepEqual([newOn.sendAfterSave, newOn.types.welcome.enabled, newOn.types.declined.enabled], [true, true, false], 'the new switches win over the old ones');
+  assert.deepEqual([newOn.types.approved.chosen, newOn.types.declined.chosen, newOn.types.arrived.chosen], [true, false, null]);
+});
+
+test('the event’s own subject and message of a type are read; the approved ones are the after-save pair', () => {
+  const policy = normalizeSubmissionEmailPolicy({
+    submissionResultEmailSubjectAfterSave: 'Legacy subject',
+    types: { approved: { subject: 'Approved {event}', body: 'Hi {name} {link}' }, welcome: { subject: 'Welcome!', body: 'Come to {eventlink}' } },
+  });
+  assert.equal(policy.subjectTemplateAfterSave, 'Approved {event}', 'the approved type wins over the old after-save pair');
+  assert.equal(policy.bodyTemplateAfterSave, 'Hi {name} {link}');
+  assert.deepEqual([policy.types.welcome.subject, policy.types.welcome.body], ['Welcome!', 'Come to {eventlink}']);
+  assert.deepEqual([policy.types.declined.subject, policy.types.declined.body], [null, null], 'no own text: the standard one');
+});

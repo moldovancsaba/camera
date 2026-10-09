@@ -362,7 +362,9 @@ export interface Event {
   // after an event manager or admin approves it. Only a global admin changes it. A missing setting means not required.
   photoVetting?: { required: boolean; updatedAt?: string; updatedBy?: string | null };
   notifications?: {
-    submissionResultEmailEnabled: boolean; // Whether users receive the public result page link after submission
+    submissionResultEmailEnabled?: boolean; // Legacy master switch: stored off turns the old switches off; missing follows the defaults of the five types (lib/email/types.ts)
+    /** The five e-mails (epic 463, lib/email/types.ts): a switch, a subject and a message each; absent follows the default. */
+    types?: Partial<Record<'welcome' | 'arrived' | 'approved' | 'declined' | 'followUp', { enabled?: boolean; subject?: string; body?: string }>>;
     submissionResultEmailSubject?: string | null; // Optional legacy event-level subject template (fallback)
     submissionResultEmailBody?: string | null; // Optional legacy event-level plain-text body template (fallback)
     submissionResultEmailSubjectAfterSave?: string | null; // Optional event-level subject template for "send after save"

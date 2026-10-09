@@ -29,35 +29,10 @@ import {
 import { normalizeEventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
-import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
+import { sanitizeNotificationSettings } from '@/lib/email/notification-settings';
 import { defaultPhotoVetting } from '@/lib/events/photo-vetting';
 import { scheduleScreenForNewEvent } from '@/lib/screen/new-event-screen';
 import { trackedSlugExists } from '@/lib/short-links/store';
-
-function normalizeEventNotificationSettings(value: unknown) {
-  const notificationPolicy = normalizeSubmissionEmailPolicy(value);
-  return {
-    submissionResultEmailEnabled: notificationPolicy.enabled,
-    submissionResultEmailSubject: notificationPolicy.subjectTemplate || null,
-    submissionResultEmailBody: notificationPolicy.bodyTemplate || null,
-    submissionResultEmailSubjectAfterSave: notificationPolicy.subjectTemplateAfterSave || null,
-    submissionResultEmailBodyAfterSave: notificationPolicy.bodyTemplateAfterSave || null,
-    submissionResultEmailSubjectAfterRelatedPhotosReady:
-      notificationPolicy.subjectTemplateAfterRelatedPhotosReady || null,
-    submissionResultEmailBodyAfterRelatedPhotosReady:
-      notificationPolicy.bodyTemplateAfterRelatedPhotosReady || null,
-    submissionResultEmailSubjectAfterTryOnResubmissionApproved:
-      notificationPolicy.subjectTemplateAfterTryOnResubmissionApproved || null,
-    submissionResultEmailBodyAfterTryOnResubmissionApproved:
-      notificationPolicy.bodyTemplateAfterTryOnResubmissionApproved || null,
-    submissionResultEmailSenderName: notificationPolicy.senderName,
-    submissionResultEmailSendAfterSave: notificationPolicy.sendAfterSave,
-    submissionResultEmailSendAfterRelatedPhotosReady: notificationPolicy.sendAfterRelatedPhotosReady,
-    submissionResultEmailSendAfterTryOnResubmissionApproved:
-      notificationPolicy.sendAfterTryOnResubmissionApproved,
-    termsUrl: notificationPolicy.termsUrl,
-  };
-}
 
 /**
  * GET /api/events
@@ -271,7 +246,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
       resultSlideshowMode,
     },
-    notifications: normalizeEventNotificationSettings(notifications),
+    notifications: sanitizeNotificationSettings(notifications),
     // Photo vetting (camera#263): the default of the rollout; only a global admin changes it afterwards.
     photoVetting: defaultPhotoVetting(now),
     ...(resolvedShortSlug !== undefined ? { shortUrlSlug: resolvedShortSlug } : {}),
