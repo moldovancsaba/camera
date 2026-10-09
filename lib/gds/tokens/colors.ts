@@ -53,3 +53,15 @@ export const EVENT_THEME_DEFAULT = {
   linkColor: '#2563ebff',
   cardRadius: '0.75rem',
 } as const;
+
+// The sign-in buttons of Google and Facebook, in the colours their brand rules give (camera#462, client feedback: "make the Google and Facebook sign-in stand out, perhaps in their own colours").
+// Google: a white button with a thin grey border, dark text and the four-colour G (Sign in with Google branding guidelines). Facebook: the Facebook blue with white text and the white f.
+export const SOCIAL_GOOGLE_BUTTON_FILL = '#FFFFFF';
+export const SOCIAL_GOOGLE_BUTTON_STROKE = '#747775';
+export const SOCIAL_GOOGLE_BUTTON_TEXT = '#1F1F1F';
+export const SOCIAL_GOOGLE_RED = '#EA4335';
+export const SOCIAL_GOOGLE_BLUE = '#4285F4';
+export const SOCIAL_GOOGLE_YELLOW = '#FBBC05';
+export const SOCIAL_GOOGLE_GREEN = '#34A853';
+export const SOCIAL_FACEBOOK_BLUE = '#1877F2';
+
