@@ -9,6 +9,8 @@
 
 import { resolveScreenDesign } from '@/lib/slideshow/screen-design';
 import { loadEventTheme } from '@/lib/theme/load';
+import { cachedStageTheme } from '@/lib/slideshow/stage-theme';
+import { stageColours } from '@/lib/slideshow/stage-colours';
 import { randomBytes } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
@@ -30,10 +32,6 @@ import type { Event } from '@/lib/db/schemas';
 import { EXCLUDE_CAP } from '@/lib/slideshow/queue';
 import { SLOW_PLAYLIST_MS, createLapTimer } from '@/lib/slideshow/server-timing';
 import { logWarn } from '@/lib/observability/logger';
-import {
-  SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
-  SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
-} from '@/lib/gds/tokens/colors';
 import {
   resolveSlideshowStageAspect,
   type SlideshowStageSource,
@@ -395,11 +393,13 @@ export async function GET(
     const playMode = slideshow.playMode === 'once' ? 'once' : 'loop';
 
     // The screen design writes its texts in the event's own font, from its messmass report style (owner, 2026-10-07).
+    // The theme of the event (kept for a minute per event): the screen design writes in its font, and a screen with no colours of its own is in its colours (owner, 2026-10-09).
+    const theme = await cachedStageTheme(db, event as unknown as Record<string, unknown>);
+    timer.lap('theme');
     let screenDesign = null;
     if (slideshow.screenDesign) {
-      const { font } = await loadEventTheme(db, event as unknown as Record<string, unknown>);
+      const font = theme?.font ?? (await loadEventTheme(db, event as unknown as Record<string, unknown>)).font;
       screenDesign = resolveScreenDesign(slideshow.screenDesign, { family: font.family, source: font.source, url: font.url });
-      timer.lap('theme');
     }
 
     // The phases of this call for the browser's network tab; a slow call also leaves one warning line with them (camera#476).
@@ -410,14 +410,8 @@ export async function GET(
       return { ...PLAYLIST_NO_CACHE_HEADERS, 'Server-Timing': timer.header() };
     };
 
-    const bgPrimary =
-      typeof slideshow.backgroundPrimaryColor === 'string' && slideshow.backgroundPrimaryColor
-        ? slideshow.backgroundPrimaryColor
-        : SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY;
-    const bgAccent =
-      typeof slideshow.backgroundAccentColor === 'string' && slideshow.backgroundAccentColor
-        ? slideshow.backgroundAccentColor
-        : SLIDESHOW_DEFAULT_BACKGROUND_ACCENT;
+    const { primary: bgPrimary, accent: bgAccent } = stageColours({ primary: slideshow.backgroundPrimaryColor, accent: slideshow.backgroundAccentColor }, theme);
+    const pageBackground = theme?.background ?? bgPrimary;
     const bgImage =
       typeof slideshow.backgroundImageUrl === 'string' && slideshow.backgroundImageUrl.trim()
         ? slideshow.backgroundImageUrl.trim()
@@ -464,6 +458,7 @@ export async function GET(
           orderMode,
           backgroundPrimaryColor: bgPrimary,
           backgroundAccentColor: bgAccent,
+          pageBackgroundColor: pageBackground,
           backgroundImageUrl: bgImage,
           viewportScale,
           screenDesign,
@@ -508,6 +503,7 @@ export async function GET(
         orderMode,
         backgroundPrimaryColor: bgPrimary,
         backgroundAccentColor: bgAccent,
+        pageBackgroundColor: pageBackground,
         backgroundImageUrl: bgImage,
         viewportScale,
         screenDesign,
