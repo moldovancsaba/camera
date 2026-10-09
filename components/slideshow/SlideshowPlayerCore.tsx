@@ -8,6 +8,7 @@
  * background so the next advance does not wait on a burst fetch.
  */
 
+import { pickRandom } from '@/lib/slots/resolve';
 import ScreenDesignLayers, { screenWindowStyle } from '@/components/slideshow/ScreenDesignLayers';
 import type { ResolvedScreenDesign } from '@/lib/slideshow/screen-design';
 import {
@@ -394,7 +395,8 @@ export function SlideshowPlayerCore({
               logoData.data?.logos?.['loading-slideshow'] ||
               logoData.logos?.['loading-slideshow'] ||
               [];
-            const activeLogo = loadingLogos.find((l: { isActive?: boolean }) => l.isActive);
+            // One logo is used as it is; several are picked at random (camera#419).
+            const activeLogo = pickRandom<{ isActive?: boolean; imageUrl?: string }>(loadingLogos.filter((l: { isActive?: boolean }) => l.isActive));
             if (activeLogo?.imageUrl) {
               setLogoUrl(activeLogo.imageUrl);
             }

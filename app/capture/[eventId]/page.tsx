@@ -49,6 +49,7 @@ import { frameSilhouette } from '@/lib/frame/silhouette';
 import { pickVariant, territoriesOf, type CaptureFrame, type CaptureVariant, type Territory } from '@/lib/frame/capture';
 import SystemCameraCapture from '@/components/camera/SystemCameraCapture';
 import { captureOverride, chooseCaptureMethod, hasStillCapture, type CaptureMethod } from '@/lib/camera/still-capture';
+import { pickRandom } from '@/lib/slots/resolve';
 import { detectTouchPrimaryDevice } from '@/lib/camera/constraints';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
@@ -256,6 +257,8 @@ export default function EventCapturePage({
   // each shutter press takes a random variant (never the one before) and the live view and reframe show territories.
   const [generatedFrame, setGeneratedFrame] = useState<CaptureFrame | null>(null);
   const lastVariantIndex = useRef<number | null>(null);
+  // One draw per visit for the random pick of the logo: the same draw in every place, so a user sees the same logo throughout (camera#419).
+  const logoDraw = useRef<number | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   // The whole photo at the camera's full size, held in the browser for the reframe step only: the guest zooms and pans
   // anywhere in it, and only the frame-sized result is saved. The photo itself is dropped (owner decision 2026-10-06).
@@ -488,14 +491,17 @@ export default function EventCapturePage({
             
             // Loading logo
             const loadingLogos = logoData.data?.logos?.['loading-capture'] || logoData.logos?.['loading-capture'] || [];
-            const activeLoadingLogo = loadingLogos.find((logo) => logo.isActive);
+            // One logo is used as it is; several are picked at random, once per visit (the same draw for every place, so the user sees the same one throughout).
+            if (logoDraw.current === null) logoDraw.current = Math.random();
+            const draw = logoDraw.current;
+            const activeLoadingLogo = pickRandom(loadingLogos.filter((logo) => logo.isActive), () => draw);
             if (activeLoadingLogo) {
               setLoadingLogoUrl(activeLoadingLogo.imageUrl);
             }
             
             // Onboarding/thank you logo
             const onboardingLogos = logoData.data?.logos?.['onboarding-thankyou'] || logoData.logos?.['onboarding-thankyou'] || [];
-            const activeOnboardingLogo = onboardingLogos.find((logo) => logo.isActive);
+            const activeOnboardingLogo = pickRandom(onboardingLogos.filter((logo) => logo.isActive), () => draw);
             if (activeOnboardingLogo) {
               setOnboardingLogoUrl(activeOnboardingLogo.imageUrl);
             }
