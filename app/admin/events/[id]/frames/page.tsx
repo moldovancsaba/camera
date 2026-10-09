@@ -12,6 +12,7 @@ import Link from 'next/link';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import GeneratedFramePanel, { type Notice } from '@/components/admin/GeneratedFramePanel';
+import FrameSelectionPanel from '@/components/admin/FrameSelectionPanel';
 import LibraryItemCard from '@/components/admin/library/LibraryItemCard';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
 import MessageAreaEditor from '@/components/admin/library/MessageAreaEditor';
@@ -49,6 +50,9 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
   const [editing, setEditing] = useState<string | null>(null);
   // What the panel said after it changed the frames: the panel starts again with the new frames, and takes the message with it.
   const [panelNotice, setPanelNotice] = useState<Notice | null>(null);
+  // Bumped when the messages or their frames change, so the selection setting reads them again.
+  const [designVersion, setDesignVersion] = useState(0);
+  const onDesignChanged = useCallback(() => setDesignVersion((version) => version + 1), []);
 
   useEffect(() => {
     params.then((resolved) => setEventId(resolved.id));
@@ -143,8 +147,14 @@ export default function EventFramesPage({ params }: { params: Promise<{ id: stri
           setPanelNotice(notice);
           await reload();
         }}
+        onDesignChanged={onDesignChanged}
         initialNotice={panelNotice}
         hasOwnActiveFrame={library.assigned.some((entry) => entry.assignment.isActive === true && entry.messageArea === null)}
+      />
+
+      <FrameSelectionPanel
+        key={`${designVersion}:${library.assigned.map((entry) => `${entry.id}:${entry.assignment.isActive === true ? 1 : 0}:${entry.messageArea ? 1 : 0}`).join(',')}`}
+        eventId={eventId}
       />
 
       {actionError ? <InlineAlert title="That did not work" message={actionError} severity="error" /> : null}

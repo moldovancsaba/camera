@@ -297,7 +297,6 @@ export const PATCH = withErrorHandler(async (
     sharePage,
     photoVetting,
     uiLanguage,
-    frameChoice,
     tourEnabled,
   } = body;
 
@@ -435,16 +434,6 @@ export const PATCH = withErrorHandler(async (
       updateFields.uiLanguage = uiLanguage;
     } else {
       throw apiBadRequest('uiLanguage must be one of: ' + UI_LANGUAGES.join(', '));
-    }
-  }
-  if (frameChoice !== undefined) {
-    // Only `user` is stored; `random` and an empty value take the setting away, which means random (an event that never set it keeps what it always had).
-    if (frameChoice === null || frameChoice === '' || frameChoice === 'random') {
-      updateFields.frameChoice = null;
-    } else if (frameChoice === 'user') {
-      updateFields.frameChoice = 'user';
-    } else {
-      throw apiBadRequest('frameChoice must be random or user');
     }
   }
   if (visualSettings !== undefined) {

@@ -322,7 +322,9 @@ export interface Event {
   greatestHitsSlug?: string | null;
   /** The language of the user interface of this event (camera#352): the default texts of the journey, the public photo page and the user emails come from its dictionary. English when missing. */
   uiLanguage?: 'en' | 'hu';
-  /** How a user gets the message of the generated frame (issue 329): `random` (a new one at every shutter press, the default and what a missing value means) or `user` (the user chooses before taking the photo). */
+  /** How a user gets the layout and the message of the frame (epic 444, lib/frame/selection.ts): each `editor` (with a pick), `random` or `user`. Missing = what the event always did. */
+  frameSelection?: { layout: { mode: 'editor' | 'random' | 'user'; pick: string | null }; message: { mode: 'editor' | 'random' | 'user'; pick: string | null } } | null;
+  /** Replaced by `frameSelection` (the message-only setting of issue 329, never set on any event); read by the capture page until the selection flow replaces it. */
   frameChoice?: 'random' | 'user' | null;
   /** The guided tour of the capture flow (tips on the first visit and a "Show tour" link) is off unless this is true (camera#356). */
   tourEnabled?: boolean;

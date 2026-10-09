@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-09T06:28:20+00:00",
+  "generated": "2026-10-09T06:48:13+00:00",
   "repo": "camera",
-  "head": "84a57f4",
+  "head": "646d7fc",
   "counts": {
-   "endpoints": 132,
+   "endpoints": 133,
    "collections": 8,
    "env": 59,
    "outbound-hosts": 30,
@@ -106,6 +106,19 @@
     "PUT"
    ],
    "file": "app/api/admin/events/[id]/frame-design/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/events/[id]/frame-selection",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/admin/events/[id]/frame-selection/route.ts",
    "auth_markers": [
     "requireAuth",
     "withErrorHandler"
