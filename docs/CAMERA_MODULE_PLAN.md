@@ -11,6 +11,8 @@
 4. The back camera opens first; the default must be the front camera.
 5. No way to choose between all lenses.
 
+> **Update 2026-10-09 (owner):** on a phone the page now opens the device's own camera app (camera#257), where the user changes between all the cameras. The "Use the back camera" button, the front/back switch of the live camera and their texts and tour step are **removed** from the page and the system; this plan's lens items (5 above and the switch described below) are obsolete.
+
 ## Owner decisions (2026-10-06)
 
 - The default camera is the **front camera, globally** (no per-event setting, no remembered choice).

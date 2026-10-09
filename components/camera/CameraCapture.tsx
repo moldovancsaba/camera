@@ -6,7 +6,7 @@
  * 
  * Features:
  * - Camera permission handling
- * - Front/back camera selection on mobile
+ * - The front camera (no switch to another: the device's own camera app does that on a phone)
  * - Photo capture with preview
  * - Error handling and user feedback
  * - Responsive design for all devices
@@ -55,6 +55,7 @@ import {
   sendCameraDiagnostic,
 } from '@/lib/camera/diagnostics-client';
 import { captureFullFrame, type FullFrameCapture } from '@/lib/camera/frame-capture';
+import type { FacingModeValue } from '@/lib/camera/constraints';
 import { aspectsAgree, fullFrameFromBlob, takeStillBlob } from '@/lib/camera/still-capture';
 import { fillCropRect, toFractionRect } from '@/lib/camera/reframe';
 import { sampleVideoLumaStats, waitForVideoFrame } from '@/lib/camera/video-frame';
@@ -68,6 +69,9 @@ function capturePromptBackground(fill: string): string {
   }
   return `linear-gradient(to bottom right, ${t}dd, ${t}aa)`;
 }
+
+/** The camera that opens: the front camera, for everyone (owner decision 2026-10-06). There is no switch to another: the device's own camera app does that on a phone (owner, 2026-10-09). */
+const FACING: FacingModeValue = 'user';
 
 export interface CameraCaptureProps {
   /**
@@ -83,8 +87,6 @@ export interface CameraCaptureProps {
   captureButtonBorderColor?: string; // Hex or CSS `var(--token)` for capture button border
   promptTitle?: string;  // Custom title for camera start prompt
   promptDescription?: string; // Custom description for camera start prompt
-  /** Camera facing when capture opens. Defaults to the front camera for everyone (owner decision 2026-10-06). */
-  initialFacingMode?: 'user' | 'environment';
   /**
    * When set (e.g. `9/16`), the frame's aspect ratio for the guide drawn over the live view,
    * even if `frameWidth`/`frameHeight` from the DB are wrong (e.g. legacy 1920×1080 defaults).
@@ -92,8 +94,8 @@ export interface CameraCaptureProps {
    */
   previewAspectWidthOverHeight?: number;
   /**
-   * Bottom triple bar: Cancel (left), Take (center), Change camera (right) using GDS buttons.
-   * When set, ignores orientation-based floating capture/switch positions.
+   * Bottom triple bar: Cancel (left), Take (center) using GDS buttons.
+   * When set, ignores orientation-based floating capture positions.
    */
   controlBar?: 'default' | 'bottom-triple';
   /** Used with `controlBar="bottom-triple"` for the left Cancel action. */
@@ -130,7 +132,6 @@ export default function CameraCapture({
   captureButtonBorderColor = CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   promptTitle: promptTitleProp,
   promptDescription: promptDescriptionProp,
-  initialFacingMode = 'user',
   previewAspectWidthOverHeight,
   controlBar = 'default',
   onCancel,
@@ -147,8 +148,6 @@ export default function CameraCapture({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(autoStart);
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>(initialFacingMode);
-  const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   // Width over height of the camera's own image, known once the video reports its size.
   const [cameraAspect, setCameraAspect] = useState<number | null>(null);
@@ -167,7 +166,6 @@ export default function CameraCapture({
   const autoStartAttemptedRef = useRef(false);
   const sampleCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const capturingRef = useRef(false);
-  const facingModeRef = useRef<'user' | 'environment'>(initialFacingMode);
   // WHAT: in-memory bookkeeping for the anonymous capture diagnostics (camera#204). Never persisted.
   const diagRef = useRef({
     session: '',
@@ -190,7 +188,7 @@ export default function CameraCapture({
         kind,
         session: diag.session,
         testRun: cameraTestLabel(),
-        facingMode: facingModeRef.current,
+        facingMode: FACING,
         deviceCount: diag.deviceCount,
         page: pageDiagnosticFields(),
         ...fields,
@@ -238,7 +236,7 @@ export default function CameraCapture({
   // A phone with a square sensor keeps the shape that was asked for at start, so a portrait picture stays portrait after
   // the phone is turned to landscape: if that holds for 0.7 s the camera is asked again for the window's shape, once per
   // turn (never in a loop when the device cannot give it).
-  const startCameraRef = useRef<(facing?: 'user' | 'environment') => Promise<void>>(async () => {});
+  const startCameraRef = useRef<() => Promise<void>>(async () => {});
   const mismatchRef = useRef<{ since: number; shape: StreamShape } | null>(null);
   const askedForRef = useRef<StreamShape | null>(null);
   useEffect(() => {
@@ -266,7 +264,7 @@ export default function CameraCapture({
         } else if (now - mismatchRef.current.since >= 700) {
           askedForRef.current = wanted;
           mismatchRef.current = null;
-          void startCameraRef.current(facingModeRef.current);
+          void startCameraRef.current();
         }
       }
     };
@@ -322,55 +320,31 @@ export default function CameraCapture({
   }, []);
 
   /**
-   * Check if device has multiple cameras
-   * Used to show camera switch button
+   * The number of cameras the device lists, for the anonymous diagnostics only. There is no control to switch between them: on a phone the
+   * device's own camera app does that (SystemCameraCapture), and a front/back switch in the page is obsolete (owner, 2026-10-09).
    */
   useEffect(() => {
-    const checkCameras = async () => {
+    const countCameras = async () => {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(device => device.kind === 'videoinput');
-        // Always show camera selector if more than 1 camera available
-        diagRef.current.deviceCount = videoDevices.length;
-        setHasMultipleCameras(videoDevices.length > 1);
+        diagRef.current.deviceCount = devices.filter((device) => device.kind === 'videoinput').length;
       } catch (err) {
         console.error('Error checking cameras:', err);
       }
     };
-
-    checkCameras();
-  }, []);
-
-  /**
-   * Re-check cameras when stream changes
-   */
-  useEffect(() => {
-    if (stream) {
-      const checkCameras = async () => {
-        try {
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          const videoDevices = devices.filter(device => device.kind === 'videoinput');
-          diagRef.current.deviceCount = videoDevices.length;
-          setHasMultipleCameras(videoDevices.length > 1);
-        } catch (err) {
-          console.error('Error checking cameras:', err);
-        }
-      };
-      checkCameras();
-    }
+    void countCameras();
   }, [stream]);
 
   /**
    * Start camera stream with specified constraints
    */
-  const startCamera = async (facing: 'user' | 'environment' = facingMode) => {
+  const startCamera = async () => {
     const requestId = ++startRequestRef.current;
     setIsLoading(true);
     setError(null);
     setCapturedImage(null);
     setIsShutterReady(false);
     setCaptureNotice(null);
-    facingModeRef.current = facing;
     diagRef.current.requestedAt = performance.now();
     diagRef.current.firstFrameAt = 0;
     diagRef.current.unlockedAt = 0;
@@ -393,7 +367,7 @@ export default function CameraCapture({
       // facingMode is always an ideal, so no user-agent sniffing decides whether to send it,
       // and there is no aspectRatio constraint the browser could crop the frame for.
       const chain = buildVideoConstraintChain({
-        facing,
+        facing: FACING,
         portrait: window.innerHeight >= window.innerWidth,
         touchPrimary: detectTouchPrimaryDevice(),
       });
@@ -440,7 +414,6 @@ export default function CameraCapture({
           }
         : undefined;
 
-      setFacingMode(facing);
       setStream(mediaStream);
       
     } catch (err) {
@@ -497,17 +470,6 @@ export default function CameraCapture({
   }, []);
 
   /**
-   * Switch between front and back camera (mobile)
-   */
-  const switchCamera = () => {
-    if (isLoading) {
-      return;
-    }
-    const newFacing = facingMode === 'user' ? 'environment' : 'user';
-    void startCamera(newFacing);
-  };
-
-  /**
    * Capture a photo from the video stream. The shutter is only enabled once a frame has been
    * presented and the camera has warmed up; each tap waits for a fresh frame, rejects a
    * near-black flat one (sampled brightness, see capture-policy.ts) and tries at most
@@ -542,7 +504,7 @@ export default function CameraCapture({
       if (stillCapture && track && video.videoWidth > 0 && video.videoHeight > 0) {
         try {
           const blob = await takeStillBlob(track);
-          const captured = await fullFrameFromBlob(blob, canvas, { facingMode: facingModeRef.current, mirrored: facingModeRef.current === 'user', method: 'still' });
+          const captured = await fullFrameFromBlob(blob, canvas, { facingMode: FACING, mirrored: true, method: 'still' });
           if (!captured) throw new Error('The photo could not be opened');
           if (!aspectsAgree(captured.width / captured.height, video.videoWidth / video.videoHeight)) {
             throw new Error(`The photo is ${captured.width}x${captured.height}, not the shape of the live view`);
@@ -599,7 +561,7 @@ export default function CameraCapture({
             return 'retry';
           }
 
-          const captured = await captureFullFrame(video, canvas, facingModeRef.current);
+          const captured = await captureFullFrame(video, canvas, FACING);
           if (!captured) {
             encodeFailures += 1;
             return 'retry';
@@ -647,7 +609,7 @@ export default function CameraCapture({
    */
   const retake = () => {
     setCapturedImage(null);
-    startCamera(facingMode);
+    void startCamera();
   };
 
   useEffect(() => {
@@ -657,12 +619,12 @@ export default function CameraCapture({
 
     autoStartAttemptedRef.current = true;
     const timer = window.setTimeout(() => {
-      void startCamera(facingMode);
+      void startCamera();
     }, 0);
     return () => window.clearTimeout(timer);
     // startCamera is intentionally omitted: auto-start runs once per mount via autoStartAttemptedRef.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart, facingMode]);
+  }, [autoStart]);
 
   /**
    * Calculate the stage size: the camera's own aspect ratio, so the whole camera image is
@@ -919,7 +881,7 @@ export default function CameraCapture({
               muted
               className="w-full h-full object-contain"
               style={{
-                transform: facingMode === 'user' ? 'scaleX(-1)' : 'none'
+                transform: 'scaleX(-1)'
               }}
             />
 
@@ -981,7 +943,7 @@ export default function CameraCapture({
                     type="button"
                     variant="light"
                     size={buttonSize}
-                    onClick={() => startCamera(facingMode)}
+                    onClick={() => void startCamera()}
                   >
                     {t('camera.tryAgain')}
                   </Button>
@@ -992,7 +954,7 @@ export default function CameraCapture({
             {/* Start Camera Prompt */}
             {!stream && !isLoading && !error && (
               <button
-                onClick={() => startCamera(facingMode)}
+                onClick={() => void startCamera()}
                 className="absolute inset-0 flex items-center justify-center p-3 md:p-4 w-full h-full cursor-pointer transition-all z-30"
                 style={{
                   background: capturePromptBackground(captureButtonColor),
@@ -1054,22 +1016,7 @@ export default function CameraCapture({
                   {t('camera.take')}
                 </Button>
               </div>
-              <div className="justify-self-end">
-                {hasMultipleCameras ? (
-                  <Button
-                    type="button"
-                    variant="light"
-                    size={buttonSize}
-                    radius="md"
-                    onClick={() => switchCamera()}
-                    disabled={isLoading}
-                  >
-                    {t('camera.changeCamera')}
-                  </Button>
-                ) : (
-                  <span />
-                )}
-              </div>
+              <div className="justify-self-end" />
             </div>
           ) : null}
         </div>
@@ -1125,31 +1072,6 @@ export default function CameraCapture({
             <div className="h-full w-full rounded-full" style={{ backgroundColor: captureButtonColor }} />
           </button>
 
-          {hasMultipleCameras && (
-            <button
-              type="button"
-              onClick={switchCamera}
-              className={`fixed z-50 flex h-12 w-12 items-center justify-center rounded-full  shadow-lg  ${
-                orientation === 'portrait'
-                  ? 'bottom-[max(1rem,var(--gds-safe-area-inset-bottom))] right-[max(1rem,var(--gds-safe-area-inset-right))]'
-                  : orientation === 'landscape-right'
-                    ? 'bottom-[max(1rem,var(--gds-safe-area-inset-bottom))] right-[max(1rem,var(--gds-safe-area-inset-right))]'
-                    : 'bottom-[max(1rem,var(--gds-safe-area-inset-bottom))] left-[max(1rem,var(--gds-safe-area-inset-left))]'
-              }`}
-              aria-label={t('camera.switch.aria')}
-              data-tour-id="capture-switch-camera"
-              disabled={isLoading}
-            >
-              <svg className="h-6 w-6 " fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-            </button>
-          )}
         </>
       )}
 

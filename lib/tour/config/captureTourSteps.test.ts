@@ -8,11 +8,11 @@ test('on a touch device the photo tour points at the Take photo button, not at a
   assert.equal(steps[0].targetSelector, '[data-tour-id="capture-take-photo"]');
 });
 
-test('with a live camera the tour keeps the shutter and the camera switch, and a frame step when there are several frames', () => {
+test('with a live camera the tour is the shutter, and a frame step when there are several frames; there is no camera switch to point at', () => {
   for (const method of [undefined, null, 'still', 'frame'] as const) {
-    assert.deepEqual(getCapturePhotoSteps({ hasMultipleFrames: false, method }).map((s) => s.id), ['capture-shutter', 'capture-switch-camera']);
+    assert.deepEqual(getCapturePhotoSteps({ hasMultipleFrames: false, method }).map((s) => s.id), ['capture-shutter']);
   }
-  assert.deepEqual(getCapturePhotoSteps({ hasMultipleFrames: true, method: 'frame' }).map((s) => s.id), ['capture-shutter', 'capture-switch-camera', 'capture-change-frame']);
+  assert.deepEqual(getCapturePhotoSteps({ hasMultipleFrames: true, method: 'frame' }).map((s) => s.id), ['capture-shutter', 'capture-change-frame']);
   assert.deepEqual(getCapturePhotoSteps({ hasMultipleFrames: true, method: 'system' }).map((s) => s.id), ['capture-take-photo', 'capture-change-frame']);
 });
 

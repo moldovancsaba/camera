@@ -16,6 +16,20 @@ const EventThemeContext = createContext<EventTheme | null>(null);
 export const useEventTheme = (): EventTheme | null => useContext(EventThemeContext);
 
 export default function EventThemeScope({ theme, children }: { theme: EventTheme; children: ReactNode }) {
+  // The theme's variables are also set on the document, so what Mantine draws at the root of the page (the notices of the capture flow) is in the event's colours too.
+  useEffect(() => {
+    const root = document.documentElement;
+    const variables = themeVariables(theme);
+    const before = Object.keys(variables).map((name) => [name, root.style.getPropertyValue(name)] as const);
+    for (const [name, value] of Object.entries(variables)) root.style.setProperty(name, value);
+    return () => {
+      for (const [name, value] of before) {
+        if (value) root.style.setProperty(name, value);
+        else root.style.removeProperty(name);
+      }
+    };
+  }, [theme]);
+
   useEffect(() => {
     const body = document.body;
     const previous = body.style.backgroundColor;

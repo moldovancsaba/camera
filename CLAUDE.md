@@ -235,6 +235,7 @@ the design off (#317), because each was "fixed" from a desktop check. The rules,
   emulation. Check the DOM (no ancestor between the page and the document paints a colour other than the page colour: print the chain of `background-color`
   from the page element up to `html`) and then say plainly that it is not confirmed on a phone until the owner's phone screenshot (or a working iOS
   Simulator) shows it. Close the ticket only after that.
+- **No black veil, no unthemed message (owner, 2026-10-09, MTK x Vasas):** the waiting card was drawn over a black 55 % blurred veil that turned the event's bright blue into dark teal, the saving text lay straight on the photo, and a notice repeated the card's words. A veil is the event's page colour (`color-mix(in srgb, var(--event-bg) 80%, transparent)`), a message that stays is a card of the event, a short one is a notice drawn in the same card style, and the same words are never shown twice (`docs/CAPTURE_MESSAGES.md`; `components/capture/no-black-veil.test.ts` guards it).
 - The regression test is `components/theme/EventThemeScope.test.tsx`; the explanation is in `docs/WELCOME_STEP.md` ("The colour behind the page on a phone").
 
 ## 8. Never write test data into production messmass (owner directive 2026-10-07)

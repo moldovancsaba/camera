@@ -39,6 +39,8 @@ export function approvalTexts(settings: ApprovalTextSettings | null | undefined,
   return {
     previewNotice: textOr(language, 'approval.previewNotice', settings?.pendingPreviewNotice, undefined, texts),
     savedMessage: textOr(language, 'approval.saved', settings?.pendingSavedMessage, undefined, texts),
+    // True only when an editor wrote their own saved message: the standard one says what the card on the screen already says, so it is not shown as a notice on top of it.
+    savedMessageIsOwn: textOr(language, 'approval.saved', settings?.pendingSavedMessage, undefined, texts) !== translate(language, 'approval.saved', undefined, texts),
     title: textOr(language, 'approval.title', settings?.pendingTitle, undefined, texts),
     waitingMessage: ownIsDefault && tryOnChosen ? `${own}${translate(language, 'approval.tryOn', undefined, texts)}` : own,
   };

@@ -14,6 +14,7 @@ test('without settings the four approval texts are the texts the code always sho
     savedMessage: 'Thank you! Your photo is waiting for approval.',
     title: 'Thank you!',
     waitingMessage: 'Your photo is waiting for approval. We will email you the link to it as soon as it is approved.',
+    savedMessageIsOwn: false,
   });
   assert.deepEqual(approvalTexts({}, false), approvalTexts(undefined, false));
 });
@@ -52,4 +53,12 @@ test('a wording written for the partner or the event replaces the dictionary tex
   assert.equal(approvalTexts({ pendingTitle: 'Own title' }, false, 'en', texts).title, 'Own title');
   assert.equal(approvalTexts(undefined, false, 'en', texts).savedMessage, DEFAULT_APPROVAL_TEXTS.savedMessage, 'a text with no wording is the dictionary one');
   assert.equal(approvalTexts(undefined, false, 'en', null).title, DEFAULT_APPROVAL_TEXTS.title);
+});
+
+test('the standard saved message is not an extra notice, one an editor wrote is', () => {
+  assert.equal(approvalTexts(undefined, false, 'en').savedMessageIsOwn, false);
+  assert.equal(approvalTexts({ pendingSavedMessage: DEFAULT_APPROVAL_TEXTS.savedMessage }, false, 'en').savedMessageIsOwn, false, 'the editor saved the standard text as it was');
+  assert.equal(approvalTexts({ pendingSavedMessage: 'Köszi, megvan!' }, false, 'en').savedMessageIsOwn, true);
+  assert.equal(approvalTexts({ pendingSavedMessage: DEFAULT_APPROVAL_TEXTS.savedMessage }, false, 'hu').savedMessageIsOwn, false, 'in Hungarian a stored English default counts as not set');
+  assert.equal(approvalTexts(undefined, false, 'hu', { 'approval.saved': 'Elmentettük' }).savedMessageIsOwn, false, 'a wording of a level is a default too, not an editor\'s own text on the page');
 });

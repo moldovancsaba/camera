@@ -182,6 +182,34 @@ export const EVENT_THEME_CSS = `
 .event-theme .mantine-SegmentedControl-label[data-active] {
   color: var(--event-button-text) !important;
 }
+/* An alert inside a themed page (the try-on status, an error on a page) is a card of the event too, not Mantine's blue or yellow box. */
+.event-theme .mantine-Alert-root {
+  --alert-bg: var(--event-card-bg);
+  --alert-color: var(--event-card-text);
+  --alert-bd: 1px solid var(--event-card-border);
+  background: var(--event-card-bg);
+  color: var(--event-card-text);
+  border: 1px solid var(--event-card-border);
+  border-radius: var(--event-radius);
+}
+/* The notices of the capture flow (components/capture/notify.ts) are drawn by Mantine at the root of the page, outside the wrapper, so the theme's variables are also set on the
+   document while a themed page is shown (EventThemeScope). They are cards of the event like every other message: its card colours, text, radius and font, not a white box of
+   another style. The tone stays as the thin bar at the edge. */
+.mantine-Notification-root {
+  background: var(--event-card-bg);
+  color: var(--event-card-text);
+  border: 1px solid var(--event-card-border);
+  border-radius: var(--event-radius);
+  font-family: var(--event-font);
+  --mantine-color-text: var(--event-card-text);
+  --mantine-color-dimmed: var(--event-card-muted);
+}
+.mantine-Notification-description {
+  color: var(--event-card-text);
+}
+.mantine-Notification-closeButton {
+  color: var(--event-card-muted);
+}
 /* A ticked checkbox takes the event's button colours, not the default purple (the consent page is the first page every user sees). */
 .event-theme .mantine-Checkbox-root {
   --checkbox-color: var(--event-button-bg) !important;

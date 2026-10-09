@@ -21,6 +21,7 @@ import CameraCapture from '@/components/camera/CameraCapture';
 import AppShellLock from '@/components/capture/AppShellLock';
 import { clearCaptureNotices, notifyCapture } from '@/components/capture/notify';
 import ShareOverlay from '@/components/capture/ShareOverlay';
+import ProcessingOverlay from '@/components/capture/ProcessingOverlay';
 import PendingPhotoPreview from '@/components/capture/PendingPhotoPreview';
 import TourOverlay from '@/components/tour/TourOverlay';
 import TourReplayButton from '@/components/tour/TourReplayButton';
@@ -170,7 +171,7 @@ interface SubmissionEmailMetadata {
 // The actions beside or below the preview image. The options scroll inside the panel; the buttons stay
 // pinned, so a tall try-on selector never pushes them off screen (camera#222).
 const PREVIEW_PANEL_CLASS =
-  'flex w-full max-w-md min-h-0 shrink flex-col gap-2 px-3 landscape:h-full landscape:w-[22rem] landscape:max-w-[45%] landscape:shrink-0 landscape:justify-center';
+  'flex w-full max-w-md min-h-0 shrink flex-col gap-2 overflow-y-auto px-3 [&>:first-child]:my-auto landscape:h-full landscape:w-[22rem] landscape:max-w-[45%] landscape:shrink-0';
 
 function getErrorMessage(error: unknown, language: UiLanguage): string {
   return error instanceof Error ? error.message : translate(language, 'flow.unexpectedError');
@@ -337,6 +338,7 @@ export default function EventCapturePage({
   const {
     previewNotice: pendingPreviewNotice,
     savedMessage: pendingSavedMessage,
+    savedMessageIsOwn: pendingSavedMessageIsOwn,
     title: pendingTitle,
     waitingMessage: pendingWaitingMessage,
   } = approvalTexts(takePhotoConfig, Boolean(selectedTryOnSuitId), language, uiTexts);
@@ -904,7 +906,9 @@ export default function EventCapturePage({
         setPendingApproval(true);
         setTryOnResult(null);
         setStep('preview');
-        notifyCapture('success', pendingSavedMessage);
+        // The card on the preview step already says the photo waits (its title and its text), so the standard saved message is not shown on top of it: it ran into the card.
+        // A saved message an editor wrote is their own choice and is still shown.
+        if (pendingSavedMessageIsOwn) notifyCapture('success', pendingSavedMessage);
         return;
       }
       const emailNotice = buildEmailDeliveryNotice(data.data?.submission?.metadata, language);
@@ -1400,7 +1404,8 @@ export default function EventCapturePage({
       ) : null}
       {signInError && (
         <div
-          className="flex-shrink-0 z-50 mx-3 mt-3 rounded-lg border   px-3 py-2 text-sm  shadow-md    landscape:mx-2 landscape:mt-2"
+          data-event-card
+          className="flex-shrink-0 z-50 mx-3 mt-3 border px-3 py-2 text-sm shadow-md landscape:mx-2 landscape:mt-2"
           role="alert"
         >
           <div className="flex items-start justify-between gap-2">
@@ -1703,6 +1708,7 @@ export default function EventCapturePage({
                     onNext={handleMoveToThankYou}
                     showShareActions={false}
                     stageStatus="complete"
+                    overlay={false}
                   />
                 </div>
               )}
@@ -1722,6 +1728,7 @@ export default function EventCapturePage({
                     onCopyLink={handleCopyLink}
                     onShareSocial={handleShareSocial}
                     onNext={handleMoveToThankYou}
+                    overlay={false}
                   />
                   {tourEnabled ? (
                     <div className="mt-2 flex justify-center">
@@ -1742,6 +1749,7 @@ export default function EventCapturePage({
                     completionMessage={skipShareMessage}
                     onNext={handleMoveToThankYou}
                     showShareActions={false}
+                    overlay={false}
                   />
                 </div>
               )}
@@ -1751,25 +1759,13 @@ export default function EventCapturePage({
 
       </div>
 
-      {/* Processing Overlay */}
+      {/* Processing: one card in the colours of the event over a veil in its page colour (components/capture/ProcessingOverlay.tsx) */}
       {(isProcessing || isSaving) && (
-        <div className="fixed inset-0  flex items-center justify-center z-50">
-          <div className="  rounded-lg p-8 text-center">
-            {event?.showLogo && event?.logoUrl ? (
-              <Image
-                src={event.logoUrl}
-                alt={t('common.eventLogo')}
-                width={96}
-                height={96}
-                unoptimized
-                className="mx-auto mb-4 animate-pulse object-contain"
-              />
-            ) : null}
-            <p className="  font-medium">
-              {isSaving ? t('flow.overlay.saving') : vetted ? t('flow.overlay.preparing') : t('flow.overlay.frame')}
-            </p>
-          </div>
-        </div>
+        <ProcessingOverlay
+          message={isSaving ? t('flow.overlay.saving') : vetted ? t('flow.overlay.preparing') : t('flow.overlay.frame')}
+          logoUrl={event?.showLogo && event?.logoUrl ? event.logoUrl : null}
+          logoAlt={t('common.eventLogo')}
+        />
       )}
     </div>
   );
