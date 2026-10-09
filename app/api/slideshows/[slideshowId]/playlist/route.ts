@@ -27,6 +27,7 @@ import { submissionEventIdKeys } from '@/lib/slideshow/submission-event-keys';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
 import type { Event } from '@/lib/db/schemas';
+import { EXCLUDE_CAP } from '@/lib/slideshow/queue';
 import {
   SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
   SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY,
@@ -195,7 +196,8 @@ export async function GET(
     const { searchParams } = request.nextUrl;
     const limitParam = searchParams.get('limit');
     const excludeParam = searchParams.get('exclude');
-    const excludeIds = excludeParam ? excludeParam.split(',').filter(id => id.trim()) : [];
+    // The player sends the ids of its whole queue (at most 51); a longer list is cut so a crafted URL cannot make the query heavy.
+    const excludeIds = excludeParam ? excludeParam.split(',').filter(id => id.trim()).slice(0, EXCLUDE_CAP) : [];
     const rawInstanceKey = searchParams.get('instanceKey')?.trim() ?? '';
     const instanceKey =
       rawInstanceKey.length > 256 ? rawInstanceKey.slice(0, 256) : rawInstanceKey;
