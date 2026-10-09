@@ -154,7 +154,7 @@ Behavior:
 
 The player is used in:
 
-- fullscreen slideshow pages
+- fullscreen slideshow pages. A full-screen page has a **Full screen button in the top-right corner** (shown when the page opens and whenever the pointer moves or the screen is touched, faded after 3 s), **double-click** on the picture toggles full screen like a video, and the **F** key does too (camera#487); a browser without a page full screen (iPhone Safari) shows no button
 - embedded layout cells
 
 ## 11. Composite layouts

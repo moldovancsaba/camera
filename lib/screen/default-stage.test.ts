@@ -58,15 +58,39 @@ test('the texts are readable on the panel: white on a dark event, black on a lig
 });
 
 test('every part sits inside the stage and the parts do not overlap each other', () => {
-  const { window, qr, qrText, urlText } = DEFAULT_STAGE;
+  const { window, qr, ctaText, urlText } = DEFAULT_STAGE;
   const boxes = {
     window: [window.left, window.top, window.left + window.width, window.top + window.height],
     qr: [qr.x, qr.y, qr.x + qr.size, qr.y + (qr.size * STAGE_WIDTH) / STAGE_HEIGHT],
-    qrText: [qrText.x, qrText.y, qrText.x + qrText.width, qrText.y + qrText.size],
-    urlText: [urlText.x, urlText.y, urlText.x + urlText.width, urlText.y + urlText.size],
+    ctaText: [ctaText.x, ctaText.y, ctaText.x + ctaText.width, ctaText.y + ctaText.size * 1.15],
+    urlText: [urlText.x, urlText.y, urlText.x + urlText.width, urlText.y + urlText.size * 1.15],
   };
   for (const [name, [l, t, r, b]] of Object.entries(boxes)) assert.ok(l >= 0 && t >= 0 && r <= 100 && b <= 100, `${name} is inside the stage`);
   const overlap = (a: number[], b: number[]) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
   const names = Object.keys(boxes) as Array<keyof typeof boxes>;
   for (let i = 0; i < names.length; i += 1) for (let j = i + 1; j < names.length; j += 1) assert.equal(overlap(boxes[names[i]], boxes[names[j]]), false, `${names[i]} and ${names[j]}`);
 });
+
+test('the call to action and the written address are the big text under the photos, one above the other, with the QR code centred in its own panel (issue 487)', () => {
+  const { window, qr, ctaText, urlText } = DEFAULT_STAGE;
+  const windowBottom = window.top + window.height;
+  assert.ok(ctaText.y > windowBottom && urlText.y > ctaText.y + ctaText.size, 'both lines are under the window, the call to action first');
+  assert.equal(ctaText.size, urlText.size, 'the call to action is as big as the address');
+  assert.equal(ctaText.x, window.left);
+  assert.equal(ctaText.width, window.width, 'the band is as wide as the window');
+  const qrHeight = (qr.size * STAGE_WIDTH) / STAGE_HEIGHT;
+  assert.ok(Math.abs(qr.y - (2 + (96 - qrHeight) / 2)) < 0.05, 'the QR code is centred in the panel that spans 2 % to 98 % of the height');
+});
+
+test('the band under the window is painted behind both lines', async () => {
+  const png = renderDefaultOverlay(NAVY);
+  const { ctaText, urlText } = DEFAULT_STAGE;
+  for (const t of [ctaText, urlText]) {
+    const inside = await pixel(png, px(t.x + 1, STAGE_WIDTH), px(t.y + (t.size * 1.15) / 2, STAGE_HEIGHT));
+    assert.equal(inside.a, 255);
+  }
+  const below = await pixel(png, px(10, STAGE_WIDTH), px(urlText.y + urlText.size * 1.15 + 3, STAGE_HEIGHT));
+  const panelPixel = await pixel(png, px(10, STAGE_WIDTH), px(DEFAULT_STAGE.ctaText.y + 1, STAGE_HEIGHT));
+  assert.notDeepEqual([below.r, below.g, below.b], [panelPixel.r, panelPixel.g, panelPixel.b], 'the band ends under the address');
+});
+

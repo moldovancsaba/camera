@@ -24,7 +24,7 @@ import { loadEventTheme } from '@/lib/theme/load';
 /** The name of the tracked link behind the QR code of the default screen, as the event's links list shows it. */
 export const GIANT_SCREEN_PLACEMENT = 'Giant screen';
 
-/** The calls to action the default screen picks from (one is stored per event, so a screen does not change between visits). Each fits the QR panel's width on one line. */
+/** The calls to action the default screen picks from (one is stored per event, so a screen does not change between visits). Each is written big under the photos, on one line (the keys keep their old name `qrText`: the Dictionary stores wordings by key). */
 export const QR_TEXT_KEYS: readonly MessageKey[] = ['screen.qrText.1', 'screen.qrText.2', 'screen.qrText.3', 'screen.qrText.4'];
 
 export interface DefaultSlideshowDeps {
@@ -80,7 +80,7 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
 
   // The language of the event, or of its partner when the event has none (issue 353).
   const language = normalizeUiLanguage((await withEffectiveLanguage(db, event)).uiLanguage);
-  const { window, qr, qrText, urlText } = DEFAULT_STAGE;
+  const { window, qr, ctaText, urlText } = DEFAULT_STAGE;
   const now = deps.now();
   const slideshowId = generateId();
   await db.collection(COLLECTIONS.SLIDESHOWS).insertOne({
@@ -107,7 +107,7 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
       photoFit: 'cover',
       qr: { url: `${origin}/${slug}`, x: qr.x, y: qr.y, size: qr.size, color: palette.qr },
       texts: [
-        { text: translate(language, QR_TEXT_KEYS[deps.pickIndex(QR_TEXT_KEYS.length)]), x: qrText.x, y: qrText.y, width: qrText.width, size: qrText.size, align: 'center', color: palette.text },
+        { text: translate(language, QR_TEXT_KEYS[deps.pickIndex(QR_TEXT_KEYS.length)]), x: ctaText.x, y: ctaText.y, width: ctaText.width, size: ctaText.size, align: 'center', color: palette.text },
         { text: written(origin, slug), x: urlText.x, y: urlText.y, width: urlText.width, size: urlText.size, align: 'center', color: palette.text },
       ],
     },
