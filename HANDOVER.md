@@ -1,12 +1,23 @@
 # Handover
 
 **Version**: 12.3.40
-**Last Updated**: 2026-10-06
+**Last Updated**: 2026-10-09
 
 `RELEASE_NOTES.md` is kept current on every release and is the detailed record;
 this file is the short current-state summary. Previous rewrite: 2026-08-17
 (v2.23.0 era); everything from v12.2.0 to v12.3.37 is in `RELEASE_NOTES.md`.
 Open work is tracked on the GitHub project board, not in this file (next section).
+
+## Status 2026-10-09
+
+The board ([#24](https://github.com/users/moldovancsaba/projects/24)) is the single source of truth for open work and its status; this section only says where the decisions and the code are.
+
+- **The brick model (epic [#412](https://github.com/moldovancsaba/camera/issues/412), owner decisions of 2026-10-09):** every element an event needs is one of five bricks (Words, Picture, Look, Link, Switch) or a composition of them, chosen **at the place of use**, the default by default; the options are use the default, upload, select from the parent's library, replace, add more; one item is used, several are picked at random; a level stores only what the editor set (no copies), the parent's value is the children's default, a new messmass logo replaces the imported default and goes down. Reference: `docs/BUILDING_BRICKS.md` (model, mandatory pages, recipes, editor re-organisation, the order of 139 in ten steps). The 477-element inventory it rests on: `docs/ELEMENT_INVENTORY.md` with the records in `docs/_research/element-inventory/`.
+- **Delivered:** the research (#413), the first form of the messmass logo default (#414, to be replaced by step 4), the repair of 213 undefined design tokens and a gate against them (#416, issue #415), the journey view in the page editor (#420, issue #378, described in `docs/JOURNEY_DEFAULT_PAGES.md`), the slot resolver `lib/slots/resolve.ts` (#422, issue #418).
+- **Next, in order:** the shared admin kit and the slot panel (#418), the logo on the slot mechanism (#419), the fail-safe gate (#421: a deleted or lost parent item is still kept by the children), pictures, text levels (#353), the default slideshow (#326, #328), the welcome page screen (#327), toggles (#329, #331), the editor workspaces. A default welcome page is not added yet.
+- **Not done on purpose:** the logo collect for the 190 existing partners has not run (it would use the old model); the owner has not yet looked at the admin screens after the token repair or at the journey view on a real event (acceptance of #415 and #378).
+- **Findings to remember:** the GDS role tokens declared with `light-dark()` (`--gds-border-card`, `--gds-text-meta`, `--gds-bg-*`) do not resolve in the production build (Lightning CSS turns them into variables nothing defines), so admin code uses `--mantine-*` tokens and `scripts/check-gds-boundaries.mjs` refuses an undefined `--gds-*` name or a `light-dark()` role token (`gds_fix_handover.md`, update of 2026-10-09). To be reported to GDS (not done: another repository).
+- **Working rules that cost time:** a worktree directory must not be named `tokens` or `theme` (the GDS colour rule skips such paths, so a local run hides what CI reports; see `CLAUDE.md` section 5); issue numbers in script comments are written `issue 123`, not `#123`.
 
 ## Status 2026-10-06
 

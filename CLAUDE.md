@@ -193,6 +193,12 @@ any auth code here:
   `localhost`/`127.0.0.1`) needs the proxy passed explicitly —
   `chromium.launch({ proxy: { server: process.env.HTTPS_PROXY } })` — `curl` picks
   up `HTTPS_PROXY` automatically but Chromium does not.
+- **A worktree directory must not be named `tokens` or `theme`:** the GDS compliance check skips its raw-colour rule for any path that contains `/tokens/`
+  or `/theme/`, so a local `release:check` passes where CI fails (camera#416: `#415` written in a script comment was read as a hex colour). Write issue
+  numbers in source comments as `issue 415`, and name worktrees something else.
+- **Colours in admin code come from `--mantine-*` tokens, not from `--gds-*` role tokens** (`--gds-border-card`, `--gds-text-meta`, `--gds-bg-*` are declared with
+  `light-dark()`, which the production build turns into an invalid value; `gds_fix_handover.md`, update of 2026-10-09). `scripts/check-gds-boundaries.mjs`
+  fails on an undefined `--gds-*` name or a `light-dark()` role token.
 - Vercel preview deployments sit behind Vercel's own deployment-protection SSO gate
   by default (`vercel.com/sso-api` redirect) — a `net::ERR_CONNECTION_RESET` or a
   `302` to `vercel.com/sso-api` when hitting a preview URL is that gate, not an app

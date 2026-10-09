@@ -1,5 +1,10 @@
 # RELEASE_NOTES.md
 
+## Unreleased — handover and working rules brought up to date (docs only, 2026-10-09)
+
+- **Changed (docs only):** `HANDOVER.md` has a current-state section for 2026-10-09 (the brick model and where its documents are, what was delivered, the order of what is next, what was left undone on purpose, the findings to remember); `CLAUDE.md` section 5 gains two rules that cost time (a worktree directory must not be named `tokens` or `theme`; admin colours come from `--mantine-*` tokens). The board stays the single source of truth for open work.
+- **Verified:** nothing in the product changed.
+
 ## Unreleased — the slot resolver: the one mechanism behind every element (camera#418, step 3a of the order of 139; docs and code, nothing uses it yet)
 
 - **Added:** `lib/slots/resolve.ts`, pure and unit-tested: what a level stores for a slot is only what the editor set (own items and whether the default is used next to them), and `resolveSlot` gives what is used at a level from the chain above it: **use the default** (nothing stored), **add more** (own items next to the default), **replace** (own items only), **none**; own items first, an item held by two levels is used once; `pickRandom` (one item as it is, several at random); `lookUp` keeps an id the library no longer has in the list, marked missing, instead of dropping it, which is the hook of the fail-safe gate (camera#421, owner requirement of 2026-10-09: a deleted or lost parent item is still kept by the children). Owner model and confirmations: `docs/BUILDING_BRICKS.md`.
