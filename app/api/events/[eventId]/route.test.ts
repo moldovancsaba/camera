@@ -31,7 +31,7 @@ interface Harness {
 
 function mockDeps(
   t: TestContext,
-  options: { event: Record<string, unknown>; session?: Record<string, unknown> | null; partnerAllowed?: boolean }
+  options: { event: Record<string, unknown>; session?: Record<string, unknown> | null; partnerAllowed?: boolean; partner?: Record<string, unknown> }
 ): Harness {
   const h: Harness = { updates: [] };
   const event = { _id: new ObjectId(EVENT_ID), isActive: true, ...options.event };
@@ -55,8 +55,8 @@ function mockDeps(
   t.mock.module('@/lib/db/mongodb', {
     namedExports: {
       connectToDatabase: async () => ({
-        collection: () => ({
-          findOne: async () => event,
+        collection: (name: string) => ({
+          findOne: async () => (name === 'partners' && options.partner ? options.partner : event),
           find: () => ({ toArray: async () => [] }),
           updateOne: async (_filter: unknown, update: { $set: Record<string, unknown> }) => {
             h.updates.push(update.$set);
@@ -360,4 +360,27 @@ test('PATCH: the frame message choice is stored only as "user"; random and an em
   assert.equal((await PATCH(patchRequest({ loadingText: 'Hello' }), params)).status, 200);
   assert.equal('frameChoice' in h.updates[3], false);
   assert.equal(h.updates.length, 4, 'a refused value writes nothing');
+});
+
+test('GET as a guest: a picture field a page left empty shows the partner\'s default picture, never stored; the editor reads the stored pages; the page\'s own picture wins', async (t) => {
+  mockDeps(t, {
+    event: {
+      photoVetting: { required: false },
+      journeyDefaults: true,
+      partnerId: 'P',
+      customPages: [
+        { pageId: 'w', pageType: 'welcome', order: 0, isActive: true, config: { title: 'Hi', buttonText: 'Go', bottomImageUrl: 'https://img.example/own-left.png' } },
+        { pageId: 'c', pageType: 'cta', order: 1, isActive: true, config: { title: 'Visit', description: '', checkboxText: 'https://x.example', buttonText: 'Go' } },
+      ],
+    },
+    partner: { partnerId: 'P', pictures: { welcomeBackground: 'https://img.example/bg.png', welcomeLeft: 'https://img.example/partner-left.png', ctaBackground: 'https://img.example/cta.png' } },
+  });
+  const { GET } = await importRouteModule('get-partner-pictures');
+  const guest = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { customPages: Array<{ pageId: string; config: Record<string, string> }> } } };
+  const welcome = guest.data.event.customPages.find((p) => p.pageId === 'w')!;
+  assert.equal(welcome.config.backgroundImageUrl, 'https://img.example/bg.png');
+  assert.equal(welcome.config.bottomImageUrl, 'https://img.example/own-left.png', 'the page\'s own picture wins');
+  assert.equal(guest.data.event.customPages.find((p) => p.pageId === 'c')!.config.backgroundImageUrl, 'https://img.example/cta.png');
+  const admin = (await (await GET(getRequest(), params)).json()) as { data: { event: { customPages: Array<{ pageId: string; config: Record<string, string> }> } } };
+  assert.equal(admin.data.event.customPages.find((p) => p.pageId === 'w')!.config.backgroundImageUrl, undefined, 'the editor reads the stored pages');
 });

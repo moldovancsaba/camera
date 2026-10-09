@@ -18,6 +18,10 @@ A level stores **only what an editor wrote**, per language (`{ en: { key: text }
 
 Plain text, at most 500 characters, no `<` or `>` (nothing is ever rendered as markup, e-mails included), and a text that has `{name}` markers keeps **exactly the same markers** as the dictionary text, so a changed wording can never break the place where a value is filled in. The check is the same in the editor (shown under the input), in the routes (400 with the reason) and when a stored value is read (a wording that no longer passes, for example after a key was renamed, is dropped alone; the rest is kept). `lib/i18n/overrides.ts`.
 
+## The language
+
+The language of an event is its own, else its partner's, else English (docs/UI_LANGUAGE.md): the wordings applied are the ones written for that language.
+
 ## The editors
 
 | Level | Page | Menu | Who |
@@ -41,7 +45,8 @@ A `PUT` replaces the level's wordings.
 - **The capture app** (`app/capture/[eventId]/layout.tsx` gives them to `UiLanguageProvider`): every text that goes through `useT()` (`t` and `own`), which is every text of the camera, the frame choice, the reframe step, the login and consent pages, the flow steps and the tour.
 - **The default pages** (welcome, consent, login): built with the wordings in `withDefaultJourneyPages` (the event API passes them) and in the page editor's journey view (`journeyContext.texts`), so the editor sees what the user sees.
 - **The public photo page** (`app/share/[id]`: its headline, labels, buttons, waiting and not-approved notices, the page titles and the link preview texts), the **waiting-for-approval texts** and the **CTA page's "opening" text** (`lib/events/page-texts.ts`, `share-page-settings.ts`: their helpers take the wordings as the last argument).
-- **Not yet:** the e-mail templates, the labels of the try-on pictures on the public photo page, the capture page's own metadata title, and the guided tour still read the code dictionary; they take the same `texts` argument when they are wired (`translate(language, key, values, texts)`, `textOr(..., texts)`). The Dictionary lists their keys already; a wording written for them has no effect until then.
+- **The e-mails to the user** (the standard first e-mail, the updated-photo e-mail, the not-approved e-mail, the button labels and the words around the name and the event): the wordings are the defaults the e-mail falls back to, after a template an editor wrote in the event's e-mail settings (`normalizeSubmissionEmailPolicy(..., language, texts)`, `emailDefaults(language, texts)`; the policy and the sender carry `texts`).
+- **Not yet:** the labels of the try-on pictures on the public photo page and the guided tour still read the code dictionary; they take the same `texts` argument when they are wired (`translate(language, key, values, texts)`, `textOr(..., texts)`). The Dictionary lists their keys already; a wording written for them has no effect until then.
 
 ## What does not change
 

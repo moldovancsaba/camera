@@ -12,7 +12,9 @@ The language of the user interface is a setting of the **event**: `Event.uiLangu
 
 ## Setting it
 
-Event editor, "Customization", "User interface language"; `PATCH /api/events/<id>` with `uiLanguage` (`"hu"`, `"en"`, or empty for the default). `GET /api/events/<id>` returns it.
+Event editor, "Customization", "User interface language"; `PATCH /api/events/<id>` with `uiLanguage` (`"hu"`, `"en"`, or empty). `GET /api/events/<id>` returns it.
+
+**The partner's default language (issue 353, 2026-10-09):** the partner has a **default language** too (`Partner.uiLanguage`, partner editor, "Language of the events"; `PATCH /api/partners/<id>`). An event that **sets no language of its own follows its partner's** every time it is read (nothing is copied down): the event editor's language field has the choice **Same as the partner**, which is what an event that never set a language shows. An event that chose a language keeps it; a partner with none means English. The one function is `eventLanguage(event, partner)` (`lib/i18n/overrides.ts`); the capture app, the event API, the public photo page and the default slideshow read the language through `loadEventTexts` or `withEffectiveLanguage` so they cannot disagree, and the e-mails get it from `resolveEventForSubmission`.
 
 ## What uses the dictionary today
 

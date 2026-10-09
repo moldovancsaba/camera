@@ -14,7 +14,7 @@ import type { Db, Document, WithId } from 'mongodb';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { uploadImage } from '@/lib/imgbb/upload';
 import { logWarn } from '@/lib/observability/logger';
-import { buildEmailMetadataPatch, resolveEventForSubmission, themeOf } from '@/lib/email/submission-result-email';
+import { buildEmailMetadataPatch, resolveEventForSubmission, textsOf, themeOf } from '@/lib/email/submission-result-email';
 import { enqueueTryOnForSubmission, type TryOnEnqueueOutcome } from '@/lib/tryon/enqueue-for-submission';
 import { fetchImageBuffer } from '@/lib/tryon/frame-composition';
 import sharp from 'sharp';
@@ -164,7 +164,7 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
   if (submission.shareToken && submission.metadata?.emailSentAfterSave !== true) {
     const shareUrl = approvedShareUrl(submission.shareToken);
     try {
-      const result = await deps.sendApproved(submission, event, shareUrl, undefined, await themeOf(db, event));
+      const result = await deps.sendApproved(submission, event, shareUrl, undefined, await themeOf(db, event), await textsOf(db, event));
       const patch = buildEmailMetadataPatch('after_save', result, shareUrl);
       email = patch.sent ? 'sent' : patch.shouldRetry ? 'failed' : 'skipped';
       await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id }, { $set: patch.metadataPatch });
@@ -208,7 +208,7 @@ export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor:
   let email: 'sent' | 'skipped' | 'failed' = 'skipped';
   try {
     const event = await resolveEventForSubmission(db, submission).catch(() => null);
-    const result = await deps.sendNotApproved(submission, event, takeAnotherPhotoUrl(String(submission.eventId ?? event?._id ?? '')), undefined, await themeOf(db, event));
+    const result = await deps.sendNotApproved(submission, event, takeAnotherPhotoUrl(String(submission.eventId ?? event?._id ?? '')), undefined, await themeOf(db, event), await textsOf(db, event));
     email = result.sent ? 'sent' : 'skipped' in result && result.skipped ? 'skipped' : 'failed';
     await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id }, { $set: { 'metadata.rejectionEmailSent': result.sent, 'metadata.rejectionEmailAt': at } });
   } catch (error) {

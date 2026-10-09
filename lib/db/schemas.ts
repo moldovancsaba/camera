@@ -143,6 +143,10 @@ export interface Partner {
   
   // Contact and metadata
   contactEmail?: string;             // Partner contact email
+  /** The language of the events of this partner that did not set one themselves (issue 353): they follow it. English when missing. */
+  uiLanguage?: 'en' | 'hu' | null;
+  /** The pictures every event of this partner shows in the picture fields it left empty (lib/events/partner-pictures.ts, issue 368): the plain https address each field stores. */
+  pictures?: Record<string, string>;
   contactName?: string;              // Partner contact person
   logoUrl?: string;                  // Partner logo URL (imgbb.com)
   

@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { FormSection } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
+import { UI_LANGUAGES, UI_LANGUAGE_LABELS, normalizeUiLanguage } from '@/lib/i18n';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -25,6 +26,7 @@ interface PartnerRecord {
   contactEmail?: string;
   contactName?: string;
   isActive?: boolean;
+  uiLanguage?: string | null;
   defaultBrandColors?: {
     primary?: string;
     secondary?: string;
@@ -37,6 +39,7 @@ interface UpdatePartnerPayload {
   contactEmail: string;
   contactName: string;
   isActive: boolean;
+  uiLanguage: string;
   defaultBrandColors?: {
     primary?: string;
     secondary?: string;
@@ -104,6 +107,7 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
       contactEmail: formData.get('contactEmail') as string,
       contactName: formData.get('contactName') as string,
       isActive: formData.get('isActive') === 'on',
+      uiLanguage: normalizeUiLanguage(formData.get('uiLanguage')),
     };
 
     // Only when the colours were touched: null means the partner has none, so its events follow messmass.
@@ -201,6 +205,22 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
             <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
               Contact Email
               <input name="contactEmail" type="email" defaultValue={partner?.contactEmail || ''} placeholder="e.g., contact@partner.com" style={{ minHeight: 44, padding: '0 0.75rem' }} />
+            </label>
+          </FormSection>
+
+          <FormSection
+            title="Language of the events"
+            description="The language of the user interface of this partner's events: the default texts of the journey, the photo page and the e-mails. An event that sets no language of its own follows this one; an event that sets its own keeps it."
+          >
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Default language
+              <select name="uiLanguage" defaultValue={normalizeUiLanguage(partner?.uiLanguage)} style={{ minHeight: 44, padding: '0 0.75rem' }}>
+                {UI_LANGUAGES.map((language) => (
+                  <option key={language} value={language}>
+                    {UI_LANGUAGE_LABELS[language]}
+                  </option>
+                ))}
+              </select>
             </label>
           </FormSection>
 

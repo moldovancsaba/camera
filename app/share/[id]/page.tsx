@@ -152,9 +152,10 @@ async function resolveEventForSubmission(
     .findOne({ $or: orClauses });
   if (!eventDoc?._id) return null;
   // The page speaks the language of the event (camera#352).
-  const language = normalizeUiLanguage(eventDoc.uiLanguage);
-  // ... with the wordings written for the partner or the event (issue 353); a failed read costs nothing but those wordings.
-  const texts = (await loadEventTexts(db, eventDoc).catch(() => null))?.overrides ?? {};
+  // ... in the language of the event or of its partner, with the wordings written for them (issue 353); a failed read gives the event's own language and the dictionary.
+  const loaded = await loadEventTexts(db, eventDoc).catch(() => null);
+  const language = loaded?.language ?? normalizeUiLanguage(eventDoc.uiLanguage);
+  const texts = loaded?.overrides ?? {};
   const name =
     typeof eventDoc.name === 'string' && eventDoc.name.trim()
       ? eventDoc.name.trim()
