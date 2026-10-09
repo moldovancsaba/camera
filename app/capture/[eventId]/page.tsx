@@ -14,11 +14,12 @@
 
 'use client';
 
-import { Fragment, useState, useEffect, use, useCallback, useMemo, useRef } from 'react';
+import { Fragment, type ReactNode, useState, useEffect, use, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import { Button } from '@mantine/core';
 import CameraCapture from '@/components/camera/CameraCapture';
 import AppShellLock from '@/components/capture/AppShellLock';
+import { phasePageLock } from '@/lib/capture/page-lock';
 import { clearCaptureNotices, notifyCapture } from '@/components/capture/notify';
 import ShareOverlay from '@/components/capture/ShareOverlay';
 import ProcessingOverlay from '@/components/capture/ProcessingOverlay';
@@ -1300,7 +1301,8 @@ export default function EventCapturePage({
       return null;
     }
     
-    // Render page based on type
+    // Render page based on type. The journey pages cannot be pinch-zoomed (the consent page can, it is for reading): lib/capture/page-lock.ts.
+    const pageNode = ((): ReactNode => {
     switch (currentPage.pageType) {
       case 'who-are-you':
         return (
@@ -1423,6 +1425,16 @@ export default function EventCapturePage({
         }
         return null;
     }
+    })();
+    if (pageNode && phasePageLock(currentPage.pageType) === 'zoom') {
+      return (
+        <>
+          <AppShellLock zoomOnly />
+          {pageNode}
+        </>
+      );
+    }
+    return pageNode;
   }
   
   if (isLoading) {

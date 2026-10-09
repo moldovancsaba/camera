@@ -78,6 +78,15 @@ html[data-app-lock] body {
   touch-action: pan-x pan-y;
 }
 
+/*
+ * The journey pages around the camera steps (welcome, who are you, CTA, restart; camera#490): no pinch or double-tap zoom, but the page still
+ * scrolls, because a form can be taller than a small phone. The consent page is not locked (it is for reading).
+ */
+html[data-app-zoom-lock],
+html[data-app-zoom-lock] body {
+  touch-action: pan-x pan-y;
+}
+
 /* Notices (components/capture/notify.ts) sit at the top during the camera steps: at the bottom they cover the
    Save, Try again and Next buttons. */
 html[data-app-lock] .mantine-Notifications-root {
