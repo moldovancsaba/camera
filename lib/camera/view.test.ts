@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildVideoConstraintChain, streamShapeMismatch } from './constraints';
-import { DEFAULT_VIEW, TIGHT_KEEP, currentShape, viewCrop, viewsOverride, wantedWindow, withField, withShape } from './view';
+import { DEFAULT_VIEW, LANDSCAPE_ASPECT, PORTRAIT_ASPECT, TIGHT_KEEP, currentShape, viewAspect, viewRect, viewsOverride, wantedWindow, withField, withShape } from './view';
 
 test('the controls are off unless the address says so', () => {
   for (const on of ['?views=1', '?capture=frame&views=on', '?views=true']) assert.equal(viewsOverride(on), true, on);
@@ -34,13 +34,41 @@ test('a landscape stream in an upright phone is what was chosen, not a mismatch 
 });
 
 test('the tight view keeps the middle of the picture, the wide view all of it', () => {
-  assert.equal(viewCrop('wide'), null);
-  const crop = viewCrop('tight');
+  assert.equal(viewRect(1440, 1920, { shape: 'auto', field: 'wide' }), null);
+  const crop = viewRect(1440, 1920, { shape: 'auto', field: 'tight' });
   assert.ok(crop);
   assert.equal(crop.width, TIGHT_KEEP);
   assert.equal(crop.height, TIGHT_KEEP);
   assert.ok(Math.abs(crop.x * 2 + crop.width - 1) < 1e-9, 'centred across');
   assert.ok(Math.abs(crop.y * 2 + crop.height - 1) < 1e-9, 'centred down');
+});
+
+test('a phone that ignores the shape asked for (the owner\'s iPhone gave landscape for both) still gets the shape chosen: the middle is cut to it, so a press always changes the picture', () => {
+  const landscapeStream = { w: 1920, h: 1440 };
+  const portrait = viewRect(landscapeStream.w, landscapeStream.h, { shape: 'portrait', field: 'wide' });
+  assert.ok(portrait);
+  assert.equal(portrait.height, 1, 'all of the height');
+  assert.ok(Math.abs(portrait.width - 0.5625) < 1e-9, 'a 3:4 slice of 4:3: 9/16 of the width');
+  assert.ok(Math.abs(viewAspect(landscapeStream.w, landscapeStream.h, { shape: 'portrait', field: 'wide' }) - PORTRAIT_ASPECT) < 1e-9);
+  assert.equal(viewRect(landscapeStream.w, landscapeStream.h, { shape: 'landscape', field: 'wide' }), null, 'already landscape: nothing is cut');
+  const portraitStream = { w: 1440, h: 1920 };
+  const landscape = viewRect(portraitStream.w, portraitStream.h, { shape: 'landscape', field: 'wide' });
+  assert.ok(landscape);
+  assert.equal(landscape.width, 1);
+  assert.ok(Math.abs(viewAspect(portraitStream.w, portraitStream.h, { shape: 'landscape', field: 'wide' }) - LANDSCAPE_ASPECT) < 1e-9);
+  assert.equal(viewRect(portraitStream.w, portraitStream.h, { shape: 'portrait', field: 'wide' }), null);
+});
+
+test('shape and tight add up, always centred, and the shape of the result is the shape chosen', () => {
+  const view = { shape: 'portrait', field: 'tight' } as const;
+  const rect = viewRect(1920, 1440, view)!;
+  assert.ok(Math.abs(rect.width - 0.5625 * TIGHT_KEEP) < 1e-9);
+  assert.ok(Math.abs(rect.height - TIGHT_KEEP) < 1e-9);
+  assert.ok(Math.abs(rect.x * 2 + rect.width - 1) < 1e-9 && Math.abs(rect.y * 2 + rect.height - 1) < 1e-9);
+  assert.ok(Math.abs(viewAspect(1920, 1440, view) - PORTRAIT_ASPECT) < 1e-9);
+  assert.equal(viewAspect(0, 0, view), 0, 'no picture yet');
+  assert.equal(viewAspect(1920, 1440, DEFAULT_VIEW), 1920 / 1440, 'auto and wide: the picture as it is');
+  assert.equal(viewRect(1440, 1920, { shape: 'portrait', field: 'wide' }), null, 'within 3 % of the shape: left alone');
 });
 
 test('a press changes one choice and keeps the other; pressing the choice that is on changes nothing', () => {

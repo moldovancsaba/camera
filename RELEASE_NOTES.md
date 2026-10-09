@@ -14,6 +14,14 @@
 - **Data:** the static picture of the MTK x Vasas welcome page was put back at once as the undo (it had been cleared at the owner's request); it is cleared again after this is live and looked at.
 - **Lesson:** the data was checked, the page was not: the welcome page is looked at in a browser before such a picture is removed.
 
+## Unreleased — camera views: a press always changes the view, the camera is not restarted in a loop, and a line says what the phone gave (issue 525; owner test on the iPhone 2026-10-09)
+
+- **Owner's test (two screenshots of `?views=1`):** "the view [is] much better than the other camera usage", but Portrait and Landscape gave the **same landscape 4:3 picture** (the stage was 851 x 638 in both), so the buttons showed no difference, and the system looked like it was struggling.
+- **Cause (read in the code; reproduced with a fake camera that ignores the shape asked for):** nothing handled a phone that ignores the shape, and a press restarted the camera twice (the press, then the stream-shape check that turns a wrong-way stream back).
+- **Fixed:** a chosen shape that the phone does not deliver is **cut from the picture it does deliver** (the middle, 3:4 or 4:3: `viewRect`, `viewAspect` in `lib/camera/view.ts`), so a press always changes the view; **tight** keeps the middle 70 % of the result; the live view shows exactly the part the shutter keeps (the video is placed inside the stage so only that part shows, and `captureFullFrame` crops the same part); the camera is asked for the shape **once** and a phone that is seen to ignore it is not asked again; with a chosen shape the stream-shape check no longer restarts anything. A small line under the view shows the size the phone gave and the size asked, and says when it cuts the view, so a screenshot says what a phone does.
+- **Verified:** type-check; lint; unit tests (the crops for both shapes from both stream shapes, shape plus tight, centred, the shape of the result, within 3 % left alone); the real component in a browser at phone size with a fake camera that always gives landscape 4:3: Portrait makes the stage 3:4 with one request and none afterwards, Landscape goes back with no request, tight keeps the shape and crops, and the photo is 756 x 1008, exactly the part shown.
+- **Not verified:** the owner's phone with this version. **Known and not changed:** the page gets the raw sensor stream, so in low light it is darker than the Camera app's own picture.
+
 
 ## Unreleased — activity log: who did what and when, every refused or failed request, and a weekly CSV to the owner (issue 517; owner request 2026-10-09)
 
