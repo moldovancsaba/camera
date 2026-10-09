@@ -92,12 +92,15 @@ export default function GeneratedFramePanel({
   eventId,
   hasOwnActiveFrame,
   onLibraryChanged,
+  onDesignChanged,
   initialNotice = null,
 }: {
   eventId: string;
   hasOwnActiveFrame: boolean;
   /** Called after the panel changed the frames of the event (the base picture moved into the library, or removed) with the notice it shows; the page reloads its lists. */
   onLibraryChanged?: (notice: Notice) => void | Promise<void>;
+  /** Called after the messages or their frames were saved, reset or refreshed, so the selection setting below (which lists them) reads them again. */
+  onDesignChanged?: () => void;
   /** The notice the panel starts with: the page starts the panel again when the frames change, which would otherwise lose the confirmation. */
   initialNotice?: Notice | null;
 }) {
@@ -120,7 +123,8 @@ export default function GeneratedFramePanel({
       setDraft(frameDesign.messages);
       setDraftFrames(framesOf(frameDesign, frameDesign.messages));
     }
-  }, []);
+    onDesignChanged?.();
+  }, [onDesignChanged]);
 
   /** Reads the design again (after the frames of the event changed under the panel). */
   const reloadDesign = async () => {

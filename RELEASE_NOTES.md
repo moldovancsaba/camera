@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — layout and message selection, segment S1: the setting (epic 444, issue 445; changes no event until an editor saves it)
+
+- **Added (client feedback 2026-10-09, mandatory for the MTK x Vasas match on 2026-10-16):** an event setting for **how users get the layout and the message** of the frame: two independent choices, each **You choose** (with a pick), **Random** (a new one at every photo, never the same twice in a row) or **The user chooses** (design first, then message). It is a panel **How users get the layout and the message** on the event's **Frames** page; it shows only what can be chosen (more than one layout, more than one message) and names the situation: **A** only the generated layout, **B** one layout the editor made, **C** more than one. Until an editor saves it, the panel shows what the event does today and says nothing is saved; **Back to as before** takes it away again.
+- **Replaced:** the message-only setting of issue 329 (**How a user gets the frame message** in the event editor, `frameChoice` in `PATCH /api/events/<id>`) is gone from the editor and the API; no event ever set it. The capture page still reads a stored `frameChoice` until segment S2 puts the new flow in its place.
+- **Not yet:** the capture flow does not read the setting (segment S2), so saving it changes nothing for users yet. Messages on several designs (S3), the design previews (S4) and the dark area per design (S5) follow in that order.
+- **Added:** `GET`, `PUT /api/admin/events/<id>/frame-selection` (viewer to read, manager to save), `lib/frame/selection.ts` (the setting, its checks, the layouts and messages an event offers) and `lib/frame/selection-options.ts` (reads them from the event and the library), `docs/FRAME_LAYOUT_SELECTION_PLAN.md` with the owner's answers 184 to 191.
+- **Verified:** type-check; lint; unit tests (the layouts of the real MTK shape are the two designs and four messages, situation C; a message on no design is on the generated layout; complete own frames; a pick must be a layout or message of the event; the stored value is read tolerantly); the full CI chain.
+
 ## Unreleased — the back camera button and every camera switch are removed (owner, 2026-10-09, from a phone screenshot of the MTK x Vasas event; user-visible, on every event)
 
 - **Removed:** the second button on the photo screen of every phone, **"Use the back camera"** ("Hátsó kamera használata"). The page has one **Take photo** button that opens the device's own camera app on the front camera, where the user changes between all the cameras (owner: "we call the camera app where the user can change between all cameras, the button is fully obsolete").

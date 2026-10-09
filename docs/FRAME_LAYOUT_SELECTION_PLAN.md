@@ -1,6 +1,6 @@
 # Layout and message selection at an event (client feedback 2026-10-09)
 
-Tracker: epic [#444](https://github.com/moldovancsaba/camera/issues/444) on board [#24](https://github.com/users/moldovancsaba/projects/24). Status: **planned, waiting for the owner's answers 184 to 191** (section 6). Nothing in this plan is built, and nothing changes for any event until an editor sets it.
+Tracker: epic [#444](https://github.com/moldovancsaba/camera/issues/444) on board [#24](https://github.com/users/moldovancsaba/projects/24). Status: **answered by the owner 2026-10-09 (section 6), delivery mandatory for the MTK x Vasas match on Friday 2026-10-16**. Segment status is in section 7. Nothing changes for any event until an editor sets it.
 
 ## 1. What the client asked (my reading, to be confirmed)
 
@@ -28,7 +28,7 @@ For **messages** the same three ways apply when the event has more than one mess
 | User selection | A step **select frame** when an event has more than one complete own frame; a step **Choose your message** when the user chooses the message (issue 329, 2026-10-09, **all** images with their text at once: the design is implied by the message) | capture page |
 | Random | A new random message at every shutter press, never the same twice in a row; the pick is stored with the photo | `pickVariant`, `frameVariant` on the submission |
 | Where the choice shows afterwards | The final picture (photo plus the image used), the message and image recorded on the submission, the slideshows, the share page, try-on | submissions, `lib/photo-vetting/compose.ts` |
-| Admin | Event frames page (assign, upload, message area editor), the generated frame panel (messages, refresh), the event editor setting "How a user gets the frame message" | `app/admin/events/[id]/frames`, `GeneratedFramePanel`, event edit |
+| Admin | Event frames page (assign, upload, message area editor), the generated frame panel (messages, refresh), the event editor setting "How a user gets the frame message" (replaced by S1) | `app/admin/events/[id]/frames`, `GeneratedFramePanel`, event edit |
 | Levels | The slot model (partner default, event own, nothing copied), the text levels | docs/BUILDING_BRICKS.md, docs/TEXT_LEVELS.md |
 
 **The real MTK x Vasas event today** (read-only check): two library frames, **blue** and **pink**, both text-free with a message area; four messages; two messages are written on blue and two on pink (the pink design carries "MINDEN NŐ SZÁMÍT!"); four generated images; no setting for how the user selects. 13 of 212 events have assigned frames, 1 has messages that choose frames.
@@ -60,19 +60,39 @@ Each segment ships alone behind "nothing changes until an editor sets it", is te
 
 Issues: S1 #445, S2 #446, S3 #449, S4 #448, S5 #447, S6 #450, S7 #451 (with #331), S8 #452, S9 #453. All on the board: S1 to S6 in Backlog, S7 to S9 in Roadmap.
 
-**Suggested order:** S1, S2, S5, S4, S3, S6, then S7, S8, S9 after the match. **For the match on 16 October** (question 188): S1, S2 and S5 would give the MTK event the user-selects flow (design first, then message) if the owner wants it live that day; they change what users see only for an event whose editor sets it, and the MTK editor is the owner.
+**Order (settled, 2026-10-09):** S1, S3, S2, S4, S5 before the match, each its own pull request, merged after Verify and shown to the owner on the phone; S6 and S7 after the match, S8 (partner level, wanted) right after, S9 later. S3 comes before S2 because the capture flow must handle one message on several designs from the start.
 
 ## 5. What does not change
 
 Every existing event keeps what it does today until its editor sets the selection: events with several complete own frames keep the user's frame step, events with messages on library frames keep the random image, and every event with no own frame keeps the random generated message. Stored photos and their records are untouched.
 
-## 6. Questions to the owner (to answer by number)
+## 6. The owner's answers (2026-10-09)
 
-184. **Two settings or one?** Layout selection and message selection are two independent settings (each: editor chooses, random, user chooses), and when both are "user chooses" the order is design first, message second. *Recommended: yes.*
-185. **Which messages after a design?** a) only the messages the editor tied to that design (as in the MTK event today: pink carries the women's message); b) every message on every design. *Recommended: a), with b) available per event.*
-186. **"Editor created layout".** a) a designer-made frame uploaded by the editor, as MTK has (blue, pink), plus the generated default; b) a layout composed in the admin from elements (uploaded graphic, generated graphics, team logo, event title, message, positions). *b) is issue #331, large; recommended: a) now, b) after the match.*
-187. **Random layout or message:** a new draw at every photo (never the same twice in a row), or one draw per visit? *Recommended: every photo, as the message is today.*
-188. **For the match on 16 October:** is the user-selects flow (design first, then message) wanted live for MTK x Vasas? *If yes, S1, S2 and S5 are done first and checked by the owner on the phone; if not, everything waits until after the match.*
-189. **Dark area of a complete uploaded frame** (no message area): the whole non-transparent graphic shown at 50 % black, as for a vetted photo today. *Recommended: yes.*
-190. **Levels:** may layouts and message lists also be set at the partner (MTK's blue and pink for all MTK events), or event only for now? *Recommended: partner level later (S8).*
-191. **Change during the shoot:** when the user changes the design on the camera step, does the message stay if that design offers it, or does the user choose again? *Recommended: stays when offered, else asked again.*
+| # | Question | Answer |
+|---|---|---|
+| 184 | Two settings or one? | **Yes**: layout and message are two independent settings. |
+| 185 | Which messages after a design? | **a), set in the admin**: the editor says which message can appear with which design, so it can be fully mixed. A message can be on one design, on several, or on all. |
+| 186 | "Editor created layout" | **Both**: a designer-made frame uploaded by the editor plus the generated default now, a layout composed from elements (S7, #331) after the match. |
+| 187 | Random | **Every photo**, as the message is today. |
+| 188 | Live for MTK on 16 October? | **Yes, mandatory** for the next event. |
+| 189 | Dark area of a complete uploaded frame | **Yes**: the whole non-transparent graphic at 50 % black. |
+| 190 | Partner level | **Absolutely yes**: a partner-specific, well-designed default if the partner makes it (S8, right after the match). |
+| 191 | Change design during the shoot | **Yes**: the message stays if the new design offers it, else the user chooses again. Also: the original cropped clean photo is stored, so a layout can be re-applied to a photo later. |
+
+### What this settles in the build
+
+- **Settings (S1, built):** `Event.frameSelection = { layout: { mode, pick }, message: { mode, pick } }`, `mode` is `editor` (with a `pick`: a layout id, or the message as listed), `random` or `user`. Missing means what the event always did (`todaysSelection`). Saved from the panel **How users get the layout and the message** on the event's Frames page (`GET`/`PUT /api/admin/events/<id>/frame-selection`); the panel shows only what can be chosen (more than one layout, more than one message) and names the situation A, B or C.
+- **Layouts of an event:** its own complete frames when it has any (the generated frame is not used then), otherwise the designs its messages are written on plus the generated layout for messages written on none (`layoutOptionsOf`).
+- **Messages on designs (S3):** `frameDesign.messageFrames[message]` becomes one frame id **or a list** (`framesOfMessage` reads both); one image per (message, design) pair, reused by key; an admin table of messages by designs.
+- **Capture (S2):** design step, then message step (the messages that design offers), then the camera; **Change design** and **Change message** on the camera step; a design change keeps the message if the new design offers it, else asks again; random is a new draw at every photo, never the same pair twice in a row.
+
+## 7. Segment status
+
+| Segment | Status |
+|---|---|
+| S1 #445 selection settings | built (this pull request) |
+| S3 #449 messages per design | next |
+| S2 #446 capture flow | after S3 |
+| S4 #448 layout previews | after S2 |
+| S5 #447 dark area | after S4 |
+| S6 #450, S7 #451, S8 #452, S9 #453 | after the match |
