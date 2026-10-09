@@ -19,6 +19,7 @@ import {
 } from '@/lib/api';
 import { isGlobalAdminSession, listAccessiblePartnerIds } from '@/lib/partners/authorization';
 import { pushPartnerToMessmass } from '@/lib/messmassClient';
+import { PARTNER_COLLATION, PARTNER_ORDER } from '@/lib/partners/list';
 
 /**
  * GET /api/partners
@@ -29,6 +30,7 @@ import { pushPartnerToMessmass } from '@/lib/messmassClient';
  * - limit: Items per page (default: 20)
  * - search: Search by partner name
  * - active: Filter by active status (true/false)
+ * - sort: `name` for alphabetical order (case-insensitive, accents as ties); the default is newest first
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = request.nextUrl;
@@ -60,11 +62,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     // Get total count for pagination
     const total = await db.collection(COLLECTIONS.PARTNERS).countDocuments(query);
 
-    // Get paginated results sorted by creation date (newest first)
-    const partners = await db
-      .collection(COLLECTIONS.PARTNERS)
-      .find(query)
-      .sort({ createdAt: -1 })
+    // Get paginated results: alphabetical when asked for (`sort=name`, the pickers), otherwise by creation date, newest first
+    const alphabetical = searchParams.get('sort') === 'name';
+    const found = db.collection(COLLECTIONS.PARTNERS).find(query);
+    const partners = await (alphabetical ? found.collation(PARTNER_COLLATION).sort(PARTNER_ORDER) : found.sort({ createdAt: -1 }))
       .skip((page - 1) * limit)
       .limit(limit)
       .toArray();
