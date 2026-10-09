@@ -238,4 +238,7 @@ export const hu: Record<MessageKey, string> = {
   'flow.step.selectMessage': 'Üzenet',
   'flow.selectMessage.title': 'Válaszd ki az üzeneted',
   'flow.changeMessage': 'Üzenet váltása',
+  'flow.step.selectLayout': 'Dizájn',
+  'flow.selectLayout.title': 'Válaszd ki a dizájnt',
+  'flow.changeLayout': 'Dizájn váltása',
 };

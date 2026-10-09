@@ -84,7 +84,7 @@ Every existing event keeps what it does today until its editor sets the selectio
 - **Settings (S1, built):** `Event.frameSelection = { layout: { mode, pick }, message: { mode, pick } }`, `mode` is `editor` (with a `pick`: a layout id, or the message as listed), `random` or `user`. Missing means what the event always did (`todaysSelection`). Saved from the panel **How users get the layout and the message** on the event's Frames page (`GET`/`PUT /api/admin/events/<id>/frame-selection`); the panel shows only what can be chosen (more than one layout, more than one message) and names the situation A, B or C.
 - **Layouts of an event:** its own complete frames when it has any (the generated frame is not used then), otherwise the designs its messages are written on plus the generated layout for messages written on none (`layoutOptionsOf`).
 - **Messages on designs (S3):** `frameDesign.messageFrames[message]` becomes one frame id **or a list** (`framesOfMessage` reads both); one image per (message, design) pair, reused by key; an admin table of messages by designs.
-- **Capture (S2):** design step, then message step (the messages that design offers), then the camera; **Change design** and **Change message** on the camera step; a design change keeps the message if the new design offers it, else asks again; random is a new draw at every photo, never the same pair twice in a row.
+- **Capture (S2, built):** `lib/frame/choose.ts` decides everything (`nextStep`, `layoutsToChoose`, `messagesToChoose`, `chooseLayout`, `drawVariant`, `drawOwnFrame`); the image or frame of a photo is drawn **when the camera step opens**, so the live view and the move-and-zoom step show the dark area of that design (S5 builds on this); an event with the setting unset keeps the random image at every shutter press. Design step, then message step (the messages that design offers), then the camera; **Change design** and **Change message** on the camera step; a design change keeps the message if the new design offers it, else asks again; random is a new draw at every photo, never the same pair twice in a row.
 
 ## 7. Segment status
 
@@ -92,7 +92,7 @@ Every existing event keeps what it does today until its editor sets the selectio
 |---|---|
 | S1 #445 selection settings | built, pull request #455 |
 | S3 #449 messages per design | built (this pull request); S1 #445 merged as #455 |
-| S2 #446 capture flow | after S3 |
+| S2 #446 capture flow | built (this pull request), stacked on S3 #449 |
 | S4 #448 layout previews | after S2 |
 | S5 #447 dark area | after S4 |
 | S6 #450, S7 #451, S8 #452, S9 #453 | after the match |
