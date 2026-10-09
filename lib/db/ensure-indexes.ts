@@ -126,6 +126,11 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       { unique: true, sparse: true, name: 'events_messmassEventId_unique_sparse' }
     )
   );
+  // One registration for each event and e-mail address (epic 463): the welcome e-mail is claimed on this row, so it goes once. Run `npm run db:ensure-indexes` once (an owner step); the
+  // claim keeps the e-mail single without it, the index only keeps the rows single under two calls at the same moment.
+  await track(COLLECTIONS.EMAIL_REGISTRATIONS, () =>
+    db.collection(COLLECTIONS.EMAIL_REGISTRATIONS).createIndex({ eventId: 1, email: 1 }, { unique: true, name: 'email_registrations_event_email_unique' })
+  );
   // Same invariant as messmassEventId above, for the savetheworld provisioning API.
   await track(COLLECTIONS.EVENTS, () =>
     db.collection(COLLECTIONS.EVENTS).createIndex(

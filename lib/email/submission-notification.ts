@@ -23,6 +23,8 @@ export interface SubmissionNotificationInput {
   theme?: EventTheme | null;
   /** The label of the button that opens `shareUrl` in a themed email. */
   buttonLabel?: string | null;
+  /** An e-mail with nothing to link to yet (arrived): no button. */
+  noButton?: boolean;
   /** The language of the event (camera#352): the default texts and the words used when the name or the event is missing. English when absent. */
   language?: UiLanguage;
   /** The wordings written for the event's partner or the event in that language (lib/i18n/overrides.ts): used instead of the dictionary text. */
@@ -136,7 +138,7 @@ export async function sendSubmissionResultEmail(
     values,
     theme: input.theme ?? null,
     eventName,
-    button: { label: input.buttonLabel?.trim() || translate(language, 'email.buttonOpen'), url: input.shareUrl },
+    button: input.noButton ? null : { label: input.buttonLabel?.trim() || translate(language, 'email.buttonOpen'), url: input.shareUrl },
   });
   if (composed.warnings.withoutValue.length > 0 || composed.warnings.unknown.length > 0) {
     console.warn('[email] Submission result email: variables left out', { eventName: input.eventName || null, withoutValue: composed.warnings.withoutValue, unknown: composed.warnings.unknown });

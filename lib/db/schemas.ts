@@ -41,6 +41,8 @@ export const COLLECTIONS = {
   /** The Images library (camera#368): pictures a picture field chooses, on the three levels of docs/LIBRARIES.md. */
   IMAGES: 'images',
   SUBMISSIONS: 'submissions',
+  /** Who registered at an event (epic 463, lib/email/triggers.ts): one row for each event and e-mail address, with whether the welcome e-mail went. */
+  EMAIL_REGISTRATIONS: 'email_registrations',
   LEATHER_SUITS: 'leather_suits',
   TRYON_JOBS: 'tryon_jobs',
   TRYON_WORKER_HEARTBEATS: 'tryon_worker_heartbeats',

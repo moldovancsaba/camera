@@ -29,6 +29,7 @@ import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
 import { isUiLanguage, UI_LANGUAGES } from '@/lib/i18n';
 import { sanitizeNotificationSettings } from '@/lib/email/notification-settings';
+import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
 import { captureFrameOf } from '@/lib/frame/capture';
 import { normalizePhotoVettingInput, photoVettingRequired } from '@/lib/events/photo-vetting';
 import { applyEventBrandColours } from '@/lib/events/brand-colours';
@@ -197,6 +198,8 @@ export const GET = withErrorHandler(async (
       theme: await loadEventTheme(db, event as unknown as Record<string, unknown>),
       ...(forGuest ? { customPages: withPartnerPictures(withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen, texts }), partnerPictures) } : {}),
       photoVettingRequired: vettingRequired,
+      // Whether the event sends the welcome e-mail (epic 463): the capture page tells the server who registered only when it does.
+      welcomeEmailEnabled: normalizeSubmissionEmailPolicy(event.notifications, language).types.welcome.enabled,
       // What decides which default pages this event gets (lib/events/journey.ts): the page editor builds the journey from it.
       journeyContext: { vettingRequired, consentDefault, language, hasWelcomeScreen, texts },
       _id: event._id.toString(),

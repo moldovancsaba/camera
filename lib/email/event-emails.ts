@@ -51,7 +51,7 @@ export interface EventEmailsView {
 }
 
 /** The types that something sends today; the others have their texts and switch but wait for their trigger (segment E8) or their job. */
-export const SENT_TYPES: readonly EmailType[] = ['approved', 'declined'];
+export const SENT_TYPES: readonly EmailType[] = ['welcome', 'arrived', 'approved', 'declined'];
 
 /** An own text that is the default (the old form saved the defaults as if they were the editor's own) counts as following the default. */
 const own = (text: string | null | undefined, standard: string): string | null => {

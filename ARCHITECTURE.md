@@ -300,6 +300,7 @@ Core collections:
 - `slideshow_layouts`
 - `short_links` (tracked short links, one per placement of an event; docs/SHORT_LINKS.md)
 - `short_link_hits` (their visit counts, one row per link, UTC day and kind of phone)
+- `email_registrations` (who registered at an event: one row for each event and e-mail address, with whether the welcome e-mail went; docs/EMAIL_TEMPLATES.md)
 - `landing_pages`
 - `landing_page_css_presets`
 - `partner_user_access`
@@ -341,7 +342,7 @@ Important implementation note:
 - the persisted submission shape is leaner and more compatibility-driven than the broad TypeScript interfaces suggest
 - consumers still rely on fields like `imageUrl`, `eventId`, `eventIds`, and metadata dimensions
 
-Step 6 of the pipeline is also where the e-mails start: a saved photo may send "arrived" and, when it is approved (at once without vetting, by a moderator with it), "approved" with the links;
+Step 6 of the pipeline is also where the e-mails start: a saved photo may send "arrived" (`lib/email/triggers.ts`, after the answer is sent, once for each photo) and, when it is approved (at once without vetting, by a moderator with it), "approved" with the links;
 a declined photo sends "declined" (section 16).
 
 ## 10. Slideshow architecture
@@ -473,6 +474,7 @@ event's Texts), the partner's default pictures (`lib/events/partner-pictures.ts`
   no value is left out. `{eventlink}` and the "take another photo" link use the event's own short link when it has a URL slug (`lib/email/event-link.ts`).
 - **The legal part** is one slot with three levels per language (general, partner, event; `lib/email/legal-rules.ts`, stores in `lib/email/legal.ts`, routes `/api/admin/emails/legal`,
   `/api/partners/<id>/email-legal`, `/api/events/<id>/email-legal`), drawn as small print after the button.
+- **Triggers** (`lib/email/triggers.ts`): **welcome** when somebody registers (`POST /api/events/<id>/register`, called by the capture page once the user is identified and only when the event has welcome on; one row for each event and address in `email_registrations`, claimed before the send so it goes once), **arrived** when a photo is submitted (`dispatchArrivedEmail` after `POST /api/submissions`, and at the finalize call when the address is known only then; `metadata.arrivedEmailSentAt`). **Follow up** has its text and switch but no trigger and no job yet.
 - **Event page:** `Emails` in the event menu (`/admin/events/<id>/emails`, route `GET`/`PUT /api/admin/events/<id>/emails`, view in `lib/email/event-emails.ts`, merge of the stored settings in `lib/email/notification-settings.ts`): the five types, the sender and terms, the two try-on e-mails and the event's legal part. The e-mail fields are no longer in the event form or the new-event form.
 - **Editors:** the toolbar editor (`components/admin/kit/EmailTextEditor.tsx`, pure operations in `lib/email/editor-ops.ts`) with the live preview (`EmailPreview.tsx`); pages `Emails` at the general
   level (`/admin/settings/emails`) and at the partner level (`/admin/partners/<id>/emails`).

@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-09T09:29:45+00:00",
+  "generated": "2026-10-09T09:50:16+00:00",
   "repo": "camera",
-  "head": "4ce2323",
+  "head": "76bed57",
   "counts": {
-   "endpoints": 138,
+   "endpoints": 139,
    "collections": 8,
    "env": 59,
    "outbound-hosts": 30,
@@ -920,6 +920,17 @@
    ],
    "file": "app/api/events/[eventId]/logos/route.ts",
    "auth_markers": [],
+   "no_auth_marker": true
+  },
+  {
+   "path": "/api/events/[eventId]/register",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/events/[eventId]/register/route.ts",
+   "auth_markers": [
+    "withErrorHandler"
+   ],
    "no_auth_marker": true
   },
   {

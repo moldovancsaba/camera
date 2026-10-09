@@ -90,7 +90,7 @@ Later, with your go (a production data write): move the long legal paragraph out
 
 | Type | When | Default | What exists today | What is built (segment) |
 |---|---|---|---|---|
-| **welcome** | when the user identifies: gives name and e-mail on the "Who are you" step, or signs in, before the photo (answer 201) | off | nothing | E7 the type and its texts, E8 the trigger |
+| **welcome** | when the user identifies: gives name and e-mail on the "Who are you" step, or signs in, before the photo (answer 201) | off | nothing | E7 the type and its texts, E8 the trigger (built: the capture page tells the server who registered, only when the event has welcome on; once for each event and address) |
 | **arrived** | when a photo is submitted (later other media) | off | nothing: the "after save" e-mail is the link, sent when the photo is ready | E7, E8 |
 | **approved** | when the photo is approved, with the links | **on** | the "after save" e-mail (events without vetting) and the "photo approved" e-mail (vetted events) | E7 unifies them |
 | **declined** | when the photo is declined | **on** | the "not approved" e-mail, fixed wording | E7 makes it editable |
@@ -109,5 +109,5 @@ try-on e-mails of today (related photos ready, approved resubmission) stay as ex
 | E4 #467 editor | built (this pull request): `lib/email/compose.ts`, `POST /api/admin/emails/preview`, the toolbar editor and the preview, the legal part editor |
 | E3 #466 Emails menu | built: the general and partner pages (merged #475) and the **event page** with the five types, the sender and terms, the try-on e-mails and the legal part (this pull request); the e-mail fields left the long event form and the new-event form |
 | E7 #473 the five types | merged (#477): `lib/email/types.ts`, the policy reads `notifications.types`, the new defaults, the sanitizer `lib/email/notification-settings.ts`; welcome, arrived and follow up have their texts and switches but are not sent until E8 (and the daily job); the event page that edits them is E3 |
-| E8 #474 the triggers | after E7 |
+| E8 #474 the triggers | built (this pull request): welcome (`POST /api/events/<id>/register`, `lib/email/triggers.ts`) and arrived (when a photo is submitted); **follow up has no trigger and no job** (answer 203) |
 | E6 #469 test e-mail | after E3 |
