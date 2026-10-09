@@ -6,6 +6,7 @@
 - **Not changed:** the dark area of a frame with a message area and of the generated layout (the boxes of their layers); what is saved and shown after the photo.
 - **Changed in the code:** `lib/frame/dark-area.ts` has one function (`darkAreaUrl`), without the "setting saved" condition; the camera component takes a `silhouetteUrl` and draws it over the frame guide.
 - **Verified:** type-check; lint; unit tests (the four cases); a production build of the capture page with an event that has one complete frame and no setting: the move-and-zoom step shows the frame as 50 % black bars; the full CI chain. **Not seen on a phone.**
+
 ## Unreleased — layout and message selection, segment S4: previews of the layouts (epic 444, issue 448; an admin screen and nothing user-visible)
 
 - **Added:** the panel **How users get the layout and the message** (event Frames page) shows **The layouts** with a picture of each: a design is shown with its first message, the generated layout with its first message, a complete frame of the event's own as it is, and the layout the editor chose for users is marked. The messages are listed under them. The pictures are the images already drawn (nothing is drawn for this), read with the options (`withPreviews`).
