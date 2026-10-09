@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { FrameVariant } from './context';
-import { captureFrameOf, pickVariant, sanitizeFrameVariant, territoriesOf } from './capture';
+import { captureFrameOf, messageChoices, normalizeFrameChoice, pickVariant, sanitizeFrameVariant, territoriesOf, variantByIndex } from './capture';
 
 const HOST = 'teststoreid.public.blob.vercel-storage.com';
 const url = (key: string) => `https://${HOST}/frames/generated/3f2b8c1e/${key}.png`;
@@ -111,4 +111,28 @@ test('a text-free frame with a message area carries the messages of the event: i
   assert.equal(captureFrameOf({ frames: [carrier, complete], frameDesign: { variants } }), null, 'a complete frame next to it is a frame of its own');
   assert.equal(captureFrameOf({ frames: [{ isActive: true, frameDetails: null }], frameDesign: { variants } }), null, 'an assignment whose frame is unknown counts as before');
   assert.equal(captureFrameOf({ frames: [{ isActive: false, frameDetails: { hasMessageArea: false } }], frameDesign: { variants } })?.variants.length, 3);
+});
+
+const choiceVariant = (index: number | null, message: string | null) => ({ index, message, imageUrl: `https://img.example/${index}.png`, width: 1920, height: 1080, layers: [] });
+
+test('only the exact word "user" lets the user choose: an event that never set it keeps the random message', () => {
+  assert.equal(normalizeFrameChoice('user'), 'user');
+  for (const other of ['random', 'USER', '', null, undefined, 1, true]) assert.equal(normalizeFrameChoice(other), 'random', String(other));
+});
+
+test('the messages a user can choose from are the images that carry a message, in order, and only when there are at least two', () => {
+  const frame = { width: 1920, height: 1080, variants: [choiceVariant(0, 'Go Vasas'), choiceVariant(1, 'Go MTK'), choiceVariant(2, 'Together')] };
+  assert.deepEqual(messageChoices(frame).map((v) => v.index), [0, 1, 2]);
+  assert.deepEqual(messageChoices({ ...frame, variants: [choiceVariant(0, 'Only one')] }), [], 'one message is no choice');
+  assert.deepEqual(messageChoices({ ...frame, variants: [choiceVariant(null, null), choiceVariant(0, 'One')] }), [], 'the image without a message is not a choice');
+  assert.deepEqual(messageChoices(null), []);
+  assert.deepEqual(messageChoices({ ...frame, variants: [choiceVariant(null, null), choiceVariant(0, 'A'), choiceVariant(1, 'B')] }).map((v) => v.message), ['A', 'B']);
+});
+
+test('the variant a user chose is found by its position in the message list', () => {
+  const frame = { width: 1920, height: 1080, variants: [choiceVariant(0, 'A'), choiceVariant(1, 'B')] };
+  assert.equal(variantByIndex(frame, 1)?.message, 'B');
+  assert.equal(variantByIndex(frame, 7), null);
+  assert.equal(variantByIndex(frame, null), null);
+  assert.equal(variantByIndex(null, 0), null);
 });

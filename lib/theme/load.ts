@@ -8,6 +8,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { nativeFrameContext, type FrameContext } from '@/lib/frame/context';
 import { messmassFontUrl } from '@/lib/messmassClient';
 import { resolveEventTheme, type EventTheme } from '@/lib/theme/event-theme';
+import { storedPartnerPictures } from '@/lib/events/partner-pictures';
 
 /** The colours of the Start button on the event's active welcome page (fill, label, ring), if it has set any: the whole flow's buttons look like it. */
 export function welcomeButtonColours(pages: unknown): { fill?: unknown; label?: unknown; ring?: unknown } | null {
@@ -16,6 +17,12 @@ export function welcomeButtonColours(pages: unknown): { fill?: unknown; label?: 
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
   const config = welcome?.config;
   return config ? { fill: config.buttonColor, label: config.buttonTextColor, ring: config.buttonBorderColor } : null;
+}
+
+async function partnerEmailFooter(db: Db, event: Document): Promise<string | null> {
+  if (typeof event.partnerId !== 'string' || !event.partnerId) return null;
+  const partner = await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: event.partnerId }, { projection: { pictures: 1 } });
+  return storedPartnerPictures(partner?.pictures).emailFooter ?? null;
 }
 
 export async function loadEventTheme(db: Db, event: Document): Promise<EventTheme> {
@@ -31,7 +38,9 @@ export async function loadEventTheme(db: Db, event: Document): Promise<EventThem
       new Date().toISOString()
     );
   }
-  const theme = resolveEventTheme({ buttons: welcomeButtonColours(event.customPages), brandColor: typeof event.brandColor === 'string' ? event.brandColor : null, brandBorderColor: typeof event.brandBorderColor === 'string' ? event.brandBorderColor : null, context, emailFooterImageUrl: typeof event.emailFooterImageUrl === 'string' ? event.emailFooterImageUrl : null });
+  // The e-mail footer picture is the event's own, else its partner's default (lib/events/partner-pictures.ts, issue 368): one small read, only for an event with none.
+  const emailFooterImageUrl = typeof event.emailFooterImageUrl === 'string' && event.emailFooterImageUrl ? event.emailFooterImageUrl : await partnerEmailFooter(db, event);
+  const theme = resolveEventTheme({ buttons: welcomeButtonColours(event.customPages), brandColor: typeof event.brandColor === 'string' ? event.brandColor : null, brandBorderColor: typeof event.brandBorderColor === 'string' ? event.brandBorderColor : null, context, emailFooterImageUrl });
   return { ...theme, font: { ...theme.font, url: browserFontUrl(theme.font.file) } };
 }
 

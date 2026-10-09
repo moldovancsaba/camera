@@ -75,3 +75,21 @@ test('the email input carries the language of the policy to the sender', () => {
 test('a guest without a name is "there" to the sender, as before', () => {
   assert.equal(resolveSubmissionResultEmailRecipient({ userInfo: { email: 'ann@example.com' } }).name, 'there');
 });
+
+test('an event with no language of its own is read with its partner\'s, so its e-mails go out in that language; an event with its own keeps it; the wordings of the levels are read for the e-mails', async () => {
+  const { fakeDb } = await import('@/lib/library/fake-db');
+  const { resolveEventForSubmission, textsOf } = await import('./submission-result-email');
+  const { db } = fakeDb({
+    partners: [{ partnerId: 'P', name: 'MTK', uiLanguage: 'hu', texts: { hu: { 'email.buttonSee': 'Nézd meg' } } }],
+    events: [
+      { eventId: 'follows', partnerId: 'P', name: 'Follows' },
+      { eventId: 'own', partnerId: 'P', name: 'Own', uiLanguage: 'en' },
+    ],
+    admin_settings: [],
+  });
+  const follows = await resolveEventForSubmission(db, { eventId: 'follows' } as never);
+  assert.equal(follows?.uiLanguage, 'hu');
+  assert.equal((await resolveEventForSubmission(db, { eventId: 'own' } as never))?.uiLanguage, 'en');
+  assert.deepEqual(await textsOf(db, follows), { 'email.buttonSee': 'Nézd meg' });
+  assert.equal(await textsOf(db, null), null);
+});

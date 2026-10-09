@@ -267,6 +267,7 @@ export const PARTNER_CONTEXT_MENU: AdminContextItem[] = [
   { label: 'Logos', description: 'The logo of the partner: the default of all its events.', iconKey: 'photo', path: '/logos', isVisible: everyone },
   { label: 'Frames', description: 'The frames of the partner.', iconKey: 'frame', path: '/frames', isVisible: everyone },
   { label: 'Images', description: 'The pictures the partner and its events can use.', iconKey: 'photo', path: '/images', isVisible: everyone },
+  { label: 'Pictures', description: 'The default pictures of the welcome page, the CTA page and the e-mails of all events of the partner.', iconKey: 'photo', path: '/pictures', isVisible: everyone },
   { label: 'Texts', description: 'The wording of the default texts for all events of the partner.', iconKey: 'adjustments', path: '/texts', isVisible: everyone },
 ];
 

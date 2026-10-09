@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-09T03:25:26+00:00",
+  "generated": "2026-10-09T03:49:42+00:00",
   "repo": "camera",
-  "head": "09d2040",
+  "head": "8ef81a1",
   "counts": {
-   "endpoints": 131,
+   "endpoints": 132,
    "collections": 8,
    "env": 59,
    "outbound-hosts": 30,
@@ -1326,6 +1326,19 @@
     "PUT"
    ],
    "file": "app/api/partners/[partnerId]/logo-slot/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/partners/[partnerId]/pictures",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/partners/[partnerId]/pictures/route.ts",
    "auth_markers": [
     "requireAuth",
     "withErrorHandler"

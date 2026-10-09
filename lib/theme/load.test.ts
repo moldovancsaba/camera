@@ -27,3 +27,17 @@ test('the Start button colours come from the active welcome page, the first by o
   for (const nothing of [undefined, null, 'x', [], [null], [{}]]) assert.equal(welcomeButtonColours(nothing), null);
 });
 
+
+test('the e-mail footer picture is the event\'s own, else its partner\'s default; a partner with none, or an event with no partner, leaves it empty', async () => {
+  const { fakeDb } = await import('@/lib/library/fake-db');
+  const { loadEventTheme } = await import('./load');
+  const { db } = fakeDb({
+    partners: [{ partnerId: 'P', name: 'MTK', pictures: { emailFooter: 'https://store.public.blob.vercel-storage.com/partner-footer.png' } }, { partnerId: 'Q', name: 'Other' }],
+    events: [],
+  });
+  const base = { eventId: 'e', name: 'Event' };
+  assert.equal((await loadEventTheme(db, { ...base, partnerId: 'P' })).emailFooterImageUrl, 'https://store.public.blob.vercel-storage.com/partner-footer.png');
+  assert.equal((await loadEventTheme(db, { ...base, partnerId: 'P', emailFooterImageUrl: 'https://store.public.blob.vercel-storage.com/own-footer.png' })).emailFooterImageUrl, 'https://store.public.blob.vercel-storage.com/own-footer.png');
+  assert.equal((await loadEventTheme(db, { ...base, partnerId: 'Q' })).emailFooterImageUrl, null);
+  assert.equal((await loadEventTheme(db, base)).emailFooterImageUrl, null);
+});

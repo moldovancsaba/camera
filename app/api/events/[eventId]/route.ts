@@ -27,7 +27,7 @@ import { normalizeEventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-po
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
-import { isUiLanguage, normalizeUiLanguage, UI_LANGUAGES } from '@/lib/i18n';
+import { isUiLanguage, UI_LANGUAGES } from '@/lib/i18n';
 import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
 import { captureFrameOf } from '@/lib/frame/capture';
 import { normalizePhotoVettingInput, photoVettingRequired } from '@/lib/events/photo-vetting';
@@ -35,6 +35,7 @@ import { applyEventBrandColours } from '@/lib/events/brand-colours';
 import { parseMessageArea } from '@/lib/frame/message-area';
 import { withDefaultJourneyPages } from '@/lib/events/default-pages';
 import { loadEventTexts } from '@/lib/i18n/overrides';
+import { storedPartnerPictures, withPartnerPictures } from '@/lib/events/partner-pictures';
 import { sanitizeCheckboxes } from '@/lib/events/consent';
 import { eventGetsDefaults, getDefaultsRollout } from '@/lib/admin/defaults-rollout';
 import { loadEventTheme } from '@/lib/theme/load';
@@ -205,11 +206,13 @@ export const GET = withErrorHandler(async (
   // The default consent page comes with the journey defaults: an event created with them, or any event once the global switch is on (camera#330).
   // The page editor asks too (camera#378): it shows the journey from the same function, so it needs to know which defaults the event gets.
   const consentDefault = eventGetsDefaults(event as { journeyDefaults?: unknown }, await getDefaultsRollout(db));
-  const language = normalizeUiLanguage((event as { uiLanguage?: unknown }).uiLanguage);
   // The default welcome page needs the picture drawn from the event's default slideshow (issue 327): an event without it gets none.
   const hasWelcomeScreen = typeof (event as { welcomeScreen?: { url?: unknown } }).welcomeScreen?.url === 'string';
   // The wordings an admin wrote for the event's partner or for the event, in its language: the default pages use them (lib/i18n/overrides.ts, issue 353). None written: an empty object.
-  const { overrides: texts } = await loadEventTexts(db, event as unknown as Record<string, unknown>);
+  // The language is the event's own, or its partner's when the event has none (the partner's default language).
+  const { overrides: texts, language, partner } = await loadEventTexts(db, event as unknown as Record<string, unknown>);
+  // A picture field a page left empty shows the partner's default picture, at read time and never stored (lib/events/partner-pictures.ts, issue 368).
+  const partnerPictures = storedPartnerPictures(partner?.pictures);
 
   // Return event with serialized _id
   // customPages is included automatically
@@ -217,7 +220,7 @@ export const GET = withErrorHandler(async (
     event: {
       ...publicEvent,
       theme: await loadEventTheme(db, event as unknown as Record<string, unknown>),
-      ...(forGuest ? { customPages: withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen, texts }) } : {}),
+      ...(forGuest ? { customPages: withPartnerPictures(withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen, texts }), partnerPictures) } : {}),
       photoVettingRequired: vettingRequired,
       // What decides which default pages this event gets (lib/events/journey.ts): the page editor builds the journey from it.
       journeyContext: { vettingRequired, consentDefault, language, hasWelcomeScreen, texts },
@@ -294,6 +297,7 @@ export const PATCH = withErrorHandler(async (
     sharePage,
     photoVetting,
     uiLanguage,
+    frameChoice,
     tourEnabled,
   } = body;
 
@@ -431,6 +435,16 @@ export const PATCH = withErrorHandler(async (
       updateFields.uiLanguage = uiLanguage;
     } else {
       throw apiBadRequest('uiLanguage must be one of: ' + UI_LANGUAGES.join(', '));
+    }
+  }
+  if (frameChoice !== undefined) {
+    // Only `user` is stored; `random` and an empty value take the setting away, which means random (an event that never set it keeps what it always had).
+    if (frameChoice === null || frameChoice === '' || frameChoice === 'random') {
+      updateFields.frameChoice = null;
+    } else if (frameChoice === 'user') {
+      updateFields.frameChoice = 'user';
+    } else {
+      throw apiBadRequest('frameChoice must be random or user');
     }
   }
   if (visualSettings !== undefined) {

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { fakeDb } from '@/lib/library/fake-db';
 import { textOr, translate } from '@/lib/i18n';
 import { en } from '@/lib/i18n/messages.en';
-import { TEXT_MAX, getGlobalTexts, loadEventTexts, markersOf, mergeOverrides, overridesFor, parseTexts, saveEventTexts, saveGlobalTexts, savePartnerTexts, storedTexts } from './overrides';
+import { TEXT_MAX, eventLanguage, getGlobalTexts, loadEventTexts, markersOf, mergeOverrides, overridesFor, parseTexts, saveEventTexts, saveGlobalTexts, savePartnerTexts, storedTexts, withEffectiveLanguage } from './overrides';
 
 const NOW = '2026-10-09T12:00:00.000Z';
 
@@ -84,4 +84,38 @@ test('an event and a partner that wrote nothing have no wordings: nothing change
   const loaded = await loadEventTexts(db, data.events[0]);
   assert.equal(loaded.language, 'en');
   assert.deepEqual(loaded.overrides, {});
+});
+
+test('the language of an event is its own, else its partner\'s, else English: an event with none follows its partner', () => {
+  assert.equal(eventLanguage({ uiLanguage: 'hu' }, { uiLanguage: 'en' }), 'hu', 'its own wins');
+  assert.equal(eventLanguage({}, { uiLanguage: 'hu' }), 'hu', 'it follows the partner');
+  assert.equal(eventLanguage({ uiLanguage: null }, { uiLanguage: 'hu' }), 'hu');
+  assert.equal(eventLanguage({ uiLanguage: 'de' }, { uiLanguage: 'hu' }), 'hu', 'a language we do not have counts as none');
+  assert.equal(eventLanguage({}, {}), 'en');
+  assert.equal(eventLanguage({}, null), 'en');
+  assert.equal(eventLanguage(undefined, undefined), 'en');
+});
+
+test('an event document without a language gets its partner\'s, for the code that reads it from the document; an event with its own is left as it is, with no read', async () => {
+  const { db, data, calls } = fakeDb({ partners: [{ partnerId: 'P', name: 'MTK', uiLanguage: 'hu' }, { partnerId: 'Q', name: 'Other' }], events: [] });
+  const event = (partnerId: string): { partnerId: string; uiLanguage?: unknown } => ({ partnerId });
+  assert.equal((await withEffectiveLanguage(db, event('P'))).uiLanguage, 'hu');
+  assert.equal((await withEffectiveLanguage(db, event('Q'))).uiLanguage, undefined, 'a partner with none leaves the event as it is');
+  assert.equal((await withEffectiveLanguage(db, event('nobody'))).uiLanguage, undefined);
+  const before = calls.length;
+  const own = { partnerId: 'P', uiLanguage: 'en' as const };
+  assert.equal(await withEffectiveLanguage(db, own), own);
+  assert.equal(calls.length, before, 'no read for an event with its own language');
+  assert.equal((data.partners[0] as { uiLanguage: string }).uiLanguage, 'hu', 'nothing is written');
+});
+
+test('the levels of an event follow its partner\'s language: the wordings are those of that language', async () => {
+  const { db, data } = fakeDb({
+    partners: [{ partnerId: 'P', name: 'MTK', uiLanguage: 'hu', texts: { hu: { 'welcome.button': 'Indulás' }, en: { 'welcome.button': 'Go' } } }],
+    events: [{ eventId: 'e1', partnerId: 'P', name: 'Event' }],
+    admin_settings: [],
+  });
+  const loaded = await loadEventTexts(db, data.events[0]);
+  assert.equal(loaded.language, 'hu');
+  assert.deepEqual(loaded.overrides, { 'welcome.button': 'Indulás' });
 });

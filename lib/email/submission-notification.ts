@@ -7,6 +7,7 @@ import {
   emailDefaults,
 } from '@/lib/email/submission-template-defaults';
 import { DEFAULT_UI_LANGUAGE, translate, type UiLanguage } from '@/lib/i18n';
+import type { TextOverrides } from '@/lib/i18n/overrides';
 
 export interface SubmissionNotificationInput {
   recipientEmail?: string | null;
@@ -23,6 +24,8 @@ export interface SubmissionNotificationInput {
   buttonLabel?: string | null;
   /** The language of the event (camera#352): the default texts and the words used when the name or the event is missing. English when absent. */
   language?: UiLanguage;
+  /** The wordings written for the event's partner or the event in that language (lib/i18n/overrides.ts): used instead of the dictionary text. */
+  texts?: TextOverrides | null;
 }
 
 export type SubmissionNotificationResult =
@@ -133,11 +136,11 @@ export async function sendSubmissionResultEmail(
   }
 
   const language = input.language ?? DEFAULT_UI_LANGUAGE;
-  const defaults = emailDefaults(language);
-  const eventName = input.eventName?.trim() || translate(language, 'email.eventFallback');
+  const defaults = emailDefaults(language, input.texts);
+  const eventName = input.eventName?.trim() || translate(language, 'email.eventFallback', undefined, input.texts);
   // The recipient resolver says "there" when the user gave no name; in another language that becomes the language's own word.
   const givenName = input.recipientName?.trim();
-  const recipientName = givenName && givenName !== translate(DEFAULT_UI_LANGUAGE, 'email.nameFallback') ? givenName : translate(language, 'email.nameFallback');
+  const recipientName = givenName && givenName !== translate(DEFAULT_UI_LANGUAGE, 'email.nameFallback') ? givenName : translate(language, 'email.nameFallback', undefined, input.texts);
   const termsUrl = input.termsUrl?.trim() || defaults.termsUrl;
   const subject = renderTemplate(
     normalizeTemplate(input.subjectTemplate, defaults.subject, 180),

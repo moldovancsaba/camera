@@ -240,6 +240,9 @@ export const en = {
   'welcome.title': 'Welcome',
   'welcome.button': 'Start',
   'welcome.screenAlt': 'The giant screen with the live photos and the QR code to scan',
+  'flow.step.selectMessage': 'Choose message',
+  'flow.selectMessage.title': 'Choose your message',
+  'flow.changeMessage': 'Change message',
 } as const;
 
 export type MessageKey = keyof typeof en;
