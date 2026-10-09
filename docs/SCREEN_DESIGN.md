@@ -48,6 +48,23 @@ and the giant screen start from; an editor changes it, or makes another slidesho
 - **Not yet:** the sample selfie in the window when no photo exists (needs the picture slots, step 5), the stored picture of the welcome page screen drawn from this layout (step 8), the
   text levels (global, partner, event) for the call to action (step 6).
 
+## The welcome page screen picture (issue 327; step 8a of docs/BUILDING_BRICKS.md section 8)
+
+The welcome page shows the giant screen as a picture above the Start button. For an event with a default slideshow that picture is **drawn on the server from the default slideshow**, the way
+the stage draws it live, so the welcome page and the stage show one design (`lib/screen/welcome-screen.ts`, `lib/screen/welcome-screen-store.ts`).
+
+- **What is drawn, back to front** (the player's own order): what is in the photo window, the overlay picture with its transparent window, the QR code (its dark modules, from the same `qrcode` library) and
+  the texts (bold, one line, soft shadow, the event's font through `lib/frame/fonts.ts`). The window shows the event's frame over a stand-in (a head and shoulders in the event's colours) until the
+  library has sample selfies (step 5); a real photo is not used: the picture is a stored image, not a live view.
+- **Stored on the event** as `Event.welcomeScreen` `{ url, key, generatedAt, renderVersion }`, under `screens/<event uuid>/welcome-<key>.png` in Vercel Blob. The `key` is the hash of everything it is drawn
+  from (the design, the colours, the font, the frame, the drawing version), so asking again costs nothing and a change in any of them draws it again. **It lives next to the pages, never in them: a page's own
+  `screenImageUrl` is never touched and always wins when the page is shown.**
+- **When it is drawn:** for a new event, right after its default slideshow is made (after the response; `lib/screen/new-event-screen.ts`); on request with **Draw the welcome page screen** on the event's slideshows list
+  (`POST /api/admin/events/<id>/welcome-screen`, which also makes the default slideshow when there is none: this is how an existing event gets one, by an admin's choice); and **again, only if the event already has
+  one,** when the event's default slideshow is changed (Make default) or the screen design of the default slideshow is saved. A refresh never gives an event a picture it did not have.
+- **Limits:** a text that is wider than its box is drawn like the stage draws it (not shrunk); the line is placed in the middle of a 1.15 line box, which is the stage's within a pixel or two, not identical.
+- **Not yet (step 8b):** the welcome page that shows this picture for an event with no welcome page of its own (a default welcome page), the sample selfie in the window.
+
 ## Limits
 
 - 16:9 only: the design is positioned for the designers' 1920×1080 stage; another stage aspect shifts it.

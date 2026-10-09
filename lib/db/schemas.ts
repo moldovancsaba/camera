@@ -435,6 +435,8 @@ export interface Event {
   /** What the event chose for the slots of the brick model (lib/slots): only what an editor set. Present (even empty) once the event is on the slot model; before that its `logos` list is read as it always was. */
   slots?: Record<string, { items?: string[]; useDefault?: boolean }>;
   /** The last-known-good snapshot of what the event uses in each place (lib/slots/snapshot.ts, camera#421): read only for an item the library no longer has. */
+  /** The picture of the welcome page screen drawn from the default slideshow (lib/screen/welcome-screen-store.ts, issue 327): its address, the hash of what it was drawn from and when. A page's own `screenImageUrl` always wins over it. */
+  welcomeScreen?: { url: string; key: string; generatedAt: string; renderVersion: number };
   slotSnapshots?: Record<string, Array<{ id: string; name: string; imageUrl: string | null; thumbnailUrl: string | null; mimeType: string | null; width: number | null; height: number | null; source?: string; scope: string; takenAt: string }>>;
   
   // Generated default frame (docs/DEFAULT_FRAME_PLAN.md): the messmass snapshot it is built from and the editable message list.

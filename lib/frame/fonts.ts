@@ -79,7 +79,7 @@ export async function fetchMessmassFont(fontPath: string, fetchImpl: typeof fetc
 }
 
 export async function resolveFrameFont(
-  style: FrameContext['style'],
+  style: Pick<FrameContext['style'], 'fontFamily' | 'fontSource' | 'fontFile'> & Partial<FrameContext['style']>,
   deps: { fetchFont?: (fontPath: string) => Promise<Buffer | null> } = {}
 ): Promise<ResolvedFont> {
   if (!registerBundled(`frame-${FALLBACK}`, BUNDLED[FALLBACK])) throw new Error('The bundled fallback font could not be registered');

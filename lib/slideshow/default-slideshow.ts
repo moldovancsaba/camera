@@ -11,10 +11,8 @@
 
 import { createHash, randomInt } from 'node:crypto';
 import { put } from '@vercel/blob';
-import { ObjectId, type Db, type Document } from 'mongodb';
-import { after } from 'next/server';
+import type { Db, Document } from 'mongodb';
 import { COLLECTIONS, generateId, generateTimestamp } from '@/lib/db/schemas';
-import { connectToDatabase } from '@/lib/db/mongodb';
 import { SLIDESHOW_DEFAULT_BACKGROUND_ACCENT, SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY } from '@/lib/gds/tokens/colors';
 import { translate, normalizeUiLanguage, type MessageKey } from '@/lib/i18n';
 import { DEFAULT_STAGE, renderDefaultOverlay, stagePalette } from '@/lib/screen/default-stage';
@@ -116,26 +114,4 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
     updatedAt: now,
   });
   return { ok: true, slideshowId, created: true };
-}
-
-/** For after a response: loads the event as stored now (so its colours are the ones just set) and makes its default slideshow. A failure is logged, never thrown. */
-export async function ensureDefaultSlideshowLater(mongoId: ObjectId | string): Promise<void> {
-  try {
-    const db = await connectToDatabase();
-    const event = await db.collection(COLLECTIONS.EVENTS).findOne({ _id: new ObjectId(String(mongoId)) });
-    if (!event) return;
-    const result = await ensureDefaultSlideshow(db, event);
-    if (!result.ok) console.warn('the default slideshow could not be made for a new event', result.reason);
-  } catch (error) {
-    console.warn('the default slideshow could not be made for a new event', error);
-  }
-}
-
-/** Makes the default slideshow of a new event after the response, so creating the event stays quick. Outside a request (a script, a test) nothing is scheduled. */
-export function scheduleDefaultSlideshow(mongoId: ObjectId | string): void {
-  try {
-    after(() => ensureDefaultSlideshowLater(mongoId));
-  } catch {
-    // not in a request: the event gets its default slideshow from the button on its slideshows page
-  }
 }
