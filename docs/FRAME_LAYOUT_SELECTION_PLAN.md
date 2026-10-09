@@ -94,7 +94,7 @@ The dark area is the part of the picture a design covers, shown at 50 % black at
 |---|---|---|
 | A library frame with a message area (MTK blue and pink: a header and a footer bar of 100 px) | the boxes of its layers | the layers stored with the image of the message on that frame (`FrameVariant.layers`), drawn as territories |
 | The generated layout | the boxes of its layers | the same |
-| A complete frame of the event's own | the whole non-transparent graphic at 50 % black (the owner's answer 189) | `frameSilhouette`, shown at the move-and-zoom step **for an event whose editor saved the selection setting**; an event that never saved it keeps showing the real frame there, as before |
+| A complete frame of the event's own | the whole non-transparent graphic at 50 % black (the owner's answers 189 and 193: one general method, every event) | `frameSilhouette`, in the live view of a webcam and in the move-and-zoom step; if the picture cannot be read the real frame shows, as before |
 | Any own frame of a vetted event | the same silhouette, never the real frame (camera#265) | unchanged |
 
 The image of a photo is drawn when the camera step opens (S2), so the live view and the move-and-zoom step always show the dark area of **the design that photo gets**, and a change of design changes it. Tests use the real message areas of the two MTK frames.

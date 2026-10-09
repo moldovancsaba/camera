@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the dark area is one method for every event and every kind of design (owner, 2026-10-09, answer 193; user-visible on every event with a complete frame of its own)
+
+- **Changed (owner: "everywhere, properly, as a unified general method"):** a **complete frame of the event's own** is its **50 % black silhouette** (the whole non-transparent graphic) in the **move-and-zoom step and in the live view of a desktop webcam**, on **every event**, not only on events whose editor saved the selection setting (the first form of segment S5). The real frame shows again in the preview and in the result. If the silhouette cannot be made (the picture cannot be read) an event that is not vetted shows the real frame, as it did before; a vetted event never shows the real frame (camera#265).
+- **Not changed:** the dark area of a frame with a message area and of the generated layout (the boxes of their layers); what is saved and shown after the photo.
+- **Changed in the code:** `lib/frame/dark-area.ts` has one function (`darkAreaUrl`), without the "setting saved" condition; the camera component takes a `silhouetteUrl` and draws it over the frame guide.
+- **Verified:** type-check; lint; unit tests (the four cases); a production build of the capture page with an event that has one complete frame and no setting: the move-and-zoom step shows the frame as 50 % black bars; the full CI chain. **Not seen on a phone.**
+
 ## Unreleased — layout and message selection, segment S5: the dark area of the design in the shoot (epic 444, issue 447; only an event whose editor saved the setting sees a change)
 
 - **Added (owner, 2026-10-09, answer 189):** a **complete frame of the event's own** is shown in the move-and-zoom step as its **dark area: the whole non-transparent graphic at 50 % black**, as the frame of a vetted event already was, **for an event whose editor saved the selection setting**; the real frame shows again in the preview. An event that never saved it keeps the real frame there, exactly as before (to be switched for every event only on the owner's word).
