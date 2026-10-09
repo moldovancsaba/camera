@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — layout and message selection, segment S5: the dark area of the design in the shoot (epic 444, issue 447; only an event whose editor saved the setting sees a change)
+
+- **Added (owner, 2026-10-09, answer 189):** a **complete frame of the event's own** is shown in the move-and-zoom step as its **dark area: the whole non-transparent graphic at 50 % black**, as the frame of a vetted event already was, **for an event whose editor saved the selection setting**; the real frame shows again in the preview. An event that never saved it keeps the real frame there, exactly as before (to be switched for every event only on the owner's word).
+- **Verified, not changed:** the dark area of a frame with a message area and of the generated layout is the boxes of the layers of the image the photo gets; as that image is drawn when the camera step opens (segment S2), the dark area follows the design, and a change of design changes it. The two real MTK message areas (blue and pink) both give a header and a footer bar of 100 px of the 1920 x 1080 picture; tests cover them and a design with another layout.
+- **Added:** `lib/frame/dark-area.ts` (which image the move-and-zoom step puts over the photo, one rule for each kind of design), `docs/FRAME_LAYOUT_SELECTION_PLAN.md` section on the dark area.
+- **Not covered:** the live view of a desktop webcam still shows no dark area for a complete own frame (it never did); phones use the camera app and see the dark area at the move-and-zoom step.
+- **Verified:** type-check; lint; unit tests (the four kinds of design, vetted wins, the real MTK layers, another layout, a change of design); the full CI chain. **Not seen on a phone.**
+
 ## Unreleased — layout and message selection, segment S2: the capture flow (epic 444, issue 446; only an event whose editor saved the setting sees anything new)
 
 - **Added (owner, 2026-10-09, mandatory for the MTK x Vasas match on 2026-10-16):** the capture flow follows the editor's setting (segment S1). When **the user chooses the design** there is a step **Choose your design** (each design shown with its first message), when **the user chooses the message** a step **Choose your message** with the messages that design offers (a message on several designs is offered on each); with both, **design first, then message**, then the camera. **Change design** and **Change message** on the camera step go back; a change of design **keeps the message if the new design offers it, and asks again if not**. **Random** is a new draw at every photo (a retake draws again), never the same message on the same design twice in a row; **the editor chooses** fixes it. Every new photo asks again when the user chooses.

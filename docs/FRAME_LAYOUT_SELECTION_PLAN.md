@@ -86,6 +86,19 @@ Every existing event keeps what it does today until its editor sets the selectio
 - **Messages on designs (S3):** `frameDesign.messageFrames[message]` becomes one frame id **or a list** (`framesOfMessage` reads both); one image per (message, design) pair, reused by key; an admin table of messages by designs.
 - **Capture (S2, built):** `lib/frame/choose.ts` decides everything (`nextStep`, `layoutsToChoose`, `messagesToChoose`, `chooseLayout`, `drawVariant`, `drawOwnFrame`); the image or frame of a photo is drawn **when the camera step opens**, so the live view and the move-and-zoom step show the dark area of that design (S5 builds on this); an event with the setting unset keeps the random image at every shutter press. Design step, then message step (the messages that design offers), then the camera; **Change design** and **Change message** on the camera step; a design change keeps the message if the new design offers it, else asks again; random is a new draw at every photo, never the same pair twice in a row.
 
+### The dark area in the shoot (S5, `lib/frame/dark-area.ts`)
+
+The dark area is the part of the picture a design covers, shown at 50 % black at the move-and-zoom step (and in the live view of a desktop webcam), so the face stays clear of it. One rule for each kind of design:
+
+| Kind of design | Dark area | Where it comes from |
+|---|---|---|
+| A library frame with a message area (MTK blue and pink: a header and a footer bar of 100 px) | the boxes of its layers | the layers stored with the image of the message on that frame (`FrameVariant.layers`), drawn as territories |
+| The generated layout | the boxes of its layers | the same |
+| A complete frame of the event's own | the whole non-transparent graphic at 50 % black (the owner's answer 189) | `frameSilhouette`, shown at the move-and-zoom step **for an event whose editor saved the selection setting**; an event that never saved it keeps showing the real frame there, as before |
+| Any own frame of a vetted event | the same silhouette, never the real frame (camera#265) | unchanged |
+
+The image of a photo is drawn when the camera step opens (S2), so the live view and the move-and-zoom step always show the dark area of **the design that photo gets**, and a change of design changes it. Tests use the real message areas of the two MTK frames.
+
 ## 7. Segment status
 
 | Segment | Status |
@@ -94,5 +107,5 @@ Every existing event keeps what it does today until its editor sets the selectio
 | S3 #449 messages per design | built (this pull request); S1 #445 merged as #455 |
 | S2 #446 capture flow | built (this pull request), stacked on S3 #449 |
 | S4 #448 layout previews | after S2 |
-| S5 #447 dark area | after S4 |
+| S5 #447 dark area | built (this pull request), stacked on S2 #446 |
 | S6 #450, S7 #451, S8 #452, S9 #453 | after the match |
