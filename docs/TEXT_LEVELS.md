@@ -40,7 +40,8 @@ A `PUT` replaces the level's wordings.
 
 - **The capture app** (`app/capture/[eventId]/layout.tsx` gives them to `UiLanguageProvider`): every text that goes through `useT()` (`t` and `own`), which is every text of the camera, the frame choice, the reframe step, the login and consent pages, the flow steps and the tour.
 - **The default pages** (welcome, consent, login): built with the wordings in `withDefaultJourneyPages` (the event API passes them) and in the page editor's journey view (`journeyContext.texts`), so the editor sees what the user sees.
-- **Not yet:** the public photo page (`app/share`), the e-mail templates, the waiting-for-approval and CTA page texts (`lib/events/page-texts.ts`), the share page settings and the page titles still read the code dictionary; they take the same `texts` argument when they are wired (`translate(language, key, values, texts)`, `textOr(..., texts)`). The Dictionary lists their keys already; a wording written for them has no effect until then.
+- **The public photo page** (`app/share/[id]`: its headline, labels, buttons, waiting and not-approved notices, the page titles and the link preview texts), the **waiting-for-approval texts** and the **CTA page's "opening" text** (`lib/events/page-texts.ts`, `share-page-settings.ts`: their helpers take the wordings as the last argument).
+- **Not yet:** the e-mail templates, the labels of the try-on pictures on the public photo page, the capture page's own metadata title, and the guided tour still read the code dictionary; they take the same `texts` argument when they are wired (`translate(language, key, values, texts)`, `textOr(..., texts)`). The Dictionary lists their keys already; a wording written for them has no effect until then.
 
 ## What does not change
 

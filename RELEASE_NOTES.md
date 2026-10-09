@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the public photo page, the approval texts and the CTA text read the text levels (issue 353, step 6, second part; nothing changes until someone saves a wording)
+
+- **Changed:** the public photo page (headline, labels, buttons, the waiting and not-approved notices, the tab title and the link preview texts), the waiting-for-approval texts and the CTA page's "opening" text use the wordings written for the event's partner or for the event (docs/TEXT_LEVELS.md), after a text an editor wrote on the page and before the dictionary. The page reads the wordings with two small reads (the global setting and the partner), and a failed read costs only those wordings.
+- **Not changed:** **no wording exists, so no user sees any difference** until an editor saves one. The e-mail templates, the try-on picture labels, the capture page's metadata title and the guided tour still read the code dictionary.
+- **Verified:** type-check; lint; unit tests of the helpers with and without wordings (the editor's own text wins, no wording is the dictionary text); the full CI chain. **Not seen on a real photo page.**
+
 ## Unreleased — text levels: the Dictionary, a partner's texts and an event's texts (issue 353, step 6; admin only, nothing changes until someone saves a wording)
 
 - **Added:** every default text of the user journey (236 texts, English and Hungarian) can now be given another **wording** at three levels: **global** (Settings, **Dictionary**), **all events of a partner** (the partner menu, **Texts**) and **one event** (the event menu, **Texts**). The nearest level wins (event, then partner, then global, then the code dictionary); a level stores only what an editor wrote and looks at the level above for the rest, so nothing is copied down and a wording written at a level is its own. A text an editor wrote on a page of the journey still wins over all of them. One editor for the three levels: a language switch, a search, every text in its group with what is used now and where it comes from, and "Use the one from above".
