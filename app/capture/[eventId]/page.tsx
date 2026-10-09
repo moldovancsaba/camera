@@ -36,6 +36,7 @@ import WhoAreYouPage, { type WhoAreYouPageData } from '@/components/capture/WhoA
 import AcceptPage, { type AcceptPageData } from '@/components/capture/AcceptPage';
 import { consentCheckboxes, consentRecords } from '@/lib/events/consent';
 import { acceptanceOnLogin, acceptanceSentence, sentenceText } from '@/lib/events/acceptance';
+import { welcomeScreenImage, welcomeScreenOf } from '@/lib/events/welcome-screen-url';
 import { forgetConsents, recallConsents, rememberConsents } from '@/lib/capture/consent-memory';
 import { approvalTexts } from '@/lib/events/page-texts';
 import { useT, useUiTexts } from '@/components/i18n/UiLanguageProvider';
@@ -500,6 +501,8 @@ export default function EventCapturePage({
           loadingText: eventData.loadingText,
           tourEnabled: eventData.tourEnabled === true,
           acceptanceOnWhoAreYou: eventData.acceptanceOnWhoAreYou === true,
+          // The picture drawn from the default slideshow: a welcome page without a picture of its own shows it (it was never copied here before, so such a page showed no giant screen).
+          welcomeScreen: welcomeScreenOf(eventData),
           logoUrl: eventData.logoUrl,
           showLogo: eventData.showLogo || false,
           brandColor: eventData.brandColor,
@@ -1423,7 +1426,7 @@ export default function EventCapturePage({
               bottomImageUrl: currentPage.config.bottomImageUrl,
               cornerImageUrl: currentPage.config.cornerImageUrl,
               // A picture set on the page is the page's own and wins; otherwise the page follows the one drawn from the default slideshow.
-              screenImageUrl: currentPage.config.screenImageUrl || event?.welcomeScreen?.url,
+              screenImageUrl: welcomeScreenImage(currentPage.config.screenImageUrl, event?.welcomeScreen),
               screenImageAlt: currentPage.config.screenImageAlt,
               buttonColor: currentPage.config.buttonColor,
               buttonTextColor: currentPage.config.buttonTextColor,
