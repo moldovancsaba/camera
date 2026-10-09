@@ -143,6 +143,10 @@ export function buildPlaylistPipeline(matchFilter: object) {
   ];
 }
 
+/** The time an admin last asked for a reload, or null: an open full-screen player that sees a different one reloads at its next slide (lib/slideshow/reload.ts). */
+const reloadToken = (slideshow: Record<string, unknown>): string | null =>
+  typeof slideshow.reloadRequestedAt === 'string' && slideshow.reloadRequestedAt ? slideshow.reloadRequestedAt : null;
+
 export function buildPlaylistMatchFilter({
   eventIdKeys,
   inactiveEmails,
@@ -462,6 +466,7 @@ export async function GET(
           backgroundImageUrl: bgImage,
           viewportScale,
           screenDesign,
+          reloadToken: reloadToken(slideshow),
         },
         playlist: [],
         message: 'No submissions available for this event',
@@ -504,6 +509,7 @@ export async function GET(
         backgroundImageUrl: bgImage,
         viewportScale,
         screenDesign,
+        reloadToken: reloadToken(slideshow),
       },
       playlist,
       totalSubmissions: submissions.length,
