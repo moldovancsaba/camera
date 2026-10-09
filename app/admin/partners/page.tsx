@@ -10,6 +10,8 @@ import { isGlobalAdminSession, listAccessiblePartnerIds } from '@/lib/partners/a
 import { redirect } from 'next/navigation';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import PartnersInventoryList, { type SerializedPartnerRow } from '@/components/gds/PartnersInventoryList';
+import ListPager from '@/components/admin/ListPager';
+import { PARTNERS_PAGE_SIZE, PARTNER_COLLATION, PARTNER_ORDER, pageNumber, partnerCounts } from '@/lib/partners/list';
 import { formatAdminDate, mongoIdString } from '@/lib/gds/serialize-admin-rows';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 
@@ -48,7 +50,7 @@ async function countDistinctAssignedFrames(
 export default async function PartnersPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ search?: string }>;
+  searchParams?: Promise<{ search?: string; page?: string }>;
 }) {
   const session = await getSession();
   if (!session) {
@@ -59,6 +61,8 @@ export default async function PartnersPage({
   let matchingPartnerCount = 0;
   let partnerUsersCount = 0;
   let partnerFramesCount = 0;
+  let page = 1;
+  let pages = 1;
   let dbError = null;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const search = typeof resolvedSearchParams?.search === 'string' ? resolvedSearchParams.search.trim() : '';
@@ -87,12 +91,17 @@ export default async function PartnersPage({
       .map((partner) => partner.partnerId)
       .filter((partnerId): partnerId is string => typeof partnerId === 'string' && partnerId.trim().length > 0);
 
+    pages = Math.max(1, Math.ceil(matchingPartners.length / PARTNERS_PAGE_SIZE));
+    page = pageNumber(typeof resolvedSearchParams?.page === 'string' ? resolvedSearchParams.page : undefined, pages);
+
     const [partners, userTotal, frameTotal] = await Promise.all([
       db
         .collection(COLLECTIONS.PARTNERS)
         .find(query)
-        .sort({ createdAt: -1 })
-        .limit(50)
+        .collation(PARTNER_COLLATION)
+        .sort(PARTNER_ORDER)
+        .skip((page - 1) * PARTNERS_PAGE_SIZE)
+        .limit(PARTNERS_PAGE_SIZE)
         .toArray() as Promise<unknown[]>,
       matchingPartnerIds.length > 0
         ? db.collection(COLLECTIONS.PARTNER_USER_ACCESS).countDocuments({
@@ -109,25 +118,22 @@ export default async function PartnersPage({
     partnerFramesCount = frameTotal;
 
     partnerRows = [];
+    // The counts of the whole page in three grouped queries (before: three for every row).
+    const counts = await partnerCounts(db, (partners as PartnerListItem[]).map((partner) => partner.partnerId || '').filter(Boolean));
     for (const partner of partners as PartnerListItem[]) {
       const id = mongoIdString(partner._id);
       const partnerId = partner.partnerId || '';
       if (!id || !partnerId) continue;
-
-      const eventCount = await db.collection(COLLECTIONS.EVENTS).countDocuments({ partnerId });
-      const frameCount = await countDistinctAssignedFrames(db, [partnerId]);
-      const userAccessCount = await db
-        .collection(COLLECTIONS.PARTNER_USER_ACCESS)
-        .countDocuments({ partnerId, isActive: true });
+      const own = counts.get(partnerId);
 
       partnerRows.push({
         id,
         partnerId,
         name: partner.name || 'Untitled partner',
         description: partner.description ?? null,
-        eventCount,
-        frameCount,
-        userAccessCount,
+        eventCount: own?.events ?? 0,
+        frameCount: own?.frames ?? 0,
+        userAccessCount: own?.users ?? 0,
         createdAtLabel: formatAdminDate(partner.createdAt),
         isActive: Boolean(partner.isActive),
       });
@@ -168,6 +174,7 @@ export default async function PartnersPage({
       dbError={dbError}
     >
       <PartnersInventoryList partners={partnerRows} />
+      {!dbError ? <ListPager basePath="/admin/partners" query={search ? { search } : {}} page={page} pages={pages} total={matchingPartnerCount} pageSize={PARTNERS_PAGE_SIZE} /> : null}
     </AdminListPageShell>
   );
 }

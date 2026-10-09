@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the partner list is alphabetical, has pages, and opens fast (issue 375, client feedback 2026-10-08)
+
+- **Fixed (client: "only 50 of 258 partners are shown, and not in ABC order"):** `/admin/partners` now lists **every partner, in alphabetical order, 50 to a page**, with **Previous / Next** under the list ("51–100 of 255 · page 2 of 6"); the page is part of the address, the search stays on every link and finds across all pages. The order ignores capitals and treats an accent as a tie-breaker ("Újpest" stands with the U's, "messmass.com" with the M's); two partners with the same name keep a fixed place.
+- **Fixed:** the **new-event partner picker** had the same limit (the 100 newest partners, in no order): it now loads every page, alphabetically. `GET /api/partners` has a new `sort=name` option for it; the default (newest first) is unchanged for other callers.
+- **Faster:** the three counts on each card (events, frames, users) came from three queries for every partner (765 for the whole list). A page now takes **three grouped queries** in all. Measured read-only on the real data (255 partners): 169 ms against 13.5 s, with **identical counts for all 255 partners**.
+- **Not changed:** the partner counts above the list (they already used the whole match), who can see which partners, the partner pages. The partner list that messmass reads for provisioning (`lib/messmass/provision.ts`, 50 by default, 200 at most) is another interface and stays as it is.
+- **Documentation:** release notes.
+- **Verified:** type-check; lint; unit tests (the page number, the grouped counts with zeros and with other partners' rows ignored, the pager on the first, middle and last page and with a search); the full CI chain; and a **read-only run against the real data**: all 255 partners reached through the 6 pages once each, no duplicates, none out of order, counts equal to the old per-partner queries. **Not checked:** the page in a browser with a real admin session (it needs the database and a login); the pager markup is tested, not looked at.
+
 ## Unreleased — the Google and Facebook sign-in buttons stand out, in their own colours (issue 462, client feedback)
 
 - **Changed (client, 2026-10-09, on the "Ki vagy te?" page: "make the Google and Facebook sign-in stand out more here, perhaps in their own colours"; owner: the buttons should represent their brand):** the two sign-in buttons are now **large pills in the providers' own colours with their marks**: **Google** a white button with a thin grey border, dark text and the four-colour **G**; **Facebook** the Facebook blue with white text and the white **f** (before: two small buttons with a plain letter). They are at least 48 px tall, **side by side where there is room and one above the other on a phone**, in the language of the event ("Continue with Google", "Folytatás Google-lel", "Folytatás Facebookkal"), with a hover and a keyboard focus ring.

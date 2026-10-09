@@ -114,18 +114,25 @@ export default function NewEventPage() {
   useEffect(() => {
     const fetchPartners = async () => {
       try {
-        const response = await fetch('/api/partners?active=true&limit=100');
-        const data: {
-          data?: { partners?: PartnerOption[] };
-          partners?: PartnerOption[];
-          error?: string;
-        } = await response.json();
+        // Alphabetical, every page: the list holds more than one page of partners (camera#375: 100 newest of 258 were all the picker had).
+        const all: PartnerOption[] = [];
+        for (let page = 1, pages = 1; page <= pages && page <= 50; page++) {
+          const response = await fetch(`/api/partners?active=true&sort=name&limit=100&page=${page}`);
+          const data: {
+            data?: { partners?: PartnerOption[]; pagination?: { pages?: number } };
+            partners?: PartnerOption[];
+            error?: string;
+          } = await response.json();
 
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to load partners');
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to load partners');
+          }
+
+          all.push(...(data.data?.partners || data.partners || []));
+          pages = data.data?.pagination?.pages ?? 1;
         }
 
-        setPartners(data.data?.partners || data.partners || []);
+        setPartners(all);
         setIsLoadingPartners(false);
       } catch (err: unknown) {
         setError(getErrorMessage(err));
