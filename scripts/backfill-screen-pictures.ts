@@ -17,10 +17,10 @@
  *   npx tsx scripts/backfill-screen-pictures.ts --apply --event=<uuid> [--limit=200]   # makes them (needs BLOB_READ_WRITE_TOKEN)
  */
 
-import type { Document } from 'mongodb';
 import { closeConnection, connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { ensureScreenPicture } from '@/lib/submissions/screen-picture';
+import { screenBackfillFilter, slideshowEventIds } from '@/lib/submissions/screen-backfill';
 import { loadEnvFromFiles } from './load-env-from-files';
 
 const arg = (name: string): string | undefined => process.argv.slice(2).find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -36,22 +36,14 @@ async function main() {
   if (apply && !process.env.BLOB_READ_WRITE_TOKEN?.trim()) throw new Error('--apply needs BLOB_READ_WRITE_TOKEN');
 
   const db = await connectToDatabase();
-  const slideshowEvents = (await db.collection(COLLECTIONS.SLIDESHOWS).distinct('eventId', { isActive: { $ne: false } })).filter((v): v is string => typeof v === 'string');
+  const slideshowEvents = await slideshowEventIds(db);
   const events = only ? slideshowEvents.filter((id) => id === only) : slideshowEvents;
   if (events.length === 0) {
     console.log(only ? `No slideshow belongs to event ${only}.` : 'No slideshows.');
     return;
   }
 
-  const filter: Document = {
-    $and: [
-      { $or: [{ eventIds: { $in: events } }, { eventId: { $in: events } }] },
-      { $or: [{ imageUrl: { $type: 'string' } }, { finalImageUrl: { $type: 'string' } }] },
-      { screenImageUrl: { $in: [null, ''] } },
-      { isArchived: { $ne: true } },
-      { reviewStatus: { $nin: ['pending_review', 'rejected'] } },
-    ],
-  };
+  const filter = screenBackfillFilter(events);
   const rows = await db.collection(COLLECTIONS.SUBMISSIONS).find(filter).project({ imageUrl: 1, finalImageUrl: 1, eventId: 1, eventName: 1, fileSize: 1, mimeType: 1, submissionKind: 1 }).sort({ createdAt: -1 }).toArray();
 
   const perEvent = new Map<string, { name: string; count: number; bytes: number; png: number }>();
