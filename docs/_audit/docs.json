@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-09T10:00:08+00:00",
+  "generated": "2026-10-09T10:16:25+00:00",
   "repo": "camera",
-  "head": "8d3cef9",
+  "head": "74852ec",
   "counts": {
    "endpoints": 140,
    "collections": 8,
    "env": 59,
    "outbound-hosts": 30,
-   "docs": 63
+   "docs": 64
   }
  },
  "items": [
@@ -255,6 +255,10 @@
   {
    "file": "docs/_audit/drift-register.md",
    "title": "camera drift register \u2014 fleet audit P3, first edition"
+  },
+  {
+   "file": "docs/_research/SLIDESHOW_FREEZE_RESEARCH.md",
+   "title": "Giant-screen slideshow freeze: root-cause research and fix plan"
   },
   {
    "file": "docs/landing-page-css-handoff.md",

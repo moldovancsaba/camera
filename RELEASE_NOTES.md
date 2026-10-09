@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — research: why the giant-screen slideshow can freeze for 10 to 20 seconds (issue 476; documentation only, nothing is changed)
+
+- **Added (docs):** `docs/_research/SLIDESHOW_FREEZE_RESEARCH.md`, the read-only investigation of the client feedback that the slideshow freezes although it pre-loads continuously: how the player loads and caches today, eleven ranked root-cause candidates with file and line references, the research on newer ways (as of October 2026), a small-step fix plan (S0 to S8) with how to verify each, and the instrumentation to add first so the next freeze leaves evidence.
+- **Most likely cause (a judgement from the code and a simulation of our own queue, not yet seen on the live screen):** the refill asks the server for the least played photo without sending what is already queued and appends the answer without a duplicate check, so in the default fixed order the queue fills with copies of the same photo: runs of buffer size + 1 identical slides (20 s at buffer 3, 55 s at the default 10 with a 5 s hold). Second: no timeout on any request and a single-flight refill lock, so one stalled request stops refilling. The cheapest check (the slideshow's order, buffer and hold in the admin, and the photo ids in the network log) is in the report and on the issue.
+- **Verified:** the central lines of the code and the simulation numbers were re-read and re-run. **Nothing was run against the live screen, the database or production.** The fix is the owner's decision (issue 476).
+
 ## Unreleased — e-mails to the user, segment E6: send a test e-mail to myself (epic 463, issue 469)
 
 - **Added (my proposal for the match; the owner wants the epic before 16 Oct):** every preview of an e-mail has **Send me a test e-mail**: the e-mail as drawn, made and sent by the same code a user's e-mail goes through, to **the e-mail address of the signed-in editor and nobody else** (a recipient in the request is ignored), with `[Test]` in front of the subject, in the look and with the data of the event (name, teams, date, short link, legal part) when the preview is of an event. So the owner can read the real e-mail on a phone before any user gets it. Nothing is stored.
