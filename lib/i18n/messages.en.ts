@@ -70,6 +70,8 @@ export const en = {
   'tour.next': 'Next',
   'tour.show': 'Show tour',
   'share.title': 'Share Your Photo',
+  'share.publicGalleryConsent': 'I agree to show my photo in the public event gallery (optional).',
+  'share.publicGalleryConsentHelp': 'Leave this unchecked to keep your photo out of the public event gallery.',
   'share.copy': 'Copy',
   'share.view': 'View your photo (opens share link)',
   'share.suggested': 'Suggested message:',

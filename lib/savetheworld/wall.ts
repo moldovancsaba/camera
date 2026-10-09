@@ -4,8 +4,8 @@ import { notWaitingOrRejectedClause } from '@/lib/submissions/visibility';
 /**
  * Filter for GET /api/internal/savetheworld/pledges (savetheworld's public wall
  * and galleries). Strict opt-in: only submissions the fan explicitly shared
- * (`isShareVisible === true`). A missing or `false` flag is never public;
- * `publish-selfies` is the admin's deliberate way to publish legacy photos.
+ * (`isShareVisible === true`) with a consent marker written by the current
+ * explicit opt-in capture flow. Older submissions without that marker stay private.
  */
 export function buildWallFilter(eventKeys: string[]): Record<string, unknown> {
   return {
@@ -13,6 +13,7 @@ export function buildWallFilter(eventKeys: string[]): Record<string, unknown> {
       eventMatchFor(eventKeys),
       { submissionKind: { $ne: 'tryon_result' } },
       { isShareVisible: true },
+      { 'publicGalleryConsent.version': 1 },
       // A vetted photo that is waiting or was rejected is never on the wall (camera#270).
       notWaitingOrRejectedClause,
       // Only fields this route will return; the raw originalImageUrl is never shown here.

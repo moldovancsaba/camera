@@ -71,6 +71,8 @@ export const hu: Record<MessageKey, string> = {
   'tour.next': 'Tovább',
   'tour.show': 'Útmutató',
   'share.title': 'Oszd meg a fotódat',
+  'share.publicGalleryConsent': 'Hozzájárulok, hogy a fotóm megjelenjen az esemény nyilvános galériájában (nem kötelező).',
+  'share.publicGalleryConsentHelp': 'Hagyd üresen, ha nem szeretnéd, hogy a fotód megjelenjen a nyilvános galériában.',
   'share.copy': 'Másolás',
   'share.view': 'Fotód megtekintése (megnyitja a megosztási linket)',
   'share.suggested': 'Javasolt üzenet:',

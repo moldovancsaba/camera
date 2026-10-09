@@ -21,17 +21,20 @@ test('publish filter keeps the event scope next to the image-URL $or', () => {
     'image-URL clause present',
   );
   assert.ok(clauses.some((c) => 'isShareVisible' in c), 'isShareVisible clause present');
+  assert.ok(clauses.some((c) => 'publicGalleryConsent.version' in c), 'explicit consent marker required');
 });
 
-test('publish never overrides an explicit false: it only matches an unset flag', () => {
+test('publish requires versioned consent and never overrides an explicit false', () => {
   const clauses = buildPublishSelfiesFilter(KEYS).$and as Record<string, unknown>[];
   assert.deepEqual(clauses.find((c) => 'isShareVisible' in c), { isShareVisible: null });
+  assert.deepEqual(clauses.find((c) => 'publicGalleryConsent.version' in c), { 'publicGalleryConsent.version': 1 });
 });
 
-test('wall is strict opt-in: only isShareVisible === true, still event-scoped', () => {
+test('wall requires current explicit consent and isShareVisible === true', () => {
   const clauses = buildWallFilter(KEYS).$and as Record<string, unknown>[];
   assert.deepEqual(clauses[0], eventMatchFor(KEYS));
   assert.deepEqual(clauses.find((c) => 'isShareVisible' in c), { isShareVisible: true });
+  assert.deepEqual(clauses.find((c) => 'publicGalleryConsent.version' in c), { 'publicGalleryConsent.version': 1 });
   assert.throws(() => buildWallFilter([]), /unscoped/);
 });
 

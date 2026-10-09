@@ -784,6 +784,7 @@ export interface Submission {
   shareToken?: string | null;        // Opaque share id of a vetted photo (/share/<token>); older photos use their database id
   reviewHistory?: Array<{ action: 'approve' | 'reject'; by: string; at: string; reason?: string | null }>;
   isShareVisible?: boolean;          // Public share-page publication flag
+  publicGalleryConsent?: { version: 1; grantedAt: string } | null; // Explicit opt-in evidence for the public event gallery; absent on legacy submissions
   isSlideshowEligible?: boolean;     // Slideshow playlist eligibility flag
   tryOnModerationArchive?: TryOnModerationArchiveState | null; // Review-queue archive state for try-on results only
   

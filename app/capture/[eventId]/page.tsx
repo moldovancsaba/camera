@@ -16,7 +16,7 @@
 
 import { useState, useEffect, use, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
-import { Button } from '@mantine/core';
+import { Button, Checkbox } from '@mantine/core';
 import CameraCapture from '@/components/camera/CameraCapture';
 import AppShellLock from '@/components/capture/AppShellLock';
 import { clearCaptureNotices, notifyCapture } from '@/components/capture/notify';
@@ -273,6 +273,7 @@ export default function EventCapturePage({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareOptIn, setShareOptIn] = useState(false);
   // Photo vetting (camera#265): the photo is saved and waits for approval. No share link exists yet.
   const [pendingApproval, setPendingApproval] = useState(false);
   // An own frame as a 50% black silhouette, shown instead of the real frame while the photo of a vetted event waits.
@@ -773,6 +774,7 @@ export default function EventCapturePage({
 
   const handleReframeRetake = () => {
     setCapturedOriginal(null);
+    setShareOptIn(false);
     setStep('capture-photo');
   };
 
@@ -802,6 +804,7 @@ export default function EventCapturePage({
         userInfo?: WhoAreYouPageData;
         consents?: CollectedData['consents'];
         shareOptIn?: boolean;
+        publicGalleryConsentVersion: 1;
         // The message and image of the generated default frame this photo used (camera#236).
         frameVariant?: { index: number | null; message: string | null; imageUrl: string };
       } = {
@@ -814,8 +817,8 @@ export default function EventCapturePage({
         imageWidth: imageDimensions?.width || selectedFrame?.width || 1920,
         imageHeight: imageDimensions?.height || selectedFrame?.height || 1080,
         cameraId,
-        // The consent page covers showing the photo on the event's pledge wall; there is no separate choice any more (camera#344).
-        shareOptIn: true,
+        shareOptIn,
+        publicGalleryConsentVersion: 1,
         ...(selectedFrame?.generated
           ? {
               frameVariant: {
@@ -1125,6 +1128,7 @@ export default function EventCapturePage({
   const handleNextPhoto = () => {
     setCapturedImage(null);
     setCapturedOriginal(null);
+    setShareOptIn(false);
     setCompositeImage(null);
     setShareUrl(null);
     setPendingApproval(false);
@@ -1145,6 +1149,7 @@ export default function EventCapturePage({
     // Reset capture state
     setCapturedImage(null);
     setCapturedOriginal(null);
+    setShareOptIn(false);
     setCompositeImage(null);
     setShareUrl(null);
     setPendingApproval(false);
@@ -1585,6 +1590,12 @@ export default function EventCapturePage({
               onRetake={handleReframeRetake}
               busy={saveRequested || isProcessing || isSaving}
             >
+              <Checkbox
+                checked={shareOptIn}
+                onChange={(event) => setShareOptIn(event.currentTarget.checked)}
+                label={t('share.publicGalleryConsent')}
+                description={t('share.publicGalleryConsentHelp')}
+              />
               {vetted && (
                 <p className="text-center text-sm" data-pending-notice>
                   {pendingPreviewNotice}

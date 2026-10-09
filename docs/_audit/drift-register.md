@@ -242,14 +242,15 @@ zero-caller deprecation list).
   every Dependabot PR. Vercel deployed those commits anyway (it does not wait
   for CI). `docs/_audit/*.json` regenerated and the route added to
   api-reference.md.
-- **shareOptIn contract change** (open — consent decision pending): the capture
-  share checkbox defaults to checked since `d9488b5` (v12.3.36), where it was an
-  explicit unchecked opt-in before; publish-selfies flips an explicit
-  `isShareVisible: false` as well as missing values; the pledge wall treats a
-  missing `isShareVisible` as visible (505 legacy submissions). The contract
-  text in api-reference.md and the code comments in app/api/submissions/route.ts
-  and app/api/internal/savetheworld/pledges/route.ts were updated to describe
-  current behavior; whether that behavior is intended is an owner decision.
+- **Public-gallery consent contract** (owner decision confirmed 2026-10-09;
+  implementation local, pending deploy and production verification): public
+  gallery sharing is a separate, unchecked-by-default opt-in. Only a submission
+  with `publicGalleryConsent.version === 1` can appear on the pledge wall or be
+  bulk-published. Legacy submissions without the marker remain private, even if
+  their prior `isShareVisible` value is true. The capture UI, submission route,
+  wall, bulk-publish guard, tests, and API/integration docs now implement that
+  policy. Keep issue #18 open until this is deployed and verified in production;
+  obtain legal review of the consent wording before treating the item as closed.
 
 ## 8. Carried forward from the v12.3.39 hardening batch (2026-09-29)
 Open items the batch found but did not change, each with a recommendation:

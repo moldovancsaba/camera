@@ -9,9 +9,9 @@ import { buildEventSubmissionsFilter, buildPublishSelfiesFilter } from '@/lib/sa
 /**
  * POST /api/internal/savetheworld/events/[eventId]/publish-selfies
  *
- * Bulk-sets isShareVisible=true on every non-tryon fan submission for this
- * event that was not yet share-visible. Used to retroactively publish selfies
- * taken before shareOptIn defaulted to true.
+ * Sets isShareVisible=true only for non-tryon submissions with versioned,
+ * affirmative public-gallery consent. Legacy submissions without that evidence
+ * are never made public by this endpoint.
  *
  * Looks up the event by camera eventId, Mongo _id, OR savetheworldEventId so
  * both the admin URL identifier and the public page identifier work.

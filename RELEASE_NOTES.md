@@ -13,6 +13,10 @@
 - **Changed:** an event created from now on (the admin form, messmass provisioning, savetheworld provisioning) starts **on the slot model** (`slots: {}`): it looks at its partner for its logo and stores only what an editor sets, so a partner on the model (a new partner with its logo from messmass) gives its events the logo at once. A partner that is not on the model still gives them its old default rows, per scenario, as the copies did.
 - **Not changed:** what users see on any existing event: the capture page and the slideshow still read `GET /api/events/<id>/logos`, which answers every event exactly as before until it is moved to the new model, and they still show the first logo (the random pick, the messmass replacement and the migration of existing events and partners come next, with the owner's go).
 - **Verified:** unit tests (the import and provisioning on the slot model, the upload routes with `slot` including the seed of an event not on the model); the new panel in each state (default, add more, replace, none, partner level) in a production-build harness in the browser pane: labels, buttons, tags, the border of the panel, no sideways overflow at 375 px (checked in the DOM, not a screenshot); type-check; lint; the full CI chain. **Not seen on the real admin pages or by the owner.**
+## Unreleased — public gallery consent is a separate opt-in (issue #18)
+
+- **Changed:** both capture flows now show an optional, unchecked public-gallery consent choice. The submission API records versioned affirmative consent only when the user checks it; legacy clients and records remain private. The public pledge wall and event bulk-publish route require the consent marker, so prior `isShareVisible` values cannot expose legacy photos.
+- **Verified locally:** submission, wall, bulk-publish, and photo-vetting tests; type-check; lint; production build. Not deployed or verified in production. The item remains open pending deployment, production verification, and legal review of the consent wording.
 
 ## Unreleased — the logo on the slot model: data, chain and routes (camera#419, step 4.1 and 4.2 of the order of 139; no screen uses it yet)
 

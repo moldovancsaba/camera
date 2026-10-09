@@ -14,7 +14,8 @@ import CameraCapture from '@/components/camera/CameraCapture';
 import FileUpload from '@/components/camera/FileUpload';
 import ShareOverlay from '@/components/capture/ShareOverlay';
 import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
-import { Button } from '@mantine/core';
+import { Button, Checkbox } from '@mantine/core';
+import { useT } from '@/components/i18n/UiLanguageProvider';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import { cropCaptureToAspect } from '@/lib/camera/frame-crop';
 import type { FullFrameCapture } from '@/lib/camera/frame-capture';
@@ -86,6 +87,7 @@ function framePixelDimensions(frame: Frame): { width: number; height: number } {
 }
 
 export default function CapturePage() {
+  const { t } = useT();
   const [frames, setFrames] = useState<Frame[]>([]);
   const [selectedFrame, setSelectedFrame] = useState<Frame | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -95,6 +97,7 @@ export default function CapturePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareOptIn, setShareOptIn] = useState(false);
   const [step, setStep] = useState<'select-frame' | 'capture-photo' | 'preview'>('select-frame');
   const [frameIntrinsicAspect, setFrameIntrinsicAspect] = useState<number | null>(null);
   const [selectedTryOnSuitId, setSelectedTryOnSuitId] = useState<string | null>(null);
@@ -266,8 +269,8 @@ export default function CapturePage() {
           requestTryOn: Boolean(selectedTryOnSuitId),
           leatherSuitId: selectedTryOnSuitId,
           tryOnSourceImageData: selectedTryOnSuitId ? capturedImage : null,
-          // No separate pledge wall choice any more, as in the event flow (camera#344, owner decision 2026-10-08).
-          shareOptIn: true,
+          shareOptIn,
+          publicGalleryConsentVersion: 1,
         }),
       });
 
@@ -360,6 +363,7 @@ export default function CapturePage() {
     setSelectedFrame(null);
     setCapturedImage(null);
     setCompositeImage(null);
+    setShareOptIn(false);
     setSubmissionId(null);
     setShareUrl(null);
     setSelectedTryOnSuitId(null);
@@ -529,6 +533,15 @@ export default function CapturePage() {
                         disabled={isSaving}
                       />
                     </div>
+                  ) : null}
+
+                  {!submissionId ? (
+                    <Checkbox
+                      checked={shareOptIn}
+                      onChange={(event) => setShareOptIn(event.currentTarget.checked)}
+                      label={t('share.publicGalleryConsent')}
+                      description={t('share.publicGalleryConsentHelp')}
+                    />
                   ) : null}
 
                   <div className="flex flex-col sm:flex-row gap-4">

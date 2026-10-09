@@ -158,12 +158,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       // Custom page data
       userInfo,
       consents,
-      // Public pledge-wall share choice from the capture flow. The capture UI's checkbox
-      // defaults to checked (d9488b5); a request that omits shareOptIn stores false.
-      // POST /api/internal/savetheworld/events/[eventId]/publish-selfies can later set
-      // isShareVisible true in bulk for an event. Only meaningful for plain ('original')
-      // captures; try-on results get isShareVisible from the moderation flow.
+      // Separate, optional public-gallery choice. Only an explicit true creates
+      // versioned consent evidence; old clients and omitted values stay private.
       shareOptIn,
+      publicGalleryConsentVersion,
     } = body;
   const tryOnRequest = normalizeTryOnRequest(body);
 
@@ -344,7 +342,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
               photoUrl: pendingPhoto?.url ?? '',
               photoSize: pendingPhoto?.size ?? 0,
               photoMime: pendingPhoto?.mime ?? 'image/jpeg',
-              shareOptIn: shareOptIn === true,
+              shareOptIn: shareOptIn === true && publicGalleryConsentVersion === 1,
               submittedAt: createdAt,
               tryOn: tryOnRequest.requested && tryOnRequest.leatherSuitId
                 ? {
@@ -359,10 +357,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
             reviewHistory: [],
           }),
       submissionKind: 'original',
-      // Public pledge-wall visibility: true only when shareOptIn === true in the request
-      // (the capture UI's checkbox defaults to checked); false otherwise. May later be
-      // bulk-set to true by publish-selfies (see the shareOptIn note above).
-      isShareVisible: vetted ? false : shareOptIn === true,
+      publicGalleryConsent:
+        shareOptIn === true && publicGalleryConsentVersion === 1
+          ? { version: 1, grantedAt: createdAt }
+          : null,
+      // Legacy records cannot become public without versioned affirmative consent.
+      isShareVisible: vetted ? false : shareOptIn === true && publicGalleryConsentVersion === 1,
       // User info from onboarding pages (a social login gives the email without the page)
       ...(validatedUserInfo
         ? { userInfo: validatedUserInfo }

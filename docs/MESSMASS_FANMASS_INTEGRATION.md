@@ -209,22 +209,23 @@ Rate limit `INTERNAL_WRITE`.
 
 ### `GET /api/internal/savetheworld/pledges?eventId=<Mongo _id or event UUID>&limit=<n>`
 The public pledge wall, newest first (`limit` default 12, max 60): non-tryon
-submissions of the event whose `isShareVisible` is `true` (strict opt-in: a
-missing or `false` flag is never listed; legacy photos appear only after
-`publish-selfies`) and that have a displayable image. Never returns `userEmail` or
+submissions of the event whose `isShareVisible` is `true` and whose
+`publicGalleryConsent.version` is `1`, plus a displayable image. Consent is a
+separate, unchecked-by-default opt-in. Legacy photos without the marker remain
+private, including when `publish-selfies` runs. Never returns `userEmail` or
 `userInfo`. Response: `{ pledges: [{ pledgeId, imageUrl, name, createdAt }], total }`.
 With `&submissionId=<id>` it instead returns that one submission of the event,
 bypassing the wall filters — a private lookup for the capturer's own post-selfie
 screen. Rate limit `INTERNAL_READ`.
 
 ### `POST /api/internal/savetheworld/events/[eventId]/publish-selfies`
-Sets `isShareVisible: true` on the event's non-tryon submissions that have an
-image and an unset share flag (event resolved by `eventId`, Mongo `_id` or
+Sets `isShareVisible: true` only on the event's non-tryon submissions that have
+an image, an unset share flag, and the versioned affirmative public-gallery
+consent marker (event resolved by `eventId`, Mongo `_id` or
 `savetheworldEventId`). Event-scoped since 12.3.37
 ([lib/savetheworld/publishSelfies.ts](../lib/savetheworld/publishSelfies.ts)).
-Not rate-limited. It only flips submissions whose flag was never set (absent or
-null): an explicit `isShareVisible: false` (a fan who unticked sharing) is never
-overridden. Response: `{ published, total }`.
+Not rate-limited. An explicit opt-out and older records without a consent marker
+are never overridden or exposed. Response: `{ published, total }`.
 
 ### camera → savetheworld
 Browser handoff only: the post-selfie CTA page opens the `SAVETHEWORLD_APP_URL`

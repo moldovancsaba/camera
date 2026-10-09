@@ -123,6 +123,8 @@ test('without an original the submission is stored exactly as before: the compos
     assert.equal(h.inserted.length, 1);
     assert.equal(h.inserted[0].originalImageUrl, COMPOSITE);
     assert.equal(h.inserted[0].finalImageUrl, COMPOSITE);
+    assert.equal(h.inserted[0].isShareVisible, false, 'sharing is off unless explicitly selected');
+    assert.equal(h.inserted[0].publicGalleryConsent, null, 'legacy-style requests have no consent evidence');
     assert.equal('reframe' in h.inserted[0], false);
     assert.equal(h.heads.length, 0, 'nothing is looked up');
   } finally {
@@ -151,6 +153,40 @@ test('a verified original is stored privately with its true size, type and the r
     assert.equal(doc.metadata.finalWidth, 1080, 'the slideshow still reads the composite size');
     assert.equal(h.uploads, 1, 'only the composite goes through uploadImage, so the original never reaches imgbb');
     assert.deepEqual(h.heads, [ORIGINAL]);
+  } finally {
+    quiet();
+    restore();
+  }
+});
+
+test('an explicit public-gallery choice stores versioned consent evidence', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead);
+    const { POST } = await importRouteModule('explicit-gallery-consent');
+    const response = await POST(submissionRequest({ shareOptIn: true, publicGalleryConsentVersion: 1 }));
+    assert.equal(response.status, 201);
+    const doc = h.inserted[0] as Record<string, unknown> & { publicGalleryConsent: { version: number; grantedAt: string } };
+    assert.equal(doc.isShareVisible, true);
+    assert.equal(doc.publicGalleryConsent.version, 1);
+    assert.equal(typeof doc.publicGalleryConsent.grantedAt, 'string');
+  } finally {
+    quiet();
+    restore();
+  }
+});
+
+test('a legacy client cannot publish a photo by sending the old default-true field', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead);
+    const { POST } = await importRouteModule('legacy-share-payload');
+    const response = await POST(submissionRequest({ shareOptIn: true }));
+    assert.equal(response.status, 201);
+    assert.equal(h.inserted[0].isShareVisible, false);
+    assert.equal(h.inserted[0].publicGalleryConsent, null);
   } finally {
     quiet();
     restore();
@@ -307,17 +343,18 @@ test('a vetted event saves the photo pending: private, no public picture, no mir
   try {
     const h = mockDeps(t, goodHead, { event: VETTED });
     const { POST } = await importRouteModule('vetted-pending');
-    const response = await POST(submissionRequest({ userInfo: GUEST, shareOptIn: true }));
+    const response = await POST(submissionRequest({ userInfo: GUEST, shareOptIn: true, publicGalleryConsentVersion: 1 }));
     assert.equal(response.status, 201);
     const text = JSON.stringify(await response.json());
     assert.equal(h.uploads, 0, 'nothing goes through the public upload and its imgbb mirror');
     assert.equal(h.puts.length, 1);
     assert.match(h.puts[0].pathname, /^pending\/event-1\/[0-9a-f]{24}\.jpg$/);
     assert.equal(h.puts[0].options.addRandomSuffix, true);
-    const doc = h.inserted[0] as Record<string, unknown> & { photoReview: Record<string, unknown>; metadata: Record<string, unknown> };
+    const doc = h.inserted[0] as Record<string, unknown> & { photoReview: Record<string, unknown>; metadata: Record<string, unknown>; publicGalleryConsent: { version: number; grantedAt: string } };
     assert.equal(doc.reviewStatus, 'pending_review');
     assert.equal(doc.isShareVisible, false, 'the pledge-wall choice waits for approval');
     assert.equal(doc.photoReview.shareOptIn, true);
+    assert.equal(doc.publicGalleryConsent.version, 1);
     assert.equal(doc.photoReview.photoMime, 'image/jpeg');
     assert.match(String(doc.photoReview.photoUrl), /pending\/event-1\//);
     assert.match(String(doc.shareToken), /^[A-Za-z0-9_-]{24}$/);
