@@ -21,6 +21,7 @@ import { messageTokens, usableMessages } from './messages';
 import { FRAME_RENDER_VERSION, generatedLayers, renderFrame, renderSlotFrame, slotLayers } from './render';
 import { slotLayerBoxes } from './slot-layout';
 import { resolveSlotPictures, slotsForMessage, type SlotPosition } from './slots';
+import { loadInheritedSlots } from './slots-inherit';
 
 export interface VariantDeps {
   upload: (pathname: string, png: Buffer) => Promise<string>;
@@ -75,6 +76,8 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
   if (!design?.context) throw new Error('The frame design has no snapshot yet');
 
   const { context } = design;
+  // The slots that draw this frame: the event's own, else the partner's default, else the general default (issue 502, segment 5); undefined is the generated layout of the default frame. Never stored on the event.
+  const slots = design.slots ?? (await loadInheritedSlots(db, event)).slots;
   // The placeholders name the sides the frame shows (the pairing in the event name when the home partner is a competition).
   // No partner logo: the event's emoji is drawn as the logo and taken out of the name (camera#274), so a message that uses the
   // name does not carry it either. A partner with a logo keeps the name as it is.
@@ -108,8 +111,8 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
   // The pictures a message needs for the slots (issue 502): the one each picture slot maps it to, fetched once; a picture that cannot be fetched fails the run and leaves the images as they were.
   const slotPictures = async (template: string | null): Promise<Partial<Record<SlotPosition, Buffer>>> => {
     const out: Partial<Record<SlotPosition, Buffer>> = {};
-    if (!design.slots) return out;
-    for (const [position, image] of Object.entries(resolveSlotPictures(design.slots, template)) as Array<[SlotPosition, { key: string; imageUrl: string }]>) {
+    if (!slots) return out;
+    for (const [position, image] of Object.entries(resolveSlotPictures(slots, template)) as Array<[SlotPosition, { key: string; imageUrl: string }]>) {
       let bytes = baseBytes.get(image.imageUrl);
       if (!bytes) {
         bytes = (await deps.fetchBaseImage(image.imageUrl)) ?? undefined;
@@ -126,13 +129,13 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
     if (design.darkArea !== 'generated') return own;
     if (logoBytes === undefined) logoBytes = context.partner?.logoUrl ? await deps.fetchLogo(context.partner.logoUrl) : null;
     // With slots the dark area is the mask of the slots, otherwise the mask of the generated default frame.
-    if (design.slots) return slotLayers({ context: shown, message, logoBytes, emoji, font, slots: design.slots, pictureBytes: await slotPictures(templateOf(index)) });
+    if (slots) return slotLayers({ context: shown, message, logoBytes, emoji, font, slots, pictureBytes: await slotPictures(templateOf(index)) });
     return generatedLayers({ context: shown, message, logoBytes, emoji, font });
   };
 
   for (const job of jobs) {
     const chosen = job.chosen;
-    const key = variantKey(design, job.message, font, chosen, templateOf(job.index));
+    const key = variantKey({ ...design, slots }, job.message, font, chosen, templateOf(job.index));
     const kept = existing.find((variant) => reusable(variant, key));
     if (kept) {
       variants.push({ ...kept, index: job.index, ...(chosen ? { layers: await layersOf(chosen, job.message, (chosen.area.layers ?? []).map((layer) => ({ ...layer })), job.index) } : {}) });
@@ -194,9 +197,9 @@ export async function generateFrameVariants(db: Db, event: Document, deps: Varia
     }
 
     if (logoBytes === undefined) logoBytes = context.partner?.logoUrl ? await deps.fetchLogo(context.partner.logoUrl) : null;
-    if (design.slots) {
-      // The slots of the event (issue 502): the generated frame, composed from its slots.
-      const rendered = await renderSlotFrame({ context: shown, message: job.message, logoBytes, emoji, font, slots: design.slots, pictureBytes: await slotPictures(templateOf(job.index)) });
+    if (slots) {
+      // The slots (issue 502): the generated frame, composed from them.
+      const rendered = await renderSlotFrame({ context: shown, message: job.message, logoBytes, emoji, font, slots, pictureBytes: await slotPictures(templateOf(job.index)) });
       const imageUrl = await deps.upload(`frames/generated/${event.eventId}/${key.slice(0, 32)}.png`, rendered.png);
       variants.push({
         index: job.index,

@@ -37,7 +37,7 @@ This document is the design. The feasibility check (one server renderer, every c
 | 2 Layout and drawing | built (`slot-layout.ts`, `renderSlotFrame`, the variants pipeline); the default slots equal the generated frame in numbers and in pixels |
 | 3 Save and a preview | built (`PUT /frame-slots`, `POST /frame-slots/preview`, the snapshot refresh keeps `slots`) |
 | 4 The admin panel | built (`FrameSlotsPanel` on the event's Frames page) |
-| 5 Partner and general defaults | not built |
+| 5 Partner and general defaults | built (owner answer 220, "now"): `lib/frame/slots-inherit.ts`, `default-slots.ts`, the routes `/api/partners/<id>/frame-slots` and `/api/admin/frame-slots`, `DefaultSlotsPanel` on the partner's Frames page and Settings, Frame slots; followers are redrawn one event at a time |
 | 6 Guide and the MTK set-up | the guide is not written; the set-up is the owner's go (it changes a live event) |
 
 ## 3. Not in this plan

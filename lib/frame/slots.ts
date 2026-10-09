@@ -172,10 +172,13 @@ export function parseSlots(input: unknown): SlotsCheck {
   return { ok: true, slots: { text, picture } };
 }
 
-/** The same slots as the default frame has (so a slot set that equals it can be stored as "no slots" and keep every stored image). */
-export function isDefaultSlots(slots: FrameSlots): boolean {
-  return JSON.stringify(canonical(slots)) === JSON.stringify(canonical(DEFAULT_SLOTS));
+/** The same slots, whatever the order of the keys (so a slot set that equals what an event follows can be stored as "no slots" and keep every stored image). */
+export function sameSlots(a: FrameSlots, b: FrameSlots): boolean {
+  return JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
 }
+
+/** The same slots as the default frame has. */
+export const isDefaultSlots = (slots: FrameSlots): boolean => sameSlots(slots, DEFAULT_SLOTS);
 
 function canonical(slots: FrameSlots): unknown {
   const order = (group: Partial<Record<SlotPosition, unknown>>) => SLOT_POSITIONS.filter((position) => group[position]).map((position) => [position, group[position]]);
