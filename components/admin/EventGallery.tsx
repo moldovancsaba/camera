@@ -11,6 +11,7 @@
 'use client';
 
 import SemanticButton from '@/components/gds/CameraSemanticButton';
+import { frameInBatches, frameOutcome } from '@/lib/gallery/frame-batches';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
@@ -109,6 +110,9 @@ function getDisplayName(submission: SubmissionRecord): string {
 function submissionIdOf(submission: SubmissionRecord): string {
   return submission._id.toString();
 }
+
+/** A button inside a banner may wrap its label and never be wider than the banner (the banner clips what does not fit: the owner saw the button cut off, 2026-10-09). */
+const WRAPPING_BUTTON = { root: { height: 'auto', maxWidth: '100%', paddingBlock: 6 }, label: { whiteSpace: 'normal', overflow: 'visible', textAlign: 'left', lineHeight: 1.25 } } as const;
 
 export default function EventGallery({
   eventId,
@@ -272,39 +276,40 @@ export default function EventGallery({
     }
   };
 
-  const [frameState, setFrameState] = useState<{ busy: boolean; message: string | null; error: string | null }>({ busy: false, message: null, error: null });
+  const [frameState, setFrameState] = useState<{ busy: boolean; message: string | null; error: string | null; progress: string | null }>({ busy: false, message: null, error: null, progress: null });
+  // The photos the person has asked to frame and not yet confirmed: the confirmation is in the page (the browser's own pop-up can be blocked and then nothing happens at all).
+  const [frameConfirm, setFrameConfirm] = useState<string[] | null>(null);
   const [unframed, setUnframed] = useState(unframedUploadIds);
 
-  // Puts the event's frame on the selected photos that were uploaded here (the server skips the others and says why), 25 at a time (camera#488).
+  // Puts the event's frame on the photos that were uploaded here (the server skips the others and says why), five at a time so no request runs long and the person sees it move
+  // (camera#488, lib/gallery/frame-batches.ts). A photo that has a frame is skipped, so pressing again after a stop carries on with the rest.
   const frameIds = async (ids: string[]) => {
     if (ids.length === 0) return;
-    if (!confirm(`Add the event's frame to ${ids.length} photo${ids.length === 1 ? '' : 's'}? Only photos uploaded here that have no frame are changed; the plain upload is kept.`)) return;
-    setFrameState({ busy: true, message: null, error: null });
-    const framed: Array<{ id: string; imageUrl: string }> = [];
-    const skipped: Array<{ id: string; reason: string }> = [];
-    try {
-      for (let i = 0; i < ids.length; i += 25) {
+    setFrameConfirm(null);
+    setFrameState({ busy: true, message: null, error: null, progress: `Adding the frame… 0 of ${ids.length}` });
+    const result = await frameInBatches(
+      ids,
+      async (batch) => {
         const response = await fetch(`/api/admin/events/${eventId}/gallery-frame`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ submissionIds: ids.slice(i, i + 25) }),
+          body: JSON.stringify({ submissionIds: batch }),
         });
         const json = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(typeof json.error === 'string' ? json.error : typeof json.message === 'string' ? json.message : 'The frame could not be added');
-        framed.push(...(json.data?.framed ?? []));
-        skipped.push(...(json.data?.skipped ?? []));
-      }
-      setUnframed((current) => current.filter((id) => !framed.some((f) => f.id === id)));
-      const newUrl = new Map(framed.map((f) => [f.id, f.imageUrl]));
-      setSubmissions((prev) => prev.map((s) => (newUrl.has(submissionIdOf(s)) ? { ...s, imageUrl: newUrl.get(submissionIdOf(s)), finalImageUrl: newUrl.get(submissionIdOf(s)), previewImageUrl: null } : s)));
-      const why = [...new Set(skipped.map((s) => s.reason))].join('; ');
-      setFrameState({ busy: false, message: `Framed ${framed.length} photo${framed.length === 1 ? '' : 's'}${skipped.length ? `; ${skipped.length} left as they were (${why})` : ''}.`, error: null });
-    } catch (error) {
-      setFrameState({ busy: false, message: null, error: error instanceof Error ? error.message : 'The frame could not be added' });
-    }
+        if (!response.ok) {
+          throw new Error(typeof json.error === 'string' ? json.error : typeof json.message === 'string' ? json.message : `The server answered ${response.status}${response.status === 504 ? ' (it took too long)' : ''}`);
+        }
+        return { framed: json.data?.framed ?? [], skipped: json.data?.skipped ?? [] };
+      },
+      (done, total) => setFrameState((current) => ({ ...current, progress: `Adding the frame… ${done} of ${total}` }))
+    );
+    setUnframed((current) => current.filter((id) => !result.framed.some((f) => f.id === id)));
+    const newUrl = new Map(result.framed.map((f) => [f.id, f.imageUrl]));
+    setSubmissions((prev) => prev.map((s) => (newUrl.has(submissionIdOf(s)) ? { ...s, imageUrl: newUrl.get(submissionIdOf(s)), finalImageUrl: newUrl.get(submissionIdOf(s)), previewImageUrl: null } : s)));
+    setFrameState({ busy: false, progress: null, ...frameOutcome(result) });
   };
 
-  const frameSelected = () => frameIds([...selectedIds]);
+  const frameSelected = () => setFrameConfirm([...selectedIds]);
 
   const startSingleConfirm = (submissionId: string) => {
     setRemoveState((prev) => ({
@@ -388,15 +393,31 @@ export default function EventGallery({
       {canManage && hasFrame && unframed.length > 0 ? (
         <InlineAlert
           title={`${unframed.length} photo${unframed.length === 1 ? '' : 's'} uploaded here ${unframed.length === 1 ? 'has' : 'have'} no frame`}
-          message="They look different from the photos the guests take. Add the event's frame to all of them; the plain uploads are kept."
+          message="They look different from the photos the users take. Add the event's frame to all of them; the plain uploads are kept."
           severity="info"
           action={
-            <SemanticButton action="event-gallery:frame-uploaded" type="button" onClick={() => void frameIds(unframed)} disabled={frameState.busy} variant="secondary">
-              {frameState.busy ? 'Adding the frame…' : `Add the frame to the ${unframed.length}`}
-            </SemanticButton>
+            <div style={{ maxWidth: '100%', minWidth: 0 }}>
+              <SemanticButton action="event-gallery:frame-uploaded" type="button" onClick={() => setFrameConfirm([...unframed])} disabled={frameState.busy} variant="secondary" styles={WRAPPING_BUTTON} />
+            </div>
           }
         />
       ) : null}
+      {canManage && frameConfirm ? (
+        <InlineAlert
+          title={`Add the event's frame to ${frameConfirm.length} photo${frameConfirm.length === 1 ? '' : 's'}?`}
+          message="Only photos uploaded here that have no frame are changed; the plain upload is kept. It takes a few seconds for each photo."
+          severity="info"
+          action={
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', maxWidth: '100%', minWidth: 0 }}>
+              <SemanticButton action="event-gallery:confirm-frame" type="button" onClick={() => void frameIds(frameConfirm)} disabled={frameState.busy} styles={WRAPPING_BUTTON} />
+              <SemanticButton action="event-gallery:cancel-frame" type="button" onClick={() => setFrameConfirm(null)} disabled={frameState.busy} variant="secondary" styles={WRAPPING_BUTTON} />
+            </div>
+          }
+        />
+      ) : null}
+      {canManage && frameState.progress ? <InlineAlert title="Adding the frame" message={frameState.progress} severity="info" /> : null}
+      {canManage && frameState.error ? <InlineAlert title="The frame was not added" message={frameState.error} severity="error" /> : null}
+      {canManage && frameState.message ? <InlineAlert title="Frame" message={frameState.message} severity="info" /> : null}
 
       {canManage ? (
       <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '1rem', padding: '1rem' }}>
@@ -431,12 +452,10 @@ export default function EventGallery({
               <SemanticButton
                 action="event-gallery:frame-selected"
                 type="button"
-                onClick={() => void frameSelected()}
+                onClick={() => frameSelected()}
                 disabled={frameState.busy}
                 variant="secondary"
-              >
-                {frameState.busy ? 'Adding the frame…' : `Add the frame to ${selectedIds.length} selected`}
-              </SemanticButton>
+              />
             ) : null}
             {selectedIds.length > 0 ? (
               removeState.bulkConfirm ? (
@@ -479,16 +498,6 @@ export default function EventGallery({
         {removeState.error ? (
           <div style={{ marginTop: '1rem' }}>
             <InlineAlert title="Remove failed" message={removeState.error} severity="error" />
-          </div>
-        ) : null}
-        {frameState.error ? (
-          <div style={{ marginTop: '1rem' }}>
-            <InlineAlert title="The frame was not added" message={frameState.error} severity="error" />
-          </div>
-        ) : null}
-        {frameState.message ? (
-          <div style={{ marginTop: '1rem' }}>
-            <InlineAlert title="Frame" message={frameState.message} severity="info" />
           </div>
         ) : null}
       </section>
