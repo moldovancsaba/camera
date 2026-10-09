@@ -7,6 +7,7 @@
 
 import { CustomPageType, generateId, type CustomPage } from '@/lib/db/schemas';
 import type { UiLanguage } from '@/lib/i18n';
+import type { TextOverrides } from '@/lib/i18n/overrides';
 import { DEFAULT_CONSENT_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, withDefaultJourneyPages } from './default-pages';
 import { DEFAULT_IDENTITY_PAGE_ID } from './identity-page';
 
@@ -18,6 +19,8 @@ export interface JourneyContext {
   language: UiLanguage;
   /** True when the event has the welcome page screen picture drawn from its default slideshow: it then gets the default welcome page (issue 327). */
   hasWelcomeScreen?: boolean;
+  /** The wordings an admin wrote for the partner or the event in this language (lib/i18n/overrides.ts): the default pages use them instead of the code dictionary. */
+  texts?: TextOverrides | null;
 }
 
 export type JourneyStepId = 'waiting' | 'share' | 'emails' | 'result';
@@ -60,7 +63,7 @@ function stepsAfterPhoto(context: JourneyContext): JourneyRow[] {
  * An event with no take-photo page has everything before the photo, as the user's page treats it.
  */
 export function effectiveJourney(storedPages: readonly CustomPage[] | null | undefined, context: JourneyContext, now?: string): JourneyRow[] {
-  const pages = withDefaultJourneyPages(storedPages, { vettingRequired: context.vettingRequired, consentDefault: context.consentDefault, now, language: context.language, hasWelcomeScreen: context.hasWelcomeScreen });
+  const pages = withDefaultJourneyPages(storedPages, { vettingRequired: context.vettingRequired, consentDefault: context.consentDefault, now, language: context.language, hasWelcomeScreen: context.hasWelcomeScreen, texts: context.texts });
   const rows: JourneyRow[] = [...pages]
     .sort((a, b) => a.order - b.order)
     .map((page) => (isDefaultPage(page) ? { kind: 'default', page, reason: REASON[page.pageId] } : { kind: 'own', page }));

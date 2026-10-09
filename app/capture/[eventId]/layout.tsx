@@ -8,6 +8,7 @@ import { loadEventTheme } from '@/lib/theme/load';
 import EventThemeScope from '@/components/theme/EventThemeScope';
 import UiLanguageProvider from '@/components/i18n/UiLanguageProvider';
 import { normalizeUiLanguage, translate, type UiLanguage } from '@/lib/i18n';
+import { loadEventTexts } from '@/lib/i18n/overrides';
 
 function stripHtml(s: string): string {
   return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -126,10 +127,11 @@ export default async function CaptureEventLayout({
   // Every page of the guest journey is drawn with the theme of the event (camera#285).
   const db = await connectToDatabase();
   const theme = await loadEventTheme(db, event);
-  // ... and in the language of the event (camera#352).
+  // ... and in the language of the event (camera#352), with the wordings an admin wrote for the partner or the event (issue 353; none written: the code dictionary).
+  const { overrides } = await loadEventTexts(db, event).catch(() => ({ overrides: {} }));
   return (
     <EventThemeScope theme={theme}>
-      <UiLanguageProvider language={normalizeUiLanguage(event.uiLanguage)}>{children}</UiLanguageProvider>
+      <UiLanguageProvider language={normalizeUiLanguage(event.uiLanguage)} texts={overrides}>{children}</UiLanguageProvider>
     </EventThemeScope>
   );
 }

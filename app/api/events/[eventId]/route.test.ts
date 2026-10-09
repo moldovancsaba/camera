@@ -312,7 +312,7 @@ test('GET carries the journey context: what decides which default pages the even
   mockDeps(t, { event: { photoVetting: STORED_VETTING, journeyDefaults: true, uiLanguage: 'hu', customPages: [] } });
   const { GET } = await importRouteModule('get-journey-context');
   const admin = (await (await GET(getRequest(), params)).json()) as { data: { event: { journeyContext: unknown; customPages: unknown[] } } };
-  assert.deepEqual(admin.data.event.journeyContext, { vettingRequired: true, consentDefault: true, language: 'hu', hasWelcomeScreen: false });
+  assert.deepEqual(admin.data.event.journeyContext, { vettingRequired: true, consentDefault: true, language: 'hu', hasWelcomeScreen: false, texts: {} });
   assert.deepEqual(admin.data.event.customPages, [], 'the editor still reads the stored pages: the defaults are built from the context');
   const guest = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { journeyContext: unknown } } };
   assert.deepEqual(guest.data.event.journeyContext, admin.data.event.journeyContext, 'one answer for both');
@@ -322,7 +322,7 @@ test('GET: an event that does not get the journey defaults and needs no vetting 
   mockDeps(t, { event: { photoVetting: { required: false }, customPages: [] } });
   const { GET } = await importRouteModule('get-journey-context-none');
   const body = (await (await GET(getRequest(), params)).json()) as { data: { event: { journeyContext: unknown } } };
-  assert.deepEqual(body.data.event.journeyContext, { vettingRequired: false, consentDefault: false, language: 'en', hasWelcomeScreen: false });
+  assert.deepEqual(body.data.event.journeyContext, { vettingRequired: false, consentDefault: false, language: 'en', hasWelcomeScreen: false, texts: {} });
 });
 
 

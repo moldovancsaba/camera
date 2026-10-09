@@ -34,6 +34,7 @@ import { normalizePhotoVettingInput, photoVettingRequired } from '@/lib/events/p
 import { applyEventBrandColours } from '@/lib/events/brand-colours';
 import { parseMessageArea } from '@/lib/frame/message-area';
 import { withDefaultJourneyPages } from '@/lib/events/default-pages';
+import { loadEventTexts } from '@/lib/i18n/overrides';
 import { sanitizeCheckboxes } from '@/lib/events/consent';
 import { eventGetsDefaults, getDefaultsRollout } from '@/lib/admin/defaults-rollout';
 import { loadEventTheme } from '@/lib/theme/load';
@@ -207,6 +208,8 @@ export const GET = withErrorHandler(async (
   const language = normalizeUiLanguage((event as { uiLanguage?: unknown }).uiLanguage);
   // The default welcome page needs the picture drawn from the event's default slideshow (issue 327): an event without it gets none.
   const hasWelcomeScreen = typeof (event as { welcomeScreen?: { url?: unknown } }).welcomeScreen?.url === 'string';
+  // The wordings an admin wrote for the event's partner or for the event, in its language: the default pages use them (lib/i18n/overrides.ts, issue 353). None written: an empty object.
+  const { overrides: texts } = await loadEventTexts(db, event as unknown as Record<string, unknown>);
 
   // Return event with serialized _id
   // customPages is included automatically
@@ -214,10 +217,10 @@ export const GET = withErrorHandler(async (
     event: {
       ...publicEvent,
       theme: await loadEventTheme(db, event as unknown as Record<string, unknown>),
-      ...(forGuest ? { customPages: withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen }) } : {}),
+      ...(forGuest ? { customPages: withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen, texts }) } : {}),
       photoVettingRequired: vettingRequired,
       // What decides which default pages this event gets (lib/events/journey.ts): the page editor builds the journey from it.
-      journeyContext: { vettingRequired, consentDefault, language, hasWelcomeScreen },
+      journeyContext: { vettingRequired, consentDefault, language, hasWelcomeScreen, texts },
       _id: event._id.toString(),
       generatedFrame: captureFrameOf({ frames: event.frames, frameDesign: frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'] }),
     }
