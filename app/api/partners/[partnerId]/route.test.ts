@@ -96,3 +96,15 @@ test('defaultFrames must be a list of ids; a change that does not touch it is no
   assert.equal((await PATCH(patch({ description: ' A club ' }), params)).status, 200);
   assert.equal((data.partners[0] as { description: string }).description, 'A club');
 });
+
+test('the default language of the partner\'s events: set to a language we have, cleared with an empty value, refused otherwise, left alone when absent', async (t) => {
+  const { data } = setup(t);
+  const { PATCH } = await importRoute('language');
+  assert.equal((await PATCH(patch({ uiLanguage: 'hu' }), params)).status, 200);
+  assert.equal((data.partners[0] as { uiLanguage?: string | null }).uiLanguage, 'hu');
+  assert.equal((await PATCH(patch({ name: 'Partner P' }), params)).status, 200);
+  assert.equal((data.partners[0] as { uiLanguage?: string | null }).uiLanguage, 'hu', 'absent leaves it alone');
+  assert.equal((await PATCH(patch({ uiLanguage: '' }), params)).status, 200);
+  assert.equal((data.partners[0] as { uiLanguage?: string | null }).uiLanguage, null);
+  for (const bad of ['de', 'HU', 7, {}]) assert.equal((await PATCH(patch({ uiLanguage: bad }), params)).status, 400, String(bad));
+});

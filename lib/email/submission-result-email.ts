@@ -14,6 +14,7 @@ import {
   emailTemplateIn,
 } from '@/lib/email/submission-template-defaults';
 import { DEFAULT_UI_LANGUAGE, normalizeUiLanguage, translate, type UiLanguage } from '@/lib/i18n';
+import { loadEventTexts, withEffectiveLanguage, type TextOverrides } from '@/lib/i18n/overrides';
 
 export interface SubmissionEmailPolicy {
   enabled: boolean;
@@ -32,6 +33,8 @@ export interface SubmissionEmailPolicy {
   termsUrl: string;
   /** The language of the event: the defaults the email falls back to, and the words around the name and the event (camera#352). */
   language: UiLanguage;
+  /** The wordings written for the event's partner or the event in that language (issue 353); absent: the dictionary. */
+  texts?: TextOverrides | null;
 }
 
 export interface SubmissionEmailRecipient {
@@ -111,7 +114,7 @@ export function resolveSubmissionResultEmailRecipient(submission: {
  * The email settings of an event. With a language (camera#352) the templates are the ones sent in it: a stored English default becomes the same
  * default in the language, and so does the stored English terms link; without one (the event API, which stores what it reads) nothing changes.
  */
-export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLanguage = DEFAULT_UI_LANGUAGE): SubmissionEmailPolicy {
+export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLanguage = DEFAULT_UI_LANGUAGE, texts?: TextOverrides | null): SubmissionEmailPolicy {
   const source = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
   const enabled = Boolean(source.submissionResultEmailEnabled);
 
@@ -123,7 +126,7 @@ export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLangu
   );
 
   // In another language a stored English default is read as the same default in that language (emailTemplateIn).
-  const own = (template: string) => emailTemplateIn(language, template || null) ?? '';
+  const own = (template: string) => emailTemplateIn(language, template || null, texts) ?? '';
   const legacySubject = own(readTemplate(source.submissionResultEmailSubject, 180));
   const legacyBody = own(readTemplate(source.submissionResultEmailBody, 5000, true));
   const subjectTemplateAfterSave = own(readTemplate(
@@ -151,7 +154,7 @@ export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLangu
   const termsUrl =
     storedTermsUrl && (language === DEFAULT_UI_LANGUAGE || storedTermsUrl !== DEFAULT_EVENT_TERMS_URL)
       ? storedTermsUrl
-      : emailDefaults(language).termsUrl;
+      : emailDefaults(language, texts).termsUrl;
 
   return {
     enabled,
@@ -181,6 +184,7 @@ export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLangu
     bodyTemplateAfterTryOnResubmissionApproved,
     termsUrl,
     language,
+    texts: texts ?? null,
   };
 }
 
@@ -219,7 +223,9 @@ export async function resolveEventForSubmission(
     }
   }
 
-  return db.collection<Event>(COLLECTIONS.EVENTS).findOne({ $or: orClauses });
+  const event = await db.collection<Event>(COLLECTIONS.EVENTS).findOne({ $or: orClauses });
+  // An event that did not set a language follows its partner's (issue 353): the e-mails read `uiLanguage` from this document.
+  return event ? withEffectiveLanguage(db, event) : null;
 }
 
 export function normalizeSharePageSettings(value: unknown): EventSharePageSettings {
@@ -460,6 +466,7 @@ export function buildSubmissionEmailInput(
     bodyTemplate,
     theme,
     language: policy.language,
+    texts: policy.texts,
   };
 }
 
@@ -492,6 +499,12 @@ export async function sendSubmissionResultEmailByPolicy(
   return buildEmailMetadataPatch(mode, await sendSubmissionResultEmail(input), shareUrl);
 }
 
+/** The wordings written for the event's partner or the event, for its e-mails (issue 353); none when there is no event or the read fails. */
+export async function textsOf(db: Db, event: WithId<Event> | null): Promise<TextOverrides | null> {
+  if (!event) return null;
+  return (await loadEventTexts(db, event).catch(() => null))?.overrides ?? null;
+}
+
 /** The theme of the event for its guest emails; null when it cannot be loaded, and the email then keeps its plain layout. */
 export async function themeOf(db: Db, event: WithId<Event> | null): Promise<EventTheme | null> {
   if (!event) return null;
@@ -508,7 +521,7 @@ export async function dispatchPendingRelatedEmailForSubmission(
   baseUrl = PUBLIC_BASE_URL
 ): Promise<SendSubmissionEmailMetadataResult | null> {
   const event = await resolveEventForSubmission(db, sourceSubmission);
-  const policy = normalizeSubmissionEmailPolicy(event?.notifications, normalizeUiLanguage(event?.uiLanguage));
+  const policy = normalizeSubmissionEmailPolicy(event?.notifications, normalizeUiLanguage(event?.uiLanguage), await textsOf(db, event));
 
   if (!policy.enabled || !policy.sendAfterRelatedPhotosReady) {
     return null;
@@ -577,7 +590,7 @@ export async function dispatchTryOnResubmissionApprovalEmailForSubmission(
   }
 
   const event = await resolveEventForSubmission(db, sourceSubmission);
-  const policy = normalizeSubmissionEmailPolicy(event?.notifications, normalizeUiLanguage(event?.uiLanguage));
+  const policy = normalizeSubmissionEmailPolicy(event?.notifications, normalizeUiLanguage(event?.uiLanguage), await textsOf(db, event));
   if (!policy.enabled || !policy.sendAfterTryOnResubmissionApproved) {
     return null;
   }
@@ -613,7 +626,7 @@ export async function dispatchPendingSubmissionEmailForSubmission(
   }
 
   const event = await resolveEventForSubmission(db, sourceSubmission);
-  const policy = normalizeSubmissionEmailPolicy(event?.notifications, normalizeUiLanguage(event?.uiLanguage));
+  const policy = normalizeSubmissionEmailPolicy(event?.notifications, normalizeUiLanguage(event?.uiLanguage), await textsOf(db, event));
 
   if (!policy.enabled) {
     return null;

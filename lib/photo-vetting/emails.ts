@@ -7,6 +7,7 @@
 import type { Event } from '@/lib/db/schemas';
 import { emailDefaults } from '@/lib/email/submission-template-defaults';
 import { normalizeUiLanguage, translate } from '@/lib/i18n';
+import type { TextOverrides } from '@/lib/i18n/overrides';
 import { sendSubmissionResultEmail, type SubmissionNotificationInput, type SubmissionNotificationResult } from '@/lib/email/submission-notification';
 import { normalizeSubmissionEmailPolicy, resolveSubmissionResultEmailRecipient, buildSubmissionShareUrl } from '@/lib/email/submission-result-email';
 import { getConfiguredSiteUrl } from '@/lib/site-url';
@@ -35,11 +36,12 @@ export async function sendPhotoApprovedEmail(
   event: EventForEmail,
   shareUrl: string,
   send: EmailSender = sendSubmissionResultEmail,
-  theme: EventTheme | null = null
+  theme: EventTheme | null = null,
+  texts: TextOverrides | null = null
 ): Promise<SubmissionNotificationResult> {
   const recipient = resolveSubmissionResultEmailRecipient(submission);
   const language = normalizeUiLanguage(event?.uiLanguage);
-  const policy = normalizeSubmissionEmailPolicy(event?.notifications, language);
+  const policy = normalizeSubmissionEmailPolicy(event?.notifications, language, texts);
   return send({
     recipientEmail: recipient.email,
     recipientName: recipient.name,
@@ -50,8 +52,9 @@ export async function sendPhotoApprovedEmail(
     subjectTemplate: policy.subjectTemplateAfterSave || policy.subjectTemplate,
     bodyTemplate: policy.bodyTemplateAfterSave || policy.bodyTemplate,
     theme,
-    buttonLabel: translate(language, 'email.buttonSee'),
+    buttonLabel: translate(language, 'email.buttonSee', undefined, texts),
     language,
+    texts,
   });
 }
 
@@ -61,12 +64,13 @@ export async function sendPhotoNotApprovedEmail(
   event: EventForEmail,
   captureUrl: string,
   send: EmailSender = sendSubmissionResultEmail,
-  theme: EventTheme | null = null
+  theme: EventTheme | null = null,
+  texts: TextOverrides | null = null
 ): Promise<SubmissionNotificationResult> {
   const recipient = resolveSubmissionResultEmailRecipient(submission);
   const language = normalizeUiLanguage(event?.uiLanguage);
-  const policy = normalizeSubmissionEmailPolicy(event?.notifications, language);
-  const defaults = emailDefaults(language);
+  const policy = normalizeSubmissionEmailPolicy(event?.notifications, language, texts);
+  const defaults = emailDefaults(language, texts);
   return send({
     recipientEmail: recipient.email,
     recipientName: recipient.name,
@@ -77,7 +81,8 @@ export async function sendPhotoNotApprovedEmail(
     subjectTemplate: defaults.notApprovedSubject,
     bodyTemplate: defaults.notApprovedBody,
     theme,
-    buttonLabel: translate(language, 'email.buttonAnother'),
+    buttonLabel: translate(language, 'email.buttonAnother', undefined, texts),
     language,
+    texts,
   });
 }

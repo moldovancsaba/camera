@@ -93,3 +93,18 @@ test('links: the share link carries the token, the retake link the event key', (
   assert.equal(approvedShareUrl('tok', 'https://x.test/'), 'https://x.test/share/tok');
   assert.equal(takeAnotherPhotoUrl('a b', 'https://x.test/'), 'https://x.test/capture/a%20b');
 });
+
+test('a wording written for the partner or the event reaches the sender: the not-approved texts, the button label and the sender\'s defaults use it', async () => {
+  const { calls, send } = recorder();
+  const texts = { 'email.notApprovedSubject': 'Try again, {name}', 'email.buttonAnother': 'One more' };
+  await sendPhotoNotApprovedEmail(guest, { name: 'Derby' } as never, 'https://x.test/capture/e1', send, null, texts);
+  assert.equal(calls[0].subjectTemplate, 'Try again, {name}');
+  assert.equal(calls[0].buttonLabel, 'One more');
+  assert.deepEqual(calls[0].texts, texts, 'the sender gets the wordings for the words around the name and the event');
+  const approved = recorder();
+  await sendPhotoApprovedEmail(guest, { name: 'Derby' } as never, 'https://x.test/share/tok', approved.send, null, { 'email.buttonSee': 'Look' });
+  assert.equal(approved.calls[0].buttonLabel, 'Look');
+  const plain = recorder();
+  await sendPhotoNotApprovedEmail(guest, { name: 'Derby' } as never, 'https://x.test/capture/e1', plain.send);
+  assert.equal(plain.calls[0].subjectTemplate, NOT_APPROVED_SUBJECT, 'no wording: exactly what it always was');
+});

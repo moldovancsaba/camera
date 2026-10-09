@@ -84,3 +84,13 @@ test('a stored template is sent as written in English; in Hungarian a stored Eng
   assert.equal(emailTemplateIn('hu', null), null);
   assert.equal(emailTemplateIn('hu', ''), null);
 });
+
+test('a wording written for the partner or the event replaces the default text, the others stay', async () => {
+  const { emailDefaults, emailTemplateIn } = await import('./submission-template-defaults');
+  const texts = { 'email.subject': 'Szia, {name}!' };
+  assert.equal(emailDefaults('en', texts).subject, 'Szia, {name}!');
+  assert.equal(emailDefaults('en', texts).body, emailDefaults('en').body);
+  assert.equal(emailDefaults('en', null).subject, emailDefaults('en').subject);
+  // A stored English default counts as not set in Hungarian: the Hungarian wording of the level is sent instead.
+  assert.equal(emailTemplateIn('hu', emailDefaults('en').subject, { 'email.subject': 'Hellő {name}' }), 'Hellő {name}');
+});

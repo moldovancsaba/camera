@@ -8,7 +8,7 @@ import { loadEventTheme } from '@/lib/theme/load';
 import EventThemeScope from '@/components/theme/EventThemeScope';
 import UiLanguageProvider from '@/components/i18n/UiLanguageProvider';
 import { normalizeUiLanguage, translate, type UiLanguage } from '@/lib/i18n';
-import { loadEventTexts } from '@/lib/i18n/overrides';
+import { loadEventTexts, type TextOverrides } from '@/lib/i18n/overrides';
 
 function stripHtml(s: string): string {
   return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -19,7 +19,7 @@ function metaDescription(event: {
   description?: string;
   location?: string;
   eventDate?: string;
-}, language: UiLanguage): string {
+}, language: UiLanguage, texts?: TextOverrides | null): string {
   const raw =
     typeof event.description === 'string' ? event.description.trim() : '';
   if (raw) {
@@ -37,7 +37,7 @@ function metaDescription(event: {
     const line = `${event.name} — ${parts.join(' · ')}`;
     return line.length > 320 ? `${line.slice(0, 317)}…` : line;
   }
-  return translate(language, 'meta.capture.description', { name: event.name });
+  return translate(language, 'meta.capture.description', { name: event.name }, texts);
 }
 
 export async function generateMetadata({
@@ -56,17 +56,20 @@ export async function generateMetadata({
     return { title: translate('en', 'meta.capture.notFound') };
   }
 
-  const language = normalizeUiLanguage(event.uiLanguage);
+  // The language of the event, or of its partner when the event has none, and the wordings written for them (issue 353); a failed read gives English and the dictionary.
+  const loaded = await loadEventTexts(await connectToDatabase(), event).catch(() => null);
+  const language = loaded?.language ?? normalizeUiLanguage(event.uiLanguage);
+  const texts = loaded?.overrides;
   const name =
     typeof event.name === 'string' && event.name.trim()
       ? event.name.trim()
-      : translate(language, 'meta.event');
+      : translate(language, 'meta.event', undefined, texts);
   const description = metaDescription({
     name,
     description: event.description as string | undefined,
     location: event.location as string | undefined,
     eventDate: event.eventDate as string | undefined,
-  }, language);
+  }, language, texts);
 
   const logoRaw =
     typeof event.logoUrl === 'string' ? event.logoUrl.trim() : '';
@@ -128,10 +131,10 @@ export default async function CaptureEventLayout({
   const db = await connectToDatabase();
   const theme = await loadEventTheme(db, event);
   // ... and in the language of the event (camera#352), with the wordings an admin wrote for the partner or the event (issue 353; none written: the code dictionary).
-  const { overrides } = await loadEventTexts(db, event).catch(() => ({ overrides: {} }));
+  const { overrides, language } = await loadEventTexts(db, event).catch(() => ({ overrides: {}, language: normalizeUiLanguage(event.uiLanguage) }));
   return (
     <EventThemeScope theme={theme}>
-      <UiLanguageProvider language={normalizeUiLanguage(event.uiLanguage)} texts={overrides}>{children}</UiLanguageProvider>
+      <UiLanguageProvider language={language} texts={overrides}>{children}</UiLanguageProvider>
     </EventThemeScope>
   );
 }
