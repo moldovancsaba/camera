@@ -25,6 +25,8 @@ export interface UploadFields {
   createdBy: string;
   now: string;
   owner: Record<string, string>;
+  /** What the item is for (`lib/library/sample-selfie.ts`); only images carry tags. */
+  tags?: string[];
 }
 
 export interface Uploader {

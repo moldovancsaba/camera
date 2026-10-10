@@ -37,6 +37,7 @@ export const imagesUploader: Uploader = {
     createdBy: fields.createdBy,
     createdAt: fields.now,
     updatedAt: fields.now,
+    ...(fields.tags && fields.tags.length > 0 ? { tags: fields.tags } : {}),
     ...fields.owner,
   }),
 };

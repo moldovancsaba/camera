@@ -45,6 +45,8 @@ export interface UploadInput {
   isActive?: boolean;
   createdBy: string;
   owner: Owner;
+  /** What the item is for (`lib/library/sample-selfie.ts`), images only. */
+  tags?: string[];
 }
 
 export type UploadResult = { ok: true; item: Document } | { ok: false; status: 400; reason: string };
@@ -92,6 +94,7 @@ export async function createLibraryItem(db: Db, input: UploadInput): Promise<Upl
       createdBy: input.createdBy,
       now: generateTimestamp(),
       owner: ownerFields(input.owner),
+      ...(input.kind === 'images' && input.tags && input.tags.length > 0 ? { tags: input.tags } : {}),
     },
     file
   );

@@ -625,6 +625,8 @@ export interface LibraryImage {
   createdBy: string;                 // Admin user ID from SSO
   createdAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
+  /** What the picture is for, when it is for something in particular: `['sample-selfie']` (lib/library/sample-selfie.ts, issue 540). A tagged picture is kept out of the general Images lists. */
+  tags?: string[];
   // Who owns the picture: missing scope = global. See lib/library.
   scope?: 'global' | 'partner' | 'event';
   partnerId?: string;                // partner UUID, for scope 'partner' (and the partner of an event upload)

@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — sample selfies: the library, the slot and the partner's panel (issue 540, steps 1 to 3 of the plan; owner answers 255 to 260)
+
+- **Added:** Libraries > **Sample selfies** (global admins: upload, switch off or on, delete; the active ones are the default of every partner); a **sample selfie slot** at partner and event (`selfie` in `Partner.slots` and `Event.slots`, the logo slot's rule with a global level on top: a partner follows the global set until it chooses or uploads its own, an event follows its partner, several are picked at random, one is picked once and kept); the card **Sample selfies** on the partner's Pictures page (the same slot panel as the logo); the event's panel and routes are built (the event page that shows it follows with step 4).
+- **A sample selfie is an Images library image with a tag** (`LibraryImage.tags`): uploaded through the same upload, and **kept out of the general Images lists** (the global, partner and event Images pages and the pickers of the picture fields). No rights tick (owner answer 256).
+- **Nothing reads them yet:** the welcome page screen still draws the stand-in, so **no event changes** by this release; step 4 uses the pick.
+- **Verified:** type-check; lint; unit tests (the pure slot, the database side with refused picks, seeding of an event not on the slot model, the panels, a switched off or deleted selfie dropping out; the three routes); the partner panel and the global page in a browser harness at phone width (labelled sources, no sideways scroll); the full CI chain.
+- **Not done (steps 4 and 5):** the welcome page screen using the pick with the event's frame over it, the event's Photo-in-the-window card with Pick another and Keep the stand-in, the event's own photos; steps 6 to 8 follow after the match.
+
 ## Unreleased — Take photo + Submit: pages between taking the photo and saving it, with a checkbox (issue 535, step 2; owner feedback 2026-10-10)
 
 - **Owner:** "there is a common flow to take an image and then login to be able to submit ... I need a checkbox in the Take Photo page to show it there as it is now built in or uncheck and able to add steps between them, like the CTA or the who are you."
