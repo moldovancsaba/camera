@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## Unreleased — plan: a selfie in the welcome page screen (issue 540; owner request 2026-10-10)
+
+- **Owner:** upload or use a selfie for the Welcome page screen: (a) a general one, (b) one of the event's clean selfies, (c) the real slideshow; generated from general elements including general selfies in the system, which the partner follows until it chooses or uploads its own, and the event gets a random one from its parent.
+- **Added (docs only):** `docs/WELCOME_SCREEN_PHOTO_PLAN.md`: what exists (the renderer already takes a window picture; the slot model and panel exist; the Images library has no tags and there is no sample selfie; the only clean selfies are 106 editor uploads in two events), the design (a `selfie` slot at global, partner and event; a random pick stored once; four sources for the window; the same selfie for the live stage), the UX (one panel and one vocabulary at every level, with a sketch), eight steps with their risk and timing, and six questions for the owner (255 to 260).
+- **Not done:** nothing is built; the plan waits for the owner's answers.
+
 ## Unreleased — page editor: the default pages (welcome, consent, Who-are-you) have up and down like every page (issue 535, step 1; owner feedback 2026-10-10)
 
 - **Owner:** "there should be an up/down for the Accept/Who-are-you section as well!" The default rows of the journey list had only Customise.
