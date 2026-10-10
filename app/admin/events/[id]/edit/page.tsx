@@ -596,7 +596,7 @@ export default function EditEventPage({
 
             <Select
               label="Camera"
-              description="How the photo is taken. Same as the partner follows the partner's choice (the phone's own camera app when it made none). The live camera shows the view buttons: portrait or landscape, wide or tight."
+              description="How the photo is taken. Same as the partner follows the partner's choice (automatic when it made none). Automatic opens the phone's own camera app on phones. The live camera with view buttons shows portrait or landscape, wide or tight; the other two live cameras differ in how the photo is taken."
               data={[
                 { value: '', label: cameraMode === '' ? `Same as the partner (${CAMERA_MODE_LABELS[shownCameraMode]})` : 'Same as the partner' },
                 ...CAMERA_MODES.map((mode) => ({ value: mode, label: CAMERA_MODE_LABELS[mode] })),

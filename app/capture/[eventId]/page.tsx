@@ -59,7 +59,7 @@ import { darkAreaUrl } from '@/lib/frame/dark-area';
 import SystemCameraCapture from '@/components/camera/SystemCameraCapture';
 import { captureOverride, chooseCaptureMethod, hasStillCapture, type CaptureMethod } from '@/lib/camera/still-capture';
 import { viewsOverride } from '@/lib/camera/view';
-import type { CameraMode } from '@/lib/camera/mode';
+import { captureSettingsOf, type CameraMode } from '@/lib/camera/mode';
 import { pickRandom } from '@/lib/slots/resolve';
 import { detectTouchPrimaryDevice } from '@/lib/camera/constraints';
 import {
@@ -263,14 +263,16 @@ export default function EventCapturePage({
   // How the photo is taken in this environment (camera#257): the device's own camera on every touch device, a real still or
   // the video frame on a desktop webcam. Known after mount.
   const [captureMethod, setCaptureMethod] = useState<CaptureMethod | null>(null);
-  // The live view with the portrait or landscape and wide or tight choices (issue 525) instead of the device's own camera app: the event's camera mode (issue 547, set for the event or its partner), or `?views=1` to try it.
+  // The way the photo is taken (issue 547): the event's camera mode (its own, else its partner's, else automatic), and `?views=1` or `?capture=` on the address over it, to try a way on one phone.
+  // `captureViews` is the live view with the portrait or landscape and wide or tight choices (issue 525) instead of the device's own camera app.
   const [captureViews, setCaptureViews] = useState(false);
   const cameraMode = event?.effectiveCameraMode;
   useEffect(() => {
-    const views = viewsOverride(window.location.search) || cameraMode === 'live';
+    const settings = captureSettingsOf(cameraMode);
+    const views = viewsOverride(window.location.search) || settings.views;
     setCaptureViews(views);
     setCaptureMethod(
-      chooseCaptureMethod({ touchPrimary: detectTouchPrimaryDevice(), stillCapture: hasStillCapture(), override: captureOverride(window.location.search), views })
+      chooseCaptureMethod({ touchPrimary: detectTouchPrimaryDevice(), stillCapture: hasStillCapture(), override: captureOverride(window.location.search) ?? settings.override, views })
     );
   }, [cameraMode]);
   const [compositeImage, setCompositeImage] = useState<string | null>(null);

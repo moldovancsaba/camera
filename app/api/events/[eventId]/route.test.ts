@@ -192,12 +192,16 @@ test('PATCH: the camera mode is set to a mode we have, cleared with an empty val
   assert.equal(h.updates[0].cameraMode, 'live');
   assert.equal((await PATCH(patchRequest({ cameraMode: 'device' }), params)).status, 200);
   assert.equal(h.updates[1].cameraMode, 'device');
+  for (const [i, mode] of ['still', 'frame'].entries()) {
+    assert.equal((await PATCH(patchRequest({ cameraMode: mode }), params)).status, 200);
+    assert.equal(h.updates[2 + i].cameraMode, mode);
+  }
   assert.equal((await PATCH(patchRequest({ cameraMode: '' }), params)).status, 200);
-  assert.equal(h.updates[2].cameraMode, null, 'empty means no choice of its own');
-  for (const bad of ['Live', 'frame', 7, {}, true]) assert.equal((await PATCH(patchRequest({ cameraMode: bad }), params)).status, 400, String(bad));
+  assert.equal(h.updates[4].cameraMode, null, 'empty means no choice of its own');
+  for (const bad of ['Live', 'system', 7, {}, true]) assert.equal((await PATCH(patchRequest({ cameraMode: bad }), params)).status, 400, String(bad));
   assert.equal((await PATCH(patchRequest({ loadingText: 'Hello' }), params)).status, 200);
-  assert.equal('cameraMode' in h.updates[3], false);
-  assert.equal(h.updates.length, 4, 'a refused mode writes nothing');
+  assert.equal('cameraMode' in h.updates[5], false);
+  assert.equal(h.updates.length, 6, 'a refused mode writes nothing');
 });
 
 test('GET: the camera mode the guest page uses is the event’s own, else its partner’s, else the standard; the stored choice stays as it is for the editor (issue 547)', async (t) => {

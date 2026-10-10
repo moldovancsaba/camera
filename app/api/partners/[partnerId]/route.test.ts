@@ -118,5 +118,5 @@ test('the camera mode of the partner\'s events: a mode we have, cleared with an 
   assert.equal((data.partners[0] as { cameraMode?: string | null }).cameraMode, 'live', 'absent leaves it alone');
   assert.equal((await PATCH(patch({ cameraMode: '' }), params)).status, 200);
   assert.equal((data.partners[0] as { cameraMode?: string | null }).cameraMode, null);
-  for (const bad of ['Live', 'frame', 7, {}, true]) assert.equal((await PATCH(patch({ cameraMode: bad }), params)).status, 400, String(bad));
+  for (const bad of ['Live', 'system', 7, {}, true]) assert.equal((await PATCH(patch({ cameraMode: bad }), params)).status, 400, String(bad));
 });

@@ -14,6 +14,7 @@ import EditorScaffold from '@/components/admin/AdminEditorScaffold';
 import { FormSection } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import { UI_LANGUAGES, UI_LANGUAGE_LABELS, normalizeUiLanguage } from '@/lib/i18n';
+import { CAMERA_MODES, CAMERA_MODE_LABELS, DEFAULT_CAMERA_MODE, isCameraMode } from '@/lib/camera/mode';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -110,8 +111,8 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
       contactName: formData.get('contactName') as string,
       isActive: formData.get('isActive') === 'on',
       uiLanguage: normalizeUiLanguage(formData.get('uiLanguage')),
-      // Ticked = the live camera with the view buttons; unticked = no choice, so the standard (the phone's own camera app). An event can still choose its own.
-      cameraMode: formData.get('cameraLive') === 'on' ? 'live' : '',
+      // The way the photos of this partner's events are taken (issue 547); an event that makes no choice of its own follows it, one that chooses keeps its own.
+      cameraMode: isCameraMode(formData.get('cameraMode')) ? (formData.get('cameraMode') as string) : DEFAULT_CAMERA_MODE,
     };
 
     // Only when the colours were touched: null means the partner has none, so its events follow messmass.
@@ -230,16 +231,17 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
 
           <FormSection
             title="Camera of the events"
-            description="How the photos of this partner's events are taken. An event that makes no choice of its own follows this; an event that chooses keeps its own choice."
+            description="How the photos of this partner's events are taken: the phone's own camera app, or one of the live cameras. An event that makes no choice of its own follows this; an event that chooses keeps its own choice."
           >
-            <label style={{ alignItems: 'flex-start', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
-              <input type="checkbox" name="cameraLive" defaultChecked={partner?.cameraMode === 'live'} style={{ marginTop: '0.25rem' }} />
-              <span>
-                Use the live camera with view buttons
-                <span style={{ color: 'var(--mantine-color-dimmed)', display: 'block', fontSize: '0.8125rem', fontWeight: 400 }}>
-                  Off by default: a phone opens its own camera app. On: the page shows the live camera with the buttons portrait or landscape, wide or tight.
-                </span>
-              </span>
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Camera
+              <select name="cameraMode" defaultValue={isCameraMode(partner?.cameraMode) ? partner.cameraMode : DEFAULT_CAMERA_MODE} style={{ minHeight: 44, padding: '0 0.75rem' }}>
+                {CAMERA_MODES.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {CAMERA_MODE_LABELS[mode]}
+                  </option>
+                ))}
+              </select>
             </label>
           </FormSection>
 
