@@ -120,3 +120,17 @@ test('the camera mode of the partner\'s events: a mode we have, cleared with an 
   assert.equal((data.partners[0] as { cameraMode?: string | null }).cameraMode, null);
   for (const bad of ['Live', 'system', 7, {}, true]) assert.equal((await PATCH(patch({ cameraMode: bad }), params)).status, 400, String(bad));
 });
+
+test('the gallery permission of the partner\'s events: true, false or empty, refused otherwise, left alone when absent (issue 554)', async (t) => {
+  const { data } = setup(t);
+  const { PATCH } = await importRoute('gallery-consent');
+  assert.equal((await PATCH(patch({ galleryConsent: true }), params)).status, 200);
+  assert.equal((data.partners[0] as { galleryConsent?: boolean | null }).galleryConsent, true);
+  assert.equal((await PATCH(patch({ name: 'Partner P' }), params)).status, 200);
+  assert.equal((data.partners[0] as { galleryConsent?: boolean | null }).galleryConsent, true, 'absent leaves it alone');
+  assert.equal((await PATCH(patch({ galleryConsent: false }), params)).status, 200);
+  assert.equal((data.partners[0] as { galleryConsent?: boolean | null }).galleryConsent, false);
+  assert.equal((await PATCH(patch({ galleryConsent: '' }), params)).status, 200);
+  assert.equal((data.partners[0] as { galleryConsent?: boolean | null }).galleryConsent, null);
+  for (const bad of ['yes', 'true', 1, {}]) assert.equal((await PATCH(patch({ galleryConsent: bad }), params)).status, 400, String(bad));
+});

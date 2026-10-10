@@ -29,6 +29,7 @@ interface PartnerRecord {
   isActive?: boolean;
   uiLanguage?: string | null;
   cameraMode?: string | null;
+  galleryConsent?: boolean | null;
   defaultBrandColors?: {
     primary?: string;
     secondary?: string;
@@ -43,6 +44,7 @@ interface UpdatePartnerPayload {
   isActive: boolean;
   uiLanguage: string;
   cameraMode: string;
+  galleryConsent: boolean;
   defaultBrandColors?: {
     primary?: string;
     secondary?: string;
@@ -112,6 +114,8 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
       isActive: formData.get('isActive') === 'on',
       uiLanguage: normalizeUiLanguage(formData.get('uiLanguage')),
       // The way the photos of this partner's events are taken (issue 547); an event that makes no choice of its own follows it, one that chooses keeps its own.
+      // Whether the partner's events that made no choice ask for the user's own permission to show a photo in the public gallery (issue 554); an event that chooses keeps its own choice.
+      galleryConsent: formData.get('galleryConsent') === 'ask',
       cameraMode: isCameraMode(formData.get('cameraMode')) ? (formData.get('cameraMode') as string) : DEFAULT_CAMERA_MODE,
     };
 
@@ -241,6 +245,19 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
                     {CAMERA_MODE_LABELS[mode]}
                   </option>
                 ))}
+              </select>
+            </label>
+          </FormSection>
+
+          <FormSection
+            title="Public gallery permission"
+            description="Some services and markets need the user's own permission before a photo is shown on a public wall or gallery; for others the terms the user accepts are enough. An event that makes no choice of its own follows this; an event that chooses keeps its own choice (in the consent page settings of its page editor)."
+          >
+            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
+              Permission to show the photo in the public gallery
+              <select name="galleryConsent" defaultValue={partner?.galleryConsent === true ? 'ask' : 'no'} style={{ minHeight: 44, padding: '0 0.75rem' }}>
+                <option value="no">Do not ask: the terms the user accepts cover it (standard)</option>
+                <option value="ask">Ask: a separate optional checkbox, not ticked</option>
               </select>
             </label>
           </FormSection>

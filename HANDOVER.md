@@ -12,6 +12,8 @@ Open work is tracked on the GitHub project board, not in this file (next section
 
 - **Version 12.3.41 (fleet release 2026-10-10, owner answer 265):** camera, messmass, fanmass and try-on carry 12.3.41 (savetheworld has since 2026-10-05); everything since 12.3.40 is in `RELEASE_NOTES.md` under "v12.3.41" and the dated "Unreleased" entries below it. Marking the people at vetting is **on for every event and required before a first decision** (issue 542, answers 262 to 264 and 267), and the **camera mode** is a setting on the partner and on the event (issue 547, answer 253); no event has a camera choice stored, so none changed.
 
+- **Public gallery permission (issue [#554](https://github.com/moldovancsaba/camera/issues/554), owner answer 283, replaces camera#429):** a setting, not a rule: the partner has a default (ask or not), the event follows or chooses (the consent page settings in the journey editor); when it asks, one optional unticked checkbox sits above Continue in the reframe step and only a ticked box puts the photo on the wall, kept as versioned evidence (`Submission.publicGalleryConsent`); the server decides from the event's setting. Standard: do not ask, so no event changed. The wording is the Dictionary texts `share.publicGalleryConsent` and `share.publicGalleryConsentHelp`; whoever can edit it validates it (answer 251).
+
 ## Status 2026-10-09
 
 The board ([#24](https://github.com/users/moldovancsaba/projects/24)) is the single source of truth for open work and its status; this section only says where the decisions and the code are.

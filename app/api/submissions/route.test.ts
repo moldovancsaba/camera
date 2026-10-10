@@ -29,7 +29,7 @@ interface Harness {
 function mockDeps(
   t: TestContext,
   head: (url: string) => Promise<{ size: number; contentType: string }>,
-  extra: { event?: Record<string, unknown>; session?: Record<string, unknown> | null } = {}
+  extra: { event?: Record<string, unknown>; partner?: Record<string, unknown> | null; session?: Record<string, unknown> | null } = {}
 ): Harness {
   const h: Harness = { inserted: [], uploads: 0, heads: [], puts: [] };
   t.mock.module('@/lib/api', { namedExports: { ...apiReal, optionalAuth: async () => extra.session ?? null } });
@@ -37,7 +37,7 @@ function mockDeps(
     namedExports: {
       connectToDatabase: async () => ({
         collection: (name: string) => ({
-          findOne: async () => (name === 'events' ? { _id: 'event-1', name: 'Test event', ...(extra.event ?? {}) } : null),
+          findOne: async () => (name === 'events' ? { _id: 'event-1', name: 'Test event', ...(extra.event ?? {}) } : name === 'partners' ? (extra.partner ?? null) : null),
           insertOne: async (doc: Record<string, unknown>) => {
             h.inserted.push(doc);
             return { insertedId: new ObjectId() };
@@ -405,6 +405,70 @@ test('an event that does not require vetting saves exactly as before', async (t)
     assert.equal('reviewStatus' in doc, false);
     assert.equal('photoReview' in doc, false);
     assert.equal('shareToken' in doc, false);
+  } finally {
+    quiet();
+    restore();
+  }
+});
+
+// The public gallery permission (issue 554, lib/events/gallery-consent.ts): the event's setting decides, never what the page says it asked.
+async function savedWith(t: TestContext, caseId: string, event: Record<string, unknown> | undefined, partner: Record<string, unknown> | null, body: Record<string, unknown>) {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead, { event, partner });
+    const { POST } = await importRouteModule(caseId);
+    assert.equal((await POST(submissionRequest(body))).status, 201);
+    return h.inserted[0] as Record<string, unknown> & { publicGalleryConsent?: { version: number; grantedAt: string } };
+  } finally {
+    quiet();
+    restore();
+  }
+}
+
+test('an event that does not ask (the standard) stores the page’s choice as before; a ticked box still leaves its evidence', async (t) => {
+  const plain = await savedWith(t, 'gallery-not-asked', undefined, null, { shareOptIn: true });
+  assert.equal(plain.isShareVisible, true);
+  assert.equal('publicGalleryConsent' in plain, false);
+});
+
+test('an event that asks makes a photo eligible with the ticked box and its version, and keeps the evidence', async (t) => {
+  const ticked = await savedWith(t, 'gallery-asked-ticked', { galleryConsent: true }, null, { shareOptIn: true, publicGalleryConsentVersion: 1 });
+  assert.equal(ticked.isShareVisible, true);
+  assert.equal(ticked.publicGalleryConsent?.version, 1);
+  assert.equal(typeof ticked.publicGalleryConsent?.grantedAt, 'string');
+});
+
+test('an event that asks keeps a photo private when the box is not ticked', async (t) => {
+  const unticked = await savedWith(t, 'gallery-asked-unticked', { galleryConsent: true }, null, { shareOptIn: false, publicGalleryConsentVersion: 1 });
+  assert.equal(unticked.isShareVisible, false);
+  assert.equal('publicGalleryConsent' in unticked, false);
+});
+
+test('an old page that does not know the setting and sends only shareOptIn true gets a private photo from an event that asks', async (t) => {
+  const oldPage = await savedWith(t, 'gallery-asked-old-page', { galleryConsent: true }, null, { shareOptIn: true });
+  assert.equal(oldPage.isShareVisible, false, 'no version, no permission');
+  assert.equal('publicGalleryConsent' in oldPage, false);
+});
+
+test('an event that made no choice follows its partner: the partner asks, so an old page’s shareOptIn true is private', async (t) => {
+  const followed = await savedWith(t, 'gallery-partner-asks', { partnerId: 'P1' }, { galleryConsent: true }, { shareOptIn: true });
+  assert.equal(followed.isShareVisible, false);
+});
+
+test('an event’s own choice not to ask wins over a partner that asks', async (t) => {
+  const own = await savedWith(t, 'gallery-own-wins', { partnerId: 'P1', galleryConsent: false }, { galleryConsent: true }, { shareOptIn: true });
+  assert.equal(own.isShareVisible, true);
+});
+
+test('a vetted event that asks keeps the choice for the approval: the wall flag waits, the ticked box is the eligibility', async (t) => {
+  const restore = withStoreToken();
+  const quiet = silence();
+  try {
+    const h = mockDeps(t, goodHead, { event: { ...VETTED, galleryConsent: true } });
+    const { POST } = await importRouteModule('gallery-vetted');
+    assert.equal((await POST(submissionRequest({ userInfo: GUEST, shareOptIn: true }))).status, 201);
+    assert.equal((h.inserted[0] as { photoReview: { shareOptIn: boolean } }).photoReview.shareOptIn, false, 'asked, not ticked: private at approval too');
   } finally {
     quiet();
     restore();

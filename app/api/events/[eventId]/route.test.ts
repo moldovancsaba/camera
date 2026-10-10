@@ -227,6 +227,43 @@ test('GET: with no choice anywhere the standard camera is used', async (t) => {
   assert.equal(none.data.event.effectiveCameraMode, 'device');
 });
 
+test('PATCH: asking for the public gallery permission is true, false or empty (follow the partner), refused otherwise, and left alone when absent (issue 554)', async (t) => {
+  const h = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-gallery-consent');
+  assert.equal((await PATCH(patchRequest({ galleryConsent: true }), params)).status, 200);
+  assert.equal(h.updates[0].galleryConsent, true);
+  assert.equal((await PATCH(patchRequest({ galleryConsent: false }), params)).status, 200);
+  assert.equal(h.updates[1].galleryConsent, false);
+  assert.equal((await PATCH(patchRequest({ galleryConsent: null }), params)).status, 200);
+  assert.equal(h.updates[2].galleryConsent, null, 'null means no choice of its own');
+  for (const bad of ['yes', 'true', 1, {}]) assert.equal((await PATCH(patchRequest({ galleryConsent: bad }), params)).status, 400, String(bad));
+  assert.equal((await PATCH(patchRequest({ loadingText: 'Hello' }), params)).status, 200);
+  assert.equal('galleryConsent' in h.updates[3], false);
+  assert.equal(h.updates.length, 4, 'a refused value writes nothing');
+});
+
+test('GET: the guest page asks for the gallery permission when the event does, else when its partner does, else not; the stored choice stays for the editor (issue 554)', async (t) => {
+  mockDeps(t, { event: { partnerId: 'P', customPages: [] }, partner: { partnerId: 'P', galleryConsent: true } });
+  const { GET } = await importRouteModule('get-gallery-partner');
+  const followed = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { galleryConsent?: boolean; effectiveGalleryConsent: boolean } } };
+  assert.equal(followed.data.event.effectiveGalleryConsent, true);
+  assert.equal(followed.data.event.galleryConsent, undefined);
+});
+
+test('GET: the event’s own gallery choice wins, and with none anywhere the page does not ask', async (t) => {
+  mockDeps(t, { event: { partnerId: 'P', galleryConsent: false, customPages: [] }, partner: { partnerId: 'P', galleryConsent: true } });
+  const { GET } = await importRouteModule('get-gallery-own');
+  const own = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { effectiveGalleryConsent: boolean } } };
+  assert.equal(own.data.event.effectiveGalleryConsent, false);
+});
+
+test('GET: with no choice anywhere the capture page does not ask for the gallery permission', async (t) => {
+  mockDeps(t, { event: { customPages: [] } });
+  const { GET } = await importRouteModule('get-gallery-none');
+  const none = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { effectiveGalleryConsent: boolean } } };
+  assert.equal(none.data.event.effectiveGalleryConsent, false);
+});
+
 test('PATCH: the guided tour is switched on or off with a true or false, refused otherwise, and left alone when absent', async (t) => {
   const h = mockDeps(t, { event: {}, session: ADMIN });
   const { PATCH } = await importRouteModule('patch-tour');

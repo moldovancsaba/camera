@@ -27,7 +27,34 @@ export interface CustomPagesManagerProps {
   journeyContext?: JourneyContext;
   /** The consent page is shown as one checkbox on the Who-are-you page (issue 523): the one setting both page editors show. */
   acceptanceOnWhoAreYou?: boolean;
-  onSave: (pages: CustomPage[], options: { acceptanceOnWhoAreYou: boolean; defaultPageOrders?: Record<string, number> }) => Promise<void>;
+  /**
+   * The event's own choice on the permission to show a photo in the public gallery (issue 554, lib/events/gallery-consent.ts): `true` asks, `false` does not, `null` follows the partner. `effectiveGalleryConsent` is what the
+   * event does now, so Same as the partner can say what it gives. The setting is shown at the top of the list and inside the consent page's editor: one value, saved with Save Pages.
+   */
+  galleryConsent?: boolean | null;
+  effectiveGalleryConsent?: boolean;
+  onSave: (pages: CustomPage[], options: { acceptanceOnWhoAreYou: boolean; galleryConsent: boolean | null; defaultPageOrders?: Record<string, number> }) => Promise<void>;
+}
+
+type GalleryChoice = '' | 'ask' | 'no';
+const galleryChoiceOf = (value: boolean | null | undefined): GalleryChoice => (value === true ? 'ask' : value === false ? 'no' : '');
+const galleryValueOf = (choice: GalleryChoice): boolean | null => (choice === 'ask' ? true : choice === 'no' ? false : null);
+
+/** The event's setting for the permission to show a photo in the public gallery (issue 554): the same control at the top of the list and in the consent page's editor. */
+function GalleryConsentSelect({ value, onChange, followsAsks }: { value: GalleryChoice; onChange: (value: GalleryChoice) => void; followsAsks: boolean }) {
+  return (
+    <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }} data-gallery-consent-setting>
+      Permission to show the photo in the public gallery
+      <select value={value} onChange={(event) => onChange(event.currentTarget.value as GalleryChoice)} style={{ minHeight: 44, padding: '0 0.75rem' }}>
+        <option value="">{`Same as the partner (${followsAsks ? 'ask' : 'do not ask'})`}</option>
+        <option value="ask">Ask: a separate optional checkbox, not ticked</option>
+        <option value="no">Do not ask: the terms the user accepts cover it</option>
+      </select>
+      <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', fontWeight: 400 }}>
+        Some services and markets need the user’s own permission before a photo is shown on a public wall or gallery. When it asks, the photo page shows one optional checkbox where the photo is saved; only a ticked box puts the photo on the wall. Its words are the Dictionary texts share.publicGalleryConsent and share.publicGalleryConsentHelp. Saved with Save Pages.
+      </span>
+    </label>
+  );
 }
 
 function Field({
@@ -140,10 +167,12 @@ function MoveButtons({ canUp, canDown, onUp, onDown }: { canUp: boolean; canDown
   );
 }
 
-export default function CustomPagesManager({ eventId, initialPages, journeyContext, acceptanceOnWhoAreYou = false, onSave }: CustomPagesManagerProps) {
+export default function CustomPagesManager({ eventId, initialPages, journeyContext, acceptanceOnWhoAreYou = false, galleryConsent = null, effectiveGalleryConsent = false, onSave }: CustomPagesManagerProps) {
   const [pages, setPages] = useState<CustomPage[]>(initialPages);
   // One value for the two checkboxes (the Who-are-you editor's "Show acceptance" and the consent editor's "Show it on Who-are-you"): both read and write it here, so they are always the same one.
   const [acceptanceHere, setAcceptanceHere] = useState(acceptanceOnWhoAreYou);
+  // One value for the permission to show a photo in the public gallery (issue 554): the select at the top of the list and the one in the consent page's editor read and write it here.
+  const [galleryHere, setGalleryHere] = useState<GalleryChoice>(galleryChoiceOf(galleryConsent));
   // Where the default pages are (issue 535): the places the editor saved, changed here by the up/down buttons and saved with Save Pages. Null: the default places.
   const [defaultOrders, setDefaultOrders] = useState<Record<string, number> | null>(journeyContext?.defaultOrders ?? null);
   const [showModal, setShowModal] = useState(false);
@@ -377,7 +406,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
         ...p,
         order: typeof p.order === 'number' && Number.isFinite(p.order) ? p.order : Number(p.order),
       }));
-      await onSave(pagesToSave, { acceptanceOnWhoAreYou: acceptanceHere, ...(defaultOrders ? { defaultPageOrders: defaultOrders } : {}) });
+      await onSave(pagesToSave, { acceptanceOnWhoAreYou: acceptanceHere, galleryConsent: galleryValueOf(galleryHere), ...(defaultOrders ? { defaultPageOrders: defaultOrders } : {}) });
     } catch (error) {
       console.error('Failed to save pages:', error);
       const msg = error instanceof Error ? error.message : 'Failed to save pages. Please try again.';
@@ -408,6 +437,10 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
           {isSaving ? 'Saving...' : 'Save Pages'}
           </SemanticButton>
         </div>
+
+        <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+          <GalleryConsentSelect value={galleryHere} onChange={setGalleryHere} followsAsks={effectiveGalleryConsent && galleryConsent === null} />
+        </section>
 
       {/* Page List */}
         <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -579,6 +612,9 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
               eventId={eventId}
               acceptanceHere={acceptanceHere}
               onAcceptanceChange={setAcceptanceHere}
+              galleryHere={galleryHere}
+              onGalleryChange={setGalleryHere}
+              galleryFollowsAsks={effectiveGalleryConsent && galleryConsent === null}
               submitInPage={!hasSeparateSubmit(rows)}
               onSubmitInPageChange={handleSubmitInPage}
               onSave={handleSavePage}
@@ -604,6 +640,9 @@ function PageEditModal({
   eventId,
   acceptanceHere,
   onAcceptanceChange,
+  galleryHere,
+  onGalleryChange,
+  galleryFollowsAsks,
   submitInPage,
   onSubmitInPageChange,
   onSave,
@@ -613,6 +652,9 @@ function PageEditModal({
   eventId: string;
   acceptanceHere: boolean;
   onAcceptanceChange: (value: boolean) => void;
+  galleryHere: GalleryChoice;
+  onGalleryChange: (value: GalleryChoice) => void;
+  galleryFollowsAsks: boolean;
   submitInPage: boolean;
   onSubmitInPageChange: (value: boolean) => void;
   onSave: (page: CustomPage) => void;
@@ -970,6 +1012,9 @@ function PageEditModal({
                   helper="Shows these checkboxes on the Who-are-you page as one small checkbox with one sentence (the three usual legal pages make the sentence; any other list is shown one after the other), and this page is no longer a step of its own. Off: two pages, one after the other. The same setting as “Show acceptance” on the Who-are-you page editor; it is saved with Save all."
                 />
               </div>
+            </section>
+            <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+              <GalleryConsentSelect value={galleryHere} onChange={onGalleryChange} followsAsks={galleryFollowsAsks} />
             </section>
             <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
               <div style={{ display: 'grid', gap: '1rem' }}>

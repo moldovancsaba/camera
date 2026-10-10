@@ -157,6 +157,7 @@ Image fields (camera#210; since camera#257 the capture page no longer uploads an
 A photo of an event with vetting required (camera#266) is saved pending and carries, instead of the image fields above:
 
 - `reviewStatus: 'pending_review'` (later `approved` or `rejected`; a missing status counts as approved, see `lib/submissions/visibility.ts`).
+- `publicGalleryConsent` `{version: 1, grantedAt}` (issue 554): the user's own permission to show the photo in the public gallery, present only when the box was ticked on an event that asks (or ticked anyway); absent otherwise. `Partner.galleryConsent` and `Event.galleryConsent` (`true` ask, `false` do not ask, missing or `null` follow the parent, standard: do not ask) are the setting (`lib/events/gallery-consent.ts`).
 - `photoReview` `{photoUrl, photoSize, photoMime, shareOptIn, submittedAt, tryOn}`: the plain framed-size photo in an unlisted Blob object `pending/<eventId>/<random>.jpg` (never mirrored to imgbb, never returned by a public route; deleted with the submission), the guest's pledge-wall choice and the held try-on request. There is no `imageUrl`, `finalImageUrl` or `originalImageUrl` until approval composes the real picture.
 - `shareToken`: opaque share id (`/share/<token>`); photos made before vetting keep their database `_id` as the share id.
 - `reviewHistory[]`: `{action: approve|reject, by, at, reason}`.

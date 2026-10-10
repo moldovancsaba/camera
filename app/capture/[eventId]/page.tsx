@@ -16,7 +16,7 @@
 
 import { Fragment, type ReactNode, useState, useEffect, use, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
-import { Button } from '@mantine/core';
+import { Button, Checkbox } from '@mantine/core';
 import CameraCapture from '@/components/camera/CameraCapture';
 import AppShellLock from '@/components/capture/AppShellLock';
 import { phasePageLock } from '@/lib/capture/page-lock';
@@ -108,6 +108,8 @@ interface EventData {
   welcomeScreen?: { url: string };
   /** The event sends the welcome e-mail (epic 463): the page tells the server who registered, and only then. */
   welcomeEmailEnabled?: boolean;
+  /** The event asks for the user's own permission to show the photo in the public gallery (issue 554, lib/events/gallery-consent.ts): its own choice, else its partner's, else not. */
+  effectiveGalleryConsent?: boolean;
   /** How the photo is taken (issue 547, lib/camera/mode.ts): the event's own choice, else its partner's, else the standard. */
   effectiveCameraMode?: CameraMode;
   /** How users get the layout and the message (epic 444): the editor's setting; the page reads it through `generatedFrame.selection`, and for the event's own frames from here. */
@@ -280,6 +282,9 @@ export default function EventCapturePage({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  // The optional, unticked checkbox of an event that asks for the permission to show the photo in the public gallery (issue 554): ticked only by the user, for this photo only.
+  const [galleryTick, setGalleryTick] = useState(false);
+  const asksGallery = event?.effectiveGalleryConsent === true;
   // Photo vetting (camera#265): the photo is saved and waits for approval. No share link exists yet.
   const [pendingApproval, setPendingApproval] = useState(false);
   // An own frame as a 50% black silhouette, shown instead of the real frame while the photo of a vetted event waits.
@@ -498,6 +503,7 @@ export default function EventCapturePage({
           welcomeEmailEnabled: eventData.welcomeEmailEnabled === true,
           photoVettingRequired: eventData.photoVettingRequired === true,
           effectiveCameraMode: eventData.effectiveCameraMode,
+          effectiveGalleryConsent: eventData.effectiveGalleryConsent === true,
         });
         
         // Fetch logos for loading-capture and onboarding-thankyou scenarios
@@ -877,6 +883,7 @@ export default function EventCapturePage({
 
   const handleReframeRetake = () => {
     setCapturedOriginal(null);
+    setGalleryTick(false);
     setStep('capture-photo');
   };
 
@@ -906,6 +913,7 @@ export default function EventCapturePage({
         userInfo?: WhoAreYouPageData;
         consents?: CollectedData['consents'];
         shareOptIn?: boolean;
+        publicGalleryConsentVersion?: 1;
         // The message and image of the generated default frame this photo used (camera#236).
         frameVariant?: { index: number | null; message: string | null; imageUrl: string };
       } = {
@@ -918,8 +926,10 @@ export default function EventCapturePage({
         imageWidth: imageDimensions?.width || selectedFrame?.width || 1920,
         imageHeight: imageDimensions?.height || selectedFrame?.height || 1080,
         cameraId,
-        // The consent page covers showing the photo on the event's pledge wall; there is no separate choice any more (camera#344).
-        shareOptIn: true,
+        // The terms the user accepted cover showing the photo on the event's pledge wall (camera#344), unless the event asks for the user's own permission (issue 554): then only a ticked box makes the photo eligible,
+        // and the version of the sentence goes with it; the server decides from the event's own setting too.
+        shareOptIn: asksGallery ? galleryTick : true,
+        ...(asksGallery && galleryTick ? { publicGalleryConsentVersion: 1 as const } : {}),
         ...(selectedFrame?.generated
           ? {
               frameVariant: {
@@ -1254,6 +1264,7 @@ export default function EventCapturePage({
   const handleNextPhoto = () => {
     setCapturedImage(null);
     setCapturedOriginal(null);
+    setGalleryTick(false);
     setCompositeImage(null);
     setShareUrl(null);
     setPendingApproval(false);
@@ -1276,6 +1287,7 @@ export default function EventCapturePage({
     // Reset capture state
     setCapturedImage(null);
     setCapturedOriginal(null);
+    setGalleryTick(false);
     setCompositeImage(null);
     setShareUrl(null);
     setPendingApproval(false);
@@ -1789,6 +1801,16 @@ export default function EventCapturePage({
               onRetake={handleReframeRetake}
               busy={saveRequested || isProcessing || isSaving}
             >
+              {asksGallery ? (
+                <Checkbox
+                  checked={galleryTick}
+                  onChange={(changed) => setGalleryTick(changed.currentTarget.checked)}
+                  label={t('share.publicGalleryConsent')}
+                  description={t('share.publicGalleryConsentHelp')}
+                  disabled={saveRequested || isProcessing || isSaving}
+                  data-gallery-consent
+                />
+              ) : null}
               {vetted && (
                 <p className="text-center text-sm" data-pending-notice>
                   {pendingPreviewNotice}

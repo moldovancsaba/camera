@@ -155,7 +155,9 @@ export interface Partner {
   /** The language of the events of this partner that did not set one themselves (issue 353): they follow it. English when missing. */
   uiLanguage?: 'en' | 'hu' | null;
   /** How the events of this partner that made no choice take the photo (issue 547, lib/camera/mode.ts): `device` (the standard) or `live` (the live view with the view buttons). Missing = the standard. */
-  cameraMode?: 'device' | 'live' | null;
+  cameraMode?: 'device' | 'live' | 'still' | 'frame' | null;
+  /** Whether the events of this partner that made no choice ask for the user's own permission to show a photo in the public gallery (issue 554, lib/events/gallery-consent.ts). Missing = they do not ask (the terms cover it). */
+  galleryConsent?: boolean | null;
   /** The legal part of the e-mails of all events of this partner that did not set their own, per language (epic 463, lib/email/legal.ts): it follows the general one. */
   emailLegal?: Partial<Record<'en' | 'hu', string>>;
   /** The pictures every event of this partner shows in the picture fields it left empty (lib/events/partner-pictures.ts, issue 368): the plain https address each field stores. */
@@ -341,7 +343,9 @@ export interface Event {
   /** The language of the user interface of this event (camera#352): the default texts of the journey, the public photo page and the user emails come from its dictionary. English when missing. */
   uiLanguage?: 'en' | 'hu';
   /** How this event takes the photo (issue 547, lib/camera/mode.ts): its own choice; missing or null = it follows its partner's, which follows the standard (`device`). */
-  cameraMode?: 'device' | 'live' | null;
+  cameraMode?: 'device' | 'live' | 'still' | 'frame' | null;
+  /** Whether this event asks for the permission to show a photo in the public gallery (issue 554): its own choice; missing or null = it follows its partner's, which follows the standard (does not ask). */
+  galleryConsent?: boolean | null;
   /** The legal part of the e-mails of this event, per language (epic 463, lib/email/legal.ts): its own; missing = it follows its partner's, which follows the general one. */
   emailLegal?: Partial<Record<'en' | 'hu', string>>;
   /** How a user gets the layout and the message of the frame (epic 444, lib/frame/selection.ts): each `editor` (with a pick), `random` or `user`. Missing = what the event always did. */
@@ -849,6 +853,8 @@ export interface Submission {
    */
   people?: PersonTag[];
   peopleReview?: { by: string | null; at: string };
+  /** The user's own, separate permission to show the photo in the public gallery, kept as evidence (issue 554, lib/events/gallery-consent.ts): present only when the box was ticked. */
+  publicGalleryConsent?: { version: 1; grantedAt: string } | null;
   reviewHistory?: Array<{ action: 'approve' | 'reject'; by: string; at: string; reason?: string | null }>;
   isShareVisible?: boolean;          // Public share-page publication flag
   isSlideshowEligible?: boolean;     // Slideshow playlist eligibility flag

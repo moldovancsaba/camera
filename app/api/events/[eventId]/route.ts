@@ -29,6 +29,7 @@ import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
 import { isUiLanguage, UI_LANGUAGES } from '@/lib/i18n';
 import { effectiveCameraMode, parseCameraMode } from '@/lib/camera/mode';
+import { effectiveGalleryConsent, parseGalleryConsent } from '@/lib/events/gallery-consent';
 import { sanitizeNotificationSettings } from '@/lib/email/notification-settings';
 import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
 import { captureFrameOf } from '@/lib/frame/capture';
@@ -206,6 +207,8 @@ export const GET = withErrorHandler(async (
       photoVettingRequired: vettingRequired,
       // How the photo is taken (issue 547): the event's own choice, else its partner's, else the standard. `cameraMode` stays the stored choice, which the editor shows.
       effectiveCameraMode: effectiveCameraMode(event as { cameraMode?: unknown }, partner),
+      // Whether the capture page asks for the permission to show the photo in the public gallery (issue 554): the event's own choice, else its partner's, else not. `galleryConsent` stays the stored choice, which the editors show.
+      effectiveGalleryConsent: effectiveGalleryConsent(event as { galleryConsent?: unknown }, partner),
       // Whether the event sends the welcome e-mail (epic 463): the capture page tells the server who registered only when it does.
       welcomeEmailEnabled: normalizeSubmissionEmailPolicy(event.notifications, language).types.welcome.enabled,
       // What decides which default pages this event gets (lib/events/journey.ts): the page editor builds the journey from it.
@@ -285,6 +288,7 @@ export const PATCH = withErrorHandler(async (
     markPeopleInVetting,
     uiLanguage,
     cameraMode,
+    galleryConsent,
     tourEnabled,
     acceptanceOnWhoAreYou,
     defaultPageOrders,
@@ -442,6 +446,12 @@ export const PATCH = withErrorHandler(async (
     const parsed = parseCameraMode(cameraMode);
     if (!parsed.ok) throw apiBadRequest(parsed.error);
     updateFields.cameraMode = parsed.value;
+  }
+  // Whether this event asks for the user's own permission to show a photo in the public gallery (issue 554): its own choice, or empty to follow its partner's.
+  if (galleryConsent !== undefined) {
+    const parsed = parseGalleryConsent(galleryConsent);
+    if (!parsed.ok) throw apiBadRequest(parsed.error);
+    updateFields.galleryConsent = parsed.value;
   }
   if (visualSettings !== undefined) {
     updateFields.visualSettings = normalizeEventVisualSettings(visualSettings);
