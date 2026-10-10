@@ -18,7 +18,6 @@ Camera is no longer just a flat event-photo tool. The system now behaves as:
   - user and access management
 - **Apps**
   - Events
-  - Try-On App
 
 ## 2. Top-level layers
 
@@ -49,7 +48,8 @@ Browser / Public Screens
 - MongoDB access and schema helpers in `lib/db/*`
 - slideshow generation in `lib/slideshow/*`
 - partner-scoped access helpers in `lib/partners/*`
-- try-on queue, moderation, analytics, and identity in `lib/tryon/*`
+- analytics in `lib/analytics/*` (pure aggregations, the only database access is `load.ts`, read only)
+- outbound call deadlines and outcome logs in `lib/observability/outbound.ts`
 - transactional email (templates, per-event sender name) in `lib/email/*`
 - event export logic in `lib/events/*`
 
@@ -81,7 +81,7 @@ Browser / Public Screens
 - `/admin`
 - `/admin/partners/**`
 - `/admin/events/**`
-- `/admin/tryon/**`
+- `/admin/analytics` (all events), `/admin/vetting` (the photos waiting across events)
 - `/admin/frames/**`
 - `/admin/logos/**`
 - `/admin/slideshows`
@@ -118,7 +118,7 @@ Partner detail pages are the primary daily operational surface. They expose:
 ### App surfaces
 
 - Events inventory and event instance detail
-- Try-On App workspace, live queue, garment catalog, and vetting queue
+- Photo vetting across events (`/admin/vetting`) and the analytics of all events (`/admin/analytics`)
 
 ### Contextual menus (issue 426)
 
@@ -144,18 +144,9 @@ Admin browser -> GET/PATCH /api/admin/settings/card-display
 Global, not per-admin-user -- one admin's change affects what every admin sees. Defaults to all
 fields/actions visible; the settings only ever narrow what renders, never add new capability.
 
-### Try-On hard contracts
+### Try-on is not part of the camera app (issue 557, owner answer 294)
 
-- Queue processing and moderation are coordinated through `lib/db/schemas.ts`.
-- Results from worker completion are intentionally published as `tryon_result` with `reviewStatus = pending_review` unless explicitly configured otherwise by event policy.
-- Reruns always create a new job and require fresh human approval before being sent to the user.
-- Moderation archive buckets are `approved`, `rejected`, and `service`; `greatest` is a derived approval+great view.
-- Failed job states are not included in active queue SLA counts.
-- Worker completion endpoint degrades gracefully on unreachable result image URLs; dimensions are stored as null and the result still enters the pending review queue.
-
-### Renderer runtime status and planned replacement
-
-As of 2026-09-30, try-on is paused: current events have try-on disabled, the legacy local worker is stopped, and the try-on sync cron has been removed. Camera's `tryon_jobs`, derived results, and moderation remain retained product data. A planned image.direct integration will preserve Camera as queue/moderation authority and use a separate authenticated local-rendering execution service; it is not currently enabled and must not be inferred from the historical callback route. See [docs/IMAGE_DIRECT_INTEGRATION.md](docs/IMAGE_DIRECT_INTEGRATION.md).
+The try-on integration was removed completely: no `lib/tryon`, no try-on admin pages, internal or guest routes, no worker callback target, no try-on fields on events or submissions. The separate try-on repository and service are untouched and have nothing to call. The old code is at the git tag `tryon-integration-final`; `docs/TRYON_REMOVED.md` says what existed, what it left in the database (nothing was deleted: stored `tryon_result` submissions and the try-on collections stay, unreferenced) and what a rebuild as an add-on needs (section 7: a way to attach a derived picture to a submission, a moderation hook, a share and download choice). **Public visibility is one rule** (`lib/submissions/visibility.ts`): a photo is public only if `submissionKind` is missing or `original` and it is not pending or rejected, so a stored `tryon_result` is never shown on any surface. Shared helpers that lived in the old module moved: `lib/media/image-buffer.ts`, `lib/admin/active-events.ts`, `lib/events/stats.ts`.
 
 ## 5. Authorization architecture
 
@@ -310,11 +301,6 @@ Core collections:
 - `partner_user_access`
 - `users_cache`
 - `web_sessions`
-- `leather_suits`
-- `tryon_jobs`
-- `tryon_worker_heartbeats`
-- `tryon_moderation_events`
-- `tryon_setups`
 - `camera_setup_preferences`
 - `admin_settings`
 
@@ -484,6 +470,9 @@ event's Texts), the partner's default pictures (`lib/events/partner-pictures.ts`
 - **Take photo + Submit** (issue 535 step 2): `pageType: 'submit'` is a marker page after the take-photo page; the capture page splits its pages with `lib/capture/split-pages.ts` (before the photo, `presubmitPages` between the photo and the save, after) and has the flow phase `presubmit`; `lib/events/photo-boundary.ts` (`pagesBeforeSave`) is the one rule for what counts as before the save (default consent and login, the acceptance on the login page); the editor toggles it with `setSubmitSeparate`. See docs/JOURNEY_DEFAULT_PAGES.md.
 - **Marking the people at vetting** (issue 542, `docs/PHOTO_VETTING_PLAN.md`): `lib/photo-vetting/people.ts` (the 16 buttons as one table, `parsePeople`, `summarizePeople`); `Submission.people` + `peopleReview`; `PUT /api/admin/submissions/<id>/people`; the big view `components/admin/PhotoReviewStage.tsx` at `/admin/events/<id>/vetting/review` (pointer events on an overlay that is exactly the photo, rectangles in percent); marking is required before the first decision of a waiting photo: in the big view (a person or "Nobody in this photo"), on the Waiting cards (one **Review** button that opens the big view at the photo, `PhotoReviewQueue` `markPeopleEventId`) and on the server (the review route refuses a first decision without `peopleReview`); on for every event unless `Event.markPeopleInVetting === false` (`markPeopleOn`; `MarkPeopleSwitch`) and the card `PeopleSummaryCard` on the Vetting tab.
 - **The public gallery permission** (issue 554, owner answer 283): `lib/events/gallery-consent.ts` (`effectiveGalleryConsent` = the event's own, else its partner's, else not; `galleryChoice` = what a saved photo gets from the request and the event's setting; `parseGalleryConsent`); `Partner.galleryConsent`, `Event.galleryConsent` (both `PATCH` routes), `Submission.publicGalleryConsent` (versioned evidence); the guest event answer carries `effectiveGalleryConsent`, the capture page shows one optional unticked checkbox above Continue in the reframe step, and `POST /api/submissions` decides from the event's setting. Editors: a select on the partner edit page and the select *Permission to show the photo in the public gallery* in the journey editor (`CustomPagesManager`, top of the list and in the consent page's editor).
+- **Analytics** (issue 521, phase 1): `lib/analytics/` (pure and tested): `facts.ts` (one reading of a `submissions` document), `report.ts` (`buildEventReport`, `buildEventsTable`, `NOT_MEASURED`), `sources.ts` (short-link visits), `time.ts`, `format.ts`, `query.ts` (the address of the view), `export.ts` (the CSV), `load.ts` (the only database access: read only, projected, no row cap); `components/admin/analytics/` uses the design system's `SectionPanel`, `MetricCard` and `AdminAnalyticsTable`; routes: event tab `/admin/events/<id>/analytics` (`?view=`), all events `/admin/analytics`, export `/api/admin/events/<id>/export/analytics`. The counters pipeline for messmass (`counters.ts`, `counters-setting.ts`, `counters-sync.ts`, `pushPhotoStatsToMessmass`, `Event.counterSync`, the `admin_settings` document `messmass-counters`) is prepared and OFF: no caller, no screen, no messmass route yet. Feature doc: `docs/ANALYTICS.md`.
+- **Outbound calls** (issue 178): every outbound call on the login, logout and partner paths goes through `fetchBounded` and `logOutbound` (`lib/observability/outbound.ts`): a deadline, a `TimeoutError` that names the call, one structured log line per call (`sso.token_exchange`, `sso.userinfo`, `sso.token_revoke`, `messmass.session_push`, `messmass.partner_push`), never a token or a person. `lib/auth/sso-permissions.ts` is not bounded yet.
+- **E-mail rendering and the follow-up job:** `lib/email/rich.ts` (`EMAIL_WRAP_STYLE`, addresses over 64 characters shown shortened, soft break points) and `themed-html.ts` (fixed table layouts) keep a long link from widening an e-mail (issue 382); `lib/email/typed-email.ts` (`prepareTypedEmail`) builds an event's typed e-mail once for the welcome and arrived triggers and the follow-up job; the job (issue 559) is `lib/email/follow-up.ts` and `follow-up-rules.ts`, the cron route `/api/internal/follow-up-emails` (daily 07:00 UTC, fails closed without `CRON_SECRET`), the admin route `/api/admin/follow-up-emails` (dry run by default), the partner default `/api/partners/[partnerId]/email-defaults` (`Partner.followUpEmail`), claims in the collection `email_follow_ups` (`_id` = event + a hash of the address, so at most one e-mail per user and event), the environment variable `FOLLOW_UP_MAX_AGE_DAYS`.
 - **The camera mode of an event** (issue 547, owner answer 253): `lib/camera/mode.ts` (`CAMERA_MODES` = `device` (automatic) | `live` (view buttons) | `still` (real sensor photo) | `frame` (screen picture), `effectiveCameraMode` = the event's own, else its partner's, else `device`, `captureSettingsOf` = what a mode asks of the capture page, `parseCameraMode`); `Partner.cameraMode` and `Event.cameraMode` (both `PATCH` routes); the guest event answer carries `effectiveCameraMode` and the capture page uses the live view with the view buttons (`lib/camera/view.ts`) when it is `live` (`?views=1` still forces it). Editors: a selector on the partner edit page, a choice (with Same as the partner) on the event edit page.
 - **Sample selfies** (issue 540, `docs/LIBRARIES.md`): library images with the tag `sample-selfie` (kept out of the general Images lists, `lib/library/sample-selfie.ts`); the slot `selfie` in `Partner.slots`/`Event.slots` on `lib/slots/resolve.ts` with a global level on top (`lib/slots/selfie.ts`, `selfie-store.ts`); pages Libraries > Sample selfies and the partner's Pictures card (`SampleSelfiePanel`); routes `/api/sample-selfies`, `/api/partners/<id>/selfie-slot`, `/api/events/<id>/selfie-slot` (+ `/upload`). The welcome page screen reads the pick (`lib/screen/welcome-window.ts`: `planWindow` without fetching, `fetchWindow`, `storePick`; `Event.welcomeWindow = { source?, pick? }`; `ensureWelcomeScreen` puts it in the key, the stand-in adds nothing); the event card is `WelcomeScreenCard` on the Slideshows page (`GET`, `PUT /api/admin/events/<id>/welcome-window`, `GET .../welcome-photos`). A photo of the event (`Event.welcomeWindow.source: 'photo'`, `photoId`; `lib/screen/welcome-photo.ts`): the one visibility rule decides, a clean upload is drawn with the frame, a framed photo as it is.
 - **The capture flow** asks `lib/frame/choose.ts` (pure) for everything: the step (design, then message, then the camera), the designs and messages to offer (a message only on the designs it is
