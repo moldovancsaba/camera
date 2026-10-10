@@ -307,16 +307,46 @@ export function fillPlain(template: string, values: Values): { text: string; mis
 
 const URL_IN_TEXT = /(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"])/g;
 
+/**
+ * Lets a long word break inside a narrow mail client (issue 382: a long share link made the e-mail wider than a phone screen, so the user had to scroll sideways). `overflow-wrap:anywhere` counts the break
+ * opportunities in a word when the width of a table cell is worked out, so the cell can shrink; `word-wrap:break-word` and `word-break:break-word` are the same rule under the names older mail clients know;
+ * a client that knows none of them still gets the soft break points `wbr` puts into an address. Used on every element that holds the user's words or a link.
+ */
+export const EMAIL_WRAP_STYLE = 'overflow-wrap:anywhere;word-wrap:break-word;word-break:break-word;';
+
+/** An address longer than this gets break points (`wbr`); a short one is left as it is. */
+const BREAK_POINTS_FROM = 40;
+
+/** Where a long address may break: after a single slash (not the two of `https://`), a query sign, an ampersand, an equals sign or a hash. A `wbr` is a break point that is not in the text when it is copied, so a long address wraps at those places even in a client that ignores `overflow-wrap`. Applied to escaped text. */
+function withBreakPoints(escaped: string): string {
+  return escaped.length <= BREAK_POINTS_FROM ? escaped : escaped.replace(/(&amp;|[?=#]|(?<!\/)\/(?!\/))/g, '$1<wbr>');
+}
+
 export interface RichStyle {
   /** The link colour of the theme. */
   link: string;
 }
 
-/** A run as HTML: escaped; a trusted run has its web addresses turned into links in the link colour. */
+/** The longest web address written out in full in the text of an e-mail; a longer one is shown as its first part and an ellipsis, the link behind it stays whole (issue 382). A share link is about 60 characters, so it is written out. */
+export const MAX_SHOWN_ADDRESS = 64;
+
+/** An address as the text of its link: whole, or for a very long one its first part and an ellipsis. */
+export function shownAddress(address: string): string {
+  return address.length <= MAX_SHOWN_ADDRESS ? address : `${address.slice(0, MAX_SHOWN_ADDRESS - 1)}\u2026`;
+}
+
+/** A run as HTML: escaped; a trusted run has its web addresses turned into links in the link colour, which may break where they must (EMAIL_WRAP_STYLE) and show a very long address shortened. */
 function runHtml(run: Run, style: RichStyle): string {
-  const escaped = escapeHtml(run.text);
-  if (!run.trusted) return escaped;
-  return escaped.replace(URL_IN_TEXT, (url) => `<a href="${url}" style="color:${style.link};text-decoration:underline;">${url}</a>`);
+  if (!run.trusted) return escapeHtml(run.text);
+  let out = '';
+  let last = 0;
+  for (const match of run.text.matchAll(URL_IN_TEXT)) {
+    const url = match[0];
+    out += escapeHtml(run.text.slice(last, match.index));
+    out += `<a href="${escapeHtml(url)}" style="color:${style.link};text-decoration:underline;${EMAIL_WRAP_STYLE}">${withBreakPoints(escapeHtml(shownAddress(url)))}</a>`;
+    last = match.index + url.length;
+  }
+  return out + escapeHtml(run.text.slice(last));
 }
 
 function inlineHtml(inline: RInline, style: RichStyle): string {
@@ -329,7 +359,7 @@ function inlineHtml(inline: RInline, style: RichStyle): string {
       return `<em>${inline.children.map((child) => inlineHtml(child, style)).join('')}</em>`;
     case 'link': {
       const label = inline.label.map((child) => inlineHtml(child, style)).join('');
-      return inline.href ? `<a href="${escapeHtml(inline.href)}" style="color:${style.link};font-weight:700;text-decoration:underline;">${label}</a>` : label;
+      return inline.href ? `<a href="${escapeHtml(inline.href)}" style="color:${style.link};font-weight:700;text-decoration:underline;${EMAIL_WRAP_STYLE}">${label}</a>` : label;
     }
     case 'br':
       return '<br />';
@@ -337,10 +367,10 @@ function inlineHtml(inline: RInline, style: RichStyle): string {
 }
 
 const BLOCK_STYLE: Record<BlockKind, string> = {
-  normal: 'margin:0 0 16px 0;',
-  title: 'margin:0 0 16px 0;font-size:22px;line-height:1.3;font-weight:700;',
-  large: 'margin:0 0 16px 0;font-size:19px;line-height:1.45;',
-  small: 'margin:0 0 10px 0;font-size:12px;line-height:1.45;',
+  normal: `margin:0 0 16px 0;${EMAIL_WRAP_STYLE}`,
+  title: `margin:0 0 16px 0;font-size:22px;line-height:1.3;font-weight:700;${EMAIL_WRAP_STYLE}`,
+  large: `margin:0 0 16px 0;font-size:19px;line-height:1.45;${EMAIL_WRAP_STYLE}`,
+  small: `margin:0 0 10px 0;font-size:12px;line-height:1.45;${EMAIL_WRAP_STYLE}`,
 };
 
 /** The blocks as email HTML: one paragraph each, with inline styles (email clients need them). `defaultKind` is the size of a paragraph with no prefix (the legal part is small print). */

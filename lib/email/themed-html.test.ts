@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { resolveEventTheme } from '@/lib/theme/event-theme';
 import { nativeFrameContext } from '@/lib/frame/context';
-import { parseRich, resolveRich, richHtml } from './rich';
+import { EMAIL_WRAP_STYLE, parseRich, resolveRich, richHtml } from './rich';
 import { escapeHtml, renderThemedEmail } from './themed-html';
 
 const paragraphHtml = (text: string, link: string) => richHtml(resolveRich(parseRich(text), {}).blocks, { link });
@@ -56,4 +56,33 @@ test('the event\'s footer picture sits under the card, full width, and is absent
   const refused = resolveEventTheme({ context: nativeFrameContext({ eventName: 'Derby', partnerName: 'MTK', partnerLogoUrl: null }, NOW), emailFooterImageUrl: 'https://evil.example.test/x.png' });
   assert.equal(refused.emailFooterImageUrl, null, 'an address the pages may not load images from is not used');
   assert.equal(resolveEventTheme({ emailFooterImageUrl: 'http://i.ibb.co/x/f.png' }).emailFooterImageUrl, null, 'https only');
+});
+
+// ---- A long link must not make the e-mail wider than a phone screen (issue 382) ----
+
+const TOKEN = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8';
+const LONG = `https://camera.messmass.com/share/${TOKEN}`;
+
+test('the e-mail cannot be wider than the screen: fixed table layouts, the wrap rule on every cell that holds words, a viewport line, and a button that may shrink', () => {
+  const html = renderThemedEmail({
+    theme,
+    eventName: 'MTK-Budapest-x-Vasas-FC-Derby-2026-10-16-Final-Super-Long-Event-Name',
+    bodyText: `Hi,\n\nSee ${LONG}`,
+    legal: resolveRich(parseRich(`Terms: ${LONG}`), {}, ['link']).blocks,
+    button: { label: 'View your photo', url: LONG },
+  });
+  const tables = html.match(/<table [^>]*>/g) ?? [];
+  const layoutTables = tables.filter((table) => table.includes('width="100%"'));
+  assert.equal(layoutTables.length, 2, 'the page table and the 560 px table');
+  for (const table of layoutTables) assert.ok(table.includes('table-layout:fixed'), table);
+  assert.ok(html.includes('name="viewport" content="width=device-width'));
+  // The header cell, its event name, the card, the legal part and the button each break a long word.
+  for (const marker of ['text-align:center;color:' + theme.heading, 'font-size:20px;font-weight:700', 'padding:24px;', 'margin-top:20px;', 'display:inline-block;padding:14px 28px']) {
+    const at = html.indexOf(marker);
+    assert.ok(at > 0, marker);
+    assert.ok(html.slice(at, html.indexOf('>', at)).includes(EMAIL_WRAP_STYLE), `${marker} may break a long word`);
+  }
+  assert.ok(html.includes('max-width:100%;font-family'), 'the button may be narrower than its label');
+  // The whole link is still the target of the text link and of the button.
+  assert.equal(html.split(`href="${LONG}"`).length - 1, 3, 'the text, the legal part and the button all lead to the whole link');
 });
