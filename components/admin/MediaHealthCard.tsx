@@ -4,15 +4,34 @@
  * The check of every photo's picture (lib/media/broken.ts; owner, 2026-10-09: a picture that is gone must be hidden everywhere, never shown as an error). One press asks the picture's own host
  * about each photo that has not been checked this week, 40 at a time, and shows what it finds; a photo whose picture is gone is marked and disappears from every screen, gallery, share page and
  * feed; nothing is deleted, and a picture that answers again is cleared at the next check. The work is POST /api/admin/media-health.
+ *
+ * The same card checks the other pictures (issue 514, lib/media/pictures.ts): logos, frames, page pictures and the pictures under the e-mails. The ones that are gone are listed with where each is
+ * used, so somebody can replace them; until then they are left out of the guest pages, the screens and the e-mails. A daily check does the same by itself once CRON_SECRET is set.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/gds/PublicPrimitives';
 import { InlineAlert } from '@sovereignsquad/gds-core/client';
 
+interface GoneItem {
+  url: string;
+  reason: string;
+  checkedAt: string;
+  where: string[];
+}
+
 interface Status {
   unchecked: number;
   broken: number;
+  items: { checked: number; broken: GoneItem[] };
+}
+
+interface ItemsBatch {
+  processed: number;
+  broken: number;
+  cleared: number;
+  unknown: number;
+  remaining: number;
 }
 
 interface Batch {
@@ -36,11 +55,33 @@ export default function MediaHealthCard() {
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [totals, setTotals] = useState({ processed: 0, marked: 0, cleared: 0, unknown: 0 });
+  const [itemsRunning, setItemsRunning] = useState(false);
+  const [itemTotals, setItemTotals] = useState<{ processed: number; broken: number; cleared: number; unknown: number } | null>(null);
   const stop = useRef(false);
 
+  const load = () => call<Status>().then(setStatus, (e: unknown) => setError(e instanceof Error ? e.message : 'Could not read the count'));
   useEffect(() => {
-    call<Status>().then(setStatus, (e: unknown) => setError(e instanceof Error ? e.message : 'Could not read the count'));
+    void load();
   }, []);
+
+  const runItems = async () => {
+    setItemsRunning(true);
+    setError(null);
+    setItemTotals({ processed: 0, broken: 0, cleared: 0, unknown: 0 });
+    try {
+      // Each call checks up to 50 addresses and records the try, so the loop ends when none is due (the cap only guards a host that never answers).
+      for (let round = 0; round < 60; round += 1) {
+        const batch = await call<ItemsBatch>({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'items' }) });
+        setItemTotals((t) => ({ processed: (t?.processed ?? 0) + batch.processed, broken: (t?.broken ?? 0) + batch.broken, cleared: (t?.cleared ?? 0) + batch.cleared, unknown: (t?.unknown ?? 0) + batch.unknown }));
+        if (batch.remaining === 0) break;
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong');
+    } finally {
+      setItemsRunning(false);
+    }
+  };
 
   const run = async () => {
     stop.current = false;
@@ -52,7 +93,7 @@ export default function MediaHealthCard() {
       for (;;) {
         const batch = await call<Batch>({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ after }) });
         setTotals((t) => ({ processed: t.processed + batch.processed, marked: t.marked + (batch.counts.marked ?? 0), cleared: t.cleared + (batch.counts.cleared ?? 0), unknown: t.unknown + (batch.counts.unknown ?? 0) }));
-        setStatus((s) => ({ broken: (s?.broken ?? 0) + (batch.counts.marked ?? 0) - (batch.counts.cleared ?? 0), unchecked: batch.remaining }));
+        setStatus((s) => ({ items: s?.items ?? { checked: 0, broken: [] }, broken: (s?.broken ?? 0) + (batch.counts.marked ?? 0) - (batch.counts.cleared ?? 0), unchecked: batch.remaining }));
         if (!batch.next || stop.current) break;
         after = batch.next;
       }
@@ -96,6 +137,36 @@ export default function MediaHealthCard() {
             Stop after this batch
           </Button>
         ) : null}
+      </div>
+      <div style={{ borderTop: '1px solid var(--mantine-color-default-border)', display: 'grid', gap: '0.5rem', paddingTop: '0.75rem' }}>
+        <strong>Logos, frames, page pictures and e-mail pictures</strong>
+        {status ? (
+          <span>
+            {status.items.broken.length === 0
+              ? `None of the ${status.items.checked} pictures checked so far is gone.`
+              : `${status.items.broken.length} ${status.items.broken.length === 1 ? 'picture is' : 'pictures are'} gone and left out of the pages, the screens and the e-mails until somebody replaces ${status.items.broken.length === 1 ? 'it' : 'them'}:`}
+          </span>
+        ) : null}
+        {status && status.items.broken.length > 0 ? (
+          <ul style={{ fontSize: '0.8125rem', margin: 0, paddingLeft: '1.25rem' }}>
+            {status.items.broken.map((item) => (
+              <li key={item.url} style={{ overflowWrap: 'anywhere' }}>
+                {item.where.join(', ') || 'not used any more'}: {item.url}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {itemTotals ? (
+          <span style={{ fontSize: '0.875rem' }}>
+            {itemsRunning ? 'Checking: ' : 'Done: '}
+            {itemTotals.processed} checked, {itemTotals.broken} found gone, {itemTotals.cleared} came back, {itemTotals.unknown} could not be told (left as they were).
+          </span>
+        ) : null}
+        <div>
+          <Button type="button" disabled={itemsRunning || status === null} onClick={() => void runItems()}>
+            {itemsRunning ? 'Checking the pictures…' : 'Check logos, frames and page pictures'}
+          </Button>
+        </div>
       </div>
     </section>
   );

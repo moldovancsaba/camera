@@ -9,6 +9,7 @@ import { nativeFrameContext, type FrameContext } from '@/lib/frame/context';
 import { messmassFontUrl } from '@/lib/messmassClient';
 import { resolveEventTheme, type EventTheme } from '@/lib/theme/event-theme';
 import { storedPartnerPictures } from '@/lib/events/partner-pictures';
+import { brokenAddresses, pictureOrNull } from '@/lib/media/pictures';
 
 /** The colours of the Start button on the event's active welcome page (fill, label, ring), if it has set any: the whole flow's buttons look like it. */
 export function welcomeButtonColours(pages: unknown): { fill?: unknown; label?: unknown; ring?: unknown } | null {
@@ -41,7 +42,9 @@ export async function loadEventTheme(db: Db, event: Document): Promise<EventThem
   // The e-mail footer picture is the event's own, else its partner's default (lib/events/partner-pictures.ts, issue 368): one small read, only for an event with none.
   const emailFooterImageUrl = typeof event.emailFooterImageUrl === 'string' && event.emailFooterImageUrl ? event.emailFooterImageUrl : await partnerEmailFooter(db, event);
   const theme = resolveEventTheme({ buttons: welcomeButtonColours(event.customPages), brandColor: typeof event.brandColor === 'string' ? event.brandColor : null, brandBorderColor: typeof event.brandBorderColor === 'string' ? event.brandBorderColor : null, context, emailFooterImageUrl });
-  return { ...theme, font: { ...theme.font, url: browserFontUrl(theme.font.file) } };
+  // A logo or footer picture that its host no longer has is left out, never shown as an error (issue 514, CLAUDE.md section 9); the e-mails, the share page and every guest page read the theme from here.
+  const broken = await brokenAddresses(db);
+  return { ...theme, logoUrl: pictureOrNull(theme.logoUrl, broken), emailFooterImageUrl: pictureOrNull(theme.emailFooterImageUrl, broken), font: { ...theme.font, url: browserFontUrl(theme.font.file) } };
 }
 
 /** The custom font file on the messmass origin, as the browser must ask for it: messmass.com redirects to www, and a redirect carries no CORS header. */

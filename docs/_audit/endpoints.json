@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-09T22:27:12+00:00",
+  "generated": "2026-10-10T06:01:29+00:00",
   "repo": "camera",
-  "head": "026e102",
+  "head": "990b765",
   "counts": {
-   "endpoints": 152,
+   "endpoints": 153,
    "collections": 8,
    "env": 61,
    "outbound-hosts": 31,
@@ -1323,6 +1323,17 @@
     "POST"
    ],
    "file": "app/api/internal/messmass/theme-updated/route.ts",
+   "auth_markers": [
+    "withErrorHandler"
+   ],
+   "no_auth_marker": true
+  },
+  {
+   "path": "/api/internal/pictures-scan",
+   "methods": [
+    "GET"
+   ],
+   "file": "app/api/internal/pictures-scan/route.ts",
    "auth_markers": [
     "withErrorHandler"
    ],

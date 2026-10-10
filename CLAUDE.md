@@ -286,7 +286,10 @@ better than showing an error.** What that means in code:
   (admin card **Broken pictures** on the Slideshows page, `scripts/scan-broken-pictures.ts`).
 - **A broken photo is left out by the one visibility rule** (`lib/submissions/visibility.ts`: `isPubliclyVisible`, `publiclyVisibleClauses`, `notWaitingOrRejectedClause`, which the share page, the share download, the
   slideshow candidates, the user pages and the feeds already use), and by the playlist, the gallery filter and greatest hits. **A new surface that shows pictures uses that rule; it does not write its own filter.**
-- A new kind of item (a logo, a frame, a page picture) gets the same treatment: a check, a mark, and the surfaces that draw it leave it out. Nothing is deleted by hiding, and a picture that answers again comes back.
+- **Every other picture (logos, frames, page pictures, the screen overlay, the e-mail footer) has the same rule through `lib/media/pictures.ts`** (issue 514): the registry `picture_health` holds one row for each address (`_id` is the address), `scanPictures` finds every
+  picture address in use (events, partners, logos, library images, frames, landing pages, slideshows: a field whose path says image, logo, picture, thumbnail, background, overlay or screen, on our image hosts) and asks its host, `brokenAddresses` gives the few gone ones (kept
+  a minute per server), and the guest event API (`audience=guest`), `loadEventTheme` (so also the e-mails and the share page) and the slideshow playlist leave them out (`withoutBroken`, `pictureOrNull`); the admin editor still reads the stored values to fix them. **A new
+  surface that sends a picture address to a guest reads it through these; a new kind of picture whose field name does not say what it is must be added to `PICTURE_PATH`.** Nothing is deleted by hiding, and a picture that answers again comes back.
 
 ## Next.js App Router: two `page.tsx` resolving to the same route fails silently
 

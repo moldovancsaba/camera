@@ -466,7 +466,7 @@ The giant screen is sent a **screen-sized WebP** of each photo (longest edge at 
 
 ## Scheduled jobs and workers
 
-**Vercel Cron: the weekly activity export (issue 517)** is the one cron in `vercel.json` (Mondays 06:00 UTC; it needs `CRON_SECRET`, see "Activity log and its weekly CSV").
+**Vercel Cron: two crons in `vercel.json`, both need `CRON_SECRET`.** The weekly activity export (issue 517, Mondays 06:00 UTC; see "Activity log and its weekly CSV"), and the daily picture check (issue 514, 05:30 UTC, `GET /api/internal/pictures-scan`): it asks the host of every photo and of every logo, frame, page picture and e-mail picture that has not been checked for a week, in batches until 40 seconds are used (a first run needs a few days to cover everything; the next day continues), marks the ones that are gone and clears the ones that answer again. Without `CRON_SECRET` it answers 403 and does nothing; the same check runs by hand from the card **Broken pictures** on the Slideshows page (two buttons: photos; logos, frames and page pictures). A picture that is gone is left out of the guest pages, the screens and the e-mails, never deleted: replace it where the card says it is used.
 
 **Vercel Cron: try-on completion backstop (paused since v12.3.40).** The job that
 used to live in `vercel.json` called

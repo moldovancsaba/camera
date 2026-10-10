@@ -9,6 +9,7 @@
 
 import { resolveScreenDesign } from '@/lib/slideshow/screen-design';
 import { loadEventTheme } from '@/lib/theme/load';
+import { brokenAddresses } from '@/lib/media/pictures';
 import { cachedStageTheme } from '@/lib/slideshow/stage-theme';
 import { stageColours } from '@/lib/slideshow/stage-colours';
 import { randomBytes } from 'crypto';
@@ -403,6 +404,8 @@ export async function GET(
     if (slideshow.screenDesign) {
       const font = theme?.font ?? (await loadEventTheme(db, event as unknown as Record<string, unknown>)).font;
       screenDesign = resolveScreenDesign(slideshow.screenDesign, { family: font.family, source: font.source, url: font.url });
+      // The overlay is the frame of the whole screen: if its picture is gone the stage plays plain, never an empty window or a broken tile (issue 514).
+      if (screenDesign && (await brokenAddresses(db)).has(screenDesign.overlayImageUrl)) screenDesign = null;
     }
 
     // The phases of this call for the browser's network tab; a slow call also leaves one warning line with them (camera#476).

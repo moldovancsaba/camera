@@ -476,6 +476,10 @@ event's Texts), the partner's default pictures (`lib/events/partner-pictures.ts`
 - **Broken pictures** (owner rule 2026-10-09, CLAUDE.md section 9): `lib/media/broken.ts` asks a picture's own host (`checkPicture`), records `Submission.mediaHealth`, and the one visibility rule
   (`lib/submissions/visibility.ts`), the playlist, the gallery filter and greatest hits leave a broken photo out. The screens report a picture that failed (`POST /api/media/broken`, public, rate limited, the server
   checks for itself); the admin checks them all (`GET`/`POST /api/admin/media-health`, card on the Slideshows page, `scripts/scan-broken-pictures.ts`).
+  **The other pictures** (issue 514): `lib/media/pictures.ts` + collection `picture_health` (one row per address: `broken`, `reason`, `checkedAt`, `where`; index on `broken`). `collectPictureAddresses` walks events, partners, logos, library images, frames, landing pages and slideshows
+  for picture fields on our image hosts; `scanPictures` checks the ones not checked in 6 days in bounded batches (an unclear answer records the try, so the loop ends); `brokenAddresses` (cached a minute) feeds `withoutBroken`/`pictureOrNull`, used by the guest event API
+  (`audience=guest`, also drops a frame whose picture is gone), `loadEventTheme` (logo and e-mail footer: guest pages, e-mails, share page) and the slideshow playlist (a gone overlay plays the stage plain). The same admin card checks them (`POST /api/admin/media-health {kind:'items'}`) and
+  lists the gone ones with where they are used; the daily cron `GET /api/internal/pictures-scan` (05:30 UTC, `CRON_SECRET`) checks photos and these pictures until its 40 seconds are used.
 - **The capture flow** asks `lib/frame/choose.ts` (pure) for everything: the step (design, then message, then the camera), the designs and messages to offer (a message only on the designs it is
   written on), what a change of design keeps, and the draw of the image of a photo, which happens **when the camera step opens** so the live view and the move-and-zoom step show the dark area
   of that design. An event with no saved selection keeps the random image at every shutter press.
