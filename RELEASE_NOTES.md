@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — docs: profiles across events, purpose and consent drafted (issue 521, decision 242; owner answer 2026-10-10)
+
+- **Added:** `docs/PROFILE_PURPOSE_AND_CONSENT_DRAFT.md`: what a person-level profile would be, three candidate purposes (the user's own photos in one place; counts for the organiser; a marketing profile) with basis and risk, the rules for any profile, a draft consent sentence and a draft notice line in English and Hungarian, and four questions for the owner (248 to 251). The audit's decision 242 points at it.
+- **Decided by the owner (2026-10-10, "yes to all" on 224 to 246):** the other analytics decisions are recorded on issues 509, 515, 517 and 521. Cross-event profiles are wanted but need these answers first.
+- **Owner answers 248 to 251 (2026-10-10):** all three purposes (A own photos, B counts, C e-mails and audience, with its own unticked checkbox); the controller as it is now and the texts customisable like any other; the profile is deleted on request and after 24 months without activity but the photos stay (the terms transfer their rights); the wording is validated by whoever can edit it, and the part that is ours is to deliver the texts and make them editable (Dictionary keys, three levels).
+- **Not done:** nothing is built.
+
 ## Unreleased — broken pictures everywhere: logos, frames, page pictures and e-mail pictures are checked, hidden and rechecked daily (issue 514; owner answer 229, "yes", and 2026-10-10 "yes to all")
 
 - **Owner rule (2026-10-09, "for any item"):** a picture that cannot be shown is hidden, never shown as an error. Photos had it since issue 512; this extends it to every other picture.
