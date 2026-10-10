@@ -32,7 +32,17 @@ The session mint runs on every camera login and is best-effort: it is bounded at
 3000 ms (`AbortSignal.timeout`), and a timeout, a refusal such as the expected
 403 (owner decision 2026-09-30, `HANDOVER.md`: separate logins), or an unreachable messmass all
 return `null`, so the user simply gets no messmass session. The partner push is
-not yet time-bounded.
+best-effort too and bounded at 8000 ms (`PARTNER_PUSH_TIMEOUT_MS`, more generous because a
+cold messmass can need longer and no user waits for it on a login; the partner is already saved).
+**Every attempt of both pushes writes one structured log line** (issue 178, `lib/observability/outbound.ts`):
+event `messmass.session_push` or `messmass.partner_push`, with `context.outcome` = `ok` (the session
+push: messmass sent a session cookie; the partner push: messmass answered 2xx), `empty` (2xx but no
+cookie), `refused` (an error status, with `context.status`; for the session push 403 is the expected
+answer for a user without messmass access), `timeout` or `failed` (a network error, with a short code
+such as `ECONNREFUSED`), plus `durationMs` and `timeoutMs`; the partner push adds the camera partner
+id. The line never holds a token, a cookie, the shared secret, an e-mail, a name or an address with a
+query. Counting the `outcome` values of `messmass.session_push` in the Vercel runtime logs is the data
+for the keep-or-drop decision on the login push (issue 178, owner's call).
 It otherwise serves authenticated requests from them, including the reverse
 sso-session mint documented at the end of §1. Rate limits are enforced per
 route (§5) but callers are not end users, so 429s should read as "a caller is

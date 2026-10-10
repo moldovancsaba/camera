@@ -174,8 +174,15 @@ any auth code here:
   with a `TimeoutError` if SSO does not answer.** The logout route revokes the
   access and refresh token concurrently with `Promise.allSettled`, so a slow or
   aborted revoke neither holds logout past one deadline nor skips the other
-  token. Other fetches in `lib/auth/sso.ts` (token exchange, userinfo) are still
-  unbounded.
+  token. The token exchange (`SSO_TOKEN_EXCHANGE_TIMEOUT_MS`, 10 s) and the
+  userinfo call (`SSO_USERINFO_TIMEOUT_MS`, 5 s) are bounded the same way and
+  reject with a `TimeoutError` that names the call; the messmass login push
+  (3 s) and the partner push (8 s) return `null` on a timeout. All of them go
+  through `fetchBounded` / `logOutbound` (`lib/observability/outbound.ts`) and
+  write one log line per call (`sso.token_exchange`, `sso.userinfo`,
+  `sso.token_revoke`, `messmass.session_push`, `messmass.partner_push`; outcome,
+  status, time; never a token, a secret or a person). The permission calls in
+  `lib/auth/sso-permissions.ts` are not bounded yet.
 - **A guest's login returns to the capture page it started on, never to `/admin`.** The social buttons on the "who are you" step link to
   `/api/auth/login?provider=…&captureEvent=<id>&capturePage=<step>`; the login route records the target in the server-set `capture_return`
   cookie (15 minutes, same attributes as the OAuth pending cookie; an id that is not a capture event id is ignored, and a login with no target
