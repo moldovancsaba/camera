@@ -106,6 +106,13 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
+        href: '/admin/sample-selfies',
+        label: 'Sample selfies',
+        description: 'The general selfies that fill the photo window of the welcome page screen until a partner or an event chooses its own.',
+        iconKey: 'photo',
+        isVisible: (access) => access.isGlobalAdmin,
+      },
+      {
         href: '/admin/images',
         label: 'Global Images',
         description: 'Pictures for the welcome page, the CTA page, the email footer and the giant screen, for partners to take.',

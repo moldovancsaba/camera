@@ -12,6 +12,7 @@ import { GdsGrid, GdsInline, GdsStack, InlineAlert, LabelTag, MediaPreviewCard, 
 import { AdminCheckbox, AdminSelect } from '@sovereignsquad/gds-admin/client';
 import SemanticButton from '@/components/gds/CameraSemanticButton';
 import LibraryUploadForm from '@/components/admin/library/LibraryUploadForm';
+import type { LibraryKind } from '@/lib/library/kinds';
 import type { SlotMode, SlotValue } from '@/lib/slots/resolve';
 
 export interface SlotItem {
@@ -47,7 +48,7 @@ export interface SlotPanelProps {
   /** Saves the new value of the slot; the page reloads afterwards. */
   onChange: (value: SlotValue) => Promise<void> | void;
   /** The upload route of this level and the extra fields it needs (the slot to join): when absent the upload is not offered. */
-  upload?: { endpoint: string; extraFields: Record<string, string>; accept: string; acceptWords: string; maxBytes?: number; maxWords?: string };
+  upload?: { endpoint: string; extraFields: Record<string, string>; accept: string; acceptWords: string; maxBytes?: number; maxWords?: string; kind?: LibraryKind };
   /** Called after an upload so the page can reload. */
   onUploaded?: () => void | Promise<void>;
   /** Makes a lost item this level's own ("Keep as own"); when absent a lost item can only be removed. */
@@ -190,7 +191,7 @@ export default function SlotPanel({ title, description, noun, parentName, value,
         {upload && uploading ? (
           <LibraryUploadForm
             endpoint={upload.endpoint}
-            kind="logos"
+            kind={upload.kind ?? 'logos'}
             noun={noun}
             accept={upload.accept}
             acceptWords={upload.acceptWords}

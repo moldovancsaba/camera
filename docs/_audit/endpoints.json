@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-10T12:30:50+00:00",
+  "generated": "2026-10-10T12:43:24+00:00",
   "repo": "camera",
-  "head": "dd4a2b4",
+  "head": "f2ce3d1",
   "counts": {
-   "endpoints": 153,
+   "endpoints": 158,
    "collections": 8,
    "env": 61,
    "outbound-hosts": 31,
@@ -1080,6 +1080,31 @@
    "no_auth_marker": false
   },
   {
+   "path": "/api/events/[eventId]/selfie-slot",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/events/[eventId]/selfie-slot/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/events/[eventId]/selfie-slot/upload",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/events/[eventId]/selfie-slot/upload/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
    "path": "/api/events/[eventId]/submissions/[submissionId]",
    "methods": [
     "DELETE"
@@ -1625,6 +1650,31 @@
    "no_auth_marker": false
   },
   {
+   "path": "/api/partners/[partnerId]/selfie-slot",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/partners/[partnerId]/selfie-slot/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/partners/[partnerId]/selfie-slot/upload",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/partners/[partnerId]/selfie-slot/upload/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
    "path": "/api/partners/[partnerId]/submissions/[submissionId]",
    "methods": [
     "DELETE"
@@ -1699,6 +1749,19 @@
     "isGlobalAdminSession",
     "requireAdmin",
     "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/sample-selfies",
+   "methods": [
+    "GET",
+    "POST"
+   ],
+   "file": "app/api/sample-selfies/route.ts",
+   "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
    "no_auth_marker": false
