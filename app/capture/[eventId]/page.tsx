@@ -46,7 +46,6 @@ import { errorText } from '@/lib/i18n/errors';
 import CTAPage, { type CTAPageData } from '@/components/capture/CTAPage';
 import RestartPage from '@/components/capture/RestartPage';
 import WelcomePage from '@/components/capture/WelcomePage';
-import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
 import { type CustomPage } from '@/lib/db/schemas';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import ReframeStep, { type ReframeResult } from '@/components/camera/ReframeStep';
@@ -114,22 +113,13 @@ interface EventData {
   effectiveCameraMode?: CameraMode;
   /** How users get the layout and the message (epic 444): the editor's setting; the page reads it through `generatedFrame.selection`, and for the event's own frames from here. */
   frameSelection?: unknown;
-  tryOn?: {
-    enabled: boolean;
-    setupId?: string | null;
-    allowedLeatherSuitIds?: string[];
-    outfitEnabled?: boolean;
-  };
   notifications?: {
     submissionResultEmailEnabled?: boolean;
     submissionResultEmailSendAfterSave?: boolean;
-    submissionResultEmailSendAfterRelatedPhotosReady?: boolean;
     submissionResultEmailSubject?: string | null;
     submissionResultEmailBody?: string | null;
     submissionResultEmailSubjectAfterSave?: string | null;
     submissionResultEmailBodyAfterSave?: string | null;
-    submissionResultEmailSubjectAfterRelatedPhotosReady?: string | null;
-    submissionResultEmailBodyAfterRelatedPhotosReady?: string | null;
   };
 }
 
@@ -165,14 +155,6 @@ interface CollectedData {
   }>;
 }
 
-interface TryOnSubmissionResult {
-  requested: boolean;
-  status: 'not_requested' | 'queued' | 'deduplicated' | 'enqueue_failed';
-  leatherSuitId: string | null;
-  jobId: string | null;
-  error: string | null;
-}
-
 interface SubmissionEmailMetadata {
   emailSent?: boolean;
   emailSentAt?: string | null;
@@ -182,11 +164,10 @@ interface SubmissionEmailMetadata {
   emailSkipReason?: string | null;
   emailFailedAt?: string | null;
   emailError?: string | null;
-  emailSendAfterRelatedPending?: boolean;
 }
 
 // The actions beside or below the preview image. The options scroll inside the panel; the buttons stay
-// pinned, so a tall try-on selector never pushes them off screen (camera#222).
+// pinned, so a tall option never pushes them off screen (camera#222).
 const PREVIEW_PANEL_CLASS =
   'flex w-full max-w-md min-h-0 shrink flex-col gap-2 overflow-y-auto px-3 [&>:first-child]:my-auto landscape:h-full landscape:w-[22rem] landscape:max-w-[45%] landscape:shrink-0';
 
@@ -213,9 +194,6 @@ function buildEmailDeliveryNotice(metadata: SubmissionEmailMetadata | null | und
   }
   if (metadata.emailSkipReason === 'missing_from_address') {
     return t('flow.email.missingFrom');
-  }
-  if (metadata.emailSendAfterRelatedPending) {
-    return t('flow.email.waitingRelated');
   }
   if (metadata.emailFailedAt && metadata.emailError) {
     return t('flow.email.failed', { error: metadata.emailError });
@@ -303,10 +281,6 @@ export default function EventCapturePage({
   const [collectedData, setCollectedData] = useState<CollectedData>({ consents: [] });
   const [flowPhase, setFlowPhase] = useState<'onboarding' | 'presubmit' | 'capture' | 'thankyou'>('onboarding');
   const [signInError, setSignInError] = useState<{ code: string; message: string } | null>(null);
-  const [selectedTryOnSuitId, setSelectedTryOnSuitId] = useState<string | null>(null);
-  const [selectedTryOnBottomSuitId, setSelectedTryOnBottomSuitId] = useState<string | null>(null);
-  const [tryOnResult, setTryOnResult] = useState<TryOnSubmissionResult | null>(null);
-  const [cameraId, setCameraId] = useState<string | null>(null);
   // Continue on the reframe screen saves the photo (camera#344): true from that press until the save starts, so nothing else is asked in between.
   const [saveRequested, setSaveRequested] = useState(false);
   // The pages between taking the photo and saving it (issue 535) were gone through: a failed save does not ask for them again, and the next photo of the same user does not either; a restart does.
@@ -316,15 +290,6 @@ export default function EventCapturePage({
   // With the acceptance on the Who-are-you page (issue 523) the consent page is not a step of its own: its checkboxes are shown there as one (lib/events/acceptance.ts).
   const { pages: journeyPages, acceptPage: acceptanceBox } = acceptanceOnLogin(customPages, event?.acceptanceOnWhoAreYou === true);
   const { onboardingPages, presubmitPages, thankYouPages, takePhotoPage } = splitCustomPages(journeyPages);
-
-  // Keep camera scope identifier for per-event/camera try-on setup resolution.
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const cameraIdParam = (urlParams.get('cameraId') || urlParams.get('camera_id') || '').trim();
-    if (cameraIdParam) {
-      setCameraId(cameraIdParam);
-    }
-  }, []);
 
   // Get take-photo page config for button texts and messages
   const configuredTakePhotoPage = takePhotoPage;
@@ -346,7 +311,7 @@ export default function EventCapturePage({
     savedMessageIsOwn: pendingSavedMessageIsOwn,
     title: pendingTitle,
     waitingMessage: pendingWaitingMessage,
-  } = approvalTexts(takePhotoConfig, Boolean(selectedTryOnSuitId), language, uiTexts);
+  } = approvalTexts(takePhotoConfig, language, uiTexts);
   const cameraPromptTitle = own('camera.ready.title', takePhotoConfig?.cameraPromptTitle);
   const cameraPromptDescription = own('camera.prompt.desktop', takePhotoConfig?.cameraPromptDescription);
   const errorFrameMessage = own('flow.errorFrame', takePhotoConfig?.errorFrameMessage);
@@ -497,7 +462,6 @@ export default function EventCapturePage({
           visualSettings: {
             buttonSize: normalizeEventButtonSize(eventData.visualSettings?.buttonSize),
           },
-          tryOn: eventData.tryOn,
           generatedFrame: eventData.generatedFrame ?? null,
           frameSelection: eventData.frameSelection ?? null,
           welcomeEmailEnabled: eventData.welcomeEmailEnabled === true,
@@ -904,12 +868,6 @@ export default function EventCapturePage({
         partnerName: string | null;
         imageWidth: number;
         imageHeight: number;
-        requestTryOn?: boolean;
-        leatherSuitId?: string | null;
-        outfitBottomLeatherSuitId?: string | null;
-        tryOnSourceImageData?: string | null;
-        setupId?: string | null;
-        cameraId?: string | null;
         userInfo?: WhoAreYouPageData;
         consents?: CollectedData['consents'];
         shareOptIn?: boolean;
@@ -925,7 +883,6 @@ export default function EventCapturePage({
         partnerName: event.partnerName,
         imageWidth: imageDimensions?.width || selectedFrame?.width || 1920,
         imageHeight: imageDimensions?.height || selectedFrame?.height || 1080,
-        cameraId,
         // The terms the user accepted cover showing the photo on the event's pledge wall (camera#344), unless the event asks for the user's own permission (issue 554): then only a ticked box makes the photo eligible,
         // and the version of the sentence goes with it; the server decides from the event's own setting too.
         shareOptIn: asksGallery ? galleryTick : true,
@@ -941,16 +898,6 @@ export default function EventCapturePage({
           : {}),
       };
 
-      if (selectedTryOnSuitId && event?.tryOn?.enabled) {
-        submissionData.requestTryOn = true;
-        submissionData.leatherSuitId = selectedTryOnSuitId;
-        // A vetted photo is the source: the server keeps it and queues the try-on when the photo is approved.
-        if (!vetted) submissionData.tryOnSourceImageData = capturedImage;
-        if (selectedTryOnBottomSuitId && event?.tryOn?.outfitEnabled) {
-          submissionData.outfitBottomLeatherSuitId = selectedTryOnBottomSuitId;
-        }
-      }
-      
       // Add collected data from custom pages
       if (collectedData.userInfo) {
         submissionData.userInfo = collectedData.userInfo;
@@ -989,7 +936,6 @@ export default function EventCapturePage({
       // A photo of a vetted event is saved and waits for approval: no share link yet, the guest gets it by email.
       if ((data.data ?? data).pending === true) {
         setPendingApproval(true);
-        setTryOnResult(null);
         setStep('preview');
         // The card on the preview step already says the photo waits (its title and its text), so the standard saved message is not shown on top of it: it ran into the card.
         // A saved message an editor wrote is their own choice and is still shown.
@@ -1000,7 +946,6 @@ export default function EventCapturePage({
       const finalSuccessMessage = emailNotice
         ? `${successMessage}\n${emailNotice}`
         : successMessage;
-      setTryOnResult(data.data?.tryOn ?? data.tryOn ?? null);
       setShareUrl(`${origin}/share/${submissionId}`);
       setStep('preview');
       
@@ -1269,9 +1214,6 @@ export default function EventCapturePage({
     setShareUrl(null);
     setPendingApproval(false);
     setImageDimensions(null);
-    setTryOnResult(null);
-    setSelectedTryOnSuitId(null);
-    setSelectedTryOnBottomSuitId(null);
     setSavedSubmissionId(null);
     setHasFinalizedSubmissionEmail(false);
     setIsFinalizingSubmission(false);
@@ -1292,8 +1234,6 @@ export default function EventCapturePage({
     setShareUrl(null);
     setPendingApproval(false);
     setImageDimensions(null);
-    setTryOnResult(null);
-    setSelectedTryOnSuitId(null);
     
     // CRITICAL: Auto-select frame if 0 or 1 frame available
     // PROHIBITED to show frame selector in these cases
@@ -1816,19 +1756,6 @@ export default function EventCapturePage({
                   {pendingPreviewNotice}
                 </p>
               )}
-              {event?.tryOn?.enabled ? (
-                <div className="rounded-2xl p-3 shadow-md">
-                  <TryOnSuitSelector
-                    selectedSuitId={selectedTryOnSuitId}
-                    onChange={setSelectedTryOnSuitId}
-                    disabled={isSaving}
-                    eventMongoId={eventId}
-                    outfitEnabled={event?.tryOn?.outfitEnabled === true}
-                    selectedBottomSuitId={selectedTryOnBottomSuitId}
-                    onBottomChange={setSelectedTryOnBottomSuitId}
-                  />
-                </div>
-              ) : null}
             </ReframeStep>
           </div>
         )}
@@ -1883,7 +1810,6 @@ export default function EventCapturePage({
                     viewPhotoButtonText={shareViewPhotoButtonText}
                     suggestedMessageLabel={shareSuggestedMessageLabel}
                     shareCaption={shareCaptionForSocial}
-                    tryOnResult={tryOnResult}
                     buttonSize={eventButtonSize}
                     nextButtonText={shareNextButtonText}
                     onCopyLink={handleCopyLink}
@@ -1904,7 +1830,6 @@ export default function EventCapturePage({
                   <ShareOverlay
                     title={t('flow.saved')}
                     shareCaption={shareCaptionForSocial}
-                    tryOnResult={tryOnResult}
                     buttonSize={eventButtonSize}
                     nextButtonText={shareNextButtonText}
                     completionMessage={skipShareMessage}

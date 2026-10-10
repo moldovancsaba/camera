@@ -44,10 +44,6 @@ export const COLLECTIONS = {
   SUBMISSIONS: 'submissions',
   /** Who registered at an event (epic 463, lib/email/triggers.ts): one row for each event and e-mail address, with whether the welcome e-mail went. */
   EMAIL_REGISTRATIONS: 'email_registrations',
-  LEATHER_SUITS: 'leather_suits',
-  TRYON_JOBS: 'tryon_jobs',
-  TRYON_SETUPS: 'tryon_setups',
-  CAMERA_SETUP_PREFERENCES: 'camera_setup_preferences',
   USERS_CACHE: 'users_cache',
   SLIDESHOWS: 'slideshows',
   SLIDESHOW_LAYOUTS: 'slideshow_layouts',
@@ -387,17 +383,7 @@ export interface Event {
   eventDate?: string;                // Optional event date (ISO 8601 timestamp)
   location?: string;                 // Optional event location
   isActive: boolean;                 // Whether event is currently active
-  tryOn?: {
-    enabled: boolean;                // Whether local AI try-on can be requested from capture flows
-    setupId?: string | null;         // Optional default try-on setup selected for this event
-    allowedLeatherSuitIds?: string[]; // Optional allowlist for the public suit picker
-    outfitEnabled?: boolean;         // Whether top+bottom outfit pairing is offered in the capture flow (default false — also the instant, no-deploy kill switch for the feature)
-    applyFrameToReturnedResults?: boolean; // Whether Camera should re-apply the selected frame after the try-on worker uploads the generated result
-    vettingEnabled?: boolean;        // Whether generated try-on results require admin review before publication
-    localAiQualityGateEnabled?: boolean; // Whether local AI pre-vetting triage can auto-screen event try-on results before manual review
-    includeApprovedResultsInSlideshows?: boolean; // Legacy/publication flag mirrored from resultSlideshowMode
-    resultSlideshowMode?: 'disabled' | 'mixed_with_originals' | 'approved_results_only'; // Event policy for approved try-on slideshow publication
-  };
+  // `tryOn` (the settings of the removed try-on integration) may still be stored on old events; nothing reads or writes it (issue 557, docs/TRYON_REMOVED.md).
   // Photo vetting (camera#263): with `required` a guest's photo is saved pending and reaches the share page, slideshows and feeds only
   // after an event manager or admin approves it. Only a global admin changes it. A missing setting means not required.
   photoVetting?: { required: boolean; updatedAt?: string; updatedBy?: string | null };
@@ -695,43 +681,6 @@ export interface UserConsent {
   shownText?: string;
 }
 
-export type SubmissionTryOnRequestStatus =
-  | 'not_requested'
-  | 'awaiting_approval' // a vetted photo's try-on waits until the photo is approved (camera#266)
-  | 'requested'
-  | 'source_uploaded'
-  | 'queued'
-  | 'claimed'
-  | 'processing'
-  | 'uploading_result'
-  | 'notifying_camera'
-  | 'retry_wait'
-  | 'done'
-  | 'failed'
-  | 'deduplicated'
-  | 'enqueue_failed'
-  | 'cancelled';
-
-export interface SubmissionTryOnRequestState {
-  requested: boolean;
-  status: SubmissionTryOnRequestStatus;
-  requestedAt?: string | null;
-  lastUpdatedAt: string;
-  leatherSuitId?: string | null;
-  jobId?: string | null;
-  sourceImageUrl?: string | null;
-  sourceDeleteUrl?: string | null;
-  sourceImageId?: string | null;
-  resultUrl?: string | null;
-  resultDeleteUrl?: string | null;
-  resultProvider?: 'imgbb' | 'blob' | null;
-  resultMirrorUrl?: string | null;
-  reviewStatus?: 'pending_review' | 'approved' | 'rejected' | null;
-  shareVisible?: boolean;
-  slideshowEligible?: boolean;
-  lastError?: string | null;
-}
-
 /**
  * Submission Document Interface
  * Represents a user photo submission with complete metadata
@@ -779,7 +728,7 @@ export interface Submission {
   frameName?: string | null;         // Cached frame name used by admin listings
   frameCategory?: string | null;     // Cached frame category used by admin filters
   // The generated default frame image and message this photo used (camera#236); set only when the event had no frame
-  // of its own. The image is kept for good (try-on composes with it), so it is never deleted with the submission.
+  // of its own. The image is kept for good (other photos use the same file), so it is never deleted with the submission.
   frameVariant?: { index: number | null; message: string | null; imageUrl: string } | null;
   imageId?: string | null;           // ImgBB image id when returned by upload API
   fileSize?: number | null;          // Current top-level file size mirror used by some admin tools
@@ -787,8 +736,9 @@ export interface Submission {
   submissionKind?: 'original' | 'tryon_result'; // 'tryon_result' = a stored picture of the removed try-on integration: kept, never public (lib/submissions/visibility.ts); missing = an original
   sourceSubmissionId?: string | null; // Mongo _id string of the originating submission for derived try-on results
   sourceJobId?: string | null;       // Queue job that produced the derived try-on result
-  tryOnRequest?: SubmissionTryOnRequestState | null; // Original-submission try-on intent and lifecycle tracking
-  reviewStatus?: 'pending_review' | 'approved' | 'rejected'; // Moderation status for generated try-on results
+  // Stored by the removed try-on integration (issue 557, docs/TRYON_REMOVED.md); only the deletion of the submission's files reads the two URLs.
+  tryOnRequest?: { sourceImageUrl?: string | null; sourceDeleteUrl?: string | null } | null;
+  reviewStatus?: 'pending_review' | 'approved' | 'rejected'; // Moderation status of the photo (photo vetting); a missing status counts as approved
   reviewedAt?: string | null;
   reviewedBy?: string | null;
   reviewNotes?: string | null;
@@ -803,7 +753,7 @@ export interface Submission {
     photoMime: string;
     shareOptIn: boolean;             // The guest's pledge-wall choice, applied when the photo is approved
     submittedAt: string;
-    tryOn?: { leatherSuitId: string; setupId: string | null; cameraId: string | null; outfitBottomLeatherSuitId: string | null } | null; // Held until approval
+    // Older documents may also hold `tryOn`, a try-on request held until approval (removed integration, nothing reads it).
   } | null;
   shareToken?: string | null;        // Opaque share id of a vetted photo (/share/<token>); older photos use their database id
   /**
@@ -910,239 +860,6 @@ export interface Submission {
   // Timestamps
   createdAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
-  tryOnJobs?: SubmissionTryOnLink[]; // Optional try-on jobs linked back to this submission
-}
-
-// ============================================================================
-// TRY-ON COLLECTIONS
-// ============================================================================
-
-// WHAT: What kind of garment this is, and (for upper-body pieces) how the
-//     model should treat the wearer's arms.
-// WHY: This system originally shipped for exactly one product (MotoGP
-//     racing leathers) with a single hardcoded category. 'top'/'bottom'
-//     are deliberately two separate piece types rather than a combined
-//     'soccer_kit' value - a kit is just a top + a bottom selected
-//     together at render time (two sequential renders, composited), not a
-//     new garment shape of its own.
-export type GarmentType = 'motorsport_suit' | 'jersey' | 'top' | 'bottom';
-
-// WHAT: Only meaningful for 'jersey'/'top' garments. 'sleeveless' tells the
-//     try-on pipeline to synthesize bare skin on the arms rather than leave
-//     whatever sleeve was in the source photo untouched.
-export type SleeveStyle = 'sleeveless' | 'short_sleeve' | 'long_sleeve';
-
-export interface LeatherSuit {
-  _id?: ObjectId;
-  leatherSuitId: string;
-  name: string;
-  description?: string | null;
-  garmentType: GarmentType;
-  sleeveStyle?: SleeveStyle | null;
-  assetKey: string;
-  assetVersion: number;
-  imageUrl?: string | null;
-  thumbnailUrl?: string | null;
-  deleteUrl?: string | null;
-  imageId?: string | null;
-  fileSize?: number | null;
-  mimeType?: string | null;
-  assetRelativePath?: string | null;
-  previewUrl?: string | null;
-  sourceImageUrl?: string | null;
-  active: boolean;
-  usageCount?: number;
-  createdBy?: string;
-  metadata?: {
-    pose?: 'front_a_pose';
-    notes?: string | null;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type TryOnJobStatus =
-  | 'queued'
-  | 'claimed'
-  | 'processing'
-  | 'uploading_result'
-  | 'notifying_camera'
-  | 'retry_wait'
-  | 'done'
-  | 'failed'
-  | 'cancelled';
-
-export type TryOnJobStage =
-  | 'queued'
-  | 'claimed'
-  | 'downloading_input'
-  | 'resolving_suit'
-  | 'running_tryon'
-  | 'uploading_result'
-  | 'uploaded_result'
-  | 'notifying_camera'
-  | 'done'
-  | 'failed'
-  | 'cancelled';
-
-export type TryOnSetupSource = 'job.assigned' | 'camera.last' | 'global.default' | 'legacy';
-
-export interface TryOnSetupConfig {
-  processing_profile?: string;
-  processingProfile?: string;
-  category?: string;
-  sleeve_length?: string;
-  pant_length?: string;
-  resolution?: string;
-  steps?: number;
-  guidance?: number;
-  show_mask?: boolean;
-  mask_sharpness?: number;
-  mask_padding?: number;
-  detail_boost?: number;
-  [key: string]: string | number | boolean | null | undefined;
-}
-
-export interface TryOnSetup {
-  _id?: ObjectId;
-  setupId: string;
-  name: string;
-  description?: string | null;
-  cameraId?: string | null;
-  active: boolean;
-  isDefault: boolean;
-  rank: number;
-  config?: TryOnSetupConfig;
-  promptConfig?: TryOnPromptConfig | null;
-  // WHAT: garment types this setup is the submit-time default for. WHY: a
-  // setup's parameters are shaped around a garment silhouette (a full-body
-  // leather-suit prompt painted fake sleeves onto FIBA's short-sleeve
-  // jerseys), so the right default follows the garment, not the event. More
-  // specific beats more general: this wins over the event's generic
-  // tryOn.setupId when the guest made no explicit choice.
-  defaultForGarmentTypes?: GarmentType[] | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface TryOnPromptConfig {
-  version: number;
-  positive: string;
-  negative: string;
-}
-
-export interface TryOnPromptSnapshot {
-  setupId: string | null;
-  version: number;
-  positive: string;
-  negative: string;
-  sha256: string;
-  source: 'setup' | 'operator_rerun_override' | 'legacy';
-  createdAt: string;
-  createdBy?: string | null;
-  reason?: string | null;
-}
-
-export interface TryOnSetupPreference {
-  _id?: ObjectId;
-  cameraId: string;
-  setupId: string;
-  updatedAt: string;
-  updatedBy?: string | null;
-  updatedByEvent?: string | null;
-}
-
-export interface TryOnJobSource {
-  app: 'camera';
-  submissionId: string;
-  imageUrl: string;
-  cameraId?: string | null;
-  eventId?: string | null;
-  eventMongoId?: string | null;
-  partnerId?: string | null;
-  userId?: string | null;
-}
-
-export interface TryOnJobRequest {
-  leatherSuitId: string;
-  setupId?: string | null;
-  rerunOfJobId?: string | null;
-  // Snapshot of the garment's own type/sleeve at job-creation time, so a
-  // later edit to the catalog entry can't retroactively change how an
-  // already-queued (or already-rendered) job was supposed to look. The
-  // try-on worker resolves render category/mask mode from these
-  // (try-on#37/#38).
-  garmentType?: GarmentType | null;
-  sleeveStyle?: SleeveStyle | null;
-  // Two-piece outfit (try-on#39's contract, TRYON_ATLAS_CONTRACT.md):
-  // presence makes this an outfit job — leatherSuitId is the 'top' piece,
-  // this is the 'bottom'. The worker renders two sequential passes and
-  // publishes one result; it re-validates both pieces' types at claim time.
-  outfitBottomLeatherSuitId?: string | null;
-  promptSnapshot?: TryOnPromptSnapshot | null;
-}
-
-export interface TryOnJobResolvedSetup {
-  setupId: string;
-  setupName: string;
-  setupProfile: string | null;
-  setupSource: TryOnSetupSource;
-}
-
-export interface TryOnJobProcessingState {
-  workerId?: string | null;
-  claimedAt?: string | null;
-  leaseExpiresAt?: string | null;
-  startedAt?: string | null;
-  finishedAt?: string | null;
-  attemptCount: number;
-  nextAttemptAt: string;
-  lastHeartbeatAt?: string | null;
-  resolvedSetup?: TryOnJobResolvedSetup;
-}
-
-export interface TryOnJobResult {
-  publicResultUrl?: string | null;
-  imgbbDeleteUrl?: string | null;
-  provider?: 'imgbb' | 'blob' | null;
-  imgbbMirrorUrl?: string | null;
-}
-
-export interface TryOnJobError {
-  code?: string | null;
-  message?: string | null;
-  details?: string | null;
-}
-
-export interface TryOnJob {
-  _id?: ObjectId;
-  jobId: string;
-  requestHash: string;
-  status: TryOnJobStatus;
-  stage: TryOnJobStage;
-  pipeline: 'motogp_leather_magic';
-  pipelineVersion: string;
-  source: TryOnJobSource;
-  request: TryOnJobRequest;
-  processing: TryOnJobProcessingState;
-  result: TryOnJobResult;
-  error: TryOnJobError;
-  renderer?: 'legacy' | 'image_direct';
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface SubmissionTryOnLink {
-  jobId: string;
-  leatherSuitId: string;
-  status: TryOnJobStatus;
-  resultUrl?: string | null;
-  resultSubmissionId?: string | null;
-  reviewStatus?: 'pending_review' | 'approved' | 'rejected' | null;
-  shareVisible?: boolean;
-  slideshowEligible?: boolean;
-  createdAt: string;
-  updatedAt: string;
 }
 
 // ============================================================================

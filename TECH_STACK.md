@@ -140,7 +140,7 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 
 ### Try-on (removed)
 
-- There is no try-on renderer or worker in this stack. The integration was switched off on 2026-09-30 and is being removed from the app (issue 557); what existed and what a rebuild as an add-on needs is in [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md), the old code at git tag `tryon-integration-final`.
+- There is no try-on renderer or worker in this stack. The integration was switched off on 2026-09-30 and was removed from the app (issue 557); what existed and what a rebuild as an add-on needs is in [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md), the old code at git tag `tryon-integration-final`.
 - The try-on data it left in MongoDB Atlas stays, unreferenced.
 
 ### `@vercel/blob`

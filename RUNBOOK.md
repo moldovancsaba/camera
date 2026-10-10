@@ -1,6 +1,6 @@
 # Operations Runbook
 
-> **Try-on is removed from operations (issue 557).** It is switched off on every event, its worker is stopped and its cron is gone, and the integration is being deleted from this app in phases. Where a section below still mentions a held, queued or derived try-on, it describes code that is being deleted and nothing that can happen on a live event. What existed and how to read the old code: [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md) and git tag `tryon-integration-final`.
+> **Try-on is removed from operations (issue 557).** It is switched off on every event, its worker is stopped and its cron is gone, and the integration is deleted from this app (admin, server side and guest path). Where a section below still mentions a held, queued or derived try-on, it describes what the old code did and nothing that can happen on a live event. What existed and how to read the old code: [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md) and git tag `tryon-integration-final`.
 
 ## Branching model
 

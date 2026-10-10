@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-10T20:26:05+00:00",
+  "generated": "2026-10-10T20:31:04+00:00",
   "repo": "camera",
-  "head": "c77f751",
+  "head": "fb65008c",
   "counts": {
-   "endpoints": 128,
+   "endpoints": 127,
    "collections": 7,
    "env": 54,
    "outbound-hosts": 31,
@@ -1530,17 +1530,6 @@
     "withErrorHandler"
    ],
    "no_auth_marker": false
-  },
-  {
-   "path": "/api/tryon/suits",
-   "methods": [
-    "GET"
-   ],
-   "file": "app/api/tryon/suits/route.ts",
-   "auth_markers": [
-    "withErrorHandler"
-   ],
-   "no_auth_marker": true
   },
   {
    "path": "/api/upload-logo",

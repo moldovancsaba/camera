@@ -13,7 +13,6 @@ import Link from 'next/link';
 import CameraCapture from '@/components/camera/CameraCapture';
 import FileUpload from '@/components/camera/FileUpload';
 import ShareOverlay from '@/components/capture/ShareOverlay';
-import TryOnSuitSelector from '@/components/tryon/TryOnSuitSelector';
 import { Button } from '@mantine/core';
 import { loadImageAspectRatio } from '@/lib/camera/frame-preview-aspect';
 import { cropCaptureToAspect } from '@/lib/camera/frame-crop';
@@ -30,14 +29,6 @@ interface Frame {
   /** From DB `frames` collection — drives CameraCapture aspect (same as event capture). */
   width?: number;
   height?: number;
-}
-
-interface TryOnSubmissionResult {
-  requested: boolean;
-  status: 'not_requested' | 'queued' | 'deduplicated' | 'enqueue_failed';
-  leatherSuitId: string | null;
-  jobId: string | null;
-  error: string | null;
 }
 
 interface SubmissionEmailMetadata {
@@ -97,8 +88,6 @@ export default function CapturePage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [step, setStep] = useState<'select-frame' | 'capture-photo' | 'preview'>('select-frame');
   const [frameIntrinsicAspect, setFrameIntrinsicAspect] = useState<number | null>(null);
-  const [selectedTryOnSuitId, setSelectedTryOnSuitId] = useState<string | null>(null);
-  const [tryOnResult, setTryOnResult] = useState<TryOnSubmissionResult | null>(null);
 
   // Fetch active frames
   useEffect(() => {
@@ -263,9 +252,6 @@ export default function CapturePage() {
         body: JSON.stringify({
           imageData: compositeImage,
           frameId: selectedFrame._id,
-          requestTryOn: Boolean(selectedTryOnSuitId),
-          leatherSuitId: selectedTryOnSuitId,
-          tryOnSourceImageData: selectedTryOnSuitId ? capturedImage : null,
           // No separate pledge wall choice any more, as in the event flow (camera#344, owner decision 2026-10-08).
           shareOptIn: true,
         }),
@@ -285,7 +271,6 @@ export default function CapturePage() {
       }
 
       setSubmissionId(resolvedId);
-      setTryOnResult(data.data?.tryOn ?? data.tryOn ?? null);
       
       // Generate share URL
       const origin = window.location.origin;
@@ -362,8 +347,6 @@ export default function CapturePage() {
     setCompositeImage(null);
     setSubmissionId(null);
     setShareUrl(null);
-    setSelectedTryOnSuitId(null);
-    setTryOnResult(null);
     setStep('select-frame');
   };
 
@@ -517,20 +500,6 @@ export default function CapturePage() {
                 </div>
 
                 <div className="space-y-4">
-                  {!submissionId ? (
-                    <div className="app-surface-card app-surface-card-pad-sm">
-                      <p className="app-surface-card-row-title">Optional try-on</p>
-                      <p className="app-surface-meta mt-1 mb-3">
-                        Queue this capture for leather try-on after the image is saved.
-                      </p>
-                      <TryOnSuitSelector
-                        selectedSuitId={selectedTryOnSuitId}
-                        onChange={setSelectedTryOnSuitId}
-                        disabled={isSaving}
-                      />
-                    </div>
-                  ) : null}
-
                   <div className="flex flex-col sm:flex-row gap-4">
                     {!submissionId ? (
                       <Button
@@ -561,7 +530,6 @@ export default function CapturePage() {
                       <ShareOverlay
                         shareUrl={shareUrl}
                         shareCaption={shareCaptionForSocial}
-                        tryOnResult={tryOnResult}
                         title="Share Your Photo"
                         copyButtonText="Copy"
                         viewPhotoButtonText="View your photo (opens share link)"

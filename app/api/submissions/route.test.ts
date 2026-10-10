@@ -364,7 +364,7 @@ test('a social login is enough: the email of the logged-in user is the guest', a
   }
 });
 
-test('a vetted event ignores a claimed original, refuses something that is not a photo, and holds the try-on until approval', async (t) => {
+test('a vetted event ignores a claimed original, refuses something that is not a photo, and ignores the fields of a try-on request an old client may still send (issue 557)', async (t) => {
   const restore = withStoreToken();
   const quiet = silence();
   try {
@@ -377,14 +377,16 @@ test('a vetted event ignores a claimed original, refuses something that is not a
 
     assert.equal((await POST(submissionRequest({ userInfo: GUEST, imageData: 'data:text/html;base64,AAAA' }))).status, 400);
 
-    const tryOn = await POST(submissionRequest({ userInfo: GUEST, requestTryOn: true, leatherSuitId: 'suit-1', tryOnSourceImageData: 'data:image/jpeg;base64,AAAA' }));
-    assert.equal(tryOn.status, 201);
-    const body = (await tryOn.json()) as { data: { tryOn: { status: string; jobId: string | null } } };
-    assert.equal(body.data.tryOn.status, 'awaiting_approval');
-    assert.equal(body.data.tryOn.jobId, null);
-    const doc = h.inserted[h.inserted.length - 1] as { photoReview: { tryOn: Record<string, unknown> | null }; tryOnRequest: { status: string } };
-    assert.equal(doc.tryOnRequest.status, 'awaiting_approval');
-    assert.deepEqual(doc.photoReview.tryOn, { leatherSuitId: 'suit-1', setupId: null, cameraId: null, outfitBottomLeatherSuitId: null });
+    // An old client (an open capture page from before the try-on integration was removed) may still send the try-on fields: they change nothing, and the answer carries no try-on state.
+    const old = await POST(submissionRequest({ userInfo: GUEST, requestTryOn: true, leatherSuitId: 'suit-1', tryOnSourceImageData: 'data:image/jpeg;base64,AAAA', setupId: 's1', cameraId: 'c1', outfitBottomLeatherSuitId: 'suit-2' }));
+    assert.equal(old.status, 201);
+    const body = (await old.json()) as { data: Record<string, unknown> };
+    assert.equal('tryOn' in body.data, false);
+    assert.equal(body.data.pending, true);
+    const doc = h.inserted[h.inserted.length - 1] as { photoReview: Record<string, unknown> } & Record<string, unknown>;
+    assert.equal('tryOnRequest' in doc, false);
+    assert.equal('tryOnJobs' in doc, false);
+    assert.equal('tryOn' in doc.photoReview, false);
   } finally {
     quiet();
     restore();

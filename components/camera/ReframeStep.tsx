@@ -9,8 +9,8 @@
  * Controls: drag to move, pinch or wheel to zoom, arrow keys to move, plus and minus to zoom, a
  * GDS slider and mode control, Reset, Retake and Continue. This is the one screen between taking the
  * photo and saving it (camera#344): Continue hands the crop over and the page saves the photo, so there
- * is no second "love it" screen. What the page needs to say or ask before the save (a notice, the try-on
- * choice) goes in as children, above the buttons; `busy` keeps the buttons locked while the page saves.
+ * is no second "love it" screen. What the page needs to say before the save (a notice, the gallery
+ * permission) goes in as children, above the buttons; `busy` keeps the buttons locked while the page saves.
  */
 
 'use client';
@@ -42,7 +42,7 @@ import {
 import { renderReframe } from '@/lib/camera/reframe-render';
 import { useT } from '@/components/i18n/UiLanguageProvider';
 
-/** The frame-less crop (what the composite step and try-on use) and how it was made. */
+/** The frame-less crop (what the composite step uses) and how it was made. */
 export interface ReframeResult {
   blob: Blob;
   dataUrl: string;
@@ -65,7 +65,7 @@ export interface ReframeStepProps {
   labels?: { continue?: string; retake?: string; reset?: string };
   /** True while the page makes the picture and saves it: the buttons stay locked and Continue shows its spinner. */
   busy?: boolean;
-  /** Shown above the buttons: a notice before the save, the try-on choice. */
+  /** Shown above the buttons: a notice before the save. */
   children?: ReactNode;
 }
 
