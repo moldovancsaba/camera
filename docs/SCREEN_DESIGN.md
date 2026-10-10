@@ -72,7 +72,7 @@ the stage draws it live, so the welcome page and the stage show one design (`lib
 - **Limits:** a text that is wider than its box is drawn like the stage draws it (not shrunk); the line is placed in the middle of a 1.15 line box, which is the stage's within a pixel or two, not identical.
 - **Fixed 2026-10-09 (issue 520): the capture page never copied `Event.welcomeScreen` from the public event into its state** (`lib/events/welcome-screen-url.ts` does it now), so a welcome page without a picture of its own showed no giant screen at all; the line below described what was meant, not what happened, until then. It was found when the owner's MTK welcome page lost its static picture to follow the slideshow and showed an empty space.
 - **Shown on the welcome page (step 8b):** the capture page's welcome step shows it on any welcome page with no picture of its own (`event.welcomeScreen.url`), and an event that gets the journey defaults, has the picture and has no welcome page of its own gets a default welcome page (docs/JOURNEY_DEFAULT_PAGES.md). An event without the picture is unchanged.
-- **Not yet:** the sample selfie in the window (step 5).
+- **Not yet:** the sample selfie in the window (step 5). It is planned in `docs/WELCOME_SCREEN_PHOTO_PLAN.md` (a general sample selfie from a library that the partner and the event follow, a photo of the event, the latest approved photo; owner request 2026-10-10, issue 540); the renderer already takes a `windowPicture`.
 
 ## Limits
 
