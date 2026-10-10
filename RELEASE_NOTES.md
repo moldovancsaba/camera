@@ -8,6 +8,12 @@
 - **Verified:** type-check; lint; unit tests (the pure slot, the database side with refused picks, seeding of an event not on the slot model, the panels, a switched off or deleted selfie dropping out; the three routes); the partner panel and the global page in a browser harness at phone width (labelled sources, no sideways scroll); the full CI chain.
 - **Not done (steps 4 and 5):** the welcome page screen using the pick with the event's frame over it, the event's Photo-in-the-window card with Pick another and Keep the stand-in, the event's own photos; steps 6 to 8 follow after the match.
 
+## Unreleased — the profile wordings are editable Dictionary texts (issue 521, decision 242; owner answers 249 and 251, 2026-10-10)
+
+- **Owner:** the consent sentence and the notice line for profiles across events are "ordinary texts like any other"; whoever can edit validates them; "the only thing you have to care about is to deliver them and make them editable."
+- **Added:** four keys in the English and Hungarian dictionaries, in the new group **Profile across events (drafts, not shown yet)** (`lib/i18n/messages.*.ts`, `lib/i18n/catalog.ts`): `profile.consent` (placeholders `{organiser}`, `{purpose}`, `{link}`), `profile.consent.purpose`, `profile.consent.link`, `profile.notice`. They appear in the Dictionary, a partner's Texts and an event's Texts like every text, so they can be validated and changed at the three levels.
+- **Nothing shows them:** no page uses them yet; the profile, the C checkbox and the user's page come after the match (`docs/PROFILE_PURPOSE_AND_CONSENT_DRAFT.md`). The wording is the draft from that document; it is not final until the reviewers have validated it.
+- **Verified:** type-check; lint; the dictionary tests and a new test (both languages, the same placeholders, every placeholder filled, an event's own text wins). The Dictionary screen itself was not opened: the list is generated from the catalog.
 ## Unreleased — Take photo + Submit: pages between taking the photo and saving it, with a checkbox (issue 535, step 2; owner feedback 2026-10-10)
 
 - **Owner:** "there is a common flow to take an image and then login to be able to submit ... I need a checkbox in the Take Photo page to show it there as it is now built in or uncheck and able to add steps between them, like the CTA or the who are you."
