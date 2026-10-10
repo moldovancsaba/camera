@@ -47,12 +47,13 @@ export interface AnalyticsViewProps {
   exportHref?: string;
   /** The Try-on tab (global admins only) leads to the try-on report. */
   showTryOn: boolean;
-  /** The Messmass tab: its content, when the viewer may see it. */
+  /** The Messmass tab is offered (global admins, one event); its content is given only while that tab is open, so the numbers are not computed otherwise. */
+  showMessmass?: boolean;
   messmass?: ReactNode;
 }
 
-export default function AnalyticsView({ basePath, query, defaultTimeZone, report, sources, table, eventMongoId, exportHref, showTryOn, messmass }: AnalyticsViewProps) {
-  const tabs = TABS.filter((tab) => (tab.id === 'sources' ? Boolean(sources) : tab.id === 'messmass' ? Boolean(messmass) : tab.id === 'tryon' ? showTryOn : true));
+export default function AnalyticsView({ basePath, query, defaultTimeZone, report, sources, table, eventMongoId, exportHref, showTryOn, showMessmass, messmass }: AnalyticsViewProps) {
+  const tabs = TABS.filter((tab) => (tab.id === 'sources' ? Boolean(sources) : tab.id === 'messmass' ? Boolean(showMessmass) : tab.id === 'tryon' ? showTryOn : true));
   const active: AnalyticsViewId = tabs.some((tab) => tab.id === query.view) ? query.view : 'overview';
   const { scope } = report;
   const href = (overrides: Partial<AnalyticsQuery>) => analyticsHref(basePath, query, overrides, defaultTimeZone);
@@ -107,7 +108,7 @@ export default function AnalyticsView({ basePath, query, defaultTimeZone, report
       {active === 'screens' ? <ScreensSection report={report} /> : null}
       {active === 'sources' && sources ? <SourcesSection sources={sources} eventId={eventMongoId ?? ''} /> : null}
       {active === 'emails' ? <EmailsSection report={report} /> : null}
-      {active === 'messmass' && messmass ? messmass : null}
+      {active === 'messmass' ? messmass ?? null : null}
     </div>
   );
 }
