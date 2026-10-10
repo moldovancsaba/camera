@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-10T12:33:44+00:00",
+  "generated": "2026-10-10T12:38:10+00:00",
   "repo": "camera",
-  "head": "51f4651",
+  "head": "f2ce3d1",
   "counts": {
-   "endpoints": 158,
+   "endpoints": 159,
    "collections": 8,
    "env": 61,
    "outbound-hosts": 31,

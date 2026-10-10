@@ -38,12 +38,15 @@ export interface WelcomeScreenSources {
 const px = (percent: number, of: number) => (percent / 100) * of;
 const HEX = /^#[0-9a-f]{3,8}$/i;
 
-/** Draws `image` into the rectangle so that it fills it (cropped), centred. */
-function drawCover(ctx: SKRSContext2D, image: { width: number; height: number }, x: number, y: number, w: number, h: number): void {
+/**
+ * Draws `image` into the rectangle so that it fills it (cropped), centred across and, for a picture taller than the rectangle (a portrait selfie in a wide window), a little above the middle
+ * (`focusY` 0.3, 0 is the top and 0.5 the middle): the head is in the upper part of a selfie, so the crop keeps it.
+ */
+function drawCover(ctx: SKRSContext2D, image: { width: number; height: number }, x: number, y: number, w: number, h: number, focusY = 0.3): void {
   const scale = Math.max(w / image.width, h / image.height);
   const dw = image.width * scale;
   const dh = image.height * scale;
-  ctx.drawImage(image as never, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+  ctx.drawImage(image as never, x + (w - dw) / 2, y + (h - dh) * focusY, dw, dh);
 }
 
 /** A head and shoulders on a soft backdrop in the event's colours: stands in for a photo until there is one. */

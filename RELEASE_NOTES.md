@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the welcome page screen shows the event's sample selfie (issue 540, step 4 of the plan; owner answers 255 to 260)
+
+- **Added:** the photo window of the welcome page screen takes the event's **sample selfie** (one of its own, its partner's or the global ones, picked once and stored on the event, `Event.welcomeWindow.pick`) with the event's frame over it, or the drawn stand-in. The event's Slideshows page card **Welcome page screen** now has the preview, **Sample selfie** (default, with the same panel as the logo and **Pick another**) and **Keep the stand-in**; a choice draws the picture again in one press (`GET`, `PUT /api/admin/events/<id>/welcome-window`).
+- **No event changes by this release:** with no active global sample selfie the stand-in is drawn and the stored picture keeps its key (the stand-in adds nothing to it). An event changes only when a global admin uploads a first sample selfie and the event's screen is drawn again; an event can keep the stand-in.
+- **Never an error:** the stored pick is kept while it is among the event's sample selfies; a pick that left the set is replaced; a picture the registry knows is gone is not tried; one that cannot be fetched is skipped for the next and becomes the pick; with none left the stand-in is drawn.
+- **Found by the browser check:** the new button used an action that the admin vocabulary did not have (`slideshows:pick-another-selfie`), which crashed the card; added.
+- **Verified:** type-check; lint; unit tests (the plan and the pick, a pixel check that the selfie is in the window, nothing is drawn or fetched again when nothing changed, a selfie added later does not change the picture, Pick another, a selfie that cannot be fetched, the stand-in setting; the route); the card in a browser harness at phone width (both choices send the right request, the panel hides with the stand-in); the full CI chain.
+- **Not done:** the event's own photos (step 5); the latest approved photo, the live stage's empty state and the guide (steps 6 to 8, after the match).
+
 ## Unreleased — sample selfies: the library, the slot and the partner's panel (issue 540, steps 1 to 3 of the plan; owner answers 255 to 260)
 
 - **Added:** Libraries > **Sample selfies** (global admins: upload, switch off or on, delete; the active ones are the default of every partner); a **sample selfie slot** at partner and event (`selfie` in `Partner.slots` and `Event.slots`, the logo slot's rule with a global level on top: a partner follows the global set until it chooses or uploads its own, an event follows its partner, several are picked at random, one is picked once and kept); the card **Sample selfies** on the partner's Pictures page (the same slot panel as the logo); the event's panel and routes are built (the event page that shows it follows with step 4).

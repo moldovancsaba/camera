@@ -11,6 +11,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { IconCopy, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { EmptyState, LabelTag } from '@sovereignsquad/gds-core/client';
+import WelcomeScreenCard from '@/components/admin/WelcomeScreenCard';
 
 interface Slideshow {
   _id: string;
@@ -77,18 +78,6 @@ export default function SlideshowManager({ eventId, initialSlideshows, welcomeSc
     }
   };
 
-  const drawWelcomeScreen = async () => {
-    setBusy(true);
-    try {
-      const response = await fetch(`/api/admin/events/${eventId}/welcome-screen`, { method: 'POST' });
-      if (!response.ok) throw new Error(((await response.json().catch(() => null)) as { error?: string } | null)?.error || `Request failed (${response.status})`);
-      window.location.reload();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : 'The welcome page screen could not be drawn');
-      setBusy(false);
-    }
-  };
-
   // Asks every open copy of the screen to reload at its next slide (the player sees the request in its next playlist answer, camera#476).
   const reloadScreen = async (slideshowId: string) => {
     if (!confirm('Reload every open copy of this screen? Each reloads at its next picture and restarts in a moment.')) return;
@@ -132,23 +121,7 @@ export default function SlideshowManager({ eventId, initialSlideshows, welcomeSc
         </div>
       </div>
 
-      <div style={{ alignItems: 'center', borderBottom: '1px solid var(--mantine-color-default-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', padding: '1rem 1.5rem' }}>
-        {welcomeScreen ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={welcomeScreen.url} alt="The welcome page screen drawn from the default slideshow" width={192} height={108} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.5rem', height: 'auto', width: '12rem' }} />
-        ) : null}
-        <div style={{ flex: '1 1 16rem' }}>
-          <strong>Welcome page screen</strong>
-          <p style={{ color: 'var(--mantine-color-dimmed)', margin: '0.25rem 0 0.75rem' }}>
-            {welcomeScreen
-              ? `Drawn from the default slideshow on ${new Date(welcomeScreen.generatedAt).toLocaleDateString()}. It is drawn again every time the default slideshow is saved.`
-              : 'The picture of the giant screen the welcome page shows, drawn from the default slideshow. Not drawn yet; it is drawn when you save the default slideshow.'}
-          </p>
-          <SemanticButton action="slideshows:draw-welcome-screen" variant="secondary" size="xs" loading={busy} disabled={busy} onClick={() => void drawWelcomeScreen()}>
-            {welcomeScreen ? 'Draw it again' : 'Draw the welcome page screen'}
-          </SemanticButton>
-        </div>
-      </div>
+      <WelcomeScreenCard eventId={eventId} initial={welcomeScreen} />
 
       {slideshows.length === 0 ? (
         <div style={{ padding: '1.5rem' }}>

@@ -22,6 +22,7 @@ import { findDefaultSlideshow } from '@/lib/slideshow/default-slideshow';
 import { parseScreenDesign } from '@/lib/slideshow/screen-design';
 import { loadEventTheme } from '@/lib/theme/load';
 import { WELCOME_SCREEN_RENDER_VERSION, renderWelcomeScreen } from './welcome-screen';
+import { fetchWindow, planWindow, storePick } from './welcome-window';
 
 export interface WelcomeScreenDeps {
   upload: (pathname: string, png: Buffer) => Promise<string>;
@@ -29,6 +30,8 @@ export interface WelcomeScreenDeps {
   fetchImage: (url: string) => Promise<Buffer | null>;
   resolveFont: (style: { fontFamily: string; fontSource: 'google' | 'custom' | 'system'; fontFile: string | null }) => Promise<ResolvedFont>;
   now: () => string;
+  /** For the random pick of a sample selfie; tests pass a fixed one. */
+  random?: () => number;
 }
 
 const defaultDeps: WelcomeScreenDeps = {
@@ -46,8 +49,11 @@ function frameImageUrl(event: Document): string | null {
   return (variants.find((variant) => variant.index === null) ?? variants[0])?.imageUrl ?? null;
 }
 
-/** Draws the welcome page screen picture of the event unless the stored one is already drawn from the same things. */
-export async function ensureWelcomeScreen(db: Db, event: Document, deps: WelcomeScreenDeps = defaultDeps): Promise<WelcomeScreenResult> {
+/**
+ * Draws the welcome page screen picture of the event unless the stored one is already drawn from the same things. The photo window shows the event's sample selfie (picked once and stored,
+ * lib/screen/welcome-window.ts) with the event's frame over it, or the stand-in when none is usable or the editor chose to keep it; `again` picks another sample selfie.
+ */
+export async function ensureWelcomeScreen(db: Db, event: Document, deps: WelcomeScreenDeps = defaultDeps, options: { again?: boolean } = {}): Promise<WelcomeScreenResult> {
   const eventUuid = String(event.eventId ?? '');
   if (!eventUuid) return { ok: false, reason: 'The event has no id.' };
 
@@ -65,14 +71,29 @@ export async function ensureWelcomeScreen(db: Db, event: Document, deps: Welcome
   const font = await deps.resolveFont({ fontFamily: design.fontFamily ?? theme.font.family, fontSource: design.fontFamily ? 'google' : theme.font.source, fontFile: design.fontFamily ? null : theme.font.file });
   const frameUrl = frameImageUrl(event);
 
-  const key = createHash('sha256').update(JSON.stringify([WELCOME_SCREEN_RENDER_VERSION, design, colours, font.family, font.used, frameUrl])).digest('hex');
+  // What fills the window is planned without fetching anything, so asking again with nothing changed costs nothing; the stand-in adds nothing to the key (stored pictures keep their keys).
+  const plan = await planWindow(db, event, { again: options.again, random: deps.random });
+  const keyOf = (windowPart: string) =>
+    createHash('sha256').update(JSON.stringify([WELCOME_SCREEN_RENDER_VERSION, design, colours, font.family, font.used, frameUrl, ...(windowPart === 'standin' ? [] : [windowPart])])).digest('hex');
   const stored = event.welcomeScreen as { url?: string; key?: string } | undefined;
-  if (stored?.url && stored.key === key) return { ok: true, url: stored.url, created: false };
+  if (!options.again && stored?.url && stored.key === keyOf(plan.keyPart)) {
+    await storePick(db, event, plan.candidates[0]?.id ?? null, deps.now());
+    return { ok: true, url: stored.url, created: false };
+  }
+
+  const window = await fetchWindow(plan, deps);
+  // The key says what was really drawn: when the first sample selfie could not be fetched, the next one is what is in the picture (and becomes the pick).
+  const key = keyOf(window.keyPart);
+  if (!options.again && stored?.url && stored.key === key) {
+    await storePick(db, event, window.pickedId, deps.now());
+    return { ok: true, url: stored.url, created: false };
+  }
 
   const frame = frameUrl ? await deps.fetchImage(frameUrl) : null;
-  const png = await renderWelcomeScreen({ design, overlay, windowPicture: null, frame, fontStack: font.stack, colours });
+  const png = await renderWelcomeScreen({ design, overlay, windowPicture: window.picture, frame, fontStack: font.stack, colours });
   const url = await deps.upload(`screens/${eventUuid}/welcome-${key.slice(0, 16)}.png`, png);
   await db.collection(COLLECTIONS.EVENTS).updateOne({ eventId: eventUuid }, { $set: { welcomeScreen: { url, key, generatedAt: deps.now(), renderVersion: WELCOME_SCREEN_RENDER_VERSION } } });
+  await storePick(db, event, window.pickedId, deps.now());
   return { ok: true, url, created: true };
 }
 
