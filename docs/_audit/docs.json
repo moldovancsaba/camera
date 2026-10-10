@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-10T19:14:59+00:00",
+  "generated": "2026-10-10T19:56:01+00:00",
   "repo": "camera",
-  "head": "37fbc17",
+  "head": "1eb37eb",
   "counts": {
    "endpoints": 162,
    "collections": 8,
    "env": 61,
    "outbound-hosts": 31,
-   "docs": 70
+   "docs": 71
   }
  },
  "items": [
@@ -123,6 +123,10 @@
   {
    "file": "docs/EVENT_EXPORTS.md",
    "title": "Event Data Exports \u2014 Low-Level Design"
+  },
+  {
+   "file": "docs/EXECUTION_ORDER.md",
+   "title": "Execution order (owner answers of 2026-10-10)"
   },
   {
    "file": "docs/FRAME_BASE.md",

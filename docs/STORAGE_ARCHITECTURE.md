@@ -2,6 +2,10 @@
 
 Research and recommendation of 2026-10-09 (owner question 222, issue 509). Everything marked "verified" was read in the code, in the real data (read-only) or in the vendors' own documents; what could not be verified is listed in section 11.
 
+## Owner decision of 2026-10-10 (answer 295)
+
+**"Unframed original images final destination is ImgBB; other than that I am ok."** So the recommendation below stands for everything else (the composed and screen pictures and the library on the public store, the verified copies, the queue, the manifest), **except that the unframed pictures, the naked crop and the original-size picture, end their life on ImgBB** as their final store; this overrules the sentence below that would not put naked or original photos on ImgBB, and the "delete at approval" of today's process (the naked crop is kept, not deleted). What is left to decide when this is built, in its own step: how long the private store keeps its working copy before ImgBB alone holds it, whether the backup copy covers them, and the privacy wording for it (the owner's earlier answers on retention, 224 to 228, are the starting point). **Nothing changes before the match on 2026-10-16.**
+
 ## 1. In one page
 
 **The owner's requirements:** never lose an image; Vercel Blob only temporary; R2 is the trusted CDN for the "small enough" pictures (the naked crop and the composed picture); ImgBB (paid for three years, unlimited, not 100 % reliable) keeps copies, the original-size picture too if possible; no short-term fix.
@@ -72,8 +76,8 @@ Research and recommendation of 2026-10-09 (owner question 222, issue 509). Every
 |---|---|---|---|---|---|
 | **Composed** | the framed picture people see, share and the screens show | **R2 public** bucket, custom domain, cached | **ImgBB** (address stored, verified) | **B2** | already public by its nature |
 | **Screen** | the lighter picture for the giant screen | R2 public | none needed (it is made again from the composed one) | B2 optional | derived: can be regenerated |
-| **Naked** | the unframed crop the person chose | **R2 private** | **B2** | ImgBB only if the owner decides to (section 10) | never reachable by an address; approvers see it through a short-lived signed address |
-| **Original** | the full camera frame at full size, when we start to capture it | **R2 private** (Infrequent Access after 30 days) | **B2** | ImgBB optional | 4 to 6 MB each; see 5.4 |
+| **Naked** | the unframed crop the person chose | **R2 private** | **B2** | **ImgBB: final destination (owner decision 2026-10-10)** | never reachable by an address; approvers see it through a short-lived signed address |
+| **Original** | the full camera frame at full size, when we start to capture it | **R2 private** (Infrequent Access after 30 days) | **B2** | **ImgBB: final destination (owner decision 2026-10-10)** | 4 to 6 MB each; see 5.4 |
 | **Library** | frames, logos, images editors upload | R2 public | ImgBB | B2 | one place for all of it |
 | **Generated** | the images drawn for a frame | R2 public | none (drawn again from their inputs) | none | derived |
 | **Temporary** | the landing place when R2 cannot be reached, and nothing else | **Vercel Blob** | – | – | emptied by the queue once R2 holds the picture |

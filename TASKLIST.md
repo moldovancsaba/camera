@@ -7,7 +7,7 @@ Active work is tracked on the GitHub project board, not in this file:
 **[project #24](https://github.com/users/moldovancsaba/projects/24)**. Board
 statuses, in order: IDEABANK (SOMEDAY), Roadmap (LATER), Backlog (SOONER), Todo
 (NEXT), In Progress (NOW), Review (ALMOST), Done, Declined (NEVER). This file
-only says where to look; keeping a second list here is how the previous version
+only says where to look (the **Order** column of the board is the execution order, `docs/EXECUTION_ORDER.md` the rules and the schedule); keeping a second list here is how the previous version
 drifted (it still described 2.22.0 as current).
 
 ## Where to look
