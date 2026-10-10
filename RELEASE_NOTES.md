@@ -8,6 +8,11 @@
 - **Verified:** type-check; lint; unit tests (the pure slot, the database side with refused picks, seeding of an event not on the slot model, the panels, a switched off or deleted selfie dropping out; the three routes); the partner panel and the global page in a browser harness at phone width (labelled sources, no sideways scroll); the full CI chain.
 - **Not done (steps 4 and 5):** the welcome page screen using the pick with the event's frame over it, the event's Photo-in-the-window card with Pick another and Keep the stand-in, the event's own photos; steps 6 to 8 follow after the match.
 
+## Unreleased — plan: a selfie in the welcome page screen (issue 540; owner request 2026-10-10)
+
+- **Owner:** upload or use a selfie for the Welcome page screen: (a) a general one, (b) one of the event's clean selfies, (c) the real slideshow; generated from general elements including general selfies in the system, which the partner follows until it chooses or uploads its own, and the event gets a random one from its parent.
+- **Added (docs only):** `docs/WELCOME_SCREEN_PHOTO_PLAN.md`: what exists (the renderer already takes a window picture; the slot model and panel exist; the Images library has no tags and there is no sample selfie; the only clean selfies are 106 editor uploads in two events), the design (a `selfie` slot at global, partner and event; a random pick stored once; four sources for the window; the same selfie for the live stage), the UX (one panel and one vocabulary at every level, with a sketch), eight steps with their risk and timing, and six questions for the owner (255 to 260).
+- **Not done:** nothing is built; the plan waits for the owner's answers.
 ## Unreleased — the profile wordings are editable Dictionary texts (issue 521, decision 242; owner answers 249 and 251, 2026-10-10)
 
 - **Owner:** the consent sentence and the notice line for profiles across events are "ordinary texts like any other"; whoever can edit validates them; "the only thing you have to care about is to deliver them and make them editable."
