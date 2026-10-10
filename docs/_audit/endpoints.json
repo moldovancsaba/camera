@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-10T12:30:50+00:00",
+  "generated": "2026-10-10T13:10:16+00:00",
   "repo": "camera",
-  "head": "dd4a2b4",
+  "head": "a9370e8",
   "counts": {
-   "endpoints": 153,
+   "endpoints": 154,
    "collections": 8,
    "env": 61,
    "outbound-hosts": 31,
@@ -416,6 +416,19 @@
    "file": "app/api/admin/submissions/[submissionId]/archive/route.ts",
    "auth_markers": [
     "requireAdmin",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/submissions/[submissionId]/people",
+   "methods": [
+    "PUT"
+   ],
+   "file": "app/api/admin/submissions/[submissionId]/people/route.ts",
+   "auth_markers": [
+    "isGlobalAdminSession",
+    "requireAuth",
     "withErrorHandler"
    ],
    "no_auth_marker": false

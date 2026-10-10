@@ -9,6 +9,10 @@ import type { Db } from 'mongodb';
 import { Stack, Text, Title } from '@/components/gds/PublicPrimitives';
 import PhotoReviewQueue from '@/components/admin/PhotoReviewQueue';
 import PhotoVettingSwitch from '@/components/admin/PhotoVettingSwitch';
+import MarkPeopleSwitch from '@/components/admin/MarkPeopleSwitch';
+import PeopleSummaryCard from '@/components/admin/PeopleSummaryCard';
+import { COLLECTIONS } from '@/lib/db/schemas';
+import { summarizePeople } from '@/lib/photo-vetting/people';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
 import { countPhotoQueue, loadPhotoQueue, type QueueStatus } from '@/lib/photo-vetting/queue';
 
@@ -18,14 +22,19 @@ interface EventPhotoVettingProps {
   db: Db;
   /** The event's Mongo id, as used in /admin/events/<id>. */
   eventMongoId: string;
-  event: { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown } };
+  event: { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown }; markPeopleInVetting?: unknown };
   status: QueueStatus;
   canChangeSetting: boolean;
 }
 
 export default async function EventPhotoVetting({ db, eventMongoId, event, status, canChangeSetting }: EventPhotoVettingProps) {
   const eventUuid = String(event.eventId ?? '');
-  const [items, counts] = await Promise.all([loadPhotoQueue(db, eventUuid, status), countPhotoQueue(db, eventUuid)]);
+  const [items, counts, marked] = await Promise.all([
+    loadPhotoQueue(db, eventUuid, status),
+    countPhotoQueue(db, eventUuid),
+    // What the reviewers marked in this event's photos (issue 542): only the people, nothing else is read.
+    db.collection(COLLECTIONS.SUBMISSIONS).find({ $or: [{ eventId: eventUuid }, { eventIds: { $in: [eventUuid] } }], people: { $exists: true }, isArchived: { $ne: true } }, { projection: { people: 1 } }).limit(5000).toArray(),
+  ]);
   const required = photoVettingRequired(event);
   const any = counts.pending_review + counts.rejected + counts.approved > 0;
 
@@ -39,6 +48,8 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
       </div>
 
       <PhotoVettingSwitch eventId={eventMongoId} required={required} canChange={canChangeSetting} />
+      {required ? <MarkPeopleSwitch eventId={eventMongoId} on={event.markPeopleInVetting === true} canChange={canChangeSetting} waiting={counts.pending_review} /> : null}
+      <PeopleSummaryCard summary={summarizePeople(marked as Array<{ people?: unknown }>)} />
 
       {required || any ? (
         <>

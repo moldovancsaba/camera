@@ -279,6 +279,7 @@ export const PATCH = withErrorHandler(async (
     visualSettings,
     sharePage,
     photoVetting,
+    markPeopleInVetting,
     uiLanguage,
     tourEnabled,
     acceptanceOnWhoAreYou,
@@ -446,6 +447,13 @@ export const PATCH = withErrorHandler(async (
       throw apiBadRequest('photoVetting.required must be true or false');
     }
     updateFields.photoVetting = setting;
+  }
+
+  // The vetting view that marks the people in each photo (issue 542): only a global admin switches it, on or off.
+  if (markPeopleInVetting !== undefined) {
+    if (!isGlobalAdminSession(session)) throw apiForbidden('Only a global admin can change the marking of people at vetting');
+    if (typeof markPeopleInVetting !== 'boolean') throw apiBadRequest('markPeopleInVetting must be true or false');
+    updateFields.markPeopleInVetting = markPeopleInVetting;
   }
 
   if (sharePage !== undefined) {
