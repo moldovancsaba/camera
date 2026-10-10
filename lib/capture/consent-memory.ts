@@ -28,10 +28,10 @@ export function rememberConsents(storage: WriteStorage | null | undefined, event
 
 const isRecord = (value: unknown): value is ConsentRecord => {
   const v = value as Partial<ConsentRecord> | null;
-  return !!v && typeof v === 'object' && typeof v.pageId === 'string' && (v.pageType === 'accept' || v.pageType === 'cta') && typeof v.checkboxText === 'string' && v.accepted === true && typeof v.acceptedAt === 'string';
+  return !!v && typeof v === 'object' && typeof v.pageId === 'string' && (v.pageType === 'accept' || v.pageType === 'cta') && typeof v.checkboxText === 'string' && (v.accepted === true || (v.accepted === false && v.required === false)) && typeof v.acceptedAt === 'string';
 };
 
-/** The acceptances remembered for the event, or none when there are none, they are too old or are not what was written. */
+/** The acceptances remembered for the event (and the optional boxes left unticked, issue 558), or none when there are none, they are too old or are not what was written. */
 export function recallConsents(storage: ReadStorage | null | undefined, eventId: string, now: number = Date.now()): ConsentRecord[] {
   try {
     const raw = storage?.getItem(key(eventId));

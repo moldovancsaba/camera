@@ -28,6 +28,7 @@ import type { PersonTag } from '@/lib/photo-vetting/people';
 import { ObjectId } from 'mongodb';
 import type { FrameDesign } from '@/lib/frame/context';
 import type { SlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
+import type { StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
 
 /**
  * Collection Names
@@ -158,6 +159,10 @@ export interface Partner {
   cameraMode?: 'device' | 'live' | 'still' | 'frame' | null;
   /** Whether the events of this partner that made no choice ask for the user's own permission to show a photo in the public gallery (issue 554, lib/events/gallery-consent.ts). Missing = they do not ask (the terms cover it). */
   galleryConsent?: boolean | null;
+  /** Whether the events of this partner that made no choice show the acceptance as one sentence on the Who-are-you page (issue 558, lib/events/acceptance.ts). Missing = they do not (a consent page of its own). */
+  acceptanceOnWhoAreYou?: boolean | null;
+  /** The partner's default for the other checkbox settings (issue 558, lib/events/checkbox-settings.ts): shown and required per checkbox kind; "required" of the gallery permission and of the acceptance sentence live here too. Missing = the standard of each. */
+  consentSettings?: StoredCheckboxSettings | null;
   /** The legal part of the e-mails of all events of this partner that did not set their own, per language (epic 463, lib/email/legal.ts): it follows the general one. */
   emailLegal?: Partial<Record<'en' | 'hu', string>>;
   /** The pictures every event of this partner shows in the picture fields it left empty (lib/events/partner-pictures.ts, issue 368): the plain https address each field stores. */
@@ -257,8 +262,11 @@ export interface CustomPage {
     emailPlaceholder?: string; // Placeholder for email input (e.g., "your.email@example.com")
     // For 'accept' type only
     checkboxText?: string;     // Text displayed next to checkbox (e.g., "I agree to...")
-    /** A list of required checkboxes, each with an optional https link to the page it names (camera#330); when empty, `checkboxText` is the one checkbox. */
-    checkboxes?: Array<{ text: string; linkUrl?: string }>;
+    /**
+     * A list of checkboxes, each with an optional https link to the page it names (camera#330) and two settings (issue 558, lib/events/consent.ts): `shown: false` switches it off, `required: false` makes it optional
+     * (`required: true` is an editor's choice that the server checks too; missing is the standard, required on the page). When empty, `checkboxText` is the one checkbox.
+     */
+    checkboxes?: Array<{ text: string; linkUrl?: string; shown?: boolean; required?: boolean }>;
     // For 'cta' type only
     // checkboxText is repurposed as URL to visit
     hasButton?: boolean;       // If false, CTA is end page (no continue button, auto-continues after URL visit)
@@ -346,6 +354,8 @@ export interface Event {
   cameraMode?: 'device' | 'live' | 'still' | 'frame' | null;
   /** Whether this event asks for the permission to show a photo in the public gallery (issue 554): its own choice; missing or null = it follows its partner's, which follows the standard (does not ask). */
   galleryConsent?: boolean | null;
+  /** The event's own choice for the other checkbox settings (issue 558, lib/events/checkbox-settings.ts): shown and required per checkbox kind. A kind it makes no choice for follows its partner's, which follows the standard. */
+  consentSettings?: StoredCheckboxSettings | null;
   /** The legal part of the e-mails of this event, per language (epic 463, lib/email/legal.ts): its own; missing = it follows its partner's, which follows the general one. */
   emailLegal?: Partial<Record<'en' | 'hu', string>>;
   /** How a user gets the layout and the message of the frame (epic 444, lib/frame/selection.ts): each `editor` (with a pick), `random` or `user`. Missing = what the event always did. */
@@ -357,8 +367,9 @@ export interface Event {
   /**
    * The consent page is shown as one small checkbox with one sentence on the Who-are-you page instead of a page of its own, and that page is disabled until it is ticked (issue 523,
    * client feedback 2026-10-09). One setting that both page editors show. Off or missing: the two pages one after the other (lib/events/acceptance.ts).
+   * `null` (issue 558) = no choice of its own: it follows its partner's, which follows the standard (off).
    */
-  acceptanceOnWhoAreYou?: boolean;
+  acceptanceOnWhoAreYou?: boolean | null;
   /**
    * Where the editor put the default pages of the journey (issue 535, owner 2026-10-10: "there should be an up/down for the Accept/Who-are-you section as well"): the order of `default-welcome`,
    * `default-consent` and `default-identity`, as numbers on the same scale as the event's own pages. A default page stays a default (its texts follow the dictionary and the text levels); only its
@@ -701,10 +712,13 @@ export interface UserConsent {
   pageType: 'accept' | 'cta';  // Type of page (for categorization)
   checkboxText: string;        // Exact text user agreed to (immutable record)
   linkUrl?: string;            // The https address the checkbox linked to, when it had one (camera#330)
-  accepted: boolean;           // Always true (required to proceed)
-  acceptedAt: string;          // ISO 8601 timestamp when user checked the box
+  /** True when the box was ticked. False only for an optional checkbox that was shown and left unticked (issue 558); every record made before that is true. */
+  accepted: boolean;
+  acceptedAt: string;          // ISO 8601 timestamp when the user answered: when the box was ticked, or when an optional box was left unticked
   /** The one sentence the user ticked when the checkboxes were shown as one on the Who-are-you page (issue 523): exactly what was read. */
   shownText?: string;
+  /** Only ever `false` (issue 558): the checkbox was optional when it was shown. A record without it was a required checkbox. */
+  required?: false;
 }
 
 export type SubmissionTryOnRequestStatus =
@@ -856,7 +870,7 @@ export interface Submission {
   people?: PersonTag[];
   peopleReview?: { by: string | null; at: string };
   /** The user's own, separate permission to show the photo in the public gallery, kept as evidence (issue 554, lib/events/gallery-consent.ts): present only when the box was ticked. */
-  publicGalleryConsent?: { version: 1; grantedAt: string } | null;
+  publicGalleryConsent?: { version: 1; grantedAt: string; required?: true } | null;
   reviewHistory?: Array<{ action: 'approve' | 'reject'; by: string; at: string; reason?: string | null }>;
   isShareVisible?: boolean;          // Public share-page publication flag
   isSlideshowEligible?: boolean;     // Slideshow playlist eligibility flag
@@ -1435,6 +1449,8 @@ export interface LandingPage {
   customCssClassName?: string | null;
   customCss?: string | null;
   cookieConsentEnabled: boolean;
+  /** Whether the cookie checkbox must be ticked before the link works (issue 558). Missing or true: it must (what the box always did); false: the checkbox is optional and the link works without it. */
+  cookieConsentRequired?: boolean;
   targetType: LandingPageTargetType;
   targetId: string;
   targetName: string;

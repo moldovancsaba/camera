@@ -472,17 +472,19 @@ test('GET tells the capture page the event sends the welcome e-mail when an edit
   assert.equal(await welcomeFlag(t, { notifications: { types: { welcome: { enabled: true } } } }, 'get-welcome-on'), true);
 });
 
-test('PATCH: the acceptance on the Who-are-you page (issue 523) is a true or false, refused otherwise, and left alone when absent', async (t) => {
+test('PATCH: the acceptance on the Who-are-you page (issue 523) is a true or false (or null: follow the partner, issue 558), refused otherwise, and left alone when absent', async (t) => {
   const h = mockDeps(t, { event: {}, session: ADMIN });
   const { PATCH } = await importRouteModule('patch-acceptance');
   assert.equal((await PATCH(patchRequest({ acceptanceOnWhoAreYou: true }), params)).status, 200);
   assert.equal(h.updates[0].acceptanceOnWhoAreYou, true);
   assert.equal((await PATCH(patchRequest({ acceptanceOnWhoAreYou: false }), params)).status, 200);
   assert.equal(h.updates[1].acceptanceOnWhoAreYou, false);
-  for (const bad of ['yes', 1, null, {}]) assert.equal((await PATCH(patchRequest({ acceptanceOnWhoAreYou: bad }), params)).status, 400, String(bad));
+  assert.equal((await PATCH(patchRequest({ acceptanceOnWhoAreYou: null }), params)).status, 200);
+  assert.equal(h.updates[2].acceptanceOnWhoAreYou, null, 'null means no choice of its own');
+  for (const bad of ['yes', 1, {}]) assert.equal((await PATCH(patchRequest({ acceptanceOnWhoAreYou: bad }), params)).status, 400, String(bad));
   assert.equal((await PATCH(patchRequest({ loadingText: 'Hello' }), params)).status, 200);
-  assert.equal('acceptanceOnWhoAreYou' in h.updates[2], false);
-  assert.equal(h.updates.length, 3, 'a refused value writes nothing');
+  assert.equal('acceptanceOnWhoAreYou' in h.updates[3], false);
+  assert.equal(h.updates.length, 4, 'a refused value writes nothing');
 });
 
 test('GET as a guest carries the acceptance switch, so the capture page knows to show the consent on the Who-are-you page', async (t) => {
@@ -585,4 +587,87 @@ test('PATCH: an Events manager who is not a global admin cannot switch the marki
   const { PATCH } = await importRouteModule('patch-mark-people-manager');
   assert.equal((await PATCH(patchRequest({ markPeopleInVetting: true }), params)).status, 403);
   assert.equal(h.updates.length, 0);
+});
+
+// The checkbox settings (issue 558, owner answer 297).
+const consentPage = (checkboxes: Array<Record<string, unknown>>) => ({ pageId: 'c', pageType: 'accept', order: -2, isActive: true, config: { title: 'T', buttonText: 'Go', checkboxes } });
+const takePhotoPage = { pageId: 'tp', pageType: 'take-photo', order: 0, isActive: true, config: {} };
+type GuestEvent = { data: { event: Record<string, unknown> & { customPages: Array<{ pageId: string; pageType: string; config: { checkboxes?: Array<Record<string, unknown>> } }> } } };
+
+test('PATCH: consentSettings is an object of known kinds with true/false parts (or null to take it away), refused otherwise, and left alone when absent (issue 558)', async (t) => {
+  const h = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-consent-settings');
+  assert.equal((await PATCH(patchRequest({ consentSettings: { terms: { shown: true, required: true }, gallery: { required: true } } }), params)).status, 200);
+  assert.deepEqual(h.updates[0].consentSettings, { terms: { shown: true, required: true }, gallery: { required: true } });
+  assert.equal((await PATCH(patchRequest({ consentSettings: null }), params)).status, 200);
+  assert.equal(h.updates[1].consentSettings, null);
+  assert.equal((await PATCH(patchRequest({ consentSettings: {} }), params)).status, 200);
+  assert.equal(h.updates[2].consentSettings, null, 'an empty object is no choice at all');
+  for (const bad of ['yes', 1, [], { newsletter: { shown: true } }, { terms: { shown: 'no' } }, { terms: { visible: true } }, { gallery: { shown: true } }]) assert.equal((await PATCH(patchRequest({ consentSettings: bad }), params)).status, 400, JSON.stringify(bad));
+  assert.equal((await PATCH(patchRequest({ loadingText: 'Hello' }), params)).status, 200);
+  assert.equal('consentSettings' in h.updates[3], false);
+  assert.equal(h.updates.length, 4, 'a refused value writes nothing');
+});
+
+test('PATCH: a consent page saves the "shown" and "required" of each checkbox it has; a checkbox that sets neither is saved as before', async (t) => {
+  const h = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-consent-page-settings');
+  const pages = [consentPage([{ text: 'A', linkUrl: 'https://example.com/a' }, { text: 'B', required: false }, { text: 'C', shown: false, required: true }, { text: 'D', shown: 'maybe', required: 'yes' }])];
+  assert.equal((await PATCH(patchRequest({ customPages: pages }), params)).status, 200);
+  const saved = (h.updates[0].customPages as Array<{ config: { checkboxes: unknown } }>)[0].config.checkboxes;
+  assert.deepEqual(saved, [{ text: 'A', linkUrl: 'https://example.com/a' }, { text: 'B', required: false }, { text: 'C', shown: false, required: true }, { text: 'D' }]);
+});
+
+test('GET as a guest: an event that chose nothing is sent what it always was, with the default consent page of three required documents and no extra field on its pages', async (t) => {
+  mockDeps(t, { event: { journeyDefaults: true, customPages: [takePhotoPage] } });
+  const { GET } = await importRouteModule('get-guest-standard-consent');
+  const body = (await (await GET(getRequest('?audience=guest'), params)).json()) as GuestEvent;
+  const consent = body.data.event.customPages.find((p) => p.pageId === 'default-consent');
+  assert.deepEqual(consent?.config.checkboxes?.map((c) => Object.keys(c)), [['text', 'linkUrl'], ['text', 'linkUrl'], ['text', 'linkUrl']]);
+  assert.equal(body.data.event.acceptanceOnWhoAreYou, false);
+  assert.equal(body.data.event.effectiveGalleryConsent, false);
+  assert.equal(body.data.event.effectiveGalleryRequired, false);
+  assert.equal(body.data.event.effectiveAcceptanceRequired, true);
+  assert.equal('documents' in (body.data.event.journeyContext as object), false, 'no settings are sent for an event that chose nothing');
+});
+
+test('GET as a guest: the documents of the default consent page follow the partner’s and the event’s settings; an event’s own choice wins over its partner’s', async (t) => {
+  const partner = { partnerId: 'P', consentSettings: { cookies: { shown: false }, privacy: { shown: true, required: false } }, acceptanceOnWhoAreYou: true, galleryConsent: true };
+  mockDeps(t, { event: { partnerId: 'P', journeyDefaults: true, customPages: [takePhotoPage], galleryConsent: true, consentSettings: { privacy: { shown: true, required: true }, gallery: { required: true } } }, partner });
+  const { GET } = await importRouteModule('get-guest-consent-settings');
+  const body = (await (await GET(getRequest('?audience=guest'), params)).json()) as GuestEvent;
+  const consent = body.data.event.customPages.find((p) => p.pageId === 'default-consent');
+  assert.deepEqual(consent?.config.checkboxes, [
+    { text: 'I accept the Terms and conditions', linkUrl: 'https://seyuselfies.com/en/legal/terms' },
+    { text: 'I have read the Privacy policy', linkUrl: 'https://seyuselfies.com/en/policies', required: true },
+  ]);
+  assert.equal(body.data.event.acceptanceOnWhoAreYou, true, 'the partner’s default, as the effective value');
+  assert.equal(body.data.event.effectiveGalleryConsent, true);
+  assert.equal(body.data.event.effectiveGalleryRequired, true, 'the event’s requirement, over a partner that asks without requiring');
+});
+
+test('GET as a guest: the checkboxes switched off on an own consent page are not sent, and a page whose list is all off is not a step; the editor reads them all', async (t) => {
+  const pages = [consentPage([{ text: 'A' }, { text: 'B', shown: false }, { text: 'C', required: false }]), { ...consentPage([{ text: 'X', shown: false }]), pageId: 'off', order: -1 }, takePhotoPage];
+  mockDeps(t, { event: { customPages: pages } });
+  const { GET } = await importRouteModule('get-guest-own-consent-off');
+  const guest = (await (await GET(getRequest('?audience=guest'), params)).json()) as GuestEvent;
+  assert.deepEqual(guest.data.event.customPages.map((p) => p.pageId), ['c', 'tp']);
+  assert.deepEqual(guest.data.event.customPages[0].config.checkboxes, [{ text: 'A' }, { text: 'C', required: false }]);
+  const editor = (await (await GET(getRequest(''), params)).json()) as GuestEvent;
+  assert.equal(editor.data.event.customPages.length, 3);
+  assert.equal(editor.data.event.customPages[0].config.checkboxes?.length, 3, 'the editor must be able to switch a checkbox on again');
+});
+
+test('GET for the editor: what each kind of checkbox is for the event and for its partner alone, so “Same as the partner” can say what it gives', async (t) => {
+  const partner = { partnerId: 'P', consentSettings: { terms: { shown: true, required: true } }, galleryConsent: true };
+  mockDeps(t, { event: { partnerId: 'P', galleryConsent: false, customPages: [] }, partner });
+  const { GET } = await importRouteModule('get-editor-checkboxes');
+  const body = (await (await GET(getRequest(''), params)).json()) as { data: { event: { effectiveCheckboxes: Record<string, { shown: boolean; source: string }>; partnerCheckboxes: Record<string, { shown: boolean; checked: boolean }> } } };
+  assert.equal(body.data.event.effectiveCheckboxes.gallery.shown, false);
+  assert.equal(body.data.event.effectiveCheckboxes.gallery.source, 'event');
+  assert.equal(body.data.event.effectiveCheckboxes.terms.source, 'partner');
+  assert.equal(body.data.event.partnerCheckboxes.gallery.shown, true, 'what the event would get if it followed');
+  assert.equal(body.data.event.partnerCheckboxes.terms.checked, true);
+  const guest = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: Record<string, unknown> } };
+  assert.equal('effectiveCheckboxes' in guest.data.event, false, 'a guest is not sent the editors’ view');
 });

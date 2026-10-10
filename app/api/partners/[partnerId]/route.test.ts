@@ -134,3 +134,20 @@ test('the gallery permission of the partner\'s events: true, false or empty, ref
   assert.equal((data.partners[0] as { galleryConsent?: boolean | null }).galleryConsent, null);
   for (const bad of ['yes', 'true', 1, {}]) assert.equal((await PATCH(patch({ galleryConsent: bad }), params)).status, 400, String(bad));
 });
+
+test('PATCH: the partner’s default for the acceptance sentence and for the other checkbox settings is saved, null takes it away, and anything else is refused (issue 558)', async (t) => {
+  const { data } = setup(t);
+  const { PATCH } = await importRoute('consent-settings');
+  assert.equal((await PATCH(patch({ acceptanceOnWhoAreYou: true, consentSettings: { cookies: { shown: false }, gallery: { required: true } } }), params)).status, 200);
+  const stored = data.partners[0] as { acceptanceOnWhoAreYou?: boolean | null; consentSettings?: unknown };
+  assert.equal(stored.acceptanceOnWhoAreYou, true);
+  assert.deepEqual(stored.consentSettings, { cookies: { shown: false }, gallery: { required: true } });
+  assert.equal((await PATCH(patch({ name: 'Renamed' }), params)).status, 200);
+  assert.deepEqual((data.partners[0] as { consentSettings?: unknown }).consentSettings, { cookies: { shown: false }, gallery: { required: true } }, 'absent leaves it alone');
+  assert.equal((await PATCH(patch({ acceptanceOnWhoAreYou: null, consentSettings: null }), params)).status, 200);
+  assert.equal((data.partners[0] as { acceptanceOnWhoAreYou?: boolean | null }).acceptanceOnWhoAreYou, null);
+  assert.equal((data.partners[0] as { consentSettings?: unknown }).consentSettings, null);
+  for (const bad of [{ acceptanceOnWhoAreYou: 'yes' }, { acceptanceOnWhoAreYou: 1 }, { consentSettings: 'on' }, { consentSettings: { newsletter: { shown: true } } }, { consentSettings: { terms: { shown: 'no' } } }]) {
+    assert.equal((await PATCH(patch(bad), params)).status, 400, JSON.stringify(bad));
+  }
+});

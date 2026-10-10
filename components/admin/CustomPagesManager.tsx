@@ -19,42 +19,25 @@ import ImagePicker from '@/components/admin/library/ImagePicker';
 import { CustomPageType, type CustomPage, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { DEFAULT_APPROVAL_TEXTS, DEFAULT_REDIRECTING_TEXT } from '@/lib/events/page-texts';
 import { customiseDefault, effectiveJourney, hasSeparateSubmit, moveJourneyRow, moveTarget, renumberJourney, setSubmitSeparate, type JourneyContext } from '@/lib/events/journey';
+import { CHECKBOX_KINDS, modeOf, settingsToStore, type CheckboxKind, type CheckboxMode, type EffectiveCheckboxes, type StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
+import CheckboxSettingsFields, { type CheckboxModes } from '@/components/admin/CheckboxSettingsFields';
 
 export interface CustomPagesManagerProps {
   eventId: string;
   initialPages: CustomPage[];
   /** What decides which default pages the event gets (`GET /api/events/<id>`): with it the list is the journey as the user goes through it (camera#378). */
   journeyContext?: JourneyContext;
-  /** The consent page is shown as one checkbox on the Who-are-you page (issue 523): the one setting both page editors show. */
-  acceptanceOnWhoAreYou?: boolean;
   /**
-   * The event's own choice on the permission to show a photo in the public gallery (issue 554, lib/events/gallery-consent.ts): `true` asks, `false` does not, `null` follows the partner. `effectiveGalleryConsent` is what the
-   * event does now, so Same as the partner can say what it gives. The setting is shown at the top of the list and inside the consent page's editor: one value, saved with Save Pages.
+   * The event's own choices for the settings of the checkboxes (issue 558, lib/events/checkbox-settings.ts), as stored: `acceptanceOnWhoAreYou` (the acceptance sentence on the Who-are-you page, issue 523) and `galleryConsent`
+   * (the permission to show a photo in the public gallery, issue 554) are `true`, `false` or `null` (no choice: follow the partner); `consentSettings` holds the rest (the three documents of the default consent page, and "required" of
+   * the acceptance sentence and of the gallery permission). `partnerCheckboxes` is what the event would get if it followed its partner, so "Same as the partner" can say what it gives. One value for each kind: the
+   * list at the top and the page editors that show a kind (the Who-are-you page, the consent page) read and write the same one; all are saved with Save Pages.
    */
+  acceptanceOnWhoAreYou?: boolean | null;
   galleryConsent?: boolean | null;
-  effectiveGalleryConsent?: boolean;
-  onSave: (pages: CustomPage[], options: { acceptanceOnWhoAreYou: boolean; galleryConsent: boolean | null; defaultPageOrders?: Record<string, number> }) => Promise<void>;
-}
-
-type GalleryChoice = '' | 'ask' | 'no';
-const galleryChoiceOf = (value: boolean | null | undefined): GalleryChoice => (value === true ? 'ask' : value === false ? 'no' : '');
-const galleryValueOf = (choice: GalleryChoice): boolean | null => (choice === 'ask' ? true : choice === 'no' ? false : null);
-
-/** The event's setting for the permission to show a photo in the public gallery (issue 554): the same control at the top of the list and in the consent page's editor. */
-function GalleryConsentSelect({ value, onChange, followsAsks }: { value: GalleryChoice; onChange: (value: GalleryChoice) => void; followsAsks: boolean }) {
-  return (
-    <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }} data-gallery-consent-setting>
-      Permission to show the photo in the public gallery
-      <select value={value} onChange={(event) => onChange(event.currentTarget.value as GalleryChoice)} style={{ minHeight: 44, padding: '0 0.75rem' }}>
-        <option value="">{`Same as the partner (${followsAsks ? 'ask' : 'do not ask'})`}</option>
-        <option value="ask">Ask: a separate optional checkbox, not ticked</option>
-        <option value="no">Do not ask: the terms the user accepts cover it</option>
-      </select>
-      <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem', fontWeight: 400 }}>
-        Some services and markets need the user’s own permission before a photo is shown on a public wall or gallery. When it asks, the photo page shows one optional checkbox where the photo is saved; only a ticked box puts the photo on the wall. Its words are the Dictionary texts share.publicGalleryConsent and share.publicGalleryConsentHelp. Saved with Save Pages.
-      </span>
-    </label>
-  );
+  consentSettings?: StoredCheckboxSettings | null;
+  partnerCheckboxes?: EffectiveCheckboxes;
+  onSave: (pages: CustomPage[], options: { acceptanceOnWhoAreYou: boolean | null; galleryConsent: boolean | null; consentSettings: StoredCheckboxSettings | null; defaultPageOrders?: Record<string, number> }) => Promise<void>;
 }
 
 function Field({
@@ -128,16 +111,18 @@ function Check({
   onChange,
   label,
   helper,
+  disabled,
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label: string;
   helper?: string;
+  disabled?: boolean;
 }) {
   return (
-    <label style={{ display: 'grid', gap: '0.35rem' }}>
+    <label style={{ display: 'grid', gap: '0.35rem', opacity: disabled ? 0.55 : 1 }}>
       <span style={{ alignItems: 'center', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
-        <input type="checkbox" checked={checked} onChange={(event) => onChange(event.currentTarget.checked)} />
+        <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.currentTarget.checked)} />
         {label}
       </span>
       {helper ? <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>{helper}</span> : null}
@@ -167,12 +152,15 @@ function MoveButtons({ canUp, canDown, onUp, onDown }: { canUp: boolean; canDown
   );
 }
 
-export default function CustomPagesManager({ eventId, initialPages, journeyContext, acceptanceOnWhoAreYou = false, galleryConsent = null, effectiveGalleryConsent = false, onSave }: CustomPagesManagerProps) {
+export default function CustomPagesManager({ eventId, initialPages, journeyContext, acceptanceOnWhoAreYou = null, galleryConsent = null, consentSettings = null, partnerCheckboxes, onSave }: CustomPagesManagerProps) {
   const [pages, setPages] = useState<CustomPage[]>(initialPages);
-  // One value for the two checkboxes (the Who-are-you editor's "Show acceptance" and the consent editor's "Show it on Who-are-you"): both read and write it here, so they are always the same one.
-  const [acceptanceHere, setAcceptanceHere] = useState(acceptanceOnWhoAreYou);
-  // One value for the permission to show a photo in the public gallery (issue 554): the select at the top of the list and the one in the consent page's editor read and write it here.
-  const [galleryHere, setGalleryHere] = useState<GalleryChoice>(galleryChoiceOf(galleryConsent));
+  // One value for each kind of checkbox (issue 558): the list at the top and the page editors that show a kind (the Who-are-you page's acceptance, the consent page's acceptance and gallery permission)
+  // read and write it here, so they are always the same one. "" is no choice of its own: the event follows its partner.
+  const [modes, setModes] = useState<CheckboxModes>(() => {
+    const holder = { acceptanceOnWhoAreYou, galleryConsent, consentSettings };
+    return Object.fromEntries(CHECKBOX_KINDS.map((kind) => [kind, modeOf(holder, kind)])) as CheckboxModes;
+  });
+  const changeMode = (kind: CheckboxKind, mode: CheckboxMode) => setModes((current) => ({ ...current, [kind]: mode }));
   // Where the default pages are (issue 535): the places the editor saved, changed here by the up/down buttons and saved with Save Pages. Null: the default places.
   const [defaultOrders, setDefaultOrders] = useState<Record<string, number> | null>(journeyContext?.defaultOrders ?? null);
   const [showModal, setShowModal] = useState(false);
@@ -406,7 +394,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
         ...p,
         order: typeof p.order === 'number' && Number.isFinite(p.order) ? p.order : Number(p.order),
       }));
-      await onSave(pagesToSave, { acceptanceOnWhoAreYou: acceptanceHere, galleryConsent: galleryValueOf(galleryHere), ...(defaultOrders ? { defaultPageOrders: defaultOrders } : {}) });
+      await onSave(pagesToSave, { ...settingsToStore(modes), ...(defaultOrders ? { defaultPageOrders: defaultOrders } : {}) });
     } catch (error) {
       console.error('Failed to save pages:', error);
       const msg = error instanceof Error ? error.message : 'Failed to save pages. Please try again.';
@@ -438,8 +426,14 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
           </SemanticButton>
         </div>
 
-        <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
-          <GalleryConsentSelect value={galleryHere} onChange={setGalleryHere} followsAsks={effectiveGalleryConsent && galleryConsent === null} />
+        <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', display: 'grid', gap: '1rem', padding: '1rem' }} data-consent-settings>
+          <div style={{ display: 'grid', gap: '0.25rem' }}>
+            <h3 style={{ margin: 0 }}>Consent page settings: the checkboxes of this event</h3>
+            <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
+              Every kind of checkbox is shown or not, and required or optional, as every market has its own law. “Same as the partner” follows the partner’s default; nothing is copied down. Saved with Save Pages.
+            </p>
+          </div>
+          <CheckboxSettingsFields modes={modes} onChange={changeMode} level="event" followed={partnerCheckboxes} />
         </section>
 
       {/* Page List */}
@@ -610,11 +604,9 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
             <PageEditModal
               page={editingPage}
               eventId={eventId}
-              acceptanceHere={acceptanceHere}
-              onAcceptanceChange={setAcceptanceHere}
-              galleryHere={galleryHere}
-              onGalleryChange={setGalleryHere}
-              galleryFollowsAsks={effectiveGalleryConsent && galleryConsent === null}
+              modes={modes}
+              onModeChange={changeMode}
+              partnerCheckboxes={partnerCheckboxes}
               submitInPage={!hasSeparateSubmit(rows)}
               onSubmitInPageChange={handleSubmitInPage}
               onSave={handleSavePage}
@@ -638,11 +630,9 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
 function PageEditModal({
   page,
   eventId,
-  acceptanceHere,
-  onAcceptanceChange,
-  galleryHere,
-  onGalleryChange,
-  galleryFollowsAsks,
+  modes,
+  onModeChange,
+  partnerCheckboxes,
   submitInPage,
   onSubmitInPageChange,
   onSave,
@@ -650,11 +640,9 @@ function PageEditModal({
 }: {
   page: CustomPage;
   eventId: string;
-  acceptanceHere: boolean;
-  onAcceptanceChange: (value: boolean) => void;
-  galleryHere: GalleryChoice;
-  onGalleryChange: (value: GalleryChoice) => void;
-  galleryFollowsAsks: boolean;
+  modes: CheckboxModes;
+  onModeChange: (kind: CheckboxKind, mode: CheckboxMode) => void;
+  partnerCheckboxes?: EffectiveCheckboxes;
   submitInPage: boolean;
   onSubmitInPageChange: (value: boolean) => void;
   onSave: (page: CustomPage) => void;
@@ -676,8 +664,11 @@ function PageEditModal({
   const [namePlaceholder, setNamePlaceholder] = useState(page.config.namePlaceholder || 'Enter your name');
   const [emailPlaceholder, setEmailPlaceholder] = useState(page.config.emailPlaceholder || 'your.email@example.com');
   const [checkboxText, setCheckboxText] = useState(page.config.checkboxText || '');
-  // The checkboxes of a consent page, each with an optional https link; all required (camera#330). Empty list: the single text above is the one checkbox.
-  const [checkboxes, setCheckboxes] = useState<Array<{ text: string; linkUrl: string }>>(() => (page.config.checkboxes ?? []).map((item) => ({ text: item.text, linkUrl: item.linkUrl ?? '' })));
+  // The checkboxes of a consent page, each with an optional https link (camera#330) and two settings (issue 558): shown or not, and required or optional. A checkbox that stored neither is shown and required.
+  // Empty list: the single text above is the one checkbox.
+  const [checkboxes, setCheckboxes] = useState<Array<{ text: string; linkUrl: string; shown: boolean; required: boolean }>>(() =>
+    (page.config.checkboxes ?? []).map((item) => ({ text: item.text, linkUrl: item.linkUrl ?? '', shown: item.shown !== false, required: item.required !== false })),
+  );
   // For CTA pages: hasButton determines if button is shown (if false, it's an end page)
   const [hasButton, setHasButton] = useState(page.config.hasButton !== false);
   // Picture pages only (camera#491)
@@ -756,10 +747,11 @@ function PageEditModal({
         }),
         ...(page.pageType === CustomPageType.ACCEPT && {
           checkboxText,
+          // What this editor saves is written out: a switched-off checkbox says so, and every checkbox says whether it is required (the server checks a required one too, lib/events/consent-guard.ts).
           checkboxes: checkboxes
-            .map((item) => ({ text: item.text.trim(), linkUrl: item.linkUrl.trim() }))
+            .map((item) => ({ ...item, text: item.text.trim(), linkUrl: item.linkUrl.trim() }))
             .filter((item) => item.text)
-            .map((item) => (item.linkUrl ? item : { text: item.text })),
+            .map((item) => ({ text: item.text, ...(item.linkUrl ? { linkUrl: item.linkUrl } : {}), ...(item.shown ? {} : { shown: false }), required: item.required })),
         }),
         ...(page.pageType === CustomPageType.CTA && {
           checkboxText,
@@ -925,12 +917,7 @@ function PageEditModal({
           <>
             <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
               <div style={{ display: 'grid', gap: '1rem' }}>
-                <Check
-                  checked={acceptanceHere}
-                  onChange={onAcceptanceChange}
-                  label="Show acceptance"
-                  helper="Shows the consent page's checkboxes here as one small checkbox with one sentence, under the intro text; everything on this page stays off until it is ticked, and the consent page is no longer a step of its own. Off: two pages, one after the other. The same setting as “Show it on Who-are-you” on the consent page editor; it is saved with Save all."
-                />
+                <CheckboxSettingsFields modes={modes} onChange={onModeChange} level="event" followed={partnerCheckboxes} kinds={['acceptance']} />
               </div>
             </section>
             <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
@@ -1004,23 +991,13 @@ function PageEditModal({
         {page.pageType === CustomPageType.ACCEPT ? (
           <>
             <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
-              <div style={{ display: 'grid', gap: '1rem' }}>
-                <Check
-                  checked={acceptanceHere}
-                  onChange={onAcceptanceChange}
-                  label="Show it on Who-are-you"
-                  helper="Shows these checkboxes on the Who-are-you page as one small checkbox with one sentence (the three usual legal pages make the sentence; any other list is shown one after the other), and this page is no longer a step of its own. Off: two pages, one after the other. The same setting as “Show acceptance” on the Who-are-you page editor; it is saved with Save all."
-                />
-              </div>
-            </section>
-            <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
-              <GalleryConsentSelect value={galleryHere} onChange={onGalleryChange} followsAsks={galleryFollowsAsks} />
+              <CheckboxSettingsFields modes={modes} onChange={onModeChange} level="event" followed={partnerCheckboxes} kinds={['acceptance', 'gallery']} />
             </section>
             <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
               <div style={{ display: 'grid', gap: '1rem' }}>
-                <h4 style={{ margin: 0 }}>Checkboxes (every one is required)</h4>
+                <h4 style={{ margin: 0 }}>Checkboxes</h4>
                 <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem', margin: 0 }}>
-                  The user must tick every checkbox to continue. A link opens that page in a new tab. Leave the list empty to use the single text below.
+                  Each checkbox is shown or not, and required or optional, as every market has its own law. A link opens that page in a new tab. Leave the list empty to use the single text below.
                 </p>
                 {checkboxes.map((item, index) => (
                   <div key={index} style={{ display: 'grid', gap: '0.5rem', borderTop: index > 0 ? '1px solid var(--mantine-color-default-border)' : undefined, paddingTop: index > 0 ? '0.75rem' : 0 }}>
@@ -1037,6 +1014,21 @@ function PageEditModal({
                       onChange={(value) => setCheckboxes((list) => list.map((entry, at) => (at === index ? { ...entry, linkUrl: value } : entry)))}
                       placeholder="https://example.com/terms"
                     />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem 1.5rem' }} data-checkbox-toggles>
+                      <Check
+                        checked={item.shown}
+                        onChange={(value) => setCheckboxes((list) => list.map((entry, at) => (at === index ? { ...entry, shown: value } : entry)))}
+                        label={`Checkbox ${index + 1} shown`}
+                        helper="Off: the user does not see it and no record is kept."
+                      />
+                      <Check
+                        checked={item.required}
+                        disabled={!item.shown}
+                        onChange={(value) => setCheckboxes((list) => list.map((entry, at) => (at === index ? { ...entry, required: value } : entry)))}
+                        label={`Checkbox ${index + 1} required`}
+                        helper="On: Continue waits for the tick, and the server refuses a photo saved without it. Off: optional, shown with “(optional)”, and a record says whether it was ticked."
+                      />
+                    </div>
                     <div>
                       <SemanticButton action="custom-pages:remove-checkbox" type="button" variant="secondary" onClick={() => setCheckboxes((list) => list.filter((_, at) => at !== index))}>
                         Remove checkbox {index + 1}
@@ -1045,7 +1037,7 @@ function PageEditModal({
                   </div>
                 ))}
                 <div>
-                  <SemanticButton action="custom-pages:add-checkbox" type="button" variant="secondary" onClick={() => setCheckboxes((list) => [...list, { text: '', linkUrl: '' }])} disabled={checkboxes.length >= 10}>
+                  <SemanticButton action="custom-pages:add-checkbox" type="button" variant="secondary" onClick={() => setCheckboxes((list) => [...list, { text: '', linkUrl: '', shown: true, required: true }])} disabled={checkboxes.length >= 10}>
                     Add a checkbox
                   </SemanticButton>
                 </div>

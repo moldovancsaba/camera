@@ -3,19 +3,22 @@
 /**
  * Accept Page Component
  *
- * Displays consent/terms acceptance page with required checkbox
+ * Displays consent/terms acceptance page with its checkboxes
  * Part of the custom event page flow system
  *
  * Why this component:
  * - GDPR compliance - tracks user consent with timestamp
- * - Required checkbox prevents progression without acceptance
+ * - A required checkbox prevents progression without acceptance; every checkbox is required unless its page says otherwise
  * - Immutable record of what user agreed to
+ *
+ * Every checkbox has two settings (issue 558, lib/events/consent.ts): it is shown or not (a switched-off checkbox is not drawn and leaves no record) and required or optional (an optional one is marked
+ * "(optional)", may stay unticked, and when it is left unticked the record says so). A checkbox that stores neither is drawn and behaves exactly as it always did.
  */
 
 import { useState } from 'react';
 import CaptureStageShell from '@/components/capture/CaptureStageShell';
 import { Alert, Anchor, Button, Card, Checkbox, Group, Stack } from '@mantine/core';
-import { consentCheckboxes, type ConsentCheckbox } from '@/lib/events/consent';
+import { consentCheckboxes, isRequiredCheckbox, shownCheckboxes, type ConsentCheckbox } from '@/lib/events/consent';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -38,6 +41,8 @@ export interface AcceptPageData {
   acceptedAt: string;
   /** The checkboxes the user ticked, with their exact text and link, one consent record each. */
   items?: ConsentCheckbox[];
+  /** The optional checkboxes that were shown and left unticked (issue 558): each leaves a record that says it was not ticked. */
+  unticked?: ConsentCheckbox[];
 }
 
 export interface AcceptPageProps {
@@ -62,11 +67,13 @@ export default function AcceptPage({
   buttonSize = DEFAULT_EVENT_BUTTON_SIZE,
 }: AcceptPageProps) {
   const { t } = useT();
-  const items = consentCheckboxes(config);
+  const listed = consentCheckboxes(config);
+  // A checkbox that is switched off is not shown and counts for nothing (issue 558).
+  const items = listed.length > 0 ? shownCheckboxes(listed) : listed;
   const [checked, setChecked] = useState<boolean[]>([]);
   const [error, setError] = useState<string | null>(null);
-  // Every checkbox is required: the button works only when all of them are ticked.
-  const accepted = items.length > 0 ? items.every((_, index) => checked[index] === true) : checked[0] === true;
+  // Every checkbox is required unless its page made it optional: the button works only when every required one is ticked. The older single text is one required checkbox.
+  const accepted = listed.length > 0 ? items.every((item, index) => !isRequiredCheckbox(item) || checked[index] === true) : checked[0] === true;
 
   const handleNext = () => {
     if (!accepted) {
@@ -74,10 +81,14 @@ export default function AcceptPage({
       return;
     }
 
+    // The records: what was ticked, and the optional checkboxes that were shown and left unticked (issue 558).
+    const ticked = items.filter((_, index) => checked[index] === true);
+    const unticked = items.filter((item, index) => checked[index] !== true && !isRequiredCheckbox(item));
     onNext({
       accepted: true,
       acceptedAt: new Date().toISOString(),
-      ...(items.length > 0 ? { items } : {}),
+      ...(listed.length > 0 ? { items: ticked } : {}),
+      ...(unticked.length > 0 ? { unticked } : {}),
     });
   };
 
@@ -92,7 +103,7 @@ export default function AcceptPage({
     }
   };
 
-  const boxes: ConsentCheckbox[] = items.length > 0 ? items : [{ text: config.checkboxText }];
+  const boxes: ConsentCheckbox[] = listed.length > 0 ? items : [{ text: config.checkboxText }];
 
   return (
     <CaptureStageShell
@@ -103,6 +114,7 @@ export default function AcceptPage({
       <Stack gap="sm">
         {boxes.map((item, index) => {
           const isChecked = checked[index] === true;
+          const optional = !isRequiredCheckbox(item);
           return (
             <Card
               key={`${index}-${item.text}`}
@@ -110,7 +122,7 @@ export default function AcceptPage({
               radius="md"
               withBorder
               style={{
-                borderColor: error && !isChecked
+                borderColor: error && !isChecked && !optional
                   ? 'var(--mantine-color-red-5)'
                   : isChecked
                     ? `var(--event-button-bg, ${brandBorderColor})`
@@ -126,6 +138,7 @@ export default function AcceptPage({
                 label={
                   <>
                     {item.text}
+                    {optional ? <span style={{ marginLeft: 6, opacity: 0.75 }}>{t('accept.optional')}</span> : null}
                     {item.linkUrl ? (
                       // The link opens the legal page in a new tab, so the user does not lose the flow; it sits beside the text so a tap on the text still ticks the box.
                       <Anchor
@@ -144,7 +157,7 @@ export default function AcceptPage({
                   </>
                 }
                 aria-label={item.text}
-                aria-invalid={Boolean(error) && !isChecked}
+                aria-invalid={Boolean(error) && !isChecked && !optional}
                 aria-describedby={error ? 'accept-error' : undefined}
                 styles={{
                   label: {

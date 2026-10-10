@@ -45,10 +45,13 @@ export interface WhoAreYouPageData {
 
 /**
  * The consent page shown as one checkbox with one sentence on this page (issue 523; client feedback 2026-10-09). Everything on the page is off until it is ticked. The page that owns the
- * flow records the acceptance when it is given (a sign-in leaves the page), so the box only reports the tick.
+ * flow records the acceptance when it is given (a sign-in leaves the page), so the box only reports the tick. Required is the standard; an event that made it optional (issue 558) has a page that works
+ * without the tick and marks the sentence "(optional)".
  */
 export interface WhoAreYouAcceptance {
   sentence: SentencePart[];
+  /** False when the event made the acceptance optional: nothing waits for the tick. Missing or true: everything waits for it, as it always did. */
+  required?: boolean;
   /** Ticked already (the user came back to this page after accepting). */
   checked: boolean;
   onChange: (checked: boolean) => void;
@@ -85,7 +88,8 @@ export default function WhoAreYouPage({
   const [errors, setErrors] = useState<{ name?: string; email?: string }>({});
   // With the acceptance on this page nothing works until its box is ticked.
   const [accepted, setAccepted] = useState(acceptance?.checked === true);
-  const locked = acceptance !== undefined && !accepted;
+  const acceptanceRequired = acceptance?.required !== false;
+  const locked = acceptance !== undefined && acceptanceRequired && !accepted;
 
   // At least one way to say who you are stays on (planning item 36); an empty text falls back to its default.
   const { sso: enableSSOLogin, form: enablePseudoReg } = loginOptions(config);
@@ -147,7 +151,7 @@ export default function WhoAreYouPage({
               setAccepted(event.currentTarget.checked);
               acceptance.onChange(event.currentTarget.checked);
             }}
-            aria-required
+            {...(acceptanceRequired ? { 'aria-required': true } : {})}
             label={
               <span style={{ fontSize: '0.75rem', lineHeight: 1.35 }}>
                 {acceptance.sentence.map((part, index) =>
@@ -160,6 +164,7 @@ export default function WhoAreYouPage({
                     <span key={index}>{part.text}</span>
                   )
                 )}
+                {acceptanceRequired ? null : <span style={{ marginLeft: 6, opacity: 0.75 }}>{t('accept.optional')}</span>}
               </span>
             }
           />
