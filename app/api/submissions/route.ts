@@ -20,6 +20,9 @@ import { ensureScreenPicture } from '@/lib/submissions/screen-picture';
 import { sanitizeFrameVariant, type RecordedFrameVariant } from '@/lib/frame/capture';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
 import { effectiveGalleryConsent, galleryChoice } from '@/lib/events/gallery-consent';
+import { effectiveCheckboxes } from '@/lib/events/checkbox-settings';
+import { mayRefuse, missingRequiredConsent, type GuardEvent } from '@/lib/events/consent-guard';
+import { eventGetsDefaults, getDefaultsRollout } from '@/lib/admin/defaults-rollout';
 import { guestIdentity, newShareToken, storePendingPhoto } from '@/lib/photo-vetting/pending';
 import {
   COLLECTIONS,
@@ -182,15 +185,31 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const db = await connectToDatabase();
   const vettingEvent =
     typeof eventId === 'string' && eventId.trim()
-      ? ((await db.collection(COLLECTIONS.EVENTS).findOne(buildEventLookupFilterByIdentifier(eventId), { projection: { photoVetting: 1, galleryConsent: 1, partnerId: 1 } })) as { _id: unknown; photoVetting?: { required?: unknown }; galleryConsent?: unknown; partnerId?: unknown } | null)
+      ? ((await db.collection(COLLECTIONS.EVENTS).findOne(buildEventLookupFilterByIdentifier(eventId), {
+          projection: { photoVetting: 1, galleryConsent: 1, partnerId: 1, consentSettings: 1, acceptanceOnWhoAreYou: 1, customPages: 1, journeyDefaults: 1, defaultPageOrders: 1 },
+        })) as (GuardEvent & { _id: unknown; galleryConsent?: unknown; partnerId?: unknown; journeyDefaults?: unknown }) | null)
       : null;
   const vetted = photoVettingRequired(vettingEvent);
-  // Whether the event asks for the user's own permission to show the photo in the public gallery (issue 554): from the event's setting and its partner's, never from what the page says it asked.
-  const gallerySettingPartner =
-    vettingEvent && typeof vettingEvent.galleryConsent !== 'boolean' && typeof vettingEvent.partnerId === 'string' && vettingEvent.partnerId
-      ? ((await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: vettingEvent.partnerId }, { projection: { galleryConsent: 1 } })) as { galleryConsent?: unknown } | null)
+  // The partner's defaults for the public gallery permission and the other checkbox settings (issues 554 and 558): read from the event's partner, never from what the page says it asked.
+  const settingsPartner =
+    vettingEvent && typeof vettingEvent.partnerId === 'string' && vettingEvent.partnerId
+      ? ((await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: vettingEvent.partnerId }, { projection: { galleryConsent: 1, acceptanceOnWhoAreYou: 1, consentSettings: 1 } })) as { galleryConsent?: unknown; acceptanceOnWhoAreYou?: unknown; consentSettings?: unknown } | null)
       : null;
-  const gallerySetting = effectiveGalleryConsent(vettingEvent, gallerySettingPartner);
+  // Whether the event asks for the user's own permission to show the photo in the public gallery (issue 554): from the event's setting and its partner's, never from what the page says it asked.
+  const gallerySetting = effectiveGalleryConsent(vettingEvent, settingsPartner);
+  const galleryRequired = effectiveCheckboxes(vettingEvent, settingsPartner).gallery.checked;
+
+  // A consent an editor chose to require must be there (issue 558, owner answer 297: the page is never the only guard): refused before anything is uploaded. Nothing is read or checked for an event
+  // that chose nothing, so the standard requirements stay what they were, enforced by the page only (lib/events/consent-guard.ts).
+  if (vettingEvent && mayRefuse(vettingEvent, settingsPartner)) {
+    const refusal = missingRequiredConsent(
+      vettingEvent,
+      settingsPartner,
+      { consents: Array.isArray(consents) ? consents : [], shareOptIn, publicGalleryConsentVersion },
+      { consentDefault: eventGetsDefaults(vettingEvent, await getDefaultsRollout(db)), vettingRequired: vetted },
+    );
+    if (refusal) throw apiBadRequest(refusal);
+  }
 
     // Check the claimed full-frame original before anything is uploaded or stored (camera#210).
     // A claim outside this event's folder of our own Blob store, or not a JPEG of an allowed size,
@@ -281,7 +300,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           throw apiBadRequest('consent pageType must be "accept" or "cta"');
         }
         
-        if (consent.accepted !== true) {
+        // A record says "not ticked" only for an optional checkbox that was shown and left unticked (issue 558): it says so itself with required=false. Every other record is a ticked box, as it always was.
+        const optional = consent.required === false;
+        if (consent.accepted !== true && !(optional && consent.accepted === false)) {
           throw apiBadRequest('All consents must have accepted=true');
         }
 
@@ -291,11 +312,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           checkboxText: String(consent.checkboxText),
           ...(safeLinkUrl(consent.linkUrl) ? { linkUrl: safeLinkUrl(consent.linkUrl) } : {}),
           ...(typeof consent.shownText === 'string' && consent.shownText.trim() ? { shownText: consent.shownText.trim().slice(0, 600) } : {}),
-          accepted: true,
+          accepted: consent.accepted === true,
           acceptedAt:
             typeof consent.acceptedAt === 'string' && consent.acceptedAt.trim()
               ? consent.acceptedAt
               : new Date().toISOString(),
+          ...(optional ? { required: false as const } : {}),
         });
       }
     }
@@ -303,7 +325,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     // A vetted event needs to know who the guest is (the approval email goes there) and keeps the plain photo privately.
     const createdAt = new Date().toISOString();
     // What the request and the event's setting make of the public gallery choice: `shareOptIn` (eligible for the wall) and the evidence of a ticked box.
-    const wall = galleryChoice(gallerySetting, { shareOptIn, publicGalleryConsentVersion }, createdAt);
+    const wall = galleryChoice(gallerySetting, { shareOptIn, publicGalleryConsentVersion }, createdAt, galleryRequired);
     let identity: ReturnType<typeof guestIdentity> = null;
     let pendingPhoto: Awaited<ReturnType<typeof storePendingPhoto>> | null = null;
     if (vetted) {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { GALLERY_CONSENT_VERSION, effectiveGalleryConsent, galleryChoice, parseGalleryConsent } from './gallery-consent';
+import { GALLERY_CONSENT_VERSION, effectiveGalleryConsent, galleryChoice, galleryTicked, parseGalleryConsent } from './gallery-consent';
 
 test('an event asks when it says so, else when its partner does, else it does not (the terms cover it); anything that is not a true or false is no choice', () => {
   assert.equal(effectiveGalleryConsent(null), false);
@@ -35,4 +35,14 @@ test('when the event does not ask the page decides as it always did, and a ticke
   assert.deepEqual(galleryChoice(false, { shareOptIn: false }, now), { shareOptIn: false, consent: null });
   assert.deepEqual(galleryChoice(false, {}, now), { shareOptIn: false, consent: null }, 'a request that omits it stores false, as before');
   assert.deepEqual(galleryChoice(false, { shareOptIn: true, publicGalleryConsentVersion: 1 }, now), { shareOptIn: true, consent: { version: 1, grantedAt: now } });
+});
+
+test('a required permission leaves evidence that says it was required; an optional one leaves the evidence it always did', () => {
+  const now = '2026-10-10T18:00:00.000Z';
+  assert.deepEqual(galleryChoice(true, { shareOptIn: true, publicGalleryConsentVersion: 1 }, now, true), { shareOptIn: true, consent: { version: 1, grantedAt: now, required: true } });
+  assert.deepEqual(galleryChoice(true, { shareOptIn: true, publicGalleryConsentVersion: 1 }, now, false), { shareOptIn: true, consent: { version: 1, grantedAt: now } });
+  assert.deepEqual(galleryChoice(false, { shareOptIn: true, publicGalleryConsentVersion: 1 }, now, true), { shareOptIn: true, consent: { version: 1, grantedAt: now } }, 'an event that does not ask has nothing to require');
+  assert.equal(galleryTicked({ shareOptIn: true, publicGalleryConsentVersion: 1 }), true);
+  assert.equal(galleryTicked({ shareOptIn: true }), false);
+  assert.equal(galleryTicked({ shareOptIn: false, publicGalleryConsentVersion: 1 }), false);
 });

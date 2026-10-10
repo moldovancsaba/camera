@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import type { CustomPage } from '@/lib/db/schemas';
 import { DEFAULT_CONSENT_CHECKBOXES, DEFAULT_CONSENT_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, defaultConsentPage, defaultWelcomePage, hasConsentPageBeforePhoto, withDefaultJourneyPages } from './default-pages';
 import { DEFAULT_IDENTITY_PAGE_ID } from './identity-page';
+import { documentSettings, effectiveCheckboxes } from './checkbox-settings';
 
 const page = (pageType: string, order: number, isActive = true, pageId = `${pageType}-${order}`): CustomPage =>
   ({ pageId, pageType, order, isActive, config: { title: pageType, description: '', buttonText: 'Next' }, createdAt: 'x', updatedAt: 'x' }) as unknown as CustomPage;
@@ -106,4 +107,24 @@ test('the default welcome page carries no picture of its own (the capture page f
   assert.equal((en.config as { buttonText: string }).buttonText, 'Start');
   const hu = defaultWelcomePage(-3, OPTIONS.now, 'hu');
   assert.equal((hu.config as { buttonText: string }).buttonText, 'Indítás');
+});
+
+// The settings of the three documents (issue 558, owner answer 297).
+test('the default consent page follows the settings of its three documents: one switched off is left out, one optional says so, one an editor chose to require says so', () => {
+  const docs = documentSettings(effectiveCheckboxes({ consentSettings: { terms: { shown: true, required: true }, cookies: { shown: false }, privacy: { shown: true, required: false } } }, null));
+  const list = (defaultConsentPage(0, OPTIONS.now, 'en', undefined, docs).config as { checkboxes: Array<Record<string, unknown>> }).checkboxes;
+  assert.deepEqual(list, [
+    { text: 'I accept the Terms and conditions', linkUrl: 'https://seyuselfies.com/en/legal/terms', required: true },
+    { text: 'I have read the Privacy policy', linkUrl: 'https://seyuselfies.com/en/policies', required: false },
+  ]);
+});
+
+test('with all three documents switched off there is nothing to accept: no default consent page is added, and an own one is still kept', () => {
+  const docs = documentSettings(effectiveCheckboxes({ consentSettings: { terms: { shown: false }, cookies: { shown: false }, privacy: { shown: false } } }, null));
+  const own = [page('take-photo', 0)];
+  assert.deepEqual(sequence(withDefaultJourneyPages(own, { vettingRequired: true, consentDefault: true, documents: docs, ...OPTIONS })), [DEFAULT_IDENTITY_PAGE_ID, 'take-photo-0']);
+  const withOwn = [page('accept', -1), page('take-photo', 0)];
+  assert.deepEqual(sequence(withDefaultJourneyPages(withOwn, { vettingRequired: false, consentDefault: true, documents: docs, ...OPTIONS })), ['accept--1', 'take-photo-0']);
+  const two = documentSettings(effectiveCheckboxes({ consentSettings: { terms: { shown: false }, cookies: { shown: false } } }, null));
+  assert.ok(sequence(withDefaultJourneyPages(own, { vettingRequired: false, consentDefault: true, documents: two, ...OPTIONS })).includes(DEFAULT_CONSENT_PAGE_ID), 'one document left: the page is there');
 });

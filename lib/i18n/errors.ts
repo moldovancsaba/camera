@@ -12,6 +12,8 @@ const KNOWN: ReadonlyArray<readonly [needle: string, key: MessageKey]> = [
   ['Frame not found', 'err.frameNotFound'],
   ['userInfo must include both name and email', 'err.nameAndEmail'],
   ['All consents must have accepted=true', 'err.consent'],
+  ['A required consent is missing', 'err.consentRequired'],
+  ['The permission to show the photo in the public gallery is required', 'err.galleryRequired'],
   ['An email or a login is required', 'err.emailOrLogin'],
   ['The photo could not be stored', 'err.notStored'],
   ['The photo must be a JPEG, PNG or WebP image', 'err.imageType'],

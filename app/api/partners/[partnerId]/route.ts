@@ -27,6 +27,7 @@ import { parsePartnerBrandDefaults } from '@/lib/events/brand-colours';
 import { UI_LANGUAGES, isUiLanguage } from '@/lib/i18n';
 import { parseCameraMode } from '@/lib/camera/mode';
 import { parseGalleryConsent } from '@/lib/events/gallery-consent';
+import { parseCheckboxSettings } from '@/lib/events/checkbox-settings';
 import { parseLogoDefaults, type LogoDefault } from '@/lib/library/logos';
 
 export const GET = withErrorHandler(async (
@@ -97,6 +98,8 @@ export const PATCH = withErrorHandler(async (
     uiLanguage,
     cameraMode,
     galleryConsent,
+    acceptanceOnWhoAreYou,
+    consentSettings,
   } = body;
 
   const updates: Record<string, unknown> = {
@@ -131,6 +134,17 @@ export const PATCH = withErrorHandler(async (
     const parsed = parseGalleryConsent(galleryConsent);
     if (!parsed.ok) throw apiBadRequest(parsed.error);
     updates.galleryConsent = parsed.value;
+  }
+  // The partner's default for the acceptance sentence on the Who-are-you page (issue 558) and for the shown and required settings of the other checkboxes (lib/events/checkbox-settings.ts); an event that
+  // made no choice of its own follows them. Null takes the default away (the standard).
+  if (acceptanceOnWhoAreYou !== undefined) {
+    if (acceptanceOnWhoAreYou !== null && typeof acceptanceOnWhoAreYou !== 'boolean') throw apiBadRequest('acceptanceOnWhoAreYou must be true, false or null');
+    updates.acceptanceOnWhoAreYou = acceptanceOnWhoAreYou;
+  }
+  if (consentSettings !== undefined) {
+    const parsed = parseCheckboxSettings(consentSettings);
+    if (!parsed.ok) throw apiBadRequest(parsed.error);
+    updates.consentSettings = parsed.value;
   }
   // The default colours of the partner's events (camera#380): by default none, so the events follow messmass; only a colour somebody picked is stored.
   let brandDefaults: ReturnType<typeof parsePartnerBrandDefaults> | undefined;
