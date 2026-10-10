@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — vetting: marking is required on the Waiting cards and on the server too (issue 542; owner answer 267, "deliver it now")
+
+- **Owner:** answer 267 to the question whether the Approve and Reject buttons on the cards should require marking too: "deliver it now".
+- **Changed:** with marking on for the event, the cards of the **Waiting** list have one button, **Review**, which opens the big view at that photo (`?photo=<id>`, the other waiting photos follow oldest first); the quick **Approve** and **Reject**, the checkboxes, **Select all** and **Approve selected** are gone from that list; **Review one by one** is on the top line. **The server refuses too:** `POST /api/admin/submissions/<id>/review` answers 409 ("Mark the people in this photo first (or say nobody is in it): open it with Review.") for a first decision of a waiting photo that has no `peopleReview`, so an old open page or another client cannot skip the marking.
+- **Not changed, on purpose:** the **Rejected** list keeps its **Approve** (a photo decided before, maybe before marking existed, can be approved again); an event whose marking switch is off keeps the quick buttons and the bulk approval as they were.
+- **Effect on the live event:** the MTK x Vasas event has vetting and marking on, so its approvers now decide each waiting photo in the big view (no bulk approval) from this release.
+- **Verified:** type-check; lint; unit tests (the route refuses an unmarked waiting photo for approve and reject and decides nothing, lets a marked one through, lets an event with marking off and a rejected photo through); the Waiting list in a browser harness at desktop and phone size (Review on every card with its link to the right photo, no quick buttons or selection, marking off as before, the Rejected list keeps Approve: 11 of 11); the full CI chain.
+- **Not done:** a start at a chosen photo in the big view is checked by reading the code and the link, not clicked through against a real queue.
+
 ## v12.3.41 — fleet release 2026-10-10 (owner answer 265)
 
 - **Version:** camera, messmass, fanmass and try-on rise to 12.3.41 in one coordinated change (savetheworld has carried it since 2026-10-05; `docs/_audit/fleet-version-policy.md` in messmass). Each earlier "Unreleased" entry below is part of this release; the headline items since 12.3.40 are: marking the people in each photo at vetting (on for every event, required in the big view; scarf, cap, jersey, flag), the camera mode setting for partners and events, hiding a picture that cannot be shown everywhere, the order of the journey pages and the Take Photo + Submit pair, the sample selfies and the photo window of the welcome page screen, the acceptance on the Who-are-you page, the activity log, the brick model with the text levels, the default slideshow and the e-mail format.

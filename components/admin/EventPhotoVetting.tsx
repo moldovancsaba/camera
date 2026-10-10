@@ -76,7 +76,7 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
               );
             })}
           </nav>
-          <PhotoReviewQueue key={status} status={status} initialItems={items} canReview />
+          <PhotoReviewQueue key={status} status={status} initialItems={items} canReview markPeopleEventId={required && markPeopleOn(event) ? eventMongoId : undefined} />
         </>
       ) : null}
     </Stack>
