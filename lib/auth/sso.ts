@@ -11,6 +11,17 @@
 
 import crypto from 'crypto';
 import type { NextRequest } from 'next/server';
+import { fetchBounded, logOutbound } from '@/lib/observability/outbound';
+
+/**
+ * Deadlines of the outbound calls on the login path (issue 178). A peer that does not answer ends the call with a
+ * `TimeoutError` instead of holding the user's request until the platform kills it.
+ * - Token exchange: the login cannot go on without it, and SSO may be cold, so it gets the most room; on timeout the
+ *   callback shows its normal "sign-in failed" page with a message that names the call.
+ * - Userinfo: only fills in a missing e-mail; the callback already carries on without it when it fails.
+ */
+export const SSO_TOKEN_EXCHANGE_TIMEOUT_MS = 10_000;
+export const SSO_USERINFO_TIMEOUT_MS = 5_000;
 
 /**
  * Get SSO configuration with validation
@@ -244,7 +255,8 @@ export function getAuthorizationUrl(
 export async function exchangeCodeForToken(
   code: string,
   redirectUri: string,
-  codeVerifier?: string
+  codeVerifier?: string,
+  timeoutMs: number = SSO_TOKEN_EXCHANGE_TIMEOUT_MS
 ): Promise<TokenResponse> {
   const config = SSO_CONFIG();
   const endpoints = SSO_ENDPOINTS();
@@ -267,13 +279,21 @@ export async function exchangeCodeForToken(
     params.set('client_secret', secret);
   }
 
-  const response = await fetch(endpoints.token, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+  const started = Date.now();
+  const response = await fetchBounded(
+    'sso.token_exchange',
+    'SSO token exchange',
+    endpoints.token,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
     },
-    body: params.toString(),
-  });
+    timeoutMs
+  );
+  logOutbound('sso.token_exchange', response.ok ? 'ok' : 'refused', { status: response.status, durationMs: Date.now() - started, timeoutMs });
 
   if (!response.ok) {
     const error = await response.text();
@@ -335,14 +355,22 @@ export function decodeIdToken(idToken: string): SSOUser {
 /**
  * OIDC UserInfo (`/api/oauth/userinfo`). Use when ID token lacks email (e.g. federated login).
  */
-export async function getUserInfo(accessToken: string): Promise<SSOUser> {
+export async function getUserInfo(accessToken: string, timeoutMs: number = SSO_USERINFO_TIMEOUT_MS): Promise<SSOUser> {
   const endpoints = SSO_ENDPOINTS();
 
-  const response = await fetch(endpoints.userinfo, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
+  const started = Date.now();
+  const response = await fetchBounded(
+    'sso.userinfo',
+    'SSO userinfo',
+    endpoints.userinfo,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     },
-  });
+    timeoutMs
+  );
+  logOutbound('sso.userinfo', response.ok ? 'ok' : 'refused', { status: response.status, durationMs: Date.now() - started, timeoutMs });
 
   if (!response.ok) {
     const error = await response.text();
@@ -402,19 +430,23 @@ export async function revokeToken(
     client_id: config.clientId,
   });
 
-  const response = await fetch(endpoints.revoke, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+  const started = Date.now();
+  const response = await fetchBounded(
+    'sso.token_revoke',
+    'SSO token revoke',
+    endpoints.revoke,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
     },
-    body: params.toString(),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+    timeoutMs
+  );
 
-  if (!response.ok) {
-    console.error('Token revocation failed:', response.status);
-    // Don't throw - revocation failure shouldn't block logout
-  }
+  // Don't throw on a refusal - revocation failure shouldn't block logout. The line says which kind of token (never its value).
+  logOutbound('sso.token_revoke', response.ok ? 'ok' : 'refused', { status: response.status, durationMs: Date.now() - started, timeoutMs, tokenType: tokenTypeHint });
 }
 
 /**

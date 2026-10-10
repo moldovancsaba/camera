@@ -16,6 +16,8 @@
  * partner it creates), so a partner synced messmass -> camera can never
  * round-trip back.
  */
+import { fetchBounded, logOutbound } from '@/lib/observability/outbound';
+
 function base(): string {
   return (process.env.MESSMASS_BASE_URL || '').replace(/\/$/, '');
 }
@@ -31,6 +33,11 @@ export function messmassConfigured(): boolean {
 //     is treated like any other failure (null, no messmass session).
 const SSO_SESSION_PUSH_TIMEOUT_MS = 3000;
 
+// WHY: a partner create or update waits for this push, but the partner is already saved and a cold messmass can take
+//     longer than the login push is allowed; so a more generous, still fixed, deadline. On timeout the partner is
+//     simply not linked yet and the next update pushes it again (issue 178).
+export const PARTNER_PUSH_TIMEOUT_MS = 8000;
+
 /**
  * WHAT: Best-effort cross-app login -- forwards the SSO tokens camera just
  *     received to messmass's /api/integrations/camera/sso-session, which
@@ -43,6 +50,11 @@ const SSO_SESSION_PUSH_TIMEOUT_MS = 3000;
  *     together they make login from EITHER app cover both, as long as
  *     SESSION_COOKIE_DOMAIN=.messmass.com is set here so camera_session is
  *     itself visible on messmass's host too.
+ *
+ * Every attempt writes one `messmass.session_push` log line with its outcome (issue 178), so the keep-or-drop
+ * decision has numbers: `ok` (messmass sent a session cookie), `empty` (it answered 2xx but sent none),
+ * `refused` (an error status such as the expected 403 for a user without messmass access), `timeout` and `failed`.
+ * The line holds the status and the time taken, never a token, a cookie or the user.
  */
 export async function pushSsoSessionToMessmass(
   tokens: {
@@ -53,50 +65,89 @@ export async function pushSsoSessionToMessmass(
   timeoutMs: number = SSO_SESSION_PUSH_TIMEOUT_MS
 ): Promise<string[] | null> {
   if (!messmassConfigured()) return null;
+  const started = Date.now();
   try {
-    const res = await fetch(`${base()}/api/integrations/camera/sso-session`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-camera-secret': token(),
-        authorization: `Bearer ${token()}`,
+    const res = await fetchBounded(
+      'messmass.session_push',
+      'messmass session push',
+      `${base()}/api/integrations/camera/sso-session`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-camera-secret': token(),
+          authorization: `Bearer ${token()}`,
+        },
+        body: JSON.stringify({
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token,
+          expiresIn: tokens.expires_in,
+        }),
       },
-      body: JSON.stringify({
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
-        expiresIn: tokens.expires_in,
-      }),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!res.ok) return null;
+      timeoutMs
+    );
+    const durationMs = Date.now() - started;
+    if (!res.ok) {
+      logOutbound('messmass.session_push', 'refused', { status: res.status, durationMs, timeoutMs });
+      return null;
+    }
     const cookies = typeof res.headers.getSetCookie === 'function' ? res.headers.getSetCookie() : [];
-    return cookies.length ? cookies : null;
+    // A 2xx without a cookie is not a session: it is counted apart so "ok" means a user really got one.
+    if (!cookies.length) {
+      logOutbound('messmass.session_push', 'empty', { status: res.status, durationMs, timeoutMs });
+      return null;
+    }
+    logOutbound('messmass.session_push', 'ok', { status: res.status, durationMs, timeoutMs, cookies: cookies.length });
+    return cookies;
   } catch {
+    // fetchBounded has already logged the timeout or the failure.
     return null;
   }
 }
 
-export async function pushPartnerToMessmass(input: {
-  cameraPartnerId: string;
-  name: string;
-  logoUrl?: string;
-}): Promise<{ id: string } | null> {
+/**
+ * Pushes one camera-native partner to messmass and returns the id messmass gave it, or null when messmass is
+ * unconfigured, unreachable, slow (`PARTNER_PUSH_TIMEOUT_MS`) or refuses. Never throws. One `messmass.partner_push`
+ * log line per attempt: the outcome, status and time, and the camera partner id (a technical id; no name, no logo address).
+ */
+export async function pushPartnerToMessmass(
+  input: {
+    cameraPartnerId: string;
+    name: string;
+    logoUrl?: string;
+  },
+  timeoutMs: number = PARTNER_PUSH_TIMEOUT_MS
+): Promise<{ id: string } | null> {
   if (!messmassConfigured()) return null;
+  const started = Date.now();
   try {
-    const res = await fetch(`${base()}/api/integrations/camera/partners`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-camera-secret': token(),
-        authorization: `Bearer ${token()}`,
+    const res = await fetchBounded(
+      'messmass.partner_push',
+      'messmass partner push',
+      `${base()}/api/integrations/camera/partners`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-camera-secret': token(),
+          authorization: `Bearer ${token()}`,
+        },
+        body: JSON.stringify(input),
       },
-      body: JSON.stringify(input),
-    });
-    if (!res.ok) return null;
+      timeoutMs
+    );
+    const durationMs = Date.now() - started;
+    const partnerId = input.cameraPartnerId;
+    if (!res.ok) {
+      logOutbound('messmass.partner_push', 'refused', { status: res.status, durationMs, timeoutMs, partnerId });
+      return null;
+    }
     const json = (await res.json().catch(() => ({}))) as { partner?: { id?: string } };
     const id = json?.partner?.id;
+    logOutbound('messmass.partner_push', 'ok', { status: res.status, durationMs, timeoutMs, partnerId, linked: typeof id === 'string' && Boolean(id) });
     return typeof id === 'string' && id ? { id } : null;
   } catch {
+    // fetchBounded has already logged the timeout or the failure.
     return null;
   }
 }
