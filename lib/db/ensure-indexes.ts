@@ -209,27 +209,6 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
         { name: 'submissions_kind_review_createdAt' }
       )
   );
-  await track(COLLECTIONS.SUBMISSIONS, () =>
-    db
-      .collection(COLLECTIONS.SUBMISSIONS)
-      .createIndex(
-        { sourceSubmissionId: 1, reviewStatus: 1, createdAt: -1 },
-        { name: 'submissions_sourceSubmission_review_createdAt' }
-      )
-  );
-  await track(COLLECTIONS.SUBMISSIONS, () =>
-    db
-      .collection(COLLECTIONS.SUBMISSIONS)
-      .createIndex(
-        { submissionKind: 1, 'tryOnModerationArchive.archived': 1, 'tryOnModerationArchive.bucket': 1, createdAt: -1 },
-        { name: 'submissions_tryonModerationArchive_createdAt' }
-      )
-  );
-  await track(COLLECTIONS.SUBMISSIONS, () =>
-    db
-      .collection(COLLECTIONS.SUBMISSIONS)
-      .createIndex({ sourceJobId: 1 }, { sparse: true, unique: true, name: 'submissions_sourceJobId_unique' })
-  );
   // The photo moderation queue of an event (camera#268).
   await track(COLLECTIONS.SUBMISSIONS, () =>
     db
@@ -292,22 +271,6 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
   // --- picture health (issue 514): the guest pages read the few broken addresses on every request, so that lookup is by the flag ---
   await track(COLLECTIONS.PICTURE_HEALTH, () => db.collection(COLLECTIONS.PICTURE_HEALTH).createIndex({ broken: 1 }, { name: 'picture_health_broken' }));
 
-  // --- try-on moderation audit ---
-  await track(COLLECTIONS.TRYON_MODERATION_EVENTS, () =>
-    db
-      .collection(COLLECTIONS.TRYON_MODERATION_EVENTS)
-      .createIndex({ eventId: 1 }, { unique: true, name: 'tryon_moderation_events_eventId_unique' })
-  );
-  await track(COLLECTIONS.TRYON_MODERATION_EVENTS, () =>
-    db
-      .collection(COLLECTIONS.TRYON_MODERATION_EVENTS)
-      .createIndex({ resultSubmissionId: 1, createdAt: -1 }, { name: 'tryon_moderation_events_result_createdAt' })
-  );
-  await track(COLLECTIONS.TRYON_MODERATION_EVENTS, () =>
-    db
-      .collection(COLLECTIONS.TRYON_MODERATION_EVENTS)
-      .createIndex({ action: 1, createdAt: -1 }, { name: 'tryon_moderation_events_action_createdAt' })
-  );
   await track(COLLECTIONS.TRYON_JOBS, () =>
     db
       .collection(COLLECTIONS.TRYON_JOBS)

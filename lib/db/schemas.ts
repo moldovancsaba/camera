@@ -46,8 +46,6 @@ export const COLLECTIONS = {
   EMAIL_REGISTRATIONS: 'email_registrations',
   LEATHER_SUITS: 'leather_suits',
   TRYON_JOBS: 'tryon_jobs',
-  TRYON_WORKER_HEARTBEATS: 'tryon_worker_heartbeats',
-  TRYON_MODERATION_EVENTS: 'tryon_moderation_events',
   TRYON_SETUPS: 'tryon_setups',
   CAMERA_SETUP_PREFERENCES: 'camera_setup_preferences',
   USERS_CACHE: 'users_cache',
@@ -411,24 +409,14 @@ export interface Event {
     submissionResultEmailBody?: string | null; // Optional legacy event-level plain-text body template (fallback)
     submissionResultEmailSubjectAfterSave?: string | null; // Optional event-level subject template for "send after save"
     submissionResultEmailBodyAfterSave?: string | null; // Optional event-level body template for "send after save"
-    submissionResultEmailSubjectAfterRelatedPhotosReady?: string | null; // Optional event-level subject template for "send after related photos"
-    submissionResultEmailBodyAfterRelatedPhotosReady?: string | null; // Optional event-level body template for "send after related photos"
-    submissionResultEmailSubjectAfterTryOnResubmissionApproved?: string | null; // Optional event-level subject template for approved rerun update
-    submissionResultEmailBodyAfterTryOnResubmissionApproved?: string | null; // Optional event-level body template for approved rerun update
     submissionResultEmailSenderName?: string | null; // Display name shown in the Resend From header
     termsUrl?: string | null; // Event-specific General Terms and Conditions / Privacy Policy URL for email templates
     submissionResultEmailSendAfterSave: boolean; // Send immediately after submission save
-    submissionResultEmailSendAfterRelatedPhotosReady: boolean; // Send when related share photos are available
-    submissionResultEmailSendAfterTryOnResubmissionApproved?: boolean; // Send when a resubmitted try-on result is approved
+    // Documents may still hold the keys of the removed related-photos and try-on re-submission e-mails; nothing reads them, and a save drops them (issue 557, docs/TRYON_REMOVED.md).
   };
   sharePage?: {
-    includeOriginalCapture?: boolean; // Raw camera image before frame composition, when available
-    includeCameraResult?: boolean; // Camera result saved by the capture flow, usually with frame
-    includeTryOnResult?: boolean; // Approved raw try-on result, when available
-    includeFramedTryOnResult?: boolean; // Approved try-on result with Camera frame applied, when available
-    includeCheckedInTryOnResult?: boolean; // Approved checked-in try-on result to prioritize on share pages
+    // Documents may still hold the keys of the removed try-on pictures (`includeTryOnResult`, `pendingTryOnMessage`, ...); nothing reads them, and a save drops them.
     showCreateYourOwnButton?: boolean; // Whether the share page displays a "Create Your Own" CTA back to capture
-    pendingTryOnMessage?: string | null; // Message shown on share page while requested try-on result is not available
   };
   
   // Frame assignments
@@ -744,34 +732,6 @@ export interface SubmissionTryOnRequestState {
   lastError?: string | null;
 }
 
-export type TryOnArchiveReason =
-  | 'approved'
-  | 'manual_reject'
-  | 'service_photo'
-  | 'quality_rerun_superseded';
-
-export type TryOnIdentityClassificationStatus =
-  | 'source_recoverable'
-  | 'manual_corrected'
-  | 'reviewed_unrecoverable';
-
-export interface TryOnIdentityClassification {
-  status: TryOnIdentityClassificationStatus;
-  reviewedAt?: string | null;
-  reviewedBy?: string | null;
-  reason?: string | null;
-}
-
-export interface TryOnModerationArchiveState {
-  archived: boolean;
-  bucket?: 'approved' | 'rejected' | 'service' | null;
-  archivedAt?: string | null;
-  archivedBy?: string | null;
-  reason?: TryOnArchiveReason | null;
-  supersededByJobId?: string | null;
-  supersededAt?: string | null;
-}
-
 /**
  * Submission Document Interface
  * Represents a user photo submission with complete metadata
@@ -824,12 +784,9 @@ export interface Submission {
   imageId?: string | null;           // ImgBB image id when returned by upload API
   fileSize?: number | null;          // Current top-level file size mirror used by some admin tools
   mimeType?: string | null;          // Current top-level mime type mirror used by some admin tools
-  submissionKind?: 'original' | 'tryon_result'; // Publication kind for originals vs derived AI outputs
+  submissionKind?: 'original' | 'tryon_result'; // 'tryon_result' = a stored picture of the removed try-on integration: kept, never public (lib/submissions/visibility.ts); missing = an original
   sourceSubmissionId?: string | null; // Mongo _id string of the originating submission for derived try-on results
   sourceJobId?: string | null;       // Queue job that produced the derived try-on result
-  tryOnLeatherSuitId?: string | null; // Canonical leather suit selection used for generation
-  tryOnPipeline?: string | null;     // Processor pipeline name
-  tryOnPipelineVersion?: string | null; // Processor pipeline version for debugging/audit
   tryOnRequest?: SubmissionTryOnRequestState | null; // Original-submission try-on intent and lifecycle tracking
   reviewStatus?: 'pending_review' | 'approved' | 'rejected'; // Moderation status for generated try-on results
   reviewedAt?: string | null;
@@ -860,7 +817,6 @@ export interface Submission {
   reviewHistory?: Array<{ action: 'approve' | 'reject'; by: string; at: string; reason?: string | null }>;
   isShareVisible?: boolean;          // Public share-page publication flag
   isSlideshowEligible?: boolean;     // Slideshow playlist eligibility flag
-  tryOnModerationArchive?: TryOnModerationArchiveState | null; // Review-queue archive state for try-on results only
   
   // Submission details
   method: SubmissionMethod;          // Camera capture or file upload
@@ -909,13 +865,11 @@ export interface Submission {
     // Processing details
     processingTimeMs?: number;       // Time taken to process (milliseconds)
     compositionEngine?: string;      // "canvas-api" or other
-    tryOnRawResultUrl?: string | null; // Raw worker result URL when Camera stores a framed try-on derivative
     
     // Email delivery
     emailSent: boolean;              // Whether email was sent
     emailSentAfterSave?: boolean;    // Whether email was sent from "after save" policy
     emailSentAfterRelatedPhotos?: boolean; // Whether email was sent from "after related photos" policy
-    emailSentAfterTryOnResubmissionApproved?: boolean; // Whether update email was sent for an approved rerun result
     emailSendAfterRelatedPending?: boolean; // Whether related-photo email is waiting on publish readiness
     emailSentAt?: string;            // ISO 8601 timestamp
     emailRecipient?: string;         // Normalized recipient address
@@ -926,7 +880,6 @@ export interface Submission {
     emailFailedAt?: string;          // ISO 8601 timestamp if delivery failed
     emailError?: string;             // Error message if email failed
     shareUrl?: string;               // Public share URL emailed to the user
-    tryOnIdentityClassification?: TryOnIdentityClassification;
   };
   
   // Sharing and engagement
@@ -958,45 +911,6 @@ export interface Submission {
   createdAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   tryOnJobs?: SubmissionTryOnLink[]; // Optional try-on jobs linked back to this submission
-}
-
-export type TryOnModerationAction =
-  | 'approve'
-  | 'reject'
-  | 'service'
-  | 'great'
-  | 'remove_great'
-  | 'rerun'
-  | 'reframe'
-  | 'restore'
-  | 'remove';
-
-export interface TryOnModerationStateSnapshot {
-  reviewStatus?: 'pending_review' | 'approved' | 'rejected' | null;
-  archiveBucket?: 'approved' | 'rejected' | 'service' | null;
-  archived?: boolean | null;
-  shareVisible?: boolean | null;
-  slideshowEligible?: boolean | null;
-  isGreat?: boolean | null;
-  isService?: boolean | null;
-  archiveReason?: string | null;
-  archiveSupersededByJobId?: string | null;
-  archiveSupersededAt?: string | null;
-}
-
-export interface TryOnModerationEvent {
-  _id?: ObjectId;
-  eventId: string;
-  resultSubmissionId: string;
-  sourceSubmissionId: string | null;
-  sourceJobId: string | null;
-  action: TryOnModerationAction;
-  actorEmail: string;
-  createdAt: string;
-  previousState: TryOnModerationStateSnapshot;
-  nextState: TryOnModerationStateSnapshot;
-  reason?: string | null;
-  metadata?: Record<string, unknown>;
 }
 
 // ============================================================================
@@ -1194,20 +1108,6 @@ export interface TryOnJobResult {
   imgbbMirrorUrl?: string | null;
 }
 
-export interface ImageDirectTryOnExecution {
-  executionId: string;
-  requestVersion: 1;
-  result?: {
-    idempotencyKey: string;
-    publicResultUrl: string;
-    sha256: string;
-    byteLength: number;
-    mediaType: 'image/jpeg' | 'image/png' | 'image/webp';
-    pipelineVersion: string;
-    modelId: string;
-  };
-}
-
 export interface TryOnJobError {
   code?: string | null;
   message?: string | null;
@@ -1228,22 +1128,8 @@ export interface TryOnJob {
   result: TryOnJobResult;
   error: TryOnJobError;
   renderer?: 'legacy' | 'image_direct';
-  imageDirect?: ImageDirectTryOnExecution;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface TryOnWorkerHeartbeat {
-  _id?: ObjectId;
-  workerId: string;
-  workerRunning: boolean;
-  currentJobId?: string | null;
-  lastLoopAt?: string | null;
-  lastHeartbeatAt?: string | null;
-  pollIntervalSeconds?: number | null;
-  enabled?: boolean | null;
-  updatedAt: string;
-  createdAt?: string;
 }
 
 export interface SubmissionTryOnLink {
@@ -1304,10 +1190,8 @@ export interface Slideshow {
   playMode?: 'once' | 'loop';
   /** Submission order before mosaic grouping (default: fixed = least-played sort) */
   orderMode?: 'fixed' | 'random';
-  /** Source selection policy for original captures vs approved try-on outputs. */
-  submissionSourceMode?: 'originals_only' | 'approved_tryon_only' | 'originals_and_approved_tryon';
-  /** Submission _ids (as strings) manually pinned into this slideshow's rotation, in addition to whatever submissionSourceMode already matches. */
-  manualSubmissionIds?: string[];
+  // Slideshows stored before the try-on removal may hold `submissionSourceMode` and `manualSubmissionIds`; nothing reads them: a slideshow plays the
+  // approved plain photos of its event (issue 557, docs/TRYON_REMOVED.md).
   /** Two picture layers: the next picture fades in over the one before instead of replacing it (camera#476, S4b). Off until the owner has seen it. */
   crossfade?: boolean;
   /** When an admin last pressed "Reload the screen" (ISO time). Playlist answers carry it as `reloadToken`; an open full-screen player that sees a new one reloads (camera#476, S8b). */

@@ -1,5 +1,7 @@
 # camera drift register — fleet audit P3, first edition
 
+> **Written before the try-on removal (issue 557, 2026-10-10).** Where this document mentions try-on, it describes the app as it was on its date; the integration has been removed from the app, see [TRYON_REMOVED.md](../TRYON_REMOVED.md). Read those places as history.
+
 Generated 2026-08-19 against HEAD `9dff0ae` (audit at code `97c1f67`) by the
 fleet documentation audit (camera#118; method in messmass#344). Every claim
 carries file:line evidence. Verdicts: WRONG / STALE / MISSING / CURRENT.

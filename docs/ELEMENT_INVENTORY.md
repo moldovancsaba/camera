@@ -1,5 +1,7 @@
 # Element inventory: everything an event needs, and what relates to what
 
+> **Written before the try-on removal (issue 557, 2026-10-10).** Where this document mentions try-on, it describes the app as it was on its date; the integration has been removed from the app, see [TRYON_REMOVED.md](TRYON_REMOVED.md). Read those places as history.
+
 Research of 2026-10-09 (camera#412, register item 151), read from the code of `main` at 6db8dcd. **Nothing was run and nothing was changed.** It answers the owner's request to collect *all* elements needed to deliver an event (texts, graphics, anything visible on a screen, in an e-mail or in any admin screen), and to find which relates to what. The brick model that is built on it is [BUILDING_BRICKS.md](BUILDING_BRICKS.md).
 
 **477 rows in five readings** (flow 138, texts 72, graphics 108, admin editors 68, data model 91), and a sixth reading that measures how the admin screens use the design system (section F, 128 files). The same element can appear in more than one reading (the logo appears in all five); that overlap is the finding, not an error. Every row in the JSON files carries file and line references; the tables below shorten long cells (marked …). The full records are in [`_research/element-inventory/`](_research/element-inventory/).

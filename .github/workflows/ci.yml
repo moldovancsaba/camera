@@ -53,8 +53,8 @@ jobs:
       #       or built (so node_modules and .next are never in scope).
       # WHY: camera is public. GitHub push protection blocks provider-format
       #      secrets (Atlas URIs, Resend, Vercel tokens), but camera's own
-      #      shared secrets (CAMERA_*_INTERNAL_SECRET, TRYON_SETUP_SELECTION_SECRET,
-      #      SESSION_SECRET, OAUTH_PKCE_STATE_SECRET, CRON_SECRET) and the imgbb
+      #      shared secrets (CAMERA_*_INTERNAL_SECRET, SESSION_SECRET,
+      #      OAUTH_PKCE_STATE_SECRET, CRON_SECRET) and the imgbb
       #      key are random strings with no provider pattern, so nothing caught
       #      them. Same version and flags as try-on and fanmass CI (those two
       #      do not verify the tarball yet).

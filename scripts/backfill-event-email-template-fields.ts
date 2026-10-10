@@ -11,8 +11,6 @@ interface RawEvent {
     submissionResultEmailBody?: unknown;
     submissionResultEmailSubjectAfterSave?: unknown;
     submissionResultEmailBodyAfterSave?: unknown;
-    submissionResultEmailSubjectAfterRelatedPhotosReady?: unknown;
-    submissionResultEmailBodyAfterRelatedPhotosReady?: unknown;
   };
 }
 
@@ -89,14 +87,6 @@ async function main() {
 
     if (shouldFill(notifications.submissionResultEmailBodyAfterSave) && legacyBody) {
       updateSet['notifications.submissionResultEmailBodyAfterSave'] = legacyBody;
-    }
-
-    if (shouldFill(notifications.submissionResultEmailSubjectAfterRelatedPhotosReady) && legacySubject) {
-      updateSet['notifications.submissionResultEmailSubjectAfterRelatedPhotosReady'] = legacySubject;
-    }
-
-    if (shouldFill(notifications.submissionResultEmailBodyAfterRelatedPhotosReady) && legacyBody) {
-      updateSet['notifications.submissionResultEmailBodyAfterRelatedPhotosReady'] = legacyBody;
     }
 
     if (Object.keys(updateSet).length === 0) {

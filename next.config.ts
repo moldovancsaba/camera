@@ -29,8 +29,9 @@ const nextConfig: NextConfig = {
   //   Blob store and 'imgbb.com' is an open upload site, so anyone could use
   //   camera's domain (and the team's billed optimizer quota) as an image proxy
   //   for third-party content (SEC-05). The list is the measured set of hosts
-  //   in stored image URLs (submissions, try-on jobs, frames, logos, partners,
-  //   events, landing pages, slideshows, garments):
+  //   in stored image URLs (submissions, frames, logos, partners, events,
+  //   landing pages, slideshows, and the pictures the removed try-on integration
+  //   stored: jobs, results, garments, which are kept but no longer shown):
   //   - bidx0njghn1voknt.public.blob.vercel-storage.com: the only Blob store
   //     camera writes to (lib/imgbb/upload.ts put()); every Blob URL on record.
   //   - i.ibb.co: legacy primary + current best-effort mirror; still holds most
