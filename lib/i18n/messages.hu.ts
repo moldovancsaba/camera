@@ -94,6 +94,11 @@ export const hu: Record<MessageKey, string> = {
   'consent.combined.terms': 'Általános Szerződési Feltételeket',
   'consent.combined.privacy': 'Adatkezelési tájékoztatót',
   'consent.combined.cookies': 'Sütikezelési tájékoztatót',
+  // A profil az események között (issue 521, 242-es döntés, a tulajdonos 248-251-es válaszai): vázlatok, amelyeket a tulajdonos átnézői hagynak jóvá és módosítanak a Szótárban; egyelőre egy oldal sem mutatja őket.
+  'profile.consent': 'Hozzájárulok, hogy a(z) {organiser} az eseményein készült fotóimat, az e-mail-címemet és a tevékenységemet egyetlen profilba kapcsolja össze, és azt {purpose} céljából használja, amíg a hozzájárulásomat vissza nem vonom. A hozzájárulásomat bármikor visszavonhatom a(z) {link} oldalon.',
+  'profile.consent.purpose': 'a következő eseményeiről szóló hírek e-mailben való elküldése',
+  'profile.consent.link': 'profilom',
+  'profile.notice': 'Az eseményeinken készített fotóidat az e-mail-címed alatt tároljuk, hogy egy helyen megtalálhasd, letölthesd és törölhesd őket.',
   'accept.mustAccept': 'A folytatáshoz el kell fogadnod',
   'accept.newTab': '{text} (új lapon nyílik meg)',
   'login.title': 'Ki vagy te?',

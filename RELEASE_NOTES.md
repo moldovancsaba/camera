@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the profile wordings are editable Dictionary texts (issue 521, decision 242; owner answers 249 and 251, 2026-10-10)
+
+- **Owner:** the consent sentence and the notice line for profiles across events are "ordinary texts like any other"; whoever can edit validates them; "the only thing you have to care about is to deliver them and make them editable."
+- **Added:** four keys in the English and Hungarian dictionaries, in the new group **Profile across events (drafts, not shown yet)** (`lib/i18n/messages.*.ts`, `lib/i18n/catalog.ts`): `profile.consent` (placeholders `{organiser}`, `{purpose}`, `{link}`), `profile.consent.purpose`, `profile.consent.link`, `profile.notice`. They appear in the Dictionary, a partner's Texts and an event's Texts like every text, so they can be validated and changed at the three levels.
+- **Nothing shows them:** no page uses them yet; the profile, the C checkbox and the user's page come after the match (`docs/PROFILE_PURPOSE_AND_CONSENT_DRAFT.md`). The wording is the draft from that document; it is not final until the reviewers have validated it.
+- **Verified:** type-check; lint; the dictionary tests and a new test (both languages, the same placeholders, every placeholder filled, an event's own text wins). The Dictionary screen itself was not opened: the list is generated from the catalog.
+
 ## Unreleased — page editor: the default pages (welcome, consent, Who-are-you) have up and down like every page (issue 535, step 1; owner feedback 2026-10-10)
 
 - **Owner:** "there should be an up/down for the Accept/Who-are-you section as well!" The default rows of the journey list had only Customise.

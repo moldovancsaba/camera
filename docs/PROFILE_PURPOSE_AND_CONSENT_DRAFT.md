@@ -42,6 +42,6 @@ Shown as its own checkbox, **not ticked**, away from the terms checkbox; a user 
 - **251, who validates the wording: whoever can edit it.** The Admin, the editor, the event manager, anybody with the right to edit texts. They validate and update every wording; the part that is mine is to **deliver the texts and make them editable**, not to validate them.
 
 ## What this means for the build (after the match)
-1. The two wordings below become **Dictionary keys** (one for the C consent sentence, one for the A/B notice line) with the English and Hungarian defaults, so they can be validated and edited before any page shows them.
+1. **Done (2026-10-10):** the wordings are **Dictionary keys** in the group **Profile across events (drafts, not shown yet)** with the English and Hungarian defaults, editable at the global, partner and event levels: `profile.consent` (the C sentence, placeholders `{organiser}`, `{purpose}`, `{link}`), `profile.consent.purpose`, `profile.consent.link` and `profile.notice` (the A/B line). No page shows them yet; the reviewers validate and change them in the Dictionary first.
 2. The profile (link of a user's photos, events, consents and activity by verified e-mail or social login), the C checkbox, the user's page to see, export and delete it, and the 24-month deletion job come with step F of the audit's plan, after the vetting and photo tabs, and after the match.
 3. No wording is final until the reviewers have validated it in the Dictionary.
