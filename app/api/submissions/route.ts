@@ -19,6 +19,7 @@ import { runAfterResponse } from '@/lib/api/run-after-response';
 import { ensureScreenPicture } from '@/lib/submissions/screen-picture';
 import { sanitizeFrameVariant, type RecordedFrameVariant } from '@/lib/frame/capture';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
+import { effectiveGalleryConsent, galleryChoice } from '@/lib/events/gallery-consent';
 import { guestIdentity, newShareToken, storePendingPhoto } from '@/lib/photo-vetting/pending';
 import {
   COLLECTIONS,
@@ -167,6 +168,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       // isShareVisible true in bulk for an event. Only meaningful for plain ('original')
       // captures; try-on results get isShareVisible from the moderation flow.
       shareOptIn,
+      // The version of the sentence the user ticked when the event asks for the permission to show the photo in the public gallery (issue 554, lib/events/gallery-consent.ts).
+      publicGalleryConsentVersion,
     } = body;
   const tryOnRequest = normalizeTryOnRequest(body);
 
@@ -179,9 +182,15 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const db = await connectToDatabase();
   const vettingEvent =
     typeof eventId === 'string' && eventId.trim()
-      ? ((await db.collection(COLLECTIONS.EVENTS).findOne(buildEventLookupFilterByIdentifier(eventId), { projection: { photoVetting: 1 } })) as { _id: unknown; photoVetting?: { required?: unknown } } | null)
+      ? ((await db.collection(COLLECTIONS.EVENTS).findOne(buildEventLookupFilterByIdentifier(eventId), { projection: { photoVetting: 1, galleryConsent: 1, partnerId: 1 } })) as { _id: unknown; photoVetting?: { required?: unknown }; galleryConsent?: unknown; partnerId?: unknown } | null)
       : null;
   const vetted = photoVettingRequired(vettingEvent);
+  // Whether the event asks for the user's own permission to show the photo in the public gallery (issue 554): from the event's setting and its partner's, never from what the page says it asked.
+  const gallerySettingPartner =
+    vettingEvent && typeof vettingEvent.galleryConsent !== 'boolean' && typeof vettingEvent.partnerId === 'string' && vettingEvent.partnerId
+      ? ((await db.collection(COLLECTIONS.PARTNERS).findOne({ partnerId: vettingEvent.partnerId }, { projection: { galleryConsent: 1 } })) as { galleryConsent?: unknown } | null)
+      : null;
+  const gallerySetting = effectiveGalleryConsent(vettingEvent, gallerySettingPartner);
 
     // Check the claimed full-frame original before anything is uploaded or stored (camera#210).
     // A claim outside this event's folder of our own Blob store, or not a JPEG of an allowed size,
@@ -293,6 +302,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     // A vetted event needs to know who the guest is (the approval email goes there) and keeps the plain photo privately.
     const createdAt = new Date().toISOString();
+    // What the request and the event's setting make of the public gallery choice: `shareOptIn` (eligible for the wall) and the evidence of a ticked box.
+    const wall = galleryChoice(gallerySetting, { shareOptIn, publicGalleryConsentVersion }, createdAt);
     let identity: ReturnType<typeof guestIdentity> = null;
     let pendingPhoto: Awaited<ReturnType<typeof storePendingPhoto>> | null = null;
     if (vetted) {
@@ -348,7 +359,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
               photoUrl: pendingPhoto?.url ?? '',
               photoSize: pendingPhoto?.size ?? 0,
               photoMime: pendingPhoto?.mime ?? 'image/jpeg',
-              shareOptIn: shareOptIn === true,
+              shareOptIn: wall.shareOptIn,
               submittedAt: createdAt,
               tryOn: tryOnRequest.requested && tryOnRequest.leatherSuitId
                 ? {
@@ -366,7 +377,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       // Public pledge-wall visibility: true only when shareOptIn === true in the request
       // (the capture UI's checkbox defaults to checked); false otherwise. May later be
       // bulk-set to true by publish-selfies (see the shareOptIn note above).
-      isShareVisible: vetted ? false : shareOptIn === true,
+      isShareVisible: vetted ? false : wall.shareOptIn,
+      ...(wall.consent ? { publicGalleryConsent: wall.consent } : {}),
       // User info from onboarding pages (a social login gives the email without the page)
       ...(validatedUserInfo
         ? { userInfo: validatedUserInfo }

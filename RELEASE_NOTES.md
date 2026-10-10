@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the public gallery permission is a setting: partner default, event choice, in the consent page settings (issue 554; owner answer 283, replaces camera#429)
+
+- **Owner:** answer 283 on the separate consent for the public photo gallery (camera#429): "this is service and market specific, make it as an option in the settings and add it to the consent page settings".
+- **Added:** the setting **Permission to show the photo in the public gallery**: the **partner** has a default (Partner editor: Do not ask, the standard, or Ask), an **event** follows it or chooses (the consent page settings: a select at the top of the journey editor and inside the consent page's editor, the same value, saved with Save all: Same as the partner / Ask / Do not ask). When an event asks, the photo page shows **one optional checkbox, not ticked,** above Continue in the reframe step (Dictionary texts `share.publicGalleryConsent` and `share.publicGalleryConsentHelp`, English and Hungarian); only a ticked box makes the photo eligible for the wall, and it is kept as evidence (`Submission.publicGalleryConsent = { version: 1, grantedAt }`). The box is for one photo. **The server decides from the event's setting:** an event that asks gives a private photo to a request without the ticked box and the version, so an old open page cannot skip it.
+- **No event changes by this release:** no partner or event has the setting stored, so every event stays as it is (terms cover it, `shareOptIn` as the page sends it).
+- **Not taken from camera#429:** making the separate tick mandatory for every event and treating every older photo as private. #429 is closed as replaced; its Hungarian and English sentences are used as the default texts.
+- **Verified:** type-check; lint; unit tests (the rule, the four request cases, both PATCH routes, the guest answer, the submissions route: not asked, asked and ticked, asked and not ticked, an old page, the partner asking, the event choosing not to, a vetted event); the whole capture page in a browser harness on a desktop and a phone (14 of 14: no checkbox when not asked, an unticked box gives a private photo, a ticked box gives version 1, a retake clears it, it fits a phone); both editors in a browser harness (16 of 16, and the second control in the consent page's editor shows next to the first); the full CI chain.
+- **Not done:** the legal review of the wording (whoever can edit it validates it, answer 251); the old `/capture` page has no checkbox (it is not used by events); savetheworld's own pages are not changed (they read the flag this sets).
+
 ## Unreleased — vendored GDS 6.3.0 → 6.8.0 (camera#184)
 
 - **Changed:** the five vendored `@sovereignsquad/gds-*` packages (`gds-core`, `gds-theme`, `gds-admin`, `gds-compliance`, `gds-eslint-config`) move

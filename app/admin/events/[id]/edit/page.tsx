@@ -112,6 +112,9 @@ interface EventRecord {
   /** The event's own camera mode (issue 547); `effectiveCameraMode` is what the event uses (its own, else its partner's, else the standard). */
   cameraMode?: string | null;
   effectiveCameraMode?: string | null;
+  /** The event's own choice on asking for the permission to show a photo in the public gallery (issue 554) and what it does now (its own, else its partner's, else not). */
+  galleryConsent?: boolean | null;
+  effectiveGalleryConsent?: boolean;
   sharePage?: {
     includeOriginalCapture?: boolean;
     includeCameraResult?: boolean;
@@ -962,12 +965,14 @@ export default function EditEventPage({
         initialPages={customPages}
         journeyContext={event?.journeyContext}
         acceptanceOnWhoAreYou={event?.acceptanceOnWhoAreYou === true}
+        galleryConsent={typeof event?.galleryConsent === 'boolean' ? event.galleryConsent : null}
+        effectiveGalleryConsent={event?.effectiveGalleryConsent === true}
         onSave={async (pages, options) => {
           try {
             const response = await fetch(`/api/events/${mongoId}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ customPages: pages, acceptanceOnWhoAreYou: options.acceptanceOnWhoAreYou, ...(options.defaultPageOrders ? { defaultPageOrders: options.defaultPageOrders } : {}) }),
+              body: JSON.stringify({ customPages: pages, acceptanceOnWhoAreYou: options.acceptanceOnWhoAreYou, galleryConsent: options.galleryConsent, ...(options.defaultPageOrders ? { defaultPageOrders: options.defaultPageOrders } : {}) }),
             });
 
             if (!response.ok) {
