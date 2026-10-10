@@ -15,8 +15,8 @@ type SearchParams = Record<string, string | string[] | undefined>;
 const FALLBACK_ZONE = 'Europe/Budapest';
 
 /**
- * The Analytics menu of the Operations hub (issue 521): the numbers of every event together and one row per event, for global admins. Picking an event opens that event's own Analytics tab (with
- * its menu and its links), so the numbers of one event live in one place. The page the menu used to open, the try-on report, is the Try-on tab (`?view=tryon`).
+ * The Analytics menu of Operations (issue 521): the numbers of every event together and one row per event, for global admins. Picking an event opens that event's own Analytics tab (with
+ * its menu and its links), so the numbers of one event live in one place. (The page the menu used to open was the try-on report, removed with the try-on integration, issue 557.)
  */
 export default async function AllEventsAnalyticsPage({ searchParams }: { searchParams: SearchParams }) {
   const query = parseAnalyticsQuery(searchParams, FALLBACK_ZONE);
@@ -44,7 +44,7 @@ export default async function AllEventsAnalyticsPage({ searchParams }: { searchP
     <AdminListPageShell
       eyebrow="Operations"
       title="Analytics"
-      description="Photos, vetting, users, screens, e-mails and consents of all events together, from the data that exists today. The try-on report is its own tab."
+      description="Photos, vetting, users, screens, e-mails and consents of all events together, from the data that exists today."
       stats={
         report
           ? [
@@ -55,10 +55,10 @@ export default async function AllEventsAnalyticsPage({ searchParams }: { searchP
             ]
           : undefined
       }
-      beforeToolbar={<EventPicker basePath="/admin/tryon/analytics" />}
+      beforeToolbar={<EventPicker basePath="/admin/analytics" />}
       dbError={dbError}
     >
-      {analytics ? <AnalyticsView basePath="/admin/tryon/analytics" query={query} defaultTimeZone={FALLBACK_ZONE} report={analytics.report} table={analytics.table} showTryOn /> : null}
+      {analytics ? <AnalyticsView basePath="/admin/analytics" query={query} defaultTimeZone={FALLBACK_ZONE} report={analytics.report} table={analytics.table} /> : null}
     </AdminListPageShell>
   );
 }

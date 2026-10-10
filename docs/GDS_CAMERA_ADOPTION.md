@@ -39,12 +39,11 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | Semantic navigation link | `components/admin/SemanticNavLink.tsx` | Domain navigation composition; replace with package nav contract when compatible |
 | Metric strip | direct `@sovereignsquad/gds-admin` import | Package-direct |
 | Info card | direct `@sovereignsquad/gds-core` import | Package-direct |
-| Action entry grid | `components/gds/AdminDashboardView.tsx`, `app/admin/tryon/page.tsx`, `app/admin/tryon/vetting/page.tsx` | Package-direct |
+| Action entry grid | `components/gds/AdminDashboardView.tsx` | Package-direct |
 | Data toolbar | `components/admin/AdminListPageShell.tsx` | Package-direct |
-| Admin resource cards, with media (Frames/Logos/Try-On Suits/Submissions) | `components/gds/FramesInventoryList.tsx`, `LogosInventoryList.tsx`, `TryOnSuitsInventoryList.tsx`, `SubmissionsInventoryList.tsx` | Package-direct `AdminResourceManager`/`AdminResourceCard` (`MediaPreviewCard` under the hood) — see [Known package limitations](#known-package-limitations-adminresourcecard--mediapreviewcard) below for two workarounds every consumer of this primitive must follow |
+| Admin resource cards, with media (Frames/Logos/Submissions) | `components/gds/FramesInventoryList.tsx`, `LogosInventoryList.tsx`, `SubmissionsInventoryList.tsx` | Package-direct `AdminResourceManager`/`AdminResourceCard` (`MediaPreviewCard` under the hood) — see [Known package limitations](#known-package-limitations-adminresourcecard--mediapreviewcard) below for two workarounds every consumer of this primitive must follow |
 | Admin resource cards, no media (Partners/Events/Slideshows/Landing Pages) | `components/gds/ResourceListGrid.tsx`, consumed by `PartnersInventoryList.tsx`, `EventsInventoryList.tsx`, `SlideshowsInventoryList.tsx`, `LandingPagesPageView.tsx` | Domain-owned composition over approved `gds-core`/`PublicPrimitives` building blocks (`Card`, `Group`, `Stack`, `Text`, `Button`, `GdsIcons`) — not `AdminResourceManager`, because that primitive always renders a media block with no prop to omit it (v2.19.0, PR #105) |
-| Responsive data view | `components/admin/TryOnResultModerationTable.tsx` | Package-direct `ResponsiveDataView` |
-| Data table | `components/gds/LandingPagesPageView.tsx`, `components/admin/TryOnQueueTable.tsx` | Package-direct `DataTable`; analytics tables use package `AdminAnalyticsTable` |
+| Data table | `components/gds/LandingPagesPageView.tsx` | Package-direct `DataTable` |
 | Empty state | direct `@sovereignsquad/gds-core` import | Package-direct |
 | Access summary | direct `@sovereignsquad/gds-core` import | Package-direct |
 | Status badge | direct `@sovereignsquad/gds-core` import | Package-direct |
@@ -59,10 +58,7 @@ Camera is the reference implementation of the portfolio GDS on the currently val
 | Page header / workspace header | `components/admin/WorkspaceHeader.tsx` | Domain-owned composition over package `PageHeader` |
 | Admin list page assembly | `components/admin/AdminListPageShell.tsx` | Domain-owned composition over package admin surfaces |
 | Media preview card | `components/media/MediaPreviewCard.tsx` | Thin compatibility adapter over package `MediaPreviewCard`; numeric Camera ratios are normalized to approved GDS ratios |
-| Media / result cards | `components/admin/EventGallery.tsx`, `components/admin/OldestVettingResultCard.tsx` | Package-direct `ListingCard`; image supplied as a ReactNode so `object-fit: contain` (non-cropping) is preserved, and semantic/loading action buttons are kept via the footer `actions` slot |
-| Media frame | `components/admin/TryOnResultModerationTable.tsx` (preview strip + review panel image frames) | Package-direct `GdsMediaFrame` with `fit="contain"` around the non-cropping preview images |
-| Try-on moderation review card | `components/admin/TryOnResultModerationTable.tsx` (`renderCard`) | Domain-owned `Paper`+`Group` composition over `PublicPrimitives`, not package `AdminReviewLayout` — that primitive's fixed vertical media/metadata/content/actions order structurally cannot put actions beside the image, which mobile-usability testing (reported live from a phone mid-event) required (commit `7ade5a9`). See `gds-adoption.json`'s `approvedExceptions` for the full exception record. |
-| Try-On app workspace | `app/admin/tryon/**` composed from local GDS primitives | Active |
+| Media / result cards | `components/admin/EventGallery.tsx` | Package-direct `ListingCard`; image supplied as a ReactNode so `object-fit: contain` (non-cropping) is preserved, and semantic/loading action buttons are kept via the footer `actions` slot |
 | Auth / public capture shell | `components/capture/CaptureStageShell.tsx`, `components/capture/**`, `app/capture/**` | Active — `PublicFlowShell` for onboarding/share stages plus capture-specific runtime composition |
 | Landing legal pages | `components/public/LandingLegalDocument.tsx`, `app/landing/[slug]/{privacy,terms}/page.tsx` | Active — `ArticleShell` inside package-backed public utility surface |
 | Slideshow playback | `components/slideshow/**` | Active — `PlaybackSurface` framing plus runtime-specific media orchestration |
@@ -185,7 +181,7 @@ re-checked here.
    `hideWhenNoMedia?: boolean` to `MediaPreviewCard`, threaded through
    `AdminResourceCard`, `AdminResourceGrid` and `AdminResourceManager`; it is
    in the installed 6.3.0 and used at
-   `components/admin/TryOnSetupsInventoryList.tsx`. Partners, Events,
+   `components/gds/FramesInventoryList.tsx`. Partners, Events,
    Slideshows and Landing Pages still use the local
    `components/gds/ResourceListGrid.tsx` (a from-scratch no-media card grid),
    which was built for the 3.9.0 limitation. Moving them to

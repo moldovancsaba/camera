@@ -72,7 +72,7 @@ export default function SubmissionsInventoryList({
   //     identical "Edit" buttons, neither of which actually edits anything.
   //     Viewing goes through onPreview below (its own "Preview" affordance);
   //     download becomes an icon action so it isn't mislabelled "Edit"
-  //     either. Same pattern as EventsInventoryList.tsx / TryOnSuitsInventoryList.tsx.
+  //     either. Same pattern as EventsInventoryList.tsx.
   const actions: Array<AdminResourceAction<AdminResourceRecord & SerializedSubmissionRow>> = [
     {
       id: 'download',

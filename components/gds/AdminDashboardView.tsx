@@ -7,17 +7,12 @@ import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert'
 import WorkspaceHeader from '@/components/admin/WorkspaceHeader';
 import { AdminIcon, type AdminIconKey } from '@/lib/gds/admin-icon-key';
 import { getVisibleAdminNavSections, type AdminNavigationAccess } from '@/lib/adminNavigation';
-import type { ActiveEventRow } from '@/lib/tryon/dashboard-metrics';
+import type { ActiveEventRow } from '@/lib/admin/active-events';
 
 export interface DashboardAttentionMetrics {
-  /** Try-on results and photos waiting for approval. */
+  /** Photos waiting for approval. */
   pendingVettingCount: number;
-  activeQueueTotal: number;
   eventsLiveCount: number;
-  // null for a partner-scoped session — worker health describes shared
-  // infrastructure, not any one partner's events.
-  workerHealthTitle: string | null;
-  workerHealthDescription: string | null;
 }
 
 export default function AdminDashboardView({
@@ -54,32 +49,14 @@ export default function AdminDashboardView({
 
       {!dbError && metrics ? (
         <div style={{ display: 'grid', gap: 'var(--mantine-spacing-md)', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-          <Link href="/admin/tryon/vetting" style={{ color: 'inherit', textDecoration: 'none' }}>
+          <Link href="/admin/vetting" style={{ color: 'inherit', textDecoration: 'none' }}>
             <MetricCard
               label="Pending vetting"
               value={metrics.pendingVettingCount}
-              description="Photos and try-on results waiting for approval or rejection."
+              description="Photos waiting for approval or rejection."
               icon={<AdminIcon iconKey="photoScan" size={18} />}
             />
           </Link>
-          <Link href="/admin/tryon/queue" style={{ color: 'inherit', textDecoration: 'none' }}>
-            <MetricCard
-              label="Active queue"
-              value={metrics.activeQueueTotal}
-              description="Try-on jobs queued or in progress right now."
-              icon={<AdminIcon iconKey="photoScan" size={18} />}
-            />
-          </Link>
-          {metrics.workerHealthTitle ? (
-            <Link href="/admin/tryon/queue?status=processing" style={{ color: 'inherit', textDecoration: 'none' }}>
-              <MetricCard
-                label="Worker"
-                value={metrics.workerHealthTitle}
-                description={metrics.workerHealthDescription ?? undefined}
-                icon={<AdminIcon iconKey="sparkles" size={18} />}
-              />
-            </Link>
-          ) : null}
           <Link href="/admin/events" style={{ color: 'inherit', textDecoration: 'none' }}>
             <MetricCard
               label="Active events"
@@ -98,13 +75,7 @@ export default function AdminDashboardView({
             {activeEvents.map((event) => (
               <Link
                 key={event.id}
-                href={
-                  event.photosWaiting > 0
-                    ? `/admin/events/${event.id}/vetting`
-                    : event.eventUuid
-                      ? `/admin/tryon/vetting?eventId=${encodeURIComponent(event.eventUuid)}`
-                      : `/admin/events/${event.id}`
-                }
+                href={event.photosWaiting > 0 ? `/admin/events/${event.id}/vetting` : `/admin/events/${event.id}`}
                 style={{
                   alignItems: 'center',
                   background: 'var(--mantine-color-body)',
@@ -137,21 +108,6 @@ export default function AdminDashboardView({
                     }}
                   >
                     {event.photosWaiting} {event.photosWaiting === 1 ? 'photo' : 'photos'} waiting
-                  </span>
-                ) : null}
-                {event.pendingVettingCount > 0 ? (
-                  <span
-                    style={{
-                      background: 'var(--mantine-color-orange-1)',
-                      borderRadius: 999,
-                      color: 'var(--mantine-color-orange-8)',
-                      flexShrink: 0,
-                      fontSize: 'var(--mantine-font-size-xs)',
-                      fontWeight: 600,
-                      padding: '4px 10px',
-                    }}
-                  >
-                    {event.pendingVettingCount} pending
                   </span>
                 ) : null}
               </Link>

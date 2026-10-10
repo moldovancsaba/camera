@@ -26,7 +26,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { loadGallerySubmissions } from '@/lib/gallery/submissions';
 import { defaultCameraOrigin, defaultGoShortOrigin } from '@/lib/site-hosts';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
-import { collectEventSpecificStats, type EventSpecificStats } from '@/lib/tryon/analytics';
+import { collectEventSpecificStats, type EventSpecificStats } from '@/lib/events/stats';
 
 interface EventFrameDetails {
   frameId: string;
@@ -68,7 +68,6 @@ interface EventDoc {
   updatedAt: string;
   isActive?: boolean;
   shortUrlSlug?: string;
-  greatestHitsSlug?: string;
   brandColor?: string | null;
   brandBorderColor?: string | null;
   brandColorsOverridden?: boolean;
@@ -76,11 +75,6 @@ interface EventDoc {
   logosOverridden?: boolean;
   frames?: EventFrameAssignment[];
   logos?: EventLogoAssignment[];
-  tryOn?: {
-    enabled?: boolean;
-    vettingEnabled?: boolean;
-    localAiQualityGateEnabled?: boolean;
-  };
 }
 
 interface PartnerDoc {
@@ -284,7 +278,6 @@ export default async function EventDetailPage({
         stats={[
           { label: 'Frames', value: event.frames?.length || 0 },
           { label: 'Total Images', value: eventStats?.totalSubmissions || 0 },
-          { label: 'AI Try-ons', value: eventStats?.tryOnCount || 0 },
           { label: 'Customer Emails', value: eventStats?.cleanCustomerEmailsCount || 0 },
         ]}
       />
@@ -306,8 +299,6 @@ export default async function EventDetailPage({
             {eventStats ? (
               <Stack gap="sm" mt="md">
                 <EventInfoRow label="Total Images" value={eventStats.totalSubmissions} />
-                <EventInfoRow label="AI Try-ons" value={eventStats.tryOnCount} />
-                <EventInfoRow label="Original Captures" value={eventStats.originalCount} />
                 <EventInfoRow label="Unique Emails" value={eventStats.uniqueEmailsCount} />
                 <EventInfoRow label="Customer Emails" value={eventStats.cleanCustomerEmailsCount} />
               </Stack>
@@ -387,56 +378,13 @@ export default async function EventDetailPage({
           </div>
 
           <Card>
-            <Title order={3}>Greatest Hits Public Page</Title>
+            <Title order={3}>Vetting</Title>
             <Text size="sm" c="dimmed" mt="xs" mb="md">
-              Public no-login grid of this event&apos;s Great approved try-on images.
+              Approve or reject the photos of this event.
             </Text>
-            {typeof event.greatestHitsSlug === 'string' && event.greatestHitsSlug.trim() ? (
-              <>
-                <Card withBorder radius="md" p="md" bg="white">
-                  <Code block>{defaultCameraOrigin()}/greatest-hits/{event.greatestHitsSlug.trim()}</Code>
-                </Card>
-                <a href={`${defaultCameraOrigin()}/greatest-hits/${event.greatestHitsSlug.trim()}`} target="_blank" rel="noopener noreferrer">
-                  <Button fullWidth mt="md">
-                    Open Greatest Hits →
-                  </Button>
-                </a>
-              </>
-            ) : (
-              <Text size="xs" c="dimmed">
-                Optional: set a Greatest Hits link slug under <strong>Edit Event</strong>.
-              </Text>
-            )}
-          </Card>
-
-          <Card>
-            <Title order={3}>Local AI Services</Title>
-            <Text size="sm" c="dimmed" mt="xs" mb="md">
-              Event-level controls for vetting, asset health, and local AI quality checks.
-            </Text>
-            <Stack gap="xs" mb="md">
-              <EventInfoRow label="Try-on" value={event.tryOn?.enabled ? 'Enabled' : 'Disabled'} />
-              <EventInfoRow
-                label="Vetting"
-                value={event.tryOn?.vettingEnabled === false ? 'Auto-approve' : 'Manual review'}
-              />
-              <EventInfoRow
-                label="Quality gate"
-                value={event.tryOn?.localAiQualityGateEnabled ? 'Enabled' : 'Disabled'}
-              />
-            </Stack>
             <Group grow>
               <Button component="a" href={`/admin/events/${id}/vetting`} variant="light">
                 Open Vetting
-              </Button>
-              <Button component="a" href={`/admin/events/${id}/vetting?archive=greatest`} variant="light">
-                Manage Greatest Hits
-              </Button>
-              <Button component="a" href={`/admin/events/${id}/queue`} variant="light">
-                Open Queue
-              </Button>
-              <Button component="a" href={`/admin/events/${id}/analytics?view=tryon`} variant="light">
-                Try-on analytics
               </Button>
             </Group>
           </Card>

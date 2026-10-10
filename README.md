@@ -46,12 +46,11 @@ The admin UX is organized around that model:
 - `/admin` — global dashboard for global admins
 - `/admin/partners` — partner workspace index
 - `/admin/events` — Events inventory
-- `/admin/tryon` — the Try-On App workspace of the removed integration (switched off on every event and being removed from this app, see [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md))
+- `/admin/vetting` — photos waiting for approval, by event (global admins); each event's own Vetting tab is `/admin/events/[id]/vetting`
 - `/admin/frames`, `/admin/logos`, `/admin/submissions`, `/admin/users` — global inventory / audit pages
 - `/admin/slideshows` — global slideshow inventory
 - `/admin/landing-pages` — landing page inventory
 - `/admin/events/[id]` — event detail with manager-gated email + image exports
-- `/admin/settings/card-display` — global Vetting card-display preferences (which fields/actions render on the moderation card)
 
 ## Core behavior
 
@@ -189,7 +188,7 @@ See [TECH_STACK.md](TECH_STACK.md).
 - `landing_pages` — reusable experience surfaces
 - `partner_user_access` — partner-scoped app assignments
 - `leather_suits`, `tryon_jobs`, `tryon_setups`, `camera_setup_preferences`, `tryon_moderation_events`, `tryon_worker_heartbeats` — collections of the removed try-on integration; their data is kept and nothing reads it (see [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md))
-- `admin_settings` — global admin-preference documents (e.g. Vetting card-display settings), one per `settingId`, not per-admin-user
+- `admin_settings` — global admin-preference documents, one per `settingId`, not per-admin-user (the `card-display` document of the removed try-on moderation card is still there, unread)
 
 See [docs/MONGODB_CONVENTIONS.md](docs/MONGODB_CONVENTIONS.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -236,7 +235,6 @@ environment and enforces the disposable-database guard before any test runs.
 - The `/api/e2e/bootstrap` and `/api/e2e/cleanup` routes are gated by `assertDisposableE2EDatabase()` — requests are rejected with `403` unless `MONGODB_DB` contains a safe keyword (`e2e`, `test`, `dev`, `local`, `sandbox`, `staging`).
 - `playwright.config.ts` automatically sets `MONGODB_DB=camera_test` and `CAMERA_TRYON_INTERNAL_SECRET=dev-tryon-secret` when spawning the web server via `PLAYWRIGHT_START_WEB_SERVER=true`.
 - `inspectTryOnResultAsset` degrades gracefully on unreachable image URLs — completion records are still written with `null` dimensions rather than returning a 500.
-- `GET /api/admin/tryon-results?reviewStatus=approved` correctly finds approved (archived) results without requiring the `archive=approved` parameter.
 
 ## Try-on (switched off, being removed)
 

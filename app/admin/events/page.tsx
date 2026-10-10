@@ -6,7 +6,6 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { authEntryPathForCurrentHost } from '@/lib/auth/auth-entry';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { ObjectId } from 'mongodb';
 import {
   isGlobalAdminSession,
   listAccessiblePartnerIds,
@@ -113,91 +112,19 @@ export default async function EventsPage({
     assignedFrameCount = frameAssignments[0]?.total ?? 0;
 
     eventRows = [];
-    const eventReferenceById = new Map<string, string[]>();
     for (const event of events as EventListItem[]) {
       const id = mongoIdString(event._id);
       if (!id) continue;
-      const refs = [id, event.eventId].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
-      eventReferenceById.set(id, refs);
       eventRows.push({
         id,
-        eventUuid:
-          typeof event.eventId === 'string' && event.eventId.trim().length > 0 ? event.eventId : null,
         name: event.name || 'Untitled event',
         description: event.description ?? null,
         partnerName: event.partnerName || '—',
         location: event.location ?? null,
         eventDateLabel: formatAdminDate(event.eventDate),
         frameCount: Array.isArray(event.frames) ? event.frames.length : 0,
-        pendingTryOnVettingCount: 0,
         isActive: Boolean(event.isActive),
       });
-    }
-
-    const allEventRefs = Array.from(new Set(Array.from(eventReferenceById.values()).flat()));
-    if (allEventRefs.length > 0) {
-      const objectRefs = allEventRefs.filter((value) => ObjectId.isValid(value));
-      const pendingTryOnResults = await db
-        .collection(COLLECTIONS.SUBMISSIONS)
-        .aggregate<{ _id: string; count: number }>([
-          {
-            $match: {
-              submissionKind: 'tryon_result',
-              reviewStatus: 'pending_review',
-              'tryOnModerationArchive.archived': { $ne: true },
-            },
-          },
-          {
-            $addFields: {
-              sourceSubmissionObjectId: {
-                $convert: {
-                  input: '$sourceSubmissionId',
-                  to: 'objectId',
-                  onError: null,
-                  onNull: null,
-                },
-              },
-            },
-          },
-          {
-            $lookup: {
-              from: COLLECTIONS.SUBMISSIONS,
-              localField: 'sourceSubmissionObjectId',
-              foreignField: '_id',
-              as: 'sourceSubmission',
-            },
-          },
-          {
-            $addFields: {
-              sourceSubmission: { $first: '$sourceSubmission' },
-            },
-          },
-          {
-            $project: {
-              eventRefs: {
-                $setUnion: [
-                  [{ $ifNull: ['$eventId', ''] }],
-                  { $ifNull: ['$eventIds', []] },
-                  [{ $ifNull: ['$sourceSubmission.eventId', ''] }],
-                  { $ifNull: ['$sourceSubmission.eventIds', []] },
-                  ...(objectRefs.length > 0 ? [[{ $toString: '$sourceSubmission._id' }]] : []),
-                ],
-              },
-            },
-          },
-          { $unwind: '$eventRefs' },
-          { $match: { eventRefs: { $in: allEventRefs } } },
-          { $group: { _id: '$eventRefs', count: { $sum: 1 } } },
-        ])
-        .toArray();
-      const countByRef = new Map(pendingTryOnResults.map((item) => [item._id, item.count]));
-      eventRows = eventRows.map((row) => ({
-        ...row,
-        pendingTryOnVettingCount: Math.max(
-          0,
-          ...((eventReferenceById.get(row.id) ?? []).map((ref) => countByRef.get(ref) ?? 0))
-        ),
-      }));
     }
 
     partnerCount = await db.collection(COLLECTIONS.PARTNERS).countDocuments(

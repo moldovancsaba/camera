@@ -141,7 +141,7 @@ These remain global-admin-only:
 - `/admin/frames/generated` (rollout of the generated default frame, camera#238; the page checks for a global admin and `POST /api/admin/frame-backfill` requires `requireAdmin`)
 - `/admin/logos`
 - `/admin/submissions`
-- `/admin/tryon/**`
+- `/admin/vetting` (photos waiting for approval, by event; a non-global admin is sent to `/admin`)
 
 ### Partner/app pages
 

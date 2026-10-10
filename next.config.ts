@@ -70,6 +70,18 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
 
+  // The try-on pages are gone (issue 557, docs/TRYON_REMOVED.md). The old vetting address stays alive because it was also the page of the
+  // cross-event photo vetting: the dashboard used to link to it and so does the messmass event page (`/admin/tryon/vetting?eventId=<event uuid>`).
+  // Next passes the query string on, and /admin/vetting sends an `eventId` on to that event's own Vetting tab.
+  async redirects() {
+    return [
+      { source: '/admin/tryon/vetting', destination: '/admin/vetting', permanent: false },
+      { source: '/admin/tryon-results', destination: '/admin/vetting', permanent: false },
+      // The all-events Analytics page (issue 521) lived at the address of the try-on report it replaced.
+      { source: '/admin/tryon/analytics', destination: '/admin/analytics', permanent: false },
+    ];
+  },
+
   // Security and Performance headers
   async headers() {
     return [

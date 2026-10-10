@@ -19,8 +19,8 @@ Try-on (a guest picks a garment on the capture page, an AI worker dresses the gu
 
 | Phase | Scope | Status |
 |---|---|---|
-| R0 | This inventory, the tag, this document | this pull request |
-| R1 | Admin: pages, menu, settings panels, admin API routes, tests, action vocabulary. The cross-event photo vetting page moves out of `/admin/tryon/vetting` first (section 6) | planned |
+| R0 | This inventory, the tag, this document | merged (PR 564) |
+| R1 | Admin: pages, menu, settings panels, admin API routes, tests, action vocabulary. The cross-event photo vetting page moves out of `/admin/tryon/vetting` first (section 6): it is `/admin/vetting` now, the old address and the messmass link to it are redirected | in review |
 | R2 | Server: `lib/tryon`, internal routes, e-mails, share page and download, visibility rule, wall, slideshow clauses, vetting hold, scripts | planned |
 | R3 | Guest path: suit selector, try-on fields of `POST /api/submissions`, journey texts. Not merged until after the match of 2026-10-16 | planned |
 | R4 | Schemas and settings fields (types stay tolerant), environment variables, remaining docs, board cards | planned |

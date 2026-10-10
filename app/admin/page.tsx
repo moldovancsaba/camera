@@ -9,14 +9,8 @@ import { redirect } from 'next/navigation';
 import AdminDashboardView, { type DashboardAttentionMetrics } from '@/components/gds/AdminDashboardView';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import {
-  collectActiveEventRows,
-  collectScopedTryOnDashboardMetrics,
-  collectTryOnDashboardMetrics,
-  type ActiveEventRow,
-} from '@/lib/tryon/dashboard-metrics';
+import { collectActiveEventRows, type ActiveEventRow } from '@/lib/admin/active-events';
 import { countWaitingPhotos } from '@/lib/photo-vetting/queue';
-import { formatTryOnWorkerHealthDescription, formatTryOnWorkerHealthTitle } from '@/lib/tryon/worker-health';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,25 +36,21 @@ export default async function AdminDashboard() {
     navigationAccess = await getAdminNavigationAccess(db, session);
 
     if (navigationAccess.isGlobalAdmin) {
-      const [tryOnMetrics, eventsLiveCount, events, waitingPhotos] = await Promise.all([
-        collectTryOnDashboardMetrics(db),
+      const [eventsLiveCount, events, waitingPhotos] = await Promise.all([
         db.collection(COLLECTIONS.EVENTS).countDocuments({ isActive: true }),
         collectActiveEventRows(db, null),
         countWaitingPhotos(db, null),
       ]);
       metrics = {
-        // Vetting is one count: try-on results and photos waiting for approval (camera#284).
-        pendingVettingCount: tryOnMetrics.pendingVettingCount + waitingPhotos.total,
-        activeQueueTotal: tryOnMetrics.activeQueueTotal,
+        // Vetting is the photos waiting for approval (camera#284).
+        pendingVettingCount: waitingPhotos.total,
         eventsLiveCount,
-        workerHealthTitle: tryOnMetrics.workerHealth ? formatTryOnWorkerHealthTitle(tryOnMetrics.workerHealth) : 'Worker unknown',
-        workerHealthDescription: tryOnMetrics.workerHealth ? formatTryOnWorkerHealthDescription(tryOnMetrics.workerHealth) : null,
       };
       activeEvents = events;
     } else if (navigationAccess.hasAnyPartnerAccess) {
       // Partner-scoped: every metric is computed only from events this
       // session can access — a partner operator must never see another
-      // partner's queue or vetting counts on their own dashboard.
+      // partner's vetting counts on their own dashboard.
       const partnerIds = await listAccessiblePartnerIds(db, session, 'events');
       const events =
         partnerIds.length > 0
@@ -70,19 +60,14 @@ export default async function AdminDashboard() {
               .toArray()
           : [];
       const eventUuids = events.map((event) => event.eventId).filter((value): value is string => typeof value === 'string');
-      const eventMongoIds = events.map((event) => String(event._id));
-      const [scoped, eventsLiveCount, activeRows, waitingPhotos] = await Promise.all([
-        collectScopedTryOnDashboardMetrics(db, eventUuids, eventMongoIds),
+      const [eventsLiveCount, activeRows, waitingPhotos] = await Promise.all([
         db.collection(COLLECTIONS.EVENTS).countDocuments({ isActive: true, partnerId: { $in: partnerIds } }),
         collectActiveEventRows(db, partnerIds),
         countWaitingPhotos(db, eventUuids),
       ]);
       metrics = {
-        pendingVettingCount: scoped.pendingVettingCount + waitingPhotos.total,
-        activeQueueTotal: scoped.activeQueueTotal,
+        pendingVettingCount: waitingPhotos.total,
         eventsLiveCount,
-        workerHealthTitle: null,
-        workerHealthDescription: null,
       };
       activeEvents = activeRows;
     }

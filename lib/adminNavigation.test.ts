@@ -13,14 +13,14 @@ test('the context comes from the path: an event, a partner, or the main menu', (
   assert.deepEqual(adminContextOf(`/admin/events/${ID}/logos`), { kind: 'event', id: ID });
   assert.deepEqual(adminContextOf(`/admin/events/${ID}/slideshows/abc`), { kind: 'event', id: ID });
   assert.deepEqual(adminContextOf(`/admin/partners/${ID}/images`), { kind: 'partner', id: ID });
-  for (const main of ['/admin', '/admin/events', '/admin/events/', '/admin/events/new', '/admin/partners', '/admin/partners/new', '/admin/frames', '/admin/users', '/admin/tryon/suits', '/']) {
+  for (const main of ['/admin', '/admin/events', '/admin/events/', '/admin/events/new', '/admin/partners', '/admin/partners/new', '/admin/frames', '/admin/users', '/admin/vetting', '/admin/analytics', '/']) {
     assert.equal(adminContextOf(main), null, main);
   }
 });
 
-test('a partner user does not see Queue, which would send them away, and does see Analytics (issue 521: the numbers of the event are for its managers); a global admin sees every item', () => {
+test('a global admin and a partner user see the same items of the event menu, Analytics included (issue 521: the numbers of the event are for its managers)', () => {
   const labels = (access: AdminNavigationAccess) => adminContextMenu({ kind: 'event', id: ID }, `/admin/events/${ID}`, access).items.map((item) => item.label);
-  assert.deepEqual(labels(GLOBAL_ADMIN), ['Overview', 'Edit and pages', 'Vetting', 'Gallery', 'Queue', 'Analytics', 'Logos', 'Frames', 'Images', 'Texts', 'Emails', 'Slideshows', 'Landing pages']);
+  assert.deepEqual(labels(GLOBAL_ADMIN), ['Overview', 'Edit and pages', 'Vetting', 'Gallery', 'Analytics', 'Logos', 'Frames', 'Images', 'Texts', 'Emails', 'Slideshows', 'Landing pages']);
   assert.deepEqual(labels(PARTNER_USER), ['Overview', 'Edit and pages', 'Vetting', 'Gallery', 'Analytics', 'Logos', 'Frames', 'Images', 'Texts', 'Emails', 'Slideshows', 'Landing pages']);
 });
 

@@ -1,7 +1,7 @@
 /**
  * The photos of one event waiting for approval, inside the event's Vetting tab (camera#284, docs/PHOTO_VETTING_PLAN.md): the setting that
  * makes new photos wait, the Waiting / Rejected / Approved lists and the queue where event managers and global admins approve or reject.
- * Vetting is one place: the try-on results of the same event are vetted below it.
+ * (The try-on results that used to be vetted below the photos went with the try-on integration, issue 557.)
  */
 
 import Link from 'next/link';

@@ -7,8 +7,7 @@ The Analytics view of an event, and of all events together. It says what the dat
 | Where | Who | What |
 |---|---|---|
 | Event menu **Analytics** (`/admin/events/<id>/analytics`) | the event's managers and global admins (the same rule as the Vetting tab next to it) | the numbers of the event, in tabs |
-| Operations hub **Analytics** (`/admin/tryon/analytics`) | global admins | the same numbers over every event, and one row per event (the name opens that event's tab) |
-| Tab **Try-on** (`?view=tryon`) | global admins | the try-on moderation report the menu used to be (unchanged; the try-on removal, issue 557, takes it away) |
+| Operations **Analytics** (`/admin/analytics`; the old address `/admin/tryon/analytics` is redirected) | global admins | the same numbers over every event, and one row per event (the name opens that event's tab) |
 | `GET /api/admin/events/<id>/export/analytics` | like the tab | the figures of every tab as one CSV (`section,item,value`), with the same days and clock |
 
 Tabs are links (`?view=`), and the days and the clock are in the address too, so a report can be shared as a link. The tabs: **Overview** (the key figures, photos per day and per hour, what is not measured), **Photos and users**, **Vetting and people**, **Screens**, **Sources** (one event), **E-mails and consent**, **Try-on**.

@@ -229,7 +229,6 @@ export default function PhotoReviewQueue({ status, initialItems, canReview, mark
           if (item.email) metadata.unshift({ id: 'email', label: 'Email', value: item.email });
           // The buttons show their fixed labels, so the card itself says that a decision is being made (it can take a few seconds).
           if (isBusy) metadata.push({ id: 'working', label: 'Now', value: isRejecting ? 'Rejecting…' : 'Approving… please wait', tone: 'warning' });
-          if (item.tryOnRequested) metadata.push({ id: 'tryon', label: 'Try-on', value: 'after approval', tone: 'muted' });
           if (item.status !== 'approved') metadata.push({ id: 'wall', label: 'Wall', value: item.shareOptIn ? 'shown' : 'private', tone: 'muted' });
           if (item.last) {
             metadata.push({ id: 'last', label: item.last.action === 'approve' ? 'Approved' : 'Rejected', value: `${item.last.by}${item.last.reason ? `: ${item.last.reason}` : ''}`, tone: item.last.action === 'approve' ? 'positive' : 'warning' });
