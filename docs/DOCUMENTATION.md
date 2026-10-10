@@ -176,9 +176,8 @@ When E2E tests are executed using:
 ```bash
 npm run test:e2e
 ```
-Playwright is configured (via `playwright.config.ts`) to automatically initialize process environment variables:
+Playwright is configured (via `playwright.config.ts`) to automatically initialize a process environment variable:
 - `MONGODB_DB=camera_test`
-- `CAMERA_TRYON_INTERNAL_SECRET=dev-tryon-secret`
 
 If `PLAYWRIGHT_START_WEB_SERVER=true` is used, Playwright spins up a dedicated Next.js instance on port `3100` explicitly passing these environment overrides.
 

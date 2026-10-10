@@ -19,7 +19,7 @@ drifted (it still described 2.22.0 as current).
 | Current state and owner decisions | `HANDOVER.md` |
 | Direction beyond the active work | `ROADMAP.md` |
 | GDS audit and the ordered adoption plan | `gds_fix_handover.md`; board issues camera#183-#188 |
-| image.direct as a second renderer | `docs/IMAGE_DIRECT_INTEGRATION.md`; tracker camera#189 |
+| The removed try-on integration, and its rebuild as an add-on | `docs/TRYON_REMOVED.md`; tracker camera#557 (the image.direct plan, camera#189, is a record: `docs/IMAGE_DIRECT_INTEGRATION.md`) |
 | Repo rules, quality gate, branching | `CLAUDE.md`, `docs/BRANCHING.md` |
 
 ## Items that used to be listed here

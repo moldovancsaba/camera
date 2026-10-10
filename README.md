@@ -37,7 +37,6 @@ The admin UX is organized around that model:
 - `/slideshow/[slideshowId]` — public slideshow player
 - `/slideshow-layout/[layoutId]` — public composite slideshow layout player
 - `/landing/[slug]` — public landing page surface
-- `/greatest-hits/[slug]` — Greatest Hits wall of an event; it showed approved try-on results marked great and is part of the try-on integration that is switched off on every event and being removed from this app, see [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md)
 - `/profile` — signed-in user's own submission gallery (redirects to sign-in without a session)
 - `/users/[name]` — user profile with submissions and event participation; Camera admins also get user management there
 
@@ -71,7 +70,7 @@ collected for an event:
 - **Email addresses** — `GET /api/admin/events/[id]/export/emails` returns a deduplicated
   CSV of every address collected from SSO sign-ins and the guest onboarding form.
 - **Images** — `GET /api/admin/events/[id]/export/images?format=csv|zip` covers originals,
-  finals, and derived try-on results. `csv` (default) lists every image URL with metadata;
+  finals, and any try-on result an event stored while the removed integration ran. `csv` (default) lists every image URL with metadata;
   `zip` streams the actual files from their stored URLs (Vercel Blob, or imgbb for older photos), capped at 500 files (larger events use the CSV).
 
 Shared logic lives in `lib/events/event-export.ts`. Access requires partner-scoped Events
@@ -134,8 +133,8 @@ npm run release:check
 Notes:
 
 - **E2E Test Safety Gate**: The route `/api/e2e/bootstrap` calls `assertDisposableE2EDatabase()`. To prevent accidental staging or production database deletion, E2E tests and cleanups are blocked unless `MONGODB_DB` contains a safe keyword (e.g. `e2e`, `test`, `dev`, `local`, `sandbox`, `staging`).
-- **Automatic Test Overrides**: `playwright.config.ts` automatically overrides `MONGODB_DB=camera_test` and `CAMERA_TRYON_INTERNAL_SECRET=dev-tryon-secret` when spinning up the web server automatically via `PLAYWRIGHT_START_WEB_SERVER=true`.
-- **Manual Web Server Setup**: If running E2E tests against an already running dev server (`PLAYWRIGHT_START_WEB_SERVER=false`), you must ensure your running dev server was started with a test database (e.g., `MONGODB_DB=camera_test` or `camera_dev`) and a configured `CAMERA_TRYON_INTERNAL_SECRET`, otherwise the E2E bootstrap endpoint will return `403 Forbidden`.
+- **Automatic Test Overrides**: `playwright.config.ts` automatically overrides `MONGODB_DB=camera_test` when spinning up the web server automatically via `PLAYWRIGHT_START_WEB_SERVER=true`.
+- **Manual Web Server Setup**: If running E2E tests against an already running dev server (`PLAYWRIGHT_START_WEB_SERVER=false`), you must ensure your running dev server was started with a test database (e.g., `MONGODB_DB=camera_test` or `camera_dev`), otherwise the E2E bootstrap endpoint will return `403 Forbidden`.
 - Playwright smoke tests use development-only bootstrap/login routes.
 - Set `PLAYWRIGHT_START_WEB_SERVER=true` if you want the test runner to launch `next dev` automatically.
 
@@ -233,8 +232,7 @@ environment and enforces the disposable-database guard before any test runs.
 
 - Tests run with `workers: 1` to prevent shared-database contention between concurrent test cases.
 - The `/api/e2e/bootstrap` and `/api/e2e/cleanup` routes are gated by `assertDisposableE2EDatabase()` — requests are rejected with `403` unless `MONGODB_DB` contains a safe keyword (`e2e`, `test`, `dev`, `local`, `sandbox`, `staging`).
-- `playwright.config.ts` automatically sets `MONGODB_DB=camera_test` and `CAMERA_TRYON_INTERNAL_SECRET=dev-tryon-secret` when spawning the web server via `PLAYWRIGHT_START_WEB_SERVER=true`.
-- `inspectTryOnResultAsset` degrades gracefully on unreachable image URLs — completion records are still written with `null` dimensions rather than returning a 500.
+- `playwright.config.ts` automatically sets `MONGODB_DB=camera_test` when spawning the web server via `PLAYWRIGHT_START_WEB_SERVER=true`.
 
 ## Try-on (switched off, being removed)
 
@@ -242,7 +240,7 @@ Try-on (a guest picks a garment, a separate AI worker dresses the photo, an appr
 
 - What existed, the data it left in the database and what a rebuild needs: [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md).
 - The last commit that has all of it: git tag `tryon-integration-final`.
-- Until the removal phases are merged the try-on pages and routes are still in the code. No event enables them and they are not supported.
+- The pages, routes, jobs, e-mail modes and settings are gone from the app; the capture page and the submission route follow in the last phase (held until after the match of 2026-10-16). No event enables try-on and none of it is supported.
 - The separate try-on repository and the image.direct service are not part of this app and are not touched.
 
 ## Fleet integrations

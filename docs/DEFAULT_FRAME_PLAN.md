@@ -1,5 +1,7 @@
 # Default event frame from messmass data
 
+> **Written before the try-on removal (issue 557, 2026-10-10).** Where this document mentions try-on, it describes the app as it was on its date; the integration has been removed from the app, see [TRYON_REMOVED.md](TRYON_REMOVED.md). Read those places as history.
+
 **Status**: planned, owner answers recorded 2026-10-06; tracker [camera#231](https://github.com/moldovancsaba/camera/issues/231), board [#24](https://github.com/users/moldovancsaba/projects/24).
 **Scope**: a generated, general-purpose frame for every event that has no frame of its own, built from the partner logo, the home and visitor teams and the messmass reporting theme, with a random message from a list the event editor controls.
 

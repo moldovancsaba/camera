@@ -1,5 +1,7 @@
 # Photo vetting by default: plan
 
+> **Written before the try-on removal (issue 557, 2026-10-10).** Where this document mentions try-on, it describes the app as it was on its date; the integration has been removed from the app, see [TRYON_REMOVED.md](TRYON_REMOVED.md). Read those places as history.
+
 Status: **plan, decisions confirmed by the owner on 2026-10-06 (below); work packages not started.** Related: `docs/DEFAULT_FRAME_PLAN.md` (the frames), `RUNBOOK.md` ("How the photo is taken, and what is kept").
 
 ## The request

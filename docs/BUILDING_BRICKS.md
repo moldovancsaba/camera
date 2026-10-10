@@ -1,5 +1,7 @@
 # Building bricks: one way to build every element of an event
 
+> **Written before the try-on removal (issue 557, 2026-10-10).** Where this document mentions try-on, it describes the app as it was on its date; the integration has been removed from the app, see [TRYON_REMOVED.md](TRYON_REMOVED.md). Read those places as history.
+
 Research and proposal of 2026-10-09 for [camera#412](https://github.com/moldovancsaba/camera/issues/412) (register item 151, the first step of item 139). The facts come from [ELEMENT_INVENTORY.md](ELEMENT_INVENTORY.md) (477 rows read from the code of `main`, nothing run). **Status 2026-10-09 evening:** the owner answered questions 156 to 164 (section 9) and the model below follows those answers. Built so far: the first form of the messmass logo default (PR #414, to be replaced in step 4 of section 8) and the repair of the undefined design tokens (camera#415). Parts the owner decided are marked **(decided)**.
 
 ## 1. In one page

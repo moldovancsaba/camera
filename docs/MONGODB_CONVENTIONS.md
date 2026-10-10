@@ -158,7 +158,7 @@ A photo of an event with vetting required (camera#266) is saved pending and carr
 
 - `reviewStatus: 'pending_review'` (later `approved` or `rejected`; a missing status counts as approved, see `lib/submissions/visibility.ts`).
 - `publicGalleryConsent` `{version: 1, grantedAt}` (issue 554): the user's own permission to show the photo in the public gallery, present only when the box was ticked on an event that asks (or ticked anyway); absent otherwise. `Partner.galleryConsent` and `Event.galleryConsent` (`true` ask, `false` do not ask, missing or `null` follow the parent, standard: do not ask) are the setting (`lib/events/gallery-consent.ts`).
-- `photoReview` `{photoUrl, photoSize, photoMime, shareOptIn, submittedAt, tryOn}`: the plain framed-size photo in an unlisted Blob object `pending/<eventId>/<random>.jpg` (never mirrored to imgbb, never returned by a public route; deleted with the submission), the guest's pledge-wall choice and the held try-on request. There is no `imageUrl`, `finalImageUrl` or `originalImageUrl` until approval composes the real picture.
+- `photoReview` `{photoUrl, photoSize, photoMime, shareOptIn, submittedAt}` (documents may also hold `tryOn`, a try-on request held until approval; the integration is removed and nothing reads it): the plain framed-size photo in an unlisted Blob object `pending/<eventId>/<random>.jpg` (never mirrored to imgbb, never returned by a public route; deleted with the submission), and the guest's pledge-wall choice. There is no `imageUrl`, `finalImageUrl` or `originalImageUrl` until approval composes the real picture.
 - `shareToken`: opaque share id (`/share/<token>`); photos made before vetting keep their database `_id` as the share id.
 - `reviewHistory[]`: `{action: approve|reject, by, at, reason}`.
 - `userInfo.email` is required for these photos (typed on the "who are you" page or taken from the social login); the link is emailed after approval.
@@ -169,14 +169,14 @@ Important:
 - submission `partnerId` is the partner business ID
 - `frameId` is the frame business ID in the hot path
 
-### Try-on conventions
+### Try-on data of the removed integration
 
-Try-on introduces two more collection patterns:
+The try-on integration is removed (issue 557); its data stays in the database and no code reads it. What each collection and field held is in [TRYON_REMOVED.md](TRYON_REMOVED.md) (section 3.2 and section 5). The two identifier rules that applied are kept here because old documents still carry them:
 
-- `leather_suits.leatherSuitId` is a business identifier, not a Mongo `_id` URL contract
+- `leather_suits.leatherSuitId` is a business identifier, not a Mongo `_id`
 - `tryon_jobs.jobId` is an operational business identifier used by the worker and queue tooling
 
-Derived try-on result submissions still use Mongo `_id` for share-page lookup and admin moderation actions.
+A stored `tryon_result` submission is never public and no screen lists it (the plain-photo rule in `lib/submissions/visibility.ts`).
 
 Do not rewrite docs or code assuming every relation is an ObjectId-string foreign key.
 

@@ -1,5 +1,7 @@
 # Giant-screen slideshow freeze: root-cause research and fix plan
 
+> **Written before the try-on removal (issue 557, 2026-10-10).** Where this document mentions try-on, it describes the app as it was on its date; the integration has been removed from the app, see [TRYON_REMOVED.md](../TRYON_REMOVED.md). Read those places as history.
+
 Read-only investigation of the camera repository (Next.js 16.3.7, React 19.2.0, date 2026-10-09), made for issue [#476](https://github.com/moldovancsaba/camera/issues/476) (client feedback: the slideshow freezes for 10 to 20 seconds).
 Nothing in the repository was changed by it. Nothing was run against a database or production. The pure simulation of the player queue and a local slow-image test server were written outside the repository; the logic of the simulation is described in C1 below and its numbers were re-run and match. They become the unit test of step S2 and the local reproduction of step S3.
 
