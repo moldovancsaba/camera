@@ -16,6 +16,7 @@ import { withErrorHandler, requireAuth, apiSuccess, apiBadRequest, apiNotFound, 
 import { assertGlobalAdminOrPartnerEventAccess, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { resolveEventForSubmission } from '@/lib/email/submission-result-email';
 import { approvePhoto, rejectPhoto, type ReviewFailure } from '@/lib/photo-vetting/review';
+import { markPeopleOn } from '@/lib/photo-vetting/people';
 
 const REVIEW_RATE_LIMIT = {
   max: 120,
@@ -58,6 +59,12 @@ export const POST = withErrorHandler(async (
     await assertGlobalAdminOrPartnerEventAccess(db, session, event._id.toString(), 'manager');
   } else if (!isGlobalAdminSession(session)) {
     throw apiForbidden('This photo belongs to no event; only a global admin can review it');
+  }
+
+  // Marking the people is required before the first decision of a waiting photo (issue 542, owner answers 263 and 267): when it is on for the event and nobody looked yet (`peopleReview` is
+  // saved by the big view, also for "nobody in this photo"), the decision is refused, so the quick buttons of an old page cannot skip it. A photo decided before (Rejected list) can be approved again.
+  if (event && markPeopleOn(event) && submission.reviewStatus === 'pending_review' && !submission.peopleReview) {
+    throw apiError('Mark the people in this photo first (or say nobody is in it): open it with Review.', 409);
   }
 
   const actor = { email: session.user.email ?? null, id: session.user.id ?? null };

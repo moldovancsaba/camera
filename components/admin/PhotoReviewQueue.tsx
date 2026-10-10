@@ -22,6 +22,11 @@ interface PhotoReviewQueueProps {
   status: QueueStatus;
   initialItems: PhotoQueueItem[];
   canReview: boolean;
+  /**
+   * The event's Mongo id when "mark the people" is on (issue 542, owner answer 267): the first decision of a waiting photo is then made in the big view, after the people are marked,
+   * so the cards of the Waiting list have one button, Review, that opens the big view at that photo, and no selection or bulk approval. The server refuses an unmarked first decision too.
+   */
+  markPeopleEventId?: string;
 }
 
 interface Notice {
@@ -78,7 +83,7 @@ const emailNote = (answers: ReviewAnswer[]): string => {
   return parts.length ? ` (${parts.join(', ')})` : '';
 };
 
-export default function PhotoReviewQueue({ status, initialItems, canReview }: PhotoReviewQueueProps) {
+export default function PhotoReviewQueue({ status, initialItems, canReview, markPeopleEventId }: PhotoReviewQueueProps) {
   const router = useRouter();
   // Photos decided here leave the list at once; everything else comes from the server (initialItems is fresh after each router.refresh()).
   const [decided, setDecided] = useState<string[]>([]);
@@ -102,7 +107,9 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
   const allIds = useMemo(() => items.map((item) => item.id), [items]);
   const allSelected = allIds.length > 0 && allIds.every((id) => selectedSet.has(id));
   const working = busy.length > 0;
-  const canDecide = canReview && status !== 'approved';
+  const mustMark = Boolean(markPeopleEventId) && status === 'pending_review';
+  // The quick Approve and Reject (and the selection for a bulk approval) are for the lists where marking does not apply: an event without marking, and the Rejected list (a photo decided before can be approved again).
+  const canDecide = canReview && status !== 'approved' && !mustMark;
 
   const removeFromList = (ids: string[]) => {
     setDecided((current) => [...current, ...ids]);
@@ -179,6 +186,16 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
 
   return (
     <div style={{ display: 'grid', gap: '1rem' }} data-photo-review-queue>
+      {canReview && mustMark ? (
+        <section style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'space-between' }} data-must-mark>
+          <Link href={`/admin/events/${markPeopleEventId}/vetting/review`} style={{ textDecoration: 'none' }}>
+            <SemanticButton action="photo-review:review-one-by-one" type="button">Review one by one</SemanticButton>
+          </Link>
+          <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem' }}>
+            Marking the people is on: mark who is in a photo, then approve or reject it. Press Review on a photo to open it. Oldest first. Looks for new photos every 10 seconds. {items.length} shown
+          </span>
+        </section>
+      ) : null}
       {canDecide ? (
         <section style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -232,6 +249,13 @@ export default function PhotoReviewQueue({ status, initialItems, canReview }: Ph
                 </SemanticButton>
               );
             }
+          }
+          if (canReview && mustMark) {
+            actions.push(
+              <Link key="review" href={`/admin/events/${markPeopleEventId}/vetting/review?photo=${item.id}`} style={{ textDecoration: 'none' }}>
+                <SemanticButton action="photo-review:review-this" type="button" size="xs">Review</SemanticButton>
+              </Link>
+            );
           }
           if (isRejecting) {
             actions.push(

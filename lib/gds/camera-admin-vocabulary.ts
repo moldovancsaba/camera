@@ -116,6 +116,7 @@ export const cameraAdminVocabularyPacks = [
     'mark-turn-on': { defaultMessage: 'Turn marking on', icon: GdsIcons.Check, feedback: savedFeedback },
     'mark-turn-off': { defaultMessage: 'Turn marking off', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'review-one-by-one': { defaultMessage: 'Review one by one', icon: GdsIcons.Eye, feedback: openedFeedback },
+    'review-this': { defaultMessage: 'Review', icon: GdsIcons.Eye, feedback: openedFeedback },
   }),
   createGdsVocabularyPack('style-sections', {
     'edit-colors': { defaultMessage: 'Edit colors', icon: GdsIcons.Edit, feedback: openedFeedback },
