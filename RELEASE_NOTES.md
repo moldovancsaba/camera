@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the camera setting is a selector with four ways, on the partner and on the event (issue 547; owner answer 272)
+
+- **Owner:** "I already told you that tested [it], and make the different implementations a selector in the settings, so that the admin decides which one to use."
+- **Changed:** the partner's checkbox is a **selector**, and the event's choice has the same ways: **Automatic** (the standard: the phone's own camera app on phones, the live camera on computers), **The live camera with view buttons** (portrait or landscape, wide or tight), **The live camera, a real photo from the camera's sensor** (`still`: the shutter takes the sensor's own photo where the browser can, else the picture on the screen) and **The live camera, the picture as shown on the screen** (`frame`: the older way and the way back). The event still has **Same as the partner**. `captureSettingsOf` turns a mode into what the capture page needs; `?views=1` and `?capture=system|still|frame` on the address still win over the setting.
+- **Left out on purpose:** forcing the phone's own camera app on a computer (`?capture=system` stays for a try): on a computer it only opens a file chooser.
+- **No event changes by this release:** nothing is stored for any partner or event (the first release of the setting stored nothing either), so every event stays automatic until somebody chooses.
+- **Verified:** type-check; lint; unit tests (the chain, the four modes and the way each one takes the photo on a phone and on a computer, request values, both routes); the whole capture page in a browser harness on a touch phone and on a desktop with all four modes, none and `?views=1` (11 of 11); both editors in a browser harness (selector default and stored value, the four options, what a save sends, the event's Same as the partner: 17 of 17); the full CI chain.
+- **Not done:** the real phone check of each way on an event (the owner has tried them with the address options); a separate setting per device type.
 ## Unreleased — vetting: marking is required on the Waiting cards and on the server too (issue 542; owner answer 267, "deliver it now")
 
 - **Owner:** answer 267 to the question whether the Approve and Reject buttons on the cards should require marking too: "deliver it now".
