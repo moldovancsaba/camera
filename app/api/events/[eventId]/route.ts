@@ -23,7 +23,6 @@ import {
   RATE_LIMITS,
 } from '@/lib/api';
 import { normalizeGoShortSlugInput } from '@/lib/go-short-url';
-import { normalizeEventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
@@ -73,7 +72,6 @@ interface EventDoc {
   _id: ObjectId;
   eventId?: string;
   shortUrlSlug?: string | null;
-  greatestHitsSlug?: string | null;
   isActive?: boolean;
   frames?: EventFrameAssignment[];
   [key: string]: unknown;
@@ -89,7 +87,6 @@ function buildEventLookupQuery(eventIdentifier: string) {
 
   or.push({ eventId: normalized });
   or.push({ shortUrlSlug: normalized });
-  or.push({ greatestHitsSlug: normalized });
 
   return { $or: or };
 }
@@ -279,8 +276,6 @@ export const PATCH = withErrorHandler(async (
     brandBorderColor,
     customPages,
     shortUrlSlug,
-    greatestHitsSlug,
-    tryOn,
     notifications,
     visualSettings,
     sharePage,
@@ -293,11 +288,6 @@ export const PATCH = withErrorHandler(async (
     acceptanceOnWhoAreYou,
     defaultPageOrders,
   } = body;
-
-  const tryOnSetupId =
-    typeof tryOn?.setupId === 'string' && tryOn.setupId.trim().length > 0
-      ? tryOn.setupId.trim()
-      : null;
 
   // Build update object with only provided fields
   const updateFields: Record<string, unknown> = {
@@ -362,53 +352,6 @@ export const PATCH = withErrorHandler(async (
       }
     }
     updateFields.shortUrlSlug = norm.slug;
-  }
-
-  if (greatestHitsSlug !== undefined) {
-    const norm = normalizeGoShortSlugInput(greatestHitsSlug);
-    if (!norm.ok) {
-      throw apiBadRequest(norm.error);
-    }
-    if (norm.slug) {
-      const dup = await db.collection(COLLECTIONS.EVENTS).findOne({
-        greatestHitsSlug: norm.slug,
-        _id: { $ne: new ObjectId(eventId) },
-      });
-      if (dup) {
-        throw apiBadRequest('This Greatest Hits slug is already used by another event.');
-      }
-      if (await trackedSlugExists(db, norm.slug)) {
-        throw apiBadRequest('This Greatest Hits slug is already used by a tracked link.');
-      }
-    }
-    updateFields.greatestHitsSlug = norm.slug;
-  }
-
-  if (tryOn !== undefined) {
-    const allowedLeatherSuitIds = Array.isArray(tryOn?.allowedLeatherSuitIds)
-      ? tryOn.allowedLeatherSuitIds
-          .filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
-          .map((value: string) => value.trim())
-      : [];
-    const resultSlideshowMode = normalizeEventTryOnResultSlideshowMode({
-      tryOn: {
-        enabled: Boolean(tryOn?.enabled),
-        includeApprovedResultsInSlideshows: Boolean(tryOn?.includeApprovedResultsInSlideshows),
-        resultSlideshowMode: tryOn?.resultSlideshowMode,
-      },
-    });
-    updateFields.tryOn = {
-      enabled: Boolean(tryOn?.enabled),
-      setupId: tryOnSetupId,
-      allowedLeatherSuitIds,
-      // Outfit pairing kill switch (camera#116) - strictly opt-in, default off.
-      outfitEnabled: tryOn?.outfitEnabled === true,
-      applyFrameToReturnedResults: Boolean(tryOn?.applyFrameToReturnedResults),
-      vettingEnabled: tryOn?.vettingEnabled !== false,
-      localAiQualityGateEnabled: Boolean(tryOn?.localAiQualityGateEnabled),
-      includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
-      resultSlideshowMode,
-    };
   }
 
   if (notifications !== undefined) {

@@ -31,7 +31,7 @@ test('the event follows its partner and the partner follows the general one, per
 test('the standard terms paragraph goes from the end of a template when there is a legal part, in every language; an editor’s own paragraph stays', () => {
   for (const language of ['en', 'hu'] as const) {
     const defaults = emailDefaults(language);
-    for (const body of [defaults.body, defaults.resubmissionBody, defaults.notApprovedBody]) {
+    for (const body of [defaults.body, defaults.notApprovedBody]) {
       const stripped = withoutStandardLegalTail(body);
       assert.equal(stripped.includes('{terms}'), false, `${language}: ${body.slice(0, 20)}`);
       assert.ok(stripped.length > 10 && body.startsWith(stripped));

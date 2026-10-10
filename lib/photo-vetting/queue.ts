@@ -1,7 +1,7 @@
 /**
  * What the moderation queue shows for an event (camera#268, docs/PHOTO_VETTING_PLAN.md): the photos of vetted events grouped by
  * review status, oldest waiting first. Only photos that went through vetting (they carry `photoReview`) are listed; photos made before
- * vetting, and try-on results, have their own screens.
+ * vetting, have their own screens.
  */
 
 import type { Db, Document } from 'mongodb';
@@ -24,7 +24,6 @@ export interface PhotoQueueItem {
   photoUrl: string | null;
   frameKind: 'generated' | 'own' | 'none';
   shareOptIn: boolean;
-  tryOnRequested: boolean;
   last: { action: 'approve' | 'reject'; by: string; at: string; reason: string | null } | null;
   /** The people marked in the photo at vetting (issue 542), none when nobody looked or the saved list is not valid. */
   people: PersonTag[];
@@ -49,7 +48,6 @@ export function toPhotoQueueItem(doc: Document): PhotoQueueItem {
     photoUrl: status === 'approved' ? text(doc.imageUrl) : text(review.photoUrl),
     frameKind: doc.frameVariant ? 'generated' : doc.frameId ? 'own' : 'none',
     shareOptIn: review.shareOptIn === true,
-    tryOnRequested: Boolean(doc.tryOnRequest?.requested) || Boolean(review.tryOn),
     people: (() => {
       const checked = parsePeople(doc.people ?? []);
       return checked.ok ? checked.value : [];

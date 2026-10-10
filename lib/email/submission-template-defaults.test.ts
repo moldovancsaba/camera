@@ -5,8 +5,6 @@ import {
   DEFAULT_SUBMISSION_EMAIL_BODY,
   DEFAULT_SUBMISSION_EMAIL_SENDER_NAME,
   DEFAULT_SUBMISSION_EMAIL_SUBJECT,
-  DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY,
-  DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT,
   emailDefaults,
   emailTemplateIn,
 } from './submission-template-defaults';
@@ -17,20 +15,6 @@ const ENGLISH_BODY = `Hi {name},
 Thank you for enjoying the {event} experience.
 
 Your photo is ready. Don't forget to share it on your social media!
-{link}
-
-AI is fun, but it can make mistakes. If you want to make a new image, feel free to come back to us.
-
-Wishing you an unforgettable time at {event}.
-
-Policies and General Terms and Conditions:
-{terms}`;
-
-const ENGLISH_RESUBMISSION_BODY = `Hi {name},
-
-Thank you for enjoying the {event} experience.
-
-Your updated photo is ready. Don't forget to share it on your social media!
 {link}
 
 AI is fun, but it can make mistakes. If you want to make a new image, feel free to come back to us.
@@ -53,8 +37,6 @@ Policies and General Terms and Conditions:
 test('the English defaults are byte for byte the texts the emails always had', () => {
   assert.equal(DEFAULT_SUBMISSION_EMAIL_SUBJECT, 'Your photo from {event}');
   assert.equal(DEFAULT_SUBMISSION_EMAIL_BODY, ENGLISH_BODY);
-  assert.equal(DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT, 'Your updated photo from {event}');
-  assert.equal(DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY, ENGLISH_RESUBMISSION_BODY);
   assert.equal(DEFAULT_EVENT_TERMS_URL, 'https://seyuselfies.com/en/policies/');
   assert.equal(DEFAULT_SUBMISSION_EMAIL_SENDER_NAME, 'The Selfie');
   assert.deepEqual(emailDefaults(), emailDefaults('en'));
@@ -68,7 +50,7 @@ test('the Hungarian defaults are Hungarian, keep every placeholder and link the 
   assert.match(hu.body, /^Szia \{name\}!\n\n/);
   assert.match(hu.notApprovedBody, /nem tudtuk jóváhagyni/);
   assert.equal(hu.termsUrl, 'https://seyuselfies.com/hu/policies/');
-  for (const text of [hu.body, hu.resubmissionBody, hu.notApprovedBody]) for (const marker of ['{name}', '{event}', '{link}', '{terms}']) assert.ok(text.includes(marker), marker);
+  for (const text of [hu.body, hu.notApprovedBody]) for (const marker of ['{name}', '{event}', '{link}', '{terms}']) assert.ok(text.includes(marker), marker);
 });
 
 test('a stored template is sent as written in English; in Hungarian a stored English default is the Hungarian default of the same kind', () => {
@@ -77,8 +59,6 @@ test('a stored template is sent as written in English; in Hungarian a stored Eng
   assert.equal(emailTemplateIn('hu', DEFAULT_SUBMISSION_EMAIL_SUBJECT), emailDefaults('hu').subject);
   assert.equal(emailTemplateIn('hu', ENGLISH_BODY), emailDefaults('hu').body);
   assert.equal(emailTemplateIn('hu', ENGLISH_BODY.replace(/\n/g, '\r\n')), emailDefaults('hu').body, 'line ends saved by a browser are the same text');
-  assert.equal(emailTemplateIn('hu', DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT), emailDefaults('hu').resubmissionSubject, 'the updated-photo wording stays the updated-photo wording');
-  assert.equal(emailTemplateIn('hu', ENGLISH_RESUBMISSION_BODY), emailDefaults('hu').resubmissionBody);
   assert.equal(emailTemplateIn('hu', 'Szia {name}, itt a fotód: {link}'), 'Szia {name}, itt a fotód: {link}', 'an editor’s own text wins');
   assert.equal(emailTemplateIn('hu', 'Your {event} photo!'), 'Your {event} photo!', 'an English text the editor wrote is the editor’s own');
   assert.equal(emailTemplateIn('hu', null), null);

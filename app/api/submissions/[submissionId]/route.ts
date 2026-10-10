@@ -5,8 +5,7 @@
  * 
  * Permanently deletes a submission from the database. This action cannot be
  * undone. Users can only delete their own submissions (verified by userId).
- * Admins can delete any submission except a try-on result (409; those go
- * through POST /api/admin/tryon-results/[submissionId]/remove).
+ * Admins can delete any submission except a stored try-on result (409: the results of the removed try-on integration are kept as they are).
  *
  * Note: Images on imgbb.com are not deleted, only the database record.
  * 
@@ -114,19 +113,12 @@ export const DELETE = withErrorHandler(async (
     throw apiForbidden('You can only delete your own submissions');
   }
 
-  // WHAT: Try-on results (the derived submission a completed job produces)
-  //     are not deleted here; the caller is sent to the admin remove route.
-  // WHY: That derived document is the try-on sync backstop's completion
-  //     marker (lib/tryon/sync.ts). Deleting it here would leave the job
-  //     `done` with a result URL and no marker, and no `remove` moderation
-  //     event, so the next cron run would re-create the result, auto-approved
-  //     and share-visible on events with vetting off. POST
-  //     /api/admin/tryon-results/[submissionId]/remove records the removal and
-  //     clears the source submission's try-on link. Nothing in camera's UI
-  //     calls this DELETE for a try-on result.
+  // WHAT: A stored try-on result (the derived submission a try-on job produced) is not deleted here.
+  // WHY: The try-on integration is removed (issue 557, docs/TRYON_REMOVED.md) and its data is kept as it is, unreferenced: deleting stored
+  //     try-on results, their files and the collections is a separate decision of the owner. The routes that removed a result are gone.
   if (submission.submissionKind === 'tryon_result' || typeof submission.sourceJobId === 'string') {
     throw apiError(
-      'Try-on results are removed with POST /api/admin/tryon-results/[submissionId]/remove, which records the removal',
+      'Stored try-on results of the removed try-on integration are kept as they are',
       409
     );
   }

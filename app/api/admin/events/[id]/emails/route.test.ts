@@ -6,7 +6,7 @@ import { fakeDb } from '@/lib/library/fake-db';
 
 const apiReal = await import('@/lib/api');
 const EVENT_MONGO_ID = new ObjectId();
-const TRYON_EVENT_ID = new ObjectId();
+const LEGACY_EVENT_ID = new ObjectId();
 const ADMIN = { appRole: 'admin', user: { id: 'a1', email: 'admin@example.com', name: 'Admin' } };
 
 type RouteModule = typeof import('./route');
@@ -17,9 +17,9 @@ function setup(t: TestContext, options: { denied?: boolean } = {}) {
     events: [
       { _id: EVENT_MONGO_ID, eventId: 'e-uuid', partnerId: 'P', name: 'MTK x Vasas', uiLanguage: 'hu' },
       {
-        _id: TRYON_EVENT_ID,
+        _id: LEGACY_EVENT_ID,
         eventId: 'e-tryon',
-        name: 'Try-on night',
+        name: 'Old try-on night',
         uiLanguage: 'en',
         tryOn: { enabled: true },
         notifications: {
@@ -54,7 +54,6 @@ const put = (id: ObjectId, body: unknown) => new NextRequest(url(id), { method: 
 interface View {
   language: string;
   types: Array<{ type: string; enabled: boolean; chosen: boolean | null; subject: string | null; body: string | null; defaultOn: boolean; defaultSubject: string; defaultBody: string; sent: boolean; buttonLabel: string | null }>;
-  tryOn: { related: { enabled: boolean }; resubmission: { enabled: boolean } } | null;
   senderName: string | null;
   termsUrl: string | null;
   defaultTermsUrl: string;
@@ -72,38 +71,38 @@ test('GET: an event that never chose has approved and declined on, the others of
   assert.ok(byType(data, 'welcome').defaultBody.includes('{eventlink}') && byType(data, 'approved').defaultSubject.includes('{event}'));
   assert.deepEqual(data.types.map((row) => row.sent), [true, true, true, true, false], 'everything but the follow up is sent');
   assert.equal(byType(data, 'arrived').buttonLabel, null);
-  assert.equal(data.tryOn, null, 'an event without try-on has no try-on e-mails');
+  assert.equal('tryOn' in data, false, 'there are no try-on e-mails any more');
   assert.deepEqual([data.senderName, data.termsUrl], [null, null]);
   assert.match(data.defaultTermsUrl, /hu\/policies/);
   assert.deepEqual(roles, ['viewer']);
 });
 
-test('GET: what an event stored is read: the old after-save pair is the approved e-mail, an own text is shown, the old default text is not one, and try-on e-mails appear for an event that uses try-on', async (t) => {
+test('GET: what an event stored is read: the old after-save pair is the approved e-mail, an own text is shown, the old default text is not one, and the stored fields of the old try-on e-mails show nothing', async (t) => {
   setup(t);
   const { GET } = await importRoute('legacy');
-  const data = await view(await GET(new NextRequest(url(TRYON_EVENT_ID)), params(TRYON_EVENT_ID)));
+  const data = await view(await GET(new NextRequest(url(LEGACY_EVENT_ID)), params(LEGACY_EVENT_ID)));
   const approved = byType(data, 'approved');
   assert.equal(approved.subject, null, 'the old form saved the default subject as if it were its own: it is the default');
   assert.equal(approved.body, 'Hi {name}, own words {link}');
   assert.equal(data.senderName, 'The Club');
-  assert.deepEqual([data.tryOn?.related.enabled, data.tryOn?.resubmission.enabled], [true, false]);
+  assert.equal('tryOn' in data, false, 'an event that used try-on has no try-on e-mails either (issue 557)');
 });
 
 test('PUT replaces the types, takes the old approved fields away, keeps the rest, and answers the new view', async (t) => {
   const { data: db, roles } = setup(t);
   const { PUT } = await importRoute('put');
   const answer = await view(
-    await PUT(put(TRYON_EVENT_ID, { types: { approved: { enabled: false }, welcome: { enabled: true, subject: 'Welcome {name}' } }, termsUrl: 'https://example.com/terms', tryOn: { related: { enabled: false } } }), params(TRYON_EVENT_ID))
+    await PUT(put(LEGACY_EVENT_ID, { types: { approved: { enabled: false }, welcome: { enabled: true, subject: 'Welcome {name}' } }, termsUrl: 'https://example.com/terms', tryOn: { related: { enabled: false } } }), params(LEGACY_EVENT_ID))
   );
   assert.deepEqual(roles, ['manager']);
   const stored = (db.events[1] as { notifications: Record<string, unknown> }).notifications;
   assert.deepEqual(stored.types, { approved: { enabled: false }, welcome: { enabled: true, subject: 'Welcome {name}' } });
   for (const gone of ['submissionResultEmailEnabled', 'submissionResultEmailSendAfterSave', 'submissionResultEmailSubjectAfterSave', 'submissionResultEmailBodyAfterSave']) assert.equal(gone in stored, false, gone);
   assert.equal(stored.submissionResultEmailSenderName, 'The Club', 'what the page did not touch stays');
-  assert.equal(stored.submissionResultEmailSendAfterRelatedPhotosReady, false);
+  assert.equal('submissionResultEmailSendAfterRelatedPhotosReady' in stored, false, 'saving drops what the event stored for the removed related-photos e-mail');
   assert.equal(stored.termsUrl, 'https://example.com/terms');
   assert.deepEqual([byType(answer, 'approved').enabled, byType(answer, 'approved').chosen, byType(answer, 'welcome').enabled, byType(answer, 'welcome').subject], [false, false, true, 'Welcome {name}']);
-  const cleared = await view(await PUT(put(TRYON_EVENT_ID, { types: {}, senderName: null, termsUrl: null }), params(TRYON_EVENT_ID)));
+  const cleared = await view(await PUT(put(LEGACY_EVENT_ID, { types: {}, senderName: null, termsUrl: null }), params(LEGACY_EVENT_ID)));
   assert.deepEqual([byType(cleared, 'approved').enabled, byType(cleared, 'welcome').enabled, cleared.senderName, cleared.termsUrl], [true, false, null, null], 'no choices left: the defaults apply');
 });
 
@@ -114,7 +113,6 @@ test('PUT refuses what it cannot store and writes nothing: a bad body, a terms l
   assert.equal((await PUT(put(EVENT_MONGO_ID, { types: 'x' }), params(EVENT_MONGO_ID))).status, 400);
   assert.equal((await PUT(put(EVENT_MONGO_ID, { termsUrl: 'javascript:alert(1)' }), params(EVENT_MONGO_ID))).status, 400);
   assert.equal((await PUT(put(EVENT_MONGO_ID, { senderName: 'x'.repeat(200) }), params(EVENT_MONGO_ID))).status, 400);
-  assert.equal((await PUT(put(EVENT_MONGO_ID, { tryOn: { related: { enabled: 'yes' } } }), params(EVENT_MONGO_ID))).status, 400);
   assert.equal('notifications' in (db.events[0] as object), false);
 });
 

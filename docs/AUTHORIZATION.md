@@ -103,12 +103,12 @@ These come from SSO and apply to the Camera app as a whole.
 
 ## 5.1 Permission matrix
 
-| Role | Admin shell | Partner pages | Events App | Try-On App | Global inventory | Mutations |
-|------|-------------|---------------|------------|------------|------------------|-----------|
-| Global `admin` / `superadmin` | yes | yes | yes | yes | yes | full |
-| Partner `admin` | yes | assigned only | assigned app only | no | no | full inside scope |
-| Partner `manager` | yes | assigned only | assigned app only | no | no | create/update inside scope |
-| Partner `viewer` | yes | assigned only | assigned app only | no | no | read-only |
+| Role | Admin shell | Partner pages | Events App | Global inventory | Mutations |
+|------|-------------|---------------|------------|------------------|-----------|
+| Global `admin` / `superadmin` | yes | yes | yes | yes | full |
+| Partner `admin` | yes | assigned only | assigned app only | no | full inside scope |
+| Partner `manager` | yes | assigned only | assigned app only | no | create/update inside scope |
+| Partner `viewer` | yes | assigned only | assigned app only | no | read-only |
 
 ## 6. Route model
 
@@ -156,7 +156,7 @@ These can be partner-scoped where implemented:
 
 The event's **Vetting** tab (`/admin/events/[id]/vetting`) needs the **manager** role on the event (global admins always); a user without it
 is sent back to the event overview. Its photo section shows the vetting setting to everyone who can review, and the switch only to global
-admins; the try-on result vetting below it stays global-admin only.
+admins.
 
 
 `POST /api/admin/submissions/[submissionId]/review` approves or rejects a photo of an event with vetting required. A global admin may
@@ -166,8 +166,7 @@ and a photo that belongs to no event is global-admin only. Changing the event se
 ### Public photo surfaces (camera#262)
 
 What a visitor may see of a saved photo is decided by one rule, `lib/submissions/visibility.ts` (`isPubliclyVisible`): not archived,
-not hidden from every event it belongs to, not pending or rejected (a vetted photo that is waiting or rejected is shown a notice, never the photo, and only when reached by its share token), and a try-on result only when approved and not turned off for
-sharing. It is applied to `/share/[id]` and its link preview, `/api/share/[id]/download`, `/api/slideshows/[id]/next-candidate`
+not hidden from every event it belongs to, not pending or rejected (a vetted photo that is waiting or rejected is shown a notice, never the photo, and only when reached by its share token), and only a plain photo (`submissionKind` missing or `original`): a stored try-on result of the removed try-on integration is never public. It is applied to `/share/[id]` and its link preview, `/api/share/[id]/download`, `/api/slideshows/[id]/next-candidate`
 and `/users/[name]` (admins excepted). The slideshow playlist (pinned photos included), the savetheworld wall, its "people involved" count and
 publish-selfies, the savetheworld private lookup of a photo (empty until approved), the fanmass feed, the generic "after save" email path
 and the manual email script follow the same rule for waiting and rejected photos (camera#270). The admin gallery and partner gallery do not
@@ -190,8 +189,7 @@ These now follow the same partner-aware policy and should require global admin o
 
 `DELETE /api/submissions/[submissionId]` is allowed for the submission's owner (the fan's own erasure) and for
 global `admin` / `superadmin`; it deletes the stored image files first and then the record, see RUNBOOK
-"Deleting a submission" (camera#211). Try-on results are removed only through
-`POST /api/admin/tryon-results/[submissionId]/remove` (global admin). Event and partner "remove" only hide
+"Deleting a submission" (camera#211). A stored try-on result is refused (409): the data of the removed try-on integration is kept as it is. Event and partner "remove" only hide
 a submission (it can be restored), so they keep its files.
 
 ## 7. Recommended check order

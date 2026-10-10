@@ -14,7 +14,7 @@ import { buildWallFilter } from '@/lib/savetheworld/wall';
  * taking action" wall, newest first.
  *
  * Privacy boundary — these land on a public marketing page, so this returns
- * only non-tryon submissions whose `isShareVisible` is `true` (strict opt-in:
+ * only plain photos (never a stored try-on result) whose `isShareVisible` is `true` (strict opt-in:
  * a missing or `false` flag is never public; legacy photos become public only
  * through the admin's publish-selfies action), and never
  * `userEmail`/`userInfo`. Display name only, and only when the user set one.

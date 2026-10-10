@@ -17,7 +17,7 @@ import {
 } from '@/lib/email/submission-template-preview';
 import { getConfiguredSiteUrl } from '@/lib/site-url';
 
-const TEMPLATE_TYPES = new Set(['after_save', 'after_related', 'after_tryon_resubmission_approved']);
+const TEMPLATE_TYPES = new Set(['after_save']);
 
 export const POST = withErrorHandler(
   async (

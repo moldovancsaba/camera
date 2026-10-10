@@ -55,8 +55,6 @@ import {
 const SHARE_TEXT_FIELDS: Array<{ key: SharePageTextKey; label: string; long?: boolean }> = [
   { key: 'downloadButton', label: 'Download button text' },
   { key: 'createYourOwnButton', label: 'Create Your Own button text' },
-  { key: 'relatedPhotosTitle', label: 'Related photos heading' },
-  { key: 'originalPhotoLabel', label: 'Original photo label' },
   { key: 'waitingTitle', label: 'Waiting for approval: heading' },
   { key: 'waitingMessage', label: 'Waiting for approval: text', long: true },
   { key: 'notApprovedTitle', label: 'Not approved: heading' },
@@ -100,8 +98,6 @@ interface EventRecord {
   galleryConsent?: boolean | null;
   effectiveGalleryConsent?: boolean;
   sharePage?: {
-    includeOriginalCapture?: boolean;
-    includeCameraResult?: boolean;
     showCreateYourOwnButton?: boolean;
     texts?: Record<string, string>;
   };
@@ -143,12 +139,6 @@ export default function EditEventPage({
   const [brandBorderColor, setBrandBorderColor] = useState('');
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
-  const [includeOriginalCapture, setIncludeOriginalCapture] = useState(
-    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeOriginalCapture
-  );
-  const [includeCameraResult, setIncludeCameraResult] = useState(
-    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeCameraResult
-  );
   const [showCreateYourOwnButton, setShowCreateYourOwnButton] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.showCreateYourOwnButton
   );
@@ -190,8 +180,6 @@ export default function EditEventPage({
         setBrandBorderColor(eventData.brandBorderColor || eventData.theme?.buttonRing || '');
         setButtonSize(normalizeEventButtonSize(eventData.visualSettings?.buttonSize));
         const sharePageSettings = normalizeEventSharePageSettings(eventData.sharePage);
-        setIncludeOriginalCapture(sharePageSettings.includeOriginalCapture);
-        setIncludeCameraResult(sharePageSettings.includeCameraResult);
         setShowCreateYourOwnButton(sharePageSettings.showCreateYourOwnButton);
         setShareTexts(sharePageSettings.texts);
         setUiLanguage(isUiLanguage(eventData.uiLanguage) ? eventData.uiLanguage : '');
@@ -291,8 +279,6 @@ export default function EditEventPage({
       cameraMode,
       tourEnabled,
       sharePage: {
-        includeOriginalCapture,
-        includeCameraResult,
         showCreateYourOwnButton,
         texts: shareTexts,
       },
@@ -555,20 +541,8 @@ export default function EditEventPage({
 
           <FormSection
             title="Public result page"
-            description="Control which related photos are shown on the shareable result page linked from email and share actions."
+            description="The shareable photo page linked from email and share actions."
           >
-            <Checkbox
-              checked={includeOriginalCapture}
-              onChange={(event) => setIncludeOriginalCapture(event.currentTarget.checked)}
-              label="Show original photo taken"
-              description="Available when the raw camera image was uploaded as a try-on source."
-            />
-            <Checkbox
-              checked={includeCameraResult}
-              onChange={(event) => setIncludeCameraResult(event.currentTarget.checked)}
-              label="Show photo with Camera frame"
-              description="The normal Camera submission saved by the capture flow."
-            />
             <Checkbox
               checked={showCreateYourOwnButton}
               onChange={(event) => setShowCreateYourOwnButton(event.currentTarget.checked)}

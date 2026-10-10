@@ -1,12 +1,12 @@
 {
  "_meta": {
-  "generated": "2026-10-10T20:05:16+00:00",
+  "generated": "2026-10-10T20:15:38+00:00",
   "repo": "camera",
-  "head": "d30ce35",
+  "head": "e99ce19",
   "counts": {
-   "endpoints": 133,
-   "collections": 8,
-   "env": 61,
+   "endpoints": 128,
+   "collections": 7,
+   "env": 54,
    "outbound-hosts": 31,
    "docs": 71
   }
@@ -947,18 +947,6 @@
    "no_auth_marker": true
   },
   {
-   "path": "/api/internal/image-direct/complete",
-   "methods": [
-    "POST"
-   ],
-   "file": "app/api/internal/image-direct/complete/route.ts",
-   "auth_markers": [
-    "assertImageDirectCallbackSecret",
-    "withErrorHandler"
-   ],
-   "no_auth_marker": false
-  },
-  {
    "path": "/api/internal/messmass/events",
    "methods": [
     "POST"
@@ -1085,30 +1073,6 @@
     "withErrorHandler"
    ],
    "no_auth_marker": false
-  },
-  {
-   "path": "/api/internal/tryon/complete",
-   "methods": [
-    "GET",
-    "POST"
-   ],
-   "file": "app/api/internal/tryon/complete/route.ts",
-   "auth_markers": [
-    "withErrorHandler"
-   ],
-   "no_auth_marker": true
-  },
-  {
-   "path": "/api/internal/tryon/sync",
-   "methods": [
-    "GET",
-    "POST"
-   ],
-   "file": "app/api/internal/tryon/sync/route.ts",
-   "auth_markers": [
-    "withErrorHandler"
-   ],
-   "no_auth_marker": true
   },
   {
    "path": "/api/landing-pages/[id]",
@@ -1563,30 +1527,6 @@
    "file": "app/api/submissions/route.ts",
    "auth_markers": [
     "requireAuth",
-    "withErrorHandler"
-   ],
-   "no_auth_marker": false
-  },
-  {
-   "path": "/api/tryon/setups/[setupId]/use",
-   "methods": [
-    "POST"
-   ],
-   "file": "app/api/tryon/setups/[setupId]/use/route.ts",
-   "auth_markers": [
-    "requireAdmin",
-    "withErrorHandler"
-   ],
-   "no_auth_marker": false
-  },
-  {
-   "path": "/api/tryon/setups",
-   "methods": [
-    "GET"
-   ],
-   "file": "app/api/tryon/setups/route.ts",
-   "auth_markers": [
-    "requireAdmin",
     "withErrorHandler"
    ],
    "no_auth_marker": false

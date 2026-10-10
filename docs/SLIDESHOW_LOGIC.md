@@ -52,7 +52,6 @@ Operators can:
 - update timings and display behavior
 - copy public URLs
 - upload or assign failover background images
-- choose whether the playlist uses originals only, approved try-on only, or both
 
 ### Slideshow layouts
 

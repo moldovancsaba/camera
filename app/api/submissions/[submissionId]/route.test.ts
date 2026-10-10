@@ -12,7 +12,7 @@ const submissionId = submissionObjectId.toHexString();
 type RouteModule = typeof import('./route');
 
 // A fresh (uncached) query string per call so each test's mocks bind to their
-// own import of route.ts (same pattern as tryon-results/[submissionId]/remove).
+// own import of route.ts (the pattern of the other route tests).
 function importRouteModule(caseId: string): Promise<RouteModule> {
   const specifier = './route?case=' + caseId;
   return import(specifier) as Promise<RouteModule>;
@@ -123,10 +123,8 @@ test('PATCH: a finalized submission with an admin session is allowed', async (t)
 });
 
 // --- DELETE -----------------------------------------------------------------
-// WHAT: A try-on result is never hard-deleted through the generic route.
-// WHY: Its derived document is the sync backstop's completion marker
-//     (lib/tryon/sync.ts); deleting it without the admin remove route's
-//     moderation event lets the next cron run re-create the result.
+// WHAT: A stored try-on result is never hard-deleted through the generic route.
+// WHY: The try-on integration is removed and its data is kept as it is (issue 557); deleting it is a separate decision.
 
 function buildUserSession(userId: string): Session {
   return { ...buildAdminSession(), user: { id: userId, email: 'user@example.com' }, appRole: 'none', appAccess: false } as Session;
@@ -182,7 +180,7 @@ test('DELETE: the owner of a try-on result gets 409 and nothing is deleted', asy
   const res = await DELETE(buildDelete(), { params: Promise.resolve({ submissionId }) });
 
   assert.equal(res.status, 409);
-  assert.match((await res.json()).error, /api\/admin\/tryon-results\/\[submissionId\]\/remove/);
+  assert.match((await res.json()).error, /kept as they are/);
   assert.equal(deletes.length, 0);
 });
 

@@ -17,12 +17,12 @@ import { expect, test, type Page } from '@playwright/test';
 type BootstrapPayload = {
   e2eRunId?: string;
   eventMongoId?: string;
-  moderationEventMongoId?: string;
+  exportEventMongoId?: string;
 };
 
 let bootstrapRunId = '';
 let eventMongoId = '';
-let moderationEventMongoId = '';
+let exportEventMongoId = '';
 
 const OOPS = 'Oops! Something went wrong';
 
@@ -52,9 +52,9 @@ test.describe('admin smoke — every admin page renders without the error bounda
     const payload = (await bootstrap.json()) as BootstrapPayload;
     bootstrapRunId = payload.e2eRunId?.trim() ?? '';
     eventMongoId = payload.eventMongoId?.trim() ?? '';
-    moderationEventMongoId = payload.moderationEventMongoId?.trim() ?? '';
+    exportEventMongoId = payload.exportEventMongoId?.trim() ?? '';
     expect(eventMongoId, 'bootstrap returns eventMongoId').toBeTruthy();
-    expect(moderationEventMongoId, 'bootstrap returns moderationEventMongoId').toBeTruthy();
+    expect(exportEventMongoId, 'bootstrap returns exportEventMongoId').toBeTruthy();
   });
 
   test.afterEach(async ({ request }) => {
@@ -84,7 +84,7 @@ test.describe('admin smoke — every admin page renders without the error bounda
     await devLoginAsGlobalAdmin(page);
 
     // Both fixture events render the "Vetting" card of the overview, whose link buttons once triggered digest 4053814135.
-    for (const id of [eventMongoId, moderationEventMongoId]) {
+    for (const id of [eventMongoId, exportEventMongoId]) {
       await expectRendersWithoutError(page, `/admin/events/${id}`);
       await expect(
         page.getByText('Approve or reject the photos of this event.'),

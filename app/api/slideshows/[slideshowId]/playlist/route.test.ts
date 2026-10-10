@@ -55,103 +55,69 @@ function matches(doc: Record<string, unknown>, filter: object): boolean {
 
 const eventIdKeys = ['event-uuid-1'];
 const inactiveEmails: string[] = [];
-const manualId = new ObjectId();
+const photoId = new ObjectId();
 
 function baseDoc(overrides: Record<string, unknown> = {}) {
   return {
-    _id: manualId,
+    _id: photoId,
     eventId: 'event-uuid-1',
     isArchived: false,
     userEmail: 'guest@example.com',
-    submissionKind: 'tryon_result',
+    submissionKind: 'original',
     ...overrides,
   };
 }
 
-function filterFor(submissionSourceMode: 'originals_only' | 'approved_tryon_only' | 'originals_and_approved_tryon') {
-  return buildPlaylistMatchFilter({
-    eventIdKeys,
-    inactiveEmails,
-    submissionSourceMode,
-    manualObjectIds: [manualId],
-    excludeOids: [],
-  });
-}
+const playlistFilter = () => buildPlaylistMatchFilter({ eventIdKeys, inactiveEmails, excludeOids: [] });
 
-test('pinned + rejected tryon_result is excluded', () => {
-  const filter = filterFor('originals_only');
-  const doc = baseDoc({ reviewStatus: 'rejected' });
-  assert.equal(matches(doc, filter), false);
-});
-
-test('pinned + hiddenFromEvents containing the event is excluded', () => {
-  const filter = filterFor('originals_only');
-  const doc = baseDoc({ reviewStatus: 'approved', hiddenFromEvents: ['event-uuid-1'] });
-  assert.equal(matches(doc, filter), false);
-});
-
-test('pinned + inactive account (userInfo.isActive: false) is excluded', () => {
-  const filter = filterFor('originals_only');
-  const doc = baseDoc({ reviewStatus: 'approved', userInfo: { isActive: false } });
-  assert.equal(matches(doc, filter), false);
-});
-
-test('pinned + approved tryon_result is included', () => {
-  const filter = filterFor('originals_only');
-  const doc = baseDoc({ reviewStatus: 'approved' });
-  assert.equal(matches(doc, filter), true);
-});
-
-test('pinned original submission with no reviewStatus field is included', () => {
-  const filter = filterFor('approved_tryon_only');
-  const doc = baseDoc({ submissionKind: 'original' });
-  delete (doc as Record<string, unknown>).reviewStatus;
-  assert.equal(matches(doc, filter), true);
-});
-
-test('pin still overrides submissionSourceMode kind restriction for an approved original', () => {
-  const filter = filterFor('approved_tryon_only');
-  const doc = baseDoc({ submissionKind: 'original' });
-  assert.equal(matches(doc, filter), true);
-  const nonPinned = buildPlaylistMatchFilter({
-    eventIdKeys,
-    inactiveEmails,
-    submissionSourceMode: 'approved_tryon_only',
-    manualObjectIds: [],
-    excludeOids: [],
-  });
-  assert.equal(matches(doc, nonPinned), false);
-});
-
-test('a vetted photo that is waiting or rejected is never in a playlist, pinned or not, whatever the source mode', () => {
-  for (const mode of ['originals_only', 'approved_tryon_only', 'originals_and_approved_tryon'] as const) {
-    for (const reviewStatus of ['pending_review', 'rejected']) {
-      const doc = baseDoc({ submissionKind: 'original', reviewStatus });
-      assert.equal(matches(doc, filterFor(mode)), false, `${mode} pinned ${reviewStatus}`);
-      const unpinned = buildPlaylistMatchFilter({ eventIdKeys, inactiveEmails, submissionSourceMode: mode, manualObjectIds: [], excludeOids: [] });
-      assert.equal(matches(doc, unpinned), false, `${mode} ${reviewStatus}`);
+test('a stored try-on result is never in a playlist, whatever its review, its slideshow flag or its pin says (issue 557)', () => {
+  for (const reviewStatus of ['approved', 'pending_review', 'rejected', undefined]) {
+    for (const isSlideshowEligible of [true, false, undefined]) {
+      const doc = baseDoc({ submissionKind: 'tryon_result', reviewStatus, isSlideshowEligible, isShareVisible: true });
+      assert.equal(matches(doc, playlistFilter()), false, `${String(reviewStatus)} eligible ${String(isSlideshowEligible)}`);
     }
   }
+  const unknownKind = baseDoc({ submissionKind: 'something_else', reviewStatus: 'approved' });
+  assert.equal(matches(unknownKind, playlistFilter()), false, 'only a plain photo is shown');
 });
 
-test('a picture that is gone is never in a playlist, pinned or not, whatever the source mode; one that answers is', () => {
-  for (const mode of ['originals_only', 'approved_tryon_only', 'originals_and_approved_tryon'] as const) {
-    const broken = baseDoc({ submissionKind: 'original', reviewStatus: 'approved', isSlideshowEligible: true, mediaHealth: { broken: true, checkedAt: 'x' } });
-    assert.equal(matches(broken, filterFor(mode)), false, `${mode} pinned`);
-    const unpinned = buildPlaylistMatchFilter({ eventIdKeys, inactiveEmails, submissionSourceMode: mode, manualObjectIds: [], excludeOids: [] });
-    assert.equal(matches(broken, unpinned), false, `${mode} unpinned`);
+test('hidden from the event, an inactive account and an archived photo are excluded', () => {
+  assert.equal(matches(baseDoc({ reviewStatus: 'approved', hiddenFromEvents: ['event-uuid-1'] }), playlistFilter()), false);
+  assert.equal(matches(baseDoc({ reviewStatus: 'approved', userInfo: { isActive: false } }), playlistFilter()), false);
+  assert.equal(matches(baseDoc({ reviewStatus: 'approved', isArchived: true }), playlistFilter()), false);
+});
+
+test('a plain photo with no reviewStatus field (from before vetting) is included', () => {
+  const doc = baseDoc();
+  assert.equal(matches(doc, playlistFilter()), true);
+  assert.equal(matches(baseDoc({ submissionKind: undefined }), playlistFilter()), true, 'no kind at all is a plain photo too');
+});
+
+test('a vetted photo that is waiting or rejected is never in a playlist', () => {
+  for (const reviewStatus of ['pending_review', 'rejected']) {
+    assert.equal(matches(baseDoc({ reviewStatus }), playlistFilter()), false, reviewStatus);
   }
-  const fine = baseDoc({ submissionKind: 'original', reviewStatus: 'approved', mediaHealth: { broken: false, checkedAt: 'x' } });
-  assert.equal(matches(fine, buildPlaylistMatchFilter({ eventIdKeys, inactiveEmails, submissionSourceMode: 'originals_only', manualObjectIds: [], excludeOids: [] })), true);
 });
 
-test('an approved vetted photo and a photo from before vetting are in an originals playlist', () => {
+test('a picture that is gone is never in a playlist; one that answers is', () => {
+  const broken = baseDoc({ reviewStatus: 'approved', mediaHealth: { broken: true, checkedAt: 'x' } });
+  assert.equal(matches(broken, playlistFilter()), false);
+  const fine = baseDoc({ reviewStatus: 'approved', mediaHealth: { broken: false, checkedAt: 'x' } });
+  assert.equal(matches(fine, playlistFilter()), true);
+});
+
+test('an approved vetted photo and a photo from before vetting are in the playlist', () => {
   for (const reviewStatus of ['approved', undefined]) {
-    const doc = baseDoc({ submissionKind: 'original', reviewStatus });
-    if (reviewStatus === undefined) delete (doc as Record<string, unknown>).reviewStatus;
-    const filter = buildPlaylistMatchFilter({ eventIdKeys, inactiveEmails, submissionSourceMode: 'originals_only', manualObjectIds: [], excludeOids: [] });
-    assert.equal(matches(doc, filter), true, String(reviewStatus));
+    const doc = baseDoc({ reviewStatus });
+    assert.equal(matches(doc, playlistFilter()), true, String(reviewStatus));
   }
+});
+
+test('the photos already in another playlist are left out', () => {
+  const other = new ObjectId();
+  const filter = buildPlaylistMatchFilter({ eventIdKeys, inactiveEmails, excludeOids: [other] });
+  assert.equal(matches(baseDoc({ _id: other, reviewStatus: 'approved' }), filter), false);
+  assert.equal(matches(baseDoc({ reviewStatus: 'approved' }), filter), true);
 });
 
 test('the playlist query cuts the documents down to what a slide needs before it sorts, and sorts least played first, then oldest', () => {

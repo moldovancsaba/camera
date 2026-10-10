@@ -1,7 +1,7 @@
 /**
  * What the Emails page of an event shows (epic 463, docs/EMAIL_FORMAT_PLAN.md, segment E3): for each of the five types its switch (on or off, and whether the editor chose it or it follows
  * the default), the event's own subject and message (null when it follows the default), and the default subject and message in the event's language with the wordings written for its
- * partner and itself; the sender and the terms link; and, for an event that uses try-on, the two older try-on e-mails. Server side; unit-tested through the route.
+ * partner and itself; and the sender and the terms link. Server side; unit-tested through the route.
  */
 
 import type { Db, Document } from 'mongodb';
@@ -31,19 +31,10 @@ export interface EmailTypeView {
   sent: boolean;
 }
 
-export interface LegacyModeView {
-  enabled: boolean;
-  subject: string | null;
-  body: string | null;
-  defaultSubject: string;
-  defaultBody: string;
-}
-
 export interface EventEmailsView {
   language: UiLanguage;
   eventName: string;
   types: EmailTypeView[];
-  tryOn: { related: LegacyModeView; resubmission: LegacyModeView } | null;
   senderName: string | null;
   defaultSenderName: string;
   termsUrl: string | null;
@@ -88,23 +79,10 @@ export async function loadEventEmails(db: Db, event: Document, sent: readonly Em
     };
   });
 
-  const tryOnEnabled = Boolean((event.tryOn as { enabled?: unknown } | undefined)?.enabled);
   return {
     language,
     eventName: String(event.name ?? ''),
     types,
-    tryOn: tryOnEnabled
-      ? {
-          related: { enabled: policy.sendAfterRelatedPhotosReady, subject: own(policy.subjectTemplateAfterRelatedPhotosReady, defaults.subject), body: own(policy.bodyTemplateAfterRelatedPhotosReady, defaults.body), defaultSubject: defaults.subject, defaultBody: defaults.body },
-          resubmission: {
-            enabled: policy.sendAfterTryOnResubmissionApproved,
-            subject: own(policy.subjectTemplateAfterTryOnResubmissionApproved, defaults.resubmissionSubject),
-            body: own(policy.bodyTemplateAfterTryOnResubmissionApproved, defaults.resubmissionBody),
-            defaultSubject: defaults.resubmissionSubject,
-            defaultBody: defaults.resubmissionBody,
-          },
-        }
-      : null,
     senderName: typeof notifications.submissionResultEmailSenderName === 'string' && notifications.submissionResultEmailSenderName.trim() ? notifications.submissionResultEmailSenderName.trim() : null,
     defaultSenderName: DEFAULT_SUBMISSION_EMAIL_SENDER_NAME,
     termsUrl: typeof notifications.termsUrl === 'string' && notifications.termsUrl.trim() && emailTemplateIn(language, notifications.termsUrl, overrides) ? notifications.termsUrl.trim() : null,

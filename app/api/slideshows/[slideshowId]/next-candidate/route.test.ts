@@ -6,7 +6,7 @@ const apiReal = await import('@/lib/api');
 type RouteModule = typeof import('./route');
 const importRoute = (caseId: string) => import('./route?case=' + caseId) as Promise<RouteModule>;
 
-test('the candidate query applies the shared visibility rule: not archived, not hidden, not pending or rejected, try-on only approved', async (t) => {
+test('the candidate query applies the shared visibility rule: not archived, not hidden, not pending or rejected, plain photos only (never a stored try-on result)', async (t) => {
   const filters: Array<{ $and: unknown[] }> = [];
   t.mock.module('@/lib/api', { namedExports: { ...apiReal, checkRateLimit: async () => undefined } });
   t.mock.module('@/lib/db/mongodb', {
@@ -29,5 +29,6 @@ test('the candidate query applies the shared visibility rule: not archived, not 
   assert.match(text, /"isArchived":\{"\$ne":true\}/);
   assert.match(text, /"hiddenFromEvents"/);
   assert.match(text, /"reviewStatus":\{"\$nin":\["pending_review","rejected"\]\}/);
-  assert.match(text, /"submissionKind":"tryon_result"\},\{"reviewStatus":"approved"\}/);
+  assert.match(text, /"submissionKind":\{"\$exists":false\}\},\{"submissionKind":"original"/, 'only a plain photo: no kind or original');
+  assert.doesNotMatch(text, /tryon_result/, 'a stored try-on result has no branch that lets it in');
 });

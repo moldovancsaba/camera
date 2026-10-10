@@ -9,4 +9,5 @@ test('a gallery never lists a picture that is gone, nor the photos the rule alre
   const has = (clause: unknown) => filter.$and.some((candidate) => JSON.stringify(candidate) === JSON.stringify(clause));
   assert.ok(has({ 'mediaHealth.broken': { $ne: true } }), 'a picture that is gone');
   assert.ok(has({ isArchived: { $ne: true } }), 'archived');
+  assert.ok(has({ $or: [{ submissionKind: { $exists: false } }, { submissionKind: 'original' }] }), 'a plain photo only: a stored try-on result is not listed (issue 557)');
 });

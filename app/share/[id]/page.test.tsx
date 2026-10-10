@@ -261,3 +261,29 @@ test('the tab title of an English waiting photo, and of a photo that is not foun
   assert.equal(waiting.description, 'Capture and share photos at your events with branded frames and flows.', 'the description every page had from the root layout');
   assert.equal((await page.generateMetadata(params('nope'))).title, 'Photo Not Found / A fotó nem található');
 });
+
+test('a stored try-on result has no share page, approved and shared or not, by id and by token (issue 557)', async (t) => {
+  const approved = photo({ shareToken: TOKEN, submissionKind: 'tryon_result', sourceSubmissionId: 'src-1', reviewStatus: 'approved', isShareVisible: true });
+  const pending = photo({ shareToken: 'tok_abcdefghijklmnopqrsu', submissionKind: 'tryon_result', sourceSubmissionId: 'src-1', reviewStatus: 'pending_review' });
+  mockDb(t, [approved, pending]);
+  const page = await importPage('tryon-result');
+  for (const id of [approved._id.toHexString(), TOKEN, pending._id.toHexString(), 'tok_abcdefghijklmnopqrsu']) {
+    assert.equal((await render(page, id)).notFound, true, id);
+  }
+  const meta = await page.generateMetadata(params(approved._id.toHexString()));
+  assert.deepEqual(meta.robots, { index: false, follow: false });
+  assert.equal(JSON.stringify(meta).includes('submission-1.jpg'), false, 'no preview image');
+});
+
+test('the photo page shows the photo and its download, and nothing about try-on, whatever the event once stored (issue 557)', async (t) => {
+  const doc = photo({ shareToken: TOKEN, reviewStatus: 'approved', tryOnRequest: { requested: true, status: 'done', sourceImageUrl: 'https://store.test/tryon-source.jpg', shareVisible: false } });
+  mockDb(t, [doc], { sharePage: { includeCameraResult: false, includeOriginalCapture: true, includeTryOnResult: true, includeCheckedInTryOnResult: true, pendingTryOnMessage: 'Soon.' } });
+  const { element, notFound } = await render(await importPage('old-settings'), doc._id.toHexString());
+  assert.equal(notFound, false);
+  const json = JSON.stringify(element);
+  assert.match(json, /submission-1\.jpg/, 'the photo is on the page');
+  assert.equal(json.includes('tryon-source.jpg'), false, 'the stored try-on source is not shown');
+  assert.equal(json.includes('Soon.'), false);
+  assert.match(json, new RegExp(`/api/share/${doc._id.toHexString()}/download\\?variant=${doc._id.toHexString()}%3Acamera-result`), 'the download link of the photo');
+  assert.deepEqual(withProp(element, 'alt').map((image) => image.props.alt), ['Photo with Camera frame']);
+});

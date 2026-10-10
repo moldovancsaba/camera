@@ -6,8 +6,6 @@ import {
   DEFAULT_EVENT_TERMS_URL,
   DEFAULT_SUBMISSION_EMAIL_BODY,
   DEFAULT_SUBMISSION_EMAIL_SUBJECT,
-  DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY,
-  DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT,
   emailDefaults,
 } from './submission-template-defaults';
 
@@ -26,10 +24,6 @@ const savedByTheEditor = {
   submissionResultEmailEnabled: true,
   submissionResultEmailSubjectAfterSave: DEFAULT_SUBMISSION_EMAIL_SUBJECT,
   submissionResultEmailBodyAfterSave: DEFAULT_SUBMISSION_EMAIL_BODY,
-  submissionResultEmailSubjectAfterRelatedPhotosReady: DEFAULT_SUBMISSION_EMAIL_SUBJECT,
-  submissionResultEmailBodyAfterRelatedPhotosReady: DEFAULT_SUBMISSION_EMAIL_BODY,
-  submissionResultEmailSubjectAfterTryOnResubmissionApproved: DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT,
-  submissionResultEmailBodyAfterTryOnResubmissionApproved: DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY,
   termsUrl: DEFAULT_EVENT_TERMS_URL,
 };
 
@@ -38,7 +32,6 @@ test('without a language, or in English, the email settings are read exactly as 
     assert.equal(policy.language, 'en');
     assert.equal(policy.subjectTemplateAfterSave, DEFAULT_SUBMISSION_EMAIL_SUBJECT);
     assert.equal(policy.bodyTemplateAfterSave, DEFAULT_SUBMISSION_EMAIL_BODY);
-    assert.equal(policy.subjectTemplateAfterTryOnResubmissionApproved, DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT);
     assert.equal(policy.termsUrl, DEFAULT_EVENT_TERMS_URL);
   }
   assert.equal(normalizeSubmissionEmailPolicy({}).termsUrl, DEFAULT_EVENT_TERMS_URL);
@@ -52,9 +45,6 @@ test('in Hungarian the English defaults an editor saved are the Hungarian defaul
   assert.equal(policy.language, 'hu');
   assert.equal(policy.subjectTemplateAfterSave, hu.subject);
   assert.equal(policy.bodyTemplateAfterSave, hu.body);
-  assert.equal(policy.subjectTemplateAfterRelatedPhotosReady, hu.subject);
-  assert.equal(policy.subjectTemplateAfterTryOnResubmissionApproved, hu.resubmissionSubject);
-  assert.equal(policy.bodyTemplateAfterTryOnResubmissionApproved, hu.resubmissionBody);
   assert.equal(policy.termsUrl, 'https://seyuselfies.com/hu/policies/');
   assert.equal(normalizeSubmissionEmailPolicy({}, 'hu').termsUrl, 'https://seyuselfies.com/hu/policies/');
 });
@@ -112,8 +102,9 @@ test('a choice stored by an editor wins: the old switches keep their meaning, an
   const off = normalizeSubmissionEmailPolicy({ submissionResultEmailEnabled: false });
   assert.deepEqual([off.enabled, off.sendAfterSave, off.types.approved.enabled], [false, false, false], 'the old master switch stored as off still turns approved off');
   assert.equal(off.types.approved.chosen, null, 'but it is not a choice of the new switch, so a vetted event still sends the link');
+  // The stored switch of the removed related-photos e-mail (issue 557) keeps nothing alive: with the approved e-mail off, nothing is sent.
   const afterSaveOff = normalizeSubmissionEmailPolicy({ submissionResultEmailEnabled: true, submissionResultEmailSendAfterSave: false, submissionResultEmailSendAfterRelatedPhotosReady: true });
-  assert.deepEqual([afterSaveOff.sendAfterSave, afterSaveOff.sendAfterRelatedPhotosReady, afterSaveOff.enabled], [false, true, true]);
+  assert.deepEqual([afterSaveOff.sendAfterSave, afterSaveOff.enabled], [false, false]);
   const newOn = normalizeSubmissionEmailPolicy({ submissionResultEmailEnabled: false, types: { approved: { enabled: true }, welcome: { enabled: true }, declined: { enabled: false } } });
   assert.deepEqual([newOn.sendAfterSave, newOn.types.welcome.enabled, newOn.types.declined.enabled], [true, true, false], 'the new switches win over the old ones');
   assert.deepEqual([newOn.types.approved.chosen, newOn.types.declined.chosen, newOn.types.arrived.chosen], [true, false, null]);

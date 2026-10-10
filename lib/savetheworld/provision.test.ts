@@ -4,7 +4,7 @@ import { test } from 'node:test';
 type ProvisionModule = typeof import('./provision');
 
 // Fresh (uncached) import per test so each test's mocks bind to their own
-// import of provision.ts (same pattern as app/api/internal/tryon/sync/route.test.ts).
+// import of provision.ts (the pattern of the route tests).
 function importProvisionModule(caseId: string): Promise<ProvisionModule> {
   const specifier = './provision?case=' + caseId;
   return import(specifier) as Promise<ProvisionModule>;

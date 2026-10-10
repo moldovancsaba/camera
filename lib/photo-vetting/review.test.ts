@@ -49,7 +49,7 @@ function fakeDb(submission: Doc, options: { frames?: Doc[]; event?: Doc | null; 
     collection: (name: string) => ({
       findOne: async (filter: Doc) => {
         if (name === 'frames') return options.frames?.find((f) => f.frameId === filter.frameId) ?? null;
-        if (name === 'events') return options.event === undefined ? { _id: new ObjectId(), eventId: 'event-uuid', name: 'Derby', tryOn: { enabled: true } } : options.event;
+        if (name === 'events') return options.event === undefined ? { _id: new ObjectId(), eventId: 'event-uuid', name: 'Derby' } : options.event;
         return null;
       },
       updateOne: async (filter: Doc, update: Doc) => {
@@ -70,10 +70,10 @@ function fakeDb(submission: Doc, options: { frames?: Doc[]; event?: Doc | null; 
   return { db: db as never, updates };
 }
 
-interface Calls { fetched: string[]; uploads: Array<{ base64: string; name: string }>; deleted: string[]; tryOn: unknown[]; approvedMails: unknown[]; rejectedMails: unknown[] }
+interface Calls { fetched: string[]; uploads: Array<{ base64: string; name: string }>; deleted: string[]; approvedMails: unknown[]; rejectedMails: unknown[] }
 
 function deps(photo: Buffer, frame: Buffer, overrides: Partial<ReviewDeps> = {}): { deps: ReviewDeps; calls: Calls } {
-  const calls: Calls = { fetched: [], uploads: [], deleted: [], tryOn: [], approvedMails: [], rejectedMails: [] };
+  const calls: Calls = { fetched: [], uploads: [], deleted: [], approvedMails: [], rejectedMails: [] };
   const base: ReviewDeps = {
     fetchImage: async (url) => {
       calls.fetched.push(url);
@@ -84,7 +84,6 @@ function deps(photo: Buffer, frame: Buffer, overrides: Partial<ReviewDeps> = {})
       return { imageUrl: 'https://store.test/submission-1.jpg', deleteUrl: 'https://ibb.co/del', imageId: 'img1', fileSize: base64.length, mimeType: 'image/jpeg' };
     },
     deleteFile: async (url) => void calls.deleted.push(url),
-    enqueueTryOn: async (_db, input) => (calls.tryOn.push(input), { status: 'queued', jobId: 'job-1', error: null }),
     sendApproved: async (_s, _e, url) => (calls.approvedMails.push(url), { sent: true, provider: 'resend', messageId: 'm', recipientEmail: 'ann@example.com' }),
     sendNotApproved: async (_s, _e, url) => (calls.rejectedMails.push(url), { sent: true, provider: 'resend', messageId: 'm', recipientEmail: 'ann@example.com' }),
     now: () => AT,
@@ -98,7 +97,7 @@ test('approval makes the picture from the photo and the recorded frame image, pu
   const { db, updates } = fakeDb(submission);
   const { deps: d, calls } = deps(photo, frame);
   const result = await approvePhoto(db, submission as never, ACTOR, d);
-  assert.deepEqual(result, { ok: true, tryOn: null, email: 'sent' });
+  assert.deepEqual(result, { ok: true, email: 'sent' });
   assert.deepEqual(calls.fetched, [PHOTO_URL, VARIANT_URL]);
   assert.equal(calls.uploads.length, 1);
   assert.notEqual(calls.uploads[0].base64, photo.toString('base64'), 'the uploaded picture is the composite, not the plain photo');
@@ -138,7 +137,7 @@ test('approval of a guest who did not tick the pledge wall leaves it unshared', 
   assert.equal(submission.isShareVisible, false);
 });
 
-test('a held try-on request is queued at approval with the plain photo as its source', async () => {
+test('a try-on request held with an old photo is ignored at approval: the photo is approved, nothing is queued, the private photo is deleted', async () => {
   const { photo, frame } = await fixtures();
   const submission = pendingSubmission({
     photoReview: { photoUrl: PHOTO_URL, photoSize: 10, photoMime: 'image/jpeg', shareOptIn: true, submittedAt: AT, tryOn: { leatherSuitId: 'suit-1', setupId: 's1', cameraId: null, outfitBottomLeatherSuitId: null } },
@@ -147,14 +146,10 @@ test('a held try-on request is queued at approval with the plain photo as its so
   const { db } = fakeDb(submission);
   const { deps: d, calls } = deps(photo, frame);
   const result = await approvePhoto(db, submission as never, ACTOR, d);
-  assert.equal(result.ok && result.tryOn?.status, 'queued');
-  const input = calls.tryOn[0] as { request: { leatherSuitId: string; sourceImageData: string; setupId: string }; eventId: string; submissionId: string };
-  assert.equal(input.request.leatherSuitId, 'suit-1');
-  assert.equal(input.request.setupId, 's1');
-  assert.equal(input.request.sourceImageData, `data:image/jpeg;base64,${photo.toString('base64')}`);
-  assert.equal(input.eventId, 'event-uuid');
-  assert.equal(input.submissionId, String(submission._id));
-  assert.deepEqual(calls.deleted, [PHOTO_URL], 'deleted only after the try-on source was taken');
+  assert.deepEqual(result, { ok: true, email: 'sent' });
+  assert.equal('tryOn' in result, false);
+  assert.equal(submission.reviewStatus, 'approved');
+  assert.deepEqual(calls.deleted, [PHOTO_URL]);
 });
 
 test('an event with its own frame is composed with that frame image', async () => {
@@ -204,7 +199,7 @@ test('a photo that is already approved, or has no file, is not approved again', 
   assert.equal(calls.uploads.length, 0);
 });
 
-test('when someone else decides first, this approval changes nothing: no email, no try-on, no delete', async () => {
+test('when someone else decides first, this approval changes nothing: no email, no delete', async () => {
   const { photo, frame } = await fixtures();
   const submission = pendingSubmission({
     photoReview: { photoUrl: PHOTO_URL, photoSize: 10, photoMime: 'image/jpeg', shareOptIn: true, submittedAt: AT, tryOn: { leatherSuitId: 'suit-1', setupId: null, cameraId: null, outfitBottomLeatherSuitId: null } },
@@ -214,7 +209,7 @@ test('when someone else decides first, this approval changes nothing: no email, 
   const { deps: d, calls } = deps(photo, frame);
   const result = await approvePhoto(db, { ...submission } as never, ACTOR, d);
   assert.equal(!result.ok && result.reason, 'not_reviewable');
-  assert.deepEqual([calls.tryOn.length, calls.approvedMails.length, calls.deleted.length], [0, 0, 0]);
+  assert.deepEqual([calls.approvedMails.length, calls.deleted.length], [0, 0]);
 });
 
 test('a failing email does not undo the approval', async () => {
@@ -223,7 +218,7 @@ test('a failing email does not undo the approval', async () => {
   const { db } = fakeDb(submission);
   const { deps: d } = deps(photo, frame, { sendApproved: async () => { throw new Error('mail down'); } });
   const result = await approvePhoto(db, submission as never, ACTOR, d);
-  assert.deepEqual(result, { ok: true, tryOn: null, email: 'failed' });
+  assert.deepEqual(result, { ok: true, email: 'failed' });
   assert.equal(submission.reviewStatus, 'approved');
 });
 
@@ -235,7 +230,7 @@ test('a rejected photo can still be approved later', async () => {
   assert.equal(submission.reviewStatus, 'approved');
 });
 
-test('rejection keeps the photo private, makes no picture, cancels the held try-on and emails the guest', async () => {
+test('rejection keeps the photo private, makes no picture and emails the guest', async () => {
   const { photo, frame } = await fixtures();
   const submission = pendingSubmission({ tryOnRequest: { requested: true, status: 'awaiting_approval' } });
   const { db } = fakeDb(submission);
@@ -245,7 +240,6 @@ test('rejection keeps the photo private, makes no picture, cancels the held try-
   assert.equal(submission.reviewStatus, 'rejected');
   assert.equal(submission.reviewNotes, 'Not suitable');
   assert.equal(submission.isShareVisible, false);
-  assert.equal((submission.tryOnRequest as Doc).status, 'cancelled');
   assert.deepEqual(submission.reviewHistory, [{ action: 'reject', by: 'mod@example.com', at: AT, reason: 'Not suitable' }]);
   for (const key of ['imageUrl', 'finalImageUrl', 'originalImageUrl']) assert.equal(key in submission, false);
   assert.deepEqual([calls.uploads.length, calls.deleted.length, calls.fetched.length], [0, 0, 0]);

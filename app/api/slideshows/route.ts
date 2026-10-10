@@ -49,7 +49,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       orderMode: bodyOrderMode,
       crossfade: bodyCrossfade,
       stageAspect: bodyStageAspect,
-      submissionSourceMode: bodySubmissionSourceMode,
     } = body;
 
     const playMode = bodyPlayMode === 'once' ? 'once' : 'loop';
@@ -67,12 +66,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         ? body.backgroundImageUrl.trim()
         : null;
     const viewportScale = body.viewportScale === 'fill' ? 'fill' : 'fit';
-    const submissionSourceMode =
-      bodySubmissionSourceMode === 'approved_tryon_only'
-        ? 'approved_tryon_only'
-        : bodySubmissionSourceMode === 'originals_and_approved_tryon'
-          ? 'originals_and_approved_tryon'
-          : 'originals_only';
     const stageAspectNorm = normalizeStageAspectInput(bodyStageAspect);
 
     if (!eventId || !name) {
@@ -122,7 +115,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       backgroundAccentColor,
       backgroundImageUrl,
       viewportScale,
-      submissionSourceMode,
       createdBy: session.user.id,
       createdAt: generateTimestamp(),
       updatedAt: generateTimestamp(),
@@ -232,7 +224,6 @@ export const PATCH = withErrorHandler(async (request: NextRequest) => {
       viewportScale,
       stageAspect: bodyStageAspectPatch,
       screenDesign,
-      submissionSourceMode,
     } = body;
 
     const hexOk = (s: string) =>
@@ -316,19 +307,6 @@ export const PATCH = withErrorHandler(async (request: NextRequest) => {
         );
       }
       updates.viewportScale = viewportScale;
-    }
-    if (submissionSourceMode !== undefined) {
-      if (
-        submissionSourceMode !== 'originals_only' &&
-        submissionSourceMode !== 'approved_tryon_only' &&
-        submissionSourceMode !== 'originals_and_approved_tryon'
-      ) {
-        return NextResponse.json(
-          { error: 'submissionSourceMode must be "originals_only", "approved_tryon_only", or "originals_and_approved_tryon"' },
-          { status: 400 }
-        );
-      }
-      updates.submissionSourceMode = submissionSourceMode;
     }
     if (bodyStageAspectPatch !== undefined) {
       if (bodyStageAspectPatch === null) {

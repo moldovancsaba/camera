@@ -75,7 +75,7 @@ export async function GET(
             ],
           },
           { _id: { $nin: excludeIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id)) } },
-          // Not archived, not hidden from the event, not pending or rejected, and a try-on result only when approved:
+          // Not archived, not hidden from the event, not pending or rejected, and a plain photo (never a stored try-on result):
           // the one rule of lib/submissions/visibility.ts (camera#262). This route had no review filter at all.
           ...publiclyVisibleClauses(eventIdKeys),
         ]

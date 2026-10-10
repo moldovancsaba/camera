@@ -2,7 +2,7 @@
  * POST /api/admin/submissions/[submissionId]/review (camera#267, docs/PHOTO_VETTING_PLAN.md)
  *
  * Approve or reject a photo of an event with vetting required. Allowed for global admins and for the event's partner Events
- * managers. Approval makes the picture, queues the held try-on, emails the guest the share link and deletes the private photo;
+ * managers. Approval makes the picture, emails the guest the share link and deletes the private photo;
  * rejection keeps the photo private and emails the guest a short note.
  *
  * Body: { action: 'approve' | 'reject', reason?: string }
@@ -80,6 +80,5 @@ export const POST = withErrorHandler(async (
     submissionId,
     reviewStatus: action === 'approve' ? 'approved' : 'rejected',
     email: result.email,
-    ...('tryOn' in result ? { tryOn: result.tryOn } : {}),
   });
 });

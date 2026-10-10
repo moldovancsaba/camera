@@ -9,7 +9,7 @@ import { buildEventSubmissionsFilter, buildPublishSelfiesFilter } from '@/lib/sa
 /**
  * POST /api/internal/savetheworld/events/[eventId]/publish-selfies
  *
- * Bulk-sets isShareVisible=true on every non-tryon fan submission for this
+ * Bulk-sets isShareVisible=true on every plain fan photo (never a stored try-on result) for this
  * event that was not yet share-visible. Used to retroactively publish selfies
  * taken before shareOptIn defaulted to true.
  *

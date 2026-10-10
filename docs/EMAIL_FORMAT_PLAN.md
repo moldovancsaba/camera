@@ -1,5 +1,7 @@
 # The e-mails to the user: one format, one legal part, an editor, variables (client feedback 2026-10-09)
 
+> Update (issue 557): the two try-on e-mails mentioned below (after the related photos are ready, after an approved try-on rerun) are gone with the try-on integration; the result e-mail has one mode, after the photo is saved. This plan is kept as written.
+
 Tracker: epic [#463](https://github.com/moldovancsaba/camera/issues/463) on board [#24](https://github.com/users/moldovancsaba/projects/24); segments E1 [#464](https://github.com/moldovancsaba/camera/issues/464), E2 [#465](https://github.com/moldovancsaba/camera/issues/465), E3 [#466](https://github.com/moldovancsaba/camera/issues/466), E4 [#467](https://github.com/moldovancsaba/camera/issues/467), E5 [#468](https://github.com/moldovancsaba/camera/issues/468), E6 [#469](https://github.com/moldovancsaba/camera/issues/469). Separate request: the social login buttons, [#462](https://github.com/moldovancsaba/camera/issues/462). Status: **answered by the owner 2026-10-09 (section 7), delivery before the match on Friday 2026-10-16**; segment status in section 8. No e-mail changes until an editor changes it.
 
 ## 1. The client feedback (verbatim, two screenshots of the MTK x Vasas e-mail, 2026-10-09)

@@ -51,7 +51,7 @@ function world(t: TestContext, options: { frames?: boolean; signedIn?: boolean; 
   t.mock.module('@/lib/imgbb/upload', {
     namedExports: { uploadImage: async (_data: string, o: { name?: string }) => (uploads.push(o.name ?? ''), { imageUrl: `https://store.test/${o.name}.jpg`, deleteUrl: '', imageId: 'i', fileSize: 999, mimeType: 'image/jpeg' }) },
   });
-  t.mock.module('@/lib/tryon/frame-composition', { namedExports: { fetchImageBuffer: async (url: string) => (url.includes('f1') ? frameOf() : photoOf()) } });
+  t.mock.module('@/lib/media/image-buffer', { namedExports: { fetchImageBuffer: async (url: string) => (url.includes('f1') ? frameOf() : photoOf()) } });
   t.mock.module('@/lib/submissions/screen-picture', { namedExports: { ensureScreenPicture: async (_db: unknown, s: { imageUrl: string }) => void screenFor.push(s.imageUrl) } });
   const row = (id: ObjectId) => seeded.data.submissions.find((s) => String(s._id) === String(id)) as Record<string, unknown>;
   return { seeded, uploaded, already, guest, uploads, screenFor, row };

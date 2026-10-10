@@ -71,7 +71,7 @@ const STANDARD_TAILS: string[] = (() => {
   const tails = new Set<string>();
   for (const language of UI_LANGUAGES) {
     const defaults = emailDefaults(language);
-    for (const body of [defaults.body, defaults.resubmissionBody, defaults.notApprovedBody]) tails.add(lastParagraph(body));
+    for (const body of [defaults.body, defaults.notApprovedBody]) tails.add(lastParagraph(body));
   }
   return [...tails];
 })();

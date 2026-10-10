@@ -2,7 +2,7 @@
  * The screen-sized picture of a submission (camera#476, step S7; owner answer 211 b).
  *
  * The giant screen shows one new photo every few seconds over a venue link that is not always reliable, and the picture it was given was the full-size one: a
- * composed JPEG at frame size, quality 92 (a megabyte or more), or a try-on PNG at frame size (several). A wall that shows at most 1920 pixels cannot use the
+ * composed JPEG at frame size, quality 92 (a megabyte or more). A wall that shows at most 1920 pixels cannot use the
  * extra. So when a photo becomes public its screen picture is made once: the longest edge at most 1920 px, WebP quality 80, stored in the Blob store with a one-year
  * cache header under `screen-pictures/<submission id>-<hash of the picture>.webp`, and named in `Submission.screenImageUrl`. The playlist sends it instead of `imageUrl` when it
  * exists; the original is never changed or removed. **The address changes with the picture** (owner, 2026-10-09: the slideshow showed the unframed version of a photo the gallery had
@@ -16,7 +16,7 @@ import { put } from '@vercel/blob';
 import type { Db, ObjectId } from 'mongodb';
 import sharp from 'sharp';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { fetchImageBuffer } from '@/lib/tryon/frame-composition';
+import { fetchImageBuffer } from '@/lib/media/image-buffer';
 import { logWarn } from '@/lib/observability/logger';
 
 export const SCREEN_PICTURE_LONG_EDGE = 1920;

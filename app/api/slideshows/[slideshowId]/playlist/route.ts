@@ -37,10 +37,6 @@ import {
   resolveSlideshowStageAspect,
   type SlideshowStageSource,
 } from '@/lib/slideshow/stage-aspect';
-import {
-  resolveSubmissionSourceModeForSlideshow,
-  type SubmissionSourceMode,
-} from '@/lib/tryon/slideshow-policy';
 
 /** Playlist is personalized (random / instanceKey); never cache across clients or layout cells. */
 export const dynamic = 'force-dynamic';
@@ -78,8 +74,8 @@ function accountActiveClause(inactiveEmails: Iterable<string>): object {
 }
 
 /**
- * A plain photo, unless it is a vetted photo that is waiting or was rejected (camera#270): such a photo has no picture yet or must
- * stay private. Photos from before vetting carry no review status and stay in.
+ * A plain photo (never a stored try-on result, issue 557), unless it is a vetted photo that is waiting or was rejected (camera#270): such a photo
+ * has no picture yet or must stay private. Photos from before vetting carry no review status and stay in.
  */
 function approvedOriginalsClause(): object {
   return {
@@ -90,30 +86,15 @@ function approvedOriginalsClause(): object {
   };
 }
 
-/** A pinned tryon_result still needs to have cleared review; a pinned original must not be waiting or rejected. */
-function pinnedReviewStateClause(): object {
-  return {
-    $or: [
-      approvedOriginalsClause(),
-      { $and: [{ submissionKind: 'tryon_result' }, { reviewStatus: 'approved' }] },
-    ],
-  };
-}
-
 export interface BuildPlaylistMatchFilterOptions {
   eventIdKeys: string[];
   inactiveEmails: Iterable<string>;
-  submissionSourceMode: SubmissionSourceMode;
-  manualObjectIds: ObjectId[];
   excludeOids: ObjectId[];
 }
 
 /**
- * Build match filter: event + optional exclude + archived/hidden + active users only.
- * The pinned branch only ever ADDS eligibility on top of submissionSourceMode's kind
- * restriction (e.g. bringing in an 'original' under approved_tryon_only) -- it re-checks
- * the same moderation state, hiddenFromEvents, and account-standing as baseFilter, so a
- * pin can never bypass those.
+ * Build match filter: event + optional exclude + archived/hidden + active users only, plain photos that are not waiting or rejected.
+ * (The slideshow's source mode and its hand-pinned try-on results went with the try-on integration, issue 557.)
  */
 /**
  * The playlist query: the eligible pool, cut down to the fields a slide needs *before* the sort, in fairness order (least played, then oldest).
@@ -150,8 +131,6 @@ const reloadToken = (slideshow: Record<string, unknown>): string | null =>
 export function buildPlaylistMatchFilter({
   eventIdKeys,
   inactiveEmails,
-  submissionSourceMode,
-  manualObjectIds,
   excludeOids,
 }: BuildPlaylistMatchFilterOptions): object {
   const and: object[] = [
@@ -162,52 +141,17 @@ export function buildPlaylistMatchFilter({
       ],
     },
     { isArchived: { $ne: true } },
-    // A picture that is gone is never shown on a screen, pinned or not (lib/media/broken.ts).
+    // A picture that is gone is never shown on a screen (lib/media/broken.ts).
     { 'mediaHealth.broken': { $ne: true } },
     hiddenFromEventsClause(eventIdKeys),
     accountActiveClause(inactiveEmails),
+    // Plain photos only: a stored try-on result is never on a screen, whatever its review says (issue 557).
+    approvedOriginalsClause(),
   ];
-  if (submissionSourceMode === 'approved_tryon_only') {
-    and.push({
-      submissionKind: 'tryon_result',
-      reviewStatus: 'approved',
-      isSlideshowEligible: true,
-    });
-  } else if (submissionSourceMode === 'originals_and_approved_tryon') {
-    and.push({
-      $or: [
-        {
-          $and: [
-            { submissionKind: 'tryon_result' },
-            { reviewStatus: 'approved' },
-            { isSlideshowEligible: true },
-          ],
-        },
-        approvedOriginalsClause(),
-      ],
-    });
-  } else {
-    and.push(approvedOriginalsClause());
-  }
   if (excludeOids.length > 0) {
     and.push({ _id: { $nin: excludeOids } });
   }
-  const baseFilter = { $and: and };
-  if (manualObjectIds.length === 0) {
-    return baseFilter;
-  }
-  const pinnedAnd: object[] = [
-    { _id: { $in: manualObjectIds } },
-    { isArchived: { $ne: true } },
-    { 'mediaHealth.broken': { $ne: true } },
-    hiddenFromEventsClause(eventIdKeys),
-    accountActiveClause(inactiveEmails),
-    pinnedReviewStateClause(),
-  ];
-  if (excludeOids.length > 0) {
-    pinnedAnd.push({ _id: { $nin: excludeOids } });
-  }
-  return { $or: [baseFilter, { $and: pinnedAnd }] };
+  return { $and: and };
 }
 
 /**
@@ -329,40 +273,12 @@ export async function GET(
       );
     }
 
-    // WHAT: submissions an admin explicitly pinned into this slideshow (see
-    // POST .../tryon-results/[id]/pin-to-slideshow), on top of whatever
-    // submissionSourceMode already matches. WHY: the source modes are all
-    // policy-driven (every approved result, or every original) -- there was
-    // no way to hand-curate a specific set of Greatest Hits into one
-    // slideshow's rotation. A pin only ever ADDS eligibility on top of the
-    // sourceMode's kind restriction: buildPlaylistMatchFilter's pinned branch
-    // re-checks isArchived, hiddenFromEvents, account standing, and review
-    // state exactly like the base filter, so a pin can never bypass
-    // moderation, per-event visibility, or account deactivation.
-    const manualObjectIds = Array.isArray(slideshow.manualSubmissionIds)
-      ? slideshow.manualSubmissionIds.filter((id): id is string => typeof id === 'string' && ObjectId.isValid(id)).map((id) => new ObjectId(id))
-      : [];
-
     const eventIdKeys = submissionEventIdKeys(event as Event);
-    const submissionSourceMode = resolveSubmissionSourceModeForSlideshow(
-      event as
-        | {
-            tryOn?: {
-              enabled?: boolean;
-              includeApprovedResultsInSlideshows?: boolean;
-              resultSlideshowMode?: unknown;
-            };
-          }
-        | null,
-      slideshow as { submissionSourceMode?: unknown }
-    );
 
     const buildMatchFilter = (excludeOids: ObjectId[]) =>
       buildPlaylistMatchFilter({
         eventIdKeys,
         inactiveEmails,
-        submissionSourceMode,
-        manualObjectIds,
         excludeOids,
       });
 
@@ -478,7 +394,6 @@ export async function GET(
           candidatePoolSize: 0,
           inactiveUsersFiltered: inactiveEmails.size,
           excludedPlaylistImages: excludeObjectIds.length,
-          submissionSourceMode,
         },
         },
         { headers: answerHeaders() }
@@ -523,7 +438,6 @@ export async function GET(
         candidatePoolSize: submissions.length,
         inactiveUsersFiltered: inactiveEmails.size,
         excludedPlaylistImages: excludeObjectIds.length,
-        submissionSourceMode,
         playMode,
         orderMode,
       },

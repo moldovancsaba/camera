@@ -76,14 +76,6 @@ export async function POST(request: Request) {
     .collection(COLLECTIONS.SLIDESHOWS)
     .deleteMany({ ...cleanupFilter });
 
-  const tryOnJobsResult = await db
-    .collection(COLLECTIONS.TRYON_JOBS)
-    .deleteMany({ ...cleanupFilter });
-
-  const moderationEventsResult = await db
-    .collection(COLLECTIONS.TRYON_MODERATION_EVENTS)
-    .deleteMany({ ...cleanupFilter });
-
   return NextResponse.json({
     ok: true,
     e2eRunId,
@@ -93,8 +85,6 @@ export async function POST(request: Request) {
       partnerUserAccess: partnerAccessResult.deletedCount,
       submissions: submissionsResult.deletedCount,
       slideshows: slideshowsResult.deletedCount,
-      tryOnJobs: tryOnJobsResult.deletedCount,
-      tryOnModerationEvents: moderationEventsResult.deletedCount,
     },
   });
 }

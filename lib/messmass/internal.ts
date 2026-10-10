@@ -3,7 +3,7 @@ import { checkSharedSecret, logSharedSecretRejection } from '@/lib/security/safe
 
 /**
  * Service-to-service auth for the messmass provisioning API, mirroring
- * assertInternalTryOnSecret / assertInternalFanmassSecret. messmass (the master
+ * assertInternalFanmassSecret. messmass (the master
  * for organisations/partners/events) calls these endpoints with a shared secret
  * to create/link camera records. Accepts `x-messmass-secret` or Bearer.
  *

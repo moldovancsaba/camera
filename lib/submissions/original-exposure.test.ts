@@ -21,7 +21,6 @@ const ALLOWED: Record<string, string> = {
   'app/api/submissions/route.ts': 'writes the submission; the response goes to the fan who made it',
   'lib/db/schemas.ts': 'type definition',
   'lib/fanmass/media-feed.ts': 'the query behind the fanmass feed (service secret): selects photos that have one, returns no URL itself',
-  'lib/email/submission-result-email.ts': 'email to the fan about their own photo',
   'lib/events/event-export.ts': 'admin event export',
   'lib/savetheworld/publishSelfies.ts': 'query that decides which submissions to publish; reads no URL out',
   'lib/savetheworld/wall.ts': 'only documents that the original is excluded from the public wall projection',
@@ -29,7 +28,6 @@ const ALLOWED: Record<string, string> = {
   'lib/screen/welcome-photo.ts': 'reads it only for an editor\'s own gallery upload (`metadata.adminGalleryUpload`), whose plain upload is kept there, never for a guest\'s private original; the picture is drawn into the welcome page screen and no URL is returned to a public response (the admin picker list is behind an admin session)',
   'lib/submissions/delete-files.ts': 'reads the URL only to delete the file with the submission; returns counts, never a URL',
   'lib/submissions/public-image.ts': 'the public image resolver, which refuses the original when a reframe record exists',
-  'lib/tryon/publication.ts': 'builds the derived try-on document; keeps the private original off it',
 };
 
 const PUBLIC_SURFACES = [
@@ -38,7 +36,6 @@ const PUBLIC_SURFACES = [
   'app/api/slideshows/[slideshowId]/next-candidate/route.ts',
   'app/api/slideshows/[slideshowId]/played/route.ts',
   'app/share/[id]/page.tsx',
-  'app/greatest-hits/[slug]/page.tsx',
   'lib/slideshow/playlist.ts',
 ];
 

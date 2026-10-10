@@ -53,7 +53,7 @@ export default function EventExportControls({ eventId }: { eventId: string }) {
               <div>
                 <Text fw={700}>Images</Text>
                 <Text c="dimmed" size="sm">
-                  Originals, finals, and try-on results. The CSV lists every image URL; the ZIP
+                  Originals and finals. The CSV lists every image URL; the ZIP
                   bundles the actual files (smaller events only).
                 </Text>
               </div>

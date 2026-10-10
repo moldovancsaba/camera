@@ -2,8 +2,6 @@ import {
   DEFAULT_EVENT_TERMS_URL,
   DEFAULT_SUBMISSION_EMAIL_BODY,
   DEFAULT_SUBMISSION_EMAIL_SUBJECT,
-  DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY,
-  DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT,
 } from '@/lib/email/submission-template-defaults';
 import {
   buildSubmissionShareUrl,
@@ -13,10 +11,7 @@ import {
 } from '@/lib/email/submission-result-email';
 import type { Event, Submission } from '@/lib/db/schemas';
 
-export type SubmissionEmailTemplateType =
-  | 'after_save'
-  | 'after_related'
-  | 'after_tryon_resubmission_approved';
+export type SubmissionEmailTemplateType = 'after_save';
 
 export interface SubmissionEmailPreviewContext {
   recipientName: string;
@@ -53,45 +48,15 @@ function renderTemplate(template: string, context: SubmissionEmailPreviewContext
     .replace(/\{terms\}/gi, context.termsUrl);
 }
 
-function templateForType(policy: SubmissionEmailPolicy, type: SubmissionEmailTemplateType) {
-  if (type === 'after_save') {
-    return {
-      enabled: policy.enabled && policy.sendAfterSave,
-      subject:
-        policy.subjectTemplateAfterSave ||
-        policy.subjectTemplate ||
-        DEFAULT_SUBMISSION_EMAIL_SUBJECT,
-      body:
-        policy.bodyTemplateAfterSave ||
-        policy.bodyTemplate ||
-        DEFAULT_SUBMISSION_EMAIL_BODY,
-    };
-  }
-
-  if (type === 'after_tryon_resubmission_approved') {
-    return {
-      enabled: policy.enabled && policy.sendAfterTryOnResubmissionApproved,
-      subject:
-        policy.subjectTemplateAfterTryOnResubmissionApproved ||
-        policy.subjectTemplateAfterRelatedPhotosReady ||
-        policy.subjectTemplate ||
-        DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT,
-      body:
-        policy.bodyTemplateAfterTryOnResubmissionApproved ||
-        policy.bodyTemplateAfterRelatedPhotosReady ||
-        policy.bodyTemplate ||
-        DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY,
-    };
-  }
-
+function templateForType(policy: SubmissionEmailPolicy) {
   return {
-    enabled: policy.enabled && policy.sendAfterRelatedPhotosReady,
+    enabled: policy.enabled && policy.sendAfterSave,
     subject:
-      policy.subjectTemplateAfterRelatedPhotosReady ||
+      policy.subjectTemplateAfterSave ||
       policy.subjectTemplate ||
       DEFAULT_SUBMISSION_EMAIL_SUBJECT,
     body:
-      policy.bodyTemplateAfterRelatedPhotosReady ||
+      policy.bodyTemplateAfterSave ||
       policy.bodyTemplate ||
       DEFAULT_SUBMISSION_EMAIL_BODY,
   };
@@ -131,7 +96,7 @@ export function validateSubmissionEmailTemplate(input: {
   context: SubmissionEmailPreviewContext;
 }): EmailTemplateValidation {
   const policy = normalizeSubmissionEmailPolicy(input.event.notifications);
-  const selected = templateForType(policy, input.type);
+  const selected = templateForType(policy);
   const subjectTemplate = normalizeTemplate(selected.subject, DEFAULT_SUBMISSION_EMAIL_SUBJECT, 180);
   const bodyTemplate = normalizeTemplate(selected.body, DEFAULT_SUBMISSION_EMAIL_BODY, 5000);
   const combinedTemplate = `${subjectTemplate}\n${bodyTemplate}`.toLowerCase();
@@ -150,10 +115,6 @@ export function validateSubmissionEmailTemplate(input: {
     !selected.enabled ? `Template type ${input.type} is not enabled for delivery.` : null,
     missingPlaceholders.length > 0
       ? `Template does not include required placeholders: ${missingPlaceholders.join(', ')}.`
-      : null,
-    input.type === 'after_tryon_resubmission_approved' &&
-    bodyTemplate === (policy.bodyTemplateAfterRelatedPhotosReady || policy.bodyTemplate)
-      ? 'Resubmission-approved template is falling back to another email body.'
       : null,
   ].filter((value): value is string => Boolean(value));
 
@@ -175,6 +136,6 @@ export function validateSubmissionEmailTemplateMatrix(input: {
   baseUrl?: string;
 }): EmailTemplateValidation[] {
   const context = buildSubmissionEmailPreviewContext(input);
-  return (['after_save', 'after_related', 'after_tryon_resubmission_approved'] as SubmissionEmailTemplateType[])
+  return (['after_save'] as SubmissionEmailTemplateType[])
     .map((type) => validateSubmissionEmailTemplate({ type, event: input.event, context }));
 }

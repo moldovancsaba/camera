@@ -182,7 +182,7 @@ export const EVENT_THEME_CSS = `
 .event-theme .mantine-SegmentedControl-label[data-active] {
   color: var(--event-button-text) !important;
 }
-/* An alert inside a themed page (the try-on status, an error on a page) is a card of the event too, not Mantine's blue or yellow box. */
+/* An alert inside a themed page (a status or an error on a page) is a card of the event too, not Mantine's blue or yellow box. */
 .event-theme .mantine-Alert-root {
   --alert-bg: var(--event-card-bg);
   --alert-color: var(--event-card-text);

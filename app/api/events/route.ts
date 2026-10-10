@@ -26,7 +26,6 @@ import {
   isGlobalAdminSession,
   listAccessiblePartnerIds,
 } from '@/lib/partners/authorization';
-import { normalizeEventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
 import { sanitizeNotificationSettings } from '@/lib/email/notification-settings';
@@ -120,7 +119,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   // Parse request body
   const body = await request.json();
-  const { name, partnerId, description, eventDate, location, loadingText, isActive, logoUrl, showLogo, shortUrlSlug, greatestHitsSlug, tryOn, notifications, visualSettings, sharePage } =
+  const { name, partnerId, description, eventDate, location, loadingText, isActive, logoUrl, showLogo, shortUrlSlug, notifications, visualSettings, sharePage } =
     body;
 
   // Validate required fields
@@ -168,43 +167,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     }
   }
 
-  let resolvedGreatestHitsSlug: string | null | undefined;
-  if (greatestHitsSlug !== undefined && greatestHitsSlug !== null) {
-    const norm = normalizeGoShortSlugInput(greatestHitsSlug);
-    if (!norm.ok) {
-      throw apiBadRequest(norm.error);
-    }
-    if (norm.slug) {
-      const dup = await db.collection(COLLECTIONS.EVENTS).findOne({ greatestHitsSlug: norm.slug });
-      if (dup) {
-        throw apiBadRequest('This Greatest Hits slug is already used by another event.');
-      }
-      if (await trackedSlugExists(db, norm.slug)) {
-        throw apiBadRequest('This Greatest Hits slug is already used by a tracked link.');
-      }
-      resolvedGreatestHitsSlug = norm.slug;
-    } else {
-      resolvedGreatestHitsSlug = null;
-    }
-  }
-
   // Create event document
   // eventId is a UUID for consistent identification
   // partnerName is cached for efficient queries and display
   // frames/logos inherit from partner defaults
   // customPages starts empty; pages can be added later via PATCH
   const now = generateTimestamp();
-  const resultSlideshowMode = normalizeEventTryOnResultSlideshowMode({
-    tryOn: {
-      enabled: Boolean(tryOn?.enabled),
-      includeApprovedResultsInSlideshows: Boolean(tryOn?.includeApprovedResultsInSlideshows),
-      resultSlideshowMode: tryOn?.resultSlideshowMode,
-    },
-  });
-  const tryOnSetupId =
-    typeof tryOn?.setupId === 'string' && tryOn.setupId.trim().length > 0
-      ? tryOn.setupId.trim()
-      : null;
   const event = {
     eventId: generateId(),
     name: name.trim(),
@@ -231,26 +199,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     slots: {},
     customPages: [],
     journeyDefaults: true, // the journey defaults (default consent page and the like) apply to events created from now on (camera#330)
-    tryOn: {
-      enabled: Boolean(tryOn?.enabled),
-      setupId: tryOnSetupId,
-      allowedLeatherSuitIds: Array.isArray(tryOn?.allowedLeatherSuitIds)
-        ? tryOn.allowedLeatherSuitIds
-            .filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
-            .map((value: string) => value.trim())
-        : [],
-      outfitEnabled: Boolean(tryOn?.outfitEnabled),
-      applyFrameToReturnedResults: Boolean(tryOn?.applyFrameToReturnedResults),
-      vettingEnabled: tryOn?.vettingEnabled !== false,
-      localAiQualityGateEnabled: Boolean(tryOn?.localAiQualityGateEnabled),
-      includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
-      resultSlideshowMode,
-    },
     notifications: sanitizeNotificationSettings(notifications),
     // Photo vetting (camera#263): the default of the rollout; only a global admin changes it afterwards.
     photoVetting: defaultPhotoVetting(now),
     ...(resolvedShortSlug !== undefined ? { shortUrlSlug: resolvedShortSlug } : {}),
-    ...(resolvedGreatestHitsSlug !== undefined ? { greatestHitsSlug: resolvedGreatestHitsSlug } : {}),
     submissionCount: 0,
     createdBy: session.user.id,
     createdAt: now,
