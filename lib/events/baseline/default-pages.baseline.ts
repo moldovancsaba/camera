@@ -1,3 +1,7 @@
+/*
+ * FROZEN COPY of the logic as it was before the checkbox settings (issue 558), kept only so that tests can run the same inputs through the old and the new code
+ * (lib/events/consent-settings.baseline.test.ts). Do not change it and do not import it from application code.
+ */
 /**
  * The default consent page and the default order of the user flow (camera#330, docs/WELCOME_AND_DEFAULTS_PLAN.md items 38 to 48): welcome page,
  * consent page, login page, selfie taking, the rest. Like the default login page (identity-page.ts) the default consent page is added at read
@@ -6,10 +10,9 @@
  */
 
 import type { CustomPage } from '@/lib/db/schemas';
-import type { ConsentCheckbox } from './consent';
-import { DOCUMENT_KINDS, type DocumentSettings } from './checkbox-settings';
-import { pagesBeforeSave } from './photo-boundary';
-import { DEFAULT_IDENTITY_PAGE_ID, withRequiredIdentityPage } from './identity-page';
+import type { ConsentCheckbox } from './consent.baseline';
+import { pagesBeforeSave } from '../photo-boundary';
+import { DEFAULT_IDENTITY_PAGE_ID, withRequiredIdentityPage } from '../identity-page';
 import { translate, type UiLanguage } from '@/lib/i18n';
 import type { TextOverrides } from '@/lib/i18n/overrides';
 
@@ -19,29 +22,19 @@ export const DEFAULT_WELCOME_PAGE_ID = 'default-welcome';
 /**
  * The three legal pages every user accepts (owner, 2026-10-07): all required, in the language of the event (camera#352); the links go to the legal
  * pages of the service in that language (they exist in English and Hungarian).
- *
- * `documents` are the settings of the three checkboxes for this event (issue 558, lib/events/checkbox-settings.ts): a document that is switched off is left out; an optional one carries
- * `required: false`; one an editor chose to require carries `required: true` (the server then checks it too). Without `documents`, or with the standard, the list is exactly what it always was.
  */
-export function defaultConsentCheckboxes(language: UiLanguage = 'en', texts?: TextOverrides | null, documents?: DocumentSettings): readonly ConsentCheckbox[] {
-  const all: Array<ConsentCheckbox & { kind: (typeof DOCUMENT_KINDS)[number] }> = [
-    { kind: 'terms', text: translate(language, 'consent.terms', undefined, texts), linkUrl: `https://seyuselfies.com/${language}/legal/terms` },
-    { kind: 'cookies', text: translate(language, 'consent.cookies', undefined, texts), linkUrl: `https://seyuselfies.com/${language}/legal/cookies` },
-    { kind: 'privacy', text: translate(language, 'consent.privacy', undefined, texts), linkUrl: `https://seyuselfies.com/${language}/policies` },
+export function defaultConsentCheckboxes(language: UiLanguage = 'en', texts?: TextOverrides | null): readonly ConsentCheckbox[] {
+  return [
+    { text: translate(language, 'consent.terms', undefined, texts), linkUrl: `https://seyuselfies.com/${language}/legal/terms` },
+    { text: translate(language, 'consent.cookies', undefined, texts), linkUrl: `https://seyuselfies.com/${language}/legal/cookies` },
+    { text: translate(language, 'consent.privacy', undefined, texts), linkUrl: `https://seyuselfies.com/${language}/policies` },
   ];
-  return all
-    .filter((item) => documents?.[item.kind].shown !== false)
-    .map(({ kind, ...item }) => {
-      const setting = documents?.[kind];
-      if (!setting) return item;
-      return setting.checked ? { ...item, required: true } : setting.required ? item : { ...item, required: false };
-    });
 }
 
 /** The English default checkboxes, for code that has no language. */
 export const DEFAULT_CONSENT_CHECKBOXES: readonly ConsentCheckbox[] = defaultConsentCheckboxes('en');
 
-export function defaultConsentPage(order: number, now: string = new Date().toISOString(), language: UiLanguage = 'en', texts?: TextOverrides | null, documents?: DocumentSettings): CustomPage {
+export function defaultConsentPage(order: number, now: string = new Date().toISOString(), language: UiLanguage = 'en', texts?: TextOverrides | null): CustomPage {
   return {
     pageId: DEFAULT_CONSENT_PAGE_ID,
     pageType: 'accept' as CustomPage['pageType'],
@@ -52,7 +45,7 @@ export function defaultConsentPage(order: number, now: string = new Date().toISO
       description: translate(language, 'consent.description', undefined, texts),
       buttonText: translate(language, 'consent.button', undefined, texts),
       checkboxText: '',
-      checkboxes: defaultConsentCheckboxes(language, texts, documents).map((checkbox) => ({ ...checkbox })),
+      checkboxes: defaultConsentCheckboxes(language, texts).map((checkbox) => ({ ...checkbox })),
     },
     createdAt: now,
     updatedAt: now,
@@ -90,7 +83,7 @@ export function hasConsentPageBeforePhoto(pages: readonly CustomPage[]): boolean
  */
 export function withDefaultJourneyPages(
   pages: readonly CustomPage[] | null | undefined,
-  options: { vettingRequired: boolean; consentDefault: boolean; now?: string; language?: UiLanguage; hasWelcomeScreen?: boolean; texts?: TextOverrides | null; defaultOrders?: Record<string, number> | null; documents?: DocumentSettings },
+  options: { vettingRequired: boolean; consentDefault: boolean; now?: string; language?: UiLanguage; hasWelcomeScreen?: boolean; texts?: TextOverrides | null; defaultOrders?: Record<string, number> | null },
 ): CustomPage[] {
   const stored = [...(pages ?? [])];
   // The default welcome page: only for an event that gets the journey defaults, has the picture drawn from its default slideshow and has no welcome page of its own (a switched off one
@@ -101,13 +94,12 @@ export function withDefaultJourneyPages(
       : stored;
   const own = withWelcome;
   let withConsent = own;
-  // With every one of the three documents switched off (issue 558) there is nothing to accept and the default page is not added.
-  if (options.consentDefault && !hasConsentPageBeforePhoto(own) && (!options.documents || DOCUMENT_KINDS.some((kind) => options.documents?.[kind].shown !== false))) {
+  if (options.consentDefault && !hasConsentPageBeforePhoto(own)) {
     const sorted = [...own].sort((a, b) => a.order - b.order);
     let leading = 0;
     while (sorted[leading]?.pageType === 'welcome') leading += 1;
     const order = leading > 0 ? sorted[leading - 1].order + 0.25 : (sorted.length > 0 ? sorted[0].order : 0) - 2;
-    withConsent = [defaultConsentPage(order, options.now, options.language, options.texts, options.documents), ...own];
+    withConsent = [defaultConsentPage(order, options.now, options.language, options.texts), ...own];
   }
   return withDefaultOrders(withRequiredIdentityPage(withConsent, options.vettingRequired, options.now, options.language, options.texts), options.defaultOrders);
 }
