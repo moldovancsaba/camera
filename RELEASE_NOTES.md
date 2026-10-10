@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the default sentence of the gallery permission says "public campaign wall" (issue 554; owner answers 288 and 289)
+
+- **Owner:** answer 289: change the default sentence from "public event gallery" to "public campaign wall"; answer 288: no partner or event asks for the permission now.
+- **Changed:** the Dictionary defaults `share.publicGalleryConsent` and `share.publicGalleryConsentHelp` (English and Hungarian): "I agree to show my photo on the public campaign wall (optional)." / "Leave this unchecked to keep your photo off the public campaign wall." / "Hozzájárulok, hogy a fotóm megjelenjen a kampány nyilvános falán (nem kötelező)." / "Hagyd üresen, ha nem szeretnéd, hogy a fotód megjelenjen a kampány nyilvános falán." The reason: the flag only controls savetheworld's public pledge wall and galleries (`buildWallFilter`); the giant screen, the welcome-page photo, the person's own share link and the e-mails follow the approval rule alone, and camera has no public gallery of its own, so "event gallery" could be read as covering them.
+- **No event changes:** no partner or event asks (answer 288), so no user sees the sentence; an editor's own wording at any text level is untouched.
+- **Verified:** type-check; lint; unit tests; the capture page in a browser harness with the new sentence (14 of 14); the full CI chain.
+- **Not done:** the setting's own label in the editors still says "public gallery" (the owner approved the sentence only); an option to also keep unticked photos off the giant screen is not built (not asked).
+
 ## Unreleased — the public gallery permission is a setting: partner default, event choice, in the consent page settings (issue 554; owner answer 283, replaces camera#429)
 
 - **Owner:** answer 283 on the separate consent for the public photo gallery (camera#429): "this is service and market specific, make it as an option in the settings and add it to the consent page settings".
