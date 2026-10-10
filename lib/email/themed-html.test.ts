@@ -60,8 +60,9 @@ test('the event\'s footer picture sits under the card, full width, and is absent
 
 // ---- A long link must not make the e-mail wider than a phone screen (issue 382) ----
 
-const TOKEN = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8';
-const LONG = `https://camera.messmass.com/share/${TOKEN}`;
+// A long id, 96 characters with no break in it (low entropy on purpose: the secret scan reads a random-looking value next to a name like token as a credential).
+const LONG_ID = 'a1b2c3'.repeat(16);
+const LONG = `https://camera.messmass.com/share/${LONG_ID}`;
 
 test('the e-mail cannot be wider than the screen: fixed table layouts, the wrap rule on every cell that holds words, a viewport line, and a button that may shrink', () => {
   const html = renderThemedEmail({
