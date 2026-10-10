@@ -1,6 +1,6 @@
 {
  "_meta": {
-  "generated": "2026-10-10T10:21:06+00:00",
+  "generated": "2026-10-10T07:07:55+00:00",
   "repo": "camera",
   "head": "b71e259",
   "counts": {
@@ -8,7 +8,7 @@
    "collections": 8,
    "env": 61,
    "outbound-hosts": 31,
-   "docs": 68
+   "docs": 69
   }
  },
  "items": [
@@ -191,6 +191,10 @@
   {
    "file": "docs/PHOTO_VETTING_PLAN.md",
    "title": "Photo vetting by default: plan"
+  },
+  {
+   "file": "docs/PROFILE_PURPOSE_AND_CONSENT_DRAFT.md",
+   "title": "Profiles across events: purpose and consent (owner decisions 2026-10-10)"
   },
   {
    "file": "docs/SCREEN_DESIGN.md",
