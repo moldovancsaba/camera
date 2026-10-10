@@ -46,6 +46,7 @@ import {
   type EventButtonSize,
 } from '@/lib/events/visual-settings';
 import { isUiLanguage, normalizeUiLanguage, UI_LANGUAGES, UI_LANGUAGE_LABELS, type UiLanguage } from '@/lib/i18n';
+import { CAMERA_MODES, CAMERA_MODE_LABELS, DEFAULT_CAMERA_MODE, isCameraMode, type CameraMode } from '@/lib/camera/mode';
 import {
   DEFAULT_EVENT_SHARE_PAGE_SETTINGS,
   normalizeEventSharePageSettings,
@@ -108,6 +109,9 @@ interface EventRecord {
   };
   uiLanguage?: string | null;
   tourEnabled?: boolean;
+  /** The event's own camera mode (issue 547); `effectiveCameraMode` is what the event uses (its own, else its partner's, else the standard). */
+  cameraMode?: string | null;
+  effectiveCameraMode?: string | null;
   sharePage?: {
     includeOriginalCapture?: boolean;
     includeCameraResult?: boolean;
@@ -187,6 +191,8 @@ export default function EditEventPage({
   const [uiLanguage, setUiLanguage] = useState<UiLanguage | ''>('');
   const [shownLanguage, setShownLanguage] = useState<UiLanguage>('en');
   const [tourEnabled, setTourEnabled] = useState(false);
+  const [cameraMode, setCameraMode] = useState<CameraMode | ''>('');
+  const [shownCameraMode, setShownCameraMode] = useState<CameraMode>(DEFAULT_CAMERA_MODE);
   const [resultSlideshowMode, setResultSlideshowMode] =
     useState<EventTryOnResultSlideshowMode>('disabled');
   const [applyFrameToReturnedResults, setApplyFrameToReturnedResults] = useState(false);
@@ -251,6 +257,8 @@ export default function EditEventPage({
         setUiLanguage(isUiLanguage(eventData.uiLanguage) ? eventData.uiLanguage : '');
         setShownLanguage(normalizeUiLanguage(eventData.journeyContext?.language ?? eventData.uiLanguage));
         setTourEnabled(eventData.tourEnabled === true);
+        setCameraMode(isCameraMode(eventData.cameraMode) ? eventData.cameraMode : '');
+        setShownCameraMode(isCameraMode(eventData.effectiveCameraMode) ? eventData.effectiveCameraMode : DEFAULT_CAMERA_MODE);
         setResultSlideshowMode(
           eventData.tryOn?.resultSlideshowMode ||
             (eventData.tryOn?.includeApprovedResultsInSlideshows ? 'mixed_with_originals' : 'disabled')
@@ -443,6 +451,7 @@ export default function EditEventPage({
         buttonSize,
       },
       uiLanguage,
+      cameraMode,
       tourEnabled,
       sharePage: {
         includeOriginalCapture,
@@ -582,6 +591,18 @@ export default function EditEventPage({
               ]}
               value={uiLanguage}
               onChange={(value) => setUiLanguage(isUiLanguage(value) ? value : '')}
+              allowDeselect={false}
+            />
+
+            <Select
+              label="Camera"
+              description="How the photo is taken. Same as the partner follows the partner's choice (the phone's own camera app when it made none). The live camera shows the view buttons: portrait or landscape, wide or tight."
+              data={[
+                { value: '', label: cameraMode === '' ? `Same as the partner (${CAMERA_MODE_LABELS[shownCameraMode]})` : 'Same as the partner' },
+                ...CAMERA_MODES.map((mode) => ({ value: mode, label: CAMERA_MODE_LABELS[mode] })),
+              ]}
+              value={cameraMode}
+              onChange={(value) => setCameraMode(isCameraMode(value) ? value : '')}
               allowDeselect={false}
             />
 

@@ -1,5 +1,13 @@
 # RELEASE_NOTES.md
 
+## Unreleased — the camera of an event is a setting: the phone's own camera app or the live camera with view buttons, on the partner and on the event (issue 547; owner answer 253)
+
+- **Owner:** "I need a checkbox to choose between camera modes as solutions on partner level and event level."
+- **Added:** `lib/camera/mode.ts` (`device` or `live`; the event's own choice, else its partner's, else `device`; nothing copied). **Partner editor:** a section **Camera of the events** with the checkbox **Use the live camera with view buttons** (ticked = `live`, unticked = no choice). **Event editor:** a choice **Camera**: *Same as the partner* (it says what that gives), *The phone's own camera app*, *The live camera with view buttons*. The guest event answer carries `effectiveCameraMode`; the capture page uses the live camera with the portrait or landscape and wide or tight buttons (issue 525) when it is `live`. `?views=1` on the link still turns it on for a try.
+- **A checkbox on the partner, a choice on the event:** an event needs a third state (follow the partner), which one checkbox cannot say; the partner has two states, so it is a checkbox.
+- **No event changes by this release:** no partner or event has a choice stored, so every event keeps the phone's own camera app (and the desktop live view) until somebody ticks it. The match on 16 October is untouched.
+- **Verified:** type-check; lint; unit tests (the chain event, partner, standard and the request values; both PATCH routes: set, clear, refuse, leave alone; the guest answer with the partner's choice, the event's own, and neither); the whole capture page in a browser harness on a touch phone and on a desktop with the event answer mocked (no mode, device and live give the right camera, the view buttons only in live, `?views=1` still forces it: 7 of 7); both editors in a browser harness (the checkbox default and saved value, the event's choice with and without a value of its own, what a save sends: 15 of 16, the one failure is the existing sideways overflow of the Basic information grid at 390 px, not this section); the full CI chain.
+- **Not done:** the same choice for the lens or the front/back camera; a per-user choice; the editor guide's Hungarian screenshots.
 ## Unreleased — vetting marking is on everywhere and required; scarf instead of other merchandise (issue 542; owner answers 262, 263, 264)
 
 - **Owner:** "262 that was a mistake, use cap, jersey, scarves and flag; 263 something needed, it can be a single point if that is much easier; 264 everywhere."

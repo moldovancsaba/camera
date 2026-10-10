@@ -25,6 +25,7 @@ import { pushPartnerToMessmass } from '@/lib/messmassClient';
 import { partnerLibraryIds } from '@/lib/library/db';
 import { parsePartnerBrandDefaults } from '@/lib/events/brand-colours';
 import { UI_LANGUAGES, isUiLanguage } from '@/lib/i18n';
+import { parseCameraMode } from '@/lib/camera/mode';
 import { parseLogoDefaults, type LogoDefault } from '@/lib/library/logos';
 
 export const GET = withErrorHandler(async (
@@ -93,6 +94,7 @@ export const PATCH = withErrorHandler(async (
     defaultFrames,
     defaultLogos,
     uiLanguage,
+    cameraMode,
   } = body;
 
   const updates: Record<string, unknown> = {
@@ -115,6 +117,12 @@ export const PATCH = withErrorHandler(async (
     if (uiLanguage === null || uiLanguage === '') updates.uiLanguage = null;
     else if (isUiLanguage(uiLanguage)) updates.uiLanguage = uiLanguage;
     else throw apiBadRequest('uiLanguage must be one of: ' + UI_LANGUAGES.join(', '));
+  }
+  // How the partner's events that made no choice take the photo (issue 547): the phone's own camera app or the live camera with the view buttons. Empty takes it away (the standard).
+  if (cameraMode !== undefined) {
+    const parsed = parseCameraMode(cameraMode);
+    if (!parsed.ok) throw apiBadRequest(parsed.error);
+    updates.cameraMode = parsed.value;
   }
   // The default colours of the partner's events (camera#380): by default none, so the events follow messmass; only a colour somebody picked is stored.
   let brandDefaults: ReturnType<typeof parsePartnerBrandDefaults> | undefined;

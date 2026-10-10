@@ -154,6 +154,8 @@ export interface Partner {
   contactEmail?: string;             // Partner contact email
   /** The language of the events of this partner that did not set one themselves (issue 353): they follow it. English when missing. */
   uiLanguage?: 'en' | 'hu' | null;
+  /** How the events of this partner that made no choice take the photo (issue 547, lib/camera/mode.ts): `device` (the standard) or `live` (the live view with the view buttons). Missing = the standard. */
+  cameraMode?: 'device' | 'live' | null;
   /** The legal part of the e-mails of all events of this partner that did not set their own, per language (epic 463, lib/email/legal.ts): it follows the general one. */
   emailLegal?: Partial<Record<'en' | 'hu', string>>;
   /** The pictures every event of this partner shows in the picture fields it left empty (lib/events/partner-pictures.ts, issue 368): the plain https address each field stores. */
@@ -338,6 +340,8 @@ export interface Event {
   greatestHitsSlug?: string | null;
   /** The language of the user interface of this event (camera#352): the default texts of the journey, the public photo page and the user emails come from its dictionary. English when missing. */
   uiLanguage?: 'en' | 'hu';
+  /** How this event takes the photo (issue 547, lib/camera/mode.ts): its own choice; missing or null = it follows its partner's, which follows the standard (`device`). */
+  cameraMode?: 'device' | 'live' | null;
   /** The legal part of the e-mails of this event, per language (epic 463, lib/email/legal.ts): its own; missing = it follows its partner's, which follows the general one. */
   emailLegal?: Partial<Record<'en' | 'hu', string>>;
   /** How a user gets the layout and the message of the frame (epic 444, lib/frame/selection.ts): each `editor` (with a pick), `random` or `user`. Missing = what the event always did. */

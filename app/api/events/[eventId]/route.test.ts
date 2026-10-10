@@ -185,6 +185,44 @@ test('GET as a guest carries the language of the event', async (t) => {
   assert.equal(body.data.event.uiLanguage, 'hu');
 });
 
+test('PATCH: the camera mode is set to a mode we have, cleared with an empty value (follow the partner), refused otherwise, and left alone when absent (issue 547)', async (t) => {
+  const h = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-camera-mode');
+  assert.equal((await PATCH(patchRequest({ cameraMode: 'live' }), params)).status, 200);
+  assert.equal(h.updates[0].cameraMode, 'live');
+  assert.equal((await PATCH(patchRequest({ cameraMode: 'device' }), params)).status, 200);
+  assert.equal(h.updates[1].cameraMode, 'device');
+  assert.equal((await PATCH(patchRequest({ cameraMode: '' }), params)).status, 200);
+  assert.equal(h.updates[2].cameraMode, null, 'empty means no choice of its own');
+  for (const bad of ['Live', 'frame', 7, {}, true]) assert.equal((await PATCH(patchRequest({ cameraMode: bad }), params)).status, 400, String(bad));
+  assert.equal((await PATCH(patchRequest({ loadingText: 'Hello' }), params)).status, 200);
+  assert.equal('cameraMode' in h.updates[3], false);
+  assert.equal(h.updates.length, 4, 'a refused mode writes nothing');
+});
+
+test('GET: the camera mode the guest page uses is the event’s own, else its partner’s, else the standard; the stored choice stays as it is for the editor (issue 547)', async (t) => {
+  mockDeps(t, { event: { partnerId: 'P', customPages: [] }, partner: { partnerId: 'P', cameraMode: 'live' } });
+  const { GET } = await importRouteModule('get-camera-mode-partner');
+  const fromPartner = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { cameraMode?: string | null; effectiveCameraMode: string } } };
+  assert.equal(fromPartner.data.event.effectiveCameraMode, 'live');
+  assert.equal(fromPartner.data.event.cameraMode, undefined, 'the event has no choice of its own');
+});
+
+test('GET: an event’s own camera mode wins over its partner’s; with neither the standard is used', async (t) => {
+  mockDeps(t, { event: { partnerId: 'P', cameraMode: 'device', customPages: [] }, partner: { partnerId: 'P', cameraMode: 'live' } });
+  const { GET } = await importRouteModule('get-camera-mode-own');
+  const own = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { cameraMode?: string; effectiveCameraMode: string } } };
+  assert.equal(own.data.event.effectiveCameraMode, 'device');
+  assert.equal(own.data.event.cameraMode, 'device');
+});
+
+test('GET: with no choice anywhere the standard camera is used', async (t) => {
+  mockDeps(t, { event: { customPages: [] } });
+  const { GET } = await importRouteModule('get-camera-mode-none');
+  const none = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { effectiveCameraMode: string } } };
+  assert.equal(none.data.event.effectiveCameraMode, 'device');
+});
+
 test('PATCH: the guided tour is switched on or off with a true or false, refused otherwise, and left alone when absent', async (t) => {
   const h = mockDeps(t, { event: {}, session: ADMIN });
   const { PATCH } = await importRouteModule('patch-tour');
