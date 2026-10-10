@@ -47,3 +47,14 @@ test('ticked already (the user came back to the page): the page is on, the sign-
   assert.ok(!html.includes('aria-disabled="true"'));
   assert.ok(!/<button[^>]*disabled/.test(html));
 });
+
+test('an acceptance the event made optional (issue 558) is marked, and the page works without the tick: links, fields and the continue button are on', () => {
+  const html = render({ sentence, checked: false, required: false, onChange: noop });
+  assert.equal((html.match(/type="checkbox"/g) ?? []).length, 1, 'the checkbox is still there');
+  assert.ok(html.includes('(nem kötelező)'));
+  assert.ok(html.includes('href="/api/auth/login'), 'the sign-in buttons are links');
+  assert.ok(!html.includes('aria-disabled="true"'));
+  assert.ok(!/<input[^>]*disabled/.test(html) && !/<button[^>]*disabled/.test(html));
+  assert.ok(!/aria-required/.test(html), 'it says it is not required');
+  assert.match(render({ sentence, checked: false, onChange: noop }), /aria-required/, 'a required one still says so');
+});
