@@ -1,5 +1,11 @@
 # RELEASE_NOTES.md
 
+## v12.3.41 — fleet release 2026-10-10 (owner answer 265)
+
+- **Version:** camera, messmass, fanmass and try-on rise to 12.3.41 in one coordinated change (savetheworld has carried it since 2026-10-05; `docs/_audit/fleet-version-policy.md` in messmass). Each earlier "Unreleased" entry below is part of this release; the headline items since 12.3.40 are: marking the people in each photo at vetting (on for every event, required in the big view; scarf, cap, jersey, flag), the camera mode setting for partners and events, hiding a picture that cannot be shown everywhere, the order of the journey pages and the Take Photo + Submit pair, the sample selfies and the photo window of the welcome page screen, the acceptance on the Who-are-you page, the activity log, the brick model with the text levels, the default slideshow and the e-mail format.
+- **Verified:** the full `release:check` and `inventory:check` chain before each merge; each feature's own browser check is in its entry.
+- **No event changes by the version bump itself.**
+
 ## Unreleased — the camera of an event is a setting: the phone's own camera app or the live camera with view buttons, on the partner and on the event (issue 547; owner answer 253)
 
 - **Owner:** "I need a checkbox to choose between camera modes as solutions on partner level and event level."

@@ -1,6 +1,6 @@
 # Try-On Low-Level Design
 
-**Version**: 12.3.40
+**Version**: 12.3.41
 **Last Updated**: 2026-10-01
 
 **Runtime status 2026-10-01**: The renderer is paused; this document remains authoritative for Camera's retained moderation and recovery contracts. The planned image.direct protocol is specified separately in [IMAGE_DIRECT_INTEGRATION.md](./IMAGE_DIRECT_INTEGRATION.md) and must not be treated as implemented.

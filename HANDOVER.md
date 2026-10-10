@@ -1,12 +1,16 @@
 # Handover
 
-**Version**: 12.3.40
+**Version**: 12.3.41
 **Last Updated**: 2026-10-09
 
 `RELEASE_NOTES.md` is kept current on every release and is the detailed record;
 this file is the short current-state summary. Previous rewrite: 2026-08-17
 (v2.23.0 era); everything from v12.2.0 to v12.3.37 is in `RELEASE_NOTES.md`.
 Open work is tracked on the GitHub project board, not in this file (next section).
+
+## Status 2026-10-10 (v12.3.41)
+
+- **Version 12.3.41 (fleet release 2026-10-10, owner answer 265):** camera, messmass, fanmass and try-on carry 12.3.41 (savetheworld has since 2026-10-05); everything since 12.3.40 is in `RELEASE_NOTES.md` under "v12.3.41" and the dated "Unreleased" entries below it. Marking the people at vetting is **on for every event and required in the big view** (issue 542, answers 262 to 264), and the **camera mode** is a setting on the partner and on the event (issue 547, answer 253); no event has a camera choice stored, so none changed.
 
 ## Status 2026-10-09
 

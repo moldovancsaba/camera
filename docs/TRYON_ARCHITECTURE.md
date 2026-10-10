@@ -1,6 +1,6 @@
 # Try-On Architecture
 
-**Version**: 12.3.40  
+**Version**: 12.3.41  
 **Last Updated**: 2026-10-01
 
 **Runtime status 2026-10-01**: Try-on is paused. Current events have try-on disabled, the local legacy worker is stopped, and the try-on sync cron is removed. This document records the retained Camera data/moderation contract; do not interpret the historical worker flow below as enabled production processing. The planned image.direct replacement is documented in [IMAGE_DIRECT_INTEGRATION.md](./IMAGE_DIRECT_INTEGRATION.md) and is not live.
