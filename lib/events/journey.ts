@@ -44,16 +44,17 @@ const REASON: Record<string, string> = {
  * The steps that follow the photo and are not pages. With photo approval on the user waits for the approval, and the approved photo comes by e-mail
  * with a link to the public photo page; without approval the user sees the share screen at once.
  */
-function stepsAfterPhoto(context: JourneyContext): JourneyRow[] {
+function stepsAfterPhoto(context: JourneyContext, separateSubmit = false): JourneyRow[] {
+  const saves = separateSubmit ? 'the Submit step saves the photo' : 'Continue saves the photo';
   if (context.vettingRequired) {
     return [
-      { kind: 'step', id: 'waiting', title: 'Waiting for approval', description: 'After Continue saves the photo the user waits until it is approved. Built in.', editedIn: 'The take-photo page in this list (approval texts) and the Public result page section above.' },
+      { kind: 'step', id: 'waiting', title: 'Waiting for approval', description: `After ${saves} the user waits until it is approved. Built in.`, editedIn: 'The take-photo page in this list (approval texts) and the Public result page section above.' },
       { kind: 'step', id: 'emails', title: 'E-mails', description: 'The user gets the saved e-mail, then the approved or not-approved e-mail with the link. Built in.', editedIn: 'The Email module section above.' },
       { kind: 'step', id: 'result', title: 'The public photo page', description: 'The page the e-mail links to: the photo and its download. Built in.', editedIn: 'The Public result page section above.' },
     ];
   }
   return [
-    { kind: 'step', id: 'share', title: 'Share screen', description: 'After Continue saves the photo the user can copy the link and share it. Built in.', editedIn: 'The take-photo page in this list (share texts) and the Public result page section above.' },
+    { kind: 'step', id: 'share', title: 'Share screen', description: `After ${saves} the user can copy the link and share it. Built in.`, editedIn: 'The take-photo page in this list (share texts) and the Public result page section above.' },
     { kind: 'step', id: 'emails', title: 'E-mails', description: 'The user gets the saved e-mail when an address is known. Built in.', editedIn: 'The Email module section above.' },
     { kind: 'step', id: 'result', title: 'The public photo page', description: 'The page the e-mail links to: the photo and its download. Built in.', editedIn: 'The Public result page section above.' },
   ];
@@ -70,9 +71,12 @@ export function effectiveJourney(storedPages: readonly CustomPage[] | null | und
     .sort((a, b) => a.order - b.order)
     .map((page) => (isDefaultPage(page) ? { kind: 'default', page, reason: REASON[page.pageId] } : { kind: 'own', page }));
   const photoAt = rows.findIndex((row) => row.kind === 'own' && row.page.isActive && row.page.pageType === CustomPageType.TAKE_PHOTO);
-  const steps = stepsAfterPhoto(context);
-  if (photoAt === -1) return [...rows, ...steps];
-  return [...rows.slice(0, photoAt + 1), ...steps, ...rows.slice(photoAt + 1)];
+  // An active Submit page after the take-photo page makes saving a step of its own (issue 535): the built-in steps that follow the save come after it, and the pages between the two run before the save.
+  const submitAt = photoAt === -1 ? -1 : rows.findIndex((row, index) => index > photoAt && row.kind === 'own' && row.page.isActive && row.page.pageType === CustomPageType.SUBMIT);
+  const steps = stepsAfterPhoto(context, submitAt !== -1);
+  const after = submitAt !== -1 ? submitAt : photoAt;
+  if (after === -1) return [...rows, ...steps];
+  return [...rows.slice(0, after + 1), ...steps, ...rows.slice(after + 1)];
 }
 
 /**
@@ -86,19 +90,24 @@ export function customiseDefault(page: CustomPage, makeId: () => string = genera
 type PageRow = Exclude<JourneyRow, { kind: 'step' }>;
 const isPageRow = (row: JourneyRow): row is PageRow => row.kind !== 'step';
 const isTakePhotoRow = (row: PageRow) => row.kind === 'own' && row.page.pageType === CustomPageType.TAKE_PHOTO;
+const isSubmitRow = (row: PageRow) => row.kind === 'own' && row.page.pageType === CustomPageType.SUBMIT;
 
 /**
  * The page row that the row at `index` swaps places with when it moves one place `up` (-1) or `down` (+1), or null when it cannot move. The built-in steps are not pages and stay where they are,
- * so the neighbour is the next page row in that direction. A default page never swaps with the take-photo page: the consent and the login of the default journey come before the photo (a
- * photo that is checked needs an identity first, camera#264), so they stay on that side of it; every own page moves anywhere, as before.
+ * so the neighbour is the next page row in that direction. Three rules keep the journey sound: the Submit page stays after the take-photo page (they never swap); a default page never ends up
+ * after the place where the photo is saved, because the consent and the login of the default journey come before it (a photo that is checked needs an identity first, camera#264): that place is
+ * the take-photo page, or the Submit page when the event has one, in which case a default page may move between the two; an own page moves anywhere, as before.
  */
 export function moveTarget(rows: readonly JourneyRow[], index: number, direction: -1 | 1): number | null {
   const row = rows[index];
   if (!row || !isPageRow(row)) return null;
+  const hasSubmit = rows.some((other) => isPageRow(other) && isSubmitRow(other));
   for (let j = index + direction; j >= 0 && j < rows.length; j += direction) {
     const other = rows[j];
     if (!isPageRow(other)) continue;
-    if ((row.kind === 'default' && isTakePhotoRow(other)) || (isTakePhotoRow(row) && other.kind === 'default')) return null;
+    if ((isSubmitRow(row) && isTakePhotoRow(other)) || (isTakePhotoRow(row) && isSubmitRow(other))) return null;
+    const defaultAndOther = row.kind === 'default' ? other : other.kind === 'default' ? row : null;
+    if (defaultAndOther && (isSubmitRow(defaultAndOther) || (isTakePhotoRow(defaultAndOther) && !hasSubmit))) return null;
     return j;
   }
   return null;
@@ -135,4 +144,26 @@ function numberPages(sequence: readonly PageRow[]): { pages: CustomPage[]; defau
  */
 export function renumberJourney(rows: readonly JourneyRow[]): { pages: CustomPage[]; defaultOrders: Record<string, number> } {
   return numberPages(rows.filter(isPageRow));
+}
+
+/**
+ * Make saving the photo a step of its own, or part of the take-photo page again (issue 535: the checkbox "Submit is part of this page" on the Take Photo page). Separate: a Submit page (a
+ * marker, it shows nothing) is put right after the take-photo page, and every page row is numbered again as in a move; a page the editor then puts between the two runs after the photo is
+ * taken and before it is saved. Part of the page: the Submit page is taken out and the pages that were between the two are after the photo, as they are for any event.
+ */
+export function setSubmitSeparate(rows: readonly JourneyRow[], separate: boolean, makeId: () => string = generateId, now: string = new Date().toISOString()): { pages: CustomPage[]; defaultOrders: Record<string, number> } {
+  const sequence = rows.filter(isPageRow).filter((row) => !isSubmitRow(row));
+  if (separate) {
+    const photoAt = sequence.findIndex(isTakePhotoRow);
+    const marker: PageRow = { kind: 'own', page: { pageId: makeId(), pageType: CustomPageType.SUBMIT, order: 0, isActive: true, config: { title: '[Submit]', description: '', buttonText: '' }, createdAt: now, updatedAt: now } };
+    sequence.splice(photoAt === -1 ? sequence.length : photoAt + 1, 0, marker);
+  }
+  return numberPages(sequence);
+}
+
+/** True when the journey has a Submit page after the take-photo page: saving is a step of its own. */
+export function hasSeparateSubmit(rows: readonly JourneyRow[]): boolean {
+  const pageRows = rows.filter(isPageRow);
+  const photoAt = pageRows.findIndex((row) => isTakePhotoRow(row) && row.kind === 'own' && row.page.isActive);
+  return photoAt !== -1 && pageRows.some((row, index) => index > photoAt && isSubmitRow(row) && row.kind === 'own' && row.page.isActive);
 }

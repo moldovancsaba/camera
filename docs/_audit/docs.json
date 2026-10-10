@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-10T11:46:47+00:00",
+  "generated": "2026-10-10T10:43:35+00:00",
   "repo": "camera",
-  "head": "733e3d5",
+  "head": "d171f92",
   "counts": {
    "endpoints": 153,
    "collections": 8,
    "env": 61,
    "outbound-hosts": 31,
-   "docs": 70
+   "docs": 69
   }
  },
  "items": [
@@ -247,10 +247,6 @@
   {
    "file": "docs/WELCOME_AND_DEFAULTS_PLAN.md",
    "title": "Welcome page, default slideshow, global defaults and page defaults (plan)"
-  },
-  {
-   "file": "docs/WELCOME_SCREEN_PHOTO_PLAN.md",
-   "title": "A selfie in the welcome page screen (plan)"
   },
   {
    "file": "docs/WELCOME_STEP.md",
