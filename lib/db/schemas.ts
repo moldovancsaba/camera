@@ -356,6 +356,11 @@ export interface Event {
    * place is the event's choice. Missing: the default places (lib/events/default-pages.ts).
    */
   defaultPageOrders?: Record<string, number>;
+  /**
+   * What the photo window of the welcome page screen shows (issue 540, docs/WELCOME_SCREEN_PHOTO_PLAN.md; lib/screen/welcome-window.ts): `source` is `selfie` (the event's sample selfie, the default
+   * when missing), `photo` (a photo of this event, `photoId` is its submission id) or `standin` (the drawn head and shoulders); `pick` is the sample selfie picked for this event, stored once so the picture does not change on every redraw.
+   */
+  welcomeWindow?: { source?: 'selfie' | 'photo' | 'standin'; photoId?: string; pick?: { pictureId: string; pickedAt: string } };
   /** Set on events created with the journey defaults (the default consent page and the like); existing events get them through the global switch (lib/admin/defaults-rollout.ts). */
   journeyDefaults?: boolean;
   /** What was last pushed to messmass from the tracked links of this event (camera#320, lib/short-links/sync.ts). */

@@ -29,6 +29,7 @@ const ALLOWED: Record<string, string> = {
   'lib/savetheworld/publishSelfies.ts': 'query that decides which submissions to publish; reads no URL out',
   'lib/savetheworld/wall.ts': 'only documents that the original is excluded from the public wall projection',
   'lib/photo-vetting/review.ts': 'approval stores the composite in the field, as for any photo without a distinct original; no URL is read out',
+  'lib/screen/welcome-photo.ts': 'reads it only for an editor\'s own gallery upload (`metadata.adminGalleryUpload`), whose plain upload is kept there, never for a guest\'s private original; the picture is drawn into the welcome page screen and no URL is returned to a public response (the admin picker list is behind an admin session)',
   'lib/submissions/delete-files.ts': 'reads the URL only to delete the file with the submission; returns counts, never a URL',
   'lib/submissions/public-image.ts': 'the public image resolver, which refuses the original when a reframe record exists',
   'lib/tryon/publication.ts': 'builds the derived try-on document; keeps the private original off it',

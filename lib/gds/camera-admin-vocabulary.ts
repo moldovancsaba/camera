@@ -60,6 +60,8 @@ export const cameraAdminVocabularyPacks = [
     'make-default': { defaultMessage: 'Make default', icon: GdsIcons.Check, feedback: savedFeedback },
     'create-default': { defaultMessage: 'Create the default slideshow', icon: GdsIcons.Add, feedback: savedFeedback },
     'draw-welcome-screen': { defaultMessage: 'Draw the welcome page screen', icon: GdsIcons.Capture, feedback: savedFeedback },
+    'pick-another-selfie': { defaultMessage: 'Pick another', icon: GdsIcons.Refresh, feedback: savedFeedback },
+    'choose-welcome-photo': { defaultMessage: 'Choose from the gallery', icon: GdsIcons.Gallery, feedback: openedFeedback },
     'reload-screen': { defaultMessage: 'Reload the screen', icon: GdsIcons.Refresh, feedback: savedFeedback },
   }),
   createGdsVocabularyPack('slideshow-layouts', {
