@@ -44,6 +44,8 @@ export const COLLECTIONS = {
   SUBMISSIONS: 'submissions',
   /** Who registered at an event (epic 463, lib/email/triggers.ts): one row for each event and e-mail address, with whether the welcome e-mail went. */
   EMAIL_REGISTRATIONS: 'email_registrations',
+  /** The follow-up e-mail of an event, one row for each event and e-mail address (epic 463, lib/email/follow-up.ts): the claim that keeps it to one, and whether it went. The `_id` is a hash of the event and the address, so the row holds no address. */
+  EMAIL_FOLLOW_UPS: 'email_follow_ups',
   LEATHER_SUITS: 'leather_suits',
   TRYON_JOBS: 'tryon_jobs',
   TRYON_SETUPS: 'tryon_setups',
@@ -156,6 +158,8 @@ export interface Partner {
   cameraMode?: 'device' | 'live' | 'still' | 'frame' | null;
   /** Whether the events of this partner that made no choice ask for the user's own permission to show a photo in the public gallery (issue 554, lib/events/gallery-consent.ts). Missing = they do not ask (the terms cover it). */
   galleryConsent?: boolean | null;
+  /** Whether the events of this partner that made no choice send the follow-up e-mail a week after the event (epic 463, lib/email/types.ts `partnerSwitchDefaults`): the event's own choice, else this, else off. Missing = off. */
+  followUpEmail?: boolean | null;
   /** The legal part of the e-mails of all events of this partner that did not set their own, per language (epic 463, lib/email/legal.ts): it follows the general one. */
   emailLegal?: Partial<Record<'en' | 'hu', string>>;
   /** The pictures every event of this partner shows in the picture fields it left empty (lib/events/partner-pictures.ts, issue 368): the plain https address each field stores. */

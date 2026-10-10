@@ -177,7 +177,7 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
       {
         href: '/admin/settings/emails',
         label: 'Emails',
-        description: 'The e-mails to the users: the general legal part every partner and event follows.',
+        description: 'The e-mails to the users: the general legal part every partner and event follows, and the follow-up e-mails a week after an event.',
         iconKey: 'mail',
         isVisible: (access) => access.isGlobalAdmin,
       },

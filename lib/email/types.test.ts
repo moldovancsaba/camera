@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BODY_MAX, EMAIL_TYPES, EMAIL_TYPE_INFO, SUBJECT_MAX, parseTypeSettings, typeDefaults } from './types';
+import { BODY_MAX, EMAIL_TYPES, EMAIL_TYPE_INFO, SUBJECT_MAX, parseTypeSettings, partnerSwitchDefaults, switchIsOn, typeDefaults } from './types';
+import { normalizeSubmissionEmailPolicy } from './submission-result-email';
 import { mergeNotificationSettings, sanitizeNotificationSettings } from './notification-settings';
 
 test('there are five e-mail types, with the owner’s defaults: welcome, arrived and follow up off, approved and declined on', () => {
@@ -80,4 +81,25 @@ test('saving from the Emails page: the types are replaced, the old approved fiel
   });
   assert.deepEqual(mergeNotificationSettings(existing, {}), sanitizeNotificationSettings(existing), 'nothing to change: nothing changes');
   assert.equal('types' in mergeNotificationSettings(existing, { types: {} }), false, 'no choices left: the types follow their defaults');
+});
+
+test('a switch is the event\'s own choice, else its partner\'s default, else the standard of the type (off for the follow up); a partner default is only a stored true or false', () => {
+  assert.equal(switchIsOn('followUp', null), false, 'nothing chosen anywhere: off');
+  assert.equal(switchIsOn('followUp', undefined, {}), false);
+  assert.equal(switchIsOn('followUp', null, { followUp: true }), true, 'the partner\'s default');
+  assert.equal(switchIsOn('followUp', false, { followUp: true }), false, 'the event\'s own off wins');
+  assert.equal(switchIsOn('followUp', true, { followUp: false }), true, 'the event\'s own on wins');
+  assert.equal(switchIsOn('approved', null, { followUp: false }), true, 'another type keeps its standard');
+  assert.deepEqual(partnerSwitchDefaults({ followUpEmail: true }), { followUp: true });
+  assert.deepEqual(partnerSwitchDefaults({ followUpEmail: false }), { followUp: false });
+  for (const none of [{}, { followUpEmail: null }, { followUpEmail: 'yes' }, { followUpEmail: 1 }, null, undefined]) assert.deepEqual(partnerSwitchDefaults(none as never), {}, JSON.stringify(none));
+});
+
+test('the policy of an event reads the partner\'s default only for an e-mail the event never chose, and nothing is copied into the event', () => {
+  const partner = partnerSwitchDefaults({ followUpEmail: true });
+  assert.equal(normalizeSubmissionEmailPolicy({}, 'en', null, partner).types.followUp.enabled, true);
+  assert.equal(normalizeSubmissionEmailPolicy({}, 'en', null, partner).types.followUp.chosen, null, 'no stored choice appears');
+  assert.equal(normalizeSubmissionEmailPolicy({ types: { followUp: { enabled: false } } }, 'en', null, partner).types.followUp.enabled, false);
+  assert.equal(normalizeSubmissionEmailPolicy({}, 'en', null, partner).types.welcome.enabled, false);
+  assert.equal(normalizeSubmissionEmailPolicy({}, 'en').types.followUp.enabled, false, 'without a partner default the standard (off) applies');
 });

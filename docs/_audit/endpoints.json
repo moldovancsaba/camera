@@ -1,12 +1,12 @@
 {
  "_meta": {
-  "generated": "2026-10-10T20:26:05+00:00",
+  "generated": "2026-10-10T20:49:53+00:00",
   "repo": "camera",
-  "head": "c77f751",
+  "head": "ec0c357c",
   "counts": {
-   "endpoints": 128,
+   "endpoints": 131,
    "collections": 7,
-   "env": 54,
+   "env": 55,
    "outbound-hosts": 31,
    "docs": 71
   }
@@ -322,6 +322,20 @@
    "file": "app/api/admin/fix-mojibake-text/route.ts",
    "auth_markers": [
     "requireAdmin",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/follow-up-emails",
+   "methods": [
+    "GET",
+    "POST"
+   ],
+   "file": "app/api/admin/follow-up-emails/route.ts",
+   "auth_markers": [
+    "isGlobalAdminSession",
+    "requireAuth",
     "withErrorHandler"
    ],
    "no_auth_marker": false
@@ -947,6 +961,17 @@
    "no_auth_marker": true
   },
   {
+   "path": "/api/internal/follow-up-emails",
+   "methods": [
+    "GET"
+   ],
+   "file": "app/api/internal/follow-up-emails/route.ts",
+   "auth_markers": [
+    "withErrorHandler"
+   ],
+   "no_auth_marker": true
+  },
+  {
    "path": "/api/internal/messmass/events",
    "methods": [
     "POST"
@@ -1165,6 +1190,19 @@
    "file": "app/api/observability/slideshow-diagnostic/route.ts",
    "auth_markers": [],
    "no_auth_marker": true
+  },
+  {
+   "path": "/api/partners/[partnerId]/email-defaults",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/partners/[partnerId]/email-defaults/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
   },
   {
    "path": "/api/partners/[partnerId]/email-legal",

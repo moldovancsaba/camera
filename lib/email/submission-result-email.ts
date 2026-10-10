@@ -5,7 +5,7 @@ import { sanitizeEmail } from '@/lib/security/sanitize';
 import { loadEventTheme } from '@/lib/theme/load';
 import { emailFactsOf } from '@/lib/email/event-link';
 import { loadEventLegal } from '@/lib/email/legal';
-import { EMAIL_TYPES, EMAIL_TYPE_INFO, parseTypeSettings, type EmailType, type ResolvedType } from '@/lib/email/types';
+import { EMAIL_TYPES, parseTypeSettings, switchIsOn, type EmailType, type ResolvedType, type SwitchDefaults } from '@/lib/email/types';
 import type { EventFacts } from '@/lib/email/variables';
 import type { EventTheme } from '@/lib/theme/event-theme';
 import { getConfiguredSiteUrl } from '@/lib/site-url';
@@ -88,8 +88,9 @@ export function resolveSubmissionResultEmailRecipient(submission: {
 /**
  * The email settings of an event. With a language (camera#352) the templates are the ones sent in it: a stored English default becomes the same
  * default in the language, and so does the stored English terms link; without one (the event API, which stores what it reads) nothing changes.
+ * With the partner's switch defaults (`partnerSwitchDefaults`) an e-mail type the event never chose follows its partner.
  */
-export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLanguage = DEFAULT_UI_LANGUAGE, texts?: TextOverrides | null): SubmissionEmailPolicy {
+export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLanguage = DEFAULT_UI_LANGUAGE, texts?: TextOverrides | null, partnerDefaults?: SwitchDefaults | null): SubmissionEmailPolicy {
   const source = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
   const typeSettings = parseTypeSettings(source.types);
 
@@ -127,7 +128,8 @@ export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLangu
       const stored = typeSettings[type];
       const chosen = stored?.enabled ?? null;
       const resolved: ResolvedType = {
-        enabled: type === 'approved' ? sendAfterSave : (chosen ?? EMAIL_TYPE_INFO[type].defaultOn),
+        // The event's own choice, else its partner's default (only the follow up has one), else the standard of the type.
+        enabled: type === 'approved' ? sendAfterSave : switchIsOn(type, chosen, partnerDefaults),
         chosen,
         subject: stored?.subject ?? null,
         body: stored?.body ?? null,

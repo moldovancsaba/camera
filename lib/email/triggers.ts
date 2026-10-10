@@ -1,18 +1,15 @@
 /**
  * The triggers of the e-mails that are not the link to the photo (epic 463, docs/EMAIL_FORMAT_PLAN.md, segment E8): **welcome**, when somebody registers (gives a name and an e-mail, or signs in,
  * before the photo; owner answer 201), and **arrived**, when a photo is submitted. Both are off by default; an event whose editor switched one on sends it, once for each event and address
- * (welcome) or each photo (arrived). **Follow up** has its text and switch but no trigger yet: the daily job is added later (owner answer 203). Server side; unit-tested in triggers.test.ts.
+ * (welcome) or each photo (arrived). **Follow up** is not a trigger: the daily job sends it (lib/email/follow-up.ts, owner answer 296). Server side; unit-tested in triggers.test.ts.
  */
 
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { eventLinkOf, emailFactsOf } from '@/lib/email/event-link';
-import { loadEventLegal } from '@/lib/email/legal';
 import { sendSubmissionResultEmail, type SubmissionNotificationInput, type SubmissionNotificationResult } from '@/lib/email/submission-notification';
-import { normalizeSubmissionEmailPolicy, resolveEventForSubmission, resolveSubmissionResultEmailRecipient, themeOf } from '@/lib/email/submission-result-email';
-import { typeDefaults } from '@/lib/email/types';
+import { resolveEventForSubmission, resolveSubmissionResultEmailRecipient } from '@/lib/email/submission-result-email';
+import { prepareTypedEmail } from '@/lib/email/typed-email';
 import { sanitizeEmail } from '@/lib/security/sanitize';
-import { loadEventTexts } from '@/lib/i18n/overrides';
 
 type EmailSender = (input: SubmissionNotificationInput) => Promise<SubmissionNotificationResult>;
 type TriggeredType = 'welcome' | 'arrived';
@@ -25,29 +22,9 @@ async function sendTriggered(
   to: { email: string; name: string | null },
   send: EmailSender
 ): Promise<SubmissionNotificationResult | null> {
-  const loaded = await loadEventTexts(db, event);
-  const policy = normalizeSubmissionEmailPolicy(event.notifications, loaded.language, loaded.overrides);
-  const row = policy.types[type];
-  if (!row.enabled) return null;
-  const defaults = typeDefaults(type, loaded.language, loaded.overrides);
-  return send({
-    recipientEmail: to.email,
-    recipientName: to.name,
-    eventName: typeof event.name === 'string' ? event.name : null,
-    // The link of these e-mails is the event itself (its short link when it has a URL slug); arrived has no button.
-    shareUrl: eventLinkOf(event) ?? '',
-    termsUrl: policy.termsUrl,
-    senderName: policy.senderName,
-    subjectTemplate: row.subject ?? defaults.subject,
-    bodyTemplate: row.body ?? defaults.body,
-    theme: await themeOf(db, event as never),
-    buttonLabel: defaults.button,
-    noButton: defaults.button === null,
-    language: loaded.language,
-    texts: loaded.overrides,
-    facts: emailFactsOf(event),
-    legal: (await loadEventLegal(db, event, loaded.partner).catch(() => null))?.effective?.text ?? null,
-  });
+  const prepared = await prepareTypedEmail(db, event, type);
+  if (!prepared.enabled) return null;
+  return send(prepared.build(to));
 }
 
 export interface ArrivedResult {

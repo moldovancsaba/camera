@@ -40,7 +40,8 @@ function VariableMenu({ disabled, onPick }: { disabled?: boolean; onPick: (name:
         const name = event.currentTarget.value;
         if (name) onPick(name);
       }}
-      style={{ minHeight: 30, maxWidth: '100%' }}
+      // A native select is as wide as its longest option (a variable and its description), which made the whole page wider than a phone: a fixed width, and never wider than the toolbar.
+      style={{ minHeight: 30, width: '12rem', maxWidth: '100%' }}
     >
       <option value="">Variable…</option>
       {MENU_VARIABLES.map((variable) => (

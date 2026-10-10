@@ -67,7 +67,7 @@ export const EMAIL_TYPE_INFO: Record<EmailType, EmailTypeInfo> = {
   },
   followUp: {
     label: 'Follow up',
-    when: 'One week after the event, to look back at the memory, to the users who have an approved photo. Not sent yet: the daily job that sends it is added later.',
+    when: 'One week after the event, to look back at the memory, once to each user who has an approved photo and agreed to the terms. A daily job sends it, only for an event that has this on and has a date.',
     defaultOn: false,
     subjectKey: 'email.followUpSubject',
     bodyKey: 'email.followUpBody',
@@ -75,6 +75,22 @@ export const EMAIL_TYPE_INFO: Record<EmailType, EmailTypeInfo> = {
     buttonLink: 'link',
   },
 };
+
+/**
+ * The switches a partner sets as the default of its events (the brick model: the event's own choice, else its partner's, else the standard of the type; nothing is copied down, so a change of the
+ * partner's default reaches every event that never chose). Today only the follow-up e-mail has one, because it is the only e-mail that is sent to people long after they left the event.
+ */
+export type SwitchDefaults = Partial<Record<EmailType, boolean>>;
+
+/** The switch defaults a partner document holds: only a stored true or false counts. */
+export function partnerSwitchDefaults(partner: { followUpEmail?: unknown } | null | undefined): SwitchDefaults {
+  return typeof partner?.followUpEmail === 'boolean' ? { followUp: partner.followUpEmail } : {};
+}
+
+/** Whether a type is on: the event's own choice, else its partner's default, else the standard of the type. */
+export function switchIsOn(type: EmailType, chosen: boolean | null | undefined, partnerDefaults?: SwitchDefaults | null): boolean {
+  return chosen ?? partnerDefaults?.[type] ?? EMAIL_TYPE_INFO[type].defaultOn;
+}
 
 /** What an event stored for one type: absent fields follow the default. */
 export interface TypeSetting {

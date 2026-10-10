@@ -53,7 +53,8 @@ const url = (id: ObjectId) => `http://localhost/api/admin/events/${id}/emails`;
 const put = (id: ObjectId, body: unknown) => new NextRequest(url(id), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 interface View {
   language: string;
-  types: Array<{ type: string; enabled: boolean; chosen: boolean | null; subject: string | null; body: string | null; defaultOn: boolean; defaultSubject: string; defaultBody: string; sent: boolean; buttonLabel: string | null }>;
+  types: Array<{ type: string; enabled: boolean; chosen: boolean | null; subject: string | null; body: string | null; defaultOn: boolean; defaultFrom: string; defaultSubject: string; defaultBody: string; sent: boolean; buttonLabel: string | null }>;
+  followUp: { day: string | null; from: string | null; until: string | null };
   senderName: string | null;
   termsUrl: string | null;
   defaultTermsUrl: string;
@@ -69,7 +70,9 @@ test('GET: an event that never chose has approved and declined on, the others of
   assert.deepEqual(data.types.map((row) => [row.type, row.enabled, row.chosen]), [['welcome', false, null], ['arrived', false, null], ['approved', true, null], ['declined', true, null], ['followUp', false, null]]);
   assert.ok(data.types.every((row) => row.subject === null && row.body === null && row.defaultSubject && row.defaultBody));
   assert.ok(byType(data, 'welcome').defaultBody.includes('{eventlink}') && byType(data, 'approved').defaultSubject.includes('{event}'));
-  assert.deepEqual(data.types.map((row) => row.sent), [true, true, true, true, false], 'everything but the follow up is sent');
+  assert.deepEqual(data.types.map((row) => row.sent), [true, true, true, true, true], 'every type is sent by something now: the follow up by the daily job (issue 559)');
+  assert.deepEqual(data.types.map((row) => row.defaultFrom), ['standard', 'standard', 'standard', 'standard', 'standard']);
+  assert.deepEqual(data.followUp, { day: null, from: null, until: null }, 'an event with no date sends no follow up');
   assert.equal(byType(data, 'arrived').buttonLabel, null);
   assert.equal('tryOn' in data, false, 'there are no try-on e-mails any more');
   assert.deepEqual([data.senderName, data.termsUrl], [null, null]);
@@ -122,4 +125,19 @@ test('without access nothing is read or written', async (t) => {
   assert.equal((await GET(new NextRequest(url(EVENT_MONGO_ID)), params(EVENT_MONGO_ID))).status, 403);
   assert.equal((await PUT(put(EVENT_MONGO_ID, { types: { welcome: { enabled: true } } }), params(EVENT_MONGO_ID))).status, 403);
   assert.equal('notifications' in (db.events[0] as object), false);
+});
+
+test('GET: the follow up follows the partner\'s default until the event chooses, and says from when and until when it is sent', async (t) => {
+  const seeded = setup(t);
+  (seeded.data.events[0] as Record<string, unknown>).eventDate = '2026-10-16';
+  (seeded.data.partners[0] as Record<string, unknown>).followUpEmail = true;
+  const { GET } = await importRoute('partner-default');
+  let data = await view(await GET(new NextRequest(url(EVENT_MONGO_ID)), params(EVENT_MONGO_ID)));
+  assert.deepEqual([byType(data, 'followUp').enabled, byType(data, 'followUp').chosen, byType(data, 'followUp').defaultOn, byType(data, 'followUp').defaultFrom], [true, null, true, 'partner']);
+  assert.deepEqual(data.followUp, { day: '2026-10-16', from: '2026-10-23', until: '2026-11-06' });
+  assert.equal(byType(data, 'welcome').defaultFrom, 'standard', 'only the follow up has a partner default');
+
+  (seeded.data.events[0] as Record<string, unknown>).notifications = { types: { followUp: { enabled: false } } };
+  data = await view(await GET(new NextRequest(url(EVENT_MONGO_ID)), params(EVENT_MONGO_ID)));
+  assert.deepEqual([byType(data, 'followUp').enabled, byType(data, 'followUp').chosen], [false, false], 'the event\'s own choice wins over its partner');
 });

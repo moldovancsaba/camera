@@ -1,6 +1,6 @@
 /**
  * A database of plain arrays for the tests of the libraries: just the calls lib/library and its routes make (find with sort and limit,
- * findOne, countDocuments, insertOne, updateOne with $set, $push and $pull (and `upsert` with plain filters), updateMany with $set, $unset and $pull (also on a dotted path such as
+ * findOne, countDocuments, insertOne (a duplicate `_id` is refused, as MongoDB does), updateOne with $set, $push and $pull (and `upsert` with plain filters), updateMany with $set, $unset and $pull (also on a dotted path such as
  * `library.images`), deleteOne). Filters: equality (null matches a missing field),
  * $in, $nin, $ne, $exists, $or and dotted paths through arrays (`frames.frameId`; a plain value also matches an array that holds it); $set (also `frames.$.isActive`), $unset, $push and $pull. Not part of the app.
  */
@@ -142,6 +142,8 @@ export function fakeDb(seed: Record<string, Doc[]> = {}): { db: Db; data: Record
         countDocuments: async (filter: Doc = {}) => list(name).filter((d) => matches(d, filter)).length,
         insertOne: async (doc: Doc) => {
           calls.push({ collection: name, op: 'insertOne', args: [doc] });
+          // As MongoDB's own unique `_id` index does: a second document with the same `_id` is refused (the follow-up e-mail claims rely on it).
+          if (doc._id !== undefined && list(name).some((d) => String(d._id) === String(doc._id))) throw Object.assign(new Error(`E11000 duplicate key error: _id ${String(doc._id)}`), { code: 11000 });
           list(name).push({ ...doc });
           return { insertedId: doc._id ?? 'new' };
         },
