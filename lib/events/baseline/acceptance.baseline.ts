@@ -1,3 +1,7 @@
+/*
+ * FROZEN COPY of the logic as it was before the checkbox settings (issue 558), kept only so that tests can run the same inputs through the old and the new code
+ * (lib/events/consent-settings.baseline.test.ts). Do not change it and do not import it from application code.
+ */
 /**
  * The acceptance on the Who-are-you page (issue 523; client feedback 2026-10-09): an event may show its consent page's checkboxes as **one small checkbox with one sentence** on the
  * Who-are-you page, under its intro text, instead of a page of its own; everything on the page stays disabled until the box is ticked. The switch is one setting of the event
@@ -8,27 +12,26 @@
 import { CustomPageType } from '@/lib/db/schemas';
 import { translate, type UiLanguage } from '@/lib/i18n';
 import type { TextOverrides } from '@/lib/i18n/overrides';
-import { consentPageIsEmpty, type ConsentCheckbox } from './consent';
-import { pagesBeforeSave } from './photo-boundary';
+import type { ConsentCheckbox } from './consent.baseline';
+import { pagesBeforeSave } from '../photo-boundary';
 
 interface PageLike {
   pageType: CustomPageType | string;
   isActive: boolean;
   order: number;
-  config?: { checkboxes?: unknown };
 }
 
 /**
  * The pages the user goes through, and the consent page whose checkboxes the Who-are-you page shows (null when nothing is merged). Merged only when the switch is on, the event
  * has an active Who-are-you page and an active consent page, both before the photo (the take-photo page, or anywhere when there is none): the first such consent page leaves the
- * list, the others stay. A consent page whose checkboxes are all switched off (issue 558) has nothing to show and is not the one. Nothing else changes.
+ * list, the others stay. Nothing else changes.
  */
 export function acceptanceOnLogin<T extends PageLike>(pages: readonly T[], enabled: boolean): { pages: T[]; acceptPage: T | null } {
   const all = [...pages];
   if (!enabled) return { pages: all, acceptPage: null };
   const before = pagesBeforeSave(all);
   const hasLogin = before.some((page) => page.isActive && page.pageType === CustomPageType.WHO_ARE_YOU);
-  const acceptPage = before.find((page) => page.isActive && page.pageType === CustomPageType.ACCEPT && !consentPageIsEmpty(page.config ?? {})) ?? null;
+  const acceptPage = before.find((page) => page.isActive && page.pageType === CustomPageType.ACCEPT) ?? null;
   if (!hasLogin || !acceptPage) return { pages: all, acceptPage: null };
   return { pages: all.filter((page) => page !== acceptPage), acceptPage };
 }

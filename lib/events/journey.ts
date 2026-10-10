@@ -8,6 +8,7 @@
 import { CustomPageType, generateId, type CustomPage } from '@/lib/db/schemas';
 import type { UiLanguage } from '@/lib/i18n';
 import type { TextOverrides } from '@/lib/i18n/overrides';
+import type { DocumentSettings } from './checkbox-settings';
 import { DEFAULT_CONSENT_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, withDefaultJourneyPages } from './default-pages';
 import { DEFAULT_IDENTITY_PAGE_ID } from './identity-page';
 
@@ -23,6 +24,8 @@ export interface JourneyContext {
   texts?: TextOverrides | null;
   /** Where the editor moved the default pages (`Event.defaultPageOrders`, issue 535); missing: their default places. */
   defaultOrders?: Record<string, number> | null;
+  /** The settings of the three documents of the default consent page for this event (issue 558, lib/events/checkbox-settings.ts); missing: the standard (all shown, all required). */
+  documents?: DocumentSettings;
 }
 
 export type JourneyStepId = 'waiting' | 'share' | 'emails' | 'result';
@@ -66,7 +69,7 @@ function stepsAfterPhoto(context: JourneyContext, separateSubmit = false): Journ
  * An event with no take-photo page has everything before the photo, as the user's page treats it.
  */
 export function effectiveJourney(storedPages: readonly CustomPage[] | null | undefined, context: JourneyContext, now?: string): JourneyRow[] {
-  const pages = withDefaultJourneyPages(storedPages, { vettingRequired: context.vettingRequired, consentDefault: context.consentDefault, now, language: context.language, hasWelcomeScreen: context.hasWelcomeScreen, texts: context.texts, defaultOrders: context.defaultOrders });
+  const pages = withDefaultJourneyPages(storedPages, { vettingRequired: context.vettingRequired, consentDefault: context.consentDefault, now, language: context.language, hasWelcomeScreen: context.hasWelcomeScreen, texts: context.texts, defaultOrders: context.defaultOrders, documents: context.documents });
   const rows: JourneyRow[] = [...pages]
     .sort((a, b) => a.order - b.order)
     .map((page) => (isDefaultPage(page) ? { kind: 'default', page, reason: REASON[page.pageId] } : { kind: 'own', page }));
