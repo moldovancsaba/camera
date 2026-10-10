@@ -2,7 +2,7 @@
 
 Owner request 2026-10-10 (task 254, issue 540): upload or use a selfie for the **Welcome page screen**: (a) upload a general one, (b) assign one from the event's clean selfies, (c) use the real slideshow. "I want to have it by design generated from the general elements including general selfies in the system, so that I should be able to add images to that, and the system provides them to the partner until the partner selects or uploads their own, and the event receives a random photo from the parent. Break it down, check the existing solution and make a plan to make it UX friendly, layout and consequent."
 
-Status: **plan, nothing is built.** It continues step 5 of `docs/BUILDING_BRICKS.md` (the sample selfie, owner question 181) and the "photo window" row of section 6.2. Answers needed from the owner are at the end (255 to 260).
+Status: **decided by the owner on 2026-10-10 (answers 255 to 260, section 7); steps 1 to 5 are being built, steps 6 to 8 follow after the match.** It continues step 5 of `docs/BUILDING_BRICKS.md` (the sample selfie, owner question 181) and the "photo window" row of section 6.2.
 
 ## 1. What the three letters mean (my reading)
 
@@ -54,7 +54,7 @@ The event chooses **one source** for the window (the default is the first):
 | **The latest approved photo** (letter c) | the newest photo that passes the one visibility rule, as the slideshow shows it | as it is (already framed), redrawn after approvals, at most every 10 minutes, and the previous stored picture is deleted when the new one is live |
 | **Keep the stand-in** | the head-and-shoulders drawing of today | the escape hatch, so an event never has to show a selfie |
 
-- **Only photos that may be shown:** a guest photo is eligible only when it passes `isPubliclyVisible` (approved, not hidden, not broken) and the user's pledge-wall opt-in; an editor's own upload is the editor's responsibility (no guest consent record). The welcome page is shown to a visitor **before** they accept anything, so the same rule as the giant screen and the share page applies, no new exception.
+- **Only photos that may be shown:** a photo of the event is eligible when it passes the one visibility rule (`isPubliclyVisible`: approved, not hidden, not broken). **No other condition (owner answer 256):** every approved or uploaded image is one the service has the right to use anywhere, any time and in any context, and the library holds only images cleared for commercial use; if there is ever a problem with an image it is declined and never used again. The same rule as the giant screen and the share page applies to the welcome page, no new exception.
 - **Stored picture and key:** the key already hashes everything the picture is drawn from; the picked picture's address and the source go into it, so a change redraws and nothing else does.
 - **(c) is a snapshot, not a live embed.** Embedding the real player in the 3D screen would load the whole player and its playlist on the first page every visitor sees (data, battery, the iOS 26 bar rules of CLAUDE.md section 7). If the owner wants the live motion, it is a later, separate step (question 258).
 
@@ -68,7 +68,7 @@ The same panel and the same words at every level, as for logos: **Use the defaul
 
 ```
 GLOBAL   Libraries > Sample selfies  (global admins)
-         [ + Upload sample selfies ]   each upload asks: "Cleared for commercial use" (required tick, who and when are kept)
+         [ + Upload sample selfies ]   (only images cleared for commercial use are uploaded; no tick, owner answer 256)
          grid of pictures, each: name, size, Active switch, Delete.   "Used by N partners and N events"
 
 PARTNER  Partner > Pictures > card "Sample selfies"
@@ -108,19 +108,17 @@ The first two letters (a, b) are the safe, useful core. Letter c and the live st
 
 ## 6. Risks and what I will not do silently
 
-- **Rights.** A sample selfie is a picture of a person shown on every event's welcome page: it must be cleared for commercial use (the owner's earlier option in question 181). Hence the required tick, who and when, on every upload; I do not source images myself.
-- **Guests' photos in the window** are shown to visitors who have not accepted anything yet; the same visibility rule as the giant screen applies, and the editor chooses it; it is not a default.
+- **Rights (owner answer 256).** The library holds only images cleared for commercial use, and every approved or uploaded image may be used anywhere, any time, in any context; there is no tick on upload. An image with a problem is declined (switched off in the library, or rejected) and never used again.
+- **Guests' photos in the window** (owner answer 257: yes) are shown to visitors who have not accepted anything yet; the one visibility rule applies (approved, not hidden, not broken), and the editor chooses the photo; it is never a default.
 - **Clean selfies are scarce.** Only an editor's gallery uploads are clean today (106 in two events). More need the storage plan (issue 509, owner answers 226, 227); until then letter b offers uploads first and framed photos as they are.
 - **Blob growth** for letter c: throttled and the replaced picture is deleted.
 - **A live event changes only on purpose:** the global set starts empty, an event can keep the stand-in, and the MTK x Vasas page changes only if the owner uploads a sample selfie and presses Draw it again (or saves the slideshow).
 
-## 7. Questions for the owner (plain words; the number is the register's)
+## 7. The owner's decisions (2026-10-10)
 
-- **255. Where do general selfies live?** a) a page of their own, **Libraries > Sample selfies**, with the Images library underneath; b) only as a tag in the Images page. *Recommended: a.*
-- **256. Rights.** Every uploaded sample selfie needs a required tick **"Cleared for commercial use"** (who and when are kept). *Recommended: yes.*
-- **257. Letter b: which photos can an editor pick?** a) the editor's own gallery uploads (clean) and approved guest photos that opted in, drawn without a second frame; b) uploads only. *Recommended: a.*
-- **258. Letter c: snapshot or live?** a) a picture of the latest approved photo, redrawn after approvals (at most every 10 minutes); b) the real player live inside the screen (heavier, later). *Recommended: a now, b only if you want the motion.*
-- **259. The empty giant screen:** before the first approved photo the stage window shows the same sample selfie instead of nothing. *Recommended: yes, after the match.*
-- **260. Order and timing:** build S1 to S5 now (admin only, the global set empty until you upload; MTK x Vasas unchanged), S6 to S8 after the match. *Recommended: yes.*
-
-Nothing is built until these are answered; the answers go into this file and into issue 540.
+- **255, where general selfies live:** **a page of their own**, Libraries > Sample selfies, with the Images library underneath.
+- **256, rights:** no tick. "We have only cleared for commercial use images; if any problem, we decline and never use. Every approved or uploaded image we have the right to use anywhere, any time, in any context."
+- **257, letter b:** yes: an editor can pick their own gallery uploads (clean) and approved guest photos, drawn without a second frame.
+- **258, letter c:** ok: a picture of the latest approved photo, redrawn after approvals (at most every 10 minutes); the live player inside the screen is not built.
+- **259, the empty giant screen:** yes, the stage window shows the same sample selfie before the first approved photo (after the match, step 7).
+- **260, timing:** ok: steps 1 to 5 now (admin only, the global set empty until the owner uploads, MTK x Vasas unchanged), steps 6 to 8 after the match.
