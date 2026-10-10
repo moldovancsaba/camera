@@ -475,3 +475,15 @@ test('GET: the default pages are where the editor put them, for the user and for
   assert.deepEqual(ids.filter((id) => id.startsWith('default-')), ['default-identity', 'default-consent'].filter((id) => ids.includes(id)), 'the login comes before the consent, as saved');
   assert.deepEqual(body.data.event.journeyContext.defaultOrders, { 'default-identity': 1, 'default-consent': 2 });
 });
+
+test('PATCH: a Submit page (issue 535) is a marker with no texts of its own and is stored; any other page still needs its title and button', async (t) => {
+  const h = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-submit-page');
+  const take = { pageId: 'take', pageType: 'take-photo', order: 0, isActive: true, config: { title: '[Take Photo]', description: '', buttonText: '' } };
+  const submit = { pageId: 'submit', pageType: 'submit', order: 1, isActive: true, config: { title: '[Submit]', description: '', buttonText: '' } };
+  assert.equal((await PATCH(patchRequest({ customPages: [take, submit] }), params)).status, 200);
+  assert.deepEqual((h.updates[0].customPages as Array<{ pageId: string; pageType: string }>).map((page) => [page.pageId, page.pageType]), [['take', 'take-photo'], ['submit', 'submit']]);
+  const cta = { pageId: 'cta', pageType: 'cta', order: 2, isActive: true, config: { title: '', description: '', buttonText: '' } };
+  assert.equal((await PATCH(patchRequest({ customPages: [take, submit, cta] }), params)).status, 400, 'a CTA page without title and button is still refused');
+  assert.equal((await PATCH(patchRequest({ customPages: [{ ...submit, config: undefined }] }), params)).status, 400, 'the marker still needs a config object');
+});

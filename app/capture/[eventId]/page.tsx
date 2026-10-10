@@ -20,6 +20,7 @@ import { Button } from '@mantine/core';
 import CameraCapture from '@/components/camera/CameraCapture';
 import AppShellLock from '@/components/capture/AppShellLock';
 import { phasePageLock } from '@/lib/capture/page-lock';
+import { splitCustomPages } from '@/lib/capture/split-pages';
 import { clearCaptureNotices, notifyCapture } from '@/components/capture/notify';
 import ShareOverlay from '@/components/capture/ShareOverlay';
 import ProcessingOverlay from '@/components/capture/ProcessingOverlay';
@@ -188,33 +189,6 @@ function getErrorMessage(error: unknown, language: UiLanguage): string {
   return error instanceof Error ? error.message : translate(language, 'flow.unexpectedError');
 }
 
-function splitCustomPages(
-  pages: CustomPage[]
-): {
-  onboardingPages: CustomPage[];
-  thankYouPages: CustomPage[];
-  takePhotoPage: CustomPage | undefined;
-} {
-  const sortedPages = [...pages].sort((a, b) => a.order - b.order);
-  const takePhotoPage = sortedPages.find((page) => page.pageType === 'take-photo');
-  const takePhotoIndex = sortedPages.findIndex((page) => page.pageType === 'take-photo');
-
-  if (takePhotoIndex === -1) {
-    return {
-      onboardingPages: sortedPages,
-      thankYouPages: [],
-      takePhotoPage: undefined,
-    };
-  }
-
-  const onboardingPages = sortedPages.slice(0, takePhotoIndex).filter((page) => page.pageType !== 'take-photo');
-  const thankYouPages = sortedPages
-    .slice(takePhotoIndex + 1)
-    .filter((page) => page.pageType !== 'take-photo');
-
-  return { onboardingPages, thankYouPages, takePhotoPage };
-}
-
 function buildEmailDeliveryNotice(metadata: SubmissionEmailMetadata | null | undefined, language: UiLanguage): string {
   const t = (key: MessageKey, values?: MessageValues) => translate(language, key, values);
   if (!metadata) {
@@ -316,7 +290,7 @@ export default function EventCapturePage({
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [collectedData, setCollectedData] = useState<CollectedData>({ consents: [] });
-  const [flowPhase, setFlowPhase] = useState<'onboarding' | 'capture' | 'thankyou'>('onboarding');
+  const [flowPhase, setFlowPhase] = useState<'onboarding' | 'presubmit' | 'capture' | 'thankyou'>('onboarding');
   const [signInError, setSignInError] = useState<{ code: string; message: string } | null>(null);
   const [selectedTryOnSuitId, setSelectedTryOnSuitId] = useState<string | null>(null);
   const [selectedTryOnBottomSuitId, setSelectedTryOnBottomSuitId] = useState<string | null>(null);
@@ -324,11 +298,13 @@ export default function EventCapturePage({
   const [cameraId, setCameraId] = useState<string | null>(null);
   // Continue on the reframe screen saves the photo (camera#344): true from that press until the save starts, so nothing else is asked in between.
   const [saveRequested, setSaveRequested] = useState(false);
+  // The pages between taking the photo and saving it (issue 535) were gone through: a failed save does not ask for them again, and the next photo of the same user does not either; a restart does.
+  const [presubmitDone, setPresubmitDone] = useState(false);
   const vetted = event?.photoVettingRequired === true;
   
   // With the acceptance on the Who-are-you page (issue 523) the consent page is not a step of its own: its checkboxes are shown there as one (lib/events/acceptance.ts).
   const { pages: journeyPages, acceptPage: acceptanceBox } = acceptanceOnLogin(customPages, event?.acceptanceOnWhoAreYou === true);
-  const { onboardingPages, thankYouPages, takePhotoPage } = splitCustomPages(journeyPages);
+  const { onboardingPages, presubmitPages, thankYouPages, takePhotoPage } = splitCustomPages(journeyPages);
 
   // Keep camera scope identifier for per-event/camera try-on setup resolution.
   useEffect(() => {
@@ -876,8 +852,15 @@ export default function EventCapturePage({
 
   // The frame-less crop continues through the composite step, as the old capture did, and the photo is saved as soon as its picture is made (camera#344).
   const handleReframeDone = (result: ReframeResult) => {
-    setSaveRequested(true);
     setCapturedImage(result.dataUrl);
+    // An event whose editor made saving a step of its own (a Submit page after the take-photo page, issue 535) runs the pages between the two first; the picture is made meanwhile and the
+    // photo is saved after the last of them. Without such pages Continue saves at once, as it always did.
+    if (presubmitPages.length > 0 && !presubmitDone) {
+      setFlowPhase('presubmit');
+      setCurrentPageIndex(0);
+      return;
+    }
+    setSaveRequested(true);
   };
 
   // The full photo is not kept: once the framed result is on screen it is dropped (it can be tens of megabytes).
@@ -1191,6 +1174,13 @@ export default function EventCapturePage({
     rememberConsents(window.sessionStorage, eventId, consents);
   };
   
+  /** The last page between taking the photo and saving it is done: back to the capture screen, which now saves the photo (its picture was made meanwhile). */
+  const finishPresubmit = () => {
+    setPresubmitDone(true);
+    setFlowPhase('capture');
+    setSaveRequested(true);
+  };
+
   /**
    * Navigate to next page in flow
    * Determines if moving to next custom page, capture, or thank you phase
@@ -1205,6 +1195,13 @@ export default function EventCapturePage({
         // Move to capture phase
         setFlowPhase('capture');
         enterCaptureStep();
+      }
+    } else if (flowPhase === 'presubmit') {
+      // Between taking the photo and saving it (issue 535)
+      if (currentPageIndex + 1 < presubmitPages.length) {
+        setCurrentPageIndex(currentPageIndex + 1);
+      } else {
+        finishPresubmit();
       }
     } else if (flowPhase === 'thankyou') {
       // In thank you phase
@@ -1296,6 +1293,7 @@ export default function EventCapturePage({
     
     // Reset flow state
     setCollectedData({ consents: [] });
+    setPresubmitDone(false);
     forgetConsents(window.sessionStorage, eventId);
     
     // ALWAYS restart from the very beginning
@@ -1311,14 +1309,16 @@ export default function EventCapturePage({
   };
 
   // Render custom pages for onboarding or thank-you phases
-  if (!isLoading && event && (flowPhase === 'onboarding' || flowPhase === 'thankyou')) {
-    const phasePages = flowPhase === 'onboarding' ? onboardingPages : thankYouPages;
+  if (!isLoading && event && (flowPhase === 'onboarding' || flowPhase === 'presubmit' || flowPhase === 'thankyou')) {
+    const phasePages = flowPhase === 'onboarding' ? onboardingPages : flowPhase === 'presubmit' ? presubmitPages : thankYouPages;
     const currentPage = phasePages[currentPageIndex];
     
     if (!currentPage) {
       // No current page, move to appropriate phase
       if (flowPhase === 'onboarding') {
         setFlowPhase('capture');
+      } else if (flowPhase === 'presubmit') {
+        finishPresubmit();
       } else {
         // The last page of the journey is done: ready for the next photo, not back at the login (owner default)
         finalizeSubmissionForEventEnd();
@@ -1341,8 +1341,9 @@ export default function EventCapturePage({
               buttonText: currentPage.config.buttonText,
               namePlaceholder: currentPage.config.namePlaceholder,
               emailPlaceholder: currentPage.config.emailPlaceholder,
-              enableSSOLogin: currentPage.config.enableSSOLogin,
-              enablePseudoReg: currentPage.config.enablePseudoReg,
+              // Between taking the photo and saving it only the name and e-mail form is offered: a social sign-in leaves the page and the photo, which is in this page's memory only, would be lost (issue 535).
+              enableSSOLogin: flowPhase === 'presubmit' ? false : currentPage.config.enableSSOLogin,
+              enablePseudoReg: flowPhase === 'presubmit' ? true : currentPage.config.enablePseudoReg,
               ssoButtonText: currentPage.config.ssoButtonText,
               pseudoFormTitle: currentPage.config.pseudoFormTitle,
             }}
@@ -1460,6 +1461,8 @@ export default function EventCapturePage({
         // Unknown page type or 'take-photo' (shouldn't happen)
         if (flowPhase === 'onboarding') {
           setFlowPhase('capture');
+        } else if (flowPhase === 'presubmit') {
+          finishPresubmit();
         } else {
           finalizeSubmissionForEventEnd();
           handleRestartFlow();

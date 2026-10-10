@@ -7,6 +7,7 @@
 
 import type { CustomPage } from '@/lib/db/schemas';
 import type { ConsentCheckbox } from './consent';
+import { pagesBeforeSave } from './photo-boundary';
 import { DEFAULT_IDENTITY_PAGE_ID, withRequiredIdentityPage } from './identity-page';
 import { translate, type UiLanguage } from '@/lib/i18n';
 import type { TextOverrides } from '@/lib/i18n/overrides';
@@ -67,11 +68,9 @@ export function defaultWelcomePage(order: number, now: string = new Date().toISO
   } as CustomPage;
 }
 
-/** True when an active consent ("accept") page comes before the photo (before the take-photo page, or anywhere if there is none). */
+/** True when an active consent ("accept") page comes before the photo is saved (before the take-photo page, or before the submit page when the event has one, or anywhere if there is no take-photo page). */
 export function hasConsentPageBeforePhoto(pages: readonly CustomPage[]): boolean {
-  const active = [...pages].filter((page) => page.isActive).sort((a, b) => a.order - b.order);
-  const photoIndex = active.findIndex((page) => page.pageType === 'take-photo');
-  return (photoIndex === -1 ? active : active.slice(0, photoIndex)).some((page) => page.pageType === 'accept');
+  return pagesBeforeSave(pages).some((page) => page.pageType === 'accept');
 }
 
 /**
