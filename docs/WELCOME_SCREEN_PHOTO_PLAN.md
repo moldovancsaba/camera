@@ -95,7 +95,7 @@ GALLERY  Event > Gallery: select a photo > "Use in the welcome screen"   (letter
 
 | Step | Content | Risk | Before the match? |
 |---|---|---|---|
-| **S1 Library** | the tag on images, the global **Sample selfies** page (upload with the "cleared" tick, switch off, delete), the "who uses it" count | none: an admin page | yes |
+| **S1 Library** | the tag on images, the global **Sample selfies** page (upload, switch off, delete), the "who uses it" count | none: an admin page | yes |
 | **S2 Slot and resolver** | `selfie` slot at partner and event (`lib/slots/selfie.ts` on `resolveSlot`), the global default set, the stored random pick, routes `GET/PUT` for the partner and the event, tests | none: nothing reads it yet | yes |
 | **S3 Partner panel** | the card **Sample selfies** on the partner's Pictures page | none | yes |
 | **S4 Window picture (letter a)** | `ensureWelcomeScreen` passes the pick as `windowPicture` with the frame, the key and the redraw, the event card with the source choice, the preview and **Pick another**, **Keep the stand-in** | changes the picture of an event **only when the global set is not empty and the event does not keep the stand-in**; the global set starts empty | yes, with the global set left empty until the owner says |
