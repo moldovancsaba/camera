@@ -6,6 +6,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { getPartnerScopedAccessForEvent } from '@/lib/partners/authorization';
+import { markPeopleOn } from '@/lib/photo-vetting/people';
 import { loadPhotoQueue } from '@/lib/photo-vetting/queue';
 
 export const dynamic = 'force-dynamic';
@@ -31,7 +32,7 @@ export default async function EventVettingReviewPage({ params }: { params: Promi
         <span aria-hidden> / </span>
         <span>Review one by one</span>
       </nav>
-      <PhotoReviewStage eventId={id} items={items} markPeople={event.markPeopleInVetting === true} />
+      <PhotoReviewStage eventId={id} items={items} markPeople={markPeopleOn(event as { markPeopleInVetting?: unknown })} />
     </div>
   );
 }

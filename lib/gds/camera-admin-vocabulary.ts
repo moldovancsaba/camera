@@ -112,6 +112,7 @@ export const cameraAdminVocabularyPacks = [
     'mark-back': { defaultMessage: 'Back to the people', icon: GdsIcons.Back, feedback: openedFeedback },
     'mark-skip': { defaultMessage: 'Skip this photo', icon: GdsIcons.Eye, feedback: openedFeedback },
     'mark-remove': { defaultMessage: 'Remove', icon: GdsIcons.Delete, feedback: deletedFeedback },
+    'mark-nobody': { defaultMessage: 'Nobody in this photo', icon: GdsIcons.Check, feedback: openedFeedback },
     'mark-turn-on': { defaultMessage: 'Turn marking on', icon: GdsIcons.Check, feedback: savedFeedback },
     'mark-turn-off': { defaultMessage: 'Turn marking off', icon: GdsIcons.Delete, feedback: deletedFeedback },
     'review-one-by-one': { defaultMessage: 'Review one by one', icon: GdsIcons.Eye, feedback: openedFeedback },

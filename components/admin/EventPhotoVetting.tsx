@@ -12,7 +12,7 @@ import PhotoVettingSwitch from '@/components/admin/PhotoVettingSwitch';
 import MarkPeopleSwitch from '@/components/admin/MarkPeopleSwitch';
 import PeopleSummaryCard from '@/components/admin/PeopleSummaryCard';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { summarizePeople } from '@/lib/photo-vetting/people';
+import { markPeopleOn, summarizePeople } from '@/lib/photo-vetting/people';
 import { photoVettingRequired } from '@/lib/events/photo-vetting';
 import { countPhotoQueue, loadPhotoQueue, type QueueStatus } from '@/lib/photo-vetting/queue';
 
@@ -48,7 +48,7 @@ export default async function EventPhotoVetting({ db, eventMongoId, event, statu
       </div>
 
       <PhotoVettingSwitch eventId={eventMongoId} required={required} canChange={canChangeSetting} />
-      {required ? <MarkPeopleSwitch eventId={eventMongoId} on={event.markPeopleInVetting === true} canChange={canChangeSetting} waiting={counts.pending_review} /> : null}
+      {required ? <MarkPeopleSwitch eventId={eventMongoId} on={markPeopleOn(event)} canChange={canChangeSetting} waiting={counts.pending_review} /> : null}
       <PeopleSummaryCard summary={summarizePeople(marked as Array<{ people?: unknown }>)} />
 
       {required || any ? (

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { EMOTION_OPTIONS, MAX_PEOPLE, MERCH_OPTIONS, PERSON_OPTIONS, RECTANGLE_COLOURS, parsePeople, personOption, summarizePeople } from './people';
+import { EMOTION_OPTIONS, MAX_PEOPLE, MERCH_OPTIONS, PERSON_OPTIONS, RECTANGLE_COLOURS, markPeopleOn, parsePeople, personOption, summarizePeople } from './people';
 
 const person = (extra: Record<string, unknown> = {}) => ({ id: 'a', box: { x: 10, y: 20, w: 30, h: 40 }, gender: 'female', age: 'adult', ...extra });
 
@@ -8,7 +8,7 @@ test('the 16 buttons are 8 person options, 4 emotions and 4 merchandise, each wi
   assert.equal(PERSON_OPTIONS.length + EMOTION_OPTIONS.length + MERCH_OPTIONS.length, 16);
   assert.deepEqual(PERSON_OPTIONS.map((o) => `${o.gender}-${o.age}`), ['female-kid', 'female-young', 'female-adult', 'female-old', 'male-kid', 'male-young', 'male-adult', 'male-old']);
   assert.deepEqual(EMOTION_OPTIONS.map((o) => o.id), ['sad', 'unamused', 'happy', 'angry']);
-  assert.deepEqual(MERCH_OPTIONS.map((o) => o.id).sort(), ['cap', 'flag', 'jersey', 'other']);
+  assert.deepEqual(MERCH_OPTIONS.map((o) => o.id).sort(), ['cap', 'flag', 'jersey', 'scarf']);
   for (const o of [...PERSON_OPTIONS, ...EMOTION_OPTIONS, ...MERCH_OPTIONS]) assert.ok(o.emoji && o.label);
   assert.equal(personOption('male', 'old').emoji, '👴');
   assert.match(RECTANGLE_COLOURS[0], /yellow/, 'the first rectangle is yellow');
@@ -73,7 +73,16 @@ test('the counts: people, photos looked at (also with nobody in them), gender, a
   assert.equal(s.byPerson['male-old'], 1);
   assert.deepEqual(s.byEmotion, { sad: 1, unamused: 0, happy: 1, angry: 0 });
   assert.equal(s.withMerch, 2);
-  assert.deepEqual(s.byMerch, { cap: 1, jersey: 1, flag: 1, other: 0 });
+  assert.deepEqual(s.byMerch, { cap: 1, scarf: 0, jersey: 1, flag: 1 });
   assert.equal(summarizePeople([]).photos, 0);
   assert.equal(summarizePeople([]).peoplePerPhoto, 0);
+});
+
+test('marking is on for every event unless the event was switched off on purpose (owner answer 264); nothing needs to be stored for it to be on', () => {
+  assert.equal(markPeopleOn(null), true);
+  assert.equal(markPeopleOn(undefined), true);
+  assert.equal(markPeopleOn({}), true);
+  assert.equal(markPeopleOn({ markPeopleInVetting: true }), true);
+  assert.equal(markPeopleOn({ markPeopleInVetting: undefined }), true);
+  assert.equal(markPeopleOn({ markPeopleInVetting: false }), false);
 });

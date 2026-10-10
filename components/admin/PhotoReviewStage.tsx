@@ -4,7 +4,7 @@
  * The vetting view of one photo, big (issue 542, docs/PHOTO_VETTING_PLAN.md; owner request 2026-10-10, six sketches VETTING 1 to 6): the photo fills the screen; **Clicker** starts a mark: the
  * reviewer draws a rectangle around a person (a mouse or a finger), **Next** takes the rectangle, 16 buttons say who it is (one of 8: female or male, kid, young, adult, old), the emotion
  * (one of 4) and any merchandise (any of 4), **Done** keeps the person and **Clicker** marks the next one, until the reviewer has identified what they can; then **Next** goes on to the
- * decision, approve or reject. The people are saved with the photo (`PUT /api/admin/submissions/<id>/people`) before the decision and are what the analytics read. The decision is the same
+ * decision, approve or reject. **Marking is required (owner answer 263): at least one person must be marked, or the reviewer says "Nobody in this photo"; only then Next goes on.** The people are saved with the photo (`PUT /api/admin/submissions/<id>/people`) before the decision and are what the analytics read. The decision is the same
  * call as the queue's (`POST .../review`). With marking switched off for the event the view is only the big photo and the decision. Rectangles are in percent of the photo.
  */
 
@@ -265,7 +265,7 @@ export default function PhotoReviewStage({ eventId, items, markPeople }: Props) 
           <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }} data-mark-help>
             {step === 'idle'
               ? people.length === 0
-                ? 'Press Clicker, draw a rectangle around a person, then say who it is. Mark everybody you can, then press Next.'
+                ? 'Press Clicker, draw a rectangle around a person, then say who it is. Mark everybody you can, then press Next. If nobody is in the photo, press Nobody in this photo.'
                 : `${people.length} ${people.length === 1 ? 'person' : 'people'} marked ${summary.join(' ')}. Press Clicker for the next person, or Next to decide.`
               : step === 'drawing'
                 ? box
@@ -282,13 +282,20 @@ export default function PhotoReviewStage({ eventId, items, markPeople }: Props) 
                   Clicker
                 </SemanticButton>
                 {people.length > 0 ? (
-                  <SemanticButton action="photo-review:mark-remove" type="button" variant="secondary" disabled={busy} onClick={() => setPeople((current) => current.slice(0, -1))}>
-                    Remove
+                  <>
+                    <SemanticButton action="photo-review:mark-remove" type="button" variant="secondary" disabled={busy} onClick={() => setPeople((current) => current.slice(0, -1))}>
+                      Remove
+                    </SemanticButton>
+                    <SemanticButton action="photo-review:mark-next" type="button" variant="secondary" disabled={busy} onClick={() => void toDecision()}>
+                      {busy ? 'Saving…' : 'Next'}
+                    </SemanticButton>
+                  </>
+                ) : (
+                  // Marking is required: with nobody marked the way on is to say so, which saves an empty list ("looked, nobody in it").
+                  <SemanticButton action="photo-review:mark-nobody" type="button" variant="secondary" disabled={busy} onClick={() => void toDecision()}>
+                    {busy ? 'Saving…' : 'Nobody in this photo'}
                   </SemanticButton>
-                ) : null}
-                <SemanticButton action="photo-review:mark-next" type="button" variant="secondary" disabled={busy} onClick={() => void toDecision()}>
-                  {busy ? 'Saving…' : 'Next'}
-                </SemanticButton>
+                )}
               </>
             ) : null}
             {step === 'drawing' ? (

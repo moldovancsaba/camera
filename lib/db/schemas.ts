@@ -357,7 +357,7 @@ export interface Event {
    * place is the event's choice. Missing: the default places (lib/events/default-pages.ts).
    */
   defaultPageOrders?: Record<string, number>;
-  /** The vetting view asks the reviewer to mark the people in each photo before approving or declining it (issue 542, lib/photo-vetting/people.ts). Off or missing: the vetting is as it was. Only a global admin changes it. */
+  /** The big vetting view asks the reviewer to mark the people in each photo before approving or declining it (issue 542, lib/photo-vetting/people.ts). **On for every event unless it is `false`** (owner answer 264, 2026-10-10); only a global admin switches it off. */
   markPeopleInVetting?: boolean;
   /**
    * What the photo window of the welcome page screen shows (issue 540, docs/WELCOME_SCREEN_PHOTO_PLAN.md; lib/screen/welcome-window.ts): `source` is `selfie` (the event's sample selfie, the default

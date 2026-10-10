@@ -12,7 +12,7 @@ const MIN_SIDE = 1;
 export type Gender = 'female' | 'male';
 export type Age = 'kid' | 'young' | 'adult' | 'old';
 export type Emotion = 'sad' | 'unamused' | 'happy' | 'angry';
-export type Merch = 'cap' | 'jersey' | 'flag' | 'other';
+export type Merch = 'cap' | 'scarf' | 'jersey' | 'flag';
 
 export interface PersonOption {
   id: string;
@@ -44,7 +44,7 @@ export const EMOTION_OPTIONS: ReadonlyArray<{ id: Emotion; emoji: string; label:
 /** Merchandise: any number of them on one person. */
 export const MERCH_OPTIONS: ReadonlyArray<{ id: Merch; emoji: string; label: string }> = [
   { id: 'cap', emoji: '🧢', label: 'Cap' },
-  { id: 'other', emoji: '🛍️', label: 'Other merchandise' },
+  { id: 'scarf', emoji: '🧣', label: 'Scarf' },
   { id: 'jersey', emoji: '🎽', label: 'Jersey or shirt' },
   { id: 'flag', emoji: '🇭🇺', label: 'Flag' },
 ];
@@ -154,7 +154,7 @@ export function summarizePeople(photos: ReadonlyArray<{ people?: unknown } | nul
     byPerson: zero(PERSON_OPTIONS.map((option) => option.id)),
     byEmotion: zero(['sad', 'unamused', 'happy', 'angry']),
     withMerch: 0,
-    byMerch: zero(['cap', 'jersey', 'flag', 'other']),
+    byMerch: zero(['cap', 'scarf', 'jersey', 'flag']),
   };
   for (const photo of photos) {
     if (!photo || !Array.isArray(photo.people)) continue;
@@ -176,4 +176,12 @@ export function summarizePeople(photos: ReadonlyArray<{ people?: unknown } | nul
   }
   summary.peoplePerPhoto = summary.photos > 0 ? Math.round((summary.people / summary.photos) * 100) / 100 : 0;
   return summary;
+}
+
+/**
+ * Whether the vetting of an event asks for the people to be marked: **on for every event unless it was switched off** (owner answer 264, "everywhere", 2026-10-10). A missing setting is on, so no
+ * event has to be changed; a global admin can switch it off for an event (`Event.markPeopleInVetting: false`).
+ */
+export function markPeopleOn(event: { markPeopleInVetting?: unknown } | null | undefined): boolean {
+  return event?.markPeopleInVetting !== false;
 }
