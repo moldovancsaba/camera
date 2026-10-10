@@ -19,6 +19,7 @@ import {
   type ScopeFields,
 } from './kinds';
 import { parseMessageArea } from '@/lib/frame/message-area';
+import { withoutSampleSelfies } from './sample-selfie';
 import { applyLibraryEdit, assignedFromGlobal, canEventAssign, canPartnerAssign, scopeOf } from './rules';
 import type { EventLibrary, EventLibraryEntry, LibraryItemView, PartnerLibrary, PartnerLibraryEntry } from './types';
 
@@ -80,7 +81,7 @@ async function resolvePartnerLibrary(db: Db, partner: Document, kind: LibraryKin
   const found = ids.length ? await coll(db, kind).find({ [idField]: { $in: ids } }).toArray() : [];
   // What a partner had before the libraries can include an event's own upload; that is not a partner item.
   const globalDocs = found.filter((doc) => scopeOf(fieldsOf(doc)) === 'global');
-  const ownDocs = await coll(db, kind).find({ scope: 'partner', partnerId: text(partner.partnerId) }).sort({ createdAt: -1 }).limit(LIST_LIMIT).toArray();
+  const ownDocs = await coll(db, kind).find({ scope: 'partner', partnerId: text(partner.partnerId), ...withoutSampleSelfies(kind) }).sort({ createdAt: -1 }).limit(LIST_LIMIT).toArray();
   const foundIds = new Set(found.map((doc) => idOf(kind, doc)));
   return { saved, globalDocs, ownDocs, missing: ids.filter((id) => !foundIds.has(id)) };
 }
@@ -100,7 +101,7 @@ export async function loadPartnerLibrary(db: Db, partner: Document, kind: Librar
   const items = [...resolved.globalDocs.map((doc) => entry(doc, 'assigned')), ...resolved.ownDocs.map((doc) => entry(doc, 'own'))];
   const held = resolved.globalDocs.map((doc) => idOf(kind, doc));
   const availableDocs = await coll(db, kind)
-    .find({ ...GLOBAL_FILTER, isActive: true, ...(held.length ? { [KIND_META[kind].idField]: { $nin: held } } : {}) })
+    .find({ ...GLOBAL_FILTER, ...withoutSampleSelfies(kind), isActive: true, ...(held.length ? { [KIND_META[kind].idField]: { $nin: held } } : {}) })
     .sort({ createdAt: -1 })
     .limit(LIST_LIMIT)
     .toArray();
@@ -141,7 +142,7 @@ export async function loadEventLibrary(db: Db, event: Document, kind: LibraryKin
     assigned.push({ ...itemView(kind, doc), assignment: row, stillInPartnerLibrary: scope === 'event' ? true : inPartnerLibrary.has(id) });
   }
 
-  const ownEventDocs = await coll(db, kind).find({ scope: 'event', eventId }).sort({ createdAt: -1 }).limit(LIST_LIMIT).toArray();
+  const ownEventDocs = await coll(db, kind).find({ scope: 'event', eventId, ...withoutSampleSelfies(kind) }).sort({ createdAt: -1 }).limit(LIST_LIMIT).toArray();
   // A logo is assigned once per scenario, so a logo the event shows in one scenario can still be taken for another (the page filters per scenario).
   const taken = new Set(kind === 'logos' ? [] : assignedIds);
   const candidates = [...resolved.globalDocs, ...resolved.ownDocs, ...ownEventDocs].filter((doc) => doc.isActive !== false && !taken.has(idOf(kind, doc)));

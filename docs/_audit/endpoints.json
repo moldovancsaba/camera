@@ -1,10 +1,10 @@
 {
  "_meta": {
-  "generated": "2026-10-10T13:10:16+00:00",
+  "generated": "2026-10-10T13:16:28+00:00",
   "repo": "camera",
-  "head": "a9370e8",
+  "head": "1db67fe",
   "counts": {
-   "endpoints": 154,
+   "endpoints": 161,
    "collections": 8,
    "env": 61,
    "outbound-hosts": 31,
@@ -266,11 +266,36 @@
    "no_auth_marker": false
   },
   {
+   "path": "/api/admin/events/[id]/welcome-photos",
+   "methods": [
+    "GET"
+   ],
+   "file": "app/api/admin/events/[id]/welcome-photos/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
    "path": "/api/admin/events/[id]/welcome-screen",
    "methods": [
     "POST"
    ],
    "file": "app/api/admin/events/[id]/welcome-screen/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/admin/events/[id]/welcome-window",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/admin/events/[id]/welcome-window/route.ts",
    "auth_markers": [
     "requireAuth",
     "withErrorHandler"
@@ -1093,6 +1118,31 @@
    "no_auth_marker": false
   },
   {
+   "path": "/api/events/[eventId]/selfie-slot",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/events/[eventId]/selfie-slot/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/events/[eventId]/selfie-slot/upload",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/events/[eventId]/selfie-slot/upload/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
    "path": "/api/events/[eventId]/submissions/[submissionId]",
    "methods": [
     "DELETE"
@@ -1638,6 +1688,31 @@
    "no_auth_marker": false
   },
   {
+   "path": "/api/partners/[partnerId]/selfie-slot",
+   "methods": [
+    "GET",
+    "PUT"
+   ],
+   "file": "app/api/partners/[partnerId]/selfie-slot/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/partners/[partnerId]/selfie-slot/upload",
+   "methods": [
+    "POST"
+   ],
+   "file": "app/api/partners/[partnerId]/selfie-slot/upload/route.ts",
+   "auth_markers": [
+    "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
    "path": "/api/partners/[partnerId]/submissions/[submissionId]",
    "methods": [
     "DELETE"
@@ -1712,6 +1787,19 @@
     "isGlobalAdminSession",
     "requireAdmin",
     "requireAuth",
+    "withErrorHandler"
+   ],
+   "no_auth_marker": false
+  },
+  {
+   "path": "/api/sample-selfies",
+   "methods": [
+    "GET",
+    "POST"
+   ],
+   "file": "app/api/sample-selfies/route.ts",
+   "auth_markers": [
+    "requireAdmin",
     "withErrorHandler"
    ],
    "no_auth_marker": false

@@ -7,6 +7,7 @@
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { GLOBAL_FILTER, itemView } from './db';
+import { withoutSampleSelfies } from './sample-selfie';
 import type { GlobalImageEntry, LibraryItemView } from './types';
 
 /** The most images one list returns, as for the other libraries. */
@@ -23,7 +24,7 @@ async function namesById(db: Db, collection: string, idField: string, ids: strin
 
 /** The global images, newest first; with `all`, every image, each with the partner or the event it was uploaded for. */
 export async function listGlobalImages(db: Db, options: { all: boolean }): Promise<GlobalImageEntry[]> {
-  const docs = await images(db).find(options.all ? {} : GLOBAL_FILTER).sort({ createdAt: -1 }).limit(LIST_LIMIT).toArray();
+  const docs = await images(db).find({ ...(options.all ? {} : GLOBAL_FILTER), ...withoutSampleSelfies('images') }).sort({ createdAt: -1 }).limit(LIST_LIMIT).toArray();
   const views = docs.map((doc) => ({ doc, view: itemView('images', doc) }));
   const partnerIds = [...new Set(views.filter(({ view }) => view.scope === 'partner').map(({ doc }) => text(doc.partnerId)).filter(Boolean))];
   const eventIds = [...new Set(views.filter(({ view }) => view.scope === 'event').map(({ doc }) => text(doc.eventId)).filter(Boolean))];

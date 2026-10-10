@@ -58,6 +58,7 @@ function pullFrom(doc: Doc, path: string, cond: unknown): void {
 export function matches(doc: Doc, filter: Doc): boolean {
   return Object.entries(filter).every(([key, want]) => {
     if (key === '$or') return (want as Doc[]).some((f) => matches(doc, f));
+    if (key === '$and') return (want as Doc[]).every((f) => matches(doc, f));
     const values = valuesAt(doc, key.split('.'));
     return values.some((value) => matchesValue(value, want));
   });

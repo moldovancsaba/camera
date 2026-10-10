@@ -359,6 +359,11 @@ export interface Event {
   defaultPageOrders?: Record<string, number>;
   /** The vetting view asks the reviewer to mark the people in each photo before approving or declining it (issue 542, lib/photo-vetting/people.ts). Off or missing: the vetting is as it was. Only a global admin changes it. */
   markPeopleInVetting?: boolean;
+  /**
+   * What the photo window of the welcome page screen shows (issue 540, docs/WELCOME_SCREEN_PHOTO_PLAN.md; lib/screen/welcome-window.ts): `source` is `selfie` (the event's sample selfie, the default
+   * when missing), `photo` (a photo of this event, `photoId` is its submission id) or `standin` (the drawn head and shoulders); `pick` is the sample selfie picked for this event, stored once so the picture does not change on every redraw.
+   */
+  welcomeWindow?: { source?: 'selfie' | 'photo' | 'standin'; photoId?: string; pick?: { pictureId: string; pickedAt: string } };
   /** Set on events created with the journey defaults (the default consent page and the like); existing events get them through the global switch (lib/admin/defaults-rollout.ts). */
   journeyDefaults?: boolean;
   /** What was last pushed to messmass from the tracked links of this event (camera#320, lib/short-links/sync.ts). */
@@ -628,6 +633,8 @@ export interface LibraryImage {
   createdBy: string;                 // Admin user ID from SSO
   createdAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
+  /** What the picture is for, when it is for something in particular: `['sample-selfie']` (lib/library/sample-selfie.ts, issue 540). A tagged picture is kept out of the general Images lists. */
+  tags?: string[];
   // Who owns the picture: missing scope = global. See lib/library.
   scope?: 'global' | 'partner' | 'event';
   partnerId?: string;                // partner UUID, for scope 'partner' (and the partner of an event upload)
