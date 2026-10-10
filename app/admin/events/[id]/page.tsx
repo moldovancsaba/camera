@@ -435,8 +435,8 @@ export default async function EventDetailPage({
               <Button component="a" href={`/admin/events/${id}/queue`} variant="light">
                 Open Queue
               </Button>
-              <Button component="a" href={`/admin/events/${id}/analytics`} variant="light">
-                Asset Health Report
+              <Button component="a" href={`/admin/events/${id}/analytics?view=tryon`} variant="light">
+                Try-on analytics
               </Button>
             </Group>
           </Card>

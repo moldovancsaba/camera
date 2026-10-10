@@ -472,6 +472,16 @@ Every outbound call on the login, logout and partner paths has a fixed deadline 
 
 **The keep-or-drop decision on the messmass login push** (owner's call, issue 178): after a few days of logins, count `messmass.session_push` by `context.outcome`. If `ok` is (almost) never there, the push costs every login up to 3 s for nothing and can be removed; if it is there for the people who use both apps, keep it. The permission calls in `lib/auth/sso-permissions.ts` are not bounded yet.
 
+## Analytics view (issue 521, phase 1)
+
+The event menu **Analytics** and the Operations hub **Analytics** show numbers computed from data that already exists (`docs/ANALYTICS.md`: every figure, its definition and its source field, and what is not measured yet). Operating notes:
+
+- **Read only.** Opening the page, changing the days or the clock and downloading the CSV (`/api/admin/events/<id>/export/analytics`) only read `submissions`, `email_registrations`, `slideshows`, `short_links` and `short_link_hits`. Nothing is written, nothing is sent to messmass, and nothing about the capture path, the giant screen or the approver's screens is touched.
+- **No cap, one pass.** A report reads the event's photos once with a narrow projection (no row limit). At a match-day size (thousands of photos) it is a few megabytes and well under a second on the database; an event with hundreds of thousands of photos would need an aggregation pipeline instead, and the page would say nothing about it: watch the load time of `/admin/events/<id>/analytics` after a very large event.
+- **Who sees it:** the event's managers and global admins (the Vetting tab's rule); the Operations hub page and the Try-on tab are for global admins.
+- **A number looks wrong?** Check the line above the tabs first (what is counted, and what was left out: removed from the event, and photos whose picture is gone), then the clock (Budapest or UTC) and the days; photos an editor added in the gallery are counted apart. A user is counted only when an e-mail or an account tells them apart.
+- **Time to first decision** needs `photoReview.submittedAt` and a `reviewHistory` entry; photos approved when vetting was switched on for the event have no record and no time (the Vetting tab says how many).
+
 ## Scheduled jobs and workers
 
 **Vercel Cron: two crons in `vercel.json`, both need `CRON_SECRET`.** The weekly activity export (issue 517, Mondays 06:00 UTC; see "Activity log and its weekly CSV"), and the daily picture check (issue 514, 05:30 UTC, `GET /api/internal/pictures-scan`): it asks the host of every photo and of every logo, frame, page picture and e-mail picture that has not been checked for a week, in batches until 40 seconds are used (a first run needs a few days to cover everything; the next day continues), marks the ones that are gone and clears the ones that answer again. Without `CRON_SECRET` it answers 403 and does nothing; the same check runs by hand from the card **Broken pictures** on the Slideshows page (two buttons: photos; logos, frames and page pictures). A picture that is gone is left out of the guest pages, the screens and the e-mails, never deleted: replace it where the card says it is used.

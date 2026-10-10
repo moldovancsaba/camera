@@ -23,6 +23,8 @@ export default function TryOnAnalyticsFilterForm({
 }) {
   return (
     <form method="get" style={{ display: 'grid', gap: 'var(--mantine-spacing-sm)' }}>
+      {/* The try-on report is the Try-on tab of the Analytics view (issue 521): applying the filter must stay on that tab. */}
+      <input type="hidden" name="view" value="tryon" />
       <Group align="flex-end" gap="sm" wrap="wrap">
         <label style={{ display: 'grid', gap: 4, fontSize: '0.875rem' }}>
           Bucket

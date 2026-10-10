@@ -21,6 +21,8 @@ import TryOnFunnelChart from '@/components/admin/TryOnFunnelChart';
 import TryOnAnalyticsFilterForm from '@/components/admin/TryOnAnalyticsFilterForm';
 import TryOnAnalyticsExportControls from '@/components/admin/TryOnAnalyticsExportControls';
 import EventPicker from '@/components/admin/EventPicker';
+import AllEventsAnalyticsPage from '@/components/admin/analytics/AllEventsAnalyticsPage';
+import { parseAnalyticsQuery } from '@/lib/analytics/query';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +33,7 @@ function bucketParam(value: string): TryOnAnalyticsBucket | '' {
 export default async function AdminTryOnAnalyticsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ bucket?: string; eventId?: string; from?: string; to?: string }>;
+  searchParams?: Promise<{ bucket?: string; eventId?: string; from?: string; to?: string; view?: string }>;
 }) {
   const session = await getSession();
   if (!isGlobalAdminSession(session)) {
@@ -39,6 +41,10 @@ export default async function AdminTryOnAnalyticsPage({
   }
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
+  // The Analytics menu opens the numbers of all events (issue 521); the try-on report this page used to be is its Try-on tab (?view=tryon).
+  if (parseAnalyticsQuery(resolvedSearchParams, 'Europe/Budapest').view !== 'tryon') {
+    return <AllEventsAnalyticsPage searchParams={resolvedSearchParams} />;
+  }
   const bucket = bucketParam(typeof resolvedSearchParams.bucket === 'string' ? resolvedSearchParams.bucket : '');
   const eventId = typeof resolvedSearchParams.eventId === 'string' ? resolvedSearchParams.eventId.trim() : '';
   const from = typeof resolvedSearchParams.from === 'string' ? resolvedSearchParams.from.trim() : '';
@@ -117,6 +123,7 @@ export default async function AdminTryOnAnalyticsPage({
                       value: eventScope.eventName ?? eventId,
                       // Drop only the event scope, keep bucket/date filters.
                       removeHref: `/admin/tryon/analytics?${new URLSearchParams({
+                        view: 'tryon',
                         ...(bucket ? { bucket } : {}),
                         ...(from ? { from } : {}),
                         ...(to ? { to } : {}),
@@ -135,7 +142,13 @@ export default async function AdminTryOnAnalyticsPage({
           : '/admin/tryon/vetting',
         label: 'Open Vetting',
       }}
-      beforeToolbar={!eventId ? <EventPicker basePath="/admin/tryon/analytics" /> : undefined}
+      beforeToolbar={
+        <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 'var(--mantine-spacing-md)' }}>
+          {/* The try-on report is the Try-on tab of the Analytics view (issue 521): the way back to the other tabs. */}
+          <a href={eventScope.eventMongoId ? `/admin/events/${eventScope.eventMongoId}/analytics` : '/admin/tryon/analytics'}>Back to the Analytics overview</a>
+          {!eventId ? <EventPicker basePath="/admin/tryon/analytics" /> : null}
+        </div>
+      }
       dbError={dbError}
     >
       {dbError ? <DatabaseConnectionAlert diagnosis={dbError} /> : null}
