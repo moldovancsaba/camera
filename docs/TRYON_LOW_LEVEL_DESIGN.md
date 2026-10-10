@@ -1,11 +1,11 @@
 # Try-On Low-Level Design
 
-> **REMOVED INTEGRATION (camera issue 557, 2026-10-10).** This document describes the try-on integration as it was at git tag `tryon-integration-final`. Try-on was switched off on every event and has been removed from the camera app (only its unreachable guest-path code is left, which goes after the match of 2026-10-16); [TRYON_REMOVED.md](./TRYON_REMOVED.md) says what existed, what it left in the database and what a rebuild as an add-on needs. Nothing below is current behaviour or an operating guide; it is kept as the record of the contract.
+> **REMOVED INTEGRATION (camera issue 557, 2026-10-10).** This document describes the try-on integration as it was at git tag `tryon-integration-final`. Try-on was switched off on every event and has been removed from the camera app; [TRYON_REMOVED.md](./TRYON_REMOVED.md) says what existed, what it left in the database and what a rebuild as an add-on needs. Nothing below is current behaviour or an operating guide; it is kept as the record of the contract.
 
 **Version**: 12.3.41
 **Last Updated**: 2026-10-01
 
-**Runtime status 2026-10-01**: The renderer is paused; (superseded by the banner above: the moderation and recovery code it describes is deleted, and this is a record only). The planned image.direct protocol is specified separately in [IMAGE_DIRECT_INTEGRATION.md](./IMAGE_DIRECT_INTEGRATION.md) and must not be treated as implemented.
+**Runtime status 2026-10-01**: The renderer is paused; this document remains authoritative for Camera's retained moderation and recovery contracts. The planned image.direct protocol is specified separately in [IMAGE_DIRECT_INTEGRATION.md](./IMAGE_DIRECT_INTEGRATION.md) and must not be treated as implemented.
 
 ## 1. Objective and scope
 

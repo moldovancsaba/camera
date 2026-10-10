@@ -146,7 +146,6 @@
   {"path": "/api/stadium-backgrounds", "methods": ["GET", "POST"], "file": "app/api/stadium-backgrounds/route.ts", "auth_markers": ["requireAdmin", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/submissions/[submissionId]", "methods": ["PATCH", "DELETE"], "file": "app/api/submissions/[submissionId]/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/submissions", "methods": ["GET", "POST"], "file": "app/api/submissions/route.ts", "auth_markers": ["requireAuth", "withErrorHandler"], "no_auth_marker": false},
-  {"path": "/api/tryon/suits", "methods": ["GET"], "file": "app/api/tryon/suits/route.ts", "auth_markers": ["withErrorHandler"], "no_auth_marker": true},
   {"path": "/api/upload-logo", "methods": ["POST"], "file": "app/api/upload-logo/route.ts", "auth_markers": ["isGlobalAdminSession", "requireAuth", "withErrorHandler"], "no_auth_marker": false},
   {"path": "/api/uploads/original", "methods": ["POST"], "file": "app/api/uploads/original/route.ts", "auth_markers": [], "no_auth_marker": true}
  ]

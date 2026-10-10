@@ -31,10 +31,6 @@ regexes = [
   # public PKCE client (token_endpoint_auth_method 'none'); the id travels in
   # every authorize URL and grants nothing on its own.
   '''^1e59b6a1-3c18-4141-9139-7a3dd0da62bf$''',
-  # Garment asset keys: "assetKey": "motogp_<team>_<year>_v<n>" is a garment
-  # slug (config/leather-suits.example.json), not a credential. Matched by
-  # value, not by file, so a real key pasted into that file is still caught.
-  '''^motogp_[a-z0-9_]+_v[0-9]+$''',
 ]
 # No `paths` entry on purpose: a path allowlist stops scanning the whole file
 # for good. Exempt the exact value instead (anchored regex above).
