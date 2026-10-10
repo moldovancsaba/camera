@@ -1,6 +1,6 @@
-# Profiles across events: purpose and consent (DRAFT for the owner's approval)
+# Profiles across events: purpose and consent (owner decisions 2026-10-10)
 
-**Status: draft, nothing is designed or built.** Owner answer 2026-10-10 to decision 242 of `docs/ANALYTICS_AUDIT.md` ("yes" to a person-level profile, "the largest KYC"). That decision had a condition: a profile needs a stated purpose, a lawful basis and its own consent text before any code. This file proposes them. The wording below is a draft for the owner and for the data protection contact of the organiser; **it is not legal advice and must be reviewed before it is shown to a user.**
+**Status: decided by the owner on 2026-10-10 (questions 248 to 251, below); the profile itself is not built yet, and nothing user-visible ships before the match on 2026-10-16.** Owner answer to decision 242 of `docs/ANALYTICS_AUDIT.md` ("yes" to a person-level profile, "the largest KYC"). The condition was a stated purpose, a lawful basis and its own consent text before any code; the purposes are decided here and the wording below is the **default text**: the owner's reviewers validate and change it in the Dictionary (it is an ordinary editable text with the three levels, global, partner and event, in English and Hungarian), so what I deliver is the text and its place, not the final legal wording.
 
 ## What "a profile" would be
 One record per **person** (the same verified e-mail address or the same social login), linking what is today spread over single photos and events: the events they joined, the photos they took and shared, the consents they gave, their activity (steps, retakes, shares). Today none of this is linked: every photo stands alone with the name and e-mail typed for it (`docs/ANALYTICS_AUDIT.md`, section 7.1, level 2).
@@ -35,10 +35,13 @@ Shown as its own checkbox, **not ticked**, away from the terms checkbox; a user 
 - **English:** "Photos you take at our events are kept under your e-mail address so you can find, download and delete them in one place."
 - **Magyar:** "Az eseményeinken készített fotóidat az e-mail-címed alatt tároljuk, hogy egy helyen megtalálhasd, letölthesd és törölhesd őket."
 
-## Questions for the owner (plain words)
-- **248, purpose:** is it A (the user's own photos in one place), B (counts for you and the partners), C (e-mails about other events), or something else? *Recommended: A and B now, C later with its own project.*
-- **249, controller:** who is named in the sentence: the organiser of each event, or the operator of this service? *To be decided with the data protection contact.*
-- **250, retention:** 24 months without activity, then delete. *Recommended: yes.*
-- **251, review:** who reviews the final wording before a user sees it? *Recommended: the client's data protection contact.*
+## Owner decisions (2026-10-10)
+- **248, purpose: all three, A, B and C.** A (the user's own photos in one place), B (counts for the organiser and the partners) and C (e-mails and an audience from the profile) are all wanted. C keeps the conditions of the table: its **own checkbox, not ticked by default, away from the terms checkbox, one named controller, withdrawable at any time**; a user who leaves it unticked loses nothing. A and B need the notice line only.
+- **249, controller: as it is now, and the text is customisable.** The party named in the sentences is the one the journey names today in its terms and privacy notice; nothing new is invented. The consent sentence and the notice line are **ordinary texts like every other**: keys in the Dictionary (English and Hungarian defaults below), changeable at the global, partner and event levels (`docs/TEXT_LEVELS.md`).
+- **250, retention: delete the profile, keep the images.** The profile is deleted when the user asks and after 24 months without activity. **The photos stay**: the user transferred the rights of the photos by accepting the terms, so deleting the profile or withdrawing C never removes the photos (the existing erase flow for a single photo is unchanged).
+- **251, who validates the wording: whoever can edit it.** The Admin, the editor, the event manager, anybody with the right to edit texts. They validate and update every wording; the part that is mine is to **deliver the texts and make them editable**, not to validate them.
 
-Nothing is built for any of this before the match on 2026-10-16, and nothing user-visible ships without these answers.
+## What this means for the build (after the match)
+1. The two wordings below become **Dictionary keys** (one for the C consent sentence, one for the A/B notice line) with the English and Hungarian defaults, so they can be validated and edited before any page shows them.
+2. The profile (link of a user's photos, events, consents and activity by verified e-mail or social login), the C checkbox, the user's page to see, export and delete it, and the 24-month deletion job come with step F of the audit's plan, after the vetting and photo tabs, and after the match.
+3. No wording is final until the reviewers have validated it in the Dictionary.
