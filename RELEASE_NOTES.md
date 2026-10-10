@@ -1,5 +1,12 @@
 # RELEASE_NOTES.md
 
+## Unreleased — Hungarian for the pages that sit above the event (issue 352; owner answer 310)
+
+- **Owner:** answer 310: the Hungarian UI is done; no need to care about the text quality, only fill what is missing.
+- **Added:** the global error page follows the browser's language (Hungarian for a Hungarian browser, English otherwise; `lib/i18n/browser.ts`, Dictionary texts `errorPage.*`), the capture loading page says "Loading... / Betöltés...", and the not-found page of a share link (and its tab title) says it in both languages. These pages sit above the event and cannot know its language.
+- **Left as it is:** the old no-event `/capture` page, which no event uses.
+- **Verified:** type-check, lint, unit tests (the language choice, both languages of the new texts), the three pages in a browser at phone width in a Hungarian, an English and a German browser (5 of 5), the full CI chain.
+
 ## Unreleased — the default sentence of the gallery permission says "public campaign wall" (issue 554; owner answers 288 and 289)
 
 - **Owner:** answer 289: change the default sentence from "public event gallery" to "public campaign wall"; answer 288: no partner or event asks for the permission now.

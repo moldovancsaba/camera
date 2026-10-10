@@ -19,6 +19,7 @@ export const TEXT_GROUPS: Record<string, string> = {
   approval: 'Waiting for approval',
   cta: 'CTA page',
   share: 'Share screen',
+  errorPage: 'Error page',
   sharePage: 'Public photo page',
   tryon: 'Try-on',
   profile: 'Profile across events (drafts, not shown yet)',
