@@ -18,7 +18,7 @@ import { InlineAlert, LabelTag } from '@sovereignsquad/gds-core/client';
 import ImagePicker from '@/components/admin/library/ImagePicker';
 import { CustomPageType, type CustomPage, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { DEFAULT_APPROVAL_TEXTS, DEFAULT_REDIRECTING_TEXT } from '@/lib/events/page-texts';
-import { customiseDefault, effectiveJourney, type JourneyContext } from '@/lib/events/journey';
+import { customiseDefault, effectiveJourney, moveJourneyRow, moveTarget, renumberJourney, type JourneyContext } from '@/lib/events/journey';
 
 export interface CustomPagesManagerProps {
   eventId: string;
@@ -27,7 +27,7 @@ export interface CustomPagesManagerProps {
   journeyContext?: JourneyContext;
   /** The consent page is shown as one checkbox on the Who-are-you page (issue 523): the one setting both page editors show. */
   acceptanceOnWhoAreYou?: boolean;
-  onSave: (pages: CustomPage[], options: { acceptanceOnWhoAreYou: boolean }) => Promise<void>;
+  onSave: (pages: CustomPage[], options: { acceptanceOnWhoAreYou: boolean; defaultPageOrders?: Record<string, number> }) => Promise<void>;
 }
 
 function Field({
@@ -126,10 +126,26 @@ function DividerLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** The two arrows that move a row one place up or down (an own page or a default page, issue 535). */
+function MoveButtons({ canUp, canDown, onUp, onDown }: { canUp: boolean; canDown: boolean; onUp: () => void; onDown: () => void }) {
+  return (
+    <div style={{ display: 'grid', gap: '0.25rem' }}>
+      <SemanticButton action="custom-pages:move-up" type="button" variant="secondary" size="compact-xs" onClick={onUp} disabled={!canUp} title="Move up">
+        ▲
+      </SemanticButton>
+      <SemanticButton action="custom-pages:move-down" type="button" variant="secondary" size="compact-xs" onClick={onDown} disabled={!canDown} title="Move down">
+        ▼
+      </SemanticButton>
+    </div>
+  );
+}
+
 export default function CustomPagesManager({ eventId, initialPages, journeyContext, acceptanceOnWhoAreYou = false, onSave }: CustomPagesManagerProps) {
   const [pages, setPages] = useState<CustomPage[]>(initialPages);
   // One value for the two checkboxes (the Who-are-you editor's "Show acceptance" and the consent editor's "Show it on Who-are-you"): both read and write it here, so they are always the same one.
   const [acceptanceHere, setAcceptanceHere] = useState(acceptanceOnWhoAreYou);
+  // Where the default pages are (issue 535): the places the editor saved, changed here by the up/down buttons and saved with Save Pages. Null: the default places.
+  const [defaultOrders, setDefaultOrders] = useState<Record<string, number> | null>(journeyContext?.defaultOrders ?? null);
   const [showModal, setShowModal] = useState(false);
   const [editingPage, setEditingPage] = useState<CustomPage | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -178,7 +194,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
   const sortedPages = [...pagesWithPlaceholder].sort((a, b) => a.order - b.order);
   // The list is the journey as the user goes through it: the own pages, the default pages that are added when the page is read, and the steps that
   // are not pages. Without the context (an editor that does not know it) it is the own pages only.
-  const rows = journeyContext ? effectiveJourney(pagesWithPlaceholder, journeyContext) : sortedPages.map((page) => ({ kind: 'own' as const, page }));
+  const rows = journeyContext ? effectiveJourney(pagesWithPlaceholder, { ...journeyContext, defaultOrders }) : sortedPages.map((page) => ({ kind: 'own' as const, page }));
 
   /** Customise a default page: the event's own page, filled with the default's texts, in the default's place; it is added when the editor saves it. */
   const handleCustomise = (page: CustomPage) => {
@@ -281,39 +297,45 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
     if (!confirm('Delete this page? This cannot be undone.')) return;
 
     const filtered = pages.filter(p => p.pageId !== pageId);
+    if (journeyContext && defaultOrders && Object.keys(defaultOrders).length > 0) {
+      // The default pages have saved places: number them together with the own pages that remain, so both keep one order.
+      const numbered = renumberJourney(effectiveJourney(ensureTakePhotoPlaceholder(filtered), { ...journeyContext, defaultOrders }));
+      setPages(numbered.pages);
+      setDefaultOrders(numbered.defaultOrders);
+      return;
+    }
     // Reorder remaining pages
     const reordered = filtered.map((p, index) => ({ ...p, order: index }));
     setPages(reordered);
   };
 
   /**
-   * Move page up in order
+   * Move a row (an own page or a default page) one place up or down. With the journey known, every page row is numbered together (own pages and default pages), a default page keeps being
+   * a default and only its place is saved (issue 535); a default page never crosses the take-photo page (lib/events/journey.ts `moveTarget`).
    */
-  const handleMoveUp = (pageId: string) => {
-    const index = sortedPages.findIndex(p => p.pageId === pageId);
-    if (index <= 0) return;
-
+  const handleMove = (rowIndex: number, direction: -1 | 1) => {
+    if (journeyContext) {
+      const moved = moveJourneyRow(rows, rowIndex, direction);
+      if (!moved) return;
+      setPages(moved.pages);
+      setDefaultOrders(moved.defaultOrders);
+      return;
+    }
+    const row = rows[rowIndex];
+    const index = sortedPages.findIndex((p) => row.kind === 'own' && p.pageId === row.page.pageId);
+    const other = index + direction;
+    if (index < 0 || other < 0 || other >= sortedPages.length) return;
     const newPages = [...sortedPages];
-    [newPages[index - 1], newPages[index]] = [newPages[index], newPages[index - 1]];
-    
-    // Update order values
-    const reordered = newPages.map((p, i) => ({ ...p, order: i }));
-    setPages(reordered);
+    [newPages[index], newPages[other]] = [newPages[other], newPages[index]];
+    setPages(newPages.map((p, i) => ({ ...p, order: i })));
   };
 
-  /**
-   * Move page down in order
-   */
-  const handleMoveDown = (pageId: string) => {
-    const index = sortedPages.findIndex(p => p.pageId === pageId);
-    if (index >= sortedPages.length - 1) return;
-
-    const newPages = [...sortedPages];
-    [newPages[index], newPages[index + 1]] = [newPages[index + 1], newPages[index]];
-    
-    // Update order values
-    const reordered = newPages.map((p, i) => ({ ...p, order: i }));
-    setPages(reordered);
+  /** Whether the row can move one place up or down: the journey says (a default page stays before the photo), without it the own pages only. */
+  const canMove = (rowIndex: number, direction: -1 | 1): boolean => {
+    if (journeyContext) return moveTarget(rows, rowIndex, direction) !== null;
+    const row = rows[rowIndex];
+    const index = sortedPages.findIndex((p) => row.kind === 'own' && p.pageId === row.page.pageId);
+    return index >= 0 && index + direction >= 0 && index + direction < sortedPages.length;
   };
 
   /**
@@ -328,7 +350,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
         ...p,
         order: typeof p.order === 'number' && Number.isFinite(p.order) ? p.order : Number(p.order),
       }));
-      await onSave(pagesToSave, { acceptanceOnWhoAreYou: acceptanceHere });
+      await onSave(pagesToSave, { acceptanceOnWhoAreYou: acceptanceHere, ...(defaultOrders ? { defaultPageOrders: defaultOrders } : {}) });
     } catch (error) {
       console.error('Failed to save pages:', error);
       const msg = error instanceof Error ? error.message : 'Failed to save pages. Please try again.';
@@ -382,7 +404,9 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
             return (
               <article key={row.page.pageId} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
                 <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'grid', flex: 1, gap: '0.25rem', minWidth: 0 }}>
+                  <MoveButtons canUp={canMove(index, -1)} canDown={canMove(index, 1)} onUp={() => handleMove(index, -1)} onDown={() => handleMove(index, 1)} />
+                  {/* The text keeps at least 12rem; on a narrow screen the Customise button wraps under it instead of squeezing the text to one word a line. */}
+                  <div style={{ display: 'grid', flex: '1 1 12rem', gap: '0.25rem', minWidth: 0 }}>
                     <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>#{index + 1}</code>
                       <LabelTag tone="info" label="Default" />
@@ -399,7 +423,6 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
             );
           }
           const page = row.page;
-          const ownIndex = sortedPages.findIndex((p) => p.pageId === page.pageId);
           return (
               <article
               key={page.pageId}
@@ -407,30 +430,7 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
             >
               {/* Order indicators */}
                 <div style={{ alignItems: 'center', display: 'flex', gap: '1rem' }}>
-                  <div style={{ display: 'grid', gap: '0.25rem' }}>
-                    <SemanticButton
-                      action="custom-pages:move-up"
-                      type="button"
-                      variant="secondary"
-                      size="compact-xs"
-                  onClick={() => handleMoveUp(page.pageId)}
-                  disabled={ownIndex === 0}
-                  title="Move up"
-                >
-                  ▲
-                    </SemanticButton>
-                    <SemanticButton
-                      action="custom-pages:move-down"
-                      type="button"
-                      variant="secondary"
-                      size="compact-xs"
-                  onClick={() => handleMoveDown(page.pageId)}
-                  disabled={ownIndex === sortedPages.length - 1}
-                  title="Move down"
-                >
-                  ▼
-                    </SemanticButton>
-                  </div>
+                  <MoveButtons canUp={canMove(index, -1)} canDown={canMove(index, 1)} onUp={() => handleMove(index, -1)} onDown={() => handleMove(index, 1)} />
 
               {/* Page info */}
                   <div style={{ display: 'grid', flex: 1, gap: '0.25rem' }}>

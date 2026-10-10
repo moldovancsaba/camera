@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — page editor: the default pages (welcome, consent, Who-are-you) have up and down like every page (issue 535, step 1; owner feedback 2026-10-10)
+
+- **Owner:** "there should be an up/down for the Accept/Who-are-you section as well!" The default rows of the journey list had only Customise.
+- **Added:** up and down on every default row. A default page stays a default (its texts follow the Dictionary and the text levels); only its place is saved, as `Event.defaultPageOrders`, by Save Pages, and the user's journey takes it from the same field (`withDefaultJourneyPages`, `lib/events/journey.ts`: `moveTarget`, `moveJourneyRow`, `renumberJourney`). A default page cannot swap with the take-photo page (a checked photo needs an identity first). Moving numbers the own and the default pages together, so the editor and the user see one order; deleting a page keeps that.
+- **API:** `PATCH /api/events/<id>` takes `defaultPageOrders` (only the three default page ids, finite numbers; `{}` puts them back); the event API sends the places in `journeyContext.defaultOrders`.
+- **Behaviour unchanged** for every event whose editor does not move a default page (no saved places, the default order as before), so nothing changes on a live event by this release.
+- **Verified:** type-check; lint; unit tests (moveTarget, the moved journey equals the user's pages, an own page moving past a default page, no defaults = the plain swap, the sanitiser; the event route tests for PATCH and GET); the real editor component in a browser harness at desktop and phone width (the arrows on the default rows, the login cannot go behind the photo, Save sends the places); the full CI chain.
+- **Not done (step 2 of issue 535):** the Take photo + Submit pair with its checkbox (steps between taking the photo and submitting).
+
 ## Unreleased — docs: profiles across events, purpose and consent drafted (issue 521, decision 242; owner answer 2026-10-10)
 
 - **Added:** `docs/PROFILE_PURPOSE_AND_CONSENT_DRAFT.md`: what a person-level profile would be, three candidate purposes (the user's own photos in one place; counts for the organiser; a marketing profile) with basis and risk, the rules for any profile, a draft consent sentence and a draft notice line in English and Hungarian, and four questions for the owner (248 to 251). The audit's decision 242 points at it.

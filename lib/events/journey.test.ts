@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { CustomPage } from '@/lib/db/schemas';
-import { DEFAULT_CONSENT_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, withDefaultJourneyPages } from './default-pages';
+import { DEFAULT_CONSENT_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, sanitizeDefaultPageOrders, withDefaultJourneyPages } from './default-pages';
 import { DEFAULT_IDENTITY_PAGE_ID } from './identity-page';
-import { customiseDefault, effectiveJourney, type JourneyContext, type JourneyRow } from './journey';
+import { customiseDefault, effectiveJourney, moveJourneyRow, moveTarget, type JourneyContext, type JourneyRow } from './journey';
 
 const page = (pageType: string, order: number, isActive = true, pageId = `${pageType}-${order}`): CustomPage =>
   ({ pageId, pageType, order, isActive, config: { title: pageType, description: '', buttonText: 'Next' }, createdAt: 'x', updatedAt: 'x' }) as unknown as CustomPage;
@@ -131,4 +131,56 @@ test('the default welcome page is the first row, marked Default with its reason,
   const withOwn = effectiveJourney([...stored, own], { ...ALL, hasWelcomeScreen: true }, NOW);
   assert.equal(withOwn.some((row) => row.kind === 'default' && row.page.pageId === DEFAULT_WELCOME_PAGE_ID), false, 'the own page wins');
   assert.equal(effectiveJourney(stored, ALL, NOW).some((row) => row.kind === 'default' && row.page.pageId === DEFAULT_WELCOME_PAGE_ID), false, 'no picture, no default welcome page');
+});
+
+const START = [page('welcome', -1), page('take-photo', 0), page('cta', 1)];
+const rowsOf = (own: CustomPage[], defaultOrders?: Record<string, number>) => effectiveJourney(own, { ...ALL, defaultOrders }, NOW);
+const at = (rows: JourneyRow[], id: string) => rows.findIndex((row) => row.kind !== 'step' && row.page.pageId === id);
+
+test('a default page can move among the pages before the photo, but never across the take-photo page, and the built-in steps are not pages', () => {
+  const rows = rowsOf(START);
+  // welcome, default consent, default login, take-photo, 3 built-in steps, cta
+  assert.equal(moveTarget(rows, at(rows, DEFAULT_CONSENT_PAGE_ID), 1), at(rows, DEFAULT_IDENTITY_PAGE_ID), 'consent down: swaps with the login');
+  assert.equal(moveTarget(rows, at(rows, DEFAULT_IDENTITY_PAGE_ID), -1), at(rows, DEFAULT_CONSENT_PAGE_ID));
+  assert.equal(moveTarget(rows, at(rows, DEFAULT_IDENTITY_PAGE_ID), 1), null, 'the login cannot go behind the photo: a photo that is checked needs an identity first');
+  assert.equal(moveTarget(rows, at(rows, 'take-photo-0'), -1), null, 'and the take-photo page cannot move in front of a default page');
+  assert.equal(moveTarget(rows, at(rows, 'cta-1'), -1), at(rows, 'take-photo-0'), 'an own page moves past the built-in steps to the next page row');
+  assert.equal(moveTarget(rows, at(rows, 'cta-1'), 1), null, 'nothing below the last page');
+  assert.equal(moveTarget(rows, rows.findIndex((row) => row.kind === 'step'), 1), null, 'a built-in step has no place of its own');
+  assert.equal(moveTarget(rows, at(rows, DEFAULT_CONSENT_PAGE_ID), -1), at(rows, 'welcome--1'), 'consent up: above the welcome page');
+});
+
+test('moving a default page saves its place and the places of every page, and the editor and the user see the same journey afterwards', () => {
+  const rows = rowsOf(START);
+  const moved = moveJourneyRow(rows, at(rows, DEFAULT_CONSENT_PAGE_ID), 1)!;
+  assert.deepEqual(moved.defaultOrders, { [DEFAULT_IDENTITY_PAGE_ID]: 1, [DEFAULT_CONSENT_PAGE_ID]: 2 });
+  assert.deepEqual(moved.pages.map((p) => [p.pageId, p.order]), [['welcome--1', 0], ['take-photo-0', 3], ['cta-1', 4]]);
+  const after = effectiveJourney(moved.pages, { ...ALL, defaultOrders: moved.defaultOrders }, NOW);
+  assert.deepEqual(sequence(after), ['own:welcome--1', `default:${DEFAULT_IDENTITY_PAGE_ID}`, `default:${DEFAULT_CONSENT_PAGE_ID}`, 'own:take-photo-0', 'step:waiting', 'step:emails', 'step:result', 'own:cta-1']);
+  // the user gets exactly these pages in this order (the same function with the same places)
+  const forUser = withDefaultJourneyPages(moved.pages, { vettingRequired: true, consentDefault: true, language: 'en', now: NOW, defaultOrders: moved.defaultOrders }).sort((a, b) => a.order - b.order).map((p) => p.pageId);
+  assert.deepEqual(forUser, ['welcome--1', DEFAULT_IDENTITY_PAGE_ID, DEFAULT_CONSENT_PAGE_ID, 'take-photo-0', 'cta-1']);
+  assert.equal(moveJourneyRow(rows, at(rows, DEFAULT_IDENTITY_PAGE_ID), 1), null);
+});
+
+test('an own page that moves past a default page numbers the default pages too, so the order the editor shows is the order saved', () => {
+  const rows = rowsOf([page('welcome', -1), page('cta', 1, true, 'own-cta'), page('take-photo', 5)]);
+  // welcome, consent, login, own-cta, take-photo: the own cta moves above the login
+  const moved = moveJourneyRow(rows, at(rows, 'own-cta'), -1)!;
+  const after = effectiveJourney(moved.pages, { ...ALL, defaultOrders: moved.defaultOrders }, NOW);
+  assert.deepEqual(sequence(after).filter((id) => !id.startsWith('step:')), ['own:welcome--1', `default:${DEFAULT_CONSENT_PAGE_ID}`, 'own:own-cta', `default:${DEFAULT_IDENTITY_PAGE_ID}`, 'own:take-photo-5']);
+});
+
+test('without default pages the move is the plain swap of the own pages that it always was', () => {
+  const none: JourneyContext = { vettingRequired: false, consentDefault: false, language: 'en' };
+  const rows = effectiveJourney([page('welcome', -1), page('cta', 1), page('take-photo', 0)], none, NOW);
+  const moved = moveJourneyRow(rows, at(rows, 'cta-1'), -1)!;
+  assert.deepEqual(moved.defaultOrders, {});
+  assert.deepEqual(moved.pages.map((p) => [p.pageId, p.order]), [['welcome--1', 0], ['cta-1', 1], ['take-photo-0', 2]].sort((a, b) => (a[1] as number) - (b[1] as number)));
+});
+
+test('only the known default pages, with finite numbers, can be saved as places', () => {
+  assert.deepEqual(sanitizeDefaultPageOrders({ [DEFAULT_CONSENT_PAGE_ID]: 2, [DEFAULT_IDENTITY_PAGE_ID]: 1 }), { [DEFAULT_CONSENT_PAGE_ID]: 2, [DEFAULT_IDENTITY_PAGE_ID]: 1 });
+  assert.deepEqual(sanitizeDefaultPageOrders({}), {}, 'an empty object clears the places');
+  for (const bad of [null, undefined, 'x', [], { other: 1 }, { [DEFAULT_CONSENT_PAGE_ID]: 'a' }, { [DEFAULT_CONSENT_PAGE_ID]: Infinity }, { [DEFAULT_CONSENT_PAGE_ID]: 1e9 }]) assert.equal(sanitizeDefaultPageOrders(bad), null);
 });

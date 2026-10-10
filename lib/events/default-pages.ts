@@ -7,7 +7,7 @@
 
 import type { CustomPage } from '@/lib/db/schemas';
 import type { ConsentCheckbox } from './consent';
-import { withRequiredIdentityPage } from './identity-page';
+import { DEFAULT_IDENTITY_PAGE_ID, withRequiredIdentityPage } from './identity-page';
 import { translate, type UiLanguage } from '@/lib/i18n';
 import type { TextOverrides } from '@/lib/i18n/overrides';
 
@@ -80,7 +80,7 @@ export function hasConsentPageBeforePhoto(pages: readonly CustomPage[]): boolean
  */
 export function withDefaultJourneyPages(
   pages: readonly CustomPage[] | null | undefined,
-  options: { vettingRequired: boolean; consentDefault: boolean; now?: string; language?: UiLanguage; hasWelcomeScreen?: boolean; texts?: TextOverrides | null },
+  options: { vettingRequired: boolean; consentDefault: boolean; now?: string; language?: UiLanguage; hasWelcomeScreen?: boolean; texts?: TextOverrides | null; defaultOrders?: Record<string, number> | null },
 ): CustomPage[] {
   const stored = [...(pages ?? [])];
   // The default welcome page: only for an event that gets the journey defaults, has the picture drawn from its default slideshow and has no welcome page of its own (a switched off one
@@ -98,5 +98,24 @@ export function withDefaultJourneyPages(
     const order = leading > 0 ? sorted[leading - 1].order + 0.25 : (sorted.length > 0 ? sorted[0].order : 0) - 2;
     withConsent = [defaultConsentPage(order, options.now, options.language, options.texts), ...own];
   }
-  return withRequiredIdentityPage(withConsent, options.vettingRequired, options.now, options.language, options.texts);
+  return withDefaultOrders(withRequiredIdentityPage(withConsent, options.vettingRequired, options.now, options.language, options.texts), options.defaultOrders);
+}
+
+const DEFAULT_PAGE_IDS: readonly string[] = [DEFAULT_WELCOME_PAGE_ID, DEFAULT_CONSENT_PAGE_ID, DEFAULT_IDENTITY_PAGE_ID];
+
+/** The default pages of an event whose editor moved them (`Event.defaultPageOrders`, issue 535): each default page that has a saved place takes it; nothing else changes. */
+function withDefaultOrders(pages: CustomPage[], orders: Record<string, number> | null | undefined): CustomPage[] {
+  if (!orders) return pages;
+  return pages.map((page) => (DEFAULT_PAGE_IDS.includes(page.pageId) && Number.isFinite(orders[page.pageId]) ? { ...page, order: orders[page.pageId] } : page));
+}
+
+/** What a request may save as `Event.defaultPageOrders`: only the known default pages, with finite numbers. A value that is not an object is refused (null); an empty object clears the places. */
+export function sanitizeDefaultPageOrders(value: unknown): Record<string, number> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const clean: Record<string, number> = {};
+  for (const [key, order] of Object.entries(value as Record<string, unknown>)) {
+    if (!DEFAULT_PAGE_IDS.includes(key) || typeof order !== 'number' || !Number.isFinite(order) || Math.abs(order) > 10_000) return null;
+    clean[key] = order;
+  }
+  return clean;
 }

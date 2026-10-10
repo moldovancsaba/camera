@@ -349,6 +349,12 @@ export interface Event {
    * client feedback 2026-10-09). One setting that both page editors show. Off or missing: the two pages one after the other (lib/events/acceptance.ts).
    */
   acceptanceOnWhoAreYou?: boolean;
+  /**
+   * Where the editor put the default pages of the journey (issue 535, owner 2026-10-10: "there should be an up/down for the Accept/Who-are-you section as well"): the order of `default-welcome`,
+   * `default-consent` and `default-identity`, as numbers on the same scale as the event's own pages. A default page stays a default (its texts follow the dictionary and the text levels); only its
+   * place is the event's choice. Missing: the default places (lib/events/default-pages.ts).
+   */
+  defaultPageOrders?: Record<string, number>;
   /** Set on events created with the journey defaults (the default consent page and the like); existing events get them through the global switch (lib/admin/defaults-rollout.ts). */
   journeyDefaults?: boolean;
   /** What was last pushed to messmass from the tracked links of this event (camera#320, lib/short-links/sync.ts). */

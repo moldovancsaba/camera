@@ -946,7 +946,7 @@ export default function EditEventPage({
             const response = await fetch(`/api/events/${mongoId}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ customPages: pages, acceptanceOnWhoAreYou: options.acceptanceOnWhoAreYou }),
+              body: JSON.stringify({ customPages: pages, acceptanceOnWhoAreYou: options.acceptanceOnWhoAreYou, ...(options.defaultPageOrders ? { defaultPageOrders: options.defaultPageOrders } : {}) }),
             });
 
             if (!response.ok) {
