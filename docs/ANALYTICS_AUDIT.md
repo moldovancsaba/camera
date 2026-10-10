@@ -157,7 +157,7 @@ Nothing in the live capture path changes before the match on 16 October.
 ## 9. Decisions for the owner
 
 - **241:** the three levels of section 7.1: record levels 0 and 1 for everyone and send messmass counters only. Recommendation: yes.
-- **242:** a person-level profile across events ("the largest KYC"): not by default; it needs a consent text and a purpose of its own. Do you want it, and for what?
+- **242:** a person-level profile across events ("the largest KYC"): not by default; it needs a consent text and a purpose of its own. Do you want it, and for what? **Owner answered yes on 2026-10-10; the purpose, consent text and retention are drafted in `docs/PROFILE_PURPOSE_AND_CONSENT_DRAFT.md` (questions 248 to 251) and nothing is built until they are answered.**
 - **243:** the IP address and the full user-agent are stored on every photo today and no code reads them. Recommendation: stop storing the IP and keep a device class.
 - **244:** the fixed list of decline reasons (section 7.3) and its wording, English and Hungarian.
 - **245:** the list of messmass variables of section 7.6, and whether camera counters get names of their own (`camera*`) or share `selfies` and `approvedImages`.
