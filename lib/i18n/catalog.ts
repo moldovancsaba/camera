@@ -21,7 +21,6 @@ export const TEXT_GROUPS: Record<string, string> = {
   share: 'Share screen',
   errorPage: 'Error page',
   sharePage: 'Public photo page',
-  tryon: 'Try-on',
   profile: 'Profile across events (drafts, not shown yet)',
   training: 'AI training consent (drafts, not shown yet)',
   email: 'E-mails',
