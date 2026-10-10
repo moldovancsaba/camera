@@ -487,3 +487,23 @@ test('PATCH: a Submit page (issue 535) is a marker with no texts of its own and 
   assert.equal((await PATCH(patchRequest({ customPages: [take, submit, cta] }), params)).status, 400, 'a CTA page without title and button is still refused');
   assert.equal((await PATCH(patchRequest({ customPages: [{ ...submit, config: undefined }] }), params)).status, 400, 'the marker still needs a config object');
 });
+
+test('PATCH: marking the people at vetting (issue 542) is a true or false that only a global admin sets, refused otherwise, and left alone when absent', async (t) => {
+  const h = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-mark-people');
+  assert.equal((await PATCH(patchRequest({ markPeopleInVetting: true }), params)).status, 200);
+  assert.equal(h.updates[0].markPeopleInVetting, true);
+  assert.equal((await PATCH(patchRequest({ markPeopleInVetting: false }), params)).status, 200);
+  assert.equal(h.updates[1].markPeopleInVetting, false);
+  for (const bad of ['yes', 1, null, {}]) assert.equal((await PATCH(patchRequest({ markPeopleInVetting: bad }), params)).status, 400, String(bad));
+  assert.equal((await PATCH(patchRequest({ loadingText: 'Hello' }), params)).status, 200);
+  assert.equal('markPeopleInVetting' in h.updates[2], false);
+  assert.equal(h.updates.length, 3, 'a refused value writes nothing');
+});
+
+test('PATCH: an Events manager who is not a global admin cannot switch the marking of people on', async (t) => {
+  const h = mockDeps(t, { event: {}, session: PARTNER_MANAGER, partnerAllowed: true });
+  const { PATCH } = await importRouteModule('patch-mark-people-manager');
+  assert.equal((await PATCH(patchRequest({ markPeopleInVetting: true }), params)).status, 403);
+  assert.equal(h.updates.length, 0);
+});

@@ -49,6 +49,8 @@ DB = a database write; Log = a log line only (Vercel runtime log: not ours to ke
 | Everything else the people who manage do | the **activity log** (issue 517, new 2026-10-09) | DB `activity_log` | when, who, role, method, path, status, outcome, the reason of a failure. It records the path and the status, not the body, so it cannot tell an approval from a rejection: the vetting record above holds that. |
 | Sign-ins | `lib/auth/*` | **Log** | console lines with the e-mail; `lastLoginAt` is declared and never written |
 
+**Added 2026-10-10 (issue 542):** the reviewer can now **mark the people in each photo** at vetting (a rectangle and 16 emoji buttons: who, emotion, merchandise), saved with the photo as `Submission.people`; the card **People marked in the photos** on the Vetting tab counts it (`docs/PHOTO_VETTING_PLAN.md`). It is the first per-photo record of who is in the picture, and the data for the "age and gender mix, emotions, merchandise" the owner asked for.
+
 ### 3.3 The screens, the links, the share page, the e-mails
 
 | What | DB / Log | Fields |

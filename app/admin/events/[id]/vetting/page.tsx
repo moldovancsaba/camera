@@ -50,7 +50,7 @@ export default async function EventVettingTab({
 
   return (
     <div style={{ display: 'grid', gap: '2.5rem' }}>
-      {tryOnView && globalAdmin ? null : <EventPhotoVetting db={db} eventMongoId={id} event={event as { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown } }} status={photoStatus} canChangeSetting={globalAdmin} />}
+      {tryOnView && globalAdmin ? null : <EventPhotoVetting db={db} eventMongoId={id} event={event as { eventId?: unknown; name?: unknown; photoVetting?: { required?: unknown }; markPeopleInVetting?: unknown }} status={photoStatus} canChangeSetting={globalAdmin} />}
       {globalAdmin ? <AdminTryOnResultsPage searchParams={Promise.resolve({ ...tryOnParams, eventId: id })} /> : null}
     </div>
   );

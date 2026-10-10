@@ -24,6 +24,7 @@
  */
 
 import type { ReframeRecord } from '@/lib/camera/reframe';
+import type { PersonTag } from '@/lib/photo-vetting/people';
 import { ObjectId } from 'mongodb';
 import type { FrameDesign } from '@/lib/frame/context';
 import type { SlideshowLayoutCellAspect } from '@/lib/slideshow/viewport-scale';
@@ -356,6 +357,8 @@ export interface Event {
    * place is the event's choice. Missing: the default places (lib/events/default-pages.ts).
    */
   defaultPageOrders?: Record<string, number>;
+  /** The vetting view asks the reviewer to mark the people in each photo before approving or declining it (issue 542, lib/photo-vetting/people.ts). Off or missing: the vetting is as it was. Only a global admin changes it. */
+  markPeopleInVetting?: boolean;
   /**
    * What the photo window of the welcome page screen shows (issue 540, docs/WELCOME_SCREEN_PHOTO_PLAN.md; lib/screen/welcome-window.ts): `source` is `selfie` (the event's sample selfie, the default
    * when missing), `photo` (a photo of this event, `photoId` is its submission id) or `standin` (the drawn head and shoulders); `pick` is the sample selfie picked for this event, stored once so the picture does not change on every redraw.
@@ -836,6 +839,12 @@ export interface Submission {
     tryOn?: { leatherSuitId: string; setupId: string | null; cameraId: string | null; outfitBottomLeatherSuitId: string | null } | null; // Held until approval
   } | null;
   shareToken?: string | null;        // Opaque share id of a vetted photo (/share/<token>); older photos use their database id
+  /**
+   * The people marked at vetting (issue 542, lib/photo-vetting/people.ts): per person a rectangle in percent of the photo, one of the 8 person buttons (gender and age), an emotion and
+   * merchandise. Missing: nobody looked yet; an empty list: looked, nobody marked. `peopleReview` says who marked them and when. Used by the analytics.
+   */
+  people?: PersonTag[];
+  peopleReview?: { by: string | null; at: string };
   reviewHistory?: Array<{ action: 'approve' | 'reject'; by: string; at: string; reason?: string | null }>;
   isShareVisible?: boolean;          // Public share-page publication flag
   isSlideshowEligible?: boolean;     // Slideshow playlist eligibility flag

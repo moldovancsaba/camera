@@ -6,6 +6,7 @@
 
 import type { Db, Document } from 'mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
+import { parsePeople, type PersonTag } from './people';
 
 export type QueueStatus = 'pending_review' | 'rejected' | 'approved';
 
@@ -25,6 +26,10 @@ export interface PhotoQueueItem {
   shareOptIn: boolean;
   tryOnRequested: boolean;
   last: { action: 'approve' | 'reject'; by: string; at: string; reason: string | null } | null;
+  /** The people marked in the photo at vetting (issue 542), none when nobody looked or the saved list is not valid. */
+  people: PersonTag[];
+  /** Someone marked the people (also when nobody was in the photo). */
+  peopleMarked: boolean;
 }
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value.trim() : null);
@@ -45,6 +50,11 @@ export function toPhotoQueueItem(doc: Document): PhotoQueueItem {
     frameKind: doc.frameVariant ? 'generated' : doc.frameId ? 'own' : 'none',
     shareOptIn: review.shareOptIn === true,
     tryOnRequested: Boolean(doc.tryOnRequest?.requested) || Boolean(review.tryOn),
+    people: (() => {
+      const checked = parsePeople(doc.people ?? []);
+      return checked.ok ? checked.value : [];
+    })(),
+    peopleMarked: Array.isArray(doc.people),
     last:
       last && (last.action === 'approve' || last.action === 'reject')
         ? { action: last.action, by: text(last.by) ?? 'unknown', at: text(last.at) ?? '', reason: text(last.reason) }
