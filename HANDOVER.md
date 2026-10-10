@@ -107,12 +107,14 @@ The board ([#24](https://github.com/users/moldovancsaba/projects/24)) is the sin
   device takes the photo with its own camera app (file input with `capture`); a desktop webcam keeps the live view and takes a
   real still where the browser can; `?capture=frame` is the way back. Not yet tried on a real iPhone. Cleanup once no old page
   can be open: `POST /api/uploads/original`, the original claim handling in `POST /api/submissions`, `blob:orphans`.
-- **GDS:** camera is on 6.3.0 (vendored); the latest release is 6.7.0. The
-  audit and ordered plan are in `gds_fix_handover.md` (merged in #175):
-  camera#183 done 2026-10-06 (official stylesheet imported, forked CSS deleted;
-  Inter now loaded from the root layout, see `LEARNINGS.md` FRONT-009),
-  camera#184 (bump to 6.7.0) next, work packages camera#185-#187, owner
-  decisions camera#188.
+- **GDS:** camera is on 6.8.0 (vendored). The audit and ordered plan are in
+  `gds_fix_handover.md` (merged in #175): camera#183 done 2026-10-06 (official
+  stylesheet imported, forked CSS deleted; Inter now loaded from the root
+  layout, see `LEARNINGS.md` FRONT-009), camera#184 bumped 2026-10-10 (all five
+  packages from 6.3.0 to 6.8.0; the issue said 6.7.0, but 6.8.0 was released on
+  2026-10-06; the sidebar row height was measured on a render with the production
+  CSS and is 40.8px before and after, the check on the deployed app, which needs an
+  admin sign-in, is still open), work packages camera#185-#187 next, owner decisions camera#188.
 - **messmass and sso:** nothing blocks camera. The 2026-09-30 decision (separate
   logins) stands; sso 5.41.1 and 5.42.0 need no camera change. A `CAMERA_` env
   prefix is an open owner decision (camera#195).
@@ -199,7 +201,7 @@ The board ([#24](https://github.com/users/moldovancsaba/projects/24)) is the sin
   alerts" as proof of a clean tree, run `npm audit --omit=dev` as well. Five
   dev-only highs remain (`eslint-config-next` pulling `braces`/`micromatch`);
   npm's only offered fix is a downgrade to 14.x, so they are left alone.
-- **Design system**: GDS 6.3.0 installed from vendored release tarballs
+- **Design system**: GDS 6.8.0 installed from vendored release tarballs
   (`vendor/gds/*.tgz` via `file:` specs in `package.json`, since v12.3.29); no
   registry token needed.
 

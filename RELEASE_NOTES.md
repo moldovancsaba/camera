@@ -1,5 +1,20 @@
 # RELEASE_NOTES.md
 
+## Unreleased — vendored GDS 6.3.0 → 6.8.0 (camera#184)
+
+- **Changed:** the five vendored `@sovereignsquad/gds-*` packages (`gds-core`, `gds-theme`, `gds-admin`, `gds-compliance`, `gds-eslint-config`) move
+  from 6.3.0 to 6.8.0. The tarballs are the `gds-v6.8.0` release assets (integrity checked against GitHub Packages), so the install is still
+  token-free. `gdsVersion` in `gds-adoption.json` follows. Peer ranges are unchanged between the two releases. In the lockfile `@tiptap/starter-kit`
+  and its extensions move from 3.31.3 to 3.31.4 (GDS 6.8.0 declares `^3.31.3`; the overrides keep `@tiptap/core`, `pm`, `react` and the two menu
+  extensions at 3.31.3, and nothing in camera imports tiptap), and `prosemirror-changeset`, `prosemirror-dropcursor`, `prosemirror-history`,
+  `prosemirror-transform`, `fast-equals` and `use-sync-external-store` move by a patch or minor step.
+- **Verified:** `inventory:check` and the full `release:check` chain on a branch cut from main at 12.3.41, and a side-by-side render with the
+  production stylesheets of both builds at 390x844 and 1280x800: 64 screens (57 light, 7 dark) of the guest journey, the partner editor, the vetting big view, the
+  event gallery, the oldest-waiting try-on card and the admin chrome are pixel-identical between 6.3.0 and 6.8.0, with identical computed styles
+  on 7752 elements and identical custom properties on the root. The only DOM difference is the extra class `gds-navlink` on sidebar rows (no rule
+  uses it); the sidebar rows stay 40.8px (the 44px minimum of 6.5.0 reads a token that is declared nowhere).
+- **Not done:** the sidebar row-height check on the deployed app (needs an admin sign-in).
+- **No version bump:** the fleet release 12.3.41 already happened; this change rides the next one.
 ## Unreleased — the camera setting is a selector with four ways, on the partner and on the event (issue 547; owner answer 272)
 
 - **Owner:** "I already told you that tested [it], and make the different implementations a selector in the settings, so that the admin decides which one to use."
