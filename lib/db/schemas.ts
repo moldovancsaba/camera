@@ -262,8 +262,11 @@ export interface CustomPage {
     emailPlaceholder?: string; // Placeholder for email input (e.g., "your.email@example.com")
     // For 'accept' type only
     checkboxText?: string;     // Text displayed next to checkbox (e.g., "I agree to...")
-    /** A list of required checkboxes, each with an optional https link to the page it names (camera#330); when empty, `checkboxText` is the one checkbox. */
-    checkboxes?: Array<{ text: string; linkUrl?: string }>;
+    /**
+     * A list of checkboxes, each with an optional https link to the page it names (camera#330) and two settings (issue 558, lib/events/consent.ts): `shown: false` switches it off, `required: false` makes it optional
+     * (`required: true` is an editor's choice that the server checks too; missing is the standard, required on the page). When empty, `checkboxText` is the one checkbox.
+     */
+    checkboxes?: Array<{ text: string; linkUrl?: string; shown?: boolean; required?: boolean }>;
     // For 'cta' type only
     // checkboxText is repurposed as URL to visit
     hasButton?: boolean;       // If false, CTA is end page (no continue button, auto-continues after URL visit)
