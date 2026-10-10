@@ -24,7 +24,6 @@ export interface SlideshowEditorInitialValue {
   backgroundImageUrl?: string | null;
   viewportScale?: 'fit' | 'fill';
   stageAspect?: number | null;
-  submissionSourceMode?: 'originals_only' | 'approved_tryon_only' | 'originals_and_approved_tryon';
   /** The screen design stored on the slideshow (camera#309); without it the editor would start empty and a save would clear it. */
   screenDesign?: ScreenDesign | null;
 }
@@ -102,12 +101,6 @@ export async function buildSlideshowEditorProps(
           backgroundImageUrl:
             (slideshow.backgroundImageUrl as string | null | undefined) ?? '',
           viewportScale: slideshow.viewportScale === 'fill' ? 'fill' : 'fit',
-          submissionSourceMode:
-            slideshow.submissionSourceMode === 'approved_tryon_only'
-              ? 'approved_tryon_only'
-              : slideshow.submissionSourceMode === 'originals_and_approved_tryon'
-                ? 'originals_and_approved_tryon'
-                : 'originals_only',
           stageAspect:
             typeof slideshow.stageAspect === 'number'
               ? slideshow.stageAspect

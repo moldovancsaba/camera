@@ -20,27 +20,8 @@ export const cameraAdminVocabularyPacks = [
     deactivate: { defaultMessage: 'Deactivate', icon: GdsIcons.Delete, feedback: deletedFeedback },
     remove: { defaultMessage: 'Remove', icon: GdsIcons.Delete, feedback: deletedFeedback },
   }),
-  createGdsVocabularyPack('tryon', {
-    approve: { defaultMessage: 'Approve', icon: GdsIcons.Check, feedback: savedFeedback },
-    reject: { defaultMessage: 'Reject', icon: GdsIcons.Delete, feedback: deletedFeedback },
-    great: { defaultMessage: 'Great', icon: GdsIcons.Trophy, feedback: savedFeedback },
-    'remove-great': { defaultMessage: 'Remove Great', icon: GdsIcons.Delete, feedback: deletedFeedback },
-    service: { defaultMessage: 'Service', icon: GdsIcons.Settings, feedback: savedFeedback },
-    'retry-job': { defaultMessage: 'Retry job', icon: GdsIcons.Refresh, feedback: savedFeedback },
-    'rerun-job': { defaultMessage: 'Rerun job', icon: GdsIcons.Refresh, feedback: savedFeedback },
-    'cancel-job': { defaultMessage: 'Cancel job', icon: GdsIcons.Cancel, feedback: deletedFeedback },
-    'resend-result': { defaultMessage: 'Resend result', icon: GdsIcons.Send, feedback: savedFeedback },
-    'restore-orphaned-result': { defaultMessage: 'Restore prior result', icon: GdsIcons.Refresh, feedback: savedFeedback },
-    remove: { defaultMessage: 'Remove', icon: GdsIcons.Delete, feedback: deletedFeedback },
-    'pin-to-slideshow': { defaultMessage: 'Add to slideshow', icon: GdsIcons.Add, feedback: savedFeedback },
-    'submit-prompt-rerun': { defaultMessage: 'Rerun with this prompt', icon: GdsIcons.Refresh, feedback: savedFeedback },
-    'cancel-prompt-rerun': { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
-  }),
   createGdsVocabularyPack('defaults-rollout', {
     save: { defaultMessage: 'Save', icon: GdsIcons.Save, feedback: savedFeedback },
-  }),
-  createGdsVocabularyPack('tryon-moderation', {
-    action: { defaultMessage: 'Moderation action', icon: GdsIcons.Check, feedback: savedFeedback },
   }),
   createGdsVocabularyPack('landing-pages', {
     create: { defaultMessage: 'Create landing page', icon: GdsIcons.Add, feedback: savedFeedback },
@@ -225,33 +206,6 @@ export const cameraAdminVocabularyPacks = [
   createGdsVocabularyPack('partner-logos', {
     'save-defaults': { defaultMessage: 'Save defaults', icon: GdsIcons.Save, feedback: savedFeedback },
     cancel: { defaultMessage: 'Cancel', icon: GdsIcons.Cancel, feedback: openedFeedback },
-  }),
-  createGdsVocabularyPack('garments', {
-    'remove-upload': { defaultMessage: 'Remove upload', icon: GdsIcons.Delete, feedback: deletedFeedback },
-    create: { defaultMessage: 'Create garment', icon: GdsIcons.Add, feedback: savedFeedback },
-    'cancel-create': { defaultMessage: 'Cancel create', icon: GdsIcons.Cancel, feedback: openedFeedback },
-    'back-to-list': { defaultMessage: 'Back to garments', icon: GdsIcons.Back, feedback: openedFeedback },
-    save: { defaultMessage: 'Save garment', icon: GdsIcons.Save, feedback: savedFeedback },
-    'cancel-edit': { defaultMessage: 'Cancel edit', icon: GdsIcons.Cancel, feedback: openedFeedback },
-    delete: { defaultMessage: 'Delete garment', icon: GdsIcons.Delete, feedback: deletedFeedback },
-  }),
-  createGdsVocabularyPack('tryon-setups', {
-    create: { defaultMessage: 'Create setup', icon: GdsIcons.Add, feedback: savedFeedback },
-    'cancel-create': { defaultMessage: 'Cancel create', icon: GdsIcons.Cancel, feedback: openedFeedback },
-    'back-to-list': { defaultMessage: 'Back to setups', icon: GdsIcons.Back, feedback: openedFeedback },
-    save: { defaultMessage: 'Save setup', icon: GdsIcons.Save, feedback: savedFeedback },
-    'cancel-edit': { defaultMessage: 'Cancel edit', icon: GdsIcons.Cancel, feedback: openedFeedback },
-    duplicate: { defaultMessage: 'Duplicate setup', icon: GdsIcons.Add, feedback: savedFeedback },
-    archive: { defaultMessage: 'Archive setup', icon: GdsIcons.Delete, feedback: deletedFeedback },
-    unarchive: { defaultMessage: 'Unarchive setup', icon: GdsIcons.Check, feedback: savedFeedback },
-  }),
-  createGdsVocabularyPack('card-display-settings', {
-    save: { defaultMessage: 'Save', icon: GdsIcons.Save, feedback: savedFeedback },
-  }),
-  createGdsVocabularyPack('tryon-maintenance', {
-    'refresh-worker': { defaultMessage: 'Refresh worker health', icon: GdsIcons.Refresh, feedback: openedFeedback },
-    'run-audit': { defaultMessage: 'Run data integrity audit', icon: GdsIcons.Check, feedback: openedFeedback },
-    'reconcile-apply': { defaultMessage: 'Apply reconciliation', icon: GdsIcons.Check, feedback: savedFeedback },
   }),
   createGdsVocabularyPack('frames', {
     'remove-upload': { defaultMessage: 'Remove upload', icon: GdsIcons.Delete, feedback: deletedFeedback },

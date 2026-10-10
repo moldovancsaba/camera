@@ -5,7 +5,7 @@
 
 import { resolveTimeZone } from './time';
 
-export const ANALYTICS_VIEWS = ['overview', 'photos', 'vetting', 'screens', 'sources', 'emails', 'messmass', 'tryon'] as const;
+export const ANALYTICS_VIEWS = ['overview', 'photos', 'vetting', 'screens', 'sources', 'emails', 'messmass'] as const;
 export type AnalyticsViewId = (typeof ANALYTICS_VIEWS)[number];
 
 export const isAnalyticsView = (value: unknown): value is AnalyticsViewId => typeof value === 'string' && (ANALYTICS_VIEWS as readonly string[]).includes(value);

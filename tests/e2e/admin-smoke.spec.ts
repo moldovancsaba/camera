@@ -73,7 +73,7 @@ test.describe('admin smoke — every admin page renders without the error bounda
       '/admin/logos',
       '/admin/submissions',
       '/admin/users',
-      '/admin/tryon',
+      '/admin/vetting',
       '/admin/landing-pages',
     ]) {
       await expectRendersWithoutError(page, path);
@@ -83,12 +83,11 @@ test.describe('admin smoke — every admin page renders without the error bounda
   test('event detail and edit pages render (RSC component-prop regression guard)', async ({ page }) => {
     await devLoginAsGlobalAdmin(page);
 
-    // Plain event and the try-on-enabled moderation event both render the
-    // "Local AI Services" card whose action buttons triggered digest 4053814135.
+    // Both fixture events render the "Vetting" card of the overview, whose link buttons once triggered digest 4053814135.
     for (const id of [eventMongoId, moderationEventMongoId]) {
       await expectRendersWithoutError(page, `/admin/events/${id}`);
       await expect(
-        page.getByText('Local AI Services'),
+        page.getByText('Approve or reject the photos of this event.'),
         `event ${id} detail should render past the previously-crashing card`
       ).toBeVisible();
     }

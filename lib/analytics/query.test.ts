@@ -10,7 +10,8 @@ test('the query: the view, the days, the clock and the event, each checked; anyt
 });
 
 test('the views are the tabs of the page', () => {
-  assert.ok(isAnalyticsView('tryon'));
+  assert.ok(isAnalyticsView('emails'));
+  assert.ok(!isAnalyticsView('tryon'), 'the Try-on tab went with the try-on integration (issue 557)');
   assert.ok(!isAnalyticsView('journey'));
   assert.ok(!isAnalyticsView(undefined));
 });
@@ -20,5 +21,6 @@ test('a tab link keeps the filters and leaves out what is default, so the plain 
   assert.equal(analyticsHref('/admin/events/e1/analytics', query, {}, 'Europe/Budapest'), '/admin/events/e1/analytics?from=2026-10-16&tz=UTC');
   assert.equal(analyticsHref('/admin/events/e1/analytics', query, { view: 'vetting' }, 'Europe/Budapest'), '/admin/events/e1/analytics?view=vetting&from=2026-10-16&tz=UTC');
   assert.equal(analyticsHref('/admin/events/e1/analytics', parseAnalyticsQuery({}, 'UTC'), {}, 'UTC'), '/admin/events/e1/analytics');
-  assert.equal(analyticsHref('/admin/tryon/analytics', parseAnalyticsQuery({ eventId: 'abc' }, 'UTC'), { view: 'tryon' }), '/admin/tryon/analytics?view=tryon&eventId=abc');
+  assert.equal(analyticsHref('/admin/analytics', parseAnalyticsQuery({ eventId: 'abc' }, 'UTC'), { view: 'emails' }), '/admin/analytics?view=emails&eventId=abc');
+  assert.equal(parseAnalyticsQuery({ view: 'tryon' }, 'UTC').view, 'overview', 'a stored link to the removed tab shows the overview');
 });

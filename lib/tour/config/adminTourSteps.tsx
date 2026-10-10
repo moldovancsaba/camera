@@ -41,10 +41,10 @@ export function getAdminTourSteps(navigationAccess: AdminNavigationAccess, optio
   }
   if (navigationAccess.isGlobalAdmin) {
     steps.push({
-      id: 'admin-nav-tryon',
-      targetSelector: '[data-tour-id="admin-nav-tryon"]',
-      title: 'Try-On App',
-      description: 'Configure and monitor the AI try-on experience.',
+      id: 'admin-nav-vetting',
+      targetSelector: '[data-tour-id="admin-nav-vetting"]',
+      title: 'Vetting',
+      description: 'Approve or reject the photos that wait for a decision.',
     });
   }
   if (navigationAccess.isGlobalAdmin) {

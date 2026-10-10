@@ -8,14 +8,13 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Anchor,
   Breadcrumbs,
   Button,
   Checkbox,
-  Code,
   ColorInput,
   FileInput,
   Grid,
@@ -35,10 +34,7 @@ import { defaultGoShortOrigin } from '@/lib/site-hosts';
 import { FormSection } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import EditorScaffold from '@/components/admin/AdminEditorScaffold';
-import type { TryOnSetup } from '@/lib/db/schemas';
 import type { JourneyContext } from '@/lib/events/journey';
-import type { TryOnSuitOption } from '@/lib/tryon/suits';
-import type { EventTryOnResultSlideshowMode } from '@/lib/tryon/slideshow-policy';
 import {
   DEFAULT_EVENT_BUTTON_SIZE,
   EVENT_BUTTON_SIZE_OPTIONS,
@@ -86,24 +82,12 @@ interface EventRecord {
   /** The theme the guest pages get (the event API returns it): its button colours are what the colour boxes start from (camera#380). */
   theme?: { buttonBackground?: string; buttonRing?: string };
   shortUrlSlug?: string;
-  greatestHitsSlug?: string;
   eventId?: string;
   customPages?: CustomPage[];
   /** What decides which default pages the event gets: the page editor builds the journey from it (camera#378). */
   journeyContext?: JourneyContext;
   /** The consent page is one checkbox on the Who-are-you page (issue 523). */
   acceptanceOnWhoAreYou?: boolean;
-  tryOn?: {
-    enabled?: boolean;
-    setupId?: string | null;
-    allowedLeatherSuitIds?: string[];
-    outfitEnabled?: boolean;
-    applyFrameToReturnedResults?: boolean;
-    vettingEnabled?: boolean;
-    localAiQualityGateEnabled?: boolean;
-    includeApprovedResultsInSlideshows?: boolean;
-    resultSlideshowMode?: EventTryOnResultSlideshowMode;
-  };
   visualSettings?: {
     buttonSize?: EventButtonSize;
   };
@@ -118,11 +102,7 @@ interface EventRecord {
   sharePage?: {
     includeOriginalCapture?: boolean;
     includeCameraResult?: boolean;
-    includeTryOnResult?: boolean;
-    includeFramedTryOnResult?: boolean;
-    includeCheckedInTryOnResult?: boolean;
     showCreateYourOwnButton?: boolean;
-    pendingTryOnMessage?: string | null;
     texts?: Record<string, string>;
   };
 }
@@ -145,7 +125,6 @@ export default function EditEventPage({
   params: Promise<{ id: string }>;
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { notifySuccess } = useGdsToasts();
   const [mongoId, setMongoId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -163,10 +142,6 @@ export default function EditEventPage({
   const [brandColor, setBrandColor] = useState('');
   const [brandBorderColor, setBrandBorderColor] = useState('');
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
-  const [tryOnEnabled, setTryOnEnabled] = useState(false);
-  const [tryOnOutfitEnabled, setTryOnOutfitEnabled] = useState(false);
-  const [tryOnSetupId, setTryOnSetupId] = useState('');
-  const [tryOnSetups, setTryOnSetups] = useState<TryOnSetup[]>([]);
   const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
   const [includeOriginalCapture, setIncludeOriginalCapture] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeOriginalCapture
@@ -174,20 +149,8 @@ export default function EditEventPage({
   const [includeCameraResult, setIncludeCameraResult] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeCameraResult
   );
-  const [includeTryOnResult, setIncludeTryOnResult] = useState(
-    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeTryOnResult
-  );
-  const [includeFramedTryOnResult, setIncludeFramedTryOnResult] = useState(
-    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeFramedTryOnResult
-  );
-  const [includeCheckedInTryOnResult, setIncludeCheckedInTryOnResult] = useState(
-    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeCheckedInTryOnResult
-  );
   const [showCreateYourOwnButton, setShowCreateYourOwnButton] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.showCreateYourOwnButton
-  );
-  const [pendingTryOnMessage, setPendingTryOnMessage] = useState(
-    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.pendingTryOnMessage
   );
   const [shareTexts, setShareTexts] = useState<SharePageTexts>({});
   // '' = the event sets no language of its own and follows its partner's (issue 353); the language the event shows now, whichever way, is `shownLanguage`.
@@ -196,22 +159,6 @@ export default function EditEventPage({
   const [tourEnabled, setTourEnabled] = useState(false);
   const [cameraMode, setCameraMode] = useState<CameraMode | ''>('');
   const [shownCameraMode, setShownCameraMode] = useState<CameraMode>(DEFAULT_CAMERA_MODE);
-  const [resultSlideshowMode, setResultSlideshowMode] =
-    useState<EventTryOnResultSlideshowMode>('disabled');
-  const [applyFrameToReturnedResults, setApplyFrameToReturnedResults] = useState(false);
-  const [tryOnVettingEnabled, setTryOnVettingEnabled] = useState(true);
-  const [localAiQualityGateEnabled, setLocalAiQualityGateEnabled] = useState(false);
-  const [suitOptions, setSuitOptions] = useState<TryOnSuitOption[]>([]);
-  const [selectedSuitIds, setSelectedSuitIds] = useState<string[]>([]);
-  const [isLoadingTryOnSetups, setIsLoadingTryOnSetups] = useState(true);
-  const [cameraId, setCameraId] = useState<string | null>(null);
-  const [isSavingTryOnSetup, setIsSavingTryOnSetup] = useState(false);
-
-  useEffect(() => {
-    const rawCameraId = searchParams.get('cameraId') || searchParams.get('camera_id');
-    setCameraId(rawCameraId && rawCameraId.trim().length > 0 ? rawCameraId.trim() : null);
-  }, [searchParams]);
-
   useEffect(() => {
     params.then((p) => setMongoId(p.id));
   }, [params]);
@@ -241,36 +188,17 @@ export default function EditEventPage({
         setColoursTouched(false);
         setBrandColor(eventData.brandColor || eventData.theme?.buttonBackground || '');
         setBrandBorderColor(eventData.brandBorderColor || eventData.theme?.buttonRing || '');
-        setTryOnEnabled(Boolean(eventData.tryOn?.enabled));
-        setTryOnOutfitEnabled(eventData.tryOn?.outfitEnabled === true);
-        setTryOnSetupId(eventData.tryOn?.setupId || '');
-        setApplyFrameToReturnedResults(Boolean(eventData.tryOn?.applyFrameToReturnedResults));
-        setTryOnVettingEnabled(eventData.tryOn?.vettingEnabled !== false);
-        setLocalAiQualityGateEnabled(Boolean(eventData.tryOn?.localAiQualityGateEnabled));
         setButtonSize(normalizeEventButtonSize(eventData.visualSettings?.buttonSize));
         const sharePageSettings = normalizeEventSharePageSettings(eventData.sharePage);
         setIncludeOriginalCapture(sharePageSettings.includeOriginalCapture);
         setIncludeCameraResult(sharePageSettings.includeCameraResult);
-        setIncludeTryOnResult(sharePageSettings.includeTryOnResult);
-        setIncludeFramedTryOnResult(sharePageSettings.includeFramedTryOnResult);
-        setIncludeCheckedInTryOnResult(sharePageSettings.includeCheckedInTryOnResult);
         setShowCreateYourOwnButton(sharePageSettings.showCreateYourOwnButton);
-        setPendingTryOnMessage(sharePageSettings.pendingTryOnMessage);
         setShareTexts(sharePageSettings.texts);
         setUiLanguage(isUiLanguage(eventData.uiLanguage) ? eventData.uiLanguage : '');
         setShownLanguage(normalizeUiLanguage(eventData.journeyContext?.language ?? eventData.uiLanguage));
         setTourEnabled(eventData.tourEnabled === true);
         setCameraMode(isCameraMode(eventData.cameraMode) ? eventData.cameraMode : '');
         setShownCameraMode(isCameraMode(eventData.effectiveCameraMode) ? eventData.effectiveCameraMode : DEFAULT_CAMERA_MODE);
-        setResultSlideshowMode(
-          eventData.tryOn?.resultSlideshowMode ||
-            (eventData.tryOn?.includeApprovedResultsInSlideshows ? 'mixed_with_originals' : 'disabled')
-        );
-        setSelectedSuitIds(
-          Array.isArray(eventData.tryOn?.allowedLeatherSuitIds)
-            ? eventData.tryOn.allowedLeatherSuitIds
-            : []
-        );
         setIsLoading(false);
       } catch (err: unknown) {
         setError(getErrorMessage(err));
@@ -280,88 +208,6 @@ export default function EditEventPage({
 
     void fetchEvent();
   }, [mongoId]);
-
-  useEffect(() => {
-    const fetchSuits = async () => {
-      try {
-        const response = await fetch('/api/tryon/suits');
-        const payload = await response.json();
-        if (!response.ok) {
-          throw new Error(payload.error || 'Failed to load leather suits');
-        }
-        setSuitOptions(payload.data?.suits ?? payload.suits ?? []);
-      } catch {
-        setSuitOptions([]);
-      }
-    };
-
-    void fetchSuits();
-  }, []);
-
-  useEffect(() => {
-    const fetchTryOnSetups = async () => {
-      setIsLoadingTryOnSetups(true);
-      try {
-        const query = cameraId ? `?cameraId=${encodeURIComponent(cameraId)}` : '';
-        const response = await fetch(`/api/tryon/setups${query}`);
-        const payload = await response.json();
-        if (!response.ok) {
-          throw new Error(payload.error || 'Failed to load try-on setups');
-        }
-        const setups = payload.data?.setups ?? payload.setups ?? [];
-        setTryOnSetups(setups);
-        const preferenceSetupId = typeof payload.data?.cameraPreference?.setupId === 'string'
-          ? payload.data.cameraPreference.setupId.trim()
-          : typeof payload.cameraPreference?.setupId === 'string'
-            ? payload.cameraPreference.setupId.trim()
-            : '';
-        if (preferenceSetupId) {
-          setTryOnSetupId(preferenceSetupId);
-        }
-      } catch {
-        setTryOnSetups([]);
-      } finally {
-        setIsLoadingTryOnSetups(false);
-      }
-    };
-
-    void fetchTryOnSetups();
-  }, [cameraId]);
-
-  const syncCameraTryOnSetup = async (setupId: string) => {
-    if (!cameraId) {
-      return;
-    }
-
-    const response = await fetch(
-      `/api/tryon/setups/${encodeURIComponent(setupId)}/use`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cameraId }),
-      }
-    );
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(payload.error || 'Failed to save try-on setup preference');
-    }
-  };
-
-  const handleTryOnSetupChange = (value: string | null) => {
-    const nextSetupId = value || '';
-    const previousSetupId = tryOnSetupId;
-    setTryOnSetupId(nextSetupId);
-    if (!cameraId || !nextSetupId) {
-      return;
-    }
-    setIsSavingTryOnSetup(true);
-    void syncCameraTryOnSetup(nextSetupId)
-      .catch(() => {
-        setTryOnSetupId(previousSetupId);
-        setError('Failed to save try-on setup preference for this camera.');
-      })
-      .finally(() => setIsSavingTryOnSetup(false));
-  };
 
   const handleLogoChange = (file: File | null) => {
     setLogoFile(file);
@@ -438,18 +284,6 @@ export default function EditEventPage({
       // Only when the colours were touched: null clears them, so the event follows messmass (or the default of its partner) again.
       ...(coloursTouched ? { brandColor: ownColours ? brandColor || null : null, brandBorderColor: ownColours ? brandBorderColor || null : null } : {}),
       shortUrlSlug: (formData.get('shortUrlSlug') as string) ?? '',
-      greatestHitsSlug: (formData.get('greatestHitsSlug') as string) ?? '',
-      tryOn: {
-        enabled: tryOnEnabled,
-        setupId: cameraId ? null : (tryOnSetupId || null),
-        allowedLeatherSuitIds: selectedSuitIds,
-        outfitEnabled: tryOnOutfitEnabled,
-        applyFrameToReturnedResults,
-        vettingEnabled: tryOnVettingEnabled,
-        localAiQualityGateEnabled,
-        includeApprovedResultsInSlideshows: resultSlideshowMode !== 'disabled',
-        resultSlideshowMode,
-      },
       visualSettings: {
         buttonSize,
       },
@@ -459,11 +293,7 @@ export default function EditEventPage({
       sharePage: {
         includeOriginalCapture,
         includeCameraResult,
-        includeTryOnResult,
-        includeFramedTryOnResult,
-        includeCheckedInTryOnResult,
         showCreateYourOwnButton,
-        pendingTryOnMessage,
         texts: shareTexts,
       },
     };
@@ -573,13 +403,6 @@ export default function EditEventPage({
               label="URL slug (optional)"
               defaultValue={event?.shortUrlSlug || ''}
               description={`Lowercase letters, digits, and hyphens (2–63 chars). When set, ${defaultGoShortOrigin()}/your-slug redirects to this event’s capture page.`}
-              styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
-            />
-            <TextInput
-              name="greatestHitsSlug"
-              label="Greatest Hits link slug (optional)"
-              defaultValue={event?.greatestHitsSlug || ''}
-              description="Lowercase letters, digits, and hyphens (2-63 chars). Creates a public Greatest Hits page for this event."
               styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace)' } }}
             />
           </FormSection>
@@ -747,36 +570,10 @@ export default function EditEventPage({
               description="The normal Camera submission saved by the capture flow."
             />
             <Checkbox
-              checked={includeTryOnResult}
-              onChange={(event) => setIncludeTryOnResult(event.currentTarget.checked)}
-              label="Show try-on photo generated by the worker"
-              description="Available after try-on finishes and is approved or auto-approved."
-            />
-            <Checkbox
-              checked={includeFramedTryOnResult}
-              onChange={(event) => setIncludeFramedTryOnResult(event.currentTarget.checked)}
-              label="Show try-on photo with Camera frame"
-              description="Available when returned try-on results are framed by Camera."
-            />
-            <Checkbox
-              checked={includeCheckedInTryOnResult}
-              onChange={(event) => setIncludeCheckedInTryOnResult(event.currentTarget.checked)}
-              label="Show checked-in try-on photo"
-              description="Display the checked-in try-on result when available for this submission."
-            />
-            <Checkbox
               checked={showCreateYourOwnButton}
               onChange={(event) => setShowCreateYourOwnButton(event.currentTarget.checked)}
               label="Show Create Your Own button"
               description="Display a CTA on the shared photo page that returns users to capture and start a new photo."
-            />
-            <Textarea
-              label="Pending try-on message"
-              value={pendingTryOnMessage}
-              onChange={(event) => setPendingTryOnMessage(event.currentTarget.value)}
-              autosize
-              minRows={2}
-              description="Shown on the shareable result page when a try-on was requested but no approved result is available yet."
             />
             <Text size="sm" c="dimmed">
               The fixed words of the shareable photo page and of its waiting and not-approved notices. Leave a field empty to keep the text in grey.
@@ -803,144 +600,6 @@ export default function EditEventPage({
                   maxLength={500}
                 />
               )
-            )}
-          </FormSection>
-
-          <FormSection
-            title="Try-on"
-            description="Enable the local AI try-on pipeline for this event and optionally limit the available garment catalog."
-          >
-            <Group justify="flex-end">
-              <Anchor component={Link} href="/admin/tryon/suits" size="sm">
-                Manage garments
-              </Anchor>
-            </Group>
-            <Checkbox
-              checked={tryOnEnabled}
-              onChange={(nextEvent) => {
-                const checked = nextEvent.currentTarget.checked;
-                setTryOnEnabled(checked);
-                if (!checked) {
-                  setResultSlideshowMode('disabled');
-                  setApplyFrameToReturnedResults(false);
-                  setTryOnVettingEnabled(true);
-                  setLocalAiQualityGateEnabled(false);
-                  setTryOnSetupId('');
-                }
-              }}
-              label="Enable local AI try-on for this event"
-            />
-            <Select
-              label="Try-on setup profile"
-              description={
-                cameraId
-                  ? 'Select the setup used by this camera. If no camera preference is set here, worker resolution uses global default.'
-                  : 'Select which model/profile config is used for this event. Leave empty to use global default.'
-              }
-              placeholder={
-                isLoadingTryOnSetups
-                  ? 'Loading try-on setups...'
-                  : tryOnSetups.length > 0
-                    ? 'Use global default'
-                    : 'No active try-on setups found'
-              }
-              data={tryOnSetups.map((setup) => ({
-                value: setup.setupId,
-                label: `${setup.name}${setup.isDefault ? ' (global default)' : ''}`,
-              }))}
-              value={tryOnSetupId || null}
-              disabled={!tryOnEnabled || isLoadingTryOnSetups || isSavingTryOnSetup}
-              onChange={(value) => handleTryOnSetupChange(value)}
-            />
-            {tryOnSetups.length === 1 && !cameraId ? (
-              <InlineAlert title="Only one setup available" message="Only one active try-on setup profile is available. Add more under Admin → AI Setups to expose more options." severity="warning" />
-            ) : tryOnSetups.length === 0 ? (
-              <InlineAlert title="No setup profiles" message="No active try-on setup profiles found. Create one under Admin → AI Setups first." severity="error" />
-            ) : null}
-            {!cameraId ? (
-              <Text size="xs" c="dimmed">
-                A setup can also be scoped to one physical camera by opening this form with a{' '}
-                <Code>?cameraId=</Code> link (used by camera hardware provisioning). That mode isn&apos;t
-                needed for normal event setup.
-              </Text>
-            ) : null}
-            <Checkbox
-              checked={tryOnVettingEnabled}
-              onChange={(nextEvent) => setTryOnVettingEnabled(nextEvent.currentTarget.checked)}
-              disabled={!tryOnEnabled}
-              label="Require admin vetting before publishing try-on results"
-              description="When disabled, completed try-on results are approved automatically and become visible on the user's result page."
-            />
-            <Checkbox
-              checked={localAiQualityGateEnabled}
-              onChange={(nextEvent) => setLocalAiQualityGateEnabled(nextEvent.currentTarget.checked)}
-              disabled={!tryOnEnabled || !tryOnVettingEnabled}
-              label="Enable local AI pre-vetting quality gate"
-              description="Allows the local AI service to triage generated results before manual vetting, while admins keep final approval control."
-            />
-            <Checkbox
-              checked={applyFrameToReturnedResults}
-              onChange={(nextEvent) => setApplyFrameToReturnedResults(nextEvent.currentTarget.checked)}
-              disabled={!tryOnEnabled}
-              label="Apply the selected Camera frame to returned try-on results"
-            />
-            <Checkbox
-              checked={tryOnOutfitEnabled}
-              onChange={(nextEvent) => setTryOnOutfitEnabled(nextEvent.currentTarget.checked)}
-              disabled={!tryOnEnabled}
-              label="Enable outfit (top + bottom) selection"
-              description="Lets a fan pair a top-type garment with a bottom in one try-on. Both pieces must be in the allowed-garments list (or the list left empty). Outfit renders take roughly twice as long."
-            />
-            <Select
-              label="Approved result slideshow publication"
-              description="Control whether approved try-on results are hidden, mixed with originals, or result-only in slideshow playlists for this event."
-              data={[
-                { value: 'disabled', label: 'Disabled (approved results hidden from slideshows)' },
-                { value: 'mixed_with_originals', label: 'Mixed with originals' },
-                { value: 'approved_results_only', label: 'Approved results only' },
-              ]}
-              value={resultSlideshowMode}
-              disabled={!tryOnEnabled}
-              onChange={(value) =>
-                setResultSlideshowMode((value as EventTryOnResultSlideshowMode) || 'disabled')
-              }
-            />
-            <Select
-              label="Allowed garments"
-              description="Leave empty to allow the full active garment catalog when try-on is enabled."
-              placeholder={suitOptions.length > 0 ? 'Select one or more garments' : 'No active garments found'}
-              data={suitOptions.map((suit) => ({ value: suit.id, label: suit.name }))}
-              value={null}
-              disabled={!tryOnEnabled || suitOptions.length === 0}
-              clearable
-              onChange={(value) => {
-                if (!value || selectedSuitIds.includes(value)) return;
-                setSelectedSuitIds((current) => [...current, value]);
-              }}
-            />
-            {selectedSuitIds.length > 0 ? (
-              <Group gap="xs">
-                {selectedSuitIds.map((suitId) => {
-                  const suit = suitOptions.find((option) => option.id === suitId);
-                  return (
-                    <Button
-                      key={suitId}
-                      type="button"
-                      size="xs"
-                      variant="light"
-                      onClick={() =>
-                        setSelectedSuitIds((current) => current.filter((value) => value !== suitId))
-                      }
-                    >
-                      Remove {suit?.name ?? suitId}
-                    </Button>
-                  );
-                })}
-              </Group>
-            ) : (
-              <Text size="sm" c="dimmed">
-                No garment allowlist selected.
-              </Text>
             )}
           </FormSection>
 

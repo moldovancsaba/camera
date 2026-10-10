@@ -29,7 +29,6 @@ const TABS: TabDefinition[] = [
   { id: 'sources', label: 'Sources' },
   { id: 'emails', label: 'E-mails and consent' },
   { id: 'messmass', label: 'Messmass' },
-  { id: 'tryon', label: 'Try-on' },
 ];
 
 export interface AnalyticsViewProps {
@@ -45,15 +44,13 @@ export interface AnalyticsViewProps {
   eventMongoId?: string;
   /** The address of the CSV of the whole view with the same days and clock; absent on the all-events page. */
   exportHref?: string;
-  /** The Try-on tab (global admins only) leads to the try-on report. */
-  showTryOn: boolean;
   /** The Messmass tab is offered (global admins, one event); its content is given only while that tab is open, so the numbers are not computed otherwise. */
   showMessmass?: boolean;
   messmass?: ReactNode;
 }
 
-export default function AnalyticsView({ basePath, query, defaultTimeZone, report, sources, table, eventMongoId, exportHref, showTryOn, showMessmass, messmass }: AnalyticsViewProps) {
-  const tabs = TABS.filter((tab) => (tab.id === 'sources' ? Boolean(sources) : tab.id === 'messmass' ? Boolean(showMessmass) : tab.id === 'tryon' ? showTryOn : true));
+export default function AnalyticsView({ basePath, query, defaultTimeZone, report, sources, table, eventMongoId, exportHref, showMessmass, messmass }: AnalyticsViewProps) {
+  const tabs = TABS.filter((tab) => (tab.id === 'sources' ? Boolean(sources) : tab.id === 'messmass' ? Boolean(showMessmass) : true));
   const active: AnalyticsViewId = tabs.some((tab) => tab.id === query.view) ? query.view : 'overview';
   const { scope } = report;
   const href = (overrides: Partial<AnalyticsQuery>) => analyticsHref(basePath, query, overrides, defaultTimeZone);

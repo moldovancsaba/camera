@@ -71,3 +71,12 @@ test('every allowed host is one the app itself classifies as an image provider',
     assert.ok(detectImageProvider(u(p.hostname, '/token/name.jpg')) !== null || isLogoStorageHostname(p.hostname), p.hostname);
   }
 });
+
+test('the old address of the vetting page (the try-on page that also held the photo vetting) still leads to the vetting page', async () => {
+  const redirects = (await nextConfig.redirects?.()) ?? [];
+  const to = (source: string) => redirects.find((redirect) => redirect.source === source)?.destination;
+  assert.equal(to('/admin/tryon/vetting'), '/admin/vetting');
+  assert.equal(to('/admin/tryon-results'), '/admin/vetting');
+  assert.equal(to('/admin/tryon/analytics'), '/admin/analytics', 'the all-events analytics page was at the address of the try-on report');
+  assert.ok(redirects.every((redirect) => redirect.permanent === false), 'a redirect that may be taken away again is not permanent');
+});

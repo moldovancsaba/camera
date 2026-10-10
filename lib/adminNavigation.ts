@@ -5,9 +5,9 @@
 // WHY: This is the messmass pattern (lib/adminNavigation.ts there) applied to
 // camera's own role model (isGlobalAdmin / hasAnyPartnerAccess / hasEventsAccess
 // instead of messmass's user.role), per the approved hybrid IA: Operations
-// (renamed from "Try-On App") is a first-class section carrying the daily
-// event-connected work — vetting, queue, analytics, cleanup — that was
-// previously three navigation hops deep.
+// is a first-class section carrying the daily event-connected work (vetting,
+// analytics), which was previously three navigation hops deep. (It was the
+// "Try-On App" until the try-on integration was removed, issue 557.)
 
 export interface AdminNavigationAccess {
   isGlobalAdmin: boolean;
@@ -61,28 +61,28 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
   },
   {
     title: 'Operations',
-    description: 'Daily work connected to events — vet results, watch the queue, review analytics.',
+    description: 'Daily work connected to events — vet the photos waiting for approval, read the numbers.',
     items: [
       {
-        href: '/admin/tryon',
-        label: 'Operations',
-        description: 'Vetting, queue, analytics, and identity cleanup across every event.',
-        iconKey: 'sparkles',
-        tourId: 'admin-nav-tryon',
+        href: '/admin/vetting',
+        label: 'Vetting',
+        description: 'Photos waiting for approval, by event.',
+        iconKey: 'userShield',
+        tourId: 'admin-nav-vetting',
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
-        href: '/admin/tryon/maintenance',
-        label: 'Maintenance',
-        description: 'Worker health, data integrity audit, and job reconciliation.',
-        iconKey: 'tool',
+        href: '/admin/analytics',
+        label: 'Analytics',
+        description: 'Photos, vetting, users, screens, e-mails and consents of every event.',
+        iconKey: 'brandDatabricks',
         isVisible: (access) => access.isGlobalAdmin,
       },
     ],
   },
   {
     title: 'Libraries',
-    description: 'Shared resources events draw on — frames, logos, images, garments, and pages.',
+    description: 'Shared resources events draw on — frames, logos, images, and pages.',
     items: [
       {
         href: '/admin/frames',
@@ -120,20 +120,6 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
         isVisible: (access) => access.isGlobalAdmin,
       },
       {
-        href: '/admin/tryon/suits',
-        label: 'Garments',
-        description: 'The try-on garment catalog shared across events.',
-        iconKey: 'photo',
-        isVisible: (access) => access.isGlobalAdmin,
-      },
-      {
-        href: '/admin/tryon/setups',
-        label: 'AI Setups',
-        description: 'Try-on processing presets (previously editable only by hand in the database).',
-        iconKey: 'sparkles',
-        isVisible: (access) => access.isGlobalAdmin,
-      },
-      {
         href: '/admin/landing-pages',
         label: 'Landing Pages',
         description: 'Cross-event landing page inventory.',
@@ -160,13 +146,6 @@ export const ADMIN_NAVIGATION: AdminNavSection[] = [
     title: 'Settings',
     description: 'App-wide admin UI preferences, shared by every admin.',
     items: [
-      {
-        href: '/admin/settings/card-display',
-        label: 'Vetting Card Display',
-        description: 'Choose which fields and action buttons appear on the Vetting moderation card.',
-        iconKey: 'adjustments',
-        isVisible: (access) => access.isGlobalAdmin,
-      },
       {
         href: '/admin/settings/defaults',
         label: 'Journey defaults',
@@ -268,18 +247,15 @@ export interface AdminContextItem {
 }
 
 const everyone = () => true;
-const globalAdminOnly = (access: AdminNavigationAccess) => access.isGlobalAdmin;
 
 /**
- * The event menu: every page of an event, so each editor is one click away. Queue is for global admins (a partner user is sent away from it); Analytics (issue 521) is for the event's
- * managers like Vetting, and its Try-on tab for global admins. The slideshow, landing page and layout editors are reached from their lists on the overview, so those items point at the section there.
+ * The event menu: every page of an event, so each editor is one click away. Analytics (issue 521) is for the event's managers like Vetting. The slideshow, landing page and layout editors are reached from their lists on the overview, so those items point at the section there.
  */
 export const EVENT_CONTEXT_MENU: AdminContextItem[] = [
   { label: 'Overview', description: 'The event at a glance.', iconKey: 'layoutDashboard', path: '', isVisible: everyone },
   { label: 'Edit and pages', description: 'The event settings and the pages of the user journey.', iconKey: 'adjustments', path: '/edit', isVisible: everyone },
-  { label: 'Vetting', description: 'Photos waiting for approval and try-on results.', iconKey: 'userShield', path: '/vetting', isVisible: everyone },
+  { label: 'Vetting', description: 'Photos waiting for approval.', iconKey: 'userShield', path: '/vetting', isVisible: everyone },
   { label: 'Gallery', description: 'The photos of the event: upload, select several at once, remove.', iconKey: 'photoScan', path: '/gallery', isVisible: everyone },
-  { label: 'Queue', description: 'The try-on queue of the event.', iconKey: 'sparkles', path: '/queue', isVisible: globalAdminOnly },
   { label: 'Analytics', description: 'Photos, vetting, users, screens, e-mails and consents of the event.', iconKey: 'brandDatabricks', path: '/analytics', isVisible: everyone },
   { label: 'Logos', description: 'The logo of the event and of each place it shows.', iconKey: 'photo', path: '/logos', isVisible: everyone },
   { label: 'Frames', description: 'The frames of the event.', iconKey: 'frame', path: '/frames', isVisible: everyone },

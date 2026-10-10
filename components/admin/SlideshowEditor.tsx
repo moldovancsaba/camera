@@ -50,7 +50,6 @@ interface SlideshowValue {
   viewportScale?: 'fit' | 'fill';
   stageAspect?: number | null;
   screenDesign?: ScreenDesign | null;
-  submissionSourceMode?: 'originals_only' | 'approved_tryon_only' | 'originals_and_approved_tryon';
 }
 
 interface Props {
@@ -99,9 +98,6 @@ export default function SlideshowEditor({
   const [viewportScale, setViewportScale] = useState<'fit' | 'fill'>(
     initialSlideshow?.viewportScale ?? 'fit'
   );
-  const [submissionSourceMode, setSubmissionSourceMode] = useState<
-    'originals_only' | 'approved_tryon_only' | 'originals_and_approved_tryon'
-  >(initialSlideshow?.submissionSourceMode ?? 'originals_only');
   const [stageAspect, setStageAspect] = useState<number | null | undefined>(
     initialSlideshow?.stageAspect ?? null
   );
@@ -149,7 +145,6 @@ export default function SlideshowEditor({
       backgroundAccentColor: backgroundAccentColor.trim() || SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
       backgroundImageUrl: backgroundImageUrl.trim() || null,
       viewportScale,
-      submissionSourceMode,
       stageAspect: stageAspect ?? null,
       ...(slideshowMongoId && JSON.stringify(screenDraft) === savedScreenDraft.current ? {} : { screenDesign: designFromDraft(screenDraft) }),
     };
@@ -423,29 +418,6 @@ export default function SlideshowEditor({
                 </Radio.Group>
               </Field>
             </SimpleGrid>
-
-            <Field label="Submission source">
-              <Radio.Group
-                value={submissionSourceMode}
-                onChange={(value) =>
-                  setSubmissionSourceMode(
-                    value === 'approved_tryon_only' ||
-                      value === 'originals_and_approved_tryon'
-                      ? value
-                      : 'originals_only'
-                  )
-                }
-              >
-                <Group>
-                  <Radio value="originals_only" label="Originals only" />
-                  <Radio value="approved_tryon_only" label="Approved try-on results only" />
-                  <Radio
-                    value="originals_and_approved_tryon"
-                    label="Originals + approved try-on results"
-                  />
-                </Group>
-              </Radio.Group>
-            </Field>
           </Section>
 
           <Section title="Background and Colors">

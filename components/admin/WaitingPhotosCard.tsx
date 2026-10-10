@@ -1,16 +1,16 @@
 /**
  * "Photos waiting for approval" on the global Vetting page (camera#284): the events whose photos wait, each opening its own Vetting tab.
- * Shows nothing while no photo waits.
+ * Shows nothing while no photo waits, or with `showWhenEmpty` a line saying so (the global Vetting page has nothing else on it).
  */
 
 import Link from 'next/link';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { listEventsWithWaitingPhotos } from '@/lib/photo-vetting/queue';
 
-export default async function WaitingPhotosCard() {
+export default async function WaitingPhotosCard({ showWhenEmpty = false }: { showWhenEmpty?: boolean } = {}) {
   const db = await connectToDatabase();
   const events = await listEventsWithWaitingPhotos(db);
-  if (events.length === 0) return null;
+  if (events.length === 0) return showWhenEmpty ? <p data-waiting-photos-empty>No photos are waiting for approval.</p> : null;
   const total = events.reduce((sum, event) => sum + event.count, 0);
 
   return (

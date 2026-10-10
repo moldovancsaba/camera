@@ -2,7 +2,7 @@
 
 /**
  * The e-mails of an event (epic 463, docs/EMAIL_FORMAT_PLAN.md, segment E3; owner, 2026-10-09): the five e-mails a user can get, each with its switch, subject and message in the toolbar editor with
- * the preview beside it, the sender and the terms link, the older try-on e-mails for an event that uses try-on, and the legal part of the event (own, or following its partner and the general one).
+ * the preview beside it, the sender and the terms link, and the legal part of the event (own, or following its partner and the general one).
  * Nothing is stored that is the default: a switch that was never touched and a text that is the default follow the default.
  */
 
@@ -47,7 +47,6 @@ export default function EventEmailsPage({ params }: { params: Promise<{ id: stri
   const url = `/api/admin/events/${id}/emails`;
   const [view, setView] = useState<EventEmailsView | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
-  const [tryOnDrafts, setTryOnDrafts] = useState<Record<'related' | 'resubmission', Draft> | null>(null);
   const [sender, setSender] = useState('');
   const [terms, setTerms] = useState('');
   const [loading, setLoading] = useState(true);
@@ -60,7 +59,6 @@ export default function EventEmailsPage({ params }: { params: Promise<{ id: stri
   const adopt = useCallback((next: EventEmailsView) => {
     setView(next);
     setDrafts(Object.fromEntries(next.types.map((row) => [row.type, draftOf(row, row.defaultOn)])));
-    setTryOnDrafts(next.tryOn ? { related: draftOf({ ...next.tryOn.related, chosen: null }, false), resubmission: draftOf({ ...next.tryOn.resubmission, chosen: null }, false) } : null);
     setSender(next.senderName ?? '');
     setTerms(next.termsUrl ?? '');
   }, []);
@@ -92,17 +90,8 @@ export default function EventEmailsPage({ params }: { params: Promise<{ id: stri
       const before = draftOf(row, row.defaultOn);
       return draft && (draft.enabled !== before.enabled || draft.subject !== before.subject || draft.body !== before.body || draft.chose !== before.chose);
     });
-    const tryDirty = Boolean(
-      view.tryOn &&
-        tryOnDrafts &&
-        (['related', 'resubmission'] as const).some((mode) => {
-          const before = draftOf({ ...view.tryOn![mode], chosen: null }, false);
-          const draft = tryOnDrafts[mode];
-          return draft.enabled !== before.enabled || draft.subject !== before.subject || draft.body !== before.body;
-        })
-    );
-    return typeDirty || tryDirty || sender.trim() !== (view.senderName ?? '') || terms.trim() !== (view.termsUrl ?? '');
-  }, [view, drafts, tryOnDrafts, sender, terms]);
+    return typeDirty || sender.trim() !== (view.senderName ?? '') || terms.trim() !== (view.termsUrl ?? '');
+  }, [view, drafts, sender, terms]);
 
   const save = async () => {
     if (!view) return;
@@ -123,22 +112,10 @@ export default function EventEmailsPage({ params }: { params: Promise<{ id: stri
           ];
         })
       );
-      const tryOn = view.tryOn && tryOnDrafts
-        ? Object.fromEntries(
-            (['related', 'resubmission'] as const).map((mode) => [
-              mode,
-              {
-                enabled: tryOnDrafts[mode].enabled,
-                subject: tryOnDrafts[mode].subject.trim() && tryOnDrafts[mode].subject.trim() !== view.tryOn![mode].defaultSubject ? tryOnDrafts[mode].subject : null,
-                body: tryOnDrafts[mode].body.trim() && tryOnDrafts[mode].body.trim() !== view.tryOn![mode].defaultBody.trim() ? tryOnDrafts[mode].body : null,
-              },
-            ])
-          )
-        : undefined;
       const response = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ types, senderName: sender.trim() || null, termsUrl: terms.trim() || null, ...(tryOn ? { tryOn } : {}) }),
+        body: JSON.stringify({ types, senderName: sender.trim() || null, termsUrl: terms.trim() || null }),
       });
       const payload = (await response.json().catch(() => null)) as Payload<EventEmailsView> | null;
       if (!response.ok || !payload?.data) throw new Error(payload?.error || `Request failed (${response.status})`);
@@ -239,28 +216,6 @@ export default function EventEmailsPage({ params }: { params: Promise<{ id: stri
           </section>
         );
       })}
-
-      {view.tryOn && tryOnDrafts ? (
-        <section style={card} aria-labelledby="tryon-title">
-          <div>
-            <h3 id="tryon-title" style={{ margin: 0 }}>
-              Try-on e-mails
-            </h3>
-            <p style={{ ...muted, margin: '0.25rem 0 0' }}>The two older e-mails of an event that uses try-on, kept as they were: when the related photos are ready, and after an approved resubmitted try-on result.</p>
-          </div>
-          {(['related', 'resubmission'] as const).map((mode) => (
-            <div key={mode} style={{ display: 'grid', gap: '0.75rem' }}>
-              <Checkbox
-                label={mode === 'related' ? 'Send an e-mail when the related photos are ready' : 'Send an update e-mail after an approved resubmitted try-on result'}
-                checked={tryOnDrafts[mode].enabled}
-                onChange={(event) => setTryOnDrafts((current) => (current ? { ...current, [mode]: { ...current[mode], enabled: event.currentTarget.checked } } : current))}
-              />
-              <EmailTextEditor label="Subject" kind="subject" value={tryOnDrafts[mode].subject} onChange={(subject) => setTryOnDrafts((current) => (current ? { ...current, [mode]: { ...current[mode], subject } } : current))} disabled={saving} />
-              <EmailTextEditor label="Message" kind="body" value={tryOnDrafts[mode].body} onChange={(body) => setTryOnDrafts((current) => (current ? { ...current, [mode]: { ...current[mode], body } } : current))} disabled={saving} pictureLevel={{ scope: 'event', eventId: id }} />
-            </div>
-          ))}
-        </section>
-      ) : null}
 
       <section style={card} aria-labelledby="legal-title">
         <div>

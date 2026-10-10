@@ -1,6 +1,5 @@
 import { notFound, redirect } from 'next/navigation';
 import { ObjectId } from 'mongodb';
-import AdminTryOnAnalyticsPage from '@/app/admin/tryon/analytics/page';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import AnalyticsView from '@/components/admin/analytics/AnalyticsView';
 import MessmassSection from '@/components/admin/analytics/MessmassSection';
@@ -21,7 +20,7 @@ type SearchParams = Record<string, string | string[] | undefined>;
 
 // WHAT: The event's Analytics tab (issue 521, phase 1; docs/ANALYTICS_AUDIT.md): the numbers of the event computed from the data that already exists (photos, vetting, users, people
 // marked, screens, links, e-mails, consents), for the event's managers and global admins like the Vetting tab next to it. WHY: the tab used to be the try-on moderation report and nothing
-// else. That report is now the Try-on tab (?view=tryon, global admins only), delegated to the same page it always was.
+// else; that report went with the try-on integration (issue 557, docs/TRYON_REMOVED.md), and a stored `?view=tryon` link shows the overview.
 export default async function EventAnalyticsTab({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<SearchParams> }) {
   const { id } = await params;
   if (!ObjectId.isValid(id)) notFound();
@@ -38,11 +37,6 @@ export default async function EventAnalyticsTab({ params, searchParams }: { para
   const event = analyticsEventOf(eventDoc);
   const fallbackZone = defaultTimeZone(event.uiLanguage);
   const query = parseAnalyticsQuery(sp, fallbackZone);
-
-  if (query.view === 'tryon' && globalAdmin) {
-    const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
-    return <AdminTryOnAnalyticsPage searchParams={Promise.resolve({ view: 'tryon', bucket: one(sp.bucket), eventId: id, from: one(sp.from), to: one(sp.to) })} />;
-  }
 
   let analytics: EventAnalytics | null = null;
   let counterState: CounterState | null = null;
@@ -83,7 +77,6 @@ export default async function EventAnalyticsTab({ params, searchParams }: { para
           sources={analytics.sources}
           eventMongoId={id}
           exportHref={`/api/admin/events/${id}/export/analytics?${new URLSearchParams({ tz: query.timeZone, ...(query.from ? { from: query.from } : {}), ...(query.to ? { to: query.to } : {}) }).toString()}`}
-          showTryOn={globalAdmin}
           showMessmass={globalAdmin}
           messmass={counterState ? <MessmassSection state={counterState} timeZone={query.timeZone} /> : undefined}
         />
