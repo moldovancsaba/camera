@@ -27,13 +27,8 @@ set:
 - [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md)
 - [docs/CAMERA_MODULE_PLAN.md](CAMERA_MODULE_PLAN.md) — capture reliability, full-frame original, reframe step, front default and lens choice (camera#203)
 - [docs/DEFAULT_FRAME_PLAN.md](DEFAULT_FRAME_PLAN.md) — generated default event frame from messmass data: layers, geometry, messages, work packages (camera#231)
-- [docs/TRYON_ARCHITECTURE.md](TRYON_ARCHITECTURE.md)
-- [docs/IMAGE_DIRECT_INTEGRATION.md](IMAGE_DIRECT_INTEGRATION.md) — planned, paused renderer replacement contract
-- [docs/TRYON_OPERATIONS.md](TRYON_OPERATIONS.md)
-- [docs/TRYON_LOW_LEVEL_DESIGN.md](TRYON_LOW_LEVEL_DESIGN.md)
-- [docs/TRYON_ADMIN_GUIDE.md](TRYON_ADMIN_GUIDE.md)
-- [docs/TRYON_ANALYTICS.md](TRYON_ANALYTICS.md)
-- [docs/TRYON_RECOVERY_RUNBOOK.md](TRYON_RECOVERY_RUNBOOK.md)
+- [docs/TRYON_REMOVED.md](TRYON_REMOVED.md) — the try-on integration that was removed (issue 557): what existed, what it left in the database, what a rebuild as an add-on needs; the old code is at git tag `tryon-integration-final`
+- Records of the removed integration (banner at the top of each, not current behaviour): [TRYON_ARCHITECTURE.md](TRYON_ARCHITECTURE.md), [TRYON_LOW_LEVEL_DESIGN.md](TRYON_LOW_LEVEL_DESIGN.md), [TRYON_OPERATIONS.md](TRYON_OPERATIONS.md), [TRYON_ANALYTICS.md](TRYON_ANALYTICS.md), [IMAGE_DIRECT_INTEGRATION.md](IMAGE_DIRECT_INTEGRATION.md) (the planned renderer contract, never live)
 - [docs/GDS_EXCEPTION_STANDARD.md](GDS_EXCEPTION_STANDARD.md)
 - [HANDOVER.md](../HANDOVER.md) — short current-state summary
 - [RELEASE_NOTES.md](../RELEASE_NOTES.md) — per-release record (older entries are history)
@@ -151,7 +146,7 @@ The GitHub issue tracker and Projects board must be kept aligned with canonical 
   - all related implementation artifacts are closed or explicitly blocked
   - release notes include scope, verification path, and known risks
   - docs listed in section 1 are updated to match the latest route, model, and contract behavior
-  - `docs/TRYON_ADMIN_GUIDE.md` and `docs/TRYON_LOW_LEVEL_DESIGN.md` are updated for any moderation workflow changes
+  - the photo vetting documents (`docs/PHOTO_VETTING_PLAN.md`) are updated for any moderation workflow changes
   - any queue/state/analytics contract changes are mirrored in API references and route behavior
 
 Operational note:

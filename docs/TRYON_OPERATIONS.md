@@ -1,5 +1,7 @@
 # Try-On Operations
 
+> **REMOVED INTEGRATION (camera issue 557, 2026-10-10).** This document describes the try-on integration as it was at git tag `tryon-integration-final`. Try-on is switched off on every event and is being removed from the camera app; [TRYON_REMOVED.md](./TRYON_REMOVED.md) says what existed, what it left in the database and what a rebuild as an add-on needs. Nothing below is current behaviour or an operating guide; it is kept as the record of the contract.
+
 ## Queue status contract
 
 The active queue count is only the work that can still require worker attention.
@@ -80,7 +82,7 @@ Each audit event stores the result id, source submission id, source job id, acto
 
 ## Recovery runbook
 
-Use `docs/TRYON_RECOVERY_RUNBOOK.md` for live-event recovery decisions covering worker health, failed jobs, retry waits, reruns, completed-result reapply, and human-in-the-loop publication repair.
+The live-event recovery runbook (worker health, failed jobs, retry waits, reruns, completed-result reapply, publication repair) was deleted with the removal; read it at the tag: `git show tryon-integration-final:docs/TRYON_RECOVERY_RUNBOOK.md`.
 
 ## Data cleanup and reporting
 
