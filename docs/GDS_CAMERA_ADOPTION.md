@@ -5,7 +5,7 @@
 
 ## SSOT statement
 
-[sovereignsquad/general-design-system](https://github.com/sovereignsquad/general-design-system) (SSOT docs and published bundle now **v6.3.0**) is the single source of truth for design, UI, and UX across the portfolio.
+[sovereignsquad/general-design-system](https://github.com/sovereignsquad/general-design-system) (SSOT docs and published bundle now **v6.8.0**) is the single source of truth for design, UI, and UX across the portfolio.
 
 This file and other Camera docs describe only **implementation adapters**, migration state, validation commands, and approved exceptions. If a Camera-local UI document conflicts with the GDS repository, **the GDS repository wins**.
 
@@ -200,7 +200,7 @@ the workarounds above or it will silently reintroduce one of these bugs.
 
 ## Published package capability snapshot
 
-Camera is currently pinned to the latest verified published release bundle, `@sovereignsquad/*` **6.3.0**.
+Camera is currently pinned to the latest verified published release bundle, `@sovereignsquad/*` **6.8.0**.
 
 ### Available now in the published package line
 
@@ -245,7 +245,7 @@ Camera now uses the real `@sovereignsquad/*` package line through the temporary 
 Current state:
 
 - Camera runtime: Mantine `8.3.6`, React `19.2.0`
-- Shared `@sovereignsquad/*` packages: version `6.3.0`, Mantine `^7.9.0` in-repo build target (consumer-smoke-tested against `8.3.6`/`9.2.1`), React `^18.2.0 || ^19.0.0`
+- Shared `@sovereignsquad/*` packages: version `6.8.0`, Mantine `^7.9.0` in-repo build target (consumer-smoke-tested against `8.3.6`/`9.2.1`), React `^18.2.0 || ^19.0.0`
 
 `gds-adoption.json`'s `gdsVersion` now correctly tracks this (see the 2026-08-21 entry below) -- Camera's runtime already sits inside GDS's validated peer matrix (Mantine `8.3.6` + React `19.2.0` is one of the two exact combinations GDS's own `verify:mantine` tests against), so no framework bump was needed alongside this one.
 
@@ -394,6 +394,30 @@ npm run build
 ```
 
 The same commands run in GitHub Actions through [docs/GDS_RELEASE_GATE.md](GDS_RELEASE_GATE.md).
+
+### 2026-10-10: vendored GDS bumped `6.3.0` → `6.8.0` (camera#184)
+
+The five vendored tarballs (`gds-core`, `gds-theme`, `gds-admin`, `gds-compliance`, `gds-eslint-config`) are now the `gds-v6.8.0`
+release assets, downloaded with `gh release download`; each one's integrity hash was compared with the version published on
+GitHub Packages and matches. The issue asked for `6.7.0`; `6.8.0` was released on 2026-10-06, so the bump goes there instead
+(`6.8.0` only adds on top of `6.7.0`). `package.json`'s five `file:` specs, the lockfile and `gdsVersion` follow.
+Peer dependency ranges (Mantine `^7.9 || ^8.3 || ^9`, React `^18.2 || ^19`) are identical between `6.3.0` and `6.8.0`.
+The refreshed lockfile also moves `@tiptap/starter-kit` and its extensions from `3.31.3` to `3.31.4` (GDS `6.8.0` declares `^3.31.3`; the `package.json` overrides keep the tiptap core, pm and react packages at `3.31.3`, and camera imports none of them).
+The statements above that say "against the installed `6.3.0`" are dated observations from before this bump and have not been
+re-measured. The sidebar `NavLink` row height, which `6.5.0` gives a 44px minimum from a token camera does not define at `:root`, was
+measured on a render of `AdminChromeView` with the production stylesheet of each build: the rows are 40.8px with `6.3.0` and with `6.8.0`, the
+computed `min-height` is `0px` in both (the `--gds-control-height-md` token is declared nowhere), so the 44px floor does not apply, and the
+only change in that DOM is the extra class `gds-navlink`, which no stylesheet rule uses. The check on the deployed app (needs an admin
+sign-in) stays open in camera#184.
+
+Visual comparison of the two builds (production CSS chunks of each build, the real page components, mocked network, 390x844 and 1280x800):
+64 screens (57 in the light scheme, 7 in the dark scheme: the guest journey with the who-are-you, accept, live camera and reframe steps, the
+stand-alone who-are-you and accept pages, the partner editor, the vetting big view in every step, the event gallery, the oldest-waiting try-on
+card and the admin chrome) are pixel-identical, 7752 elements have identical computed style and box, and the custom properties declared on the root are identical (547 names, same values).
+The `light-dark()` role tokens (`--gds-bg-*`, `--gds-text-*`, `--gds-border-card`, `--gds-vibe-*`, 12 names) are declared the same way in both
+releases and still reach the page as the invalid pair value (`#e2e8f0#334155`), so admin code keeps using `--mantine-*` tokens.
+`6.8.0` adds two references with no fallback and no declaration (`--gds-elevation-card`, `--gds-elevation-panel`, in the new
+`.gds-quick-start-card` rule that camera does not use).
 
 ## References
 
