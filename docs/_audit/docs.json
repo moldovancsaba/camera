@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-10T13:16:28+00:00",
+  "generated": "2026-10-10T18:54:45+00:00",
   "repo": "camera",
-  "head": "1db67fe",
+  "head": "db3424b",
   "counts": {
    "endpoints": 161,
    "collections": 8,
    "env": 61,
    "outbound-hosts": 31,
-   "docs": 70
+   "docs": 69
   }
  },
  "items": [
@@ -217,10 +217,6 @@
    "title": "Text levels: the Dictionary, a partner's texts, an event's texts"
   },
   {
-   "file": "docs/TRYON_ADMIN_GUIDE.md",
-   "title": "Try-On Admin Guide"
-  },
-  {
    "file": "docs/TRYON_ANALYTICS.md",
    "title": "Try-On analytics and data operations"
   },
@@ -237,8 +233,8 @@
    "title": "Try-On Operations"
   },
   {
-   "file": "docs/TRYON_RECOVERY_RUNBOOK.md",
-   "title": "Try-On recovery runbook"
+   "file": "docs/TRYON_REMOVED.md",
+   "title": "Try-on integration: what existed, why it was removed, how to rebuild it as an add-on"
   },
   {
    "file": "docs/UI_LANGUAGE.md",
