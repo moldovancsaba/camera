@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'node:test';
-import { fetchFrameContext, PARTNER_PUSH_TIMEOUT_MS, pushPartnerToMessmass, pushSsoSessionToMessmass } from './messmassClient';
+import { fetchFrameContext, PARTNER_PUSH_TIMEOUT_MS, pushPartnerToMessmass, pushPhotoStatsToMessmass, pushSsoSessionToMessmass } from './messmassClient';
 
 const realFetch = globalThis.fetch;
 const realLog = console.log;
@@ -194,4 +194,51 @@ test('pushPartnerToMessmass returns null and logs refused for an error status, a
   }) as typeof fetch;
   assert.equal(await pushPartnerToMessmass(PARTNER), null);
   assert.deepEqual(outcomes(lines), [['messmass.partner_push', 'refused'], ['messmass.partner_push', 'failed']]);
+});
+
+test('pushPhotoStatsToMessmass posts the counters to the photo-stats route with the shared secret, and logs ok without the secret (a fake fetch: nothing leaves the test)', async () => {
+  const lines = captureLogs();
+  let url = '';
+  let init: RequestInit | undefined;
+  globalThis.fetch = (async (input: unknown, options?: RequestInit) => {
+    url = String(input);
+    init = options;
+    return new Response('{}', { status: 200 });
+  }) as typeof fetch;
+  const payload = { totals: { imagesTaken: 5, imagesApproved: 3 }, averages: { avgVettingSeconds: 90 } };
+  assert.equal(await pushPhotoStatsToMessmass(EVENT_ID, payload), true);
+  assert.equal(url, `https://messmass.example.test/api/integrations/camera/events/${EVENT_ID}/photo-stats`);
+  assert.equal(init?.method, 'POST');
+  assert.equal((init?.headers as Record<string, string>)['x-camera-secret'], 'test-shared-secret');
+  assert.equal((init?.headers as Record<string, string>).authorization, 'Bearer test-shared-secret');
+  assert.deepEqual(JSON.parse(String(init?.body)), payload);
+  assert.ok(init?.signal instanceof AbortSignal);
+  assert.deepEqual(outcomes(lines), [['messmass.photo_stats_push', 'ok']]);
+  assert.equal((lines[0].context as Record<string, unknown>).counters, 3);
+  assert.ok(!JSON.stringify(lines).match(/test-shared-secret|imagesTaken/), 'no secret and no numbers in the log');
+});
+
+test('pushPhotoStatsToMessmass is false for a refusal (also the route not existing yet), a timeout and a network error, each logged, and never throws', async () => {
+  const lines = captureLogs();
+  const payload = { totals: { imagesTaken: 1 }, averages: {} };
+  globalThis.fetch = (async () => new Response(null, { status: 404 })) as typeof fetch;
+  assert.equal(await pushPhotoStatsToMessmass(EVENT_ID, payload), false);
+  globalThis.fetch = (async () => {
+    throw new TypeError('fetch failed');
+  }) as typeof fetch;
+  assert.equal(await pushPhotoStatsToMessmass(EVENT_ID, payload), false);
+  globalThis.fetch = ((_url: unknown, options?: RequestInit) =>
+    new Promise((_resolve, reject) => options?.signal?.addEventListener('abort', () => reject(options.signal?.reason)))) as typeof fetch;
+  assert.equal(await pushPhotoStatsToMessmass(EVENT_ID, payload, 20), false);
+  assert.deepEqual(outcomes(lines), [['messmass.photo_stats_push', 'refused'], ['messmass.photo_stats_push', 'failed'], ['messmass.photo_stats_push', 'timeout']]);
+});
+
+test('pushPhotoStatsToMessmass makes no request without a valid messmass id and a configuration', async () => {
+  captureLogs();
+  let called = false;
+  globalThis.fetch = (async () => ((called = true), new Response('{}'))) as typeof fetch;
+  assert.equal(await pushPhotoStatsToMessmass('../admin', { totals: {}, averages: {} }), false);
+  delete process.env.MESSMASS_BASE_URL;
+  assert.equal(await pushPhotoStatsToMessmass(EVENT_ID, { totals: {}, averages: {} }), false);
+  assert.equal(called, false);
 });

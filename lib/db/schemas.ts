@@ -376,6 +376,8 @@ export interface Event {
   journeyDefaults?: boolean;
   /** What was last pushed to messmass from the tracked links of this event (camera#320, lib/short-links/sync.ts). */
   shortLinkSync?: { pushedAt: string; totals?: { visitQrCode: number; visitShortUrl: number; qrscanAndroid: number; qrscanIphone: number } };
+  /** What was last pushed to messmass of the photo and vetting counters of this event (issue 521, lib/analytics/counters-sync.ts): the time and the numbers. Written only when the counters setting is on. */
+  counterSync?: { pushedAt: string; counters?: { totals: Record<string, number>; averages: Record<string, number> } };
 
   // Partner relationship
   partnerId: string;                 // Reference to parent partner

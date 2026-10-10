@@ -3,12 +3,14 @@ import { ObjectId } from 'mongodb';
 import AdminTryOnAnalyticsPage from '@/app/admin/tryon/analytics/page';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import AnalyticsView from '@/components/admin/analytics/AnalyticsView';
+import MessmassSection from '@/components/admin/analytics/MessmassSection';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/partners/authorization';
 import { serializeMongoError } from '@/lib/gds/serialize-mongo-error';
 import { analyticsEventOf, loadEventAnalytics, type EventAnalytics } from '@/lib/analytics/load';
+import { loadCounterState, type CounterState } from '@/lib/analytics/counters-sync';
 import { parseAnalyticsQuery } from '@/lib/analytics/query';
 import { defaultTimeZone } from '@/lib/analytics/time';
 import { formatCount } from '@/lib/analytics/format';
@@ -43,9 +45,12 @@ export default async function EventAnalyticsTab({ params, searchParams }: { para
   }
 
   let analytics: EventAnalytics | null = null;
+  let counterState: CounterState | null = null;
   let dbError = null;
   try {
     analytics = await loadEventAnalytics(db, event, { timeZone: query.timeZone, from: query.from, to: query.to });
+    // The Messmass tab (global admins) previews what would be sent; it reads the whole event, whatever days are chosen, and sends nothing.
+    if (query.view === 'messmass' && globalAdmin) counterState = await loadCounterState(db, { eventId: event.eventId, messmassEventId: event.messmassEventId, counterSync: (eventDoc as { counterSync?: { pushedAt?: unknown; counters?: unknown } }).counterSync });
   } catch (error) {
     console.error('Error loading the event analytics:', error);
     dbError = serializeMongoError(error);
@@ -79,6 +84,8 @@ export default async function EventAnalyticsTab({ params, searchParams }: { para
           eventMongoId={id}
           exportHref={`/api/admin/events/${id}/export/analytics?${new URLSearchParams({ tz: query.timeZone, ...(query.from ? { from: query.from } : {}), ...(query.to ? { to: query.to } : {}) }).toString()}`}
           showTryOn={globalAdmin}
+          showMessmass={globalAdmin}
+          messmass={counterState ? <MessmassSection state={counterState} timeZone={query.timeZone} /> : undefined}
         />
       ) : null}
     </AdminListPageShell>

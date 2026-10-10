@@ -203,6 +203,41 @@ export async function pushLinkStatsToMessmass(
   }
 }
 
+// WHY: like the link stats, the photo counters are pushed from a request that must not wait long for messmass; a timeout is a failed push and the next one repeats it (whole totals, so a repeat is harmless). Bounded and logged like the other calls of this file (issue 178).
+const PHOTO_STATS_TIMEOUT_MS = 5000;
+
+/** The counters of an event for messmass (docs/ANALYTICS.md): whole running totals, and averages that messmass stores as they are with no baseline. Numbers under fixed names, never a person. */
+export interface PhotoStatsPayload {
+  totals: Record<string, number>;
+  averages: Record<string, number>;
+}
+
+/**
+ * Sends the photo and vetting counters of an event to messmass (POST /api/integrations/camera/events/[id]/photo-stats, issue 521): the sibling of the link stats, with the same secret, the same
+ * timeout and the same rule. **The messmass route does not exist yet** and nothing in camera calls this function before the owner has chosen the first event to watch (the setting of
+ * lib/analytics/counters-setting.ts is off); it answers false, like any refusal, until the route is built. True when messmass accepted them; false when it is unconfigured, unreachable, slow or
+ * refuses. Never throws.
+ */
+export async function pushPhotoStatsToMessmass(messmassEventId: string, payload: PhotoStatsPayload, timeoutMs: number = PHOTO_STATS_TIMEOUT_MS): Promise<boolean> {
+  if (!messmassConfigured() || !/^[0-9a-f]{24}$/i.test(messmassEventId)) return false;
+  const started = Date.now();
+  try {
+    const res = await fetchBounded(
+      'messmass.photo_stats_push',
+      'messmass photo stats push',
+      `${base()}/api/integrations/camera/events/${messmassEventId}/photo-stats`,
+      { method: 'POST', headers: { 'content-type': 'application/json', 'x-camera-secret': token(), authorization: `Bearer ${token()}` }, body: JSON.stringify(payload) },
+      timeoutMs
+    );
+    // One log line per attempt (issue 178): the outcome, status, time and how many counters; never the numbers' event, a name or the secret.
+    logOutbound('messmass.photo_stats_push', res.ok ? 'ok' : 'refused', { status: res.status, durationMs: Date.now() - started, timeoutMs, counters: Object.keys(payload.totals).length + Object.keys(payload.averages).length });
+    return res.ok;
+  } catch {
+    // fetchBounded has already logged the timeout or the failure.
+    return false;
+  }
+}
+
 /** Absolute URL of a font file on the messmass origin (a `/fonts/...` path from the frame context), or null when messmass is not configured. */
 export function messmassFontUrl(fontPath: string): string | null {
   const origin = base();

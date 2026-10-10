@@ -48,6 +48,38 @@ The photos filed under the event (its UUID in `eventId` or `eventIds`) that are 
 
 Days can be limited (`from`, `to`; **both included**, on the chosen clock): they limit the photos by the day they were taken, and the decisions and plays of those photos follow them. The link visits are limited by their own UTC day.
 
+## Counters for messmass (prepared, switched off, never sent)
+
+Owner decision 245: the numbers sent to messmass are the list of the audit (section 7.6), **counters only, never a person** (decision 241). Phase 1 prepares the pipeline; **nothing was sent to messmass, and nothing can be until the owner decides**.
+
+| Counter | Kind | What it counts | Status |
+|---|---|---|---|
+| `imagesTaken` | total | photos taken or uploaded by users (the counted photos above, editors' uploads not included) | computed |
+| `imagesApproved`, `imagesRejected` | total | of those, approved and declined now | computed |
+| `imagesShownOnSlideshow` | total | plays: the sum of the running play count of the event's counted photos, all slideshows | computed |
+| `avgVettingSeconds` | average | average time from the photo to its first decision, whole seconds; **left out until a photo was decided** | computed |
+| `consentAccepted` | total | photos whose user accepted at least one consent | computed |
+| `journeyOpens`, `journeyCompleted`, `cameraDenied`, `retakes`, `consentAbandoned` | | nothing records the journey | waits for the journey recording |
+| `shares`, `downloads` | | the counters on the photo are only ever set to 0 | waits for the share page recording |
+| `declined<Reason>` | | the reason is free text | waits for the fixed list of reasons (decision 244) |
+
+A counter that cannot be counted is **never sent as a zero**: a zero would say nobody did it. The visits of the tracked links (`visitQrCode`, `visitShortUrl`, `qrscanAndroid`, `qrscanIphone`) already reach messmass through their own channel (`docs/SHORT_LINKS.md`) and are not in this list; the audit's note that an event with only its own short address never pushes (`lib/short-links/sync.ts`) is untouched, because that path is live.
+
+**The pieces** (all in `lib/analytics/`, unit-tested with fakes only, no database and no network):
+
+- `counters.ts`: the list (`COMPUTABLE_COUNTERS`, `WAITING_COUNTERS`) and `buildCounters(report)`, pure. A total is a **whole running total** for the event (never a day's change), so a repeated push changes nothing; an average is not additive and is sent as a whole value that messmass stores as it is, with no baseline.
+- `counters-setting.ts`: the one switch, `admin_settings` document `messmass-counters`, **off unless a stored `true`**.
+- `counters-sync.ts`: `syncEventCounters(db, event, { force? })`. It reads the setting first and returns `disabled` having read and written nothing else; then checks the event is linked to messmass (`messmassEventId`); claims a throttle slot (one push per event per 30 seconds, one atomic update of `event.counterSync.pushedAt`); computes the counters over the whole event; skips a set equal to the last good push (`event.counterSync.counters`); pushes. It never throws, so a hook needs no guard. Results: `pushed`, `unchanged`, `throttled`, `failed`, `disabled`, `not_linked`, `nothing_to_send`.
+- `lib/messmassClient.ts` `pushPhotoStatsToMessmass`: `POST {MESSMASS_BASE_URL}/api/integrations/camera/events/<messmassEventId>/photo-stats` with `{ "totals": { ... }, "averages": { ... } }`, the same secret as the link stats, a 5 second deadline through `fetchBounded`, and one `messmass.photo_stats_push` log line per attempt (outcome, status, time, how many counters; no numbers, no secret; issue 178); false on any refusal, never throws.
+- The **Messmass tab** of the event's Analytics (global admins): a preview of the numbers as they are now, the setting, the link, the last push, and the counters that wait. It reads and sends nothing.
+
+**Not done, on purpose, and what it needs:**
+
+1. **No trigger.** Nothing calls `syncEventCounters`. The audit's triggers (a vetting decision, a play, a daily job) are on the approver's screens and the giant screen, which are frozen until after the match, and the owner makes the first real push.
+2. **No switch on a screen.** The setting can only be stored in the database today; the switch (and a manual "Send now" for one chosen event) come together with the trigger.
+3. **The receiving side does not exist.** messmass has no `photo-stats` route and none of these names is registered in its variable catalog (`variables_metadata`; a stat without an entry is stored but invisible, and a derived variable is silently skipped). The audit's section 6 lists what that route needs: the same secret check, the baseline plus camera's total write for the totals, the whole value for the average, names that do not collide with what operators type in the clicker. Until it exists a push is refused (false), which the sync reports as `failed` and does not remember.
+4. CLAUDE.md section 8 applies in full: the pipeline is tested with fakes; the first end-to-end proof is the owner's, at a real event.
+
 ## What cannot be computed yet, and why
 
 Listed on the Overview as **Not measured yet** (`NOT_MEASURED` in `lib/analytics/report.ts`), never as zeros:
