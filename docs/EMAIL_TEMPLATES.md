@@ -21,6 +21,18 @@ Supported variables (`lib/email/variables.ts`; a variable with no value for the 
 
 Paragraphs are separated by a blank line. A paragraph that starts with `# ` is a title, `-# ` is small text, `+# ` is large text. Inside a paragraph: `**bold**`, `*italic*`, `[label](https://address)` (a link, bold and underlined; the address may be `{link}` or `{terms}`), a bare web address (a link). A paragraph that is only `![what it shows](https://picture)` is a **picture** (centred, as wide as the e-mail at most), and `[![what it shows](https://picture)](https://address)` is a picture that is a link; the address behind it may be `{link}`, `{terms}` or `{eventlink}`. The picture must be in the app's own storage (the Blob store, the logo storage or imgbb): any other address is left out of the e-mail and the preview says so. The plain-text part names it by its description (and the address when it is a link). The editor's **Picture** button chooses or uploads one from the event's image library (PNG or JPEG: e-mail apps do not all draw WebP or SVG). A backslash writes the next sign as it is (`\*`). Nothing else is markup and raw HTML is always escaped. A text with none of these is drawn exactly as plain text always was.
 
+### Long links and narrow screens (issue 382)
+
+A long share link used to make the e-mail wider than a phone screen, so the user had to scroll sideways. Now nothing in an e-mail is wider than the screen:
+
+- **The tables have a fixed layout** (`table-layout:fixed`), so a cell is never wider than the table, and the page has a viewport line.
+- **Every element that holds words or a link** (the paragraphs, the text links, the header, the event name, the card, the legal part, the button) carries `EMAIL_WRAP_STYLE` (`lib/email/rich.ts`): `overflow-wrap:anywhere` and, for older mail clients, `word-wrap:break-word` and `word-break:break-word`. A long word, a long name or a long address breaks inside the e-mail.
+- **A web address in the text** is written out whole up to `MAX_SHOWN_ADDRESS` (64 characters, so a share link of about 60 is whole). A longer one is shown as its first part and an ellipsis; the link behind it is always the whole address, and the plain-text part keeps the whole address. A long address also gets soft break points (`wbr`, not part of the copied text) after its slashes, query signs and ampersands, so it wraps where it should even in a client that ignores `overflow-wrap`.
+- The button may be narrower than its label (`max-width:100%`), and its label wraps.
+- Short addresses and ordinary text look exactly as before.
+
+Checked with the rendered e-mails (English and Hungarian, themed and plain layout, a 100-character token in the link) in a browser at 320, 360, 375 and 430 px: none is wider than the screen; before the change every one was about 1100 px wide.
+
 ### Canonical body style
 
 Template bodies should use the exact grammar and ordering below. This is the standard enforced in onboarding/validation flows:

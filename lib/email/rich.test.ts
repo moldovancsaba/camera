@@ -2,16 +2,16 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { emailDefaults } from './submission-template-defaults';
 import { escapeHtml } from './escape';
-import { fillPlain, parseRich, resolveRich, richHtml, richText, safeHref, type Values } from './rich';
+import { EMAIL_WRAP_STYLE, MAX_SHOWN_ADDRESS, fillPlain, parseRich, resolveRich, richHtml, richText, safeHref, shownAddress, type Values } from './rich';
 
 const STYLE = { link: 'LINK' };
 const URLS = ['link', 'terms'];
 const html = (source: string, values: Values = {}) => richHtml(resolveRich(parseRich(source), values, URLS).blocks, STYLE);
 const text = (source: string, values: Values = {}) => richText(resolveRich(parseRich(source), values, URLS).blocks);
 
-/** The paragraph drawing the e-mails had before the format existed: escaped, web addresses as links, line breaks kept. */
+/** The paragraph drawing the e-mails had before the format existed: escaped, web addresses as links, line breaks kept. Since issue 382 the paragraph and the link also carry the wrap rule (EMAIL_WRAP_STYLE); nothing else about a normal text changed. */
 const URL_IN_TEXT = /(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"])/g;
-const oldParagraph = (value: string) => `<p style="margin:0 0 16px 0;">${escapeHtml(value).replace(URL_IN_TEXT, (url) => `<a href="${url}" style="color:LINK;text-decoration:underline;">${url}</a>`).replace(/\n/g, '<br />')}</p>`;
+const oldParagraph = (value: string) => `<p style="margin:0 0 16px 0;${EMAIL_WRAP_STYLE}">${escapeHtml(value).replace(URL_IN_TEXT, (url) => `<a href="${url}" style="color:LINK;text-decoration:underline;${EMAIL_WRAP_STYLE}">${url}</a>`).replace(/\n/g, '<br />')}</p>`;
 const oldHtml = (body: string) => body.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean).map(oldParagraph).join('');
 
 test('a text with no markup is drawn exactly as e-mails were drawn before: the standard texts in English and Hungarian, filled in', () => {
@@ -35,13 +35,13 @@ test('titles, small and large text are paragraphs with a prefix; the others are 
 });
 
 test('bold, italic, links with a label, a bare address and nesting', () => {
-  assert.equal(html('a **bold** and *italic* word'), '<p style="margin:0 0 16px 0;">a <strong>bold</strong> and <em>italic</em> word</p>');
-  assert.equal(html('**bold *and italic***'), '<p style="margin:0 0 16px 0;"><strong>bold <em>and italic</em></strong></p>');
+  assert.equal(html('a **bold** and *italic* word'), `<p style="margin:0 0 16px 0;${EMAIL_WRAP_STYLE}">a <strong>bold</strong> and <em>italic</em> word</p>`);
+  assert.equal(html('**bold *and italic***'), `<p style="margin:0 0 16px 0;${EMAIL_WRAP_STYLE}"><strong>bold <em>and italic</em></strong></p>`);
   const link = html('see [the photo](https://camera.test/p) now');
-  assert.ok(link.includes('<a href="https://camera.test/p" style="color:LINK;font-weight:700;text-decoration:underline;">the photo</a>'), link);
+  assert.ok(link.includes(`<a href="https://camera.test/p" style="color:LINK;font-weight:700;text-decoration:underline;${EMAIL_WRAP_STYLE}">the photo</a>`), link);
   assert.ok(html('**[go](https://camera.test/p)**').includes('<strong><a href="https://camera.test/p"'));
   const bare = html('visit https://camera.test/p. Bye');
-  assert.ok(bare.includes('<a href="https://camera.test/p" style="color:LINK;text-decoration:underline;">') && bare.endsWith('. Bye</p>'));
+  assert.ok(bare.includes(`<a href="https://camera.test/p" style="color:LINK;text-decoration:underline;${EMAIL_WRAP_STYLE}">`) && bare.endsWith('. Bye</p>'));
 });
 
 test('signs that are not a pair stay as they are, and a backslash writes the next sign', () => {
@@ -54,7 +54,7 @@ test('signs that are not a pair stay as they are, and a backslash writes the nex
 });
 
 test('line breaks stay inside a paragraph and blank lines make paragraphs; empty paragraphs go', () => {
-  assert.equal(html('one\ntwo'), '<p style="margin:0 0 16px 0;">one<br />two</p>');
+  assert.equal(html('one\ntwo'), `<p style="margin:0 0 16px 0;${EMAIL_WRAP_STYLE}">one<br />two</p>`);
   assert.equal((html('one\n\n\n\ntwo\n\n   \n\nthree').match(/<p /g) ?? []).length, 3);
   assert.equal(html(''), '');
 });
@@ -156,4 +156,51 @@ test('the plain-text part names a picture by its description, and by its address
   assert.equal(text(`Hi\n\n![The stadium](${PIC})`), 'Hi\n\nThe stadium');
   assert.equal(text(`[![Open the photo](${PIC})](https://camera.test/p)`), 'Open the photo: https://camera.test/p');
   assert.equal(text(`![](${PIC})\n\nBye`), 'Bye', 'a picture with no description adds no empty line');
+});
+
+// ---- A long link must not make the e-mail wider than a phone screen (issue 382) ----
+
+// A long id, 96 characters with no break in it (low entropy on purpose: the secret scan reads a random-looking value next to a name like token as a credential).
+const LONG_ID = 'a1b2c3'.repeat(16);
+const LONG = `https://camera.messmass.com/share/${LONG_ID}`;
+
+test('every paragraph and every link carries the wrap rule, so a long word breaks inside the e-mail', () => {
+  const out = html(`# A title\n\n-# small print\n\n+# large\n\nSee ${LONG} and [your photo](${LONG}) and a-very-long-word-${'x'.repeat(80)}`);
+  const paragraphs = out.match(/<p style="[^"]*"/g) ?? [];
+  assert.equal(paragraphs.length, 4);
+  for (const open of paragraphs) assert.ok(open.includes(EMAIL_WRAP_STYLE), open);
+  const links = out.match(/<a [^>]*style="[^"]*"/g) ?? [];
+  assert.equal(links.length, 2);
+  for (const open of links) assert.ok(open.includes(EMAIL_WRAP_STYLE), open);
+  assert.ok(EMAIL_WRAP_STYLE.includes('overflow-wrap:anywhere') && EMAIL_WRAP_STYLE.includes('word-wrap:break-word') && EMAIL_WRAP_STYLE.includes('word-break:break-word'));
+});
+
+test('a very long address in the text shows shortened, the link behind it stays whole, the plain-text part keeps the whole address', () => {
+  const blocks = resolveRich(parseRich(`See ${LONG} now`), {}, URLS).blocks;
+  const out = richHtml(blocks, STYLE);
+  assert.ok(out.includes(`href="${LONG}"`), 'the link goes to the whole address');
+  const shown = out.slice(out.indexOf('>', out.indexOf('<a ')) + 1, out.indexOf('</a>')).replace(/<wbr>/g, '');
+  assert.equal(shown, shownAddress(LONG));
+  assert.ok(shown.length <= MAX_SHOWN_ADDRESS && shown.endsWith('\u2026') && LONG.startsWith(shown.slice(0, -1)));
+  assert.equal(richText(blocks), `See ${LONG} now`);
+});
+
+test('a normal address (a share link of about 60 characters, a short link) is written out whole and still breaks at its slashes', () => {
+  const share = 'https://camera.messmass.com/share/6f2c1d0e9a8b7c6d5e4f3a2b';
+  assert.ok(share.length < MAX_SHOWN_ADDRESS);
+  const out = html(`Open ${share}`);
+  assert.ok(out.includes(`href="${share}"`));
+  assert.equal(out.replace(/<wbr>/g, '').includes(`>${share}</a>`), true, 'the whole address is the text of the link');
+  assert.ok(out.includes('share/<wbr>6f2c'), 'a break point after the slash');
+  assert.equal(out.includes('https:/<wbr>/'), false, 'none inside the two slashes after https:');
+  // A short address has no break points at all, so it is drawn as it always was.
+  assert.equal(html('Go https://go.messmass.com/mtk'), `<p style="margin:0 0 16px 0;${EMAIL_WRAP_STYLE}">Go <a href="https://go.messmass.com/mtk" style="color:LINK;text-decoration:underline;${EMAIL_WRAP_STYLE}">https://go.messmass.com/mtk</a></p>`);
+});
+
+test('the ellipsis never cuts an entity in half, and a query keeps its break points after the ampersand', () => {
+  const query = `https://camera.messmass.com/share/${'q'.repeat(8)}?a=1&b=2&c=${'z'.repeat(60)}`;
+  const out = html(`See ${query}`);
+  assert.ok(out.includes('href="https://camera.messmass.com/share/' + 'q'.repeat(8) + '?a=1&amp;b=2&amp;c='), 'the href is escaped once');
+  assert.equal(/&[a-z]*$/.test(out.slice(out.indexOf('>', out.indexOf('<a ')) + 1, out.indexOf('</a>'))), false, 'the shown text does not end inside an entity');
+  assert.ok(out.includes('?<wbr>a=<wbr>1&amp;<wbr>b='));
 });

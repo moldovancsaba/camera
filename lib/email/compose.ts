@@ -4,7 +4,7 @@
  * the preview route.
  */
 
-import { fillPlain, parseRich, resolveRich, richHtml, richText, type Values } from '@/lib/email/rich';
+import { EMAIL_WRAP_STYLE, fillPlain, parseRich, resolveRich, richHtml, richText, type Values } from '@/lib/email/rich';
 import { withoutStandardLegalTail } from '@/lib/email/legal-rules';
 import { renderThemedEmail } from '@/lib/email/themed-html';
 import { URL_VARIABLES } from '@/lib/email/variables';
@@ -40,7 +40,7 @@ export function composeEmail(input: ComposeInput): Composed {
   const html = input.theme
     ? renderThemedEmail({ theme: input.theme, eventName: input.eventName, content: body.blocks, legal: legal?.blocks ?? null, button: input.button ?? null })
     : `
-      <div style="font-family: Arial, sans-serif; line-height: 1.5;">${richHtml(body.blocks, { link: 'inherit' })}${legal ? `<div style="opacity:0.75;">${richHtml(legal.blocks, { link: 'inherit' }, 'small')}</div>` : ''}</div>
+      <div style="font-family: Arial, sans-serif; line-height: 1.5;${EMAIL_WRAP_STYLE}">${richHtml(body.blocks, { link: 'inherit' })}${legal ? `<div style="opacity:0.75;${EMAIL_WRAP_STYLE}">${richHtml(legal.blocks, { link: 'inherit' }, 'small')}</div>` : ''}</div>
     `;
   return {
     subject: subjectFilled.text.replace(/\s+/g, ' ').trim(),

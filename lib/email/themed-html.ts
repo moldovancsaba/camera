@@ -5,7 +5,7 @@
  */
 
 import { escapeHtml } from '@/lib/email/escape';
-import { parseRich, resolveRich, richHtml, type RBlock } from '@/lib/email/rich';
+import { EMAIL_WRAP_STYLE, parseRich, resolveRich, richHtml, type RBlock } from '@/lib/email/rich';
 import type { EventTheme } from '@/lib/theme/event-theme';
 
 export { escapeHtml };
@@ -40,22 +40,24 @@ export function renderThemedEmail({ theme, eventName, bodyText, content, legal, 
       : '';
   const paragraphs = richHtml(content ?? resolveRich(parseRich(bodyText ?? ''), {}).blocks, { link: theme.link });
   const cta = button
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 8px 0;"><tr><td bgcolor="${theme.buttonBackground}" style="background:${theme.buttonBackground};border-radius:8px;"><a href="${escapeHtml(button.url)}" style="display:inline-block;padding:14px 28px;font-family:${font};font-size:16px;font-weight:700;color:${theme.buttonText};text-decoration:none;">${escapeHtml(button.label)}</a></td></tr></table>`
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 8px 0;max-width:100%;"><tr><td bgcolor="${theme.buttonBackground}" style="background:${theme.buttonBackground};border-radius:8px;${EMAIL_WRAP_STYLE}"><a href="${escapeHtml(button.url)}" style="display:inline-block;padding:14px 28px;box-sizing:border-box;max-width:100%;font-family:${font};font-size:16px;font-weight:700;color:${theme.buttonText};text-decoration:none;${EMAIL_WRAP_STYLE}">${escapeHtml(button.label)}</a></td></tr></table>`
     : '';
 
-  const legalPart = legal && legal.length > 0 ? `<div style="margin-top:20px;color:${theme.cardMuted};">${richHtml(legal, { link: theme.link }, 'small')}</div>` : '';
+  const legalPart = legal && legal.length > 0 ? `<div style="margin-top:20px;color:${theme.cardMuted};${EMAIL_WRAP_STYLE}">${richHtml(legal, { link: theme.link }, 'small')}</div>` : '';
 
   const footer = theme.emailFooterImageUrl
     ? `\n<tr><td style="padding:16px 0 0 0;"><img src="${escapeHtml(theme.emailFooterImageUrl)}" alt="${escapeHtml(eventName)}" width="560" style="display:block;width:100%;max-width:560px;height:auto;border:0;border-radius:${theme.radius};" /></td></tr>`
     : '';
 
+  // Nothing in the e-mail may be wider than the screen (issue 382): the tables have a fixed layout, so a cell is never wider than the table, and every cell that holds words may break a long word
+  // (EMAIL_WRAP_STYLE); the viewport line makes a phone use its own width.
   return `<!doctype html>
-<html><body style="margin:0;padding:0;background:${theme.background};">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.background}" style="background:${theme.background};">
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;padding:0;background:${theme.background};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.background}" style="background:${theme.background};table-layout:fixed;">
 <tr><td align="center" style="padding:24px 12px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
-<tr><td style="padding:8px 0 20px 0;font-family:${font};text-align:center;color:${theme.heading};">${mark}<div style="margin-top:12px;font-size:20px;font-weight:700;color:${theme.heading};">${escapeHtml(eventName)}</div></td></tr>
-<tr><td bgcolor="${theme.cardBackground}" style="background:${theme.cardBackground};border:1px solid ${theme.cardBorder};border-radius:${theme.radius};padding:24px;font-family:${font};font-size:16px;line-height:1.55;color:${theme.cardText};">${paragraphs}${cta}${legalPart}</td></tr>${footer}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;table-layout:fixed;">
+<tr><td style="padding:8px 0 20px 0;font-family:${font};text-align:center;color:${theme.heading};${EMAIL_WRAP_STYLE}">${mark}<div style="margin-top:12px;font-size:20px;font-weight:700;color:${theme.heading};${EMAIL_WRAP_STYLE}">${escapeHtml(eventName)}</div></td></tr>
+<tr><td bgcolor="${theme.cardBackground}" style="background:${theme.cardBackground};border:1px solid ${theme.cardBorder};border-radius:${theme.radius};padding:24px;font-family:${font};font-size:16px;line-height:1.55;color:${theme.cardText};${EMAIL_WRAP_STYLE}">${paragraphs}${cta}${legalPart}</td></tr>${footer}
 </table>
 </td></tr>
 </table>
