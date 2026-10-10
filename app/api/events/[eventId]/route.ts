@@ -34,7 +34,7 @@ import { captureFrameOf } from '@/lib/frame/capture';
 import { normalizePhotoVettingInput, photoVettingRequired } from '@/lib/events/photo-vetting';
 import { applyEventBrandColours } from '@/lib/events/brand-colours';
 import { parseMessageArea } from '@/lib/frame/message-area';
-import { withDefaultJourneyPages } from '@/lib/events/default-pages';
+import { sanitizeDefaultPageOrders, withDefaultJourneyPages } from '@/lib/events/default-pages';
 import { loadEventTexts } from '@/lib/i18n/overrides';
 import { storedPartnerPictures, withPartnerPictures } from '@/lib/events/partner-pictures';
 import { sanitizeCheckboxes } from '@/lib/events/consent';
@@ -201,12 +201,12 @@ export const GET = withErrorHandler(async (
     event: shown({
       ...publicEvent,
       theme: await loadEventTheme(db, event as unknown as Record<string, unknown>),
-      ...(forGuest ? { customPages: withPartnerPictures(withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen, texts }), partnerPictures) } : {}),
+      ...(forGuest ? { customPages: withPartnerPictures(withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, defaultOrders: event.defaultPageOrders as Record<string, number> | undefined }), partnerPictures) } : {}),
       photoVettingRequired: vettingRequired,
       // Whether the event sends the welcome e-mail (epic 463): the capture page tells the server who registered only when it does.
       welcomeEmailEnabled: normalizeSubmissionEmailPolicy(event.notifications, language).types.welcome.enabled,
       // What decides which default pages this event gets (lib/events/journey.ts): the page editor builds the journey from it.
-      journeyContext: { vettingRequired, consentDefault, language, hasWelcomeScreen, texts },
+      journeyContext: { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, ...(event.defaultPageOrders ? { defaultOrders: event.defaultPageOrders as Record<string, number> } : {}) },
       _id: event._id.toString(),
       generatedFrame: captureFrameOf({ frames: event.frames, frameDesign: frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'] }),
     })
@@ -282,6 +282,7 @@ export const PATCH = withErrorHandler(async (
     uiLanguage,
     tourEnabled,
     acceptanceOnWhoAreYou,
+    defaultPageOrders,
   } = body;
 
   const tryOnSetupId =
@@ -414,6 +415,12 @@ export const PATCH = withErrorHandler(async (
   if (acceptanceOnWhoAreYou !== undefined) {
     if (typeof acceptanceOnWhoAreYou !== 'boolean') throw apiBadRequest('acceptanceOnWhoAreYou must be true or false');
     updateFields.acceptanceOnWhoAreYou = acceptanceOnWhoAreYou;
+  }
+  if (defaultPageOrders !== undefined) {
+    // Where the editor put the default pages (issue 535): only the known default pages with finite numbers; an empty object puts them back in their default places.
+    const orders = sanitizeDefaultPageOrders(defaultPageOrders);
+    if (orders === null) throw apiBadRequest('defaultPageOrders must be an object of page ids and numbers');
+    updateFields.defaultPageOrders = orders;
   }
   // The language of the user interface (camera#352): a language we have, or empty for the default (English).
   if (uiLanguage !== undefined) {

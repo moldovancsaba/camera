@@ -21,6 +21,8 @@ export interface JourneyContext {
   hasWelcomeScreen?: boolean;
   /** The wordings an admin wrote for the partner or the event in this language (lib/i18n/overrides.ts): the default pages use them instead of the code dictionary. */
   texts?: TextOverrides | null;
+  /** Where the editor moved the default pages (`Event.defaultPageOrders`, issue 535); missing: their default places. */
+  defaultOrders?: Record<string, number> | null;
 }
 
 export type JourneyStepId = 'waiting' | 'share' | 'emails' | 'result';
@@ -63,7 +65,7 @@ function stepsAfterPhoto(context: JourneyContext): JourneyRow[] {
  * An event with no take-photo page has everything before the photo, as the user's page treats it.
  */
 export function effectiveJourney(storedPages: readonly CustomPage[] | null | undefined, context: JourneyContext, now?: string): JourneyRow[] {
-  const pages = withDefaultJourneyPages(storedPages, { vettingRequired: context.vettingRequired, consentDefault: context.consentDefault, now, language: context.language, hasWelcomeScreen: context.hasWelcomeScreen, texts: context.texts });
+  const pages = withDefaultJourneyPages(storedPages, { vettingRequired: context.vettingRequired, consentDefault: context.consentDefault, now, language: context.language, hasWelcomeScreen: context.hasWelcomeScreen, texts: context.texts, defaultOrders: context.defaultOrders });
   const rows: JourneyRow[] = [...pages]
     .sort((a, b) => a.order - b.order)
     .map((page) => (isDefaultPage(page) ? { kind: 'default', page, reason: REASON[page.pageId] } : { kind: 'own', page }));
@@ -79,4 +81,58 @@ export function effectiveJourney(storedPages: readonly CustomPage[] | null | und
  */
 export function customiseDefault(page: CustomPage, makeId: () => string = generateId, now: string = new Date().toISOString()): CustomPage {
   return { ...page, pageId: makeId(), config: structuredClone(page.config), createdAt: now, updatedAt: now };
+}
+
+type PageRow = Exclude<JourneyRow, { kind: 'step' }>;
+const isPageRow = (row: JourneyRow): row is PageRow => row.kind !== 'step';
+const isTakePhotoRow = (row: PageRow) => row.kind === 'own' && row.page.pageType === CustomPageType.TAKE_PHOTO;
+
+/**
+ * The page row that the row at `index` swaps places with when it moves one place `up` (-1) or `down` (+1), or null when it cannot move. The built-in steps are not pages and stay where they are,
+ * so the neighbour is the next page row in that direction. A default page never swaps with the take-photo page: the consent and the login of the default journey come before the photo (a
+ * photo that is checked needs an identity first, camera#264), so they stay on that side of it; every own page moves anywhere, as before.
+ */
+export function moveTarget(rows: readonly JourneyRow[], index: number, direction: -1 | 1): number | null {
+  const row = rows[index];
+  if (!row || !isPageRow(row)) return null;
+  for (let j = index + direction; j >= 0 && j < rows.length; j += direction) {
+    const other = rows[j];
+    if (!isPageRow(other)) continue;
+    if ((row.kind === 'default' && isTakePhotoRow(other)) || (isTakePhotoRow(row) && other.kind === 'default')) return null;
+    return j;
+  }
+  return null;
+}
+
+/**
+ * The journey after the row at `index` moved one place (issue 535): every page row, own and default, gets its place in the list as its `order`. The own pages are returned as the pages to save,
+ * the default pages as `defaultOrders` (`Event.defaultPageOrders`): a default page stays a default, only its place is saved. All pages are numbered together so the editor and the user keep seeing
+ * one order, whether a default page was moved or an own page moved past one. Null when the row cannot move (`moveTarget`).
+ */
+export function moveJourneyRow(rows: readonly JourneyRow[], index: number, direction: -1 | 1): { pages: CustomPage[]; defaultOrders: Record<string, number> } | null {
+  const target = moveTarget(rows, index, direction);
+  if (target === null) return null;
+  const sequence = rows.filter(isPageRow);
+  const from = sequence.indexOf(rows[index] as PageRow);
+  const to = sequence.indexOf(rows[target] as PageRow);
+  [sequence[from], sequence[to]] = [sequence[to], sequence[from]];
+  return numberPages(sequence);
+}
+
+function numberPages(sequence: readonly PageRow[]): { pages: CustomPage[]; defaultOrders: Record<string, number> } {
+  const pages: CustomPage[] = [];
+  const defaultOrders: Record<string, number> = {};
+  sequence.forEach((row, order) => {
+    if (row.kind === 'default') defaultOrders[row.page.pageId] = order;
+    else pages.push({ ...row.page, order });
+  });
+  return { pages, defaultOrders };
+}
+
+/**
+ * The journey as it is, numbered again from 0 (every page row, own and default, by its place in the list). Used when a page is deleted from an event whose default pages have saved places, so
+ * the own pages and the default pages keep one order.
+ */
+export function renumberJourney(rows: readonly JourneyRow[]): { pages: CustomPage[]; defaultOrders: Record<string, number> } {
+  return numberPages(rows.filter(isPageRow));
 }

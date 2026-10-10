@@ -454,3 +454,24 @@ test('GET for the editor (not a guest) still sends every picture, gone or not, s
   assert.equal(editor.logoUrl, GONE_LOGO);
   assert.equal(editor.frames.length, 2);
 });
+
+test('PATCH: the places of the default pages (issue 535) are only the known default pages with finite numbers, refused otherwise, and an empty object puts them back', async (t) => {
+  const h = mockDeps(t, { event: {}, session: ADMIN });
+  const { PATCH } = await importRouteModule('patch-default-orders');
+  assert.equal((await PATCH(patchRequest({ defaultPageOrders: { 'default-consent': 2, 'default-identity': 1 } }), params)).status, 200);
+  assert.deepEqual(h.updates[0].defaultPageOrders, { 'default-consent': 2, 'default-identity': 1 });
+  assert.equal((await PATCH(patchRequest({ defaultPageOrders: {} }), params)).status, 200);
+  assert.deepEqual(h.updates[1].defaultPageOrders, {});
+  for (const bad of ['x', null, [], { other: 1 }, { 'default-consent': 'a' }, { 'default-consent': 1e9 }]) assert.equal((await PATCH(patchRequest({ defaultPageOrders: bad }), params)).status, 400, JSON.stringify(bad));
+  assert.equal(h.updates.length, 2, 'a refused value writes nothing');
+});
+
+test('GET: the default pages are where the editor put them, for the user and for the page editor (issue 535)', async (t) => {
+  const stored = { customPages: [{ pageId: 'w', pageType: 'welcome', order: -1, isActive: true, config: { title: 'W', description: '', buttonText: 'Start' } }, { pageId: 'p', pageType: 'take-photo', order: 0, isActive: true, config: { title: 'P', description: '', buttonText: '' } }], journeyDefaults: true };
+  mockDeps(t, { event: { ...stored, photoVetting: STORED_VETTING, defaultPageOrders: { 'default-identity': 1, 'default-consent': 2 } } });
+  const { GET } = await importRouteModule('get-default-orders');
+  const body = (await (await GET(getRequest('?audience=guest'), params)).json()) as { data: { event: { customPages: Array<{ pageId: string; order: number }>; journeyContext: { defaultOrders?: Record<string, number> } } } };
+  const ids = [...body.data.event.customPages].sort((a, b) => a.order - b.order).map((page) => page.pageId);
+  assert.deepEqual(ids.filter((id) => id.startsWith('default-')), ['default-identity', 'default-consent'].filter((id) => ids.includes(id)), 'the login comes before the consent, as saved');
+  assert.deepEqual(body.data.event.journeyContext.defaultOrders, { 'default-identity': 1, 'default-consent': 2 });
+});
