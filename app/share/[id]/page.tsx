@@ -275,10 +275,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         robots: { index: false, follow: false },
       };
     }
-    // The page is not found (Next's own page, which does not know the event), so its title stays English.
+    // The page is not found (a page that does not know the event), so its title is in both languages (issue 352).
     if (!submission || state !== 'visible') {
       return {
-        title: translate(DEFAULT_UI_LANGUAGE, 'sharePage.meta.notFound'),
+        title: `${translate(DEFAULT_UI_LANGUAGE, 'sharePage.meta.notFound')} / ${translate('hu', 'sharePage.meta.notFound')}`,
         robots: { index: false, follow: false },
       };
     }

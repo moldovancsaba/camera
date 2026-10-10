@@ -259,5 +259,5 @@ test('the tab title of an English waiting photo, and of a photo that is not foun
   const waiting = await page.generateMetadata(params(TOKEN));
   assert.equal(waiting.title, 'Your photo');
   assert.equal(waiting.description, 'Capture and share photos at your events with branded frames and flows.', 'the description every page had from the root layout');
-  assert.equal((await page.generateMetadata(params('nope'))).title, 'Photo Not Found');
+  assert.equal((await page.generateMetadata(params('nope'))).title, 'Photo Not Found / A fotó nem található');
 });

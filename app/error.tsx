@@ -6,8 +6,10 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { translate, type UiLanguage } from '@/lib/i18n';
+import { browserLanguage } from '@/lib/i18n/browser';
 import { Button, Card, Center, Stack, Text } from '@/components/gds/PublicPrimitives';
 
 export default function Error({
@@ -17,6 +19,11 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // This page sits above the event and does not know its language: the browser's own decides (Hungarian for a Hungarian browser, else English; issue 352).
+  const [language, setLanguage] = useState<UiLanguage>('en');
+  useEffect(() => {
+    setLanguage(browserLanguage(typeof navigator !== 'undefined' ? navigator.languages ?? [navigator.language] : []));
+  }, []);
   useEffect(() => {
     console.error('Application error:', error);
     // Beacon the crash to the server so it lands in structured logs / alerting
@@ -50,24 +57,24 @@ export default function Error({
         <Stack gap="md" align="center">
         <Text fz="3rem" aria-hidden>⚠️</Text>
         <Text component="h1" size="xl" fw={800} ta="center">
-          Oops! Something went wrong
+          {translate(language, 'errorPage.title')}
         </Text>
         <Text c="dimmed" ta="center">
-          {error.message || 'An unexpected error occurred. This might be due to a temporary connection issue.'}
+          {error.message || translate(language, 'errorPage.fallback')}
         </Text>
 
         <Stack gap="sm" w="100%">
           <Button type="button" radius="xl" onClick={reset}>
-            Try again
+            {translate(language, 'errorPage.tryAgain')}
           </Button>
           <Button component={Link} href="/" variant="light" radius="xl">
-            Go home
+            {translate(language, 'errorPage.goHome')}
           </Button>
         </Stack>
 
         {error.digest ? (
           <Text size="sm" c="dimmed">
-            Error ID: {error.digest}
+            {translate(language, 'errorPage.errorId', { id: error.digest })}
           </Text>
         ) : null}
         </Stack>

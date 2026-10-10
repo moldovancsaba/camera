@@ -26,6 +26,6 @@ Event editor, "Customization", "User interface language"; `PATCH /api/events/<id
 
 ## Not yet (the next steps of #352)
 
-- The global error page `app/error.tsx` and `app/capture/loading.tsx`, which sit above the event and do not know its language; the old no-event `/capture` page; the page of a share link that is not found (Next's default 404 page, and its tab title "Photo Not Found", which do not know the event).
+- Done for the pages that sit above the event and do not know its language (owner 2026-10-10, answer 310): the global error page follows the browser's language (Hungarian for a Hungarian browser, `lib/i18n/browser.ts`, texts `errorPage.*`), the capture loading page and the not-found page of a share link (and its tab title) say it in both languages. Still not translated: the old no-event `/capture` page, which no event uses.
 - Pages outside the photo journey: the Greatest Hits gallery, the landing pages and the slideshow screens. The JSON error answers of `/api/share/<id>/download`. The admin email preview API (`/api/admin/events/<id>/email-preview`, no screen uses it) still renders the English templates. The sender name of the emails ("The Selfie", an event setting) is the same in every language.
 - The partner-level default for its events and "same as the partner" on the event (#353, items 104 to 107 of the plan).
