@@ -19,7 +19,7 @@
  * Custom Page Flows:
  * - Events can have custom onboarding and thank you pages
  * - Pages are drag-and-drop reorderable including [Take Photo] step
- * - Page types: 'who-are-you' (data collection), 'accept' (consent), 'cta' (call to action), 'take-photo' (capture), 'restart' (restart full journey)
+ * - Page types: 'who-are-you' (data collection), 'accept' (consent), 'cta' (call to action), 'take-photo' (capture), 'submit' (where the photo is saved when it is not part of the take-photo page), 'restart' (restart full journey)
  * - Collected data (name, email, consents) stored with each submission
  */
 
@@ -214,6 +214,7 @@ export enum CustomPageType {
   ACCEPT = 'accept',            // Consent/terms page
   CTA = 'cta',                  // Call to action page
   TAKE_PHOTO = 'take-photo',    // Photo capture step (for ordering only)
+  SUBMIT = 'submit',            // Where the photo is saved when the take-photo page's submit is not part of it: pages before it run between taking and saving (issue 535)
   RESTART = 'restart',          // Restart the full experience from the beginning
   WELCOME = 'welcome',          // Step 0: full-screen picture and a Start button
 }

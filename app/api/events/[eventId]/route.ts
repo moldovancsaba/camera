@@ -479,13 +479,13 @@ export const PATCH = withErrorHandler(async (
         throw apiBadRequest(`Invalid pageType: ${page.pageType}. Must be one of: ${validTypes.join(', ')}`);
       }
 
-      // Non–take-photo: title + primary button required; description is optional in the admin UI
-      if (page.pageType !== 'take-photo') {
+      // Non–take-photo: title + primary button required; description is optional in the admin UI. The submit page (issue 535) is a marker like the take-photo page: it shows nothing of its own.
+      if (page.pageType !== 'take-photo' && page.pageType !== 'submit') {
         validateRequiredFields(page.config, ['title', 'buttonText']);
       } else {
         // take-photo only needs config object to exist
         if (!page.config || typeof page.config !== 'object') {
-          throw apiBadRequest('take-photo pages must have config object');
+          throw apiBadRequest(`${page.pageType} pages must have config object`);
         }
       }
 

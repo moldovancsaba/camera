@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import type { CustomPage } from '@/lib/db/schemas';
 import { DEFAULT_CONSENT_PAGE_ID, DEFAULT_WELCOME_PAGE_ID, sanitizeDefaultPageOrders, withDefaultJourneyPages } from './default-pages';
 import { DEFAULT_IDENTITY_PAGE_ID } from './identity-page';
-import { customiseDefault, effectiveJourney, moveJourneyRow, moveTarget, type JourneyContext, type JourneyRow } from './journey';
+import { customiseDefault, effectiveJourney, hasSeparateSubmit, moveJourneyRow, moveTarget, setSubmitSeparate, type JourneyContext, type JourneyRow } from './journey';
 
 const page = (pageType: string, order: number, isActive = true, pageId = `${pageType}-${order}`): CustomPage =>
   ({ pageId, pageType, order, isActive, config: { title: pageType, description: '', buttonText: 'Next' }, createdAt: 'x', updatedAt: 'x' }) as unknown as CustomPage;
@@ -183,4 +183,57 @@ test('only the known default pages, with finite numbers, can be saved as places'
   assert.deepEqual(sanitizeDefaultPageOrders({ [DEFAULT_CONSENT_PAGE_ID]: 2, [DEFAULT_IDENTITY_PAGE_ID]: 1 }), { [DEFAULT_CONSENT_PAGE_ID]: 2, [DEFAULT_IDENTITY_PAGE_ID]: 1 });
   assert.deepEqual(sanitizeDefaultPageOrders({}), {}, 'an empty object clears the places');
   for (const bad of [null, undefined, 'x', [], { other: 1 }, { [DEFAULT_CONSENT_PAGE_ID]: 'a' }, { [DEFAULT_CONSENT_PAGE_ID]: Infinity }, { [DEFAULT_CONSENT_PAGE_ID]: 1e9 }]) assert.equal(sanitizeDefaultPageOrders(bad), null);
+});
+
+const WITH_SUBMIT = [page('welcome', -1), page('take-photo', 0), page('who-are-you', 1, true, 'login-after'), page('submit', 2), page('cta', 3)];
+
+test('with a Submit page the pages between the photo and the Submit page run before the save, and the built-in steps follow the Submit page (issue 535)', () => {
+  const rows = rowsOf(WITH_SUBMIT);
+  assert.deepEqual(sequence(rows).filter((id) => !id.startsWith('default:')), ['own:welcome--1', 'own:take-photo-0', 'own:login-after', 'own:submit-2', 'step:waiting', 'step:emails', 'step:result', 'own:cta-3']);
+  const waiting = rows.find((row) => row.kind === 'step' && row.id === 'waiting');
+  assert.match(waiting && waiting.kind === 'step' ? waiting.description : '', /the Submit step saves the photo/);
+  const without = effectiveJourney([page('welcome', -1), page('take-photo', 0), page('cta', 1)], ALL, NOW).find((row) => row.kind === 'step' && row.id === 'waiting');
+  assert.match(without && without.kind === 'step' ? without.description : '', /Continue saves the photo/, 'without it the text is the one it was');
+});
+
+test('a login between the photo and the Submit page counts as before the save, so no default login is added; without it the default is added as before', () => {
+  const withLogin = withDefaultJourneyPages(WITH_SUBMIT, { vettingRequired: true, consentDefault: false, language: 'en', now: NOW }).map((p) => p.pageId);
+  assert.equal(withLogin.includes(DEFAULT_IDENTITY_PAGE_ID), false);
+  const noLogin = withDefaultJourneyPages([page('take-photo', 0), page('submit', 1)], { vettingRequired: true, consentDefault: false, language: 'en', now: NOW }).map((p) => p.pageId);
+  assert.equal(noLogin.includes(DEFAULT_IDENTITY_PAGE_ID), true, 'a Submit page alone does not identify anybody');
+  const consentBetween = withDefaultJourneyPages([page('take-photo', 0), page('accept', 1), page('submit', 2)], { vettingRequired: false, consentDefault: true, language: 'en', now: NOW }).map((p) => p.pageId);
+  assert.equal(consentBetween.includes(DEFAULT_CONSENT_PAGE_ID), false, 'a consent page between the two counts');
+});
+
+test('the Submit page stays after the take-photo page, and a default page may move between them but never behind the Submit page (issue 535)', () => {
+  const rows = rowsOf([page('welcome', -1), page('take-photo', 0), page('submit', 1)]);
+  assert.equal(moveTarget(rows, at(rows, 'submit-1'), -1), null, 'the Submit page cannot go above the take-photo page');
+  assert.equal(moveTarget(rows, at(rows, 'take-photo-0'), 1), null, 'and the take-photo page cannot go below it');
+  assert.equal(moveTarget(rows, at(rows, DEFAULT_IDENTITY_PAGE_ID), 1), at(rows, 'take-photo-0'), 'with a Submit page the login may move behind the photo');
+  const moved = moveJourneyRow(rows, at(rows, DEFAULT_IDENTITY_PAGE_ID), 1)!;
+  const after = effectiveJourney(moved.pages, { ...ALL, defaultOrders: moved.defaultOrders }, NOW);
+  const seq = sequence(after).filter((id) => !id.startsWith('step:'));
+  assert.deepEqual(seq.slice(-3), ['own:take-photo-0', `default:${DEFAULT_IDENTITY_PAGE_ID}`, 'own:submit-1']);
+  const next = rowsOf(moved.pages, moved.defaultOrders);
+  assert.equal(moveTarget(next, at(next, DEFAULT_IDENTITY_PAGE_ID), 1), null, 'but never behind the Submit page');
+  // without a Submit page the rule of step 1 holds
+  const plain = rowsOf(START);
+  assert.equal(moveTarget(plain, at(plain, DEFAULT_IDENTITY_PAGE_ID), 1), null);
+});
+
+test('unticking "Submit is part of this page" puts a Submit page right after the take-photo page; ticking it takes it out again (issue 535)', () => {
+  const rows = rowsOf(START);
+  assert.equal(hasSeparateSubmit(rows), false);
+  const separate = setSubmitSeparate(rows, true, () => 'submit-new', NOW);
+  const journey = effectiveJourney(separate.pages, { ...ALL, defaultOrders: separate.defaultOrders }, NOW);
+  assert.deepEqual(sequence(journey).filter((id) => !id.startsWith('step:')), ['own:welcome--1', `default:${DEFAULT_CONSENT_PAGE_ID}`, `default:${DEFAULT_IDENTITY_PAGE_ID}`, 'own:take-photo-0', 'own:submit-new', 'own:cta-1']);
+  assert.equal(hasSeparateSubmit(journey), true);
+  const submit = separate.pages.find((p) => p.pageId === 'submit-new')!;
+  assert.deepEqual([submit.pageType, submit.isActive, submit.config.title], ['submit', true, '[Submit]']);
+  const back = setSubmitSeparate(journey, false);
+  assert.equal(back.pages.some((p) => p.pageType === 'submit'), false);
+  const again = effectiveJourney(back.pages, { ...ALL, defaultOrders: back.defaultOrders }, NOW);
+  assert.deepEqual(sequence(again), sequence(rows), 'ticked again: the journey is the one it was');
+  // without a Submit page twice
+  assert.equal(setSubmitSeparate(rows, true, () => 'a', NOW).pages.filter((p) => p.pageType === 'submit').length, 1);
 });
