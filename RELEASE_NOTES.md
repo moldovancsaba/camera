@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — vetting marking is on everywhere and required; scarf instead of other merchandise (issue 542; owner answers 262, 263, 264)
+
+- **Owner:** "262 that was a mistake, use cap, jersey, scarves and flag; 263 something needed, it can be a single point if that is much easier; 264 everywhere."
+- **Changed:** the fourth merchandise button is the 🧣 **scarf** (the list is cap, scarf, jersey, flag); marking people is **on for every event** (`markPeopleOn`: on unless the event's switch was turned off, nothing is written to any event); and it is **required in the big view**: the way on to Approve or Reject is **Next** with at least one person marked, or **Nobody in this photo** (saves an empty list). The switch text on the Vetting tab says so.
+- **The single point:** the big view (**Review one by one**). The Approve and Reject buttons on the queue's cards still decide without marking; those photos carry no people (nobody looked), and the analytics count only the photos that were looked at.
+- **Effect on the live event:** the MTK x Vasas event has vetting on, so its reviewers now see marking in the big view; nothing else changes, and the queue grid is as it was.
+- **Verified:** type-check; lint; unit tests (the merchandise table with the scarf, the counts, `markPeopleOn` for missing, true, undefined and false); the real view in a browser at desktop and phone size (32 of 32: no Next while nobody is marked, Nobody in this photo saves an empty list, Next after one person, the 16 buttons, two people, Approve, a failed decision, marking off); the full CI chain.
+- **Not done:** the same requirement on the grid cards (answer 263 allowed a single point), a keyboard way to draw.
+
 ## Unreleased — vetting: mark the people in each photo, saved for the analytics (issue 542; owner request 2026-10-10, six sketches)
 
 - **Owner:** "at the vetting I want a vetting view where we see the image in big and the vetting person draws a rectangle around the person, then identifies with these 16 emojis (male or female, kid, young, adult, old, then the emotion, and if they have any merchandise) ... push clicker and draw, when finished click done and draw the next, until they identified what they can and go to the next stage to approve or decline ... I need to use these as information attached to the image and use for analytics."

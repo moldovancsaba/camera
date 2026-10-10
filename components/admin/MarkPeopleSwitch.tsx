@@ -40,8 +40,8 @@ export default function MarkPeopleSwitch({ eventId, on, canChange, waiting }: { 
           </strong>
           <p style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.75rem', margin: 0 }}>
             {on
-              ? 'In the big view the reviewer marks each person with a rectangle and 16 buttons (who, emotion, merchandise) before approving or rejecting. It is saved with the photo for the analytics.'
-              : 'The big view is only the photo and the decision. Switch it on to mark the people in each photo for the analytics.'}
+              ? 'In Review one by one the reviewer marks each person with a rectangle and 16 buttons (who, emotion, merchandise), or says Nobody in this photo, before approving or rejecting. It is saved with the photo for the analytics. The Approve buttons on the cards below decide without marking: use Review one by one.'
+              : 'The big view is only the photo and the decision. Switch marking on to mark the people in each photo for the analytics.'}
           </p>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
