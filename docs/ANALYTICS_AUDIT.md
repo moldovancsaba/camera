@@ -2,6 +2,8 @@
 
 Audit of 2026-10-09 (issue 521; owner request 2026-10-09: "The analytics menu is fully not ok. It says 'Try-On Analytics'. The analytics has to collect all user interaction we collect or can collect! When, where, how and what they do ... how many images taken, shown on slideshow, vetting average time, who managed and how many images accepted, declined, why declined ... check what works now, find how the actual analytics works, make an audit what type of activities we have and where and how can we add to our system to know everything about the users and our service and the habits to have the largest KYC possible. We need to feed messmass with these data").
 
+**Status 2026-10-10 (owner answers 241 to 246: yes to all, see section 9).** Step D of section 8 is done for the data that already exists: the Analytics menu is rebuilt (event tab and Operations hub) with photos, vetting, people, users, screens, links, e-mails and consents, and a CSV; the defects (a) to (f) of section 2 are gone from it (the old report is its Try-on tab). What it shows and where each figure comes from is in [ANALYTICS.md](ANALYTICS.md); what cannot be computed yet is listed there and on the Overview (it waits for step B and C, the journey recording after the match, for the fixed decline reasons of step A, and for the change of the photo's address).
+
 How it was made: two read-only sweeps of the camera and messmass code, whose findings were checked against the code where this document relies on them; and read-only counts on the production database on 2026-10-09 (nothing was written). What is **measured** is marked as such; what comes from the code sweep is marked **(code)**; what is a proposal is in sections 6 to 9.
 
 ## 1. The short answer
@@ -152,7 +154,7 @@ Nothing in the live capture path changes before the match on 16 October.
 | A | The fixed reason list and the stored time to decision in vetting (a small change in the vetting UI and `review.ts`) | low; touches vetting, so after the match |
 | B | The interaction record: the route, the allow-list, the rollup and the raw rows with their TTL; the client function; no page emits anything yet | none |
 | C | Emit the events: the journey pages, the camera, the share page, the screens | medium: it touches the capture page; behind a switch per event, off by default |
-| D | The Analytics menu, rebuilt (read-only on top of B and the existing data; the vetting and photo tabs can ship first, they need only existing data) | none |
+| D | The Analytics menu, rebuilt (read-only on top of B and the existing data; the vetting and photo tabs can ship first, they need only existing data) | none. **Done for the existing data (issue 521, phase 1); the Journey tab and the Screens by hour wait for B and C** |
 | E | The messmass feed: the route in messmass, the variables, the totals builder and sync in camera | none for guests; messmass is production: fakes only until the owner's first real event |
 | F | The privacy side: the notice text, the retention (the IP and the raw user-agent stored on every photo today), the erase flow covering the new records | the owner's decisions |
 

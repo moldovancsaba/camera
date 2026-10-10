@@ -82,7 +82,7 @@ export default async function AdminTryOnAppPage() {
               {
                 href: '/admin/tryon/analytics',
                 title: 'Analytics',
-                description: 'Review approved, rejected, service, greatest, preset, garment, and event performance.',
+                description: 'Photos, vetting, users, screens, e-mails and consents of every event. The try-on report is a tab.',
                 iconKey: 'world' as AdminIconKey,
               },
               {

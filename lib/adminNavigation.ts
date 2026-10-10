@@ -271,8 +271,8 @@ const everyone = () => true;
 const globalAdminOnly = (access: AdminNavigationAccess) => access.isGlobalAdmin;
 
 /**
- * The event menu: every page of an event, so each editor is one click away. Queue and Analytics are for global admins (a partner user is sent away from
- * them). The slideshow, landing page and layout editors are reached from their lists on the overview, so those items point at the section there.
+ * The event menu: every page of an event, so each editor is one click away. Queue is for global admins (a partner user is sent away from it); Analytics (issue 521) is for the event's
+ * managers like Vetting, and its Try-on tab for global admins. The slideshow, landing page and layout editors are reached from their lists on the overview, so those items point at the section there.
  */
 export const EVENT_CONTEXT_MENU: AdminContextItem[] = [
   { label: 'Overview', description: 'The event at a glance.', iconKey: 'layoutDashboard', path: '', isVisible: everyone },
@@ -280,7 +280,7 @@ export const EVENT_CONTEXT_MENU: AdminContextItem[] = [
   { label: 'Vetting', description: 'Photos waiting for approval and try-on results.', iconKey: 'userShield', path: '/vetting', isVisible: everyone },
   { label: 'Gallery', description: 'The photos of the event: upload, select several at once, remove.', iconKey: 'photoScan', path: '/gallery', isVisible: everyone },
   { label: 'Queue', description: 'The try-on queue of the event.', iconKey: 'sparkles', path: '/queue', isVisible: globalAdminOnly },
-  { label: 'Analytics', description: 'Try-on analytics of the event.', iconKey: 'brandDatabricks', path: '/analytics', isVisible: globalAdminOnly },
+  { label: 'Analytics', description: 'Photos, vetting, users, screens, e-mails and consents of the event.', iconKey: 'brandDatabricks', path: '/analytics', isVisible: everyone },
   { label: 'Logos', description: 'The logo of the event and of each place it shows.', iconKey: 'photo', path: '/logos', isVisible: everyone },
   { label: 'Frames', description: 'The frames of the event.', iconKey: 'frame', path: '/frames', isVisible: everyone },
   { label: 'Images', description: 'The pictures the event can use.', iconKey: 'photo', path: '/images', isVisible: everyone },

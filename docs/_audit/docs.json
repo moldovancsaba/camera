@@ -1,14 +1,14 @@
 {
  "_meta": {
-  "generated": "2026-10-10T18:54:45+00:00",
+  "generated": "2026-10-10T19:14:59+00:00",
   "repo": "camera",
-  "head": "db3424b",
+  "head": "37fbc17",
   "counts": {
-   "endpoints": 161,
+   "endpoints": 162,
    "collections": 8,
    "env": 61,
    "outbound-hosts": 31,
-   "docs": 69
+   "docs": 70
   }
  },
  "items": [
@@ -71,6 +71,10 @@
   {
    "file": "business_requirements.md",
    "title": "Seyu 2.0 \u2013 SaaS version \u2014 Business & vendor requirements"
+  },
+  {
+   "file": "docs/ANALYTICS.md",
+   "title": "Analytics (issue 521, phase 1)"
   },
   {
    "file": "docs/ANALYTICS_AUDIT.md",
