@@ -30,6 +30,7 @@ import { normalizeEventSharePageSettings } from '@/lib/events/share-page-setting
 import { isUiLanguage, UI_LANGUAGES } from '@/lib/i18n';
 import { effectiveCameraMode, parseCameraMode } from '@/lib/camera/mode';
 import { effectiveGalleryConsent, parseGalleryConsent } from '@/lib/events/gallery-consent';
+import { chosenDocuments, effectiveCheckboxes, parseCheckboxSettings } from '@/lib/events/checkbox-settings';
 import { sanitizeNotificationSettings } from '@/lib/email/notification-settings';
 import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
 import { captureFrameOf } from '@/lib/frame/capture';
@@ -39,7 +40,7 @@ import { parseMessageArea } from '@/lib/frame/message-area';
 import { sanitizeDefaultPageOrders, withDefaultJourneyPages } from '@/lib/events/default-pages';
 import { loadEventTexts } from '@/lib/i18n/overrides';
 import { storedPartnerPictures, withPartnerPictures } from '@/lib/events/partner-pictures';
-import { sanitizeCheckboxes } from '@/lib/events/consent';
+import { sanitizeCheckboxes, withShownCheckboxes } from '@/lib/events/consent';
 import { eventGetsDefaults, getDefaultsRollout } from '@/lib/admin/defaults-rollout';
 import { loadEventTheme } from '@/lib/theme/load';
 import { brokenAddresses, withoutBroken } from '@/lib/media/pictures';
@@ -194,6 +195,8 @@ export const GET = withErrorHandler(async (
   const { overrides: texts, language, partner } = await loadEventTexts(db, event as unknown as Record<string, unknown>);
   // A picture field a page left empty shows the partner's default picture, at read time and never stored (lib/events/partner-pictures.ts, issue 368).
   const partnerPictures = storedPartnerPictures(partner?.pictures);
+  // What the event gets for every kind of checkbox (issue 558, lib/events/checkbox-settings.ts): its own choice, else its partner's, else the standard (what the journey always did).
+  const checkboxes = effectiveCheckboxes(event as { consentSettings?: unknown }, partner);
 
   // Return event with serialized _id
   // customPages is included automatically
@@ -203,16 +206,21 @@ export const GET = withErrorHandler(async (
     event: shown({
       ...publicEvent,
       theme: await loadEventTheme(db, event as unknown as Record<string, unknown>),
-      ...(forGuest ? { customPages: withPartnerPictures(withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, defaultOrders: event.defaultPageOrders as Record<string, number> | undefined }), partnerPictures) } : {}),
+      // A guest gets the consent checkboxes that are switched on only (issue 558): a page whose checkboxes are all off is not a step, and the acceptance on the Who-are-you page is the effective value (event, partner, standard).
+      ...(forGuest ? { customPages: withShownCheckboxes(withPartnerPictures(withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, defaultOrders: event.defaultPageOrders as Record<string, number> | undefined, documents: chosenDocuments(checkboxes) }), partnerPictures)), acceptanceOnWhoAreYou: checkboxes.acceptance.shown } : {}),
       photoVettingRequired: vettingRequired,
       // How the photo is taken (issue 547): the event's own choice, else its partner's, else the standard. `cameraMode` stays the stored choice, which the editor shows.
       effectiveCameraMode: effectiveCameraMode(event as { cameraMode?: unknown }, partner),
       // Whether the capture page asks for the permission to show the photo in the public gallery (issue 554): the event's own choice, else its partner's, else not. `galleryConsent` stays the stored choice, which the editors show.
       effectiveGalleryConsent: effectiveGalleryConsent(event as { galleryConsent?: unknown }, partner),
+      // Whether the permission to show the photo in the public gallery, and the acceptance sentence on the Who-are-you page, must be ticked (issue 558); the editors also read the effective value of every kind, for the event and for its partner alone ("Same as the partner").
+      effectiveGalleryRequired: checkboxes.gallery.required,
+      effectiveAcceptanceRequired: checkboxes.acceptance.required,
+      ...(forGuest ? {} : { effectiveCheckboxes: checkboxes, partnerCheckboxes: effectiveCheckboxes(null, partner) }),
       // Whether the event sends the welcome e-mail (epic 463): the capture page tells the server who registered only when it does.
       welcomeEmailEnabled: normalizeSubmissionEmailPolicy(event.notifications, language).types.welcome.enabled,
       // What decides which default pages this event gets (lib/events/journey.ts): the page editor builds the journey from it.
-      journeyContext: { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, ...(event.defaultPageOrders ? { defaultOrders: event.defaultPageOrders as Record<string, number> } : {}) },
+      journeyContext: { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, ...(chosenDocuments(checkboxes) ? { documents: chosenDocuments(checkboxes) } : {}), ...(event.defaultPageOrders ? { defaultOrders: event.defaultPageOrders as Record<string, number> } : {}) },
       _id: event._id.toString(),
       generatedFrame: captureFrameOf({ frames: event.frames, frameDesign: frameDesign as Parameters<typeof captureFrameOf>[0]['frameDesign'] }),
     })
@@ -289,6 +297,7 @@ export const PATCH = withErrorHandler(async (
     uiLanguage,
     cameraMode,
     galleryConsent,
+    consentSettings,
     tourEnabled,
     acceptanceOnWhoAreYou,
     defaultPageOrders,
@@ -420,10 +429,16 @@ export const PATCH = withErrorHandler(async (
     if (typeof tourEnabled !== 'boolean') throw apiBadRequest('tourEnabled must be true or false');
     updateFields.tourEnabled = tourEnabled;
   }
-  // The consent page as one checkbox on the Who-are-you page (issue 523): off unless an editor turns it on.
+  // The consent page as one checkbox on the Who-are-you page (issue 523): off unless an editor turns it on. Null (issue 558) is "no choice of its own": the event follows its partner's.
   if (acceptanceOnWhoAreYou !== undefined) {
-    if (typeof acceptanceOnWhoAreYou !== 'boolean') throw apiBadRequest('acceptanceOnWhoAreYou must be true or false');
+    if (acceptanceOnWhoAreYou !== null && typeof acceptanceOnWhoAreYou !== 'boolean') throw apiBadRequest('acceptanceOnWhoAreYou must be true, false or null');
     updateFields.acceptanceOnWhoAreYou = acceptanceOnWhoAreYou;
+  }
+  // Shown and required for the other kinds of checkbox (issue 558): the object replaces what was stored; null or empty is "no choice of its own" for every kind.
+  if (consentSettings !== undefined) {
+    const parsed = parseCheckboxSettings(consentSettings);
+    if (!parsed.ok) throw apiBadRequest(parsed.error);
+    updateFields.consentSettings = parsed.value;
   }
   if (defaultPageOrders !== undefined) {
     // Where the editor put the default pages (issue 535): only the known default pages with finite numbers; an empty object puts them back in their default places.

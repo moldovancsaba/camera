@@ -1,3 +1,7 @@
+/*
+ * FROZEN COPY of the logic as it was before the checkbox settings (issue 558), kept only so that tests can run the same inputs through the old and the new code
+ * (lib/events/consent-settings.baseline.test.ts). Do not change it and do not import it from application code.
+ */
 /**
  * Permission to show a photo in the public event gallery (issue 554, owner answer 283: "this is service and market specific, make it an option in the settings and add it to the consent page settings").
  *
@@ -8,11 +12,7 @@
  * When an event asks, the capture page shows one optional checkbox, not ticked, on the step where the photo is saved (the words are the Dictionary texts `share.publicGalleryConsent` and
  * `share.publicGalleryConsentHelp`, editable at every level). Only a ticked box makes the photo eligible for the wall (`shareOptIn`), and the ticked box is kept as versioned evidence
  * (`Submission.publicGalleryConsent = { version, grantedAt }`). The server decides from the event's own setting, never from what the page says it asked, so an old page that does not know the setting cannot put
- * a photo of an asking event on the wall.
- *
- * The permission has three states (issue 558, owner answer 297): **off** (does not ask), **optional** (asks; the standard when asking, as it was) and **required** (asks, and the photo cannot be saved without
- * the ticked box, on the page and on the server). Required is always an editor's choice (`consentSettings.gallery.required`, lib/events/checkbox-settings.ts), so the server enforces it. Pure; unit-tested
- * (gallery-consent.test.ts).
+ * a photo of an asking event on the wall. Pure; unit-tested (gallery-consent.test.ts).
  */
 
 export const GALLERY_CONSENT_VERSION = 1 as const;
@@ -20,8 +20,6 @@ export const GALLERY_CONSENT_VERSION = 1 as const;
 export interface GalleryConsentEvidence {
   version: typeof GALLERY_CONSENT_VERSION;
   grantedAt: string;
-  /** Only ever true: the event required the permission (issue 558), so the box could not stay unticked. A record without it was an optional box. */
-  required?: true;
 }
 
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
@@ -50,14 +48,8 @@ export function galleryChoice(
   asked: boolean,
   request: { shareOptIn?: unknown; publicGalleryConsentVersion?: unknown },
   now: string,
-  required = false,
 ): { shareOptIn: boolean; consent: GalleryConsentEvidence | null } {
-  const ticked = galleryTicked(request);
-  const consent = ticked ? { version: GALLERY_CONSENT_VERSION, grantedAt: now, ...(required && asked ? { required: true as const } : {}) } : null;
+  const ticked = request.shareOptIn === true && request.publicGalleryConsentVersion === GALLERY_CONSENT_VERSION;
+  const consent = ticked ? { version: GALLERY_CONSENT_VERSION, grantedAt: now } : null;
   return { shareOptIn: asked ? ticked : request.shareOptIn === true, consent };
-}
-
-/** Whether the request carries the ticked box: `shareOptIn` true together with the version of the sentence that was shown. */
-export function galleryTicked(request: { shareOptIn?: unknown; publicGalleryConsentVersion?: unknown }): boolean {
-  return request.shareOptIn === true && request.publicGalleryConsentVersion === GALLERY_CONSENT_VERSION;
 }

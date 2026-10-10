@@ -314,6 +314,14 @@ panel and the backfill follow (camera#235 to #238).
   and the logo (if the partner has one) means the canvas package and the fonts work there. A 502 with
   `frame images could not be generated` in the function log means they do not.
 
+## Checkbox settings and the server's consent check (issue 558)
+
+Every checkbox a user can meet is shown or not, and required or optional, set on the partner (default) and on the event (`docs/JOURNEY_DEFAULT_PAGES.md`, "Checkbox settings"). Operations that follow from it:
+- **A save refused with "A required consent is missing" or "The permission to show the photo in the public gallery is required"** is the server's check (`lib/events/consent-guard.ts`) of a requirement an editor chose: the user's page did not send the records, usually because the page was loaded before the setting was changed. The user takes the photo again from the start (the page loads the new setting). Nothing is stored and no picture is uploaded when it is refused.
+- **Nothing changes for an event that chose nothing:** the standard requirements (the three documents of the default consent page, an acceptance switched on before this) are enforced by the page only. To make the server refuse those too, set `ENFORCE_STANDARD_REQUIREMENTS` to `true` in `lib/events/consent-guard.ts` (a code change and a release, decided by the owner, not before the match of 2026-10-16).
+- **To take a setting away** set it back to "Same as the partner" (event) or "Standard" (partner) in the editor; the stored value is removed (`consentSettings` null, `galleryConsent` null).
+- **The baseline copies** in `lib/events/baseline/` are test fixtures of the old logic and are never imported by the app.
+
 ## Photo vetting (camera#261)
 
 Plan and decisions: [docs/PHOTO_VETTING_PLAN.md](docs/PHOTO_VETTING_PLAN.md). The setting is `events.photoVetting.required`; until the rollout

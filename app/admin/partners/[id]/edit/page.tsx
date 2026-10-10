@@ -15,6 +15,8 @@ import { FormSection } from '@sovereignsquad/gds-admin/client';
 import { InlineAlert, StateBlock } from '@sovereignsquad/gds-core/client';
 import { UI_LANGUAGES, UI_LANGUAGE_LABELS, normalizeUiLanguage } from '@/lib/i18n';
 import { CAMERA_MODES, CAMERA_MODE_LABELS, DEFAULT_CAMERA_MODE, isCameraMode } from '@/lib/camera/mode';
+import { CHECKBOX_KINDS, modeOf, settingsToStore, type CheckboxKind, type CheckboxMode, type StoredCheckboxSettings } from '@/lib/events/checkbox-settings';
+import CheckboxSettingsFields, { type CheckboxModes } from '@/components/admin/CheckboxSettingsFields';
 import {
   CAMERA_DEFAULT_BRAND_BORDER_COLOR,
   CAMERA_DEFAULT_BRAND_COLOR,
@@ -30,6 +32,9 @@ interface PartnerRecord {
   uiLanguage?: string | null;
   cameraMode?: string | null;
   galleryConsent?: boolean | null;
+  /** The partner's default for the acceptance sentence on the Who-are-you page and for the other checkbox settings (issue 558, lib/events/checkbox-settings.ts). */
+  acceptanceOnWhoAreYou?: boolean | null;
+  consentSettings?: StoredCheckboxSettings | null;
   defaultBrandColors?: {
     primary?: string;
     secondary?: string;
@@ -44,7 +49,9 @@ interface UpdatePartnerPayload {
   isActive: boolean;
   uiLanguage: string;
   cameraMode: string;
-  galleryConsent: boolean;
+  galleryConsent: boolean | null;
+  acceptanceOnWhoAreYou: boolean | null;
+  consentSettings: StoredCheckboxSettings | null;
   defaultBrandColors?: {
     primary?: string;
     secondary?: string;
@@ -55,6 +62,11 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Partner request failed';
 }
 
+/** What each kind of checkbox is for this partner, as the editor shows it. The public gallery permission has no "no choice" state here: not asking is its standard and what a partner always saved. */
+function modesOf(partner: PartnerRecord | null): CheckboxModes {
+  return Object.fromEntries(CHECKBOX_KINDS.map((kind) => [kind, modeOf(partner, kind) || (kind === 'gallery' ? 'off' : '')])) as CheckboxModes;
+}
+
 export default function EditPartnerPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [partnerId, setPartnerId] = useState('');
@@ -62,6 +74,8 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [partner, setPartner] = useState<PartnerRecord | null>(null);
+  // The default of every kind of checkbox for the partner's events (issue 558): shown or not, required or optional. An event that makes no choice of its own follows it.
+  const [modes, setModes] = useState<CheckboxModes>(() => modesOf(null));
   // The colours of the events come from messmass by default (camera#380): the partner has default colours only when somebody switches that off and picks some, and a
   // save that did not touch them sends none, so a default is never stored by accident.
   const [ownColours, setOwnColours] = useState(false);
@@ -86,6 +100,7 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
 
         const partnerRecord = data.partner ?? data.data?.partner;
         setPartner(partnerRecord);
+        setModes(modesOf(partnerRecord));
         setOwnColours(Boolean(partnerRecord.defaultBrandColors?.primary || partnerRecord.defaultBrandColors?.secondary));
         setColoursTouched(false);
         setPrimaryColor(partnerRecord.defaultBrandColors?.primary || CAMERA_DEFAULT_BRAND_COLOR);
@@ -114,8 +129,9 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
       isActive: formData.get('isActive') === 'on',
       uiLanguage: normalizeUiLanguage(formData.get('uiLanguage')),
       // The way the photos of this partner's events are taken (issue 547); an event that makes no choice of its own follows it, one that chooses keeps its own.
-      // Whether the partner's events that made no choice ask for the user's own permission to show a photo in the public gallery (issue 554); an event that chooses keeps its own choice.
-      galleryConsent: formData.get('galleryConsent') === 'ask',
+      // The default of every kind of checkbox for the partner's events (issues 554 and 558): the permission to show a photo in the public gallery, the acceptance sentence on the Who-are-you page, the three documents of the
+      // default consent page; an event that chooses keeps its own choice.
+      ...settingsToStore(modes),
       cameraMode: isCameraMode(formData.get('cameraMode')) ? (formData.get('cameraMode') as string) : DEFAULT_CAMERA_MODE,
     };
 
@@ -250,16 +266,10 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
           </FormSection>
 
           <FormSection
-            title="Public gallery permission"
-            description="Some services and markets need the user's own permission before a photo is shown on a public wall or gallery; for others the terms the user accepts are enough. An event that makes no choice of its own follows this; an event that chooses keeps its own choice (in the consent page settings of its page editor)."
+            title="Checkboxes of the events"
+            description="Every kind of checkbox is shown or not, and required or optional, as every market has its own law. This is the default of all this partner's events; an event that makes no choice of its own follows it, and an event that chooses keeps its own choice (in the consent page settings of its page editor). Nothing is copied down."
           >
-            <label style={{ display: 'grid', gap: '0.35rem', fontWeight: 700 }}>
-              Permission to show the photo in the public gallery
-              <select name="galleryConsent" defaultValue={partner?.galleryConsent === true ? 'ask' : 'no'} style={{ minHeight: 44, padding: '0 0.75rem' }}>
-                <option value="no">Do not ask: the terms the user accepts cover it (standard)</option>
-                <option value="ask">Ask: a separate optional checkbox, not ticked</option>
-              </select>
-            </label>
+            <CheckboxSettingsFields modes={modes} onChange={(kind: CheckboxKind, mode: CheckboxMode) => setModes((current) => ({ ...current, [kind]: mode }))} level="partner" />
           </FormSection>
 
           <FormSection

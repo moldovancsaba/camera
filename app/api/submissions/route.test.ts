@@ -474,3 +474,122 @@ test('a vetted event that asks keeps the choice for the approval: the wall flag 
     restore();
   }
 });
+
+// The checkbox settings (issue 558, owner answer 297): shown and required on every kind of checkbox; the server checks what an editor chose to require, and an event that chose nothing is saved exactly as before.
+const THREE = [
+  { pageId: 'default-consent', pageType: 'accept', checkboxText: 'I accept the Terms and conditions', linkUrl: 'https://seyuselfies.com/en/legal/terms', accepted: true, acceptedAt: '2026-10-10T10:00:00.000Z' },
+  { pageId: 'default-consent', pageType: 'accept', checkboxText: 'I accept cookies', linkUrl: 'https://seyuselfies.com/en/legal/cookies', accepted: true, acceptedAt: '2026-10-10T10:00:00.000Z' },
+  { pageId: 'default-consent', pageType: 'accept', checkboxText: 'I have read the Privacy policy', linkUrl: 'https://seyuselfies.com/en/policies', accepted: true, acceptedAt: '2026-10-10T10:00:00.000Z' },
+];
+const OWN_PAGE = (checkboxes: Array<Record<string, unknown>>) => ({ pageId: 'c', pageType: 'accept', order: -2, isActive: true, config: { title: 'T', buttonText: 'Go', checkboxes } });
+const PHOTO_PAGE = { pageId: 'tp', pageType: 'take-photo', order: 0, isActive: true, config: {} };
+
+/** One mocked server for a whole test; each call saves (or is refused) with its own event, partner and request, and answers with the status, the error and what was stored by that call. */
+function scenario(t: TestContext) {
+  const restore = withStoreToken();
+  const quiet = silence();
+  t.after(() => {
+    quiet();
+    restore();
+  });
+  const extra: { event?: Record<string, unknown>; partner?: Record<string, unknown> | null } = {};
+  const h = mockDeps(t, goodHead, extra);
+  return async (caseId: string, event: Record<string, unknown> | undefined, partner: Record<string, unknown> | null, body: Record<string, unknown>) => {
+    extra.event = event;
+    extra.partner = partner;
+    h.inserted.length = 0;
+    const uploadsBefore = h.uploads;
+    const { POST } = await importRouteModule(caseId);
+    const response = await POST(submissionRequest(body));
+    const answer = (await response.json().catch(() => ({}))) as { error?: string };
+    return { status: response.status, error: answer.error, inserted: h.inserted.map((doc) => doc as Record<string, unknown> & { consents: unknown[] }), uploaded: h.uploads - uploadsBefore };
+  };
+}
+
+test('an event that chose nothing saves the consent records exactly as sent, and a save with none at all, as before (the standard is guarded by the page only)', async (t) => {
+  const run = scenario(t);
+  const withRecords = await run('consent-standard-records', { customPages: [PHOTO_PAGE], journeyDefaults: true }, null, { consents: THREE });
+  assert.equal(withRecords.status, 201);
+  assert.deepEqual(withRecords.inserted[0].consents, THREE);
+  const without = await run('consent-standard-none', { customPages: [OWN_PAGE([{ text: 'A' }, { text: 'B' }]), PHOTO_PAGE], journeyDefaults: true }, null, {});
+  assert.equal(without.status, 201, 'the server never refused a photo without a recorded consent (planning item 43)');
+  assert.deepEqual(without.inserted[0].consents, []);
+  const defaultPage = await run('consent-standard-default-page', { customPages: [PHOTO_PAGE], journeyDefaults: true, acceptanceOnWhoAreYou: true }, null, {});
+  assert.equal(defaultPage.status, 201);
+  assert.equal(defaultPage.uploaded, 1);
+});
+
+test('a record that says it was not ticked is refused unless it says it was optional; an optional unticked box and a ticked one are stored as they are', async (t) => {
+  const run = scenario(t);
+  const bare = await run('consent-false-bare', undefined, null, { consents: [{ ...THREE[0], accepted: false }] });
+  assert.equal(bare.status, 400);
+  assert.equal(bare.error, 'All consents must have accepted=true', 'the old answer, word for word');
+  assert.equal(bare.inserted.length, 0, 'nothing is stored');
+  const optional = { pageId: 'c', pageType: 'accept', checkboxText: 'News', accepted: false, acceptedAt: '2026-10-10T10:00:00.000Z', required: false };
+  const tickedOptional = { ...optional, checkboxText: 'Offers', accepted: true };
+  const saved = await run('consent-optional', undefined, null, { consents: [THREE[0], optional, tickedOptional] });
+  assert.equal(saved.status, 201);
+  assert.deepEqual(saved.inserted[0].consents, [THREE[0], optional, tickedOptional]);
+  const claimsRequired = await run('consent-false-required', undefined, null, { consents: [{ ...optional, required: true }] });
+  assert.equal(claimsRequired.status, 400, 'only an optional box can be recorded as not ticked');
+});
+
+test('a required checkbox an editor chose on an own consent page: a save without its record is refused before anything is uploaded, a save with it is stored', async (t) => {
+  const run = scenario(t);
+  const event = { customPages: [OWN_PAGE([{ text: 'A', required: true }, { text: 'B', required: true }, { text: 'C', required: false }]), PHOTO_PAGE] };
+  const refused = await run('consent-own-refused', event, null, { consents: [{ pageId: 'c', pageType: 'accept', checkboxText: 'A', accepted: true, acceptedAt: 'x' }] });
+  assert.equal(refused.status, 400);
+  assert.equal(refused.error, 'A required consent is missing');
+  assert.equal(refused.uploaded, 0, 'the picture is not uploaded');
+  assert.equal(refused.inserted.length, 0);
+  const none = await run('consent-own-none', event, null, {});
+  assert.equal(none.status, 400);
+  const records = ['A', 'B'].map((checkboxText) => ({ pageId: 'c', pageType: 'accept', checkboxText, accepted: true, acceptedAt: '2026-10-10T10:00:00.000Z' }));
+  const saved = await run('consent-own-saved', event, null, { consents: records });
+  assert.equal(saved.status, 201);
+  assert.equal(saved.inserted[0].consents.length, 2);
+});
+
+test('the default consent page: a document required at the partner is checked for an event that gets the defaults, and one switched off needs nothing', async (t) => {
+  const run = scenario(t);
+  const partner = { partnerId: 'P1', consentSettings: { terms: { shown: true, required: true }, cookies: { shown: false } } };
+  const event = { partnerId: 'P1', customPages: [PHOTO_PAGE], journeyDefaults: true };
+  const refused = await run('consent-partner-refused', event, partner, {});
+  assert.equal(refused.status, 400);
+  const saved = await run('consent-partner-saved', event, partner, { consents: THREE.slice(0, 2) });
+  assert.equal(saved.status, 201);
+  const noDefaults = await run('consent-partner-no-defaults', { partnerId: 'P1', customPages: [PHOTO_PAGE] }, partner, {});
+  assert.equal(noDefaults.status, 201, 'an event that does not get the defaults has no default page to require');
+  const ownChoice = await run('consent-event-overrides', { ...event, consentSettings: { terms: { shown: true, required: false } } }, partner, {});
+  assert.equal(ownChoice.status, 201, 'the event chose optional for the terms; its partner’s choice is not borrowed');
+});
+
+test('the public gallery permission set to required: refused without the ticked box and its version, stored with evidence that it was required when ticked', async (t) => {
+  const run = scenario(t);
+  const event = { galleryConsent: true, consentSettings: { gallery: { required: true } } };
+  for (const [caseId, body] of [['no-tick', { shareOptIn: false, publicGalleryConsentVersion: 1 }], ['old-page', { shareOptIn: true }], ['nothing', {}]] as const) {
+    const refused = await run(`gallery-required-${caseId}`, event, null, body);
+    assert.equal(refused.status, 400, caseId);
+    assert.equal(refused.error, 'The permission to show the photo in the public gallery is required');
+    assert.equal(refused.inserted.length, 0);
+  }
+  const saved = await run('gallery-required-ticked', event, null, { shareOptIn: true, publicGalleryConsentVersion: 1 });
+  assert.equal(saved.status, 201);
+  const doc = saved.inserted[0] as unknown as { isShareVisible: boolean; publicGalleryConsent: { version: number; required?: boolean } };
+  assert.equal(doc.isShareVisible, true);
+  assert.equal(doc.publicGalleryConsent.version, 1);
+  assert.equal(doc.publicGalleryConsent.required, true);
+  const viaPartner = await run('gallery-required-partner', { partnerId: 'P1' }, { partnerId: 'P1', galleryConsent: true, consentSettings: { gallery: { required: true } } }, { shareOptIn: false });
+  assert.equal(viaPartner.status, 400, 'an event that made no choice follows its partner’s requirement');
+});
+
+test('the acceptance sentence set to required needs a record for each shown checkbox of the consent page it stands for', async (t) => {
+  const run = scenario(t);
+  const login = { pageId: 'l', pageType: 'who-are-you', order: -1, isActive: true, config: { title: 'W', buttonText: 'Go', nameLabel: 'n', emailLabel: 'e' } };
+  const event = { customPages: [OWN_PAGE([{ text: 'A' }, { text: 'B' }, { text: 'C', shown: false }]), login, PHOTO_PAGE], acceptanceOnWhoAreYou: true, consentSettings: { acceptance: { required: true } } };
+  assert.equal((await run('acceptance-required-none', event, null, {})).status, 400);
+  const records = ['A', 'B'].map((checkboxText) => ({ pageId: 'c', pageType: 'accept', checkboxText, shownText: 'A, B', accepted: true, acceptedAt: '2026-10-10T10:00:00.000Z' }));
+  assert.equal((await run('acceptance-required-saved', event, null, { consents: records })).status, 201);
+  const optional = { ...event, consentSettings: { acceptance: { required: false } } };
+  assert.equal((await run('acceptance-optional-none', optional, null, {})).status, 201);
+});
