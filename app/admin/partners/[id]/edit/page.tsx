@@ -27,6 +27,7 @@ interface PartnerRecord {
   contactName?: string;
   isActive?: boolean;
   uiLanguage?: string | null;
+  cameraMode?: string | null;
   defaultBrandColors?: {
     primary?: string;
     secondary?: string;
@@ -40,6 +41,7 @@ interface UpdatePartnerPayload {
   contactName: string;
   isActive: boolean;
   uiLanguage: string;
+  cameraMode: string;
   defaultBrandColors?: {
     primary?: string;
     secondary?: string;
@@ -108,6 +110,8 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
       contactName: formData.get('contactName') as string,
       isActive: formData.get('isActive') === 'on',
       uiLanguage: normalizeUiLanguage(formData.get('uiLanguage')),
+      // Ticked = the live camera with the view buttons; unticked = no choice, so the standard (the phone's own camera app). An event can still choose its own.
+      cameraMode: formData.get('cameraLive') === 'on' ? 'live' : '',
     };
 
     // Only when the colours were touched: null means the partner has none, so its events follow messmass.
@@ -221,6 +225,21 @@ export default function EditPartnerPage({ params }: { params: Promise<{ id: stri
                   </option>
                 ))}
               </select>
+            </label>
+          </FormSection>
+
+          <FormSection
+            title="Camera of the events"
+            description="How the photos of this partner's events are taken. An event that makes no choice of its own follows this; an event that chooses keeps its own choice."
+          >
+            <label style={{ alignItems: 'flex-start', display: 'flex', gap: '0.5rem', fontWeight: 700 }}>
+              <input type="checkbox" name="cameraLive" defaultChecked={partner?.cameraMode === 'live'} style={{ marginTop: '0.25rem' }} />
+              <span>
+                Use the live camera with view buttons
+                <span style={{ color: 'var(--mantine-color-dimmed)', display: 'block', fontSize: '0.8125rem', fontWeight: 400 }}>
+                  Off by default: a phone opens its own camera app. On: the page shows the live camera with the buttons portrait or landscape, wide or tight.
+                </span>
+              </span>
             </label>
           </FormSection>
 

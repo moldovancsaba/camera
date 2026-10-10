@@ -28,6 +28,7 @@ import { getPartnerScopedAccessForEvent, isGlobalAdminSession } from '@/lib/part
 import { normalizeEventVisualSettings } from '@/lib/events/visual-settings';
 import { normalizeEventSharePageSettings } from '@/lib/events/share-page-settings';
 import { isUiLanguage, UI_LANGUAGES } from '@/lib/i18n';
+import { effectiveCameraMode, parseCameraMode } from '@/lib/camera/mode';
 import { sanitizeNotificationSettings } from '@/lib/email/notification-settings';
 import { normalizeSubmissionEmailPolicy } from '@/lib/email/submission-result-email';
 import { captureFrameOf } from '@/lib/frame/capture';
@@ -203,6 +204,8 @@ export const GET = withErrorHandler(async (
       theme: await loadEventTheme(db, event as unknown as Record<string, unknown>),
       ...(forGuest ? { customPages: withPartnerPictures(withDefaultJourneyPages(event.customPages as Parameters<typeof withDefaultJourneyPages>[0], { vettingRequired, consentDefault, language, hasWelcomeScreen, texts, defaultOrders: event.defaultPageOrders as Record<string, number> | undefined }), partnerPictures) } : {}),
       photoVettingRequired: vettingRequired,
+      // How the photo is taken (issue 547): the event's own choice, else its partner's, else the standard. `cameraMode` stays the stored choice, which the editor shows.
+      effectiveCameraMode: effectiveCameraMode(event as { cameraMode?: unknown }, partner),
       // Whether the event sends the welcome e-mail (epic 463): the capture page tells the server who registered only when it does.
       welcomeEmailEnabled: normalizeSubmissionEmailPolicy(event.notifications, language).types.welcome.enabled,
       // What decides which default pages this event gets (lib/events/journey.ts): the page editor builds the journey from it.
@@ -281,6 +284,7 @@ export const PATCH = withErrorHandler(async (
     photoVetting,
     markPeopleInVetting,
     uiLanguage,
+    cameraMode,
     tourEnabled,
     acceptanceOnWhoAreYou,
     defaultPageOrders,
@@ -432,6 +436,12 @@ export const PATCH = withErrorHandler(async (
     } else {
       throw apiBadRequest('uiLanguage must be one of: ' + UI_LANGUAGES.join(', '));
     }
+  }
+  // How the event takes the photo (issue 547): its own choice, or empty to follow its partner's.
+  if (cameraMode !== undefined) {
+    const parsed = parseCameraMode(cameraMode);
+    if (!parsed.ok) throw apiBadRequest(parsed.error);
+    updateFields.cameraMode = parsed.value;
   }
   if (visualSettings !== undefined) {
     updateFields.visualSettings = normalizeEventVisualSettings(visualSettings);

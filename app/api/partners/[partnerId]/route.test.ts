@@ -108,3 +108,15 @@ test('the default language of the partner\'s events: set to a language we have, 
   assert.equal((data.partners[0] as { uiLanguage?: string | null }).uiLanguage, null);
   for (const bad of ['de', 'HU', 7, {}]) assert.equal((await PATCH(patch({ uiLanguage: bad }), params)).status, 400, String(bad));
 });
+
+test('the camera mode of the partner\'s events: a mode we have, cleared with an empty value, refused otherwise, left alone when absent (issue 547)', async (t) => {
+  const { data } = setup(t);
+  const { PATCH } = await importRoute('camera-mode');
+  assert.equal((await PATCH(patch({ cameraMode: 'live' }), params)).status, 200);
+  assert.equal((data.partners[0] as { cameraMode?: string | null }).cameraMode, 'live');
+  assert.equal((await PATCH(patch({ name: 'Partner P' }), params)).status, 200);
+  assert.equal((data.partners[0] as { cameraMode?: string | null }).cameraMode, 'live', 'absent leaves it alone');
+  assert.equal((await PATCH(patch({ cameraMode: '' }), params)).status, 200);
+  assert.equal((data.partners[0] as { cameraMode?: string | null }).cameraMode, null);
+  for (const bad of ['Live', 'frame', 7, {}, true]) assert.equal((await PATCH(patch({ cameraMode: bad }), params)).status, 400, String(bad));
+});

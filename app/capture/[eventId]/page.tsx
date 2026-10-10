@@ -59,6 +59,7 @@ import { darkAreaUrl } from '@/lib/frame/dark-area';
 import SystemCameraCapture from '@/components/camera/SystemCameraCapture';
 import { captureOverride, chooseCaptureMethod, hasStillCapture, type CaptureMethod } from '@/lib/camera/still-capture';
 import { viewsOverride } from '@/lib/camera/view';
+import type { CameraMode } from '@/lib/camera/mode';
 import { pickRandom } from '@/lib/slots/resolve';
 import { detectTouchPrimaryDevice } from '@/lib/camera/constraints';
 import {
@@ -107,6 +108,8 @@ interface EventData {
   welcomeScreen?: { url: string };
   /** The event sends the welcome e-mail (epic 463): the page tells the server who registered, and only then. */
   welcomeEmailEnabled?: boolean;
+  /** How the photo is taken (issue 547, lib/camera/mode.ts): the event's own choice, else its partner's, else the standard. */
+  effectiveCameraMode?: CameraMode;
   /** How users get the layout and the message (epic 444): the editor's setting; the page reads it through `generatedFrame.selection`, and for the event's own frames from here. */
   frameSelection?: unknown;
   tryOn?: {
@@ -260,15 +263,16 @@ export default function EventCapturePage({
   // How the photo is taken in this environment (camera#257): the device's own camera on every touch device, a real still or
   // the video frame on a desktop webcam. Known after mount.
   const [captureMethod, setCaptureMethod] = useState<CaptureMethod | null>(null);
-  // `?views=1` (issue 525): the live view with the portrait or landscape and wide or tight choices, to try on a phone; the device's own camera app is not used then.
+  // The live view with the portrait or landscape and wide or tight choices (issue 525) instead of the device's own camera app: the event's camera mode (issue 547, set for the event or its partner), or `?views=1` to try it.
   const [captureViews, setCaptureViews] = useState(false);
+  const cameraMode = event?.effectiveCameraMode;
   useEffect(() => {
-    const views = viewsOverride(window.location.search);
+    const views = viewsOverride(window.location.search) || cameraMode === 'live';
     setCaptureViews(views);
     setCaptureMethod(
       chooseCaptureMethod({ touchPrimary: detectTouchPrimaryDevice(), stillCapture: hasStillCapture(), override: captureOverride(window.location.search), views })
     );
-  }, []);
+  }, [cameraMode]);
   const [compositeImage, setCompositeImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -491,6 +495,7 @@ export default function EventCapturePage({
           frameSelection: eventData.frameSelection ?? null,
           welcomeEmailEnabled: eventData.welcomeEmailEnabled === true,
           photoVettingRequired: eventData.photoVettingRequired === true,
+          effectiveCameraMode: eventData.effectiveCameraMode,
         });
         
         // Fetch logos for loading-capture and onboarding-thankyou scenarios
