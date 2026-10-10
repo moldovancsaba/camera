@@ -1,6 +1,6 @@
 # Try-On analytics and data operations
 
-**Version**: 12.3.40  
+**Version**: 12.3.41  
 **Last Updated**: 2026-07-04
 
 ## Scope

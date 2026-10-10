@@ -1,6 +1,6 @@
 # Tasklist
 
-**Version Context**: 12.3.40  
+**Version Context**: 12.3.41  
 **Last Updated**: 2026-10-06
 
 Active work is tracked on the GitHub project board, not in this file:
