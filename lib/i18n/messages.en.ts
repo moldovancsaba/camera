@@ -93,6 +93,11 @@ export const en = {
   'consent.combined.terms': 'Terms and conditions',
   'consent.combined.privacy': 'Privacy notice',
   'consent.combined.cookies': 'Cookie notice',
+  // The profile across events (issue 521, decision 242, owner answers 248 to 251): drafts for the owner's reviewers to validate and change in the Dictionary; no page shows them yet.
+  'profile.consent': 'I agree that {organiser} links my photos, my e-mail address and my activity at its events into one profile and uses it to {purpose} until I withdraw this. I can withdraw at any time on {link}.',
+  'profile.consent.purpose': 'send me news about its next events by e-mail',
+  'profile.consent.link': 'my profile page',
+  'profile.notice': 'Photos you take at our events are kept under your e-mail address so you can find, download and delete them in one place.',
   'accept.mustAccept': 'You must accept to continue',
   'accept.newTab': '{text} (opens in a new tab)',
   'login.title': 'Who are you?',
