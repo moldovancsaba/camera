@@ -18,7 +18,7 @@ import { InlineAlert, LabelTag } from '@sovereignsquad/gds-core/client';
 import ImagePicker from '@/components/admin/library/ImagePicker';
 import { CustomPageType, type CustomPage, generateId, generateTimestamp } from '@/lib/db/schemas';
 import { DEFAULT_APPROVAL_TEXTS, DEFAULT_REDIRECTING_TEXT } from '@/lib/events/page-texts';
-import { customiseDefault, effectiveJourney, moveJourneyRow, moveTarget, renumberJourney, type JourneyContext } from '@/lib/events/journey';
+import { customiseDefault, effectiveJourney, hasSeparateSubmit, moveJourneyRow, moveTarget, renumberJourney, setSubmitSeparate, type JourneyContext } from '@/lib/events/journey';
 
 export interface CustomPagesManagerProps {
   eventId: string;
@@ -339,6 +339,33 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
   };
 
   /**
+   * The checkbox "Submit is part of this page" on the Take Photo page (issue 535): ticked (the default) the photo is saved when the user presses Continue after the reframe; unticked a Submit
+   * step is put right after the Take Photo page and the pages between the two run after the photo is taken and before it is saved. It takes effect at once in the list and is saved with Save Pages.
+   */
+  const handleSubmitInPage = (inPage: boolean) => {
+    const separate = !inPage;
+    if (separate === hasSeparateSubmit(rows)) return;
+    if (journeyContext) {
+      const changed = setSubmitSeparate(rows, separate);
+      setPages(changed.pages);
+      setDefaultOrders(Object.keys(changed.defaultOrders).length > 0 || defaultOrders ? changed.defaultOrders : null);
+      return;
+    }
+    // Without the journey (an editor that does not know it) only the own pages exist: the Submit page goes right after the Take Photo page.
+    const withoutSubmit = sortedPages.filter((page) => page.pageType !== CustomPageType.SUBMIT);
+    if (!separate) {
+      setPages(withoutSubmit.map((page, index) => ({ ...page, order: index })));
+      return;
+    }
+    const photoAt = withoutSubmit.findIndex((page) => page.pageType === CustomPageType.TAKE_PHOTO);
+    const now = generateTimestamp();
+    const marker: CustomPage = { pageId: generateId(), pageType: CustomPageType.SUBMIT, order: 0, isActive: true, config: { title: '[Submit]', description: '', buttonText: '' }, createdAt: now, updatedAt: now };
+    const next = [...withoutSubmit];
+    next.splice(photoAt === -1 ? next.length : photoAt + 1, 0, marker);
+    setPages(next.map((page, index) => ({ ...page, order: index })));
+  };
+
+  /**
    * Save all pages to event
    */
   const handleSaveAll = async () => {
@@ -423,6 +450,23 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
             );
           }
           const page = row.page;
+          if (page.pageType === CustomPageType.SUBMIT) {
+            return (
+              <article key={page.pageId} style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+                <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                  <MoveButtons canUp={canMove(index, -1)} canDown={canMove(index, 1)} onUp={() => handleMove(index, -1)} onDown={() => handleMove(index, 1)} />
+                  <div style={{ display: 'grid', flex: '1 1 12rem', gap: '0.25rem', minWidth: 0 }}>
+                    <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <code style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.875rem' }}>#{index + 1}</code>
+                      <LabelTag tone="neutral" label="submit" />
+                    </div>
+                    <strong style={{ fontSize: '0.875rem' }}>[Submit]</strong>
+                    <span style={{ color: 'var(--mantine-color-dimmed)', fontSize: '0.8125rem' }}>The photo is saved here. The pages above this step and below the Take Photo page run after the photo is taken and before it is saved. To take this step away, tick &quot;Submit is part of this page&quot; on the Take Photo page.</span>
+                  </div>
+                </div>
+              </article>
+            );
+          }
           return (
               <article
               key={page.pageId}
@@ -535,6 +579,8 @@ export default function CustomPagesManager({ eventId, initialPages, journeyConte
               eventId={eventId}
               acceptanceHere={acceptanceHere}
               onAcceptanceChange={setAcceptanceHere}
+              submitInPage={!hasSeparateSubmit(rows)}
+              onSubmitInPageChange={handleSubmitInPage}
               onSave={handleSavePage}
               onCancel={() => {
                 setShowModal(false);
@@ -558,6 +604,8 @@ function PageEditModal({
   eventId,
   acceptanceHere,
   onAcceptanceChange,
+  submitInPage,
+  onSubmitInPageChange,
   onSave,
   onCancel,
 }: {
@@ -565,6 +613,8 @@ function PageEditModal({
   eventId: string;
   acceptanceHere: boolean;
   onAcceptanceChange: (value: boolean) => void;
+  submitInPage: boolean;
+  onSubmitInPageChange: (value: boolean) => void;
   onSave: (page: CustomPage) => void;
   onCancel: () => void;
 }) {
@@ -1000,6 +1050,16 @@ function PageEditModal({
 
         {page.pageType === CustomPageType.TAKE_PHOTO ? (
           <>
+            <section style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: '0.875rem', padding: '1rem' }}>
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                <Check
+                  checked={submitInPage}
+                  onChange={onSubmitInPageChange}
+                  label="Submit is part of this page"
+                  helper="Ticked (as it is now): the photo is saved when the user presses Continue after the reframe screen. Unticked: a Submit step is added after this page in the list, and the pages you put between the two (a Who are you page, a CTA) run after the photo is taken and before it is saved. Social sign-in cannot be used there yet, because the sign-in leaves the page and the photo would be lost: only the name and e-mail form is shown on a Who are you page between the two."
+                />
+              </div>
+            </section>
             <Field
               label="Share Screen Next Button Text"
               value={shareNextButtonText}

@@ -8,6 +8,7 @@
  */
 
 import type { CustomPage } from '@/lib/db/schemas';
+import { pagesBeforeSave } from './photo-boundary';
 import { translate, type UiLanguage } from '@/lib/i18n';
 import type { TextOverrides } from '@/lib/i18n/overrides';
 
@@ -73,12 +74,9 @@ export function defaultIdentityPage(order: number, now: string = new Date().toIS
   } as CustomPage;
 }
 
-/** True when an active "who are you" page comes before the photo (before the take-photo page, or anywhere if there is none). */
+/** True when an active "who are you" page comes before the photo is saved (before the take-photo page, or before the submit page when the event has one, or anywhere if there is no take-photo page): a login after the photo and before saving it is enough. */
 export function hasIdentityPageBeforePhoto(pages: readonly CustomPage[]): boolean {
-  const active = [...pages].filter((page) => page.isActive).sort((a, b) => a.order - b.order);
-  const photoIndex = active.findIndex((page) => page.pageType === 'take-photo');
-  const before = photoIndex === -1 ? active : active.slice(0, photoIndex);
-  return before.some((page) => page.pageType === 'who-are-you');
+  return pagesBeforeSave(pages).some((page) => page.pageType === 'who-are-you');
 }
 
 /** The event's pages as the guest sees them: with vetting required and no identity page before the photo, the default one is first. */

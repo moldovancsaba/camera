@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — Take photo + Submit: pages between taking the photo and saving it, with a checkbox (issue 535, step 2; owner feedback 2026-10-10)
+
+- **Owner:** "there is a common flow to take an image and then login to be able to submit ... I need a checkbox in the Take Photo page to show it there as it is now built in or uncheck and able to add steps between them, like the CTA or the who are you."
+- **Added:** the checkbox **Submit is part of this page** in the Take Photo page editor (ticked by default: nothing changes). Unticked, a **Submit** row appears right after the Take Photo page; the pages between the two (a Who are you page, a CTA, an Accept page) run after the photo is taken and before it is saved, the pages after it run after the save. `pageType: 'submit'` is a marker page (no texts; the API accepts it without title and button). A default page may move between the two but never behind the Submit row; the Submit row stays after the Take Photo page.
+- **Capture flow:** a new phase `presubmit` (`lib/capture/split-pages.ts`, `app/capture/[eventId]/page.tsx`): Continue on the reframe screen makes the picture and shows those pages instead of saving; after the last one the photo is saved with the contact the user gave. A failed save does not ask for the pages again. A consent or login page between the two counts as before the save (`lib/events/photo-boundary.ts`), so no default login is added twice and the acceptance can sit on the login page.
+- **Limit (by design for now):** a Who are you page between the photo and the save shows the name and e-mail form only: a social sign-in leaves the page and the photo would be lost. Keeping the photo across a social sign-in is a separate step (question on issue 535).
+- **Verified:** type-check; lint; unit tests (the page splitter, the boundary, the journey rows and moves with a Submit page, the toggle, the PATCH of a Submit page); the editor component in a browser harness (untick adds `[Submit]` after Take Photo, a default login moves behind the photo, Save sends the pages and places); the real capture page in a browser against a production build with the API mocked (nine checks: login before the save with no social buttons and the contact saved, no Submit page saves at once, a CTA between, a Submit page with nothing before it, a failed save does not ask for the login again); the full CI chain.
+- **Behaviour unchanged** for every event whose editor does not untick the box, so nothing changes on a live event by this release.
+
 ## Unreleased — page editor: the default pages (welcome, consent, Who-are-you) have up and down like every page (issue 535, step 1; owner feedback 2026-10-10)
 
 - **Owner:** "there should be an up/down for the Accept/Who-are-you section as well!" The default rows of the journey list had only Customise.
@@ -7,7 +16,7 @@
 - **API:** `PATCH /api/events/<id>` takes `defaultPageOrders` (only the three default page ids, finite numbers; `{}` puts them back); the event API sends the places in `journeyContext.defaultOrders`.
 - **Behaviour unchanged** for every event whose editor does not move a default page (no saved places, the default order as before), so nothing changes on a live event by this release.
 - **Verified:** type-check; lint; unit tests (moveTarget, the moved journey equals the user's pages, an own page moving past a default page, no defaults = the plain swap, the sanitiser; the event route tests for PATCH and GET); the real editor component in a browser harness at desktop and phone width (the arrows on the default rows, the login cannot go behind the photo, Save sends the places); the full CI chain.
-- **Not done (step 2 of issue 535):** the Take photo + Submit pair with its checkbox (steps between taking the photo and submitting).
+- **Step 2 of issue 535** (the Take photo + Submit pair with its checkbox) is the entry above.
 
 ## Unreleased — docs: profiles across events, purpose and consent drafted (issue 521, decision 242; owner answer 2026-10-10)
 

@@ -9,6 +9,7 @@ import { CustomPageType } from '@/lib/db/schemas';
 import { translate, type UiLanguage } from '@/lib/i18n';
 import type { TextOverrides } from '@/lib/i18n/overrides';
 import type { ConsentCheckbox } from './consent';
+import { pagesBeforeSave } from './photo-boundary';
 
 interface PageLike {
   pageType: CustomPageType | string;
@@ -24,9 +25,7 @@ interface PageLike {
 export function acceptanceOnLogin<T extends PageLike>(pages: readonly T[], enabled: boolean): { pages: T[]; acceptPage: T | null } {
   const all = [...pages];
   if (!enabled) return { pages: all, acceptPage: null };
-  const ordered = [...all].sort((a, b) => a.order - b.order);
-  const photoAt = ordered.findIndex((page) => page.isActive && page.pageType === CustomPageType.TAKE_PHOTO);
-  const before = photoAt === -1 ? ordered : ordered.slice(0, photoAt);
+  const before = pagesBeforeSave(all);
   const hasLogin = before.some((page) => page.isActive && page.pageType === CustomPageType.WHO_ARE_YOU);
   const acceptPage = before.find((page) => page.isActive && page.pageType === CustomPageType.ACCEPT) ?? null;
   if (!hasLogin || !acceptPage) return { pages: all, acceptPage: null };
