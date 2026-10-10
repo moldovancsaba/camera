@@ -8,6 +8,7 @@ import { clearBrokenCache } from '@/lib/media/pictures';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { SLIDESHOW_DEFAULT_BACKGROUND_PRIMARY, CAMERA_DEFAULT_CTA_BRAND_COLOR } from '@/lib/gds/tokens/colors';
 import { renderDefaultOverlay } from './default-stage';
+import { ObjectId } from 'mongodb';
 import { ensureWelcomeScreen, type WelcomeScreenDeps } from './welcome-screen-store';
 import { parseWindowRequest, planWindow, windowSourceOf } from './welcome-window';
 
@@ -56,7 +57,9 @@ test('the setting: the sample selfie unless the stand-in was chosen; a request n
   assert.equal(windowSourceOf({ welcomeWindow: { source: 'standin' } }), 'standin');
   assert.equal(windowSourceOf({ welcomeWindow: { source: 'weird' } }), 'selfie');
   assert.deepEqual(parseWindowRequest({ source: 'standin', again: true }), { ok: true, value: { source: 'standin', again: true } });
-  for (const bad of [null, [], 'x', { source: 'photo' }, { again: 'yes' }, { other: 1 }]) assert.equal(parseWindowRequest(bad).ok, false, JSON.stringify(bad));
+  const id = String(new ObjectId());
+  assert.deepEqual(parseWindowRequest({ source: 'photo', photoId: id }), { ok: true, value: { source: 'photo', photoId: id } });
+  for (const bad of [null, [], 'x', { source: 'photo' }, { source: 'photo', photoId: 'nope' }, { source: 'selfie', photoId: id }, { photoId: id }, { source: 'live' }, { again: 'yes' }, { other: 1 }]) assert.equal(parseWindowRequest(bad).ok, false, JSON.stringify(bad));
 });
 
 test('the plan puts the stored pick first, leaves out the pictures known to be gone, and makes a new pick when it left the set or when asked', async () => {
@@ -141,4 +144,60 @@ test('an event that keeps the stand-in never fetches a sample selfie', async () 
   const result = await ensureWelcomeScreen(w.db, w.event, deps(log, {}));
   assert.ok(result.ok);
   assert.ok(!log.fetched.some((url) => url.endsWith('/a.png')));
+});
+
+const FRAME_URL = 'https://store.public.blob.vercel-storage.com/frame.png';
+const frameDesign = { variants: [{ index: null, imageUrl: FRAME_URL }] };
+
+async function photoWorld(photo: Record<string, unknown>, images: Array<Record<string, unknown>> = []) {
+  const id = new ObjectId();
+  const w = await world(images, { frameDesign });
+  w.data[COLLECTIONS.SUBMISSIONS] = [{ _id: id, eventId: 'event-uuid-1', eventIds: ['event-uuid-1'], createdAt: '2026-10-10T10:00:00.000Z', ...photo }];
+  w.event.welcomeWindow = { source: 'photo', photoId: String(id) } as never;
+  return { ...w, id };
+}
+
+test('a photo of the event fills the window: a clean upload is drawn with the event’s frame, a framed photo as it is with no second frame, and neither becomes a sample selfie pick', async () => {
+  clearBrokenCache();
+  const green = await solid(20, 200, 20);
+  const clean = await photoWorld({ imageUrl: 'https://i.ibb.co/x/framed.png', originalImageUrl: 'https://i.ibb.co/x/plain.png', metadata: { adminGalleryUpload: true, galleryFrame: true } });
+  const log: Log = { uploads: [], fetched: [] };
+  const first = await ensureWelcomeScreen(clean.db, clean.event, deps(log, { 'https://i.ibb.co/x/plain.png': green }));
+  assert.ok(first.ok && first.created);
+  const [r, g, b] = await windowPixel(log.uploads[0].png);
+  assert.ok(g > 150 && r < 90 && b < 90, `the clean photo is in the window (${r},${g},${b})`);
+  assert.ok(log.fetched.includes(FRAME_URL), 'a clean photo gets the event’s frame');
+  assert.equal(clean.event.welcomeWindow?.pick, undefined, 'a photo is never a pick');
+
+  const framed = await photoWorld({ imageUrl: 'https://i.ibb.co/x/guest.png', reviewStatus: 'approved' });
+  const log2: Log = { uploads: [], fetched: [] };
+  await ensureWelcomeScreen(framed.db, framed.event, deps(log2, { 'https://i.ibb.co/x/guest.png': green }));
+  assert.ok(!log2.fetched.includes(FRAME_URL), 'a framed photo gets no second frame');
+  const [, g2] = await windowPixel(log2.uploads[0].png);
+  assert.ok(g2 > 150);
+  const again = await ensureWelcomeScreen(framed.db, framed.event, deps(log2, { 'https://i.ibb.co/x/guest.png': green }));
+  assert.ok(again.ok && !again.created, 'nothing is drawn again when nothing changed');
+});
+
+test('a photo that can no longer be shown (hidden, rejected, deleted) or fetched is replaced by the sample selfie, and with none by the stand-in: never an error', async () => {
+  clearBrokenCache();
+  const blue = await solid(20, 20, 220);
+  const hidden = await photoWorld({ imageUrl: 'https://i.ibb.co/x/guest.png', reviewStatus: 'rejected' }, [selfie('a')]);
+  const log: Log = { uploads: [], fetched: [] };
+  const result = await ensureWelcomeScreen(hidden.db, hidden.event, deps(log, { 'https://store.public.blob.vercel-storage.com/a.png': blue }));
+  assert.ok(result.ok);
+  const [r, , b] = await windowPixel(log.uploads[0].png);
+  assert.ok(b > 150 && r < 90, 'the sample selfie is drawn instead of a rejected photo');
+  assert.ok(!log.fetched.includes('https://i.ibb.co/x/guest.png'), 'a photo that may not be shown is not even fetched');
+
+  const unreachable = await photoWorld({ imageUrl: 'https://i.ibb.co/x/guest.png', reviewStatus: 'approved' }, [selfie('a')]);
+  const log2: Log = { uploads: [], fetched: [] };
+  await ensureWelcomeScreen(unreachable.db, unreachable.event, deps(log2, { 'https://i.ibb.co/x/guest.png': null, 'https://store.public.blob.vercel-storage.com/a.png': blue }));
+  const [r2, , b2] = await windowPixel(log2.uploads[0].png);
+  assert.ok(b2 > 150 && r2 < 90, 'a photo that cannot be fetched falls to the sample selfie');
+
+  const nothing = await photoWorld({ imageUrl: 'https://i.ibb.co/x/guest.png', reviewStatus: 'rejected' });
+  const log3: Log = { uploads: [], fetched: [] };
+  const standIn = await ensureWelcomeScreen(nothing.db, nothing.event, deps(log3, {}));
+  assert.ok(standIn.ok && standIn.created, 'with no sample selfie either, the stand-in is drawn');
 });

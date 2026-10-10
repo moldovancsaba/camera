@@ -1,5 +1,14 @@
 # RELEASE_NOTES.md
 
+## Unreleased — a photo of the event in the welcome page screen's window (issue 540, step 5 of the plan; owner answers 256 and 257)
+
+- **Added:** the third choice on the event card **Welcome page screen**: **A photo of this event**, with **Choose from the gallery** (up to 60 photos: the editor's own gallery uploads first, then the newest approved photos; no guest data). An editor's upload is **clean** (its plain original) and is drawn with the event's frame over it; any other photo is **framed already** and is drawn as it is, with no second frame (`lib/screen/welcome-photo.ts`, `GET /api/admin/events/<id>/welcome-photos`, `PUT .../welcome-window` with `photoId`).
+- **Only what may be shown:** a photo must pass the one visibility rule (approved, not hidden, not archived, not broken, not a try-on result, of this event); **nothing else is asked** (owner answer 256). One that can no longer be shown, or cannot be fetched, is replaced by a sample selfie and then by the stand-in, never an error; a photo is never stored as a sample selfie pick.
+- **No event changes by this release:** an event shows a photo only when its editor chooses one.
+- **Not added:** a gallery shortcut (the photo card holds at most four buttons); the choice is made on the card.
+- **Verified:** type-check; lint; unit tests (which picture a photo gives, the eligibility with every refusal, the list order and no guest data, the clean and framed drawing with the pixel and the frame fetched or not, the fall back to the sample selfie and the stand-in, the two routes); the card in a browser harness at phone width (the picker, the choice, the chosen photo shown); the full CI chain.
+- **Not done:** the latest approved photo, the live stage's empty state and the guide (steps 6 to 8, after the match).
+
 ## Unreleased — the welcome page screen shows the event's sample selfie (issue 540, step 4 of the plan; owner answers 255 to 260)
 
 - **Added:** the photo window of the welcome page screen takes the event's **sample selfie** (one of its own, its partner's or the global ones, picked once and stored on the event, `Event.welcomeWindow.pick`) with the event's frame over it, or the drawn stand-in. The event's Slideshows page card **Welcome page screen** now has the preview, **Sample selfie** (default, with the same panel as the logo and **Pick another**) and **Keep the stand-in**; a choice draws the picture again in one press (`GET`, `PUT /api/admin/events/<id>/welcome-window`).

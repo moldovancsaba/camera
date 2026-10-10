@@ -77,7 +77,8 @@ export async function ensureWelcomeScreen(db: Db, event: Document, deps: Welcome
     createHash('sha256').update(JSON.stringify([WELCOME_SCREEN_RENDER_VERSION, design, colours, font.family, font.used, frameUrl, ...(windowPart === 'standin' ? [] : [windowPart])])).digest('hex');
   const stored = event.welcomeScreen as { url?: string; key?: string } | undefined;
   if (!options.again && stored?.url && stored.key === keyOf(plan.keyPart)) {
-    await storePick(db, event, plan.candidates[0]?.id ?? null, deps.now());
+    const first = plan.candidates[0];
+    await storePick(db, event, first?.kind === 'selfie' ? first.id : null, deps.now());
     return { ok: true, url: stored.url, created: false };
   }
 
@@ -89,7 +90,8 @@ export async function ensureWelcomeScreen(db: Db, event: Document, deps: Welcome
     return { ok: true, url: stored.url, created: false };
   }
 
-  const frame = frameUrl ? await deps.fetchImage(frameUrl) : null;
+  // The frame is fetched only when it is drawn: a photo that already has it (a guest photo, a framed upload) gets no second one.
+  const frame = frameUrl && window.drawFrame ? await deps.fetchImage(frameUrl) : null;
   const png = await renderWelcomeScreen({ design, overlay, windowPicture: window.picture, frame, fontStack: font.stack, colours });
   const url = await deps.upload(`screens/${eventUuid}/welcome-${key.slice(0, 16)}.png`, png);
   await db.collection(COLLECTIONS.EVENTS).updateOne({ eventId: eventUuid }, { $set: { welcomeScreen: { url, key, generatedAt: deps.now(), renderVersion: WELCOME_SCREEN_RENDER_VERSION } } });
