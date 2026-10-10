@@ -17,9 +17,6 @@ export const DEFAULT_APPROVAL_TEXTS = {
   waitingMessage: translate('en', 'approval.waiting'),
 } as const;
 
-/** Added to the default waiting message when the user chose a try-on picture; an editor's own waiting message is shown as written. */
-export const TRY_ON_WAITING_SENTENCE = translate('en', 'approval.tryOn');
-
 export interface ApprovalTextSettings {
   pendingPreviewNotice?: string;
   pendingSavedMessage?: string;
@@ -33,15 +30,13 @@ export function redirectingText(value: string | null | undefined, language: UiLa
 }
 
 /** The four texts of the approval wait, from the settings of the selfie-taking page (or none). */
-export function approvalTexts(settings: ApprovalTextSettings | null | undefined, tryOnChosen: boolean, language: UiLanguage = 'en', texts?: TextOverrides | null) {
-  const own = textOr(language, 'approval.waiting', settings?.pendingWaitingMessage, undefined, texts);
-  const ownIsDefault = own === translate(language, 'approval.waiting', undefined, texts);
+export function approvalTexts(settings: ApprovalTextSettings | null | undefined, language: UiLanguage = 'en', texts?: TextOverrides | null) {
   return {
     previewNotice: textOr(language, 'approval.previewNotice', settings?.pendingPreviewNotice, undefined, texts),
     savedMessage: textOr(language, 'approval.saved', settings?.pendingSavedMessage, undefined, texts),
     // True only when an editor wrote their own saved message: the standard one says what the card on the screen already says, so it is not shown as a notice on top of it.
     savedMessageIsOwn: textOr(language, 'approval.saved', settings?.pendingSavedMessage, undefined, texts) !== translate(language, 'approval.saved', undefined, texts),
     title: textOr(language, 'approval.title', settings?.pendingTitle, undefined, texts),
-    waitingMessage: ownIsDefault && tryOnChosen ? `${own}${translate(language, 'approval.tryOn', undefined, texts)}` : own,
+    waitingMessage: textOr(language, 'approval.waiting', settings?.pendingWaitingMessage, undefined, texts),
   };
 }

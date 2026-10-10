@@ -1,16 +1,9 @@
 'use client';
 
 import { PublicFlowShell } from '@sovereignsquad/gds-core/client';
-import { Alert, Anchor, Button, Group, Stack, Text, TextInput } from '@mantine/core';
+import { Anchor, Button, Group, Stack, Text, TextInput } from '@mantine/core';
 import { DEFAULT_EVENT_BUTTON_SIZE, type EventButtonSize } from '@/lib/events/visual-settings';
 import { useT } from '@/components/i18n/UiLanguageProvider';
-
-interface TryOnStatus {
-  requested: boolean;
-  status: 'not_requested' | 'queued' | 'deduplicated' | 'enqueue_failed';
-  jobId: string | null;
-  error: string | null;
-}
 
 interface ShareOverlayProps {
   shareUrl?: string | null;
@@ -19,7 +12,6 @@ interface ShareOverlayProps {
   viewPhotoButtonText?: string;
   suggestedMessageLabel?: string;
   shareCaption: string;
-  tryOnResult?: TryOnStatus | null;
   nextButtonText?: string;
   completionMessage?: string;
   onCopyLink?: () => void;
@@ -32,32 +24,6 @@ interface ShareOverlayProps {
   buttonSize?: EventButtonSize;
 }
 
-function TryOnStatusNotice({ tryOnResult }: { tryOnResult?: TryOnStatus | null }) {
-  const { t } = useT();
-  if (!tryOnResult?.requested) return null;
-
-  const isQueued =
-    tryOnResult.status === 'queued' || tryOnResult.status === 'deduplicated';
-
-  return (
-    <Alert color={isQueued ? 'blue' : 'yellow'} variant="light">
-      {isQueued ? (
-        <>
-          <Text fw={700}>{t('share.tryOn.queued')}</Text>
-          <Text size="sm">{t('share.tryOn.job', { id: tryOnResult.jobId ?? '' })}</Text>
-        </>
-      ) : (
-        <>
-          <Text fw={700}>{t('share.tryOn.notQueued')}</Text>
-          <Text size="sm">
-            {tryOnResult.error || t('share.tryOn.failed')}
-          </Text>
-        </>
-      )}
-    </Alert>
-  );
-}
-
 export default function ShareOverlay({
   shareUrl,
   title: titleProp,
@@ -65,7 +31,6 @@ export default function ShareOverlay({
   viewPhotoButtonText: viewPhotoButtonTextProp,
   suggestedMessageLabel: suggestedMessageLabelProp,
   shareCaption,
-  tryOnResult,
   nextButtonText,
   completionMessage,
   onCopyLink,
@@ -148,8 +113,6 @@ export default function ShareOverlay({
                   ) : completionMessage ? (
                     <Text c="dimmed">{completionMessage}</Text>
                   ) : null}
-
-                  <TryOnStatusNotice tryOnResult={tryOnResult} />
 
                   {showShareActions ? (
                     <div className="grid grid-cols-2 gap-2 sm:gap-3 landscape:grid-cols-4">

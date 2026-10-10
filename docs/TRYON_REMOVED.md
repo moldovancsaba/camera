@@ -22,7 +22,7 @@ Try-on (a guest picks a garment on the capture page, an AI worker dresses the gu
 | R0 | This inventory, the tag, this document | merged (PR 564) |
 | R1 | Admin: pages, menu, settings panels, admin API routes, tests, action vocabulary. The cross-event photo vetting page moves out of `/admin/tryon/vetting` first (section 6): it is `/admin/vetting` now, the old address and the messmass link to it are redirected | merged (PR 568) |
 | R2 | Server: `lib/tryon`, internal routes, e-mails, share page and download, visibility rule, wall, slideshow clauses, vetting hold, scripts. **Kept for R3 because `POST /api/submissions` (the guest path) still imports it:** `lib/tryon/{enqueue-for-submission, jobs, suits, setup-resolution, prompts, hash, time}`, the test support `sync.fake-db.ts`, `GET /api/tryon/suits` and the suit selector | merged |
-| R3 | Guest path: suit selector, try-on fields of `POST /api/submissions`, journey texts. Not merged until after the match of 2026-10-16 | planned |
+| R3 | Guest path: suit selector, try-on fields of `POST /api/submissions`, journey texts, and with them the last of `lib/tryon` and `GET /api/tryon/suits`. **Not merged until after the match of 2026-10-16** (it changes the page every guest uses); browser evidence in section 3.14 | built, held |
 | R4 | Types and indexes of what no code uses any more (the type for stored fields stays), environment variables, remaining docs, board cards. The schema and index parts that the held guest path still needs (`Event.tryOn`, `Submission.tryOnRequest`, the job, setup and garment types, their indexes) go with R3 | merged |
 
 ## 2. How to read the old code
@@ -230,6 +230,15 @@ Built on the camera side: the callback route (`/api/internal/image-direct/comple
 - **Photo vetting:** approval no longer queues a held try-on request and rejection no longer cancels one; the response of the review route has no `tryOn`.
 - **Tests and fixtures:** the dev-only e2e bootstrap seeds an "export" event with two plain photos instead of a try-on job and result.
 
+### 3.14 What R3 changed in behaviour (the guest path; held until after 2026-10-16)
+
+- **Capture page** (`app/capture/[eventId]/page.tsx`): no suit selector, no state for it, no `GET /api/tryon/suits` request, and the save sends none of `requestTryOn`, `leatherSuitId`, `outfitBottomLeatherSuitId`, `tryOnSourceImageData`, `setupId`, `cameraId`. An old event that still stores `tryOn.enabled = true` shows exactly the page of an event without try-on. The "photo is waiting for the related pictures" notice and the try-on status on the share overlay are gone.
+- **Legacy `/capture` page** (`app/capture/page.tsx`, no event): it always showed an "Optional try-on" card with the suit selector, whatever the event settings said (there was no event to ask), and the server then queued a job without the event-policy check. The card is gone, so this path can no longer queue anything.
+- **`POST /api/submissions`:** no `normalizeTryOnRequest`, no `tryOnRequest` or `tryOnJobs` on the stored submission, no `photoReview.tryOn`, no `tryOn` in the answer, no events lookup for the try-on policy. An open page from before the release may still send the old fields: they are ignored (unit test), and the answer carries no try-on state.
+- **Texts:** the `tryon.*`, `share.tryOn.*`, `approval.tryOn` and `flow.email.waitingRelated` keys and the catalog group `tryon` are gone; the waiting message of a vetted event is the owner's text or the default, with no sentence added. `/api/tryon` is no longer a prefix of the admin activity log.
+- **Deleted with it:** `components/tryon/TryOnSuitSelector.tsx`, `app/api/tryon/suits/route.ts`, the rest of `lib/tryon` (`enqueue-for-submission`, `jobs`, `suits`, `setup-resolution`, `prompts`, `hash`, `time`, `sync.fake-db.ts` and their tests) and `config/leather-suits.example.json`. `lib/tryon` no longer exists.
+- **Evidence (before and after, the whole capture page in a browser, API faked in the page, fake camera; phone 390 x 844 with touch and desktop 1280 x 800):** for an event without try-on, a vetted event, an event that still stores `tryOn.enabled`, an event that asks the gallery permission and the Hungarian page, the camera step, the reframe step and the saved step have the same elements at the same places and the same words (80 of 80 checks), the Continue button and the page fit the screen with no sideways scroll, the save sends the same fields without the try-on ones, and the selector is on the old page for the old event and not on the new one.
+
 ## 4. Documents that described the integration
 
 At the time of the removal these described the integration and now carry a banner pointing here and to the tag: `docs/TRYON_ARCHITECTURE.md`, `docs/TRYON_LOW_LEVEL_DESIGN.md`, `docs/TRYON_OPERATIONS.md`, `docs/TRYON_ANALYTICS.md`, `docs/IMAGE_DIRECT_INTEGRATION.md`. `docs/TRYON_ADMIN_GUIDE.md` and `docs/TRYON_RECOVERY_RUNBOOK.md` described screens and recovery steps for a worker that no longer runs and were deleted in R0 (read them at the tag). Mentions of try-on in other documents are removed in the phase that removes the thing they describe, and in R4 for what is left (appendix A lists them).
@@ -255,7 +264,7 @@ These are moved or rewritten, not deleted. Each is a place where "remove try-on"
 4. **`lib/tryon/dashboard-metrics.ts` `collectActiveEventRows` and `ActiveEventRow`** feed the admin dashboard's "Active events" strip; `pendingVettingCount` on the dashboard added try-on results to photos waiting.
 5. **`lib/tryon/analytics.ts` `collectEventSpecificStats`** feeds the event overview (total submissions, unique e-mails, "clean customer e-mails") together with the "AI Try-ons" count; only the try-on count goes.
 6. **`lib/tryon/slideshow-policy.ts`** is read by the playlist route and by the event API; its output for an event with try-on off is always `originals_only`.
-7. **`lib/events/page-texts.ts` `approvalTexts(settings, tryOnChosen, ...)`** takes a "try-on chosen" flag; the waiting-message sentence disappears with it (R3, because the capture page passes it).
+7. **`lib/events/page-texts.ts` `approvalTexts(settings, tryOnChosen, ...)`** takes a "try-on chosen" flag; the waiting-message sentence disappears with it (R3, because the capture page passes it; done: `approvalTexts(settings, language, uiTexts)`).
 8. **`app/admin/events/page.tsx`** counted pending try-on results per event for the events list.
 9. **`lib/frame`, `lib/theme/css.ts`, `lib/security/safeEqual.ts`, `lib/fanmass/internal.ts`, `lib/messmass/internal.ts`, `components/camera/ReframeStep.tsx`**: comments only; reworded.
 10. **Behaviours that depended on try-on being possible (a small, deliberate change for old data):**

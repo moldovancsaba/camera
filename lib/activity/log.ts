@@ -45,7 +45,7 @@ export interface ObservedPerson {
   role?: string | null;
 }
 
-const MANAGEMENT_PREFIXES = ['/api/admin/', '/api/events', '/api/partners', '/api/slideshows', '/api/slideshow-layouts', '/api/frames', '/api/images', '/api/logos', '/api/landing-pages', '/api/hashtags', '/api/upload-logo', '/api/tryon'] as const;
+const MANAGEMENT_PREFIXES = ['/api/admin/', '/api/events', '/api/partners', '/api/slideshows', '/api/slideshow-layouts', '/api/frames', '/api/images', '/api/logos', '/api/landing-pages', '/api/hashtags', '/api/upload-logo'] as const;
 
 /** Requests that are neither a management action nor worth recording when they fail: beacons and reports the screens and phones send all the time. */
 const NOISE = [/^\/api\/observability\//, /^\/api\/media\/broken$/, /^\/api\/slideshows\/[^/]+\/(played|next-candidate)$/, /^\/api\/auth\//, /^\/api\/go-short\//];

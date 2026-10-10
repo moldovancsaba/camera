@@ -43,28 +43,6 @@ import {
   RATE_LIMITS,
 } from '@/lib/api';
 import { safeLinkUrl } from '@/lib/events/consent';
-import { enqueueTryOnForSubmission, type TryOnPolicyEvent, type TryOnRequestDetails } from '@/lib/tryon/enqueue-for-submission';
-interface SubmissionEventDocument {
-  _id: string;
-  name?: string;
-  notifications?: {
-    submissionResultEmailEnabled?: boolean;
-    submissionResultEmailSendAfterSave?: boolean;
-    submissionResultEmailSendAfterRelatedPhotosReady?: boolean;
-    submissionResultEmailSendAfterTryOnResubmissionApproved?: boolean;
-    submissionResultEmailSubject?: string | null;
-    submissionResultEmailBody?: string | null;
-    submissionResultEmailSubjectAfterSave?: string | null;
-    submissionResultEmailBodyAfterSave?: string | null;
-    submissionResultEmailSubjectAfterRelatedPhotosReady?: string | null;
-    submissionResultEmailBodyAfterRelatedPhotosReady?: string | null;
-    submissionResultEmailSubjectAfterTryOnResubmissionApproved?: string | null;
-    submissionResultEmailBodyAfterTryOnResubmissionApproved?: string | null;
-    submissionResultEmailSenderName?: string | null;
-  };
-  tryOn?: TryOnPolicyEvent['tryOn'];
-}
-
 interface EventLookupFilter {
   $or: Array<Record<string, unknown>>;
 }
@@ -90,36 +68,6 @@ function getSubmissionMongoIdString(id: unknown): string {
   }
 
   return '';
-}
-
-function normalizeTryOnRequest(body: Record<string, unknown>): TryOnRequestDetails {
-  const leatherSuitIdRaw = body.leatherSuitId ?? body.leather_suit_id;
-  const requestFlagRaw = body.requestTryOn ?? body.request_try_on ?? leatherSuitIdRaw;
-  const sourceImageRaw = body.tryOnSourceImageData ?? body.try_on_source_image_data;
-  const setupIdRaw = body.setupId ?? body.setup_id;
-  const cameraIdRaw = body.cameraId ?? body.camera_id;
-  const outfitBottomRaw = body.outfitBottomLeatherSuitId ?? body.outfit_bottom_leather_suit_id;
-
-  const leatherSuitId =
-    typeof leatherSuitIdRaw === 'string' && leatherSuitIdRaw.trim() ? leatherSuitIdRaw.trim() : null;
-  const requested = Boolean(requestFlagRaw) || Boolean(leatherSuitId);
-  const sourceImageData =
-    typeof sourceImageRaw === 'string' && sourceImageRaw.trim() ? sourceImageRaw.trim() : null;
-  const setupId =
-    typeof setupIdRaw === 'string' && setupIdRaw.trim() ? setupIdRaw.trim() : null;
-  const cameraId =
-    typeof cameraIdRaw === 'string' && cameraIdRaw.trim() ? cameraIdRaw.trim() : null;
-  const outfitBottomLeatherSuitId =
-    typeof outfitBottomRaw === 'string' && outfitBottomRaw.trim() ? outfitBottomRaw.trim() : null;
-
-  return {
-    requested,
-    leatherSuitId,
-    sourceImageData,
-    setupId,
-    cameraId,
-    outfitBottomLeatherSuitId,
-  };
 }
 
 /**
@@ -166,12 +114,11 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       // defaults to checked (d9488b5); a request that omits shareOptIn stores false.
       // POST /api/internal/savetheworld/events/[eventId]/publish-selfies can later set
       // isShareVisible true in bulk for an event. Only meaningful for plain ('original')
-      // captures; try-on results get isShareVisible from the moderation flow.
+      // captures.
       shareOptIn,
       // The version of the sentence the user ticked when the event asks for the permission to show the photo in the public gallery (issue 554, lib/events/gallery-consent.ts).
       publicGalleryConsentVersion,
     } = body;
-  const tryOnRequest = normalizeTryOnRequest(body);
 
   // frameId can be null if the event has no frames
   if (!imageData) {
@@ -328,7 +275,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       frameId: frame?.frameId || null,
       frameName: frame?.name || null,
       frameCategory: frame?.category || null,
-      // Which generated-frame image (and message) this photo used; try-on composes with it later (camera#236)
+      // Which generated-frame image (and message) this photo used (camera#236)
       ...(frameVariant ? { frameVariant } : {}),
       // Partner/Event context (for gallery filtering)
       partnerId: partnerId || null,
@@ -361,14 +308,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
               photoMime: pendingPhoto?.mime ?? 'image/jpeg',
               shareOptIn: wall.shareOptIn,
               submittedAt: createdAt,
-              tryOn: tryOnRequest.requested && tryOnRequest.leatherSuitId
-                ? {
-                    leatherSuitId: tryOnRequest.leatherSuitId,
-                    setupId: tryOnRequest.setupId ?? null,
-                    cameraId: tryOnRequest.cameraId ?? null,
-                    outfitBottomLeatherSuitId: tryOnRequest.outfitBottomLeatherSuitId ?? null,
-                  }
-                : null,
             },
             shareToken: newShareToken(),
             reviewHistory: [],
@@ -409,31 +348,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       isArchived: false,
       hiddenFromPartner: false,
       hiddenFromEvents: [],
-      tryOnRequest: tryOnRequest.requested
-        ? {
-            requested: true,
-            // A vetted photo's try-on waits until the photo is approved (camera#266).
-            status: vetted ? 'awaiting_approval' : 'requested',
-            requestedAt: createdAt,
-            lastUpdatedAt: createdAt,
-            leatherSuitId: tryOnRequest.leatherSuitId,
-            reviewStatus: null,
-            shareVisible: false,
-            slideshowEligible: false,
-            lastError: null,
-          }
-        : {
-            requested: false,
-            status: 'not_requested',
-            requestedAt: null,
-            lastUpdatedAt: createdAt,
-            leatherSuitId: null,
-            reviewStatus: null,
-            shareVisible: false,
-            slideshowEligible: false,
-            lastError: null,
-          },
-      tryOnJobs: [],
       createdAt,
       updatedAt: createdAt,
     } as unknown as Submission;
@@ -464,13 +378,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     if (vetted) {
       return apiCreated({
         submission: { _id: result.insertedId, reviewStatus: 'pending_review', metadata: { emailSent: false } },
-        tryOn: {
-          requested: tryOnRequest.requested,
-          status: tryOnRequest.requested ? 'awaiting_approval' : 'not_requested',
-          leatherSuitId: tryOnRequest.requested ? tryOnRequest.leatherSuitId : null,
-          jobId: null,
-          error: null,
-        },
         pending: true,
       });
     }
@@ -479,51 +386,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       ...submission,
     };
 
-    const created: {
-      submission: typeof createdSubmission;
-      tryOn: {
-        requested: boolean;
-        status: 'not_requested' | 'queued' | 'deduplicated' | 'enqueue_failed';
-        leatherSuitId: string | null;
-        jobId: string | null;
-        error: string | null;
-      };
-    } = {
-      submission: createdSubmission,
-      tryOn: {
-        requested: false,
-        status: 'not_requested',
-        leatherSuitId: null,
-        jobId: null,
-        error: null,
-      },
-    };
-
-    const eventPolicy: SubmissionEventDocument | null = eventId
-      ? ((await db.collection(COLLECTIONS.EVENTS).findOne(
-          buildEventLookupFilterByIdentifier(eventId),
-          { projection: { notifications: 1, name: 1, tryOn: 1 } }
-        )) as SubmissionEventDocument | null)
-      : null;
-
-    if (tryOnRequest.requested) {
-      created.tryOn.requested = true;
-      created.tryOn.leatherSuitId = tryOnRequest.leatherSuitId;
-      const outcome = await enqueueTryOnForSubmission(db, {
-        submissionId,
-        createdAt,
-        eventId: typeof eventId === 'string' && eventId ? eventId : null,
-        partnerId,
-        userId: session?.user?.id || 'anonymous',
-        eventPolicy,
-        request: tryOnRequest,
-      });
-      created.tryOn.status = outcome.status;
-      created.tryOn.jobId = outcome.jobId;
-      created.tryOn.error = outcome.error;
-    }
-
-    return apiCreated(created);
+    return apiCreated({ submission: createdSubmission });
 });
 
 /**
