@@ -124,6 +124,11 @@ Examples:
 - events store `partnerId` as the partner business identifier
 - partner-scoped access rows also store `partnerId` as the business identifier
 
+### The follow-up e-mail (issue 559, `lib/email/follow-up.ts`)
+
+- `Partner.followUpEmail` (`true` on, `false` off, missing or removed: no choice, the standard is off) is the default of the follow-up e-mail for the partner's events that made no choice; `Event.notifications.types.followUp.enabled` is the event's own choice and wins. Nothing is copied from the partner into the event (`lib/email/types.ts` `switchIsOn`, `partnerSwitchDefaults`).
+- `email_follow_ups` holds one row for each event and e-mail address, as the claim that keeps the e-mail to one: `_id` is `followup:<event key>:<40 hex of a SHA-256 of the event key and the lower-cased address>` (so the row holds **no address**, and MongoDB's own unique `_id` refuses a second claim whatever indexes exist), `eventId`, `createdAt`, `claimedAt` while a run is sending, `sentAt` once it went, `attempts`, and after a failure `lastFailedAt` and `lastReason` (a short code, never the provider's text). A row with `claimedAt` and no `sentAt` is a run that stopped before the answer: it is never retried (the e-mail may have gone).
+
 ## 5. Slideshow-specific rule
 
 Public slideshow URLs do not use Mongo `_id`.

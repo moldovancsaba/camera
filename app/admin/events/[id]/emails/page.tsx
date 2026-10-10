@@ -42,6 +42,25 @@ const draftOf = (row: { enabled: boolean; chosen: boolean | null; defaultOn?: bo
   body: row.body ?? row.defaultBody,
 });
 
+/** What the editor needs to know about the follow-up e-mail: who it goes to, from when, and that an event with no date sends nothing. */
+function FollowUpNote({ view, on }: { view: EventEmailsView; on: boolean }) {
+  const { day, from, until } = view.followUp;
+  if (!day) {
+    return (
+      <InlineAlert
+        title="This event has no date"
+        message={`The follow-up e-mail is sent a week after the date of the event, so this event sends nothing until it has one. Set the date in the event's details.${on ? '' : ' (It is off now.)'}`}
+        severity={on ? 'warning' : 'info'}
+      />
+    );
+  }
+  return (
+    <p style={{ ...muted, margin: 0 }}>
+      Sent once to each user who has an approved photo from this event, gave an e-mail address and agreed to the terms: from {from} (a week after the event on {day}) and, if a run was missed, until {until}. Nothing is sent before that or after.
+    </p>
+  );
+}
+
 export default function EventEmailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const url = `/api/admin/events/${id}/emails`;
@@ -132,7 +151,10 @@ export default function EventEmailsPage({ params }: { params: Promise<{ id: stri
   if (error || !view) return <InlineAlert title="Error" message={error || 'The e-mails could not be loaded'} severity="error" />;
 
   const set = (type: string, change: Partial<Draft>) => setDrafts((current) => ({ ...current, [type]: { ...current[type], ...change } }));
-  const status = (draft: Draft, defaultOn: boolean) => `${draft.enabled ? 'On' : 'Off'} · ${draft.chose && draft.enabled !== defaultOn ? 'chosen' : draft.chose ? 'chosen (same as the default)' : 'default'}`;
+  const status = (draft: Draft, defaultOn: boolean, from: 'standard' | 'partner') => {
+    const source = from === 'partner' ? ' (the partner’s)' : '';
+    return `${draft.enabled ? 'On' : 'Off'} · ${draft.chose && draft.enabled !== defaultOn ? 'chosen' : draft.chose ? `chosen (same as the default${source})` : `default${source}`}`;
+  };
 
   return (
     <GdsStack gap="lg">
@@ -177,11 +199,12 @@ export default function EventEmailsPage({ params }: { params: Promise<{ id: stri
           <section key={row.type} style={card} aria-labelledby={`type-${row.type}`}>
             <div>
               <h3 id={`type-${row.type}`} style={{ margin: 0 }}>
-                {row.label} <span style={{ ...muted, fontWeight: 400 }}>· {status(draft, row.defaultOn)}</span>
+                {row.label} <span style={{ ...muted, fontWeight: 400 }}>· {status(draft, row.defaultOn, row.defaultFrom)}</span>
               </h3>
               <p style={{ ...muted, margin: '0.25rem 0 0' }}>{row.when}</p>
             </div>
-            {!row.sent ? <InlineAlert title="Not sent yet" message="The text and the switch are saved, but nothing sends this e-mail yet: the daily job that sends it is added later." severity="info" /> : null}
+            {!row.sent ? <InlineAlert title="Not sent yet" message="The text and the switch are saved, but nothing sends this e-mail yet." severity="info" /> : null}
+            {row.type === 'followUp' ? <FollowUpNote view={view} on={draft.enabled} /> : null}
             <Group gap="md" wrap="wrap" align="center">
               <Checkbox
                 label="Send this e-mail"
