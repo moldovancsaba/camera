@@ -1,5 +1,7 @@
 # Operations Runbook
 
+> **Try-on is removed from operations (issue 557).** It is switched off on every event, its worker is stopped and its cron is gone, and the integration is being deleted from this app in phases. Where a section below still mentions a held, queued or derived try-on, it describes code that is being deleted and nothing that can happen on a live event. What existed and how to read the old code: [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md) and git tag `tryon-integration-final`.
+
 ## Branching model
 
 Single long-lived branch `main` (production), plus short-lived per-task branches
@@ -460,7 +462,7 @@ The giant screen is sent a **screen-sized WebP** of each photo (longest edge at 
 - **Coverage is guarded:** every route on a management path must use `withErrorHandler` (`lib/activity/coverage.test.ts` fails otherwise; the playlist and next-candidate routes of the screens are the two public exceptions). The slideshow editor's save, layouts, frames, logos and the users' role, status and merge routes were found outside it on 2026-10-09 and are wrapped now.
 - **How:** `withErrorHandler` hands every answer to `observeApiRequest` (`lib/activity/observe.ts`), which writes after the answer was sent and never fails a request. It writes **only on the production deployment** (`VERCEL_ENV=production`; `ACTIVITY_LOG=1` turns it on elsewhere, `0` off) because a preview or a local run uses the same database. Collection `activity_log` (index on `at`).
 - **The weekly mail:** `vercel.json` has a cron, **Mondays 06:00 UTC**, calling `GET /api/internal/activity-export` (`lib/activity/export.ts`): the records written since the previous export are mailed as one CSV attachment (`when, who, user id, role, method, path, status, outcome, message`; a message that starts with `=`, `+`, `-` or `@` is defused so a spreadsheet never reads it as a formula) to `ACTIVITY_EXPORT_TO` (default **moldovancsaba@gmail.com**) through Resend; a row in `activity_exports` records the period; **only after the mail went**, the records the **previous** export carried are deleted. So a record is mailed before it is ever deleted and is kept one to two weeks. A week with no records is still mailed (an empty CSV), so the owner knows it ran. A mail that fails writes and deletes nothing: the next run covers the same period again (and the answer is 502, in the Vercel log).
-- **Owner step, once: set `CRON_SECRET` on project `04_camera`** (`openssl rand -hex 32 | npx --yes vercel@latest env add CRON_SECRET production --scope narimato`, then redeploy): Vercel then sends `Authorization: Bearer <CRON_SECRET>` to the cron, and only to the production deployment. Without it the route answers 403 (fail closed, a warning in the log) and nothing is mailed. The same variable brings the try-on cron back (see Scheduled jobs).
+- **Owner step, once: set `CRON_SECRET` on project `04_camera`** (`openssl rand -hex 32 | npx --yes vercel@latest env add CRON_SECRET production --scope narimato`, then redeploy): Vercel then sends `Authorization: Bearer <CRON_SECRET>` to the cron, and only to the production deployment. Without it the route answers 403 (fail closed, a warning in the log) and nothing is mailed. The same variable serves the daily picture check (see Scheduled jobs).
 - **Admin:** **Settings > Activity log** (global admins): records waiting for the next mail, records kept, the last mail, the address, and **Send now** (`POST /api/admin/activity-log`: the same export at once; the first one before the match on 16 October does not have to wait for Monday or for `CRON_SECRET`).
 - **Privacy:** the log names the people who manage the service (their e-mail and role) and what they did, and holds nothing about a guest beyond an anonymous failure; the CSV goes to the owner's own address. Tell the people who manage the service that their actions are logged.
 
@@ -468,46 +470,4 @@ The giant screen is sent a **screen-sized WebP** of each photo (longest edge at 
 
 **Vercel Cron: two crons in `vercel.json`, both need `CRON_SECRET`.** The weekly activity export (issue 517, Mondays 06:00 UTC; see "Activity log and its weekly CSV"), and the daily picture check (issue 514, 05:30 UTC, `GET /api/internal/pictures-scan`): it asks the host of every photo and of every logo, frame, page picture and e-mail picture that has not been checked for a week, in batches until 40 seconds are used (a first run needs a few days to cover everything; the next day continues), marks the ones that are gone and clears the ones that answer again. Without `CRON_SECRET` it answers 403 and does nothing; the same check runs by hand from the card **Broken pictures** on the Slideshows page (two buttons: photos; logos, frames and page pictures). A picture that is gone is left out of the guest pages, the screens and the e-mails, never deleted: replace it where the card says it is used.
 
-**Vercel Cron: try-on completion backstop (paused since v12.3.40).** The job that
-used to live in `vercel.json` called
-`GET /api/internal/tryon/sync?status=done&limit=50` every 5 minutes. The owner
-paused try-on on 2026-09-30 (local worker stopped, `tryOn.enabled` off on every
-event), and `CRON_SECRET` was never set on project `04_camera`, so every run got a
-403 (about 288 a day) and synced nothing. The cron entry is therefore removed.
-The route itself is unchanged and still works when called with the service
-secret.
-
-- **To bring it back.** (1) Set `CRON_SECRET` on project `04_camera`
-  (`openssl rand -hex 32 | npx --yes vercel@latest env add CRON_SECRET production --scope narimato`);
-  (2) restore this block in `vercel.json`:
-  `{"crons":[{"path":"/api/internal/tryon/sync?status=done&limit=50","schedule":"*/5 * * * *"}]}`;
-  (3) deploy. Vercel then sends `Authorization: Bearer <CRON_SECRET>` and only runs
-  crons against the production deployment.
-- **Auth when it is on.** The route compares the bearer in constant time and fails
-  closed: with `CRON_SECRET` unset every call gets a generic 403
-  (`{"success":false,"error":"Forbidden"}`) and logs
-  `[internal-auth] try-on sync cron: CRON_SECRET is not configured` as a warning.
-- **What it does when enabled.** It applies completion only for `done` jobs that
-  have a stored `result.publicResultUrl` but no completion marker: no derived
-  `submissions` doc with `sourceJobId` = the job id, and no `remove` event in
-  `tryon_moderation_events` (`lib/tryon/sync.ts`). At most `limit` unapplied jobs
-  per run; a run with nothing new writes nothing. Before v12.3.39 it re-applied
-  the newest 50 jobs on every run (new uploads, frames stacked on framed
-  results), which is why the secret had to wait for that fix.
-- **Manual run.** `POST /api/internal/tryon/sync` with header
-  `x-camera-tryon-secret: <CAMERA_TRYON_INTERNAL_SECRET>` and body
-  `{"limit": 25}`, or `?jobId=job_<yyyyMMddHHmmss>_<8 hex>` for one job (any
-  other id shape is a 400). In the response, `outcomes.scanned` counts the
-  jobs attempted and `outcomes.skipped` the ones that were already applied. To
-  re-apply an already-applied job on purpose, use
-  `POST /api/admin/tryon-jobs/[jobId]/reapply-result` from an admin session.
-
-**Workers.** Camera runs no worker process. The try-on queue (`tryon_jobs`) is
-processed by the Python worker in the try-on repo
-(`scripts/tryon_queue_worker.py`, configured by that repo's
-`.env.tryon-worker.example`), which reports back through
-`POST /api/internal/tryon/complete`; that service is paused by the owner as of
-2026-09-29. The TypeScript worker that used to live here (`npm run tryon:worker`)
-was removed in v12.3.39: it claimed jobs with no target filter, so starting it
-would have raced the Python worker, and it wrote Mongo directly instead of
-going through the completion webhook.
+**Try-on: no cron and no worker (removed).** The try-on completion backstop cron was removed from `vercel.json` in v12.3.40 and Camera never ran a worker process; the separate try-on service that did the rendering is stopped, and the whole integration is being deleted from this app (issue 557). Nothing here needs restoring: how the sync cron, the completion webhook and the worker worked, and which settings they used, is recorded in [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md); the old routes and the old version of this section are at git tag `tryon-integration-final`.

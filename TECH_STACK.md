@@ -105,7 +105,6 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 - partner workspace operations
 - global inventory pages
 - Events App management
-- Try-On App management
 - partner user assignment UI
 
 ## Key library choices
@@ -131,7 +130,7 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 
 ### `resend`
 
-- transactional email delivery (submission notifications and try-on result emails)
+- transactional email delivery (submission notifications)
 - per-event template overrides and sender-name settings; defaults in `lib/email/submission-template-defaults.ts`
 
 ### `@sovereignsquad/gds-*` and Mantine 8.3
@@ -139,11 +138,10 @@ Without it, rate limits fall back to in-memory per-instance behavior.
 - `gds-core` / `gds-admin` / `gds-theme` 6.8.0 provide the design-system runtime, admin primitives, and theming; all five `@sovereignsquad/gds-*` packages install from vendored release tarballs (`vendor/gds/*.tgz`, `file:` specs, since v12.3.29)
 - `gds-compliance` and `gds-eslint-config` back the `gds:check` / `gds:validate-manifest` gate
 
-### Local try-on worker integration
+### Try-on (removed)
 
-- Camera's existing try-on queue and moderation data remain in MongoDB Atlas.
-- As of 2026-09-30, the legacy try-on worker is stopped and event try-on is disabled; this is not an active production renderer.
-- The planned image.direct replacement uses authenticated server-to-server calls and a local image.direct worker; its contract and current non-live status are in [docs/IMAGE_DIRECT_INTEGRATION.md](docs/IMAGE_DIRECT_INTEGRATION.md).
+- There is no try-on renderer or worker in this stack. The integration was switched off on 2026-09-30 and is being removed from the app (issue 557); what existed and what a rebuild as an add-on needs is in [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md), the old code at git tag `tryon-integration-final`.
+- The try-on data it left in MongoDB Atlas stays, unreferenced.
 
 ### `@vercel/blob`
 

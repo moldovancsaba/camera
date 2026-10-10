@@ -17,14 +17,11 @@ platform unless noted.
   camera as the global default and lens selection. Plan:
   `docs/CAMERA_MODULE_PLAN.md`; tracker camera#203.
 
-### image.direct as a second renderer
+### Try-on as an add-on
 
-- Run image.direct next to the paused try-on runtime behind a per-event switch;
-  retire try-on only after a consented canary and owner sign-off (decision
-  2026-10-05). Tracker camera#189; contract and current state in
-  `docs/IMAGE_DIRECT_INTEGRATION.md`.
-- The long pole is model qualification inside image.direct (its issues #14, #15,
-  #18); Camera's own work is dispatch, the per-event setting and admission data.
+- Replaces the earlier "image.direct as a second renderer" item (camera#189). By the owner's answer 294 (2026-10-10) try-on is removed from the app
+  completely (camera#557) and its connection is rebuilt from scratch later, as a simple add-on and not as a part of the core. What existed and the seams a
+  rebuild needs from the core: `docs/TRYON_REMOVED.md`.
 
 ### GDS 6.8 alignment
 

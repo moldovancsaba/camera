@@ -21,13 +21,12 @@ Camera now operates as a small platform with shared resources plus app surfaces.
   - Global Users and partner-scoped access assignments
 - **Apps**
   - Events
-  - Try-On App
 
 The admin UX is organized around that model:
 
 - global inventory and superadmin tools
 - partner workspaces for day-to-day operations
-- app-specific surfaces for Events and Try-On
+- app-specific surfaces for Events
 
 ## Public surfaces
 
@@ -38,7 +37,7 @@ The admin UX is organized around that model:
 - `/slideshow/[slideshowId]` — public slideshow player
 - `/slideshow-layout/[layoutId]` — public composite slideshow layout player
 - `/landing/[slug]` — public landing page surface
-- `/greatest-hits/[slug]` — public Greatest Hits wall for an event (approved, share-visible try-on results marked great)
+- `/greatest-hits/[slug]` — Greatest Hits wall of an event; it showed approved try-on results marked great and is part of the try-on integration that is switched off on every event and being removed from this app, see [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md)
 - `/profile` — signed-in user's own submission gallery (redirects to sign-in without a session)
 - `/users/[name]` — user profile with submissions and event participation; Camera admins also get user management there
 
@@ -47,7 +46,7 @@ The admin UX is organized around that model:
 - `/admin` — global dashboard for global admins
 - `/admin/partners` — partner workspace index
 - `/admin/events` — Events inventory
-- `/admin/tryon` — Try-On App workspace
+- `/admin/tryon` — the Try-On App workspace of the removed integration (switched off on every event and being removed from this app, see [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md))
 - `/admin/frames`, `/admin/logos`, `/admin/submissions`, `/admin/users` — global inventory / audit pages
 - `/admin/slideshows` — global slideshow inventory
 - `/admin/landing-pages` — landing page inventory
@@ -189,8 +188,7 @@ See [TECH_STACK.md](TECH_STACK.md).
 - `slideshow_layouts` — multi-cell videowall configs
 - `landing_pages` — reusable experience surfaces
 - `partner_user_access` — partner-scoped app assignments
-- `leather_suits` — selectable try-on garment catalog (legacy collection and API names are preserved)
-- `tryon_jobs` — async local try-on queue and worker lifecycle
+- `leather_suits`, `tryon_jobs`, `tryon_setups`, `camera_setup_preferences`, `tryon_moderation_events`, `tryon_worker_heartbeats` — collections of the removed try-on integration; their data is kept and nothing reads it (see [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md))
 - `admin_settings` — global admin-preference documents (e.g. Vetting card-display settings), one per `settingId`, not per-admin-user
 
 See [docs/MONGODB_CONVENTIONS.md](docs/MONGODB_CONVENTIONS.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
@@ -240,25 +238,14 @@ environment and enforces the disposable-database guard before any test runs.
 - `inspectTryOnResultAsset` degrades gracefully on unreachable image URLs — completion records are still written with `null` dimensions rather than returning a 500.
 - `GET /api/admin/tryon-results?reviewStatus=approved` correctly finds approved (archived) results without requiring the `archive=approved` parameter.
 
-## Try-on pipeline
+## Try-on (switched off, being removed)
 
-Camera can optionally enqueue asynchronous try-on jobs after a capture is saved.
+Try-on (a guest picks a garment, a separate AI worker dresses the photo, an approver vets the result) is switched off on every event, its worker is stopped and its cron is gone. By the owner's decision (issue 557) it is removed from this app completely, in phases, so that it can be rebuilt later as a separate add-on.
 
-- public capture flows read active suits from `GET /api/tryon/suits`
-- `POST /api/submissions` remains the primary save path and can optionally create a linked `tryon_jobs` record
-- the official local worker in the try-on worker repository polls Atlas, runs the try-on processor, uploads the result to Vercel Blob (imgbb as a best-effort mirror), and calls Camera’s signed completion endpoint; Camera itself runs no worker
-- a try-on completion backstop cron (every 5 minutes, calling `/api/internal/tryon/sync`) existed for completions the webhook missed; it is paused and removed from `vercel.json` while try-on is paused (see [RUNBOOK.md](RUNBOOK.md), "Scheduled jobs and workers", for how to restore it)
-- `/admin/tryon` is the operator workspace for queue, catalog, and moderation
-- `/admin/tryon/queue` shows live queue state directly from `tryon_jobs`
-- `/admin/tryon/suits` manages the selectable garment catalog as Camera-hosted uploaded garment assets (legacy route name remains `/suits`)
-- `/admin/tryon/vetting` reviews generated outputs before publication
-- only approved generated results become visible on share pages and slideshow playlists
-- rerun actions always return to pending review before any result can be sent to users
-
-Operational docs:
-
-- [docs/TRYON_ARCHITECTURE.md](docs/TRYON_ARCHITECTURE.md)
-- [docs/TRYON_OPERATIONS.md](docs/TRYON_OPERATIONS.md)
+- What existed, the data it left in the database and what a rebuild needs: [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md).
+- The last commit that has all of it: git tag `tryon-integration-final`.
+- Until the removal phases are merged the try-on pages and routes are still in the code. No event enables them and they are not supported.
+- The separate try-on repository and the image.direct service are not part of this app and are not touched.
 
 ## Fleet integrations
 
@@ -293,10 +280,8 @@ Canonical docs:
 - [RUNBOOK.md](RUNBOOK.md)
 - [docs/SLIDESHOW_LOGIC.md](docs/SLIDESHOW_LOGIC.md)
 - [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)
-- [docs/TRYON_LOW_LEVEL_DESIGN.md](docs/TRYON_LOW_LEVEL_DESIGN.md)
-- [docs/IMAGE_DIRECT_INTEGRATION.md](docs/IMAGE_DIRECT_INTEGRATION.md) — planned, paused image.direct renderer contract
-- [docs/TRYON_ADMIN_GUIDE.md](docs/TRYON_ADMIN_GUIDE.md)
-- [docs/TRYON_ANALYTICS.md](docs/TRYON_ANALYTICS.md)
+- [docs/TRYON_REMOVED.md](docs/TRYON_REMOVED.md) — the removed try-on integration: what existed, what it left, what a rebuild needs
+- Records of the removed integration (banner on each): [docs/TRYON_LOW_LEVEL_DESIGN.md](docs/TRYON_LOW_LEVEL_DESIGN.md), [docs/TRYON_ANALYTICS.md](docs/TRYON_ANALYTICS.md), [docs/IMAGE_DIRECT_INTEGRATION.md](docs/IMAGE_DIRECT_INTEGRATION.md)
 - [docs/MESSMASS_FANMASS_INTEGRATION.md](docs/MESSMASS_FANMASS_INTEGRATION.md)
 
 Tracker handover:
