@@ -458,6 +458,7 @@ export default async function PublicLandingPage({
                   <LandingPageCookieConsent
                     slug={slug}
                     enabled={landingPage.cookieConsentEnabled === true}
+                    required={landingPage.cookieConsentRequired !== false}
                     url={typeof landingPage.url === 'string' ? landingPage.url : null}
                     buttonText={typeof landingPage.urlButtonText === 'string' ? landingPage.urlButtonText : null}
                   />

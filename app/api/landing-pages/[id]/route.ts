@@ -173,6 +173,8 @@ export const PATCH = withErrorHandler(async (
   if (body.privacyMarkdown !== undefined) updates.privacyMarkdown = optionalMarkdown(body.privacyMarkdown, 'Privacy policy');
   if (body.privacyFileName !== undefined) updates.privacyFileName = textOrNull(body.privacyFileName);
   if (body.cookieConsentEnabled !== undefined) updates.cookieConsentEnabled = Boolean(body.cookieConsentEnabled);
+  // Whether the cookie checkbox must be ticked before the link works (issue 558); false makes it optional.
+  if (body.cookieConsentRequired !== undefined) updates.cookieConsentRequired = body.cookieConsentRequired !== false;
   if (body.isActive !== undefined) updates.isActive = Boolean(body.isActive);
 
   if (

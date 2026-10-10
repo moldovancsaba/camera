@@ -33,6 +33,7 @@ export interface LandingPageEditorInitialValue {
   customCssClassName?: string | null;
   customCss?: string | null;
   cookieConsentEnabled: boolean;
+  cookieConsentRequired: boolean;
   targetType: 'slideshow' | 'layout';
   targetId: string;
   isActive: boolean;
@@ -152,6 +153,7 @@ export async function buildLandingPageEditorProps(
           customCssClassName: (landingPage.customCssClassName as string | null | undefined) ?? '',
           customCss: (landingPage.customCss as string | null | undefined) ?? '',
           cookieConsentEnabled: landingPage.cookieConsentEnabled !== false,
+          cookieConsentRequired: landingPage.cookieConsentRequired !== false,
           targetType: landingPage.targetType === 'layout' ? 'layout' : 'slideshow',
           targetId: String(landingPage.targetId),
           isActive: landingPage.isActive !== false,

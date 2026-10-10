@@ -1449,6 +1449,8 @@ export interface LandingPage {
   customCssClassName?: string | null;
   customCss?: string | null;
   cookieConsentEnabled: boolean;
+  /** Whether the cookie checkbox must be ticked before the link works (issue 558). Missing or true: it must (what the box always did); false: the checkbox is optional and the link works without it. */
+  cookieConsentRequired?: boolean;
   targetType: LandingPageTargetType;
   targetId: string;
   targetName: string;

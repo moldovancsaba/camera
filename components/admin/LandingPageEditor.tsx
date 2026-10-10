@@ -37,6 +37,7 @@ interface LandingPageValue {
   privacyMarkdown?: string | null;
   privacyFileName?: string | null;
   cookieConsentEnabled: boolean;
+  cookieConsentRequired?: boolean;
   targetType: 'slideshow' | 'layout';
   targetId: string;
   isActive: boolean;
@@ -180,6 +181,8 @@ export default function LandingPageEditor({
   const [privacyMarkdown, setPrivacyMarkdown] = useState(initialLandingPage?.privacyMarkdown ?? '');
   const [privacyFileName, setPrivacyFileName] = useState(initialLandingPage?.privacyFileName ?? '');
   const [cookieConsentEnabled, setCookieConsentEnabled] = useState(initialLandingPage?.cookieConsentEnabled ?? false);
+  // The cookie checkbox has two settings like every checkbox (issue 558): shown or not, and required (the link works only after the tick, as it always did) or optional.
+  const [cookieConsentRequired, setCookieConsentRequired] = useState(initialLandingPage?.cookieConsentRequired !== false);
   const [targetType, setTargetType] = useState<'slideshow' | 'layout'>(initialLandingPage?.targetType ?? 'slideshow');
   const [targetId, setTargetId] = useState(initialLandingPage?.targetId ?? '');
   const [isActive, setIsActive] = useState(initialLandingPage?.isActive ?? true);
@@ -374,6 +377,7 @@ export default function LandingPageEditor({
       privacyMarkdown,
       privacyFileName,
       cookieConsentEnabled,
+      cookieConsentRequired,
       targetType,
       targetId,
       isActive,
@@ -636,7 +640,13 @@ export default function LandingPageEditor({
             <Checkbox
               checked={cookieConsentEnabled}
               onChange={(e) => setCookieConsentEnabled(e.currentTarget.checked)}
-              label="Require cookie acceptance"
+              label="Show the cookie checkbox"
+            />
+            <Checkbox
+              checked={cookieConsentRequired}
+              disabled={!cookieConsentEnabled}
+              onChange={(e) => setCookieConsentRequired(e.currentTarget.checked)}
+              label="Cookie checkbox is required (the link works only after it is ticked)"
             />
           </Group>
 

@@ -194,6 +194,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     customCssClassName: savedCssPreset?.className ?? customCssClassName,
     customCss: savedCssPreset?.css ?? customCss,
     cookieConsentEnabled: Boolean(body.cookieConsentEnabled),
+    // Whether the cookie checkbox must be ticked before the link works (issue 558): required unless the editor says otherwise.
+    cookieConsentRequired: body.cookieConsentRequired !== false,
     targetType,
     targetId: target.targetId,
     targetName: target.targetName,
