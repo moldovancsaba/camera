@@ -100,7 +100,6 @@ export async function ensureDefaultSlideshow(db: Db, event: Document, deps: Defa
     backgroundAccentColor: SLIDESHOW_DEFAULT_BACKGROUND_ACCENT,
     backgroundImageUrl: null,
     viewportScale: 'fit',
-    submissionSourceMode: 'originals_only',
     screenDesign: {
       overlayImageUrl,
       window: { ...window },

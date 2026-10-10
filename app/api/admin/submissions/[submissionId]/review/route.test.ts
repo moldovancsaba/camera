@@ -42,7 +42,7 @@ function setup(t: TestContext, options: Options = {}) {
   });
   t.mock.module('@/lib/photo-vetting/review', {
     namedExports: {
-      approvePhoto: async (...args: unknown[]) => (calls.approve.push(args), options.outcome ?? { ok: true, tryOn: null, email: 'sent' }),
+      approvePhoto: async (...args: unknown[]) => (calls.approve.push(args), options.outcome ?? { ok: true, email: 'sent' }),
       rejectPhoto: async (...args: unknown[]) => (calls.reject.push(args), options.outcome ?? { ok: true, email: 'sent' }),
     },
   });
@@ -59,7 +59,7 @@ test('an admin approves a photo; the event access check asks for the manager rol
   const response = await POST(post({ action: 'approve' }), params);
   assert.equal(response.status, 200);
   const body = (await response.json()) as { data: Record<string, unknown> };
-  assert.deepEqual(body.data, { submissionId: id, reviewStatus: 'approved', email: 'sent', tryOn: null });
+  assert.deepEqual(body.data, { submissionId: id, reviewStatus: 'approved', email: 'sent' });
   assert.deepEqual(calls.access, [{ id: eventId.toString(), role: 'manager' }]);
   assert.equal(calls.approve.length, 1);
   assert.deepEqual(calls.approve[0][2], { email: 'admin@example.com', id: 'u1' });

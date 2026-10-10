@@ -8,7 +8,6 @@ interface SendTodayOptions {
   dateLabel: string;
   startIso: string;
   endIso: string;
-  includeTryon: boolean;
   force: boolean;
   dryRun: boolean;
   limit: number | null;
@@ -79,7 +78,6 @@ function parseArgs(): SendTodayOptions {
     dateLabel,
     startIso,
     endIso,
-    includeTryon: args.includes('--include-tryon'),
     force: args.includes('--force'),
     dryRun: args.includes('--dry-run'),
     limit: parseLimitArg(args),
@@ -108,9 +106,8 @@ async function runForDate(db: Awaited<ReturnType<typeof connectToDatabase>>, opt
     },
   };
 
-  if (!options.includeTryon) {
-    baseQuery.submissionKind = { $ne: 'tryon_result' };
-  }
+  // A stored try-on result (an event that ran it earlier) is no picture of a guest to send a link for (issue 557).
+  baseQuery.submissionKind = { $ne: 'tryon_result' };
 
   // A vetted photo that is waiting or was rejected gets no email from this script (camera#270): its guest is emailed when it is approved.
   baseQuery.reviewStatus = { $nin: [...UNPUBLISHED_REVIEW_STATUSES] };

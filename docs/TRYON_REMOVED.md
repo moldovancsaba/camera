@@ -20,8 +20,8 @@ Try-on (a guest picks a garment on the capture page, an AI worker dresses the gu
 | Phase | Scope | Status |
 |---|---|---|
 | R0 | This inventory, the tag, this document | merged (PR 564) |
-| R1 | Admin: pages, menu, settings panels, admin API routes, tests, action vocabulary. The cross-event photo vetting page moves out of `/admin/tryon/vetting` first (section 6): it is `/admin/vetting` now, the old address and the messmass link to it are redirected | in review |
-| R2 | Server: `lib/tryon`, internal routes, e-mails, share page and download, visibility rule, wall, slideshow clauses, vetting hold, scripts | planned |
+| R1 | Admin: pages, menu, settings panels, admin API routes, tests, action vocabulary. The cross-event photo vetting page moves out of `/admin/tryon/vetting` first (section 6): it is `/admin/vetting` now, the old address and the messmass link to it are redirected | merged (PR 568) |
+| R2 | Server: `lib/tryon`, internal routes, e-mails, share page and download, visibility rule, wall, slideshow clauses, vetting hold, scripts. **Kept for R3 because `POST /api/submissions` (the guest path) still imports it:** `lib/tryon/{enqueue-for-submission, jobs, suits, setup-resolution, prompts, hash, time}`, the test support `sync.fake-db.ts`, `GET /api/tryon/suits` and the suit selector | merged |
 | R3 | Guest path: suit selector, try-on fields of `POST /api/submissions`, journey texts. Not merged until after the match of 2026-10-16 | planned |
 | R4 | Schemas and settings fields (types stay tolerant), environment variables, remaining docs, board cards | planned |
 
@@ -220,6 +220,15 @@ Set in Vercel, if still present there, are the owner's to remove after R4. Playw
 ### 3.12 image.direct (planned replacement, never live)
 
 Built on the camera side: the callback route (`/api/internal/image-direct/complete`, `lib/tryon/image-direct-callback.ts`), the `renderer` and `imageDirect` job fields, immutable prompt snapshots, the setup-owned prompts. Not built: the dispatch and outbox, a per-event renderer switch, per-job consent and input hashes, reconciliation. The callback was default-off and `CAMERA_IMAGE_DIRECT_CALLBACK_ENABLED` was never set to true. The contract (payloads, state mapping, consent, SSRF rules, rollback) is `docs/IMAGE_DIRECT_INTEGRATION.md`, kept as the design record. The image.direct service itself lives in its own repository.
+
+### 3.13 What R2 changed in behaviour (the places other features used)
+
+- **The one visibility rule** (`lib/submissions/visibility.ts`) has no try-on branch: a plain photo (`submissionKind` missing or `original`) is public unless pending or rejected, anything else never is. `plainPhotoClause` is the same rule for queries, and the slideshow candidates, the playlist, the welcome-screen picker and the admin gallery use it; the feeds (fanmass, walls, publish selfies) keep their `$ne: 'tryon_result'` guards. Unit tests keep a stored `tryon_result` off the share page and its link preview, the share download, the playlist, the next-candidate query, the welcome picker, the gallery and the feeds.
+- **The share page** shows the photo and its download (`<id>:camera-result`) and the "Create your own" button; the switches that chose between the photo, the original capture and the try-on pictures, the pending try-on message and the "related photos" heading are gone (`includeCameraResult` is no longer a choice: a photo page without its photo made no sense once there were no try-on pictures to show instead). A guest who once asked for a try-on gets the same page as everyone else.
+- **E-mails:** the result e-mail has one mode, after the photo is saved; `after_related`, `after_tryon_resubmission_approved`, the share-readiness check and their settings fields are gone. The e-mail is on when the approved e-mail is (before, a stored switch of one of the two older e-mails also kept it "on").
+- **Events and slideshows:** the event API no longer reads or writes `tryOn` or `greatestHitsSlug` (stored values stay; a save through the editors writes `sharePage` and `notifications` without the removed try-on keys), new events are created without a `tryOn` object (also those provisioned by messmass and savetheworld), the slideshow API ignores `submissionSourceMode`, `/greatest-hits/{slug}` and the go-short redirect to it are gone.
+- **Photo vetting:** approval no longer queues a held try-on request and rejection no longer cancels one; the response of the review route has no `tryOn`.
+- **Tests and fixtures:** the dev-only e2e bootstrap seeds an "export" event with two plain photos instead of a try-on job and result.
 
 ## 4. Documents that described the integration
 

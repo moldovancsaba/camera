@@ -38,7 +38,7 @@ const isOfEvent = (doc: Document, event: Document): boolean => {
   return refs.some((ref) => keys.includes(ref));
 };
 
-/** The photo of the event that may be shown in the window, or null (gone, hidden, not approved, another event's, a try-on result, no picture). */
+/** The photo of the event that may be shown in the window, or null (gone, hidden, not approved, another event's, a stored try-on result, no picture). */
 export async function eligiblePhoto(db: Db, event: Document, photoId: string): Promise<{ id: string; doc: Document; picture: WindowPicture } | null> {
   if (!ObjectId.isValid(photoId)) return null;
   const doc = await db.collection(COLLECTIONS.SUBMISSIONS).findOne({ _id: new ObjectId(photoId) });

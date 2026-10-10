@@ -12,7 +12,7 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS, generateTimestamp } from '@/lib/db/schemas';
 import { uploadImage } from '@/lib/imgbb/upload';
-import { fetchImageBuffer } from '@/lib/tryon/frame-composition';
+import { fetchImageBuffer } from '@/lib/media/image-buffer';
 import { frameGalleryPhoto, loadGalleryFrames, pickGalleryFrame, type GalleryFrameDeps } from '@/lib/gallery/frame';
 import { ensureScreenPicture } from '@/lib/submissions/screen-picture';
 import { runAfterResponse } from '@/lib/api/run-after-response';

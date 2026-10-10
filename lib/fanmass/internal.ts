@@ -2,8 +2,8 @@ import { apiForbidden } from '@/lib/api';
 import { checkSharedSecret, logSharedSecretRejection } from '@/lib/security/safeEqual';
 
 /**
- * Service-to-service auth for the fanmass read API, mirroring
- * assertInternalTryOnSecret (lib/tryon/completion.ts). fanmass (a headless
+ * Service-to-service auth for the fanmass read API, in the style of
+ * assertInternalMessmassSecret (lib/messmass/internal.ts). fanmass (a headless
  * server) polls these read-only endpoints with a shared secret; there is no
  * browser session, so this is the machine-auth path.
  *

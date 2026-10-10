@@ -2,11 +2,7 @@
 
 > The format, the legal part, the editor and the variables are being redesigned: see `docs/EMAIL_FORMAT_PLAN.md` (epic #463). What follows describes the e-mails as they are today.
 
-Event result email setups support three delivery modes:
-
-- `after_save`: send immediately when the saved result is ready.
-- `after_related`: send when the share page has the configured related photos available.
-- `after_tryon_resubmission_approved`: send an update after an admin-approved try-on rerun result.
+Event result email setups have one delivery mode, `after_save`: send immediately when the saved result is ready (the approved e-mail). The two older modes of the removed try-on integration, `after_related` (the related photos are ready) and `after_tryon_resubmission_approved` (an update after an approved try-on rerun), are gone (issue 557, `docs/TRYON_REMOVED.md`); an event's stored fields for them are ignored, and saving the Emails page drops them.
 
 Supported variables (`lib/email/variables.ts`; a variable with no value for the event is left out of the e-mail, never sent as `{name}`):
 
@@ -94,7 +90,7 @@ Every preview has **Send me a test e-mail**: the e-mail as drawn is made and sen
 
 ## The Emails page of an event (epic 463)
 
-`Emails` in the event menu (`/admin/events/<id>/emails`) holds everything an editor sets about the e-mails of one event: for each of the five types a switch (shown as On or Off and whether it is the default or a choice; "Use the default" takes the choice away), the subject and the message in the toolbar editor with the preview beside it, the sender display name and the link to the terms, the two older try-on e-mails for an event that uses try-on, and the legal part of the event. A switch and a text that are the default are not stored: the event follows the default. `GET`/`PUT /api/admin/events/<id>/emails`. The footer picture of the e-mails stays with the other pictures (Edit and pages, and the partner's Pictures).
+`Emails` in the event menu (`/admin/events/<id>/emails`) holds everything an editor sets about the e-mails of one event: for each of the five types a switch (shown as On or Off and whether it is the default or a choice; "Use the default" takes the choice away), the subject and the message in the toolbar editor with the preview beside it, the sender display name and the link to the terms, and the legal part of the event. A switch and a text that are the default are not stored: the event follows the default. `GET`/`PUT /api/admin/events/<id>/emails`. The footer picture of the e-mails stays with the other pictures (Edit and pages, and the partner's Pictures).
 
 ## The five e-mail types (epic 463, `lib/email/types.ts`)
 

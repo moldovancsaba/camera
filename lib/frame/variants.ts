@@ -2,7 +2,7 @@
  * Generates the images of an event's default frame: one transparent 1920x1080 PNG per usable message, stored in
  * Vercel Blob, with the layer boxes kept for the live-view territories (docs/DEFAULT_FRAME_PLAN.md, camera#235).
  * An image is reused while everything that decides it is unchanged. Old files are never deleted: a submission
- * records the variant it used and try-on composes with that URL later. Dependencies are injected so it is
+ * records the variant it used. Dependencies are injected so it is
  * unit-tested without Blob or a network.
  */
 

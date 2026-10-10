@@ -1,5 +1,5 @@
 /**
- * Public redirect: short slug → Camera event capture or Greatest Hits URL.
+ * Public redirect: short slug → Camera event capture.
  * A tracked link (one per placement, `short_links`, camera#320) and an event's own short URL are counted after the redirect is sent (lib/short-links/visit.ts):
  * people only, not previews or crawlers, and the totals reach messmass (throttled).
  * On GO_SHORT_HOSTNAMES, `proxy.ts` (the Next 16 successor of middleware) rewrites `/{slug}` here (same deployment).
@@ -43,11 +43,6 @@ export const GET = withErrorHandler(async (
     return NextResponse.redirect(dest, 302);
   }
 
-  const greatestHitsEvent = await db.collection(COLLECTIONS.EVENTS).findOne({ greatestHitsSlug: slug });
-  if (!greatestHitsEvent?._id) {
-    throw apiNotFound('Link');
-  }
-
-  const dest = `${defaultCameraOrigin()}/greatest-hits/${slug}`;
-  return NextResponse.redirect(dest, 302);
+  // (An event's old Greatest Hits address, a try-on page, redirected here until the try-on integration was removed: issue 557.)
+  throw apiNotFound('Link');
 });

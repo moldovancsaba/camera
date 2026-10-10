@@ -3,7 +3,7 @@
  *
  * GET /api/admin/events/[id]/export/images?format=csv|zip
  * - format=csv (default): a CSV of every image URL related to the event
- *   (originals, finals, and derived try-on results) with metadata. Uncapped.
+ *   (originals and finals; also any stored try-on result of an event that ran the removed try-on integration) with metadata. Uncapped.
  * - format=zip: streams a .zip of the actual image files fetched from imgbb.
  *   Capped at MAX_ZIP_IMAGES; larger events must use the CSV and bulk-download
  *   externally.

@@ -45,7 +45,7 @@ export interface Territory {
   height: number;
 }
 
-/** What a submission keeps of the variant it used; the image is kept (old images are never deleted) for try-on. */
+/** What a submission keeps of the variant it used; the image is kept (old images are never deleted). */
 export interface RecordedFrameVariant {
   index: number | null;
   message: string | null;

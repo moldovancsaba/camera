@@ -66,12 +66,6 @@ export default function NewEventPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [buttonSize, setButtonSize] = useState<EventButtonSize>(DEFAULT_EVENT_BUTTON_SIZE);
-  const [includeOriginalCapture, setIncludeOriginalCapture] = useState(
-    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeOriginalCapture
-  );
-  const [includeCameraResult, setIncludeCameraResult] = useState(
-    DEFAULT_EVENT_SHARE_PAGE_SETTINGS.includeCameraResult
-  );
   const [showCreateYourOwnButton, setShowCreateYourOwnButton] = useState(
     DEFAULT_EVENT_SHARE_PAGE_SETTINGS.showCreateYourOwnButton
   );
@@ -180,8 +174,6 @@ export default function NewEventPage() {
         buttonSize,
       },
       sharePage: {
-        includeOriginalCapture,
-        includeCameraResult,
         showCreateYourOwnButton,
       },
     };
@@ -333,20 +325,8 @@ export default function NewEventPage() {
 
           <FormSection
             title="Public result page"
-            description="Control which related photos are shown on the shareable result page linked from email and share actions."
+            description="The shareable photo page linked from email and share actions."
           >
-            <Checkbox
-              checked={includeOriginalCapture}
-              onChange={(event) => setIncludeOriginalCapture(event.currentTarget.checked)}
-              label="Show original photo taken"
-              description="Available when the raw camera image was uploaded as a try-on source."
-            />
-            <Checkbox
-              checked={includeCameraResult}
-              onChange={(event) => setIncludeCameraResult(event.currentTarget.checked)}
-              label="Show photo with Camera frame"
-              description="The normal Camera submission saved by the capture flow."
-            />
             <Checkbox
               checked={showCreateYourOwnButton}
               onChange={(event) => setShowCreateYourOwnButton(event.currentTarget.checked)}

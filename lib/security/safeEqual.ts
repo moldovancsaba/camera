@@ -8,9 +8,8 @@
  *     was rejected; `logSharedSecretRejection` records that reason
  *     server-side, so the 403 body the caller sees can stay a generic
  *     "Forbidden".
- * WHY: The service-to-service gates (the messmass, fanmass, savetheworld and
- *     try-on internal APIs, the try-on sync cron, the try-on setup-selection
- *     service call) compared secrets with ===, which stops at the first
+ * WHY: The service-to-service gates (the messmass, fanmass and savetheworld
+ *     internal APIs and the cron routes) compared secrets with ===, which stops at the first
  *     differing character. Hashing first hands timingSafeEqual two buffers of
  *     equal length, so neither the content nor the length of the configured
  *     secret shows up in response timing (timingSafeEqual throws on unequal

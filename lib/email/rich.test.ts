@@ -18,7 +18,7 @@ test('a text with no markup is drawn exactly as e-mails were drawn before: the s
   const values: Values = { name: 'Ann', event: 'MTK x Vasas', link: 'https://camera.test/share/abc', terms: 'https://seyuselfies.com/hu/policies/' };
   for (const language of ['en', 'hu'] as const) {
     const defaults = emailDefaults(language);
-    for (const template of [defaults.body, defaults.resubmissionBody, defaults.notApprovedBody]) {
+    for (const template of [defaults.body, defaults.notApprovedBody]) {
       const filled = template.replace(/\{(name|event|link|terms)\}/gi, (_m, key: string) => values[key.toLowerCase()] ?? '');
       assert.equal(html(template, values), oldHtml(filled), `${language}: ${template.slice(0, 30)}`);
     }

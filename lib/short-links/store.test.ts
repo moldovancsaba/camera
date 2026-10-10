@@ -54,8 +54,8 @@ test('creating a link stores it active for the event, with a free slug', async (
 });
 
 test('a chosen slug that another link or an event already uses is refused, and so is a link past the per-event limit', async () => {
-  const taken = fakeDb({ links: [{ slug: 'poster', eventId: 'e2' }], events: [{ shortUrlSlug: 'mtk' }, { greatestHitsSlug: 'hits' }] });
-  for (const slug of ['poster', 'mtk', 'hits']) {
+  const taken = fakeDb({ links: [{ slug: 'poster', eventId: 'e2' }], events: [{ shortUrlSlug: 'mtk' }] });
+  for (const slug of ['poster', 'mtk']) {
     const result = await createShortLink(taken.db, 'e1', { placement: 'x', kind: 'link', slug });
     assert.deepEqual(result, { ok: false, status: 409, error: 'This slug is already used. Choose another.' }, slug);
   }

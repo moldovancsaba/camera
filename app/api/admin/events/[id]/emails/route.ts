@@ -1,10 +1,9 @@
 /**
- * The e-mails of an event (epic 463, docs/EMAIL_FORMAT_PLAN.md, segment E3): the five types with their switches and texts, the sender, the terms link and, for an event that uses try-on, the
- * two try-on e-mails.
+ * The e-mails of an event (epic 463, docs/EMAIL_FORMAT_PLAN.md, segment E3): the five types with their switches and texts, the sender and the terms link.
  *
  * GET /api/admin/events/[id]/emails   the view (lib/email/event-emails.ts) (viewer)
- * PUT /api/admin/events/[id]/emails   { types?, senderName?, termsUrl?, tryOn? } (manager): `types` replaces what was stored for the five types ({ approved: { enabled, subject, body }, ... }, absent
- *   fields follow the default); `senderName` and `termsUrl` set or, with null, take away; `tryOn` changes the two older e-mails. Everything else stored stays. Answers the new view.
+ * PUT /api/admin/events/[id]/emails   { types?, senderName?, termsUrl? } (manager): `types` replaces what was stored for the five types ({ approved: { enabled, subject, body }, ... }, absent
+ *   fields follow the default); `senderName` and `termsUrl` set or, with null, take away. Everything else stored stays (a `tryOn` in the body is ignored: the two older try-on e-mails are gone, issue 557). Answers the new view.
  *
  * `[id]` is the Mongo _id of the event, as in the other admin event routes.
  */
@@ -17,7 +16,7 @@ import { apiBadRequest, apiNotFound, apiSuccess, checkRateLimit, RATE_LIMITS, re
 import type { Session } from '@/lib/auth/session';
 import { assertGlobalAdminOrPartnerEventAccess } from '@/lib/partners/authorization';
 import { loadEventEmails } from '@/lib/email/event-emails';
-import { mergeNotificationSettings, type LegacyModePatch, type NotificationsPatch } from '@/lib/email/notification-settings';
+import { mergeNotificationSettings, type NotificationsPatch } from '@/lib/email/notification-settings';
 
 type RouteContext = { params?: Promise<{ id: string }> };
 
@@ -45,15 +44,6 @@ function address(value: unknown): string | null {
   }
 }
 
-function legacy(value: unknown, name: string): LegacyModePatch | undefined {
-  if (value === undefined) return undefined;
-  if (!value || typeof value !== 'object') throw apiBadRequest(`${name} must be an object`);
-  const { enabled, subject, body } = value as Record<string, unknown>;
-  if (enabled !== undefined && typeof enabled !== 'boolean') throw apiBadRequest(`${name}.enabled must be true or false`);
-  for (const [field, text] of [['subject', subject], ['body', body]] as const) if (text !== undefined && text !== null && typeof text !== 'string') throw apiBadRequest(`${name}.${field} must be text`);
-  return { enabled: enabled as boolean | undefined, subject: subject as string | null | undefined, body: body as string | null | undefined };
-}
-
 export const GET = withErrorHandler(async (request: NextRequest, context?: RouteContext) => {
   const session = await requireAuth(request);
   const { id } = await context!.params!;
@@ -79,11 +69,6 @@ export const PUT = withErrorHandler(async (request: NextRequest, context?: Route
     patch.senderName = body.senderName === null ? null : body.senderName.trim();
   }
   if (body.termsUrl !== undefined) patch.termsUrl = address(body.termsUrl);
-  if (body.tryOn !== undefined) {
-    if (!body.tryOn || typeof body.tryOn !== 'object') throw apiBadRequest('tryOn must be an object');
-    const { related, resubmission } = body.tryOn as Record<string, unknown>;
-    patch.tryOn = { related: legacy(related, 'tryOn.related'), resubmission: legacy(resubmission, 'tryOn.resubmission') };
-  }
 
   const notifications = mergeNotificationSettings(event.notifications, patch);
   await db.collection(COLLECTIONS.EVENTS).updateOne({ _id: event._id }, { $set: { notifications, updatedAt: generateTimestamp() } });

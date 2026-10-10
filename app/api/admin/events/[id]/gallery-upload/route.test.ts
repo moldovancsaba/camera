@@ -30,7 +30,7 @@ function world(t: TestContext, options: { frames?: boolean; frameFetchFails?: bo
   t.mock.module('@/lib/imgbb/upload', {
     namedExports: { uploadImage: async (_data: string, o: { name?: string }) => (uploads.push(o.name ?? ''), { imageUrl: `https://store.test/${o.name}.jpg`, deleteUrl: '', imageId: 'i', fileSize: 999, mimeType: 'image/png' }) },
   });
-  t.mock.module('@/lib/tryon/frame-composition', {
+  t.mock.module('@/lib/media/image-buffer', {
     namedExports: {
       fetchImageBuffer: async (url: string) => {
         if (options.frameFetchFails) throw new Error('the frame is gone');

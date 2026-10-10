@@ -3,7 +3,7 @@
  *
  * Shared logic for the per-event admin exports:
  * - email addresses collected against an event (deduplicated)
- * - images related to an event (originals, finals, and derived try-on results)
+ * - images related to an event (originals and finals; also any stored try-on result of an event that ran the removed try-on integration)
  *
  * Why this module exists:
  * - The emails and images export routes need the same event lookup and the same
@@ -15,7 +15,7 @@
  *   `eventIds` array (reusable submissions), so both are matched.
  * - Emails live in `userEmail` (SSO) and `userInfo.email` (guest onboarding form).
  * - Images are imgbb URLs stored on `originalImageUrl`, `finalImageUrl`, and the
- *   primary `imageUrl` (which is the result image for try-on derivatives).
+ *   primary `imageUrl` (which is the result image of a stored try-on result).
  */
 
 import type { Db } from 'mongodb';
@@ -172,7 +172,7 @@ export function buildEmailRows(submissions: ExportSubmission[]): EventEmailRow[]
 
 /**
  * Flatten submissions into individual image entries covering originals, finals,
- * and the primary image (the result image for try-on derivatives). Duplicate
+ * and the primary image (the result image of a stored try-on result). Duplicate
  * URLs within a single submission are collapsed so a photo is not exported twice.
  */
 export function collectEventImages(submissions: ExportSubmission[]): EventImage[] {

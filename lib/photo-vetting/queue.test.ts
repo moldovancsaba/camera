@@ -9,14 +9,14 @@ const base = () => ({
   userInfo: { name: 'Ann', email: 'ann@example.com' },
   reviewStatus: 'pending_review',
   frameVariant: { index: 0, message: 'Go', imageUrl: 'https://s/x.png' },
-  photoReview: { photoUrl: 'https://s/pending/e/abc.jpg', shareOptIn: true, tryOn: null },
-  tryOnRequest: { requested: false },
+  photoReview: { photoUrl: 'https://s/pending/e/abc.jpg', shareOptIn: true },
   reviewHistory: [],
 });
 
-test('a waiting photo shows its private photo, the guest, and what will happen at approval', () => {
-  const item = toPhotoQueueItem({ ...base(), photoReview: { photoUrl: 'https://s/pending/e/abc.jpg', shareOptIn: true, tryOn: { leatherSuitId: 's' } } });
-  assert.deepEqual([item.status, item.name, item.email, item.photoUrl, item.frameKind, item.shareOptIn, item.tryOnRequested, item.last], ['pending_review', 'Ann', 'ann@example.com', 'https://s/pending/e/abc.jpg', 'generated', true, true, null]);
+test('a waiting photo shows its private photo and the guest; a try-on request held with an old photo is not shown', () => {
+  const item = toPhotoQueueItem({ ...base(), photoReview: { photoUrl: 'https://s/pending/e/abc.jpg', shareOptIn: true, tryOn: { leatherSuitId: 's' } }, tryOnRequest: { requested: true } });
+  assert.deepEqual([item.status, item.name, item.email, item.photoUrl, item.frameKind, item.shareOptIn, item.last], ['pending_review', 'Ann', 'ann@example.com', 'https://s/pending/e/abc.jpg', 'generated', true, null]);
+  assert.equal('tryOnRequested' in item, false);
 });
 
 test('an approved photo shows the real picture and the last decision', () => {

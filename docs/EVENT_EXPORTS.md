@@ -35,8 +35,8 @@ manage-level action, not a viewer-level read.
   and `userInfo.email` (guest form); records name, source (`sso`/`guest`/`sso+guest`),
   submission count, first/last submitted timestamps; synthetic anonymous addresses skipped.
 - `collectEventImages(submissions)` — flattens each submission into `original` / `final` /
-  `primary` image entries (deduped per submission), covering try-on results (whose primary
-  image is the derived result).
+  `primary` image entries (deduped per submission); a stored try-on result of the removed integration
+  is exported like any submission (its primary image is the derived result).
 - `toCsv` / `csvEscape` — RFC 4180 quoting; `exportSlug` / `imageExtension` — filename helpers.
 - `MAX_ZIP_IMAGES = 500`.
 

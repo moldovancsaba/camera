@@ -1,7 +1,5 @@
 import { ObjectId, type Db, type WithId } from 'mongodb';
-import { COLLECTIONS, type Event, type Submission, type TryOnJob } from '@/lib/db/schemas';
-import { normalizeEventSharePageSettings, type EventSharePageSettings } from '@/lib/events/share-page-settings';
-import { listApprovedShareVariants } from '@/lib/tryon/publication';
+import { COLLECTIONS, type Event, type Submission } from '@/lib/db/schemas';
 import { sendSubmissionResultEmail, type SubmissionNotificationResult, type SubmissionNotificationInput } from '@/lib/email/submission-notification';
 import { sanitizeEmail } from '@/lib/security/sanitize';
 import { loadEventTheme } from '@/lib/theme/load';
@@ -23,17 +21,11 @@ import { loadEventTexts, withEffectiveLanguage, type TextOverrides } from '@/lib
 export interface SubmissionEmailPolicy {
   enabled: boolean;
   sendAfterSave: boolean;
-  sendAfterRelatedPhotosReady: boolean;
-  sendAfterTryOnResubmissionApproved: boolean;
   senderName: string;
   subjectTemplate?: string | null;
   bodyTemplate?: string | null;
   subjectTemplateAfterSave?: string | null;
   bodyTemplateAfterSave?: string | null;
-  subjectTemplateAfterRelatedPhotosReady?: string | null;
-  bodyTemplateAfterRelatedPhotosReady?: string | null;
-  subjectTemplateAfterTryOnResubmissionApproved?: string | null;
-  bodyTemplateAfterTryOnResubmissionApproved?: string | null;
   termsUrl: string;
   /** The five e-mails a user can get (lib/email/types.ts): whether each is on, and the event's own subject and message when it has them. */
   types: Record<EmailType, ResolvedType>;
@@ -46,12 +38,6 @@ export interface SubmissionEmailPolicy {
 export interface SubmissionEmailRecipient {
   email: string | null;
   name: string | null;
-}
-
-export interface SubmissionShareReadinessResult {
-  ready: boolean;
-  required: string[];
-  missing: string[];
 }
 
 const PUBLIC_BASE_URL = getConfiguredSiteUrl();
@@ -82,23 +68,6 @@ function readSenderName(value: unknown): string {
   return typeof value === 'string' && value.trim() ? value.trim() : DEFAULT_SUBMISSION_EMAIL_SENDER_NAME;
 }
 
-function hasTryOnVariantUrl(variant: {
-  imageUrl?: string | null;
-  metadata?: unknown;
-  finalImageUrl?: string | null;
-}): boolean {
-  if (readString(variant.imageUrl) !== null) {
-    return true;
-  }
-  if (readString(variant.finalImageUrl) !== null) {
-    return true;
-  }
-
-  const metadata =
-    variant.metadata && typeof variant.metadata === 'object' ? variant.metadata as { tryOnRawResultUrl?: unknown } : {};
-  return readString(metadata.tryOnRawResultUrl) !== null;
-}
-
 export function resolveSubmissionResultEmailRecipient(submission: {
   userInfo?: { name?: string; email?: string } | null;
   userEmail?: string;
@@ -125,19 +94,14 @@ export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLangu
   const typeSettings = parseTypeSettings(source.types);
 
   const hasExplicitAfterSave = hasOwnProperty(source, 'submissionResultEmailSendAfterSave');
-  const hasExplicitAfterRelated = hasOwnProperty(source, 'submissionResultEmailSendAfterRelatedPhotosReady');
-  const hasExplicitAfterTryOnResubmissionApproved = hasOwnProperty(
-    source,
-    'submissionResultEmailSendAfterTryOnResubmissionApproved'
-  );
   // The old master switch, when an editor stored it as off, still turns the old switches off. An event that stored nothing follows the defaults of the five types (owner, 2026-10-09):
   // approved is on, so an event that never chose sends it (answer 204).
   const masterOff = hasOwnProperty(source, 'submissionResultEmailEnabled') && !source.submissionResultEmailEnabled;
   const legacyApproved = masterOff ? false : hasExplicitAfterSave ? Boolean(source.submissionResultEmailSendAfterSave) : true;
   const sendAfterSave = typeSettings.approved?.enabled ?? legacyApproved;
-  const sendAfterRelatedPhotosReady = masterOff ? false : hasExplicitAfterRelated ? Boolean(source.submissionResultEmailSendAfterRelatedPhotosReady) : false;
-  const sendAfterTryOnResubmissionApproved = masterOff ? false : hasExplicitAfterTryOnResubmissionApproved ? Boolean(source.submissionResultEmailSendAfterTryOnResubmissionApproved) : false;
-  const enabled = sendAfterSave || sendAfterRelatedPhotosReady || sendAfterTryOnResubmissionApproved;
+  // The e-mail is on when the approved e-mail is. (It was also on while one of the two older try-on e-mails, "related photos" and "resubmission
+  // approved", was; they are gone, issue 557.)
+  const enabled = sendAfterSave;
 
   // In another language a stored English default is read as the same default in that language (emailTemplateIn).
   const own = (template: string) => emailTemplateIn(language, template || null, texts) ?? '';
@@ -150,19 +114,6 @@ export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLangu
   )) || legacySubject);
   const bodyTemplateAfterSave =
     typeSettings.approved?.body ?? (own(readTemplate(source.submissionResultEmailBodyAfterSave, 5000, true)) || legacyBody);
-  const subjectTemplateAfterRelatedPhotosReady =
-    own(readTemplate(source.submissionResultEmailSubjectAfterRelatedPhotosReady, 180)) || legacySubject;
-  const bodyTemplateAfterRelatedPhotosReady =
-    own(readTemplate(source.submissionResultEmailBodyAfterRelatedPhotosReady, 5000, true)) || legacyBody;
-  const subjectTemplateAfterTryOnResubmissionApproved =
-    own(readTemplate(source.submissionResultEmailSubjectAfterTryOnResubmissionApproved, 180)) ||
-    subjectTemplateAfterRelatedPhotosReady ||
-    legacySubject;
-  const bodyTemplateAfterTryOnResubmissionApproved =
-    own(readTemplate(source.submissionResultEmailBodyAfterTryOnResubmissionApproved, 5000, true)) ||
-    bodyTemplateAfterRelatedPhotosReady ||
-    legacyBody;
-
   // The event editor saves the English terms link when the field is left as it is: in another language that link counts as not set, and the legal page
   // of the language is linked.
   const storedTermsUrl = readString(source.termsUrl);
@@ -188,18 +139,12 @@ export function normalizeSubmissionEmailPolicy(value: unknown, language: UiLangu
   return {
     enabled,
     sendAfterSave,
-    sendAfterRelatedPhotosReady,
-    sendAfterTryOnResubmissionApproved,
     types,
     subjectTemplate: legacySubject || null,
     bodyTemplate: legacyBody || null,
     senderName: readSenderName(source.submissionResultEmailSenderName),
     subjectTemplateAfterSave,
     bodyTemplateAfterSave,
-    subjectTemplateAfterRelatedPhotosReady,
-    bodyTemplateAfterRelatedPhotosReady,
-    subjectTemplateAfterTryOnResubmissionApproved,
-    bodyTemplateAfterTryOnResubmissionApproved,
     termsUrl,
     language,
     texts: texts ?? null,
@@ -246,146 +191,25 @@ export async function resolveEventForSubmission(
   return event ? withEffectiveLanguage(db, event) : null;
 }
 
-export function normalizeSharePageSettings(value: unknown): EventSharePageSettings {
-  return normalizeEventSharePageSettings(value);
-}
-
-export async function evaluateSubmissionShareReadiness(
-  db: Db,
-  sourceSubmission: WithId<Submission>,
-  sharePageSettingsOverride?: EventSharePageSettings
-): Promise<SubmissionShareReadinessResult> {
-  const sharePage = sharePageSettingsOverride
-    ? sharePageSettingsOverride
-    : normalizeSharePageSettings((await resolveEventForSubmission(db, sourceSubmission))?.sharePage);
-
-  const required: string[] = [];
-  const missing: string[] = [];
-
-  const originalCaptureUrl =
-    readString(sourceSubmission.tryOnRequest?.sourceImageUrl) || readString(sourceSubmission.originalImageUrl);
-  const cameraResultUrl = readString(sourceSubmission.imageUrl) || readString(sourceSubmission.finalImageUrl);
-
-  if (sharePage.includeOriginalCapture) {
-    required.push('originalCapture');
-    if (!originalCaptureUrl) {
-      missing.push('originalCapture');
-    }
-  }
-
-  if (sharePage.includeCameraResult) {
-    required.push('cameraResult');
-    if (!cameraResultUrl) {
-      missing.push('cameraResult');
-    }
-  }
-
-  if (
-    sharePage.includeTryOnResult ||
-    sharePage.includeFramedTryOnResult ||
-    sharePage.includeCheckedInTryOnResult
-  ) {
-    const variants = await listApprovedShareVariants(db, sourceSubmission._id.toString());
-    const hasCheckedInTryOnResult = sharePage.includeCheckedInTryOnResult
-      ? variants.some((variant) => hasTryOnVariantUrl(variant))
-      : true;
-    const hasTryOnResult = sharePage.includeTryOnResult
-      ? variants.some((variant) => {
-          const metadata =
-            variant.metadata && typeof variant.metadata === 'object'
-              ? variant.metadata as { tryOnRawResultUrl?: unknown; compositionEngine?: unknown; finalImageUrl?: unknown }
-              : {};
-          return readString(variant.imageUrl) !== null && readString(metadata.tryOnRawResultUrl) !== null;
-        })
-      : true;
-
-    const hasFramedTryOnResult = sharePage.includeFramedTryOnResult
-      ? variants.some((variant) => {
-          const metadata =
-            variant.metadata && typeof variant.metadata === 'object'
-              ? variant.metadata as { tryOnRawResultUrl?: unknown; compositionEngine?: unknown; finalImageUrl?: unknown }
-              : {};
-          const compositionEngine = readString(metadata.compositionEngine);
-          const resultUrl = readString(variant.imageUrl) || readString(variant.finalImageUrl);
-          return compositionEngine === 'motogp_leather_magic_framed' && Boolean(resultUrl);
-        })
-      : true;
-
-    if (sharePage.includeTryOnResult) {
-      required.push('tryOnResult');
-      if (!hasTryOnResult) {
-        missing.push('tryOnResult');
-      }
-    }
-
-    if (sharePage.includeFramedTryOnResult) {
-      required.push('framedTryOnResult');
-      if (!hasFramedTryOnResult) {
-        missing.push('framedTryOnResult');
-      }
-    }
-
-    if (sharePage.includeCheckedInTryOnResult) {
-      required.push('checkedInTryOnResult');
-      if (!hasCheckedInTryOnResult) {
-        missing.push('checkedInTryOnResult');
-      }
-    }
-  }
-
-  return {
-    required,
-    missing,
-    ready: missing.length === 0,
-  };
-}
-
 export interface SendSubmissionEmailMetadataResult {
   sent: boolean;
   shouldRetry: boolean;
   metadataPatch: Record<string, unknown>;
 }
 
-type SubmissionEmailMode = 'after_save' | 'after_related' | 'after_tryon_resubmission_approved';
-
-function buildModePatch(mode: SubmissionEmailMode): Record<string, unknown> {
-  if (mode === 'after_save') {
-    return {
-      'metadata.emailSentAfterSave': true,
-    };
-  }
-
-  if (mode === 'after_tryon_resubmission_approved') {
-    return {
-      'metadata.emailSentAfterTryOnResubmissionApproved': true,
-    };
-  }
-
+function buildModePatch(): Record<string, unknown> {
   return {
-    'metadata.emailSentAfterRelatedPhotos': true,
+    'metadata.emailSentAfterSave': true,
   };
 }
 
-function buildFailureModePatch(mode: SubmissionEmailMode): Record<string, unknown> {
-  if (mode === 'after_save') {
-    return {
-      'metadata.emailSentAfterSave': false,
-    };
-  }
-
-  if (mode === 'after_tryon_resubmission_approved') {
-    return {
-      'metadata.emailSentAfterTryOnResubmissionApproved': false,
-    };
-  }
-
+function buildFailureModePatch(): Record<string, unknown> {
   return {
-    'metadata.emailSentAfterRelatedPhotos': false,
+    'metadata.emailSentAfterSave': false,
   };
 }
 
 export function buildEmailMetadataPatch(
-  mode: SubmissionEmailMode,
   result: SubmissionNotificationResult,
   shareUrl: string
 ): SendSubmissionEmailMetadataResult {
@@ -396,7 +220,7 @@ export function buildEmailMetadataPatch(
       sent: true,
       shouldRetry: false,
       metadataPatch: {
-        ...buildModePatch(mode),
+        ...buildModePatch(),
         'metadata.emailSent': true,
         'metadata.emailSentAt': now,
         'metadata.emailRecipient': result.recipientEmail,
@@ -406,7 +230,6 @@ export function buildEmailMetadataPatch(
         'metadata.emailError': null,
         'metadata.emailSkippedAt': null,
         'metadata.emailFailedAt': null,
-        'metadata.emailSendAfterRelatedPending': false,
         'metadata.shareUrl': shareUrl,
       },
     };
@@ -417,8 +240,8 @@ export function buildEmailMetadataPatch(
       sent: false,
       shouldRetry: false,
       metadataPatch: {
-        ...buildModePatch(mode),
-        ...buildFailureModePatch(mode),
+        ...buildModePatch(),
+        ...buildFailureModePatch(),
         'metadata.emailSent': false,
         'metadata.emailSkippedAt': now,
         'metadata.emailSkipReason': result.reason,
@@ -432,8 +255,8 @@ export function buildEmailMetadataPatch(
     sent: false,
     shouldRetry: true,
     metadataPatch: {
-      ...buildModePatch(mode),
-      ...buildFailureModePatch(mode),
+      ...buildModePatch(),
+      ...buildFailureModePatch(),
       'metadata.emailSent': false,
       'metadata.emailFailedAt': now,
       'metadata.emailError': result.error || 'Unknown email delivery error',
@@ -452,7 +275,6 @@ export function buildSubmissionEmailInput(
   shareUrl: string,
   policy: SubmissionEmailPolicy,
   eventName: string | null,
-  mode: SubmissionEmailMode = 'after_save',
   theme: EventTheme | null = null,
   facts: EventFacts | null = null,
   legal: string | null = null
@@ -462,18 +284,8 @@ export function buildSubmissionEmailInput(
     return null;
   }
 
-  const subjectTemplate =
-    mode === 'after_save'
-      ? policy.subjectTemplateAfterSave || policy.subjectTemplate
-      : mode === 'after_tryon_resubmission_approved'
-        ? policy.subjectTemplateAfterTryOnResubmissionApproved || policy.subjectTemplateAfterRelatedPhotosReady || policy.subjectTemplate
-        : policy.subjectTemplateAfterRelatedPhotosReady || policy.subjectTemplate;
-  const bodyTemplate =
-    mode === 'after_save'
-      ? policy.bodyTemplateAfterSave || policy.bodyTemplate
-      : mode === 'after_tryon_resubmission_approved'
-        ? policy.bodyTemplateAfterTryOnResubmissionApproved || policy.bodyTemplateAfterRelatedPhotosReady || policy.bodyTemplate
-        : policy.bodyTemplateAfterRelatedPhotosReady || policy.bodyTemplate;
+  const subjectTemplate = policy.subjectTemplateAfterSave || policy.subjectTemplate;
+  const bodyTemplate = policy.bodyTemplateAfterSave || policy.bodyTemplate;
 
   return {
     recipientEmail: recipient.email,
@@ -497,12 +309,11 @@ export async function sendSubmissionResultEmailByPolicy(
   eventName: string | null,
   shareUrl: string,
   policy: SubmissionEmailPolicy,
-  mode: SubmissionEmailMode,
   theme: EventTheme | null = null,
   facts: EventFacts | null = null,
   legal: string | null = null
 ): Promise<SendSubmissionEmailMetadataResult> {
-  const input = buildSubmissionEmailInput(submission, shareUrl, policy, eventName, mode, theme, facts, legal);
+  const input = buildSubmissionEmailInput(submission, shareUrl, policy, eventName, theme, facts, legal);
   if (!input) {
     const now = new Date().toISOString();
 
@@ -510,17 +321,16 @@ export async function sendSubmissionResultEmailByPolicy(
       sent: false,
       shouldRetry: false,
       metadataPatch: {
-        ...buildFailureModePatch(mode),
+        ...buildFailureModePatch(),
         'metadata.emailSent': false,
         'metadata.emailSkippedAt': now,
         'metadata.emailSkipReason': 'missing_recipient',
         'metadata.shareUrl': shareUrl,
-        'metadata.emailSendAfterRelatedPending': false,
       },
     };
   }
 
-  return buildEmailMetadataPatch(mode, await sendSubmissionResultEmail(input), shareUrl);
+  return buildEmailMetadataPatch(await sendSubmissionResultEmail(input), shareUrl);
 }
 
 /** The wordings written for the event's partner or the event, for its e-mails (issue 353); none when there is no event or the read fails. */
@@ -545,109 +355,6 @@ export async function themeOf(db: Db, event: WithId<Event> | null): Promise<Even
   }
 }
 
-export async function dispatchPendingRelatedEmailForSubmission(
-  db: Db,
-  sourceSubmission: WithId<Submission>,
-  baseUrl = PUBLIC_BASE_URL
-): Promise<SendSubmissionEmailMetadataResult | null> {
-  const event = await resolveEventForSubmission(db, sourceSubmission);
-  const policy = normalizeSubmissionEmailPolicy(event?.notifications, normalizeUiLanguage(event?.uiLanguage), await textsOf(db, event));
-
-  if (!policy.enabled || !policy.sendAfterRelatedPhotosReady) {
-    return null;
-  }
-
-  if (sourceSubmission.metadata?.emailSentAfterRelatedPhotos) {
-    return {
-      sent: false,
-      shouldRetry: false,
-      metadataPatch: {
-        'metadata.emailSendAfterRelatedPending': false,
-      },
-    };
-  }
-
-  const sharePageSettings = normalizeSharePageSettings(event?.sharePage);
-  const readiness = await evaluateSubmissionShareReadiness(db, sourceSubmission, sharePageSettings);
-  if (!readiness.ready) {
-    return {
-      sent: false,
-      shouldRetry: false,
-      metadataPatch: {
-        'metadata.emailSendAfterRelatedPending': true,
-      },
-    };
-  }
-
-  const shareUrl = buildSubmissionShareUrl(sourceSubmission._id.toString(), baseUrl);
-  const result = await sendSubmissionResultEmailByPolicy(
-    sourceSubmission,
-    event?.name || null,
-    shareUrl,
-    policy,
-    'after_related',
-    await themeOf(db, event),
-    emailFactsOf(event),
-    await legalOf(db, event)
-  );
-
-  if (!result.shouldRetry) {
-    result.metadataPatch['metadata.emailSendAfterRelatedPending'] = false;
-  }
-
-  return result;
-}
-
-function isTryOnRerunJob(job: TryOnJob | null): boolean {
-  if (!job) return false;
-  return Boolean(job.request?.rerunOfJobId) || job.requestHash.includes('::rerun:');
-}
-
-export async function dispatchTryOnResubmissionApprovalEmailForSubmission(
-  db: Db,
-  sourceSubmission: WithId<Submission>,
-  resultSubmission: WithId<Submission>,
-  baseUrl = PUBLIC_BASE_URL
-): Promise<SendSubmissionEmailMetadataResult | null> {
-  const sourceJobId = readString(resultSubmission.sourceJobId);
-  if (!sourceJobId) {
-    return null;
-  }
-
-  const sourceJob = await db
-    .collection<TryOnJob>(COLLECTIONS.TRYON_JOBS)
-    .findOne({ jobId: sourceJobId });
-  if (!isTryOnRerunJob(sourceJob)) {
-    return null;
-  }
-
-  const event = await resolveEventForSubmission(db, sourceSubmission);
-  const policy = normalizeSubmissionEmailPolicy(event?.notifications, normalizeUiLanguage(event?.uiLanguage), await textsOf(db, event));
-  if (!policy.enabled || !policy.sendAfterTryOnResubmissionApproved) {
-    return null;
-  }
-
-  if (resultSubmission.metadata?.emailSentAfterTryOnResubmissionApproved) {
-    return {
-      sent: false,
-      shouldRetry: false,
-      metadataPatch: {},
-    };
-  }
-
-  const shareUrl = buildSubmissionShareUrl(sourceSubmission._id.toString(), baseUrl);
-  return sendSubmissionResultEmailByPolicy(
-    sourceSubmission,
-    event?.name || null,
-    shareUrl,
-    policy,
-    'after_tryon_resubmission_approved',
-    await themeOf(db, event),
-    emailFactsOf(event),
-    await legalOf(db, event)
-  );
-}
-
 export async function dispatchPendingSubmissionEmailForSubmission(
   db: Db,
   sourceSubmission: WithId<Submission>,
@@ -670,75 +377,26 @@ export async function dispatchPendingSubmissionEmailForSubmission(
     return {
       sent: false,
       shouldRetry: false,
-      metadataPatch: {
-        'metadata.emailSendAfterRelatedPending': false,
-      },
+      metadataPatch: {},
     };
+  }
+
+  if (!policy.sendAfterSave || sourceSubmission.metadata?.emailSentAfterSave === true) {
+    return { sent: false, shouldRetry: false, metadataPatch: {} };
   }
 
   const submissionId = sourceSubmission._id.toString();
   const shareUrl = buildSubmissionShareUrl(submissionId, baseUrl);
-  const eventName = event?.name || null;
+  const afterSaveResult = await sendSubmissionResultEmailByPolicy(
+    sourceSubmission,
+    event?.name || null,
+    shareUrl,
+    policy,
+    await themeOf(db, event),
+    emailFactsOf(event),
+    await legalOf(db, event)
+  );
 
-  const mergedResult: SendSubmissionEmailMetadataResult = {
-    sent: false,
-    shouldRetry: false,
-    metadataPatch: {},
-  };
-
-  if (policy.sendAfterSave && sourceSubmission.metadata?.emailSentAfterSave !== true) {
-    const afterSaveResult = await sendSubmissionResultEmailByPolicy(
-      sourceSubmission,
-      eventName,
-      shareUrl,
-      policy,
-      'after_save',
-      await themeOf(db, event),
-      emailFactsOf(event),
-      await legalOf(db, event)
-    );
-
-    mergedResult.shouldRetry = mergedResult.shouldRetry || afterSaveResult.shouldRetry;
-    mergedResult.sent = mergedResult.sent || afterSaveResult.sent;
-    mergedResult.metadataPatch = {
-      ...mergedResult.metadataPatch,
-      ...afterSaveResult.metadataPatch,
-    };
-
-    if (afterSaveResult.sent) {
-      return {
-        ...mergedResult,
-        metadataPatch: {
-          ...mergedResult.metadataPatch,
-          'metadata.emailSendAfterRelatedPending': false,
-        },
-      };
-    }
-
-    // If there is no recipient we keep the request open and do not try related mode here.
-    if (afterSaveResult.metadataPatch['metadata.emailSkipReason'] === 'missing_recipient') {
-      return {
-        sent: false,
-        shouldRetry: false,
-        metadataPatch: {
-          ...mergedResult.metadataPatch,
-          'metadata.emailSendAfterRelatedPending': false,
-        },
-      };
-    }
-  }
-
-  if (policy.sendAfterRelatedPhotosReady) {
-    const relatedResult = await dispatchPendingRelatedEmailForSubmission(db, sourceSubmission, baseUrl);
-    if (relatedResult) {
-      mergedResult.shouldRetry = mergedResult.shouldRetry || relatedResult.shouldRetry;
-      mergedResult.sent = mergedResult.sent || relatedResult.sent;
-      mergedResult.metadataPatch = {
-        ...mergedResult.metadataPatch,
-        ...relatedResult.metadataPatch,
-      };
-    }
-  }
-
-  return mergedResult;
+  // What the send answered: sent, skipped (no recipient, e-mail off, no key) or failed, and then to be retried.
+  return afterSaveResult;
 }

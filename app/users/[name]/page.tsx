@@ -150,7 +150,7 @@ export default async function UserProfilePage({ params }: PageProps) {
     
     // Get all submissions and find matching user by sanitized name comparison.
     // Admins see every submission of the user (they manage them here); everyone else only sees what is public: nothing
-    // archived, removed from its events, pending, rejected or an unapproved try-on result (camera#262).
+    // archived, removed from its events, pending, rejected or a stored try-on result (camera#262).
     const allSubmissions = (
       await db
         .collection('submissions')

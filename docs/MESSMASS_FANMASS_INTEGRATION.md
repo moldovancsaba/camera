@@ -162,7 +162,7 @@ cursor and only re-pull new images. Matches on `{eventId}` or `{eventIds:
 eventId}` (Camera's legacy single-event / current multi-event submission
 linkage). Returns only **original** fan photos — `submissionKind !== 'tryon_result'`
 and `originalImageUrl` present — never the frame-composited final image or
-try-on results, because fanmass measures brand exposure on the fan as
+a stored try-on result of the removed try-on integration, because fanmass measures brand exposure on the fan as
 photographed, not on the branded output. `limit` defaults to 200, capped at 500.
 Response: `{ eventId, media: [{ captureId, url, createdAt }] }`.
 
@@ -218,8 +218,8 @@ Response: `{ event: { eventId, mongoId, partnerId, created, captureUrl } }`.
 Rate limit `INTERNAL_WRITE`.
 
 ### `GET /api/internal/savetheworld/pledges?eventId=<Mongo _id or event UUID>&limit=<n>`
-The public pledge wall, newest first (`limit` default 12, max 60): non-tryon
-submissions of the event whose `isShareVisible` is `true` (strict opt-in: a
+The public pledge wall, newest first (`limit` default 12, max 60): plain
+photos of the event (never a stored try-on result) whose `isShareVisible` is `true` (strict opt-in: a
 missing or `false` flag is never listed; legacy photos appear only after
 `publish-selfies`) and that have a displayable image. Never returns `userEmail` or
 `userInfo`. Response: `{ pledges: [{ pledgeId, imageUrl, name, createdAt }], total }`.
@@ -228,7 +228,7 @@ bypassing the wall filters — a private lookup for the capturer's own post-self
 screen. Rate limit `INTERNAL_READ`.
 
 ### `POST /api/internal/savetheworld/events/[eventId]/publish-selfies`
-Sets `isShareVisible: true` on the event's non-tryon submissions that have an
+Sets `isShareVisible: true` on the event's plain photos (never a stored try-on result) that have an
 image and an unset share flag (event resolved by `eventId`, Mongo `_id` or
 `savetheworldEventId`). Event-scoped since 12.3.37
 ([lib/savetheworld/publishSelfies.ts](../lib/savetheworld/publishSelfies.ts)).

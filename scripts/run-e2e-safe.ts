@@ -34,7 +34,6 @@ async function main(): Promise<void> {
   // Mirror playwright.config.ts defaults so the preflight validates the
   // exact values the test run will use.
   process.env.MONGODB_DB ||= 'camera_test';
-  process.env.CAMERA_TRYON_INTERNAL_SECRET ||= 'dev-tryon-secret';
   process.env.PLAYWRIGHT_START_WEB_SERVER = 'true';
 
   const mongoUri = process.env.MONGODB_URI?.trim();

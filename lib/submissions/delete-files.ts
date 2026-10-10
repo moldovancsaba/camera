@@ -48,6 +48,7 @@ function text(value: unknown): string | null {
 
 /** Every file URL the submission owns, de-duplicated; originalImageUrl equals imageUrl for older submissions. */
 export function ownedUrls(submission: Document): { fileUrls: string[]; imgbbDeleteLinks: string[] } {
+  // The source photo an old try-on request stored on its own (the integration is removed, issue 557, but the file is still the submission's).
   const tryOn = (submission.tryOnRequest ?? {}) as Document;
   const review = (submission.photoReview ?? {}) as Document;
   const fileUrls = new Set(

@@ -3,8 +3,8 @@
  *
  * Approval is where the picture is made: the plain photo and the frame image the photo recorded (the generated frame variant, or the
  * event's own frame) are composed on the server, stored, and only then does the photo become visible. A photo whose frame cannot be
- * fetched or composed stays pending: the brand's frame is never skipped silently. The held try-on request is queued after approval,
- * the guest gets the share link by email, and the private plain photo is deleted. Rejection keeps the photo private and makes no picture.
+ * fetched or composed stays pending: the brand's frame is never skipped silently. The guest gets the share link by email, and the private plain
+ * photo is deleted. (A try-on request held with the photo was queued here until the try-on integration was removed, issue 557.) Rejection keeps the photo private and makes no picture.
  *
  * Every state change is one conditional update on the review status, so two moderators acting at once cannot both win.
  */
@@ -15,8 +15,7 @@ import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { uploadImage } from '@/lib/imgbb/upload';
 import { logWarn } from '@/lib/observability/logger';
 import { buildEmailMetadataPatch, legalOf, resolveEventForSubmission, textsOf, themeOf } from '@/lib/email/submission-result-email';
-import { enqueueTryOnForSubmission, type TryOnEnqueueOutcome } from '@/lib/tryon/enqueue-for-submission';
-import { fetchImageBuffer } from '@/lib/tryon/frame-composition';
+import { fetchImageBuffer } from '@/lib/media/image-buffer';
 import { runAfterResponse } from '@/lib/api/run-after-response';
 import { ensureScreenPicture } from '@/lib/submissions/screen-picture';
 import sharp from 'sharp';
@@ -40,7 +39,6 @@ export interface ReviewDeps {
   fetchImage: (url: string) => Promise<Buffer>;
   upload: (base64: string, name: string) => Promise<UploadedPicture>;
   deleteFile: (url: string) => Promise<void>;
-  enqueueTryOn: typeof enqueueTryOnForSubmission;
   sendApproved: typeof sendPhotoApprovedEmail;
   sendNotApproved: typeof sendPhotoNotApprovedEmail;
   /** Makes the screen-sized picture of the approved photo (camera#476, S7), after the answer is sent; never throws. Absent in tests that do not care. */
@@ -55,7 +53,6 @@ export const defaultReviewDeps: ReviewDeps = {
     return { imageUrl: result.imageUrl, deleteUrl: result.deleteUrl, imageId: result.imageId, fileSize: result.fileSize, mimeType: result.mimeType };
   },
   deleteFile: (url) => del(url),
-  enqueueTryOn: enqueueTryOnForSubmission,
   sendApproved: sendPhotoApprovedEmail,
   sendNotApproved: sendPhotoNotApprovedEmail,
   screenPicture: (db, submission) => runAfterResponse(() => ensureScreenPicture(db, submission).then(() => undefined)),
@@ -65,7 +62,7 @@ export const defaultReviewDeps: ReviewDeps = {
 export type ReviewFailure = 'not_reviewable' | 'no_photo' | 'compose_failed';
 
 export type ApproveResult =
-  | { ok: true; tryOn: TryOnEnqueueOutcome | null; email: 'sent' | 'skipped' | 'failed' }
+  | { ok: true; email: 'sent' | 'skipped' | 'failed' }
   | { ok: false; reason: ReviewFailure; message: string };
 
 export type RejectResult =
@@ -148,36 +145,12 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
 
   const event = await resolveEventForSubmission(db, submission).catch(() => null);
 
-  let tryOn: TryOnEnqueueOutcome | null = null;
-  if (review.tryOn?.leatherSuitId) {
-    try {
-      tryOn = await deps.enqueueTryOn(db, {
-        submissionId: String(submission._id),
-        createdAt: at,
-        eventId: typeof submission.eventId === 'string' && submission.eventId ? submission.eventId : null,
-        partnerId: submission.partnerId ?? null,
-        userId: submission.userId || 'anonymous',
-        eventPolicy: event ? { _id: String(event._id), name: event.name, tryOn: event.tryOn } : null,
-        request: {
-          requested: true,
-          leatherSuitId: review.tryOn.leatherSuitId,
-          sourceImageData: `data:${review.photoMime};base64,${photo.toString('base64')}`,
-          setupId: review.tryOn.setupId,
-          cameraId: review.tryOn.cameraId,
-          outfitBottomLeatherSuitId: review.tryOn.outfitBottomLeatherSuitId,
-        },
-      });
-    } catch (error) {
-      logWarn('photo_vetting.tryon_enqueue_failed', 'The held try-on request could not be queued', { submissionId: String(submission._id), error: errorMessage(error) });
-    }
-  }
-
   let email: 'sent' | 'skipped' | 'failed' = 'skipped';
   if (submission.shareToken && submission.metadata?.emailSentAfterSave !== true) {
     const shareUrl = approvedShareUrl(submission.shareToken);
     try {
       const result = await deps.sendApproved(submission, event, shareUrl, undefined, await themeOf(db, event), await textsOf(db, event), await legalOf(db, event));
-      const patch = buildEmailMetadataPatch('after_save', result, shareUrl);
+      const patch = buildEmailMetadataPatch(result, shareUrl);
       email = patch.sent ? 'sent' : patch.shouldRetry ? 'failed' : 'skipped';
       await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id }, { $set: patch.metadataPatch });
     } catch (error) {
@@ -186,7 +159,7 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
     }
   }
 
-  // The plain photo is private and no longer needed: the picture exists and the try-on source is stored on its own.
+  // The plain photo is private and no longer needed: the picture exists.
   try {
     await deps.deleteFile(review.photoUrl);
     await db.collection(COLLECTIONS.SUBMISSIONS).updateOne({ _id: submission._id }, { $set: { 'photoReview.photoUrl': null } });
@@ -194,7 +167,7 @@ export async function approvePhoto(db: Db, submission: WithId<Submission>, actor
     logWarn('photo_vetting.pending_photo_not_deleted', 'The private photo of an approved submission was not deleted', { submissionId: String(submission._id), error: errorMessage(error) });
   }
 
-  return { ok: true, tryOn, email };
+  return { ok: true, email };
 }
 
 export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor: ReviewActor, reason: string | null, deps: ReviewDeps = defaultReviewDeps): Promise<RejectResult> {
@@ -210,7 +183,6 @@ export async function rejectPhoto(db: Db, submission: WithId<Submission>, actor:
         reviewNotes: reason,
         isShareVisible: false,
         updatedAt: at,
-        ...(submission.tryOnRequest?.requested ? { 'tryOnRequest.status': 'cancelled', 'tryOnRequest.lastUpdatedAt': at } : {}),
       },
       $push: { reviewHistory: { action: 'reject', by: actorName(actor), at, reason } } as Document,
     }

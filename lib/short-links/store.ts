@@ -52,16 +52,16 @@ export function parseNewLink(input: unknown): NewLink {
   return { ok: true, placement, kind: v.kind, slug: slug.slug };
 }
 
-/** True when a tracked link already uses the slug (the event routes check this before they accept a short URL or greatest-hits address). */
+/** True when a tracked link already uses the slug (the event routes check this before they accept a short URL). */
 export async function trackedSlugExists(db: Db, slug: string): Promise<boolean> {
   return !!(await db.collection(COLLECTIONS.SHORT_LINKS).findOne({ slug }, { projection: { _id: 1 } }));
 }
 
-/** True when the slug is used by a tracked link, by an event's own short URL, or by an event's greatest-hits address. */
+/** True when the slug is used by a tracked link or by an event's own short URL. */
 export async function slugTaken(db: Db, slug: string): Promise<boolean> {
   if (isReservedGoShortSlug(slug)) return true;
   if (await db.collection(COLLECTIONS.SHORT_LINKS).findOne({ slug }, { projection: { _id: 1 } })) return true;
-  return !!(await db.collection(COLLECTIONS.EVENTS).findOne({ $or: [{ shortUrlSlug: slug }, { greatestHitsSlug: slug }] }, { projection: { _id: 1 } }));
+  return !!(await db.collection(COLLECTIONS.EVENTS).findOne({ shortUrlSlug: slug }, { projection: { _id: 1 } }));
 }
 
 export type CreateResult = { ok: true; link: ShortLinkDoc } | { ok: false; status: number; error: string };

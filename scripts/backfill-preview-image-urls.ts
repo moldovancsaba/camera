@@ -12,10 +12,9 @@
 
 import { ObjectId, type Document } from 'mongodb';
 import { closeConnection, connectToDatabase } from '@/lib/db/mongodb';
-import { fetchImageBuffer, uploadPreviewVariant } from '@/lib/tryon/frame-composition';
+import { fetchImageBuffer, uploadPreviewVariant } from '@/lib/media/image-buffer';
 import { COLLECTIONS, type Submission } from '@/lib/db/schemas';
 import { loadEnvFromFiles } from './load-env-from-files';
-import { nowIso } from '@/lib/tryon/time';
 
 interface BackfillOptions {
   dryRun: boolean;
@@ -88,7 +87,7 @@ async function main() {
         if (!options.dryRun) {
           await db.collection<Submission>(COLLECTIONS.SUBMISSIONS).updateOne(
             { _id: candidate._id },
-            { $set: { previewImageUrl: previewUrl, updatedAt: nowIso() } }
+            { $set: { previewImageUrl: previewUrl, updatedAt: new Date().toISOString() } }
           );
         }
 

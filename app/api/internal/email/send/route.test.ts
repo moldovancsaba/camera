@@ -16,7 +16,7 @@ const MESSMASS_SECRET = 'messmass-secret-for-test-0123456789';
 const FANMASS_SECRET = 'fanmass-secret-for-test-0123456789';
 
 // A fresh (uncached) query string per call so each test's mocks bind to their
-// own import of route.ts (same pattern as internal/tryon/sync).
+// own import of route.ts (the pattern of the other route tests).
 function importRouteModule(caseId: string): Promise<RouteModule> {
   const specifier = './route?case=' + caseId;
   return import(specifier) as Promise<RouteModule>;

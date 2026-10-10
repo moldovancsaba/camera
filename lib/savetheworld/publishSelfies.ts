@@ -7,7 +7,7 @@
  * Every condition is combined with an explicit $and. The route used to build
  * `{ ...eventMatch, $or: [imageClauses], ... }`, but eventMatch is itself an
  * `$or`, so the second `$or` key replaced it and the event condition vanished:
- * one click published every non-tryon selfie across ALL events. Never merge two
+ * one click published every selfie across ALL events. Never merge two
  * `$or` clauses into the same object literal.
  */
 
@@ -22,7 +22,7 @@ export function eventMatchFor(eventKeys: string[]): Record<string, unknown> {
 }
 
 /**
- * Non-tryon submissions of the event, with an image, whose share flag was never set
+ * Plain photos of the event (never a stored try-on result), with an image, whose share flag was never set
  * (absent or null). A fan who explicitly unticked sharing (`false`) is never
  * overridden, and `true` needs no change.
  */
@@ -45,7 +45,7 @@ export function buildPublishSelfiesFilter(eventKeys: string[]): Record<string, u
   };
 }
 
-/** All non-tryon submissions of the event (the `total` in the response). */
+/** All plain photos of the event, never a stored try-on result (the `total` in the response). */
 export function buildEventSubmissionsFilter(eventKeys: string[]): Record<string, unknown> {
   return { $and: [eventMatchFor(eventKeys), { submissionKind: { $ne: 'tryon_result' } }, notWaitingOrRejectedClause] };
 }

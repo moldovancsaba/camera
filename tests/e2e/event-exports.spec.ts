@@ -12,7 +12,7 @@
  * - global admin → 200 (auto-allowed)
  *
  * Fixture facts (from /api/e2e/bootstrap):
- * - moderationEventMongoId has two submissions (original + tryon_result), both
+ * - exportEventMongoId has two submissions (two plain photos), both
  *   from e2e-user@camera.local → the email CSV must contain exactly one data
  *   row for that address with submissions=2.
  * - eventMongoId (the base E2E event) has no submissions → ZIP must 400.
@@ -24,7 +24,7 @@ type BootstrapPayload = {
   partnerId: string;
   partnerMongoId: string;
   eventMongoId: string;
-  moderationEventMongoId: string;
+  exportEventMongoId: string;
   e2eRunId?: string;
 };
 
@@ -68,7 +68,7 @@ async function withBootstrap<T>(request: ApiRequest, fn: (payload: BootstrapPayl
   expect(bootstrap.ok()).toBeTruthy();
   const bootstrapPayload = (await bootstrap.json()) as BootstrapPayload;
   expect(bootstrapPayload.e2eRunId?.trim()).toBeTruthy();
-  expect(bootstrapPayload.moderationEventMongoId?.trim()).toBeTruthy();
+  expect(bootstrapPayload.exportEventMongoId?.trim()).toBeTruthy();
 
   try {
     return await fn(bootstrapPayload);
@@ -89,10 +89,10 @@ function csvLines(csv: string): string[] {
 test.describe('event export routes — authorization', () => {
   test('unauthenticated export requests are rejected', async ({ request }) => {
     await withBootstrap(request, async (payload) => {
-      const emails = await request.get(`/api/admin/events/${payload.moderationEventMongoId}/export/emails`);
+      const emails = await request.get(`/api/admin/events/${payload.exportEventMongoId}/export/emails`);
       expect(emails.status()).toBe(401);
 
-      const images = await request.get(`/api/admin/events/${payload.moderationEventMongoId}/export/images`);
+      const images = await request.get(`/api/admin/events/${payload.exportEventMongoId}/export/images`);
       expect(images.status()).toBe(401);
     });
   });
@@ -101,10 +101,10 @@ test.describe('event export routes — authorization', () => {
     await withBootstrap(request, async (payload) => {
       await devLoginApi(request, VIEWER_LOGIN);
 
-      const emails = await request.get(`/api/admin/events/${payload.moderationEventMongoId}/export/emails`);
+      const emails = await request.get(`/api/admin/events/${payload.exportEventMongoId}/export/emails`);
       expect(emails.status()).toBe(403);
 
-      const images = await request.get(`/api/admin/events/${payload.moderationEventMongoId}/export/images`);
+      const images = await request.get(`/api/admin/events/${payload.exportEventMongoId}/export/images`);
       expect(images.status()).toBe(403);
     });
   });
@@ -113,7 +113,7 @@ test.describe('event export routes — authorization', () => {
     await withBootstrap(request, async (payload) => {
       await devLoginApi(request, UNASSIGNED_LOGIN);
 
-      const emails = await request.get(`/api/admin/events/${payload.moderationEventMongoId}/export/emails`);
+      const emails = await request.get(`/api/admin/events/${payload.exportEventMongoId}/export/emails`);
       expect(emails.status()).toBe(403);
     });
   });
@@ -133,7 +133,7 @@ test.describe('event export routes — contract', () => {
     await withBootstrap(request, async (payload) => {
       await devLoginApi(request, MANAGER_LOGIN);
 
-      const response = await request.get(`/api/admin/events/${payload.moderationEventMongoId}/export/emails`);
+      const response = await request.get(`/api/admin/events/${payload.exportEventMongoId}/export/emails`);
       expect(response.status()).toBe(200);
       expect(response.headers()['content-type']).toContain('text/csv');
       expect(response.headers()['content-disposition']).toContain('attachment');
@@ -154,13 +154,13 @@ test.describe('event export routes — contract', () => {
     await withBootstrap(request, async (payload) => {
       await devLoginApi(request, MANAGER_LOGIN);
 
-      const response = await request.get(`/api/admin/events/${payload.moderationEventMongoId}/export/images`);
+      const response = await request.get(`/api/admin/events/${payload.exportEventMongoId}/export/images`);
       expect(response.status()).toBe(200);
       expect(response.headers()['content-type']).toContain('text/csv');
 
       const lines = csvLines(await response.text());
       expect(lines[0]).toBe('submission_id,kind,submission_kind,url,user_email,user_name,created_at');
-      // Both fixture submissions (original + tryon_result) must be represented.
+      // Both fixture submissions (two plain photos) must be represented.
       expect(lines.length).toBeGreaterThanOrEqual(3);
       expect(lines.some((line) => line.includes('original'))).toBeTruthy();
     });
@@ -185,7 +185,7 @@ test.describe('event export routes — contract', () => {
         redirectTo: '/admin',
       });
 
-      const response = await request.get(`/api/admin/events/${payload.moderationEventMongoId}/export/emails`);
+      const response = await request.get(`/api/admin/events/${payload.exportEventMongoId}/export/emails`);
       expect(response.status()).toBe(200);
     });
   });

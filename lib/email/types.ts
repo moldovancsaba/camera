@@ -4,7 +4,7 @@
  * the memory, off). Each has a switch (a stored choice wins; an event with none follows the default), a subject and a message (the event's own, else the dictionary text in the event's
  * language with the levels of the text defaults). Pure and client-safe; unit-tested in types.test.ts.
  *
- * Stored in `Event.notifications.types`. The older fields of the notification settings still mean what they meant: the "after save" pair is the approved e-mail, the two try-on e-mails stay.
+ * Stored in `Event.notifications.types`. The older fields of the notification settings still mean what they meant: the "after save" pair is the approved e-mail. (The two older try-on e-mails, "related photos" and "resubmission approved", are gone, issue 557.)
  */
 
 import { translate, type UiLanguage } from '@/lib/i18n';

@@ -41,8 +41,8 @@ export async function findShareSubmission(db: Db, id: string): Promise<ShareLook
  * What the page shows:
  * - `visible`: the photo, as before;
  * - `waiting` / `not_approved`: a vetted photo reached by its token that is waiting or was rejected (no photo, no preview image);
- * - `hidden`: nothing, the page is not found (unknown, archived, removed from its events, pending or rejected by database id, a try-on
- *   result that is not approved).
+ * - `hidden`: nothing, the page is not found (unknown, archived, removed from its events, pending or rejected by database id, a stored try-on
+ *   result: never public, issue 557).
  */
 export type ShareState = 'visible' | 'waiting' | 'not_approved' | 'hidden';
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { isHiddenFromAllEvents, isPubliclyVisible, publiclyVisibleClauses, visibilityInputOf } from './visibility';
+import { isHiddenFromAllEvents, isPubliclyVisible, plainPhotoClause, publiclyVisibleClauses, visibilityInputOf } from './visibility';
 
 test('a plain photo is public unless it is pending or rejected; a missing status is public (legacy photos)', () => {
   assert.equal(isPubliclyVisible({ submissionKind: 'original' }), true);
@@ -12,13 +12,13 @@ test('a plain photo is public unless it is pending or rejected; a missing status
   assert.equal(isPubliclyVisible({ reviewStatus: 'pending_review' }), false, 'a photo without a kind is a plain photo');
 });
 
-test('a try-on result is public only when approved and not turned off for sharing', () => {
-  assert.equal(isPubliclyVisible({ submissionKind: 'tryon_result', reviewStatus: 'approved', isShareVisible: true }), true);
-  assert.equal(isPubliclyVisible({ submissionKind: 'tryon_result', reviewStatus: 'approved' }), true);
-  assert.equal(isPubliclyVisible({ submissionKind: 'tryon_result', reviewStatus: 'approved', isShareVisible: false }), false);
-  assert.equal(isPubliclyVisible({ submissionKind: 'tryon_result', reviewStatus: 'pending_review', isShareVisible: true }), false);
-  assert.equal(isPubliclyVisible({ submissionKind: 'tryon_result', reviewStatus: 'rejected' }), false);
-  assert.equal(isPubliclyVisible({ submissionKind: 'tryon_result' }), false, 'a result nobody approved');
+test('a stored try-on result is never public, whatever its review or sharing flag says (issue 557)', () => {
+  for (const reviewStatus of ['approved', 'pending_review', 'rejected', null, undefined]) {
+    for (const isShareVisible of [true, false, null, undefined]) {
+      assert.equal(isPubliclyVisible({ submissionKind: 'tryon_result', reviewStatus, isShareVisible }), false, `${String(reviewStatus)} shared ${String(isShareVisible)}`);
+    }
+  }
+  assert.equal(isPubliclyVisible({ submissionKind: 'something_else', reviewStatus: 'approved' }), false, 'only a plain photo can be public');
 });
 
 test('an archived photo is never public, whatever its review says', () => {
@@ -47,14 +47,14 @@ test('the query clauses express the same rule', () => {
   assert.deepEqual(clauses[0], { isArchived: { $ne: true } });
   assert.deepEqual(clauses[1], { 'mediaHealth.broken': { $ne: true } }, 'a picture that is gone is not public');
   assert.deepEqual(clauses[2], { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: ['e1', 'u1'] } }] });
-  const review = clauses[3] as { $or: Array<{ $and: object[] }> };
-  assert.deepEqual(review.$or[0].$and[1], { reviewStatus: { $nin: ['pending_review', 'rejected'] } });
-  assert.deepEqual(review.$or[1].$and, [{ submissionKind: 'tryon_result' }, { reviewStatus: 'approved' }, { isShareVisible: { $ne: false } }]);
+  const review = clauses[3] as { $and: object[] };
+  assert.deepEqual(review.$and[0], plainPhotoClause, 'a plain photo: no kind or original');
+  assert.deepEqual(review.$and[1], { reviewStatus: { $nin: ['pending_review', 'rejected'] } });
+  assert.doesNotMatch(JSON.stringify(clauses), /tryon_result/, 'a stored try-on result has no branch that lets it in');
 });
 
 test('a picture that is gone is never public, whatever else is true of the photo; only a real true counts', () => {
   assert.equal(isPubliclyVisible({ submissionKind: 'original', reviewStatus: 'approved', mediaBroken: true }), false);
-  assert.equal(isPubliclyVisible({ submissionKind: 'tryon_result', reviewStatus: 'approved', isShareVisible: true, mediaBroken: true }), false);
   assert.equal(isPubliclyVisible({ submissionKind: 'original', reviewStatus: 'approved', mediaBroken: false }), true);
   assert.equal(isPubliclyVisible(visibilityInputOf({ reviewStatus: 'approved', mediaHealth: { broken: true, checkedAt: 'x' } })), false);
   assert.equal(isPubliclyVisible(visibilityInputOf({ reviewStatus: 'approved', mediaHealth: { broken: false, checkedAt: 'x' } })), true);
@@ -63,9 +63,9 @@ test('a picture that is gone is never public, whatever else is true of the photo
 
 test('the rule reads a database document defensively: odd values never make a photo public by accident', () => {
   assert.equal(visibilityInputOf(null), null);
-  assert.equal(isPubliclyVisible(visibilityInputOf({ _id: 'x', submissionKind: 'tryon_result', reviewStatus: 'approved', isShareVisible: true })), true);
+  assert.equal(isPubliclyVisible(visibilityInputOf({ _id: 'x', submissionKind: 'tryon_result', reviewStatus: 'approved', isShareVisible: true })), false, 'read from a document too');
   assert.equal(isPubliclyVisible(visibilityInputOf({ reviewStatus: 'pending_review' })), false);
   assert.equal(isPubliclyVisible(visibilityInputOf({ isArchived: 'yes' })), true, 'only a real true archives');
   assert.equal(isPubliclyVisible(visibilityInputOf({ eventId: 'e1', hiddenFromEvents: ['e1', 7] })), false);
-  assert.equal(isPubliclyVisible(visibilityInputOf({ submissionKind: 'tryon_result', reviewStatus: 'approved', isShareVisible: 'false' })), true, 'a non-boolean flag is not "off"');
+  assert.equal(isPubliclyVisible(visibilityInputOf({ submissionKind: 'original', reviewStatus: 'approved', isShareVisible: 'false' })), true, 'a non-boolean sharing flag does not hide a plain photo');
 });

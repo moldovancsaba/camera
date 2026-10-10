@@ -10,8 +10,6 @@ export function emailDefaults(language: UiLanguage = DEFAULT_UI_LANGUAGE, texts?
   return {
     subject: tr('email.subject'),
     body: tr('email.body'),
-    resubmissionSubject: tr('email.subjectResubmission'),
-    resubmissionBody: tr('email.bodyResubmission'),
     notApprovedSubject: tr('email.notApprovedSubject'),
     notApprovedBody: tr('email.notApprovedBody'),
     termsUrl: tr('email.termsUrl'),
@@ -27,22 +25,18 @@ export const DEFAULT_EVENT_TERMS_URL = ENGLISH.termsUrl;
 
 export const DEFAULT_SUBMISSION_EMAIL_BODY = ENGLISH.body;
 
-export const DEFAULT_TRYON_RESUBMISSION_EMAIL_SUBJECT = ENGLISH.resubmissionSubject;
-
-export const DEFAULT_TRYON_RESUBMISSION_EMAIL_BODY = ENGLISH.resubmissionBody;
-
 export const SUBMISSION_EMAIL_TEMPLATE_HELP =
   'Available placeholders: {name}, {event}, {link}, {terms}. Email body is sent as plain text.';
 
 const normalizeNewlines = (value: string) => value.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
 /** The defaults the event editor pre-fills in its email fields, so an event may hold them as if they were the editor's own. */
-const PREFILLED_DEFAULT_KEYS = ['email.subject', 'email.body', 'email.subjectResubmission', 'email.bodyResubmission'] as const satisfies readonly MessageKey[];
+const PREFILLED_DEFAULT_KEYS = ['email.subject', 'email.body'] as const satisfies readonly MessageKey[];
 
 /**
  * A template an editor may have stored, as it is sent in the language. The event editor pre-fills and saves the English defaults as if they were the
  * editor's own, so in another language a stored template that is exactly one of the English defaults counts as not set: the same default in the
- * language is sent instead (an updated-photo text stays the updated-photo text). An editor's own text is sent as written; in English nothing changes.
+ * language is sent instead (a text the editor wrote stays as written). An editor's own text is sent as written; in English nothing changes.
  */
 export function emailTemplateIn(language: UiLanguage, stored: string | null, texts?: TextOverrides | null): string | null {
   if (!stored) return null;

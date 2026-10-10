@@ -186,13 +186,12 @@ that event's scope, takes the event's brand colour as the status-bar colour, run
 
 ## Deleting a submission (camera#211)
 
-`DELETE /api/submissions/[submissionId]` (the owner or an admin) and
-`POST /api/admin/tryon-results/[submissionId]/remove` (global admin) delete the stored files first and
-the database record second.
+`DELETE /api/submissions/[submissionId]` (the owner or an admin) deletes the stored files first and
+the database record second. (A stored try-on result is refused with 409: the data of the removed try-on integration is kept as it is.)
 
 - **What is deleted:** every file of the submission in this project's own Blob store: the composite
   (`imageUrl`/`finalImageUrl`), the full-frame original (`originalImageUrl`), the preview, and the
-  try-on source. A URL on any other host is never touched. A file another submission still points at is
+  source photo an old try-on request stored. A URL on any other host is never touched. A file another submission still points at is
   kept and counted as `keptShared`.
 - **If a file cannot be deleted:** the answer is 502 and the record stays, so the same request can be
   repeated (deleting a file that is already gone is not an error). A failure is logged as
@@ -203,8 +202,7 @@ the database record second.
   **Not verified:** whether imgbb deletes on that request, because no imgbb key was available when this
   was built. Check once with a real mirrored submission: delete it, then open its `i.ibb.co` URL.
   The mirror is only written when `IMGBB_API_KEY` is set.
-- **Not covered:** the try-on result derived from a deleted submission stays until it is removed with
-  `POST /api/admin/tryon-results/[submissionId]/remove`; try-on job records keep their (now dead) URLs;
+- **Not covered:** a stored try-on result derived from a deleted submission stays, and so do the try-on job records with their (now dead) URLs;
   deleting an event leaves its submissions and their files; event and partner "remove" only hide a
   submission, so it keeps its files by design (restorable).
 - **Orphans from before this change:** `npm run blob:orphans` (needs `MONGODB_URI`, `MONGODB_DB`,
@@ -277,8 +275,7 @@ panel and the backfill follow (camera#235 to #238).
   4. **First-day checks**: the final dry run shows `To do` equal to the waiting and failed events only and `With a frame
      of their own` unchanged from the first report; open the capture link of three events (a pairing name, real teams,
      no logo) on a phone: territories in the live view, a different message on each shutter press, the real composition on
-     the preview; save and open the share page; on an event with "apply frame to returned results" a try-on result carries
-     the same frame. Logs to watch: `Frame backfill: event <id> failed`, `frame images could not be generated`,
+     the preview; save and open the share page; Logs to watch: `Frame backfill: event <id> failed`, `frame images could not be generated`,
      `submissions.frame_variant_dropped`.
   5. **Rollback**: per event, assign or activate a frame of its own (the generated one stops applying at once). For all
      events, revert the capture change (camera#246) or, with the owner's approval, remove the images from the events
@@ -301,7 +298,7 @@ panel and the backfill follow (camera#235 to #238).
   is drawn as two lines without the separator (camera#244, rules in the plan, decision 15). Bumping
   `FRAME_RENDER_VERSION` is how a change to the drawing code reaches existing events: their images are redrawn at the
   next generation (refresh, message save or provisioning), not all at once.
-- **Old images are never deleted:** a submission records the variant it used and try-on composes with that URL later.
+- **Old images are never deleted:** a submission records the variant it used.
 - **Logos** are drawn exactly as they are (their own transparency, nothing removed, no box behind them). Only https
   URLs on `i.ibb.co` and camera's own Blob store are fetched, with no redirects, 5 MB and 8 s limits; anything else is
   `logo: failed` and the frame is drawn without it.
@@ -320,16 +317,14 @@ Plan and decisions: [docs/PHOTO_VETTING_PLAN.md](docs/PHOTO_VETTING_PLAN.md). Th
 package it is off for every event, so none of the behaviour below applies yet.
 
 - **A vetted photo** is saved `pending_review` with the plain photo in a private Blob object under `pending/<eventId>/`. No picture exists,
-  nothing is mirrored to imgbb, no link is shown or emailed, and a requested try-on is held.
+  nothing is mirrored to imgbb, no link is shown or emailed.
 - **Approve or reject:** the event's **Vetting** tab (`/admin/events/<id>/vetting`, global admins and the event's partner Events managers; the global
-  Vetting page lists the events whose photos wait). Photos come first, the try-on results of the event below them, for global admins:
-  Waiting / Rejected / Approved lists, approve or reject one photo, or select several and approve them together. It calls
+  Vetting page, `/admin/vetting`, lists the events whose photos wait). Waiting / Rejected / Approved lists, approve or reject one photo, or select several and approve them together. It calls
   `POST /api/admin/submissions/<id>/review` with `{"action":"approve"}` or `{"action":"reject","reason":"..."}`. The same tab shows the
   event's setting; only a global admin can switch it (turning it off asks first).
   Approval composes the plain photo with the frame image the photo recorded (the generated variant, or the event's own frame), stores the
-  picture, publishes the photo, applies the guest's pledge-wall choice, queues the held try-on, emails the share link
-  (`/share/<token>`, whatever the event's own email switch says) and deletes the private photo. Rejection keeps the photo private, cancels the
-  held try-on and emails a short fixed "not approved" note with a link to take another photo. A rejected photo can still be approved.
+  picture, publishes the photo, applies the guest's pledge-wall choice, emails the share link
+  (`/share/<token>`, whatever the event's own email switch says) and deletes the private photo. Rejection keeps the photo private and emails a short fixed "not approved" note with a link to take another photo. A rejected photo can still be approved.
 - **If approval answers 502** ("the photo stays pending"), the frame image or the photo could not be fetched or stored; nothing changed, so
   repeat the action. A frame is never skipped silently: an unframed picture is only made for a photo that recorded no frame at all.
 - **If the email did not go out** the answer says `email: failed` or `skipped` (no address, no sender configured); the photo is approved
@@ -357,7 +352,7 @@ package it is off for every event, so none of the behaviour below applies yet.
    created in the admin, by messmass provisioning and by savetheworld provisioning.
 
 **Checklist for the first live event:** a test photo stays invisible (share page by id is "not found", no slideshow slide, not on the wall,
-not in the fanmass feed); approval emails the guest and publishes it; a try-on requested with the photo runs only after approval; the
+not in the fanmass feed); approval emails the guest and publishes it; the
 event manager (not only a global admin) can open the Vetting tab and approve; an event that has its own frame shows the darkened
 silhouette, an event with a generated frame shows the shapes.
 
@@ -445,14 +440,13 @@ For whoever sets up the screen that shows `/slideshow/<id>` at a venue. The play
 
 ## Screen pictures (camera#476, step S7)
 
-The giant screen is sent a **screen-sized WebP** of each photo (longest edge at most 1920 px, quality 80), not the full-size photo (a composed JPEG of a megabyte or more, a try-on PNG of several). `lib/submissions/screen-picture.ts` makes it once when a photo becomes public, after the answer, and stores it as `screen-pictures/<submission id>.webp` (one-year cache) with its address in `Submission.screenImageUrl`.
+The giant screen is sent a **screen-sized WebP** of each photo (longest edge at most 1920 px, quality 80), not the full-size photo (a composed JPEG of a megabyte or more). `lib/submissions/screen-picture.ts` makes it once when a photo becomes public, after the answer, and stores it as `screen-pictures/<submission id>.webp` (one-year cache) with its address in `Submission.screenImageUrl`.
 
 - **Check one:** the photo's document has `screenImageUrl`; the playlist answer (`/api/slideshows/<id>/playlist`) shows it as the slide's `imageUrl`. A photo without one is sent as before.
 - **Failure:** a warning `screen_picture.failed` in the Vercel logs (the photo is unaffected; the screen keeps the original). It is made again by the backfill below.
 - **Existing photos, from the admin (owner answers 211 b and 219 b: all photos on the slideshow events):** the card **Screen-sized pictures** on the **Slideshows** page (global admins) shows how many photos still lack one and has the button **Make the screen pictures**: it works in batches of 24 on the server (`POST /api/admin/screen-pictures/backfill`, which uses the server's own Blob credentials, so nobody needs a token), shows the progress, can be stopped and pressed again, and a photo that cannot be made (a dead old link) is passed over once. It only adds the picture and its fields; nothing is deleted or changed.
 - **Existing photos, from a terminal (needs the owner's go):** `npx tsx scripts/backfill-screen-pictures.ts` is a **dry run** (counts per event, writes nothing; `--measure=12` downloads 12 samples to measure the saving; `--event=<uuid>` for one event). `--apply --event=<uuid> [--limit=200]` makes them (needs `BLOB_READ_WRITE_TOKEN`; three at a time; safe to repeat, a photo that has one is skipped). It only adds `screenImageUrl` (and `screenImageBytes`, `metadata.screenWidth/Height`) and new files under `screen-pictures/`; no original is touched, nothing is deleted. First dry run (2026-10-09): 352 photos on 10 slideshow events, 157.6 MB stored; 12 measured samples 8.1 MB to 1.1 MB (14 %); MTK x Vasas has 23 photos (11.2 MB), MTK x ETO 5 (2.3 MB).
 - **Undo:** unset `screenImageUrl` on the photos (the playlist then sends the original again) and delete the `screen-pictures/` files if you want the space back.
-- **Not covered:** try-on results (made by another path) keep the full-size picture for now.
 
 ## Activity log and its weekly CSV (issue 517; owner 2026-10-09)
 

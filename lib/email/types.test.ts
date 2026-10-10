@@ -62,7 +62,7 @@ test('the settings a request sets are only what the editor chose: valid fields, 
   assert.equal('submissionResultEmailEnabled' in sanitizeNotificationSettings({ submissionResultEmailEnabled: 'true' }), false);
 });
 
-test('saving from the Emails page: the types are replaced, the old approved fields go, the rest stays, and a value of null takes a setting away', () => {
+test('saving from the Emails page: the types are replaced, the old approved fields go, the fields of the removed try-on e-mails go, the rest stays, and a value of null takes a setting away', () => {
   const existing = {
     submissionResultEmailEnabled: true,
     submissionResultEmailSendAfterSave: false,
@@ -75,18 +75,9 @@ test('saving from the Emails page: the types are replaced, the old approved fiel
   };
   const next = mergeNotificationSettings(existing, { types: { approved: { enabled: false }, followUp: { enabled: true } }, senderName: null, termsUrl: 'https://new.example/terms' });
   assert.deepEqual(next, {
-    submissionResultEmailSendAfterRelatedPhotosReady: true,
     termsUrl: 'https://new.example/terms',
     types: { approved: { enabled: false }, followUp: { enabled: true } },
   });
   assert.deepEqual(mergeNotificationSettings(existing, {}), sanitizeNotificationSettings(existing), 'nothing to change: nothing changes');
   assert.equal('types' in mergeNotificationSettings(existing, { types: {} }), false, 'no choices left: the types follow their defaults');
-  const tryOn = mergeNotificationSettings({}, { tryOn: { related: { enabled: true, subject: 'Related', body: 'Body' }, resubmission: { enabled: false } } });
-  assert.deepEqual(tryOn, {
-    submissionResultEmailSendAfterRelatedPhotosReady: true,
-    submissionResultEmailSubjectAfterRelatedPhotosReady: 'Related',
-    submissionResultEmailBodyAfterRelatedPhotosReady: 'Body',
-    submissionResultEmailSendAfterTryOnResubmissionApproved: false,
-  });
-  assert.equal('submissionResultEmailSubjectAfterRelatedPhotosReady' in mergeNotificationSettings(tryOn, { tryOn: { related: { subject: null } } }), false);
 });

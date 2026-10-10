@@ -9,22 +9,16 @@ import { BODY_MAX, SUBJECT_MAX, parseTypeSettings } from '@/lib/email/types';
 const SWITCHES = [
   'submissionResultEmailEnabled',
   'submissionResultEmailSendAfterSave',
-  'submissionResultEmailSendAfterRelatedPhotosReady',
-  'submissionResultEmailSendAfterTryOnResubmissionApproved',
 ] as const;
 
 const SUBJECTS = [
   'submissionResultEmailSubject',
   'submissionResultEmailSubjectAfterSave',
-  'submissionResultEmailSubjectAfterRelatedPhotosReady',
-  'submissionResultEmailSubjectAfterTryOnResubmissionApproved',
 ] as const;
 
 const BODIES = [
   'submissionResultEmailBody',
   'submissionResultEmailBodyAfterSave',
-  'submissionResultEmailBodyAfterRelatedPhotosReady',
-  'submissionResultEmailBodyAfterTryOnResubmissionApproved',
 ] as const;
 
 const SENDER_MAX = 120;
@@ -68,20 +62,12 @@ export function sanitizeNotificationSettings(value: unknown): Record<string, unk
   return out;
 }
 
-/** The two try-on e-mails of today (an event that uses try-on): their switch, subject and message are the older fields of the notification settings. */
-export interface LegacyModePatch {
-  enabled?: boolean;
-  subject?: string | null;
-  body?: string | null;
-}
-
 export interface NotificationsPatch {
   /** The five types: replaces what was stored for them (the Emails page sends all it knows). */
   types?: unknown;
   /** Null takes the stored value away (the default applies). */
   senderName?: string | null;
   termsUrl?: string | null;
-  tryOn?: { related?: LegacyModePatch; resubmission?: LegacyModePatch };
 }
 
 const LEGACY_APPROVED_KEYS = [
@@ -94,8 +80,8 @@ const LEGACY_APPROVED_KEYS = [
 ] as const;
 
 /**
- * The notification settings after the Emails page saved (epic 463, E3): what was stored, with the five types replaced, the sender and the terms link set or taken away, and the two try-on
- * e-mails changed. The page owns the approved e-mail now, so the old master switch and the old after-save pair are taken away when the types are saved (the new `types.approved` holds
+ * The notification settings after the Emails page saved (epic 463, E3): what was stored, with the five types replaced, the sender and the terms link set or taken away. (The two older
+ * try-on e-mails, "related photos" and "resubmission approved", and their fields are gone, issue 557: saving drops what an event stored for them.) The page owns the approved e-mail now, so the old master switch and the old after-save pair are taken away when the types are saved (the new `types.approved` holds
  * what they meant: the page writes a stored off or an own text there before they go). Everything else stored stays. Pure; unit-tested in notification-settings.test.ts.
  */
 export function mergeNotificationSettings(existing: unknown, patch: NotificationsPatch): Record<string, unknown> {
@@ -112,17 +98,6 @@ export function mergeNotificationSettings(existing: unknown, patch: Notification
   };
   if (patch.senderName !== undefined) set('submissionResultEmailSenderName', patch.senderName);
   if (patch.termsUrl !== undefined) set('termsUrl', patch.termsUrl);
-  const modes = [
-    ['related', 'submissionResultEmailSendAfterRelatedPhotosReady', 'submissionResultEmailSubjectAfterRelatedPhotosReady', 'submissionResultEmailBodyAfterRelatedPhotosReady'],
-    ['resubmission', 'submissionResultEmailSendAfterTryOnResubmissionApproved', 'submissionResultEmailSubjectAfterTryOnResubmissionApproved', 'submissionResultEmailBodyAfterTryOnResubmissionApproved'],
-  ] as const;
-  for (const [mode, switchKey, subjectKey, bodyKey] of modes) {
-    const change = patch.tryOn?.[mode];
-    if (!change) continue;
-    if (typeof change.enabled === 'boolean') out[switchKey] = change.enabled;
-    if (change.subject !== undefined) set(subjectKey, change.subject);
-    if (change.body !== undefined) set(bodyKey, change.body);
-  }
   // Run the result through the same checks as a request: nothing invalid is stored.
   return sanitizeNotificationSettings(out);
 }

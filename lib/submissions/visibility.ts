@@ -5,9 +5,10 @@
  *
  * - Archived by an admin: never public.
  * - Hidden from every event it belongs to ("remove from event"): never public.
- * - A plain photo is public unless its review says `pending_review` or `rejected`. A missing status is public: photos saved
- *   before vetting existed carry none, and that must not hide history (the plan backfills them as approved).
- * - A try-on result is public only when it was approved and was not turned off for sharing, as the share page already requires.
+ * - Only a plain photo (`submissionKind` missing or `original`) is public, and it is unless its review says `pending_review` or `rejected`.
+ *   A missing status is public: photos saved before vetting existed carry none, and that must not hide history (the plan backfills them as approved).
+ * - A stored try-on result (`submissionKind: 'tryon_result'`, from the integration that was removed, issue 557) is never public, whatever its
+ *   review says: nothing shows it on any surface. It used to be public when approved and not turned off for sharing.
  * - A picture that is gone (its host answers 404, or serves its "image not found" stand-in): never public (`mediaHealth.broken`, lib/media/broken.ts). Not showing a picture is better
  *   than showing an error, on every surface (owner, 2026-10-09).
  *
@@ -64,9 +65,8 @@ export function isPubliclyVisible(submission: VisibilityInput | null | undefined
   if (submission.isArchived === true) return false;
   if (submission.mediaBroken === true) return false;
   if (isHiddenFromAllEvents(submission)) return false;
-  if (submission.submissionKind === 'tryon_result') {
-    return submission.reviewStatus === 'approved' && submission.isShareVisible !== false;
-  }
+  // Only a plain photo can be public: a stored try-on result (or any other kind) never is.
+  if (submission.submissionKind != null && submission.submissionKind !== 'original') return false;
   return submission.reviewStatus !== 'pending_review' && submission.reviewStatus !== 'rejected';
 }
 
@@ -76,7 +76,10 @@ export const UNPUBLISHED_REVIEW_STATUSES = ['pending_review', 'rejected'] as con
 /** `reviewStatus` is neither of them; a missing status passes (photos from before vetting carry none). For feeds that already restrict the kind. */
 export const notWaitingOrRejectedClause = { reviewStatus: { $nin: [...UNPUBLISHED_REVIEW_STATUSES] }, 'mediaHealth.broken': { $ne: true } };
 
-/** The same rule for a MongoDB query on plain photos and approved try-on results (the shape the slideshow routes use). */
+/** A plain photo for a MongoDB query: `submissionKind` missing or `original`, never a stored try-on result. */
+export const plainPhotoClause = { $or: [{ submissionKind: { $exists: false } }, { submissionKind: 'original' }] };
+
+/** The same rule for a MongoDB query on plain photos (the shape the slideshow routes use). */
 export function publiclyVisibleClauses(eventIdKeys: readonly string[]): object[] {
   return [
     { isArchived: { $ne: true } },
@@ -84,15 +87,7 @@ export function publiclyVisibleClauses(eventIdKeys: readonly string[]): object[]
     { 'mediaHealth.broken': { $ne: true } },
     { $or: [{ hiddenFromEvents: { $exists: false } }, { hiddenFromEvents: { $nin: [...eventIdKeys] } }] },
     {
-      $or: [
-        {
-          $and: [
-            { $or: [{ submissionKind: { $exists: false } }, { submissionKind: 'original' }] },
-            { reviewStatus: { $nin: ['pending_review', 'rejected'] } },
-          ],
-        },
-        { $and: [{ submissionKind: 'tryon_result' }, { reviewStatus: 'approved' }, { isShareVisible: { $ne: false } }] },
-      ],
+      $and: [plainPhotoClause, { reviewStatus: { $nin: ['pending_review', 'rejected'] } }],
     },
   ];
 }
