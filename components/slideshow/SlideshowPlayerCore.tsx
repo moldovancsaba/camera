@@ -16,7 +16,7 @@ import { hostOf, shortId } from '@/lib/slideshow/diagnostics';
 import { PRELOAD_FAIL_TTL_MS, createPreloader } from '@/lib/slideshow/preload';
 import { crossfadeEnabled } from '@/lib/slideshow/crossfade';
 import { fetchWithTimeout, nextBackoffMs } from '@/lib/slideshow/resilience';
-import { reloadReason } from '@/lib/slideshow/reload';
+import { reloadHeldBy, reloadReason } from '@/lib/slideshow/reload';
 import { recentReloads, watchdogAction } from '@/lib/slideshow/watchdog';
 import ScreenDesignLayers, { screenWindowStyle } from '@/components/slideshow/ScreenDesignLayers';
 import type { ResolvedScreenDesign } from '@/lib/slideshow/screen-design';
@@ -223,6 +223,8 @@ export function SlideshowPlayerCore({
   const openedAtRef = useRef(0);
   const openedTokenRef = useRef<string | null>(null);
   const latestTokenRef = useRef<string | null>(null);
+  /** Why a reload that is due is waiting, so the diagnostics say it once (lib/slideshow/reload.ts). */
+  const reloadHeldRef = useRef<string | null>(null);
   const loadRetryTimerRef = useRef<number | null>(null);
   const loadRef = useRef<() => Promise<void>>(async () => undefined);
   const pendingInitialDelayRef = useRef(delayMs > 0);
@@ -646,12 +648,26 @@ export function SlideshowPlayerCore({
         return;
       }
 
-      // At a slide boundary, so no picture is cut: reload every 3 hours and when an admin asked (lib/slideshow/reload.ts).
+      // At a slide boundary, so no picture is cut: reload every 3 hours and when an admin asked (lib/slideshow/reload.ts). A reload that is due waits (and asks again at the next
+      // slide) while the browser is offline, and the scheduled one also while the next picture is not loaded: a reload then would leave the screen with nothing to show.
       const reason = reloadReason({ variant, openedAt: openedAtRef.current, now: Date.now(), token: latestTokenRef.current, openedToken: openedTokenRef.current });
       if (reason) {
-        record('error', { msg: `reload: ${reason}` });
-        window.location.reload();
-        return;
+        const next = slideQueueRef.current[1];
+        const held = reloadHeldBy(reason, {
+          online: navigator.onLine !== false,
+          nextReady: !next || next.submissions.every((sub) => preloader.has(sub.imageUrl)),
+        });
+        if (!held) {
+          reloadHeldRef.current = null;
+          record('error', { msg: `reload: ${reason}` });
+          window.location.reload();
+          return;
+        }
+        // One line each time the reason changes, not one for every slide it waits.
+        if (reloadHeldRef.current !== held) {
+          reloadHeldRef.current = held;
+          record('error', { msg: `reload held (${reason}): ${held}` });
+        }
       }
 
       if (commitQueue((q) => advanceLoop(q, loopSeedSlidesRef.current, bufferTargetRef.current))) {
@@ -674,6 +690,7 @@ export function SlideshowPlayerCore({
     maintainLoopBuffer,
     commitQueue,
     record,
+    preloader,
   ]);
 
   useEffect(() => {
