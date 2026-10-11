@@ -94,3 +94,42 @@ test('the photo is offered as <id>:camera-result and nothing else is downloadabl
   assert.equal(fetched.length, 1, 'nothing else was fetched');
   assert.equal((await GET(new NextRequest(`http://localhost/api/share/${id}/download`), ctx)).status, 400, 'a variant is required');
 });
+
+// The anonymous journey recording (issue 521, phase 2): a download by a person is counted for the photo's event, after the answer; a crawler's is not; the download itself is unchanged.
+function spyOnRecording(t: import('node:test').TestContext): Array<{ event: unknown; name: unknown }> {
+  const records: Array<{ event: unknown; name: unknown }> = [];
+  t.mock.module('@/lib/journey/store', { namedExports: { recordServerJourney: async (_db: unknown, event: unknown, name: unknown) => { records.push({ event, name }); } } });
+  t.mock.module('@/lib/api/run-after-response', { namedExports: { runAfterResponse: (task: () => Promise<void>) => { void task(); } } });
+  return records;
+}
+
+test('a download by a person is recorded once, for the event of the photo, and the download is still offered', async (t) => {
+  const state = setup(t);
+  const records = spyOnRecording(t);
+  state.doc = photo({ reviewStatus: 'approved' });
+  const { GET } = await importRoute('journey-download');
+  const res = await GET(new NextRequest(`http://localhost/api/share/${id}/download?variant=${id}:camera-result`, { headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) Safari/604.1' } }), ctx);
+  assert.notEqual(res.status, 404);
+  assert.deepEqual(records, [{ event: 'evt-1', name: 'download' }]);
+});
+
+test('a crawler, a prefetch and a request with no user agent are not downloads', async (t) => {
+  const state = setup(t);
+  const records = spyOnRecording(t);
+  state.doc = photo({ reviewStatus: 'approved' });
+  const { GET } = await importRoute('journey-crawler');
+  for (const headers of [{ 'user-agent': 'facebookexternalhit/1.1' }, { 'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)' }, { 'user-agent': 'Mozilla/5.0 (iPhone)', purpose: 'prefetch' }, {}] as Array<Record<string, string>>) {
+    await GET(new NextRequest(`http://localhost/api/share/${id}/download?variant=${id}:camera-result`, { headers }), ctx);
+  }
+  assert.deepEqual(records, []);
+});
+
+test('a photo that is not public is not counted as downloaded: it is refused before anything is recorded', async (t) => {
+  const state = setup(t);
+  const records = spyOnRecording(t);
+  state.doc = photo({ reviewStatus: 'pending_review' });
+  const { GET } = await importRoute('journey-hidden');
+  const res = await GET(new NextRequest(`http://localhost/api/share/${id}/download?variant=${id}:camera-result`, { headers: { 'user-agent': 'Mozilla/5.0 (iPhone)' } }), ctx);
+  assert.equal(res.status, 404);
+  assert.deepEqual(records, []);
+});

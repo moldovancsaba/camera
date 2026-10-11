@@ -3,6 +3,9 @@ import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { isPubliclyVisible, visibilityInputOf } from '@/lib/submissions/visibility';
+import { runAfterResponse } from '@/lib/api/run-after-response';
+import { isCountableVisit } from '@/lib/short-links/device';
+import { recordServerJourney } from '@/lib/journey/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +53,13 @@ export async function GET(
     const imageUrl = requestedVariantId === `${String(doc._id)}:camera-result` ? readString(doc.imageUrl) : null;
     if (!imageUrl) {
       return NextResponse.json({ error: 'No downloadable image available' }, { status: 404 });
+    }
+
+    // The anonymous journey recording (issue 521, phase 2): a download by a person (not a crawler or a prefetch) is counted for the photo's event, after the answer is sent. It never delays,
+    // changes or breaks the download, and does nothing while the owner has the recording switched off.
+    if (isCountableVisit(request.method, request.headers)) {
+      const eventKey = [doc.eventId, ...(Array.isArray(doc.eventIds) ? doc.eventIds : [])].map((value) => (value === null || value === undefined ? '' : String(value).trim())).find(Boolean) ?? null;
+      runAfterResponse(() => recordServerJourney(db, eventKey, 'download'));
     }
 
     const imageResponse = await fetch(imageUrl);

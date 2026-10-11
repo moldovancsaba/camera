@@ -60,6 +60,7 @@ import { aspectsAgree, fullFrameFromBlob, takeStillBlob } from '@/lib/camera/sti
 import { fillCropRect, toFractionRect } from '@/lib/camera/reframe';
 import { sampleVideoLumaStats, waitForVideoFrame } from '@/lib/camera/video-frame';
 import { DEFAULT_VIEW, currentShape, viewAspect, viewRect, wantedWindow, withField, withShape, type CameraView, type ViewField, type ViewShape } from '@/lib/camera/view';
+import { journey } from '@/lib/journey/client';
 import { useT } from '@/components/i18n/UiLanguageProvider';
 
 /** Supports hex (#rgb) or CSS `var(--token)` for branded capture UI. */
@@ -434,6 +435,9 @@ export default function CameraCapture({
         mediaStream.getTracks().forEach((track) => track.stop());
         return;
       }
+
+      // The anonymous journey recording (issue 521, phase 2): the user allowed the camera. Fire and forget; it never throws and does nothing unless the recording is on.
+      journey.once('camera.permission', 'granted');
       
       const settings = mediaStream.getVideoTracks()[0]?.getSettings?.() as
         | (MediaTrackSettings & { resizeMode?: string })
@@ -461,6 +465,8 @@ export default function CameraCapture({
       
       const error = err as Error;
       let errorMessage = t('camera.error.failed');
+      // The journey recording: the user said no, or there is no camera, it is in use or it failed (one record of each kind per visit).
+      journey.once('camera.permission', error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError' ? 'denied' : 'unavailable');
 
       // Provide user-friendly error messages
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {

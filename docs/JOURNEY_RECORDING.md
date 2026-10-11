@@ -2,7 +2,7 @@
 
 An anonymous record of the steps users take through the capture pages, so the Analytics view can say how many people opened the link, where they got to, how many saved a photo, how many said no to the camera, retook, left the consent, shared and downloaded. Owner decision 241 (2026-10-10): **record the journey anonymously for everyone, and send messmass counters only.** The plan is in [ANALYTICS_AUDIT.md](ANALYTICS_AUDIT.md) (sections 7.1 to 7.3, steps B and C); the figures are in [ANALYTICS.md](ANALYTICS.md).
 
-**Status.** The receiving side is built: the beacon route, the vocabulary, the daily counts and the raw rows, the kill switch, the Journey tab and the counters for messmass. The capture page starts sending with the second pull request of the issue (the page beacons); until then no page emits anything and the Journey tab says "nothing recorded".
+**Status.** Built in two changes of issue 521: the receiving side (the beacon route, the vocabulary, the daily counts and raw rows, the kill switch, the Journey tab, the counters for messmass) and the **page beacons** (the capture page, the camera, the share page and the download send the records). The recording is **on by default** (owner decision 241) and the owner can switch it off from the Journey tab without a deploy.
 
 ## The rule this is built on
 
@@ -47,6 +47,14 @@ One record is a **name** from a fixed list, a **key** from that name's fixed lis
 
 The Analytics view and the counters for messmass read the **daily counts**. The raw rows are for the funnel and the timings; today one thing reads them (the median time to the first saved photo).
 
+## Where the page records
+
+`app/capture/[eventId]/page.tsx` carries one hook call (`useJourneyRecorder`, which only **reads** the page's state: the phase, the page type, the step, the consent, the capture method) and four one-line calls where something happens that is not a change of place: the save result (`journey.saved`), the copy and the social share buttons (`journey.record('share.click', ...)`). `components/camera/CameraCapture.tsx` records the camera permission. The share page (`app/share/[id]/page.tsx`) and the download (`app/api/share/[id]/download/route.ts`) record `share.view` and `download` on the server, after the response, and only for a person (`isCountableVisit`: not a HEAD request, a prefetch, a missing user agent, a chat app's link preview or a crawler). Where the steps are mapped is `lib/journey/steps.ts` (pure, tested).
+
+## What was checked
+
+Unit tests (`lib/journey/*.test.ts`, the route, the share page and download tests) cover the vocabulary, the caps, the kill switch, the batching, the one-request-at-a-time rule, a clock, timer, request or beacon that throws, and that nothing personal is stored. The whole capture page was also compared **before and after in a browser** (an esbuild bundle of the real page, the API mocked, a fake camera; Playwright; phone 390 x 844 with touch and desktop 1280 x 800), with the journey endpoint answering 204, answering 500, hanging forever and being blocked, and with the recording switched off and unknown to the server: every visible element of the camera step, the move-and-zoom step (before and after a retake), the saved step and the next photo is at the same place with the same words, the save carries the same fields and is not slower, nothing overflows, a switched-off recording sends not one request, a hanging endpoint costs at most four requests, and no beacon holds anything personal. The harness is described in the pull request.
+
 ## The kill switch
 
 `admin_settings` document `journey-recording` (`lib/journey/setting.ts`). **On unless switched off**: only a stored `enabled: false` turns it off.
@@ -77,4 +85,4 @@ Counters only, never a person (decision 241): `journeyOpens`, `journeyCompleted`
 
 ## Files
 
-`lib/journey/events.ts` (vocabulary, `parseJourneyBatch`), `lib/journey/setting.ts` (kill switch), `lib/journey/store.ts` (the writes, the event lookup), `lib/journey/client.ts` and `lib/journey/useJourneyRecorder.ts` (the page side, added by the page beacons change), `app/api/observability/journey/route.ts`, `app/api/admin/settings/journey-recording/route.ts`, `lib/analytics/journey.ts`, `components/admin/analytics/JourneySection.tsx` and `JourneySwitch.tsx`.
+`lib/journey/events.ts` (vocabulary, `parseJourneyBatch`), `lib/journey/setting.ts` (kill switch), `lib/journey/store.ts` (the writes, the event lookup), `lib/journey/client.ts`, `lib/journey/steps.ts` and `lib/journey/useJourneyRecorder.ts` (the page side), `app/api/observability/journey/route.ts`, `app/api/admin/settings/journey-recording/route.ts`, `lib/analytics/journey.ts`, `components/admin/analytics/JourneySection.tsx` and `JourneySwitch.tsx`.
