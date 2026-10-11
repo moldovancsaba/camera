@@ -6,6 +6,7 @@ import { isGlobalAdminSession } from '@/lib/partners/authorization';
 import AdminListPageShell from '@/components/admin/AdminListPageShell';
 import ScreenPicturesCard from '@/components/admin/ScreenPicturesCard';
 import MediaHealthCard from '@/components/admin/MediaHealthCard';
+import WelcomeScreenBackfillCard from '@/components/admin/WelcomeScreenBackfillCard';
 import SlideshowsInventoryList, {
   type SerializedSlideshowRow,
 } from '@/components/gds/SlideshowsInventoryList';
@@ -161,6 +162,7 @@ export default async function SlideshowsInventoryPage({
     >
       <MediaHealthCard />
       <ScreenPicturesCard />
+      <WelcomeScreenBackfillCard />
       <SlideshowsInventoryList slideshows={slideshowRows} />
     </AdminListPageShell>
   );
