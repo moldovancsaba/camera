@@ -12,7 +12,7 @@ Checked on Node 24.19 / npm 10.9 after a clean `npm ci`. The full gate (`npm run
 | Question | Answer |
 |----------|--------|
 | Advisories in what ships to production (`npm audit --omit=dev`) | **0** |
-| Advisories anywhere (`npm audit`) | 1 advisory, shown as 5 high findings, **development tool only, no patched release exists** |
+| Advisories anywhere (`npm audit`) | **0** since the override of section 2a (before: 1 advisory, shown as 5 high findings, development tool only, no patched release exists) |
 | Open Dependabot alerts | none (`gh api "repos/moldovancsaba/camera/dependabot/alerts?state=open"` returned nothing) |
 | Packages nothing uses | 1 removed (`@mantine/dropzone`); the try-on removal itself left no orphan package |
 | Updated | 7 packages (patch and minor, same lines) |
@@ -24,9 +24,33 @@ Checked on Node 24.19 / npm 10.9 after a clean `npm ci`. The full gate (`npm run
 
 | Advisory | Severity | Where (path) | Reachable in production? | Disposition |
 |----------|----------|--------------|--------------------------|-------------|
-| [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm): `braces` <= 3.0.3, deeply nested brace patterns exhaust the stack (CWE-674, CVSS 7.5) | high | `braces` 3.0.3 < `micromatch` 4.0.8 < `fast-glob` 3.3.1 < `@next/eslint-plugin-next` 16.2.10 < `eslint-config-next` 16.2.10 (devDependency). npm counts the five packages on the path as five findings. | **No.** `npm audit --omit=dev` finds nothing and `npm ls braces --omit=dev` is empty. The code runs only inside `eslint .` on this repository's own files, with patterns that are written in the config, never with input from a user. | **No fix exists:** 3.0.3 is the newest `braces` and lies inside the affected range. npm's own suggestion (`npm audit fix --force`) installs `eslint-config-next@14.2.35`, a downgrade of two majors that does not fit Next 16, so it is not applied. Re-run `npm audit` when `braces` or `eslint-config-next` changes. |
+| [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm): `braces` <= 3.0.3, deeply nested brace patterns exhaust the stack (CWE-674, CVSS 7.5) | high | `braces` 3.0.3 < `micromatch` 4.0.8 < `fast-glob` 3.3.1 < `@next/eslint-plugin-next` 16.2.10 < `eslint-config-next` 16.2.10 (devDependency). npm counts the five packages on the path as five findings. | **No.** `npm audit --omit=dev` finds nothing and `npm ls braces --omit=dev` is empty. The code runs only inside `eslint .` on this repository's own files, with patterns that are written in the config, never with input from a user. | **No patched `braces` exists** (3.0.3 is the newest and lies inside the affected range) and npm's own suggestion (`npm audit fix --force`) installs `eslint-config-next@14.2.35`, a downgrade of two majors that does not fit Next 16, so it is not applied. **Cleared instead by taking `braces` out of the tree** (section 2a). |
 
 Nothing else is reported. Dependabot had earlier flagged Next 16.3.2 (two critical advisories); `next` is now 16.3.8 and the old note in `TECH_STACK.md` was removed.
+
+### 2a. The braces advisory: taken out of the tree (2026-10-11)
+
+`braces` has no patched release, and `eslint-config-next` 16.2.10, 16.4.0 and even the 16.5.0 canary all depend on `@next/eslint-plugin-next` of the same version, which pins `fast-glob` 3.3.1 (`fast-glob` > `micromatch` > `braces`). So the only way to clear the five findings is to remove `braces` from the tree. `package.json` now says:
+
+```json
+"overrides": { "@next/eslint-plugin-next": { "fast-glob": "npm:tinyglobby@0.2.17" } }
+```
+
+Only that plugin's `fast-glob` is replaced, by `tinyglobby` (already in the tree through `typescript-eslint` and the import resolver; it uses `picomatch`, which expands braces itself). `@next/eslint-plugin-next` calls `fast-glob` in one place: `dist/utils/get-root-dirs.js` runs `globSync(rootDir, { onlyDirectories: true })` for the folders named by `settings.next.rootDir`, which this repo never sets, so in this repository the call is never made.
+
+| Measure | Before (main, 6483bc06) | After |
+|---------|-------------------------|-------|
+| Direct dependencies / devDependencies / overrides | 23 / 15 / 7 | 23 / 15 / **8** |
+| Packages installed by `npm ci` | 622 | **609** (-13: 16 removed, 3 added) |
+| `npm audit` | 5 high (1 advisory) | **0** |
+| `npm audit --omit=dev` | 0 | 0 |
+| `npm ci` deprecation warnings | 2 | 2 (unchanged: `eslint@9`, and `glob@10` until the `archiver` pull request is merged) |
+
+Removed: `fast-glob`, `micromatch`, `braces`, `fill-range`, `to-regex-range`, `is-number`, `picomatch` 2.x, `merge2`, `glob-parent` (nested), `fastq`, `reusify`, `run-parallel`, `queue-microtask`, `@nodelib/fs.stat`, `@nodelib/fs.scandir`, `@nodelib/fs.walk`. Added: nested `tinyglobby` (installed as `fast-glob`), `fdir` and `picomatch` 4.x under the plugin.
+
+**The one difference, and the guard.** `tinyglobby` writes folders with a trailing slash, and for a plain folder name it lists the folders inside it as well (the harness input `["app/api/*", "components", "nonexistent/*"]` gave 25 folders with `fast-glob` and 45 with `tinyglobby`), so a config that sets `settings.next.rootDir` would get another answer than the plugin was written for. `eslint.config.mjs` therefore throws at load time if any entry sets `settings.next.rootDir` (checked by adding one: ESLint stops with the message). Undo: delete the override and the guard, run `npm install`; the five findings come back, as they were before.
+
+**What proves it.** `npm run lint` is clean with and without the override; a file with a `<img>`, a missing `key`, an `<a target="_blank">` and a `next/script` gives the same three findings from the `@next/next`, `jsx-a11y` and `react` rules before and after, line for line; `npm audit` reports 0; `npm run inventory:check` and `npm run release:check` pass. **Not covered:** `settings.next.rootDir` (unused here, hence the guard).
 
 ## 3. Unused dependencies
 
@@ -90,6 +114,23 @@ Anything that is a framework line, a major, or a library the gate cannot exercis
 | `@playwright/test` | 1.61.1 > 1.64.0 | Minor; the e2e suite is not part of the gate and needs the disposable `camera_test` database | S | low |
 | `overrides` `postcss` 8.5.23 and `esbuild` 0.28.1 | latest 8.5.29 and 0.28.2 | Exact pins freeze the patch level of two transitive packages. Next 16.3.8 itself pins `postcss` 8.5.23, and `tsx` asks for `esbuild ~0.28.0`; relax them to ranges (`^8.5.23`, `^0.28.1`) at the next bump | XS | low |
 
+### 5a. ESLint 10: what blocks it (checked 2026-10-11)
+
+ESLint 9.x is deprecated ("no longer supported", section 6) and 10.12.0 is current, but the lint chain does not run on it. Tried in a scratch copy: `eslint@^10.12.0` resolves (npm prints `ERESOLVE overriding peer dependency` three times) and installs 616 packages, and then `npm run lint` stops on the first file:
+
+```
+TypeError: Error while loading rule 'react/display-name': contextOrFilename.getFilename is not a function
+    at resolveBasedir (node_modules/eslint-config-next/node_modules/eslint-plugin-react/lib/util/version.js)
+```
+
+| Package (installed = latest) | Last release | `eslint` peer range | State |
+|------------------------------|--------------|---------------------|-------|
+| `eslint-plugin-react` 7.37.5 | 2025-04-03 | `^3 \|\| ... \|\| ^8 \|\| ^9.7` | **crashes on ESLint 10** (uses `context.getFilename()`, removed in 10) |
+| `eslint-plugin-import` 2.32.0 | 2025-06-20 | `... \|\| ^8 \|\| ^9` | no ESLint 10 declared |
+| `eslint-plugin-jsx-a11y` 6.10.2 | 2024-10-26 | `... \|\| ^8 \|\| ^9` | no ESLint 10 declared |
+
+`eslint-config-next` 16.4.0 and the 16.5.0 canary list the same three plugins (`eslint >=9`, which says nothing about them); `typescript-eslint` 8.62 (`^8.57 \|\| ^9 \|\| ^10`), `eslint-plugin-react-hooks` 7.1.1 (up to `^10`) and `@sovereignsquad/gds-eslint-config` 6.8.0 (`^9 \|\| ^10`) are ready. So the blocker is exactly `eslint-plugin-react`, `eslint-plugin-import` and `eslint-plugin-jsx-a11y`, which only their maintainers can release (nothing newer exists; the only prerelease tags are years old). Ways round it were considered and not taken: leaving those three plugins out drops the `react/*`, `jsx-a11y/*` and `import/*` rules (lint coverage, which CLAUDE.md section 2 does not allow us to give up to get green), and a compatibility wrapper (`@eslint/compat`) would be a new dependency to make three unmaintained plugins run on a version they never declared. **Re-check when `eslint-config-next` moves to plugin releases that list ESLint 10** (`npm view eslint-plugin-react version peerDependencies.eslint`, same for the other two); the change is then `eslint` to `^10`, S effort, low risk (dev only).
+
 ## 6. Deprecated packages
 
 Checked with `npm view <name>@<installed> deprecated` for the direct registry dependencies (34 before the removal) and, through the registry manifest of each locked version, for all 714 locked package versions (before the changes).
@@ -107,6 +148,7 @@ Tested on 2026-10-11 by removing one override at a time in a scratch copy and ru
 
 | Override | Result | Decision |
 |----------|--------|----------|
+| `@next/eslint-plugin-next` > `fast-glob` = `npm:tinyglobby@0.2.17` | Added 2026-10-11 to take `braces` (no patched release) out of the tree: section 2a. Without it `npm audit` reports five high findings in the lint chain. | Keep, with the guard in `eslint.config.mjs` |
 | `@tiptap/core`, `@tiptap/pm`, `@tiptap/react`, `@tiptap/extension-bubble-menu`, `@tiptap/extension-floating-menu` = 3.31.3 | Without them `@tiptap/starter-kit` 3.31.4 gets its own nested `@tiptap/core` and `@tiptap/pm` 3.31.4 next to the 3.31.3 the rest of the tree uses (two copies of the editor core, which these packages are not built for). `gds-core` 6.8.0 brings tiptap in. | Keep |
 | `postcss` 8.5.23, `esbuild` 0.28.1 | Removing either leaves the resolved tree unchanged; the pins only stop later patches | Keep for now, relax at the next bump (section 5) |
 
