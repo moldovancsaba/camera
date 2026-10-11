@@ -16,8 +16,8 @@ Checked on Node 24.19 / npm 10.9 after a clean `npm ci`. The full gate (`npm run
 | Open Dependabot alerts | none (`gh api "repos/moldovancsaba/camera/dependabot/alerts?state=open"` returned nothing) |
 | Packages nothing uses | 1 removed (`@mantine/dropzone`); the try-on removal itself left no orphan package |
 | Updated | 7 packages (patch and minor, same lines) |
-| Deprecated | `eslint` 9.x (whole line) and `glob` 10.5.0 (transitive, production tree, through `archiver`) |
-| Majors and framework lines not done | 11, with effort and risk in section 5 |
+| Deprecated | `eslint` 9.x (whole line); `glob` 10.5.0 (production tree, through `archiver`) is gone since `archiver` 8 (section 6a) |
+| Majors and framework lines not done | 10 (`archiver` 8 was done on 2026-10-11), with effort and risk in section 5 |
 | Version stamps | one wrong stamp (`NAMING_GUIDE.md`), one stale stack section and two stale test counts, all fixed |
 
 ## 2. Security advisories
